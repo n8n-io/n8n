@@ -666,12 +666,7 @@ type TerminalGuardOrderServiceInternals = {
 	suspendedThreads: { dropPendingConfirmationsForThread: Mock; persistPendingConfirmation: Mock };
 	logger: { warn: Mock; error: Mock };
 	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
-	instanceAiConfig: {
-		outputRedactionEnabled: boolean;
-		outputRedactionSecrets: boolean;
-		outputRedactionPii: string;
-		outputRedactionPlaceholder: string;
-	};
+	instanceAiConfig: {};
 	tracing: {
 		finalizeRunTracing: Mock;
 		finalizeDetachedTraceRun: Mock;
@@ -773,7 +768,6 @@ type SnapshotServiceInternals = {
 		getEventsForRuns: Mock;
 	};
 	eventLog: { flush: Mock; getEventsForRuns: Mock };
-	instanceAiConfig: { durableLog: boolean };
 	tracing: { getTraceContext: Mock };
 	logger: { warn: Mock };
 };
@@ -808,12 +802,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	};
 	service.logger = { warn: vi.fn(), error: vi.fn() };
 	service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
-	service.instanceAiConfig = {
-		outputRedactionEnabled: true,
-		outputRedactionSecrets: true,
-		outputRedactionPii: 'credit-card',
-		outputRedactionPlaceholder: '[REDACTED]',
-	};
+	service.instanceAiConfig = {};
 	service.tracing = {
 		finalizeRunTracing: vi.fn(async () => {}),
 		finalizeDetachedTraceRun: vi.fn(async () => {}),
@@ -838,7 +827,6 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.preserveHitlOnShutdown = new Set();
 
 	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
-		durableLog: false,
 		eventBus: service.eventBus,
 		dbSnapshotStorage: {},
 		agentMemory: {},
@@ -878,7 +866,6 @@ function createSnapshotService(): SnapshotServiceInternals {
 		getEventsForRuns: vi.fn(() => []),
 	};
 	service.eventLog = { flush: vi.fn(async () => {}), getEventsForRuns: vi.fn(async () => []) };
-	service.instanceAiConfig = { durableLog: false };
 	service.tracing = { getTraceContext: vi.fn(() => undefined) };
 	service.logger = { warn: vi.fn() };
 	return service;
@@ -2953,7 +2940,7 @@ describe('InstanceAiService — agent tree snapshots', () => {
 			save: vi.fn(async () => {}),
 			updateLast: vi.fn(async () => {}),
 		};
-		service.eventBus.getEventsForRuns.mockReturnValue([terminalEvent]);
+		service.eventLog.getEventsForRuns.mockResolvedValue([terminalEvent]);
 
 		await service.saveAgentTreeSnapshot(
 			'thread-a',
@@ -2968,7 +2955,7 @@ describe('InstanceAiService — agent tree snapshots', () => {
 			messageGroupId: 'group-old',
 			runId: 'run-background',
 		});
-		expect(service.eventBus.getEventsForRuns).toHaveBeenCalledWith('thread-a', [
+		expect(service.eventLog.getEventsForRuns).toHaveBeenCalledWith('thread-a', [
 			'run-original',
 			'run-background',
 		]);
@@ -3017,9 +3004,8 @@ describe('InstanceAiService — agent tree snapshots', () => {
 		);
 	});
 
-	it('reads snapshot input from the durable log instead of the bus when the flag is on', async () => {
+	it('reads snapshot input from the durable log', async () => {
 		const service = createSnapshotService();
-		service.instanceAiConfig.durableLog = true;
 		const logEvent: InstanceAiEvent = {
 			type: 'text-delta',
 			runId: 'run-1',
@@ -3036,7 +3022,6 @@ describe('InstanceAiService — agent tree snapshots', () => {
 		await service.saveAgentTreeSnapshot('thread-a', 'run-1', snapshotStorage);
 
 		expect(service.eventLog.getEventsForRuns).toHaveBeenCalledWith('thread-a', ['run-1']);
-		expect(service.eventBus.getEventsForRun).not.toHaveBeenCalled();
 		// Read-own-writes barrier: the drain settles before the snapshot input is
 		// read, so a just-published terminal fact can't be missing from the tree.
 		expect(service.eventLog.flush).toHaveBeenCalledWith('thread-a');

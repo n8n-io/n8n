@@ -35,7 +35,6 @@ export interface ConsumeWithHitlOptions {
 	resumeOptions?: Record<string, unknown>;
 	/** Native agent persistence owner for suspended sub-agent state. */
 	persistence?: { threadId: string; resourceId: string };
-	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
 	outputRedaction?: RedactionOptions | false;
 }
 
@@ -127,7 +126,6 @@ export interface ConsumeStreamCascadingOptions {
 	logger: Logger;
 	threadId: string;
 	abortSignal: AbortSignal;
-	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
 	outputRedaction?: RedactionOptions | false;
 }
 

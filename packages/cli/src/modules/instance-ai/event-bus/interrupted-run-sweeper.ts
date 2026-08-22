@@ -1,6 +1,5 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { createSubAgentResourceIdPrefix, orchestratorAgentId } from '@n8n/instance-ai';
 import { InstanceSettings } from 'n8n-core';
@@ -76,19 +75,15 @@ export class InterruptedRunSweeper {
 
 	private resumeHost: InterruptedRunResumeHost | undefined;
 
-	private readonly durableLogEnabled: boolean;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly eventLogRepo: InstanceAiEventLogRepository,
 		private readonly checkpointRepo: InstanceAiCheckpointRepository,
 		private readonly eventBus: InProcessEventBus,
 		private readonly metrics: DurableLogMetrics,
-		globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
-		this.durableLogEnabled = globalConfig.instanceAi.durableLog;
 	}
 
 	setResumeHost(host: InterruptedRunResumeHost): void {
@@ -97,8 +92,6 @@ export class InterruptedRunSweeper {
 
 	/** Called from module init (startup). */
 	async sweep(): Promise<void> {
-		if (!this.durableLogEnabled) return;
-
 		let unfinished;
 		try {
 			unfinished = await this.eventLogRepo.findUnfinishedRuns();
@@ -154,8 +147,6 @@ export class InterruptedRunSweeper {
 	 * window — a per-run claim would need the lease table this design avoids.
 	 */
 	async cancelUnfinishedRuns(threadId: string): Promise<number> {
-		if (!this.durableLogEnabled) return 0;
-
 		let unfinished;
 		try {
 			unfinished = await this.eventLogRepo.findUnfinishedRuns(threadId);

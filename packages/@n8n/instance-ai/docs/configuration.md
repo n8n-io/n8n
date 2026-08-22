@@ -112,25 +112,13 @@ Observer and Reflector use the same model as the orchestrator agent (see `@n8n/a
 | `N8N_INSTANCE_AI_SNAPSHOT_RETENTION` | number | `86400000` | Retention period in ms for orphaned workflow snapshots before pruning. |
 | `N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT` | number | `86400000` | Timeout in ms for HITL confirmation requests. 0 = no timeout. |
 
-### Output Filtering
+### Output filtering
 
-Agent output is scanned for secrets/PII and redacted before it reaches the user.
-The scan covers streamed assistant text, reasoning, and tool results/errors, for
-both the orchestrator and eval-setup background tasks. A filtering event (categories
-and counts only — never the values) is logged whenever a redaction occurs.
-
-| Variable | Type | Default | Description |
-|----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED` | boolean | `true` | Master switch. When `false`, output passes through untouched. |
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS` | boolean | `true` | Redact credential/secret patterns (API keys, tokens, auth headers, `key=value` pairs). |
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_PII` | string | `credit-card` | Comma-separated PII categories to redact. Available: `email`, `credit-card` (Luhn-validated), `ssn-us` (US Social Security Number, dashed `123-45-6789` form). Defaults to `credit-card` only; `email`/`ssn-us` are implemented but off by default pending review of false-positive rates. Empty = no PII scanning. Unrecognized values are ignored. Per-country national IDs each use their own `ssn-<cc>` category (e.g. a future `ssn-uk`). |
-| `N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER` | string | `[REDACTED]` | Replacement text substituted for each redacted match. |
-
-Secret detection is conservative by design — it matches well-known token shapes
-and explicit `key=value`/JSON secret fields, not arbitrary opaque strings, to
-avoid mangling normal output. The `PiiDetectionType` API also reserves `phone`
-and `address`, but those have no detection pattern yet — setting them has no
-effect (they were deferred as too false-positive-prone for free-form prose).
+Instance AI does not scan or redact agent output on the streaming path.
+Agent output is stored raw, consistent with workflow execution data, and
+redaction applies at egress boundaries instead — the LangSmith telemetry
+redactor is a separate layer and is unaffected. There are no
+`N8N_INSTANCE_AI_OUTPUT_REDACTION_*` settings.
 
 ## Provider connections
 
@@ -188,19 +176,13 @@ The event bus transport is selected automatically:
 - **Single instance**: In-process `EventEmitter` — zero infrastructure
 - **Queue mode**: Redis Pub/Sub — uses n8n's existing Redis connection
 
-Event persistence is controlled by `N8N_INSTANCE_AI_DURABLE_LOG` (default
-`true` since Gate A of the durable-log rollout; pre-existing runs are
-backfilled by migration). On, coalesced step-level facts (completed
-text/reasoning blocks, tool calls and results, run lifecycle) are appended to
-the `instance_ai_events` table and replay reads the database; token deltas
-are never persisted. Rows cascade-delete with their thread
-(`N8N_INSTANCE_AI_THREAD_TTL_DAYS`). Setting it to `false` is the rollback
-switch until the legacy paths sunset at Gate B: events then live only in a
-bounded in-memory buffer per thread (500 events / 2 MB, FIFO-evicted; ids
-reset on restart, so replay does not survive a restart). That bound is
-per-thread only: a buffer is released when its thread is deleted or expires,
-so a main's memory scales with the number of threads it has served until the
-process restarts. The main logs a warning at boot when the switch is set.
+Events are persisted to the durable event log, which is the only storage
+path — there is no setting to turn it off. Coalesced step-level facts
+(completed text/reasoning blocks, tool calls and results, run lifecycle) are
+appended to the `instance_ai_events` table and replay reads the database;
+token deltas are never persisted. Rows cascade-delete with their thread
+(`N8N_INSTANCE_AI_THREAD_TTL_DAYS`). Nothing is retained in the process, so
+cursors stay valid across restarts and across mains sharing one database.
 
 Runtime behavior:
 - One active run per thread. Additional `POST /instance-ai/chat/:threadId`
@@ -251,10 +233,6 @@ N8N_INSTANCE_AI_MODEL=google-vertex-anthropic/claude-opus-4-8
 N8N_INSTANCE_AI_VERTEX_PROJECT_ID=my-gcp-project
 N8N_INSTANCE_AI_VERTEX_LOCATION=global
 N8N_INSTANCE_AI_VERTEX_SERVICE_ACCOUNT_JSON='{"type":"service_account",...}'
-
-# Output filtering — secrets + email only, with a custom placeholder
-N8N_INSTANCE_AI_OUTPUT_REDACTION_PII=email
-N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER=‹redacted›
 
 # Observational memory tuning
 N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS=30000
