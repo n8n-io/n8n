@@ -279,7 +279,7 @@ function onListBackgroundClick() {
 						<N8nButton
 							variant="subtle"
 							size="mini"
-							:label="i18n.baseText('workflowReviews.sidebar.retry')"
+							:label="i18n.baseText('generic.retry')"
 							:data-section="group.key"
 							data-test-id="workflow-review-section-retry"
 							@click="emit('retry', group.key)"
