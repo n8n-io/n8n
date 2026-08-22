@@ -2,7 +2,7 @@ import { Service } from '@n8n/di';
 
 export interface IExternalSecretsManager {
 	hasSecret(provider: string, name: string): boolean;
-	getSecret(provider: string, name: string): unknown;
+	getSecret(provider: string, name: string): string | undefined;
 	getSecretNames(provider: string): string[];
 	hasProvider(provider: string): boolean;
 	getProviderNames(): string[];
