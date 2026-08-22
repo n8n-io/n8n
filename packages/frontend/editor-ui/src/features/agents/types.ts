@@ -6,8 +6,28 @@ import type {
 	AgentSkillReference,
 } from '@n8n/api-types';
 import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
+import type {
+	AgentCollaborationState,
+	AgentPresence,
+	AgentCollaborationMessage,
+	AgentPresencePayload,
+	AgentConfigChangePayload,
+	CursorPosition,
+	UserPresence,
+} from './types/collaboration.types';
 
 export type { ToolDescriptor, CustomToolEntry, AgentSkill, AgentSkillReference };
+
+// Export collaboration types
+export type {
+	AgentCollaborationState,
+	AgentPresence,
+	AgentCollaborationMessage,
+	AgentPresencePayload,
+	AgentConfigChangePayload,
+	CursorPosition,
+	UserPresence,
+};
 
 export interface AgentContinueLoadedEvent {
 	sessionId: string;
