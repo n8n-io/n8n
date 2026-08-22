@@ -177,8 +177,10 @@ const targetLabel = computed(() =>
 					<N8nText color="text-dark" size="small" compact>{{ targetLabel }}</N8nText>
 				</span>
 			</template>
+			<!-- Wrapped like the source-control modal does it; bare slot text would inherit
+				whatever the panel happens to set. -->
 			<template #sourceEmptyText>
-				{{ sourceEmptyText }}
+				<N8nText size="small" color="text-base">{{ sourceEmptyText }}</N8nText>
 			</template>
 		</WorkflowDiffView>
 	</div>
