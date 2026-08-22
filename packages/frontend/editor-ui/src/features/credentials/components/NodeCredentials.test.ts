@@ -1,5 +1,5 @@
-import { shallowRef, ref, computed, nextTick } from 'vue';
-import { describe, it, vi, beforeEach } from 'vitest';
+import { shallowRef, ref, computed, nextTick, watchSyncEffect } from 'vue';
+import { describe, it, vi, beforeEach, afterEach } from 'vitest';
 import { screen, within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
@@ -177,6 +177,7 @@ describe('NodeCredentials', () => {
 		typeof shallowRef<ReturnType<typeof useWorkflowDocumentStore> | null>
 	>;
 	let renderComponent: ReturnType<typeof createComponentRenderer>;
+	let stopCredentialsMirror: () => void;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -209,7 +210,18 @@ describe('NodeCredentials', () => {
 
 		credentialsStore = mockedStore(useCredentialsStore);
 		// Component triggers this on mount; avoid a real XHR with stubActions: false.
-		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue([]);
+		credentialsStore.fetchUsableCredentials = vi
+			.fn()
+			.mockImplementation(async () => Object.values(credentialsStore.usableCredentials));
+
+		// The picker reads `usableCredentials`, the slice only the scoped fetch writes.
+		// Tests seed the flat map, and by the time an NDV mounts in production the
+		// scoped fetch has already run (useWorkflowInitialization), so mirror the seed
+		// into the slice. Tests that need the two to diverge stop the mirror first.
+		stopCredentialsMirror = watchSyncEffect(() => {
+			credentialsStore.usableCredentials = { ...credentialsStore.state.credentials };
+		});
+		credentialsStore.hasFetchedUsableCredentials = true;
 
 		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId('1'));
 		uiStore = mockedStore(useUIStore);
@@ -233,6 +245,10 @@ describe('NodeCredentials', () => {
 		};
 	});
 
+	afterEach(() => {
+		stopCredentialsMirror?.();
+	});
+
 	it('should display available credentials in the dropdown', async () => {
 		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {
@@ -246,6 +262,27 @@ describe('NodeCredentials', () => {
 		await userEvent.click(credentialsSelect);
 
 		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
+	});
+
+	it('should not offer a credential the scoped fetch left out of the usable slice', async () => {
+		// An unscoped fetchAllCredentials from anywhere in the app can fill the flat
+		// map with credentials from other projects while the NDV is open (IAM-1241).
+		stopCredentialsMirror();
+		ndvStore.activeNode = httpNode;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+			'personal-cred': createCredential({ id: 'personal-cred', name: 'Personal OpenAi account' }),
+		};
+		credentialsStore.usableCredentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		renderComponent();
+
+		await userEvent.click(screen.getByTestId('node-credentials-select'));
+
+		expect(screen.queryByText('OpenAi account')).toBeInTheDocument();
+		expect(screen.queryByText('Personal OpenAi account')).not.toBeInTheDocument();
 	});
 
 	it('replaces the type-derived field label when credentialsFieldLabel is set', () => {
@@ -287,7 +324,7 @@ describe('NodeCredentials', () => {
 
 		renderComponent();
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			workflowId: '1',
 		});
 	});
@@ -301,7 +338,7 @@ describe('NodeCredentials', () => {
 
 		renderComponent({ props: { skipCredentialsFetch: true } });
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).not.toHaveBeenCalled();
+		expect(credentialsStore.fetchUsableCredentials).not.toHaveBeenCalled();
 	});
 
 	it('should fetch credentials scoped to the project for an unsaved workflow', () => {
@@ -312,7 +349,7 @@ describe('NodeCredentials', () => {
 
 		renderComponent();
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			projectId: 'project-1',
 		});
 	});
@@ -326,7 +363,7 @@ describe('NodeCredentials', () => {
 
 		renderComponent();
 
-		expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+		expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 			projectId: 'personal-project',
 		});
 	});
@@ -2233,6 +2270,46 @@ describe('NodeCredentials', () => {
 				name: '',
 				__aiGatewayManaged: true,
 			});
+		});
+
+		it('should not auto-enable the gateway before the scoped fetch has resolved', async () => {
+			// An unfetched slice reads as "no credentials" — acting on it would switch a
+			// node that has a perfectly good credential onto n8n credits (IAM-1241).
+			stopCredentialsMirror();
+			const ownCred = {
+				id: 'cred-1',
+				name: 'My Google Key',
+				type: 'googlePalmApi',
+				isManaged: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
+			};
+			credentialsStore.hasFetchedUsableCredentials = false;
+			credentialsStore.usableCredentials = {};
+			credentialsStore.getCredentialById = vi.fn().mockReturnValue(ownCred);
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+			});
+
+			expect(emitted('credentialSelected')).toBeFalsy();
+
+			// Once the scope lands the user's own credential is selected instead.
+			credentialsStore.usableCredentials = { 'cred-1': ownCred };
+			credentialsStore.hasFetchedUsableCredentials = true;
+			await nextTick();
+
+			const payload = ((emitted('credentialSelected')?.[0] as unknown[]) ?? [])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials['googlePalmApi']).toEqual(
+				expect.objectContaining({ id: 'cred-1' }),
+			);
 		});
 
 		it('should auto-enable gateway credential on mount for a directly-supported single-cred node in the NDV (show-all, no override)', () => {
