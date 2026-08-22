@@ -8,8 +8,10 @@ import {
 	SUPERSEDED_BY,
 	getEscalationWarningKey,
 	isOptionImplied,
+	isOptionMandatory,
 	resolveOptionState,
 	toggleOptionInGroup,
+	type InstanceResource,
 	type InstanceScopeOption,
 } from '../instanceRoleScopes';
 
@@ -48,18 +50,32 @@ function impliedTooltip(option: InstanceScopeOption, groupOptions: InstanceScope
 /**
  * Tooltip shown for a permission option. When the option is implied by another
  * (e.g. "Manage own" under a checked "Manage all") the "Included in …" note
- * takes precedence; otherwise it explains what the permission grants.
+ * takes precedence; a mandatory option (granted to every role, see
+ * `isOptionMandatory`) explains why it can't be turned off; otherwise it
+ * explains what the permission grants.
  */
-function optionTooltip(option: InstanceScopeOption, groupOptions: InstanceScopeOption[]): string {
+function optionTooltip(
+	resource: InstanceResource,
+	option: InstanceScopeOption,
+	groupOptions: InstanceScopeOption[],
+): string {
 	if (isOptionImplied(option, groupOptions, props.modelValue)) {
 		return impliedTooltip(option, groupOptions);
+	}
+	if (isOptionMandatory(resource, option)) {
+		return i18n.baseText('instanceRoles.option.mandatory');
 	}
 	return option.descriptionKey ? i18n.baseText(option.descriptionKey) : '';
 }
 
-function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption[]) {
+function onToggle(
+	resource: InstanceResource,
+	option: InstanceScopeOption,
+	groupOptions: InstanceScopeOption[],
+) {
 	if (props.readonly) return;
 	if (isOptionImplied(option, groupOptions, props.modelValue)) return;
+	if (isOptionMandatory(resource, option)) return;
 	emit('update:modelValue', toggleOptionInGroup(props.modelValue, option, groupOptions));
 }
 </script>
@@ -76,8 +92,8 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 					<N8nTooltip
 						v-for="option in group.options"
 						:key="option.key"
-						:content="optionTooltip(option, group.options)"
-						:disabled="!optionTooltip(option, group.options)"
+						:content="optionTooltip(group.resource, option, group.options)"
+						:disabled="!optionTooltip(group.resource, option, group.options)"
 						placement="right"
 						:enterable="false"
 						:show-after="250"
@@ -89,9 +105,13 @@ function onToggle(option: InstanceScopeOption, groupOptions: InstanceScopeOption
 							:indeterminate="
 								resolveOptionState(option, group.options, modelValue) === 'indeterminate'
 							"
-							:disabled="readonly || isOptionImplied(option, group.options, modelValue)"
+							:disabled="
+								readonly ||
+								isOptionImplied(option, group.options, modelValue) ||
+								isOptionMandatory(group.resource, option)
+							"
 							:class="$style.checkbox"
-							@update:model-value="onToggle(option, group.options)"
+							@update:model-value="onToggle(group.resource, option, group.options)"
 						/>
 					</N8nTooltip>
 				</template>

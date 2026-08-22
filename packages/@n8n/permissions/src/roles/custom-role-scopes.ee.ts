@@ -73,8 +73,12 @@ type InstanceScopeGroups = {
 
 export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 	settings: {
-		// Grants access to every instance Settings page. Each scope below gates a
-		// specific page; granting all of them lets the role see and manage all of them.
+		// Grants access to every instance Settings page, including MCP and AI
+		// Assistant management. MCP and AI Assistant also have their own narrower
+		// use/manage options below so a role can be given just those without the
+		// rest of instance Settings — Manage's bundle is a strict superset of all
+		// four, so checking Manage checks them too, and unchecking any one of them
+		// drops Manage out of the fully-checked state.
 		Manage: [
 			'securitySettings:manage', // Security & Policies
 			'credentialResolver:read', // Resolvers (requires the full CRUD set)
@@ -108,8 +112,16 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'mcpApiKey:create', // MCP personal API key
 			'mcpApiKey:rotate',
 		],
+		'Mcp use': ['mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'],
+		'Mcp manage': ['mcp:manage', 'mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'],
+		'AiAssistant use': ['instanceAi:message'],
+		'AiAssistant manage': ['aiAssistant:manage', 'instanceAi:manage', 'instanceAi:message'],
 	},
 	user: {
+		// Lets a role look up other users (e.g. the member-search box a Project Admin
+		// uses to add users to a project) without granting the Settings > Users page
+		// or the ability to change anyone's role.
+		View: ['user:read', 'user:list'],
 		Manage: [
 			'user:create',
 			'user:update',
