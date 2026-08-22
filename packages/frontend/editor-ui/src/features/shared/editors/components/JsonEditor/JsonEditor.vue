@@ -99,6 +99,16 @@ watch(
 	},
 );
 
+// The read-only state is baked into the editor at creation, so recreate it when
+// the prop toggles at runtime (e.g. when a collaboration write lock is released)
+watch(
+	() => props.isReadOnly,
+	() => {
+		destroyEditor();
+		createEditor();
+	},
+);
+
 function createEditor() {
 	const state = EditorState.create({ doc: props.modelValue, extensions: extensions.value });
 	const parent = jsonEditorRef.value;
