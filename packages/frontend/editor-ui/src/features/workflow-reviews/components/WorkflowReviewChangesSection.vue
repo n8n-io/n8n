@@ -214,11 +214,13 @@ const targetLabel = computed(() =>
 	background-color: var(--color--text--tint-1);
 }
 
+/* Same border and radius as the activity cards in the sibling tab, so the two tabs
+	read as one surface. */
 .diff {
 	height: 100%;
 	min-height: 0;
-	border: var(--border-width) var(--border-style) var(--border-color--subtle);
-	border-radius: var(--radius--md);
+	border: var(--border);
+	border-radius: var(--radius--2xs);
 	overflow: hidden;
 }
 </style>

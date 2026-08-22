@@ -368,7 +368,7 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 .fullscreen {
 	position: fixed;
 	inset: 0;
-	z-index: 100;
+	z-index: var(--workflow-diff-fullscreen--z);
 	background: var(--color--background--light-3);
 }
 
