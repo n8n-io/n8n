@@ -1,6 +1,16 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { MessageBox } from './components/messageBoxLocators';
+
+type AgentSessionStatusMock = 'running' | 'succeeded' | 'error' | 'cancelled' | 'interrupted';
+
+interface AgentThreadListMock {
+	id: string;
+	title: string;
+	status: AgentSessionStatusMock;
+	updatedAt?: string;
+}
 
 interface ToolCallMock {
 	name: string;
@@ -132,6 +142,181 @@ export class AgentSessionsPage extends BasePage {
 		);
 	}
 
+	/**
+	 * Mocks the sessions list endpoint for the given threads, honouring the
+	 * `status` query param the same way the real API filters server-side.
+	 */
+	async mockThreadsList(
+		projectId: string,
+		agentId: string,
+		threads: AgentThreadListMock[],
+	): Promise<void> {
+		const threadsPath = `/rest/projects/${projectId}/agents/v2/${agentId}/threads`;
+
+		await this.page.route(
+			(url) => url.pathname === threadsPath,
+			async (route) => {
+				const statusFilter = new URL(route.request().url()).searchParams.get('status');
+				const filtered = statusFilter
+					? threads.filter((thread) => thread.status === statusFilter)
+					: threads;
+
+				await route.fulfill({
+					json: {
+						data: {
+							threads: filtered.map((thread) => ({
+								id: thread.id,
+								agentId,
+								agentName: 'Agent session E2E',
+								parentThreadId: null,
+								parentAgentId: null,
+								projectId,
+								taskId: null,
+								sessionNumber: 1,
+								title: thread.title,
+								emoji: null,
+								totalPromptTokens: 10,
+								totalCompletionTokens: 5,
+								totalCost: 0,
+								totalDuration: 3_000,
+								createdAt: thread.updatedAt ?? '2026-01-01T12:00:00.000Z',
+								updatedAt: thread.updatedAt ?? '2026-01-01T12:00:00.000Z',
+								firstMessage: null,
+								source: 'chat',
+								status: thread.status,
+							})),
+							nextCursor: null,
+						},
+					},
+				});
+			},
+		);
+	}
+
+	async mockDeleteThread(projectId: string, agentId: string, threadId: string): Promise<void> {
+		const threadPath = `/rest/projects/${projectId}/agents/v2/${agentId}/threads/${threadId}`;
+
+		await this.page.route(
+			(url) => url.pathname === threadPath,
+			async (route) => {
+				if (route.request().method() !== 'DELETE') {
+					await route.fallback();
+					return;
+				}
+				await route.fulfill({ json: { data: { success: true } } });
+			},
+		);
+	}
+
+	/** Mocks a session whose only execution ended in an error, without any tool calls. */
+	async mockErrorSession({
+		projectId,
+		agentId,
+		threadId,
+		errorMessage,
+	}: {
+		projectId: string;
+		agentId: string;
+		threadId: string;
+		errorMessage: string;
+	}): Promise<void> {
+		const createdAt = '2026-01-01T12:00:00.000Z';
+		const stoppedAt = '2026-01-01T12:00:03.000Z';
+		const thread = {
+			id: threadId,
+			agentId,
+			agentName: 'Agent session E2E',
+			parentThreadId: null,
+			parentAgentId: null,
+			projectId,
+			taskId: null,
+			sessionNumber: 1,
+			title: 'Errored agent session',
+			emoji: null,
+			totalPromptTokens: 10,
+			totalCompletionTokens: 5,
+			totalCost: 0,
+			totalDuration: 3_000,
+			createdAt,
+			updatedAt: stoppedAt,
+			firstMessage: null,
+			source: 'chat',
+			status: 'error',
+		};
+		const execution = {
+			id: 'agent-execution-e2e-error',
+			threadId,
+			agentId,
+			status: 'error',
+			createdAt,
+			startedAt: createdAt,
+			stoppedAt,
+			duration: 3_000,
+			userMessage: null,
+			attachments: null,
+			model: null,
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			cost: 0,
+			timeline: [],
+			error: errorMessage,
+			hitlStatus: null,
+			source: 'chat',
+		};
+		const threadsPath = `/rest/projects/${projectId}/agents/v2/${agentId}/threads`;
+
+		await this.page.route(
+			(url) => url.pathname === `${threadsPath}/${threadId}`,
+			async (route) => {
+				await route.fulfill({ json: { data: { thread, executions: [execution] } } });
+			},
+		);
+	}
+
+	getSessionRows(): Locator {
+		return this.page.getByTestId('agent-session-list-item');
+	}
+
+	getEmptyState(): Locator {
+		return this.page.getByTestId('agent-sessions-empty');
+	}
+
+	async openFilters(): Promise<void> {
+		await this.page.getByTestId('agent-sessions-filter-button').click();
+	}
+
+	async filterByStatus(status: AgentSessionStatusMock): Promise<void> {
+		await this.openFilters();
+		await this.page.getByTestId('agent-sessions-filter-status').click();
+		await this.page
+			.getByRole('listbox')
+			.filter({ visible: true })
+			.getByRole('option', { name: new RegExp(`^${status}\\b`, 'i') })
+			.click();
+	}
+
+	async resetFilters(): Promise<void> {
+		await this.page.getByTestId('agent-sessions-filter-reset').click();
+	}
+
+	async deleteSession(title: string): Promise<void> {
+		const row = this.getSessionRows().filter({ hasText: title });
+		await row.getByTestId('agent-session-actions').getByRole('button').click();
+		await this.page.getByTestId('agent-session-actions-item-delete').click();
+		await new MessageBox(this.page).confirmButton.click();
+	}
+
+	getSuccessToast(): Locator {
+		return this.page.locator('.el-notification:has(.el-notification--success)');
+	}
+
+	getExecutionErrorCallout(): Locator {
+		// This component uses `data-testid`, not the configured `data-test-id`
+		// attribute, so it isn't reachable via getByTestId().
+		return this.page.locator('[data-testid="execution-error-callout"]');
+	}
+
 	async goto(projectId: string, agentId: string, threadId: string): Promise<void> {
 		await this.page.goto(`/projects/${projectId}/agents/${agentId}/sessions/${threadId}`);
 		await expect(this.getTimelineRows().first()).toBeVisible();
@@ -139,7 +324,8 @@ export class AgentSessionsPage extends BasePage {
 
 	async gotoList(projectId: string, agentId: string): Promise<void> {
 		await this.page.goto(`/projects/${projectId}/agents/${agentId}/sessions`);
-		await expect(this.getSessionTitle()).toBeVisible();
+		// Waits on the table itself, not a row, so this also works for the empty-sessions case.
+		await expect(this.page.getByTestId('table-base-scroll')).toBeVisible();
 	}
 
 	async setViewportWidth(width: number): Promise<void> {

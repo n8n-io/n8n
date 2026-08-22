@@ -161,4 +161,78 @@ test.describe('Agent sessions', { annotation: [{ type: 'owner', description: 'AI
 		await expect(n8n.agentSessions.getInputRunData()).toContainText(WORKFLOW_INPUT_MARKER);
 		await expect(n8n.agentSessions.getOutputRunData()).toContainText(WORKFLOW_OUTPUT_MARKER);
 	});
+
+	test('shows an empty state when the agent has no sessions', async ({ n8n, api }) => {
+		const project = await api.projects.getMyPersonalProject();
+		const agentId = `agent-${nanoid(8)}`;
+		await n8n.agentSessions.mockThreadsList(project.id, agentId, []);
+
+		await n8n.start.fromHome();
+		await n8n.agentSessions.gotoList(project.id, agentId);
+
+		await expect(n8n.agentSessions.getEmptyState()).toBeVisible();
+		await expect(n8n.agentSessions.getSessionRows()).toHaveCount(0);
+	});
+
+	test('filters sessions by status', async ({ n8n, api }) => {
+		const project = await api.projects.getMyPersonalProject();
+		const agentId = `agent-${nanoid(8)}`;
+		const succeededTitle = `Succeeded session ${nanoid(6)}`;
+		const erroredTitle = `Errored session ${nanoid(6)}`;
+		await n8n.agentSessions.mockThreadsList(project.id, agentId, [
+			{ id: `thread-${nanoid(8)}`, title: succeededTitle, status: 'succeeded' },
+			{ id: `thread-${nanoid(8)}`, title: erroredTitle, status: 'error' },
+		]);
+
+		await n8n.start.fromHome();
+		await n8n.agentSessions.gotoList(project.id, agentId);
+
+		await expect(n8n.agentSessions.getSessionRows()).toHaveCount(2);
+
+		await n8n.agentSessions.filterByStatus('error');
+		await expect(n8n.agentSessions.getSessionRows()).toHaveCount(1);
+		await expect(n8n.agentSessions.getSessionRows()).toContainText(erroredTitle);
+
+		await n8n.agentSessions.resetFilters();
+		await expect(n8n.agentSessions.getSessionRows()).toHaveCount(2);
+	});
+
+	test('deletes a session from the sessions list', async ({ n8n, api }) => {
+		const project = await api.projects.getMyPersonalProject();
+		const agentId = `agent-${nanoid(8)}`;
+		const threadId = `thread-${nanoid(8)}`;
+		const sessionTitle = `Session to delete ${nanoid(6)}`;
+		await n8n.agentSessions.mockThreadsList(project.id, agentId, [
+			{ id: threadId, title: sessionTitle, status: 'succeeded' },
+		]);
+		await n8n.agentSessions.mockDeleteThread(project.id, agentId, threadId);
+
+		await n8n.start.fromHome();
+		await n8n.agentSessions.gotoList(project.id, agentId);
+		await expect(n8n.agentSessions.getSessionRows()).toHaveCount(1);
+
+		await n8n.agentSessions.deleteSession(sessionTitle);
+
+		await expect(n8n.agentSessions.getSessionRows()).toHaveCount(0);
+		await expect(n8n.agentSessions.getSuccessToast()).toContainText('Session deleted');
+	});
+
+	test('shows the execution error for a failed session', async ({ n8n, api }) => {
+		const project = await api.projects.getMyPersonalProject();
+		const agentId = `agent-${nanoid(8)}`;
+		const threadId = `thread-${nanoid(8)}`;
+		const errorMessage = `Something went wrong ${nanoid(6)}`;
+		await n8n.agentSessions.mockErrorSession({
+			projectId: project.id,
+			agentId,
+			threadId,
+			errorMessage,
+		});
+
+		await n8n.start.fromHome();
+		await n8n.agentSessions.goto(project.id, agentId, threadId);
+
+		await n8n.agentSessions.openTimelineItem(errorMessage);
+		await expect(n8n.agentSessions.getExecutionErrorCallout()).toContainText(errorMessage);
+	});
 });
