@@ -64,11 +64,6 @@ function sectionTitle(key: CollapsibleReviewInboxSection): string {
 		: i18n.baseText(`workflowReviews.sidebar.section.${key}.title`);
 }
 
-function sectionEmptyText(key: CollapsibleReviewInboxSection): string {
-	return key === 'waiting' && usesImpersonalWaitingLabels.value
-		? i18n.baseText('workflowReviews.sidebar.section.waiting.emptyAdmin')
-		: i18n.baseText(`workflowReviews.sidebar.section.${key}.empty`);
-}
 const listRef = ref<HTMLElement | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
 
@@ -89,23 +84,31 @@ function isCollapsibleSection(key: ReviewInboxSectionKey): key is CollapsibleRev
 	return key !== 'closed';
 }
 
+/**
+ * One skeleton for the whole list until a section settles; a section reloading on its own
+ * afterwards still gets its own skeleton with header.
+ */
+const isLoadingWholeList = computed(() => props.sections.every((section) => section.loading));
+
 const groups = computed(() =>
-	props.sections.map((section) => {
-		const collapsibleKey = isCollapsibleSection(section.key) ? section.key : null;
-		return {
-			key: section.key,
-			section,
-			collapsible: collapsibleKey !== null,
-			title: collapsibleKey ? sectionTitle(collapsibleKey) : null,
-			emptyText: collapsibleKey
-				? sectionEmptyText(collapsibleKey)
-				: i18n.baseText('workflowReviews.sidebar.empty.closed'),
-			collapsed: collapsibleKey !== null && isCollapsed(collapsibleKey),
-			headerId: `workflow-review-section-header-${section.key}`,
-			groupId: `workflow-review-section-group-${section.key}`,
-			isEmpty: !section.loading && section.error === null && section.items.length === 0,
-		};
-	}),
+	props.sections
+		.map((section) => {
+			const collapsibleKey = isCollapsibleSection(section.key) ? section.key : null;
+			return {
+				key: section.key,
+				section,
+				collapsible: collapsibleKey !== null,
+				title: collapsibleKey ? sectionTitle(collapsibleKey) : null,
+				collapsed: collapsibleKey !== null && isCollapsed(collapsibleKey),
+				headerId: `workflow-review-section-header-${section.key}`,
+				groupId: `workflow-review-section-group-${section.key}`,
+				// A settled, empty section is dropped entirely. An errored one
+				// stays: its header is the only thing telling the viewer which list failed.
+				visible:
+					section.loading || section.error !== null || section.items.length > 0 || section.hasMore,
+			};
+		})
+		.filter((group) => group.visible && !isLoadingWholeList.value),
 );
 
 /** The closed tab keeps infinite scroll; the open tab loads more explicitly. */
@@ -168,6 +171,13 @@ function onListBackgroundClick() {
 		</div>
 
 		<div ref="listRef" :class="$style.list" @click.self="onListBackgroundClick">
+			<N8nLoading
+				v-if="isLoadingWholeList"
+				:loading="true"
+				:rows="3"
+				data-test-id="workflow-review-list-skeleton"
+			/>
+
 			<div v-for="group in groups" :key="group.key" :class="$style.section">
 				<button
 					v-if="group.title"
@@ -254,15 +264,6 @@ function onListBackgroundClick() {
 						:data-section="group.key"
 						data-test-id="workflow-review-section-skeleton"
 					/>
-					<N8nText
-						v-else-if="group.isEmpty"
-						color="text-light"
-						size="small"
-						:data-section="group.key"
-						data-test-id="workflow-review-section-empty"
-					>
-						{{ group.emptyText }}
-					</N8nText>
 					<div v-if="group.section.loadingMore" :class="$style.loadingMore">
 						<N8nLoading :loading="true" :rows="1" />
 					</div>
@@ -278,7 +279,7 @@ function onListBackgroundClick() {
 						<N8nButton
 							variant="subtle"
 							size="mini"
-							:label="i18n.baseText('workflowReviews.sidebar.retry')"
+							:label="i18n.baseText('generic.retry')"
 							:data-section="group.key"
 							data-test-id="workflow-review-section-retry"
 							@click="emit('retry', group.key)"

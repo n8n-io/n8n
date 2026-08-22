@@ -101,7 +101,7 @@ describe('WorkflowReviewActivityFeed', () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 
 		expect(getByTestId('workflow-review-activity-error')).toHaveTextContent(
-			'Could not load activity',
+			"Couldn't load activity",
 		);
 		expect(queryByTestId('workflow-review-activity-empty')).not.toBeInTheDocument();
 	});

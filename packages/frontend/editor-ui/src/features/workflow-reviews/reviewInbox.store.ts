@@ -172,7 +172,7 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	const detail = ref<WorkflowReviewRequestDetail | null>(null);
 	const detailLoading = ref(false);
 	const detailNotFound = ref(false);
-	// The view hydrates this from `?state=` before probing so the first list fetch uses the URL state.
+	// The view hydrates this from `?state=` so the first list fetch uses the URL state.
 	const activeTab = ref<WorkflowReviewRequestState>('open');
 
 	let probeRequestSeq = 0;
@@ -206,17 +206,31 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	const allSlices = [sections.waiting, sections.authored, sections.closed];
 
 	const showSidebar = computed(() => probeSettled.value && hasAnyReviews.value);
-	const isEmpty = computed(() => {
-		if (!showSidebar.value) return false;
-		return activeTab.value === 'closed'
-			? sections.closed.isEmpty.value
-			: sections.waiting.isEmpty.value && sections.authored.isEmpty.value;
-	});
+
+	const activeSlices = computed(() =>
+		activeTab.value === 'closed' ? [sections.closed] : [sections.waiting, sections.authored],
+	);
+
+	const hasItemsInActiveTab = computed(() =>
+		activeSlices.value.some((slice) => slice.items.value.length > 0),
+	);
+
+	const isLoadingActiveTab = computed(
+		() =>
+			showSidebar.value &&
+			!hasItemsInActiveTab.value &&
+			activeSlices.value.some((slice) => slice.loading.value),
+	);
+
+	// Settled with nothing to show. A failed slice is not treated as empty.
+	const isEmpty = computed(
+		() => showSidebar.value && activeSlices.value.every((slice) => slice.isEmpty.value),
+	);
 
 	/**
-	 * Both open sections start together but apply independently — one settling
-	 * never waits on the other. The rejection is still surfaced so the view can
-	 * toast, while each slice keeps its own error for its own retry control.
+	 * Both open sections start together but apply independently. The rejection
+	 * is still surfaced so the view can toast, while each slice keeps its own
+	 * error for its own retry control.
 	 */
 	async function fetchActiveTab() {
 		if (activeTab.value === 'closed') {
@@ -388,6 +402,8 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		activeTab,
 		showSidebar,
 		isEmpty,
+		isLoadingActiveTab,
+		hasItemsInActiveTab,
 		probeInbox,
 		fetchActiveTab,
 		loadMore,

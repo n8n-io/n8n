@@ -429,6 +429,62 @@ describe('useReviewInboxStore', () => {
 		});
 	});
 
+	describe('active tab state', () => {
+		it('reports rows from either open section', async () => {
+			mockSummary(1, 0);
+			mockInbox({ waiting: emptyPage(), authored: page([makeItem({ id: 'authored-1' })]) });
+
+			const store = useReviewInboxStore();
+			await store.probeInbox();
+
+			expect(store.hasItemsInActiveTab).toBe(true);
+			expect(store.isEmpty).toBe(false);
+			expect(store.isLoadingActiveTab).toBe(false);
+		});
+
+		it('is neither loading, empty, nor selectable once a section has failed', async () => {
+			mockSummary(1, 0);
+			mockInbox({
+				waiting: async () => {
+					throw new Error('network');
+				},
+				authored: emptyPage(),
+			});
+
+			const store = useReviewInboxStore();
+			await expect(store.probeInbox()).rejects.toThrow('network');
+
+			expect(store.isLoadingActiveTab).toBe(false);
+			expect(store.isEmpty).toBe(false);
+			expect(store.hasItemsInActiveTab).toBe(false);
+		});
+
+		it('loads while a section is in flight with nothing to show', async () => {
+			mockSummary(1, 0);
+			let releaseWaiting = () => {};
+			mockInbox({
+				waiting: async () => {
+					await new Promise<void>((resolve) => {
+						releaseWaiting = resolve;
+					});
+					return { data: [], nextCursor: null, hasMore: false };
+				},
+				authored: emptyPage(),
+			});
+
+			const store = useReviewInboxStore();
+			const probe = store.probeInbox();
+			await vi.waitFor(() => expect(store.isLoadingActiveTab).toBe(true));
+			expect(store.isEmpty).toBe(false);
+
+			releaseWaiting();
+			await probe;
+
+			expect(store.isLoadingActiveTab).toBe(false);
+			expect(store.isEmpty).toBe(true);
+		});
+	});
+
 	describe('decideOnReview', () => {
 		async function seedOpenSections() {
 			mockSummary(2, 5);

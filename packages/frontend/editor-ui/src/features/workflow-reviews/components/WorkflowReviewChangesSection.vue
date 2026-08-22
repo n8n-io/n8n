@@ -161,6 +161,7 @@ const targetLabel = computed(() =>
 			:target-workflow="targetWorkflow"
 			:source-label="sourceLabel"
 			:target-label="targetLabel"
+			show-fullscreen-button
 		>
 			<!-- Only when a baseline exists: with no prior published version there is
 				no publish status to represent. -->
@@ -176,8 +177,10 @@ const targetLabel = computed(() =>
 					<N8nText color="text-dark" size="small" compact>{{ targetLabel }}</N8nText>
 				</span>
 			</template>
+			<!-- Wrapped like the source-control modal does it; bare slot text would inherit
+				whatever the panel happens to set. -->
 			<template #sourceEmptyText>
-				{{ sourceEmptyText }}
+				<N8nText size="small" color="text-base">{{ sourceEmptyText }}</N8nText>
 			</template>
 		</WorkflowDiffView>
 	</div>
@@ -213,11 +216,13 @@ const targetLabel = computed(() =>
 	background-color: var(--color--text--tint-1);
 }
 
+/* Same border and radius as the activity cards in the sibling tab, so the two tabs
+	read as one surface. */
 .diff {
 	height: 100%;
 	min-height: 0;
-	border: var(--border-width) var(--border-style) var(--border-color--subtle);
-	border-radius: var(--radius--md);
+	border: var(--border);
+	border-radius: var(--radius--2xs);
 	overflow: hidden;
 }
 </style>

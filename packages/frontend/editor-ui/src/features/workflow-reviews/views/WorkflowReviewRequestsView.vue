@@ -3,7 +3,13 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { WorkflowReviewRequestState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import {
+	N8nEmptyState,
+	N8nHeading,
+	N8nLoading,
+	type EmptyStateIconCards,
+	type IconOrEmoji,
+} from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
@@ -31,6 +37,8 @@ const {
 	detailLoading,
 	detailNotFound,
 	isEmpty,
+	isLoadingActiveTab,
+	hasItemsInActiveTab,
 	openCount,
 	closedCount,
 } = storeToRefs(store);
@@ -95,6 +103,29 @@ const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
 
 documentTitle.set(i18n.baseText('workflowReviews.page.title'));
+
+// Centre card is the reviews icon from the sidebar menu; the sides cycle through the
+// review lifecycle.
+const reviewsIcon: EmptyStateIconCards = {
+	type: 'cards',
+	center: 'message-square-text',
+	sides: ['file-diff', 'git-branch', 'circle-check', 'list', 'message-square'],
+};
+
+// A dead deep link is an error, not an empty list, so it gets a single icon.
+const notFoundIcon: IconOrEmoji = { type: 'icon', value: 'circle-alert' };
+
+// The summary counts come from the inbox probe, so the heading costs no extra request.
+const noSelectionCount = computed(() =>
+	activeTab.value === 'closed' ? closedCount.value : openCount.value,
+);
+
+const noSelectionHeading = computed(() =>
+	i18n.baseText(`workflowReviews.noSelection.title.${activeTab.value}`, {
+		adjustToNumber: noSelectionCount.value,
+		interpolate: { count: String(noSelectionCount.value) },
+	}),
+);
 
 let isMounted = false;
 
@@ -320,18 +351,21 @@ onUnmounted(() => {
 					<N8nLoading v-if="!probeSettled" :loading="true" :rows="3" />
 					<div
 						v-else-if="selectedReviewId && detailNotFound"
+						:class="$style.emptyStateWrapper"
 						data-test-id="workflow-review-detail-not-found"
 					>
-						<N8nHeading bold tag="h3" size="large">
-							{{ i18n.baseText('workflowReviews.detail.notFound.title') }}
-						</N8nHeading>
-						<N8nText color="text-light" size="medium">
-							{{ i18n.baseText('workflowReviews.detail.notFound.body') }}
-						</N8nText>
+						<N8nEmptyState
+							:class="$style.emptyState"
+							:icon="notFoundIcon"
+							:heading="i18n.baseText('workflowReviews.detail.notFound.title')"
+							:description="i18n.baseText('workflowReviews.detail.notFound.body')"
+						/>
 					</div>
 					<!-- Must precede the selectedItem branch: on a deep link the review is not
 						in the list yet, so selectedItem is null while the detail loads. -->
-					<N8nLoading v-else-if="selectedReviewId && detailLoading" :loading="true" :rows="3" />
+					<div v-else-if="selectedReviewId && detailLoading" :class="$style.detailSkeleton">
+						<N8nLoading :loading="true" :rows="3" />
+					</div>
 					<WorkflowReviewDetailTabs
 						v-else-if="selectedItem"
 						:review="selectedItem"
@@ -340,30 +374,43 @@ onUnmounted(() => {
 						@update:tab="onDetailTabChange"
 						@decide="onDecide(selectedItem.id, $event)"
 					/>
-					<N8nText
+					<div
 						v-else-if="!showSidebar"
-						color="text-light"
-						size="medium"
+						:class="$style.emptyStateWrapper"
 						data-test-id="workflow-reviews-disclaimer"
 					>
-						{{ i18n.baseText('workflowReviews.disclaimer.body') }}
-					</N8nText>
-					<N8nText
+						<N8nEmptyState
+							:class="$style.emptyState"
+							:icon="reviewsIcon"
+							:heading="i18n.baseText('workflowReviews.disclaimer.title')"
+							:description="i18n.baseText('workflowReviews.disclaimer.body')"
+						/>
+					</div>
+					<N8nLoading v-else-if="isLoadingActiveTab" :loading="true" :rows="3" />
+					<div
 						v-else-if="isEmpty"
-						color="text-light"
-						size="medium"
+						:class="$style.emptyStateWrapper"
 						data-test-id="workflow-reviews-empty-state"
 					>
-						{{ i18n.baseText(`workflowReviews.emptyState.body.${activeTab}`) }}
-					</N8nText>
-					<N8nText
-						v-else
-						color="text-light"
-						size="medium"
+						<N8nEmptyState
+							:class="$style.emptyState"
+							:icon="reviewsIcon"
+							:heading="i18n.baseText(`workflowReviews.emptyState.title.${activeTab}`)"
+							:description="i18n.baseText(`workflowReviews.emptyState.body.${activeTab}`)"
+						/>
+					</div>
+					<div
+						v-else-if="hasItemsInActiveTab"
+						:class="$style.emptyStateWrapper"
 						data-test-id="workflow-reviews-no-selection"
 					>
-						{{ i18n.baseText('workflowReviews.noSelection.body') }}
-					</N8nText>
+						<N8nEmptyState
+							:class="$style.emptyState"
+							:icon="reviewsIcon"
+							:heading="noSelectionHeading"
+							:description="i18n.baseText('workflowReviews.noSelection.body')"
+						/>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -377,6 +424,7 @@ onUnmounted(() => {
 	--review-tab-bar--gap: calc(var(--spacing--sm) + var(--review-tab-bar--indicator-overhang));
 
 	--review-callout--max-width: 34rem;
+	--review-activity--max-width: 48rem;
 
 	display: flex;
 	width: 100%;
@@ -413,5 +461,28 @@ onUnmounted(() => {
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
+}
+
+/* Stands in for the activity panel, so it takes the same width cap instead of
+	stretching across a pane the loaded content will not fill. */
+.detailSkeleton {
+	max-width: var(--review-activity--max-width);
+}
+
+/* Centred in the pane on both axes. No width cap needed: the empty state caps
+	its own text at 32rem. */
+.emptyStateWrapper {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+}
+
+/* In-pane states, not cards: the design system's dashed frame would read as a
+	box floating in an already empty column. Nested so it outranks the equally
+	specific class the component sets on the same element. */
+.emptyStateWrapper .emptyState {
+	border: none;
+	padding: 0;
 }
 </style>
