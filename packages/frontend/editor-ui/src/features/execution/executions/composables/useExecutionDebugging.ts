@@ -43,7 +43,22 @@ export const useExecutionDebugging = () => {
 	);
 
 	const applyExecutionData = async (executionId: string): Promise<void> => {
-		const execution = await workflowsStore.getExecution(executionId);
+		let execution = await workflowsStore.getExecution(executionId);
+
+		// When the "redact execution data" policy is active, `getExecution`
+		// returns redacted data — every item's `json` is emptied to `{}`. Pinning
+		// that to the editor would silently overwrite nodes with empty placeholder
+		// items, so re-fetch the real payload when redaction is in effect and
+		// revealing is allowed.
+		if (execution?.data?.redactionInfo?.isRedacted && execution.data.redactionInfo.canReveal) {
+			const unredacted = await workflowsStore.fetchExecutionDataById(executionId, {
+				redactExecutionData: false,
+			});
+			if (unredacted?.data) {
+				execution = unredacted;
+			}
+		}
+
 		const workflowNodes = workflowDocumentStore.value.allNodes;
 
 		if (!execution?.data?.resultData) {
