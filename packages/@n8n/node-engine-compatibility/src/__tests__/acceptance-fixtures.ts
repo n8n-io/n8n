@@ -1,5 +1,6 @@
 import type {
 	createDataSource,
+	ExecutionMode,
 	StartExecutionResult,
 	TriggerOutputs,
 	WorkflowGraph,
@@ -88,7 +89,11 @@ export function setWorkflow(assignments: Assignment[]) {
 type EngineDataSource = ReturnType<typeof createDataSource>;
 
 export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
-	return async function runWorkflow(graph: WorkflowGraph, triggerOutputs: TriggerOutputs | null) {
+	return async function runWorkflow(
+		graph: WorkflowGraph,
+		triggerOutputs: TriggerOutputs | null,
+		mode?: ExecutionMode,
+	) {
 		const dataSource = getDataSource();
 
 		let done!: () => void;
@@ -120,7 +125,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 		// over HTTP, because that is the engine's only boundary
 		const response = await request(runtime.app)
 			.post('/api/workflow-executions')
-			.send({ workflowId: 'wf-m1', graph, triggerOutputs })
+			.send({ workflowId: 'wf-m1', graph, triggerOutputs, mode })
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;
 
