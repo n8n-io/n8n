@@ -1,5 +1,7 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import userEvent from '@testing-library/user-event';
+import type { Mock } from 'vitest';
+import { useRouter } from 'vue-router';
 import FolderCard from './FolderCard.vue';
 import { createPinia, setActivePinia } from 'pinia';
 import type { FolderResource, UserAction } from '@/Interface';
@@ -140,5 +142,90 @@ describe('FolderCard', () => {
 		expect(deleteAction).toBeInTheDocument();
 		await userEvent.click(deleteAction);
 		expect(emitted('folderOpened')).toEqual([[{ folder: DEFAULT_FOLDER }]]);
+	});
+
+	// Navigation must use the base-relative path (.fullPath), not .href, so the
+	// router base (N8N_PATH) is not applied twice. Self-contained so the default
+	// router mock and the existing specs above are untouched.
+	describe('navigation base-path handling', () => {
+		const FOLDER_PATH = '/projects/1/folders/1';
+
+		const openFolder = async (getByTestId: (id: string) => HTMLElement) => {
+			const actionButton = getByTestId('folder-card-actions').querySelector('[role=button]');
+			if (!actionButton) {
+				throw new Error('Action button not found');
+			}
+			await userEvent.click(actionButton);
+			await userEvent.click(getByTestId('action-open'));
+		};
+
+		// N8nBreadcrumbs is stubbed to render the first item's href as text; the
+		// template's `data-test-id` falls through onto the stub root, so we read it back.
+		const breadcrumbRenderOptions = () => ({
+			props: {
+				showOwnershipBadge: true,
+				readOnly: false,
+				data: {
+					...DEFAULT_FOLDER,
+					parentFolder: { id: '2', name: 'Parent folder', parentFolderId: null },
+				} as FolderResource,
+			},
+			global: {
+				stubs: {
+					ProjectCardBadge: { template: '<div><slot /></div>' },
+					N8nBreadcrumbs: { props: ['items'], template: '<div>{{ items[0]?.href }}</div>' },
+				},
+			},
+		});
+
+		// Standard deployment (no N8N_PATH): href and fullPath are identical.
+		beforeEach(() => {
+			(useRouter().resolve as unknown as Mock).mockReturnValue({
+				href: FOLDER_PATH,
+				fullPath: FOLDER_PATH,
+			});
+		});
+
+		it('navigates to the folder when the open action is selected', async () => {
+			const { getByTestId } = renderComponent();
+			await openFolder(getByTestId);
+
+			expect(useRouter().push).toHaveBeenCalledWith(FOLDER_PATH);
+		});
+
+		it('renders the parent-folder breadcrumb link', () => {
+			const { getByTestId } = renderComponent(breadcrumbRenderOptions());
+
+			expect(getByTestId('folder-card-breadcrumbs').textContent).toBe(FOLDER_PATH);
+		});
+
+		// Edge case: under a sub-path (N8N_PATH=/n8n/), router.resolve(...).href is
+		// base-prefixed but .fullPath is not. Using .href would double the base
+		// ("/n8n/n8n/...") and 404.
+		describe('subpath deployment (e.g. N8N_PATH=/n8n/)', () => {
+			const BASE_PREFIXED = `/n8n${FOLDER_PATH}`;
+
+			beforeEach(() => {
+				(useRouter().resolve as unknown as Mock).mockReturnValue({
+					href: BASE_PREFIXED,
+					fullPath: FOLDER_PATH,
+				});
+			});
+
+			it('opens a folder without doubling the base path', async () => {
+				const { getByTestId } = renderComponent();
+				await openFolder(getByTestId);
+
+				const push = useRouter().push as unknown as Mock;
+				expect(push).toHaveBeenCalledWith(FOLDER_PATH);
+				expect(push).not.toHaveBeenCalledWith(BASE_PREFIXED);
+			});
+
+			it('keeps breadcrumb links base-relative', () => {
+				const { getByTestId } = renderComponent(breadcrumbRenderOptions());
+
+				expect(getByTestId('folder-card-breadcrumbs').textContent).toBe(FOLDER_PATH);
+			});
+		});
 	});
 });
