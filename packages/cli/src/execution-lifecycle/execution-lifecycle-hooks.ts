@@ -1,3 +1,4 @@
+import type { PushPayload } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
@@ -13,6 +14,7 @@ import {
 } from 'n8n-core';
 import type {
 	ExecutionStatus,
+	INode,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -21,8 +23,16 @@ import type {
 	RelatedExecution,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { runDataAttemptedDynamicCredentials, runDataUsedDynamicCredentials } from 'n8n-workflow';
+import {
+	getChildNodes,
+	getParentNodes,
+	mapConnectionsByDestination,
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
+	STICKY_NODE_TYPE,
+} from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
 import { EventService } from '@/events/event.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { RedactableExecution } from '@/executions/execution-redaction';
@@ -30,7 +40,7 @@ import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction
 import { ExternalHooks } from '@/external-hooks';
 import { Push } from '@/push';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { isWorkflowIdValid } from '@/utils';
+import { findSubworkflowStartOrUndefined, isWorkflowIdValid } from '@/utils';
 import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
 import { getLastExecutedNodeData } from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
@@ -479,6 +489,223 @@ function hookFunctionsPush(
 	});
 }
 
+/**
+ * Returns the pushRef of the parent execution when it directly owns an editor
+ * UI session. Only the workflow open on the canvas renders the overlay, so we
+ * forward progress solely for its direct children: a nested (grandchild+)
+ * sub-workflow runs inside a workflow that isn't on the canvas, so its parent
+ * node has no overlay to update and the editor would discard the message.
+ *
+ * Returns undefined when the parent holds no pushRef — e.g. the parent is a
+ * nested sub-execution, the root was a trigger/webhook/API-initiated run, or
+ * the parent has already left the in-memory ActiveExecutions registry.
+ */
+function findParentPushRef(parentExecutionId: string): string | undefined {
+	const activeExecutions = Container.get(ActiveExecutions);
+	if (!activeExecutions.has(parentExecutionId)) return undefined;
+	return activeExecutions.getExecutionOrFail(parentExecutionId).executionData.pushRef;
+}
+
+/**
+ * Upper bound on the distinct nodes a sub-workflow run can reach, used to scale
+ * the editor's progress arc. Counting every node would inflate it — a leftover
+ * Manual Trigger branch or a disconnected island never runs in a sub-execution.
+ *
+ * Only an upper bound: which side of an IF/Switch runs isn't knowable ahead of
+ * time. Computed once, since a total that shrinks mid-run reads as a bug.
+ */
+function countReachableNodes(workflowData: IWorkflowBase): number {
+	const executable = workflowData.nodes.filter(
+		// Sticky notes and disabled nodes never execute.
+		(node) => !node.disabled && node.type !== STICKY_NODE_TYPE,
+	);
+
+	const startNode = findSubworkflowStartOrUndefined(workflowData.nodes);
+	// No entry point: the run will fail anyway, so fall back rather than report 0.
+	if (!startNode) return executable.length;
+
+	const reachable = new Set([
+		startNode.name,
+		...getChildNodes(workflowData.connections, startNode.name),
+	]);
+
+	// Sub-nodes (AI models, memory, tools) connect *into* their parent, so they're
+	// not main descendants — but they execute and report progress.
+	const connectionsByDestination = mapConnectionsByDestination(workflowData.connections);
+	for (const nodeName of [...reachable]) {
+		for (const subNode of getParentNodes(connectionsByDestination, nodeName, 'ALL_NON_MAIN')) {
+			reachable.add(subNode);
+		}
+	}
+
+	return executable.filter((node) => reachable.has(node.name)).length;
+}
+
+/**
+ * Push hooks for a sub-workflow execution. Forwards a lightweight progress
+ * stream up to the root parent's pushRef so the editor can render a live
+ * overlay on the parent's "Execute Sub-workflow" node.
+ *
+ * No-ops when invoked without a parent execution / node, or when no ancestor
+ * in the chain holds a pushRef (e.g. workflow started via the public API).
+ */
+function hookFunctionsPushSubExecution(
+	hooks: ExecutionLifecycleHooks,
+	workflowData: IWorkflowBase,
+	parentExecution: RelatedExecution,
+	parentNode: INode,
+) {
+	// Deferred until something is actually watching. Most executions have no
+	// editor session, and a parent loop can spawn hundreds of sub-executions, so
+	// the graph traversal must not run just because hooks were registered.
+	let cachedTotalNodes: number | undefined;
+	const getTotalNodes = (): number => (cachedTotalNodes ??= countReachableNodes(workflowData));
+
+	// Push + pushRef are resolved lazily on first emit. This keeps hook
+	// registration free of DI side effects (cli tests globally `jest.mock`
+	// `@/push`, which strips its `@Service` metadata) and defers the parent
+	// lookup until the parent execution is registered. A failed resolution is
+	// retried on the next emit rather than cached, so a transient miss
+	// doesn't silence the whole stream.
+	let cached: { pushInstance: Push; pushRef: string } | undefined;
+	const resolveTarget = (): typeof cached => {
+		if (cached) return cached;
+		const pushRef = findParentPushRef(parentExecution.executionId);
+		if (!pushRef) return undefined;
+		try {
+			cached = { pushInstance: Container.get(Push), pushRef };
+		} catch {
+			return undefined;
+		}
+		return cached;
+	};
+
+	// Counts unique nodes reached, not node executions: in a looping child
+	// workflow the same node runs many times, and execution count would make
+	// the indicator exceed its denominator (e.g. "30 / 3").
+	const reachedNodeNames = new Set<string>();
+
+	// Trailing-edge throttle. The engine emits a before/after pair per node
+	// execution, so a looping child produces two events per iteration — each of
+	// which is a pubsub broadcast in scaling mode and a canvas re-map in the
+	// editor. Only the latest state is ever rendered, so intermediate ones are
+	// disposable: we coalesce to at most one message per window, which caps push
+	// volume regardless of how fast or how long the child runs.
+	const getThrottleMs = () => (getTotalNodes() >= 50 ? 250 : 100);
+	let lastEmitAt = 0;
+	let pending: PushPayload<'subworkflowNodeProgress'> | undefined;
+	let timer: NodeJS.Timeout | undefined;
+
+	function cancelPending() {
+		if (timer) {
+			clearTimeout(timer);
+			timer = undefined;
+		}
+		pending = undefined;
+	}
+
+	function flush() {
+		if (timer) {
+			clearTimeout(timer);
+			timer = undefined;
+		}
+		if (!pending) return;
+		const target = resolveTarget();
+		// Target unresolved (parent not registered yet): drop this snapshot
+		// rather than holding it — the next node event queues a fresher one.
+		if (target) {
+			target.pushInstance.send({ type: 'subworkflowNodeProgress', data: pending }, target.pushRef);
+			lastEmitAt = Date.now();
+		}
+		pending = undefined;
+	}
+
+	function queueProgress(
+		nodeName: string,
+		phase: 'running' | 'success' | 'error',
+		childId: string,
+	) {
+		// Counted before the bail-out, so the tally stays correct if an editor
+		// session shows up partway through the run.
+		reachedNodeNames.add(nodeName);
+
+		// Nothing is watching (production run, or the parent isn't registered yet).
+		// Resolution is retried on the next event, so this doesn't silence the
+		// stream — it just keeps the whole overlay off the hot path.
+		if (!resolveTarget()) return;
+
+		pending = {
+			parentExecutionId: parentExecution.executionId,
+			parentNodeName: parentNode.name,
+			executionId: childId,
+			currentNodeName: nodeName,
+			// Deliberately unbounded. Nodes reached is knowable, `totalNodes` is only
+			// estimated, so clamping to it would spoil the one exact number here. The
+			// editor shows this as a plain count and clamps the arc separately.
+			currentNodeIndex: reachedNodeNames.size,
+			totalNodes: getTotalNodes(),
+			phase,
+		};
+		const throttleMs = getThrottleMs();
+		const elapsed = Date.now() - lastEmitAt;
+		// Leading edge: the window has passed, so emit straight away.
+		if (elapsed >= throttleMs) {
+			flush();
+			return;
+		}
+		// Otherwise let the already-scheduled trailing emit pick up `pending`.
+		if (timer) return;
+		timer = setTimeout(flush, throttleMs - elapsed);
+		// Never hold the process open for a progress overlay.
+		timer.unref?.();
+	}
+
+	hooks.addHandler('workflowExecuteBefore', function () {
+		const target = resolveTarget();
+		if (!target) return;
+		target.pushInstance.send(
+			{
+				type: 'subworkflowExecutionStarted',
+				data: {
+					parentExecutionId: parentExecution.executionId,
+					parentNodeName: parentNode.name,
+					executionId: this.executionId,
+					totalNodes: getTotalNodes(),
+				},
+			},
+			target.pushRef,
+		);
+	});
+
+	hooks.addHandler('nodeExecuteBefore', function (nodeName) {
+		queueProgress(nodeName, 'running', this.executionId);
+	});
+
+	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
+		queueProgress(nodeName, data?.error ? 'error' : 'success', this.executionId);
+	});
+
+	hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
+		// Drop any queued progress: `finished` clears the overlay outright, so
+		// flushing a stale snapshot first would be a wasted message.
+		cancelPending();
+		const target = resolveTarget();
+		if (!target) return;
+		target.pushInstance.send(
+			{
+				type: 'subworkflowExecutionFinished',
+				data: {
+					parentExecutionId: parentExecution.executionId,
+					parentNodeName: parentNode.name,
+					executionId: this.executionId,
+					status: fullRunData.status,
+				},
+			},
+			target.pushRef,
+		);
+	});
+}
+
 function hookFunctionsExternalHooks(
 	hooks: ExecutionLifecycleHooks,
 	source?: IWorkflowExecutionDataProcess['source'],
@@ -799,10 +1026,15 @@ export function getLifecycleHooksForSubExecutions(
 	executionId: string,
 	workflowData: IWorkflowBase,
 	userId?: string,
-	parentExecution?: RelatedExecution,
-	projectId?: string,
-	projectName?: string,
+	options: {
+		parentExecution?: RelatedExecution;
+		projectId?: string;
+		projectName?: string;
+		/** The "Execute Sub-workflow" node in the parent workflow that spawned this execution. */
+		parentNode?: INode;
+	} = {},
 ): ExecutionLifecycleHooks {
+	const { parentExecution, projectId, projectName, parentNode } = options;
 	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName);
@@ -812,6 +1044,9 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
 	hookFunctionsExternalHooks(hooks);
+	if (parentExecution && parentNode) {
+		hookFunctionsPushSubExecution(hooks, workflowData, parentExecution, parentNode);
+	}
 	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
 }
