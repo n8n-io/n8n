@@ -5,10 +5,10 @@ import { mock } from 'vitest-mock-extended';
 
 import type { NodeCatalogService } from '@/node-catalog';
 
-import type { InstanceAiCreditService } from '../../instance-ai/instance-ai-credit.service';
 import type { AgentsService } from '../agents.service';
 import type { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
 import { AgentsBuilderService } from '../builder/agents-builder.service';
+import type { BuilderCreditProviderRegistry } from '../builder/builder-credit-provider';
 import type { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
@@ -39,7 +39,7 @@ function makeService(agentCheckpointRepository: Mocked<AgentCheckpointRepository
 		mock<NodeCatalogService>(),
 		mock<AgentsBuilderToolsService>(),
 		mock<N8nMemory>(),
-		mock<InstanceAiCreditService>(),
+		mock<BuilderCreditProviderRegistry>(),
 		mock<N8NCheckpointStorage>(),
 		agentCheckpointRepository,
 	);
