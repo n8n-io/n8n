@@ -3,7 +3,10 @@ import sortBy from 'lodash/sortBy';
 import uniqBy from 'lodash/uniqBy';
 
 export type DocumentProperties = {
-	customProperty: Array<{ field: string; value: string }>;
+	// The Properties fixedCollection's own default is {} (see DocumentDescription.ts),
+	// not { customProperty: [] }, so customProperty is genuinely absent whenever the
+	// field is left untouched — not just empty.
+	customProperty?: Array<{ field: string; value: string }>;
 };
 
 type DocFields = Array<{ name: string; value: string }>;
