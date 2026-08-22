@@ -161,6 +161,7 @@ const targetLabel = computed(() =>
 			:target-workflow="targetWorkflow"
 			:source-label="sourceLabel"
 			:target-label="targetLabel"
+			show-fullscreen-button
 		>
 			<!-- Only when a baseline exists: with no prior published version there is
 				no publish status to represent. -->

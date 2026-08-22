@@ -6663,6 +6663,8 @@
 	"workflowDiff.newWorkflow": "New workflow",
 	"workflowDiff.newWorkflow.database": "The workflow will be created in the database",
 	"workflowDiff.newWorkflow.remote": "The workflow will be created on remote",
+	"workflowDiff.fullscreen.enter": "Expand to fullscreen",
+	"workflowDiff.fullscreen.exit": "Exit fullscreen",
 	"workflowDiff.label.before": "Before",
 	"workflowDiff.label.after": "After",
 	"workflowDiff.waitingForData": "Waiting for workflow data...",
