@@ -73,6 +73,19 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		hasPermission(['rbac'], { rbac: { scope: 'dataTable:list' } }),
 	);
 
+	const canViewProjectDataTablesFor = (projectId: string): boolean => {
+		const scopes =
+			projectStore.currentProject?.id === projectId
+				? projectStore.currentProject.scopes
+				: projectStore.personalProject?.id === projectId
+					? projectStore.personalProject.scopes
+					: undefined;
+
+		if (scopes === undefined) return true;
+
+		return getResourcePermissions(scopes).dataTable?.listProject ?? false;
+	};
+
 	const fetchDataTables = async (
 		projectId: string,
 		page: number,
@@ -84,6 +97,12 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		},
 		sortBy?: DataTableListSortBy,
 	) => {
+		if (projectId === '' ? !canViewDataTables.value : !canViewProjectDataTablesFor(projectId)) {
+			dataTables.value = [];
+			totalCount.value = 0;
+			return;
+		}
+
 		const response = await fetchDataTablesApi(
 			rootStore.restApiContext,
 			projectId,
@@ -222,6 +241,10 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	};
 
 	const fetchDataTableDetails = async (dataTableId: string, projectId: string) => {
+		if (projectId !== '' && !canViewProjectDataTablesFor(projectId)) {
+			return null;
+		}
+
 		const response = await fetchDataTablesApi(rootStore.restApiContext, projectId, undefined, {
 			projectId,
 			id: dataTableId,
@@ -467,5 +490,6 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		downloadDataTableCsv,
 		projectPermissions,
 		canViewDataTables,
+		canViewProjectDataTablesFor,
 	};
 });

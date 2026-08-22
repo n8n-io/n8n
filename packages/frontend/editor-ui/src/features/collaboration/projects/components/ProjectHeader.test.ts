@@ -17,6 +17,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { mock } from 'vitest-mock-extended';
 import type { IUser } from '@n8n/rest-api-client';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { DATA_TABLE_VIEW, PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 
 const mockPush = vi.fn();
 vi.mock('vue-router', async () => {
@@ -437,6 +439,93 @@ describe('ProjectHeader', () => {
 				}),
 				null,
 			);
+		});
+
+		it('should hide the Data tables tab on overview when the user lacks dataTable:list', () => {
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+
+			const dataTableStore = mockedStore(useDataTableStore);
+			dataTableStore.canViewDataTables = false;
+
+			const mockTabs = [{ value: DATA_TABLE_VIEW, label: 'Data tables' }];
+			uiStore.moduleTabs.overview = {
+				dataTableModule: mockTabs,
+			};
+			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+
+			renderComponent();
+
+			expect(projectTabsSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ 'additional-tabs': [] }),
+				null,
+			);
+		});
+
+		it('keeps the Data tables tab on overview when the user has dataTable:list', () => {
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+
+			const dataTableStore = mockedStore(useDataTableStore);
+			dataTableStore.canViewDataTables = true;
+
+			const mockTabs = [{ value: DATA_TABLE_VIEW, label: 'Data tables' }];
+			uiStore.moduleTabs.overview = {
+				dataTableModule: mockTabs,
+			};
+			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+
+			renderComponent();
+
+			expect(projectTabsSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ 'additional-tabs': mockTabs }),
+				null,
+			);
+		});
+
+		it('does not hide the Data tables tab within a project even when the user lacks the global scope', () => {
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+
+			const dataTableStore = mockedStore(useDataTableStore);
+			dataTableStore.canViewDataTables = false;
+			dataTableStore.canViewProjectDataTablesFor = vi.fn().mockReturnValue(true);
+
+			const mockTabs = [{ value: PROJECT_DATA_TABLES, label: 'Data tables' }];
+			uiStore.moduleTabs.project = {
+				dataTableModule: mockTabs,
+			};
+			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+
+			renderComponent();
+
+			expect(projectTabsSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ 'additional-tabs': mockTabs }),
+				null,
+			);
+		});
+
+		it('hides the Data tables tab within a project when the user lacks dataTable:listProject', () => {
+			vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
+			vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
+
+			const dataTableStore = mockedStore(useDataTableStore);
+			dataTableStore.canViewProjectDataTablesFor = vi.fn().mockReturnValue(false);
+			projectsStore.currentProject = createTestProject({ id: 'project-123' });
+
+			const mockTabs = [{ value: PROJECT_DATA_TABLES, label: 'Data tables' }];
+			uiStore.moduleTabs.project = {
+				dataTableModule: mockTabs,
+			};
+			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+
+			renderComponent();
+
+			expect(projectTabsSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ 'additional-tabs': [] }),
+				null,
+			);
+			expect(dataTableStore.canViewProjectDataTablesFor).toHaveBeenCalledWith('project-123');
 		});
 
 		it('should pass tabs for project page type when not on shared or overview sub pages', () => {

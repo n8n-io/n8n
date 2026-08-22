@@ -15,17 +15,25 @@ import ProjectCreateResource from './ProjectCreateResource.vue';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/app/utils/formatters/textFormatter';
-import { type IconName } from '@n8n/design-system';
 import type { IUser } from 'n8n-workflow';
-import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
-import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { DATA_TABLE_VIEW, PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
-import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nHeading,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+	type IconName,
+	type IconOrEmoji,
+	isIconOrEmoji,
+} from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useAgentTelemetry } from '@/features/agents/composables/useAgentTelemetry';
@@ -39,6 +47,7 @@ const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const dataTableStore = useDataTableStore();
 const telemetry = useTelemetry();
 const agentTelemetry = useAgentTelemetry();
 const usersStore = useUsersStore();
@@ -151,7 +160,19 @@ const customProjectTabs = computed((): Array<TabOptions<string>> => {
 	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter(
 		settingsStore.isModuleActive,
 	);
-	return activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
+	const tabs = activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
+
+	if (tabType === 'overview' && !dataTableStore.canViewDataTables) {
+		return tabs.filter((tab) => tab.value !== DATA_TABLE_VIEW);
+	}
+
+	if (
+		tabType === 'project' &&
+		!dataTableStore.canViewProjectDataTablesFor(currentProjectId.value ?? '')
+	) {
+		return tabs.filter((tab) => tab.value !== PROJECT_DATA_TABLES);
+	}
+	return tabs;
 });
 
 const ACTION_TYPES = {

@@ -8,6 +8,7 @@ import type { WorkflowListResource } from '@/Interface';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -679,6 +680,35 @@ describe('Simplified Layout', () => {
 		await waitAllPromises();
 
 		expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
+	});
+
+	it('fetches data tables for empty-state detection when the feature is enabled', async () => {
+		const dataTableStore = mockedStore(useDataTableStore);
+		const localSettingsStore = mockedStore(useSettingsStore);
+		projectPages = useProjectPages();
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		foldersStore.totalWorkflowCount = 0;
+		localSettingsStore.isDataTableFeatureEnabled = true;
+		dataTableStore.fetchDataTables.mockResolvedValue(undefined);
+
+		renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith('', 1, 1);
+	});
+
+	it('does not fetch data tables for empty-state detection when the feature is disabled', async () => {
+		const dataTableStore = mockedStore(useDataTableStore);
+		const localSettingsStore = mockedStore(useSettingsStore);
+		projectPages = useProjectPages();
+		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
+		foldersStore.totalWorkflowCount = 0;
+		localSettingsStore.isDataTableFeatureEnabled = false;
+
+		renderComponent({ pinia });
+		await waitAllPromises();
+
+		expect(dataTableStore.fetchDataTables).not.toHaveBeenCalled();
 	});
 
 	it('should call getSimplifiedLayoutVisibility with route and loading state', async () => {
