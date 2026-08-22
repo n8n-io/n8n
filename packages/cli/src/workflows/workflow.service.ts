@@ -1666,7 +1666,9 @@ export class WorkflowService {
 				error: validation.error,
 				invalidReferences: validation.invalidReferences,
 			});
-			throw new WorkflowValidationError(validation.error ?? 'Sub-workflow validation failed');
+			throw new WorkflowValidationError(validation.error ?? 'Sub-workflow validation failed', {
+				messageHtml: validation.errorHtml,
+			});
 		}
 	}
 

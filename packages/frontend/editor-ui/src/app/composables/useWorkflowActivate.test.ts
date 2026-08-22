@@ -70,8 +70,10 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn().mockReturnValue({ track: vi.fn() }),
 }));
 
+const mockShowError = vi.hoisted(() => vi.fn());
+
 vi.mock('@n8n/composables/useToast', () => ({
-	useToast: vi.fn().mockReturnValue({ showError: vi.fn(), showMessage: vi.fn() }),
+	useToast: vi.fn().mockReturnValue({ showError: mockShowError, showMessage: vi.fn() }),
 }));
 
 vi.mock('@n8n/composables/useStorage', () => ({
@@ -155,6 +157,35 @@ describe('useWorkflowActivate', () => {
 
 			expect(result).toEqual({ success: false, errorHandled: true });
 			expect(mockSetPublicationStatus).not.toHaveBeenCalled();
+		});
+
+		it('shows the linked message when the error carries one', async () => {
+			mockPublishWorkflow.mockRejectedValueOnce(
+				Object.assign(new Error('references workflow sub-a which is not published'), {
+					meta: {
+						validationError: true,
+						messageHtml:
+							'references workflow <a href="/workflow/sub-a" target="_blank">sub-a</a> which is not published',
+					},
+				}),
+			);
+
+			const { publishWorkflow } = useWorkflowActivate();
+			await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(mockShowError.mock.calls[0][0].message).toBe(
+				'references workflow <a href="/workflow/sub-a" target="_blank">sub-a</a> which is not published',
+			);
+		});
+
+		it('passes the error through untouched when it carries no linked message', async () => {
+			const error = new Error('network error');
+			mockPublishWorkflow.mockRejectedValueOnce(error);
+
+			const { publishWorkflow } = useWorkflowActivate();
+			await publishWorkflow(WORKFLOW_ID, VERSION_ID);
+
+			expect(mockShowError.mock.calls[0][0]).toBe(error);
 		});
 	});
 });
