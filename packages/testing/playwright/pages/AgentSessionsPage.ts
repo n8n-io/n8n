@@ -5,6 +5,17 @@ import { MessageBox } from './components/messageBoxLocators';
 
 type AgentSessionStatusMock = 'running' | 'succeeded' | 'error' | 'cancelled' | 'interrupted';
 
+// The filter dropdown's option labels don't all match their status value
+// (`cancelled` renders as "Canceled"), so map explicitly rather than deriving
+// the label from the value.
+const STATUS_FILTER_LABELS: Record<AgentSessionStatusMock, string> = {
+	running: 'Running',
+	succeeded: 'Succeeded',
+	error: 'Error',
+	cancelled: 'Canceled',
+	interrupted: 'Interrupted',
+};
+
 interface AgentThreadListMock {
 	id: string;
 	title: string;
@@ -292,7 +303,7 @@ export class AgentSessionsPage extends BasePage {
 		await this.page
 			.getByRole('listbox')
 			.filter({ visible: true })
-			.getByRole('option', { name: new RegExp(`^${status}\\b`, 'i') })
+			.getByRole('option', { name: STATUS_FILTER_LABELS[status], exact: true })
 			.click();
 	}
 
