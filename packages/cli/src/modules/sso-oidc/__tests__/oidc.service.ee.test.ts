@@ -24,11 +24,11 @@ vi.mock('openid-client', async (importOriginal) => {
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
+import type { SsoProvisioningHooks } from '@/sso.ee/sso-provisioning-hooks';
 
 import { OIDC_PREFERENCES_DB_KEY } from '../constants';
 import { OidcService } from '../oidc.service.ee';
@@ -41,7 +41,7 @@ describe('OidcService', () => {
 	let cipher: Cipher;
 	let logger: Logger;
 	let jwtService: JwtService;
-	let provisioningService: ProvisioningService;
+	let provisioningHooks: Mocked<SsoProvisioningHooks>;
 	let userRepository: UserRepository;
 	let authIdentityRepository: AuthIdentityRepository;
 	let outboundHttp: Mocked<OutboundHttp>;
@@ -77,12 +77,7 @@ describe('OidcService', () => {
 		cipher = mock<Cipher>();
 		logger = mockLogger();
 		jwtService = mock<JwtService>();
-		provisioningService = mock<ProvisioningService>();
-		// loginUser reads the provisioning config to extract the instance role claim
-		provisioningService.getConfig = vi.fn().mockResolvedValue({
-			scopesInstanceRoleClaimName: 'n8n_instance_role',
-			scopesProjectsRolesClaimName: 'n8n_projects',
-		});
+		provisioningHooks = mock<SsoProvisioningHooks>();
 		userRepository = mock<UserRepository>();
 		authIdentityRepository = mock<AuthIdentityRepository>();
 		customFetch = vi.fn();
@@ -104,7 +99,7 @@ describe('OidcService', () => {
 			logger,
 			jwtService,
 			instanceSettings,
-			provisioningService,
+			provisioningHooks,
 			outboundHttp,
 		);
 
@@ -666,9 +661,9 @@ describe('OidcService', () => {
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
 			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
-			provisioningService.assertSsoLoginAllowed = vi
-				.fn()
-				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
+			provisioningHooks.assertLoginAllowed.mockRejectedValue(
+				new ForbiddenError('Access denied by SSO role mapping configuration'),
+			);
 			authIdentityRepository.findOne = vi.fn().mockResolvedValue(null);
 			userRepository.findOne = vi.fn().mockResolvedValue(null);
 			userRepository.manager.transaction = vi.fn();
@@ -692,13 +687,14 @@ describe('OidcService', () => {
 				ForbiddenError,
 			);
 
-			expect(provisioningService.assertSsoLoginAllowed).toHaveBeenCalledWith(
-				expect.objectContaining({ $provider: 'oidc' }),
-				'global:unknown',
-			);
+			expect(provisioningHooks.assertLoginAllowed).toHaveBeenCalledWith({
+				provider: 'oidc',
+				claims: expect.objectContaining({ n8n_instance_role: 'global:unknown' }),
+				userInfo: expect.objectContaining({ email: 'john.doe@test.com' }),
+			});
 			// No account creation, no provisioning
 			expect(userRepository.manager.transaction).not.toHaveBeenCalled();
-			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
+			expect(provisioningHooks.provisionRoles).not.toHaveBeenCalled();
 		});
 
 		it('should deny an existing user without touching their account when role mapping blocks access', async () => {
@@ -706,9 +702,9 @@ describe('OidcService', () => {
 			oidcService.verifyNonce = vi.fn().mockReturnValue('valid-nonce');
 			// @ts-expect-error - getOidcConfiguration is private and only accessible within class 'OidcService'
 			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue({} as client.Configuration);
-			provisioningService.assertSsoLoginAllowed = vi
-				.fn()
-				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
+			provisioningHooks.assertLoginAllowed.mockRejectedValue(
+				new ForbiddenError('Access denied by SSO role mapping configuration'),
+			);
 			authIdentityRepository.findOne = vi
 				.fn()
 				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any });
@@ -733,8 +729,7 @@ describe('OidcService', () => {
 			);
 
 			// The account is left untouched — no role changes, no deactivation
-			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
-			expect(provisioningService.provisionExpressionMappedRolesForUser).not.toHaveBeenCalled();
+			expect(provisioningHooks.provisionRoles).not.toHaveBeenCalled();
 			expect(userRepository.save).not.toHaveBeenCalled();
 		});
 	});
@@ -757,11 +752,7 @@ describe('OidcService', () => {
 			vi.mocked(client.fetchUserInfo).mockResolvedValue(userInfo as any);
 		});
 
-		it('calls provisionExpressionMappedRolesForUser when expression mapping is enabled', async () => {
-			provisioningService.isExpressionMappingEnabled = vi.fn().mockResolvedValue(true);
-			provisioningService.provisionExpressionMappedRolesForUser = vi
-				.fn()
-				.mockResolvedValue(undefined);
+		it('forwards claims and user info to the provisioning hook', async () => {
 			authIdentityRepository.findOne = vi.fn().mockResolvedValue({ user });
 
 			const callbackUrl = new URL('https://example.com/callback');
@@ -769,33 +760,11 @@ describe('OidcService', () => {
 			const storedNonce = oidcService.generateNonce().signed;
 			await oidcService.loginUser(callbackUrl, storedState, storedNonce);
 
-			expect(provisioningService.provisionExpressionMappedRolesForUser).toHaveBeenCalledWith(
-				user,
-				expect.objectContaining({ $provider: 'oidc' }),
-			);
-			expect(provisioningService.provisionInstanceRoleForUser).not.toHaveBeenCalled();
-			expect(provisioningService.provisionProjectRolesForUser).not.toHaveBeenCalled();
-		});
-
-		it('falls through to direct-claim provisioning when expression mapping is disabled', async () => {
-			provisioningService.isExpressionMappingEnabled = vi.fn().mockResolvedValue(false);
-			provisioningService.getConfig = vi.fn().mockResolvedValue({
-				scopesInstanceRoleClaimName: 'n8n_instance_role',
-				scopesProjectsRolesClaimName: 'n8n_projects',
+			expect(provisioningHooks.provisionRoles).toHaveBeenCalledWith(user, {
+				provider: 'oidc',
+				claims,
+				userInfo,
 			});
-			provisioningService.provisionInstanceRoleForUser = vi.fn().mockResolvedValue(undefined);
-			authIdentityRepository.findOne = vi.fn().mockResolvedValue({ user });
-
-			const callbackUrl = new URL('https://example.com/callback');
-			const storedState = oidcService.generateState().signed;
-			const storedNonce = oidcService.generateNonce().signed;
-			await oidcService.loginUser(callbackUrl, storedState, storedNonce);
-
-			expect(provisioningService.provisionInstanceRoleForUser).toHaveBeenCalledWith(
-				user,
-				'global:member',
-			);
-			expect(provisioningService.provisionExpressionMappedRolesForUser).not.toHaveBeenCalled();
 		});
 	});
 
@@ -879,7 +848,7 @@ describe('OidcService', () => {
 				logger,
 				jwtService,
 				instanceSettings,
-				provisioningService,
+				provisioningHooks,
 				realOutboundHttp,
 			);
 		});
