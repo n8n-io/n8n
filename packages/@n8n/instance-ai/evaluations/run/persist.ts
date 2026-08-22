@@ -10,6 +10,7 @@ import { join } from 'path';
 
 import { aggregateResults } from './aggregator';
 import type { McpBuildSpend } from './build-orchestrator';
+import { classifyContextOutcome } from './context-outcome';
 import { parseTargetOutput, reshapeLangSmithRuns, type ReshapeRunRow } from './reshape';
 import { roundRobinCaseRows } from './rows';
 import { aggregateWorkflowChecks, statusMap } from '../binaryChecks/aggregate';
@@ -20,6 +21,7 @@ import { evaluateGate, isGatedTier, type GateResult } from '../comparison/gate';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
 import { extractErrorMessage } from '../harness/transient-error';
+import { summarizeBuildUsage, totalToolCalls } from '../harness/usage-summary';
 import { rollupCaseVerification } from '../summary';
 import type {
 	BuildExpectationResult,
@@ -46,6 +48,39 @@ export function summarizeMcpBuildSpend(
 		totalCostUsd: Math.round(totalCost * 100) / 100,
 		avgTurns: Math.round((totalTurns / spend.length) * 10) / 10,
 	};
+}
+
+/**
+ * Per-iteration token and tool-call fields for `eval-results.json`, or `{}` when the
+ * run captured neither — so a run with no usage data adds no keys to this cross-repo
+ * artifact.
+ */
+function tokenUsageFields(runs: WorkflowTestCaseResult[]): {
+	buildTokensPerRun?: Array<ReturnType<typeof summarizeBuildUsage> | null>;
+	buildToolCallsPerRun?: Array<number | null>;
+} {
+	const tokens = runs.map((run) => summarizeBuildUsage(run.runDebug) ?? null);
+	const toolCalls = runs.map((run) => totalToolCalls(run.transcript) ?? null);
+	return {
+		...(tokens.some((t) => t !== null) ? { buildTokensPerRun: tokens } : {}),
+		...(toolCalls.some((n) => n !== null) ? { buildToolCallsPerRun: toolCalls } : {}),
+	};
+}
+
+/**
+ * Per-iteration context/build cross for `eval-results.json`, or `{}` when no
+ * iteration carried a gradable claim on both axes.
+ *
+ * Pure arithmetic over verdicts already present in the file, so an existing run can
+ * be reclassified without re-running it.
+ */
+function contextOutcomeFields(runs: WorkflowTestCaseResult[]): {
+	contextOutcomePerRun?: Array<ReturnType<typeof classifyContextOutcome> | null>;
+} {
+	const classified = runs.map((run) => classifyContextOutcome(run.buildExpectationResults));
+	return classified.some((c) => c.outcome !== 'unclassified')
+		? { contextOutcomePerRun: classified }
+		: {};
 }
 
 interface AggregateMetrics {
@@ -443,6 +478,17 @@ export function writeEvalResults(
 						buildTurnsPerRun: tc.runs.map((run) => run.buildTurns ?? null),
 					}
 				: {}),
+			// Cache-aware tokens and tool calls per iteration, summed from the run debug
+			// already captured per build, so a two-arm quality-per-token comparison reads
+			// straight from these files instead of joining every thread in LangSmith.
+			// Omitted rather than emitted all-null when nothing was captured: this file is
+			// a cross-repo artifact, and the cost report treats an all-null array as absent
+			// anyway, so the key would be pure noise.
+			...tokenUsageFields(tc.runs),
+			// Which of the four context situations each iteration landed in, crossed from
+			// verdicts already in this file. Emitted only when at least one iteration
+			// could be classified, so a case with no context claims adds no key.
+			...contextOutcomeFields(tc.runs),
 			scenarios: tc.executionScenarios.map((sa) => ({
 				name: sa.scenario.name,
 				passCount: sa.passCount,

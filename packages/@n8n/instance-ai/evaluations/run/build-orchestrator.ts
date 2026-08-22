@@ -13,6 +13,8 @@ import { sleep } from '@n8n/utils/sleep';
 
 import type { LaneAllocator } from './lane-allocator';
 import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
+import { asMemoryVerdicts } from '../build-expectations/collect';
+import { verifyMemoryExpectations } from '../build-expectations/memory-verifier';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import type { CliArgs } from '../cli/args';
@@ -41,6 +43,7 @@ import {
 } from '../harness/build-workflow';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
 import { effectiveTimeoutMs, runWorkflowChecks } from '../harness/cleanup';
+import { checkContextAssertions } from '../harness/context-assertions';
 import {
 	credentialSetupExpectationTexts,
 	runCredentialSetupChecks,
@@ -401,6 +404,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	// Full builds judge process + outcome against the real transcript; prebuilt/MCP
 	// builds (no transcript) judge only outcome expectations against the workflow,
 	// with the authored conversation as request context — mirroring the direct loop.
+	// `memoryExpectations` take a second, separate judge call against the captured
+	// context state, so requires stashRunDebug to have run for this build first.
 	function stashBuildExpectations(
 		key: string,
 		fileSlug: string,
@@ -438,13 +443,14 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					);
 				})
 			: undefined;
-		const { expectations, transcript, unjudged } = selectAuthorExpectations({
-			testCase,
-			transcript: build.transcript,
-			buildSucceeded: build.success,
-			isPrebuilt,
-			logger,
-		});
+		const { expectations, memoryExpectations, contextAssertions, transcript, unjudged } =
+			selectAuthorExpectations({
+				testCase,
+				transcript: build.transcript,
+				buildSucceeded: build.success,
+				isPrebuilt,
+				logger,
+			});
 		// Attributed here, where we still know WHY the build ended: a build that
 		// died on infra produced nothing to judge, so its expectations are unowned
 		// rather than the agent's miss. Both readers of this map (the row outputs
@@ -461,41 +467,79 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			verdicts: BuildExpectationResult[] | Promise<BuildExpectationResult[]>,
 		): Promise<BuildExpectationResult[]> =>
 			injected ? [...(await verdicts), ...(await injected)] : await verdicts;
-		// Recorded as incomplete rather than dropped, so the case keeps its unit
-		// count and the report says why they weren't graded.
-		if (unjudged.length > 0) {
-			buildExpectationsByKey.set(key, withInjected(attribute(unjudged)));
-			return;
-		}
-		if (expectations.length === 0) {
+		if (
+			unjudged.length === 0 &&
+			expectations.length === 0 &&
+			memoryExpectations.length === 0 &&
+			contextAssertions.length === 0
+		) {
 			if (injected) buildExpectationsByKey.set(key, injected);
 			return;
 		}
+		const judgeConversation = async (): Promise<BuildExpectationResult[]> =>
+			await (async () =>
+				await verifyBuildExpectations(expectations, {
+					transcript,
+					workflowJson: build.workflowJsons[0],
+					metrics: build.conversationMetrics,
+					// Rendered non-workflow artifacts (agent AND config-eval), sectioned
+					// with "(no <type> produced)" fallbacks, so outcome expectations can
+					// judge artifact existence, absence and content — parity with the
+					// retired direct loop, which always threaded resolveArtifactContext.
+					artifactContext: await resolveArtifactContext({
+						artifactRefs: build.artifactRefs ?? [],
+						client,
+						logger,
+					}),
+				}))()
+				.catch((error: unknown) =>
+					allFailVerdicts(
+						expectations,
+						`judge error: ${error instanceof Error ? error.message : String(error)}`,
+					),
+				)
+				.then(attribute);
+		// Reads the run debug stashed for this build — hence stashRunDebug runs first.
+		// Graded on its own inputs (observation block + final system prompt) and never
+		// the transcript, so a miss is attributable to recall, not to the build.
+		const checkAssertions = async (): Promise<BuildExpectationResult[]> =>
+			checkContextAssertions(
+				contextAssertions,
+				build.threadId ? await runDebugByThreadId.get(build.threadId) : undefined,
+			);
+		const judgeMemory = async (): Promise<BuildExpectationResult[]> =>
+			await verifyMemoryExpectations(
+				memoryExpectations,
+				build.threadId ? await runDebugByThreadId.get(build.threadId) : undefined,
+			)
+				// Tagged here too: `verifyMemoryExpectations` can reject before its own
+				// guards run (createEvalAgent throws synchronously, outside the judge's
+				// try), and an untagged verdict would be reported as a conversation miss.
+				.catch((error: unknown) =>
+					asMemoryVerdicts(
+						allFailVerdicts(
+							// A claim may carry an anchor; the failure label is its text.
+							memoryExpectations.map((claim) => (typeof claim === 'string' ? claim : claim.text)),
+							`memory judge error: ${error instanceof Error ? error.message : String(error)}`,
+						),
+					),
+				)
+				.then(attribute);
+		// Every kind is merged rather than early-returned: a case can carry ungraded
+		// expectations (recorded as incomplete, so its unit count stays stable) AND
+		// gradable ones at the same time, and dropping either would silently change
+		// the denominator.
 		buildExpectationsByKey.set(
 			key,
 			withInjected(
-				(async () =>
-					await verifyBuildExpectations(expectations, {
-						transcript,
-						workflowJson: build.workflowJsons[0],
-						metrics: build.conversationMetrics,
-						// Rendered non-workflow artifacts (agent AND config-eval), sectioned
-						// with "(no <type> produced)" fallbacks, so outcome expectations can
-						// judge artifact existence, absence and content — parity with the
-						// retired direct loop, which always threaded resolveArtifactContext.
-						artifactContext: await resolveArtifactContext({
-							artifactRefs: build.artifactRefs ?? [],
-							client,
-							logger,
-						}),
-					}))()
-					.catch((error: unknown) =>
-						allFailVerdicts(
-							expectations,
-							`judge error: ${error instanceof Error ? error.message : String(error)}`,
-						),
-					)
-					.then(attribute),
+				(async () => {
+					const [conversation, memory, asserted] = await Promise.all([
+						expectations.length > 0 ? judgeConversation() : Promise.resolve([]),
+						memoryExpectations.length > 0 ? judgeMemory() : Promise.resolve([]),
+						contextAssertions.length > 0 ? checkAssertions() : Promise.resolve([]),
+					]);
+					return [...attribute(unjudged), ...conversation, ...memory, ...attribute(asserted)];
+				})(),
 			),
 		);
 	}
@@ -550,8 +594,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				stashTranscript(build);
 				// isPrebuilt=true: MCP builds have no build transcript, so only
 				// outcome expectations are judged (against the workflow), like prebuilt.
-				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				stashRunDebug(lane.runner.client, build);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				if (build.success && !build.workflowChecks) {
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
@@ -578,8 +622,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				stashRunDebug(lane.runner.client, build);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				if (build.success && !build.workflowChecks) {
 					// No transcript in prebuilt mode, but the authored conversation still
 					// carries the user's request — feed it so prompt-aware checks (e.g.
@@ -647,8 +691,8 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			buildDurations.set(key, buildDurationMs);
 			stashTranscript(build);
 			stashAgentContext(key, lane.runner.client, build);
-			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
 			stashRunDebug(lane.runner.client, build);
+			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
 			logger.info(
 				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
 			);

@@ -1,0 +1,1128 @@
+{
+	"description": "Cross-workflow context: the instance already carries ten workflows in one obvious house style — names prefixed '[Ops] <Domain> — <Action>', every schedule at 06:00, every outbound fetch with retryOnFail and maxTries 3, and every failure routed to a Slack node named 'Notify Ops' posting to #ops-alerts. The live turn asks for one more sync of exactly the same kind and deliberately states NONE of those conventions, so the only way to match them is to read the sibling workflows off the instance. The seeded conversation is a two-line greeting that carries no convention detail, so nothing about the house style is recoverable from the conversation. EXPECTED TO FAIL TODAY: this is a baseline for context work, not a regression guard — a build that ignores its siblings is the finding. Harness note: restore appends ' [seed <hex>]' to every seeded workflow name, so the naming convention here is a PREFIX and the case never grades the tail of a name; the other three conventions are structural and unaffected. NOT YET CALIBRATED against a real build.\n\nBoth memory claims are anchored at TURN END, not at the probe. They are about context the agent goes and fetches during the graded turn, and retrieval happens after the request arrives — so grading them at the probe would fail every time regardless of whether retrieval worked.",
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "Morning — I'm adding another one of our sync jobs on this instance."
+			},
+			{
+				"role": "assistant",
+				"text": "Happy to help. Tell me what it should sync and I'll put it together."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfOpsinvoicesxSeed0",
+				"name": "[Ops] Billing — Sync Invoices",
+				"nodes": [
+					{
+						"id": "a1b2c3d4-0001-4d01-9a01-000000000001",
+						"name": "Scheduled Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 6
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0001-4d01-9a01-000000000002",
+						"name": "Fetch Records",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/invoices",
+							"options": {}
+						},
+						"retryOnFail": true,
+						"maxTries": 3,
+						"onError": "continueErrorOutput"
+					},
+					{
+						"id": "a1b2c3d4-0001-4d01-9a01-000000000003",
+						"name": "Shape Records",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.5,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "c-0001",
+										"name": "recordId",
+										"type": "string",
+										"value": "={{ $json.id }}"
+									}
+								]
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0001-4d01-9a01-000000000004",
+						"name": "Notify Ops",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.2,
+						"position": [660, 160],
+						"parameters": {
+							"resource": "message",
+							"operation": "post",
+							"select": "channel",
+							"channelId": {
+								"__rl": true,
+								"mode": "name",
+								"value": "#ops-alerts"
+							},
+							"text": "={ '[Ops] Billing — Sync Invoices failed: ' + $json.error }",
+							"otherOptions": {}
+						}
+					}
+				],
+				"connections": {
+					"Scheduled Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Records",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Records": {
+						"main": [
+							[
+								{
+									"node": "Shape Records",
+									"type": "main",
+									"index": 0
+								}
+							],
+							[
+								{
+									"node": "Notify Ops",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			},
+			{
+				"id": "wfOpspaymentsxSeed0",
+				"name": "[Ops] Billing — Reconcile Payments",
+				"nodes": [
+					{
+						"id": "a1b2c3d4-0002-4d01-9a01-000000000001",
+						"name": "Scheduled Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 6
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0002-4d01-9a01-000000000002",
+						"name": "Fetch Records",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/payments",
+							"options": {}
+						},
+						"retryOnFail": true,
+						"maxTries": 3,
+						"onError": "continueErrorOutput"
+					},
+					{
+						"id": "a1b2c3d4-0002-4d01-9a01-000000000003",
+						"name": "Shape Records",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.5,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "c-0002",
+										"name": "recordId",
+										"type": "string",
+										"value": "={{ $json.id }}"
+									}
+								]
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0002-4d01-9a01-000000000004",
+						"name": "Notify Ops",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.2,
+						"position": [660, 160],
+						"parameters": {
+							"resource": "message",
+							"operation": "post",
+							"select": "channel",
+							"channelId": {
+								"__rl": true,
+								"mode": "name",
+								"value": "#ops-alerts"
+							},
+							"text": "={ '[Ops] Billing — Reconcile Payments failed: ' + $json.error }",
+							"otherOptions": {}
+						}
+					}
+				],
+				"connections": {
+					"Scheduled Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Records",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Records": {
+						"main": [
+							[
+								{
+									"node": "Shape Records",
+									"type": "main",
+									"index": 0
+								}
+							],
+							[
+								{
+									"node": "Notify Ops",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			},
+			{
+				"id": "wfOpsticketsxxSeed0",
+				"name": "[Ops] Support — Sync Tickets",
+				"nodes": [
+					{
+						"id": "a1b2c3d4-0003-4d01-9a01-000000000001",
+						"name": "Scheduled Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 6
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0003-4d01-9a01-000000000002",
+						"name": "Fetch Records",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/tickets",
+							"options": {}
+						},
+						"retryOnFail": true,
+						"maxTries": 3,
+						"onError": "continueErrorOutput"
+					},
+					{
+						"id": "a1b2c3d4-0003-4d01-9a01-000000000003",
+						"name": "Shape Records",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.5,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "c-0003",
+										"name": "recordId",
+										"type": "string",
+										"value": "={{ $json.id }}"
+									}
+								]
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0003-4d01-9a01-000000000004",
+						"name": "Notify Ops",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.2,
+						"position": [660, 160],
+						"parameters": {
+							"resource": "message",
+							"operation": "post",
+							"select": "channel",
+							"channelId": {
+								"__rl": true,
+								"mode": "name",
+								"value": "#ops-alerts"
+							},
+							"text": "={ '[Ops] Support — Sync Tickets failed: ' + $json.error }",
+							"otherOptions": {}
+						}
+					}
+				],
+				"connections": {
+					"Scheduled Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Records",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Records": {
+						"main": [
+							[
+								{
+									"node": "Shape Records",
+									"type": "main",
+									"index": 0
+								}
+							],
+							[
+								{
+									"node": "Notify Ops",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			},
+			{
+				"id": "wfOpsbreachesxSeed0",
+				"name": "[Ops] Support — Escalate Breaches",
+				"nodes": [
+					{
+						"id": "a1b2c3d4-0004-4d01-9a01-000000000001",
+						"name": "Scheduled Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 6
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0004-4d01-9a01-000000000002",
+						"name": "Fetch Records",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/breaches",
+							"options": {}
+						},
+						"retryOnFail": true,
+						"maxTries": 3,
+						"onError": "continueErrorOutput"
+					},
+					{
+						"id": "a1b2c3d4-0004-4d01-9a01-000000000003",
+						"name": "Shape Records",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.5,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "c-0004",
+										"name": "recordId",
+										"type": "string",
+										"value": "={{ $json.id }}"
+									}
+								]
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0004-4d01-9a01-000000000004",
+						"name": "Notify Ops",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.2,
+						"position": [660, 160],
+						"parameters": {
+							"resource": "message",
+							"operation": "post",
+							"select": "channel",
+							"channelId": {
+								"__rl": true,
+								"mode": "name",
+								"value": "#ops-alerts"
+							},
+							"text": "={ '[Ops] Support — Escalate Breaches failed: ' + $json.error }",
+							"otherOptions": {}
+						}
+					}
+				],
+				"connections": {
+					"Scheduled Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Records",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Records": {
+						"main": [
+							[
+								{
+									"node": "Shape Records",
+									"type": "main",
+									"index": 0
+								}
+							],
+							[
+								{
+									"node": "Notify Ops",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			},
+			{
+				"id": "wfOpsopportuniSeed0",
+				"name": "[Ops] Sales — Sync Opportunities",
+				"nodes": [
+					{
+						"id": "a1b2c3d4-0005-4d01-9a01-000000000001",
+						"name": "Scheduled Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 6
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0005-4d01-9a01-000000000002",
+						"name": "Fetch Records",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/opportunities",
+							"options": {}
+						},
+						"retryOnFail": true,
+						"maxTries": 3,
+						"onError": "continueErrorOutput"
+					},
+					{
+						"id": "a1b2c3d4-0005-4d01-9a01-000000000003",
+						"name": "Shape Records",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.5,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "c-0005",
+										"name": "recordId",
+										"type": "string",
+										"value": "={{ $json.id }}"
+									}
+								]
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0005-4d01-9a01-000000000004",
+						"name": "Notify Ops",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.2,
+						"position": [660, 160],
+						"parameters": {
+							"resource": "message",
+							"operation": "post",
+							"select": "channel",
+							"channelId": {
+								"__rl": true,
+								"mode": "name",
+								"value": "#ops-alerts"
+							},
+							"text": "={ '[Ops] Sales — Sync Opportunities failed: ' + $json.error }",
+							"otherOptions": {}
+						}
+					}
+				],
+				"connections": {
+					"Scheduled Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Records",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Records": {
+						"main": [
+							[
+								{
+									"node": "Shape Records",
+									"type": "main",
+									"index": 0
+								}
+							],
+							[
+								{
+									"node": "Notify Ops",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			},
+			{
+				"id": "wfOpsaccountsxSeed0",
+				"name": "[Ops] Sales — Refresh Accounts",
+				"nodes": [
+					{
+						"id": "a1b2c3d4-0006-4d01-9a01-000000000001",
+						"name": "Scheduled Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 6
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0006-4d01-9a01-000000000002",
+						"name": "Fetch Records",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/accounts",
+							"options": {}
+						},
+						"retryOnFail": true,
+						"maxTries": 3,
+						"onError": "continueErrorOutput"
+					},
+					{
+						"id": "a1b2c3d4-0006-4d01-9a01-000000000003",
+						"name": "Shape Records",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.5,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "c-0006",
+										"name": "recordId",
+										"type": "string",
+										"value": "={{ $json.id }}"
+									}
+								]
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0006-4d01-9a01-000000000004",
+						"name": "Notify Ops",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.2,
+						"position": [660, 160],
+						"parameters": {
+							"resource": "message",
+							"operation": "post",
+							"select": "channel",
+							"channelId": {
+								"__rl": true,
+								"mode": "name",
+								"value": "#ops-alerts"
+							},
+							"text": "={ '[Ops] Sales — Refresh Accounts failed: ' + $json.error }",
+							"otherOptions": {}
+						}
+					}
+				],
+				"connections": {
+					"Scheduled Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Records",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Records": {
+						"main": [
+							[
+								{
+									"node": "Shape Records",
+									"type": "main",
+									"index": 0
+								}
+							],
+							[
+								{
+									"node": "Notify Ops",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			},
+			{
+				"id": "wfOpsrosterxxxSeed0",
+				"name": "[Ops] People — Sync Roster",
+				"nodes": [
+					{
+						"id": "a1b2c3d4-0007-4d01-9a01-000000000001",
+						"name": "Scheduled Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 6
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0007-4d01-9a01-000000000002",
+						"name": "Fetch Records",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/roster",
+							"options": {}
+						},
+						"retryOnFail": true,
+						"maxTries": 3,
+						"onError": "continueErrorOutput"
+					},
+					{
+						"id": "a1b2c3d4-0007-4d01-9a01-000000000003",
+						"name": "Shape Records",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.5,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "c-0007",
+										"name": "recordId",
+										"type": "string",
+										"value": "={{ $json.id }}"
+									}
+								]
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0007-4d01-9a01-000000000004",
+						"name": "Notify Ops",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.2,
+						"position": [660, 160],
+						"parameters": {
+							"resource": "message",
+							"operation": "post",
+							"select": "channel",
+							"channelId": {
+								"__rl": true,
+								"mode": "name",
+								"value": "#ops-alerts"
+							},
+							"text": "={ '[Ops] People — Sync Roster failed: ' + $json.error }",
+							"otherOptions": {}
+						}
+					}
+				],
+				"connections": {
+					"Scheduled Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Records",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Records": {
+						"main": [
+							[
+								{
+									"node": "Shape Records",
+									"type": "main",
+									"index": 0
+								}
+							],
+							[
+								{
+									"node": "Notify Ops",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			},
+			{
+				"id": "wfOpsstockxxxxSeed0",
+				"name": "[Ops] Inventory — Sync Stock Levels",
+				"nodes": [
+					{
+						"id": "a1b2c3d4-0008-4d01-9a01-000000000001",
+						"name": "Scheduled Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 6
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0008-4d01-9a01-000000000002",
+						"name": "Fetch Records",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/stock",
+							"options": {}
+						},
+						"retryOnFail": true,
+						"maxTries": 3,
+						"onError": "continueErrorOutput"
+					},
+					{
+						"id": "a1b2c3d4-0008-4d01-9a01-000000000003",
+						"name": "Shape Records",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.5,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "c-0008",
+										"name": "recordId",
+										"type": "string",
+										"value": "={{ $json.id }}"
+									}
+								]
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0008-4d01-9a01-000000000004",
+						"name": "Notify Ops",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.2,
+						"position": [660, 160],
+						"parameters": {
+							"resource": "message",
+							"operation": "post",
+							"select": "channel",
+							"channelId": {
+								"__rl": true,
+								"mode": "name",
+								"value": "#ops-alerts"
+							},
+							"text": "={ '[Ops] Inventory — Sync Stock Levels failed: ' + $json.error }",
+							"otherOptions": {}
+						}
+					}
+				],
+				"connections": {
+					"Scheduled Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Records",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Records": {
+						"main": [
+							[
+								{
+									"node": "Shape Records",
+									"type": "main",
+									"index": 0
+								}
+							],
+							[
+								{
+									"node": "Notify Ops",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			},
+			{
+				"id": "wfOpslowstockxSeed0",
+				"name": "[Ops] Inventory — Flag Low Stock",
+				"nodes": [
+					{
+						"id": "a1b2c3d4-0009-4d01-9a01-000000000001",
+						"name": "Scheduled Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 6
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0009-4d01-9a01-000000000002",
+						"name": "Fetch Records",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/low-stock",
+							"options": {}
+						},
+						"retryOnFail": true,
+						"maxTries": 3,
+						"onError": "continueErrorOutput"
+					},
+					{
+						"id": "a1b2c3d4-0009-4d01-9a01-000000000003",
+						"name": "Shape Records",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.5,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "c-0009",
+										"name": "recordId",
+										"type": "string",
+										"value": "={{ $json.id }}"
+									}
+								]
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0009-4d01-9a01-000000000004",
+						"name": "Notify Ops",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.2,
+						"position": [660, 160],
+						"parameters": {
+							"resource": "message",
+							"operation": "post",
+							"select": "channel",
+							"channelId": {
+								"__rl": true,
+								"mode": "name",
+								"value": "#ops-alerts"
+							},
+							"text": "={ '[Ops] Inventory — Flag Low Stock failed: ' + $json.error }",
+							"otherOptions": {}
+						}
+					}
+				],
+				"connections": {
+					"Scheduled Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Records",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Records": {
+						"main": [
+							[
+								{
+									"node": "Shape Records",
+									"type": "main",
+									"index": 0
+								}
+							],
+							[
+								{
+									"node": "Notify Ops",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			},
+			{
+				"id": "wfOpscampaignsSeed1",
+				"name": "[Ops] Marketing — Sync Campaign Stats",
+				"nodes": [
+					{
+						"id": "a1b2c3d4-0010-4d01-9a01-000000000001",
+						"name": "Scheduled Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 6
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0010-4d01-9a01-000000000002",
+						"name": "Fetch Records",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/campaigns",
+							"options": {}
+						},
+						"retryOnFail": true,
+						"maxTries": 3,
+						"onError": "continueErrorOutput"
+					},
+					{
+						"id": "a1b2c3d4-0010-4d01-9a01-000000000003",
+						"name": "Shape Records",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.5,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "c-0010",
+										"name": "recordId",
+										"type": "string",
+										"value": "={{ $json.id }}"
+									}
+								]
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "a1b2c3d4-0010-4d01-9a01-000000000004",
+						"name": "Notify Ops",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.2,
+						"position": [660, 160],
+						"parameters": {
+							"resource": "message",
+							"operation": "post",
+							"select": "channel",
+							"channelId": {
+								"__rl": true,
+								"mode": "name",
+								"value": "#ops-alerts"
+							},
+							"text": "={ '[Ops] Marketing — Sync Campaign Stats failed: ' + $json.error }",
+							"otherOptions": {}
+						}
+					}
+				],
+				"connections": {
+					"Scheduled Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Records",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Records": {
+						"main": [
+							[
+								{
+									"node": "Shape Records",
+									"type": "main",
+									"index": 0
+								}
+							],
+							[
+								{
+									"node": "Notify Ops",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "We need a sync for shipping records now — pull them from https://api.example.com/v1/shipments once a day and keep the record id. Set it up the way we do these."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["memory", "cross-workflow", "instance-context"],
+	"messageBudget": 6,
+	"processExpectations": [
+		"The agent inspected at least one of the existing [Ops] workflows on the instance — listing workflow names alone does not count; it must have read a workflow's nodes or parameters — rather than building purely from the request and its own defaults.",
+		"The agent did not ask the user to restate conventions that are already visible on the instance, such as which channel failures go to or what time these jobs run."
+	],
+	"outcomeExpectations": [
+		"The new workflow's name follows the instance's prefix convention '[Ops] <Domain> — <Action>' — it begins with '[Ops] ' and names a domain and an action. Ignore any ' [seed <hex>]' suffix, which the harness adds.",
+		"The schedule trigger runs at 06:00, matching every other scheduled workflow on the instance, rather than a time the agent chose on its own.",
+		"The node that fetches from api.example.com has retryOnFail enabled with maxTries 3, matching the retry standard every other [Ops] workflow uses on its outbound fetch.",
+		"The workflow routes fetch failures to a Slack node named 'Notify Ops' posting to the #ops-alerts channel, matching how every other [Ops] workflow handles failure — not to a different channel, a different node name, or no failure path at all."
+	],
+	"memoryExpectations": [
+		{
+			"text": "The agent's context state contains the actual content of at least one existing [Ops] workflow — node names, node types or parameters such as the 06:00 schedule, the retry settings, or the #ops-alerts channel. A bare list of workflow names is NOT sufficient: the conventions live in the node detail, so a context state holding only names means the house style was never actually retrieved.",
+			"anchor": "turn-end"
+		},
+		{
+			"text": "The retrieved sibling content is an [Ops] sync workflow of the same kind as the one being built, not an unrelated workflow — so what reached the context was the right precedent to copy rather than whatever happened to be listed first.",
+			"anchor": "turn-end"
+		}
+	],
+	"datasets": ["memory"]
+}

@@ -103,8 +103,15 @@ export function conversationUserTurnsAsText(
 export function transcriptAsText(transcript: TranscriptTurn[]): string {
 	return transcript
 		.map((turn, i) => {
-			// No seeded label: the judge evaluates the whole conversation as one.
-			const lines: string[] = [`### Turn ${String(i + 1)}`];
+			// Seeded turns of the SAME thread carry no label — the judge evaluates one
+			// continuous conversation. A turn from a prior SESSION must be labelled, or
+			// the judge reads it as earlier turns here and expects continuity the agent
+			// could not have: across a boundary the conversation does not carry over.
+			const lines: string[] = turn.priorSession
+				? [
+						`### Turn ${String(i + 1)} — PREVIOUS SESSION (a separate earlier conversation; the agent does NOT have this in the graded session and cannot see it)`,
+					]
+				: [`### Turn ${String(i + 1)}`];
 			if (turn.userMessage) lines.push(`User: ${turn.userMessage}`);
 			for (const step of turn.steps) {
 				const line = describeStep(step);

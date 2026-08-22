@@ -2,8 +2,11 @@ import { jsonParse } from 'n8n-workflow';
 import { afterEach, vi } from 'vitest';
 
 import {
+	DEFAULT_TOKEN_RATES,
 	greenStats,
 	persistedSpendCosts,
+	persistedTokenCosts,
+	priceTokens,
 	renderMarkdown,
 	sumThreadCost,
 	threadJoinCosts,
@@ -218,6 +221,98 @@ describe('LangSmith thread costs', () => {
 	});
 });
 
+describe('priceTokens', () => {
+	it('prices each token class at its own rate', () => {
+		// 1M uncached @3 + 1M cacheRead @0.3 + 1M cacheWrite @3.75 + 1M output @15
+		const cost = priceTokens(
+			{
+				uncachedInput: 1_000_000,
+				cacheRead: 1_000_000,
+				cacheWrite: 1_000_000,
+				output: 1_000_000,
+				totalTokens: 4_000_000,
+				steps: 1,
+			},
+			DEFAULT_TOKEN_RATES,
+		);
+		expect(cost).toBeCloseTo(22.05, 6);
+	});
+
+	it('prices cache reads far below uncached input', () => {
+		// The reason the breakdown is persisted at all: folding cache reads into
+		// input would hide the largest cost term a memory change moves.
+		const base = { cacheWrite: 0, output: 0, totalTokens: 0, steps: 1 };
+		const uncached = priceTokens(
+			{ ...base, uncachedInput: 1_000_000, cacheRead: 0 },
+			DEFAULT_TOKEN_RATES,
+		);
+		const cached = priceTokens(
+			{ ...base, uncachedInput: 0, cacheRead: 1_000_000 },
+			DEFAULT_TOKEN_RATES,
+		);
+		expect(cached).toBeLessThan(uncached);
+	});
+});
+
+describe('persistedTokenCosts', () => {
+	const tokens = (over: Partial<Record<string, number>> = {}) => ({
+		uncachedInput: 100_000,
+		cacheRead: 0,
+		cacheWrite: 0,
+		output: 0,
+		totalTokens: 100_000,
+		steps: 2,
+		...over,
+	});
+
+	it('prices each iteration locally and means tokens and tool calls', () => {
+		const results: EvalResults = {
+			experimentName: 'candidate',
+			totalRuns: 2,
+			testCases: [
+				testCase({
+					totalRuns: 2,
+					buildTokensPerRun: [tokens(), tokens({ uncachedInput: 300_000, totalTokens: 300_000 })],
+					buildToolCallsPerRun: [4, 8],
+					scenarios: [{ name: 's', runs: [scenarioRun(true), scenarioRun(true)] }],
+				}),
+			],
+		};
+		const [c] = persistedTokenCosts(results, DEFAULT_TOKEN_RATES);
+		expect(c.costPerIteration[0]).toBeCloseTo(0.3, 6);
+		expect(c.costPerIteration[1]).toBeCloseTo(0.9, 6);
+		expect(c.meanTokens).toBe(200_000);
+		expect(c.meanToolCalls).toBe(6);
+		expect(c.greenIterations).toBe(2);
+	});
+
+	it('records unknown cost (null), not $0, for an iteration that captured nothing', () => {
+		const results: EvalResults = {
+			totalRuns: 2,
+			testCases: [
+				testCase({
+					totalRuns: 2,
+					buildTokensPerRun: [null, tokens()],
+					buildToolCallsPerRun: [null, 3],
+				}),
+			],
+		};
+		const [c] = persistedTokenCosts(results, DEFAULT_TOKEN_RATES);
+		expect(c.costPerIteration[0]).toBeNull();
+		expect(c.costPerIteration[1]).not.toBeNull();
+		expect(c.meanToolCalls).toBe(3);
+	});
+
+	it('honours overridden rates', () => {
+		const results: EvalResults = {
+			totalRuns: 1,
+			testCases: [testCase({ totalRuns: 1, buildTokensPerRun: [tokens()] })],
+		};
+		const [c] = persistedTokenCosts(results, { ...DEFAULT_TOKEN_RATES, uncachedInput: 30 });
+		expect(c.costPerIteration[0]).toBeCloseTo(3, 6);
+	});
+});
+
 describe('renderMarkdown', () => {
 	it('renders unknown costs as — and keeps known means intact', () => {
 		const arms: ArmSummary[] = [
@@ -247,5 +342,103 @@ describe('renderMarkdown', () => {
 		expect(markdown).toContain('| known-case | $0.300 | 2/2 | 3.0 |');
 		expect(markdown).toContain('| unknown-case | — | 1/1 | — |');
 		expect(markdown).toContain('2 builds with cost');
+	});
+
+	it('keeps header and row cells aligned when only one arm has token columns', () => {
+		// The column set is decided per arm; if the header and the rows disagreed on
+		// which optional columns exist, every cell after the mismatch would shift into
+		// the wrong column and the report would be quietly wrong rather than broken.
+		const arms: ArmSummary[] = [
+			{
+				label: 'tokens-arm',
+				source: 'persisted tokens (priced locally)',
+				cases: [
+					{
+						slug: 'shared-case',
+						costPerIteration: [0.5],
+						meanTurns: 2,
+						meanTokens: 1_234,
+						meanToolCalls: 7,
+						greenIterations: 1,
+						evaluatedIterations: 1,
+					},
+				],
+			},
+			{
+				label: 'spend-arm',
+				source: 'persisted `claude` spend',
+				cases: [
+					{
+						slug: 'shared-case',
+						costPerIteration: [0.25],
+						meanTurns: 4,
+						greenIterations: 1,
+						evaluatedIterations: 1,
+					},
+					{
+						slug: 'spend-only-case',
+						costPerIteration: [0.1],
+						greenIterations: 0,
+						evaluatedIterations: 1,
+					},
+				],
+			},
+		];
+
+		const markdown = renderMarkdown(arms);
+		const lines = markdown.split('\n').filter((l) => l.startsWith('|'));
+		const cellCount = (line: string) => line.split('|').length;
+
+		// Header, separator and every row must have identical cell counts.
+		const counts = new Set(lines.map(cellCount));
+		expect(counts.size).toBe(1);
+
+		// tokens-arm earns tokens+tools columns; spend-arm earns neither.
+		expect(markdown).toContain('tokens-arm tokens');
+		expect(markdown).toContain('tokens-arm tools');
+		expect(markdown).not.toContain('spend-arm tokens');
+		expect(markdown).not.toContain('spend-arm tools');
+
+		// A case missing from the token arm still pads that arm's optional columns.
+		const missingRow = lines.find((l) => l.includes('spend-only-case'));
+		expect(missingRow).toContain('missing');
+		expect(cellCount(missingRow!)).toBe(cellCount(lines[0]));
+	});
+});
+
+describe('renderMarkdown — context outcome tally', () => {
+	const armWith = (label: string, outcomes: Record<string, number>): ArmSummary => ({
+		label,
+		source: 'persisted tokens (priced locally)',
+		cases: [
+			{
+				slug: 'case-a',
+				costPerIteration: [0.1],
+				greenIterations: 1,
+				evaluatedIterations: 1,
+				contextOutcomes: outcomes,
+			},
+		],
+	});
+
+	it('shows each arm whether context arrived, not just what it cost', () => {
+		const md = renderMarkdown([
+			armWith('baseline', { 'retrieval-gap': 4, working: 1 }),
+			armWith('candidate', { working: 4, 'unattributed-success': 1 }),
+		]);
+		expect(md).toContain('never retrieved 4');
+		expect(md).toContain('context used 4');
+		// The cell that would flatter a useless system must be visible.
+		expect(md).toContain('passed without it 1');
+	});
+
+	it('omits the line for an arm with no classified iterations', () => {
+		const md = renderMarkdown([armWith('spend-arm', {})]);
+		expect(md).not.toContain('context:');
+	});
+
+	it('still reports a cell name it was not taught to order', () => {
+		const md = renderMarkdown([armWith('future', { 'some-new-cell': 2 })]);
+		expect(md).toContain('some-new-cell 2');
 	});
 });

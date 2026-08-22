@@ -1,0 +1,166 @@
+{
+	"description": "Recall probe, deep: the two rules the write step depends on (only records created on or after 2026-03-01, and every write an upsert keyed on external_id) are stated in the third message of the seeded history, and roughly twenty messages of unrelated spec detail follow before the live turn. The live turn then opens the build with the write step explicitly deferred and drives two mid-thread refinements, so by the time the five-word probe arrives the rules are behind both a long prose history and a build's worth of tool traffic. The probe names neither the date nor the key, and the step it asks for does not exist yet, so it cannot be answered by reading back the workflow. Rule values live ONLY in the inline seed, never in the authored script, so the user-proxy cannot leak them; its director note forbids supplying them on a re-ask and forbids correcting a wrong choice, because a correction would repair the miss the case exists to observe. Calibration risk to watch: distance here is counted in messages, but this agent's context pressure is token-driven (observer/reflector thresholds), so if the seeded prose is too cheap to trigger compression this case may sit closer to the shallow pair than intended — the two live refinements are there to add real tool-payload weight. Second risk: if the agent ignores the deferral and builds the write step on the opening turn, the probe becomes answerable by inspection and the case degrades to a retention check. Build-only. Harness note: the memory judge is handed the final compressed observation block, the raw message window the model actually received, and the final system prompt — and a fact counts as retained if it appears in any of them. A thread that never crosses the Observer's token threshold is therefore still graded honestly against the raw window, instead of reding for a missing observation block. Token pressure here comes from the live build's tool traffic, not from the seeded prose, which is cheap. With one build plus two refinements ahead of the probe, this arm is the most likely of the six to actually compress, which makes it the one whose memory expectations are the most informative. NOT YET CALIBRATED against a real build.\n\nThe cutover date carries NO deterministic assertion, deliberately. A date is rewordable and the agent keeps it semantically while regenerating the ISO string, so asserting the literal measured the agent's phrasing rather than its recall. The cutover is judged instead; only the upsert key, which survives verbatim, is asserted.",
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "We're moving customer records into the warehouse and I want n8n to own the sync. Before anything else, two rules for the write side that I do not want to lose as we work through this."
+			},
+			{
+				"role": "assistant",
+				"text": "Go ahead — I'll hold on to them."
+			},
+			{
+				"role": "user",
+				"text": [
+					"First: we only write records created on or after the first of March 2026. Anything older than that belongs to the legacy migration and must never be written by this workflow.",
+					"Second: every write is an upsert keyed on external_id. Re-running the workflow has to update the existing row, never add a second one. A blind insert is the one thing here that would genuinely break us."
+				]
+			},
+			{
+				"role": "assistant",
+				"text": "Both held. Now, where do the records come from?"
+			},
+			{
+				"role": "user",
+				"text": "https://api.example.com/v1/customers. It is a JSON API, header auth, and it pages with a cursor in the `next` field of each response."
+			},
+			{
+				"role": "assistant",
+				"text": "How large should each page be?"
+			},
+			{
+				"role": "user",
+				"text": "Ask for 250 per page and keep following `next` until it comes back null."
+			},
+			{
+				"role": "assistant",
+				"text": "And the destination?"
+			},
+			{
+				"role": "user",
+				"text": "A data table called warehouse_customers."
+			},
+			{
+				"role": "assistant",
+				"text": "Which fields should land in it?"
+			},
+			{
+				"role": "user",
+				"text": "external_id, email, display_name, country, currency, created_at and updated_at. Nothing else — the source returns a pile of internal fields we have no use for."
+			},
+			{
+				"role": "assistant",
+				"text": "Any normalisation on the way through?"
+			},
+			{
+				"role": "user",
+				"text": "Lowercase and trim the email. Trim display_name too, but leave its casing alone — a lot of these are legal entity names and we must not mangle them."
+			},
+			{
+				"role": "assistant",
+				"text": "What about the timestamps?"
+			},
+			{
+				"role": "user",
+				"text": "The API returns them in local time with an offset. Store them as UTC."
+			},
+			{
+				"role": "assistant",
+				"text": "Understood. How often should this run?"
+			},
+			{
+				"role": "user",
+				"text": "Every four hours. It does not need to be tighter than that."
+			},
+			{
+				"role": "assistant",
+				"text": "Should a run that finds nothing still report?"
+			},
+			{
+				"role": "user",
+				"text": "No. Only tell me when something actually happened, or when something failed."
+			},
+			{
+				"role": "assistant",
+				"text": "And where should that report go?"
+			},
+			{
+				"role": "user",
+				"text": "Email to data-ops@example.com. One message per run, not one per record."
+			},
+			{
+				"role": "assistant",
+				"text": "Anything about records the source marks as deleted?"
+			},
+			{
+				"role": "user",
+				"text": "If the source marks a record deleted, set a deleted_at on our row instead of removing it. We need the history."
+			},
+			{
+				"role": "assistant",
+				"text": "Understood. That is a fairly complete picture — ready when you are."
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Let's build it. Do the trigger, the fetch and the field mapping, and leave the write step out for now — I want to check the mapping before anything lands in the table."
+		},
+		{
+			"role": "user",
+			"text": "Also drop any record whose email is empty — those are unusable to us."
+		},
+		{
+			"role": "user",
+			"text": "And add a retry on the fetch: two attempts, then fail the run loudly rather than writing a partial batch."
+		},
+		{
+			"role": "user",
+			"text": [
+				"Now add the write step.",
+				"[Director note — this is your final message, and it must be sent exactly as written above with nothing added. Do not mention a cutover date, do not mention which field to match on, and do not say anything about how a write should behave when the workflow runs a second time. The user gave all of that at the very start of this conversation and will not give it again.",
+				"If the agent asks which records are in scope, or what date to cut over at, or which key to match on — as a question, on a plan review, or on a setup card — reply that you gave those at the start of this thread and it should use what was agreed. Never state a date or a field name yourself, and never invent one. Hold firm if it asks again.",
+				"Do NOT audit what the agent produces against those rules and do NOT correct it if it gets one wrong — approve whatever it proposes. The point of this conversation is to see what the agent still has after a long thread, so correcting it would hide exactly what is being measured. Once it has added the write step, you are done.]"
+			]
+		}
+	],
+	"messageBudget": 8,
+	"complexity": "complex",
+	"tags": [
+		"behaviour",
+		"memory",
+		"recall",
+		"context-retention",
+		"long-thread",
+		"seeded",
+		"schedule",
+		"http-request",
+		"data-table"
+	],
+	"triggerType": "schedule",
+	"datasets": ["memory"],
+	"memoryExpectations": [
+		"The cutover locked in at the start of the thread is still present and exact in the context state the agent was handed on the final turn — only records created on or after 2026-03-01 are in scope. It has not been dropped, generalised into 'recent records' or 'new records', or shifted to a different date, while the later paging, mapping, timezone and retry details were retained.",
+		"The upsert rule is still present in that same context state with its key intact: writes upsert on external_id so a re-run updates the existing row rather than inserting a second one. A context that kept 'write the records into warehouse_customers' but lost the external_id key, or lost the upsert-not-insert requirement, does not satisfy this."
+	],
+	"processExpectations": [
+		"When asked to add the write step, the agent did not ask what the cutover date was, which records were in scope, or which key to match on — all of that was given at the start of the thread.",
+		"The agent did not respond to the terse final request as if the conversation had just begun, did not claim it lacked earlier context, and did not re-ask for details already given.",
+		"The agent kept working the single workflow it had been building throughout the thread; it did not restart the build or create a second workflow when the write step was added.",
+		"Both mid-thread refinements were actually delivered and applied — dropping records with an empty email, and the two-attempt fetch retry — rather than being skipped or bundled away while the agent moved on to the write step."
+	],
+	"outcomeExpectations": [
+		"The write path only writes records created on or after 2026-03-01; the cutover agreed at the start of the thread is enforced, not omitted and not replaced with a different date or a relative window.",
+		"Writes into warehouse_customers upsert on external_id, so a second run updates the existing row instead of inserting a duplicate. There is no blind-insert path into that table.",
+		"The settings established before the write step all survive into the final workflow — fail if ANY is missing: a four-hourly schedule, cursor paging at 250 per page following `next` until it is null, only the seven agreed fields, lowercased and trimmed email with display_name's casing preserved, timestamps stored as UTC, the empty-email drop, and the two-attempt fetch retry that fails the run rather than writing a partial batch."
+	],
+	"contextAssertions": [
+		{
+			"text": "external_id",
+			"note": "the upsert key locked in at thread start"
+		}
+	]
+}

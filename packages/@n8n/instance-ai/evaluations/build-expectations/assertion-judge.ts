@@ -38,21 +38,33 @@ export function buildAssertionsBlock(assertions: string[]): string {
 	].join('\n');
 }
 
+/** Lets a caller judge against a different rubric while reusing the retry, timeout
+ *  and index-mapping behavior below. Omitted → the conversation/workflow rubric. */
+export interface JudgeExpectationsOptions {
+	agentName?: string;
+	instructions?: string;
+	/** Prefix on this judge's warnings, so a failing rubric is identifiable in logs. */
+	logLabel?: string;
+}
+
 /**
  * Shared judge core: sends caller-built messages to the expectations judge and maps
- * the structured verdicts back onto `assertions` by index. Used by both the
- * workflow/conversation judge (`verifyBuildExpectations`) and static artifact handlers
- * (`runAssertionJudge`) so retry/timeout/parsing behavior stays in one place.
+ * the structured verdicts back onto `assertions` by index. Used by the
+ * workflow/conversation judge (`verifyBuildExpectations`), the context-state judge
+ * (`verifyMemoryExpectations`) and static artifact handlers (`runAssertionJudge`) so
+ * retry/timeout/parsing behavior stays in one place.
  */
 export async function judgeExpectations(
 	messages: Message[],
 	assertions: string[],
+	options: JudgeExpectationsOptions = {},
 ): Promise<BuildExpectationResult[]> {
 	if (assertions.length === 0) return [];
+	const logLabel = options.logLabel ?? 'expectations';
 
 	for (let attempt = 1; attempt <= MAX_VERIFY_ATTEMPTS; attempt++) {
-		const agent = createEvalAgent('eval-build-expectations-verifier', {
-			instructions: BUILD_EXPECTATIONS_VERIFY_PROMPT,
+		const agent = createEvalAgent(options.agentName ?? 'eval-build-expectations-verifier', {
+			instructions: options.instructions ?? BUILD_EXPECTATIONS_VERIFY_PROMPT,
 			cache: true,
 			model: JUDGE_MODEL,
 		}).structuredOutput(expectationResultSchema);
@@ -70,7 +82,7 @@ export async function judgeExpectations(
 			result = await agent.generate(messages, { abortSignal: abortController.signal });
 		} catch (error: unknown) {
 			const msg = error instanceof Error ? error.message : String(error);
-			console.warn(`[expectations] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} failed: ${msg}`);
+			console.warn(`[${logLabel}] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} failed: ${msg}`);
 			continue;
 		} finally {
 			clearTimeout(timer);
@@ -100,11 +112,11 @@ export async function judgeExpectations(
 		}
 
 		console.warn(
-			`[expectations] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} produced no parseable results`,
+			`[${logLabel}] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} produced no parseable results`,
 		);
 	}
 
-	console.warn(`[expectations] exhausted ${MAX_VERIFY_ATTEMPTS} attempts, returning all-fail`);
+	console.warn(`[${logLabel}] exhausted ${MAX_VERIFY_ATTEMPTS} attempts, returning all-fail`);
 	return allFailVerdicts(assertions, 'judge produced no result');
 }
 

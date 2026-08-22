@@ -207,6 +207,43 @@ Every run produces:
 - **`.data/workflow-eval-report.html`** — self-contained debugging view with a green/red stage review for prompt, planner, builder, and verifier behavior, generalized prompt-improvement suggestions for failures, per-node execution traces, intercepted requests, mock responses, Phase 1 hints, verifier reasoning, and the per-built-workflow check rubric (see below).
 - **LangSmith experiment** — only when `LANGSMITH_API_KEY` is set. See the caveat in [Environment variables](#environment-variables).
 
+### Cost per case, and comparing two arms on quality per token
+
+Every run records cache-aware token totals and a tool-call count per iteration in
+`eval-results.json`, summed from the run debug the harness already captures per build:
+
+- **`buildTokensPerRun`** — `{ uncachedInput, cacheRead, cacheWrite, output, totalTokens, steps }` per iteration, or `null` where a build captured nothing. Cache reads are kept separate because they are an order of magnitude cheaper than uncached input, so folding them together hides the term a context change usually moves most.
+- **`buildToolCallsPerRun`** — tool calls the evaluated run made, excluding seeded turns (restored fixture is not work this run did).
+
+Pass/fail is the wrong primary metric for a context or memory change. An agent with
+weaker memory can compensate by re-reading instance state — sometimes the *desired*
+behaviour — so two approaches can tie on pass rate while differing sharply in spend.
+That difference only shows up in these fields.
+
+To compare two arms, run each with the **same case set** and the same `--iterations`,
+then join the two result files:
+
+```bash
+# from packages/@n8n/instance-ai
+pnpm tsx evaluations/cli/build-cost-report.ts \
+  --results runs/baseline/eval-results.json \
+  --results runs/candidate/eval-results.json \
+  --label baseline --label candidate \
+  --out memory-ab.md
+```
+
+The report prices these token counts locally, so **no LangSmith access is needed** —
+it falls back to the LangSmith thread join only for runs recorded before these fields
+existed. Rates default to Sonnet-class list prices and are overridable with
+`--rate-input`, `--rate-cache-read`, `--rate-cache-write` and `--rate-output` (USD per
+million tokens). Read **cost per green iteration** alongside mean tool calls.
+
+Two caveats worth stating plainly. `--iterations` defaults to **1**, which cannot
+separate two approaches from judge noise — use at least 5 for a comparison. And don't
+mix cost sources across arms you intend to compare: the report labels each arm's
+source, and persisted `claude` spend, locally-priced tokens and LangSmith pricing are
+comparable at list price but are not the same accountant.
+
 ### Workflow checks (per built workflow)
 
 After every successful build, the eval grades the workflow JSON against the binary-check rubric in `binaryChecks/checks/`. Each named check is yes/no with a structured N/A for "no subject to evaluate in this workflow" (e.g. an agent-only check on a workflow with no agent).
@@ -242,8 +279,155 @@ A test case can declare optional natural-language assertions, split by what they
 
 - **`processExpectations: string[]`** — about *how the build went* (clarifications asked, push-back, ordering). Judged from the **conversation transcript** (plus the workflow and conversation metrics). They require a transcript, so they are **skipped in prebuilt/MCP runs**. e.g. `"Before building, the agent asked which Slack channel to use."`
 - **`outcomeExpectations: string[]`** — about the **resulting workflow**. Judged from the **workflow JSON**, so they **also run in prebuilt/MCP runs** (which have no transcript). e.g. `"The final workflow splits the records envelope before posting."`
+- **`memoryExpectations: string[]`** — about the agent's **context state**: what survived compression, and what retrieval put in front of the model. Judged by a **separate judge** (`build-expectations/memory-verifier.ts`) whose only input is the captured run debug: the final compressed observation block, the raw message window the model actually received, and the final system prompt. A fact counts as retained if it is present in **any** of those three tiers. They need a real instance-ai thread, so they are **skipped in prebuilt/MCP runs**. e.g. `"The observation block still records the alert channel agreed early in the thread, not the channel mentioned later in passing."`
 
-Both are graded by the same Sonnet judge (`build-expectations/verifier.ts`) and **count as units in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. They don't flip an individual scenario's pass/fail (each is its own unit), and a judge `incomplete` verdict is excluded from the count. A full build judges the union of both fields against the transcript; a prebuilt build judges only `outcomeExpectations` against the workflow. A case may omit `executionScenarios` entirely — a **build-only** case — and is then graded by these expectations plus the always-on workflow checks.
+`memoryExpectations` deliberately do **not** see the full conversation transcript or the built workflow. The raw message window is not the transcript: messages evicted from the window do not appear in it, which is precisely why it can be trusted as a record of what the agent *still had*. Grading against the transcript instead would let the judge satisfy "the agent still knew X" from the turn where X was first said even after the fact had fallen out of context — the confound this kind exists to remove. Keeping the inputs disjoint from the build is what makes a miss attributable to **recall**, so write them as claims about what the *context* contains, not about what the agent *did*. Their verdicts are tagged `kind: "memory"` in `eval-results.json` and badged `memory` in the HTML report. The Observer only compresses once a thread crosses its token threshold, so on a short thread the observation block is legitimately empty while every fact is still in the raw window — the judge is told this explicitly, and an absent observation block is **never** on its own a reason to fail. That matters: grading on the observation block alone would fail every memory expectation for a structural reason on exactly the short threads the suite is mostly made of. Which tier held the fact is reported in the verdict, since that is the interesting detail when comparing two memory approaches.
+
+#### Session boundaries (`seed.sessionBoundary`)
+
+By default a seed restores prior messages into the **same** thread the graded turn
+runs in, so "long-term memory" is really earlier turns of one conversation. That
+conflates three different effects — window eviction, Observer compression, and genuine
+cross-session recall — and you cannot tell them apart.
+
+Set `sessionBoundary: true` on an inline seed and the messages are restored into their
+own thread, while the graded turn runs in a fresh one:
+
+```json
+"seed": { "mode": "inline", "sessionBoundary": true, "messages": [...], "workflows": [...] }
+```
+
+**Artifacts cross the boundary; the conversation does not.** Seeded workflows, data
+tables and agents are instance-scoped, so the agent's tools can still find them — that
+is the external-memory arm. The messages are thread-scoped, so nothing about the prior
+session is recoverable from the conversation.
+
+Two things to know before writing one:
+
+- **Today's product has no cross-session memory at all** (every tier is thread-scoped,
+  see `docs/memory.md`), so a boundary case that expects recall will fail 100%. That is
+  useful as a deliberate red baseline, but write the expectations for it: with no memory
+  of the prior session, the honest behaviour is to *ask*, not to guess and quietly get
+  it wrong.
+- **The seeded turns are labelled `PREVIOUS SESSION` in the graded transcript.** Without
+  that the judge reads them as earlier turns of this conversation and penalises the
+  agent for not remembering something it never received. Same-thread seeding stays
+  unlabelled, because there it genuinely is one conversation.
+
+Not valid on a `replay` seed, which reconstructs a single real thread — the strict
+schema rejects it rather than silently dropping the flag.
+
+#### `contextAssertions` — the deterministic alternative
+
+For a **concrete value**, prefer this over a `memoryExpectation`. It asks the same
+question — did this reach the model? — by substring search over the captured context,
+with no LLM involved:
+
+```json
+"contextAssertions": [
+  { "text": "#ops-alerts", "note": "the house alert channel, from a sibling workflow" },
+  { "text": "triggerAtHour" },
+  { "text": "email_address", "mustAppear": false, "note": "the renamed column, which should have been dropped" }
+]
+```
+
+`mustAppear` defaults to true; set it false for a stale value that should be gone.
+Verdicts are tagged `kind: "memory"` like the judged ones and name the tier the value
+was found in.
+
+Why prefer it: it cannot hallucinate, costs nothing, needs no rubric, and it searches
+the **untruncated** context at both levels the judge's view is capped — the per-tier
+window/prompt limits *and* the per-tool-payload limit. The judge is capped so the
+interesting part stays in its attention; this check has no attention budget, so a
+value sitting past either cap — including one deep inside a fetched workflow,
+execution or table schema — is still found rather than reported missing. That keeps
+the judge off the load-bearing path for exactly the claims where a wrong verdict
+would be most misleading.
+
+### Pick the anchor: what the agent carried in, or what it went and fetched
+
+Both `memoryExpectations` and `contextAssertions` take an optional `anchor`:
+
+| `anchor` | Graded against | Use it for |
+|---|---|---|
+| `probe` (default) | State when the request arrived, before the agent produced anything | **Retention** — "a fact from an earlier turn survived to here" |
+| `turn-end` | State at the end of the turn | **Within-turn retrieval** — "the agent fetched the sibling workflow it needed" |
+
+```json
+"memoryExpectations": [
+  { "text": "the agent's context holds the retrieved sibling workflow's node detail",
+    "anchor": "turn-end" }
+],
+"contextAssertions": [
+  { "text": "#ops-escalations", "note": "stated three turns ago" }
+]
+```
+
+A bare string is equivalent to `{ "text": …, "anchor": "probe" }`, so existing cases are
+unchanged.
+
+**Getting this wrong is silent, and it is why the field exists.** Tool calls land on step
+2 and later; the probe snapshot is step 1. So a retrieval claim graded at the probe
+**fails every time regardless of whether retrieval worked** — the anchor excludes the
+very thing the claim is about. That happened for real: the cross-workflow case showed a
+judged expectation passing on *"the agent called `workflows(action='get')` on two
+workflow IDs"* while the memory expectation failed with *"the raw message window contains
+no tool calls or results retrieving any existing workflow's node details"*. Both graders
+were right; the claim was anchored at the wrong moment, and the case's classification
+flipped from `context-ignored` to `retrieval-gap` — inverting what the result implied
+about where to spend effort.
+
+Claims are grouped by anchor and judged one call per group, each with its own context
+block, so the judge is never asked to guess which moment a claim meant. Verdicts come
+back in the order the case wrote them.
+
+Three rules, all learned from a real run.
+
+**Assert atomic values** (`triggerAtHour`, `#ops-alerts`, `external_id`), not
+formatted phrases (`triggerAtHour: 6`) — the same value is serialised with different
+spacing and quoting depending on which tier carries it. Matching is case-insensitive,
+because casing drifts as content is re-rendered through tool payloads and a casing
+difference is never the finding.
+
+**Assert tokens that survive verbatim, not values that get reworded.** Exact matching
+cannot see paraphrase, and this bites. On one measured run, an assertion on
+`2026-03-01` reported not-retained while the judged expectation on the same fact
+passed, citing *"March 2026 cutoff filter"* in the window — the agent kept the fact in
+prose and regenerated the ISO form later. Both graders were right about different
+things. Identifiers, keys, channel names and node names survive verbatim and are good
+assertions; dates, quantities and anything a model will restate in its own words are
+better left to a `memoryExpectation`.
+
+**A disagreement between the two graders is a finding, not a bug.** The deterministic
+check answers "was this exact token carried forward"; the judge answers "was this fact
+carried forward, however worded". When they diverge, the fact survived semantically but
+not literally — worth knowing, and only visible because both run.
+
+Keep `memoryExpectations` for claims a string search cannot express — "the retrieved
+sibling was the same *kind* of workflow", "the value is present but altered".
+
+#### Writing a memory expectation that can actually fail
+
+Two things make a memory expectation harder to falsify than it looks. Both were measured, not theorised.
+
+**Compression does not run by default.** The Observer only fires past `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` (default 30,000 message tokens) and the Reflector past `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` (default 40,000). No case in the suite reaches either — a 24-message seed is nowhere close — so on a normal run every observational-memory task logs `outcome: "skipped"` and nothing is ever evicted. To exercise the tiers locally, set them far lower on the backend; values observed to work are `2000` for the Observer and `500` for the Reflector (`3000` still never fired). Note the Tier-2 sliding window is **not** tunable: `N8N_INSTANCE_AI_LAST_MESSAGES` appears in `docs/memory.md` and `docs/configuration.md` but is not bound to any config field and nothing reads it.
+
+**Both kinds are graded on the at-probe snapshot.** Context claims are judged against
+the state the model held at the *start of its final run* — before it produced anything
+in the turn being graded — not the end-of-thread state. Without that, a probe
+manufactures its own evidence: asking the agent to apply a rule makes it narrate the
+rule, and the narration is then found and scored as retention. A `contextAssertion`
+that finds its value only in the end state fails and says so explicitly (*"absent when
+the probe arrived… re-derived or restated rather than carried forward"*), which is the
+distinction between measuring the memory subsystem and measuring the agent's habit of
+narrating its own work. Residual: output from *earlier* turns is still in the snapshot,
+which is correct — a fact that travelled across turns was retained.
+
+**Eviction is not sufficient for a fact to be lost.** The agent restates facts while it works — in plans, in verification narration, in summaries — and anything it restates lands back in the raw message window the judge reads. Observed directly: a fact planted ~21 messages back, with compression firing on every turn, still passed because the agent's own output repeated it. That is legitimate evidence of recall (it could not restate what it had forgotten), but it means a probe that invites the agent to narrate the rules it is applying partly manufactures its own evidence.
+
+So a depth-parameterised probe measures much less than its depth suggests. If you need a case that can fail, prefer a probe that resolves the fact *without* asking the agent to restate it, and expect depth measured in messages to be a weak lever while the thread still fits in the window.
+
+All three are graded by a Sonnet judge and **count as units in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. They don't flip an individual scenario's pass/fail (each is its own unit), and a judge `incomplete` verdict is excluded from the count. A full build judges the union of both fields against the transcript; a prebuilt build judges only `outcomeExpectations` against the workflow. A case may omit `executionScenarios` entirely — a **build-only** case — and is then graded by these expectations plus the always-on workflow checks.
 
 Use them for things the binary checks and `successCriteria` don't cover:
 
@@ -462,8 +646,9 @@ How it differs from the manifest flow:
   `summary.mcpBuild` totals. For builder cost comparisons across any runs
   (MCP vs AIA, builder-model A/Bs), the un-wired helper
   `evaluations/cli/build-cost-report.ts` (run via `pnpm tsx`, one `--results`
-  per arm) auto-detects each arm's cost source — these persisted fields, or
-  the backend build threads priced in LangSmith.
+  per arm) auto-detects each arm's cost source — these persisted fields, the
+  per-case token counts priced locally (see [Cost per case](#cost-per-case-and-comparing-two-arms-on-quality-per-token)),
+  or the backend build threads priced in LangSmith.
 
 **Prerequisites**: `LANGSMITH_API_KEY` set — MCP builds only run on the
 LangSmith path, whose lane allocator caps builds at 4 per lane globally (the
@@ -710,7 +895,7 @@ The corpus lives in **LangTracer** — suite `baseline` is what CI runs. Author 
 }
 ```
 
-`conversation` (≥1 turn, first must be `user`), plus `complexity` and `tags`, are required. `executionScenarios`, `description`, `triggerType`, `messageBudget`, `processExpectations`, `outcomeExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional — but **a case must declare at least one `executionScenario`, or one process/outcome expectation** (a case that asserts nothing is rejected at load). A _build-only_ case omits `executionScenarios` and is graded by its `processExpectations`/`outcomeExpectations` plus the always-on workflow checks: the workflow is still built, only the mock-execution `successCriteria` pass is skipped. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
+`conversation` (≥1 turn, first must be `user`), plus `complexity` and `tags`, are required. `executionScenarios`, `description`, `triggerType`, `messageBudget`, `processExpectations`, `outcomeExpectations`, `memoryExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional — but **a case must declare at least one `executionScenario`, or one process/outcome/memory expectation** (a case that asserts nothing is rejected at load). A _build-only_ case omits `executionScenarios` and is graded by its `processExpectations`/`outcomeExpectations` plus the always-on workflow checks: the workflow is still built, only the mock-execution `successCriteria` pass is skipped. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
 
 **One case = one LangSmith split**, named from the case slug (the LangTracer case name; for disk-loaded files, the filename without `.json`). Pick a slug you're happy to also use as a `--filter` target.
 
@@ -731,6 +916,11 @@ Write the turns as a screenplay of what the user wants, keeping concrete values 
 | Refuse network access | `[Deny the web-search request — the user doesn't want it searching the web.]` |
 
 A direction governs only what it covers; otherwise the proxy answers every question (inventing plausible placeholders) and never sets credentials. Network-access prompts (`web-search`, `fetch-url`) are the one gate that's granted **without** consulting the proxy LLM, so they cost nothing by default — but while any stage direction is still pending the decision goes to the LLM, which is what makes the refusal above reachable. Setup cards (the "configure your workflow" card) are filled via the wizard — or dismissed when a direction withholds the value — not answered as questions.
+
+**Two placement rules for stage directions** — both cost real debugging time to find:
+
+- **Never put a direction in the same turn as user content the agent must receive.** A turn whose text is *content + `[direction]`* is read by the proxy as instruction, and its content is silently never sent — the turn simply does not appear in the transcript. Expectations asserting that content then fail against a turn the agent never got, and read as product misses. Give the direction its own turn, or fold it into a turn that carries no content the agent needs. Final-turn directions (`Now add the write step.` + a behaviour note) are the exception that works today, because nothing downstream depends on that turn being relayed.
+- **The opening turn is sent to the builder verbatim.** `openingMessage = conversation[0].text` with no stage-direction stripping, so a `[direction]` on turn 1 leaks proxy instructions straight into the agent's context. Whole-script directions have nowhere safe to live; prefer per-turn directions on turns that carry no needed content.
 
 **Prompt / conversation tips**
 
