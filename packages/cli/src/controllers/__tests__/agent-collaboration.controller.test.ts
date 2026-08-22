@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Response } from 'express';
 import type { User } from '@n8n/db';
-import { Z } from '@n8n/decorators';
 
 import { AgentCollaborationController } from '../agent-collaboration.controller';
 import { AgentCollaborationService } from '@/services/agent-collaboration.service';
@@ -43,7 +42,7 @@ describe('AgentCollaborationController', () => {
 		it('should join agent collaboration session', async () => {
 			const agentId = 'agent-456';
 			const projectId = 'project-789';
-			const body = Z(JoinAgentSessionDto).parse({ userName: 'Test User' });
+			const body = { userName: 'Test User' };
 
 			vi.mocked(mockService.joinAgent).mockResolvedValue(undefined);
 			vi.mocked(mockService.getActiveUsers).mockReturnValue(['user-123', 'user-456']);
@@ -68,7 +67,7 @@ describe('AgentCollaborationController', () => {
 		it('should use user name from user if not provided in body', async () => {
 			const agentId = 'agent-456';
 			const projectId = 'project-789';
-			const body = Z(JoinAgentSessionDto).parse({ userName: '' });
+			const body = { userName: '' };
 
 			vi.mocked(mockService.joinAgent).mockResolvedValue(undefined);
 			vi.mocked(mockService.getActiveUsers).mockReturnValue(['user-123']);
@@ -134,7 +133,7 @@ describe('AgentCollaborationController', () => {
 		it('should update cursor position', async () => {
 			const agentId = 'agent-456';
 			const projectId = 'project-789';
-			const body = Z(UpdateCursorDto).parse({ x: 100, y: 200 });
+			const body = { x: 100, y: 200 };
 
 			vi.mocked(mockService.updateCursor).mockResolvedValue(undefined);
 
