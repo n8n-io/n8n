@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { Service } from '@n8n/di';
 import watcher from '@parcel/watcher';
 import fs from 'fs/promises';
-import { CUSTOM_NODES_PACKAGE_NAME, DirectoryLoader } from 'n8n-core';
+import { CUSTOM_NODES_PACKAGE_NAME, CustomDirectoryLoader, DirectoryLoader } from 'n8n-core';
 import type {
 	ICredentialType,
 	INodeProperties,
@@ -672,6 +672,77 @@ describe('LoadNodesAndCredentials', () => {
 			expect(mockLoader.reset).toHaveBeenCalled();
 			expect(mockLoader.loadAll).toHaveBeenCalled();
 			expect(postProcessSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('reloadCustomNodes', () => {
+		it('should reload only custom-directory loaders and clear their require cache', async () => {
+			const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			const postProcessSpy = vi.spyOn(instance, 'postProcessLoaders').mockResolvedValue(undefined);
+
+			const customLoader = mock<CustomDirectoryLoader>({
+				packageName: CUSTOM_NODES_PACKAGE_NAME,
+				directory: '/home/node/.n8n/custom',
+				reset: vi.fn(),
+				loadAll: vi.fn(),
+			} as never);
+			Object.setPrototypeOf(customLoader, CustomDirectoryLoader.prototype);
+
+			const baseLoader = mock<DirectoryLoader>({
+				packageName: 'n8n-nodes-base',
+				directory: '/app/nodes-base',
+				reset: vi.fn(),
+				loadAll: vi.fn(),
+			} as never);
+			Object.setPrototypeOf(baseLoader, DirectoryLoader.prototype);
+
+			instance.loaders = { CUSTOM: customLoader, 'n8n-nodes-base': baseLoader };
+
+			const customModule = '/home/node/.n8n/custom/node_modules/n8n-nodes-x/dist/X.node.js';
+			const baseModule = '/app/nodes-base/dist/Y.node.js';
+			require.cache[customModule] = mock<NodeJS.Module>({ filename: customModule });
+			require.cache[baseModule] = mock<NodeJS.Module>({ filename: baseModule });
+
+			await expect(instance.reloadCustomNodes()).resolves.toEqual([CUSTOM_NODES_PACKAGE_NAME]);
+
+			expect(require.cache[customModule]).toBeUndefined();
+			expect(require.cache[baseModule]).toBeDefined();
+			expect(customLoader.reset).toHaveBeenCalled();
+			expect(customLoader.loadAll).toHaveBeenCalled();
+			expect(baseLoader.reset).not.toHaveBeenCalled();
+			expect(postProcessSpy).toHaveBeenCalled();
+
+			delete require.cache[baseModule];
+		});
+
+		it('should serialize concurrent reloads instead of interleaving them', async () => {
+			const instance = new LoadNodesAndCredentials(mock(), mock(), mock(), mock(), mock(), mock());
+			vi.spyOn(instance, 'postProcessLoaders').mockResolvedValue(undefined);
+
+			let active = 0;
+			let maxActive = 0;
+			const customLoader = mock<CustomDirectoryLoader>({
+				packageName: CUSTOM_NODES_PACKAGE_NAME,
+				directory: '/home/node/.n8n/custom',
+				reset: vi.fn(),
+				loadAll: vi.fn(async () => {
+					active++;
+					maxActive = Math.max(maxActive, active);
+					await new Promise((resolve) => setTimeout(resolve, 5));
+					active--;
+				}),
+			} as never);
+			Object.setPrototypeOf(customLoader, CustomDirectoryLoader.prototype);
+			instance.loaders = { CUSTOM: customLoader };
+
+			await Promise.all([
+				instance.reloadCustomNodes(),
+				instance.reloadCustomNodes(),
+				instance.reloadCustomNodes(),
+			]);
+
+			expect(customLoader.loadAll).toHaveBeenCalledTimes(3);
+			expect(maxActive).toBe(1);
 		});
 	});
 
