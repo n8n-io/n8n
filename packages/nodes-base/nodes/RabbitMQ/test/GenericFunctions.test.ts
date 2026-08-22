@@ -144,6 +144,46 @@ describe('RabbitMQ GenericFunctions', () => {
 			expect(mockChannel.checkQueue).toHaveBeenCalledWith('queue');
 			expect(mockChannel.bindQueue).not.toHaveBeenCalled();
 		});
+
+		it('should not resolve until every binding is established', async () => {
+			context.getCredentials.mockResolvedValue(credentials);
+			const options = mock<TriggerOptions>({
+				assertQueue: true,
+				binding: {
+					bindings: [
+						{ exchange: 'ex1', routingKey: 'rk1' },
+						{ exchange: 'ex2', routingKey: 'rk2' },
+					],
+				},
+			});
+
+			let settled = 0;
+			mockChannel.bindQueue.mockImplementation(async () => {
+				await new Promise((r) => setImmediate(r));
+				settled += 1;
+				return {} as never;
+			});
+
+			await rabbitmqConnectQueue.call(context, 'queue', options);
+
+			expect(settled).toBe(2);
+			expect(mockChannel.bindQueue).toHaveBeenNthCalledWith(1, 'queue', 'ex1', 'rk1');
+			expect(mockChannel.bindQueue).toHaveBeenNthCalledWith(2, 'queue', 'ex2', 'rk2');
+		});
+
+		it('should reject when a binding fails', async () => {
+			context.getCredentials.mockResolvedValue(credentials);
+			const options = mock<TriggerOptions>({
+				assertQueue: true,
+				binding: { bindings: [{ exchange: 'ex1', routingKey: 'rk1' }] },
+			});
+
+			mockChannel.bindQueue.mockRejectedValueOnce(new Error('no such exchange'));
+
+			await expect(rabbitmqConnectQueue.call(context, 'queue', options)).rejects.toThrow(
+				'no such exchange',
+			);
+		});
 	});
 
 	describe('rabbitmqConnectExchange', () => {

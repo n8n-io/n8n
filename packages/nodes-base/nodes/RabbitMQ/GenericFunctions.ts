@@ -77,9 +77,12 @@ export async function rabbitmqConnectQueue(
 			}
 
 			if ('binding' in options && options.binding?.bindings.length) {
-				options.binding.bindings.forEach(async (binding) => {
+				// `forEach` does not await its callback: the promises returned by
+				// bindQueue were dropped, so the channel was resolved before the
+				// bindings existed and a rejection surfaced as an unhandled one.
+				for (const binding of options.binding.bindings) {
 					await channel.bindQueue(queue, binding.exchange, binding.routingKey);
-				});
+				}
 			}
 
 			resolve(channel);
