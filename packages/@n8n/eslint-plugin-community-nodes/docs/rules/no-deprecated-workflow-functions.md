@@ -10,6 +10,25 @@
 
 Prevents usage of deprecated functions from n8n-workflow package and suggests modern alternatives.
 
+A node reaches these helpers through its execution context, which it can hold in
+several ways — all of them are reported:
+
+```typescript
+this.helpers.request(options); // execute() bound to the context
+context.helpers.requestOAuth2.call(context, ...); // context passed into a transport helper
+this.executeFunctions.helpers.request(options); // context stored on a class field
+const { helpers } = this; // destructured off the context
+```
+
+> [!NOTE]
+> The rule runs without type information, so it cannot tell which object a
+> `helpers` property belongs to. Apart from `this.helpers`, it therefore only
+> reports in files that import an execution context interface
+> (`IExecuteFunctions`, `ILoadOptionsFunctions`, …) from `n8n-workflow`. The
+> check is file-scoped rather than binding-scoped: in such a file, an unrelated
+> `someClient.helpers.request()` would also be reported. Silence the rare false
+> positive with `// eslint-disable-next-line`.
+
 ## Examples
 
 ### ❌ Incorrect

@@ -1,6 +1,11 @@
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 
-import { createRule, isThisHelpersAccess } from '../utils/index.js';
+import {
+	createRule,
+	isHelpersAccess,
+	isThisHelpersAccess,
+	EXECUTION_CONTEXT_TYPES,
+} from '../utils/index.js';
 
 const DEPRECATED_FUNCTIONS = {
 	request: 'httpRequest',
@@ -46,6 +51,7 @@ export const NoDeprecatedWorkflowFunctionsRule = createRule({
 	defaultOptions: [],
 	create(context) {
 		const n8nWorkflowTypes = new Set<string>();
+		let importsExecutionContext = false;
 
 		return {
 			ImportDeclaration(node) {
@@ -56,6 +62,9 @@ export const NoDeprecatedWorkflowFunctionsRule = createRule({
 							specifier.imported.type === AST_NODE_TYPES.Identifier
 						) {
 							n8nWorkflowTypes.add(specifier.local.name);
+							if (EXECUTION_CONTEXT_TYPES.has(specifier.imported.name)) {
+								importsExecutionContext = true;
+							}
 						}
 					});
 				}
@@ -66,7 +75,9 @@ export const NoDeprecatedWorkflowFunctionsRule = createRule({
 					node.property.type === AST_NODE_TYPES.Identifier &&
 					isDeprecatedFunctionName(node.property.name)
 				) {
-					if (!isThisHelpersAccess(node)) {
+					// `this.helpers` is unambiguous on its own; any other receiver only counts in a file
+					// that imports an execution context type, which is what makes its `helpers` n8n's.
+					if (!isThisHelpersAccess(node) && !(importsExecutionContext && isHelpersAccess(node))) {
 						return;
 					}
 
