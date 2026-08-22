@@ -10,6 +10,69 @@ const acknowledgedProjectOwnedEntities = [
 	...ownershipTransferManifest.notTransferred,
 ].map(({ name, path }) => ({ name, path }));
 
+// Declared module→module edges; seed data for a future `@BackendModule({ dependsOn })`.
+// Shrink-only: prefer inverting the edge via a registry (see scripts/backend-module/backend-module-guide.md).
+// `pending removal` entries are deleted once the referenced PR merges.
+const allowedModuleDependencies = {
+	'agent-evals': [
+		'agents', // hard dependency
+		'data-table', // hard dependency
+		'instance-ai', // hard dependency
+		'source-control.ee', // pending removal by #35903
+	],
+	agents: [
+		'favorites', // registers favorite resource resolver
+		'instance-ai', // pending removal by #35907 + #35908
+		'mcp', // registers MCP tool provider
+		'mcp-registry', // hard dependency
+		'otel', // hard dependency
+	],
+	'breaking-changes': [
+		'community-packages', // pending removal by #35907
+	],
+	'data-table': [
+		'favorites', // registers favorite resource resolver
+		'mcp', // registers MCP tool provider
+		'n8n-packages', // registers package entity handler
+		'source-control.ee', // registers source control handler
+	],
+	favorites: [
+		'agents', // pending removal by #35909
+		'data-table', // pending removal by #35909
+	],
+	'instance-ai': [
+		'agents', // hard dependency
+		'data-table', // hard dependency
+		'mcp-registry', // hard dependency
+		'source-control.ee', // pending removal by #35903
+	],
+	mcp: [
+		'agents', // hard dependency
+		'data-table', // pending removal by #35906
+		'mcp-registry', // pending removal by #35906
+	],
+	'n8n-packages': [
+		'data-table', // pending removal by #35912
+	],
+	'oauth-server': [
+		'mcp', // pending removal by #35907
+	],
+	'source-control.ee': [
+		'data-table', // pending removal by #35905
+		'redaction', // hard dependency
+	],
+	'sso-oidc': [
+		'provisioning.ee', // pending removal by #35911
+	],
+	'sso-saml': [
+		'provisioning.ee', // pending removal by #35911
+	],
+	'workflow-index': [
+		'agents', // hard dependency
+		'data-table', // hard dependency
+	],
+};
+
 const INSTANCE_AI_LAZY_IMPORT_MESSAGE =
 	'Use an existing lazy loader, or add one near first use. Static runtime imports of this dependency undo the Instance AI idle-memory guardrail.';
 
@@ -38,6 +101,12 @@ export default defineConfig(
 			'n8n-local-rules/no-misplaced-typeorm-import-disable': 'error',
 			// Public API handler-pattern ratchet — the allowlist is the only escape hatch; block inline disables.
 			'n8n-local-rules/no-public-api-guardrail-disable': 'error',
+			'n8n-local-rules/no-undeclared-cross-module-import': [
+				'error',
+				{ allowedDependencies: allowedModuleDependencies },
+			],
+			// The edge map above is the only place cross-module exceptions may live; block inline disables.
+			'n8n-local-rules/no-cross-module-import-disable': 'error',
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'error',
 			'n8n-local-rules/project-owned-entity-transfer': [
 				'error',
@@ -333,6 +402,71 @@ export default defineConfig(
 		files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
 		rules: {
 			'n8n-local-rules/no-type-unsafe-event-emitter': 'off',
+			'n8n-local-rules/no-undeclared-cross-module-import': 'off',
+		},
+	},
+	{
+		// Ratchet allowlist: core files still importing from `src/modules/**`.
+		// NEVER add to this list — a new core→module import must fail CI. Remove entries as files decouple.
+		files: [
+			'./src/commands/base-command.ts',
+			'./src/commands/start.ts',
+			'./src/controllers/e2e.controller.ts',
+			'./src/controllers/project.controller.ts',
+			'./src/controllers/users.controller.ts',
+			'./src/credentials-helper.ts',
+			'./src/credentials/credentials.service.ee.ts',
+			'./src/credentials/credentials.service.ts',
+			'./src/credentials/validation.ts',
+			'./src/evaluation.ee/evaluation-config-validator.ts',
+			'./src/evaluation.ee/evaluation-dataset.service.ts',
+			'./src/events/maps/relay.event-map.ts',
+			'./src/events/relays/telemetry.event-relay.ts',
+			'./src/instance-settings-loader/loaders/community-packages.instance-settings-loader.ts',
+			'./src/instance-settings-loader/loaders/log-streaming.instance-settings-loader.ts',
+			'./src/instance-settings-loader/loaders/mcp-settings.loader.ts',
+			'./src/instance-settings-loader/loaders/sso/oidc.instance-settings-loader.ts',
+			'./src/instance-settings-loader/loaders/sso/provisioning.instance-settings-loader.ts',
+			'./src/instance-settings-loader/loaders/sso/saml.instance-settings-loader.ts',
+			'./src/metrics/prometheus/instance-ai-metrics.service.ts',
+			'./src/node-catalog/node-catalog.service.ts',
+			'./src/permissions.ee/check-access.ts',
+			'./src/public-api/index.ts',
+			'./src/public-api/v1/handlers/community-packages/community-packages.handler.ts',
+			'./src/public-api/v1/handlers/credentials/credentials.service.ts',
+			'./src/public-api/v1/handlers/data-tables/data-tables.columns.handler.ts',
+			'./src/public-api/v1/handlers/data-tables/data-tables.handler.ts',
+			'./src/public-api/v1/handlers/data-tables/data-tables.rows.handler.ts',
+			'./src/public-api/v1/handlers/insights/insights.handler.ts',
+			'./src/public-api/v1/handlers/ldap/ldap.handler.ts',
+			'./src/public-api/v1/handlers/log-streaming/log-streaming.handler.ts',
+			'./src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts',
+			'./src/public-api/v1/handlers/otel/otel.handler.ts',
+			'./src/public-api/v1/handlers/otel/otel.mapper.ts',
+			'./src/public-api/v1/handlers/projects/projects.handler.ts',
+			'./src/public-api/v1/handlers/source-control/source-control.handler.ts',
+			'./src/public-api/v1/handlers/sso-oidc/sso-oidc.handler.ts',
+			'./src/public-api/v1/handlers/sso-oidc/sso-oidc.mapper.ts',
+			'./src/public-api/v1/handlers/sso-saml/sso-saml.handler.ts',
+			'./src/public-api/v1/handlers/sso-saml/sso-saml.mapper.ts',
+			'./src/public-api/v1/handlers/workflows/workflows.handler.ts',
+			'./src/scaling/scaling.service.ts',
+			'./src/security-audit/risk-reporters/instance-risk-reporter.ts',
+			'./src/security-audit/security-audit.repository.ts',
+			'./src/server.ts',
+			'./src/services/ai-workflow-builder.service.ts',
+			'./src/services/export.service.ts',
+			'./src/services/frontend.service.ts',
+			'./src/services/import.service.ts',
+			'./src/services/project.service.ee.ts',
+			'./src/services/security-settings.service.ts',
+			'./src/telemetry/index.ts',
+			'./src/workflow-execute-additional-data.ts',
+			'./src/workflows/workflow-creation.service.ts',
+			'./src/workflows/workflow.service.ts',
+		],
+		rules: {
+			'n8n-local-rules/no-undeclared-cross-module-import': 'off',
 		},
 	},
 	{
