@@ -7,7 +7,7 @@
  * which links back to the owning project/personal page.
  */
 import { computed, onMounted } from 'vue';
-import { useRouter, type RouteLocationRaw } from 'vue-router';
+import { useRouter, type RouteLocationRaw, type ComputedRef } from 'vue-router';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import {
 	N8nActionDropdown,
@@ -23,7 +23,7 @@ import type { PathItem } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { useUsersStore } from '@/stores/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { PROJECT_AGENTS } from '@/features/agents/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
@@ -79,7 +79,7 @@ const {
 	activeUsers,
 	userCount,
 	hasActiveUsers,
-} = useAgentCollaboration(props.agentId, props.projectId);
+} = useAgentCollaboration(computed(() => props.agentId), computed(() => props.projectId));
 
 const projectRoute = computed<RouteLocationRaw>(() => ({
 	name: PROJECT_AGENTS,
@@ -213,7 +213,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 				v-if="hasActiveUsers"
 				:active-users="activeUsers"
 				:user-count="userCount"
-				:current-user-id="usersStore.currentUserId"
+				:current-user-id="usersStore.currentUserId || ''"
 			/>
 			<AgentValidationTooltip
 				:disabled="!isPreviewDisabled"

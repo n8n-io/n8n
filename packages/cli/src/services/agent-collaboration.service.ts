@@ -36,6 +36,9 @@ export class AgentCollaborationService {
 	// Track last activity timestamp per user per agent
 	private readonly userActivity = new Map<string, Map<string, number>>();
 
+	// Track projectId per agent (for validation during collaboration messages)
+	private readonly agentProjectIds = new Map<string, string>();
+
 	// Inactivity threshold (5 minutes in milliseconds)
 	private readonly INACTIVITY_THRESHOLD = 5 * 60 * 1000;
 
@@ -86,6 +89,9 @@ export class AgentCollaborationService {
 		}
 		this.userActivity.get(agentId)!.set(userId, Date.now());
 
+		// Store projectId for this agent (for validation during collaboration messages)
+		this.agentProjectIds.set(agentId, projectId);
+
 		// Broadcast presence update to all users on this agent
 		await this.broadcastPresence(agentId, {
 			type: 'user-joined',
@@ -124,6 +130,7 @@ export class AgentCollaborationService {
 				this.agentUsers.delete(agentId);
 				this.userCursors.delete(agentId);
 				this.userActivity.delete(agentId);
+				this.agentProjectIds.delete(agentId);
 			}
 		}
 
@@ -266,6 +273,9 @@ export class AgentCollaborationService {
 			if (!this.isUserActive(agentId, userId)) {
 				throw new UnexpectedError('User not authorized to collaborate on this agent');
 			}
+
+			// Update activity timestamp for collaboration messages
+			this.userActivity.get(agentId)?.set(userId, Date.now());
 
 			// Rebroadcast to other users (excluding sender)
 			await this.broadcastAgentChange(agentId, {

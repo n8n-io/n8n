@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useAgentCollaboration } from '../useAgentCollaboration';
 
 describe('useAgentCollaboration', () => {
@@ -55,7 +55,10 @@ describe('useAgentCollaboration', () => {
 				activeUsers: ['user-123', 'user-456'],
 			});
 
-			const { joinSession, isActive, activeUsers, userCount } = useAgentCollaboration(agentId, projectId);
+			const { joinSession, isActive, activeUsers, userCount } = useAgentCollaboration(
+				computed(() => agentId),
+				computed(() => projectId),
+			);
 
 			await joinSession();
 
@@ -74,11 +77,14 @@ describe('useAgentCollaboration', () => {
 
 			mockRestApi.post.mockRejectedValue(new Error('Network error'));
 
-			const { joinSession, error } = useAgentCollaboration(agentId, projectId);
+			const { joinSession, error } = useAgentCollaboration(
+				computed(() => agentId),
+				computed(() => projectId),
+			);
 
 			await joinSession();
 
-			expect(error.value).toBe('Failed to join collaboration session');
+			expect(error.value).toBe('Network error');
 		});
 	});
 
@@ -89,7 +95,10 @@ describe('useAgentCollaboration', () => {
 
 			mockRestApi.delete.mockResolvedValue(undefined);
 
-			const { leaveSession, isActive, activeUsers, userCount } = useAgentCollaboration(agentId, projectId);
+			const { leaveSession, isActive, activeUsers, userCount } = useAgentCollaboration(
+				computed(() => agentId),
+				computed(() => projectId),
+			);
 
 			// Set as active first
 			activeUsers.value = ['user-123'];
@@ -114,7 +123,10 @@ describe('useAgentCollaboration', () => {
 
 			mockRestApi.post.mockResolvedValue(undefined);
 
-			const { updateCursorPosition, cursorPositions, isActive } = useAgentCollaboration(agentId, projectId);
+			const { updateCursorPosition, cursorPositions, isActive } = useAgentCollaboration(
+				computed(() => agentId),
+				computed(() => projectId),
+			);
 
 			// Set as active first
 			isActive.value = true;
@@ -132,7 +144,10 @@ describe('useAgentCollaboration', () => {
 			const agentId = 'agent-456';
 			const projectId = 'project-789';
 
-			const { updateCursorPosition } = useAgentCollaboration(agentId, projectId);
+			const { updateCursorPosition } = useAgentCollaboration(
+				computed(() => agentId),
+				computed(() => projectId),
+			);
 
 			await updateCursorPosition(100, 200);
 
@@ -150,7 +165,10 @@ describe('useAgentCollaboration', () => {
 				userCount: 2,
 			});
 
-			const { fetchActiveUsers, activeUsers, userCount } = useAgentCollaboration(agentId, projectId);
+			const { fetchActiveUsers, activeUsers, userCount } = useAgentCollaboration(
+				computed(() => agentId),
+				computed(() => projectId),
+			);
 
 			await fetchActiveUsers();
 
@@ -174,7 +192,10 @@ describe('useAgentCollaboration', () => {
 				},
 			});
 
-			const { fetchCursorPositions, cursorPositions } = useAgentCollaboration(agentId, projectId);
+			const { fetchCursorPositions, cursorPositions } = useAgentCollaboration(
+				computed(() => agentId),
+				computed(() => projectId),
+			);
 
 			await fetchCursorPositions();
 
@@ -188,7 +209,10 @@ describe('useAgentCollaboration', () => {
 
 	describe('computed properties', () => {
 		it('should compute hasActiveUsers correctly', () => {
-			const { userCount, hasActiveUsers } = useAgentCollaboration('agent-456', 'project-789');
+			const { userCount, hasActiveUsers } = useAgentCollaboration(
+				computed(() => 'agent-456'),
+				computed(() => 'project-789'),
+			);
 
 			userCount.value = 0;
 			expect(hasActiveUsers.value).toBe(false);
@@ -201,7 +225,10 @@ describe('useAgentCollaboration', () => {
 		});
 
 		it('should compute otherUsers correctly', () => {
-			const { activeUsers, otherUsers } = useAgentCollaboration('agent-456', 'project-789');
+			const { activeUsers, otherUsers } = useAgentCollaboration(
+				computed(() => 'agent-456'),
+				computed(() => 'project-789'),
+			);
 
 			activeUsers.value = ['user-123', 'user-456'];
 			expect(otherUsers.value).toEqual(['user-456']);

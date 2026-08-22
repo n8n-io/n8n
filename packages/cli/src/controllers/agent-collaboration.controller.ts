@@ -7,6 +7,7 @@ import {
 	ProjectScope,
 	Body,
 	Param,
+	Z,
 } from '@n8n/decorators';
 import type { Response } from 'express';
 
@@ -40,7 +41,7 @@ export class AgentCollaborationController {
 		req: AuthenticatedRequest<ProjectParams>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body() body: JoinAgentSessionDto,
+		@Body(Z(JoinAgentSessionDto)) body: JoinAgentSessionDto,
 	) {
 		const { projectId } = req.params;
 		const user = req.user;
@@ -112,7 +113,7 @@ export class AgentCollaborationController {
 		req: AuthenticatedRequest<ProjectParams>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body() body: UpdateCursorDto,
+		@Body(Z(UpdateCursorDto)) body: UpdateCursorDto,
 	) {
 		const { projectId } = req.params;
 		const user = req.user;

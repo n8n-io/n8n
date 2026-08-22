@@ -1,4 +1,4 @@
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, type Ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useUsersStore } from '@/stores/users.store';
 import { useRestApi } from '@/composables/useRestApi';
@@ -19,15 +19,32 @@ interface RouteParams {
  * - Cursor position updates
  * - Receiving collaboration events via WebSocket
  */
-export function useAgentCollaboration(agentId?: string, projectId?: string) {
+export function useAgentCollaboration(agentId?: string | Ref<string>, projectId?: string | Ref<string>) {
 	const route = useRoute();
 	const usersStore = useUsersStore();
 	const restApi = useRestApi();
 	const pushStore = usePushConnectionStore();
 
-	// Use provided agentId or extract from route
-	const currentAgentId = ref(agentId || (route.params.agentId as string));
-	const currentProjectId = ref(projectId || (route.params.projectId as string) || '');
+	// Accept both strings and refs for agentId and projectId
+	const currentAgentId = computed(() => {
+		if (agentId !== undefined) {
+			if (typeof agentId === 'object') {
+				return agentId.value;
+			}
+			return agentId;
+		}
+		return route.params.agentId as string;
+	});
+
+	const currentProjectId = computed(() => {
+		if (projectId !== undefined) {
+			if (typeof projectId === 'object') {
+				return projectId.value;
+			}
+			return projectId;
+		}
+		return (route.params.projectId as string) || '';
+	});
 
 	// Build API path with projectId
 	const apiPath = computed(() => {
@@ -209,10 +226,29 @@ export function useAgentCollaboration(agentId?: string, projectId?: string) {
 			removeListener = pushStore.addEventListener((message) => {
 				handleCollaborationMessage(message);
 			});
+
+			// Fetch initial cursor positions after joining
+			void fetchCursorPositions();
 		}
 	});
 
 	let removeListener: (() => void) | null = null;
+
+	// Watch for agentId or projectId changes to rejoin session
+	watch([currentAgentId, currentProjectId], async ([newAgentId, newProjectId], [oldAgentId, oldProjectId]) => {
+		if (newAgentId !== oldAgentId || newProjectId !== oldProjectId) {
+			// Leave previous session if active
+			if (isActive.value) {
+				await leaveSession();
+			}
+
+			// Join new session if agentId is valid
+			if (newAgentId) {
+				await joinSession();
+				void fetchCursorPositions();
+			}
+		}
+	});
 
 	onUnmounted(() => {
 		// Remove message listener first to avoid race condition
