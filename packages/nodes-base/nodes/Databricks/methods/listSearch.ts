@@ -6,7 +6,7 @@ export async function getWarehouses(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const credentialType = getActiveCredentialType(this);
+	const credentialType = getActiveCredentialType(this, 0);
 	const host = await getHost(this, credentialType);
 
 	const response = (await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
@@ -36,7 +36,7 @@ export async function getEndpoints(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const credentialType = getActiveCredentialType(this);
+	const credentialType = getActiveCredentialType(this, 0);
 	const host = await getHost(this, credentialType);
 
 	const response = (await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
@@ -90,7 +90,7 @@ export async function getCatalogs(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const credentialType = getActiveCredentialType(this);
+	const credentialType = getActiveCredentialType(this, 0);
 	const host = await getHost(this, credentialType);
 
 	const response = (await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
@@ -120,7 +120,7 @@ export async function getSchemas(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const credentialType = getActiveCredentialType(this);
+	const credentialType = getActiveCredentialType(this, 0);
 	const host = await getHost(this, credentialType);
 
 	let selectedCatalog: string | undefined;
@@ -214,7 +214,7 @@ export async function getVolumes(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const credentialType = getActiveCredentialType(this);
+	const credentialType = getActiveCredentialType(this, 0);
 	const host = await getHost(this, credentialType);
 	const { selectedCatalog, selectedSchema } = getSelectedCatalogAndSchema(this);
 
@@ -271,7 +271,7 @@ export async function getTables(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const credentialType = getActiveCredentialType(this);
+	const credentialType = getActiveCredentialType(this, 0);
 	const host = await getHost(this, credentialType);
 	const { selectedCatalog, selectedSchema } = getSelectedCatalogAndSchema(this);
 
@@ -332,7 +332,7 @@ export async function getFunctions(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const credentialType = getActiveCredentialType(this);
+	const credentialType = getActiveCredentialType(this, 0);
 	const host = await getHost(this, credentialType);
 	const { selectedCatalog, selectedSchema } = getSelectedCatalogAndSchema(this);
 

@@ -20,7 +20,7 @@ export type ResolvedAwsCredentials = {
 
 export async function resolveAwsCredentials(
 	context: ISupplyDataFunctions,
-	itemIndex = 0,
+	itemIndex: number,
 ): Promise<ResolvedAwsCredentials> {
 	const authentication = context.getNodeParameter('authentication', itemIndex, 'iam') as
 		| 'iam'

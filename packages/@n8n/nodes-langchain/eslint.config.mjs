@@ -10,6 +10,8 @@ export default defineConfig(
 			'@n8n/community-nodes': n8nCommunityNodesPlugin,
 		},
 		rules: {
+			'n8n-local-rules/no-defaulted-item-index': 'error',
+
 			// TODO: remove all the following rules
 			eqeqeq: 'warn',
 			'id-denylist': 'warn',

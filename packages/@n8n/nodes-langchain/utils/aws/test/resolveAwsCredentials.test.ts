@@ -28,7 +28,13 @@ import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
 import { getSystemCredentials } from 'n8n-nodes-base/aws-credentials';
 import { getNodeProxyAgent } from '@n8n/ai-utilities';
 
-import { resolveAwsCredentials } from '../resolveAwsCredentials';
+import { resolveAwsCredentials as resolveAwsCredentialsForItem } from '../resolveAwsCredentials';
+
+// Test shim: almost every case here is about a single item, so the index
+// defaults to 0 and the call sites read as they did before `itemIndex` became
+// required. The cases that care about the index still pass one.
+const resolveAwsCredentials = async (context: ISupplyDataFunctions, itemIndex = 0) =>
+	await resolveAwsCredentialsForItem(context, itemIndex);
 
 const mockedFromTemporaryCredentials = vi.mocked(fromTemporaryCredentials);
 const mockedGetSystemCredentials = vi.mocked(getSystemCredentials);
