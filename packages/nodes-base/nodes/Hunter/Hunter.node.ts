@@ -7,7 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { hunterApiRequest, hunterApiRequestAllItems } from './GenericFunctions';
+import { hunterApiRequest, hunterApiRequestAllItems, toMultiOptionsCsv } from './GenericFunctions';
 
 export class Hunter implements INodeType {
 	description: INodeTypeDescription = {
@@ -295,10 +295,10 @@ export class Hunter implements INodeType {
 						qs.type = filters.type;
 					}
 					if (filters.seniority) {
-						qs.seniority = (filters.seniority as string[]).join(',');
+						qs.seniority = toMultiOptionsCsv(filters.seniority);
 					}
 					if (filters.department) {
-						qs.department = (filters.department as string[]).join(',');
+						qs.department = toMultiOptionsCsv(filters.department);
 					}
 					if (returnAll) {
 						responseData = await hunterApiRequestAllItems.call(
