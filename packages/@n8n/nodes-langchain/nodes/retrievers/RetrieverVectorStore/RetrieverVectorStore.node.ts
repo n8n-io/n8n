@@ -1,15 +1,16 @@
 import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
-import { VectorStore } from '@langchain/core/vectorstores';
+import type { VectorStore } from '@langchain/core/vectorstores';
 import { ContextualCompressionRetriever } from '@langchain/classic/retrievers/contextual_compression';
 import {
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@n8n/ai-utilities';
+import { logWrapper, isVectorStore } from '@n8n/ai-utilities';
 
 export class RetrieverVectorStore implements INodeType {
 	description: INodeTypeDescription = {
@@ -86,13 +87,22 @@ export class RetrieverVectorStore implements INodeType {
 
 		let retriever = null;
 
-		if (vectorStore instanceof VectorStore) {
+		if (isVectorStore(vectorStore)) {
 			retriever = vectorStore.asRetriever(topK);
-		} else {
+		} else if (
+			vectorStore &&
+			'vectorStore' in vectorStore &&
+			isVectorStore(vectorStore.vectorStore)
+		) {
 			retriever = new ContextualCompressionRetriever({
 				baseCompressor: vectorStore.reranker,
 				baseRetriever: vectorStore.vectorStore.asRetriever(topK),
 			});
+		} else {
+			throw new NodeOperationError(
+				this.getNode(),
+				'No valid Vector Store connection found. Please check your connections.',
+			);
 		}
 
 		return {

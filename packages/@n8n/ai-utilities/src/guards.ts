@@ -3,6 +3,7 @@ import type { BaseChatMessageHistory } from '@langchain/core/chat_history';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseLLM } from '@langchain/core/language_models/llms';
 import type { Tool } from '@langchain/core/tools';
+import type { VectorStore } from '@langchain/core/vectorstores';
 
 function hasMethods<T>(obj: unknown, ...methodNames: Array<string | symbol>): obj is T {
 	return methodNames.every(
@@ -32,4 +33,8 @@ export function isToolsInstance(model: unknown): model is Tool {
 	const namespace = (model as Tool)?.lc_namespace ?? [];
 
 	return namespace.includes('tools');
+}
+
+export function isVectorStore(obj: unknown): obj is VectorStore {
+	return hasMethods<VectorStore>(obj, 'asRetriever', 'similaritySearch');
 }
