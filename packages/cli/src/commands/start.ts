@@ -15,7 +15,7 @@ import glob from 'fast-glob';
 import { createReadStream, createWriteStream, existsSync } from 'fs';
 import { mkdir } from 'fs/promises';
 import { BinaryDataConfig } from 'n8n-core';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, UserError } from 'n8n-workflow';
 import path from 'path';
 import replaceStream from 'replacestream';
 import { pipeline } from 'stream/promises';
@@ -295,6 +295,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
+		await this.initInstanceReporting();
+
 		// Initialize auth handler registry after modules are loaded
 		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry.js');
 		await Container.get(AuthHandlerRegistry).init();
@@ -305,6 +307,33 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
+	}
+
+	/**
+	 * Instance reporting is opt-in via `INSTANCE_REPORTING_ENABLED` and is
+	 * kept out of the insights module's own init so it stays a deliberate,
+	 * instance-level decision rather than a side effect of loading insights.
+	 */
+	private async initInstanceReporting(): Promise<void> {
+		const { InstanceMonitoringConfig } = await import(
+			'@/modules/insights/instance-monitoring/instance-monitoring.config.js'
+		);
+
+		if (!Container.get(InstanceMonitoringConfig).enabled) return;
+
+		// The reporter reads its numbers from insights, so it cannot run without it.
+		if (this.modulesConfig.disabledModules.includes('insights')) {
+			throw new UserError(
+				'INSTANCE_REPORTING_ENABLED requires the `insights` module, but it is listed in N8N_DISABLED_MODULES. Remove `insights` from N8N_DISABLED_MODULES or unset INSTANCE_REPORTING_ENABLED.',
+			);
+		}
+
+		const { InstanceReportingService } = await import(
+			'@/modules/insights/instance-monitoring/instance-reporting.service.js'
+		);
+		Container.get(InstanceReportingService).startReporting();
+
+		this.logger.debug('Execution data reporting init complete');
 	}
 
 	private async initInstanceSettingsLoader(): Promise<void> {
