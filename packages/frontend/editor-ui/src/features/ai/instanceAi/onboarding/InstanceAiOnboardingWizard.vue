@@ -38,6 +38,7 @@ import {
 } from '../instanceAiConnection.constants';
 import { getAllInstanceAiModelOptions, getInstanceAiModelOptions } from '../instanceAiModelCatalog';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { sanitizeFailureDetail } from './sanitizeFailureDetail';
 import type { InstanceAiOnboardingStep } from './useInstanceAiOnboarding';
 
 const DAYTONA_API_URL = 'https://app.daytona.io/api';
@@ -94,6 +95,7 @@ const { credentialTestError, testSavedCredential } = useInstanceCredentialTest()
 
 const busy = ref(false);
 const failure = ref<InstanceAiVerificationFailure | null>(null);
+const failureDetail = ref<string | null>(null);
 const success = ref<VerificationSuccess | null>(null);
 const modelProvider = ref<InstanceAiModelProvider>('anthropic');
 const modelApiKey = ref('');
@@ -412,6 +414,7 @@ async function hydrateSearch(generation: number): Promise<void> {
 async function hydrate(): Promise<void> {
 	const generation = ++hydrationGeneration;
 	failure.value = null;
+	failureDetail.value = null;
 	success.value = null;
 	if (props.step === 'model') await hydrateModel(generation);
 	if (props.step === 'sandbox') await hydrateSandbox(generation);
@@ -449,6 +452,7 @@ watch(
 	],
 	() => {
 		failure.value = null;
+		failureDetail.value = null;
 		success.value = null;
 		credentialTestError.value = '';
 	},
@@ -594,7 +598,13 @@ async function verifyExistingCredential(): Promise<InstanceAiVerificationRespons
 	if (!credential) return { ok: false, failure: 'provider_error' };
 	return (await testSavedCredential(credential.id, credential.name, credential.type))
 		? { ok: true }
-		: { ok: false, failure: 'provider_error' };
+		: {
+				ok: false,
+				failure: 'provider_error',
+				error: credentialTestError.value
+					? sanitizeFailureDetail(credentialTestError.value)
+					: undefined,
+			};
 }
 
 async function runVerification(): Promise<InstanceAiVerificationResponse | null> {
@@ -635,11 +645,13 @@ async function handlePrimary(): Promise<void> {
 	}
 	busy.value = true;
 	failure.value = null;
+	failureDetail.value = null;
 	success.value = null;
 	try {
 		const result = await runVerification();
 		if (!result?.ok) {
 			failure.value = result?.failure ?? 'provider_error';
+			failureDetail.value = result?.ok === false ? (result.error ?? null) : null;
 			return;
 		}
 		let saved = true;
@@ -669,8 +681,10 @@ async function handlePrimary(): Promise<void> {
 			}
 			emit('advance');
 		}
-	} catch {
+	} catch (error) {
 		failure.value = 'provider_error';
+		failureDetail.value =
+			error instanceof Error && error.message ? sanitizeFailureDetail(error.message) : null;
 	} finally {
 		busy.value = false;
 	}
@@ -1285,7 +1299,20 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 							: 'assistant-verification-error'
 					"
 				>
-					{{ i18n.baseText(failureKey) }}
+					<div>
+						{{ i18n.baseText(failureKey) }}
+						<div
+							v-if="failureDetail"
+							:class="$style.failureDetail"
+							data-test-id="assistant-verification-error-details"
+						>
+							{{
+								i18n.baseText('instanceAi.onboarding.verification.errorDetails', {
+									interpolate: { details: failureDetail },
+								})
+							}}
+						</div>
+					</div>
 				</N8nCallout>
 			</Transition>
 		</div>
@@ -1313,7 +1340,7 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 				@click="emit('back')"
 			/>
 			<div
-				v-if="step !== 'done' && !editMode"
+				v-if="step !== 'done' && !editMode && visibleSetupSteps.length > 1"
 				:class="$style.dots"
 				:data-test-id="progressTestId"
 				aria-hidden="true"
@@ -1533,6 +1560,11 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 
 .editFooter > :last-child {
 	margin-left: 0;
+}
+
+.failureDetail {
+	margin-top: var(--spacing--4xs);
+	overflow-wrap: anywhere;
 }
 
 .dots {
