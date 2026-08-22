@@ -5,9 +5,6 @@ import { Container } from '@n8n/di';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
-
-import { Telemetry } from '@/telemetry';
-
 import { McpProtectedResource } from './mcp-protected-resource';
 import { McpServerMiddlewareService } from './mcp-server-middleware.service';
 import { McpConfig } from './mcp.config';
@@ -22,6 +19,9 @@ import { McpSettingsService } from './mcp.settings.service';
 import { isJSONRPCRequest } from './mcp.typeguards';
 import type { UserConnectedToMCPEventPayload } from './mcp.types';
 import { getClientInfo, getProtocolVersion } from './mcp.utils';
+
+import { mcpEnabledForDiscovery } from '@/modules/oauth-server/mcp-enabled-discovery.middleware';
+import { Telemetry } from '@/telemetry';
 
 export type FlushableResponse = Response & { flush: () => void };
 
@@ -91,7 +91,7 @@ export class McpController {
 	 */
 	@Get('/http', {
 		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
-		middlewares: [getAuthMiddleware()],
+		middlewares: [mcpEnabledForDiscovery, getAuthMiddleware()],
 		skipAuth: true,
 		usesTemplates: true,
 	})
@@ -100,7 +100,8 @@ export class McpController {
 
 		const enabled = await this.mcpSettingsService.getEnabled();
 		if (!enabled) {
-			res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
+			res.setHeader('Cache-Control', 'no-store');
+			res.status(404).json({ message: 'Not Found' });
 			return;
 		}
 
@@ -117,7 +118,7 @@ export class McpController {
 
 	@Post('/http', {
 		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
-		middlewares: [getAuthMiddleware()],
+		middlewares: [mcpEnabledForDiscovery, getAuthMiddleware()],
 		skipAuth: true,
 		usesTemplates: true,
 	})
@@ -157,8 +158,8 @@ export class McpController {
 					error: MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 				});
 			}
-			// Return 403 Forbidden
-			res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
+			res.setHeader('Cache-Control', 'no-store');
+			res.status(404).json({ message: 'Not Found' });
 			return;
 		}
 
