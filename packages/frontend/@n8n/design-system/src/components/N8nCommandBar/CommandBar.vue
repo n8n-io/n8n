@@ -152,19 +152,22 @@ const scrollSelectedIntoView = () => {
 	});
 };
 
-const openCommandBar = async () => {
-	isOpen.value = true;
-	selectedIndex.value = 0;
-	inputValue.value = '';
-	await nextTick();
-	inputRef.value?.focus();
-};
+// Watch instead of imperative open/close so parents can drive the `open` model too
+watch(isOpen, async (open) => {
+	if (open) {
+		selectedIndex.value = 0;
+		inputValue.value = '';
+		await nextTick();
+		inputRef.value?.focus();
+	} else {
+		selectedIndex.value = -1;
+		inputValue.value = '';
+		currentParentId.value = null;
+	}
+});
 
 const closeCommandBar = () => {
 	isOpen.value = false;
-	selectedIndex.value = -1;
-	inputValue.value = '';
-	currentParentId.value = null;
 };
 
 const navigateToChildren = (item: CommandBarItem) => {
@@ -202,7 +205,7 @@ const selectItem = (item: CommandBarItem) => {
 const handleKeydown = (event: KeyboardEvent) => {
 	if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
 		event.preventDefault();
-		void openCommandBar();
+		isOpen.value = true;
 		return;
 	}
 
