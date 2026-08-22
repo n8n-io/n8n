@@ -72,11 +72,17 @@ post:
               enum:
                 - must-preexist
                 - create-stub
+                - create-with-values
               default: create-stub
               description: >
                 What to do when a credential reference cannot be resolved.
                 `create-stub` (default) creates empty credential placeholders in
-                the target project for missing references. `must-preexist`
+                the target project for missing references. `create-with-values`
+                also creates them, seeded from the expression data bundled in the
+                package (see the export option `credentialExportPolicy`); a
+                reference the package carries no data for falls back to an empty
+                stub. Seeded credentials are listed under `credentials.seeded`
+                and do not block workflow publishing. `must-preexist`
                 requires every referenced credential to already exist.
             bindings:
               type: string
@@ -611,11 +617,14 @@ post:
                 type: object
                 description: >
                   Source credential ids grouped by whether they matched an
-                  existing credential or were created as stubs. Full
-                  source→target id mapping is in `bindings.credentials`.
+                  existing credential, were created as empty stubs, or were
+                  created and seeded from the package's bundled expression
+                  data. Full source→target id mapping is in
+                  `bindings.credentials`.
                 required:
                   - matched
                   - stubbed
+                  - seeded
                 properties:
                   matched:
                     type: array
@@ -631,6 +640,16 @@ post:
                     description: >
                       Source credential ids for which empty placeholder
                       credentials were created in the target project.
+                  seeded:
+                    type: array
+                    items:
+                      type: string
+                    description: >
+                      Source credential ids for which credentials were created
+                      in the target project and seeded from the expression
+                      data bundled in the package. Seeded credentials do not
+                      block workflow publishing; the publishing policy alone
+                      decides.
               variables:
                 type: object
                 description: >

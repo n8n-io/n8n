@@ -34,7 +34,12 @@ import {
 } from './import-result';
 import { emitPackageImportedEvent } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
-import { needsBundledVariableValues, placeByPolicy } from './package-layout';
+import {
+	needsBundledCredentialData,
+	needsBundledVariableValues,
+	placeByPolicy,
+	placeCredentialData,
+} from './package-layout';
 import type { PackageManifest } from '../spec/manifest.schema';
 
 /**
@@ -72,8 +77,22 @@ export class WorkflowPackageImporter {
 		);
 
 		const workflows = await this.packageParser.getWorkflows(reader);
+		const credentialRequirements = identifyRequirements(
+			manifest.requirements?.credentials,
+			workflows,
+		);
+		const bundledCredentials = needsBundledCredentialData(
+			request,
+			(credentialRequirements?.length ?? 0) > 0,
+		)
+			? await this.packageParser.getCredentials(reader)
+			: undefined;
 		const credentialRequest: CredentialBindingRequest = {
-			requirements: identifyRequirements(manifest.requirements?.credentials, workflows),
+			requirements: placeCredentialData({
+				requirements: credentialRequirements,
+				manifestCredentials: manifest.credentials,
+				bundledCredentials,
+			}),
 			matchingMode: request.credentialMatchingMode,
 			missingMode: request.credentialMissingMode,
 			credentialBindings: request.bindings?.credentials,
@@ -175,6 +194,7 @@ export class WorkflowPackageImporter {
 			credentials: {
 				matched: content.credentialResult.matched,
 				stubbed: content.credentialResult.stubbed,
+				seeded: content.credentialResult.seeded,
 			},
 			variables: toVariableSummary(content.variablePlan, content.variableResult),
 			tags: toTagSummary(content.tagPlan),

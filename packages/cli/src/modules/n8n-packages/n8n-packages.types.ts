@@ -23,7 +23,7 @@ export { WorkflowPublishingPolicy } from './entities/workflow/workflow-publishin
 export type { WorkflowPublishingOutcome } from './entities/workflow/workflow-publishing-policy.types';
 
 export type CredentialMatchingMode = 'id-only' | 'name-and-type' | 'type-only';
-export type CredentialMissingMode = 'must-preexist' | 'create-stub';
+export type CredentialMissingMode = 'must-preexist' | 'create-stub' | 'create-with-values';
 
 export type PackageFailureReason = 'access-denied' | 'entity-not-found' | 'blocked' | 'validation';
 
@@ -580,6 +580,8 @@ export interface ImportPackageSummary {
 export interface ImportCredentialSummary {
 	matched: string[];
 	stubbed: string[];
+	/** Source ids of credentials created and seeded from the package's bundled expression data. */
+	seeded: string[];
 }
 
 export interface ImportVariableSummary {

@@ -56,10 +56,10 @@ describe('CredentialDependencyService', () => {
 				entityManager,
 			});
 
-			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith([
-				'vault',
-				'awsSecretsManager',
-			]);
+			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith(
+				['vault', 'awsSecretsManager'],
+				entityManager,
+			);
 			expect(credentialDependencyRepository.upsertDependenciesForCredential).toHaveBeenCalledWith({
 				credentialId: 'cred-1',
 				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
@@ -78,7 +78,10 @@ describe('CredentialDependencyService', () => {
 				entityManager,
 			});
 
-			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith([]);
+			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith(
+				[],
+				entityManager,
+			);
 			expect(credentialDependencyRepository.upsertDependenciesForCredential).toHaveBeenCalledWith({
 				credentialId: 'cred-1',
 				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
@@ -102,10 +105,10 @@ describe('CredentialDependencyService', () => {
 				entityManager,
 			});
 
-			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith([
-				'vault',
-				'awsSecretsManager',
-			]);
+			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith(
+				['vault', 'awsSecretsManager'],
+				entityManager,
+			);
 			expect(credentialDependencyRepository.syncDependenciesForCredential).toHaveBeenCalledWith({
 				credentialId: 'cred-1',
 				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
@@ -124,7 +127,10 @@ describe('CredentialDependencyService', () => {
 				entityManager,
 			});
 
-			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith([]);
+			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith(
+				[],
+				entityManager,
+			);
 			expect(credentialDependencyRepository.syncDependenciesForCredential).toHaveBeenCalledWith({
 				credentialId: 'cred-1',
 				dependencyType: EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,

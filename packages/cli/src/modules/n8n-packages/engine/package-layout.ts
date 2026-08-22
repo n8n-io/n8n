@@ -1,11 +1,17 @@
 import { UserError } from 'n8n-workflow';
 
+import { credentialMissingModeUsesPackageData } from '../entities/credential/credential-missing-mode';
+import type { PlacedCredentialRequirement } from '../entities/credential/credential.types';
 import { variableMissingModeUsesPackageValue } from '../entities/variable/variable-missing-mode';
 import type { PlacedVariableRequirement } from '../entities/variable/variable.types';
 import { VariableConflictPolicy, VariableParentPolicy } from '../n8n-packages.types';
-import type { ImportVariableProperties } from '../n8n-packages.types';
+import type { ImportCredentialProperties, ImportVariableProperties } from '../n8n-packages.types';
 import type { ManifestEntry } from '../spec/manifest.schema';
-import type { PackageVariableRequirement } from '../spec/requirements.schema';
+import type {
+	PackageCredentialRequirement,
+	PackageVariableRequirement,
+} from '../spec/requirements.schema';
+import type { SerializedCredential } from '../spec/serialized/credential.schema';
 import type { SerializedVariable } from '../spec/serialized/variable.schema';
 
 export function foldersInScope(
@@ -24,6 +30,38 @@ export function workflowsInScope(
 			entry.target.startsWith(`${basePrefix}workflows/`) ||
 			entry.target.startsWith(`${basePrefix}folders/`),
 	);
+}
+
+export function needsBundledCredentialData(
+	request: ImportCredentialProperties,
+	hasRequirements: boolean,
+): boolean {
+	return hasRequirements && credentialMissingModeUsesPackageData(request.credentialMissingMode);
+}
+
+/**
+ * Attaches each requirement's bundled expression data. Lookup is by id: the manifest
+ * rejects duplicate credential ids, so each requirement has at most one bundle entry —
+ * scoped or top-level — regardless of which project owns the credential file.
+ */
+export function placeCredentialData({
+	requirements,
+	manifestCredentials,
+	bundledCredentials,
+}: {
+	requirements: PackageCredentialRequirement[] | undefined;
+	manifestCredentials: ManifestEntry[] | undefined;
+	bundledCredentials?: Map<string, SerializedCredential>;
+}): PlacedCredentialRequirement[] | undefined {
+	return requirements?.map((requirement) => {
+		const bundle = (manifestCredentials ?? []).find((entry) => entry.id === requirement.id);
+		const packageData = bundle ? bundledCredentials?.get(bundle.target)?.data : undefined;
+
+		return {
+			...requirement,
+			...(packageData !== undefined ? { packageData } : {}),
+		};
+	});
 }
 
 export function needsBundledVariableValues(

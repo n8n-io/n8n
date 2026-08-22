@@ -16,10 +16,12 @@ function filterValue(value: unknown): SerializedCredentialDataValue | undefined 
 		return containsExpression(value) ? value : undefined;
 	}
 	if (Array.isArray(value)) {
+		// Array positions carry meaning — dropping one entry would shift the rest into the
+		// wrong slot on seeding, so the array travels only when every entry survives.
 		const kept = value
 			.map(filterValue)
 			.filter((entry): entry is SerializedCredentialDataValue => entry !== undefined);
-		return kept.length > 0 ? kept : undefined;
+		return kept.length === value.length && kept.length > 0 ? kept : undefined;
 	}
 	if (isObject(value)) {
 		const kept = filterObject(value);

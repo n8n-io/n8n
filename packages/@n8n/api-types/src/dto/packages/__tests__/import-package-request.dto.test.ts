@@ -217,6 +217,17 @@ describe('ImportPackageRequestDto', () => {
 		}
 	});
 
+	it('accepts create-with-values credentialMissingMode', () => {
+		const result = ImportPackageRequestDto.safeParse({
+			credentialMissingMode: 'create-with-values',
+			workflowConflictPolicy: 'fail',
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.credentialMissingMode).toBe('create-with-values');
+		}
+	});
+
 	it('parses bindings from a JSON object string keyed by entity type', () => {
 		const result = ImportPackageRequestDto.safeParse({
 			bindings: '{"credentials":{"source-cred":"target-cred"}}',

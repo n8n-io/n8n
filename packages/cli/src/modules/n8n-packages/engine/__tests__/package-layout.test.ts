@@ -1,9 +1,12 @@
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { SerializedCredential } from '../../spec/serialized/credential.schema';
 import type { SerializedVariable } from '../../spec/serialized/variable.schema';
 import {
 	deriveParentFolderId,
 	foldersInScope,
+	needsBundledCredentialData,
 	placeByLayout,
+	placeCredentialData,
 	workflowsInScope,
 } from '../package-layout';
 
@@ -54,6 +57,58 @@ describe('package-layout', () => {
 				'pRoot',
 				'pFolder',
 			]);
+		});
+	});
+
+	describe('credential data placement', () => {
+		const requirement = {
+			id: 'cred-1',
+			name: 'GitHub',
+			type: 'githubApi',
+			usedByWorkflows: ['wf-1'],
+		};
+		const bundled = (target: string, data?: SerializedCredential['data']) =>
+			new Map<string, SerializedCredential>([
+				[target, { id: 'cred-1', name: 'GitHub', type: 'githubApi', ...(data ? { data } : {}) }],
+			]);
+
+		it('attaches bundled data by id regardless of which project dir carries the file', () => {
+			const placed = placeCredentialData({
+				requirements: [requirement],
+				manifestCredentials: [entry('cred-1', 'projects/x/credentials/github')],
+				bundledCredentials: bundled('projects/x/credentials/github', {
+					token: '={{ $secrets.gh }}',
+				}),
+			});
+
+			expect(placed).toEqual([{ ...requirement, packageData: { token: '={{ $secrets.gh }}' } }]);
+		});
+
+		it('leaves the requirement bare when the bundle carries no data or no file', () => {
+			const noData = placeCredentialData({
+				requirements: [requirement],
+				manifestCredentials: [entry('cred-1', 'credentials/github')],
+				bundledCredentials: bundled('credentials/github'),
+			});
+			const noFile = placeCredentialData({
+				requirements: [requirement],
+				manifestCredentials: [],
+				bundledCredentials: bundled('credentials/github', { token: '={{ $secrets.gh }}' }),
+			});
+
+			expect(noData).toEqual([requirement]);
+			expect(noFile).toEqual([requirement]);
+		});
+
+		it('needsBundledCredentialData only under create-with-values with requirements present', () => {
+			const request = (credentialMissingMode: 'create-stub' | 'create-with-values') => ({
+				credentialMatchingMode: 'id-only' as const,
+				credentialMissingMode,
+			});
+
+			expect(needsBundledCredentialData(request('create-with-values'), true)).toBe(true);
+			expect(needsBundledCredentialData(request('create-with-values'), false)).toBe(false);
+			expect(needsBundledCredentialData(request('create-stub'), true)).toBe(false);
 		});
 	});
 
