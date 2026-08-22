@@ -2,7 +2,6 @@ import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
 
 import type { CredentialBindingRequest } from '../entities/credential/credential.types';
 import { removesUnpackagedWorkflows } from '../entities/folder/folder-conflict-policy';
@@ -20,8 +19,7 @@ import type {
 	ImportBindingMap,
 	ImportedFolderSummary,
 	ImportedWorkflowSummary,
-	ResolvedImportPackageRequest,
-	ImportResult,
+	ResolvedImportRequest,
 	ImportTagSummary,
 	PackageImportBindings,
 } from '../n8n-packages.types';
@@ -45,7 +43,7 @@ import {
 	toTagSummary,
 	unionTagSummaries,
 } from './import-result';
-import { emitPackageImportedEvent, type PackageImportScope } from './import-telemetry';
+import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
 import type { SerializedVariable } from '../spec/serialized/variable.schema';
@@ -57,15 +55,14 @@ export class ProjectPackageImporter {
 		private readonly projectImporter: ProjectImporter,
 		private readonly importOrchestrator: ImportOrchestrator,
 		private readonly workflowPublisher: WorkflowPublisher,
-		private readonly eventService: EventService,
 		private readonly licenseState: LicenseState,
 	) {}
 
 	async import(
-		request: ResolvedImportPackageRequest,
+		request: ResolvedImportRequest,
 		reader: PackageReader,
 		manifest: PackageManifest,
-	): Promise<ImportResult> {
+	): Promise<ImportOutcome> {
 		this.assertAdequatePermissions(request, manifest);
 
 		const projects = await this.packageParser.getProjects(reader);
@@ -199,9 +196,7 @@ export class ProjectPackageImporter {
 			});
 		}
 
-		emitPackageImportedEvent(this.eventService, { request, manifest, scopes });
-
-		return buildImportResult({
+		const result = buildImportResult({
 			package: toPackageSummary(manifest),
 			workflows,
 			removedWorkflows,
@@ -220,10 +215,12 @@ export class ProjectPackageImporter {
 			}),
 			tags: unionTagSummaries(tagSummaries),
 		});
+
+		return { result, scopes };
 	}
 
 	private async buildImportContextForProject(
-		request: ResolvedImportPackageRequest,
+		request: ResolvedImportRequest,
 		reader: PackageReader,
 		manifest: PackageManifest,
 		project: ManifestEntry,
@@ -295,7 +292,7 @@ export class ProjectPackageImporter {
 	}
 
 	private assertAdequatePermissions(
-		request: ResolvedImportPackageRequest,
+		request: ResolvedImportRequest,
 		manifest: PackageManifest,
 	): void {
 		// A project package can create new projects or update matched ones (by source id), so require both —
