@@ -9,8 +9,10 @@ import {
 	Param,
 } from '@n8n/decorators';
 import { Response } from 'express';
+import { Z } from '@n8n/decorators';
 
 import { AgentCollaborationService } from '@/services/agent-collaboration.service';
+import { JoinAgentSessionDto, UpdateCursorDto } from '@/dto/agent-collaboration.dto';
 
 /**
  * Controller for real-time agent collaboration endpoints.
@@ -34,7 +36,7 @@ export class AgentCollaborationController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body() body: { userName?: string },
+		@Body(Z(JoinAgentSessionDto)) body: JoinAgentSessionDto,
 	) {
 		const user = req.user;
 		const userName = body.userName || user.firstName || user.email || 'Anonymous';
@@ -99,7 +101,7 @@ export class AgentCollaborationController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body() body: { x: number; y: number },
+		@Body(Z(UpdateCursorDto)) body: UpdateCursorDto,
 	) {
 		const user = req.user;
 

@@ -34,7 +34,7 @@ export function useAgentCollaboration(agentId?: string) {
 
 	// Computed properties
 	const hasActiveUsers = computed(() => userCount.value > 1);
-	const otherUsers = computed(() => 
+	const otherUsers = computed(() =>
 		activeUsers.value.filter(userId => userId !== usersStore.currentUserId)
 	);
 
@@ -136,13 +136,26 @@ export function useAgentCollaboration(agentId?: string) {
 	function handleCollaborationMessage(message: unknown) {
 		if (!message || typeof message !== 'object') return;
 
-		const msg = message as { type: string; agentId: string; payload: unknown };
+		// Messages come as { type, data } structure from push service
+		const pushMessage = message as { type: string; data: unknown };
+
+		// Only process agent collaboration messages
+		if (pushMessage.type !== 'agent-collaboration' && pushMessage.type !== 'agent-presence') {
+			return;
+		}
+
+		// Extract the actual collaboration message from data
+		const collabMessage = pushMessage.data as {
+			type: 'agent-collaboration' | 'agent-presence';
+			agentId: string;
+			payload: unknown;
+		};
 
 		// Only process messages for current agent
-		if (msg.agentId !== currentAgentId.value) return;
+		if (collabMessage.agentId !== currentAgentId.value) return;
 
-		if (msg.type === 'agent-presence' && msg.payload) {
-			const payload = msg.payload as {
+		if (collabMessage.type === 'agent-presence' && collabMessage.payload) {
+			const payload = collabMessage.payload as {
 				type: 'user-joined' | 'user-left' | 'cursor-update';
 				userId: string;
 				userName?: string;
@@ -165,10 +178,11 @@ export function useAgentCollaboration(agentId?: string) {
 			} else if (payload.type === 'cursor-update' && payload.position) {
 				cursorPositions.value.set(payload.userId, payload.position);
 			}
-		} else if (msg.type === 'agent-collaboration' && msg.payload) {
+		} else if (collabMessage.type === 'agent-collaboration' && collabMessage.payload) {
 			// Handle agent configuration changes
-			// This would trigger UI updates for concurrent edits
-			console.log('Agent configuration changed:', msg.payload);
+			// Emit event for the agent builder to handle concurrent edits
+			// This would typically dispatch to a store or emit a custom event
+			console.log('Agent configuration changed:', collabMessage.payload);
 		}
 	}
 
@@ -176,10 +190,11 @@ export function useAgentCollaboration(agentId?: string) {
 	onMounted(() => {
 		if (currentAgentId.value) {
 			joinSession();
-			
+
 			// Set up WebSocket message listener
-			// This would integrate with the existing push connection
-			// For now, we'll poll for presence updates
+			// TODO: Integrate with actual WebSocket push connection
+			// This would be: pushConnection.on('message', handleCollaborationMessage)
+			// For now, we'll poll for presence updates as fallback
 			const pollInterval = setInterval(() => {
 				if (isActive.value) {
 					fetchActiveUsers();
@@ -194,7 +209,7 @@ export function useAgentCollaboration(agentId?: string) {
 
 	onUnmounted(() => {
 		leaveSession();
-		
+
 		// Clear polling interval
 		const pollInterval = (window as unknown)._collaborationPollInterval as number;
 		if (pollInterval) {
@@ -212,11 +227,11 @@ export function useAgentCollaboration(agentId?: string) {
 		currentUserName,
 		isLoading,
 		error,
-		
+
 		// Computed
 		hasActiveUsers,
 		otherUsers,
-		
+
 		// Methods
 		joinSession,
 		leaveSession,

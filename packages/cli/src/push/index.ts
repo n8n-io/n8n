@@ -66,7 +66,14 @@ export class Push extends TypedEmitter<PushEvents> {
 			this.backend.on('message', (msg) => {
 				// Handle agent collaboration messages
 				if (this.isAgentCollaborationMessage(msg.msg)) {
-					void this.agentCollaborationService.handleClientMessage(msg.msg, msg.userId);
+					void this.agentCollaborationService
+						.handleClientMessage(msg.msg, msg.userId)
+						.catch((error) => {
+							this.logger.error('Error handling agent collaboration message', {
+								error: error as unknown,
+								userId: msg.userId,
+							});
+						});
 				}
 				this.emit('message', msg);
 			});

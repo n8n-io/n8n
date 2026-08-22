@@ -84,19 +84,21 @@ describe('AgentCollaborationService', () => {
 	describe('leaveAgent', () => {
 		it('should remove user from agent and broadcast presence', async () => {
 			const agentId = 'agent-456';
+			const user2: User = { id: 'user-456', email: 'user2@example.com' } as User;
 
-			// First join
-			await service.joinAgent(agentId, mockUser.id, 'Test User');
-			expect(service.isUserActive(agentId, mockUser.id)).toBe(true);
+			// Join two users
+			await service.joinAgent(agentId, mockUser.id, 'User 1');
+			await service.joinAgent(agentId, user2.id, 'User 2');
+			expect(service.getUserCount(agentId)).toBe(2);
 
-			// Then leave
+			// One user leaves
 			await service.leaveAgent(agentId, mockUser.id);
 
 			// Verify user is removed
 			expect(service.isUserActive(agentId, mockUser.id)).toBe(false);
-			expect(service.getUserCount(agentId)).toBe(0);
+			expect(service.getUserCount(agentId)).toBe(1);
 
-			// Verify broadcast was called
+			// Verify broadcast was called for remaining user
 			expect(mockPush.sendToUsers).toHaveBeenCalledWith(
 				{
 					type: 'agent-presence',
@@ -110,7 +112,7 @@ describe('AgentCollaborationService', () => {
 						},
 					},
 				},
-				[mockUser.id],
+				[mockUser.id, user2.id],
 			);
 		});
 

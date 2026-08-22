@@ -12,8 +12,12 @@ This feature enables real-time collaborative editing of AI agents in n8n, allowi
 - **Real-time Presence**: See who else is currently editing an agent
 - **Cursor Tracking**: Live cursor positions of other users
 - **Change Broadcasting**: Configuration changes are instantly propagated to all users
-- **Conflict Resolution**: Built-in mechanisms to handle concurrent edits
 - **Session Management**: Users can join/leave collaboration sessions
+
+### Future Enhancements
+
+- **Conflict Resolution**: Built-in mechanisms to handle concurrent edits (planned)
+- **CRDT Integration**: Leverage existing `@n8n/crdt` package for conflict resolution (planned)
 
 ### Technical Implementation
 
@@ -25,6 +29,7 @@ The backend implementation leverages n8n's existing infrastructure:
 - **Agent Collaboration Service**: Manages collaboration sessions and presence tracking
 - **REST API Controller**: Provides endpoints for session management
 - **Type-Safe Messages**: Structured message types for collaboration events
+- **DTO Validation**: Zod-based request validation for type safety
 
 #### Frontend Architecture
 
@@ -208,6 +213,9 @@ GET /agent-collaboration/:agentId/status
 ```vue
 <script setup lang="ts">
 import { useAgentCollaboration } from '@/features/agents/composables/useAgentCollaboration';
+import { useUsersStore } from '@/stores/users.store';
+
+const usersStore = useUsersStore();
 
 const {
   isActive,
@@ -240,7 +248,7 @@ onUnmounted(() => {
     <AgentCollaborationPresence
       :active-users="activeUsers"
       :user-count="userCount"
-      :current-user-id="currentUserId"
+      :current-user-id="usersStore.currentUserId"
     />
   </div>
 </template>

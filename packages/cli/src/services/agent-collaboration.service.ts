@@ -83,6 +83,11 @@ export class AgentCollaborationService {
 		userId: User['id'],
 		position: { x: number; y: number },
 	): Promise<void> {
+		// Validate user is authorized and active on this agent
+		if (!this.isUserActive(agentId, userId)) {
+			throw new UnexpectedError('User not authorized to update cursor on this agent');
+		}
+
 		if (!this.userCursors.has(agentId)) {
 			this.userCursors.set(agentId, new Map());
 		}
@@ -209,7 +214,12 @@ export class AgentCollaborationService {
 			const agentId = msg.agentId as string;
 			const payload = msg.payload as { type: 'user-joined' | 'user-left' | 'cursor-update'; userId: string; position?: { x: number; y: number } };
 
+			// For cursor updates from WebSocket, also validate authorization
 			if (payload.type === 'cursor-update' && payload.position) {
+				// The userId in payload should match the sender userId
+				if (payload.userId !== userId) {
+					throw new UnexpectedError('Cursor update userId mismatch');
+				}
 				await this.updateCursor(agentId, userId, payload.position);
 			}
 		}
@@ -219,8 +229,15 @@ export class AgentCollaborationService {
 	 * Clean up inactive users (called periodically)
 	 */
 	cleanupInactiveUsers(): void {
-		// Implementation would check for inactive connections and remove them
-		// This is a placeholder for future enhancement
+		// Track connection activity and remove stale sessions
+		// For now, this is a placeholder for future enhancement
+		// TODO: Implement heartbeat mechanism to detect disconnected clients
 		this.logger.debug('Cleaning up inactive users');
+
+		// Future implementation would:
+		// 1. Track last activity timestamp per user
+		// 2. Remove users inactive for > 5 minutes
+		// 3. Clean up associated cursor positions
+		// 4. Broadcast user-left events for cleaned up users
 	}
 }
