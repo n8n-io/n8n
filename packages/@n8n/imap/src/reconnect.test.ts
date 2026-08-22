@@ -1,274 +1,463 @@
-import { ReconnectTimeoutError } from './errors';
-import { ImapSimple, type CloseReason } from './imap-simple';
-import { box, transportFactory, settle, type FakeImap } from '../test/fake-imap';
+import { EventEmitter } from 'events';
 
-const WATCHING = { mailbox: 'INBOX' };
+import { ImapSimple, type ImapTransport } from './imap-simple';
 
-/** The transport settles through `setImmediate`, so only the timers under test are faked. */
-const useTimers = () => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+const RECONNECT_TIMEOUT = 45_000;
+const REPLACE_INTERVAL = 5 * 60 * 1000;
 
-afterEach(() => vi.useRealTimers());
+class FakeTransport extends EventEmitter {
+	usable = true;
 
-const connect = async (
-	reconnect: Parameters<typeof ImapSimple.connectWith>[1],
-	init?: (transport: FakeImap, attempt: number) => void,
-) => {
-	const factory = transportFactory(init);
-	const connection = await ImapSimple.connectWith(factory.create, reconnect);
+	connect = vi.fn().mockResolvedValue(undefined);
 
-	const events = {
-		error: vi.fn<(error: Error) => void>(),
-		close: vi.fn<(reason: CloseReason) => void>(),
-		reconnect: vi.fn(),
-		arrival: vi.fn(),
-	};
-	connection.onError(events.error).onClose(events.close).onReconnect(events.reconnect);
+	mailboxOpen = vi.fn().mockResolvedValue({ exists: 0 });
 
-	return { connection, factory, events, imap: () => factory.latest() };
+	logout = vi.fn().mockResolvedValue(true);
+
+	close = vi.fn();
+}
+
+const neverSettles = async <T>(): Promise<T> => await new Promise<T>(() => {});
+
+const openWatching = async (
+	createTransport: () => ImapTransport,
+	overrides: { interval?: number } = {},
+) =>
+	await ImapSimple.connectWith(createTransport, {
+		mailbox: 'INBOX',
+		timeout: RECONNECT_TIMEOUT,
+		...overrides,
+	});
+
+/** Hands out each transport in turn, reusing the last once the list runs out. */
+const handOut = (...transports: FakeTransport[]) => {
+	let index = 0;
+	return () => transports[Math.min(index++, transports.length - 1)] as unknown as ImapTransport;
 };
 
-describe('reconnect', () => {
-	describe('after a drop', () => {
-		it('puts a fresh transport in place and reopens the mailbox', async () => {
-			const { factory, events, imap } = await connect(WATCHING);
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 
-			imap().drop();
-			await settle();
+describe('reconnecting', () => {
+	it('restores itself when the transport drops', async () => {
+		const [first, second] = [new FakeTransport(), new FakeTransport()];
+		const onClose = vi.fn();
+		const onReconnect = vi.fn();
 
-			expect(factory.built).toHaveLength(2);
-			expect(imap().openBox).toHaveBeenCalledWith('INBOX', expect.any(Function));
-			expect(events.reconnect).toHaveBeenCalledTimes(1);
-			expect(events.close).not.toHaveBeenCalled();
+		const connection = await openWatching(handOut(first, second));
+		connection.onClose(onClose).onReconnect(onReconnect);
+
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(onReconnect).toHaveBeenCalledTimes(1);
+		expect(second.mailboxOpen).toHaveBeenCalledWith('INBOX');
+		expect(onClose).not.toHaveBeenCalled();
+	});
+
+	it('keeps the same connection, so a handler registered once still runs', async () => {
+		const [first, second] = [new FakeTransport(), new FakeTransport()];
+		const onArrival = vi.fn().mockResolvedValue(undefined);
+
+		const connection = await openWatching(handOut(first, second));
+		connection.onArrival(onArrival);
+
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(1);
+		second.emit('exists', { path: 'INBOX', count: 2, prevCount: 1 });
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(onArrival).toHaveBeenCalledWith({ count: 2, prevCount: 1 });
+	});
+
+	it('has the caller look at the mailbox again after a reconnect', async () => {
+		const [first, second] = [new FakeTransport(), new FakeTransport()];
+		second.mailboxOpen.mockResolvedValue({ exists: 4 });
+		const onArrival = vi.fn().mockResolvedValue(undefined);
+
+		const connection = await openWatching(handOut(first, second));
+		connection.onArrival(onArrival);
+
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(onArrival).toHaveBeenCalledTimes(1);
+	});
+
+	it('leaves what the mailbox already held alone on the first connection', async () => {
+		const first = new FakeTransport();
+		first.mailboxOpen.mockResolvedValue({ exists: 4 });
+		const onArrival = vi.fn().mockResolvedValue(undefined);
+
+		const connection = await openWatching(handOut(first));
+		connection.onArrival(onArrival);
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(onArrival).not.toHaveBeenCalled();
+	});
+
+	it('does not let a stale attempt tear down the transport that won', async () => {
+		const [first, second, third] = [new FakeTransport(), new FakeTransport(), new FakeTransport()];
+		let releaseSelect!: () => void;
+		second.mailboxOpen.mockReturnValue(
+			new Promise((resolve) => {
+				releaseSelect = () => resolve({ exists: 0 });
+			}),
+		);
+		const onArrival = vi.fn().mockResolvedValue(undefined);
+
+		const connection = await openWatching(handOut(first, second, third));
+		connection.onArrival(onArrival);
+
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(1);
+		second.emit('close');
+		await vi.advanceTimersByTimeAsync(1);
+		releaseSelect();
+		await vi.advanceTimersByTimeAsync(1);
+
+		third.emit('exists', { path: 'INBOX', count: 2, prevCount: 1 });
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(third.close).not.toHaveBeenCalled();
+		expect(onArrival).toHaveBeenCalledWith({ count: 2, prevCount: 1 });
+	});
+
+	it('fails to connect when the first transport drops before it is in place', async () => {
+		const first = new FakeTransport();
+		let releaseSelect!: () => void;
+		first.mailboxOpen.mockReturnValue(
+			new Promise((resolve) => {
+				releaseSelect = () => resolve({ exists: 0 });
+			}),
+		);
+		let handedOutFirst = false;
+
+		const connecting = expect(
+			openWatching(() => {
+				if (handedOutFirst) throw new Error('getaddrinfo ENOTFOUND imap.test.com');
+				handedOutFirst = true;
+				return first as unknown as ImapTransport;
+			}),
+		).rejects.toThrow('ENOTFOUND');
+
+		await vi.advanceTimersByTimeAsync(1);
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(1);
+		releaseSelect();
+
+		await connecting;
+	});
+
+	it('does not report the errors it recovers from', async () => {
+		const [first, second] = [new FakeTransport(), new FakeTransport()];
+		const onError = vi.fn();
+
+		const connection = await openWatching(handOut(first, second));
+		connection.onError(onError);
+
+		first.emit('error', new Error('read ECONNRESET'));
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(onError).not.toHaveBeenCalled();
+	});
+
+	it('reports and closes when it cannot get back', async () => {
+		const first = new FakeTransport();
+		const onError = vi.fn();
+		const onClose = vi.fn();
+		let handedOutFirst = false;
+
+		const connection = await openWatching(() => {
+			if (handedOutFirst) throw new Error('getaddrinfo ENOTFOUND imap.test.com');
+			handedOutFirst = true;
+			return first as unknown as ImapTransport;
+		});
+		connection.onError(onError).onClose(onClose);
+
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(1);
+
+		const reported = onError.mock.calls[0][0] as Error;
+		expect(reported.message).toContain('ENOTFOUND');
+		expect(onClose).toHaveBeenCalledWith('error');
+	});
+
+	it('gives up on an attempt that outlives the timeout', async () => {
+		const first = new FakeTransport();
+		const onError = vi.fn();
+		const onClose = vi.fn();
+		let handedOutFirst = false;
+
+		const connection = await openWatching(() => {
+			if (handedOutFirst) return { connect: neverSettles } as unknown as ImapTransport;
+			handedOutFirst = true;
+			return first as unknown as ImapTransport;
+		});
+		connection.onError(onError).onClose(onClose);
+
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(RECONNECT_TIMEOUT + 1);
+
+		expect(onError).toHaveBeenCalledWith(
+			expect.objectContaining({ message: 'Reconnecting to the IMAP server timed out' }),
+		);
+		expect(onClose).toHaveBeenCalledWith('error');
+	});
+
+	it('stays silent once it has closed for good', async () => {
+		const first = new FakeTransport();
+		const onClose = vi.fn();
+		let handedOutFirst = false;
+
+		const connection = await openWatching(() => {
+			if (handedOutFirst) throw new Error('still down');
+			handedOutFirst = true;
+			return first as unknown as ImapTransport;
+		});
+		connection.onClose(onClose);
+
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(1);
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(onClose).toHaveBeenCalledTimes(1);
+	});
+
+	it('does not try to restore a connection the caller ended', async () => {
+		const [first, second] = [new FakeTransport(), new FakeTransport()];
+		const onClose = vi.fn();
+
+		const connection = await openWatching(handOut(first, second));
+		connection.onClose(onClose);
+
+		connection.end();
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(onClose).toHaveBeenCalledWith('ended');
+		expect(second.connect).not.toHaveBeenCalled();
+	});
+
+	describe('when a handler is cut short', () => {
+		it('keeps the failure to itself when the error reaches the handler before the close', async () => {
+			const [first, second] = [new FakeTransport(), new FakeTransport()];
+			const onError = vi.fn();
+			const onReconnect = vi.fn();
+			const connection = await openWatching(handOut(first, second));
+			connection.onError(onError).onReconnect(onReconnect);
+			connection.onArrival(
+				async () =>
+					await new Promise((_, reject) => first.once('error', () => reject(new Error('ECONNRESET')))),
+			);
+
+			first.emit('exists', { path: 'INBOX', count: 1, prevCount: 0 });
+			await vi.advanceTimersByTimeAsync(1);
+			first.emit('error', new Error('ECONNRESET'));
+			first.emit('close');
+			await vi.advanceTimersByTimeAsync(1);
+
+			expect(onError).not.toHaveBeenCalled();
+			expect(onReconnect).toHaveBeenCalledTimes(1);
 		});
 
-		it('keeps the failure that caused it to itself', async () => {
-			const { events, imap } = await connect(WATCHING);
-
-			imap().drop(new Error('ECONNRESET'));
-			await settle();
-
-			expect(events.error).not.toHaveBeenCalled();
-		});
-
-		it('carries the caller handlers over to the new transport', async () => {
-			const { connection, events, imap } = await connect(WATCHING);
-			connection.onArrival(events.arrival);
-
-			imap().drop();
-			await settle();
-			imap().emit('mail', 1);
-			await settle();
-
-			expect(events.arrival).toHaveBeenCalledWith({ count: 1 });
-		});
-
-		it('picks up mail that landed while it was down', async () => {
-			const { connection, events, imap } = await connect(WATCHING, (transport, attempt) => {
-				if (attempt > 0) transport.mailbox = box(5);
+		it('rescans even when the handler never settles on the dead transport', async () => {
+			const [first, second] = [new FakeTransport(), new FakeTransport()];
+			const runs = vi.fn();
+			const connection = await openWatching(handOut(first, second));
+			connection.onArrival(async () => {
+				runs();
+				if (runs.mock.calls.length === 1) await neverSettles();
 			});
-			connection.onArrival(events.arrival);
 
-			imap().drop();
-			await settle();
+			first.emit('exists', { path: 'INBOX', count: 1, prevCount: 0 });
+			await vi.advanceTimersByTimeAsync(1);
+			first.emit('close');
+			await vi.advanceTimersByTimeAsync(1);
 
-			expect(events.arrival).toHaveBeenCalledWith({ count: 5 });
+			expect(runs).toHaveBeenCalledTimes(2);
 		});
 
-		it('does not treat what the mailbox already held on activation as new mail', async () => {
-			const { connection, events } = await connect(WATCHING, (t) => (t.mailbox = box(9)));
-			connection.onArrival(events.arrival);
-			await settle();
+		it('reports a failure that belongs to the transport now in place', async () => {
+			const [first, second] = [new FakeTransport(), new FakeTransport()];
+			const onError = vi.fn();
+			const connection = await openWatching(handOut(first, second));
+			connection.onError(onError);
+			connection.onArrival(() => {
+				throw new Error('rescan blew up');
+			});
 
-			expect(events.arrival).not.toHaveBeenCalled();
+			first.emit('close');
+			await vi.advanceTimersByTimeAsync(1);
+
+			expect(onError).toHaveBeenCalledWith(expect.objectContaining({ message: 'rescan blew up' }));
 		});
 	});
 
-	describe('when it cannot be restored', () => {
-		it('reports the failure and closes', async () => {
-			const { events, imap } = await connect(WATCHING, (transport, attempt) => {
-				if (attempt > 0) transport.connectResult = 'close';
-			});
+	describe('catchUp', () => {
+		it('has the caller look at the mailbox', async () => {
+			const onArrival = vi.fn().mockResolvedValue(undefined);
+			const connection = await openWatching(handOut(new FakeTransport()));
+			connection.onArrival(onArrival);
 
-			imap().drop();
-			await settle();
+			connection.catchUp();
+			await vi.advanceTimersByTimeAsync(1);
 
-			expect(events.error).toHaveBeenCalledTimes(1);
-			expect(events.close).toHaveBeenCalledWith('error');
+			expect(onArrival).toHaveBeenCalledTimes(1);
 		});
 
-		it('gives up on an attempt that never settles', async () => {
-			useTimers();
-			const { events, imap } = await connect({ ...WATCHING, timeout: 1000 }, (t, attempt) => {
-				if (attempt > 0) t.connectResult = 'never';
+		it('waits for a handler that is already running', async () => {
+			let running = 0;
+			let overlapped = false;
+			const transport = new FakeTransport();
+			const connection = await openWatching(handOut(transport));
+			connection.onArrival(async () => {
+				running += 1;
+				if (running > 1) overlapped = true;
+				await new Promise((resolve) => setTimeout(resolve, 100));
+				running -= 1;
 			});
 
-			imap().drop();
-			await vi.advanceTimersByTimeAsync(1000);
-			await settle();
+			transport.emit('exists', { path: 'INBOX', count: 2, prevCount: 1 });
+			connection.catchUp();
+			await vi.advanceTimersByTimeAsync(500);
 
-			expect(events.error).toHaveBeenCalledWith(expect.any(ReconnectTimeoutError));
-			expect(events.close).toHaveBeenCalledWith('error');
+			expect(overlapped).toBe(false);
+		});
+
+		it('holds the request until a handler is registered', async () => {
+			const onArrival = vi.fn().mockResolvedValue(undefined);
+			const connection = await openWatching(handOut(new FakeTransport()));
+
+			connection.catchUp();
+			await vi.advanceTimersByTimeAsync(1);
+			connection.onArrival(onArrival);
+			await vi.advanceTimersByTimeAsync(1);
+
+			expect(onArrival).toHaveBeenCalledTimes(1);
+		});
+
+		it('stays silent once the connection is spent', async () => {
+			const onArrival = vi.fn().mockResolvedValue(undefined);
+			const connection = await openWatching(handOut(new FakeTransport()));
+			connection.onArrival(onArrival);
+
+			connection.end();
+			connection.catchUp();
+			await vi.advanceTimersByTimeAsync(1);
+
+			expect(onArrival).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('on a schedule', () => {
-		it('replaces the transport every interval', async () => {
-			useTimers();
-			const { factory, events } = await connect({ ...WATCHING, interval: 60_000 });
+		it('replaces the transport on the interval', async () => {
+			const [first, second] = [new FakeTransport(), new FakeTransport()];
+			const onReconnect = vi.fn();
 
-			await vi.advanceTimersByTimeAsync(60_000);
-			await settle();
-			expect(factory.built).toHaveLength(2);
+			const connection = await openWatching(handOut(first, second), {
+				interval: REPLACE_INTERVAL,
+			});
+			connection.onReconnect(onReconnect);
 
-			await vi.advanceTimersByTimeAsync(60_000);
-			await settle();
-			expect(factory.built).toHaveLength(3);
-			expect(events.close).not.toHaveBeenCalled();
+			await vi.advanceTimersByTimeAsync(REPLACE_INTERVAL + 1);
+
+			expect(first.close).toHaveBeenCalled();
+			expect(onReconnect).toHaveBeenCalledTimes(1);
+			expect(second.mailboxOpen).toHaveBeenCalledWith('INBOX');
 		});
 
-		it('stops once the caller ends the connection', async () => {
-			useTimers();
-			const { connection, factory } = await connect({ ...WATCHING, interval: 60_000 });
+		it('does not let a slow replace stack up behind the next tick', async () => {
+			// A replace that outlasts its own interval; a naive interval timer would double up.
+			const TICK = 10_000;
+			const REPLACE_DURATION = 3 * TICK;
+			const startedAt: number[] = [];
+			const createTransport = vi.fn(() => {
+				const transport = new FakeTransport();
+				// The first connect must settle without the clock being driven, so only the
+				// replacements are slow.
+				if (startedAt.length > 0) {
+					transport.connect.mockImplementation(
+						async () => await new Promise((resolve) => setTimeout(resolve, REPLACE_DURATION)),
+					);
+				}
+				startedAt.push(Date.now());
+				return transport as unknown as ImapTransport;
+			});
 
+			await ImapSimple.connectWith(createTransport, {
+				mailbox: 'INBOX',
+				interval: TICK,
+				timeout: 10 * REPLACE_DURATION,
+			});
+			await vi.advanceTimersByTimeAsync(10 * TICK);
+
+			expect(startedAt.length).toBeGreaterThan(2);
+			// The first gap is just the tick; every later one waits out the replace before it.
+			for (let i = 2; i < startedAt.length; i++) {
+				expect(startedAt[i] - startedAt[i - 1]).toBeGreaterThanOrEqual(TICK + REPLACE_DURATION);
+			}
+		});
+
+		it('closes instead of piling attempts up when a scheduled replace hangs', async () => {
+			const first = new FakeTransport();
+			const onError = vi.fn();
+			const onClose = vi.fn();
+			let attempts = 0;
+			const createTransport = vi.fn(() => {
+				if (attempts++ === 0) return first as unknown as ImapTransport;
+				return { connect: neverSettles } as unknown as ImapTransport;
+			});
+
+			const connection = await ImapSimple.connectWith(createTransport, {
+				mailbox: 'INBOX',
+				interval: REPLACE_INTERVAL,
+				timeout: RECONNECT_TIMEOUT,
+			});
+			connection.onError(onError).onClose(onClose);
+
+			await vi.advanceTimersByTimeAsync(REPLACE_INTERVAL * 4);
+
+			expect(onError).toHaveBeenCalledTimes(1);
+			expect(onClose).toHaveBeenCalledExactlyOnceWith('error');
+			expect(createTransport).toHaveBeenCalledTimes(2);
+		});
+
+		it('stops replacing once a drop it could not recover from closed it', async () => {
+			const first = new FakeTransport();
+			let attempts = 0;
+			const createTransport = vi.fn(() => {
+				if (attempts++ === 0) return first as unknown as ImapTransport;
+				throw new Error('still down');
+			});
+
+			const connection = await ImapSimple.connectWith(createTransport, {
+				mailbox: 'INBOX',
+				interval: REPLACE_INTERVAL,
+				timeout: RECONNECT_TIMEOUT,
+			});
+			connection.onError(vi.fn()).onClose(vi.fn());
+
+			first.emit('close');
+			await vi.advanceTimersByTimeAsync(REPLACE_INTERVAL * 3);
+
+			expect(createTransport).toHaveBeenCalledTimes(2);
+		});
+
+		it('stops replacing once the caller ends it', async () => {
+			const transport = new FakeTransport();
+			const createTransport = vi.fn(() => transport as unknown as ImapTransport);
+
+			const connection = await ImapSimple.connectWith(createTransport, {
+				mailbox: 'INBOX',
+				interval: REPLACE_INTERVAL,
+			});
 			connection.end();
-			await vi.advanceTimersByTimeAsync(180_000);
-			await settle();
+			await vi.advanceTimersByTimeAsync(REPLACE_INTERVAL * 3);
 
-			expect(factory.built).toHaveLength(1);
-		});
-	});
-
-	describe('when a handler is cut short', () => {
-		it('keeps the failure to itself and rescans once the mailbox is back', async () => {
-			const { connection, events, imap } = await connect(WATCHING, (transport, attempt) => {
-				if (attempt > 0) transport.mailbox = box(4);
-			});
-			imap().search.mockImplementation(() => {});
-			connection.onArrival(async (arrival) => {
-				events.arrival(arrival);
-				await connection.search(['UNSEEN'], {});
-			});
-
-			imap().emit('mail', 1);
-			await settle();
-			imap().drop();
-			await settle();
-
-			expect(events.error).not.toHaveBeenCalled();
-			expect(events.close).not.toHaveBeenCalled();
-			expect(events.reconnect).toHaveBeenCalledTimes(1);
-			expect(events.arrival).toHaveBeenNthCalledWith(2, { count: 4 });
-		});
-
-		it('keeps a failure to itself when the error reaches the handler before the close', async () => {
-			const { connection, events, imap } = await connect(WATCHING, (transport, attempt) => {
-				if (attempt > 0) transport.mailbox = box(4);
-			});
-			const dropped = imap();
-			dropped.search.mockImplementation((_criteria, onResults) => {
-				dropped.once('error', (error: Error) => onResults(error, []));
-			});
-			connection.onArrival(async () => {
-				await connection.search(['UNSEEN'], {});
-			});
-
-			dropped.emit('mail', 1);
-			await settle();
-			dropped.drop(new Error('ECONNRESET'));
-			await settle();
-
-			expect(events.error).not.toHaveBeenCalled();
-			expect(events.close).not.toHaveBeenCalled();
-			expect(events.reconnect).toHaveBeenCalledTimes(1);
-		});
-
-		it('rescans even with an arrival queued behind the run that was cut short', async () => {
-			const arrivals: number[] = [];
-			const { connection, imap } = await connect(WATCHING, (transport, attempt) => {
-				if (attempt > 0) transport.mailbox = box(4);
-			});
-			imap().search.mockImplementation(() => {});
-			connection.onArrival(async ({ count }) => {
-				arrivals.push(count);
-				if (count === 1) await connection.search(['UNSEEN'], {});
-			});
-
-			imap().emit('mail', 1);
-			imap().emit('mail', 2);
-			await settle();
-			imap().drop();
-			await settle();
-
-			expect(arrivals).toEqual([1, 4]);
-		});
-
-		it('carries on serving arrivals after one was cut short', async () => {
-			const arrivals: number[] = [];
-			const { connection, imap } = await connect(WATCHING, (transport, attempt) => {
-				if (attempt > 0) transport.mailbox = box(4);
-			});
-			imap().search.mockImplementation(() => {});
-			connection.onArrival(async ({ count }) => {
-				arrivals.push(count);
-				if (arrivals.length === 1) await connection.search(['UNSEEN'], {});
-			});
-
-			imap().emit('mail', 1);
-			await settle();
-			imap().drop();
-			await settle();
-
-			expect(arrivals).toEqual([1, 4]);
-		});
-
-		it('carries on serving arrivals after a scheduled replacement cut one short', async () => {
-			useTimers();
-			const arrivals: number[] = [];
-			const { connection, imap } = await connect(
-				{ ...WATCHING, interval: 60_000 },
-				(transport, attempt) => {
-					if (attempt > 0) transport.mailbox = box(4);
-				},
-			);
-			imap().search.mockImplementation(() => {});
-			connection.onArrival(async ({ count }) => {
-				arrivals.push(count);
-				if (arrivals.length === 1) await connection.search(['UNSEEN'], {});
-			});
-
-			imap().emit('mail', 1);
-			await settle();
-			await vi.advanceTimersByTimeAsync(60_000);
-			await settle();
-
-			expect(arrivals).toEqual([1, 4]);
-		});
-	});
-
-	describe('when the mailbox cannot be selected', () => {
-		it('tears the transport it opened down instead of leaving it connected', async () => {
-			const factory = transportFactory((t) => (t.mailbox = new Error('no such mailbox')));
-
-			await expect(ImapSimple.connectWith(factory.create, { mailbox: 'Nope' })).rejects.toThrow(
-				'no such mailbox',
-			);
-			await settle();
-
-			expect(factory.latest().end).toHaveBeenCalled();
-			expect(factory.built).toHaveLength(1);
-		});
-	});
-
-	describe('when the caller ends it', () => {
-		it('does not restore a transport it tore down itself', async () => {
-			const { connection, factory, events } = await connect(WATCHING);
-
-			connection.end();
-			await settle();
-
-			expect(factory.built).toHaveLength(1);
-			expect(events.reconnect).not.toHaveBeenCalled();
-			expect(events.close).toHaveBeenCalledWith('ended');
+			expect(createTransport).toHaveBeenCalledTimes(1);
 		});
 	});
 });
