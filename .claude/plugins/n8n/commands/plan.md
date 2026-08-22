@@ -1,6 +1,6 @@
 ---
 description: Plan n8n Linear ticket implementation
-argument-hint: [PAY-XXXX | DEV-XXXX | ENG-XXXX]
+argument-hint: "[PAY-XXXX | DEV-XXXX | ENG-XXXX]"
 allowed-tools: Task, Agent, Read, Glob, Grep, Write, Bash
 ---
 
