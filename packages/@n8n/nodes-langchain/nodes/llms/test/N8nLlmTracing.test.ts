@@ -368,6 +368,7 @@ describe('N8nLlmTracing', () => {
 				index: 0,
 				options: { model: 'test-model' },
 				messages: prompts,
+				promptTokensEstimate: 100,
 			});
 			expect(executionFunctions.addInputData).toHaveBeenCalledWith(
 				'ai_languageModel',

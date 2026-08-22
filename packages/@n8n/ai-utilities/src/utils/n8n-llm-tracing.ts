@@ -35,6 +35,8 @@ type TokensUsageParser = (result: LLMResult) => TokenUsageResult;
 type RunDetail = {
 	index: number;
 	messages: BaseMessage[] | string[] | string;
+	/** Prompt-token estimate for this specific run, read back in `handleLLMEnd`. */
+	promptTokensEstimate?: number;
 	options: SerializedSecret | SerializedNotImplemented | SerializedFields;
 };
 
@@ -152,9 +154,10 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 				output.generations,
 			);
 
-			tokenUsageEstimate.promptTokens = this.promptTokensEstimate;
-			tokenUsageEstimate.totalTokens =
-				tokenUsageEstimate.completionTokens + this.promptTokensEstimate;
+			// Read the estimate for THIS run so interleaved runs don't cross values.
+			const promptTokensEstimate = runDetails.promptTokensEstimate ?? this.promptTokensEstimate;
+			tokenUsageEstimate.promptTokens = promptTokensEstimate;
+			tokenUsageEstimate.totalTokens = tokenUsageEstimate.completionTokens + promptTokensEstimate;
 		}
 		const response: {
 			response: { generations: LLMResult['generations'] };
@@ -212,6 +215,56 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 		});
 	}
 
+	async handleChatModelStart(llm: Serialized, messages: BaseMessage[][], runId: string) {
+		const prompts = messages[0].map((m) => {
+			if (typeof m.content === 'string') {
+				return m.content;
+			}
+			return JSON.stringify(m.content);
+		});
+		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
+		const sourceNodeRunIndex =
+			this.#parentRunIndex !== undefined
+				? this.#parentRunIndex + this.executionFunctions.getNextRunIndex()
+				: undefined;
+
+		const options = redactHeaderValues(
+			llm.type === 'constructor' ? llm.kwargs : llm,
+			this.options.redactedHeaders ?? [],
+		);
+		const serializedMessages = messages[0].map((message) => {
+			if (typeof message?.toJSON === 'function') {
+				return message.toJSON();
+			}
+			return message;
+		});
+
+		const { index } = this.executionFunctions.addInputData(
+			this.connectionType,
+			[
+				[
+					{
+						json: {
+							messages: serializedMessages,
+							estimatedTokens,
+							options,
+						},
+					},
+				],
+			],
+			sourceNodeRunIndex,
+		);
+
+		// Save the run details for later use when processing `handleLLMEnd` event
+		this.runsMap[runId] = {
+			index,
+			options,
+			messages: messages[0],
+			promptTokensEstimate: estimatedTokens,
+		};
+		this.promptTokensEstimate = estimatedTokens;
+	}
+
 	async handleLLMStart(llm: Serialized, prompts: string[], runId: string) {
 		const estimatedTokens = await this.estimateTokensFromStringList(prompts);
 		const sourceNodeRunIndex =
@@ -244,6 +297,7 @@ export class N8nLlmTracing extends BaseCallbackHandler {
 			index,
 			options,
 			messages: prompts,
+			promptTokensEstimate: estimatedTokens,
 		};
 		this.promptTokensEstimate = estimatedTokens;
 	}
