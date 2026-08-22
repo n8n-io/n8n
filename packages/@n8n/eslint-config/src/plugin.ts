@@ -31,6 +31,10 @@ export const localRulesPlugin = {
 				'n8n-local-rules/no-dynamic-regexp': 'warn',
 				'n8n-local-rules/no-restricted-sleep-definition': 'error',
 				'n8n-local-rules/no-restricted-sleep-import': 'error',
+				// Enabled repo-wide rather than in the test-file override in base.ts: the
+				// override's globs miss `*.spec.ts`, and some packages narrow them further.
+				// The rule only matches `it.todo`-shaped calls, so it is inert elsewhere.
+				'n8n-local-rules/no-todo-test-with-body': 'error',
 			},
 		},
 	},

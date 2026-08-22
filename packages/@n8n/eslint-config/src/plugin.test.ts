@@ -10,6 +10,14 @@ describe('localRulesPlugin recommended config', () => {
 			],
 		).toBe('error');
 	});
+
+	// Every package's `lint` script passes `--quiet`, which drops warnings, so a
+	// discarded test body only fails a build while this rule is an error.
+	it('enables the discarded test body ban as an error', () => {
+		expect(
+			localRulesPlugin.configs.recommended.rules['n8n-local-rules/no-todo-test-with-body'],
+		).toBe('error');
+	});
 });
 
 describe('frontendConfig', () => {
