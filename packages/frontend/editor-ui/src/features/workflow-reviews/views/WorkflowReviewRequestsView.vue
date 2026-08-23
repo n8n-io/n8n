@@ -104,18 +104,14 @@ const { showError, showMessage } = useToast();
 
 documentTitle.set(i18n.baseText('workflowReviews.page.title'));
 
-// Centre card is the reviews icon from the sidebar menu; the sides cycle through the
-// review lifecycle.
 const reviewsIcon: EmptyStateIconCards = {
 	type: 'cards',
 	center: 'message-square-text',
 	sides: ['file-diff', 'git-branch', 'circle-check', 'list', 'message-square'],
 };
 
-// A dead deep link is an error, not an empty list, so it gets a single icon.
 const notFoundIcon: IconOrEmoji = { type: 'icon', value: 'circle-alert' };
 
-// The summary counts come from the inbox probe, so the heading costs no extra request.
 const noSelectionCount = computed(() =>
 	activeTab.value === 'closed' ? closedCount.value : openCount.value,
 );
@@ -463,14 +459,10 @@ onUnmounted(() => {
 	overflow: auto;
 }
 
-/* Stands in for the activity panel, so it takes the same width cap instead of
-	stretching across a pane the loaded content will not fill. */
 .detailSkeleton {
 	max-width: var(--review-activity--max-width);
 }
 
-/* Centred in the pane on both axes. No width cap needed: the empty state caps
-	its own text at 32rem. */
 .emptyStateWrapper {
 	display: flex;
 	align-items: center;
@@ -478,9 +470,6 @@ onUnmounted(() => {
 	height: 100%;
 }
 
-/* In-pane states, not cards: the design system's dashed frame would read as a
-	box floating in an already empty column. Nested so it outranks the equally
-	specific class the component sets on the same element. */
 .emptyStateWrapper .emptyState {
 	border: none;
 	padding: 0;

@@ -84,10 +84,6 @@ function isCollapsibleSection(key: ReviewInboxSectionKey): key is CollapsibleRev
 	return key !== 'closed';
 }
 
-/**
- * One skeleton for the whole list until a section settles; a section reloading on its own
- * afterwards still gets its own skeleton with header.
- */
 const isLoadingWholeList = computed(() => props.sections.every((section) => section.loading));
 
 const groups = computed(() =>

@@ -346,7 +346,7 @@ describe('WorkflowDiffView', () => {
 				expect(diff.parentElement).not.toBe(baseElement);
 
 				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));
-				// Teleported, so the query container in the review pane cannot trap it.
+				// Teleported, so a `container-type` ancestor cannot trap it.
 				expect(getByTestId('workflow-diff-view').parentElement).toBe(baseElement);
 
 				await userEvent.click(getByTestId('workflow-diff-fullscreen-toggle'));

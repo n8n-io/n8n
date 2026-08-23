@@ -37,7 +37,6 @@ const props = withDefaults(
 		targetLabel?: string;
 		tidyUp?: boolean;
 		showBackButton?: boolean;
-		/** Off by default: the modal and full-page usages already fill the screen. */
 		showFullscreenButton?: boolean;
 		source?: 'version_history' | 'push_pull_modal' | 'unknown';
 	}>(),
@@ -57,11 +56,7 @@ const emit = defineEmits<{
 
 const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync();
 
-/**
- * Teleported to `body` while fullscreen rather than just `position: fixed`: the review
- * detail pane is a `container-type: inline-size` query container, which is a containing
- * block for fixed descendants and would trap the overlay inside the pane.
- */
+// Teleported, not just `position: fixed`: a `container-type` ancestor would trap it.
 const isFullscreen = ref(false);
 
 function toggleFullscreen() {
@@ -363,8 +358,6 @@ const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) =
 	height: 100%;
 }
 
-/* Teleported to `body`, so this is positioned against the viewport and needs its own
-	background — it no longer inherits the surface it was embedded in. */
 .fullscreen {
 	position: fixed;
 	inset: 0;

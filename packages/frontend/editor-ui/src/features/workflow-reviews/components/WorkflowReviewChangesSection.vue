@@ -177,8 +177,6 @@ const targetLabel = computed(() =>
 					<N8nText color="text-dark" size="small" compact>{{ targetLabel }}</N8nText>
 				</span>
 			</template>
-			<!-- Wrapped like the source-control modal does it; bare slot text would inherit
-				whatever the panel happens to set. -->
 			<template #sourceEmptyText>
 				<N8nText size="small" color="text-base">{{ sourceEmptyText }}</N8nText>
 			</template>
@@ -216,8 +214,6 @@ const targetLabel = computed(() =>
 	background-color: var(--color--text--tint-1);
 }
 
-/* Same border and radius as the activity cards in the sibling tab, so the two tabs
-	read as one surface. */
 .diff {
 	height: 100%;
 	min-height: 0;
