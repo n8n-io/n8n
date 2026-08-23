@@ -11,6 +11,8 @@ export const MIN_SECRET_LENGTH = 32;
 const identityClaimsSchema = z.object({
 	sub: z.string().min(1),
 	tenant_id: z.string().min(1),
+	iat: z.number().int(),
+	exp: z.number().int(),
 });
 
 /** Every rejection path throws this one type, so the middleware cannot leak which check failed. */
@@ -44,6 +46,7 @@ export class SharedSecretIdentityVerifier implements IdentityVerifier {
 				algorithms: ['HS256'],
 				issuer: IDENTITY_ISSUER,
 				audience: IDENTITY_AUDIENCE,
+				maxAge: IDENTITY_TOKEN_TTL_SECONDS,
 				clockTolerance: 30,
 			});
 		} catch {

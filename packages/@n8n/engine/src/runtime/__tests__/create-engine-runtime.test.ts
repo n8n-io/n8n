@@ -35,6 +35,16 @@ describe('createEngineRuntime', () => {
 		expect(response.status).toBe(400);
 	});
 
+	it('does not parse an unauthenticated request body', async () => {
+		const response = await request(runtime().app)
+			.post('/api/workflow-executions')
+			.set('Content-Type', 'application/json')
+			.send('{');
+
+		expect(response.status).toBe(401);
+		expect(response.body).toEqual({ error: 'unauthenticated' });
+	});
+
 	it('serves the healthcheck', async () => {
 		const response = await request(runtime().app).get('/healthz');
 

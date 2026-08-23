@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	IDENTITY_AUDIENCE,
 	IDENTITY_ISSUER,
+	IDENTITY_TOKEN_TTL_SECONDS,
 	InvalidIdentityTokenError,
 	mintIdentityToken,
 	SharedSecretIdentityVerifier,
@@ -42,6 +43,37 @@ describe('SharedSecretIdentityVerifier', () => {
 			audience: IDENTITY_AUDIENCE,
 			expiresIn: -60, // longer ago than the verifier's clock-skew tolerance
 		});
+		const verifier = new SharedSecretIdentityVerifier(secret);
+
+		expect(() => verifier.verify(token)).toThrow(InvalidIdentityTokenError);
+	});
+
+	it('rejects a token without an expiration', () => {
+		const token = jwt.sign({ sub: caller.cpId, tenant_id: caller.tenantId }, secret, {
+			algorithm: 'HS256',
+			issuer: IDENTITY_ISSUER,
+			audience: IDENTITY_AUDIENCE,
+		});
+		const verifier = new SharedSecretIdentityVerifier(secret);
+
+		expect(() => verifier.verify(token)).toThrow(InvalidIdentityTokenError);
+	});
+
+	it('rejects a token older than the maximum age even when it has not expired', () => {
+		const token = jwt.sign(
+			{
+				sub: caller.cpId,
+				tenant_id: caller.tenantId,
+				iat: Math.floor(Date.now() / 1000) - IDENTITY_TOKEN_TTL_SECONDS - 60,
+			},
+			secret,
+			{
+				algorithm: 'HS256',
+				issuer: IDENTITY_ISSUER,
+				audience: IDENTITY_AUDIENCE,
+				expiresIn: 3600,
+			},
+		);
 		const verifier = new SharedSecretIdentityVerifier(secret);
 
 		expect(() => verifier.verify(token)).toThrow(InvalidIdentityTokenError);

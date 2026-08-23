@@ -11,7 +11,6 @@ export function createEngineServer(
 	identityVerifier: IdentityVerifier,
 ): { app: Application } {
 	const app = express();
-	app.use(express.json());
 
 	// Stays open: a liveness probe, and it reveals nothing.
 	app.get('/healthz', (_req, res) => {
@@ -20,6 +19,7 @@ export function createEngineServer(
 
 	// Mounted on the prefix, not on each router, so a future router cannot forget it.
 	app.use('/api', createAuthenticationMiddleware(identityVerifier));
+	app.use('/api', express.json());
 	app.use('/api/workflow-executions', createWorkflowExecutionsRouter(startExecution));
 
 	return { app };
