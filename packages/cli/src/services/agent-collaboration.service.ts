@@ -71,6 +71,26 @@ export class AgentCollaborationService {
 	}
 
 	/**
+	 * Remove user from session without validation (internal use)
+	 */
+	private removeUserFromSession(agentId: string, userId: User['id']): void {
+		const users = this.agentUsers.get(agentId);
+		if (users) {
+			users.delete(userId);
+			this.userCursors.get(agentId)?.delete(userId);
+			this.userActivity.get(agentId)?.delete(userId);
+
+			// Clean up if no users left
+			if (users.size === 0) {
+				this.agentUsers.delete(agentId);
+				this.userCursors.delete(agentId);
+				this.userActivity.delete(agentId);
+				this.agentProjectIds.delete(agentId);
+			}
+		}
+	}
+
+	/**
 	 * Register a user as active on an agent
 	 */
 	async joinAgent(agentId: string, userId: User['id'], userName: string, projectId: string): Promise<void> {
@@ -110,29 +130,14 @@ export class AgentCollaborationService {
 		// Validate agent exists and is accessible
 		await this.validateAgentExists(agentId, projectId);
 
-		const users = this.agentUsers.get(agentId);
-		if (users) {
-			users.delete(userId);
+		this.removeUserFromSession(agentId, userId);
 
-			// Clean up user's cursor before broadcasting
-			this.userCursors.get(agentId)?.delete(userId);
-			this.userActivity.get(agentId)?.delete(userId);
-
-			// Broadcast presence update
-			await this.broadcastPresence(agentId, {
-				type: 'user-left',
-				userId,
-				timestamp: Date.now(),
-			});
-
-			// Clean up if no users left
-			if (users.size === 0) {
-				this.agentUsers.delete(agentId);
-				this.userCursors.delete(agentId);
-				this.userActivity.delete(agentId);
-				this.agentProjectIds.delete(agentId);
-			}
-		}
+		// Broadcast presence update
+		await this.broadcastPresence(agentId, {
+			type: 'user-left',
+			userId,
+			timestamp: Date.now(),
+		});
 
 		this.logger.info(`User ${userId} left agent ${agentId}`);
 	}
@@ -277,10 +282,16 @@ export class AgentCollaborationService {
 			// Revalidate project access for security
 			const projectId = this.agentProjectIds.get(agentId);
 			if (projectId) {
-				const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
-				if (!agent) {
-					// User lost project access - remove from session
-					await this.leaveAgent(agentId, userId, projectId);
+				const agentExists = await this.agentRepository.existsByIdAndProjectId(agentId, projectId);
+				if (!agentExists) {
+					// User lost project access - remove from session without re-validation
+					this.removeUserFromSession(agentId, userId);
+					// Broadcast presence update
+					await this.broadcastPresence(agentId, {
+						type: 'user-left',
+						userId,
+						timestamp: Date.now(),
+					});
 					return;
 				}
 			}

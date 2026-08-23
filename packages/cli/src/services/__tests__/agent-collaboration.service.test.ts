@@ -34,6 +34,7 @@ describe('AgentCollaborationService', () => {
 
 		mockAgentRepository = {
 			findByIdAndProjectId: vi.fn().mockResolvedValue({ id: 'agent-456' }),
+			existsByIdAndProjectId: vi.fn().mockResolvedValue(true),
 		} as unknown as AgentRepository;
 
 		mockBroadcastCallback = vi.fn();
@@ -282,7 +283,7 @@ describe('AgentCollaborationService', () => {
 			await service.joinAgent(agentId, mockUser.id, 'Test User', mockProjectId);
 
 			// Simulate user losing project access
-			vi.mocked(mockAgentRepository.findByIdAndProjectId).mockResolvedValue(null);
+			vi.mocked(mockAgentRepository.existsByIdAndProjectId).mockResolvedValue(false);
 
 			const message = {
 				type: 'agent-collaboration' as const,
