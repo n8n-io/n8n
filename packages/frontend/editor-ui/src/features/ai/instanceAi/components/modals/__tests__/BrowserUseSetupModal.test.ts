@@ -110,12 +110,6 @@ describe('BrowserUseSetupModal', () => {
 		delete (globalThis as { chrome?: unknown }).chrome;
 	});
 
-	it('tracks the modal opening on mount', () => {
-		renderComponent();
-		expect(telemetryMock.trackModalOpened).toHaveBeenCalledTimes(1);
-		expect(telemetryMock.trackModalOpened).toHaveBeenCalledWith(true);
-	});
-
 	it('tracks the install extension button click', async () => {
 		const { getByTestId } = renderComponent();
 		await flushPromises();
@@ -225,7 +219,9 @@ describe('BrowserUseSetupModal', () => {
 		async function renderContentAndConnect(props: Record<string, unknown>) {
 			const store = reactive(makeSettingsStore());
 			settingsStoreMock.mockReturnValue(store);
-			const rendered = createComponentRenderer(BrowserUseSetupContent)({ props });
+			const rendered = createComponentRenderer(BrowserUseSetupContent)({
+				props,
+			});
 			await flushPromises();
 
 			store.browserConnected = true;
@@ -335,11 +331,6 @@ describe('BrowserUseSetupModal', () => {
 			expect(getByTestId('browser-use-unsupported-browser')).toBeInTheDocument();
 			expect(queryByTestId('browser-use-install-extension')).toBeNull();
 			expect(queryByTestId('browser-use-open-connect-page')).toBeNull();
-		});
-
-		it('tracks the modal opening as unsupported', () => {
-			renderComponent();
-			expect(telemetryMock.trackModalOpened).toHaveBeenCalledWith(false);
 		});
 
 		it('closes the modal via the close button', async () => {

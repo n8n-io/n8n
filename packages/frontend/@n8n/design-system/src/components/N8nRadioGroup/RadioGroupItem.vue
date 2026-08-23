@@ -58,7 +58,7 @@ function onItemFocusIn(event: FocusEvent) {
 </template>
 
 <style lang="scss" module>
-@use '../../../css/mixins/focus';
+@use '../../css/mixins/focus';
 
 .item {
 	display: flex;

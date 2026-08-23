@@ -24,7 +24,30 @@ import {
 import type { AgentChatSubscriptionStateService } from '../agent-chat-subscription-state.service';
 import { ChatIntegrationService } from '../chat-integration.service';
 import * as esmLoader from '../esm-loader';
+import {
+	LEADER_CHANNEL_REQUEST_TIMEOUT_MS,
+	type LeaderChannelRelayService,
+} from '../leader-channel-relay.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+
+/**
+ * The peer-reconciliation and leader-request handlers deliberately call the
+ * local-only variants, so the spies have to reach past the routing wrappers.
+ */
+interface PrivateChannelMethods {
+	connectLocal: ChatIntegrationService['connect'];
+	disconnectLocal: (
+		agentId: string,
+		integration: { credentialId: string; type: string },
+		options?: { skipExternalHooks?: boolean },
+	) => Promise<void>;
+	disconnectOne: (key: string, options?: { skipExternalHooks?: boolean }) => Promise<void>;
+}
+
+const spyOnPrivate = <K extends keyof PrivateChannelMethods>(
+	service: ChatIntegrationService,
+	method: K,
+) => vi.spyOn(service as unknown as PrivateChannelMethods, method);
 
 /**
  * Test double — exposes the registry without invoking the real Chat SDK
@@ -43,8 +66,9 @@ class FakeIntegration extends AgentChatIntegration {
 	readonly displayLabel = this.type;
 	readonly displayIcon = this.type;
 
-	override requiresLeader(): boolean {
-		return this.leaderOnly;
+	override requiresLeader({ ingressEnabled } = { ingressEnabled: true }): boolean {
+		// Mirrors the real integrations: an outbound connection opens no poller.
+		return this.leaderOnly && ingressEnabled;
 	}
 
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
@@ -102,6 +126,7 @@ function buildServiceWith(
 		publisher?: ReturnType<typeof mock<Publisher>>;
 		urlService?: ReturnType<typeof mock<UrlService>>;
 		chatSubscriptionStateService?: ReturnType<typeof mock<AgentChatSubscriptionStateService>>;
+		leaderChannelRelay?: ReturnType<typeof mock<LeaderChannelRelayService>>;
 	} = {},
 ) {
 	const registry = opts.registry ?? new ChatIntegrationRegistry();
@@ -111,6 +136,7 @@ function buildServiceWith(
 	const urlService = opts.urlService ?? mock<UrlService>();
 	const chatSubscriptionStateService =
 		opts.chatSubscriptionStateService ?? mock<AgentChatSubscriptionStateService>();
+	const leaderChannelRelay = opts.leaderChannelRelay ?? mock<LeaderChannelRelayService>();
 	const logger = mockLogger();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: opts.isLeader ?? true });
 	const globalConfig = mock<GlobalConfig>({
@@ -127,6 +153,7 @@ function buildServiceWith(
 		publisher,
 		globalConfig,
 		chatSubscriptionStateService,
+		leaderChannelRelay,
 	);
 
 	return {
@@ -137,6 +164,8 @@ function buildServiceWith(
 		publisher,
 		urlService,
 		chatSubscriptionStateService,
+		leaderChannelRelay,
+		instanceSettings,
 		logger,
 	};
 }
@@ -246,6 +275,7 @@ describe('ChatIntegrationService', () => {
 			mock(),
 			mock<GlobalConfig>({ multiMainSetup: { enabled: false } } as Partial<GlobalConfig>),
 			mock<AgentChatSubscriptionStateService>(),
+			mock<LeaderChannelRelayService>(),
 		);
 
 	it('disconnects subscription state when setup fails before chat initialization starts', async () => {
@@ -997,14 +1027,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			internal.connections.set('agent-1:telegram:c1', {});
 			internal.connections.set('agent-1:linear:c2', {});
 
-			const disconnectOneSpy = vi
-				.spyOn(
-					service as unknown as {
-						disconnectOne: (k: string, options?: { skipExternalHooks?: boolean }) => Promise<void>;
-					},
-					'disconnectOne',
-				)
-				.mockImplementation(async () => undefined);
+			const disconnectOneSpy = spyOnPrivate(service, 'disconnectOne').mockResolvedValue();
 
 			await service.disconnectLeaderOnlyIntegrations();
 
@@ -1015,12 +1038,479 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 				skipExternalHooks: true,
 			});
 		});
+
+		it('gives up on a stuck leader operation instead of stalling the stepdown', async () => {
+			vi.useFakeTimers();
+			try {
+				const registry = new ChatIntegrationRegistry();
+				registry.register(new FakeIntegration('telegram', true));
+				const agentRepository = mock<AgentRepository>();
+				agentRepository.findOne.mockResolvedValue(makeAgent({ id: 'agent-1', projectId: 'p1' }));
+				const { service } = buildServiceWith({ registry, agentRepository });
+
+				const connectLocal = spyOnPrivate(service, 'connectLocal').mockReturnValue(
+					new Promise(() => {}),
+				);
+				void service.handleLeaderChannelRequest({
+					requestId: 'lch_1',
+					replyTo: 'follower-1',
+					agentId: 'agent-1',
+					integration: { type: 'telegram', credentialId: 'c1' },
+					action: 'connect',
+				});
+				await vi.waitFor(() => expect(connectLocal).toHaveBeenCalled());
+
+				const steppingDown = service.disconnectLeaderOnlyIntegrations();
+				await vi.advanceTimersByTimeAsync(LEADER_CHANNEL_REQUEST_TIMEOUT_MS);
+
+				// A platform call that never returns must not hold the demotion open;
+				// the straggler releases itself via the leadership re-check.
+				await expect(steppingDown).resolves.toBeUndefined();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('drains an in-flight leader-side connect before sweeping', async () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('telegram', true));
+
+			const agentRepository = mock<AgentRepository>();
+			agentRepository.findOne.mockResolvedValue(makeAgent({ id: 'agent-1', projectId: 'p1' }));
+			const { service } = buildServiceWith({ registry, agentRepository });
+
+			// A connect that is still starting up when the stepdown begins: the sweep
+			// has to see the connection it registers, not miss it and leave a poller
+			// running on a main that no longer leads.
+			let finishConnect: () => void = () => {};
+			const connectLocal = spyOnPrivate(service, 'connectLocal').mockImplementation(
+				async () =>
+					await new Promise<void>((resolve) => {
+						finishConnect = () => {
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							(service as any).connections.set('agent-1:telegram:c1', {});
+							resolve();
+						};
+					}),
+			);
+			const disconnectOneSpy = spyOnPrivate(service, 'disconnectOne').mockResolvedValue();
+
+			const connecting = service.handleLeaderChannelRequest({
+				requestId: 'lch_1',
+				replyTo: 'follower-1',
+				agentId: 'agent-1',
+				integration: { type: 'telegram', credentialId: 'c1' },
+				action: 'connect',
+			});
+			// Let the handler reach `connectLocal` before the stepdown starts draining.
+			await vi.waitFor(() => expect(connectLocal).toHaveBeenCalled());
+
+			const steppingDown = service.disconnectLeaderOnlyIntegrations();
+			finishConnect();
+			await Promise.all([connecting, steppingDown]);
+
+			expect(disconnectOneSpy).toHaveBeenCalledWith('agent-1:telegram:c1', {
+				skipExternalHooks: true,
+			});
+		});
+	});
+
+	describe('leader-only channel routing', () => {
+		const telegram: AgentIntegrationConfig = { type: 'telegram', credentialId: 'c1' };
+
+		/** A follower in multi-main mode with a leader-only telegram integration. */
+		function buildFollower() {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('telegram', true));
+			registry.register(new FakeIntegration('linear', false));
+
+			const built = buildServiceWith({ isLeader: false, multiMainEnabled: true, registry });
+			built.leaderChannelRelay.requestWithoutAck.mockResolvedValue();
+			const connectLocal = spyOnPrivate(built.service, 'connectLocal').mockResolvedValue();
+			const disconnectLocal = spyOnPrivate(built.service, 'disconnectLocal').mockResolvedValue();
+
+			return { ...built, connectLocal, disconnectLocal };
+		}
+
+		it('hands a connect to the leader and builds nothing locally', async () => {
+			const { service, leaderChannelRelay, connectLocal, disconnectLocal } = buildFollower();
+			leaderChannelRelay.request.mockResolvedValue();
+
+			await service.connect('agent-1', telegram, 'project-1');
+
+			expect(leaderChannelRelay.request).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				integration: telegram,
+				action: 'connect',
+			});
+			// The whole point: a follower must never end up owning a poller.
+			expect(connectLocal).not.toHaveBeenCalled();
+			// Anything it still held for the key goes, with external teardown left to
+			// the leader.
+			expect(disconnectLocal).toHaveBeenCalledWith('agent-1', telegram, {
+				skipExternalHooks: true,
+			});
+		});
+
+		it('hands a disconnect to the leader', async () => {
+			const { service, leaderChannelRelay, disconnectLocal } = buildFollower();
+			leaderChannelRelay.request.mockResolvedValue();
+
+			await service.disconnect('agent-1', telegram);
+
+			expect(leaderChannelRelay.request).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				integration: telegram,
+				action: 'disconnect',
+			});
+			// Only local state — the cluster-wide release is the leader's to run.
+			expect(disconnectLocal).toHaveBeenCalledWith('agent-1', telegram, {
+				skipExternalHooks: true,
+			});
+		});
+
+		it('surfaces the failure and releases the leader runtime when the ack does not arrive', async () => {
+			const { service, leaderChannelRelay } = buildFollower();
+			leaderChannelRelay.request.mockRejectedValue(new Error('no acknowledgement'));
+
+			await expect(service.connect('agent-1', telegram, 'project-1')).rejects.toThrow(
+				'no acknowledgement',
+			);
+
+			// A leader that started polling but lost its ack would otherwise keep a
+			// runtime claim for a channel this request just reported as failed.
+			expect(leaderChannelRelay.requestWithoutAck).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				integration: telegram,
+				action: 'disconnect',
+			});
+		});
+
+		it('still reports the original failure when the release cannot be delivered', async () => {
+			const { service, leaderChannelRelay } = buildFollower();
+			leaderChannelRelay.request.mockRejectedValue(new Error('no acknowledgement'));
+			leaderChannelRelay.requestWithoutAck.mockRejectedValue(new Error('redis is down'));
+
+			await expect(service.connect('agent-1', telegram, 'project-1')).rejects.toThrow(
+				'no acknowledgement',
+			);
+		});
+
+		it('connects locally on the leader without a round-trip', async () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('telegram', true));
+			const { service, leaderChannelRelay } = buildServiceWith({
+				isLeader: true,
+				multiMainEnabled: true,
+				registry,
+			});
+			const connectLocal = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
+
+			await service.connect('agent-1', telegram, 'project-1');
+
+			expect(connectLocal).toHaveBeenCalledWith('agent-1', telegram, 'project-1', {});
+			expect(leaderChannelRelay.request).not.toHaveBeenCalled();
+		});
+
+		it('connects locally in a single-main setup', async () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('telegram', true));
+			// A single main is never the leader in the multi-main sense, but there is
+			// no other instance to hand the work to.
+			const { service, leaderChannelRelay } = buildServiceWith({
+				isLeader: false,
+				multiMainEnabled: false,
+				registry,
+			});
+			const connectLocal = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
+
+			await service.connect('agent-1', telegram, 'project-1');
+
+			expect(connectLocal).toHaveBeenCalled();
+			expect(leaderChannelRelay.request).not.toHaveBeenCalled();
+		});
+
+		it('keeps outbound preview connections local on a follower', async () => {
+			const { service, leaderChannelRelay, connectLocal } = buildFollower();
+
+			// Ingress off means no poller (Telegram forces webhook mode), so every
+			// main builds these for itself.
+			await service.connect('agent-1', telegram, 'project-1', { ingressEnabled: false });
+
+			expect(connectLocal).toHaveBeenCalled();
+			expect(leaderChannelRelay.request).not.toHaveBeenCalled();
+		});
+
+		it('keeps a webhook integration local on a follower', async () => {
+			const { service, leaderChannelRelay, connectLocal } = buildFollower();
+
+			await service.connect('agent-1', { type: 'linear', credentialId: 'c2' }, 'project-1');
+
+			expect(connectLocal).toHaveBeenCalled();
+			expect(leaderChannelRelay.request).not.toHaveBeenCalled();
+		});
+
+		it('clears a local draft reference without involving the leader', async () => {
+			const { service, leaderChannelRelay, disconnectLocal } = buildFollower();
+
+			// A builder draft entry (`credentialId: ''`) is not a real connection
+			// anywhere, so there is nothing for the leader to release.
+			await service.disconnect('agent-1', { type: 'telegram', credentialId: '' });
+
+			expect(leaderChannelRelay.request).not.toHaveBeenCalled();
+			// Local-only cleanup, and external teardown is not skipped: nothing else
+			// in the cluster is going to run it for a reference only this main holds.
+			expect(disconnectLocal).toHaveBeenCalledWith(
+				'agent-1',
+				{ type: 'telegram', credentialId: '' },
+				{},
+			);
+		});
+	});
+
+	describe('disconnectChannel', () => {
+		it('still tells peers to drop the channel when the teardown failed', async () => {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('telegram', true));
+			const { service, publisher } = buildServiceWith({
+				isLeader: false,
+				multiMainEnabled: true,
+				registry,
+			});
+			spyOnPrivate(service, 'disconnectLocal').mockResolvedValue();
+			// A leader that never acknowledged is exactly when peers are most likely to
+			// be holding runtime for a channel that is going away.
+			(service as unknown as { leaderChannelRelay: { request: Mock } }).leaderChannelRelay.request =
+				vi.fn().mockRejectedValue(new Error('no acknowledgement'));
+
+			await service.disconnectChannel('agent-1', { type: 'telegram', credentialId: 'c1' });
+
+			expect(publisher.publishCommand).toHaveBeenCalledWith(
+				expect.objectContaining({
+					command: 'agent-chat-integration-changed',
+					payload: expect.objectContaining({ action: 'disconnect' }),
+				}),
+			);
+		});
+	});
+
+	describe('handleLeaderChannelRequest', () => {
+		const telegram: AgentIntegrationConfig = { type: 'telegram', credentialId: 'c1' };
+		const request = {
+			requestId: 'lch_1',
+			replyTo: 'follower-1',
+			agentId: 'agent-1',
+			integration: telegram,
+			action: 'connect' as const,
+		};
+
+		/** A leader ready to execute a relayed request. */
+		function buildLeader(opts: { isLeader?: boolean } = {}) {
+			const registry = new ChatIntegrationRegistry();
+			registry.register(new FakeIntegration('telegram', true));
+
+			const agentRepository = mock<AgentRepository>();
+			agentRepository.findOne.mockResolvedValue(makeAgent({ id: 'agent-1', projectId: 'p1' }));
+
+			return buildServiceWith({
+				isLeader: opts.isLeader ?? true,
+				multiMainEnabled: true,
+				registry,
+				agentRepository,
+			});
+		}
+
+		it('connects locally and acknowledges success', async () => {
+			const { service, leaderChannelRelay } = buildLeader();
+			const connectLocal = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
+
+			await service.handleLeaderChannelRequest(request);
+
+			expect(connectLocal).toHaveBeenCalledWith('agent-1', telegram, 'p1');
+			expect(leaderChannelRelay.respond).toHaveBeenCalledWith(request);
+		});
+
+		it('joins a concurrent request for the same channel instead of running it twice', async () => {
+			const { service, leaderChannelRelay } = buildLeader();
+			const connectLocal = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
+
+			await Promise.all([
+				service.handleLeaderChannelRequest(request),
+				service.handleLeaderChannelRequest({ ...request, requestId: 'lch_2' }),
+			]);
+
+			// Re-running would tear down the runtime the first request is building.
+			expect(connectLocal).toHaveBeenCalledTimes(1);
+			expect(leaderChannelRelay.respond).toHaveBeenCalledTimes(2);
+		});
+
+		it('runs a request for a different channel independently', async () => {
+			const { service } = buildLeader();
+			const connectLocal = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
+
+			await Promise.all([
+				service.handleLeaderChannelRequest(request),
+				service.handleLeaderChannelRequest({
+					...request,
+					requestId: 'lch_2',
+					integration: { type: 'telegram', credentialId: 'c2' },
+				}),
+			]);
+
+			expect(connectLocal).toHaveBeenCalledTimes(2);
+		});
+
+		it('releases the channel after a failed request so the next one retries', async () => {
+			const { service } = buildLeader();
+			const connectLocal = spyOnPrivate(service, 'connectLocal')
+				.mockRejectedValueOnce(new Error('bot token already in use'))
+				.mockResolvedValue();
+
+			await service.handleLeaderChannelRequest(request);
+			await service.handleLeaderChannelRequest({ ...request, requestId: 'lch_2' });
+
+			expect(connectLocal).toHaveBeenCalledTimes(2);
+		});
+
+		it('joins a duplicate request for the action already running', async () => {
+			const { service, leaderChannelRelay } = buildLeader();
+			let finishConnect: () => void = () => {};
+			const connectLocal = spyOnPrivate(service, 'connectLocal').mockImplementation(
+				async () =>
+					await new Promise<void>((resolve) => {
+						finishConnect = resolve;
+					}),
+			);
+
+			const first = service.handleLeaderChannelRequest(request);
+			await vi.waitFor(() => expect(connectLocal).toHaveBeenCalled());
+			const retry = service.handleLeaderChannelRequest({ ...request, requestId: 'lch_2' });
+			finishConnect();
+			await Promise.all([first, retry]);
+
+			// A retry, or a request whose ack was lost, must not restart a startup that
+			// is already under way.
+			expect(connectLocal).toHaveBeenCalledTimes(1);
+			expect(leaderChannelRelay.respond).toHaveBeenCalledTimes(2);
+		});
+
+		it('rebuilds a live channel, so a settings-only save reaches the runtime', async () => {
+			const { service, leaderChannelRelay } = buildLeader();
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(service as any).connections.set('agent-1:telegram:c1', {});
+			const connectLocal = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
+			const settings = { accessMode: 'private' as const, allowedUsers: ['@someone'] };
+
+			await service.handleLeaderChannelRequest({
+				...request,
+				integration: { ...telegram, settings },
+			});
+
+			// The connection key excludes settings, so a live key is exactly what a
+			// settings edit arrives on — skipping the rebuild would keep the leader
+			// enforcing the previous allowlist.
+			expect(connectLocal).toHaveBeenCalledWith('agent-1', { ...telegram, settings }, 'p1');
+			expect(leaderChannelRelay.respond).toHaveBeenCalledWith(
+				expect.objectContaining({ requestId: 'lch_1' }),
+			);
+		});
+
+		it('queues a disconnect behind an in-flight connect instead of joining it', async () => {
+			const { service, leaderChannelRelay } = buildLeader();
+			const order: string[] = [];
+			let finishConnect: () => void = () => {};
+			const connectLocal = spyOnPrivate(service, 'connectLocal').mockImplementation(
+				async () =>
+					await new Promise<void>((resolve) => {
+						finishConnect = () => {
+							order.push('connect');
+							resolve();
+						};
+					}),
+			);
+			const disconnectLocal = spyOnPrivate(service, 'disconnectLocal').mockImplementation(
+				async () => {
+					order.push('disconnect');
+				},
+			);
+
+			const connecting = service.handleLeaderChannelRequest(request);
+			await vi.waitFor(() => expect(connectLocal).toHaveBeenCalled());
+			const disconnecting = service.handleLeaderChannelRequest({
+				...request,
+				requestId: 'lch_2',
+				action: 'disconnect',
+			});
+			finishConnect();
+			await Promise.all([connecting, disconnecting]);
+
+			// Joining the connect would have acknowledged the removal as done while
+			// leaving the leader polling a channel the caller has already deleted.
+			expect(disconnectLocal).toHaveBeenCalledTimes(1);
+			expect(order).toEqual(['connect', 'disconnect']);
+			expect(leaderChannelRelay.respond).toHaveBeenCalledTimes(2);
+		});
+
+		it('tears the runtime down and reports failure when leadership was lost mid-startup', async () => {
+			const { service, leaderChannelRelay, instanceSettings } = buildLeader();
+			spyOnPrivate(service, 'connectLocal').mockImplementation(async () => {
+				Object.defineProperty(instanceSettings, 'isLeader', { value: false, writable: true });
+			});
+			const disconnectOne = spyOnPrivate(service, 'disconnectOne').mockResolvedValue();
+
+			await service.handleLeaderChannelRequest(request);
+
+			expect(disconnectOne).toHaveBeenCalledWith('agent-1:telegram:c1', {
+				skipExternalHooks: true,
+			});
+			expect(leaderChannelRelay.respond).toHaveBeenCalledWith(
+				request,
+				expect.objectContaining({ message: expect.stringContaining('stopped being the leader') }),
+			);
+		});
+
+		it('reports failure when the connect throws', async () => {
+			const { service, leaderChannelRelay } = buildLeader();
+			spyOnPrivate(service, 'connectLocal').mockRejectedValue(
+				new Error('bot token already in use'),
+			);
+
+			await service.handleLeaderChannelRequest(request);
+
+			expect(leaderChannelRelay.respond).toHaveBeenCalledWith(
+				request,
+				expect.objectContaining({ message: 'bot token already in use' }),
+			);
+		});
+
+		it('reports failure when the agent no longer exists', async () => {
+			const { service, leaderChannelRelay, agentRepository } = buildLeader();
+			agentRepository.findOne.mockResolvedValue(null);
+
+			await service.handleLeaderChannelRequest(request);
+
+			expect(leaderChannelRelay.respond).toHaveBeenCalledWith(
+				request,
+				expect.objectContaining({ message: expect.stringContaining('not found') }),
+			);
+		});
+
+		it('tears down locally on a disconnect request and acknowledges', async () => {
+			const { service, leaderChannelRelay } = buildLeader();
+			const disconnectLocal = spyOnPrivate(service, 'disconnectLocal').mockResolvedValue();
+			const disconnectRequest = { ...request, action: 'disconnect' as const };
+
+			await service.handleLeaderChannelRequest(disconnectRequest);
+
+			expect(disconnectLocal).toHaveBeenCalledWith('agent-1', telegram);
+			expect(leaderChannelRelay.respond).toHaveBeenCalledWith(disconnectRequest);
+		});
 	});
 
 	describe('handleIntegrationChanged', () => {
-		it('routes disconnect actions to disconnect() and skips external hooks on the peer', async () => {
+		it("tears down the peer's local runtime on disconnect and skips external hooks", async () => {
 			const { service } = buildServiceWith();
-			const disconnectSpy = vi.spyOn(service, 'disconnect').mockResolvedValue();
+			const disconnectSpy = spyOnPrivate(service, 'disconnectLocal').mockResolvedValue();
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
@@ -1043,7 +1533,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			const { service } = buildServiceWith({ isLeader: false, registry });
 
-			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
+			const connectSpy = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
@@ -1067,7 +1557,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 				agentRepository,
 			});
 
-			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
+			const connectSpy = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',
@@ -1094,7 +1584,9 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 				agentRepository,
 			});
 
-			vi.spyOn(service, 'connect').mockRejectedValue(new Error('not accessible to project'));
+			spyOnPrivate(service, 'connectLocal').mockRejectedValue(
+				new Error('not accessible to project'),
+			);
 
 			await expect(
 				service.handleIntegrationChanged({
@@ -1114,7 +1606,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 
 			const { service } = buildServiceWith({ registry, agentRepository });
 
-			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
+			const connectSpy = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
 
 			await service.handleIntegrationChanged({
 				agentId: 'gone',
@@ -1135,7 +1627,7 @@ describe('ChatIntegrationService — multi-main role-aware behavior', () => {
 			const internal = service as any;
 			internal.connections.set('a1:linear:c1', {});
 
-			const connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
+			const connectSpy = spyOnPrivate(service, 'connectLocal').mockResolvedValue();
 
 			await service.handleIntegrationChanged({
 				agentId: 'a1',

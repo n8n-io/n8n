@@ -12,6 +12,7 @@ import {
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
 import {
@@ -21,14 +22,9 @@ import {
 } from './poll-trigger-task';
 
 /**
- * Runs a due poll occurrence's `poll()` once and dispatches only when it
- * returns new data.
- *
- * Carries no `deduplicationKey`, so it forgoes the execution-level duplicate
- * backstop: under the scheduler's at-least-once contract, a poll occurrence
- * can run twice, with the later cursor write winning. Accepted: two polls
- * at the same instant can legitimately return different data anyway, so a
- * repeated poll is tolerable.
+ * Runs a due poll occurrence's `poll()` once and dispatches only when it returns new data.
+ * Carries no `deduplicationKey`: under the at-least-once scheduler contract an occurrence
+ * can run twice, later cursor write wins; tolerable since two polls can legitimately differ anyway.
  */
 @Service()
 export class PollTriggerTaskHandler implements TaskHandler {
@@ -40,6 +36,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly errorReporter: ErrorReporter,
+		private readonly pollBackoffService: PollBackoffService,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 	}
@@ -48,6 +45,21 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		// A setup failure here retries to N8N_SCHEDULER_MAX_ATTEMPTS then dead-letters,
 		// unlike a `poll()` runtime failure below, which routes to the error workflow instead.
 		const { workflowId, nodeId } = this.parsePayload(task);
+
+		const now = new Date();
+		const state = await this.pollBackoffService
+			.getFailureState(workflowId, nodeId)
+			.catch(() => null);
+		if (this.pollBackoffService.isBackingOff(state, now)) {
+			this.logger.debug('Poll is backing off; skipping this occurrence', {
+				taskId: task.id,
+				jobId: task.jobId,
+				workflowId,
+				nodeId,
+				backoffUntil: state?.backoffUntil,
+			});
+			return report.notDispatched();
+		}
 
 		// bypassCache: the poll cursor in staticData must be read live, not from the publish-time cache.
 		const workflowData = await this.triggerExecutionContextFactory.loadPublishedWorkflowData(
@@ -82,12 +94,19 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			// Scheduled polls run outside any activation isolate window, so acquire and
 			// release one per tick; the finally releases even when poll() throws.
 			await workflow.expression.acquireIsolate();
+			// Nothing past a returning poll is the source failing, so a hand-off or
+			// database error after it must not back the node off. A setup error before
+			// poll() does count: it repeats every tick just like a failing source.
+			let polled = false;
 			try {
 				const pollResponse = await this.triggersAndPollers.runPollFunction(
 					workflow,
 					node,
 					pollFunctions,
 				);
+				polled = true;
+
+				await this.pollBackoffService.recordSuccess({ workflowId, nodeId, state });
 
 				if (pollResponse !== null) {
 					// poll() can run for a while (network I/O against the polled source), so
@@ -143,6 +162,18 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				// Routed to the error workflow instead of rethrown, which would retry and
 				// dead-letter without ever running it. __emitError commits no cursor, so
 				// the cursor holds and the next tick retries the same window.
+				if (!polled) {
+					const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
+					if (isActive) {
+						await this.pollBackoffService.recordFailure({
+							workflowId,
+							nodeId,
+							error,
+							state,
+							now: new Date(), // Fresh clock, not the tick's
+						});
+					}
+				}
 				pollFunctions.__emitError(ensureError(error));
 				this.logger.debug('Poll failed at runtime; routed to the error workflow', {
 					taskId: task.id,
