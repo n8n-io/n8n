@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -600,6 +601,38 @@ describe('workflow tool → Wait-node handoff', () => {
 			status: 'success',
 			data: { Result: [{ approved: true }] },
 		});
+	});
+
+	// The card is read by a person in a chat, so the deadline is spelled out in
+	// the instance timezone instead of handing them a machine timestamp.
+	it('renders the deadline as a readable local time, not an ISO string', async () => {
+		Container.set(GlobalConfig, { generic: { timezone: 'UTC' } } as GlobalConfig);
+		const waitTill = new Date('2027-01-15T18:03:00.000Z');
+		setPersistence(parkedInDb(waitTill));
+		const { tool } = await buildWaitTool(activeExecutionsParkedAt(waitTill));
+		const { ctx, suspend } = makeCtx();
+
+		await tool.handler?.({}, ctx);
+
+		expect(
+			suspendedCard(suspend).components.find((component) => component.type === 'fields'),
+		).toEqual({
+			type: 'fields',
+			fields: [{ label: 'Continues at', value: '15 Jan 2027, 18:03 UTC' }],
+		});
+	});
+
+	// A zone the instance cannot resolve would otherwise render "Invalid DateTime".
+	it('falls back to UTC when the instance timezone is unusable', async () => {
+		Container.set(GlobalConfig, { generic: { timezone: 'Not/AZone' } } as GlobalConfig);
+		const waitTill = new Date('2027-01-15T18:03:00.000Z');
+		setPersistence(parkedInDb(waitTill));
+		const { tool } = await buildWaitTool(activeExecutionsParkedAt(waitTill));
+		const { ctx, suspend } = makeCtx();
+
+		await tool.handler?.({}, ctx);
+
+		expect(JSON.stringify(suspendedCard(suspend))).toContain('15 Jan 2027, 18:03 UTC');
 	});
 
 	it('offers both a check and a stop-waiting button, tagged as a wait suspension', async () => {

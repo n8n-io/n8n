@@ -8,11 +8,13 @@ import {
 	type AgentJsonToolConfig,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
+import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
+import { DateTime } from 'luxon';
 import type {
 	IDataObject,
 	IExecuteResponsePromiseData,
@@ -798,7 +800,7 @@ function buildWaitCard(
 	if (wait?.waitTill) {
 		components.push({
 			type: 'fields',
-			fields: [{ label: 'Continues at', value: wait.waitTill.toISOString() }],
+			fields: [{ label: 'Continues at', value: formatWaitDeadline(wait.waitTill) }],
 		});
 	}
 
@@ -822,6 +824,21 @@ function buildWaitCard(
 		title: `Waiting on "${workflowName}"`,
 		components,
 	};
+}
+
+/**
+ * The deadline as the user reads it, in the instance timezone — the same clock
+ * the wait was scheduled against — and always naming the zone, since the
+ * reader's may differ. Deliberately absolute rather than relative: the card
+ * stays in the conversation, where "in 2 hours" is wrong an hour later.
+ */
+function formatWaitDeadline(waitTill: Date): string {
+	const { timezone } = Container.get(GlobalConfig).generic;
+	const deadline = DateTime.fromJSDate(waitTill);
+	const local = deadline.setZone(timezone);
+	// A misconfigured timezone yields an invalid DateTime, which would render as
+	// "Invalid DateTime"; UTC is always readable and never wrong, only less local.
+	return (local.isValid ? local : deadline.toUTC()).toFormat('d LLL yyyy, HH:mm ZZZZ');
 }
 
 /** True when the user clicked the card's "stop waiting" button. */
