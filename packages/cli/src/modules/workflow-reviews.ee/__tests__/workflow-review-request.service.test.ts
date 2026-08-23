@@ -31,6 +31,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -82,6 +83,7 @@ describe('WorkflowReviewRequestService', () => {
 	const workflowService = mock<WorkflowService>();
 	const accessService = mock<WorkflowReviewAccessService>();
 	const logger = mock<Logger>();
+	const eventService = mock<EventService>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
 
@@ -105,6 +107,7 @@ describe('WorkflowReviewRequestService', () => {
 		collaborationService,
 		workflowService,
 		accessService,
+		eventService,
 	);
 
 	beforeEach(() => {
@@ -480,6 +483,14 @@ describe('WorkflowReviewRequestService', () => {
 				expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith(
 					'wf-1',
 				);
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-requested', {
+					user: expect.objectContaining({ id: 'user-1' }),
+					workflowReviewRequestId: 'req-1',
+					projectId: 'project-1',
+					workflowId: 'wf-1',
+					workflowVersionId: 'ver-1',
+					reviewerCount: 1,
+				});
 			});
 
 			it('does not broadcast on conflict', async () => {
@@ -491,6 +502,7 @@ describe('WorkflowReviewRequestService', () => {
 				await expect(service.create(user, dto)).rejects.toThrow(ConflictError);
 
 				expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
 			});
 
 			it('resolves and logs a warning when the broadcast rejects', async () => {
