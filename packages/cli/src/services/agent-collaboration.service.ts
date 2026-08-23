@@ -130,14 +130,18 @@ export class AgentCollaborationService {
 		// Validate agent exists and is accessible
 		await this.validateAgentExists(agentId, projectId);
 
+		// Get recipient IDs before removing user
+		const users = this.agentUsers.get(agentId);
+		const recipientIds = users ? Array.from(users) : [];
+
 		this.removeUserFromSession(agentId, userId);
 
-		// Broadcast presence update
+		// Broadcast presence update to all users including the leaving user
 		await this.broadcastPresence(agentId, {
 			type: 'user-left',
 			userId,
 			timestamp: Date.now(),
-		});
+		}, recipientIds);
 
 		this.logger.info(`User ${userId} left agent ${agentId}`);
 	}
@@ -245,6 +249,7 @@ export class AgentCollaborationService {
 			position?: { x: number; y: number };
 			timestamp: number;
 		},
+		recipientIds?: string[],
 	): Promise<void> {
 		const message: AgentCollaborationMessage = {
 			type: 'agent-presence',
@@ -252,9 +257,10 @@ export class AgentCollaborationService {
 			payload: presence,
 		};
 
-		const users = this.agentUsers.get(agentId);
-		if (users && users.size > 0 && this.broadcastCallback) {
-			const userIds = Array.from(users);
+		// Use provided recipient IDs or get current users
+		const userIds = recipientIds || (this.agentUsers.get(agentId) ? Array.from(this.agentUsers.get(agentId)!) : []);
+
+		if (userIds.length > 0 && this.broadcastCallback) {
 			this.broadcastCallback({ type: 'agent-presence', data: message }, userIds);
 		}
 	}
@@ -285,13 +291,15 @@ export class AgentCollaborationService {
 				const agentExists = await this.agentRepository.existsByIdAndProjectId(agentId, projectId);
 				if (!agentExists) {
 					// User lost project access - remove from session without re-validation
+					const users = this.agentUsers.get(agentId);
+					const recipientIds = users ? Array.from(users) : [];
 					this.removeUserFromSession(agentId, userId);
 					// Broadcast presence update
 					await this.broadcastPresence(agentId, {
 						type: 'user-left',
 						userId,
 						timestamp: Date.now(),
-					});
+					}, recipientIds);
 					return;
 				}
 			}
@@ -363,6 +371,9 @@ export class AgentCollaborationService {
 			const users = this.agentUsers.get(agentId);
 			if (!users) continue;
 
+			// Get recipient IDs before any removals
+			const recipientIds = Array.from(users);
+
 			for (const [userId, lastActivity] of activityMap.entries()) {
 				// Remove users inactive for more than the threshold
 				if (now - lastActivity > this.INACTIVITY_THRESHOLD) {
@@ -375,7 +386,7 @@ export class AgentCollaborationService {
 						type: 'user-left',
 						userId,
 						timestamp: now,
-					});
+					}, recipientIds);
 
 					totalCleaned++;
 					this.logger.debug(`Cleaned up inactive user ${userId} from agent ${agentId}`);

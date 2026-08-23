@@ -37,7 +37,10 @@ describe('AgentCollaborationService', () => {
 			existsByIdAndProjectId: vi.fn().mockResolvedValue(true),
 		} as unknown as AgentRepository;
 
-		mockBroadcastCallback = vi.fn();
+		mockBroadcastCallback = vi.fn((message, userIds) => {
+			// Accept the optional recipientIds parameter
+			return Promise.resolve();
+		});
 
 		// Mock Container.get
 		vi.spyOn(Container, 'get').mockReturnValue(mockLogger);
@@ -312,7 +315,7 @@ describe('AgentCollaborationService', () => {
 						},
 					},
 				},
-				[mockUser.id],
+				[mockUser.id], // Should include the user who was removed
 			);
 		});
 	});
