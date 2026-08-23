@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	IDENTITY_AUDIENCE,
 	IDENTITY_ISSUER,
+	IDENTITY_TOKEN_CLOCK_TOLERANCE_SECONDS,
 	IDENTITY_TOKEN_TTL_SECONDS,
 	InvalidIdentityTokenError,
 	mintIdentityToken,
@@ -72,6 +73,27 @@ describe('SharedSecretIdentityVerifier', () => {
 				issuer: IDENTITY_ISSUER,
 				audience: IDENTITY_AUDIENCE,
 				expiresIn: 3600,
+			},
+		);
+		const verifier = new SharedSecretIdentityVerifier(secret);
+
+		expect(() => verifier.verify(token)).toThrow(InvalidIdentityTokenError);
+	});
+
+	it('rejects a token issued later than the clock-skew tolerance', () => {
+		const issuedAt = Math.floor(Date.now() / 1000) + IDENTITY_TOKEN_CLOCK_TOLERANCE_SECONDS + 60;
+		const token = jwt.sign(
+			{
+				sub: caller.cpId,
+				tenant_id: caller.tenantId,
+				iat: issuedAt,
+				exp: issuedAt + IDENTITY_TOKEN_TTL_SECONDS,
+			},
+			secret,
+			{
+				algorithm: 'HS256',
+				issuer: IDENTITY_ISSUER,
+				audience: IDENTITY_AUDIENCE,
 			},
 		);
 		const verifier = new SharedSecretIdentityVerifier(secret);

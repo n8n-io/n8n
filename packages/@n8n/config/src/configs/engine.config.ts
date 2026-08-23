@@ -1,4 +1,12 @@
+import { z } from 'zod';
+
 import { Config, Env } from '../decorators';
+
+/**
+ * Floor for the CP → DP shared secret. Kept in step with the engine's identity
+ * verifier, which rejects anything shorter.
+ */
+const AUTH_SECRET_MIN_LENGTH = 32;
 
 @Config
 export class EngineConfig {
@@ -41,7 +49,11 @@ export class EngineConfig {
 	 * Deliberately not the user-session JWT secret: a leak here must not let anyone
 	 * forge session cookies. Integrated mode generates one at boot when unset;
 	 * standalone refuses to start without it.
+	 *
+	 * Must be at least 32 characters: this one value authenticates the control
+	 * plane, so a guessable secret is a full bypass. A shorter value is dropped
+	 * and treated as unset.
 	 */
-	@Env('N8N_ENGINE_AUTH_SECRET')
+	@Env('N8N_ENGINE_AUTH_SECRET', z.string().min(AUTH_SECRET_MIN_LENGTH))
 	authSecret: string = '';
 }

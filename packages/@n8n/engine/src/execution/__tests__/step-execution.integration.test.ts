@@ -29,9 +29,10 @@ const graph: WorkflowGraph = {
 };
 
 const secret = 'a'.repeat(32);
-const authHeader = {
+
+const authHeader = () => ({
 	authorization: `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
-};
+});
 
 describe('step execution (integration)', () => {
 	let container: StartedPostgreSqlContainer;
@@ -81,7 +82,7 @@ describe('step execution (integration)', () => {
 
 		const response = await request(runtime.app)
 			.post('/api/workflow-executions')
-			.set(authHeader)
+			.set(authHeader())
 			.send({ workflowId, graph: workflowGraph, triggerOutputs })
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;

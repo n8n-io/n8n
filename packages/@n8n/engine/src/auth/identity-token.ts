@@ -6,6 +6,7 @@ import type { AuthenticatedCaller, IdentityVerifier } from './identity.types';
 export const IDENTITY_ISSUER = 'n8n-cp';
 export const IDENTITY_AUDIENCE = 'n8n-engine-dp';
 export const IDENTITY_TOKEN_TTL_SECONDS = 60;
+export const IDENTITY_TOKEN_CLOCK_TOLERANCE_SECONDS = 30;
 export const MIN_SECRET_LENGTH = 32;
 
 const identityClaimsSchema = z.object({
@@ -37,6 +38,7 @@ export class SharedSecretIdentityVerifier implements IdentityVerifier {
 	}
 
 	verify(token: string): AuthenticatedCaller {
+		const now = Math.floor(Date.now() / 1000);
 		let claims: unknown;
 		try {
 			// `algorithms` is pinned: an unpinned verify accepts whatever `alg` the
@@ -47,7 +49,8 @@ export class SharedSecretIdentityVerifier implements IdentityVerifier {
 				issuer: IDENTITY_ISSUER,
 				audience: IDENTITY_AUDIENCE,
 				maxAge: IDENTITY_TOKEN_TTL_SECONDS,
-				clockTolerance: 30,
+				clockTolerance: IDENTITY_TOKEN_CLOCK_TOLERANCE_SECONDS,
+				clockTimestamp: now,
 			});
 		} catch {
 			throw new InvalidIdentityTokenError();
@@ -55,6 +58,9 @@ export class SharedSecretIdentityVerifier implements IdentityVerifier {
 
 		const parsed = identityClaimsSchema.safeParse(claims);
 		if (!parsed.success) throw new InvalidIdentityTokenError();
+		if (parsed.data.iat > now + IDENTITY_TOKEN_CLOCK_TOLERANCE_SECONDS) {
+			throw new InvalidIdentityTokenError();
+		}
 
 		return { cpId: parsed.data.sub, tenantId: parsed.data.tenant_id };
 	}

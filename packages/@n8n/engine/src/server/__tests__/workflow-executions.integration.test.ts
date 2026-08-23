@@ -18,9 +18,10 @@ const sampleGraph: WorkflowGraph = {
 };
 
 const secret = 'a'.repeat(32);
-const authHeader = {
+
+const authHeader = () => ({
 	authorization: `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
-};
+});
 
 describe('POST /api/workflow-executions (integration)', () => {
 	let container: StartedPostgreSqlContainer;
@@ -57,7 +58,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('creates an execution row, publishes execution:enqueued, returns 201', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
-			.set(authHeader)
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
@@ -84,7 +85,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects an invalid body with 400', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
-			.set(authHeader)
+			.set(authHeader())
 			.send({ workflowId: 'wf-1' }); // missing graph
 
 		expect(response.status).toBe(400);
@@ -94,7 +95,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects a bare-object triggerOutputs with 400 (the legacy, dropped shape)', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
-			.set(authHeader)
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
@@ -108,7 +109,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it.each([['str'], [42]])('rejects triggerOutputs %p with 400', async (triggerOutputs) => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
-			.set(authHeader)
+			.set(authHeader())
 			.send({ workflowId: 'wf-1', graph: sampleGraph, triggerOutputs });
 
 		expect(response.status).toBe(400);
@@ -116,7 +117,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	});
 
 	it('rejects an empty-array triggerOutputs with 400 (send null or omit for "no payload")', async () => {
-		const response = await request(url).post('/api/workflow-executions').set(authHeader).send({
+		const response = await request(url).post('/api/workflow-executions').set(authHeader()).send({
 			workflowId: 'wf-1',
 			graph: sampleGraph,
 			triggerOutputs: [],
@@ -129,7 +130,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects a triggerOutputs with more slots than the cap with 400', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
-			.set(authHeader)
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
@@ -143,7 +144,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects a graph without a trigger with 400, creating nothing', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
-			.set(authHeader)
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: { nodes: [{ id: 'a', name: 'A', type: 'v1-node' }], edges: [] },
@@ -157,7 +158,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects a graph with back-edges with 501, creating nothing', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
-			.set(authHeader)
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: {
