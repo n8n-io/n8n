@@ -220,5 +220,6 @@ const targetLabel = computed(() =>
 	border: var(--border);
 	border-radius: var(--radius--2xs);
 	overflow: hidden;
+	margin-top: var(--spacing--5xs);
 }
 </style>
