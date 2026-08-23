@@ -4,6 +4,25 @@
         "@odata.etag": {
             "type": "string"
         },
+        "bccRecipients": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "emailAddress": {
+                        "type": "object",
+                        "properties": {
+                            "address": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "body": {
             "type": "object",
             "properties": {
@@ -176,5 +195,5 @@
             "type": "string"
         }
     },
-    "version": 9
+    "version": 10
 }

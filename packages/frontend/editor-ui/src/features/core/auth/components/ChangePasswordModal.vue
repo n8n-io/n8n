@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useToast } from '@/app/composables/useToast';
-import { CHANGE_PASSWORD_MODAL_KEY } from '@/app/constants';
+import { useToast } from '@n8n/composables/useToast';
+import { CHANGE_PASSWORD_MODAL_KEY } from '../auth.constants';
 import Modal from '@/app/components/Modal.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import { createFormEventBus } from '@n8n/design-system/utils';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { createFormEventBus } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { IFormInputs, IFormInput, FormFieldValueUpdate, FormValues } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
-import { N8nButton, N8nFormInputs } from '@n8n/design-system';
+import { N8nButton, N8nFormInputs, createPasswordRules } from '@n8n/design-system';
+
+// DynamicModalLoader's modal-state props must not reach the dialog root.
+defineOptions({ inheritAttrs: false });
 const config = ref<IFormInputs | null>(null);
 const formBus = createFormEventBus();
 const modalBus = createEventBus();
@@ -19,6 +23,8 @@ const loading = ref(false);
 const i18n = useI18n();
 const { showMessage, showError } = useToast();
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
+const passwordMinLength = settingsStore.userManagement.passwordMinLength ?? 8;
 
 const passwordsMatch = (value: string | number | boolean | null | undefined) => {
 	if (typeof value !== 'string') {
@@ -96,8 +102,10 @@ onMounted(() => {
 				label: i18n.baseText('auth.newPassword'),
 				type: 'password',
 				required: true,
-				validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
-				infoText: i18n.baseText('auth.defaultPasswordRequirements'),
+				validationRules: [createPasswordRules(passwordMinLength)],
+				infoText: i18n.baseText('auth.defaultPasswordRequirements', {
+					interpolate: { minimum: passwordMinLength },
+				}),
 				autocomplete: 'new-password',
 				capitalize: true,
 			},

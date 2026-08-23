@@ -8,6 +8,11 @@ export default {
 	component: N8nInfoAccordion,
 	argTypes: {},
 	parameters: {
+		docs: {
+			description: {
+				component: 'A collapsible accordion for progressively disclosing informational sections.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };

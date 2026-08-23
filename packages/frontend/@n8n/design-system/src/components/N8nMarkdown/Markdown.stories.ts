@@ -29,6 +29,14 @@ export default {
 			options: [1, 2, 3, 4, 5],
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A renderer for Markdown content with n8n-compatible formatting behavior.',
+			},
+		},
+	},
 };
 
 const Template: StoryFn = (args, { argTypes }) => ({
@@ -65,6 +73,13 @@ const TemplateWithCheckboxes: StoryFn = (args, { argTypes }) => ({
 export const WithCheckboxes = TemplateWithCheckboxes.bind({});
 WithCheckboxes.args = {
 	content: '__TODO__\n- [ ] Buy milk\n- [X] Buy socks\n',
+	loading: false,
+};
+
+export const WithCodeBlock = Template.bind({});
+WithCodeBlock.args = {
+	content:
+		'To get started, run the following in a terminal:\n\n```\necho "Hello world"\n```\n\nInline code like `EXAMPLE_VAR=true` should also render.\n',
 	loading: false,
 };
 

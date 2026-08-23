@@ -1,4 +1,5 @@
 name: 'Test: Benchmarks'
+run-name: "Test: Benchmarks (${{ inputs.ref || github.ref_name }})"
 
 on:
   workflow_call:
@@ -16,20 +17,27 @@ on:
         type: string
         default: ''
 
+env:
+  NODE_OPTIONS: --max-old-space-size=6144
+
 jobs:
   bench:
     name: Benchmarks
+    if: github.repository == 'n8n-io/n8n'
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-2vcpu-ubuntu-2204' }}
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ inputs.ref }}
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
+        with:
+          # @codspeed/core prebuilds do not load on Node 26 (removed V8 symbol).
+          node-version: '24.18.1'
 
       - name: Run benchmarks
-        uses: CodSpeedHQ/action@2ac572851726409c88c02a307f1ea2632a9ea59b # v4.11.0
+        uses: CodSpeedHQ/action@281164b0f014a4e7badd2c02cecad9b595b70537 # v4.11.1
         with:
           mode: simulation
           run: CODSPEED=true pnpm --filter=@n8n/performance bench

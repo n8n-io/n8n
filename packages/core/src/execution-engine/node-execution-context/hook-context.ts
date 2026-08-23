@@ -1,4 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
+import { UnexpectedError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	INode,
@@ -53,7 +53,7 @@ export class HookContext extends NodeExecutionContext implements IHookFunctions 
 
 	getWebhookName(): string {
 		if (this.webhookData === undefined) {
-			throw new ApplicationError('Only supported in webhook functions');
+			throw new UnexpectedError('Only supported in webhook functions');
 		}
 		return this.webhookData.webhookDescription.name;
 	}

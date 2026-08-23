@@ -40,7 +40,7 @@ describe('credentials service', () => {
 				['credential:read'],
 			);
 
-			const decryptedData = Container.get(CredentialsService).decrypt(storedCredential!);
+			const decryptedData = await Container.get(CredentialsService).decrypt(storedCredential!);
 
 			const mergedCredentials = {
 				id: credential.id,
@@ -73,7 +73,8 @@ describe('credentials service', () => {
 
 			if (!storedProjectCredential) throw new Error('Could not find credential');
 
-			const decryptedData = Container.get(CredentialsService).decrypt(storedProjectCredential);
+			const decryptedData =
+				await Container.get(CredentialsService).decrypt(storedProjectCredential);
 
 			const mergedCredentials = {
 				id: projectCredential.id,
@@ -106,7 +107,8 @@ describe('credentials service', () => {
 
 			if (!storedProjectCredential) throw new Error('Could not find credential');
 
-			const decryptedData = Container.get(CredentialsService).decrypt(storedProjectCredential);
+			const decryptedData =
+				await Container.get(CredentialsService).decrypt(storedProjectCredential);
 
 			const originalData = { accessToken: '' };
 			const mergedCredentials = {

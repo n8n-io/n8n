@@ -10,9 +10,12 @@
         "id": {
             "type": "string"
         },
+        "mailNickname": {
+            "type": "string"
+        },
         "userPrincipalName": {
             "type": "string"
         }
     },
-    "version": 6
+    "version": 7
 }

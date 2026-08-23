@@ -5,12 +5,13 @@ import { createServer } from 'node:http';
 import request from 'supertest';
 import type TestAgent from 'supertest/lib/agent';
 
+import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
 import { rawBodyReader } from '@/middlewares';
 
 import { createMultiFormDataParser } from '../webhook-form-data';
 
 // Formidable requires FS to store the uploaded files
-jest.unmock('node:fs');
+vi.unmock('node:fs');
 
 /** Test server for testing the form data parsing */
 class TestServer {
@@ -164,20 +165,33 @@ describe('webhook-form-data', () => {
 			testServer.assertHasBeenCalled();
 		});
 
-		it('should ignore file that is too large', async () => {
+		it('should reject with a 413 error when a single file exceeds the limit', async () => {
 			const oneByteInMb = 1 / 1024 / 1024;
 			const parseFn = createMultiFormDataParser(oneByteInMb);
 
 			await testServer
 				.sendRequestToHandler(async (req) => {
-					const parsedData = await parseFn(req);
-
-					expect(parsedData).toStrictEqual({
-						data: {},
-						files: {},
-					});
+					const rejection = parseFn(req);
+					await expect(rejection).rejects.toBeInstanceOf(ContentTooLargeError);
+					await expect(rejection).rejects.toMatchObject({ httpStatusCode: 413 });
 				})
 				.attach('file', oneKbData, 'file.txt');
+
+			testServer.assertHasBeenCalled();
+		});
+
+		it('should reject with a 413 error when the total upload size exceeds the limit', async () => {
+			const twoKbData = Buffer.alloc(2 * 1024, 'x');
+			const oneKbInMb = 1 / 1024;
+			const parseFn = createMultiFormDataParser(oneKbInMb);
+
+			await testServer
+				.sendRequestToHandler(async (req) => {
+					const rejection = parseFn(req);
+					await expect(rejection).rejects.toBeInstanceOf(ContentTooLargeError);
+					await expect(rejection).rejects.toMatchObject({ httpStatusCode: 413 });
+				})
+				.attach('file', twoKbData, 'large-upload.bin');
 
 			testServer.assertHasBeenCalled();
 		});

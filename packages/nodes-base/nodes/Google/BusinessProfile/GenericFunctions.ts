@@ -390,7 +390,7 @@ export async function searchAccounts(
 			return 0;
 		});
 
-	return { results, paginationToken: responseData.nextPageToken };
+	return { results, paginationToken: responseData.nextPageToken as string | undefined };
 }
 
 export async function searchLocations(
@@ -434,7 +434,7 @@ export async function searchLocations(
 			return 0;
 		});
 
-	return { results, paginationToken: responseData.nextPageToken };
+	return { results, paginationToken: responseData.nextPageToken as string | undefined };
 }
 
 export async function searchReviews(
@@ -475,7 +475,7 @@ export async function searchReviews(
 			return 0;
 		});
 
-	return { results, paginationToken: responseData.nextPageToken };
+	return { results, paginationToken: responseData.nextPageToken as string | undefined };
 }
 
 export async function searchPosts(
@@ -516,5 +516,5 @@ export async function searchPosts(
 			return 0;
 		});
 
-	return { results, paginationToken: responseData.nextPageToken };
+	return { results, paginationToken: responseData.nextPageToken as string | undefined };
 }

@@ -2,9 +2,10 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseMessage } from '@langchain/core/messages';
 import { SystemMessage } from '@langchain/core/messages';
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { MemoryManager } from '../MemoryManager.node';
 
@@ -17,15 +18,15 @@ import { MemoryManager } from '../MemoryManager.node';
 
 interface MockMemory {
 	memory: BaseChatMemory;
-	getMessages: jest.Mock;
-	addMessage: jest.Mock;
-	clear: jest.Mock;
+	getMessages: Mock;
+	addMessage: Mock;
+	clear: Mock;
 }
 
 function createMockMemory(messages: BaseMessage[] = []): MockMemory {
-	const getMessages = jest.fn().mockResolvedValue([...messages]);
-	const addMessage = jest.fn().mockResolvedValue(undefined);
-	const clear = jest.fn().mockResolvedValue(undefined);
+	const getMessages = vi.fn().mockResolvedValue([...messages]);
+	const addMessage = vi.fn().mockResolvedValue(undefined);
+	const clear = vi.fn().mockResolvedValue(undefined);
 
 	const memory = { chatHistory: { getMessages, addMessage, clear } } as unknown as BaseChatMemory;
 
@@ -60,7 +61,7 @@ describe('MemoryManager.execute - multi-item session context', () => {
 
 	beforeEach(() => {
 		node = new MemoryManager();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('insert mode', () => {

@@ -1,39 +1,57 @@
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
 import {
 	createTestNode,
 	createTestWorkflowObject,
+	createTestWorkflowExecutionResponse,
 	defaultNodeDescriptions,
 } from '@/__tests__/mocks';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore, SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import RunData from './RunData.vue';
 import { STORES } from '@n8n/stores';
-import { SET_NODE_TYPE } from '@/app/constants';
+import { MODAL_CONFIRM, SET_NODE_TYPE } from '@/app/constants';
+import { useAiSimulatedExecutionsStore } from '@/app/stores/aiSimulatedExecutions.store';
 import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { waitFor } from '@testing-library/vue';
-import type { INodeExecutionData, ITaskData, ITaskMetadata } from 'n8n-workflow';
+import { waitFor, within } from '@testing-library/vue';
+import {
+	createRunExecutionData,
+	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
+	type ExecutionStatus,
+	type INodeExecutionData,
+	type IRunExecutionData,
+	type ITaskData,
+	type ITaskMetadata,
+	type NodeHint,
+} from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 const MOCK_EXECUTION_URL = 'execution.url/123';
 
-const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl, runWorkflow } = vi.hoisted(
-	() => ({
+const { trackOpeningRelatedExecution, resolveRelatedExecutionUrl, runWorkflow, confirmMock } =
+	vi.hoisted(() => ({
 		trackOpeningRelatedExecution: vi.fn(),
 		resolveRelatedExecutionUrl: vi.fn(),
 		runWorkflow: vi.fn(),
-	}),
-);
+		confirmMock: vi.fn(),
+	}));
+
+vi.mock('@/app/composables/useMessage', () => ({
+	useMessage: () => ({ confirm: confirmMock }),
+}));
 
 vi.mock('vue-router', () => {
 	return {
@@ -42,7 +60,7 @@ vi.mock('vue-router', () => {
 				href: '',
 			})),
 		}),
-		useRoute: () => reactive({ meta: {} }),
+		useRoute: () => reactive({ meta: {}, params: {} }),
 		RouterLink: vi.fn(),
 	};
 });
@@ -67,6 +85,7 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 
 describe('RunData', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
+	let workflowDocumentStore: MockedStore<() => ReturnType<typeof useWorkflowDocumentStore>>;
 	let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
 	let schemaPreviewStore: MockedStore<typeof useSchemaPreviewStore>;
 	let ndvStore: MockedStore<typeof useNDVStore>;
@@ -146,6 +165,116 @@ describe('RunData', () => {
 		await waitFor(() => getAllByTestId('run-data-schema-item'), { timeout: 1000 });
 		expect(getByText('Test 1')).toBeInTheDocument();
 		expect(getByText('Json data 1')).toBeInTheDocument();
+	});
+
+	describe('AI-simulated output', () => {
+		const simulatedItems = [{ json: { id: 'msg_1' } }];
+
+		beforeEach(() => {
+			confirmMock.mockReset();
+		});
+
+		it('labels output as simulated when the displayed execution marked the node', async () => {
+			const { getByTestId, queryByTestId } = render({
+				defaultRunItems: simulatedItems,
+				displayMode: 'table',
+			});
+
+			expect(queryByTestId('ndv-ai-simulated-data-callout')).not.toBeInTheDocument();
+
+			// The Instance AI preview registers provenance for the displayed execution.
+			useAiSimulatedExecutionsStore().markSimulatedNodes('test-exec-id', ['Test Node']);
+
+			await waitFor(() => expect(getByTestId('ndv-ai-simulated-data-callout')).toBeInTheDocument());
+		});
+
+		it('does not label supplied historical executions, whose id is unknown', async () => {
+			// Standalone hosts (agents log viewers) pass a different execution as a
+			// prop; keying provenance off the active execution would mislabel it.
+			const { queryByTestId } = render({
+				displayMode: 'table',
+				workflowExecutionProp: createRunExecutionData({
+					resultData: {
+						runData: {
+							'Test Node': [
+								{
+									startTime: Date.now(),
+									executionIndex: 0,
+									executionTime: 1,
+									data: { main: [simulatedItems] },
+									source: [null],
+								},
+							],
+						},
+					},
+				}),
+			});
+
+			useAiSimulatedExecutionsStore().markSimulatedNodes('test-exec-id', ['Test Node']);
+
+			await waitFor(() =>
+				expect(queryByTestId('ndv-ai-simulated-data-callout')).not.toBeInTheDocument(),
+			);
+		});
+
+		it('does not label output of nodes the execution did not mark', async () => {
+			const { queryByTestId } = render({
+				defaultRunItems: simulatedItems,
+				displayMode: 'table',
+			});
+
+			useAiSimulatedExecutionsStore().markSimulatedNodes('test-exec-id', ['Other Node']);
+
+			await waitFor(() =>
+				expect(queryByTestId('ndv-ai-simulated-data-callout')).not.toBeInTheDocument(),
+			);
+		});
+
+		it('does not pin simulated output when the confirmation is declined', async () => {
+			confirmMock.mockResolvedValueOnce('cancel');
+			const { getByTestId } = render({
+				defaultRunItems: simulatedItems,
+				displayMode: 'table',
+			});
+			useAiSimulatedExecutionsStore().markSimulatedNodes('test-exec-id', ['Test Node']);
+			await waitFor(() => expect(getByTestId('ndv-ai-simulated-data-callout')).toBeInTheDocument());
+
+			await userEvent.click(getByTestId('ndv-pin-data'));
+
+			expect(confirmMock).toHaveBeenCalledTimes(1);
+			expect(workflowDocumentStore.pinnedDataByNodeName['Test Node']).toBeUndefined();
+		});
+
+		it('pins simulated output after explicit confirmation', async () => {
+			confirmMock.mockResolvedValueOnce(MODAL_CONFIRM);
+			const { getByTestId } = render({
+				defaultRunItems: simulatedItems,
+				displayMode: 'table',
+			});
+			useAiSimulatedExecutionsStore().markSimulatedNodes('test-exec-id', ['Test Node']);
+			await waitFor(() => expect(getByTestId('ndv-ai-simulated-data-callout')).toBeInTheDocument());
+
+			await userEvent.click(getByTestId('ndv-pin-data'));
+
+			expect(confirmMock).toHaveBeenCalledTimes(1);
+			await waitFor(() =>
+				expect(workflowDocumentStore.pinnedDataByNodeName['Test Node']).toEqual(simulatedItems),
+			);
+		});
+
+		it('pins non-simulated output without asking for confirmation', async () => {
+			const { getByTestId } = render({
+				defaultRunItems: simulatedItems,
+				displayMode: 'table',
+			});
+
+			await userEvent.click(getByTestId('ndv-pin-data'));
+
+			expect(confirmMock).not.toHaveBeenCalled();
+			await waitFor(() =>
+				expect(workflowDocumentStore.pinnedDataByNodeName['Test Node']).toEqual(simulatedItems),
+			);
+		});
 	});
 
 	it('should render only download buttons for PDFs', async () => {
@@ -1185,6 +1314,286 @@ describe('RunData', () => {
 		});
 	});
 
+	describe('redacted execution state', () => {
+		it('should render data-redacted slot when execution is redacted and node has run', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: {} }],
+				displayMode: 'table',
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			expect(queryByTestId('data-redacted-slot')).toBeInTheDocument();
+		});
+
+		it('should NOT render data-redacted slot when execution is not redacted', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: { name: 'Test' } }],
+				displayMode: 'table',
+			});
+
+			expect(queryByTestId('data-redacted-slot')).not.toBeInTheDocument();
+		});
+
+		it('should show pinned data instead of redacted state when data is pinned', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: {} }],
+				displayMode: 'table',
+				pinnedData: [{ json: { name: 'Pinned' } }],
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			// Pinned data takes priority — redacted slot should NOT render
+			expect(queryByTestId('data-redacted-slot')).not.toBeInTheDocument();
+		});
+
+		it('should render data-redacted slot with dynamic_credentials reason', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: {} }],
+				displayMode: 'table',
+				redactionInfo: { isRedacted: true, reason: 'dynamic_credentials', canReveal: false },
+			});
+
+			expect(queryByTestId('data-redacted-slot')).toBeInTheDocument();
+		});
+
+		it('should hide edit button when execution is redacted', () => {
+			const { queryByTestId } = render({
+				defaultRunItems: [{ json: {} }],
+				displayMode: 'table',
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			expect(queryByTestId('ndv-edit-pinned-data')).not.toBeInTheDocument();
+		});
+
+		it('should show error view instead of redacted state when node has run error', () => {
+			const { queryByTestId, getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: {
+							main: [[{ json: {} }]],
+						},
+						source: [null],
+						error: {
+							level: 'error',
+							message: 'Test error',
+							node: {
+								name: 'Test Node',
+								type: 'n8n-nodes-base.set',
+								typeVersion: 3,
+								position: [0, 0],
+							},
+						} as never,
+					},
+				],
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			// Error takes priority over redacted state
+			expect(queryByTestId('data-redacted-slot')).not.toBeInTheDocument();
+			expect(getByTestId('node-error-view')).toBeInTheDocument();
+		});
+
+		it('should show redacted error state when redactedError is present but error is absent', () => {
+			const { queryByTestId, getByTestId } = render({
+				displayMode: 'table',
+				paneType: 'output',
+				runs: [
+					{
+						startTime: Date.now(),
+						executionIndex: 0,
+						executionTime: 1,
+						data: {
+							main: [[{ json: {} }]],
+						},
+						source: [null],
+						redactedError: { type: 'NodeApiError', httpCode: '500' },
+					},
+				],
+				redactionInfo: { isRedacted: true, reason: 'workflow_redaction_policy', canReveal: true },
+			});
+
+			// Redacted error shows error state, not generic redacted state
+			expect(queryByTestId('data-redacted-slot')).not.toBeInTheDocument();
+			expect(queryByTestId('node-error-view')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-redacted-error')).toBeInTheDocument();
+		});
+	});
+
+	describe('trimmed execution data placeholder', () => {
+		const trimmedRun = {
+			startTime: Date.now(),
+			executionIndex: 0,
+			executionTime: 1,
+			data: {
+				main: [
+					[
+						{
+							json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+							pairedItem: { item: 0 },
+						},
+					],
+				],
+			},
+			source: [null],
+		} as unknown as ITaskData;
+
+		it('shows the loading spinner for trimmed data while the workflow execution is still running', () => {
+			const { getByTestId } = render({
+				displayMode: 'json',
+				runs: [trimmedRun],
+				executionStatus: 'running',
+			});
+
+			expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+		});
+
+		it('shows the recovery state with an unpin button for trimmed pinned data after the workflow execution finished', () => {
+			const { getByTestId, queryByTestId } = render({
+				displayMode: 'json',
+				runs: [trimmedRun],
+				pinnedData: [
+					{
+						json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true },
+						pairedItem: { item: 0 },
+					},
+				],
+				executionStatus: 'success',
+			});
+
+			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-trimmed-corrupted')).toBeInTheDocument();
+			expect(getByTestId('ndv-trimmed-corrupted-unpin')).toBeInTheDocument();
+		});
+
+		it('shows the recovery state without an unpin button when the trimmed marker is on a different node', () => {
+			const { getByTestId, queryByTestId } = render({
+				displayMode: 'json',
+				runs: [trimmedRun],
+				executionStatus: 'success',
+			});
+
+			expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+			expect(getByTestId('ndv-trimmed-corrupted')).toBeInTheDocument();
+			expect(queryByTestId('ndv-trimmed-corrupted-unpin')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('node hints', () => {
+		it("should render a location:'ndv' hint only in the output pane", () => {
+			const hints: NodeHint[] = [{ message: 'NDV hint', location: 'ndv' }];
+
+			const inputPane = render({
+				displayMode: 'table',
+				nodeTypeHints: hints,
+				paneType: 'input',
+			});
+
+			expect(inputPane.queryByText('NDV hint')).not.toBeInTheDocument();
+			inputPane.unmount();
+
+			const outputPane = render({
+				displayMode: 'table',
+				nodeTypeHints: hints,
+				paneType: 'output',
+			});
+
+			expect(outputPane.getByText('NDV hint')).toBeInTheDocument();
+		});
+
+		it("should keep displaying a location:'ndv' beforeExecution hint after the node has run", () => {
+			const { getByText } = render({
+				displayMode: 'table',
+				nodeTypeHints: [
+					{ message: 'Config hint', location: 'ndv', whenToDisplay: 'beforeExecution' },
+				],
+				paneType: 'output',
+			});
+
+			expect(getByText('Config hint')).toBeInTheDocument();
+		});
+
+		it('should hide a beforeExecution hint without location after the node has run', () => {
+			const { queryByText } = render({
+				displayMode: 'table',
+				nodeTypeHints: [{ message: 'Before-run hint', whenToDisplay: 'beforeExecution' }],
+				paneType: 'output',
+			});
+
+			expect(queryByText('Before-run hint')).not.toBeInTheDocument();
+		});
+
+		it('should display a beforeExecution hint without location before the node has run', () => {
+			const { getByText } = render({
+				displayMode: 'table',
+				nodeTypeHints: [{ message: 'Before-run hint', whenToDisplay: 'beforeExecution' }],
+				paneType: 'output',
+				withRunData: false,
+			});
+
+			expect(getByText('Before-run hint')).toBeInTheDocument();
+		});
+
+		it("should render location:'inputPane' and location:'outputPane' hints only in their pane", () => {
+			const hints: NodeHint[] = [
+				{ message: 'Input pane hint', location: 'inputPane' },
+				{ message: 'Output pane hint', location: 'outputPane' },
+			];
+
+			const inputPane = render({
+				displayMode: 'table',
+				nodeTypeHints: hints,
+				paneType: 'input',
+			});
+
+			expect(inputPane.getByText('Input pane hint')).toBeInTheDocument();
+			expect(inputPane.queryByText('Output pane hint')).not.toBeInTheDocument();
+			inputPane.unmount();
+
+			const outputPane = render({
+				displayMode: 'table',
+				nodeTypeHints: hints,
+				paneType: 'output',
+			});
+
+			expect(outputPane.getByText('Output pane hint')).toBeInTheDocument();
+			expect(outputPane.queryByText('Input pane hint')).not.toBeInTheDocument();
+		});
+
+		it('should render every hint inside the hints container, which caps their height', () => {
+			const { getByTestId, getAllByTestId } = render({
+				displayMode: 'table',
+				nodeTypeHints: [
+					{ message: 'First hint', location: 'outputPane' },
+					{ message: 'Second hint', location: 'outputPane' },
+				],
+				paneType: 'output',
+			});
+
+			const hintsContainer = getByTestId('run-data-hints');
+
+			expect(within(hintsContainer).getAllByTestId('node-hint')).toHaveLength(2);
+			expect(getAllByTestId('node-hint')).toHaveLength(2);
+			expect(hintsContainer).toHaveClass('hints');
+		});
+
+		it('should hide an afterExecution hint before the node has run', () => {
+			const { queryByText } = render({
+				displayMode: 'table',
+				nodeTypeHints: [{ message: 'After-run hint', whenToDisplay: 'afterExecution' }],
+				paneType: 'output',
+				withRunData: false,
+			});
+
+			expect(queryByText('After-run hint')).not.toBeInTheDocument();
+		});
+	});
+
 	// Default values for the render function
 	const nodes = [
 		{
@@ -1208,6 +1617,11 @@ describe('RunData', () => {
 		runs,
 		overrideOutputs,
 		lastSuccessfulExecution,
+		redactionInfo,
+		executionStatus,
+		nodeTypeHints,
+		withRunData = true,
+		workflowExecutionProp,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1218,6 +1632,12 @@ describe('RunData', () => {
 		metadata?: ITaskMetadata;
 		runs?: ITaskData[];
 		overrideOutputs?: number[];
+		redactionInfo?: { isRedacted: boolean; reason: string; canReveal: boolean };
+		executionStatus?: ExecutionStatus;
+		nodeTypeHints?: NodeHint[];
+		withRunData?: boolean;
+		/** Supplied historical execution data, as standalone hosts pass it. */
+		workflowExecutionProp?: IRunExecutionData;
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -1241,41 +1661,18 @@ describe('RunData', () => {
 			metadata,
 		};
 
+		const testWorkflowId = workflowId ?? 'test-workflow';
 		const pinia = createTestingPinia({
 			stubActions: false,
 			initialState: {
 				[STORES.SETTINGS]: SETTINGS_STORE_DEFAULT_STATE,
-				[STORES.NDV]: {
+				[getNDVStoreId(createWorkflowDocumentId(testWorkflowId))]: {
 					activeNodeName: 'Test Node',
 				},
 				[STORES.WORKFLOWS]: {
 					workflow: {
 						workflowNodes,
 					},
-					workflowExecutionData: {
-						id: '1',
-						finished: true,
-						mode: 'trigger',
-						startedAt: new Date(),
-						workflowData: {
-							id: '1',
-							name: 'Test Workflow',
-							versionId: '1',
-							createdAt: new Date().toISOString(),
-							updatedAt: new Date().toISOString(),
-							active: false,
-							nodes: [],
-							connections: {},
-						},
-						data: {
-							resultData: {
-								runData: {
-									'Test Node': runs ?? [defaultRun],
-								},
-							},
-						},
-					},
-					lastSuccessfulExecution: lastSuccessfulExecution ?? null,
 				},
 			},
 		});
@@ -1285,21 +1682,47 @@ describe('RunData', () => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		workflowsStore = mockedStore(useWorkflowsStore);
 		schemaPreviewStore = mockedStore(useSchemaPreviewStore);
-		ndvStore = mockedStore(useNDVStore);
+		workflowsStore.setWorkflowId(testWorkflowId);
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(testWorkflowId));
 
-		nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-		workflowsStore.getNodeByName.mockReturnValue(workflowNodes[0]);
+		nodeTypesStore.setNodeTypes(
+			nodeTypeHints
+				? defaultNodeDescriptions.map((description) =>
+						description.name === SET_NODE_TYPE
+							? { ...description, hints: nodeTypeHints }
+							: description,
+					)
+				: defaultNodeDescriptions,
+		);
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
+		vi.spyOn(workflowDocumentStore, 'getNodeByName').mockReturnValue(workflowNodes[0]);
 
 		// Mock ndvStore methods
 		ndvStore.setOutputPanelEditModeEnabled = vi.fn();
 		ndvStore.setOutputPanelEditModeValue = vi.fn();
 
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData(
+			createTestWorkflowExecutionResponse({
+				mode: 'trigger',
+				status: executionStatus ?? 'success',
+				data: createRunExecutionData({
+					resultData: {
+						runData: withRunData ? { 'Test Node': runs ?? [defaultRun] } : {},
+					},
+					...(redactionInfo ? { redactionInfo } : {}),
+				}),
+			}),
+		);
+
+		if (lastSuccessfulExecution) {
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			).setLastSuccessfulExecution(lastSuccessfulExecution as IExecutionResponse);
+		}
+
 		if (pinnedData) {
-			const testWorkflowId = workflowId ?? 'test-workflow';
-			workflowsStore.workflow.id = testWorkflowId;
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(testWorkflowId),
-			);
 			workflowDocumentStore.pinNodeData('Test Node', pinnedData);
 		}
 
@@ -1315,10 +1738,17 @@ describe('RunData', () => {
 					nodes: workflowNodes,
 				}),
 				displayMode,
+				...(workflowExecutionProp ? { workflowExecution: workflowExecutionProp } : {}),
 			},
 			global: {
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => workflowId ?? 'test-workflow'),
+				},
 				stubs: {
-					RunDataPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },
+					RunDataPinButton: {
+						template:
+							'<button data-test-id="ndv-pin-data" @click="$emit(\'togglePinData\')"></button>',
+					},
 					NodeErrorView: { template: '<div data-test-id="node-error-view"></div>' },
 					VirtualSchema: {
 						template: `
@@ -1366,6 +1796,10 @@ describe('RunData', () => {
 				executingMessage: '',
 				noDataInBranchMessage: '',
 				overrideOutputs,
+			},
+			slots: {
+				'data-redacted': '<div data-test-id="data-redacted-slot">Data is redacted</div>',
+				'redacted-error': '<div data-test-id="redacted-error-slot">Error data is redacted</div>',
 			},
 			pinia,
 		});

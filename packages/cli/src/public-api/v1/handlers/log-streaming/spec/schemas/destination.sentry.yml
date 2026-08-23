@@ -1,0 +1,18 @@
+allOf:
+  - $ref: './destination.common.yml'
+  - type: object
+    additionalProperties: true
+    required:
+      - type
+      - dsn
+    properties:
+      type:
+        type: string
+        enum: [sentry]
+        description: Sends each event to a Sentry project.
+        example: sentry
+      dsn:
+        type: string
+        format: uri
+        description: Sentry DSN the events are sent to.
+        example: https://examplePublicKey@o0.ingest.sentry.io/0

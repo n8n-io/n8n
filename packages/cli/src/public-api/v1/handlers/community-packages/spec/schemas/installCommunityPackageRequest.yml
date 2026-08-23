@@ -1,0 +1,15 @@
+type: object
+required:
+  - name
+properties:
+  name:
+    type: string
+    description: 'npm package name (must start with n8n-nodes-)'
+  version:
+    type: string
+    description: Specific semver version to install
+  verify:
+    type: boolean
+    description: >
+      Whether to verify the package against the n8n-vetted package list.
+      Required when the instance has N8N_UNVERIFIED_PACKAGES_ENABLED=false.

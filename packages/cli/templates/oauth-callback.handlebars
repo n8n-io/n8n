@@ -90,6 +90,9 @@
 			(function messageParent() {
 				const broadcastChannel = new BroadcastChannel('oauth-callback');
 				broadcastChannel.postMessage('success');
+				// Bridge to the opener for embed setups where the editor and the
+				// n8n backend live on different origins (BroadcastChannel is same-origin only).
+				try { window.opener?.postMessage('success', '*'); } catch (_) {}
 			})();
 			(function autoclose(){
 				setTimeout(function() { window.close(); }, 5000);

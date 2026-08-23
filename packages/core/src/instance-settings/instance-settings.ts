@@ -3,8 +3,9 @@ import { InstanceSettingsConfig } from '@n8n/config';
 import type { InstanceRole, InstanceType } from '@n8n/constants';
 import { Memoized } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { toResult } from '@n8n/utils/result';
 import { createHash, randomBytes } from 'crypto';
-import { ApplicationError, jsonParse, ALPHABET, toResult } from 'n8n-workflow';
+import { UserError, jsonParse, ALPHABET } from 'n8n-workflow';
 import { customAlphabet } from 'nanoid';
 import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -52,13 +53,21 @@ export class InstanceSettings {
 
 	/**
 	 * Fixed ID of this n8n instance, for telemetry.
-	 * Derived from encryption key. Do not confuse with `hostId`.
+	 * Derived from encryption key on first boot, then read from DB.
+	 * Do not confuse with `hostId`.
 	 *
 	 * @example '258fce876abf5ea60eb86a2e777e5e190ff8f3e36b5b37aafec6636c31d4d1f9'
 	 */
-	readonly instanceId: string;
+	instanceId: string;
 
-	readonly hmacSignatureSecret: string;
+	/**
+	 * Encryption-key-derived value of `instanceId`, before any env or DB
+	 * override is applied by `initialize()`. Used as the license device
+	 * fingerprint when the override is too short for the license server.
+	 */
+	readonly derivedInstanceId: string;
+
+	hmacSignatureSecret: string;
 
 	readonly instanceType: InstanceType;
 
@@ -71,8 +80,87 @@ export class InstanceSettings {
 
 		this.hostId = `${this.instanceType}-${this.isDocker ? os.hostname() : nanoid()}`;
 		this.settings = this.loadOrCreate();
-		this.instanceId = this.generateInstanceId();
+		this.derivedInstanceId = this.generateInstanceId();
+		this.instanceId = this.derivedInstanceId;
 		this.hmacSignatureSecret = this.getOrGenerateHmacSignatureSecret();
+	}
+
+	/**
+	 * Two-phase init: reads or creates deployment-key rows for instance.id and signing.hmac.
+	 * Must be called after DB migrations complete, before license init.
+	 *
+	 * Precedence for each key: env var → DB active row → derive-from-key (and persist).
+	 *
+	 * When `canSeed` is false, missing rows are not created: only server
+	 * processes hold the deployment's encryption key, so a one-off CLI command
+	 * must not pin the identity for the whole deployment.
+	 *
+	 * The repo parameter is typed inline rather than imported from @n8n/db to
+	 * avoid a circular package dependency: @n8n/db depends on n8n-core at runtime.
+	 */
+	async initialize(
+		repo: {
+			findActiveByType(type: string): Promise<{ value: string } | null>;
+			insertOrIgnore(entity: {
+				type: string;
+				value: string;
+				status: string;
+				algorithm: null;
+			}): Promise<void>;
+		},
+		{ canSeed = true }: { canSeed?: boolean } = {},
+	): Promise<void> {
+		await this.initSecret(
+			repo,
+			'instance.id',
+			process.env.N8N_INSTANCE_ID,
+			canSeed,
+			() => this.instanceId,
+			(v) => {
+				this.instanceId = v;
+			},
+		);
+		await this.initSecret(
+			repo,
+			'signing.hmac',
+			process.env.N8N_HMAC_SIGNATURE_SECRET,
+			canSeed,
+			() => this.hmacSignatureSecret,
+			(v) => {
+				this.hmacSignatureSecret = v;
+			},
+		);
+	}
+
+	private async initSecret(
+		repo: {
+			findActiveByType(type: string): Promise<{ value: string } | null>;
+			insertOrIgnore(entity: {
+				type: string;
+				value: string;
+				status: string;
+				algorithm: null;
+			}): Promise<void>;
+		},
+		type: string,
+		envValue: string | undefined,
+		canSeed: boolean,
+		get: () => string,
+		set: (v: string) => void,
+	): Promise<void> {
+		if (envValue) {
+			set(envValue);
+			return;
+		}
+		const existing = await repo.findActiveByType(type);
+		if (existing) {
+			set(existing.value);
+			return;
+		}
+		if (!canSeed) return;
+		await repo.insertOrIgnore({ type, value: get(), status: 'active', algorithm: null });
+		const winner = await repo.findActiveByType(type);
+		if (winner) set(winner.value);
 	}
 
 	/**
@@ -203,7 +291,7 @@ export class InstanceSettings {
 			const { encryptionKey, tunnelSubdomain, fsStorageMigrated } = settings;
 
 			if (encryptionKeyFromEnv && encryptionKey !== encryptionKeyFromEnv) {
-				throw new ApplicationError(
+				throw new UserError(
 					`Mismatching encryption keys. The encryption key in the settings file ${this.settingsFile} does not match the N8N_ENCRYPTION_KEY env var. Please make sure both keys match. More information: https://docs.n8n.io/hosting/environment-variables/configuration-methods/#encryption-key`,
 				);
 			}

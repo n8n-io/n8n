@@ -33,7 +33,7 @@ const isAgentModel = computed(
 					<N8nLoading :rows="1" variant="p" :class="$style.skeletonName" />
 				</template>
 				<template v-else>
-					<ChatAgentAvatar :agent="selectedAgent" size="lg" :class="$style.agentIcon" />
+					<ChatAgentAvatar :agent="selectedAgent" size="xl" />
 					<N8nHeading tag="h2" size="xlarge" :class="$style.agentName">
 						{{ truncate(selectedAgent.name, 40) }}
 					</N8nHeading>
@@ -93,18 +93,6 @@ const isAgentModel = computed(
 	max-width: 640px;
 	text-align: center;
 }
-
-.agentIcon {
-	font-size: 40px;
-
-	/* Override avatar sizes for the large greeting display */
-	span {
-		width: 40px;
-		height: 40px;
-		font-size: 40px;
-	}
-}
-
 .agentName {
 	margin-top: var(--spacing--2xs);
 	color: var(--color--text--shade-1);

@@ -1,5 +1,7 @@
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
 import nock from 'nock';
 
 import type { FirecrawlQuickConnect } from '../../quick-connect.config';
@@ -10,12 +12,18 @@ describe('FirecrawlHandler', () => {
 	const FIRECRAWL_API_BASE_URL = 'https://api.firecrawl.dev';
 
 	beforeEach(() => {
-		handler = new FirecrawlHandler();
+		handler = new FirecrawlHandler(Container.get(OutboundHttp));
 		nock.cleanAll();
 	});
 
 	afterEach(() => {
 		nock.cleanAll();
+	});
+
+	it('should create the request client with SSRF disabled for the fixed vendor host', () => {
+		const requests = vi.fn().mockReturnValue(mock<ReturnType<OutboundHttp['requests']>>());
+		new FirecrawlHandler(mock<OutboundHttp>({ requests }));
+		expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled', timeout: 30_000 });
 	});
 
 	describe('setConfig', () => {

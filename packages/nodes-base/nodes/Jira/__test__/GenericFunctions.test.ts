@@ -1,7 +1,11 @@
-import { type DeepMockProxy, mockDeep } from 'jest-mock-extended';
+import { type DeepMockProxy, mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 
-import { handlePagination, jiraSoftwareCloudApiRequestAllItems } from '../GenericFunctions';
+import {
+	handlePagination,
+	jiraSoftwareCloudApiRequestAllItems,
+	type JiraSoftwareCloudApiRequest,
+} from '../GenericFunctions';
 
 describe('Jira -> GenericFunctions', () => {
 	describe('jiraSoftwareCloudApiRequestAllItems', () => {
@@ -33,7 +37,7 @@ describe('Jira -> GenericFunctions', () => {
 		});
 
 		afterEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should get all items and not pass the body when the method is GET', async () => {
@@ -51,6 +55,116 @@ describe('Jira -> GenericFunctions', () => {
 				expect.not.objectContaining({
 					body: expect.anything(),
 				}),
+			);
+		});
+	});
+
+	describe('jiraSoftwareCloudApiRequest credential routing', () => {
+		let mockExecuteFunctions: DeepMockProxy<IExecuteFunctions>;
+		let jiraSoftwareCloudApiRequest: JiraSoftwareCloudApiRequest;
+
+		beforeEach(async () => {
+			vi.resetModules();
+			({ jiraSoftwareCloudApiRequest } = await import('../GenericFunctions'));
+			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValue({});
+			mockExecuteFunctions.getNode.mockReturnValue({ name: 'Jira' } as ReturnType<
+				IExecuteFunctions['getNode']
+			>);
+		});
+
+		afterEach(() => {
+			vi.clearAllMocks();
+		});
+
+		it('should use jiraSoftwareCloudApi credential for jiraVersion "cloud"', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('cloud');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				domain: 'https://example.atlassian.net',
+			});
+
+			await jiraSoftwareCloudApiRequest.call(mockExecuteFunctions, '/api/2/myself', 'GET');
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('jiraSoftwareCloudApi');
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'jiraSoftwareCloudApi',
+				expect.objectContaining({ uri: 'https://example.atlassian.net/rest/api/2/myself' }),
+			);
+		});
+
+		it('should use jiraSoftwareCloudOAuth2Api credential for jiraVersion "cloudOAuth2" and look up cloudId', async () => {
+			const cloudId = 'abc123-cloud-id';
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('cloudOAuth2');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				domain: 'https://example.atlassian.net',
+			});
+			// cloudId lookup uses httpRequestWithAuthentication; the API request uses the legacy helper
+			mockExecuteFunctions.helpers.httpRequestWithAuthentication.mockResolvedValueOnce([
+				{ id: cloudId, url: 'https://example.atlassian.net' },
+			]);
+			mockExecuteFunctions.helpers.requestWithAuthentication.mockResolvedValueOnce({});
+
+			await jiraSoftwareCloudApiRequest.call(mockExecuteFunctions, '/api/2/myself', 'GET');
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith(
+				'jiraSoftwareCloudOAuth2Api',
+			);
+			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				'jiraSoftwareCloudOAuth2Api',
+				expect.objectContaining({
+					url: 'https://api.atlassian.com/oauth/token/accessible-resources',
+				}),
+			);
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'jiraSoftwareCloudOAuth2Api',
+				expect.objectContaining({
+					uri: `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/2/myself`,
+				}),
+			);
+		});
+
+		it('should throw a NodeOperationError naming the Site URL field when the credential lacks it', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('cloudOAuth2');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({});
+
+			const promise = jiraSoftwareCloudApiRequest.call(
+				mockExecuteFunctions,
+				'/api/2/myself',
+				'GET',
+			);
+
+			await expect(promise).rejects.toThrow('Site URL');
+			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).not.toHaveBeenCalled();
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('should use jiraSoftwareServerApi credential for jiraVersion "server"', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('server');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				domain: 'https://jira.company.com',
+			});
+
+			await jiraSoftwareCloudApiRequest.call(mockExecuteFunctions, '/api/2/myself', 'GET');
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('jiraSoftwareServerApi');
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'jiraSoftwareServerApi',
+				expect.objectContaining({ uri: 'https://jira.company.com/rest/api/2/myself' }),
+			);
+		});
+
+		it('should use jiraSoftwareServerPatApi credential for jiraVersion "serverPat"', async () => {
+			mockExecuteFunctions.getNodeParameter.mockReturnValue('serverPat');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				domain: 'https://jira.company.com',
+			});
+
+			await jiraSoftwareCloudApiRequest.call(mockExecuteFunctions, '/api/2/myself', 'GET');
+
+			expect(mockExecuteFunctions.getCredentials).toHaveBeenCalledWith('jiraSoftwareServerPatApi');
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'jiraSoftwareServerPatApi',
+				expect.objectContaining({ uri: 'https://jira.company.com/rest/api/2/myself' }),
 			);
 		});
 	});

@@ -1,6 +1,7 @@
+import { AstRule } from '@n8n/rules-engine/ast';
+import type { AstProjectConfig } from '@n8n/rules-engine/ast';
 import { SyntaxKind, type Project, type SourceFile, type CallExpression } from 'ts-morph';
 
-import { BaseRule } from './base-rule.js';
 import { getConfig } from '../config.js';
 import type { Violation } from '../types.js';
 import { LOCATOR_METHODS, PAGE_LEVEL_METHODS, truncateText } from '../utils/ast-helpers.js';
@@ -29,7 +30,7 @@ import { matchesPatterns } from '../utils/paths.js';
  * Configuration:
  * - allowInExpect: Skip violations inside expect() calls (default: false)
  */
-export class SelectorPurityRule extends BaseRule {
+export class SelectorPurityRule extends AstRule<{ rootDir: string }> {
 	readonly id = 'selector-purity';
 	readonly name = 'Selector Purity';
 	readonly description = 'Composables and tests should use page objects, not direct locators';
@@ -40,7 +41,15 @@ export class SelectorPurityRule extends BaseRule {
 		return [...config.patterns.flows, ...config.patterns.tests];
 	}
 
-	analyze(_project: Project, files: SourceFile[]): Violation[] {
+	protected projectConfig(): AstProjectConfig {
+		return { packages: ['.'], spec: { globs: this.getTargetGlobs() } };
+	}
+
+	analyze(context: { rootDir: string }): Violation[] {
+		return this.projects(context).flatMap(({ project }) => this.analyzeProject(project));
+	}
+
+	analyzeProject(project: Project, files: SourceFile[] = project.getSourceFiles()): Violation[] {
 		const violations: Violation[] = [];
 		const config = getConfig();
 
@@ -70,7 +79,7 @@ export class SelectorPurityRule extends BaseRule {
 					// Skip violations inside expect() if allowInExpect is enabled
 					// Check both runtime config and config file settings
 					const ruleSettings = getConfig().rules?.[this.id];
-					const allowInExpect = this.config.allowInExpect ?? ruleSettings?.allowInExpect;
+					const allowInExpect = this.getOptions().allowInExpect ?? ruleSettings?.allowInExpect;
 					if (allowInExpect && this.isInsideExpect(call)) {
 						continue;
 					}
@@ -83,7 +92,7 @@ export class SelectorPurityRule extends BaseRule {
 					const suggestion = this.getSuggestion(text);
 
 					violations.push(
-						this.createViolation(
+						this.fileViolation(
 							file,
 							startLine,
 							startColumn,
@@ -102,7 +111,7 @@ export class SelectorPurityRule extends BaseRule {
 
 					// Skip violations inside expect() if allowInExpect is enabled
 					const ruleSettings = getConfig().rules?.[this.id];
-					const allowInExpect = this.config.allowInExpect ?? ruleSettings?.allowInExpect;
+					const allowInExpect = this.getOptions().allowInExpect ?? ruleSettings?.allowInExpect;
 					if (allowInExpect && this.isInsideExpect(call)) {
 						continue;
 					}
@@ -112,7 +121,7 @@ export class SelectorPurityRule extends BaseRule {
 					const truncated = truncateText(call.getText(), 60);
 
 					violations.push(
-						this.createViolation(
+						this.fileViolation(
 							file,
 							startLine,
 							startColumn,

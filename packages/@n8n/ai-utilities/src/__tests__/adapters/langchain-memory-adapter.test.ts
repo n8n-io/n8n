@@ -12,16 +12,16 @@ describe('LangchainMemoryAdapter', () => {
 
 	const createMockMemory = (messages: Message[] = []): ChatMemory => {
 		const mockHistory: ChatHistory = {
-			getMessages: jest.fn().mockResolvedValue([...messages]),
-			addMessage: jest.fn().mockResolvedValue(undefined),
-			addMessages: jest.fn().mockResolvedValue(undefined),
-			clear: jest.fn().mockResolvedValue(undefined),
+			getMessages: vi.fn().mockResolvedValue([...messages]),
+			addMessage: vi.fn().mockResolvedValue(undefined),
+			addMessages: vi.fn().mockResolvedValue(undefined),
+			clear: vi.fn().mockResolvedValue(undefined),
 		};
 
 		return {
-			loadMessages: jest.fn().mockResolvedValue([...messages]),
-			saveTurn: jest.fn().mockResolvedValue(undefined),
-			clear: jest.fn().mockResolvedValue(undefined),
+			loadMessages: vi.fn().mockResolvedValue([...messages]),
+			saveTurn: vi.fn().mockResolvedValue(undefined),
+			clear: vi.fn().mockResolvedValue(undefined),
 			chatHistory: mockHistory,
 		};
 	};

@@ -1,5 +1,6 @@
 import { testDb, mockInstance } from '@n8n/backend-test-utils';
-import type { CommandClass } from '@n8n/decorators';
+import { CommandMetadata, type CommandClass } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 import argvParser from 'yargs-parser';
 
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -9,27 +10,31 @@ mockInstance(MessageEventBus);
 
 export const setupTestCommand = <T extends CommandClass>(Command: T) => {
 	// mock SIGINT/SIGTERM registration
-	process.once = jest.fn();
-	process.exit = jest.fn() as never;
+	process.once = vi.fn();
+	process.exit = vi.fn() as never;
 
 	beforeAll(async () => {
 		await testDb.init();
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockInstance(TelemetryEventRelay);
 	});
 
 	afterAll(async () => {
 		await testDb.terminate();
 
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	const run = async (argv: string[] = []) => {
 		const command = new Command();
-		command.flags = argvParser(argv);
+		const rawFlags = argvParser(argv, { string: ['id'] });
+		const entry = Container.get(CommandMetadata)
+			.getEntries()
+			.find(([, e]) => e.class === Command)?.[1];
+		command.flags = entry?.flagsSchema ? entry.flagsSchema.parse(rawFlags) : rawFlags;
 		await command.init?.();
 		await command.run();
 		return command;

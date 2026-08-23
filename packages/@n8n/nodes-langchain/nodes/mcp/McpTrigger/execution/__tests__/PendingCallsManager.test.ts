@@ -5,11 +5,11 @@ describe('PendingCallsManager', () => {
 
 	beforeEach(() => {
 		manager = new PendingCallsManager();
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	describe('waitForResult', () => {
@@ -24,7 +24,7 @@ describe('PendingCallsManager', () => {
 		it('should reject on timeout with meaningful error', async () => {
 			const resultPromise = manager.waitForResult('call-1', 'test-tool', {}, 1000);
 
-			jest.advanceTimersByTime(1001);
+			vi.advanceTimersByTime(1001);
 
 			await expect(resultPromise).rejects.toThrow('Worker tool execution timeout');
 		});
@@ -48,7 +48,7 @@ describe('PendingCallsManager', () => {
 		it('should remove call from pending after timeout', async () => {
 			const resultPromise = manager.waitForResult('call-1', 'test-tool', {}, 1000);
 
-			jest.advanceTimersByTime(1001);
+			vi.advanceTimersByTime(1001);
 
 			await expect(resultPromise).rejects.toThrow();
 			expect(manager.has('call-1')).toBe(false);

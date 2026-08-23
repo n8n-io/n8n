@@ -8,22 +8,25 @@ import {
 	User,
 } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { DateTime } from 'luxon';
+import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
-import { createEmptyRunExecutionData, sleep } from 'n8n-workflow';
+import { createEmptyRunExecutionData } from 'n8n-workflow';
 import { ExecutionStatus, type IRun, type ITaskData } from 'n8n-workflow';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Push } from '@/push';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
 
-import type { EventMessageTypes } from '../eventbus/event-message-classes';
+import { isNodeEventMessage, type EventMessageTypes } from '../eventbus/event-message-classes';
 
 /**
  * Service for recovering key properties in executions.
@@ -35,6 +38,7 @@ export class ExecutionRecoveryService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly userManagementMailer: UserManagementMailer,
@@ -67,21 +71,34 @@ export class ExecutionRecoveryService {
 				}
 
 				if (workflow.activeVersionId !== null) {
-					await this.workflowRepository.updateActiveState(workflowId, false);
-					this.logger.warn(
-						`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
-					);
+					try {
+						// Lazy resolution breaks the DI cycle: WorkflowService →
+						// ActiveWorkflowManager → MessageEventBus → this service
+						const { WorkflowService } = await import('@/workflows/workflow.service.js');
+						await Container.get(WorkflowService).deactivateWorkflowAsSystem(workflowId);
+						this.logger.warn(
+							`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
+						);
 
-					const recipient = await this.getAutodeactivationRecipient(workflow);
-					await this.userManagementMailer.notifyWorkflowAutodeactivated({
-						recipient,
-						workflow,
-					});
+						const recipient = await this.getAutodeactivationRecipient(workflow);
+						await this.userManagementMailer.notifyWorkflowAutodeactivated({
+							recipient,
+							workflow,
+						});
 
-					this.push.once('editorUiConnected', async () => {
-						await sleep(1000);
-						this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
-					});
+						this.push.once('editorUiConnected', async () => {
+							await sleep(1000);
+							this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
+						});
+					} catch (error) {
+						// A throw here would abort startup recovery for the remaining
+						// workflows and leave the event bus's recovery-in-progress marker
+						// behind, making every future startup skip recovery entirely.
+						this.logger.error(`Failed to auto-deactivate workflow ${workflowId}`, {
+							workflowId,
+							error: ensureError(error),
+						});
+					}
 				}
 
 				await this.executionRepository.update(
@@ -106,7 +123,7 @@ export class ExecutionRecoveryService {
 			executionId: amendedExecution.id,
 		});
 
-		await this.executionRepository.updateExistingExecution(executionId, amendedExecution);
+		await this.executionPersistence.updateExistingExecution(executionId, amendedExecution);
 
 		await this.runHooks(amendedExecution);
 
@@ -128,11 +145,11 @@ export class ExecutionRecoveryService {
 	private async amend(executionId: string, messages: EventMessageTypes[]) {
 		if (messages.length === 0) return await this.amendWithoutLogs(executionId);
 
-		const { nodeMessages, workflowMessages } = this.toRelevantMessages(messages);
+		const { nodeMessagesByName, workflowMessages } = this.toRelevantMessages(messages);
 
-		if (nodeMessages.length === 0) return null;
+		if (Object.keys(nodeMessagesByName).length === 0) return null;
 
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -149,11 +166,16 @@ export class ExecutionRecoveryService {
 			return null;
 		}
 
-		const runExecutionData = execution.data ?? { resultData: { runData: {} } };
+		const runExecutionData = execution.data ?? createEmptyRunExecutionData();
+
+		// CAT-752: runData can be missing even tho according to the type it shouldn't be.
+		// We initialize it to avoid referencing a property of undefined later on.
+		runExecutionData.resultData.runData ??= {};
 
 		let lastNodeRunTimestamp: DateTime | undefined;
 
 		for (const node of execution.workflowData.nodes) {
+			const nodeMessages = nodeMessagesByName[node.name] ?? [];
 			const nodeStartedMessage = nodeMessages.find(
 				(m) => m.payload.nodeName === node.name && m.eventName === 'n8n.node.started',
 			);
@@ -207,7 +229,7 @@ export class ExecutionRecoveryService {
 
 		await this.executionRepository.markAsCrashed(executionId);
 
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -217,19 +239,21 @@ export class ExecutionRecoveryService {
 
 	private toRelevantMessages(messages: EventMessageTypes[]) {
 		return messages.reduce<{
-			nodeMessages: EventMessageTypes[];
+			nodeMessagesByName: Record<string, EventMessageTypes[]>;
 			workflowMessages: EventMessageTypes[];
 		}>(
 			(acc, cur) => {
-				if (cur.eventName.startsWith('n8n.node.')) {
-					acc.nodeMessages.push(cur);
+				if (isNodeEventMessage(cur)) {
+					const nodeName = cur.payload.nodeName;
+					acc.nodeMessagesByName[nodeName] ??= [];
+					acc.nodeMessagesByName[nodeName].push(cur);
 				} else if (cur.eventName.startsWith('n8n.workflow.')) {
 					acc.workflowMessages.push(cur);
 				}
 
 				return acc;
 			},
-			{ nodeMessages: [], workflowMessages: [] },
+			{ nodeMessagesByName: {}, workflowMessages: [] },
 		);
 	}
 

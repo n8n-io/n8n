@@ -17,6 +17,11 @@ export default {
 		},
 	},
 	parameters: {
+		docs: {
+			description: {
+				component: 'A two-state toggle control for switching between active and inactive actions.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-2' },
 	},
 };
@@ -47,6 +52,22 @@ ActionToggle.args = {
 		{
 			label: 'Stop',
 			value: 'stop',
+		},
+	],
+};
+
+export const WithDisabledTooltip = Template.bind({});
+WithDisabledTooltip.args = {
+	actions: [
+		{
+			label: 'Duplicate',
+			value: 'duplicate',
+		},
+		{
+			label: 'Delete',
+			value: 'delete',
+			disabled: true,
+			tooltip: 'This item is assigned and can’t be deleted.',
 		},
 	],
 };

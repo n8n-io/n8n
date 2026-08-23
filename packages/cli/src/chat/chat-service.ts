@@ -2,14 +2,10 @@ import { Logger } from '@n8n/backend-common';
 import { IExecutionResponse } from '@n8n/db';
 import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { timingSafeEqual } from 'crypto';
 import { ErrorReporter } from 'n8n-core';
-import {
-	jsonParse,
-	UnexpectedError,
-	ensureError,
-	CHAT_NODE_TYPE,
-	CHAT_TOOL_NODE_TYPE,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse, UnexpectedError, CHAT_NODE_TYPE, CHAT_TOOL_NODE_TYPE } from 'n8n-workflow';
 import { type RawData, WebSocket } from 'ws';
 import { z } from 'zod';
 
@@ -78,7 +74,7 @@ export class ChatService {
 	async startSession(req: ChatRequest) {
 		const {
 			ws,
-			query: { sessionId, executionId, isPublic },
+			query: { sessionId, executionId, isPublic, token },
 		} = req;
 
 		if (!ws) {
@@ -90,12 +86,24 @@ export class ChatService {
 			return;
 		}
 
-		const execution = await this.executionManager.checkIfExecutionExists(executionId);
+		const execution = await this.executionManager.findExecution(executionId);
 
 		if (!execution) {
-			ws.send(`Execution with id "${executionId}" does not exist`);
+			ws.send('Connection rejected');
 			ws.close(1008);
 			return;
+		}
+
+		// Skip validation for old executions that lack a resumeToken (backwards compat).
+		if (execution.data?.resumeToken) {
+			const tokenBuf = Buffer.from(token ?? '');
+			const storedBuf = Buffer.from(execution.data.resumeToken);
+			if (!token || tokenBuf.length !== storedBuf.length || !timingSafeEqual(tokenBuf, storedBuf)) {
+				// Same generic message as missing execution — do not leak which check failed
+				ws.send('Connection rejected');
+				ws.close(1008);
+				return;
+			}
 		}
 
 		ws.isAlive = true;

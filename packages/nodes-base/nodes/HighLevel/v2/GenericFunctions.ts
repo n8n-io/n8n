@@ -16,7 +16,7 @@ import type {
 	IPollFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { ApplicationError, NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 const VALID_EMAIL_REGEX =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -207,7 +207,10 @@ export const addNotePostReceiveAction = async function (
 
 	// Ensure there is a valid response and extract contactId and userId
 	if (!response || !response.body || !contact) {
-		throw new ApplicationError('No response data available to extract contact ID and user ID.');
+		throw new NodeOperationError(
+			this.getNode(),
+			'No response data available to extract contact ID and user ID.',
+		);
 	}
 
 	const contactId = contact.id;
@@ -405,7 +408,7 @@ export async function addCustomFieldsPreSendAction(
 						field_value: typedField.fieldValue,
 					};
 				} else {
-					throw new ApplicationError('Error processing custom fields.');
+					throw new NodeOperationError(this.getNode(), 'Error processing custom fields.');
 				}
 			});
 			requestBody.customFields = formattedCustomFields;

@@ -1,10 +1,11 @@
 import type { AgentAction, AgentFinish } from '@langchain/core/agents';
-import { HumanMessage } from '@langchain/core/messages';
+import { BaseMessage, HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, PromptTemplate } from '@langchain/core/prompts';
 import { FakeLLM, FakeChatModel } from '@langchain/core/utils/testing';
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { N8nStructuredOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
@@ -12,17 +13,17 @@ import * as imageUtils from '../methods/imageUtils';
 import { createPromptTemplate, getAgentStepsParser } from '../methods/promptUtils';
 import type { MessageTemplate } from '../methods/types';
 
-jest.mock('../methods/imageUtils', () => ({
-	createImageMessage: jest.fn(),
+vi.mock('../methods/imageUtils', () => ({
+	createImageMessage: vi.fn(),
 }));
 
 describe('promptUtils', () => {
 	describe('createPromptTemplate', () => {
-		let mockContext: jest.Mocked<IExecuteFunctions>;
+		let mockContext: Mocked<IExecuteFunctions>;
 
 		beforeEach(() => {
 			mockContext = mock<IExecuteFunctions>();
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should create a simple prompt template for non-chat models', async () => {
@@ -142,7 +143,7 @@ describe('promptUtils', () => {
 			const mockHumanMessage = new HumanMessage({
 				content: [{ type: 'image_url', image_url: { url: 'https://example.com/image.jpg' } }],
 			});
-			(imageUtils.createImageMessage as jest.Mock).mockResolvedValue(mockHumanMessage);
+			(imageUtils.createImageMessage as Mock).mockResolvedValue(mockHumanMessage);
 
 			await createPromptTemplate({
 				context: mockContext,
@@ -187,7 +188,7 @@ describe('promptUtils', () => {
 			const mockHumanMessage = new HumanMessage({
 				content: [{ type: 'image_url', image_url: { url: 'https://example.com/image.jpg' } }],
 			});
-			(imageUtils.createImageMessage as jest.Mock).mockResolvedValue(mockHumanMessage);
+			(imageUtils.createImageMessage as Mock).mockResolvedValue(mockHumanMessage);
 
 			const imageMessage: MessageTemplate = {
 				type: 'HumanMessagePromptTemplate',
@@ -220,11 +221,11 @@ describe('promptUtils', () => {
 	});
 
 	describe('getAgentStepsParser', () => {
-		let mockOutputParser: jest.Mocked<N8nStructuredOutputParser>;
+		let mockOutputParser: Mocked<N8nStructuredOutputParser>;
 
 		beforeEach(() => {
 			mockOutputParser = mock<N8nStructuredOutputParser>({
-				parse: jest.fn(),
+				parse: vi.fn(),
 			});
 		});
 
@@ -320,6 +321,28 @@ describe('promptUtils', () => {
 			const result = await parser(message);
 
 			expect(mockOutputParser.parse).toHaveBeenCalledWith('Simple text content');
+			expect(result).toEqual(parsedResult);
+		});
+
+		it('should parse BaseMessage from a different module instance', async () => {
+			const parser = getAgentStepsParser(mockOutputParser);
+			const message = {
+				[Symbol.for('langchain.message')]: true,
+				type: 'human',
+				content: 'Cross-module text content',
+				get text() {
+					return (this as { content: string }).content;
+				},
+			} as unknown as BaseMessage;
+
+			const parsedResult = { content: 'Cross-module text content' };
+			mockOutputParser.parse.mockResolvedValue(parsedResult);
+
+			const result = await parser(message);
+
+			expect(message).not.toBeInstanceOf(BaseMessage);
+			expect(BaseMessage.isInstance(message)).toBe(true);
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('Cross-module text content');
 			expect(result).toEqual(parsedResult);
 		});
 

@@ -48,6 +48,15 @@ export class GithubTrigger implements INodeType {
 					},
 				},
 			},
+			{
+				name: 'githubAppApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['githubAppApi'],
+					},
+				},
+			},
 		],
 		webhooks: [
 			{
@@ -77,6 +86,10 @@ export class GithubTrigger implements INodeType {
 					{
 						name: 'OAuth2',
 						value: 'oAuth2',
+					},
+					{
+						name: 'GitHub App',
+						value: 'githubAppApi',
 					},
 				],
 				default: 'accessToken',

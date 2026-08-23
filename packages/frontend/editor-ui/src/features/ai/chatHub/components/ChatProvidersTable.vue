@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
+import { type TableHeader } from '@n8n/design-system';
 import {
-	N8nActionBox,
+	N8nEmptyState,
 	N8nActionToggle,
 	N8nButton,
 	N8nDataTableServer,
@@ -130,7 +130,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 			<N8nLoading :loading="props.loading" variant="h1" :class="$style.header" />
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
-		<div v-else :class="$style.container">
+		<div v-else>
 			<div :class="$style.header">
 				<N8nHeading size="medium" :bold="true">
 					{{ i18n.baseText('settings.chatHub.providers.table.title') }}
@@ -148,7 +148,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 					</N8nTooltip>
 				</div>
 			</div>
-			<N8nActionBox
+			<N8nEmptyState
 				v-if="!props.settings"
 				:heading="i18n.baseText('settings.chatHub.providers.table.empty.title')"
 				:description="i18n.baseText('settings.chatHub.providers.table.empty.description')"
@@ -210,11 +210,6 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 </template>
 
 <style lang="scss" module>
-.container {
-	margin-top: var(--spacing--sm);
-	margin-bottom: var(--spacing--xl);
-}
-
 .tableContainer {
 	:global(.table-pagination) {
 		display: none;

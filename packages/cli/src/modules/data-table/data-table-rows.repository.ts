@@ -22,6 +22,7 @@ import {
 	DataTableInsertRowsResult,
 	DataTableRowReturnWithState,
 	DataTableRawRowReturn,
+	UserError,
 } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
@@ -30,6 +31,7 @@ import {
 	escapeLikeSpecials,
 	extractInsertedIds,
 	extractReturningData,
+	isValidColumnName,
 	normalizeRows,
 	normalizeValueForDatabase,
 	quoteIdentifier,
@@ -213,7 +215,7 @@ export class DataTableRowsRepository {
 		return await withTransaction(this.dataSource.manager, trx, async (em) => {
 			const inserted: Array<Pick<DataTableRowReturn, 'id'>> = [];
 			const dbType = this.dataSource.options.type;
-			const useReturning = dbType === 'postgres' || dbType === 'mariadb';
+			const useReturning = dbType === 'postgres';
 
 			const table = toTableName(dataTableId);
 			const escapedColumns = columns.map((c) => this.dataSource.driver.escape(c.name));
@@ -472,6 +474,14 @@ export class DataTableRowsRepository {
 		});
 	}
 
+	async clearRows(dataTableId: string, trx?: EntityManager): Promise<{ deletedCount: number }> {
+		return await withTransaction(this.dataSource.manager, trx, async (em) => {
+			const table = toTableName(dataTableId);
+			const result = await em.createQueryBuilder().delete().from(table).execute();
+			return { deletedCount: result.affected ?? 0 };
+		});
+	}
+
 	private async getAffectedRowsForUpdate<T extends boolean>(
 		dataTableId: string,
 		filter: DataTableFilter,
@@ -679,16 +689,24 @@ export class DataTableRowsRepository {
 	}
 
 	private applySorting(query: QueryBuilder, dto: ListDataTableContentQueryDto): void {
-		if (!dto.sortBy) {
-			return;
+		if (dto.sortBy) {
+			const [field, order] = dto.sortBy;
+			this.applySortingByField(query, field, order);
 		}
 
-		const [field, order] = dto.sortBy;
-		this.applySortingByField(query, field, order);
+		// Always append the unique `id` as a final tiebreaker so skip/take pagination
+		// returns a stable order across pages (avoids duplicate/missing rows).
+		if (!dto.sortBy || dto.sortBy[0] !== 'id') {
+			const dbType = this.dataSource.options.type;
+			const quotedId = `${quoteIdentifier('dataTable', dbType)}.${quoteIdentifier('id', dbType)}`;
+			query.addOrderBy(quotedId, 'ASC');
+		}
 	}
 
 	private applySortingByField(query: QueryBuilder, field: string, direction: 'DESC' | 'ASC'): void {
 		const dbType = this.dataSource.options.type;
+		if (!isValidColumnName(field)) throw new UserError('Incorrect column format');
+
 		const quotedField = `${quoteIdentifier('dataTable', dbType)}.${quoteIdentifier(field, dbType)}`;
 		query.orderBy(quotedField, direction);
 	}

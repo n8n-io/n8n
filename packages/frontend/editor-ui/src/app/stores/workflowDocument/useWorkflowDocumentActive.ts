@@ -31,11 +31,19 @@ export function useWorkflowDocumentActive() {
 		applyActiveState(state);
 	}
 
+	function setActiveVersion(value: WorkflowHistory | null) {
+		applyActiveState({
+			activeVersionId: activeVersionId.value,
+			activeVersion: value,
+		});
+	}
+
 	return {
 		active,
 		activeVersionId: readonly(activeVersionId),
 		activeVersion: readonly(activeVersion),
 		setActiveState,
+		setActiveVersion,
 		onActiveChange: onActiveChange.on,
 	};
 }

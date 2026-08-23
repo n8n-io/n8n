@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { mock } from 'vitest-mock-extended';
+import type { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
 import type { ICredentialsResponse } from '../credentials.types';
 import * as credentialsApi from '../credentials.api';
 import { useCredentialsStore } from '../credentials.store';
@@ -17,13 +18,18 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore,
 }));
 
-vi.mock('@/app/stores/nodeTypes.store', () => ({
-	useNodeTypesStore: vi.fn(() => ({
+const { mockNodeTypesStore } = vi.hoisted(() => ({
+	mockNodeTypesStore: {
 		getNodeType: vi.fn(),
-	})),
+		getNodeVersions: vi.fn(() => [] as number[]),
+	},
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
+	useNodeTypesStore: vi.fn(() => mockNodeTypesStore),
+}));
+
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({
 		isEnterpriseFeatureEnabled: {
 			sharing: true,
@@ -38,6 +44,86 @@ describe('credentials.store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
+	});
+
+	describe('isCredentialTypeTestable', () => {
+		/**
+		 * Registers one credential type backed by a versioned node, with `testedBy` on
+		 * whichever versions `testedByOn` names.
+		 */
+		// Plain literals rather than `mock<T>` on purpose: an auto-mocked `test` property
+		// is a truthy proxy, which would short-circuit the getter in every case.
+		const credentialType = (overrides: Partial<ICredentialType>): ICredentialType => ({
+			name: 'kafka',
+			displayName: 'Kafka',
+			properties: [],
+			...overrides,
+		});
+
+		const setupVersionedNode = (versions: number[], testedByOn: number[]) => {
+			const store = useCredentialsStore();
+			store.setCredentialTypes([credentialType({ supportedNodes: ['kafka'] })]);
+
+			mockNodeTypesStore.getNodeVersions.mockReturnValue(versions);
+			mockNodeTypesStore.getNodeType.mockImplementation(
+				(_name: string, version?: number) =>
+					({
+						credentials: [
+							{
+								name: 'kafka',
+								...(version !== undefined && testedByOn.includes(version)
+									? { testedBy: 'kafkaConnectionTest' }
+									: {}),
+							},
+						],
+					}) as INodeTypeDescription,
+			);
+
+			return store;
+		};
+
+		it('finds a test declared only on an older version, not just the newest', () => {
+			// Regression guard: reading a single version hid Kafka's v1 test once v2 registered
+			// without `testedBy`, silently disabling the on-save connection test.
+			const store = setupVersionedNode([1, 2], [1]);
+
+			expect(store.isCredentialTypeTestable('kafka')).toBe(true);
+		});
+
+		it('is false when no registered version declares a test', () => {
+			const store = setupVersionedNode([1, 2], []);
+
+			expect(store.isCredentialTypeTestable('kafka')).toBe(false);
+		});
+
+		it('is true when the credential type defines its own test, without consulting nodes', () => {
+			const store = useCredentialsStore();
+			store.setCredentialTypes([
+				credentialType({ name: 'slackApi', test: { request: { url: '/test' } } }),
+			]);
+
+			expect(store.isCredentialTypeTestable('slackApi')).toBe(true);
+			expect(mockNodeTypesStore.getNodeVersions).not.toHaveBeenCalled();
+		});
+
+		it('is false for an unknown credential type', () => {
+			const store = useCredentialsStore();
+
+			expect(store.isCredentialTypeTestable('nopeApi')).toBe(false);
+		});
+	});
+
+	describe('testCredential', () => {
+		it('marks the credential test as failed when the test request rejects', async () => {
+			const store = useCredentialsStore();
+			vi.mocked(credentialsApi.testCredential).mockRejectedValue(new Error('network error'));
+
+			await expect(
+				store.testCredential({ id: 'cred-1', name: 'My credential', type: 'slackApi' }),
+			).rejects.toThrow('network error');
+
+			expect(store.credentialTestResults.get('cred-1')).toBe('error');
+		});
 	});
 
 	describe('fetchAllCredentials', () => {
@@ -329,6 +415,40 @@ describe('credentials.store', () => {
 			});
 
 			expect(store.state.credentials['cred-1']?.sharedWithProjects).toEqual(newSharing);
+		});
+	});
+
+	describe('disconnectMyConnection', () => {
+		it('calls the API and flips connectedByMe to false locally', async () => {
+			const store = useCredentialsStore();
+			store.state.credentials = {
+				'cred-1': mock<ICredentialsResponse>({
+					id: 'cred-1',
+					name: 'My OAuth',
+					type: 'oAuth2Api',
+					isResolvable: true,
+					connectedByMe: true,
+				}),
+			};
+			vi.spyOn(credentialsApi, 'disconnectMyConnection').mockResolvedValue(undefined);
+
+			await store.disconnectMyConnection({ id: 'cred-1' });
+
+			expect(credentialsApi.disconnectMyConnection).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				'cred-1',
+			);
+			expect(store.state.credentials['cred-1']?.connectedByMe).toBe(false);
+		});
+
+		it('leaves state untouched when the credential is not in the store', async () => {
+			const store = useCredentialsStore();
+			store.state.credentials = {};
+			vi.spyOn(credentialsApi, 'disconnectMyConnection').mockResolvedValue(undefined);
+
+			await store.disconnectMyConnection({ id: 'missing' });
+
+			expect(store.state.credentials).toEqual({});
 		});
 	});
 });

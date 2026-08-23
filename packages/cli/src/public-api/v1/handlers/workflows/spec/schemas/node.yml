@@ -54,6 +54,23 @@ properties:
   credentials:
     type: object
     example: { jiraSoftwareCloudApi: { id: '35', name: 'jiraApi' } }
+  customTelemetryTags:
+    type: object
+    additionalProperties: false
+    properties:
+      tag:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - key
+            - value
+          properties:
+            key:
+              type: string
+            value:
+              type: string
   createdAt:
     type: string
     format: date-time

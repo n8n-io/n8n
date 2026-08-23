@@ -1,7 +1,8 @@
 import * as iconvlite from 'iconv-lite';
 import * as qp from 'quoted-printable';
 import * as utf8 from 'utf8';
-import * as uuencode from 'uuencode';
+
+import { uuDecode } from './uudecode';
 
 export abstract class PartData {
 	constructor(readonly buffer: Buffer) {}
@@ -77,7 +78,6 @@ export class UuencodedPartData extends PartData {
 	constructor(data: string) {
 		const parts = data.split('\n'); // remove newline characters
 		const merged = parts.splice(1, parts.length - 4).join(''); // remove excess lines and join lines with empty string
-		const decoded = uuencode.decode(merged);
-		super(decoded);
+		super(uuDecode(merged));
 	}
 }

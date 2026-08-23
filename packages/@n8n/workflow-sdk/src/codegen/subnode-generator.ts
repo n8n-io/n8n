@@ -5,6 +5,8 @@
  * Supports both inline generation and variable reference modes.
  */
 
+import { isRecord } from '@n8n/utils/is-record';
+
 import {
 	AI_CONNECTION_TO_CONFIG_KEY,
 	AI_CONNECTION_TO_BUILDER,
@@ -19,6 +21,51 @@ import {
 	extractPlaceholderHint,
 } from './string-utils';
 import type { SemanticGraph, SemanticNode, AiConnectionType } from './types';
+
+/**
+ * Format a credentials object using newCredential() calls.
+ * Emits `newCredential('name', 'id')` for credentials with an id,
+ * or `newCredential('name')` for placeholder credentials.
+ */
+export function formatCredentials(credentials: unknown): string {
+	// Guard: some workflows have credentials as a string (e.g. "[REDACTED]")
+	// instead of the expected Record<string, {id?, name?}>.
+	if (typeof credentials === 'string') {
+		return `'${escapeString(credentials)}'`;
+	}
+	if (!isRecord(credentials)) {
+		return formatValue(credentials);
+	}
+	const entries = Object.entries(credentials).map(([key, value]) => {
+		if (!isRecord(value)) {
+			return `${formatKey(key)}: ${formatValue(value)}`;
+		}
+
+		const name = value.name;
+		const id = value.id;
+
+		if (typeof name === 'string') {
+			// Managed credentials have no persisted ID, so emit the placeholder form.
+			if (id === null && value.__aiGatewayManaged === true) {
+				return `${formatKey(key)}: newCredential('${escapeString(name)}')`;
+			}
+			if (id === undefined) {
+				return `${formatKey(key)}: newCredential('${escapeString(name)}')`;
+			}
+			if (typeof id === 'string') {
+				return `${formatKey(key)}: newCredential('${escapeString(name)}', '${escapeString(id)}')`;
+			}
+		}
+
+		// id-only credential (no name property) — emit raw object to preserve shape
+		if (name === undefined && typeof id === 'string') {
+			return `${formatKey(key)}: { id: '${escapeString(id)}' }`;
+		}
+		// Empty or malformed credential object — preserve as-is
+		return `${formatKey(key)}: ${formatValue(value)}`;
+	});
+	return `{ ${entries.join(', ')} }`;
+}
 
 /**
  * Options for subnode generation
@@ -188,8 +235,8 @@ function generateSubnodeConfigParts(
 		configParts.push(`parameters: ${formatValue(node.json.parameters, ctx)}`);
 	}
 
-	if (node.json.credentials) {
-		configParts.push(`credentials: ${formatValue(node.json.credentials, ctx)}`);
+	if (node.json.credentials && Object.keys(node.json.credentials).length > 0) {
+		configParts.push(`credentials: ${formatCredentials(node.json.credentials)}`);
 	}
 
 	const pos = node.json.position;

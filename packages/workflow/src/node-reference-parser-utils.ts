@@ -5,7 +5,6 @@ import mapValues from 'lodash/mapValues';
 
 import { OperationalError } from './errors';
 import type { INode, INodeParameters, NodeParameterValueType } from './interfaces';
-
 class LazyRegExp {
 	private regExp?: RegExp;
 
@@ -15,6 +14,7 @@ class LazyRegExp {
 	) {}
 
 	get(): RegExp {
+		// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- node names are escaped before pattern construction
 		if (!this.regExp) this.regExp = new RegExp(this.pattern(), this.flags);
 
 		return this.regExp;
@@ -89,8 +89,11 @@ const ACCESS_PATTERNS: AccessPattern[] = [
 		replacePattern: (s) => String.raw`(\$node\.)${s}(\.?)`,
 		customCallback: (expression: string, newName: string, escapedNewName: string) => {
 			if (hasDotNotationBannedChar(newName)) {
-				const regex = new RegExp(`.${backslashEscape(newName)}( |\\.)`, 'g');
-				return expression.replace(regex, `["${escapedNewName}"]$1`);
+				return expression.replace(
+					// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- newName is escaped before pattern construction
+					new RegExp(`.${backslashEscape(newName)}( |\\.)`, 'g'),
+					`["${escapedNewName}"]$1`,
+				);
 			}
 			return expression;
 		},
@@ -101,24 +104,52 @@ const ACCESS_PATTERNS: AccessPattern[] = [
 	},
 ];
 
+function prepareOldNodeName(nodeName: string) {
+	// if node name contains literal \ -> replace with \\
+	// since that's how it'll be written in a JS expression
+	const doubleSlashes = nodeName.replaceAll('\\', '\\\\');
+	// escape special characters for regex
+	const escaped = backslashEscape(doubleSlashes);
+	// quotes may or may not be escaped in the JS expression
+	// so we replace literal quotes with regexes handle that
+	return escaped.replace(/"/g, '(?:\\\\?")').replace(/'/g, "(?:\\\\?')");
+}
+
+function prepareNewNodeName(nodeName: string) {
+	// escape $ for replacement regex
+	const dollarEscaped = dollarEscape(nodeName);
+	// escape literal \ ' " characters
+	return dollarEscaped.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll("'", "\\'");
+}
+
 export function applyAccessPatterns(expression: string, previousName: string, newName: string) {
 	// To not run the "expensive" regex stuff when it is not needed
-	// make a simple check first if it really contains the node-name
-	if (!expression.includes(previousName)) return expression;
+	// make a simple check first if it contains any of the access patterns
+	let noMatch = true;
+	for (const pattern of ACCESS_PATTERNS) {
+		if (expression.includes(pattern.checkPattern)) {
+			noMatch = false;
+			break;
+		}
+	}
 
-	// Really contains node-name (even though we do not know yet if really as $node-expression)
-	const escapedOldName = backslashEscape(previousName); // for match
-	const escapedNewName = dollarEscape(newName); // for replacement
+	if (noMatch) {
+		return expression;
+	}
+
+	const preparedOldName = prepareOldNodeName(previousName);
+	const preparedNewName = prepareNewNodeName(newName);
 
 	for (const pattern of ACCESS_PATTERNS) {
 		if (expression.includes(pattern.checkPattern)) {
 			expression = expression.replace(
-				new RegExp(pattern.replacePattern(escapedOldName), 'g'),
-				`$1${escapedNewName}$2`,
+				// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern
+				new RegExp(pattern.replacePattern(preparedOldName), 'g'),
+				`$1${preparedNewName}$2`,
 			);
 
 			if (pattern.customCallback) {
-				expression = pattern.customCallback(expression, newName, escapedNewName);
+				expression = pattern.customCallback(expression, newName, preparedNewName);
 			}
 		}
 	}

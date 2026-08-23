@@ -1,14 +1,18 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
+import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useAvailableProjectSearch } from '@/features/collaboration/projects/projects.utils';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { DateValue } from '@internationalized/date';
-import { getLocalTimeZone, today } from '@internationalized/date';
+import { getLocalTimeZone, parseDate, today } from '@internationalized/date';
 import type { InsightsSummaryType } from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client/utils';
 import {
 	computed,
 	defineAsyncComponent,
@@ -22,6 +26,7 @@ import { useRoute } from 'vue-router';
 import { INSIGHT_TYPES } from '../insights.constants';
 import { getAdjustedDateRange, getTimeRangeLabels, timeRangeMappings } from '../insights.utils';
 import InsightsDataRangePicker from './InsightsDataRangePicker.vue';
+import InsightsDateRangeAlert from './InsightsDateRangeAlert.vue';
 
 import { N8nHeading, N8nSpinner } from '@n8n/design-system';
 const InsightsPaywall = defineAsyncComponent(
@@ -58,10 +63,10 @@ const props = defineProps<{
 
 const route = useRoute();
 const i18n = useI18n();
+const toast = useToast();
 
 const insightsStore = useInsightsStore();
 const projectsStore = useProjectsStore();
-
 const isTimeSavedRoute = computed(() => route.params.insightType === INSIGHT_TYPES.TIME_SAVED);
 
 const chartComponents = computed(() => ({
@@ -113,11 +118,21 @@ const minimumValue = shallowRef(
 	maxDate.copy().subtract({ days: timeRangeMappings[maxLicensedDate] }),
 );
 
+function getDefaultRangeStart(): DateValue {
+	const sevenDaysAgo = maxDate.copy().subtract({ days: 7 });
+	if (insightsStore.earliestDataDate) {
+		const earliestDate = parseDate(insightsStore.earliestDataDate.substring(0, 10));
+		// If data only starts within the last 7 days, begin from first data point
+		return earliestDate.compare(sevenDaysAgo) > 0 ? earliestDate : sevenDaysAgo;
+	}
+	return sevenDaysAgo;
+}
+
 const range = shallowRef<{
 	start: DateValue;
 	end: DateValue;
 }>({
-	start: maxDate.copy().subtract({ days: 7 }),
+	start: getDefaultRangeStart(),
 	end: maxDate.copy(),
 });
 
@@ -155,32 +170,46 @@ const fetchPaginatedTableData = ({
 	});
 };
 
+let latestFetchId = 0;
+
 watch(
 	() => [props.insightType, selectedProject.value, range.value],
-	() => {
+	async () => {
+		const fetchId = ++latestFetchId;
+
 		sortTableBy.value = [{ id: props.insightType, desc: true }];
 
 		const { startDate, endDate } = getFilteredRange();
+		const projectId = selectedProject.value?.id;
 
 		if (insightsStore.isSummaryEnabled) {
-			void insightsStore.summary.execute(0, {
-				startDate,
-				endDate,
-				projectId: selectedProject.value?.id,
-			});
+			void insightsStore.summary.execute(0, { startDate, endDate, projectId });
 		}
 
-		void insightsStore.charts.execute(0, {
-			startDate,
-			endDate,
-			projectId: selectedProject.value?.id,
-		});
+		const chartsPromise = insightsStore.charts.execute(0, { startDate, endDate, projectId });
 
 		if (insightsStore.isDashboardEnabled) {
 			fetchPaginatedTableData({
 				sortBy: sortTableBy.value,
-				projectId: selectedProject.value?.id,
+				projectId,
 			});
+		}
+
+		await chartsPromise;
+
+		// A newer selection/range change has superseded this request.
+		if (fetchId !== latestFetchId) {
+			return;
+		}
+
+		// Callers may receive HTTP 403 if they have no `workflow:read` permission for a project.
+		// Revert to "All projects" instead of leaving the dashboard stuck on an all-zero, misleading state.
+		const chartsError = insightsStore.charts.error;
+		if (projectId && chartsError instanceof ResponseError && chartsError.httpStatusCode === 403) {
+			toast.showError(chartsError, i18n.baseText('insights.dashboard.error.forbidden.title'), {
+				message: i18n.baseText('insights.dashboard.error.forbidden.message'),
+			});
+			selectedProject.value = null;
 		}
 	},
 	{
@@ -191,18 +220,20 @@ watch(
 onMounted(() => {
 	useDocumentTitle().set(i18n.baseText('insights.heading'));
 });
-onBeforeMount(async () => {
-	await projectsStore.getAvailableProjects();
-});
-
 // Must be *only* <email> — no extra text before or after
 const emailPattern = /^<([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})>$/;
 
-const projects = computed(() =>
-	projectsStore.availableProjects.filter(
-		(project) => project.name && !emailPattern.test(project.name.trim()),
-	),
-);
+const searchFn = useAvailableProjectSearch();
+const filterFn = (project: ProjectListItem) =>
+	!!project.name && !emailPattern.test(project.name.trim());
+
+onBeforeMount(async () => {
+	// Members filter locally over myProjects — preload them.
+	// Admins use remote search, so skip the unpaginated GET /projects call.
+	if (!projectsStore.globalProjectPermissions.list) {
+		await projectsStore.getAvailableProjects();
+	}
+});
 </script>
 
 <template>
@@ -215,7 +246,8 @@ const projects = computed(() =>
 			<div class="mt-s" style="display: flex; gap: 12px; align-items: center">
 				<ProjectSharing
 					v-model="selectedProject"
-					:projects="projects"
+					:search-fn="searchFn"
+					:filter-fn="filterFn"
 					:placeholder="i18n.baseText('insights.dashboard.search.placeholder')"
 					:empty-options-text="i18n.baseText('projects.sharing.noMatchingProjects')"
 					size="mini"
@@ -231,6 +263,14 @@ const projects = computed(() =>
 					:presets
 				/>
 			</div>
+
+			<InsightsDateRangeAlert
+				:key="range.start.toString()"
+				class="mt-s"
+				:earliest-data-date="insightsStore.earliestDataDate"
+				:range-start="range.start"
+				:range-end="range.end"
+			/>
 
 			<InsightsSummary
 				v-if="insightsStore.isSummaryEnabled"
@@ -258,7 +298,9 @@ const projects = computed(() =>
 						<span>{{ i18n.baseText('insights.chart.loading') }}</span>
 					</div>
 					<div :class="$style.insightsChartWrapper">
-						{{ granularity }}
+						<N8nHeading bold tag="h3" size="medium" class="mb-s">{{
+							i18n.baseText('insights.dashboard.chart.title', { interpolate: { granularity } })
+						}}</N8nHeading>
 						<component
 							:is="chartComponents[props.insightType]"
 							:type="props.insightType"
@@ -326,7 +368,7 @@ const projects = computed(() =>
 .insightsChartWrapper {
 	position: relative;
 	height: 292px;
-	padding: 0 var(--spacing--lg);
+	padding: 0 var(--spacing--lg) var(--spacing--lg);
 	z-index: 1;
 }
 

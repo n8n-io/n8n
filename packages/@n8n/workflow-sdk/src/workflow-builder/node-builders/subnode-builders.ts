@@ -32,6 +32,7 @@
 
 import { v4 as uuid } from 'uuid';
 
+import { normalizeNodeConfig } from './node-builder';
 import { createFromAIExpression } from '../../expression';
 import type {
 	NodeConfig,
@@ -103,8 +104,11 @@ class SubnodeInstanceImpl<
 	) {
 		this.type = type;
 		this.version = version;
-		this.config = { ...config };
-		this.id = id ?? uuid();
+		this.config = normalizeNodeConfig(config);
+		// An explicit `id` argument (update/clone) wins over one declared in the source,
+		// so `update()` can never re-identify a node. Read the NORMALIZED config so a blank
+		// declaration is treated as absent.
+		this.id = id ?? this.config.id ?? uuid();
 		this.name = name ?? config.name ?? generateNodeName(type);
 		this._subnodeType = subnodeType;
 	}
@@ -113,6 +117,8 @@ class SubnodeInstanceImpl<
 		const mergedConfig = {
 			...this.config,
 			...config,
+			// Identity is not patchable — see NodeInstanceImpl.update().
+			id: this.config.id,
 			parameters: config.parameters ?? this.config.parameters,
 			credentials: config.credentials ?? this.config.credentials,
 		};

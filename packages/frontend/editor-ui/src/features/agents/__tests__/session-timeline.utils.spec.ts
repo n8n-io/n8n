@@ -1,0 +1,886 @@
+import { describe, it, expect } from 'vitest';
+import {
+	computeIdleRanges,
+	builtinToolLabelKey,
+	itemFilterKey,
+	sessionBounds,
+	kindColorToken,
+	formatDuration,
+	IDLE_THRESHOLD_MS,
+	flattenExecutionsToTimelineItems,
+	itemStatusFilterKey,
+	matchesSearch,
+	isErroredToolCallTimelineItem,
+	matchesTimelineFilters,
+	timelineItemErrorMessage,
+} from '../session-timeline.utils';
+import type { TimelineItem } from '../session-timeline.types';
+
+function item(partial: Partial<TimelineItem>): TimelineItem {
+	return {
+		kind: 'agent',
+		executionId: 'e1',
+		timestamp: 0,
+		...partial,
+	};
+}
+
+describe('computeIdleRanges', () => {
+	it('returns [] when no gaps exceed threshold', () => {
+		const items = [item({ timestamp: 0 }), item({ timestamp: 1000 })];
+		expect(computeIdleRanges(items)).toEqual([]);
+	});
+
+	it('detects a gap greater than 10 minutes between events', () => {
+		const items = [item({ timestamp: 0 }), item({ timestamp: IDLE_THRESHOLD_MS + 1 })];
+		expect(computeIdleRanges(items)).toEqual([{ start: 0, end: IDLE_THRESHOLD_MS + 1 }]);
+	});
+
+	it('excludes gaps adjacent to a suspension (before the gap)', () => {
+		const items = [
+			item({ kind: 'suspension', timestamp: 0 }),
+			item({ timestamp: IDLE_THRESHOLD_MS + 1 }),
+		];
+		expect(computeIdleRanges(items)).toEqual([]);
+	});
+
+	it('excludes gaps adjacent to a suspension (after the gap)', () => {
+		const items = [
+			item({ timestamp: 0 }),
+			item({ kind: 'suspension', timestamp: IDLE_THRESHOLD_MS + 1 }),
+		];
+		expect(computeIdleRanges(items)).toEqual([]);
+	});
+
+	it('never produces a trailing idle gap after the last event', () => {
+		const items = [item({ timestamp: 0 })];
+		expect(computeIdleRanges(items)).toEqual([]);
+	});
+
+	it('uses endTimestamp when set for the previous item', () => {
+		const items = [
+			item({ timestamp: 0, endTimestamp: 100 }),
+			item({ timestamp: 100 + IDLE_THRESHOLD_MS + 1 }),
+		];
+		expect(computeIdleRanges(items)).toEqual([{ start: 100, end: 100 + IDLE_THRESHOLD_MS + 1 }]);
+	});
+});
+
+describe('itemFilterKey', () => {
+	it('returns the literal kind for every event', () => {
+		expect(itemFilterKey(item({ kind: 'user' }))).toBe('user');
+		expect(itemFilterKey(item({ kind: 'agent' }))).toBe('agent');
+		expect(itemFilterKey(item({ kind: 'suspension' }))).toBe('suspension');
+	});
+
+	it('returns "workflow" for workflow events', () => {
+		expect(itemFilterKey(item({ kind: 'workflow', toolName: 'run-wf' }))).toBe('workflow');
+	});
+
+	it('groups all generic tool events under a single "tool" key', () => {
+		expect(itemFilterKey(item({ kind: 'tool', toolName: 'http' }))).toBe('tool');
+		expect(itemFilterKey(item({ kind: 'tool', toolName: 'search' }))).toBe('tool');
+		expect(itemFilterKey(item({ kind: 'tool' }))).toBe('tool');
+	});
+});
+
+describe('timeline status filters', () => {
+	const approved = item({ kind: 'hitl-response', hitlResponseStatus: 'approved' });
+	const declined = item({ kind: 'hitl-response', hitlResponseStatus: 'declined' });
+	const errored = item({ kind: 'tool', toolOutcome: 'error' });
+	const executionError = item({ kind: 'execution-error', executionStatus: 'error' });
+	const handledWorkflowError = item({
+		kind: 'workflow',
+		toolOutcome: 'success',
+		toolOutput: { executionId: 'exec-1', status: 'error' },
+	});
+
+	it('derives only the statuses exposed by the filter menu', () => {
+		expect(itemStatusFilterKey(approved)).toBe('approved');
+		expect(itemStatusFilterKey(declined)).toBe('declined');
+		expect(itemStatusFilterKey(errored)).toBe('error');
+		expect(itemStatusFilterKey(handledWorkflowError)).toBe('error');
+		expect(itemStatusFilterKey(executionError)).toBe('error');
+		expect(
+			itemStatusFilterKey(item({ kind: 'hitl-response', hitlResponseStatus: 'responded' })),
+		).toBeUndefined();
+		expect(itemStatusFilterKey(item({ kind: 'tool', toolOutcome: 'success' }))).toBeUndefined();
+	});
+
+	it('matches items by either event kind or status', () => {
+		expect(matchesTimelineFilters(approved, new Set(['approved']))).toBe(true);
+		expect(matchesTimelineFilters(approved, new Set(['hitl-response']))).toBe(true);
+		expect(matchesTimelineFilters(approved, new Set(['declined']))).toBe(false);
+		expect(matchesTimelineFilters(errored, new Set(['error']))).toBe(true);
+		expect(matchesTimelineFilters(errored, new Set(['tool']))).toBe(true);
+		expect(matchesTimelineFilters(handledWorkflowError, new Set(['error']))).toBe(true);
+		expect(matchesTimelineFilters(executionError, new Set(['error']))).toBe(true);
+	});
+});
+
+describe('sessionBounds', () => {
+	it('returns min timestamp and max endTimestamp (or timestamp) across items', () => {
+		const items = [
+			item({ timestamp: 100 }),
+			item({ timestamp: 500, endTimestamp: 800 }),
+			item({ timestamp: 300 }),
+		];
+		expect(sessionBounds(items)).toEqual({ start: 100, end: 800 });
+	});
+
+	it('returns { start: 0, end: 1 } for empty input', () => {
+		expect(sessionBounds([])).toEqual({ start: 0, end: 1 });
+	});
+
+	it('enforces a minimum span of 1ms for single-item sessions', () => {
+		expect(sessionBounds([item({ timestamp: 500 })])).toEqual({ start: 500, end: 501 });
+	});
+});
+
+describe('kindColorToken', () => {
+	it('maps each kind to a CSS token', () => {
+		expect(kindColorToken('user')).toBe('var(--color--blue-400)');
+		expect(kindColorToken('agent')).toBe('var(--color--secondary)');
+		expect(kindColorToken('tool')).toBe('var(--color--success)');
+		expect(kindColorToken('workflow')).toBe('var(--color--primary)');
+		expect(kindColorToken('suspension')).toBe('var(--color--warning)');
+	});
+});
+
+describe('matchesSearch', () => {
+	const labelForKey = (key: string) => key;
+
+	it('matches tool call input and output values', () => {
+		const toolItem = item({
+			kind: 'tool',
+			toolName: 'fetch_urlscan_results',
+			toolInput: {
+				url: 'https://urlscan.io/api/v1/search/?q=domain%3Aapp.n8n.cloud',
+			},
+			toolOutput: {
+				domain: 'monicasue.app.n8n.cloud',
+				stats: { uniqIPs: 1 },
+			},
+		});
+
+		expect(matchesSearch(toolItem, 'monicasue', labelForKey)).toBe(true);
+		expect(matchesSearch(toolItem, 'uniqIPs', labelForKey)).toBe(true);
+	});
+});
+
+describe('formatDuration', () => {
+	it('returns empty string for zero or negative input', () => {
+		expect(formatDuration(0)).toBe('');
+		expect(formatDuration(-100)).toBe('');
+	});
+	it('formats sub-second durations as ms', () => {
+		expect(formatDuration(450)).toBe('450ms');
+	});
+	it('formats sub-minute durations with one decimal of seconds', () => {
+		expect(formatDuration(1500)).toBe('1.5s');
+		expect(formatDuration(3400)).toBe('3.4s');
+	});
+	it('formats sub-hour durations as minutes and seconds', () => {
+		expect(formatDuration(60_000)).toBe('1m');
+		expect(formatDuration(90_000)).toBe('1m 30s');
+		expect(formatDuration(15 * 60_000 + 5_000)).toBe('15m 5s');
+	});
+	it('formats multi-hour durations as hours and minutes', () => {
+		expect(formatDuration(60 * 60_000)).toBe('1h');
+		expect(formatDuration(2 * 60 * 60_000 + 30 * 60_000)).toBe('2h 30m');
+	});
+});
+
+describe('builtinToolLabelKey', () => {
+	it('uses the chat display key for native and fallback web search tools', () => {
+		expect(builtinToolLabelKey('web_search')).toBe('agents.chat.toolNames.webSearch');
+		expect(builtinToolLabelKey('anthropic.web_search_20250305')).toBe(
+			'agents.chat.toolNames.webSearch',
+		);
+		expect(builtinToolLabelKey('openai.web_search')).toBe('agents.chat.toolNames.webSearch');
+	});
+
+	it('does not label unrelated tools as web search', () => {
+		expect(builtinToolLabelKey('custom_web_search')).toBeNull();
+	});
+});
+
+import type {
+	AgentExecution,
+	AgentExecutionTimelineEvent,
+} from '../composables/useAgentThreadsApi';
+
+function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
+	return {
+		id: 'e-1',
+		threadId: 't-1',
+		agentId: 'a-1',
+		status: 'success',
+		createdAt: '2026-04-24T10:00:00Z',
+		startedAt: '2026-04-24T10:00:00Z',
+		stoppedAt: null,
+		duration: 0,
+		userMessage: null,
+		attachments: null,
+		model: null,
+		promptTokens: null,
+		completionTokens: null,
+		totalTokens: null,
+		cost: null,
+		timeline: null,
+		error: null,
+		failureSummary: null,
+		hitlStatus: null,
+		source: null,
+		...overrides,
+	};
+}
+
+function withTimeline(
+	events: AgentExecutionTimelineEvent[],
+	overrides: Partial<AgentExecution> = {},
+): AgentExecution {
+	return exec({ timeline: events, ...overrides });
+}
+
+function toolCallEvent(overrides: Record<string, unknown> = {}): AgentExecutionTimelineEvent {
+	return {
+		type: 'tool-call',
+		kind: 'tool',
+		name: 'protected_action',
+		toolCallId: 'tc-1',
+		startTime: 100,
+		endTime: 0,
+		success: false,
+		...overrides,
+	};
+}
+
+function suspensionEvent(overrides: Record<string, unknown> = {}): AgentExecutionTimelineEvent {
+	return {
+		type: 'suspension',
+		toolName: 'protected_action',
+		toolCallId: 'tc-1',
+		timestamp: 110,
+		...overrides,
+	};
+}
+
+function hitlResponseEvent(overrides: Record<string, unknown> = {}): AgentExecutionTimelineEvent {
+	return { type: 'hitl-response', toolCallId: 'tc-1', timestamp: 190, ...overrides };
+}
+
+describe('flattenExecutionsToTimelineItems', () => {
+	const attachment = { id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 };
+
+	it('carries attachments on the user item', () => {
+		const items = flattenExecutionsToTimelineItems([
+			exec({ userMessage: 'look at this', attachments: [attachment] }),
+		]);
+
+		expect(items).toHaveLength(1);
+		expect(items[0].kind).toBe('user');
+		expect(items[0].content).toBe('look at this');
+		expect(items[0].attachments).toEqual([attachment]);
+	});
+
+	it('emits a user item for attachment-only turns without text', () => {
+		const items = flattenExecutionsToTimelineItems([exec({ attachments: [attachment] })]);
+
+		expect(items).toHaveLength(1);
+		expect(items[0].kind).toBe('user');
+		expect(items[0].content).toBe('');
+		expect(items[0].attachments).toEqual([attachment]);
+	});
+
+	it('emits no user item when there is neither text nor attachments', () => {
+		const items = flattenExecutionsToTimelineItems([exec()]);
+		expect(items).toHaveLength(0);
+	});
+
+	it.each([
+		['error', 'Model failed'],
+		['interrupted', 'Agent execution was interrupted'],
+	] as const)('adds a selectable synthetic item for an %s execution', (status, error) => {
+		const items = flattenExecutionsToTimelineItems([
+			exec({
+				status,
+				error,
+				stoppedAt: '2026-04-24T10:00:05Z',
+			}),
+		]);
+
+		expect(items).toEqual([
+			{
+				kind: 'execution-error',
+				executionId: 'e-1',
+				executionStatus: status,
+				content: error,
+				timestamp: Date.parse('2026-04-24T10:00:05Z'),
+			},
+		]);
+	});
+
+	it.each(['success', 'cancelled'] as const)(
+		'does not add a synthetic item for a %s execution',
+		(status) => {
+			expect(flattenExecutionsToTimelineItems([exec({ status })])).toEqual([]);
+		},
+	);
+
+	it('maps a generic HITL flow to tool call, request, and user response items', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					toolCallEvent({
+						name: 'chat_action',
+						input: { action: 'respond' },
+					}),
+					suspensionEvent({ toolName: 'chat_action' }),
+				],
+				{ id: 'e-suspended', hitlStatus: 'suspended' },
+			),
+			withTimeline(
+				[
+					hitlResponseEvent({
+						response: { approved: false },
+					}),
+					toolCallEvent({
+						name: 'chat_action',
+						output: { actionRecorded: true },
+						startTime: 200,
+						endTime: 200,
+						success: true,
+					}),
+				],
+				{ id: 'e-resumed', hitlStatus: 'resumed' },
+			),
+		]);
+
+		expect(items.map((item) => item.kind)).toEqual(['tool', 'suspension', 'hitl-response']);
+		expect(items[0]).toMatchObject({
+			toolInput: { action: 'respond' },
+			toolOutput: { actionRecorded: true },
+			toolOutcome: 'success',
+		});
+		expect(items[1]).toMatchObject({
+			hitlRequestType: 'interaction',
+			hitlRequest: { action: 'respond' },
+		});
+		expect(items[2]).toMatchObject({
+			hitlResponseStatus: 'responded',
+			hitlResponse: { approved: false },
+		});
+	});
+
+	it.each(['tool', 'node', 'workflow'] as const)(
+		'maps a legacy declined %s call to a normal tool, approval request, and declined response',
+		(kind) => {
+			const items = flattenExecutionsToTimelineItems([
+				withTimeline(
+					[
+						toolCallEvent({
+							kind,
+							toolCallId: 'tc-declined',
+							input: { recordId: '1' },
+						}),
+						suspensionEvent({
+							toolCallId: 'tc-declined',
+						}),
+					],
+					{ id: 'e-suspended', hitlStatus: 'suspended' },
+				),
+				withTimeline(
+					[
+						toolCallEvent({
+							kind,
+							toolCallId: 'tc-declined',
+							output: {
+								declined: true,
+								message: 'Tool "protected_action" was not approved',
+							},
+							startTime: 200,
+							endTime: 200,
+							success: true,
+						}),
+					],
+					{ id: 'e-resumed', hitlStatus: 'resumed' },
+				),
+			]);
+
+			expect(items.map((item) => item.kind)).toEqual([kind, 'suspension', 'hitl-response']);
+			expect(items[0]).toMatchObject({
+				toolInput: { recordId: '1' },
+				toolOutput: undefined,
+				toolOutcome: undefined,
+			});
+			expect(items[1]).toMatchObject({
+				hitlRequestType: 'approval',
+				hitlRequest: {
+					type: 'approval',
+					toolName: 'protected_action',
+					args: { recordId: '1' },
+				},
+			});
+			expect(items[2]).toMatchObject({
+				kind: 'hitl-response',
+				hitlResponseStatus: 'declined',
+				hitlResponse: {
+					declined: true,
+					message: 'Tool "protected_action" was not approved',
+				},
+			});
+		},
+	);
+
+	it('uses the persisted approval request and maps its result to an approved response', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					toolCallEvent({
+						toolCallId: 'tc-approved',
+					}),
+					suspensionEvent({
+						toolCallId: 'tc-approved',
+						suspendPayload: {
+							type: 'approval',
+							toolName: 'protected_action',
+							displayName: 'Protected action',
+							args: { recordId: '1' },
+						},
+					}),
+				],
+				{ id: 'e-suspended', hitlStatus: 'suspended' },
+			),
+			withTimeline(
+				[
+					hitlResponseEvent({
+						toolCallId: 'tc-approved',
+						response: { approved: true },
+					}),
+					toolCallEvent({
+						toolCallId: 'tc-approved',
+						output: { updated: true },
+						startTime: 200,
+						endTime: 200,
+						success: true,
+					}),
+				],
+				{ id: 'e-resumed', hitlStatus: 'resumed' },
+			),
+		]);
+
+		expect(items.map((item) => item.kind)).toEqual(['tool', 'suspension', 'hitl-response']);
+		expect(items[1]).toMatchObject({
+			hitlRequestType: 'approval',
+			hitlToolDisplayName: 'Protected action',
+			hitlRequest: {
+				type: 'approval',
+				toolName: 'protected_action',
+				displayName: 'Protected action',
+				args: { recordId: '1' },
+			},
+		});
+		expect(items[0]).toMatchObject({
+			toolOutput: { updated: true },
+			toolOutcome: 'success',
+		});
+		expect(items[2]).toMatchObject({
+			hitlResponseStatus: 'approved',
+			hitlResponse: { approved: true },
+			hitlToolDisplayName: 'Protected action',
+		});
+	});
+
+	it('keeps a pending approval as a two-item tool and request sequence', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent({
+					kind: 'node',
+					name: 'check_ledger',
+					toolCallId: 'tc-pending',
+					input: {},
+					nodeDisplayName: 'Check ledger',
+				}),
+				suspensionEvent({
+					toolName: 'check_ledger',
+					toolCallId: 'tc-pending',
+					suspendPayload: {
+						type: 'approval',
+						toolName: 'check_ledger',
+						args: {},
+					},
+				}),
+			]),
+		]);
+
+		expect(items.map((item) => item.kind)).toEqual(['node', 'suspension']);
+		expect(items[1]).toMatchObject({
+			hitlRequestType: 'approval',
+			nodeDisplayName: 'Check ledger',
+		});
+	});
+
+	it('emits a user item from userMessage using execution startedAt', () => {
+		const items = flattenExecutionsToTimelineItems([exec({ userMessage: 'hello' })]);
+		expect(items[0]).toMatchObject({
+			kind: 'user',
+			content: 'hello',
+			timestamp: new Date('2026-04-24T10:00:00Z').getTime(),
+		});
+	});
+
+	it('maps a text timeline event to an agent item', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'text', content: 'hi there', timestamp: 1234 }]),
+		]);
+		expect(items[0]).toMatchObject({ kind: 'agent', content: 'hi there', timestamp: 1234 });
+	});
+
+	it('maps a workflow tool-call timeline event to kind:workflow with metadata', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{
+					type: 'tool-call',
+					kind: 'workflow',
+					name: 'run-wf',
+					toolCallId: 'tc-1',
+					input: {},
+					output: { executionId: 'exec-42', status: 'success' },
+					startTime: 1000,
+					endTime: 1500,
+					success: true,
+					workflowId: 'wf-1',
+					workflowName: 'Run WF',
+					workflowExecutionId: 'exec-42',
+					triggerType: 'manual',
+				},
+			]),
+		]);
+		const wf = items.find((i) => i.kind === 'workflow');
+		expect(wf).toMatchObject({
+			workflowId: 'wf-1',
+			workflowName: 'Run WF',
+			workflowExecutionId: 'exec-42',
+			workflowTriggerType: 'manual',
+			timestamp: 1000,
+			endTimestamp: 1500,
+			toolOutcome: 'success',
+			toolSuccess: true,
+		});
+	});
+
+	it('maps a running tool-call without marking it failed', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{
+					type: 'tool-call',
+					kind: 'tool',
+					name: 'http',
+					toolCallId: 'tc-1',
+					input: { method: 'GET' },
+					output: undefined,
+					startTime: 1000,
+					endTime: 0,
+					success: false,
+				},
+			]),
+		]);
+		const tool = items.find((i) => i.kind === 'tool');
+		expect(tool).toMatchObject({
+			toolName: 'http',
+			timestamp: 1000,
+			endTimestamp: 1000,
+			toolInput: { method: 'GET' },
+			toolOutput: undefined,
+			toolOutcome: undefined,
+			toolSuccess: undefined,
+		});
+		expect(tool?.workflowId).toBeUndefined();
+	});
+
+	it('maps workflow and tool timeline calls from the same execution', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{
+					type: 'tool-call',
+					kind: 'workflow',
+					name: 'giphy-gif-search',
+					toolCallId: 'tc-workflow',
+					input: { search: 'shopping cart fun' },
+					output: { executionId: '234', status: 'success' },
+					startTime: 1000,
+					endTime: 1500,
+					success: true,
+					workflowId: 'wf-1',
+					workflowName: 'Giphy GIF Search',
+					workflowExecutionId: '234',
+				},
+				{
+					type: 'tool-call',
+					kind: 'tool',
+					name: 'card_sender',
+					toolCallId: 'tc-tool',
+					input: {
+						card: { components: [{ type: 'image', url: 'https://example.com/giphy.gif' }] },
+					},
+					output: { ok: true },
+					startTime: 1600,
+					endTime: 1700,
+					success: true,
+				},
+			]),
+		]);
+
+		expect(items.filter((i) => i.toolName === 'giphy-gif-search')).toHaveLength(1);
+		expect(items.filter((i) => i.toolName === 'card_sender')).toHaveLength(1);
+		expect(items.find((i) => i.toolName === 'giphy-gif-search')).toMatchObject({
+			kind: 'workflow',
+			workflowName: 'Giphy GIF Search',
+			workflowExecutionId: '234',
+		});
+	});
+
+	it('treats tool-call events without a kind field as kind:tool (defensive)', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{
+					type: 'tool-call',
+					name: 'http',
+					toolCallId: 'tc-1',
+					input: {},
+					output: { ok: true },
+					startTime: 0,
+					endTime: 100,
+					success: true,
+				},
+			]),
+		]);
+		expect(items[0]?.kind).toBe('tool');
+	});
+
+	it('maps a suspension timeline event', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				{ type: 'suspension', toolName: 'approval-tool', toolCallId: 'tc-1', timestamp: 3000 },
+			]),
+		]);
+		expect(items[0]).toMatchObject({
+			kind: 'suspension',
+			toolName: 'approval-tool',
+			timestamp: 3000,
+		});
+	});
+
+	it('tags resumed:true on the first text event of a resumed execution only', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					{ type: 'text', content: 'first', timestamp: 100 },
+					{ type: 'text', content: 'second', timestamp: 200 },
+				],
+				{ hitlStatus: 'resumed' },
+			),
+		]);
+		expect(items[0]?.resumed).toBe(true);
+		expect(items[1]?.resumed).toBeFalsy();
+	});
+
+	it('returns [] when execution has no timeline events', () => {
+		const items = flattenExecutionsToTimelineItems([exec({ timeline: null })]);
+		expect(items).toEqual([]);
+	});
+
+	it('preserves chronological order across multiple executions', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([{ type: 'text', content: 'a', timestamp: 100 }], { id: 'e-a' }),
+			withTimeline([{ type: 'text', content: 'b', timestamp: 200 }], { id: 'e-b' }),
+		]);
+		expect(items.map((i) => i.content)).toEqual(['a', 'b']);
+	});
+});
+
+describe('isErroredToolCallTimelineItem', () => {
+	it.each([
+		['runtime hard failure', { kind: 'tool', toolSuccess: false }],
+		['toolOutcome error', { kind: 'tool', toolOutcome: 'error' }],
+		['generic error string', { kind: 'tool', toolSuccess: true, toolOutput: { error: 'boom' } }],
+		[
+			'integration error object',
+			{
+				kind: 'tool',
+				toolSuccess: true,
+				toolOutput: { ok: false, error: { code: 'ACTION_FAILED', message: 'Action failed' } },
+			},
+		],
+		[
+			'workflow error status',
+			{ kind: 'workflow', toolSuccess: true, toolOutput: { status: 'error' } },
+		],
+		[
+			'delegate failed status',
+			{ kind: 'tool', toolSuccess: true, toolOutput: { status: 'failed' } },
+		],
+		[
+			'workspace success false',
+			{ kind: 'tool', toolSuccess: true, toolOutput: { success: false } },
+		],
+		['integration ok false', { kind: 'tool', toolSuccess: true, toolOutput: { ok: false } }],
+		['MCP isError true', { kind: 'tool', toolSuccess: true, toolOutput: { isError: true } }],
+	] satisfies Array<[string, Partial<TimelineItem>]>)('flags %s', (_label, partial) => {
+		expect(isErroredToolCallTimelineItem(item(partial))).toBe(true);
+	});
+
+	it.each([
+		['empty error string', { toolOutput: { error: '' } }],
+		['empty nested error message', { toolOutput: { error: { message: '' } } }],
+		['success status', { toolOutput: { status: 'success' } }],
+		['success true', { toolOutput: { success: true } }],
+		['ok true', { toolOutput: { ok: true } }],
+		['isError false', { toolOutput: { isError: false } }],
+		['non-record output', { toolOutput: 'failed' }],
+		['in-flight call', { toolSuccess: undefined, toolOutput: undefined }],
+	] satisfies Array<[string, Partial<TimelineItem>]>)('does not flag %s', (_label, partial) => {
+		expect(
+			isErroredToolCallTimelineItem(item({ kind: 'tool', toolSuccess: true, ...partial })),
+		).toBe(false);
+	});
+
+	it('does not flag user/agent/suspension kinds', () => {
+		expect(isErroredToolCallTimelineItem(item({ kind: 'user', toolSuccess: false }))).toBe(false);
+		expect(isErroredToolCallTimelineItem(item({ kind: 'agent', toolSuccess: false }))).toBe(false);
+		expect(isErroredToolCallTimelineItem(item({ kind: 'suspension', toolSuccess: false }))).toBe(
+			false,
+		);
+	});
+});
+
+describe('timelineItemErrorMessage', () => {
+	it('extracts the error message from a thrown tool call', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({ kind: 'tool', toolSuccess: false, toolOutput: { error: 'timed out' } }),
+			),
+		).toBe('timed out');
+	});
+
+	it('extracts the error message from a workflow soft-failure', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'workflow',
+					toolSuccess: true,
+					toolOutput: { status: 'error', error: 'node X failed' },
+				}),
+			),
+		).toBe('node X failed');
+	});
+
+	it('extracts a nested integration error message', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						ok: false,
+						error: { code: 'NO_MESSAGE_CONTEXT', message: 'No message context' },
+					},
+				}),
+			),
+		).toBe('No message context');
+	});
+
+	it('extracts MCP structuredContent.error', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						isError: true,
+						content: [{ type: 'text', text: '{"error":"Workflow not found"}' }],
+						structuredContent: { error: 'Workflow not found' },
+					},
+				}),
+			),
+		).toBe('Workflow not found');
+	});
+
+	it('extracts MCP structuredContent.error.message', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						isError: true,
+						content: [{ type: 'text', text: 'ignored' }],
+						structuredContent: { error: { message: 'Tool execution failed' } },
+					},
+				}),
+			),
+		).toBe('Tool execution failed');
+	});
+
+	it('extracts MCP text content when structuredContent has no error', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						isError: true,
+						content: [{ type: 'text', text: 'Access denied by user' }],
+					},
+				}),
+			),
+		).toBe('Access denied by user');
+	});
+
+	it('extracts MCP JSON text envelopes without dumping extra payload fields', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						isError: true,
+						content: [
+							{
+								type: 'text',
+								text: JSON.stringify({ error: 'Selector not found', snapshot: '<huge>' }),
+							},
+						],
+					},
+				}),
+			),
+		).toBe('Selector not found');
+	});
+
+	it('returns empty string when no error message is present', () => {
+		expect(
+			timelineItemErrorMessage(item({ kind: 'tool', toolSuccess: false, toolOutput: {} })),
+		).toBe('');
+		expect(
+			timelineItemErrorMessage(
+				item({ kind: 'workflow', toolSuccess: true, toolOutput: { status: 'error' } }),
+			),
+		).toBe('');
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: { isError: true, content: [{ type: 'image', data: 'abc' }] },
+				}),
+			),
+		).toBe('');
+	});
+
+	it('returns empty string for non-failed items', () => {
+		expect(
+			timelineItemErrorMessage(item({ kind: 'tool', toolSuccess: true, toolOutput: { ok: true } })),
+		).toBe('');
+	});
+});

@@ -125,6 +125,39 @@ describe('Data Transformation Functions', () => {
 			).toEqual({ test1: 1, test2: 2, test3: 3, test4: 4 });
 		});
 
+		test('.merge() should drop elements past the length of the shorter array', () => {
+			expect(evaluate('={{ [{ a: 1 }, { b: 2 }].merge([{ c: 3 }]) }}')).toEqual({
+				a: 1,
+				c: 3,
+			});
+		});
+
+		test('.mergeIntoObject() should keep all elements when the base array is longer', () => {
+			expect(evaluate('={{ [{ a: 1 }, { b: 2 }].mergeIntoObject([{ c: 3 }]) }}')).toEqual({
+				a: 1,
+				b: 2,
+				c: 3,
+			});
+		});
+
+		test('.mergeIntoObject() should keep all elements when the argument array is longer', () => {
+			expect(evaluate('={{ [{ a: 1 }].mergeIntoObject([{ b: 2 }, { c: 3 }]) }}')).toEqual({
+				a: 1,
+				b: 2,
+				c: 3,
+			});
+		});
+
+		test('.mergeIntoObject() should keep the base object when the counterpart at that index is not an object', () => {
+			expect(
+				evaluate('={{ [{ a: 1 }, { b: 2 }].mergeIntoObject([{ c: 3 }, "not an object"]) }}'),
+			).toEqual({
+				a: 1,
+				b: 2,
+				c: 3,
+			});
+		});
+
 		test('.merge() should work correctly without arguments', () => {
 			expect(
 				evaluate(
@@ -234,6 +267,12 @@ describe('Data Transformation Functions', () => {
 					'={{ [{ test1: 1, test2: undefined, test3: null }, null, undefined, 1, 2, 0, { test: "asdf" }].compact() }}',
 				),
 			).toEqual([{ test1: 1 }, 1, 2, 0, { test: 'asdf' }]);
+		});
+
+		test('.numberList() should work ', () => {
+			expect(evaluate('={{ numberList(1, 20) }}')).toEqual([
+				1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+			]);
 		});
 
 		test('.chunk() should work on an array', () => {

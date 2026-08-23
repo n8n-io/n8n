@@ -4,6 +4,8 @@ export * from './community-nodes';
 export * from './instance';
 export * from './execution';
 export * from './logstreaming';
+export * from './nodes';
+export * from './scheduler';
 
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
@@ -15,11 +17,15 @@ export const LICENSE_FEATURES = {
 	ADVANCED_EXECUTION_FILTERS: 'feat:advancedExecutionFilters',
 	VARIABLES: 'feat:variables',
 	SOURCE_CONTROL: 'feat:sourceControl',
+	GIT_CONNECTIONS: 'feat:gitConnections',
 	API_DISABLED: 'feat:apiDisabled',
 	EXTERNAL_SECRETS: 'feat:externalSecrets',
 	SHOW_NON_PROD_BANNER: 'feat:showNonProdBanner',
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
 	BINARY_DATA_S3: 'feat:binaryDataS3',
+	BINARY_DATA_AZURE: 'feat:binaryDataAz',
+	EXECUTION_DATA_S3: 'feat:executionDataS3',
+	EXECUTION_DATA_AZURE: 'feat:executionDataAz',
 	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
 	WORKER_VIEW: 'feat:workerView',
 	ADVANCED_PERMISSIONS: 'feat:advancedPermissions',
@@ -30,6 +36,8 @@ export const LICENSE_FEATURES = {
 	ASK_AI: 'feat:askAi',
 	COMMUNITY_NODES_CUSTOM_REGISTRY: 'feat:communityNodes:customRegistry',
 	AI_CREDITS: 'feat:aiCredits',
+	AI_GATEWAY: 'feat:aiGateway',
+	AI_GATEWAY_CLOUD_UBB: 'feat:aiGatewayCloudUbb',
 	FOLDERS: 'feat:folders',
 	INSIGHTS_VIEW_SUMMARY: 'feat:insights:viewSummary',
 	INSIGHTS_VIEW_DASHBOARD: 'feat:insights:viewDashboard',
@@ -41,6 +49,10 @@ export const LICENSE_FEATURES = {
 	AI_BUILDER: 'feat:aiBuilder',
 	DYNAMIC_CREDENTIALS: 'feat:dynamicCredentials',
 	PERSONAL_SPACE_POLICY: 'feat:personalSpacePolicy',
+	TOKEN_EXCHANGE: 'feat:tokenExchange',
+	DATA_REDACTION: 'feat:dataRedaction',
+	OTEL_CUSTOM_SPAN_ATTRIBUTES: 'feat:otel:customSpanAttributes',
+	WORKFLOW_REVIEWS: 'feat:workflowReviews',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -50,13 +62,16 @@ export const LICENSE_QUOTAS = {
 	WORKFLOW_HISTORY_PRUNE_LIMIT: 'quota:workflowHistoryPrune',
 	TEAM_PROJECT_LIMIT: 'quota:maxTeamProjects',
 	AI_CREDITS: 'quota:aiCredits',
+	AI_GATEWAY_BUDGET: 'quota:aiGatewayBudget',
 	INSIGHTS_MAX_HISTORY_DAYS: 'quota:insights:maxHistoryDays',
 	INSIGHTS_RETENTION_MAX_AGE_DAYS: 'quota:insights:retention:maxAgeDays',
 	INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS: 'quota:insights:retention:pruneIntervalDays',
 	WORKFLOWS_WITH_EVALUATION_LIMIT: 'quota:evaluations:maxWorkflows',
+	EVALUATION_CONCURRENCY_LIMIT: 'quota:evaluations:concurrencyLimit',
 } as const;
 
 export const UNLIMITED_LICENSE_QUOTA = -1;
+
 export const DEFAULT_WORKFLOW_HISTORY_PRUNE_LIMIT = 24;
 
 export type BooleanLicenseFeature = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES];
@@ -123,8 +138,14 @@ export const MIN_PASSWORD_CHAR_LENGTH = 8;
 
 export const MAX_PASSWORD_CHAR_LENGTH = 64;
 
+/** Largest value a signed 32-bit integer can hold. */
+export const MAX_INTEGER_32BITS_SIGNED = 2 ** 31 - 1;
+
 /**
  * Character set used for generating nanoid IDs across n8n.
  * Includes digits (0-9), uppercase letters (A-Z), and lowercase letters (a-z).
  */
 export const NANOID_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
+
+/** Protected-resource id of the instance MCP server, shared by the mcp and oauth-server modules. */
+export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';

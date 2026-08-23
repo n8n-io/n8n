@@ -5,10 +5,14 @@ import { ChatHubProviderSettingsModal } from './components/ChatHubProviderSettin
 import { CredentialModal } from './components/CredentialModal';
 
 export class ChatHubSettingsPage extends BasePage {
+	async goto() {
+		await this.page.goto('/settings/chat');
+	}
+
 	readonly providerModal = new ChatHubProviderSettingsModal(
 		this.page.getByTestId('chatProviderSettingsModal-modal'),
 	);
-	readonly credentialModal = new CredentialModal(this.page.getByTestId('editCredential-modal'));
+	readonly credentialModal = CredentialModal.fromPage(this.page);
 
 	constructor(page: Page) {
 		super(page);

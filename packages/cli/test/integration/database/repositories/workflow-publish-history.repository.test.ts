@@ -98,7 +98,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: null,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 1));
+			await new Promise((resolve) => setTimeout(resolve, 5));
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -107,7 +107,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: null,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 1));
+			await new Promise((resolve) => setTimeout(resolve, 5));
 
 			await repository.addRecord({
 				workflowId: workflow.id,
@@ -137,6 +137,75 @@ describe('WorkflowPublishHistoryRepository', () => {
 		});
 	});
 
+	describe('findActivatedByUserId', () => {
+		it('should return the userId of the most recent activated event', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const user1 = await createUser();
+			const user2 = await createUser();
+			const workflow = await createWorkflowWithHistory();
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'activated',
+				userId: user1.id,
+			});
+
+			await new Promise((resolve) => setTimeout(resolve, 5));
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'activated',
+				userId: user2.id,
+			});
+
+			const result = await repository.findActivatedByUserId(workflow.id);
+
+			expect(result).toBe(user2.id);
+		});
+
+		it('should return undefined when no activated event exists', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const workflow = await createWorkflowWithHistory();
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'deactivated',
+				userId: null,
+			});
+
+			const result = await repository.findActivatedByUserId(workflow.id);
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return undefined when userId is null on the activated record', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const workflow = await createWorkflowWithHistory();
+
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'activated',
+				userId: null,
+			});
+
+			const result = await repository.findActivatedByUserId(workflow.id);
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return undefined for a non-existent workflowId', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+
+			const result = await repository.findActivatedByUserId('non-existent-id');
+
+			expect(result).toBeUndefined();
+		});
+	});
+
 	describe('Foreign key constraints', () => {
 		it('should cascade delete when workflow is deleted', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
@@ -159,7 +228,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			expect(records).toHaveLength(0);
 		});
 
-		it('should cascade delete when workflow history version is deleted', async () => {
+		it('should set null when workflow history version is deleted', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const workflow = await createWorkflowWithHistory();
 
@@ -176,7 +245,15 @@ describe('WorkflowPublishHistoryRepository', () => {
 				where: { workflowId: workflow.id },
 			});
 
-			expect(records).toHaveLength(0);
+			expect(records).toHaveLength(1);
+			expect(records[0]).toEqual(
+				expect.objectContaining({
+					workflowId: workflow.id,
+					versionId: null,
+					event: 'activated',
+					userId: null,
+				}),
+			);
 		});
 
 		it('should set userId to null when user is deleted', async () => {

@@ -1,0 +1,91 @@
+{
+	"name": "Pipedrive v2 note get test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "note",
+				"operation": "get",
+				"noteId": 8
+			},
+			"id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "c3d4e5f6-a7b8-9012-cdef-123456789012",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 8,
+					"user_id": 25455458,
+					"deal_id": 8,
+					"person_id": 10,
+					"org_id": 7,
+					"lead_id": null,
+					"project_id": null,
+					"task_id": null,
+					"content": "This is a test note",
+					"add_time": "2026-04-01 22:03:28",
+					"update_time": "2026-04-01 22:03:28",
+					"active_flag": true,
+					"pinned_to_deal_flag": false,
+					"pinned_to_person_flag": false,
+					"pinned_to_organization_flag": false,
+					"pinned_to_lead_flag": false,
+					"pinned_to_project_flag": false,
+					"pinned_to_task_flag": false,
+					"last_update_user_id": null,
+					"organization": {
+						"name": "Test Org LLC"
+					},
+					"person": {
+						"name": "John Test"
+					},
+					"deal": {
+						"title": "Test Deal"
+					},
+					"lead": null,
+					"user": {
+						"email": "kristiyan.nikolov@n8n.io",
+						"name": "Kris",
+						"icon_url": null,
+						"is_you": true
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [[{ "node": "Pipedrive", "type": "main", "index": 0 }]]
+		},
+		"Pipedrive": {
+			"main": [[{ "node": "No Operation, do nothing", "type": "main", "index": 0 }]]
+		}
+	}
+}

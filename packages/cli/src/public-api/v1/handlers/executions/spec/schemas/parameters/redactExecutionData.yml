@@ -1,0 +1,9 @@
+name: redactExecutionData
+in: query
+description: >
+  Controls execution data redaction. When `true`, execution output data is always
+  redacted. When `false`, requests unredacted (revealed) data — requires the
+  `execution:reveal` scope. When omitted, follows the workflow redaction policy.
+required: false
+schema:
+  type: boolean

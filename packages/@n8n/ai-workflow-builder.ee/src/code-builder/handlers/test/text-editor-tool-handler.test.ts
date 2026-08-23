@@ -5,6 +5,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { ToolMessage } from '@langchain/core/messages';
 import { jsonParse } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import type {
 	StreamOutput,
@@ -36,17 +37,17 @@ function isWorkflowUpdateChunk(chunk: unknown): chunk is WorkflowUpdateChunk {
 
 describe('TextEditorToolHandler', () => {
 	let handler: TextEditorToolHandler;
-	let mockTextEditorExecute: jest.Mock;
-	let mockTextEditorGetCode: jest.Mock;
-	let mockParseAndValidate: jest.Mock;
-	let mockGetErrorContext: jest.Mock;
+	let mockTextEditorExecute: Mock;
+	let mockTextEditorGetCode: Mock;
+	let mockParseAndValidate: Mock;
+	let mockGetErrorContext: Mock;
 	let messages: BaseMessage[];
 
 	beforeEach(() => {
-		mockTextEditorExecute = jest.fn();
-		mockTextEditorGetCode = jest.fn();
-		mockParseAndValidate = jest.fn();
-		mockGetErrorContext = jest.fn().mockReturnValue('Code context:\n1: const x = 1;');
+		mockTextEditorExecute = vi.fn();
+		mockTextEditorGetCode = vi.fn();
+		mockParseAndValidate = vi.fn();
+		mockGetErrorContext = vi.fn().mockReturnValue('Code context:\n1: const x = 1;');
 		messages = [];
 
 		handler = new TextEditorToolHandler({

@@ -1,4 +1,4 @@
-import { Service } from '@n8n/di';
+import { BreakingChangeRule } from '@n8n/decorators';
 
 import type {
 	BreakingChangeRuleMetadata,
@@ -7,7 +7,7 @@ import type {
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
 
-@Service()
+@BreakingChangeRule({ version: 'v2' })
 export class OAuthCallbackAuthRule implements IBreakingChangeInstanceRule {
 	id: string = 'oauth-callback-auth-v2';
 

@@ -16,7 +16,7 @@ import type { ProjectSharingData } from '@/features/collaboration/projects/proje
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
-import { isEmpty, isPresent } from '@/app/utils/typesUtils';
+import { isEmpty } from '@/app/utils/typesUtils';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
@@ -29,7 +29,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, type DeepReadonly } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import * as aiApi from '@/features/ai/assistant/assistant.api';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
@@ -43,6 +43,8 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 
 	type CredentialTestStatus = 'pending' | 'success' | 'error';
 	const credentialTestResults = ref(new Map<string, CredentialTestStatus>());
+
+	const pendingOAuthRefresh = ref(false);
 
 	const isCredentialTestedOk = (id: string): boolean => {
 		return credentialTestResults.value.get(id) === 'success';
@@ -146,17 +148,28 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		};
 	});
 
-	const getNodesWithAccess = computed(() => {
-		return (credentialTypeName: string) => {
+	const isCredentialTypeTestable = computed(() => {
+		return (credentialTypeName: string): boolean => {
 			const credentialType = getCredentialTypeByName.value(credentialTypeName);
-			if (!credentialType) {
-				return [];
-			}
+			if (!credentialType) return false;
+			if (credentialType.test) return true;
+
 			const nodeTypesStore = useNodeTypesStore();
 
-			return (credentialType.supportedNodes ?? [])
-				.map((nodeType) => nodeTypesStore.getNodeType(nodeType))
-				.filter(isPresent);
+			// Every registered version has to be checked, not just the newest: `testedBy` is
+			// often declared only on an older version, and the backend resolves the test
+			// across all versions too. Reading one version hides tests that do exist.
+			return (credentialType.supportedNodes ?? []).some((nodeType) =>
+				nodeTypesStore
+					.getNodeVersions(nodeType)
+					.some((version) =>
+						nodeTypesStore
+							.getNodeType(nodeType, version)
+							?.credentials?.some(
+								(credential) => credential.name === credentialTypeName && credential.testedBy,
+							),
+					),
+			);
 		};
 	});
 
@@ -261,6 +274,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	};
 
 	const upsertCredential = (credential: ICredentialsResponse) => {
+		if (credential.usageScope === 'instance') return;
 		if (credential.id) {
 			state.value.credentials = {
 				...state.value.credentials,
@@ -359,6 +373,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			uiContext,
 			isGlobal: data.isGlobal,
 			isResolvable: data.isResolvable,
+			usageScope: data.usageScope,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {
@@ -403,6 +418,34 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		}
 	};
 
+	const disconnectMyConnection = async ({ id }: { id: string }) => {
+		await credentialsApi.disconnectMyConnection(rootStore.restApiContext, id);
+		setConnectedByMe(id, false);
+	};
+
+	const disconnectOauthToken = async ({ id }: { id: string }) => {
+		await credentialsApi.disconnectOauthToken(rootStore.restApiContext, id);
+	};
+
+	/**
+	 * Mirrors the caller's own connection state locally. The account identifier is
+	 * only known server-side, so it is cleared unless one is passed in — better no
+	 * label than a stale one from the previously connected account.
+	 */
+	const setConnectedByMe = (
+		id: string,
+		connectedByMe: boolean,
+		connectedAccountIdentifier?: string,
+	) => {
+		const existing = state.value.credentials[id];
+		if (existing) {
+			state.value.credentials = {
+				...state.value.credentials,
+				[id]: { ...existing, connectedByMe, connectedAccountIdentifier },
+			};
+		}
+	};
+
 	const oAuth2Authorize = async (data: ICredentialsResponse): Promise<string> => {
 		return await credentialsApi.oAuth2CredentialAuthorize(rootStore.restApiContext, data);
 	};
@@ -417,19 +460,31 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		if (data.id) {
 			credentialTestResults.value.set(data.id, 'pending');
 		}
-		const result = await credentialsApi.testCredential(rootStore.restApiContext, {
-			credentials: data,
-		});
-		if (data.id) {
-			credentialTestResults.value.set(data.id, result.status === 'OK' ? 'success' : 'error');
+		try {
+			const result = await credentialsApi.testCredential(rootStore.restApiContext, {
+				credentials: data,
+			});
+			if (data.id) {
+				credentialTestResults.value.set(data.id, result.status === 'OK' ? 'success' : 'error');
+			}
+			return result;
+		} catch (error) {
+			// A rejected request must not leave the credential stuck in 'pending' —
+			// consumers gate on reaching a definitive result.
+			if (data.id) {
+				credentialTestResults.value.set(data.id, 'error');
+			}
+			throw error;
 		}
-		return result;
 	};
 
-	const getNewCredentialName = async (params: { credentialTypeName: string }): Promise<string> => {
+	const getNewCredentialName = async (params: {
+		credentialTypeName: string;
+		fallbackName?: string;
+	}): Promise<string> => {
+		const { credentialTypeName, fallbackName } = params;
 		try {
-			const { credentialTypeName } = params;
-			let newName = DEFAULT_CREDENTIAL_NAME;
+			let newName = fallbackName ?? DEFAULT_CREDENTIAL_NAME;
 			if (!TYPES_WITH_DEFAULT_NAME.includes(credentialTypeName)) {
 				const cred = getCredentialTypeByName.value(credentialTypeName);
 				newName = cred ? getAppNameFromCredType(cred.displayName) : '';
@@ -439,7 +494,17 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			const res = await credentialsApi.getCredentialsNewName(rootStore.restApiContext, newName);
 			return res.name;
 		} catch (e) {
-			return DEFAULT_CREDENTIAL_NAME;
+			return fallbackName ?? DEFAULT_CREDENTIAL_NAME;
+		}
+	};
+
+	/** Run a caller-chosen name through the server's numbering dedup ("X" → "X 2" on clash). */
+	const getDedupedCredentialName = async (name: string): Promise<string> => {
+		try {
+			const res = await credentialsApi.getCredentialsNewName(rootStore.restApiContext, name);
+			return res.name;
+		} catch (e) {
+			return name;
 		}
 	};
 
@@ -491,7 +556,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		getCredentialById,
 		getCredentialTypeByName,
 		getCredentialByIdAndType,
-		getNodesWithAccess,
+		isCredentialTypeTestable,
 		getUsableCredentialByType,
 		credentialTypesById,
 		httpOnlyCredentialTypes,
@@ -505,6 +570,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		addCredentials,
 		setCredentials,
 		deleteCredential,
+		disconnectMyConnection,
+		disconnectOauthToken,
+		setConnectedByMe,
 		upsertCredential,
 		fetchCredentialTypes,
 		fetchAllCredentials,
@@ -516,10 +584,12 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		oAuth1Authorize,
 		oAuth2Authorize,
 		getNewCredentialName,
+		getDedupedCredentialName,
 		testCredential,
 		getCredentialTranslation,
 		setCredentialSharedWith,
 		claimFreeAiCredits,
+		pendingOAuthRefresh,
 	};
 });
 

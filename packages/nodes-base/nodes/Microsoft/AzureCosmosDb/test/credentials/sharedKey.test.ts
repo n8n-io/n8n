@@ -5,10 +5,10 @@ import { MicrosoftAzureCosmosDbSharedKeyApi } from '@credentials/MicrosoftAzureC
 
 import { credentials } from '../credentials';
 
-jest.mock('crypto', () => ({
-	createHmac: jest.fn(() => ({
-		update: jest.fn(() => ({
-			digest: jest.fn(() => 'fake-signature'),
+vi.mock('crypto', () => ({
+	createHmac: vi.fn(() => ({
+		update: vi.fn(() => ({
+			digest: vi.fn(() => 'fake-signature'),
 		})),
 	})),
 }));
@@ -20,7 +20,7 @@ describe('Azure Cosmos DB', () => {
 		const azureCosmosDbSharedKeyApi = new MicrosoftAzureCosmosDbSharedKeyApi();
 
 		it('should generate a valid authorization header', async () => {
-			jest.useFakeTimers().setSystemTime(new Date('2025-01-01T00:00:00Z'));
+			vi.useFakeTimers().setSystemTime(new Date('2025-01-01T00:00:00Z'));
 			const requestOptions: IHttpRequestOptions = {
 				url: `${baseUrl}/colls/container1/docs/item1`,
 				method: 'GET',
@@ -63,11 +63,13 @@ describe('Azure Cosmos DB', () => {
 
 			expect(foundResource).toBeUndefined();
 
-			expect(() => {
+			const throwFn = () => {
 				if (!foundResource) {
 					throw new OperationalError('Unable to determine the resource type from the URL');
 				}
-			}).toThrowError(new OperationalError('Unable to determine the resource type from the URL'));
+			};
+			expect(throwFn).toThrow(OperationalError);
+			expect(throwFn).toThrow('Unable to determine the resource type from the URL');
 		});
 
 		it('should throw OperationalError if no resource type found in URL path', async () => {
@@ -100,15 +102,17 @@ describe('Azure Cosmos DB', () => {
 
 			expect(foundResource).toBeUndefined();
 
-			expect(() => {
+			const throwFn = () => {
 				if (!foundResource) {
 					throw new OperationalError('Unable to determine the resource type from the URL');
 				}
-			}).toThrowError(new OperationalError('Unable to determine the resource type from the URL'));
+			};
+			expect(throwFn).toThrow(OperationalError);
+			expect(throwFn).toThrow('Unable to determine the resource type from the URL');
 		});
 
 		it('should properly construct the resourceId and payload', async () => {
-			jest.useFakeTimers().setSystemTime(new Date('2025-01-01T00:00:00Z'));
+			vi.useFakeTimers().setSystemTime(new Date('2025-01-01T00:00:00Z'));
 			const requestOptions: IHttpRequestOptions = {
 				url: 'https://example.com/dbs/mydb/colls/mycoll/docs/mydoc',
 				method: 'GET',

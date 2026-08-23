@@ -8,6 +8,39 @@ import { setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
 import { flushPromises } from '@vue/test-utils';
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
+// Controllable active node + gateway lookups so the AI Gateway hiding path can be
+// exercised. Defaults match the no-active-node behaviour the other tests rely on.
+let mockActiveNode: unknown = null;
+const mockIsNodePropertyHidden = vi.fn((_node: unknown, _param: string) => false);
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return {
+		...actual,
+		injectNDVStore: () => ({
+			value: {
+				get activeNode() {
+					return mockActiveNode;
+				},
+			},
+		}),
+	};
+});
+
+vi.mock('@/app/stores/aiGateway.store', () => ({
+	useAiGatewayStore: () => ({ isNodePropertyHidden: mockIsNodePropertyHidden }),
+}));
+
 describe('CollectionParameterLegacy.vue', () => {
 	const pinia = createTestingPinia({
 		initialState: {
@@ -179,7 +212,7 @@ describe('CollectionParameterLegacy.vue', () => {
 		});
 
 		it('filters out already added options from dropdown', async () => {
-			const { getByTestId } = renderComponent({
+			const { getAllByTestId } = renderComponent({
 				props: {
 					...baseProps,
 					values: {
@@ -196,9 +229,10 @@ describe('CollectionParameterLegacy.vue', () => {
 			});
 			await flushPromises();
 
-			// When only one option remains, it shows as a button instead of dropdown
-			const addButton = getByTestId('collection-parameter-add');
-			expect(addButton).toHaveTextContent('Add Field');
+			// With 2 total options and 1 added, the select dropdown should show only the remaining option
+			const options = getAllByTestId('collection-parameter-option');
+			expect(options).toHaveLength(1);
+			expect(options[0]).toHaveTextContent('Value');
 		});
 	});
 
@@ -217,9 +251,9 @@ describe('CollectionParameterLegacy.vue', () => {
 		});
 	});
 
-	describe('Disabled state', () => {
-		it('disables dropdown when all options are added (multiple options)', async () => {
-			const { getByRole } = renderComponent({
+	describe('Add controls visibility', () => {
+		it('hides add controls when all options are added (multiple options)', async () => {
+			const { queryByTestId, queryByRole } = renderComponent({
 				props: {
 					...baseProps,
 					values: {
@@ -238,13 +272,12 @@ describe('CollectionParameterLegacy.vue', () => {
 			});
 			await flushPromises();
 
-			// When all options from multiple are added, it shows a dropdown (not a button)
-			const select = getByRole('combobox');
-			expect(select).toBeDisabled();
+			expect(queryByTestId('collection-parameter-add')).not.toBeInTheDocument();
+			expect(queryByRole('combobox')).not.toBeInTheDocument();
 		});
 
-		it('disables button when all options are added (single option)', async () => {
-			const { getByTestId } = renderComponent({
+		it('hides add button when single option is already added', async () => {
+			const { queryByTestId } = renderComponent({
 				props: {
 					...baseProps,
 					parameter: {
@@ -272,8 +305,46 @@ describe('CollectionParameterLegacy.vue', () => {
 			});
 			await flushPromises();
 
-			const addButton = getByTestId('collection-parameter-add');
-			expect(addButton).toBeDisabled();
+			expect(queryByTestId('collection-parameter-add')).not.toBeInTheDocument();
+		});
+
+		it('hides add controls when parameter.options is empty', async () => {
+			const { queryByTestId, queryByRole } = renderComponent({
+				props: {
+					...baseProps,
+					parameter: {
+						...baseProps.parameter,
+						options: [],
+					},
+				},
+			});
+			await flushPromises();
+
+			expect(queryByTestId('collection-parameter-add')).not.toBeInTheDocument();
+			expect(queryByRole('combobox')).not.toBeInTheDocument();
+		});
+
+		it('hides add controls when parameter.options is undefined', async () => {
+			const { queryByTestId, queryByRole } = renderComponent({
+				props: {
+					...baseProps,
+					parameter: {
+						...baseProps.parameter,
+						options: undefined,
+					},
+				},
+			});
+			await flushPromises();
+
+			expect(queryByTestId('collection-parameter-add')).not.toBeInTheDocument();
+			expect(queryByRole('combobox')).not.toBeInTheDocument();
+		});
+
+		it('does not disable select dropdown when options remain available', () => {
+			const { getByRole } = renderComponent();
+
+			const select = getByRole('combobox');
+			expect(select).not.toBeDisabled();
 		});
 	});
 
@@ -453,6 +524,72 @@ describe('CollectionParameterLegacy.vue', () => {
 			await flushPromises();
 
 			expect(container).toBeInTheDocument();
+		});
+	});
+
+	describe('AI Gateway hidden properties', () => {
+		afterEach(() => {
+			mockActiveNode = null;
+			mockIsNodePropertyHidden.mockReset();
+			mockIsNodePropertyHidden.mockReturnValue(false);
+		});
+
+		it('removes properties the store reports as hidden', async () => {
+			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'value');
+
+			const { getAllByTestId } = renderComponent();
+			await flushPromises();
+
+			const options = getAllByTestId('collection-parameter-option');
+			expect(options).toHaveLength(1);
+			expect(options[0]).toHaveTextContent('Currency');
+		});
+
+		it('keeps properties the store does not hide', async () => {
+			mockIsNodePropertyHidden.mockReturnValue(false);
+
+			const { getAllByTestId } = renderComponent();
+			await flushPromises();
+
+			expect(getAllByTestId('collection-parameter-option')).toHaveLength(2);
+		});
+
+		it('removes hidden collection-type options', async () => {
+			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'nestedCollection');
+
+			const { getAllByTestId } = renderComponent({
+				props: {
+					...baseProps,
+					parameter: {
+						...baseProps.parameter,
+						options: [
+							{
+								displayName: 'Currency',
+								name: 'currency',
+								type: 'string',
+								default: 'USD',
+							},
+							{
+								name: 'nestedCollection',
+								displayName: 'Nested Collection',
+								values: [
+									{
+										displayName: 'Field 1',
+										name: 'field1',
+										type: 'string',
+										default: '',
+									},
+								],
+							},
+						],
+					},
+				},
+			});
+			await flushPromises();
+
+			const options = getAllByTestId('collection-parameter-option');
+			expect(options).toHaveLength(1);
+			expect(options[0]).toHaveTextContent('Currency');
 		});
 	});
 

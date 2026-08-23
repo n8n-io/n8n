@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { DateTime } from 'luxon';
 
-import { evaluate } from './helpers';
+import { evaluate, asDateTime } from './helpers';
 import { ExpressionExtensionError } from '../../src/errors';
 
 describe('Data Transformation Functions', () => {
@@ -178,6 +178,21 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{ "i am a test".toSentenceCase() }}')).toEqual('I am a test');
 		});
 
+		test('.toSentenceCase should not drop trailing text that has no letters', () => {
+			expect(evaluate('={{ "hello world. 123".toSentenceCase() }}')).toEqual('Hello world. 123');
+			expect(evaluate('={{ "end with punc. 42!".toSentenceCase() }}')).toEqual(
+				'End with punc. 42!',
+			);
+			expect(evaluate('={{ "growth is high. 50%".toSentenceCase() }}')).toEqual(
+				'Growth is high. 50%',
+			);
+		});
+
+		test('.toSentenceCase should return letter-free input unchanged', () => {
+			expect(evaluate('={{ "42".toSentenceCase() }}')).toEqual('42');
+			expect(evaluate('={{ "".toSentenceCase() }}')).toEqual('');
+		});
+
 		test('.extractUrl should work on a string', () => {
 			expect(
 				evaluate(
@@ -276,17 +291,22 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.toDateTime should work on a variety of formats', () => {
-			expect(evaluate('={{ "Wed, 21 Oct 2015 07:28:00 GMT".toDateTime() }}')).toBeInstanceOf(
+			expect(
+				asDateTime(evaluate('={{ "Wed, 21 Oct 2015 07:28:00 GMT".toDateTime() }}')),
+			).toBeInstanceOf(DateTime);
+			expect(asDateTime(evaluate('={{ "2008-11-11".toDateTime() }}'))).toBeInstanceOf(DateTime);
+			expect(asDateTime(evaluate('={{ "1-Feb-2024".toDateTime() }}'))).toBeInstanceOf(DateTime);
+			expect(asDateTime(evaluate('={{ "1713976144063".toDateTime("ms") }}'))).toBeInstanceOf(
 				DateTime,
 			);
-			expect(evaluate('={{ "2008-11-11".toDateTime() }}')).toBeInstanceOf(DateTime);
-			expect(evaluate('={{ "1-Feb-2024".toDateTime() }}')).toBeInstanceOf(DateTime);
-			expect(evaluate('={{ "1713976144063".toDateTime("ms") }}')).toBeInstanceOf(DateTime);
-			expect(evaluate('={{ "31-01-2024".toDateTime("dd-MM-yyyy") }}')).toBeInstanceOf(DateTime);
+			expect(asDateTime(evaluate('={{ "31-01-2024".toDateTime("dd-MM-yyyy") }}'))).toBeInstanceOf(
+				DateTime,
+			);
 
 			vi.useFakeTimers({ now: new Date() });
+			expect(() => evaluate('={{ "hi".toDateTime() }}')).toThrow(ExpressionExtensionError);
 			expect(() => evaluate('={{ "hi".toDateTime() }}')).toThrow(
-				new ExpressionExtensionError('cannot convert to Luxon DateTime'),
+				'cannot convert to Luxon DateTime',
 			);
 			vi.useRealTimers();
 		});

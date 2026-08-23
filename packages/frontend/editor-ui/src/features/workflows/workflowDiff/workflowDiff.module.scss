@@ -21,6 +21,31 @@
 .added,
 .modified {
 	position: relative;
+	--workflow-diff--connector--color: transparent;
+
+	:global(.canvas-node-handle-main-output [data-test-id='canvas-handle-plus-wrapper'].source) {
+		background-color: var(--canvas-node--color--background);
+	}
+
+	:global(.canvas-node-handle-main-output [data-test-id='canvas-handle-plus-wrapper'] line.source) {
+		stroke: var(--workflow-diff--connector--color) !important;
+	}
+
+	:global(.canvas-node-handle-main-output [data-test-id='canvas-handle-plus'] rect.source) {
+		fill: transparent;
+		stroke: var(--workflow-diff--connector--color);
+	}
+
+	:global(.canvas-node-handle-main-output [data-test-id='canvas-handle-plus'] path.source) {
+		stroke: var(--workflow-diff--connector--color);
+	}
+
+	:global(.canvas-node-handle-main-output [class*='dot'].source),
+	:global(.canvas-node-handle-main-input [class*='dot'].target) {
+		background-color: var(--workflow-diff--connector--color);
+		border: none;
+	}
+
 	&::before {
 		position: absolute;
 		top: 0;
@@ -41,6 +66,7 @@
 }
 
 .deleted {
+	--workflow-diff--connector--color: var(--diff--color--deleted);
 	--canvas-node--color--background: var(--diff--color--deleted--faint);
 	--canvas-node--border-color: var(--diff--color--deleted);
 	--sticky--color--background: var(--diff--color--deleted--faint);
@@ -54,11 +80,6 @@
 		content: 'D';
 		background-color: var(--diff--color--deleted);
 	}
-	:global(.canvas-node-handle-main-output .source),
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--diff--color--deleted);
-		border: none;
-	}
 
 	:global([class*='disabled']) {
 		--canvas-node--border-color: var(--diff--color--deleted) !important;
@@ -66,6 +87,7 @@
 }
 
 .added {
+	--workflow-diff--connector--color: var(--diff--color--new);
 	--canvas-node--border-color: var(--diff--color--new);
 	--canvas-node--color--background: var(--diff--color--new--faint);
 	--sticky--color--background: var(--diff--color--new--faint);
@@ -79,12 +101,6 @@
 	&::before {
 		content: 'N';
 		background-color: var(--diff--color--new);
-	}
-
-	:global(.canvas-node-handle-main-output .source),
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--diff--color--new);
-		border: none;
 	}
 
 	:global([class*='disabled']) {
@@ -106,6 +122,7 @@
 }
 
 .modified {
+	--workflow-diff--connector--color: var(--diff--color--modified);
 	--canvas-node--border-width: 2px;
 	--canvas-node--border-color: var(--diff--color--modified);
 	--canvas-node--color--background: var(--diff--color--modified--faint);
@@ -120,11 +137,6 @@
 	&::before {
 		content: 'M';
 		background-color: var(--diff--color--modified);
-	}
-	:global(.canvas-node-handle-main-output .source),
-	:global(.canvas-node-handle-main-input .target) {
-		background-color: var(--diff--color--modified);
-		border: none;
 	}
 
 	:global([class*='disabled']) {

@@ -5,6 +5,9 @@ export const modelRLC = (searchListMethod: string): INodeProperties => ({
 	name: 'modelId',
 	type: 'resourceLocator',
 	default: { mode: 'list', value: '' },
+	typeOptions: {
+		loadOptionsDependsOn: ['operation', 'resource'],
+	},
 	required: true,
 	modes: [
 		{
@@ -20,7 +23,7 @@ export const modelRLC = (searchListMethod: string): INodeProperties => ({
 			displayName: 'ID',
 			name: 'id',
 			type: 'string',
-			placeholder: 'e.g. models/gemini-2.5-flash',
+			placeholder: 'e.g. models/gemini-3.1-flash-lite',
 		},
 	],
 });

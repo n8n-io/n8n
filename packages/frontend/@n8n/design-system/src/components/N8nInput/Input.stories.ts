@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
-import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
-import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import type { InputProps } from './Input.types';
 import Input from './Input.vue';
+import N8nButton from '../N8nButton/Button.vue';
+import N8nIcon from '../N8nIcon/Icon.vue';
+
 import './Input.stories.css';
 
 const meta = {
@@ -66,6 +66,7 @@ const meta = {
 	},
 	parameters: {
 		docs: {
+			description: { component: 'A text input field for single-line or multi-line value entry.' },
 			source: { type: 'dynamic' },
 		},
 	},

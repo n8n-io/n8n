@@ -92,7 +92,7 @@ const statusColor = computed(() => {
 </template>
 
 <style lang="scss" module>
-@use '../../../css/mixins/animations';
+@use '../../../css/mixins/motion';
 
 .toolMessage {
 	width: 100%;

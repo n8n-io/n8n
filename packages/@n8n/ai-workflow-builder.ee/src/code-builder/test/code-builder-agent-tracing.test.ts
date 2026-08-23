@@ -9,28 +9,30 @@ import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { AIMessage } from '@langchain/core/messages';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	parseWorkflowCodeToBuilder as sdkParseWorkflowCodeToBuilder,
+	validateWorkflow as sdkValidateWorkflow,
+} from '@n8n/workflow-sdk';
+import type { Mock } from 'vitest';
 
 import { CodeBuilderAgent } from '../code-builder-agent';
 
 // Mock workflow-sdk to control parse/validate behavior
-jest.mock('@n8n/workflow-sdk', () => ({
-	parseWorkflowCodeToBuilder: jest.fn(),
-	validateWorkflow: jest.fn(),
-	generateWorkflowCode: jest.fn().mockReturnValue('// generated code'),
+vi.mock('@n8n/workflow-sdk', () => ({
+	parseWorkflowCodeToBuilder: vi.fn(),
+	validateWorkflow: vi.fn(),
+	generateWorkflowCode: vi.fn().mockReturnValue('// generated code'),
 }));
 
 // Mock the prompts module to avoid complex prompt building
-jest.mock('../prompts', () => ({
-	buildCodeBuilderPrompt: jest.fn().mockReturnValue({
-		formatMessages: jest.fn().mockResolvedValue([]),
+vi.mock('../prompts', () => ({
+	buildCodeBuilderPrompt: vi.fn().mockReturnValue({
+		formatMessages: vi.fn().mockResolvedValue([]),
 	}),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { parseWorkflowCodeToBuilder, validateWorkflow } = require('@n8n/workflow-sdk') as {
-	parseWorkflowCodeToBuilder: jest.Mock;
-	validateWorkflow: jest.Mock;
-};
+const parseWorkflowCodeToBuilder = sdkParseWorkflowCodeToBuilder as unknown as Mock;
+const validateWorkflow = sdkValidateWorkflow as unknown as Mock;
 
 const MOCK_WORKFLOW: WorkflowJSON = {
 	id: 'test-wf-1',
@@ -60,23 +62,23 @@ function createMockLlm(): BaseChatModel {
 	});
 
 	return {
-		bindTools: jest.fn().mockReturnValue({
-			invoke: jest.fn().mockResolvedValue(response),
+		bindTools: vi.fn().mockReturnValue({
+			invoke: vi.fn().mockResolvedValue(response),
 		}),
 	} as unknown as BaseChatModel;
 }
 
 function createMockBuilder() {
 	return {
-		regenerateNodeIds: jest.fn(),
-		validate: jest.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
-		generatePinData: jest.fn(),
-		toJSON: jest.fn().mockReturnValue(MOCK_WORKFLOW),
+		regenerateNodeIds: vi.fn(),
+		validate: vi.fn().mockReturnValue({ valid: true, errors: [], warnings: [] }),
+		generatePinData: vi.fn(),
+		toJSON: vi.fn().mockReturnValue(MOCK_WORKFLOW),
 	};
 }
 
 /**
- * Custom callback handler that captures chain end outputs.
+ * Custom callback handler that captures chain end outputs and chain start metadata.
  * We use a class-based handler to ensure proper integration with
  * LangChain's CallbackManager.
  */
@@ -84,6 +86,20 @@ class ChainEndTracker extends BaseCallbackHandler {
 	name = 'chain-end-tracker';
 
 	chainEndOutputs: Array<Record<string, unknown>> = [];
+	chainStartMetadata: Array<Record<string, unknown>> = [];
+
+	async handleChainStart(
+		_chain: unknown,
+		_inputs: unknown,
+		_runId: string,
+		_parentRunId?: string,
+		_tags?: string[],
+		metadata?: Record<string, unknown>,
+	): Promise<void> {
+		if (metadata) {
+			this.chainStartMetadata.push(metadata);
+		}
+	}
 
 	async handleChainEnd(outputs: Record<string, unknown>): Promise<void> {
 		this.chainEndOutputs.push(outputs);
@@ -92,7 +108,7 @@ class ChainEndTracker extends BaseCallbackHandler {
 
 describe('CodeBuilderAgent tracing', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		parseWorkflowCodeToBuilder.mockReturnValue(createMockBuilder());
 		validateWorkflow.mockReturnValue({ valid: true, errors: [], warnings: [] });
@@ -159,8 +175,8 @@ describe('CodeBuilderAgent tracing', () => {
 
 		let callCount = 0;
 		const mockLlm = {
-			bindTools: jest.fn().mockReturnValue({
-				invoke: jest.fn().mockImplementation(() => {
+			bindTools: vi.fn().mockReturnValue({
+				invoke: vi.fn().mockImplementation(() => {
 					callCount++;
 					return callCount === 1 ? toolCallResponse : codeResponse;
 				}),
@@ -203,6 +219,33 @@ describe('CodeBuilderAgent tracing', () => {
 				text: 'Here is your workflow:\n```typescript\nconst workflow = builder.addNode(...);\n```',
 			},
 		]);
+	});
+
+	it('should include ls_thread_id from runMetadata in handleChainStart metadata', async () => {
+		const tracker = new ChainEndTracker();
+
+		const agent = new CodeBuilderAgent({
+			llm: createMockLlm(),
+			nodeTypes: [],
+			callbacks: [tracker],
+			enableTextEditor: false,
+			runMetadata: { ls_thread_id: 'workflow-test-wf-user-test-user' },
+		});
+
+		const chunks = [];
+		for await (const chunk of agent.chat(
+			{ id: 'msg-4', message: 'Create a simple workflow' },
+			'user-1',
+		)) {
+			chunks.push(chunk);
+		}
+
+		// The parent chain start should include ls_thread_id from runMetadata
+		const parentStartMetadata = tracker.chainStartMetadata.find((m) => 'ls_thread_id' in m);
+		expect(parentStartMetadata).toBeDefined();
+		expect(parentStartMetadata).toMatchObject({
+			ls_thread_id: 'workflow-test-wf-user-test-user',
+		});
 	});
 
 	it('should set output to null when no workflow is produced', async () => {

@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import {
@@ -25,15 +25,15 @@ import {
 import * as GenericFunctions from '../GenericFunctions';
 
 // Mock the GenericFunctions
-jest.mock('../GenericFunctions');
-const mockedGenericFunctions = jest.mocked(GenericFunctions);
+vi.mock('../GenericFunctions');
+const mockedGenericFunctions = vi.mocked(GenericFunctions);
 
 describe('Beeminder Node Functions', () => {
 	let mockContext: IExecuteFunctions;
 
 	beforeEach(() => {
 		mockContext = mock<IExecuteFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('Datapoint Operations', () => {

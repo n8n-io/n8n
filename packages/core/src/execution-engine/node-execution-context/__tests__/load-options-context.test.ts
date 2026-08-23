@@ -1,6 +1,6 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	ICredentialDataDecryptedObject,
+	IExecutionContext,
 	ICredentialsHelper,
 	INode,
 	INodeType,
@@ -9,6 +9,7 @@ import type {
 	Workflow,
 	WorkflowExpression,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { LoadOptionsContext } from '../load-options-context';
 
@@ -44,24 +45,60 @@ describe('LoadOptionsContext', () => {
 		testParameter: 'testValue',
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper,
+		executionContext: undefined,
+	});
 	const path = 'testPath';
 
 	const loadOptionsContext = new LoadOptionsContext(workflow, node, additionalData, path);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getCredentials', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
 
 			const credentials =
 				await loadOptionsContext.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
 
 			expect(credentials).toEqual({ secret: 'token' });
+		});
+
+		it("should decrypt with the entry point's execution context", async () => {
+			// Design-time loading has no `runExecutionData`, so without the fallback below
+			// `_getCredentials` would overwrite this with `undefined` and end-user credentials
+			// would resolve against static data instead of the requesting user's connection.
+			const executionContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 1,
+				source: 'internal',
+				credentials: 'sealed-credential-context',
+			};
+			const additionalDataWithContext = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+			// Assigned rather than passed to `mock`, which would deep-wrap it into a copy.
+			additionalDataWithContext.executionContext = executionContext;
+			const context = new LoadOptionsContext(workflow, node, additionalDataWithContext, path);
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
+
+			await context.getCredentials<ICredentialDataDecryptedObject>(testCredentialType);
+
+			expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+				expect.objectContaining({ executionContext }),
+				expect.anything(),
+				testCredentialType,
+				'internal',
+				undefined,
+				false,
+				undefined,
+			);
 		});
 	});
 
@@ -101,8 +138,25 @@ describe('LoadOptionsContext', () => {
 	});
 
 	describe('getExecutionContext', () => {
-		it('should return undefined', () => {
+		it('should return undefined when the entry point set none', () => {
 			expect(loadOptionsContext.getExecutionContext()).toBeUndefined();
+		});
+
+		it("should return the entry point's context", () => {
+			const executionContext: IExecutionContext = {
+				version: 1,
+				establishedAt: 1,
+				source: 'internal',
+				credentials: 'sealed-credential-context',
+			};
+			const additionalDataWithContext = mock<IWorkflowExecuteAdditionalData>({
+				credentialsHelper,
+			});
+			additionalDataWithContext.executionContext = executionContext;
+
+			const context = new LoadOptionsContext(workflow, node, additionalDataWithContext, path);
+
+			expect(context.getExecutionContext()).toBe(executionContext);
 		});
 	});
 });

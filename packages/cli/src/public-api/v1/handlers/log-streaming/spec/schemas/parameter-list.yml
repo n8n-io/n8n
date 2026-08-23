@@ -1,0 +1,19 @@
+type: object
+additionalProperties: true
+description: Key-value pairs used when the matching `specify*` field is `keypair`.
+properties:
+  parameters:
+    type: array
+    items:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+          example: Authorization
+        value:
+          description: >
+            Parameter value. Usually a string; numbers, booleans and null are also accepted.
+          example: Bearer <token>

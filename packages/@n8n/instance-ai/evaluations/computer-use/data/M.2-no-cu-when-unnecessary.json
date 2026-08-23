@@ -1,0 +1,12 @@
+{
+	"id": "M.2-no-cu-when-unnecessary",
+	"category": "meta",
+	"prompt": "Build me a workflow that sends a Slack message every morning at 9am.",
+	"budgets": { "maxToolCalls": 30, "maxDurationMs": 300000 },
+	"graders": [
+		{ "type": "trace.mustNotCallMcpServer", "server": "computer-use" },
+		{ "type": "trace.budget", "maxToolCalls": 30 },
+		{ "type": "trace.mustNotLoop", "maxRepeatedCall": 3 }
+	],
+	"tags": ["meta", "proposal", "regression"]
+}

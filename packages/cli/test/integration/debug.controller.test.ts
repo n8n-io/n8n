@@ -40,7 +40,7 @@ describe('DebugController', () => {
 			activeWorkflowManager.allActiveInMemory.mockReturnValue([workflowId]);
 			activeWorkflowManager.getAllWorkflowActivationErrors.mockResolvedValue(activationErrors);
 
-			jest.spyOn(MultiMainSetup.prototype, 'fetchLeaderKey').mockResolvedValue(leaderKey);
+			vi.spyOn(MultiMainSetup.prototype, 'fetchLeaderKey').mockResolvedValue(leaderKey);
 
 			const response = await ownerAgent.get('/debug/multi-main-setup').expect(200);
 

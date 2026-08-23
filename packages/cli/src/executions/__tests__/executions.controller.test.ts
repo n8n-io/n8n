@@ -1,5 +1,6 @@
-import type { ExecutionSummaries } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { DeleteExecutionsDto } from '@n8n/api-types';
+import type { AuthenticatedRequest, ExecutionSummaries, User } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -20,7 +21,7 @@ describe('ExecutionsController', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getOne', () => {
@@ -28,6 +29,28 @@ describe('ExecutionsController', () => {
 			const req = mock<ExecutionRequest.GetOne>({ params: { id: 'test' } });
 
 			await expect(executionsController.getOne(req)).rejects.toThrow(BadRequestError);
+		});
+	});
+
+	describe('delete', () => {
+		it('should 404 when no workflows are accessible', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+
+			await expect(
+				executionsController.delete(mock(), mock(), DeleteExecutionsDto.parse({ ids: ['1'] })),
+			).rejects.toThrow(NotFoundError);
+
+			expect(executionService.delete).not.toHaveBeenCalled();
+		});
+
+		it('should pass the user, payload and accessible workflow ids to the service', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			const user = mock<User>({ id: 'user-1' });
+			const payload = DeleteExecutionsDto.parse({ deleteBefore: '2026-01-01T00:00:00.000Z' });
+
+			await executionsController.delete(mock<AuthenticatedRequest>({ user }), mock(), payload);
+
+			expect(executionService.delete).toHaveBeenCalledWith(user, payload, ['wf-1']);
 		});
 	});
 
@@ -87,7 +110,10 @@ describe('ExecutionsController', () => {
 			test.each(QUERIES_WITH_EITHER_STATUS_OR_RANGE)(
 				'should fetch executions per query',
 				async (rangeQuery) => {
-					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
+					executionService.buildSharingOptions.mockResolvedValue({
+						workflowRoles: [],
+						projectRoles: [],
+					});
 					executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
 					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
@@ -105,7 +131,10 @@ describe('ExecutionsController', () => {
 			test.each(QUERIES_NEITHER_STATUS_NOR_RANGE_PROVIDED)(
 				'should fetch executions per query',
 				async (rangeQuery) => {
-					workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
+					executionService.buildSharingOptions.mockResolvedValue({
+						workflowRoles: [],
+						projectRoles: [],
+					});
 					executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
 					const req = mock<ExecutionRequest.GetMany>({ rangeQuery });
@@ -121,7 +150,10 @@ describe('ExecutionsController', () => {
 
 		describe('if both status and range provided', () => {
 			it('should fetch executions per query', async () => {
-				workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['123']);
+				executionService.buildSharingOptions.mockResolvedValue({
+					workflowRoles: [],
+					projectRoles: [],
+				});
 				executionService.findLatestCurrentAndCompleted.mockResolvedValue(NO_EXECUTIONS);
 
 				const rangeQuery: ExecutionSummaries.RangeQuery = {
@@ -161,6 +193,43 @@ describe('ExecutionsController', () => {
 
 			await executionsController.stop(req);
 			expect(executionService.stop).toHaveBeenCalledWith(req.params.id, mockAccessibleWorkflowIds);
+		});
+	});
+
+	describe('getVersions', () => {
+		const workflowId = 'workflow-123';
+		const req = mock<ExecutionRequest.GetVersions>({ params: { workflowId } });
+
+		it('should return empty array when workflow is not accessible', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['other-workflow']);
+
+			const result = await executionsController.getVersions(req);
+
+			expect(result).toEqual([]);
+			expect(executionService.getExecutedVersions).not.toHaveBeenCalled();
+		});
+
+		it('should return empty array when user has no accessible workflows', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+
+			const result = await executionsController.getVersions(req);
+
+			expect(result).toEqual([]);
+			expect(executionService.getExecutedVersions).not.toHaveBeenCalled();
+		});
+
+		it('should delegate to execution service when workflow is accessible', async () => {
+			const versions = [
+				{ versionId: 'v1', name: 'Version 1', createdAt: new Date() },
+				{ versionId: 'v2', name: null, createdAt: new Date() },
+			];
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([workflowId]);
+			executionService.getExecutedVersions.mockResolvedValue(versions);
+
+			const result = await executionsController.getVersions(req);
+
+			expect(result).toEqual(versions);
+			expect(executionService.getExecutedVersions).toHaveBeenCalledWith(workflowId);
 		});
 	});
 

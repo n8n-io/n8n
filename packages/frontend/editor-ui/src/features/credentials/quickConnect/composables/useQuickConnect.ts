@@ -1,8 +1,7 @@
 import type { QuickConnectOption, QuickConnectPineconeOption } from '@n8n/api-types';
-import { MODAL_CONFIRM, QUICK_CONNECT_EXPERIMENT } from '@/app/constants';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { computed, onBeforeUnmount, ref, h } from 'vue';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
@@ -10,16 +9,15 @@ import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import type { ICredentialsResponse } from '../../credentials.types';
 import { useCredentialOAuth } from '../../composables/useCredentialOAuth';
 import { useCredentialsStore } from '../../credentials.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { getQuickConnectApiKey } from '../quickConnect.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useMessage } from '@/app/composables/useMessage';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 export function useQuickConnect() {
 	const settingsStore = useSettingsStore();
-	const posthogStore = usePostHog();
 	const telemetry = useTelemetry();
 	const message = useMessage();
 	const toast = useToast();
@@ -31,10 +29,6 @@ export function useQuickConnect() {
 	const loading = ref(false);
 	const { isOAuthCredentialType, createAndAuthorize, cancelAuthorize } = useCredentialOAuth();
 	const cleanUpHandlers: Array<() => void> = [];
-
-	const isQuickConnectEnabled = computed(() =>
-		posthogStore.isVariantEnabled(QUICK_CONNECT_EXPERIMENT.name, QUICK_CONNECT_EXPERIMENT.variant),
-	);
 
 	const optionsByCredentialType = computed(() => {
 		const map = new Map<string, QuickConnectOption>();
@@ -58,7 +52,7 @@ export function useQuickConnect() {
 		credentialType: string,
 		nodeType: string,
 	): QuickConnectOption | undefined {
-		if (!isQuickConnectEnabled.value || optionsByCredentialType.value.size === 0) {
+		if (optionsByCredentialType.value.size === 0) {
 			return undefined;
 		}
 		const option = optionsByCredentialType.value.get(credentialType);
@@ -68,7 +62,7 @@ export function useQuickConnect() {
 	}
 
 	function getQuickConnectOptionByPackageName(packageName: string): QuickConnectOption | undefined {
-		if (!isQuickConnectEnabled.value || optionsByPackageName.value.size === 0) {
+		if (optionsByPackageName.value.size === 0) {
 			return undefined;
 		}
 		return optionsByPackageName.value.get(packageName);
@@ -77,7 +71,7 @@ export function useQuickConnect() {
 	function getQuickConnectOptionByCredentialTypes(
 		credentialTypes: string[],
 	): QuickConnectOption | undefined {
-		if (!isQuickConnectEnabled.value || optionsByCredentialType.value.size === 0) {
+		if (optionsByCredentialType.value.size === 0) {
 			return undefined;
 		}
 		for (const type of credentialTypes) {
@@ -228,7 +222,6 @@ export function useQuickConnect() {
 
 	return {
 		loading,
-		isQuickConnectEnabled,
 		getQuickConnectOption,
 		getQuickConnectOptionByPackageName,
 		getQuickConnectOptionByCredentialTypes,

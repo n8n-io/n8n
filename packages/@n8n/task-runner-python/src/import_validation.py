@@ -1,3 +1,4 @@
+import importlib.util
 import sys
 
 from src.config.security_config import SecurityConfig
@@ -7,9 +8,18 @@ from src.constants import ERROR_STDLIB_DISALLOWED, ERROR_EXTERNAL_DISALLOWED
 def validate_module_import(
     module_path: str,
     security_config: SecurityConfig,
+    importing_package: str | None = None,
 ) -> tuple[bool, str | None]:
     stdlib_allow = security_config.stdlib_allow
     external_allow = security_config.external_allow
+
+    # Resolve a package-relative name. This always resolves within its own
+    # top-level package, so this never reaches a package outside the allowlist.
+    if module_path.startswith(".") and importing_package:
+        try:
+            module_path = importlib.util.resolve_name(module_path, importing_package)
+        except (ImportError, ValueError):
+            pass
 
     module_name = module_path.split(".")[0]
     is_stdlib = module_name in sys.stdlib_module_names

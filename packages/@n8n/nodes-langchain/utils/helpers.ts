@@ -4,6 +4,7 @@ import type { JSONSchema7 } from 'json-schema';
 import { StructuredToolkit, type SupplyDataToolResponse } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	IExecuteFunctions,
 	ISupplyDataFunctions,
 	IWebhookFunctions,
@@ -47,6 +48,35 @@ export function getPromptInputByType(options: {
 	}
 
 	return input;
+}
+
+// Minimum version at which a memory node scopes its session id
+// to the node's own name
+const SESSION_KEY_SCOPING_MIN_VERSION: Record<string, number> = {
+	'@n8n/n8n-nodes-langchain.memoryBufferWindow': 1.4,
+	'@n8n/n8n-nodes-langchain.memoryPostgresChat': 1.4,
+	'@n8n/n8n-nodes-langchain.memoryRedisChat': 1.6,
+	'@n8n/n8n-nodes-langchain.memoryMongoDbChat': 1.1,
+	'@n8n/n8n-nodes-langchain.memoryMotorhead': 1.4,
+	'@n8n/n8n-nodes-langchain.memoryXata': 1.5,
+	'@n8n/n8n-nodes-langchain.memoryZep': 1.4,
+};
+
+function shouldScopeSessionKey(ctx: ISupplyDataFunctions | IWebhookFunctions): boolean {
+	const node = ctx.getNode();
+	if (!node) return false;
+	const minVersion = SESSION_KEY_SCOPING_MIN_VERSION[node.type];
+	// if the node is not in SESSION_KEY_SCOPING_MIN_VERSION, it should
+	// scope by default the session key with no retrocompatibility issues
+	if (minVersion === undefined) return true;
+	return (node.typeVersion ?? 0) >= minVersion;
+}
+
+// Some memory backends (Motorhead URL paths, Xata/Zep record IDs) reject
+// characters outside [A-Za-z0-9_-]. Node names in n8n allow spaces, emoji,
+// and punctuation, so sanitize before using the name as part of a session key.
+function sanitizeForSessionKey(name: string): string {
+	return name.replace(/[^A-Za-z0-9_-]/g, '_');
 }
 
 export function getSessionId(
@@ -99,6 +129,15 @@ export function getSessionId(
 				itemIndex,
 			});
 		}
+	}
+
+	// Scoping uses the memory node's own name, so connecting a single memory
+	// node to multiple callers (e.g. an agent and a sub-agent) will still
+	// produce the same session key for all of them and they will share the
+	// same memory bucket. To isolate memory per caller, duplicate the memory
+	// node instead of reusing one.
+	if (selectorType === autoSelect && shouldScopeSessionKey(ctx)) {
+		sessionId = `${sessionId}__${sanitizeForSessionKey(ctx.getNode().name)}`;
 	}
 
 	return sessionId;
@@ -156,19 +195,25 @@ export const getConnectedTools = async (
 	enforceUniqueNames: boolean,
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
+	options?: { inputData?: IDataObject },
 ): Promise<Tool[]> => {
-	const toolkitConnections = (await ctx.getInputConnectionData(
-		NodeConnectionTypes.AiTool,
-		0,
-	)) as SupplyDataToolResponse[];
+	// `getRequestObject` narrows to IWebhookFunctions, the only context whose
+	// getInputConnectionData signature takes the input override.
+	const toolkitConnections = (await ('getRequestObject' in ctx
+		? ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0, options)
+		: ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0))) as SupplyDataToolResponse[];
 
-	// Get parent nodes to map toolkits to their source nodes
+	// Get parent nodes to map toolkits to their source nodes.
+	// getInputConnectionData filters out disabled nodes, so parents must be filtered
+	// the same way to keep the index alignment between toolkitConnections and parentNodes.
 	const parentNodes =
 		'getParentNodes' in ctx
-			? ctx.getParentNodes(ctx.getNode().name, {
-					connectionType: NodeConnectionTypes.AiTool,
-					depth: 1,
-				})
+			? ctx
+					.getParentNodes(ctx.getNode().name, {
+						connectionType: NodeConnectionTypes.AiTool,
+						depth: 1,
+					})
+					.filter((node) => !node.disabled)
 			: [];
 
 	const connectedTools = (toolkitConnections ?? [])
@@ -177,18 +222,15 @@ export const getConnectedTools = async (
 				const tools = toolOrToolkit.tools;
 				// Add metadata to each tool from the toolkit
 				return tools.map((tool) => {
-					const sourceNode = parentNodes[index] ?? tool.name;
-
 					tool.metadata ??= {};
 					tool.metadata.isFromToolkit = true;
-					tool.metadata.sourceNodeName = sourceNode?.name;
+					tool.metadata.sourceNodeName = parentNodes[index]?.name ?? tool.name;
 					return tool;
 				});
 			} else {
-				const sourceNode = parentNodes[index] ?? toolOrToolkit.name;
 				toolOrToolkit.metadata ??= {};
 				toolOrToolkit.metadata.isFromToolkit = false;
-				toolOrToolkit.metadata.sourceNodeName = sourceNode?.name;
+				toolOrToolkit.metadata.sourceNodeName = parentNodes[index]?.name ?? toolOrToolkit.name;
 			}
 
 			return toolOrToolkit;
@@ -226,6 +268,24 @@ export const getConnectedTools = async (
 };
 
 /**
+ * Reads the custom header configured on a credential, if present and valid.
+ * Shared by header merging and tracing redaction so the guard lives in one place.
+ */
+export function getCustomCredentialHeader(
+	credentials: ICredentialDataDecryptedObject,
+): { name: string; value: string } | undefined {
+	if (
+		credentials.header &&
+		typeof credentials.headerName === 'string' &&
+		credentials.headerName &&
+		typeof credentials.headerValue === 'string'
+	) {
+		return { name: credentials.headerName, value: credentials.headerValue };
+	}
+	return undefined;
+}
+
+/**
  * Merges custom credential headers into an existing defaultHeaders object.
  * Used by OpenAI and other LangChain nodes that pass `configuration.defaultHeaders`.
  */
@@ -233,15 +293,11 @@ export function mergeCustomHeaders(
 	credentials: ICredentialDataDecryptedObject,
 	defaultHeaders: Record<string, string>,
 ): Record<string, string> {
-	if (
-		credentials.header &&
-		typeof credentials.headerName === 'string' &&
-		credentials.headerName &&
-		typeof credentials.headerValue === 'string'
-	) {
+	const customHeader = getCustomCredentialHeader(credentials);
+	if (customHeader) {
 		return {
 			...defaultHeaders,
-			[credentials.headerName]: credentials.headerValue,
+			[customHeader.name]: customHeader.value,
 		};
 	}
 	return defaultHeaders;

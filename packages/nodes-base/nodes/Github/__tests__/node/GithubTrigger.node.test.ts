@@ -16,7 +16,7 @@ describe('GithubTrigger Node', () => {
 
 			mockThis = {
 				getWorkflowStaticData: () => webhookData,
-				getNodeParameter: jest.fn().mockImplementation((name: string) => {
+				getNodeParameter: vi.fn().mockImplementation((name: string) => {
 					if (name === 'owner') return 'some-owner';
 					if (name === 'repository') return 'some-repo';
 				}),
@@ -24,7 +24,7 @@ describe('GithubTrigger Node', () => {
 		});
 
 		it('should delete webhook data and return false when webhook is not found (404)', async () => {
-			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '404' });
+			vi.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '404' });
 
 			const trigger = new GithubTrigger();
 			const result = await trigger.webhookMethods.default.checkExists.call(mockThis);
@@ -43,7 +43,7 @@ describe('GithubTrigger Node', () => {
 			webhookData = {};
 			mockThis = {
 				getNodeWebhookUrl: () => 'https://example.com/webhook',
-				getNodeParameter: jest.fn().mockImplementation((name: string) => {
+				getNodeParameter: vi.fn().mockImplementation((name: string) => {
 					if (name === 'owner') return 'some-owner';
 					if (name === 'repository') return 'some-repo';
 					if (name === 'events') return ['push'];
@@ -57,7 +57,7 @@ describe('GithubTrigger Node', () => {
 		it('should return true and set webhookId and webhookSecret when creation succeeds', async () => {
 			const createdWebhook = { id: '789', active: true };
 
-			jest.spyOn(GenericFunctions, 'githubApiRequest').mockResolvedValueOnce(createdWebhook);
+			vi.spyOn(GenericFunctions, 'githubApiRequest').mockResolvedValueOnce(createdWebhook);
 
 			const trigger = new GithubTrigger();
 			const result = await trigger.webhookMethods.default.create.call(mockThis);
@@ -72,7 +72,7 @@ describe('GithubTrigger Node', () => {
 		it('should send the secret to GitHub API when creating webhook', async () => {
 			const createdWebhook = { id: '789', active: true };
 
-			const apiRequestSpy = jest
+			const apiRequestSpy = vi
 				.spyOn(GenericFunctions, 'githubApiRequest')
 				.mockResolvedValueOnce(createdWebhook);
 
@@ -97,8 +97,7 @@ describe('GithubTrigger Node', () => {
 				config: { url: 'https://example.com/webhook' },
 			};
 
-			jest
-				.spyOn(GenericFunctions, 'githubApiRequest')
+			vi.spyOn(GenericFunctions, 'githubApiRequest')
 				.mockRejectedValueOnce({ httpCode: '422' }) // POST fails
 				.mockResolvedValueOnce([existingWebhook]); // GET returns matching
 
@@ -112,7 +111,7 @@ describe('GithubTrigger Node', () => {
 		});
 
 		it('should throw NodeOperationError if repo is not found (404)', async () => {
-			jest.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '404' });
+			vi.spyOn(GenericFunctions, 'githubApiRequest').mockRejectedValue({ httpCode: '404' });
 
 			const trigger = new GithubTrigger();
 
@@ -139,7 +138,7 @@ describe('GithubTrigger Node', () => {
 
 			mockThis = {
 				getWorkflowStaticData: () => webhookData,
-				getNodeParameter: jest.fn().mockImplementation((name: string) => {
+				getNodeParameter: vi.fn().mockImplementation((name: string) => {
 					if (name === 'owner') return 'some-owner';
 					if (name === 'repository') return 'some-repo';
 				}),
@@ -147,7 +146,7 @@ describe('GithubTrigger Node', () => {
 		});
 
 		it('should delete webhook data including secret when deletion succeeds', async () => {
-			jest.spyOn(GenericFunctions, 'githubApiRequest').mockResolvedValueOnce({});
+			vi.spyOn(GenericFunctions, 'githubApiRequest').mockResolvedValueOnce({});
 
 			const trigger = new GithubTrigger();
 			const result = await trigger.webhookMethods.default.delete.call(mockThis);
@@ -170,26 +169,26 @@ describe('GithubTrigger Node', () => {
 
 			mockThis = {
 				getWorkflowStaticData: () => webhookData,
-				getBodyData: jest.fn().mockReturnValue({ action: 'opened' }),
-				getHeaderData: jest.fn().mockReturnValue({}),
-				getQueryData: jest.fn().mockReturnValue({}),
-				getResponseObject: jest.fn().mockReturnValue({
-					status: jest.fn().mockReturnThis(),
-					send: jest.fn().mockReturnThis(),
-					end: jest.fn(),
+				getBodyData: vi.fn().mockReturnValue({ action: 'opened' }),
+				getHeaderData: vi.fn().mockReturnValue({}),
+				getQueryData: vi.fn().mockReturnValue({}),
+				getResponseObject: vi.fn().mockReturnValue({
+					status: vi.fn().mockReturnThis(),
+					send: vi.fn().mockReturnThis(),
+					end: vi.fn(),
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
-					header: jest.fn(),
+				getRequestObject: vi.fn().mockReturnValue({
+					header: vi.fn(),
 					rawBody: '{}',
 				}),
 				helpers: {
-					returnJsonArray: jest.fn().mockImplementation((data) => data),
+					returnJsonArray: vi.fn().mockImplementation((data) => data),
 				},
 			};
 		});
 
 		it('should reject with 401 when signature verification fails', async () => {
-			jest.spyOn(GithubTriggerHelpers, 'verifySignature').mockReturnValueOnce(false);
+			vi.spyOn(GithubTriggerHelpers, 'verifySignature').mockReturnValueOnce(false);
 
 			const trigger = new GithubTrigger();
 			const result = await trigger.webhook.call(mockThis);
@@ -199,7 +198,7 @@ describe('GithubTrigger Node', () => {
 		});
 
 		it('should process webhook when signature verification succeeds', async () => {
-			jest.spyOn(GithubTriggerHelpers, 'verifySignature').mockReturnValueOnce(true);
+			vi.spyOn(GithubTriggerHelpers, 'verifySignature').mockReturnValueOnce(true);
 
 			const trigger = new GithubTrigger();
 			const result = await trigger.webhook.call(mockThis);
@@ -208,7 +207,7 @@ describe('GithubTrigger Node', () => {
 		});
 
 		it('should return OK for ping events when signature verification succeeds', async () => {
-			jest.spyOn(GithubTriggerHelpers, 'verifySignature').mockReturnValueOnce(true);
+			vi.spyOn(GithubTriggerHelpers, 'verifySignature').mockReturnValueOnce(true);
 			mockThis.getBodyData.mockReturnValue({ hook_id: '123' });
 
 			const trigger = new GithubTrigger();

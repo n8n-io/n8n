@@ -27,7 +27,12 @@ import {
 import { cssVariables } from './cssVariables';
 import { renderFormCompletion } from './utils/formCompletionUtils';
 import { getFormTriggerNode, renderFormNode } from './utils/formNodeUtils';
-import { parseFormFields, prepareFormReturnItem } from './utils/utils';
+import {
+	getNodeReference,
+	parseFormFields,
+	prepareFormReturnItem,
+	validateFormPageAuth,
+} from './utils/utils';
 
 const waitTimeProperties: INodeProperties[] = [
 	{
@@ -230,7 +235,7 @@ const completionProperties = updateDisplayOptions(
 			description: 'The text to display on the page. Use HTML to show a customized web page.',
 		},
 		{
-			displayName: 'Input Data Field Name',
+			displayName: 'Input Data Field Name(s)',
 			name: 'inputDataFieldName',
 			type: 'string',
 			displayOptions: {
@@ -241,8 +246,8 @@ const completionProperties = updateDisplayOptions(
 			default: 'data',
 			placeholder: 'e.g. data',
 			description:
-				'Find the name of input field containing the binary data to return in the Input panel on the left, in the Binary tab',
-			hint: 'The name of the input field containing the binary file data to be returned',
+				'Find the name of input field containing the binary data to return in the Input panel on the left, in the Binary tab. You can provide multiple comma-separated field names.',
+			hint: 'The name of the input field containing the binary file data to be returned. You can provide multiple comma-separated field names.',
 		},
 		...waitTimeProperties,
 		{
@@ -280,7 +285,8 @@ export class Form extends Node {
 	description: INodeTypeDescription = {
 		displayName: 'n8n Form',
 		name: 'form',
-		icon: 'file:form.svg',
+		icon: 'node:form-trigger',
+		iconColor: 'teal',
 		group: ['input'],
 		// since trigger and node are sharing descriptions and logic we need to sync the versions
 		// and keep them aligned in both nodes
@@ -357,7 +363,20 @@ export class Form extends Node {
 
 		const trigger = getFormTriggerNode(context);
 
-		const mode = context.evaluateExpression(`{{ $('${trigger.name}').first().json.formMode }}`) as
+		const triggerRef = getNodeReference(trigger.name);
+
+		const triggerAuth =
+			(context.evaluateExpression(`{{ ${triggerRef}.params.authentication }}`) as string) ?? 'none';
+		const authResult = await validateFormPageAuth(context, triggerAuth);
+		if (authResult.responded) {
+			return { noWebhookResponse: true };
+		}
+		const triggerIncludeUser = context.evaluateExpression(
+			`{{ ${triggerRef}.params.options?.includeUserInOutput }}`,
+		) as boolean | undefined;
+		const userForOutput = triggerIncludeUser === false ? undefined : authResult.authedUser;
+
+		const mode = context.evaluateExpression(`{{ ${triggerRef}.first().json.formMode }}`) as
 			| 'test'
 			| 'production';
 
@@ -381,7 +400,7 @@ export class Form extends Node {
 		const method = context.getRequestObject().method;
 
 		if (operation === 'completion' && method === 'GET') {
-			return await renderFormCompletion(context, res, trigger);
+			return await renderFormCompletion(context, res, trigger, authResult.authedUser);
 		}
 
 		if (operation === 'completion' && method === 'POST') {
@@ -391,18 +410,24 @@ export class Form extends Node {
 		}
 
 		if (method === 'GET') {
-			return await renderFormNode(context, res, trigger, fields, mode);
+			return await renderFormNode(context, res, trigger, fields, mode, authResult.authedUser);
 		}
 
 		let useWorkflowTimezone = context.evaluateExpression(
-			`{{ $('${trigger.name}').params.options?.useWorkflowTimezone }}`,
+			`{{ ${triggerRef}.params.options?.useWorkflowTimezone }}`,
 		) as boolean;
 
 		if (useWorkflowTimezone === undefined && trigger?.typeVersion > 2) {
 			useWorkflowTimezone = true;
 		}
 
-		const returnItem = await prepareFormReturnItem(context, fields, mode, useWorkflowTimezone);
+		const returnItem = await prepareFormReturnItem(
+			context,
+			fields,
+			mode,
+			useWorkflowTimezone,
+			userForOutput,
+		);
 
 		return {
 			webhookResponse: { status: 200 },
@@ -438,9 +463,14 @@ export class Form extends Node {
 		}
 
 		const waitTill = configureWaitTillDate(context, 'root');
+
+		// Add signed resumeFormUrl to metadata for frontend to use when opening form popup
+		const resumeFormUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0) as string;
+		context.setMetadata({ resumeFormUrl });
+
 		await context.putExecutionToWait(waitTill);
 
-		context.sendResponse({
+		await context.sendResponse({
 			headers: {
 				location: context.evaluateExpression('{{ $execution.resumeFormUrl }}', 0),
 			},

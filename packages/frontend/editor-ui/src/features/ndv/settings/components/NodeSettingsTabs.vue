@@ -1,26 +1,24 @@
 <script setup lang="ts">
 import type { ITab } from '@/Interface';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/features/settings/communityNodes/communityNodes.constants';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed } from 'vue';
-
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useInstalledCommunityPackage } from '@/features/settings/communityNodes/composables/useInstalledCommunityPackage';
 import { useNodeDocsUrl } from '@/app/composables/useNodeDocsUrl';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { NodeSettingsTab } from '@/app/types/nodeSettings';
 import { useI18n } from '@n8n/i18n';
-
 import { N8nTabs } from '@n8n/design-system';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+
 type Props = {
 	modelValue?: NodeSettingsTab;
 	nodeType?: INodeTypeDescription | null;
 	pushRef?: string;
 	hideDocs?: boolean;
-	tabsVariant?: 'modern' | 'legacy';
 	includeAction?: boolean;
 	includeCredential?: boolean;
 	hasCredentialIssue?: boolean;
@@ -31,7 +29,6 @@ const props = withDefaults(defineProps<Props>(), {
 	modelValue: 'params',
 	nodeType: undefined,
 	pushRef: '',
-	tabsVariant: undefined,
 	hasCredentialIssue: false,
 });
 const emit = defineEmits<{
@@ -39,13 +36,13 @@ const emit = defineEmits<{
 }>();
 
 const externalHooks = useExternalHooks();
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
+const ndvStore = injectNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { docsUrl } = useNodeDocsUrl({ nodeType: () => props.nodeType });
 
-const activeNode = computed(() => ndvStore.activeNode);
+const activeNode = computed(() => ndvStore.value.activeNode);
 
 const nodeTypeName = computed(() => props.nodeType?.name);
 const { installedPackage, isCommunityNode, isUpdateCheckAvailable } =
@@ -137,7 +134,7 @@ function onTabSelect(tab: NodeSettingsTab) {
 
 		telemetry.track('User clicked ndv link', {
 			node_type: activeNode.value?.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			push_ref: props.pushRef,
 			pane: NodeConnectionTypes.Main,
 			type: 'docs',
@@ -147,7 +144,7 @@ function onTabSelect(tab: NodeSettingsTab) {
 	if (tab === 'settings' && props.nodeType) {
 		telemetry.track('User viewed node settings', {
 			node_type: props.nodeType.name,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 		});
 	}
 
@@ -167,7 +164,7 @@ function onTooltipClick(tab: NodeSettingsTab, event: MouseEvent) {
 	<N8nTabs
 		:options="options"
 		:model-value="modelValue"
-		:variant="tabsVariant"
+		variant="modern"
 		:size="compact ? 'small' : 'medium'"
 		@update:model-value="onTabSelect"
 		@tooltip-click="onTooltipClick"

@@ -1,8 +1,7 @@
 import { Service } from '@n8n/di';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
-import { deepCopy } from 'n8n-workflow';
+import { CREDENTIAL_BLANKING_VALUE, deepCopy } from 'n8n-workflow';
 
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { containsExpression } from '@/utils';
 
 @Service()

@@ -12,7 +12,13 @@
         },
         "_updateTime": {
             "type": "string"
+        },
+        "status": {
+            "type": "string"
+        },
+        "updatedAt": {
+            "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

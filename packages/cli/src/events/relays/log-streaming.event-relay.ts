@@ -16,6 +16,19 @@ function hasUser(event: WorkflowExecutedEvent): event is WorkflowExecutedEventWi
 	return event.user !== undefined;
 }
 
+function withoutExecutionMetadata(
+	event: RelayEventMap['workflow-post-execute'],
+): Omit<RelayEventMap['workflow-post-execute'], 'source' | 'telemetryMetadata'> {
+	const trimmed = { ...event };
+
+	// Execution metadata (provenance + telemetry) is internal and not part of
+	// the log-streaming payload contract.
+	delete trimmed.source;
+	delete trimmed.telemetryMetadata;
+
+	return trimmed;
+}
+
 @Service()
 export class LogStreamingEventRelay extends EventRelay {
 	constructor(
@@ -28,6 +41,10 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	init() {
 		this.setupListeners({
+			'n8n-package-imported': (event) => this.packageImported(event),
+			'n8n-package-exported': (event) => this.packageExported(event),
+			'n8n-package-export-failed': (event) => this.packageExportFailed(event),
+			'n8n-package-import-failed': (event) => this.packageImportFailed(event),
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
@@ -55,11 +72,16 @@ export class LogStreamingEventRelay extends EventRelay {
 			'user-password-reset-request-click': (event) => this.userPasswordResetRequestClick(event),
 			'public-api-key-created': (event) => this.publicApiKeyCreated(event),
 			'public-api-key-deleted': (event) => this.publicApiKeyDeleted(event),
+			'public-api-key-rotated': (event) => this.publicApiKeyRotated(event),
 			'email-failed': (event) => this.emailFailed(event),
 			'credentials-created': (event) => this.credentialsCreated(event),
 			'credentials-deleted': (event) => this.credentialsDeleted(event),
+			'credentials-user-disconnected': (event) => this.credentialsUserDisconnected(event),
 			'credentials-shared': (event) => this.credentialsShared(event),
 			'credentials-updated': (event) => this.credentialsUpdated(event),
+			'oauth-callback-binding-rejected': (event) => this.oauthCallbackBindingRejected(event),
+			'dynamic-credential-authorize-rejected': (event) =>
+				this.dynamicCredentialAuthorizeRejected(event),
 			'variable-created': (event) => this.variableCreated(event),
 			'variable-updated': (event) => this.variableUpdated(event),
 			'variable-deleted': (event) => this.variableDeleted(event),
@@ -82,7 +104,10 @@ export class LogStreamingEventRelay extends EventRelay {
 			'execution-started-during-bootup': (event) => this.executionStartedDuringBootup(event),
 			'execution-cancelled': (event) => this.executionCancelled(event),
 			'execution-deleted': (event) => this.executionDeleted(event),
+			'execution-waiting': (event) => this.executionWaiting(event),
+			'execution-resumed': (event) => this.executionResumed(event),
 			'execution-data-revealed': (event) => this.executionDataRevealed(event),
+			'execution-data-reveal-failure': (event) => this.executionDataRevealFailure(event),
 			'ai-messages-retrieved-from-memory': (event) => this.aiMessagesRetrievedFromMemory(event),
 			'ai-message-added-to-memory': (event) => this.aiMessageAddedToMemory(event),
 			'ai-output-parsed': (event) => this.aiOutputParsed(event),
@@ -103,10 +128,68 @@ export class LogStreamingEventRelay extends EventRelay {
 			'job-dequeued': (event) => this.jobDequeued(event),
 			'job-stalled': (event) => this.jobStalled(event),
 			'instance-policies-updated': (event) => this.instancePoliciesUpdated(event),
+			'redaction-enforcement-updated': (event) => this.redactionEnforcementUpdated(event),
+			'workflow-review-requested': (event) => this.workflowReviewRequested(event),
+			'workflow-review-version-updated': (event) => this.workflowReviewVersionUpdated(event),
+			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
+			'workflow-review-closed': (event) => this.workflowReviewClosed(event),
+			'token-exchange-succeeded': (event) => this.tokenExchangeSucceeded(event),
+			'token-exchange-failed': (event) => this.tokenExchangeFailed(event),
+			'token-exchange-identity-linked': (event) => this.tokenExchangeIdentityLinked(event),
+			'token-exchange-identity-rebound': (event) => this.tokenExchangeIdentityRebound(event),
+			'token-exchange-user-provisioned': (event) => this.tokenExchangeUserProvisioned(event),
+			'token-exchange-role-updated': (event) => this.tokenExchangeRoleUpdated(event),
+			'embed-login': (event) => this.embedLogin(event),
+			'embed-login-failed': (event) => this.embedLoginFailed(event),
+			'expression-mapping-roles-resolved': (event) => this.expressionMappingRolesResolved(event),
+			'role-mapping-rule-created': (event) => this.roleMappingRuleCreated(event),
+			'role-mapping-rule-updated': (event) => this.roleMappingRuleUpdated(event),
+			'role-mapping-rule-deleted': (event) => this.roleMappingRuleDeleted(event),
+			'role-mapping-rules-bulk-deleted': (event) => this.roleMappingRulesBulkDeleted(event),
+			'mcp-oauth-completed': (event) => this.mcpOauthCompleted(event),
+			'mcp-tool-called': (event) => this.mcpToolCalled(event),
+			'mcp-access-updated': (event) => this.mcpAccessUpdated(event),
 		});
 	}
 
 	// #region Workflow
+
+	@Redactable()
+	private packageImported({ user, counts, ...rest }: RelayEventMap['n8n-package-imported']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.n8n-package.import.success',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private packageExported({
+		user,
+		counts,
+		credentialExportPolicy,
+		...rest
+	}: RelayEventMap['n8n-package-exported']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.n8n-package.export.success',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private packageExportFailed({ user, ...rest }: RelayEventMap['n8n-package-export-failed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.n8n-package.export.failed',
+			payload: { ...user, operation: 'export', ...rest },
+		});
+	}
+
+	@Redactable()
+	private packageImportFailed({ user, ...rest }: RelayEventMap['n8n-package-import-failed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.n8n-package.import.failed',
+			payload: { ...user, operation: 'import', ...rest },
+		});
+	}
 
 	@Redactable()
 	private workflowCreated({ user, workflow }: RelayEventMap['workflow-created']) {
@@ -210,7 +293,13 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
-	private workflowPreExecute({ data, executionId, mode }: RelayEventMap['workflow-pre-execute']) {
+	private workflowPreExecute({
+		data,
+		executionId,
+		mode,
+		projectId,
+		projectName,
+	}: RelayEventMap['workflow-pre-execute']) {
 		const payload =
 			'executionData' in data
 				? {
@@ -220,6 +309,8 @@ export class LogStreamingEventRelay extends EventRelay {
 						isManual: data.executionMode === 'manual',
 						mode,
 						workflowName: data.workflowData.name,
+						projectId: data.projectId ?? projectId,
+						projectName: data.projectName ?? projectName,
 					}
 				: {
 						executionId,
@@ -228,6 +319,8 @@ export class LogStreamingEventRelay extends EventRelay {
 						isManual: false,
 						mode,
 						workflowName: (data as IWorkflowBase).name,
+						projectId,
+						projectName,
 					};
 
 		void this.eventBus.sendWorkflowEvent({
@@ -237,7 +330,8 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	private workflowPostExecute(event: RelayEventMap['workflow-post-execute']) {
-		const { runData, workflow, executionId, ...rest } = event;
+		const { runData, workflow, executionId, projectId, projectName, ...rest } =
+			withoutExecutionMetadata(event);
 
 		const payload = {
 			...rest,
@@ -247,6 +341,8 @@ export class LogStreamingEventRelay extends EventRelay {
 			mode: runData?.mode,
 			workflowId: workflow.id,
 			workflowName: workflow.name,
+			projectId,
+			projectName,
 		};
 
 		if (payload.success) {
@@ -302,6 +398,8 @@ export class LogStreamingEventRelay extends EventRelay {
 		workflowId,
 		workflowName,
 		executionId,
+		projectId,
+		projectName,
 		source,
 	}: WorkflowExecutedEventWithUser) {
 		void this.eventBus.sendAuditEvent({
@@ -311,6 +409,8 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName,
 				executionId,
+				projectId,
+				projectName,
 				source,
 			},
 		});
@@ -320,6 +420,8 @@ export class LogStreamingEventRelay extends EventRelay {
 		workflowId,
 		workflowName,
 		executionId,
+		projectId,
+		projectName,
 		source,
 	}: WorkflowExecutedEvent) {
 		void this.eventBus.sendAuditEvent({
@@ -328,6 +430,8 @@ export class LogStreamingEventRelay extends EventRelay {
 				workflowId,
 				workflowName,
 				executionId,
+				projectId,
+				projectName,
 				source,
 			},
 		});
@@ -510,9 +614,17 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
-	private publicApiKeyDeleted({ user }: RelayEventMap['public-api-key-deleted']) {
+	private publicApiKeyDeleted({ user, isOwn }: RelayEventMap['public-api-key-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.api.deleted',
+			payload: { ...user, is_own: isOwn },
+		});
+	}
+
+	@Redactable()
+	private publicApiKeyRotated({ user }: RelayEventMap['public-api-key-rotated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.api.rotated',
 			payload: user,
 		});
 	}
@@ -550,6 +662,17 @@ export class LogStreamingEventRelay extends EventRelay {
 	}
 
 	@Redactable()
+	private credentialsUserDisconnected({
+		user,
+		...rest
+	}: RelayEventMap['credentials-user-disconnected']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.user.credentials.userDisconnected',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
 	private credentialsShared({ user, ...rest }: RelayEventMap['credentials-shared']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.shared',
@@ -562,6 +685,24 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.credentials.updated',
 			payload: { ...user, ...rest },
+		});
+	}
+
+	private oauthCallbackBindingRejected(
+		event: RelayEventMap['oauth-callback-binding-rejected'] /* no user context at OAuth callback time */,
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.oauth.callback.binding.rejected',
+			payload: event,
+		});
+	}
+
+	private dynamicCredentialAuthorizeRejected(
+		event: RelayEventMap['dynamic-credential-authorize-rejected'] /* no user context: clicker is unauthenticated or mismatched */,
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.credentials.authorize.rejected',
+			payload: event,
 		});
 	}
 
@@ -744,6 +885,33 @@ export class LogStreamingEventRelay extends EventRelay {
 		});
 	}
 
+	private executionWaiting({ executionId, workflowId }: RelayEventMap['execution-waiting']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.waiting',
+			payload: {
+				executionId,
+				workflowId,
+			},
+		});
+	}
+
+	private executionResumed({
+		executionId,
+		workflowId,
+		resumeSource,
+		responseAt,
+	}: RelayEventMap['execution-resumed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow.resumed',
+			payload: {
+				executionId,
+				workflowId,
+				resumeSource,
+				responseAt: responseAt.toISOString(),
+			},
+		});
+	}
+
 	@Redactable()
 	private executionDataRevealed({
 		user,
@@ -756,6 +924,30 @@ export class LogStreamingEventRelay extends EventRelay {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.execution.data.revealed',
 			payload: { ...user, executionId, workflowId, ipAddress, userAgent, redactionPolicy },
+		});
+	}
+
+	@Redactable()
+	private executionDataRevealFailure({
+		user,
+		executionId,
+		workflowId,
+		ipAddress,
+		userAgent,
+		redactionPolicy,
+		rejectionReason,
+	}: RelayEventMap['execution-data-reveal-failure']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.execution.data.reveal_failure',
+			payload: {
+				...user,
+				executionId,
+				workflowId,
+				ipAddress,
+				userAgent,
+				redactionPolicy,
+				rejectionReason,
+			},
 		});
 	}
 
@@ -941,9 +1133,279 @@ export class LogStreamingEventRelay extends EventRelay {
 					payload: user,
 				});
 				break;
+			case 'data_redaction_enforcement_floor':
+				// Telemetry-only signal. The audit trail for redaction enforcement
+				// is emitted separately via 'redaction-enforcement-updated'.
+				break;
+			case 'workflow_reviews':
+				void this.eventBus.sendAuditEvent({
+					eventName: value
+						? 'n8n.audit.workflow-reviews.enabled'
+						: 'n8n.audit.workflow-reviews.disabled',
+					payload: user,
+				});
+				break;
 			default:
 				assertNever(settingName);
 		}
+	}
+
+	@Redactable()
+	private redactionEnforcementUpdated({
+		user,
+		before,
+		after,
+	}: RelayEventMap['redaction-enforcement-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.redaction-enforcement.updated',
+			payload: { ...user, before, after },
+		});
+	}
+
+	// #endregion
+
+	// #region Workflow Reviews
+
+	@Redactable()
+	private workflowReviewRequested({
+		user,
+		workflowReviewRequestId,
+		projectId,
+		workflowId,
+		workflowVersionId,
+	}: RelayEventMap['workflow-review-requested']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow-review.requested',
+			payload: {
+				...user,
+				projectId,
+				workflowId,
+				versionId: workflowVersionId,
+				workflowReviewRequestId,
+			},
+		});
+	}
+
+	@Redactable()
+	private workflowReviewVersionUpdated({
+		user,
+		workflowReviewRequestId,
+		workflowId,
+		workflowVersionId,
+	}: RelayEventMap['workflow-review-version-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow-review.version-updated',
+			payload: { ...user, workflowId, versionId: workflowVersionId, workflowReviewRequestId },
+		});
+	}
+
+	@Redactable()
+	private workflowReviewDecided({
+		user,
+		workflowReviewRequestId,
+		workflowId,
+		workflowVersionId,
+		decision,
+		decidedVia,
+	}: RelayEventMap['workflow-review-decided']) {
+		void this.eventBus.sendAuditEvent({
+			eventName:
+				decision === 'approved'
+					? 'n8n.audit.workflow-review.approved'
+					: 'n8n.audit.workflow-review.changes-requested',
+			payload: {
+				...user,
+				workflowId,
+				versionId: workflowVersionId,
+				workflowReviewRequestId,
+				decidedVia,
+			},
+		});
+	}
+
+	private workflowReviewClosed(
+		{
+			workflowReviewRequestId,
+			cause,
+		}: RelayEventMap['workflow-review-closed'] /* not `@Redactable()`: the cause carries a bare id, not a `UserLike` */,
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.workflow-review.closed',
+			payload: {
+				workflowReviewRequestId,
+				causeTrigger: cause.trigger,
+				causeActorKind: cause.actorKind,
+				causeUserId: cause.userId,
+			},
+		});
+	}
+
+	// #endregion
+
+	// #region Token exchange
+
+	private tokenExchangeSucceeded(event: RelayEventMap['token-exchange-succeeded']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.succeeded',
+			payload: event,
+		});
+	}
+
+	private tokenExchangeFailed(event: RelayEventMap['token-exchange-failed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.failed',
+			payload: event,
+		});
+	}
+
+	private tokenExchangeIdentityLinked(event: RelayEventMap['token-exchange-identity-linked']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.identity-linked',
+			payload: event,
+		});
+	}
+
+	private tokenExchangeIdentityRebound(event: RelayEventMap['token-exchange-identity-rebound']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.identity-rebound',
+			payload: event,
+		});
+	}
+
+	private tokenExchangeUserProvisioned(event: RelayEventMap['token-exchange-user-provisioned']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.user-provisioned',
+			payload: event,
+		});
+	}
+
+	private tokenExchangeRoleUpdated(event: RelayEventMap['token-exchange-role-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.role-updated',
+			payload: event,
+		});
+	}
+
+	private embedLogin(event: RelayEventMap['embed-login']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.embed-login',
+			payload: event,
+		});
+	}
+
+	private embedLoginFailed(event: RelayEventMap['embed-login-failed']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.token-exchange.embed-login-failed',
+			payload: event,
+		});
+	}
+
+	// #endregion
+
+	// #region Role Mapping
+
+	private expressionMappingRolesResolved(
+		event: RelayEventMap['expression-mapping-roles-resolved'],
+	) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.role-mapping.roles-resolved',
+			payload: {
+				userId: event.userId,
+				userEmail: event.userEmail,
+				msg: {
+					provider: event.provider,
+					instanceRole: event.instanceRole,
+					projectRoles: event.projectRoles,
+					removedProjectIds: event.removedProjectIds,
+				},
+			},
+		});
+	}
+
+	private roleMappingRuleCreated(event: RelayEventMap['role-mapping-rule-created']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.role-mapping.rule.created',
+			payload: {
+				...event.user,
+				msg: {
+					ruleId: event.ruleId,
+					ruleType: event.ruleType,
+					expression: event.expression,
+					role: event.role,
+				},
+			},
+		});
+	}
+
+	private roleMappingRuleUpdated(event: RelayEventMap['role-mapping-rule-updated']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.role-mapping.rule.updated',
+			payload: {
+				...event.user,
+				msg: {
+					ruleId: event.ruleId,
+					ruleType: event.ruleType,
+					patchedFields: event.patchedFields,
+				},
+			},
+		});
+	}
+
+	private roleMappingRuleDeleted(event: RelayEventMap['role-mapping-rule-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.role-mapping.rule.deleted',
+			payload: {
+				...event.user,
+				msg: {
+					ruleId: event.ruleId,
+					ruleType: event.ruleType,
+				},
+			},
+		});
+	}
+
+	private roleMappingRulesBulkDeleted(event: RelayEventMap['role-mapping-rules-bulk-deleted']) {
+		void this.eventBus.sendAuditEvent({
+			eventName: 'n8n.audit.role-mapping.rules.bulk-deleted',
+			payload: {
+				msg: {
+					ruleType: event.ruleType,
+					count: event.count,
+					reason: event.reason,
+				},
+			},
+		});
+	}
+
+	// #endregion
+
+	// #region MCP server
+
+	private mcpOauthCompleted({
+		userId,
+		clientId,
+		clientName,
+	}: RelayEventMap['mcp-oauth-completed']) {
+		void this.eventBus.sendMcpEvent({
+			eventName: 'n8n.audit.mcp.oauth.completed',
+			payload: { userId, clientId, clientName },
+		});
+	}
+
+	@Redactable()
+	private mcpToolCalled({ user, ...rest }: RelayEventMap['mcp-tool-called']) {
+		void this.eventBus.sendMcpEvent({
+			eventName: 'n8n.audit.mcp.tool.called',
+			payload: { ...user, ...rest },
+		});
+	}
+
+	@Redactable()
+	private mcpAccessUpdated({ user, ...rest }: RelayEventMap['mcp-access-updated']) {
+		void this.eventBus.sendMcpEvent({
+			eventName: 'n8n.audit.mcp.access.updated',
+			payload: { ...user, ...rest },
+		});
 	}
 
 	// #endregion

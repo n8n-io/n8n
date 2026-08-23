@@ -1,15 +1,16 @@
-import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import type { LicenseState } from '@n8n/backend-common';
+import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { LDAP_FEATURE_NAME, type LdapConfig } from '@n8n/constants';
 import type { Settings, User } from '@n8n/db';
 import { AuthIdentityRepository, SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import { Client } from 'ldapts';
 import type { Cipher } from 'n8n-core';
 import { randomString } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import config from '@/config';
 import type { EventService } from '@/events/event.service';
@@ -31,33 +32,35 @@ import {
 import { LdapService } from '../ldap.service.ee';
 
 // Mock ldapts client
-jest.mock('ldapts', () => {
-	const ClientMock = jest.fn();
+vi.mock('ldapts', async () => {
+	const ClientMock = vi.fn();
 
-	ClientMock.prototype.bind = jest.fn();
-	ClientMock.prototype.unbind = jest.fn();
-	ClientMock.prototype.startTLS = jest.fn();
-	ClientMock.prototype.search = jest.fn();
+	ClientMock.prototype.bind = vi.fn();
+	ClientMock.prototype.unbind = vi.fn();
+	ClientMock.prototype.startTLS = vi.fn();
+	ClientMock.prototype.search = vi.fn();
 
-	return { Client: ClientMock };
+	class ResultCodeError extends Error {}
+
+	return { Client: ClientMock, ResultCodeError };
 });
 
-jest.mock('../helpers.ee', () => ({
-	...jest.requireActual('../helpers.ee'),
-	getLdapIds: jest.fn(),
-	saveLdapSynchronization: jest.fn(),
-	resolveBinaryAttributes: jest.fn(),
-	processUsers: jest.fn(),
-	resolveEntryBinaryAttributes: jest.fn(),
-	isLdapEnabled: jest.fn(() => true),
-	getAuthIdentityByLdapId: jest.fn(),
-	getUserByEmail: jest.fn(),
-	createLdapUserOnLocalDb: jest.fn(),
+vi.mock('../helpers.ee', async () => ({
+	...(await vi.importActual<typeof import('../helpers.ee')>('../helpers.ee')),
+	getLdapIds: vi.fn(),
+	saveLdapSynchronization: vi.fn(),
+	resolveBinaryAttributes: vi.fn(),
+	processUsers: vi.fn(),
+	resolveEntryBinaryAttributes: vi.fn(),
+	isLdapEnabled: vi.fn(() => true),
+	getAuthIdentityByLdapId: vi.fn(),
+	getUserByEmail: vi.fn(),
+	createLdapUserOnLocalDb: vi.fn(),
 }));
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	randomString: jest.fn(),
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),
+	randomString: vi.fn(),
 }));
 
 mockInstance(GlobalConfig, {
@@ -98,11 +101,16 @@ describe('LdapService', () => {
 	beforeAll(() => {
 		// Need fake timers to avoid setInterval
 		// problems with the scheduled sync
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 	});
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
+		vi.resetAllMocks();
+		Client.prototype.bind = vi.fn();
+		Client.prototype.unbind = vi.fn();
+		Client.prototype.startTLS = vi.fn();
+		Client.prototype.search = vi.fn();
 	});
 
 	const mockSettingsRespositoryFindOneByOrFail = (config: LdapConfig) => {
@@ -130,7 +138,7 @@ describe('LdapService', () => {
 		it('should load the LDAP configuration', async () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
-			const loadConfigSpy = jest.spyOn(ldapService, 'loadConfig');
+			const loadConfigSpy = vi.spyOn(ldapService, 'loadConfig');
 
 			await ldapService.init();
 
@@ -140,7 +148,7 @@ describe('LdapService', () => {
 		it('should set expected configuration variables from LDAP config if LDAP is enabled', async () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
-			const configSetSpy = jest.spyOn(config, 'set');
+			const configSetSpy = vi.spyOn(config, 'set');
 
 			await ldapService.init();
 
@@ -157,7 +165,7 @@ describe('LdapService', () => {
 
 			const ldapService = createDefaultLdapService(givenConfig);
 
-			const configSetSpy = jest.spyOn(config, 'set');
+			const configSetSpy = vi.spyOn(config, 'set');
 
 			await ldapService.init();
 
@@ -202,7 +210,7 @@ describe('LdapService', () => {
 
 			const ldapService = createDefaultLdapService(givenConfig);
 
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			await ldapService.init();
 
@@ -220,7 +228,7 @@ describe('LdapService', () => {
 				synchronizationInterval: 0,
 			});
 
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			await expect(ldapService.init()).rejects.toThrowError('Interval variable has to be defined');
 			expect(setIntervalSpy).not.toHaveBeenCalled();
@@ -256,7 +264,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn(),
+				decryptV2: vi.fn().mockResolvedValue(undefined),
 			});
 
 			const ldapService = new LdapService(
@@ -269,15 +277,15 @@ describe('LdapService', () => {
 
 			await ldapService.loadConfig();
 
-			expect(cipherMock.decrypt).toHaveBeenCalledTimes(1);
-			expect(cipherMock.decrypt).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
+			expect(cipherMock.decryptV2).toHaveBeenCalledTimes(1);
+			expect(cipherMock.decryptV2).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
 		});
 
 		it('should return the expected LDAP configuration', async () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+				decryptV2: vi.fn().mockResolvedValue('decryptedPassword'),
 			});
 
 			const ldapService = new LdapService(
@@ -311,7 +319,17 @@ describe('LdapService', () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
 			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
-				'LDAP cannot be enabled if SSO in enabled',
+				'Cannot switch ldap login enabled state when an authentication method other than email or ldap is active (current: saml)',
+			);
+		});
+
+		it('should throw the same error if login is enabled and the current authentication method is neither saml/oidc nor email/ldap', async () => {
+			config.set('userManagement.authenticationMethod', 'token-exchange');
+
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			await expect(ldapService.updateConfig(ldapConfig)).rejects.toThrowError(
+				'Cannot switch ldap login enabled state when an authentication method other than email or ldap is active (current: token-exchange)',
 			);
 		});
 
@@ -319,7 +337,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+				encryptV2: vi.fn().mockResolvedValue('encryptedPassword'),
 			});
 
 			config.set('userManagement.authenticationMethod', 'email');
@@ -334,8 +352,8 @@ describe('LdapService', () => {
 			const newConfig = { ...ldapConfig };
 			await ldapService.updateConfig(newConfig);
 
-			expect(cipherMock.encrypt).toHaveBeenCalledTimes(1);
-			expect(cipherMock.encrypt).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
+			expect(cipherMock.encryptV2).toHaveBeenCalledTimes(1);
+			expect(cipherMock.encryptV2).toHaveBeenCalledWith(ldapConfig.bindingAdminPassword);
 			expect(newConfig.bindingAdminPassword).toEqual('encryptedPassword');
 		});
 
@@ -343,12 +361,12 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const authIdentityRepository = mockInstance(AuthIdentityRepository, {
-				find: jest.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
-				delete: jest.fn(),
+				find: vi.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
+				delete: vi.fn(),
 			});
 
 			const cipherMock = mock<Cipher>({
-				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+				encryptV2: vi.fn().mockResolvedValue('encryptedPassword'),
 			});
 
 			config.set('userManagement.authenticationMethod', 'email');
@@ -372,12 +390,12 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const authIdentityRepository = mockInstance(AuthIdentityRepository, {
-				find: jest.fn().mockResolvedValue([]),
-				delete: jest.fn(),
+				find: vi.fn().mockResolvedValue([]),
+				delete: vi.fn(),
 			});
 
 			const cipherMock = mock<Cipher>({
-				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+				encryptV2: vi.fn().mockResolvedValue('encryptedPassword'),
 			});
 
 			config.set('userManagement.authenticationMethod', 'email');
@@ -401,12 +419,12 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			mockInstance(AuthIdentityRepository, {
-				find: jest.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
-				delete: jest.fn(),
+				find: vi.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
+				delete: vi.fn(),
 			});
 
 			const cipherMock = mock<Cipher>({
-				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+				encryptV2: vi.fn().mockResolvedValue('encryptedPassword'),
 			});
 
 			config.set('userManagement.authenticationMethod', 'email');
@@ -431,11 +449,11 @@ describe('LdapService', () => {
 		it('should update the LDAP login label in the config', async () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 			mockInstance(AuthIdentityRepository, {
-				find: jest.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
-				delete: jest.fn(),
+				find: vi.fn().mockResolvedValue([{ user: { id: 'userId' } }]),
+				delete: vi.fn(),
 			});
 			const cipherMock = mock<Cipher>({
-				encrypt: jest.fn().mockReturnValue('encryptedPassword'),
+				encryptV2: vi.fn().mockResolvedValue('encryptedPassword'),
 			});
 			const globalConfig = Container.get(GlobalConfig);
 			config.set('userManagement.authenticationMethod', 'email');
@@ -464,7 +482,7 @@ describe('LdapService', () => {
 
 			const updatedLdapConfig = { ...ldapConfig, synchronizationEnabled: false };
 
-			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
 
 			await ldapService.init();
 			ldapService.setConfig(updatedLdapConfig);
@@ -481,8 +499,8 @@ describe('LdapService', () => {
 				synchronizationInterval: 999,
 			};
 
-			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			ldapService.setConfig(updatedLdapConfig);
 
@@ -503,8 +521,8 @@ describe('LdapService', () => {
 				synchronizationInterval: 0,
 			};
 
-			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			const thrownSetConfig = () => ldapService.setConfig(updatedLdapConfig);
 
@@ -522,8 +540,8 @@ describe('LdapService', () => {
 				synchronizationInterval: 1234,
 			};
 
-			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
-			const setIntervalSpy = jest.spyOn(global, 'setInterval');
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
+			const setIntervalSpy = vi.spyOn(global, 'setInterval');
 
 			await ldapService.init();
 			ldapService.setConfig(updatedLdapConfig);
@@ -548,10 +566,10 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+				decryptV2: vi.fn().mockResolvedValue('decryptedPassword'),
 			});
 
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
 
 			const filter = '';
 
@@ -577,12 +595,12 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+				decryptV2: vi.fn().mockResolvedValue('decryptedPassword'),
 			});
 
 			const filter = '';
 
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
 
 			const ldapService = new LdapService(
 				mockLogger(),
@@ -615,12 +633,12 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail({ ...ldapConfig, searchPageSize: 0 });
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+				decryptV2: vi.fn().mockResolvedValue('decryptedPassword'),
 			});
 
 			const filter = '';
 
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
 
 			const ldapService = new LdapService(
 				mockLogger(),
@@ -653,10 +671,10 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+				decryptV2: vi.fn().mockResolvedValue('decryptedPassword'),
 			});
 
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
 
 			const filter = '';
 
@@ -678,7 +696,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const cipherMock = mock<Cipher>({
-				decrypt: jest.fn().mockReturnValue('decryptedPassword'),
+				decryptV2: vi.fn().mockResolvedValue('decryptedPassword'),
 			});
 
 			const userList = [
@@ -697,7 +715,7 @@ describe('LdapService', () => {
 					memberOf: 'cn=admins,ou=groups,dc=example,dc=com',
 				},
 			];
-			Client.prototype.search = jest.fn().mockResolvedValue({
+			Client.prototype.search = vi.fn().mockResolvedValue({
 				searchEntries: userList,
 			});
 
@@ -746,7 +764,7 @@ describe('LdapService', () => {
 			const distinguishedName = 'uid=jdoe,ou=users,dc=example,dc=com';
 			const password = 'password';
 
-			Client.prototype.bind = jest
+			Client.prototype.bind = vi
 				.fn()
 				.mockRejectedValue(new Error('Error validating user against LDAP server'));
 
@@ -774,10 +792,10 @@ describe('LdapService', () => {
 		it('should search for expected admin login ID', async () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
-			const searchWithAdminBindingSpy = jest.spyOn(ldapService, 'searchWithAdminBinding');
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+			const searchWithAdminBindingSpy = vi.spyOn(ldapService, 'searchWithAdminBinding');
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			const expectedFilter = createFilter(
@@ -801,7 +819,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const eventServiceMock = mock<EventService>({
-				emit: jest.fn(),
+				emit: vi.fn(),
 			});
 
 			const ldapService = new LdapService(
@@ -811,9 +829,9 @@ describe('LdapService', () => {
 				eventServiceMock,
 				mock<LicenseState>(),
 			);
-			Client.prototype.search = jest.fn().mockRejectedValue(new Error('Failed to find admin user'));
+			Client.prototype.search = vi.fn().mockRejectedValue(new Error('Failed to find admin user'));
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			await ldapService.init();
@@ -834,9 +852,9 @@ describe('LdapService', () => {
 		it('should return undefined if no user is found', async () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			await ldapService.init();
@@ -862,11 +880,11 @@ describe('LdapService', () => {
 				},
 			];
 
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
 
-			const validUserSpy = jest.spyOn(ldapService, 'validUser');
+			const validUserSpy = vi.spyOn(ldapService, 'validUser');
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			await ldapService.init();
@@ -899,11 +917,11 @@ describe('LdapService', () => {
 				},
 			];
 
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
 
-			const validUserSpy = jest.spyOn(ldapService, 'validUser');
+			const validUserSpy = vi.spyOn(ldapService, 'validUser');
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			await ldapService.init();
@@ -930,13 +948,13 @@ describe('LdapService', () => {
 				},
 			];
 
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
 
-			const validUserSpy = jest
+			const validUserSpy = vi
 				.spyOn(ldapService, 'validUser')
 				.mockRejectedValue(new Error('Failed to validate user'));
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			await ldapService.init();
@@ -963,9 +981,9 @@ describe('LdapService', () => {
 				},
 			];
 
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			await ldapService.init();
@@ -992,9 +1010,9 @@ describe('LdapService', () => {
 				},
 			];
 
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [...foundUsers] });
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			await ldapService.init();
@@ -1006,6 +1024,66 @@ describe('LdapService', () => {
 			);
 
 			expect(result).toEqual(foundUsers[0]);
+		});
+
+		describe('filter construction', () => {
+			const captureFilter = () => {
+				const search = vi.fn().mockResolvedValue({ searchEntries: [] });
+				Client.prototype.search = search;
+				return () => {
+					expect(search).toHaveBeenCalledTimes(1);
+					const [, options] = search.mock.calls[0];
+					return options.filter as string;
+				};
+			};
+
+			it.each([
+				{ input: 'alice', expectedSnippet: '(uid=alice)' },
+				{ input: 'alice*', expectedSnippet: '(uid=alice\\2a)' },
+				{ input: '*)(uid=*', expectedSnippet: '(uid=\\2a\\29\\28uid=\\2a)' },
+				{ input: 'alice\\)', expectedSnippet: '(uid=alice\\5c\\29)' },
+				{ input: 'alice\0admin', expectedSnippet: '(uid=alice\\00admin)' },
+			])(
+				'should escape special characters in the loginId search filter for input %p',
+				async ({ input, expectedSnippet }) => {
+					const ldapService = createDefaultLdapService({ ...ldapConfig, userFilter: '' });
+					const getCaptured = captureFilter();
+
+					(getLdapIds as Mock).mockResolvedValue([]);
+
+					await ldapService.init();
+					await ldapService.findAndAuthenticateLdapUser(
+						input,
+						'fakePassword',
+						ldapConfig.loginIdAttribute,
+						'',
+					);
+
+					expect(getCaptured()).toContain(expectedSnippet);
+				},
+			);
+
+			it('should preserve the configured userFilter when constructing the loginId filter', async () => {
+				const userFilter = '(objectClass=inetOrgPerson)';
+				const ldapService = createDefaultLdapService({ ...ldapConfig, userFilter });
+				const getCaptured = captureFilter();
+
+				(getLdapIds as Mock).mockResolvedValue([]);
+
+				await ldapService.init();
+				await ldapService.findAndAuthenticateLdapUser(
+					'alice',
+					'fakePassword',
+					ldapConfig.loginIdAttribute,
+					userFilter,
+				);
+
+				const filter = getCaptured();
+				expect(filter).toBe('(&(objectClass=inetOrgPerson)(uid=alice))');
+				const opens = (filter.match(/\(/g) ?? []).length;
+				const closes = (filter.match(/\)/g) ?? []).length;
+				expect(opens).toBe(closes);
+			});
 		});
 	});
 
@@ -1100,17 +1178,17 @@ describe('LdapService', () => {
 
 	describe('runSync()', () => {
 		beforeEach(() => {
-			const mockedRandomString = randomString as jest.Mock;
+			const mockedRandomString = randomString as Mock;
 			mockedRandomString.mockReturnValue('nonRandomPassword');
 		});
 
 		it('should search for users with expected parameters', async () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
-			const searchWithAdminBindingSpy = jest.spyOn(ldapService, 'searchWithAdminBinding');
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+			const searchWithAdminBindingSpy = vi.spyOn(ldapService, 'searchWithAdminBinding');
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			const expectedFilter = createFilter(
@@ -1137,9 +1215,9 @@ describe('LdapService', () => {
 					jpegPhoto: [Buffer.from('89504E470D0A1A0A', 'hex')],
 				},
 			];
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: foundUsers });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: foundUsers });
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			await ldapService.init();
@@ -1152,9 +1230,9 @@ describe('LdapService', () => {
 		it('should throw expected error if search fails', async () => {
 			const ldapService = createDefaultLdapService(ldapConfig);
 
-			Client.prototype.search = jest.fn().mockRejectedValue(new Error('Error finding users'));
+			Client.prototype.search = vi.fn().mockRejectedValue(new Error('Error finding users'));
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			await ldapService.init();
@@ -1200,9 +1278,9 @@ describe('LdapService', () => {
 			const deleteUsers = ['santaclaus', 'jackfrost'];
 
 			const foundUsers = [...newUsers, ...updateUsers];
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: foundUsers });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: foundUsers });
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 
 			// Delete users that exist in memory but not in the LDAP response
 			mockedGetLdapIds.mockResolvedValue(['emilyclark', ...deleteUsers]);
@@ -1256,9 +1334,9 @@ describe('LdapService', () => {
 			const deleteUsers = ['santaclaus', 'jackfrost'];
 
 			const foundUsers = [...newUsers, ...updateUsers];
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: foundUsers });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: foundUsers });
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 
 			// Delete users that exist in memory but not in the LDAP response
 			mockedGetLdapIds.mockResolvedValue(['emilyclark', ...deleteUsers]);
@@ -1266,7 +1344,7 @@ describe('LdapService', () => {
 			const newDbUsers = newUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig, true));
 			const updateDbUsers = updateUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig));
 
-			jest.setSystemTime(new Date('2024-12-25'));
+			vi.setSystemTime(new Date('2024-12-25'));
 			const expectedDate = new Date();
 
 			await ldapService.init();
@@ -1325,14 +1403,14 @@ describe('LdapService', () => {
 			const deleteUsers = ['santaclaus', 'jackfrost'];
 
 			const foundUsers = [...newUsers, ...updateUsers];
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: foundUsers });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: foundUsers });
 
-			const mockedProcessUsers = processUsers as jest.Mock;
+			const mockedProcessUsers = processUsers as Mock;
 			mockedProcessUsers.mockRejectedValue(
 				new QueryFailedError('Query', [], new Error('Error processing users')),
 			);
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 
 			// Delete users that exist in memory but not in the LDAP response
 			mockedGetLdapIds.mockResolvedValue(['emilyclark', ...deleteUsers]);
@@ -1340,7 +1418,7 @@ describe('LdapService', () => {
 			const newDbUsers = newUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig, true));
 			const updateDbUsers = updateUsers.map((user) => mapLdapUserToDbUser(user, ldapConfig));
 
-			jest.setSystemTime(new Date('2024-12-25'));
+			vi.setSystemTime(new Date('2024-12-25'));
 			const expectedDate = new Date();
 
 			await ldapService.init();
@@ -1364,7 +1442,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const eventServiceMock = mock<EventService>({
-				emit: jest.fn(),
+				emit: vi.fn(),
 			});
 
 			const ldapService = new LdapService(
@@ -1374,9 +1452,9 @@ describe('LdapService', () => {
 				eventServiceMock,
 				mock<LicenseState>(),
 			);
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			await ldapService.init();
@@ -1395,7 +1473,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const eventServiceMock = mock<EventService>({
-				emit: jest.fn(),
+				emit: vi.fn(),
 			});
 
 			const ldapService = new LdapService(
@@ -1405,9 +1483,9 @@ describe('LdapService', () => {
 				eventServiceMock,
 				mock<LicenseState>(),
 			);
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
 			await ldapService.init();
@@ -1427,7 +1505,7 @@ describe('LdapService', () => {
 			mockSettingsRespositoryFindOneByOrFail(ldapConfig);
 
 			const eventServiceMock = mock<EventService>({
-				emit: jest.fn(),
+				emit: vi.fn(),
 			});
 
 			const ldapService = new LdapService(
@@ -1437,12 +1515,12 @@ describe('LdapService', () => {
 				eventServiceMock,
 				mock<LicenseState>(),
 			);
-			Client.prototype.search = jest.fn().mockResolvedValue({ searchEntries: [] });
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
 
-			const mockedGetLdapIds = getLdapIds as jest.Mock;
+			const mockedGetLdapIds = getLdapIds as Mock;
 			mockedGetLdapIds.mockResolvedValue([]);
 
-			const mockedProcessUsers = processUsers as jest.Mock;
+			const mockedProcessUsers = processUsers as Mock;
 			mockedProcessUsers.mockRejectedValue(
 				new QueryFailedError('Query', [], new Error('Error processing users')),
 			);
@@ -1455,10 +1533,129 @@ describe('LdapService', () => {
 			expect(eventServiceMock.emit).toHaveBeenCalledTimes(1);
 			expect(eventServiceMock.emit).toHaveBeenCalledWith('ldap-general-sync-finished', {
 				error: 'Error processing users',
-				succeeded: true,
+				succeeded: false,
 				type: 'scheduled',
 				usersSynced: 0,
 			});
+		});
+
+		it('should surface non-QueryFailedError on the sync history and emit failure', async () => {
+			const ldapService = createDefaultLdapService(ldapConfig);
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: [] });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			const mockedProcessUsers = processUsers as Mock;
+			mockedProcessUsers.mockRejectedValue(new Error('Unexpected failure'));
+
+			vi.setSystemTime(new Date('2024-12-25'));
+			const expectedDate = new Date();
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(saveLdapSynchronization).toHaveBeenCalledTimes(1);
+			expect(saveLdapSynchronization).toHaveBeenCalledWith({
+				startedAt: expectedDate,
+				endedAt: expectedDate,
+				created: 0,
+				updated: 0,
+				disabled: 0,
+				scanned: 0,
+				runMode: 'live',
+				status: 'error',
+				error: 'Unexpected failure',
+			});
+		});
+
+		it('should skip LDAP entries whose email duplicates within the batch when enforceEmailUniqueness is enabled', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				enforceEmailUniqueness: true,
+			});
+
+			const duplicateUsers = [
+				{
+					dn: 'uid=jdoe1,ou=users,dc=example,dc=com',
+					cn: 'John Doe',
+					givenName: 'John',
+					sn: 'Doe',
+					mail: 'shared@example.com',
+					uid: 'jdoe1',
+				},
+				{
+					dn: 'uid=jdoe2,ou=users,dc=example,dc=com',
+					cn: 'Jane Doe',
+					givenName: 'Jane',
+					sn: 'Doe',
+					mail: 'shared@example.com',
+					uid: 'jdoe2',
+				},
+			];
+
+			const uniqueUser = {
+				dn: 'uid=unique,ou=users,dc=example,dc=com',
+				cn: 'Unique User',
+				givenName: 'Unique',
+				sn: 'User',
+				mail: 'unique@example.com',
+				uid: 'unique',
+			};
+
+			Client.prototype.search = vi
+				.fn()
+				.mockResolvedValue({ searchEntries: [...duplicateUsers, uniqueUser] });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(processUsers).toHaveBeenCalledTimes(1);
+			const [createArg] = (processUsers as Mock).mock.calls[0];
+			expect(createArg).toHaveLength(1);
+			expect(createArg[0][0]).toBe('unique');
+		});
+
+		it('should not filter duplicates when enforceEmailUniqueness is disabled', async () => {
+			const ldapService = createDefaultLdapService({
+				...ldapConfig,
+				enforceEmailUniqueness: false,
+			});
+
+			const duplicateUsers = [
+				{
+					dn: 'uid=jdoe1,ou=users,dc=example,dc=com',
+					cn: 'John Doe',
+					givenName: 'John',
+					sn: 'Doe',
+					mail: 'shared@example.com',
+					uid: 'jdoe1',
+				},
+				{
+					dn: 'uid=jdoe2,ou=users,dc=example,dc=com',
+					cn: 'Jane Doe',
+					givenName: 'Jane',
+					sn: 'Doe',
+					mail: 'shared@example.com',
+					uid: 'jdoe2',
+				},
+			];
+
+			Client.prototype.search = vi.fn().mockResolvedValue({ searchEntries: duplicateUsers });
+
+			const mockedGetLdapIds = getLdapIds as Mock;
+			mockedGetLdapIds.mockResolvedValue([]);
+
+			await ldapService.init();
+			await ldapService.runSync('live');
+
+			expect(processUsers).toHaveBeenCalledTimes(1);
+			const [createArg] = (processUsers as Mock).mock.calls[0];
+			expect(createArg).toHaveLength(2);
 		});
 	});
 
@@ -1470,7 +1667,7 @@ describe('LdapService', () => {
 				synchronizationInterval: 10,
 			});
 
-			const clearIntervalSpy = jest.spyOn(global, 'clearInterval');
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval');
 
 			await ldapService.init();
 			ldapService.stopSync();
@@ -1488,7 +1685,7 @@ describe('LdapService', () => {
 			});
 
 			beforeEach(() => {
-				Client.prototype.search = jest.fn().mockImplementation(async () => ({
+				Client.prototype.search = vi.fn().mockImplementation(async () => ({
 					searchEntries: [
 						{
 							dn: 'uid:duplicate,ou=users,dc=example,dc=com',
@@ -1505,13 +1702,13 @@ describe('LdapService', () => {
 					],
 				}));
 
-				const mockedGetAuthIdentity = getAuthIdentityByLdapId as jest.Mock;
+				const mockedGetAuthIdentity = getAuthIdentityByLdapId as Mock;
 				mockedGetAuthIdentity.mockResolvedValue(null);
 
-				const mockedCreateLdapUserOnLocalDb = createLdapUserOnLocalDb as jest.Mock;
+				const mockedCreateLdapUserOnLocalDb = createLdapUserOnLocalDb as Mock;
 				mockedCreateLdapUserOnLocalDb.mockResolvedValue(mockUser);
 
-				const mockedGetUserByEmail = getUserByEmail as jest.Mock;
+				const mockedGetUserByEmail = getUserByEmail as Mock;
 				mockedGetUserByEmail.mockResolvedValue(null);
 			});
 
@@ -1537,6 +1734,45 @@ describe('LdapService', () => {
 
 				const result = await ldapService.handleLogin('jdoe', 'password');
 				expect(result).toBeUndefined();
+			});
+		});
+
+		describe('filter construction', () => {
+			it('should escape special characters in the email duplicate-check filter', async () => {
+				const trickyEmail = 'eve*)(uid=admin@example.com';
+				const ldapService = createDefaultLdapService({
+					...ldapConfig,
+					enforceEmailUniqueness: true,
+				});
+
+				const search = vi
+					.fn()
+					.mockResolvedValueOnce({
+						searchEntries: [
+							{
+								dn: 'uid=eve,ou=users,dc=example,dc=com',
+								cn: 'Eve',
+								mail: trickyEmail,
+								uid: 'eve',
+							},
+						],
+					})
+					.mockResolvedValueOnce({ searchEntries: [] });
+				Client.prototype.search = search;
+
+				(getAuthIdentityByLdapId as Mock).mockResolvedValue(null);
+				(getUserByEmail as Mock).mockResolvedValue(null);
+				(createLdapUserOnLocalDb as Mock).mockResolvedValue(mock<User>());
+
+				await ldapService.init();
+				await ldapService.handleLogin('eve', 'password');
+
+				expect(search).toHaveBeenCalledTimes(2);
+				const [, secondCallOptions] = search.mock.calls[1];
+				const emailFilter = secondCallOptions.filter as string;
+
+				expect(emailFilter).toContain('eve\\2a\\29\\28uid=admin@example.com');
+				expect(emailFilter).not.toContain(trickyEmail);
 			});
 		});
 	});

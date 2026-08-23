@@ -6,15 +6,11 @@ import { type GitRepoHelper, setupGitRepo } from '../../../utils/source-control-
 test.use({ capability: 'source-control' });
 
 async function expectPushSuccess(n8n: n8nPage) {
-	expect(
-		await n8n.notifications.waitForNotificationAndClose('Pushed successfully', { timeout: 30000 }),
-	).toBe(true);
+	await n8n.notifications.waitForNotificationAndClose('Pushed successfully', { timeout: 30000 });
 }
 
 async function expectNoChangesToCommit(n8n: n8nPage) {
-	expect(
-		await n8n.notifications.waitForNotificationAndClose('No changes to commit', { timeout: 10000 }),
-	).toBe(true);
+	await n8n.notifications.waitForNotificationAndClose('No changes to commit', { timeout: 10000 });
 }
 
 // Skipped: These tests are flaky. Re-enable when PAY-4365 is resolved.
@@ -48,7 +44,7 @@ test.describe(
 
 			// check modal
 			await n8n.sideBar.getSourceControlPushButton().click();
-			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+			await expect(n8n.sourceControlPushModal.container).toBeVisible();
 			const isWorkflowsTabSelected = await n8n.sourceControlPushModal.isWorkflowsTabSelected();
 			expect(isWorkflowsTabSelected).toBe(true);
 
@@ -104,7 +100,7 @@ test.describe(
 			await expect(n8n.workflows.cards.getWorkflow('Root Workflow')).toBeVisible();
 
 			await n8n.sideBar.getSourceControlPushButton().click();
-			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+			await expect(n8n.sourceControlPushModal.container).toBeVisible();
 
 			// check notice
 			const notice = n8n.sourceControlPushModal.getNotice();
@@ -150,7 +146,7 @@ test.describe(
 			await n8n.navigate.toHome();
 			await expect(n8n.workflows.cards.getWorkflow('Workflow to Modify')).toBeVisible();
 			await n8n.sideBar.getSourceControlPushButton().click();
-			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+			await expect(n8n.sourceControlPushModal.container).toBeVisible();
 
 			await n8n.sourceControlPushModal.selectWorkflowsTab();
 			await n8n.sourceControlPushModal.selectAllFilesInModal();
@@ -166,7 +162,7 @@ test.describe(
 			await n8n.api.credentials.deleteCredential(credential.id);
 
 			await n8n.sideBar.getSourceControlPushButton().click();
-			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+			await expect(n8n.sourceControlPushModal.container).toBeVisible();
 
 			await n8n.sourceControlPushModal.selectWorkflowsTab();
 			await expect(n8n.sourceControlPushModal.getFileInModal('Workflow to Modify')).toBeVisible();
@@ -219,7 +215,7 @@ test.describe(
 			await expect(n8n.workflows.cards.getWorkflow('Workflow C')).toBeVisible();
 
 			await n8n.sideBar.getSourceControlPushButton().click();
-			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+			await expect(n8n.sourceControlPushModal.container).toBeVisible();
 			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow A')).toBeVisible();
 			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow B')).toBeVisible();
 			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow C')).toBeVisible();
@@ -246,7 +242,7 @@ test.describe(
 			// check resources
 			await n8n.navigate.toHome();
 			await n8n.sideBar.getSourceControlPushButton().click();
-			await expect(n8n.sourceControlPushModal.getModal()).toBeVisible();
+			await expect(n8n.sourceControlPushModal.container).toBeVisible();
 
 			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow A')).toBeVisible();
 			await expect(n8n.sourceControlPushModal.getFileCheckboxByName('Workflow B')).toBeVisible();

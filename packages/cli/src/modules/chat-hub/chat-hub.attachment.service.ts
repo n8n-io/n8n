@@ -2,7 +2,7 @@ import type { ChatMessageId, ChatSessionId, ChatAttachment } from '@n8n/api-type
 import { Service } from '@n8n/di';
 import { Not, IsNull } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
-import { sanitizeFilename } from '@n8n/utils';
+import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import { BinaryDataService, FileLocation } from 'n8n-core';
 import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
 import type Stream from 'node:stream';
@@ -169,6 +169,28 @@ export class ChatHubAttachmentService {
 
 	async getAsBuffer(binaryData: IBinaryData): Promise<Buffer<ArrayBufferLike>> {
 		return await this.binaryDataService.getAsBuffer(binaryData);
+	}
+
+	async storeTemporaryExecutionFile(
+		workflowId: string,
+		buffer: Buffer,
+		mimeType: string,
+		fileName: string,
+	): Promise<IBinaryData> {
+		const sanitizedFileName = sanitizeFilename(fileName);
+		const binaryData: IBinaryData = {
+			data: buffer.toString(BINARY_ENCODING),
+			mimeType,
+			fileName: sanitizedFileName,
+			fileSize: `${buffer.length}`,
+			fileExtension: sanitizedFileName?.split('.').pop(),
+		};
+
+		return await this.binaryDataService.store(
+			FileLocation.ofExecution(workflowId, 'temp'),
+			buffer,
+			binaryData,
+		);
 	}
 
 	private isAllowedMimeType(mimeType: string, allowedMimeTypes: string): boolean {

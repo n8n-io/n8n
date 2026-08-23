@@ -50,6 +50,10 @@ class ProvisioningConfig {
 	/** Name of the SSO claim that contains project–role mappings (for provisioning). */
 	@Env('N8N_SSO_SCOPES_PROJECTS_ROLES_CLAIM_NAME')
 	scopesProjectsRolesClaimName: string = 'n8n_projects';
+
+	/** Whether to use expression-based role mapping rules instead of direct SSO claim provisioning. */
+	@Env('N8N_SSO_SCOPES_USE_EXPRESSION_MAPPING')
+	scopesUseExpressionMapping: boolean = false;
 }
 
 @Config

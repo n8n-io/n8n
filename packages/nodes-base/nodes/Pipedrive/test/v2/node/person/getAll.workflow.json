@@ -1,0 +1,134 @@
+{
+	"name": "Pipedrive v2 person getAll test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "b1000004-0001-4000-8000-000000000001",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "person",
+				"operation": "getAll",
+				"returnAll": false,
+				"limit": 2,
+				"filters": {}
+			},
+			"id": "b1000004-0001-4000-8000-000000000002",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "b1000004-0001-4000-8000-000000000003",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 1,
+					"name": "[Sample] Benjamin Leon",
+					"first_name": "[Sample] Benjamin",
+					"last_name": "Leon",
+					"add_time": "2026-04-01T19:00:37Z",
+					"update_time": "2026-04-01T19:00:38Z",
+					"visible_to": 3,
+					"custom_fields": {
+						"test_number": null,
+						"test_enum": null,
+						"test_multi": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"org_id": null,
+					"is_deleted": false,
+					"picture_id": null,
+					"phones": [
+						{
+							"label": "",
+							"value": "785-202-7824",
+							"primary": true
+						}
+					],
+					"emails": [
+						{
+							"label": "work",
+							"value": "benjamin.leon@gmial.com",
+							"primary": true
+						}
+					]
+				}
+			},
+			{
+				"json": {
+					"id": 2,
+					"name": "[Sample] Kanushi Barnes",
+					"first_name": "[Sample] Kanushi",
+					"last_name": "Barnes",
+					"add_time": "2026-04-01T19:00:37Z",
+					"update_time": "2026-04-01T19:00:39Z",
+					"visible_to": 3,
+					"custom_fields": {
+						"test_number": null,
+						"test_enum": null,
+						"test_multi": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"org_id": null,
+					"is_deleted": false,
+					"picture_id": null,
+					"phones": [],
+					"emails": [
+						{
+							"label": "work",
+							"value": "kanushi.barnes@gmial.com",
+							"primary": true
+						}
+					]
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Pipedrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pipedrive": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

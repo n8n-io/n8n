@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import type { Mock } from 'vitest';
 
 import { CorsService } from '../cors-service';
 
@@ -6,11 +7,11 @@ describe('CorsService', () => {
 	let corsService: CorsService;
 	let mockRequest: Partial<Request>;
 	let mockResponse: Partial<Response>;
-	let headerSpy: jest.Mock;
+	let headerSpy: Mock;
 
 	beforeEach(() => {
 		corsService = new CorsService();
-		headerSpy = jest.fn();
+		headerSpy = vi.fn();
 
 		mockRequest = {
 			headers: {},
@@ -22,7 +23,7 @@ describe('CorsService', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('applyCorsHeaders()', () => {
@@ -61,7 +62,7 @@ describe('CorsService', () => {
 			expect(headerSpy).toHaveBeenCalledWith('Access-Control-Allow-Origin', 'https://app.com');
 
 			// Reset for next test
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			// Test 2: origin='https://anything.com', allowedOrigins=['*'] → true
 			mockRequest.headers = { origin: 'https://anything.com' };
@@ -111,7 +112,7 @@ describe('CorsService', () => {
 			expect(headerSpy).toHaveBeenCalledWith('Access-Control-Allow-Credentials', 'true');
 
 			// Reset for next test
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			// Test 2: allowCredentials=false → header 'false'
 			corsService.applyCorsHeaders(mockRequest as Request, mockResponse as Response, {
@@ -122,7 +123,7 @@ describe('CorsService', () => {
 			expect(headerSpy).toHaveBeenCalledWith('Access-Control-Allow-Credentials', 'false');
 
 			// Reset for next test
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			// Test 3: allowCredentials=undefined → header not set
 			corsService.applyCorsHeaders(mockRequest as Request, mockResponse as Response, {

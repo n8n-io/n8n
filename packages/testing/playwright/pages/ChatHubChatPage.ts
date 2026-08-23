@@ -7,6 +7,10 @@ import { ChatHubSidebar } from './components/ChatHubSidebar';
 import { ChatHubToolsModal } from './components/ChatHubToolsModal';
 
 export class ChatHubChatPage extends BasePage {
+	async goto() {
+		await this.page.goto('/home/chat');
+	}
+
 	readonly sidebar = new ChatHubSidebar(this.page.locator('#sidebar'));
 	readonly toolsModal = new ChatHubToolsModal(
 		this.page.getByRole('dialog').filter({ has: this.page.locator('[data-tools-manager-modal]') }),
@@ -48,7 +52,7 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getSelectedCredentialName(): Locator {
-		return this.getModelSelectorButton().locator('span.n8n-text').first();
+		return this.page.getByTestId('chat-model-selector-credential');
 	}
 
 	getChatInput(): Locator {
@@ -56,11 +60,24 @@ export class ChatHubChatPage extends BasePage {
 	}
 
 	getSendButton(): Locator {
-		return this.page.getByTitle('Send');
+		return this.page.getByTestId('chat-hub-send-message-button');
 	}
 
 	getChatMessages(): Locator {
 		return this.page.locator('[data-message-id]');
+	}
+
+	getMessageContentAt(index: number): Locator {
+		return this.getChatMessages().nth(index).getByTestId('chat-message-content');
+	}
+
+	/**
+	 * Asserts a reply streamed into the message at `index` by checking for any
+	 * non-whitespace content, rather than matching exact model-generated text.
+	 * This keeps assertions resilient to mocked-LLM fixture drift.
+	 */
+	async expectReplyAt(index: number): Promise<void> {
+		await expect(this.getMessageContentAt(index)).toContainText(/\S/);
 	}
 
 	getEditButtonAt(index: number): Locator {

@@ -3,43 +3,49 @@ import type { IHookFunctions, IWebhookFunctions } from 'n8n-workflow';
 import { stripeApiRequest } from '../helpers';
 import { StripeTrigger } from '../StripeTrigger.node';
 import { verifySignature } from '../StripeTriggerHelpers';
+import type { Mock } from 'vitest';
 
-jest.mock('../helpers', () => ({
-	stripeApiRequest: jest.fn(),
+vi.mock('../helpers', () => ({
+	stripeApiRequest: vi.fn(),
 }));
 
-jest.mock('../StripeTriggerHelpers', () => ({
-	verifySignature: jest.fn().mockResolvedValue(true),
+vi.mock('../StripeTriggerHelpers', () => ({
+	verifySignature: vi.fn().mockResolvedValue(true),
 }));
 
-const mockedStripeApiRequest = jest.mocked(stripeApiRequest);
-const mockedVerifySignature = jest.mocked(verifySignature);
+const mockedStripeApiRequest = vi.mocked(stripeApiRequest);
+const mockedVerifySignature = vi.mocked(verifySignature);
 
 describe('Stripe Trigger Node', () => {
 	let node: StripeTrigger;
 	let mockNodeFunctions: IHookFunctions;
+	let mockResponse: {
+		status: Mock;
+		send: Mock;
+		end: Mock;
+	};
 
 	beforeEach(() => {
 		node = new StripeTrigger();
 
 		mockNodeFunctions = {
-			getNodeWebhookUrl: jest.fn().mockReturnValue('https://webhook.url/test'),
-			getWorkflow: jest.fn().mockReturnValue({ id: 'test-workflow-id' }),
-			getNodeParameter: jest.fn(),
-			getCredentials: jest.fn(),
-			getWorkflowStaticData: jest.fn().mockReturnValue({}),
-			getNode: jest.fn().mockReturnValue({ name: 'StripeTrigger' }),
-			getWebhookName: jest.fn().mockReturnValue('default'),
-			getContext: jest.fn(),
-			getActivationMode: jest.fn(),
-			getMode: jest.fn(),
-			getNodeExecutionData: jest.fn(),
-			getRestApiUrl: jest.fn(),
-			getTimezone: jest.fn(),
+			getNodeWebhookUrl: vi.fn().mockReturnValue('https://webhook.url/test'),
+			getWorkflow: vi.fn().mockReturnValue({ id: 'test-workflow-id' }),
+			getNodeParameter: vi.fn(),
+			getCredentials: vi.fn(),
+			getWorkflowStaticData: vi.fn().mockReturnValue({}),
+			getNode: vi.fn().mockReturnValue({ name: 'StripeTrigger' }),
+			getWebhookName: vi.fn().mockReturnValue('default'),
+			getContext: vi.fn(),
+			getActivationMode: vi.fn(),
+			getMode: vi.fn(),
+			getNodeExecutionData: vi.fn(),
+			getRestApiUrl: vi.fn(),
+			getTimezone: vi.fn(),
 			helpers: {} as any,
 		} as unknown as IHookFunctions;
 
-		// (mockNodeFunctions.getCredentials as jest.Mock).mockResolvedValue({
+		// (mockNodeFunctions.getCredentials as Mock).mockResolvedValue({
 		// 	secretKey: 'sk_test_123',
 		// });
 
@@ -54,11 +60,11 @@ describe('Stripe Trigger Node', () => {
 	});
 
 	afterAll(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should not send API version in body if not specified', async () => {
-		(mockNodeFunctions.getNodeParameter as jest.Mock).mockImplementation((param) => {
+		(mockNodeFunctions.getNodeParameter as Mock).mockImplementation((param) => {
 			if (param === 'events') return ['*'];
 			return undefined;
 		});
@@ -80,7 +86,7 @@ describe('Stripe Trigger Node', () => {
 	});
 
 	it('should send API version in body if specified in node parameters', async () => {
-		(mockNodeFunctions.getNodeParameter as jest.Mock).mockImplementation((param) => {
+		(mockNodeFunctions.getNodeParameter as Mock).mockImplementation((param) => {
 			if (param === 'apiVersion') return '2025-05-28.basil';
 			if (param === 'events') return ['*'];
 			return undefined;
@@ -109,20 +115,21 @@ describe('Stripe Trigger Node', () => {
 		const rawBody = JSON.stringify(testBody);
 
 		beforeEach(() => {
+			mockResponse = {
+				status: vi.fn().mockReturnThis(),
+				send: vi.fn().mockReturnThis(),
+				end: vi.fn(),
+			};
 			mockWebhookFunctions = {
-				getBodyData: jest.fn().mockReturnValue(testBody),
-				getRequestObject: jest.fn().mockReturnValue({
+				getBodyData: vi.fn().mockReturnValue(testBody),
+				getRequestObject: vi.fn().mockReturnValue({
 					rawBody: Buffer.from(rawBody),
 					body: testBody,
 				}),
-				getResponseObject: jest.fn().mockReturnValue({
-					status: jest.fn().mockReturnThis(),
-					send: jest.fn().mockReturnThis(),
-					end: jest.fn(),
-				}),
-				getNodeParameter: jest.fn().mockReturnValue(['*']),
+				getResponseObject: vi.fn().mockReturnValue(mockResponse),
+				getNodeParameter: vi.fn().mockReturnValue(['*']),
 				helpers: {
-					returnJsonArray: jest.fn().mockImplementation((data) => [data]),
+					returnJsonArray: vi.fn().mockImplementation((data) => [data]),
 				},
 			} as unknown as IWebhookFunctions;
 
@@ -141,6 +148,17 @@ describe('Stripe Trigger Node', () => {
 			expect(mockedVerifySignature).toHaveBeenCalledWith();
 		});
 
+		it('should process webhook when verification is skipped because no secret is configured', async () => {
+			mockedVerifySignature.mockResolvedValue(true);
+
+			const result = await node.webhook.call(mockWebhookFunctions);
+
+			expect(result).toEqual({
+				workflowData: [[testBody]],
+			});
+			expect(mockedVerifySignature).toHaveBeenCalledWith();
+		});
+
 		it('should reject webhook with invalid signature', async () => {
 			mockedVerifySignature.mockResolvedValue(false);
 
@@ -149,14 +167,15 @@ describe('Stripe Trigger Node', () => {
 			expect(result).toEqual({
 				noWebhookResponse: true,
 			});
+			expect(mockResponse.status).toHaveBeenCalledWith(401);
+			expect(mockResponse.send).toHaveBeenCalledWith('Unauthorized');
+			expect(mockResponse.end).toHaveBeenCalledWith();
 			expect(mockedVerifySignature).toHaveBeenCalledWith();
 		});
 
 		it('should handle events filtering correctly', async () => {
 			mockedVerifySignature.mockResolvedValue(true);
-			(mockWebhookFunctions.getNodeParameter as jest.Mock).mockReturnValue([
-				'payment_intent.succeeded',
-			]);
+			(mockWebhookFunctions.getNodeParameter as Mock).mockReturnValue(['payment_intent.succeeded']);
 
 			const result = await node.webhook.call(mockWebhookFunctions);
 
@@ -165,7 +184,7 @@ describe('Stripe Trigger Node', () => {
 
 		it('should process webhook when event type matches filter', async () => {
 			mockedVerifySignature.mockResolvedValue(true);
-			(mockWebhookFunctions.getNodeParameter as jest.Mock).mockReturnValue(['charge.succeeded']);
+			(mockWebhookFunctions.getNodeParameter as Mock).mockReturnValue(['charge.succeeded']);
 
 			const result = await node.webhook.call(mockWebhookFunctions);
 

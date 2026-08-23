@@ -6,7 +6,7 @@ import { MAX_TAG_NAME_LENGTH } from '../tags.constants';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { v4 as uuid } from 'uuid';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 
 import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
 
@@ -143,11 +143,9 @@ async function onCreate() {
 
 		filter.value = '';
 	} catch (error) {
-		showError(
-			error,
-			i18n.baseText('tagsDropdown.showError.title'),
-			i18n.baseText('tagsDropdown.showError.message', { interpolate: { name } }),
-		);
+		showError(error, i18n.baseText('tagsDropdown.showError.title'), {
+			message: i18n.baseText('tagsDropdown.showError.message', { interpolate: { name } }),
+		});
 	}
 }
 

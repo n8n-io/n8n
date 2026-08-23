@@ -4,30 +4,35 @@ import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
 import { useDebounceFn } from '@vueuse/core';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '../projects.store';
+import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { Project, ProjectRelation, ProjectMemberData } from '../projects.types';
-import { useToast } from '@/app/composables/useToast';
-import { DEBOUNCE_TIME, getDebounceTime, VIEWS } from '@/app/constants';
+import { useToast } from '@n8n/composables/useToast';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME, VIEWS } from '@/app/constants';
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
-import { useRolesStore } from '@/app/stores/roles.store';
+import { useRolesStore } from '@n8n/stores/roles.store';
 import { ROLE } from '@n8n/api-types';
-import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectHeader from '../components/ProjectHeader.vue';
-import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system';
+import type { TableOptions } from '@n8n/design-system';
 import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
-import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
-import { N8nAlert } from '@n8n/design-system';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
+import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
+import { getResourcePermissions } from '@n8n/permissions';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 import {
+	N8nAlert,
 	N8nButton,
 	N8nFormInput,
 	N8nIcon,
@@ -49,11 +54,20 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
-const userRoleProvisioningStore = useUserRoleProvisioningStore();
+const settingsStore = useSettingsStore();
 const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();
+
+const canUpdateProject = computed(
+	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.update,
+);
+
+/** Changing the membership list is gated separately from editing project details. */
+const canManageMembers = computed(
+	() => !!getResourcePermissions(projectsStore.currentProject?.scopes).project.manageMembers,
+);
 
 const showSaveError = (error: Error) => {
 	toast.showError(error, i18n.baseText('projects.settings.save.error.title'));
@@ -63,26 +77,33 @@ const dialogVisible = ref(false);
 const upgradeDialogVisible = ref(false);
 
 const isDirty = ref(false);
-const isValid = ref(false);
+const isNameValid = ref(false);
+const isDescriptionValid = ref(true);
+const isTelemetryTagsValid = ref(true);
+const isValid = computed(
+	() => isNameValid.value && isDescriptionValid.value && isTelemetryTagsValid.value,
+);
 const resourceCounts = ref<ResourceCounts>({
 	credentials: -1,
 	dataTables: -1,
 	workflows: -1,
 });
-const formData = ref<Pick<Project, 'name' | 'description' | 'relations'>>({
+const formData = ref<
+	Pick<Project, 'name' | 'description' | 'relations'> & {
+		customTelemetryTags: NonNullable<Project['customTelemetryTags']>;
+	}
+>({
 	name: '',
 	description: '',
 	relations: [],
+	customTelemetryTags: [],
 });
 // Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
 const suppressNextSync = ref(false);
 
 const nameInput = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
-const projectIcon = ref<IconOrEmoji>({
-	type: 'icon',
-	value: 'layers',
-});
+const projectIcon = ref<IconOrEmoji>({ ...DEFAULT_PROJECT_ICON });
 
 const search = ref('');
 const membersTableState = ref<TableOptions>({
@@ -99,6 +120,10 @@ const userSearchQuery = ref('');
 const userSearchResults = ref<typeof usersStore.allUsers>([]);
 const isLoadingUsers = ref(false);
 
+const shouldFetchAllUsers = computed(
+	() => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }) || canManageMembers.value,
+);
+
 const usersList = computed(() =>
 	userSearchResults.value.filter((user) => {
 		const isAlreadySharedWithUser = (formData.value.relations || []).find((r) => r.id === user.id);
@@ -107,23 +132,25 @@ const usersList = computed(() =>
 	}),
 );
 
-const projects = computed(() =>
-	projectsStore.availableProjects.filter(
-		(project) => project.id !== projectsStore.currentProjectId,
-	),
-);
 const firstLicensedRole = computed(
 	() => rolesStore.processedProjectRoles.find((role) => role.licensed)?.slug,
 );
 
-const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => [
-	{
-		label: i18n.baseText('projects.settings.table.row.removeUser'),
-		value: 'remove',
-		guard: (member) =>
-			member.id !== usersStore.currentUser?.id && member.role !== 'project:personalOwner',
-	},
-]);
+const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => {
+	// Removing a member is part of managing the membership list, so it needs the
+	// same scope as adding one — otherwise the action 403s from the API.
+	if (rolesManaged.value || !canManageMembers.value) {
+		return [];
+	}
+	return [
+		{
+			label: i18n.baseText('projects.settings.table.row.removeUser'),
+			value: 'remove',
+			guard: (member) =>
+				member.id !== usersStore.currentUser?.id && member.role !== 'project:personalOwner',
+		},
+	];
+});
 
 const onAddMember = async (userId: string) => {
 	if (!projectsStore.currentProject) return;
@@ -208,6 +235,8 @@ const onTextInput = () => {
 	isDirty.value = true;
 };
 
+const telemetryTagsRef = ref<InstanceType<typeof ProjectSettingsCustomTelemetryTags> | null>(null);
+
 async function onRemoveMember(userId: string) {
 	const current = projectsStore.currentProject;
 	if (!current) return;
@@ -257,6 +286,10 @@ const resetFormData = () => {
 		: [];
 	formData.value.name = projectsStore.currentProject?.name ?? '';
 	formData.value.description = projectsStore.currentProject?.description ?? '';
+	formData.value.customTelemetryTags = projectsStore.currentProject?.customTelemetryTags
+		? deepCopy(projectsStore.currentProject.customTelemetryTags)
+		: [];
+	telemetryTagsRef.value?.resetTouched();
 };
 
 const onCancel = () => {
@@ -334,6 +367,9 @@ const updateProject = async () => {
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name ?? '',
 			description: formData.value.description ?? '',
+			...(settingsStore.isOtelCustomSpanAttributesEnabled
+				? { customTelemetryTags: formData.value.customTelemetryTags }
+				: {}),
 		});
 		isDirty.value = false;
 	} catch (error) {
@@ -363,8 +399,6 @@ const onSubmit = async () => {
 };
 
 const onDelete = async () => {
-	await projectsStore.getAvailableProjects();
-
 	if (projectsStore.currentProjectId) {
 		resourceCounts.value = await projectsStore.getResourceCounts(projectsStore.currentProjectId);
 	}
@@ -496,13 +530,22 @@ const searchUsers = async (query: string) => {
 
 	isLoadingUsers.value = true;
 	try {
-		// If query is empty, load initial set of users, otherwise search
-		const filter = query.trim() ? { fullText: query } : undefined;
-		await usersStore.fetchUsers({
-			take: 50,
-			filter,
-		});
-		// Get the search results from the store
+		const projectId = projectsStore.currentProject?.id;
+		if (!projectId) {
+			userSearchResults.value = [];
+			return;
+		}
+
+		const filter: Record<string, string> = {};
+		if (query.trim()) {
+			filter.fullText = query;
+		}
+		if (!shouldFetchAllUsers.value) {
+			filter.projectId = projectId;
+		}
+
+		await usersStore.fetchUsers({ take: 50, filter });
+
 		if (query.trim()) {
 			userSearchResults.value = usersStore.allUsers.filter((user) => {
 				const searchLower = query.toLowerCase();
@@ -511,7 +554,6 @@ const searchUsers = async (query: string) => {
 				return fullName.includes(searchLower) || email.includes(searchLower);
 			});
 		} else {
-			// Show all loaded users when no search query
 			userSearchResults.value = usersStore.allUsers;
 		}
 	} catch (error) {
@@ -524,19 +566,19 @@ const searchUsers = async (query: string) => {
 const debouncedUserSearch = useDebounceFn(searchUsers, getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH));
 
 onBeforeMount(async () => {
-	// Load initial set of users for dropdown
+	if (!canManageMembers.value) return;
 	await searchUsers('');
 });
 
-const isProjectRoleProvisioningEnabled = computed(
-	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionProjectRoles || false,
-);
+const rolesManaged = computed(() => projectsStore.currentProject?.rolesManaged ?? false);
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
-	selectProjectNameIfMatchesDefault();
 
-	await Promise.all([userRoleProvisioningStore.getProvisioningConfig(), rolesStore.fetchRoles()]);
+	if (!canUpdateProject.value && !canManageMembers.value) return;
+
+	selectProjectNameIfMatchesDefault();
+	await rolesStore.fetchRoles();
 });
 </script>
 
@@ -544,7 +586,7 @@ onMounted(async () => {
 	<div :class="$style.projectSettings" data-test-id="project-settings-container">
 		<div :class="$style.header">
 			<ProjectHeader />
-			<div :class="$style.headerRow">
+			<div v-if="canUpdateProject" :class="$style.headerRow">
 				<N8nText tag="h1" size="xlarge" class="pt-xs pb-m">
 					{{ i18n.baseText('projects.settings.info') }}
 				</N8nText>
@@ -569,132 +611,151 @@ onMounted(async () => {
 			</div>
 		</div>
 		<form @submit.prevent="onSubmit">
-			<fieldset>
-				<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
-				<div :class="$style.projectName">
-					<N8nIconPicker
-						v-model="projectIcon"
-						:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
-						@update:model-value="onIconUpdated"
-					/>
+			<template v-if="canUpdateProject">
+				<fieldset>
+					<label for="projectName">{{ i18n.baseText('projects.settings.name') }}</label>
+					<div :class="$style.projectName">
+						<N8nIconPicker
+							v-model="projectIcon"
+							:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
+							show-color-picker
+							@update:model-value="onIconUpdated"
+						/>
+						<N8nFormInput
+							id="projectName"
+							ref="nameInput"
+							v-model="formData.name"
+							label=""
+							type="text"
+							name="name"
+							required
+							data-test-id="project-settings-name-input"
+							:class="$style.projectNameInput"
+							@enter="onSubmit"
+							@input="onTextInput"
+							@validate="isNameValid = $event"
+						/>
+					</div>
+				</fieldset>
+				<fieldset>
+					<label for="projectDescription">{{
+						i18n.baseText('projects.settings.description')
+					}}</label>
 					<N8nFormInput
-						id="projectName"
-						ref="nameInput"
-						v-model="formData.name"
+						id="projectDescription"
+						v-model="formData.description"
 						label=""
-						type="text"
-						name="name"
-						required
-						data-test-id="project-settings-name-input"
-						:class="$style.projectNameInput"
+						name="description"
+						type="textarea"
+						:maxlength="512"
+						:autosize="true"
+						data-test-id="project-settings-description-input"
+						:class="$style.projectDescriptionInput"
 						@enter="onSubmit"
 						@input="onTextInput"
-						@validate="isValid = $event"
+						@validate="isDescriptionValid = $event"
 					/>
-				</div>
-			</fieldset>
-			<fieldset>
-				<label for="projectDescription">{{ i18n.baseText('projects.settings.description') }}</label>
-				<N8nFormInput
-					id="projectDescription"
-					v-model="formData.description"
-					label=""
-					name="description"
-					type="textarea"
-					:maxlength="512"
-					:autosize="true"
-					data-test-id="project-settings-description-input"
-					:class="$style.projectDescriptionInput"
-					@enter="onSubmit"
-					@input="onTextInput"
-					@validate="isValid = $event"
-				/>
-			</fieldset>
+				</fieldset>
+			</template>
 
 			<ProjectExternalSecrets :class="$style.externalSecrets" />
 
-			<fieldset id="projectMembers">
-				<h3>
-					<label for="projectMembers">{{
-						i18n.baseText('projects.settings.projectMembers')
-					}}</label>
-				</h3>
-				<div :class="[$style.membersInputRow, 'mb-s']">
-					<N8nUserSelect
-						id="projectMembers"
-						:class="$style.userSelect"
+			<template v-if="canUpdateProject || canManageMembers">
+				<fieldset id="projectMembers">
+					<h3>
+						<label for="projectMembers">{{
+							i18n.baseText('projects.settings.projectMembers')
+						}}</label>
+					</h3>
+					<div :class="[$style.membersInputRow, 'mb-s']">
+						<N8nUserSelect
+							id="projectMembers"
+							:class="$style.userSelect"
+							size="large"
+							:users="usersList"
+							:current-user-id="usersStore.currentUser?.id"
+							:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
+							data-test-id="project-members-select"
+							remote
+							:remote-method="debouncedUserSearch"
+							:loading="isLoadingUsers"
+							:disabled="rolesManaged || !canManageMembers"
+							@update:model-value="onAddMember"
+						>
+							<template #prefix>
+								<N8nIcon icon="search" />
+							</template>
+						</N8nUserSelect>
+						<N8nInput
+							v-if="shouldShowSearch"
+							:class="$style.search"
+							:model-value="search"
+							:placeholder="i18n.baseText('projects.settings.members.search.placeholder')"
+							clearable
+							data-test-id="project-members-search"
+							@update:model-value="onSearch"
+						>
+							<template #prefix>
+								<N8nIcon icon="search" />
+							</template>
+						</N8nInput>
+					</div>
+					<div v-if="rolesManaged" class="mb-m" data-test-id="project-roles-managed-notice">
+						<N8nAlert
+							type="info"
+							:title="i18n.baseText('settings.projectRolesManaged.description')"
+						/>
+					</div>
+					<div v-if="relationUsers.length > 0" :class="$style.membersTableContainer">
+						<ProjectMembersTable
+							v-model:table-options="membersTableState"
+							data-test-id="project-members-table"
+							:data="filteredMembersData"
+							:current-user-id="usersStore.currentUser?.id"
+							:project-roles="rolesStore.processedProjectRoles"
+							:actions="projectMembersActions"
+							:can-edit-role="!rolesManaged && canManageMembers"
+							@update:options="onUpdateMembersTableOptions"
+							@update:role="onUpdateMemberRole"
+							@show-role-upgrade-dialog="upgradeDialogVisible = true"
+							@action="onMembersListAction"
+						/>
+					</div>
+				</fieldset>
+			</template>
+
+			<template v-if="canUpdateProject">
+				<fieldset v-if="settingsStore.isOtelCustomSpanAttributesEnabled">
+					<h3>
+						<label>{{ i18n.baseText('projects.settings.customSpanAttributes.label') }}</label>
+					</h3>
+					<ProjectSettingsCustomTelemetryTags
+						ref="telemetryTagsRef"
+						v-model="formData.customTelemetryTags"
+						@update:model-value="onTextInput"
+						@validate="isTelemetryTagsValid = $event"
+					/>
+				</fieldset>
+				<fieldset>
+					<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
+					<small :class="$style.danger">{{
+						i18n.baseText('projects.settings.danger.message')
+					}}</small>
+					<N8nButton
+						variant="subtle"
 						size="large"
-						:users="usersList"
-						:current-user-id="usersStore.currentUser?.id"
-						:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
-						data-test-id="project-members-select"
-						remote
-						:remote-method="debouncedUserSearch"
-						:loading="isLoadingUsers"
-						@update:model-value="onAddMember"
-						:disabled="isProjectRoleProvisioningEnabled"
+						native-type="button"
+						data-test-id="project-settings-delete-button"
+						@click.stop.prevent="onDelete"
+						>{{ i18n.baseText('projects.settings.danger.deleteProject') }}</N8nButton
 					>
-						<template #prefix>
-							<N8nIcon icon="search" />
-						</template>
-					</N8nUserSelect>
-					<N8nInput
-						v-if="shouldShowSearch"
-						:class="$style.search"
-						:model-value="search"
-						:placeholder="i18n.baseText('projects.settings.members.search.placeholder')"
-						clearable
-						data-test-id="project-members-search"
-						@update:model-value="onSearch"
-					>
-						<template #prefix>
-							<N8nIcon icon="search" />
-						</template>
-					</N8nInput>
-				</div>
-				<div v-if="isProjectRoleProvisioningEnabled" class="mb-m">
-					<N8nAlert
-						type="info"
-						:title="
-							i18n.baseText('settings.provisioningProjectRolesHandledBySsoProvider.description')
-						"
-					/>
-				</div>
-				<div v-if="relationUsers.length > 0" :class="$style.membersTableContainer">
-					<ProjectMembersTable
-						v-model:table-options="membersTableState"
-						data-test-id="project-members-table"
-						:data="filteredMembersData"
-						:current-user-id="usersStore.currentUser?.id"
-						:project-roles="rolesStore.processedProjectRoles"
-						:actions="projectMembersActions"
-						:can-edit-role="!isProjectRoleProvisioningEnabled"
-						@update:options="onUpdateMembersTableOptions"
-						@update:role="onUpdateMemberRole"
-						@action="onMembersListAction"
-					/>
-				</div>
-			</fieldset>
-			<fieldset>
-				<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
-				<small :class="$style.danger">{{
-					i18n.baseText('projects.settings.danger.message')
-				}}</small>
-				<N8nButton
-					variant="subtle"
-					size="large"
-					native-type="button"
-					data-test-id="project-settings-delete-button"
-					@click.stop.prevent="onDelete"
-					>{{ i18n.baseText('projects.settings.danger.deleteProject') }}</N8nButton
-				>
-			</fieldset>
+				</fieldset>
+			</template>
 		</form>
 		<ProjectDeleteDialog
 			v-model="dialogVisible"
 			:current-project="projectsStore.currentProject"
 			:resource-counts="resourceCounts"
-			:projects="projects"
 			@confirm-delete="onConfirmDelete"
 		/>
 		<ProjectRoleUpgradeDialog

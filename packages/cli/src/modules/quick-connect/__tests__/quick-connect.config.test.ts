@@ -55,6 +55,48 @@ describe('QuickConnectConfig', () => {
 		expect(options[0].consentText).toBe('Allow access to your account?');
 	});
 
+	it('parses valid config with disclaimer', () => {
+		const testConfig = [
+			{
+				packageName: '@n8n/superagent',
+				credentialType: 'agentApi',
+				text: 'Superagent for everyone',
+				quickConnectType: 'oauth',
+				disclaimer: {
+					text: 'Offer subject to terms (available {link}).',
+					linkUrl: 'https://example.com/terms',
+					linkLabel: 'here',
+				},
+			},
+		];
+		process.env.N8N_QUICK_CONNECT_OPTIONS = JSON.stringify(testConfig);
+
+		const { options } = Container.get(QuickConnectConfig);
+
+		expect(options).toEqual(testConfig);
+		expect(options[0].disclaimer?.linkUrl).toBe('https://example.com/terms');
+	});
+
+	it('parses disclaimer without optional linkLabel', () => {
+		const testConfig = [
+			{
+				packageName: '@n8n/superagent',
+				credentialType: 'agentApi',
+				text: 'Superagent for everyone',
+				quickConnectType: 'oauth',
+				disclaimer: {
+					text: 'Offer subject to terms (available {link}).',
+					linkUrl: 'https://example.com/terms',
+				},
+			},
+		];
+		process.env.N8N_QUICK_CONNECT_OPTIONS = JSON.stringify(testConfig);
+
+		const { options } = Container.get(QuickConnectConfig);
+
+		expect(options).toEqual(testConfig);
+	});
+
 	it('handles empty JSON array', () => {
 		process.env.N8N_QUICK_CONNECT_OPTIONS = '[]';
 
@@ -155,6 +197,50 @@ describe('QuickConnectConfig', () => {
 					quickConnectType: 'backend',
 					backendFlowConfig: {
 						secret: 'test',
+					},
+				},
+			]),
+		],
+		[
+			'disclaimer text missing {link} placeholder',
+			JSON.stringify([
+				{
+					packageName: '@n8n/superagent',
+					credentialType: 'agentApi',
+					text: 'Superagent for everyone',
+					quickConnectType: 'oauth',
+					disclaimer: {
+						text: 'No placeholder here.',
+						linkUrl: 'https://example.com/terms',
+					},
+				},
+			]),
+		],
+		[
+			'disclaimer linkUrl is not a valid URL',
+			JSON.stringify([
+				{
+					packageName: '@n8n/superagent',
+					credentialType: 'agentApi',
+					text: 'Superagent for everyone',
+					quickConnectType: 'oauth',
+					disclaimer: {
+						text: 'Subject to terms (available {link}).',
+						linkUrl: 'not-a-url',
+					},
+				},
+			]),
+		],
+		[
+			'disclaimer missing linkUrl',
+			JSON.stringify([
+				{
+					packageName: '@n8n/superagent',
+					credentialType: 'agentApi',
+					text: 'Superagent for everyone',
+					quickConnectType: 'oauth',
+					disclaimer: {
+						text: 'Subject to terms (available {link}).',
 					},
 				},
 			]),

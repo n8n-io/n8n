@@ -28,7 +28,7 @@ export class PageB {
 `,
 		);
 
-		const violations = rule.analyze(project, [file1, file2]);
+		const violations = rule.analyzeProject(project, [file1, file2]);
 
 		expect(violations.length).toBeGreaterThanOrEqual(1);
 		expect(violations[0].message).toContain('my-button');
@@ -56,7 +56,7 @@ export class PageB {
 `,
 		);
 
-		const violations = rule.analyze(project, [file1, file2]);
+		const violations = rule.analyzeProject(project, [file1, file2]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -77,7 +77,7 @@ export class PageA {
 `,
 		);
 
-		const violations = rule.analyze(project, [file]);
+		const violations = rule.analyzeProject(project, [file]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -104,7 +104,7 @@ export class ComponentA {
 `,
 		);
 
-		const violations = rule.analyze(project, [pageFile, componentFile]);
+		const violations = rule.analyzeProject(project, [pageFile, componentFile]);
 
 		expect(violations).toHaveLength(0);
 	});
@@ -131,7 +131,7 @@ export class PageB {
 `,
 		);
 
-		const violations = rule.analyze(project, [file1, file2]);
+		const violations = rule.analyzeProject(project, [file1, file2]);
 
 		expect(violations).toHaveLength(0);
 	});

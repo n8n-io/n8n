@@ -3,6 +3,7 @@ import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeProperties,
+	JsonObject,
 } from 'n8n-workflow';
 
 import { fromEmailProperty, toEmailProperty } from './descriptions';
@@ -17,6 +18,7 @@ import {
 	getSendAndWaitConfig,
 	getSendAndWaitProperties,
 } from '../../../utils/sendAndWait/utils';
+import { toMailString } from '../utils';
 
 export const description: INodeProperties[] = getSendAndWaitProperties(
 	[fromEmailProperty, toEmailProperty],
@@ -24,8 +26,8 @@ export const description: INodeProperties[] = getSendAndWaitProperties(
 );
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	const fromEmail = this.getNodeParameter('fromEmail', 0) as string;
-	const toEmail = this.getNodeParameter('toEmail', 0) as string;
+	const fromEmail = toMailString(this.getNodeParameter('fromEmail', 0));
+	const toEmail = toMailString(this.getNodeParameter('toEmail', 0));
 
 	const config = getSendAndWaitConfig(this);
 	const buttons: string[] = [];
@@ -52,7 +54,14 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const credentials = await this.getCredentials('smtp');
 	const transporter = configureTransport(credentials, {});
 
-	await transporter.sendMail(mailOptions);
+	try {
+		await transporter.sendMail(mailOptions);
+	} catch (error) {
+		if (this.continueOnFail()) {
+			return [[{ json: { error: (error as JsonObject).message } }]];
+		}
+		throw error;
+	}
 
 	const waitTill = configureWaitTillDate(this);
 

@@ -5,7 +5,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { hasRole } from '@/app/utils/rbac/checks';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const WorkflowsView = async () => await import('@/app/views/WorkflowsView.vue');
 const CredentialsView = async () =>
@@ -147,7 +147,14 @@ export const projectsRoutes: RouteRecordRaw[] = [
 										const project = useProjectsStore().myProjects.find(
 											(p) => p.id === options?.to.params.projectId,
 										);
-										return !!getResourcePermissions(project?.scopes).project.update;
+										const permissions = getResourcePermissions(project?.scopes);
+										// Mirrors ProjectHeader's showSettings: any one section's
+										// scope is enough to enter the settings page.
+										return (
+											!!permissions.project.update ||
+											!!permissions.project.manageMembers ||
+											!!permissions.externalSecretsProvider.read
+										);
 									},
 								},
 							},

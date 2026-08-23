@@ -120,7 +120,7 @@ describe('Prompt Categorization Chain - Integration Tests', () => {
 	const skipTests = !shouldRunIntegrationTests();
 
 	// Set default timeout for all tests in this suite
-	jest.setTimeout(120000); // 2 minutes for comprehensive suite
+	vi.setConfig({ testTimeout: 120000 }); // 2 minutes for comprehensive suite
 
 	beforeAll(async () => {
 		if (skipTests) {

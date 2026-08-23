@@ -33,4 +33,11 @@ export const FOLDER_LIST_ITEM_ACTIONS = {
 	CHOWN: 'change_owner',
 	TAGS: 'manage_tags',
 	DELETE: 'delete',
+	TOGGLE_FAVORITE: 'toggleFavorite',
 };
+
+export const MCP_ACCESS_ACTIONS = {
+	MANAGE: 'manageMcpAccess',
+	ENABLE: 'enableMcpAccess',
+	DISABLE: 'disableMcpAccess',
+} as const;

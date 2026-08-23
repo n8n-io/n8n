@@ -1,15 +1,23 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import {
+	CRON_NODE_TYPE,
+	INTERVAL_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	WORKFLOW_SETTINGS_MODAL_KEY,
+} from '@/app/constants';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
+import { useExecutionRedaction } from '@/features/execution/executions/composables/useExecutionRedaction';
 import uniqBy from 'lodash/uniqBy';
 import {
 	type INodeInputConfiguration,
 	type INodeOutputConfiguration,
-	type Workflow,
 	type NodeConnectionType,
 	NodeConnectionTypes,
 	NodeHelpers,
@@ -18,6 +26,7 @@ import { computed, ref, watch } from 'vue';
 import InputNodeSelect from './InputNodeSelect.vue';
 import NodeExecuteButton from '@/app/components/NodeExecuteButton.vue';
 import NDVEmptyState from './NDVEmptyState.vue';
+import RedactedDataState from './RedactedDataState.vue';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import WireMeUp from './WireMeUp.vue';
 import { type IRunDataDisplayMode } from '@/Interface';
@@ -26,13 +35,11 @@ import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 import { useRouter } from 'vue-router';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 
-import { N8nIcon, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { N8nSegmentControl, N8nText } from '@n8n/design-system';
 type MappingMode = 'debugging' | 'mapping';
 
 export type Props = {
 	runIndex: number;
-	workflowObject: Workflow;
 	pushRef: string;
 	activeNodeName: string;
 	currentNodeName?: string;
@@ -79,15 +86,14 @@ const emit = defineEmits<{
 	changeInputNode: [nodeName: string, index: number];
 	execute: [];
 	activatePane: [];
+	openSettings: [];
 	displayModeChange: [IRunDataDisplayMode];
 }>();
 
 const i18n = useI18n();
 const telemetry = useTelemetry();
 
-const showDraggableHintWithDelay = ref(false);
 const draggableHintShown = ref(false);
-
 const mappedNode = ref<string | null>(null);
 const collapsingColumnName = ref<string | null>(null);
 const inputModes = [
@@ -95,35 +101,47 @@ const inputModes = [
 	{ value: 'debugging', label: i18n.baseText('ndv.input.fromAI') },
 ];
 
+const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+const workflowExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
 const router = useRouter();
 const { runWorkflow } = useRunWorkflow({ router });
+const { canReveal, isDynamicCredentials, revealData } = useExecutionRedaction();
+const uiStore = useUIStore();
 
-const activeNode = computed(() => workflowsStore.getNodeByName(props.activeNodeName));
+const workflowObject = computed(() =>
+	workflowDocumentStore.value.getWorkflowObjectAccessorSnapshot(),
+);
+
+const openWorkflowSettings = () => {
+	uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+};
+
+const activeNode = computed(
+	() => workflowDocumentStore?.value?.getNodeByName(props.activeNodeName) ?? null,
+);
 
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	return workflowsStore.findRootWithMainConnection(activeNode.value.name);
+	return workflowDocumentStore?.value?.findRootWithMainConnection(activeNode.value.name) ?? null;
 });
 
 const hasRootNodeRun = computed(() => {
-	return !!(
-		rootNode.value && workflowsStore.getWorkflowExecution?.data?.resultData.runData[rootNode.value]
-	);
+	return !!(rootNode.value && workflowExecution.value?.data?.resultData.runData[rootNode.value]);
 });
 
 const inputMode = ref<MappingMode>(
 	// Show debugging mode by default only when the node has already run
-	activeNode.value &&
-		workflowsStore.getWorkflowExecution?.data?.resultData.runData[activeNode.value.name]
+	activeNode.value && workflowExecution.value?.data?.resultData.runData[activeNode.value.name]
 		? 'debugging'
 		: 'mapping',
 );
 
 const isMappingMode = computed(() => isActiveNodeConfig.value && inputMode.value === 'mapping');
+
 const showDraggableHint = computed(() => {
 	const toIgnore = [MANUAL_TRIGGER_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
 	if (!currentNode.value || toIgnore.includes(currentNode.value.type)) {
@@ -137,12 +155,12 @@ const isActiveNodeConfig = computed(() => {
 	let inputs = activeNodeType.value?.inputs ?? [];
 	let outputs = activeNodeType.value?.outputs ?? [];
 
-	if (props.workflowObject && activeNode.value) {
-		const node = props.workflowObject.getNode(activeNode.value.name);
+	if (activeNode.value) {
+		const node = workflowDocumentStore.value.getNodeByName(activeNode.value.name);
 
 		if (node && activeNodeType.value) {
-			inputs = NodeHelpers.getNodeInputs(props.workflowObject, node, activeNodeType.value);
-			outputs = NodeHelpers.getNodeOutputs(props.workflowObject, node, activeNodeType.value);
+			inputs = NodeHelpers.getNodeInputs(workflowObject.value, node, activeNodeType.value);
+			outputs = NodeHelpers.getNodeOutputs(workflowObject.value, node, activeNodeType.value);
 		}
 	}
 
@@ -171,16 +189,16 @@ const isMappingEnabled = computed(() => {
 	return true;
 });
 const isExecutingPrevious = computed(() => {
-	if (!workflowsStore.isWorkflowRunning) {
+	if (!workflowExecutionStateStore.value.isWorkflowRunning) {
 		return false;
 	}
-	const triggeredNode = workflowsStore.executedNode;
-	const executingNode = workflowState.executingNode.executingNode;
+	const triggeredNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
+	const executingNode = workflowExecutionStateStore.value.executingNode.executingNode;
 
 	if (
 		activeNode.value &&
 		triggeredNode === activeNode.value.name &&
-		workflowState.executingNode.isNodeExecuting(props.currentNodeName)
+		workflowExecutionStateStore.value.executingNode.isNodeExecuting(props.currentNodeName)
 	) {
 		return true;
 	}
@@ -188,7 +206,8 @@ const isExecutingPrevious = computed(() => {
 	if (executingNode.length || triggeredNode) {
 		return !!parentNodes.value.find(
 			(node) =>
-				workflowState.executingNode.isNodeExecuting(node.name) || node.name === triggeredNode,
+				workflowExecutionStateStore.value.executingNode.isNodeExecuting(node.name) ||
+				node.name === triggeredNode,
 		);
 	}
 	return false;
@@ -196,14 +215,14 @@ const isExecutingPrevious = computed(() => {
 
 const rootNodesParents = computed(() => {
 	if (!rootNode.value) return [];
-	return props.workflowObject.getParentNodesByDepth(rootNode.value);
+	return workflowObject.value.getParentNodesByDepth(rootNode.value);
 });
 
 const currentNode = computed(() => {
 	if (isActiveNodeConfig.value) {
 		// if we're mapping node we want to show the output of the mapped node
 		if (mappedNode.value) {
-			return workflowsStore.getNodeByName(mappedNode.value);
+			return workflowDocumentStore?.value?.getNodeByName(mappedNode.value) ?? null;
 		}
 
 		// in debugging mode data does get set manually and is only for debugging
@@ -211,7 +230,7 @@ const currentNode = computed(() => {
 		return activeNode.value;
 	}
 
-	return workflowsStore.getNodeByName(props.currentNodeName ?? '');
+	return workflowDocumentStore?.value?.getNodeByName(props.currentNodeName ?? '') ?? null;
 });
 
 const connectedCurrentNodeOutputs = computed(() => {
@@ -223,7 +242,7 @@ const parentNodes = computed(() => {
 		return [];
 	}
 
-	const parents = props.workflowObject
+	const parents = workflowObject.value
 		.getParentNodesByDepth(activeNode.value.name)
 		.filter((parent) => parent.name !== activeNode.value?.name);
 	return uniqBy(parents, (parent) => parent.name);
@@ -243,13 +262,17 @@ const activeNodeType = computed(() => {
 
 const waitingMessage = computed(() => {
 	const parentNode = parentNodes.value[0];
-	return (
-		parentNode &&
-		waitingNodeTooltip(workflowsStore.getNodeByName(parentNode.name), props.workflowObject)
+	if (!parentNode) return '';
+
+	const runData = workflowExecution.value?.data?.resultData?.runData;
+	const parentRunData = runData?.[parentNode.name]?.[0];
+
+	return waitingNodeTooltip(
+		workflowDocumentStore?.value?.getNodeByName(parentNode.name) ?? null,
+		workflowObject.value,
+		parentRunData?.metadata,
 	);
 });
-
-const isNDVV2 = computed(() => true);
 
 const nodeNameToExecute = computed(
 	() => (isActiveNodeConfig.value ? rootNode.value : activeNode.value?.name) ?? '',
@@ -269,24 +292,21 @@ watch(
 	{ immediate: true },
 );
 
-watch(showDraggableHint, (curr, prev) => {
-	if (curr && !prev) {
-		setTimeout(() => {
-			if (draggableHintShown.value) {
-				return;
-			}
-			showDraggableHintWithDelay.value = showDraggableHint.value;
-			if (showDraggableHintWithDelay.value) {
-				draggableHintShown.value = true;
+// The drag-from-previous hint itself only ever rendered in the legacy NDV, but the
+// "user had a mappable input focused with nothing to map from" signal is still live
+// here, so keep reporting it. Fires at most once per mount, and only if the input is
+// still focused a second later.
+watch(showDraggableHint, (isHinting, wasHinting) => {
+	if (!isHinting || wasHinting) return;
 
-				telemetry.track('User viewed data mapping tooltip', {
-					type: 'unexecuted input pane',
-				});
-			}
-		}, 1000);
-	} else if (!curr) {
-		showDraggableHintWithDelay.value = false;
-	}
+	setTimeout(() => {
+		if (draggableHintShown.value || !showDraggableHint.value) return;
+
+		draggableHintShown.value = true;
+		telemetry.track('User viewed data mapping tooltip', {
+			type: 'unexecuted input pane',
+		});
+	}, 1000);
 });
 
 function filterOutConnectionType(
@@ -314,7 +334,7 @@ function onNodeExecute() {
 	if (activeNode.value) {
 		telemetry.track('User clicked ndv button', {
 			node_type: activeNode.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			push_ref: props.pushRef,
 			pane: 'input',
 			type: 'executePrevious',
@@ -360,7 +380,7 @@ function onConnectionHelpClick() {
 	if (activeNode.value) {
 		telemetry.track('User clicked ndv link', {
 			node_type: activeNode.value.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowId.value,
 			push_ref: props.pushRef,
 			pane: 'input',
 			type: 'not-connected-help',
@@ -379,7 +399,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 <template>
 	<RunData
-		:class="[$style.runData, { [$style.runDataV2]: isNDVV2 }]"
+		:class="$style.runData"
 		:node="currentNode"
 		:nodes="isMappingMode ? rootNodesParents : parentNodes"
 		:workflow-object="workflowObject"
@@ -414,16 +434,16 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		@collapsing-table-column-changed="handleChangeCollapsingColumn"
 	>
 		<template #header>
-			<div :class="[$style.titleSection, { [$style.titleSectionV2]: isNDVV2 }]">
+			<div :class="$style.titleSection">
 				<N8nText
 					:bold="true"
 					color="text-light"
 					:size="compact ? 'small' : 'medium'"
-					:class="[$style.title, { [$style.titleV2]: isNDVV2 }]"
+					:class="$style.title"
 				>
 					{{ i18n.baseText('ndv.input') }}
 				</N8nText>
-				<N8nRadioButtons
+				<N8nSegmentControl
 					v-if="isActiveNodeConfig && !readOnly"
 					data-test-id="input-panel-mode"
 					:options="inputModes"
@@ -436,7 +456,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<InputNodeSelect
 				v-if="parentNodes.length && currentNodeName"
 				:model-value="currentNodeName"
-				:workflow="workflowObject"
 				:nodes="parentNodes"
 				@update:model-value="onInputNodeChange"
 			/>
@@ -450,7 +469,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 			<div :class="$style.mappedNode">
 				<InputNodeSelect
 					:model-value="mappedNode"
-					:workflow="workflowObject"
 					:nodes="rootNodesParents"
 					@update:model-value="onMappedNodeSelected"
 				/>
@@ -481,25 +499,22 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					</I18nT>
 				</NDVEmptyState>
 
-				<template v-else-if="isNDVV2">
-					<NDVEmptyState
-						v-if="readOnly"
-						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
-					/>
+				<template v-else>
+					<NDVEmptyState v-if="readOnly" :title="i18n.baseText('ndv.input.noOutputData.title')" />
 					<NDVEmptyState
 						v-else-if="isMappingEnabled || hasRootNodeRun"
-						:title="i18n.baseText('ndv.input.noOutputData.v2.title')"
+						:title="i18n.baseText('ndv.input.noOutputData.title')"
 						icon="arrow-right-to-line"
 					>
-						<I18nT tag="span" keypath="ndv.input.noOutputData.v2.description" scope="global">
+						<I18nT tag="span" keypath="ndv.input.noOutputData.description" scope="global">
 							<template #link>
 								<NodeExecuteButton
 									hide-icon
 									transparent
-									type="secondary"
+									variant="subtle"
 									:node-name="nodeNameToExecute"
-									:label="i18n.baseText('ndv.input.noOutputData.v2.action')"
-									:tooltip="i18n.baseText('ndv.input.noOutputData.v2.tooltip')"
+									:label="i18n.baseText('ndv.input.noOutputData.action')"
+									:tooltip="i18n.baseText('ndv.input.noOutputData.tooltip')"
 									tooltip-placement="bottom"
 									telemetry-source="inputs"
 									data-test-id="execute-previous-node"
@@ -535,74 +550,14 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						</template>
 					</NDVEmptyState>
 				</template>
-
-				<template v-else>
-					<template v-if="isMappingEnabled || hasRootNodeRun">
-						<NDVEmptyState :title="i18n.baseText('ndv.input.noOutputData.title')" />
-					</template>
-					<template v-else>
-						<NDVEmptyState :title="i18n.baseText('ndv.input.rootNodeHasNotRun.title')">
-							<I18nT tag="span" keypath="ndv.input.rootNodeHasNotRun.description" scope="global">
-								<template #link>
-									<a
-										href="#"
-										data-test-id="switch-to-mapping-mode-link"
-										@click.prevent="onInputModeChange('mapping')"
-										>{{ i18n.baseText('ndv.input.rootNodeHasNotRun.description.link') }}</a
-									>
-								</template>
-							</I18nT>
-						</NDVEmptyState>
-					</template>
-					<NodeExecuteButton
-						v-if="!readOnly"
-						type="secondary"
-						hide-icon
-						:transparent="true"
-						:node-name="nodeNameToExecute"
-						:label="i18n.baseText('ndv.input.noOutputData.executePrevious')"
-						class="mt-m"
-						telemetry-source="inputs"
-						data-test-id="execute-previous-node"
-						execution-mode="exclusive"
-						tooltip-placement="bottom"
-						:show-loading-spinner="false"
-						@execute="onNodeExecute"
-					>
-						<template
-							v-if="showDraggableHint && showDraggableHintWithDelay"
-							#persistentTooltipContent
-						>
-							<div
-								v-n8n-html="
-									i18n.baseText('dataMapping.dragFromPreviousHint', {
-										interpolate: { name: focusedMappableInput },
-									})
-								"
-							></div>
-						</template>
-					</NodeExecuteButton>
-					<N8nText v-if="!readOnly" tag="div" size="small">
-						<I18nT keypath="ndv.input.noOutputData.hint" scope="global">
-							<template #info>
-								<N8nTooltip placement="bottom">
-									<template #content>
-										{{ i18n.baseText('ndv.input.noOutputData.hint.tooltip') }}
-									</template>
-									<N8nIcon icon="circle-help" />
-								</N8nTooltip>
-							</template>
-						</I18nT>
-					</N8nText>
-				</template>
 			</div>
 			<div v-else :class="$style.notConnected">
-				<NDVEmptyState v-if="isNDVV2" :title="i18n.baseText('ndv.input.notConnected.v2.title')">
+				<NDVEmptyState :title="i18n.baseText('ndv.input.notConnected.title')">
 					<template #icon>
 						<WireMeUp />
 					</template>
 					<template #description>
-						<I18nT tag="span" keypath="ndv.input.notConnected.v2.description" scope="global">
+						<I18nT tag="span" keypath="ndv.input.notConnected.description" scope="global">
 							<template #link>
 								<a
 									href="https://docs.n8n.io/workflows/components/connections/"
@@ -615,25 +570,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						</I18nT>
 					</template>
 				</NDVEmptyState>
-
-				<template v-else>
-					<div>
-						<WireMeUp />
-					</div>
-					<N8nText tag="div" :bold="true" color="text-dark" size="large">{{
-						i18n.baseText('ndv.input.notConnected.title')
-					}}</N8nText>
-					<N8nText tag="div">
-						{{ i18n.baseText('ndv.input.notConnected.message') }}
-						<a
-							href="https://docs.n8n.io/workflows/components/connections/"
-							target="_blank"
-							@click="onConnectionHelpClick"
-						>
-							{{ i18n.baseText('ndv.input.notConnected.learnMore') }}
-						</a>
-					</N8nText>
-				</template>
 			</div>
 		</template>
 
@@ -652,16 +588,32 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 				{{ i18n.baseText('executionDetails.executionFailed.recoveredNodeMessage') }}
 			</NDVEmptyState>
 		</template>
+
+		<template #data-redacted>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.input.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
+		</template>
+
+		<template #redacted-error>
+			<RedactedDataState
+				:title="i18n.baseText('ndv.input.redacted.title')"
+				:is-dynamic-credentials="isDynamicCredentials"
+				:can-reveal="canReveal"
+				@open-settings="openWorkflowSettings"
+				@reveal="revealData"
+			/>
+		</template>
 	</RunData>
 </template>
 
 <style lang="scss" module>
 .runData {
-	background-color: var(--run-data--color--background);
-}
-
-.runDataV2 {
-	background-color: var(--ndvv2--run-data--color--background);
+	background-color: var(--ndv--run-data--color--background);
 }
 
 .mappedNode {
@@ -672,15 +624,13 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 	display: flex;
 	max-width: 300px;
 	align-items: center;
+	padding-left: var(--spacing--4xs);
 
 	> * {
 		margin-right: var(--spacing--2xs);
 	}
 }
 
-.titleSectionV2 {
-	padding-left: var(--spacing--4xs);
-}
 .inputModeTab {
 	margin-left: auto;
 }
@@ -706,10 +656,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 
 .title {
 	text-transform: uppercase;
-	letter-spacing: 3px;
-}
-
-.titleV2 {
 	letter-spacing: 2px;
 	font-size: var(--font-size--xs);
 }

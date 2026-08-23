@@ -30,6 +30,14 @@ export default {
 			control: 'boolean',
 		},
 	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A custom scroll container with styled scrollbars and controlled overflow.',
+			},
+		},
+	},
 };
 
 const Template: StoryFn = (args) => ({

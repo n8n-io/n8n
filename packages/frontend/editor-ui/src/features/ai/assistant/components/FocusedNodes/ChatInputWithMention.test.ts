@@ -3,7 +3,9 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { defineComponent, h } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 import ChatInputWithMention from './ChatInputWithMention.vue';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useFocusedNodesStore } from '../../focusedNodes.store';
 import type { FocusedNode } from '../../focusedNodes.types';
 
@@ -28,13 +30,13 @@ vi.mock('./NodeMentionDropdown.vue', () => ({
 	}),
 }));
 
-// Mock N8nPromptInput
+// Mock N8nChatInput
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const actual = await importOriginal<Record<string, unknown>>();
 	return {
 		...actual,
-		N8nPromptInput: defineComponent({
-			name: 'N8nPromptInput',
+		N8nChatInput: defineComponent({
+			name: 'N8nChatInput',
 			props: [
 				'modelValue',
 				'placeholder',
@@ -54,10 +56,11 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 					focusInput: vi.fn(),
 				});
 				return () =>
-					h('div', { 'data-test-id': 'prompt-input' }, [
-						slots['inline-chips']?.(),
-						slots['extra-actions']?.(),
-						slots['bottom-actions-chips']?.(),
+					h('div', { 'data-test-id': 'chat-input' }, [
+						slots.leading?.(),
+						slots['left-actions']?.() ?? slots.actions?.(),
+						slots['right-actions']?.(),
+						slots.trailing?.(),
 						h('textarea', {
 							'data-test-id': 'chat-textarea',
 							onInput: (e: Event) => emit('input', e),
@@ -90,7 +93,7 @@ vi.mock('@/app/stores/posthog.store', () => ({
 }));
 
 // Mock telemetry
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
@@ -141,6 +144,10 @@ describe('ChatInputWithMention', () => {
 			stubActions: false,
 		});
 		setActivePinia(pinia);
+
+		// The focused-nodes experiment is cloud-only; default to cloud so only
+		// the PostHog flag varies per test.
+		mockedStore(useSettingsStore).isCloudDeployment = true;
 
 		focusedNodesStore = useFocusedNodesStore();
 	});

@@ -31,5 +31,17 @@ test.describe(
 			const guideLink = n8n.canvas.sticky.getDefaultStickyGuideLink();
 			await expect(guideLink).toHaveAttribute('href');
 		});
+
+		test('opens the color picker from the right-click context menu', async ({ n8n }) => {
+			await n8n.start.fromBlankCanvas();
+			await n8n.canvas.sticky.addSticky();
+
+			const sticky = n8n.canvas.sticky.getStickies().first();
+			await n8n.canvas.sticky.openColorPickerFromContextMenu(sticky);
+
+			// The popover is opened as the context menu closes; it must survive the
+			// menu's focus restoration rather than being dismissed immediately.
+			await expect(n8n.canvas.sticky.getColorOptions().first()).toBeVisible();
+		});
 	},
 );

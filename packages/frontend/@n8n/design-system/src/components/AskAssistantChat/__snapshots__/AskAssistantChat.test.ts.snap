@@ -30,6 +30,8 @@ exports[`AskAssistantChat > limits maximum input length when maxCharacterLength 
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
         aria-label="askAssistantChat.close"
         class=""
@@ -83,17 +85,20 @@ exports[`AskAssistantChat > limits maximum input length when maxCharacterLength 
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="chat-input"
         disabled="false"
+        layout="multiline"
         maxlength="100"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -131,6 +136,8 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
         aria-label="askAssistantChat.close"
         class=""
@@ -327,17 +334,20 @@ exports[`AskAssistantChat > renders chat with messages correctly 1`] = `
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="chat-input"
         disabled="false"
+        layout="multiline"
         maxlength="5000"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -375,6 +385,8 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
         aria-label="askAssistantChat.close"
         class=""
@@ -428,17 +440,20 @@ exports[`AskAssistantChat > renders default placeholder chat correctly 1`] = `
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="chat-input"
         disabled="false"
+        layout="multiline"
         maxlength="5000"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -476,6 +491,8 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
         aria-label="askAssistantChat.close"
         class=""
@@ -581,17 +598,20 @@ exports[`AskAssistantChat > renders end of session chat correctly 1`] = `
       class="inputWrapper disabledInput"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="chat-input"
         disabled="true"
+        layout="multiline"
         maxlength="5000"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -629,6 +649,8 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
         aria-label="askAssistantChat.close"
         class=""
@@ -715,17 +737,20 @@ exports[`AskAssistantChat > renders error message correctly with retry button 1`
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="chat-input"
         disabled="false"
+        layout="multiline"
         maxlength="5000"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -763,6 +788,8 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
         aria-label="askAssistantChat.close"
         class=""
@@ -849,17 +876,20 @@ exports[`AskAssistantChat > renders message with code snippet 1`] = `
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="chat-input"
         disabled="false"
+        layout="multiline"
         maxlength="5000"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="false"
       />
     </div>
@@ -897,6 +927,8 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
         
         
       </div>
+      
+      
       <n8n-icon-button-stub
         aria-label="askAssistantChat.close"
         class=""
@@ -983,17 +1015,20 @@ exports[`AskAssistantChat > renders streaming chat correctly 1`] = `
       class="inputWrapper"
       data-test-id="chat-input-wrapper"
     >
-      <n8n-prompt-input-stub
+      <n8n-chat-input-stub
         autofocus="true"
+        autosize="true"
         data-test-id="chat-input"
         disabled="false"
+        layout="multiline"
         maxlength="5000"
         maxlinesbeforescroll="10"
-        minlines="1"
         modelvalue=""
         placeholder="assistantChat.inputPlaceholder"
         refocusaftersend="true"
+        sendbuttontestid="send-message-button"
         showaskownertooltip="false"
+        stopbuttontestid="send-message-button"
         streaming="true"
       />
     </div>

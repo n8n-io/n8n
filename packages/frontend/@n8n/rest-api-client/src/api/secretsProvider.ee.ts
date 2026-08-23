@@ -57,6 +57,20 @@ export const updateSecretProviderConnection = async (
 	);
 };
 
+export const enableSecretProviderConnection = async (
+	context: IRestApiContext,
+	providerKey: string,
+): Promise<SecretProviderConnection> => {
+	return await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/secret-providers/connections/${providerKey}`,
+		{
+			isEnabled: true,
+		},
+	);
+};
+
 export const testSecretProviderConnection = async (
 	context: IRestApiContext,
 	providerKey: string,

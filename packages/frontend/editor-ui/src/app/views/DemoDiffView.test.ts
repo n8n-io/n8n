@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { ref, computed } from 'vue';
-import type * as I18nModule from '@n8n/i18n';
 
 // Mock the stores and composables
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -12,7 +11,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = (await importOriginal()) as typeof I18nModule;
+	const actual = (await importOriginal()) as object;
 	return {
 		...actual,
 		useI18n: () => ({
@@ -70,6 +69,7 @@ vi.mock('@/features/workflows/canvas/composables/useCanvasMapping', () => ({
 		nodeExecutionRunDataOutputMapById: computed(() => ({})),
 		nodeExecutionWaitingForNextById: computed(() => ({})),
 		nodeHasIssuesById: computed(() => ({})),
+		memberDimensionsByNodeId: computed(() => ({})),
 		nodes: computed(() => []),
 		connections: computed(() => []),
 	}),
@@ -77,6 +77,9 @@ vi.mock('@/features/workflows/canvas/composables/useCanvasMapping', () => ({
 
 // Import after mocks
 import DemoDiffView from './DemoDiffView.vue';
+import { setActivePinia } from 'pinia';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { defaultSettings } from '@/__tests__/defaults';
 
 // Capture props from WorkflowDiffView
 let capturedTidyUpProp: boolean | undefined = undefined;
@@ -343,6 +346,60 @@ describe('DemoDiffView', () => {
 					}),
 				);
 			}
+
+			await vi.waitFor(() => {
+				expect(getByTestId('workflow-diff-view')).toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('origin filtering', () => {
+		const workflow = { id: 'wf', name: 'Workflow', nodes: [], connections: {} };
+
+		function setAllowedOrigins(origins: string[]) {
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			useSettingsStore().setSettings({
+				...defaultSettings,
+				security: {
+					blockFileAccessToN8nFiles: false,
+					postMessageAllowedOrigins: origins,
+				},
+			});
+		}
+
+		it('should ignore openDiff from an origin outside the allowlist', async () => {
+			setAllowedOrigins(['https://trusted.example']);
+			const { queryByTestId } = renderComponent();
+
+			messageHandler?.(
+				new MessageEvent('message', {
+					data: JSON.stringify({
+						command: 'openDiff',
+						oldWorkflow: workflow,
+						newWorkflow: workflow,
+					}),
+					origin: 'https://untrusted.example',
+				}),
+			);
+
+			await new Promise((r) => setTimeout(r, 50));
+			expect(queryByTestId('workflow-diff-view')).not.toBeInTheDocument();
+		});
+
+		it('should accept openDiff from an allowed origin', async () => {
+			setAllowedOrigins(['https://trusted.example']);
+			const { getByTestId } = renderComponent();
+
+			messageHandler?.(
+				new MessageEvent('message', {
+					data: JSON.stringify({
+						command: 'openDiff',
+						oldWorkflow: workflow,
+						newWorkflow: workflow,
+					}),
+					origin: 'https://trusted.example',
+				}),
+			);
 
 			await vi.waitFor(() => {
 				expect(getByTestId('workflow-diff-view')).toBeInTheDocument();

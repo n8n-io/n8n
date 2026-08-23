@@ -8,7 +8,7 @@ import type {
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import type { UpdateRecord } from '../../helpers/interfaces';
-import { processAirtableError, removeIgnored } from '../../helpers/utils';
+import { coerceArrayTypeFields, processAirtableError, removeIgnored } from '../../helpers/utils';
 import { apiRequest, apiRequestAllItems, batchUpdate } from '../../transport';
 import { insertUpdateOptions } from '../common.descriptions';
 
@@ -82,7 +82,16 @@ export async function execute(
 			}
 
 			if (dataMode === 'defineBelow') {
-				const fields = this.getNodeParameter('columns.value', i, []) as IDataObject;
+				const typecast = options.typecast ? true : false;
+				const fields = this.getNodeParameter(
+					'columns.value',
+					i,
+					[],
+					typecast ? { skipValidation: true } : undefined,
+				) as IDataObject;
+				if (typecast) {
+					coerceArrayTypeFields(fields, this.getNode().parameters.columns);
+				}
 
 				if (columnsToMatchOn.includes('id')) {
 					const id = fields.id as string;

@@ -12,8 +12,11 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import {
 	intervalToRecurrence,
 	recurrenceCheck,
+	resetStaleRecurrence,
 	toCronExpression,
+	toCronSource,
 	validateInterval,
+	withIntervalDefaults,
 } from './GenericFunctions';
 import type { IRecurrenceRule, Rule } from './SchedulerInterface';
 
@@ -21,16 +24,16 @@ export class ScheduleTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Schedule Trigger',
 		name: 'scheduleTrigger',
-		icon: 'fa:clock',
+		icon: 'node:schedule-trigger',
+		iconColor: 'black',
 		group: ['trigger', 'schedule'],
-		version: [1, 1.1, 1.2, 1.3],
+		version: [1, 1.1, 1.2, 1.3, 1.4],
 		description: 'Triggers the workflow on a given schedule',
 		eventTriggerDescription: '',
 		activationMessage:
 			'Your schedule trigger will now trigger executions on the schedule you have defined.',
 		defaults: {
 			name: 'Schedule Trigger',
-			color: '#31C49F',
 		},
 
 		inputs: [],
@@ -63,7 +66,7 @@ export class ScheduleTrigger implements INodeType {
 						name: 'interval',
 						displayName: 'Trigger Interval',
 						builderHint: {
-							message:
+							propertyHint:
 								'You can add multiple intervals to trigger at different times. Use "Custom (Cron)" for more specific scheduling patterns.',
 						},
 						values: [
@@ -172,6 +175,9 @@ export class ScheduleTrigger implements INodeType {
 								displayName: 'Months Between Triggers',
 								name: 'monthsInterval',
 								type: 'number',
+								typeOptions: {
+									minValue: 1,
+								},
 								displayOptions: {
 									show: {
 										field: ['months'],
@@ -415,24 +421,77 @@ export class ScheduleTrigger implements INodeType {
 										field: ['cronExpression'],
 									},
 								},
-								hint: 'Format: [Second] [Minute] [Hour] [Day of Month] [Month] [Day of Week]',
+								hint: 'Format: ([Second]) [Minute] [Hour] [Day of Month] [Month] [Day of Week]',
 							},
 						],
 					},
 				],
+			},
+			{
+				displayName: 'If Execution Is Missed',
+				name: 'misfirePolicy',
+				type: 'options',
+				default: 'skip',
+				options: [
+					{ name: 'Run the Most Recent Missed Execution Per Rule', value: 'coalesce' },
+					{ name: 'Run the Most Recent Missed Execution', value: 'coalesce_owner' },
+					{ name: "Don't Run Missed Executions", value: 'skip' },
+				],
+				hint: 'Applies once an execution is later than the grace period set below',
+				isNodeSetting: true,
+				noDataExpression: true, // read at activation, so an expression would never be resolved
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.4 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Missed Execution Grace Period (Seconds)',
+				name: 'misfireGraceSeconds',
+				type: 'number',
+				default: 0, // `0` means "use the instance settings"
+				typeOptions: { minValue: 0, numberPrecision: 0 },
+				description:
+					'How late an execution may start before it counts as missed. Set to 0 to use the instance setting.',
+				isNodeSetting: true,
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.4 } }],
+					},
+				},
+			},
+			{
+				// Temporary escape hatch for the durable-scheduler rollout (preview to
+				// GA): keeps this trigger on the legacy in-memory scheduler while testing.
+				// Hidden unless N8N_ENV_FEAT_SKIP_DURABLE_SCHEDULER is enabled. Remove at GA.
+				displayName: 'Skip Durable Scheduler',
+				name: 'skipDurableScheduler',
+				type: 'boolean',
+				default: false,
+				isNodeSetting: true,
+				envFeatureFlag: 'SKIP_DURABLE_SCHEDULER',
+				description:
+					'Whether to run this trigger through the legacy in-memory scheduler instead of the durable scheduler',
 			},
 		],
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const version = this.getNode().typeVersion;
-		const { interval: intervals } = this.getNodeParameter('rule', []) as Rule;
+		const { interval = [{}] } = this.getNodeParameter('rule', {}) as Partial<Rule>;
+		const intervals = interval.map(withIntervalDefaults);
 		const timezone = this.getTimezone();
 		const staticData = this.getWorkflowStaticData('node') as {
-			recurrenceRules: number[];
+			recurrenceRules: Array<number | undefined>;
+			recurrenceRuleSignatures: Array<string | undefined>;
 		};
 		if (!staticData.recurrenceRules) {
 			staticData.recurrenceRules = [];
+		}
+		if (!staticData.recurrenceRuleSignatures) {
+			staticData.recurrenceRuleSignatures = [];
 		}
 
 		if (version >= 1.3) {
@@ -441,9 +500,18 @@ export class ScheduleTrigger implements INodeType {
 			}
 		}
 
-		const executeTrigger = (recurrence: IRecurrenceRule) => {
-			const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
-			if (!shouldTrigger) return;
+		const workflowId = this.getWorkflow().id;
+		const nodeId = this.getNode().id;
+
+		const executeTrigger = (
+			recurrence: IRecurrenceRule,
+			skipRecurrenceCheck = false,
+			scheduledTime?: Date,
+		) => {
+			if (!skipRecurrenceCheck) {
+				const shouldTrigger = recurrenceCheck(recurrence, staticData.recurrenceRules, timezone);
+				if (!shouldTrigger) return;
+			}
 
 			const momentTz = moment.tz(timezone);
 			const resultData = {
@@ -460,23 +528,42 @@ export class ScheduleTrigger implements INodeType {
 				Timezone: `${timezone} (UTC${momentTz.format('Z')})`,
 			};
 
-			this.emit([this.helpers.returnJsonArray([resultData])]);
+			// The workflowId should always be defined, but if it isn't we skip
+			// the deduplication key.
+			const deduplicationKey =
+				workflowId && scheduledTime
+					? `${workflowId}:${nodeId}:${scheduledTime.toISOString()}`
+					: undefined;
+
+			this.emit(
+				[this.helpers.returnJsonArray([resultData])],
+				/* responsePromise= */ undefined,
+				/* donePromise= */ undefined,
+				deduplicationKey,
+			);
 		};
 
+		const nodeKey = `${workflowId ?? ''}:${nodeId}`;
 		const rules = intervals.map((interval, i) => ({
 			interval,
-			cronExpression: toCronExpression(interval),
+			cronExpression: toCronExpression(interval, nodeKey),
 			recurrence: intervalToRecurrence(interval, i),
 		}));
 
 		if (this.getMode() !== 'manual') {
+			// Re-arm rules left stale by a previous schedule config (scheduled mode only).
+			resetStaleRecurrence(staticData, rules);
+
 			for (const { interval, cronExpression, recurrence } of rules) {
 				try {
 					const cron: Cron = {
 						expression: cronExpression,
 						recurrence,
+						source: toCronSource(interval),
 					};
-					this.helpers.registerCron(cron, () => executeTrigger(recurrence));
+					this.helpers.registerCron(cron, (scheduledTime: Date) =>
+						executeTrigger(recurrence, /* skipRecurrenceCheck= */ false, scheduledTime),
+					);
 				} catch (error) {
 					if (interval.field === 'cronExpression') {
 						throw new NodeOperationError(this.getNode(), 'Invalid cron expression', {
@@ -500,7 +587,7 @@ export class ScheduleTrigger implements INodeType {
 						});
 					}
 				}
-				executeTrigger(recurrence);
+				executeTrigger(recurrence, true);
 			};
 
 			return { manualTriggerFunction };

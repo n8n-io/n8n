@@ -63,6 +63,8 @@ Tests → Flows/Composables → Page Objects → Components → Playwright API
 | `dead-code` | Unused public methods in page objects |
 | `deduplication` | Same selector defined in multiple files |
 | `duplicate-logic` | Copy-pasted code across tests/pages (AST fingerprinting) |
+| `no-raw-editor-navigation` | Raw `page.goto()` to a `/workflow/` editor route in tests (use `n8n.start.*` so the canvas loader is awaited) |
+| `valid-owner-annotation` | A spec with no team owner, or an owner not in the canonical list (`CANONICAL_OWNERS` in the rule, mirroring Notion "Ownership v2") |
 
 ### Commands
 
@@ -381,7 +383,7 @@ test('API-only test', async ({ api }) => {
 To test features behind feature flags (experiments), use `TestRequirements` with storage overrides:
 
 ```typescript
-import type { TestRequirements } from '../config/TestRequirements';
+import type { TestRequirements } from '../../../Types';
 
 const requirements: TestRequirements = {
   storage: {
@@ -419,7 +421,9 @@ const requirements: TestRequirements = {
 };
 ```
 
-**Reference:** `config/TestRequirements.ts` for full interface definition.
+**Reference:** `Types.ts` for the full interface definition. Import depth follows
+the spec's own nesting. The example above assumes `tests/e2e/<area>/`; add one
+`../` per extra level down.
 
 ## Shard Rebalancing
 

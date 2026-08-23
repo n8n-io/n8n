@@ -1,5 +1,6 @@
 import { defineConfig } from 'eslint/config';
 import { frontendConfig } from '@n8n/eslint-config/frontend';
+import oxlint from 'eslint-plugin-oxlint';
 
 export default defineConfig(
 	frontendConfig,
@@ -63,9 +64,9 @@ export default defineConfig(
 				},
 				{
 					selector:
-						"MemberExpression[property.name='nodes'][object.property.name='workflow'][object.object.name='workflowsStore']",
+						"MemberExpression[property.name=/^(name|nodes|connections|active|isArchived|settings|tags|pinData|meta|versionId|activeVersionId|createdAt|updatedAt|parentFolder|scopes|usedCredentials|homeProject|description|versionData)$/][object.property.name='workflow'][object.object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore node accessors instead of workflowsStore.workflow.nodes',
+						'Use the equivalent workflowDocumentStore accessor instead of workflowsStore.workflow.<property>',
 				},
 				{
 					selector:
@@ -115,72 +116,74 @@ export default defineConfig(
 					message:
 						'Use workflowDocumentStore.setLastNodeParameters() instead of workflowsStore.setLastNodeParameters()',
 				},
-				// Guard: prevent per-node mutations via deprecated workflowState composable.
 				{
-					selector:
-						"CallExpression[callee.property.name='setNodeParameters'][callee.object.name='workflowState']",
+					selector: "MemberExpression[property.name='workflowId'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.setNodeParameters() instead of workflowState.setNodeParameters()',
+						'Use the workflow document store instead of workflowsStore.workflowId: workflowDocumentStore.workflowId (components/composables via injectWorkflowDocumentStore(); stores via useWorkflowId()) or the documentId from the handler options in push handlers',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='setNodeValue'][callee.object.name='workflowState']",
+						"CallExpression[callee.property.name='setWorkflowId'][callee.object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.setNodeValue() instead of workflowState.setNodeValue()',
+						'Do not call workflowsStore.setWorkflowId() — the current workflow id is derived from the route (useWorkflowId())',
+				},
+				// Guard: the legacy execution bridge on workflowsStore resolves by the
+				// global workflow id, which silently reads the wrong instance inside
+				// scoped hosts (execution preview, embedded editors). Read through
+				// injectWorkflowExecutionStateStore() (or the documentId-keyed
+				// useWorkflowExecutionStateStore) instead.
+				{
+					selector:
+						"MemberExpression[property.name='getWorkflowExecution'][object.name='workflowsStore']",
+					message:
+						'Use injectWorkflowExecutionStateStore().value.activeExecution instead of workflowsStore.getWorkflowExecution — the bridge resolves by global workflow id and reads the wrong instance inside scoped hosts',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='setNodePositionById'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='workflowExecutionData'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.setNodePositionById() instead of workflowState.setNodePositionById()',
+						'Use injectWorkflowExecutionStateStore().value.activeExecution instead of workflowsStore.workflowExecutionData — the bridge resolves by global workflow id and reads the wrong instance inside scoped hosts',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='updateNodeById'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='getWorkflowRunData'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.updateNodeById() instead of workflowState.updateNodeById()',
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionRunData instead of workflowsStore.getWorkflowRunData',
+				},
+				{
+					selector: "MemberExpression[property.name='executedNode'][object.name='workflowsStore']",
+					message:
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionExecutedNode instead of workflowsStore.executedNode',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='updateNodeProperties'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='workflowExecutionStartedData'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.updateNodeProperties() instead of workflowState.updateNodeProperties()',
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionStartedData instead of workflowsStore.workflowExecutionStartedData',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='setNodeIssue'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='workflowExecutionResultDataLastUpdate'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.setNodeIssue() instead of workflowState.setNodeIssue()',
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionResultDataLastUpdate instead of workflowsStore.workflowExecutionResultDataLastUpdate',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='resetAllNodesIssues'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='workflowExecutionPairedItemMappings'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.resetAllNodesIssues() instead of workflowState.resetAllNodesIssues()',
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionPairedItemMappings instead of workflowsStore.workflowExecutionPairedItemMappings',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='setLastNodeParameters'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='lastSuccessfulExecution'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.setLastNodeParameters() instead of workflowState.setLastNodeParameters()',
+						'Use injectWorkflowExecutionStateStore().value.lastSuccessfulExecution instead of workflowsStore.lastSuccessfulExecution',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='resetParametersLastUpdatedAt'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='getWorkflowResultDataByNodeName'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.resetParametersLastUpdatedAt() instead of workflowState.resetParametersLastUpdatedAt()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='removeAllNodes'][callee.object.name='workflowState']",
-					message:
-						'Use workflowDocumentStore.removeAllNodes() instead of workflowState.removeAllNodes()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='updateNodeAtIndex'][callee.object.name='workflowState']",
-					message:
-						'Use per-node mutation methods on workflowDocumentStore instead of workflowState.updateNodeAtIndex()',
+						'Use injectWorkflowExecutionStateStore().value.getActiveExecutionRunDataByNodeName() instead of workflowsStore.getWorkflowResultDataByNodeName()',
 				},
 			],
 			// TODO: Remove these
@@ -246,4 +249,95 @@ export default defineConfig(
 			'no-restricted-syntax': 'off',
 		},
 	},
+	{
+		// This is half 1 of 2 of the modal-key ratchet (CAT-3688).
+		// Change the level to 'error' when CAT-3973 is complete.
+		// This file does not use workflowsStore. So this rule replaces the
+		// package-wide list safely.
+		files: ['src/app/constants/modals.ts'],
+		rules: {
+			'no-restricted-syntax': [
+				'warn',
+				{
+					selector:
+						'ExportNamedDeclaration > VariableDeclaration > VariableDeclarator[id.name!=/^MODAL_(CANCEL|CONFIRM|CLOSE)$/]',
+					message:
+						'Do not declare a modal key here. Declare the key in the constants file of the feature that owns it. Then register the modal from the modals.ts fragment of that feature. To see an example, open src/features/core/auth/modals.ts. If the shell owns the modal, declare its key next to its fragment in src/app/modals.manifest.ts. Only MODAL_CANCEL, MODAL_CONFIRM and MODAL_CLOSE stay here. These three are dialog result sentinels, not modal keys.',
+				},
+				{
+					// This selector matches `export { X } from '...'` and also a bare
+					// `export { X }` list.
+					selector: 'ExportNamedDeclaration[specifiers.length>0]',
+					message:
+						'Do not re-export a modal key from the shell. A re-export makes @/app/constants an import path for a key that the shell does not own. The shell must not get such a key again. Import the key directly from its feature or from its package.',
+				},
+			],
+		},
+	},
+	{
+		// This is half 2 of 2 of the modal-key ratchet (CAT-3688).
+		// The selector matches only the direct members, so you can still change the
+		// nested state of each entry. `sneakyModal:` opens the same as `[KEY]:`.
+		// So the selector `[computed=true]` was too narrow.
+		files: ['src/app/stores/defaults/modals.ts'],
+		rules: {
+			'no-restricted-syntax': [
+				'warn',
+				{
+					selector:
+						"VariableDeclarator[id.name='SHELL_MODAL_INITIAL_STATE'] > CallExpression > ObjectExpression > :matches(Property, SpreadElement)",
+					message:
+						'Do not add an entry to SHELL_MODAL_INITIAL_STATE. This catalogue can only become smaller. Write a ModalDefinition for the modal in the modals.ts fragment of its feature. Give the definition a component and an initialState. Then modalRegistry registers the modal, and DynamicModalLoader shows it. In the same change, delete the <ModalRoot> of the modal from Modals.vue. To see an example, open src/features/core/auth/modals.ts.',
+				},
+			],
+		},
+	},
+	{
+		files: ['src/features/agents/**/*.ts', 'src/features/agents/**/*.vue'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: ['**/ndv/runData/components/RunData.vue'],
+							message:
+								'Use StandaloneRunData inside StandaloneRunDataHost so scoped providers and cleanup are owned consistently.',
+						},
+					],
+				},
+			],
+		},
+	},
+	{
+		files: [
+			'src/**/*.test.ts',
+			'src/**/test/**/*.ts',
+			'src/**/__test__/**/*.ts',
+			'src/**/__tests__/**/*.ts',
+		],
+		rules: {
+			'n8n-local-rules/no-dynamic-regexp': 'off',
+		},
+	},
+	{
+		// Mirrors the `*.stories.ts` exclusion in tsconfig.json — typescript-eslint
+		// can't parse files outside the TS project.
+		ignores: ['src/**/*.stories.ts'],
+	},
+	{
+		// CodeMirror/expression-editor autocomplete builders construct short
+		// prefix-matching regexes from the user's current cursor token. The
+		// patterns are dev-controlled templates wrapped around short keystroke
+		// fragments and run only in the browser against trivially small input.
+		files: [
+			'src/features/shared/editors/components/CodeNodeEditor/**',
+			'src/features/shared/editors/plugins/codemirror/completions/**',
+			'src/features/settings/environments.ee/completions/**',
+		],
+		rules: {
+			'n8n-local-rules/no-dynamic-regexp': 'off',
+		},
+	},
+	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 );

@@ -4,17 +4,18 @@ import type { INodeUi } from '@/Interface';
 import { NodeConnectionTypes, type IDataObject, type IRunExecutionData } from 'n8n-workflow';
 import { clearJsonKey, convertPath } from '@/app/utils/typesUtils';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useI18n } from '@n8n/i18n';
-import { nonExistingJsonPath, PopOutWindowKey } from '@/app/constants';
-import { useClipboard } from '@/app/composables/useClipboard';
+import { nonExistingJsonPath } from '@/app/constants';
+import { PopOutWindowKey } from '@n8n/composables/injectionKeys';
+import { useClipboard } from '@n8n/composables/useClipboard';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { inject, computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { N8nIconButton } from '@n8n/design-system';
 type JsonPathData = {
@@ -42,14 +43,14 @@ const props = withDefaults(
 const popOutWindow = inject(PopOutWindowKey, ref<Window | undefined>());
 const isInPopOutWindow = computed(() => popOutWindow?.value !== undefined);
 
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowId = useInjectWorkflowId();
+const ndvStore = injectNDVStore();
 
 const clipboard = useClipboard();
 
 const i18n = useI18n();
 const nodeHelpers = useNodeHelpers();
-const { activeNode } = ndvStore;
+const activeNode = computed(() => ndvStore.value.activeNode);
 const pinnedData = usePinnedData(activeNode);
 const { showToast } = useToast();
 const telemetry = useTelemetry();
@@ -179,12 +180,12 @@ function handleCopyClick(commandData: { command: string }) {
 	}[commandData.command];
 
 	telemetry.track('User copied ndv data', {
-		node_type: activeNode?.type,
+		node_type: activeNode.value?.type,
 		push_ref: props.pushRef,
 		run_index: props.runIndex,
 		view: 'json',
 		copy_type: copyType,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowId.value,
 		pane: props.paneType,
 		in_execution_log: isReadOnlyRoute.value,
 	});

@@ -1,4 +1,9 @@
-import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
+	ICredentialType,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class NasaApi implements ICredentialType {
 	name = 'nasaApi';
@@ -16,4 +21,20 @@ export class NasaApi implements ICredentialType {
 			default: '',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			qs: {
+				api_key: '={{$credentials.api_key}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://api.nasa.gov',
+			url: '/planetary/apod',
+		},
+	};
 }

@@ -5,6 +5,7 @@ import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { Folder, FolderTagMapping, TagEntity } from '../entities';
 import type { FolderWithWorkflowAndSubFolderCountAndPath, ListQuery } from '../entities/types-db';
+import { parseListQuerySortBy } from '../utils/list-query-sort';
 
 @Service()
 export class FolderRepository extends Repository<Folder> {
@@ -228,13 +229,8 @@ export class FolderRepository extends Repository<Folder> {
 			return;
 		}
 
-		const [field, order] = this.parseSortingParams(sortBy);
-		this.applySortingByField(query, field, order);
-	}
-
-	private parseSortingParams(sortBy: string): [string, 'DESC' | 'ASC'] {
-		const [field, order] = sortBy.split(':');
-		return [field, order?.toLowerCase() === 'desc' ? 'DESC' : 'ASC'];
+		const { column, direction } = parseListQuerySortBy(sortBy);
+		this.applySortingByField(query, column, direction);
 	}
 
 	private applySortingByField(
@@ -382,6 +378,39 @@ export class FolderRepository extends Repository<Folder> {
 			.setParameters(baseQuery.getParameters());
 
 		// Execute the query and extract IDs
+		const result = await query.getRawMany<{ id: string }>();
+		return result.map((row) => row.id);
+	}
+
+	/**
+	 * Batched form of {@link getAllFolderIdsInHierarchy}: resolves the descendants
+	 * of several parent folders in a single recursive query rather than one query
+	 * per parent. Returns descendant ids only (the parents themselves are not
+	 * included), deduplicated across all subtrees.
+	 */
+	async getAllFolderIdsInSubtrees(parentFolderIds: string[]): Promise<string[]> {
+		if (parentFolderIds.length === 0) return [];
+
+		// Base case: the direct children of any requested parent.
+		const baseQuery = this.createQueryBuilder('f')
+			.select('f.id', 'id')
+			.where('f.parentFolderId IN (:...parentFolderIds)', { parentFolderIds });
+
+		// Recursive case: descendants of folders already in the tree.
+		const recursiveQuery = this.createQueryBuilder('child')
+			.select('child.id', 'id')
+			.innerJoin('folder_tree', 'parent', 'child.parentFolderId = parent.id');
+
+		const query = this.createQueryBuilder()
+			.addCommonTableExpression(
+				`${baseQuery.getQuery()} UNION ALL ${recursiveQuery.getQuery()}`,
+				'folder_tree',
+				{ recursive: true },
+			)
+			.select('DISTINCT tree.id', 'id')
+			.from('folder_tree', 'tree')
+			.setParameters(baseQuery.getParameters());
+
 		const result = await query.getRawMany<{ id: string }>();
 		return result.map((row) => row.id);
 	}

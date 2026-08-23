@@ -7,8 +7,9 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { verifySignature } from '../../utils/webhook-signature-verification';
 import { getAutomaticSecret, woocommerceApiRequest } from './GenericFunctions';
 
 export class WooCommerceTrigger implements INodeType {
@@ -122,6 +123,26 @@ export class WooCommerceTrigger implements INodeType {
 						webhook.delivery_url === webhookUrl &&
 						webhook.topic === currentEvent
 					) {
+						if (!webhookData.secret) {
+							// Orphaned webhook: delete it so `create` can register a fresh one with a new secret.
+							try {
+								await woocommerceApiRequest.call(
+									this,
+									'DELETE',
+									`/webhooks/${webhook.id}`,
+									{},
+									{ force: true },
+								);
+							} catch (error) {
+								this.logger.warn('Failed to delete orphaned webhook during checkExists', {
+									webhookId: webhook.id,
+									error,
+								});
+							}
+							delete webhookData.webhookId;
+							return false;
+						}
+
 						webhookData.webhookId = webhook.id;
 						return true;
 					}
@@ -164,17 +185,30 @@ export class WooCommerceTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData();
 		const webhookData = this.getWorkflowStaticData('node');
+
 		if (headerData['x-wc-webhook-id'] === undefined) {
 			return {};
 		}
 
-		const computedSignature = createHmac('sha256', webhookData.secret as string)
-			.update(req.rawBody)
-			.digest('base64');
-		if (headerData['x-wc-webhook-signature'] !== computedSignature) {
-			// Signature is not valid so ignore call
-			return {};
+		const secret = webhookData.secret as string | undefined;
+		if (!secret) {
+			throw new NodeOperationError(this.getNode(), 'WooCommerce webhook secret is missing', {
+				description:
+					'The stored webhook secret could not be found. Deactivate and re-activate the workflow so n8n can re-register the webhook with WooCommerce.',
+			});
 		}
+
+		const isValid = verifySignature({
+			getExpectedSignature: () => createHmac('sha256', secret).update(req.rawBody).digest('base64'),
+			getActualSignature: () => (headerData['x-wc-webhook-signature'] as string) ?? null,
+		});
+
+		if (!isValid) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return { noWebhookResponse: true };
+		}
+
 		return {
 			workflowData: [this.helpers.returnJsonArray(req.body as IDataObject)],
 		};

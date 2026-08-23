@@ -53,7 +53,7 @@ export async function execute(this: IExecuteFunctions, index: number) {
 		body.surname = surname;
 	}
 
-	const responseData = await microsoftApiRequest.call(this, 'POST', '/contacts', body);
+	const responseData = await microsoftApiRequest.call(this, 'POST', '/contacts', index, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData as IDataObject),

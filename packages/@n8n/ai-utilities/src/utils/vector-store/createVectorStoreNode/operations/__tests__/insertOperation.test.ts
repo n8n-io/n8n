@@ -2,10 +2,10 @@
 import type { Document } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { logAiEvent } from '../../../../log-ai-event';
 import type { N8nBinaryLoader } from '../../../../n8n-binary-loader';
@@ -14,8 +14,8 @@ import type { VectorStoreNodeConstructorArgs } from '../../types';
 import { handleInsertOperation } from '../insertOperation';
 
 // Mock processDocument function
-jest.mock('../../../processDocuments', () => ({
-	processDocument: jest.fn().mockImplementation((_documentInput, _itemData, itemIndex: number) => {
+vi.mock('../../../processDocuments', () => ({
+	processDocument: vi.fn().mockImplementation((_documentInput, _itemData, itemIndex: number) => {
 		const mockProcessed = [
 			{
 				pageContent: `processed content ${itemIndex}`,
@@ -41,15 +41,15 @@ jest.mock('../../../processDocuments', () => ({
 }));
 
 // Mock helper functions
-jest.mock('../../../../log-ai-event', () => ({
-	logAiEvent: jest.fn(),
+vi.mock('../../../../log-ai-event', () => ({
+	logAiEvent: vi.fn(),
 }));
 
-jest.mock('../../../../n8n-binary-loader', () => ({
+vi.mock('../../../../n8n-binary-loader', () => ({
 	N8nBinaryLoader: class {},
 }));
 
-jest.mock('../../../../n8n-json-loader', () => ({
+vi.mock('../../../../n8n-json-loader', () => ({
 	N8nJsonLoader: class {},
 }));
 
@@ -57,12 +57,12 @@ jest.mock('../../../../n8n-json-loader', () => ({
 function createMockAbortSignal(aborted = false): AbortSignal {
 	return {
 		aborted,
-		addEventListener: jest.fn(),
-		removeEventListener: jest.fn(),
-		dispatchEvent: jest.fn(),
+		addEventListener: vi.fn(),
+		removeEventListener: vi.fn(),
+		dispatchEvent: vi.fn(),
 		onabort: null,
 		reason: undefined,
-		throwIfAborted: jest.fn(),
+		throwIfAborted: vi.fn(),
 	} as unknown as AbortSignal;
 }
 
@@ -128,14 +128,14 @@ describe('handleInsertOperation', () => {
 				icon: 'file:testIcon.svg',
 			},
 			sharedFields: [],
-			getVectorStoreClient: jest.fn().mockResolvedValue(mockVectorStore),
-			populateVectorStore: jest.fn().mockResolvedValue(undefined),
-			releaseVectorStoreClient: jest.fn(),
+			getVectorStoreClient: vi.fn().mockResolvedValue(mockVectorStore),
+			populateVectorStore: vi.fn().mockResolvedValue(undefined),
+			releaseVectorStoreClient: vi.fn(),
 		};
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should process all input items and populate vector store', async () => {

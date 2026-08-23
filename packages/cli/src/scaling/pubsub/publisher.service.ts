@@ -118,9 +118,7 @@ export class Publisher {
 
 	// #endregion
 
-	// #region Utils for multi-main setup
-
-	// @TODO: The following methods are not pubsub-specific. Consider a dedicated client for multi-main setup.
+	// #region Key-value utils (used by MCP session store and legacy leader election)
 
 	async setIfNotExists(key: string, value: string, ttl: number) {
 		const result = await this.client.set(key, value, 'EX', ttl, 'NX');

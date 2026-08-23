@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	NodeConnectionType,
@@ -6,6 +5,7 @@ import type {
 	ExpressionString,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { SimpleWorkflow } from '@/types';
 import { resolveConnections } from '@/validation/utils/resolve-connections';

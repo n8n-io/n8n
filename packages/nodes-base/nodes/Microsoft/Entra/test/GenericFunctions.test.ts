@@ -1,18 +1,19 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import { microsoftApiRequest, microsoftApiPaginateRequest } from '../GenericFunctions';
+import type { Mock, Mocked } from 'vitest';
 
 describe('Microsoft Entra GenericFunctions', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
-	let mockRequestWithAuthentication: jest.Mock;
-	let mockRequestWithAuthenticationPaginated: jest.Mock;
+	let mockRequestWithAuthentication: Mock;
+	let mockRequestWithAuthenticationPaginated: Mock;
 
 	beforeEach(() => {
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-		mockRequestWithAuthentication = jest.fn();
-		mockRequestWithAuthenticationPaginated = jest.fn();
+		mockRequestWithAuthentication = vi.fn();
+		mockRequestWithAuthenticationPaginated = vi.fn();
 		mockExecuteFunctions.helpers.requestWithAuthentication = mockRequestWithAuthentication;
 		mockExecuteFunctions.helpers.requestWithAuthenticationPaginated =
 			mockRequestWithAuthenticationPaginated;
@@ -26,12 +27,13 @@ describe('Microsoft Entra GenericFunctions', () => {
 			parameters: {},
 		};
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
-		mockExecuteFunctions.getCredentials = jest.fn();
-		jest.clearAllMocks();
+		mockExecuteFunctions.getCredentials =
+			vi.fn() as unknown as typeof mockExecuteFunctions.getCredentials;
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('microsoftApiRequest', () => {

@@ -57,6 +57,11 @@ const properties: INodeProperties[] = [
 										value: 'text/html',
 									},
 									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'Markdown (md)',
+										value: 'text/markdown',
+									},
+									{
 										name: 'MS Word Document',
 										value:
 											'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -227,7 +232,7 @@ export async function execute(
 			mime = this.getNodeParameter(
 				`${parameterKey}.sheetsToFormat`,
 				i,
-				'application/x-vnd.oasis.opendocument.spreadsheet',
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 			) as string;
 		} else {
 			mime = this.getNodeParameter(`${parameterKey}.drawingsToFormat`, i, 'image/jpeg') as string;

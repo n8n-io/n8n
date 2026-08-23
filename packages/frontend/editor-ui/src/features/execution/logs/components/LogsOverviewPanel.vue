@@ -10,7 +10,7 @@ import {
 } from '@/features/execution/logs/logs.utils';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { getScrollbarWidth } from '@/app/utils/htmlUtils';
-import { N8nButton, N8nRadioButtons, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nSegmentControl, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
@@ -123,17 +123,31 @@ function handleSwitchView(value: 'overview' | 'details') {
 				:class="$style.emptyText"
 				data-test-id="logs-overview-empty"
 			>
-				{{ locale.baseText('logs.overview.body.empty.message') }}
+				{{
+					locale.baseText(
+						execution?.dataTooLargeToDisplay
+							? 'logs.overview.body.dataTooLarge.message'
+							: 'logs.overview.body.empty.message',
+					)
+				}}
 			</N8nText>
 			<template v-else>
-				<LogsViewExecutionSummary
-					data-test-id="logs-overview-status"
-					:class="$style.summary"
-					:status="execution.status"
-					:consumed-tokens="consumedTokens"
-					:start-time="+new Date(execution.startedAt)"
-					:time-took="timeTook"
-				/>
+				<div :class="$style.summary">
+					<LogsViewExecutionSummary
+						data-test-id="logs-overview-status"
+						:status="execution.status"
+						:consumed-tokens="consumedTokens"
+						:start-time="+new Date(execution.startedAt)"
+						:time-took="timeTook"
+					/>
+					<N8nSegmentControl
+						size="small"
+						:class="$style.switchViewButtons"
+						:model-value="selected ? 'details' : 'overview'"
+						:options="switchViewOptions"
+						@update:model-value="handleSwitchView"
+					/>
+				</div>
 				<LogsOverviewRows
 					:is-read-only="isReadOnly"
 					:selected="selected"
@@ -146,13 +160,6 @@ function handleSwitchView(value: 'overview' | 'details') {
 					@toggle-expanded="emit('toggleExpanded', $event)"
 					@open-ndv="emit('openNdv', $event)"
 					@select="emit('select', $event)"
-				/>
-				<N8nRadioButtons
-					size="small-medium"
-					:class="$style.switchViewButtons"
-					:model-value="selected ? 'details' : 'overview'"
-					:options="switchViewOptions"
-					@update:model-value="handleSwitchView"
 				/>
 			</template>
 		</div>
@@ -200,15 +207,17 @@ function handleSwitchView(value: 'overview' | 'details') {
 }
 
 .summary {
-	padding: var(--spacing--2xs);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+	height: var(--logs-panel--header-height);
+	padding-inline: var(--spacing--2xs);
 }
 
 .switchViewButtons {
-	position: absolute;
-	z-index: 10; /* higher than log entry rows background */
-	right: 0;
-	top: 0;
-	margin: var(--spacing--4xs) var(--spacing--2xs);
+	flex-shrink: 0;
 	visibility: hidden;
 	opacity: 0;
 	transition: opacity 0.3s vars.$ease-out-expo;

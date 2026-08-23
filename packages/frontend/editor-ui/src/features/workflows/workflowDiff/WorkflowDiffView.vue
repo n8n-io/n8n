@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import DiffBadge from '@/features/workflows/workflowDiff/DiffBadge.vue';
 import WorkflowDiffEmptyState from '@/features/workflows/workflowDiff/WorkflowDiffEmptyState.vue';
 import NodeDiff from '@/features/workflows/workflowDiff/NodeDiff.vue';
@@ -8,13 +8,15 @@ import WorkflowDiffNodeItem from '@/features/workflows/workflowDiff/WorkflowDiff
 import { useProvideViewportSync } from '@/features/workflows/workflowDiff/useViewportSync';
 import { useWorkflowDiff } from '@/features/workflows/workflowDiff/useWorkflowDiff';
 import { useWorkflowDiffUI } from '@/features/workflows/workflowDiff/useWorkflowDiffUI';
-import type { IWorkflowDb } from '@/Interface';
+import type { IWorkflowDb, INodeUi } from '@/Interface';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { removeWorkflowExecutionData } from '@/app/utils/workflowUtils';
 import type { BaseTextKey } from '@n8n/i18n';
 import { useI18n } from '@n8n/i18n';
 import { NodeDiffStatus } from 'n8n-workflow';
 import { computed, useCssModule, onMounted } from 'vue';
+import { telemetry } from '@/app/plugins/telemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { ElDropdown, ElDropdownMenu } from 'element-plus';
 import {
@@ -22,7 +24,7 @@ import {
 	N8nCheckbox,
 	N8nHeading,
 	N8nIconButton,
-	N8nRadioButtons,
+	N8nSegmentControl,
 	N8nText,
 } from '@n8n/design-system';
 
@@ -34,6 +36,7 @@ const props = withDefaults(
 		targetLabel?: string;
 		tidyUp?: boolean;
 		showBackButton?: boolean;
+		source?: 'version_history' | 'push_pull_modal' | 'unknown';
 	}>(),
 	{
 		sourceWorkflow: undefined,
@@ -41,6 +44,7 @@ const props = withDefaults(
 		sourceLabel: 'Before',
 		targetLabel: 'After',
 		showBackButton: false,
+		source: 'unknown',
 	},
 );
 const emit = defineEmits<{
@@ -51,13 +55,15 @@ const { selectedDetailId, onNodeClick, syncIsEnabled } = useProvideViewportSync(
 
 const $style = useCssModule();
 const nodeTypesStore = useNodeTypesStore();
+const rootStore = useRootStore();
 const i18n = useI18n();
 const toast = useToast();
 
-const { source, target, nodesDiff, connectionsDiff } = useWorkflowDiff(
-	computed(() => removeWorkflowExecutionData(props.sourceWorkflow)),
-	computed(() => removeWorkflowExecutionData(props.targetWorkflow)),
-);
+const { source, target, sourceRenderData, targetRenderData, nodesDiff, connectionsDiff } =
+	useWorkflowDiff(
+		computed(() => removeWorkflowExecutionData(props.sourceWorkflow)),
+		computed(() => removeWorkflowExecutionData(props.targetWorkflow)),
+	);
 
 // Use shared composable for UI logic
 const {
@@ -100,6 +106,29 @@ onMounted(async () => {
 		toast.showError(error, i18n.baseText('workflowDiff.error.loadNodeTypes'));
 	}
 });
+
+const onChangesDropdownVisibleChange = (visible: boolean) => {
+	setActiveTab(visible);
+	if (visible) {
+		telemetry.track('user_opens_diff_changes_list', {
+			instance_id: rootStore.instanceId,
+			workflow_id: props.sourceWorkflow?.id ?? props.targetWorkflow?.id,
+			source: props.source,
+		});
+	}
+};
+
+const onNodeChangeSelect = (change: { node: INodeUi; status: NodeDiffStatus }) => {
+	setSelectedDetailId(change.node.id);
+	telemetry.track('user_clicks_node_in_diff_changes_list', {
+		instance_id: rootStore.instanceId,
+		workflow_id: props.sourceWorkflow?.id ?? props.targetWorkflow?.id,
+		node_id: change.node.id,
+		node_name: change.node.name,
+		node_status: change.status,
+		source: props.source,
+	});
+};
 </script>
 
 <template>
@@ -134,7 +163,7 @@ onMounted(async () => {
 						modifiers,
 					}"
 					:popper-class="$style.popper"
-					@visible-change="setActiveTab"
+					@visible-change="onChangesDropdownVisibleChange"
 				>
 					<N8nButton variant="subtle" style="--button--radius: 4px 0 0 4px">
 						<div v-if="changesCount" :class="$style.circleBadge">
@@ -145,7 +174,7 @@ onMounted(async () => {
 					<template #dropdown>
 						<ElDropdownMenu :hide-on-click="false">
 							<div :class="$style.dropdownContent">
-								<N8nRadioButtons
+								<N8nSegmentControl
 									v-model="activeTab"
 									:options="tabs"
 									:class="$style.tabs"
@@ -155,7 +184,7 @@ onMounted(async () => {
 										{{ label }}
 										<span v-if="optionData?.count" class="ml-4xs"> ({{ optionData.count }}) </span>
 									</template>
-								</N8nRadioButtons>
+								</N8nSegmentControl>
 								<div>
 									<ul v-if="activeTab === 'nodes'">
 										<template v-if="nodeChanges.length > 0">
@@ -166,7 +195,7 @@ onMounted(async () => {
 												:node-type="change.type"
 												:node-name="change.node.name"
 												:is-active="selectedDetailId === change.node.id"
-												@select="setSelectedDetailId(change.node.id)"
+												@select="onNodeChangeSelect(change)"
 											/>
 										</template>
 										<WorkflowDiffEmptyState
@@ -249,8 +278,10 @@ onMounted(async () => {
 		<WorkflowDiffContent
 			:source-nodes="source.nodes"
 			:source-connections="source.connections"
+			:source-render-data="sourceRenderData"
 			:target-nodes="target.nodes"
 			:target-connections="target.connections"
+			:target-render-data="targetRenderData"
 			:source-label="sourceLabel"
 			:target-label="targetLabel"
 			:source-exists="!!sourceWorkflow"
@@ -287,13 +318,7 @@ onMounted(async () => {
 }
 
 .tabs {
-	display: flex;
-	:global(.n8n-radio-button) {
-		flex: 1;
-	}
-	:global(.n8n-radio-button > div) {
-		justify-content: center;
-	}
+	width: 100%;
 }
 
 .popper {

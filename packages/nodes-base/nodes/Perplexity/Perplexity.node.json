@@ -1,8 +1,8 @@
 {
 	"node": "n8n-nodes-base.perplexity",
-	"nodeVersion": "1.0",
+	"nodeVersion": "1.1",
 	"codexVersion": "1.0",
-	"categories": ["Utility"],
+	"categories": ["AI", "Utility"],
 	"resources": {
 		"credentialDocumentation": [
 			{

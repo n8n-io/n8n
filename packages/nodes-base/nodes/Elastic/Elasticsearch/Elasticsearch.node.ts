@@ -7,7 +7,9 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, jsonParse, NodeApiError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeApiError } from 'n8n-workflow';
+
+import { parseAndResolveQueryParameters } from '@utils/query-parameters';
 
 import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
 import {
@@ -146,11 +148,16 @@ export class Elasticsearch implements INodeType {
 					// const paginate = this.getNodeParameter('paginate', i) as boolean;
 
 					if (Object.keys(options).length) {
-						const { query, ...rest } = options;
+						const { query, queryParameters, ...rest } = options;
 						if (query) {
 							Object.assign(
 								body,
-								jsonParse(query, { errorMessage: "Invalid JSON in 'Query' option" }),
+								parseAndResolveQueryParameters(
+									query,
+									queryParameters ?? '[]',
+									this.getNode(),
+									i,
+								) as IDataObject,
 							);
 						}
 						Object.assign(qs, rest);

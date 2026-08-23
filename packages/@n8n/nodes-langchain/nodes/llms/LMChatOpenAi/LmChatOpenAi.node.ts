@@ -1,7 +1,11 @@
 import { ChatOpenAI, type ChatOpenAIFields, type ClientOptions } from '@langchain/openai';
+import isPlainObject from 'lodash/isPlainObject';
 import pick from 'lodash/pick';
 import {
+	assertCredentialAllowsUrl,
+	jsonParse,
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeProperties,
 	type IDataObject,
 	type INodeType,
@@ -10,8 +14,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { checkDomainRestrictions } from '@utils/checkDomainRestrictions';
-import { mergeCustomHeaders } from '@utils/helpers';
+import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
 
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
 import {
@@ -32,6 +35,11 @@ const INCLUDE_JSON_WARNING: INodeProperties = {
 	name: 'notice',
 	type: 'notice',
 	default: '',
+};
+
+const OPENAI_MODEL_BUILDER_HINT = {
+	propertyHint:
+		'Prefer the GPT-5.4 family: the flagship variant (e.g. `gpt-5.4`) for general use, a `-mini` / `-nano` variant when the task explicitly calls for cost-efficiency, or `-pro` only when the user asks for maximum capability. Never use gpt-4o, gpt-4-turbo, gpt-4, gpt-3.5, or earlier — those are superseded by the GPT-5 family and are not valid choices.',
 };
 
 const completionsResponseFormat: INodeProperties = {
@@ -191,7 +199,7 @@ export class LmChatOpenAi implements INodeType {
 					},
 				},
 				default: 'gpt-5-mini',
-				builderHint: { message: 'Always default to latest mini model gpt-5-mini' },
+				builderHint: OPENAI_MODEL_BUILDER_HINT,
 				displayOptions: {
 					hide: {
 						'@version': [{ _cnd: { gte: 1.2 } }],
@@ -203,7 +211,7 @@ export class LmChatOpenAi implements INodeType {
 				name: 'model',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: 'gpt-5-mini' },
-				builderHint: { message: 'Always default to latest mini model gpt-5-mini' },
+				builderHint: OPENAI_MODEL_BUILDER_HINT,
 				required: true,
 				modes: [
 					{
@@ -594,6 +602,14 @@ export class LmChatOpenAi implements INodeType {
 						type: 'number',
 					},
 					{
+						displayName: 'Extra Body',
+						name: 'extraBody',
+						type: 'json',
+						default: '{}',
+						description:
+							'Optional additional JSON properties to include in the request body when making requests to OpenAI-compatible APIs',
+					},
+					{
 						displayName: 'Conversation ID',
 						name: 'conversationId',
 						default: '',
@@ -754,7 +770,13 @@ export class LmChatOpenAi implements INodeType {
 		};
 
 		if (options.baseURL) {
-			checkDomainRestrictions(this, credentials, options.baseURL);
+			assertCredentialAllowsUrl({
+				node: this.getNode(),
+				credentialData: credentials,
+				url: options.baseURL,
+				pinnedUrl: typeof credentials.url === 'string' ? credentials.url : undefined,
+				surface: 'OpenAI',
+			});
 			configuration.baseURL = options.baseURL;
 		} else if (credentials.url) {
 			configuration.baseURL = credentials.url as string;
@@ -767,6 +789,7 @@ export class LmChatOpenAi implements INodeType {
 				bodyTimeout: timeout,
 			}),
 		};
+		const customHeader = getCustomCredentialHeader(credentials);
 		configuration.defaultHeaders = mergeCustomHeaders(
 			credentials,
 			(configuration.defaultHeaders ?? {}) as Record<string, string>,
@@ -782,6 +805,27 @@ export class LmChatOpenAi implements INodeType {
 			if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort)) {
 				modelKwargs.reasoning_effort = options.reasoningEffort;
 			}
+		}
+
+		if (options.extraBody) {
+			let extraBody: Record<string, unknown>;
+			try {
+				extraBody = jsonParse<Record<string, unknown>>(options.extraBody);
+			} catch (error) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'The value in the "Extra Body" field is not valid JSON',
+					{ itemIndex, description: error instanceof Error ? error.message : String(error) },
+				);
+			}
+			if (!isPlainObject(extraBody)) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'The value in the "Extra Body" field must be a JSON object',
+					{ itemIndex },
+				);
+			}
+			Object.assign(modelKwargs, extraBody);
 		}
 
 		const includedOptions = pick(options, [
@@ -800,7 +844,9 @@ export class LmChatOpenAi implements INodeType {
 			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
-			callbacks: [new N8nLlmTracing(this)],
+			callbacks: [
+				new N8nLlmTracing(this, { redactedHeaders: customHeader ? [customHeader.name] : [] }),
+			],
 			modelKwargs,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 			// Set to false to ensure compatibility with OpenAI-compatible backends (LM Studio, vLLM, etc.)

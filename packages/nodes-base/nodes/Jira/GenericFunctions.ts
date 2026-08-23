@@ -7,14 +7,17 @@ import type {
 	INodeListSearchItems,
 	INodePropertyOptions,
 	IRequestOptions,
+	IWebhookFunctions,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+
+import { getAtlassianApiBaseUrl, getAtlassianCloudId } from '@utils/atlassian';
 
 import type { JiraServerInfo, JiraWebhook } from './types';
 
 export async function jiraSoftwareCloudApiRequest(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
 	endpoint: string,
 	method: IHttpRequestMethods,
 	body: any = {},
@@ -33,6 +36,17 @@ export async function jiraSoftwareCloudApiRequest(
 	} else if (jiraVersion === 'serverPat') {
 		domain = (await this.getCredentials('jiraSoftwareServerPatApi')).domain as string;
 		credentialType = 'jiraSoftwareServerPatApi';
+	} else if (jiraVersion === 'cloudOAuth2') {
+		const rawDomain = (await this.getCredentials('jiraSoftwareCloudOAuth2Api')).domain;
+		credentialType = 'jiraSoftwareCloudOAuth2Api';
+		if (typeof rawDomain !== 'string' || rawDomain === '') {
+			throw new NodeOperationError(
+				this.getNode(),
+				'The Jira credential is missing the Site URL field',
+			);
+		}
+		const cloudId = await getAtlassianCloudId.call(this, credentialType, rawDomain, 'jira');
+		domain = getAtlassianApiBaseUrl('jira', cloudId);
 	} else {
 		domain = (await this.getCredentials('jiraSoftwareCloudApi')).domain as string;
 		credentialType = 'jiraSoftwareCloudApi';
@@ -74,6 +88,8 @@ export async function jiraSoftwareCloudApiRequest(
 		throw error;
 	}
 }
+
+export type JiraSoftwareCloudApiRequest = typeof jiraSoftwareCloudApiRequest;
 
 export function handlePagination(
 	method: IHttpRequestMethods,
@@ -322,6 +338,12 @@ export async function getServerInfo(this: IHookFunctions) {
 }
 
 export async function getWebhookEndpoint(this: IHookFunctions) {
+	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
+
+	// OAuth2 Cloud must use the Dynamic Webhooks API — the classic admin endpoint
+	// (/webhooks/1.0/webhook) rejects OAuth2 tokens with "scope does not match".
+	if (jiraVersion === 'cloudOAuth2') return '/api/3/webhook';
+
 	const serverInfo = await getServerInfo.call(this).catch(() => null);
 
 	if (!serverInfo || serverInfo.deploymentType === 'Cloud') return '/webhooks/1.0/webhook';
@@ -330,4 +352,43 @@ export async function getWebhookEndpoint(this: IHookFunctions) {
 	const majorVersion = serverInfo.versionNumbers?.[0] ?? 1;
 
 	return majorVersion >= 10 ? '/jira-webhook/1.0/webhooks' : '/webhooks/1.0/webhook';
+}
+
+export const OAUTH2_WEBHOOK_REFRESH_INTERVAL_MS = 20 * 24 * 60 * 60 * 1000; // 20 days
+export const OAUTH2_WEBHOOK_EXPIRY_BUFFER_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// The Dynamic Webhooks API (/rest/api/3/webhook) only accepts a subset of event types.
+// Board, project, user, worklog, option, and issuelink events are admin-only and
+// are not available via OAuth2 dynamic webhooks.
+export const OAUTH2_SUPPORTED_WEBHOOK_EVENTS = new Set([
+	'comment_created',
+	'comment_updated',
+	'comment_deleted',
+	'issue_property_set',
+	'issue_property_deleted',
+	'jira:issue_created',
+	'jira:issue_updated',
+	'jira:issue_deleted',
+	'jira:version_created',
+	'jira:version_deleted',
+	'jira:version_merged',
+	'jira:version_released',
+	'jira:version_unreleased',
+	'jira:version_updated',
+	'jira:version_moved',
+	'sprint_created',
+	'sprint_deleted',
+	'sprint_updated',
+	'sprint_started',
+	'sprint_closed',
+]);
+
+export async function refreshJiraWebhook(
+	this: IHookFunctions | IWebhookFunctions,
+	endpoint: string,
+	webhookId: string,
+): Promise<void> {
+	await jiraSoftwareCloudApiRequest.call(this, `${endpoint}/refresh`, 'PUT', {
+		webhookIds: [parseInt(webhookId, 10)],
+	});
 }

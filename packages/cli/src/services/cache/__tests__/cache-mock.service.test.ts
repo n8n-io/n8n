@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -8,7 +8,7 @@ const store = mock<NonNullable<CacheService['cache']>['store']>({ isCacheable: (
 Object.assign(cacheService, { cache: { store } });
 
 describe('CacheService (Mock)', () => {
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => vi.clearAllMocks());
 
 	describe('should prevent use of empty keys', () => {
 		test('get', async () => {

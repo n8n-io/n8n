@@ -23,9 +23,6 @@ export async function githubApiRequest(
 ): Promise<any> {
 	const options: IRequestOptions = {
 		method,
-		headers: {
-			'User-Agent': 'n8n',
-		},
 		body,
 		qs: query,
 		uri: '',
@@ -47,6 +44,12 @@ export async function githubApiRequest(
 		if (authenticationMethod === 'accessToken') {
 			const credentials = await this.getCredentials('githubApi');
 			credentialType = 'githubApi';
+
+			const baseUrl = credentials.server || 'https://api.github.com';
+			options.uri = `${baseUrl}${endpoint}`;
+		} else if (authenticationMethod === 'githubAppApi') {
+			const credentials = await this.getCredentials('githubAppApi');
+			credentialType = 'githubAppApi';
 
 			const baseUrl = credentials.server || 'https://api.github.com';
 			options.uri = `${baseUrl}${endpoint}`;

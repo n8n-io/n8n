@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { DynamicStructuredTool, StructuredTool, Tool } from '@langchain/core/tools';
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	AINodeConnectionType,
+	ChatNodeMessageWithButtons,
 	CloseFunction,
 	GenericValue,
 	IDataObject,
@@ -22,12 +24,11 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	ExecutionBaseError,
 	NodeConnectionTypes,
 	NodeOperationError,
 	UserError,
-	sleepWithAbort,
 	isHitlToolType,
 } from 'n8n-workflow';
 import z, { ZodType } from 'zod';
@@ -45,6 +46,19 @@ import { isEngineRequest } from '../../requests-response';
 function ensureArray<T>(value: T | T[] | undefined): T[] {
 	if (value === undefined) return [];
 	return Array.isArray(value) ? value : [value];
+}
+
+// Tools are matched structurally, not by class identity
+function isTool(value: unknown): value is StructuredTool | Tool {
+	if (value instanceof StructuredTool || value instanceof Tool) return true;
+	if (value instanceof StructuredToolkit) return false;
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		typeof (value as { name?: unknown }).name === 'string' &&
+		typeof (value as { description?: unknown }).description === 'string' &&
+		typeof (value as { invoke?: unknown }).invoke === 'function'
+	);
 }
 
 export function createHitlToolkit(
@@ -179,12 +193,25 @@ function mapResult(result?: NodeOutput) {
 		| Array<IDataObject | GenericValue | GenericValue[] | IDataObject[]>
 		| undefined;
 	let nodeHasMixedJsonAndBinaryData = false;
+	let sendMessage: ChatNodeMessageWithButtons | string | undefined = undefined;
 
 	if (result === undefined) {
 		response = undefined;
 	} else if (isEngineRequest(result)) {
-		response =
-			'Error: The Tool attempted to return an engine request, which is not supported in Agents';
+		// Tools running inside `makeHandleToolInvocation` cannot relay an
+		// `EngineRequest` to the workflow engine — the request/response loop
+		// only runs at top level. Sub-agent (`AgentToolV3`) resolves its own
+		// requests inline, so reaching this branch means another tool
+		// returned an EngineRequest from inside a parent agent's tool
+		// callback. Throw a clear UserError so the failure is loud and the
+		// builder gets an actionable message.
+		throw new UserError(
+			'A connected tool returned an engine request to its parent agent, which is only supported for top-level node execution.',
+			{
+				description:
+					'If you are seeing this from a nested AgentToolV3 sub-agent, update n8n — recent versions resolve sub-agent engine requests inline.',
+			},
+		);
 	} else if (containsBinaryData(result) && !containsDataThatIsUsefulToTheAgent(result)) {
 		response = 'Error: The Tool attempted to return binary data, which is not supported in Agents';
 	} else {
@@ -192,9 +219,15 @@ function mapResult(result?: NodeOutput) {
 			nodeHasMixedJsonAndBinaryData = true;
 		}
 		response = result?.[0]?.flatMap((item) => item.json);
+
+		// Chat node always returns single item with sendMessage property
+		// alongside json, this is used to send a bot message to the chat
+		if (result?.[0]?.[0]?.sendMessage) {
+			sendMessage = result?.[0]?.[0]?.sendMessage;
+		}
 	}
 
-	return { response, nodeHasMixedJsonAndBinaryData };
+	return { response, nodeHasMixedJsonAndBinaryData, sendMessage };
 }
 
 export function makeHandleToolInvocation(
@@ -242,7 +275,7 @@ export function makeHandleToolInvocation(
 				lastError = undefined;
 				if (waitBetweenTries !== 0) {
 					try {
-						await sleepWithAbort(waitBetweenTries, abortSignal);
+						await sleep(waitBetweenTries, abortSignal);
 					} catch (abortError) {
 						return 'Error during node execution: Execution was cancelled';
 					}
@@ -255,7 +288,7 @@ export function makeHandleToolInvocation(
 				// Execute the sub-node with the proxied context
 				const result = await nodeType.execute?.call(context as unknown as IExecuteFunctions);
 
-				const { response, nodeHasMixedJsonAndBinaryData } = mapResult(result);
+				const { response, nodeHasMixedJsonAndBinaryData, sendMessage } = mapResult(result);
 
 				// If the node returned some binary data, but also useful data we just log a warning instead of overriding the result
 				if (nodeHasMixedJsonAndBinaryData) {
@@ -266,7 +299,7 @@ export function makeHandleToolInvocation(
 
 				// Add output data to the context
 				context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, [
-					[{ json: { response } }],
+					[{ json: { response }, sendMessage }],
 				]);
 
 				// Return the stringified results
@@ -344,7 +377,7 @@ function validateInputConfiguration(
 // Extends metadata for tools and toolkits to include the source node name that is used for HITL routing
 export function extendResponseMetadata(response: unknown, connectedNode: INode) {
 	// Ensure sourceNodeName is set for proper routing
-	if (response instanceof StructuredTool || response instanceof Tool) {
+	if (isTool(response)) {
 		response.metadata ??= {};
 		response.metadata.sourceNodeName = connectedNode.name;
 	}
@@ -463,10 +496,16 @@ export async function getInputConnectionData(
 						connectedNodeType,
 						runExecutionData,
 					),
+					// Pass a context so n8n expressions in the user-provided
+					// `toolDescription` are evaluated against the upstream input
+					// data (matches the behaviour of nodes that supply their own
+					// tool, such as `toolWorkflow`).
+					context: contextFactory(parentRunIndex, parentInputData),
+					itemIndex,
 				});
 				nodes.push(supplyData);
 			} else {
-				throw new ApplicationError('Node does not have a `supplyData` method defined', {
+				throw new UnexpectedError('Node does not have a `supplyData` method defined', {
 					extra: { nodeName: connectedNode.name },
 				});
 			}

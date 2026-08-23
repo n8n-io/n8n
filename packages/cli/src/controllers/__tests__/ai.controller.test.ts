@@ -3,28 +3,35 @@ import type {
 	AiApplySuggestionRequestDto,
 	AiChatRequestDto,
 	AiBuilderChatRequestDto,
+	AiGatewayUsageQueryDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import type { AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
-import { mock } from 'jest-mock-extended';
+import { APIResponseError, type AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
+import { mock } from 'vitest-mock-extended';
 
-import { AiController, type FlushableResponse } from '../ai.controller';
-
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiUsageService } from '@/services/ai-usage.service';
 import type { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import type { AiService } from '@/services/ai.service';
+import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
+
+import { AiController, type FlushableResponse } from '../ai.controller';
 
 describe('AiController', () => {
 	const aiService = mock<AiService>();
 	const workflowBuilderService = mock<WorkflowBuilderService>();
+	const freeAiCreditsService = mock<FreeAiCreditsService>();
 	const aiUsageService = mock<AiUsageService>();
+	const aiGatewayService = mock<AiGatewayService>();
 	const controller = new AiController(
 		aiService,
 		workflowBuilderService,
-		mock(),
-		mock(),
+		freeAiCreditsService,
 		aiUsageService,
+		aiGatewayService,
 	);
 
 	const request = mock<AuthenticatedRequest>({
@@ -33,7 +40,8 @@ describe('AiController', () => {
 	const response = mock<FlushableResponse>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		aiGatewayService.assertEnabled.mockImplementation(() => {});
 
 		response.header.mockReturnThis();
 		response.status.mockReturnThis();
@@ -46,7 +54,7 @@ describe('AiController', () => {
 			aiService.chat.mockResolvedValue(
 				mock<Response>({
 					body: mock({
-						pipeTo: jest.fn().mockImplementation(async (writableStream) => {
+						pipeTo: vi.fn().mockImplementation(async (writableStream) => {
 							// Simulate stream writing
 							const writer = writableStream.getWriter();
 							await writer.write(JSON.stringify({ message: 'test response' }));
@@ -74,11 +82,17 @@ describe('AiController', () => {
 			);
 		});
 
+		it('should map missing AI assistant sessions to NotFoundError', async () => {
+			aiService.chat.mockRejectedValue(new APIResponseError('Session not found', 404));
+
+			await expect(controller.chat(request, response, payload)).rejects.toThrow(NotFoundError);
+		});
+
 		it('should register a close handler on the response for abort', async () => {
 			aiService.chat.mockResolvedValue(
 				mock<Response>({
 					body: mock({
-						pipeTo: jest.fn().mockResolvedValue(undefined),
+						pipeTo: vi.fn().mockResolvedValue(undefined),
 					}),
 				}),
 			);
@@ -92,7 +106,7 @@ describe('AiController', () => {
 			aiService.chat.mockResolvedValue(
 				mock<Response>({
 					body: mock({
-						pipeTo: jest.fn().mockResolvedValue(undefined),
+						pipeTo: vi.fn().mockResolvedValue(undefined),
 					}),
 				}),
 			);
@@ -108,7 +122,7 @@ describe('AiController', () => {
 			aiService.chat.mockResolvedValue(
 				mock<Response>({
 					body: mock({
-						pipeTo: jest.fn().mockRejectedValue(abortError),
+						pipeTo: vi.fn().mockRejectedValue(abortError),
 					}),
 				}),
 			);
@@ -120,7 +134,7 @@ describe('AiController', () => {
 		});
 
 		it('should pass abort signal to pipeTo', async () => {
-			const pipeToMock = jest.fn().mockResolvedValue(undefined);
+			const pipeToMock = vi.fn().mockResolvedValue(undefined);
 
 			aiService.chat.mockResolvedValue(
 				mock<Response>({
@@ -323,7 +337,7 @@ describe('AiController', () => {
 				let abortSignalPassed: AbortSignal | undefined;
 
 				// Mock response.on to capture the close handler
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -403,7 +417,7 @@ describe('AiController', () => {
 				let abortHandler: (() => void) | undefined;
 				let abortSignalPassed: AbortSignal | undefined;
 
-				response.on.mockImplementation((event: string, handler: () => void) => {
+				response.on.mockImplementation((event: string | symbol, handler: () => void) => {
 					if (event === 'close') {
 						abortHandler = handler;
 					}
@@ -452,8 +466,8 @@ describe('AiController', () => {
 			});
 
 			it('should cleanup abort listener on successful completion', async () => {
-				const onSpy = jest.spyOn(response, 'on');
-				const offSpy = jest.spyOn(response, 'off');
+				const onSpy = response.on;
+				const offSpy = response.off;
 
 				async function* mockGenerator() {
 					yield { messages: [{ role: 'assistant', type: 'message', text: 'Complete' } as const] };
@@ -527,6 +541,51 @@ describe('AiController', () => {
 		});
 	});
 
+	describe('getSessions', () => {
+		it('should call workflowBuilderService.getSessions with correct parameters', async () => {
+			const mockSessions = { sessions: [] };
+			const payload = { workflowId: 'workflow123' };
+
+			workflowBuilderService.getSessions.mockResolvedValue(mockSessions);
+
+			const result = await controller.getSessions(request, response, payload);
+
+			expect(workflowBuilderService.getSessions).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+				undefined,
+			);
+			expect(result).toEqual(mockSessions);
+		});
+
+		it('should forward the codeBuilder flag to the service', async () => {
+			const mockSessions = { sessions: [] };
+			const payload = { workflowId: 'workflow123', codeBuilder: true as const };
+
+			workflowBuilderService.getSessions.mockResolvedValue(mockSessions);
+
+			const result = await controller.getSessions(request, response, payload);
+
+			expect(workflowBuilderService.getSessions).toHaveBeenCalledWith(
+				payload.workflowId,
+				request.user,
+				true,
+			);
+			expect(result).toEqual(mockSessions);
+		});
+
+		it('should throw InternalServerError when service throws an error', async () => {
+			const payload = { workflowId: 'workflow123' };
+			const mockError = new Error('Database error');
+
+			workflowBuilderService.getSessions.mockRejectedValue(mockError);
+
+			await expect(controller.getSessions(request, response, payload)).rejects.toThrow(
+				InternalServerError,
+			);
+		});
+	});
+
 	describe('truncateMessages', () => {
 		it('should call workflowBuilderService.truncateMessagesAfter with correct parameters', async () => {
 			const payload = {
@@ -543,7 +602,7 @@ describe('AiController', () => {
 				payload.workflowId,
 				request.user,
 				payload.messageId,
-				payload.codeBuilder,
+				undefined,
 			);
 			expect(result).toEqual({ success: true });
 		});
@@ -592,6 +651,41 @@ describe('AiController', () => {
 				payload.messageId,
 				undefined,
 			);
+		});
+	});
+
+	describe('getGatewayWallet', () => {
+		it('should reject gateway requests when n8n Connect is disabled', async () => {
+			aiGatewayService.assertEnabled.mockImplementation(() => {
+				throw new BadRequestError('n8n Connect is not enabled on this instance');
+			});
+			const query = mock<AiGatewayUsageQueryDto>({ offset: 0, limit: 10 });
+
+			await expect(controller.getGatewayConfig()).rejects.toThrow(BadRequestError);
+			await expect(controller.getGatewayWallet(request)).rejects.toThrow(BadRequestError);
+			await expect(controller.getGatewayUsage(request, response, query)).rejects.toThrow(
+				BadRequestError,
+			);
+
+			expect(aiGatewayService.getGatewayConfig).not.toHaveBeenCalled();
+			expect(aiGatewayService.getWallet).not.toHaveBeenCalled();
+			expect(aiGatewayService.getUsage).not.toHaveBeenCalled();
+		});
+
+		it('should return wallet from aiGatewayService', async () => {
+			const walletData = { budget: 10, balance: 7, hasEverToppedUp: false };
+			aiGatewayService.getWallet.mockResolvedValue(walletData);
+
+			const result = await controller.getGatewayWallet(request);
+
+			expect(aiGatewayService.getWallet).toHaveBeenCalledWith(request.user.id);
+			expect(result).toEqual(walletData);
+		});
+
+		it('should throw InternalServerError when aiGatewayService throws', async () => {
+			aiGatewayService.getWallet.mockRejectedValue(new Error('Gateway unreachable'));
+
+			await expect(controller.getGatewayWallet(request)).rejects.toThrow(InternalServerError);
 		});
 	});
 });

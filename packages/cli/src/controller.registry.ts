@@ -1,7 +1,8 @@
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { ZodClass } from '@n8n/api-types';
+import { inProduction } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { type BooleanLicenseFeature } from '@n8n/constants';
-import type { AuthenticatedRequest } from '@n8n/db';
+import { isAuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import type {
 	AccessScope,
@@ -12,22 +13,25 @@ import type {
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { Router } from 'express';
+
 import type { Application, Request, Response, RequestHandler } from 'express';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { UnexpectedError } from 'n8n-workflow';
 import assert from 'node:assert';
-import type { ZodClass } from '@n8n/api-types';
 
+import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
+import { License } from '@/license';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { reportError, send, sendErrorResponse } from '@/response-helper';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+
+import { AbstractServer } from './abstract-server';
 import { NotFoundError } from './errors/response-errors/not-found.error';
+import { CorsService } from './services/cors-service';
 import { LastActiveAtService } from './services/last-active-at.service';
 import { RateLimitService } from './services/rate-limit.service';
 
 import { AuthService } from '@/auth/auth.service';
-import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.error';
-import { License } from '@/license';
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { send } from '@/response-helper';
-import { CorsService } from './services/cors-service';
-import { inProduction } from '@n8n/backend-common';
 
 @Service()
 export class ControllerRegistry {
@@ -42,6 +46,8 @@ export class ControllerRegistry {
 
 	activate(app: Application) {
 		for (const controllerClass of this.metadata.controllerClasses) {
+			const metadata = this.metadata.getControllerMetadata(controllerClass);
+			if (metadata.isPublicApi) continue;
 			this.activateController(app, controllerClass);
 		}
 	}
@@ -116,11 +122,32 @@ export class ControllerRegistry {
 			const middlewares = this.buildMiddlewares(route, controllerMiddlewares, bodyArgType);
 			const finalHandler = route.usesTemplates
 				? async (req: Request, res: Response) => {
-						await handler(req, res);
+						try {
+							await handler(req, res);
+						} catch (e) {
+							// Template routes skip `send()`, so without this a thrown error
+							// reaches Express's default handler, which cannot read
+							// `httpStatusCode` off a ResponseError and answers 500 — and in
+							// production with a body of just "Internal Server Error".
+							const error = ensureError(e);
+							reportError(error, { extra: { method: req.method, path: req.path } });
+							if (res.headersSent) throw error;
+							sendErrorResponse(res, error);
+						}
 					}
 				: send(handler);
 
 			router[route.method](route.path, ...middlewares, finalHandler);
+
+			// Register bot-allowed routes so the global bot filter can exempt them.
+			// Store the full path pattern (prefix + route path) as a regex so the
+			// global middleware can match against the actual resolved request path.
+			if (route.allowBots) {
+				const fullPattern = (prefix + route.path).replace(/\/+/g, '/');
+				// Convert Express params (:name) to regex wildcards
+				const regexStr = fullPattern.replace(/:[^/]+/g, '[^/]+');
+				AbstractServer.botAllowedPaths.push(regexStr);
+			}
 		}
 	}
 
@@ -172,7 +199,7 @@ export class ControllerRegistry {
 					allowSkipPreviewAuth: route.allowSkipPreviewAuth ?? false,
 					allowUnauthenticated: route.allowUnauthenticated ?? false,
 				}),
-				this.lastActiveAtService.middleware.bind(this.lastActiveAtService) as RequestHandler,
+				this.lastActiveAtService.middleware.bind(this.lastActiveAtService),
 			);
 		}
 
@@ -219,11 +246,8 @@ export class ControllerRegistry {
 	}
 
 	private createScopedMiddleware(accessScope: AccessScope): RequestHandler {
-		return async (
-			req: AuthenticatedRequest<{ credentialId?: string; workflowId?: string; projectId?: string }>,
-			res,
-			next,
-		) => {
+		return async (req, res, next) => {
+			if (!isAuthenticatedRequest(req)) throw new UnauthenticatedError();
 			if (!req.user) throw new UnauthenticatedError();
 
 			const { scope, globalOnly } = accessScope;

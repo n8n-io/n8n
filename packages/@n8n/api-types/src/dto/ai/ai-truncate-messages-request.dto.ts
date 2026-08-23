@@ -5,5 +5,5 @@ import { Z } from '../../zod-class';
 export class AiTruncateMessagesRequestDto extends Z.class({
 	workflowId: z.string(),
 	messageId: z.string(),
-	codeBuilder: z.boolean().optional(),
+	versionCardId: z.string().optional(),
 }) {}

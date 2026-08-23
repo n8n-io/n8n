@@ -2,13 +2,7 @@ import isObject from 'lodash/isObject';
 import set from 'lodash/set';
 import { DateTime, Duration, Interval } from 'luxon';
 import { getAdditionalKeys } from 'n8n-core';
-import {
-	WorkflowDataProxy,
-	Workflow,
-	ObservableObject,
-	Expression,
-	jsonStringify,
-} from 'n8n-workflow';
+import { WorkflowDataProxy, Workflow, Expression, jsonStringify } from 'n8n-workflow';
 import type {
 	CodeExecutionMode,
 	IWorkflowExecuteAdditionalData,
@@ -46,6 +40,7 @@ import { isErrorLike } from './errors/error-like';
 import { ExecutionError } from './errors/execution-error';
 import { makeSerializable } from './errors/serializable-error';
 import { TimeoutError } from './errors/timeout-error';
+import { freezeGlobals } from './prototype-hardening';
 import type { RequireResolver } from './require-resolver';
 import { createRequireResolver } from './require-resolver';
 import { DataRequestResponseReconstruct } from '../data-request/data-request-response-reconstruct';
@@ -93,10 +88,6 @@ export interface JsTaskData {
 	contextNodeName: string;
 	additionalData: PartialAdditionalData;
 }
-
-type GlobalFunctionWithPrototype = ((...args: unknown[]) => unknown) & {
-	prototype?: object;
-};
 
 type CustomConsole = {
 	log: (...args: unknown[]) => void;
@@ -163,6 +154,7 @@ export class JsTaskRunner extends TaskRunner {
 		this.requireResolver = createRequireResolver({
 			allowedBuiltInModules,
 			allowedExternalModules,
+			secureModules: this.mode === 'secure',
 		});
 
 		if (this.mode === 'secure') this.preventPrototypePollution(allowedExternalModules);
@@ -195,17 +187,8 @@ export class JsTaskRunner extends TaskRunner {
 		Buffer.allocUnsafe = safeAlloc as typeof Buffer.allocUnsafe;
 		Buffer.allocUnsafeSlow = safeAlloc as typeof Buffer.allocUnsafeSlow;
 
-		// Freeze globals, except in tests because Jest needs to be able to mutate prototypes
 		if (process.env.NODE_ENV !== 'test') {
-			Object.getOwnPropertyNames(globalThis)
-				.map((name) => Reflect.get(globalThis, name) as unknown)
-				.filter((value): value is GlobalFunctionWithPrototype => typeof value === 'function')
-				.forEach((fn) => {
-					if (typeof fn.prototype === 'object') Object.freeze(fn.prototype);
-					Object.freeze(fn);
-				});
-
-			[Reflect, JSON, Math].forEach(Object.freeze);
+			freezeGlobals();
 		}
 
 		// Freeze internal classes
@@ -251,8 +234,6 @@ export class JsTaskRunner extends TaskRunner {
 			...workflowParams,
 			nodeTypes: this.nodeTypes,
 		});
-
-		workflow.staticData = ObservableObject.create(workflow.staticData);
 
 		const result =
 			settings.nodeMode === 'runOnceForAllItems'

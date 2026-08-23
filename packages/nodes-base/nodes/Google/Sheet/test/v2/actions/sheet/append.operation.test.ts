@@ -1,25 +1,28 @@
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 import { execute } from '../../../../v2/actions/sheet/append.operation';
 import type { GoogleSheet } from '../../../../v2/helpers/GoogleSheet';
 import * as GoogleSheetsUtils from '../../../../v2/helpers/GoogleSheets.utils';
+import type { Mock, Mocked } from 'vitest';
+import type * as _importType0 from '../../../../v2/helpers/GoogleSheets.utils';
 
-jest.mock('../../../../v2/helpers/GoogleSheets.utils', () => ({
-	autoMapInputData: jest.fn(),
-	mapFields: jest.fn(),
-	checkForSchemaChanges: jest.fn(),
-	cellFormatDefault: jest.fn(),
+vi.mock('../../../../v2/helpers/GoogleSheets.utils', async () => ({
+	...(await vi.importActual<typeof _importType0>('../../../../v2/helpers/GoogleSheets.utils')),
+	autoMapInputData: vi.fn(),
+	mapFields: vi.fn(),
+	checkForSchemaChanges: vi.fn(),
+	cellFormatDefault: vi.fn(),
 }));
 
 describe('Google Sheets Append Operation', () => {
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-	let mockSheet: jest.Mocked<GoogleSheet>;
-	let mockNode: jest.Mocked<INode>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+	let mockSheet: Mocked<GoogleSheet>;
+	let mockNode: Mocked<INode>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions = mockDeep<IExecuteFunctions>();
 
@@ -33,9 +36,9 @@ describe('Google Sheets Append Operation', () => {
 		});
 
 		mockSheet = mock<GoogleSheet>();
-		mockSheet.getData = jest.fn();
-		mockSheet.appendSheetData = jest.fn();
-		mockSheet.appendEmptyRowsOrColumns = jest.fn();
+		mockSheet.getData = vi.fn();
+		mockSheet.appendSheetData = vi.fn();
+		mockSheet.appendEmptyRowsOrColumns = vi.fn();
 
 		mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 		mockExecuteFunctions.getInputData.mockReturnValue([
@@ -52,19 +55,19 @@ describe('Google Sheets Append Operation', () => {
 			return mockParams[paramName];
 		});
 
-		(GoogleSheetsUtils.autoMapInputData as jest.Mock).mockResolvedValue([
+		(GoogleSheetsUtils.autoMapInputData as Mock).mockResolvedValue([
 			{ name: 'John', email: 'john@example.com' },
 			{ name: 'Jane', email: 'jane@example.com' },
 		]);
-		(GoogleSheetsUtils.mapFields as jest.Mock).mockReturnValue([
+		(GoogleSheetsUtils.mapFields as Mock).mockReturnValue([
 			{ name: 'John', email: 'john@example.com' },
 			{ name: 'Jane', email: 'jane@example.com' },
 		]);
-		(GoogleSheetsUtils.cellFormatDefault as jest.Mock).mockReturnValue('USER_ENTERED');
+		(GoogleSheetsUtils.cellFormatDefault as Mock).mockReturnValue('USER_ENTERED');
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Basic Execution', () => {
@@ -310,7 +313,7 @@ describe('Google Sheets Append Operation', () => {
 			]);
 
 			// Mock checkForSchemaChanges to throw error
-			(GoogleSheetsUtils.checkForSchemaChanges as jest.Mock).mockImplementation(() => {
+			(GoogleSheetsUtils.checkForSchemaChanges as Mock).mockImplementation(() => {
 				throw new NodeOperationError(mockNode, 'Column names were updated');
 			});
 
@@ -344,13 +347,13 @@ describe('Google Sheets Append Operation', () => {
 		});
 
 		it('should handle empty input data gracefully', async () => {
-			(GoogleSheetsUtils.mapFields as jest.Mock).mockReturnValue([]);
+			(GoogleSheetsUtils.mapFields as Mock).mockReturnValue([]);
 			mockSheet.getData.mockResolvedValue([
 				['Name', 'Email'],
 				['John', 'john@example.com'],
 			]);
 
-			(GoogleSheetsUtils.autoMapInputData as jest.Mock).mockResolvedValue([]);
+			(GoogleSheetsUtils.autoMapInputData as Mock).mockResolvedValue([]);
 
 			const result = await execute.call(
 				mockExecuteFunctions,
@@ -506,6 +509,74 @@ describe('Google Sheets Append Operation', () => {
 			await execute.call(mockExecuteFunctions, mockSheet, 'Sheet1!A1:B2', 'sheet123');
 
 			expect(GoogleSheetsUtils.mapFields).toHaveBeenCalledWith(2);
+		});
+
+		it('should pass pre-fetched header row to autoMapInputData when sheet has data', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'dataMode' || paramName === 'columns.mappingMode') {
+					return 'autoMapInputData';
+				}
+				return {};
+			});
+			mockSheet.getData.mockResolvedValue([
+				['Name', 'Email'],
+				['John', 'john@example.com'],
+			]);
+			mockSheet.appendSheetData.mockResolvedValue([]);
+
+			await execute.call(mockExecuteFunctions, mockSheet, 'Sheet1!A1:B2', 'sheet123');
+
+			expect(GoogleSheetsUtils.autoMapInputData).toHaveBeenCalledWith(
+				'Sheet1!A1:B2',
+				mockSheet,
+				expect.any(Array),
+				{},
+				['Name', 'Email'],
+			);
+		});
+
+		it('should not pass header row to autoMapInputData when sheet is empty', async () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				if (paramName === 'dataMode' || paramName === 'columns.mappingMode') {
+					return 'autoMapInputData';
+				}
+				return {};
+			});
+			mockSheet.getData.mockResolvedValue([]);
+			mockSheet.appendSheetData.mockResolvedValue([]);
+
+			await execute.call(mockExecuteFunctions, mockSheet, 'Sheet1!A1:B2', 'sheet123');
+
+			// No 5th arg — header row is undefined for empty sheets
+			expect(GoogleSheetsUtils.autoMapInputData).toHaveBeenCalledWith(
+				'Sheet1!A1:B2',
+				mockSheet,
+				expect.any(Array),
+				{},
+			);
+		});
+
+		it('should call setColumnNamesHint with header row in defineBelow mode', async () => {
+			// Default dataMode from beforeEach is 'defineBelow'
+			mockSheet.getData.mockResolvedValue([
+				['Name', 'Email'],
+				['John', 'john@example.com'],
+			]);
+			mockSheet.appendSheetData.mockResolvedValue([]);
+
+			await execute.call(mockExecuteFunctions, mockSheet, 'Sheet1!A1:B2', 'sheet123');
+
+			expect(mockSheet.setColumnNamesHint).toHaveBeenCalledWith(['Name', 'Email']);
+		});
+
+		it('should not call setColumnNamesHint in defineBelow mode when sheet has no data', async () => {
+			// Empty sheet forces dataMode to autoMapInputData; headerRow is undefined
+			mockSheet.getData.mockResolvedValue([]);
+			mockSheet.appendSheetData.mockResolvedValue([]);
+
+			await execute.call(mockExecuteFunctions, mockSheet, 'Sheet1!A1:B2', 'sheet123');
+
+			expect(mockSheet.setColumnNamesHint).not.toHaveBeenCalled();
 		});
 
 		it('should call checkForSchemaChanges for node version >= 4.4', async () => {

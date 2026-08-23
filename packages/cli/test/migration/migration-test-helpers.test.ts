@@ -47,9 +47,9 @@ describe('Migration Test Helpers', () => {
 
 	describe('initDbUpToMigration', () => {
 		it('should throw error if migration not found', async () => {
-			await expect(initDbUpToMigration('NonExistentMigration')).rejects.toThrow(
-				new UnexpectedError('Migration "NonExistentMigration" not found'),
-			);
+			const promise = initDbUpToMigration('NonExistentMigration');
+			await expect(promise).rejects.toThrow(UnexpectedError);
+			await expect(promise).rejects.toThrow('Migration "NonExistentMigration" not found');
 		});
 
 		it('should stop before specified migration', async () => {
@@ -72,9 +72,9 @@ describe('Migration Test Helpers', () => {
 
 	describe('runSingleMigration', () => {
 		it('should throw error if migration not found', async () => {
-			await expect(runSingleMigration('NonExistentMigration')).rejects.toThrow(
-				new UnexpectedError('Migration "NonExistentMigration" not found'),
-			);
+			const promise = runSingleMigration('NonExistentMigration');
+			await expect(promise).rejects.toThrow(UnexpectedError);
+			await expect(promise).rejects.toThrow('Migration "NonExistentMigration" not found');
 		});
 
 		it('should run specific migration', async () => {

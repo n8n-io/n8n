@@ -1,11 +1,15 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { MessageContent } from '@langchain/core/messages';
-import { OutputParserException, StructuredOutputParser } from '@langchain/core/output_parsers';
+import { StructuredOutputParser } from '@langchain/core/output_parsers';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { z } from 'zod';
 
+import {
+	isLangChainParserError,
+	MODEL_OUTPUT_PARSER_ERROR_MESSAGE,
+} from '@utils/output_parsers/langchainParserError';
 import { GuardrailError, type GuardrailResult, type LLMConfig } from '../actions/types';
 
 const LlmResponseSchema = z
@@ -116,8 +120,8 @@ async function runLLM(
 
 		return { confidenceScore, flagged };
 	} catch (error) {
-		if (error instanceof OutputParserException) {
-			throw new GuardrailError(name, 'Failed to parse output', error.message);
+		if (isLangChainParserError(error)) {
+			throw new GuardrailError(name, 'Failed to parse output', MODEL_OUTPUT_PARSER_ERROR_MESSAGE);
 		}
 		throw new GuardrailError(
 			name,

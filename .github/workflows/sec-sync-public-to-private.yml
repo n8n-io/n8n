@@ -5,8 +5,11 @@
 #
 # Scheduled runs only sync if private is not ahead of public.
 # Manual runs always sync (for conflict recovery after failed cherry-pick).
+#
+# The bundle/* integration branches are kept current by sec-sync-bundle-branches.yml.
 
 name: 'Security: Sync from Public'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Security: Sync from Public (force={0})', inputs.force) || '' }}"
 
 on:
   schedule:
@@ -24,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: write
 
     steps:
       - name: Generate App Token
@@ -34,12 +38,15 @@ jobs:
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Sync from public
+      - name: Sync master from public
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          FORCE: ${{ inputs.force }}
         run: |
           git fetch https://github.com/n8n-io/n8n.git master:public-master
 
@@ -47,10 +54,10 @@ jobs:
           AHEAD_COUNT=$(git rev-list public-master..HEAD --pretty=oneline --grep="chore: Bundle" --invert-grep --count)
 
           if [ "$AHEAD_COUNT" -gt 0 ]; then
-            if [ "${{ github.event_name }}" = "schedule" ]; then
+            if [ "$EVENT_NAME" = "schedule" ]; then
               echo "Private is $AHEAD_COUNT commit(s) ahead of public, skipping scheduled sync"
               exit 0
-            elif [ "${{ inputs.force }}" != "true" ]; then
+            elif [ "$FORCE" != "true" ]; then
               echo "Private is $AHEAD_COUNT commit(s) ahead of public, skipping (force not enabled)"
               exit 0
             else
@@ -60,3 +67,50 @@ jobs:
 
           git reset --hard public-master
           git push origin master --force-with-lease
+
+      - name: Sync 1.x from public
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          FORCE: ${{ inputs.force }}
+        run: |
+          git fetch https://github.com/n8n-io/n8n.git 1.x:public-1.x
+          git checkout 1.x
+
+          # Check if private is ahead of public, ignore Bundle commits
+          AHEAD_COUNT=$(git rev-list public-1.x..HEAD --pretty=oneline --grep="chore: Bundle" --invert-grep --count)
+
+          if [ "$AHEAD_COUNT" -gt 0 ]; then
+            if [ "$EVENT_NAME" = "schedule" ]; then
+              echo "Private 1.x is $AHEAD_COUNT commit(s) ahead of public, skipping scheduled sync"
+              exit 0
+            elif [ "$FORCE" != "true" ]; then
+              echo "Private 1.x is $AHEAD_COUNT commit(s) ahead of public, skipping (force not enabled)"
+              exit 0
+            else
+              echo "Private 1.x is $AHEAD_COUNT commit(s) ahead of public, force syncing anyway"
+            fi
+          fi
+
+          git reset --hard public-1.x
+          git push origin 1.x --force-with-lease
+
+      - name: Re-create missing bundle branches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          EXISTING=$(git ls-remote --heads origin 'refs/heads/bundle/*')
+
+          MISSING=()
+          for BRANCH in bundle/2.x bundle/1.x; do
+            if ! grep -qF "refs/heads/$BRANCH" <<<"$EXISTING"; then
+              MISSING+=("$BRANCH")
+            fi
+          done
+
+          if [ ${#MISSING[@]} -eq 0 ]; then
+            echo 'Both bundle branches exist; nothing to dispatch.'
+            exit 0
+          fi
+
+          echo "Missing: ${MISSING[*]} - dispatching Security: Sync Bundle Branches"
+          gh workflow run sec-sync-bundle-branches.yml --ref master

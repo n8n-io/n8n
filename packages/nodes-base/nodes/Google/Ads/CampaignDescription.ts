@@ -41,7 +41,7 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v20/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "")  + "/googleAds:search"}}',
+						url: '={{"/v25/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "")  + "/googleAds:search"}}',
 						body: {
 							query:
 								'={{ "' +
@@ -62,7 +62,7 @@ export const campaignOperations: INodeProperties[] = [
 								'metrics.conversions,' +
 								'metrics.cost_per_conversion,' +
 								'metrics.conversions_from_interactions_rate,' +
-								'metrics.video_views,' +
+								'metrics.video_trueview_views,' +
 								'metrics.average_cpm,' +
 								'metrics.ctr ' +
 								'from campaign ' +
@@ -89,7 +89,7 @@ export const campaignOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'POST',
-						url: '={{"/v20/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "") + "/googleAds:search"}}',
+						url: '={{"/v25/customers/" + $parameter["clientCustomerId"].toString().replace(/-/g, "") + "/googleAds:search"}}',
 						returnFullResponse: true,
 						body: {
 							query:
@@ -111,7 +111,7 @@ export const campaignOperations: INodeProperties[] = [
 								'metrics.conversions,' +
 								'metrics.cost_per_conversion,' +
 								'metrics.conversions_from_interactions_rate,' +
-								'metrics.video_views,' +
+								'metrics.video_trueview_views,' +
 								'metrics.average_cpm,' +
 								'metrics.ctr ' +
 								'from campaign ' +

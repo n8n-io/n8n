@@ -55,13 +55,9 @@ test.describe(
 			expect(finalZoom).toBeLessThanOrEqual(ZOOM_OUT_X2_FACTOR + ZOOM_TOLERANCE);
 		});
 
-		test('should reset zoom', async ({ n8n }) => {
-			await expect(n8n.canvas.getResetZoomButton()).not.toBeAttached();
-
+		test('should reset zoom on keyboard shortcut', async ({ n8n }) => {
 			await n8n.canvas.clickZoomInButton();
-
-			await expect(n8n.canvas.getResetZoomButton()).toBeVisible();
-			await n8n.canvas.getResetZoomButton().click();
+			await n8n.page.keyboard.press('0');
 
 			await expectZoomLevel(n8n, DEFAULT_ZOOM_FACTOR);
 		});
@@ -238,10 +234,10 @@ test.describe(
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(2);
 
 			await n8n.canvas.nodeByName('n8n').hover();
-			await n8n.canvas.nodeByName('n8n').getByTestId('overflow-node-button').click();
-			await n8n.page.getByTestId('context-menu-item-open').click();
+			await n8n.canvas.nodeOverflowButton('n8n').click();
+			await n8n.canvas.getContextMenuItem('open').click();
 
-			await expect(n8n.ndv.getNodesWithIssues()).toHaveCount(1);
+			await expect(n8n.ndv.getNodeCredentialsEmptyState()).toBeVisible();
 		});
 
 		test.fixme('should open and close the about modal on keyboard shortcut', async ({ n8n }) => {

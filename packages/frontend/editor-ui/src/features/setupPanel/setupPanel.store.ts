@@ -1,5 +1,5 @@
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { STORES } from '@n8n/stores';
 import { SETUP_PANEL } from '@/app/constants';
 import { defineStore } from 'pinia';

@@ -17,48 +17,48 @@ const VALID_SORT_OPTIONS = [
 
 export type ListDataTableQuerySortOptions = (typeof VALID_SORT_OPTIONS)[number];
 
-const FILTER_OPTIONS = {
-	id: z.union([z.string(), z.array(z.string())]).optional(),
-	name: z.union([z.string(), z.array(z.string())]).optional(),
-	projectId: z.union([z.string(), z.array(z.string())]).optional(),
-	// todo: can probably include others here as well?
-};
+const filterSchema = z
+	.object({
+		id: z.union([z.string(), z.array(z.string())]).optional(),
+		name: z.union([z.string(), z.array(z.string())]).optional(),
+		projectId: z.union([z.string(), z.array(z.string())]).optional(),
+		// todo: can probably include others here as well?
+	})
+	.strict();
 
-// Filter schema - only allow specific properties
-const filterSchema = z.object(FILTER_OPTIONS).strict();
-// ---------------------
-// Parameter Validators
-// ---------------------
+// Public API restricts projectId to a single string
+const publicApiFilterSchema = filterSchema.extend({ projectId: z.string().optional() }).strict();
 
-// Filter parameter validation
-const filterValidator = z
-	.string()
-	.optional()
-	.transform((val, ctx) => {
-		if (!val) return undefined;
-		try {
-			const parsed: unknown = jsonParse(val);
+const makeFilterValidator = <T extends z.ZodObject<z.ZodRawShape>>(schema: T) =>
+	z
+		.string()
+		.optional()
+		.transform((val, ctx): z.infer<T> | undefined => {
+			if (!val) return undefined;
 			try {
-				return filterSchema.parse(parsed);
-			} catch (e) {
+				const result = schema.safeParse(jsonParse(val));
+				if (!result.success) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: 'Invalid filter fields',
+						path: ['filter'],
+					});
+					return z.NEVER;
+				}
+				return result.data;
+			} catch {
 				ctx.addIssue({
 					code: z.ZodIssueCode.custom,
-					message: 'Invalid filter fields',
+					message: 'Invalid filter format',
 					path: ['filter'],
 				});
 				return z.NEVER;
 			}
-		} catch (e) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				message: 'Invalid filter format',
-				path: ['filter'],
-			});
-			return z.NEVER;
-		}
-	});
+		});
 
-// SortBy parameter validation
+const filterValidator = makeFilterValidator(filterSchema);
+const publicApiFilterValidator = makeFilterValidator(publicApiFilterSchema);
+
 const sortByValidator = z
 	.enum(VALID_SORT_OPTIONS, { message: `sortBy must be one of: ${VALID_SORT_OPTIONS.join(', ')}` })
 	.optional();
@@ -71,6 +71,6 @@ export class ListDataTableQueryDto extends Z.class({
 
 export class PublicApiListDataTableQueryDto extends Z.class({
 	...publicApiPaginationSchema,
-	filter: filterValidator,
+	filter: publicApiFilterValidator,
 	sortBy: sortByValidator,
 }) {}

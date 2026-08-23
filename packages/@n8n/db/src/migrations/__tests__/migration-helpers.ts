@@ -23,7 +23,7 @@ describe('migrationHelpers.wrapMigration', () => {
 		class TestMigration implements IrreversibleMigration {
 			async up() {}
 		}
-		const originalUp = jest.fn();
+		const originalUp = vi.fn();
 		TestMigration.prototype.up = originalUp;
 
 		//
@@ -48,7 +48,7 @@ describe('migrationHelpers.wrapMigration', () => {
 
 			async down() {}
 		}
-		const originalDown = jest.fn();
+		const originalDown = vi.fn();
 		TestMigration.prototype.down = originalDown;
 
 		//

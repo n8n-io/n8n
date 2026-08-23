@@ -7,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import { verifySignature } from './CustomerIoTriggerHelpers';
 import { customerIoApiRequest, eventExists, toApiEventName } from './GenericFunctions';
 
 export class CustomerIoTrigger implements INodeType {
@@ -281,6 +282,15 @@ export class CustomerIoTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const isSignatureValid = await verifySignature.call(this);
+		if (!isSignatureValid) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
+
 		const bodyData = this.getBodyData();
 		return {
 			workflowData: [this.helpers.returnJsonArray(bodyData)],

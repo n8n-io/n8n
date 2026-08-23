@@ -1,28 +1,31 @@
 import * as aiUtilities from '@n8n/ai-utilities';
 import { OperationalError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
 
 import { TokenTextSplitter } from '../TokenTextSplitter';
 
-jest.mock('@n8n/ai-utilities');
+vi.mock('@n8n/ai-utilities');
 
 describe('TokenTextSplitter', () => {
-	let mockTokenizer: jest.Mocked<{
-		encode: jest.Mock;
-		decode: jest.Mock;
+	let mockTokenizer: Mocked<{
+		encode: Mock;
+		decode: Mock;
 	}>;
 
 	beforeEach(() => {
 		mockTokenizer = {
-			encode: jest.fn(),
-			decode: jest.fn(),
+			// @ts-expect-error - Mocking
+			encode: vi.fn(),
+			// @ts-expect-error - Mocking
+			decode: vi.fn(),
 		};
-		(aiUtilities.getEncoding as jest.Mock).mockReturnValue(mockTokenizer);
+		(aiUtilities.getEncoding as Mock).mockReturnValue(mockTokenizer);
 		// Default mock for hasLongSequentialRepeat - no repetition
-		(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
+		(aiUtilities.hasLongSequentialRepeat as Mock).mockReturnValue(false);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('constructor', () => {
@@ -176,8 +179,8 @@ describe('TokenTextSplitter', () => {
 				const repetitiveText = 'a'.repeat(1000);
 				const estimatedChunks = ['chunk1', 'chunk2', 'chunk3'];
 
-				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(true);
-				(aiUtilities.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(estimatedChunks);
+				(aiUtilities.hasLongSequentialRepeat as Mock).mockReturnValue(true);
+				(aiUtilities.estimateTextSplitsByTokens as Mock).mockReturnValue(estimatedChunks);
 
 				const result = await splitter.splitText(repetitiveText);
 
@@ -206,7 +209,7 @@ describe('TokenTextSplitter', () => {
 				const normalText = 'This is normal text without repetition';
 				const mockTokenIds = [1, 2, 3, 4, 5, 6];
 
-				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
+				(aiUtilities.hasLongSequentialRepeat as Mock).mockReturnValue(false);
 				mockTokenizer.encode.mockReturnValue(mockTokenIds);
 				mockTokenizer.decode.mockImplementation(() => 'chunk');
 
@@ -233,8 +236,8 @@ describe('TokenTextSplitter', () => {
 				const repetitiveText = '.'.repeat(500);
 				const estimatedChunks = ['estimated chunk 1', 'estimated chunk 2'];
 
-				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(true);
-				(aiUtilities.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(estimatedChunks);
+				(aiUtilities.hasLongSequentialRepeat as Mock).mockReturnValue(true);
+				(aiUtilities.estimateTextSplitsByTokens as Mock).mockReturnValue(estimatedChunks);
 
 				const result = await splitter.splitText(repetitiveText);
 
@@ -251,8 +254,8 @@ describe('TokenTextSplitter', () => {
 				const splitter = new TokenTextSplitter();
 				const edgeText = 'x'.repeat(100);
 
-				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(true);
-				(aiUtilities.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(['single chunk']);
+				(aiUtilities.hasLongSequentialRepeat as Mock).mockReturnValue(true);
+				(aiUtilities.estimateTextSplitsByTokens as Mock).mockReturnValue(['single chunk']);
 
 				const result = await splitter.splitText(edgeText);
 
@@ -264,8 +267,8 @@ describe('TokenTextSplitter', () => {
 				const splitter = new TokenTextSplitter();
 				const mixedText = 'Normal text ' + 'z'.repeat(200) + ' more normal text';
 
-				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(true);
-				(aiUtilities.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(['chunk1', 'chunk2']);
+				(aiUtilities.hasLongSequentialRepeat as Mock).mockReturnValue(true);
+				(aiUtilities.estimateTextSplitsByTokens as Mock).mockReturnValue(['chunk1', 'chunk2']);
 
 				const result = await splitter.splitText(mixedText);
 
@@ -298,11 +301,11 @@ describe('TokenTextSplitter', () => {
 				const splitter = new TokenTextSplitter();
 				const text = 'This will cause tiktoken to fail';
 
-				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
-				(aiUtilities.getEncoding as jest.Mock).mockImplementation(() => {
+				(aiUtilities.hasLongSequentialRepeat as Mock).mockReturnValue(false);
+				(aiUtilities.getEncoding as Mock).mockImplementation(() => {
 					throw new Error('Tiktoken error');
 				});
-				(aiUtilities.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(['fallback chunk']);
+				(aiUtilities.estimateTextSplitsByTokens as Mock).mockReturnValue(['fallback chunk']);
 
 				const result = await splitter.splitText(text);
 
@@ -319,11 +322,11 @@ describe('TokenTextSplitter', () => {
 				const splitter = new TokenTextSplitter();
 				const text = 'This will cause encode to fail';
 
-				(aiUtilities.hasLongSequentialRepeat as jest.Mock).mockReturnValue(false);
+				(aiUtilities.hasLongSequentialRepeat as Mock).mockReturnValue(false);
 				mockTokenizer.encode.mockImplementation(() => {
 					throw new OperationalError('Encode error');
 				});
-				(aiUtilities.estimateTextSplitsByTokens as jest.Mock).mockReturnValue(['fallback chunk']);
+				(aiUtilities.estimateTextSplitsByTokens as Mock).mockReturnValue(['fallback chunk']);
 
 				const result = await splitter.splitText(text);
 

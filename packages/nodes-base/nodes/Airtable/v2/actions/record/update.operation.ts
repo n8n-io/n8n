@@ -8,7 +8,12 @@ import type {
 
 import { updateDisplayOptions, wrapData } from '../../../../../utils/utilities';
 import type { UpdateRecord } from '../../helpers/interfaces';
-import { findMatches, processAirtableError, removeIgnored } from '../../helpers/utils';
+import {
+	coerceArrayTypeFields,
+	findMatches,
+	processAirtableError,
+	removeIgnored,
+} from '../../helpers/utils';
 import { apiRequestAllItems, batchUpdate } from '../../transport';
 import { insertUpdateOptions } from '../common.descriptions';
 
@@ -116,6 +121,9 @@ export async function execute(
 						[],
 						getNodeParameterOptions,
 					) as IDataObject;
+					if (typecast) {
+						coerceArrayTypeFields(fields, this.getNode().parameters.columns);
+					}
 					records.push({ id: id as string, fields });
 				} else {
 					const fields = this.getNodeParameter(
@@ -124,6 +132,9 @@ export async function execute(
 						[],
 						getNodeParameterOptions,
 					) as IDataObject;
+					if (typecast) {
+						coerceArrayTypeFields(fields, this.getNode().parameters.columns);
+					}
 
 					const matches = findMatches(
 						tableData,

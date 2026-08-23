@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -12,8 +11,10 @@ import type {
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	WorkflowExpression,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes, type WorkflowExpression } from 'n8n-workflow';
+import { UnexpectedError, NodeConnectionTypes } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteSingleContext } from '../execute-single-context';
@@ -51,7 +52,11 @@ describe('ExecuteSingleContext', () => {
 		testParameter: 'testValue',
 	};
 	const credentialsHelper = mock<ICredentialsHelper>();
-	const additionalData = mock<IWorkflowExecuteAdditionalData>({ credentialsHelper });
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({
+		credentialsHelper,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+	});
 	const mode: WorkflowExecuteMode = 'manual';
 	const runExecutionData = mock<IRunExecutionData>();
 	const connectionInputData: INodeExecutionData[] = [];
@@ -113,7 +118,7 @@ describe('ExecuteSingleContext', () => {
 			const inputIndex = 1;
 
 			expect(() => executeSingleContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 
@@ -121,7 +126,7 @@ describe('ExecuteSingleContext', () => {
 			inputData.main[inputIndex] = null;
 
 			expect(() => executeSingleContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 
@@ -129,7 +134,7 @@ describe('ExecuteSingleContext', () => {
 			delete inputData.main[inputIndex]![itemIndex];
 
 			expect(() => executeSingleContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 	});
@@ -163,6 +168,7 @@ describe('ExecuteSingleContext', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
 
 			const credentials =
 				await executeSingleContext.getCredentials<ICredentialDataDecryptedObject>(
@@ -191,6 +197,29 @@ describe('ExecuteSingleContext', () => {
 				'last',
 				'params',
 			]);
+		});
+	});
+
+	describe('getRuntimeCredential', () => {
+		beforeEach(() => {
+			additionalData.getRuntimeCredential.mockReset();
+		});
+
+		it('forwards the alias to the additionalData callback and returns its value', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue('Bearer xyz');
+
+			const result = await executeSingleContext.getRuntimeCredential('api_key');
+
+			expect(result).toBe('Bearer xyz');
+			expect(additionalData.getRuntimeCredential).toHaveBeenCalledWith(runExecutionData, 'api_key');
+		});
+
+		it('returns undefined when the underlying callback yields undefined', async () => {
+			additionalData.getRuntimeCredential.mockResolvedValue(undefined);
+
+			const result = await executeSingleContext.getRuntimeCredential('missing');
+
+			expect(result).toBeUndefined();
 		});
 	});
 });

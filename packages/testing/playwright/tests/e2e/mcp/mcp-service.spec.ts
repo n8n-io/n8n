@@ -6,13 +6,24 @@ import { test, expect } from '../../../fixtures/base';
  * E2E tests for the Internal MCP Service (/mcp-server/http).
  *
  * This tests the built-in MCP server that exposes n8n workflows to external
- * MCP clients (like Claude AI). It provides 6 tools:
+ * MCP clients (like Claude AI). It provides 6 core tools and 7 builder tools:
+ *
+ * Core tools:
  * - search_workflows: Search for workflows available in MCP
  * - get_workflow_details: Get detailed information about a workflow
  * - execute_workflow: Execute a workflow and get results
- * - get_execution: Get full execution details by ID
+ * - get_workflow_execution: Get full workflow execution details by ID
  * - publish_workflow: Publish (activate) a workflow
  * - unpublish_workflow: Unpublish (deactivate) a workflow
+ *
+ * Builder tools (enabled via N8N_MCP_BUILDER_ENABLED):
+ * - search_nodes: Search for n8n nodes by service name/trigger type
+ * - get_node_types: Get TypeScript type definitions for nodes
+ * - get_workflow_best_practices: Get best-practices guidance for a workflow technique
+ * - validate_workflow: Validate n8n Workflow SDK code
+ * - create_workflow_from_code: Create a workflow from validated SDK code
+ * - archive_workflow: Archive a workflow by ID
+ * - update_workflow: Update a workflow with new SDK code
  *
  * Authentication is via Bearer token (MCP API key).
  *
@@ -98,21 +109,27 @@ test.describe(
 		});
 
 		test.describe('tools/list', () => {
-			test('should return all 6 built-in tools', async ({ api }) => {
+			test('should return all built-in tools including builder tools', async ({ api }) => {
 				const { apiKey } = await api.rotateMcpApiKey();
 				const tools = await api.mcp.internalMcpListTools(apiKey);
 
-				expect(tools).toHaveLength(6);
-
 				const toolNames = tools.map((t) => t.name).sort();
-				expect(toolNames).toEqual([
-					'execute_workflow',
-					'get_execution',
-					'get_workflow_details',
-					'publish_workflow',
-					'search_workflows',
-					'unpublish_workflow',
-				]);
+
+				// Guard against major regressions (e.g. half the tools disappearing)
+				// without coupling to an exact list that breaks on every add/remove.
+				expect(toolNames.length).toBeGreaterThanOrEqual(10);
+
+				// Every tool must have the required MCP structure
+				for (const tool of tools) {
+					expect(tool.name).toBeTruthy();
+					expect(tool.description).toBeTruthy();
+					expect(tool.inputSchema).toBeDefined();
+				}
+
+				// Spot-check a few stable core tools
+				expect(toolNames).toContain('search_workflows');
+				expect(toolNames).toContain('execute_workflow');
+				expect(toolNames).toContain('get_workflow_details');
 			});
 
 			test('should include proper tool descriptions and schemas', async ({ api }) => {
@@ -152,7 +169,6 @@ test.describe(
 				const foundWorkflow = result.data.find((w) => w.id === workflowId);
 				expect(foundWorkflow).toBeDefined();
 				expect(foundWorkflow!.active).toBe(true);
-				expect(foundWorkflow!.scopes).toBeDefined();
 				expect(foundWorkflow!.availableInMCP).toBe(true);
 			});
 
@@ -201,7 +217,7 @@ test.describe(
 				expect(result.data[0].id).toBe(workflowId);
 			});
 
-			test('should return workflow metadata (id, name, scopes)', async ({ api }) => {
+			test('should return workflow metadata (id, name)', async ({ api }) => {
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-basic.json',
 				);
@@ -215,8 +231,6 @@ test.describe(
 
 				expect(foundWorkflow!.id).toBe(workflowId);
 				expect(foundWorkflow!.name).toBeTruthy();
-				expect(foundWorkflow!.scopes).toBeInstanceOf(Array);
-				expect(typeof foundWorkflow!.canExecute).toBe('boolean');
 				expect(typeof foundWorkflow!.availableInMCP).toBe('boolean');
 			});
 		});
@@ -282,9 +296,9 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
+				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production');
 
-				expect(result.status).toBe('success');
+				expect(result.status).toBe('started');
 				expect(result.executionId).toBeTruthy();
 			});
 
@@ -292,7 +306,11 @@ test.describe(
 				const { apiKey } = await api.rotateMcpApiKey();
 				const fakeWorkflowId = 'nonexistent-workflow-id-12345';
 
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, fakeWorkflowId);
+				const result = await api.mcp.internalMcpExecuteWorkflow(
+					apiKey,
+					fakeWorkflowId,
+					'production',
+				);
 
 				expect(result.status).toBe('error');
 				expect(result.error).toBeTruthy();
@@ -305,7 +323,7 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
+				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, 'production');
 
 				expect(result.status).toBe('error');
 				expect(result.error).toBeTruthy();
@@ -318,20 +336,25 @@ test.describe(
 				await api.workflows.activate(workflowId, createdWorkflow.versionId!);
 
 				const { apiKey } = await api.rotateMcpApiKey();
-				const result = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId, {
-					type: 'webhook',
-					webhookData: {
-						method: 'POST',
-						body: { message: 'Hello from MCP test' },
+				const result = await api.mcp.internalMcpExecuteWorkflow(
+					apiKey,
+					workflowId,
+					'production',
+					{
+						webhookData: {
+							method: 'POST',
+							body: { message: 'Hello from MCP test' },
+						},
 					},
-				});
+					'Webhook',
+				);
 
-				expect(result.status).toBe('success');
+				expect(result.status).toBe('started');
 				expect(result.executionId).toBeTruthy();
 			});
 		});
 
-		test.describe('get_execution', () => {
+		test.describe('get_workflow_execution', () => {
 			test('should return full execution data after workflow execution', async ({ api }) => {
 				const { workflowId, createdWorkflow } = await api.workflows.importWorkflowFromFile(
 					'mcp-service/mcp-available-basic.json',
@@ -340,20 +363,39 @@ test.describe(
 
 				const { apiKey } = await api.rotateMcpApiKey();
 
-				const execResult = await api.mcp.internalMcpExecuteWorkflow(apiKey, workflowId);
-				expect(execResult.status).toBe('success');
+				const execResult = await api.mcp.internalMcpExecuteWorkflow(
+					apiKey,
+					workflowId,
+					'production',
+				);
+				expect(execResult.status).toBe('started');
 				expect(execResult.executionId).toBeTruthy();
+
+				// Poll for execution completion since executions are asynchronous
+				await expect
+					.poll(
+						async () => {
+							const r = await api.mcp.internalMcpGetExecution(
+								apiKey,
+								workflowId,
+								execResult.executionId!,
+							);
+							return r.execution?.status;
+						},
+						{ timeout: 30_000, intervals: [1_000] },
+					)
+					.toBe('success');
 
 				const result = await api.mcp.internalMcpGetExecution(
 					apiKey,
 					workflowId,
 					execResult.executionId!,
+					{ includeData: true },
 				);
 
 				expect(result.execution).toBeDefined();
 				expect(result.execution!.id).toBe(execResult.executionId);
 				expect(result.execution!.workflowId).toBe(workflowId);
-				expect(result.execution!.status).toBe('success');
 				expect(result.data).toBeDefined();
 			});
 		});
@@ -392,7 +434,7 @@ test.describe(
 			test('should handle malformed JSON-RPC messages', async ({ api }) => {
 				const { apiKey } = await api.rotateMcpApiKey();
 
-				// Missing required 'jsonrpc: "2.0"' field
+				// Valid JSON but not a valid JSON-RPC request (missing `jsonrpc: "2.0"`)
 				const malformedMessage = {
 					id: nanoid(),
 					method: 'tools/list',
@@ -400,12 +442,14 @@ test.describe(
 
 				const response = await api.mcp.internalMcpSendMessage(apiKey, malformedMessage);
 
-				// Server returns 400 Bad Request for malformed JSON-RPC
+				// Server returns 400 Bad Request for an invalid JSON-RPC request
 				expect(response.status()).toBe(400);
 
 				const body = await response.json();
 				expect(body.error).toBeDefined();
-				expect(body.error.code).toBe(-32700); // Parse error
+				// Well-formed JSON that isn't a valid request object is Invalid Request
+				// (-32600), not Parse error (-32700, which is for unparseable JSON).
+				expect(body.error.code).toBe(-32600); // Invalid Request
 				expect(body.error.message).toBeTruthy();
 			});
 

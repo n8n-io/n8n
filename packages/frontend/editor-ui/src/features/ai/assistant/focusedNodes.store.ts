@@ -1,11 +1,17 @@
 import { computed, ref, watch } from 'vue';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDebounceFn } from '@vueuse/core';
-import { DEBOUNCE_TIME, FOCUSED_NODES_EXPERIMENT, getDebounceTime } from '@/app/constants';
+import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { DEBOUNCE_TIME, FOCUSED_NODES_EXPERIMENT } from '@/app/constants';
 import type {
 	FocusedNode,
 	FocusedNodeState,
@@ -20,15 +26,23 @@ const MAX_UNCONFIRMED_DISPLAY = 50;
 
 export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
+	);
 	const posthogStore = usePostHog();
+	const settingsStore = useSettingsStore();
 	const telemetry = useTelemetry();
 	const chatPanelStateStore = useChatPanelStateStore();
-	const ndvStore = useNDVStore();
+	const ndvStore = computed(() => useNDVStore(createWorkflowDocumentId(workflowsStore.workflowId)));
 
+	// Cloud-only experiment (ADO-5013): the assistant/builder flags and the
+	// PostHog variant can both be true on self-hosted instances, so gate on
+	// deployment type here to cover every entry point (toolbar button, context
+	// menu, keyboard shortcut, chat mentions) in one place.
 	const isFeatureEnabled = computed(() => {
-		return posthogStore.isVariantEnabled(
-			FOCUSED_NODES_EXPERIMENT.name,
-			FOCUSED_NODES_EXPERIMENT.variant,
+		return (
+			settingsStore.isCloudDeployment &&
+			posthogStore.isVariantEnabled(FOCUSED_NODES_EXPERIMENT.name, FOCUSED_NODES_EXPERIMENT.variant)
 		);
 	});
 
@@ -44,7 +58,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	);
 
 	const filteredUnconfirmedNodes = computed(() => {
-		const totalWorkflowNodes = workflowsStore.allNodes.length;
+		const totalWorkflowNodes = workflowDocumentStore.value.allNodes.length;
 		const availableNodes = totalWorkflowNodes - confirmedNodes.value.length;
 		if (
 			confirmedNodes.value.length > 0 &&
@@ -76,7 +90,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	}
 
 	function getNodeInfo(nodeId: string): { name: string; type: string } | null {
-		const node = workflowsStore.allNodes.find((n) => n.id === nodeId);
+		const node = workflowDocumentStore.value.allNodes.find((n) => n.id === nodeId);
 		if (!node) return null;
 		return { name: node.name, type: node.type };
 	}
@@ -273,7 +287,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	);
 
 	watch(
-		() => workflowsStore.allNodes,
+		() => workflowDocumentStore.value.allNodes,
 		(newNodes) => {
 			const currentNodeIds = new Set(newNodes.map((n) => n.id));
 			const focusedIds = Object.keys(focusedNodesMap.value);
@@ -302,7 +316,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	);
 
 	watch(
-		() => workflowsStore.allNodes.map((n) => ({ id: n.id, name: n.name })),
+		() => workflowDocumentStore.value.allNodes.map((n) => ({ id: n.id, name: n.name })),
 		(newNodeNames) => {
 			for (const { id, name } of newNodeNames) {
 				const focusedNode = focusedNodesMap.value[id];
@@ -315,7 +329,7 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 	);
 
 	watch(
-		() => ndvStore.activeNode,
+		() => ndvStore.value.activeNode,
 		(node) => {
 			if (!isFeatureEnabled.value || !chatPanelStateStore.isOpen) return;
 			if (node && !focusedNodesMap.value[node.id]) {
@@ -331,9 +345,9 @@ export const useFocusedNodesStore = defineStore(STORES.FOCUSED_NODES, () => {
 
 		return buildFocusedNodesPayload(
 			confirmedNodes.value,
-			workflowsStore.allNodes,
-			workflowsStore.connectionsByDestinationNode,
-			workflowsStore.connectionsBySourceNode,
+			workflowDocumentStore.value.allNodes,
+			workflowDocumentStore.value.connectionsByDestinationNode,
+			workflowDocumentStore.value.connectionsBySourceNode,
 		);
 	}
 

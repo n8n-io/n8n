@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env, Nested } from '../decorators';
@@ -13,7 +14,7 @@ class MemoryConfig {
 
 	/** Time to live in milliseconds for entries in the memory cache. Default: 1 hour. */
 	@Env('N8N_CACHE_MEMORY_TTL')
-	ttl: number = 3600 * 1000; // 1 hour
+	ttl: number = 1 * Time.hours.toMilliseconds;
 }
 
 @Config
@@ -24,7 +25,7 @@ class RedisConfig {
 
 	/** Time to live in milliseconds for Redis cache entries. Set to 0 to disable expiry. Default: 1 hour. */
 	@Env('N8N_CACHE_REDIS_TTL')
-	ttl: number = 3600 * 1000; // 1 hour
+	ttl: number = 1 * Time.hours.toMilliseconds;
 }
 
 @Config

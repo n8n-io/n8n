@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import {
 	mockLogger,
 	createTeamProject,
@@ -5,9 +6,10 @@ import {
 	testDb,
 	testModules,
 } from '@n8n/backend-test-utils';
+import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
+import { mock } from 'vitest-mock-extended';
 
 import { InsightsRawRepository } from '@/modules/insights/database/repositories/insights-raw.repository';
 
@@ -17,13 +19,32 @@ import {
 	createCompactedInsightsEvent,
 	createRawInsightsEvents,
 } from '../database/entities/__tests__/db-utils';
+import type { PeriodUnit } from '../database/entities/insights-shared';
 import { InsightsByPeriodRepository } from '../database/repositories/insights-by-period.repository';
 import { InsightsCompactionService } from '../insights-compaction.service';
 import { InsightsConfig } from '../insights.config';
 
+type CompactionConfig = Pick<
+	InsightsConfig,
+	| 'compactionBatchSize'
+	| 'compactionMaxBatchesPerRun'
+	| 'compactionMaxRuntimeSeconds'
+	| 'compactionBatchDelayMilliseconds'
+>;
+
+let defaultCompactionConfig: CompactionConfig;
+
 beforeAll(async () => {
 	await testModules.loadModules(['insights']);
 	await testDb.init();
+
+	const config = Container.get(InsightsConfig);
+	defaultCompactionConfig = {
+		compactionBatchSize: config.compactionBatchSize,
+		compactionMaxBatchesPerRun: config.compactionMaxBatchesPerRun,
+		compactionMaxRuntimeSeconds: config.compactionMaxRuntimeSeconds,
+		compactionBatchDelayMilliseconds: config.compactionBatchDelayMilliseconds,
+	};
 });
 
 beforeEach(async () => {
@@ -36,10 +57,53 @@ beforeEach(async () => {
 	]);
 });
 
+afterEach(() => {
+	Object.assign(Container.get(InsightsConfig), defaultCompactionConfig);
+	vi.useRealTimers();
+	vi.restoreAllMocks();
+});
+
 // Terminate DB once after all tests complete
 afterAll(async () => {
 	await testDb.terminate();
 });
+
+function overrideCompactionConfig(overrides: Partial<CompactionConfig>) {
+	Object.assign(Container.get(InsightsConfig), overrides);
+}
+
+async function createRawSuccessEvents(
+	workflow: WorkflowEntity,
+	count: number,
+	{
+		start = DateTime.utc().startOf('hour'),
+		minutesBetweenEvents = 1,
+		value = 1,
+	}: { start?: DateTime; minutesBetweenEvents?: number; value?: number } = {},
+) {
+	const events = Array<{ type: 'success'; value: number; timestamp: DateTime }>();
+	let timestamp = start;
+
+	for (let i = 0; i < count; i++) {
+		events.push({ type: 'success', value, timestamp });
+		timestamp = timestamp.plus({ minute: minutesBetweenEvents });
+	}
+
+	await createRawInsightsEvents(workflow, events);
+}
+
+async function getCompactedTotal(periodUnit: PeriodUnit) {
+	const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
+	const insights = await insightsByPeriodRepository.find();
+
+	return insights
+		.filter((insight) => insight.periodUnit === periodUnit)
+		.reduce((total, insight) => total + insight.value, 0);
+}
+
+async function expectRawCount(expected: number) {
+	await expect(Container.get(InsightsRawRepository).count()).resolves.toBe(expected);
+}
 
 describe('compaction', () => {
 	describe('compactRawToHour', () => {
@@ -278,9 +342,6 @@ describe('compaction', () => {
 			const insightsRawRepository = Container.get(InsightsRawRepository);
 			const insightsByPeriodRepository = Container.get(InsightsByPeriodRepository);
 
-			// spy on the compactRawToHour method to check if it's called multiple times
-			const rawToHourSpy = jest.spyOn(insightsCompactionService, 'compactRawToHour');
-
 			const project = await createTeamProject();
 			const workflow = await createWorkflow({}, project);
 
@@ -299,9 +360,6 @@ describe('compaction', () => {
 			await insightsCompactionService.compactInsights();
 
 			// ASSERT
-			// compaction batch size is 500, so rawToHour should be called 2 times:
-			// 1st call: 500 events, 2nd call: 100 events
-			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
 			await expect(insightsRawRepository.count()).resolves.toBe(0);
 			const allCompacted = await insightsByPeriodRepository.find({ order: { periodStart: 1 } });
 			const accumulatedValues = allCompacted.reduce((acc, event) => acc + event.value, 0);
@@ -312,7 +370,7 @@ describe('compaction', () => {
 	describe('compactionSchedule', () => {
 		test('compaction is running on schedule', async () => {
 			// ARRANGE
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			const insightsCompactionService = new InsightsCompactionService(
 				mock<InsightsByPeriodRepository>(),
 				mock<InsightsRawRepository>(),
@@ -322,21 +380,348 @@ describe('compaction', () => {
 				mockLogger(),
 			);
 			// spy on the compactInsights method to check if it's called
-			const compactInsightsSpy = jest.spyOn(insightsCompactionService, 'compactInsights');
+			const compactInsightsSpy = vi
+				.spyOn(insightsCompactionService, 'compactInsights')
+				.mockResolvedValue();
 
 			try {
 				insightsCompactionService.startCompactionTimer();
 
 				// ACT
 				// advance by 1 hour and 1 minute
-				jest.advanceTimersByTime(1000 * 60 * 61);
+				vi.advanceTimersByTime(1000 * 60 * 61);
 
 				// ASSERT
 				expect(compactInsightsSpy).toHaveBeenCalledTimes(1);
 			} finally {
-				insightsCompactionService.stopCompactionTimer();
-				jest.useRealTimers();
+				await insightsCompactionService.stopCompactionTimer();
+				vi.useRealTimers();
 			}
+		});
+
+		test('stop waits for the active compaction after a skipped overlapping interval', async () => {
+			// ARRANGE
+			vi.useFakeTimers();
+			const loggerDebug = vi.fn();
+			const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis(), debug: loggerDebug });
+			const insightsCompactionService = new InsightsCompactionService(
+				mock<InsightsByPeriodRepository>(),
+				mock<InsightsRawRepository>(),
+				mock<InsightsConfig>({
+					compactionIntervalMinutes: 1,
+					compactionBatchSize: 2,
+					compactionBatchDelayMilliseconds: 0,
+					compactionMaxBatchesPerRun: 0,
+					compactionMaxRuntimeSeconds: 0,
+				}),
+				logger,
+			);
+
+			let resolveRawToHour!: (numberOfCompactedRawData: number) => void;
+			const firstRawToHourPromise = new Promise<number>((resolve) => {
+				resolveRawToHour = resolve;
+			});
+			const rawToHourSpy = vi
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockReturnValueOnce(firstRawToHourPromise)
+				.mockResolvedValue(0);
+			vi.spyOn(insightsCompactionService, 'compactHourToDay').mockResolvedValue(0);
+			vi.spyOn(insightsCompactionService, 'compactDayToWeek').mockResolvedValue(0);
+
+			try {
+				insightsCompactionService.startCompactionTimer();
+
+				// ACT
+				vi.advanceTimersByTime(1000 * 60);
+				await Promise.resolve();
+				vi.advanceTimersByTime(1000 * 60);
+				await Promise.resolve();
+
+				const stopPromise = insightsCompactionService.stopCompactionTimer();
+				let stopped = false;
+				void stopPromise.then(() => {
+					stopped = true;
+				});
+				await Promise.resolve();
+
+				// ASSERT
+				expect(stopped).toBe(false);
+				expect(loggerDebug).toHaveBeenCalledWith(
+					'Skipping insights compaction because another compaction run is active',
+				);
+
+				resolveRawToHour(0);
+				await stopPromise;
+				expect(stopped).toBe(true);
+				expect(rawToHourSpy).toHaveBeenCalledTimes(1);
+			} finally {
+				await insightsCompactionService.stopCompactionTimer();
+				vi.useRealTimers();
+			}
+		});
+
+		test('stop succeeds after compaction fails', async () => {
+			// ARRANGE
+			const insightsCompactionService = new InsightsCompactionService(
+				mock<InsightsByPeriodRepository>(),
+				mock<InsightsRawRepository>(),
+				mock<InsightsConfig>({
+					compactionBatchSize: 2,
+					compactionBatchDelayMilliseconds: 0,
+					compactionMaxBatchesPerRun: 0,
+					compactionMaxRuntimeSeconds: 0,
+				}),
+				mockLogger(),
+			);
+			vi.spyOn(insightsCompactionService, 'compactRawToHour').mockRejectedValueOnce(
+				new Error('compaction failed'),
+			);
+
+			// ACT
+			const compactionPromise = insightsCompactionService.compactInsights();
+			const stopPromise = insightsCompactionService.stopCompactionTimer();
+
+			// ASSERT
+			await expect(compactionPromise).rejects.toThrow('compaction failed');
+			await expect(stopPromise).resolves.toBeUndefined();
+		});
+	});
+
+	describe('compactInsights in-memory run guard', () => {
+		test('skips a concurrent run and accepts another run after the active one finishes', async () => {
+			// ARRANGE
+			const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
+			const insightsCompactionService = new InsightsCompactionService(
+				mock<InsightsByPeriodRepository>(),
+				mock<InsightsRawRepository>(),
+				mock<InsightsConfig>({
+					compactionBatchSize: 2,
+					compactionBatchDelayMilliseconds: 0,
+					compactionMaxBatchesPerRun: 0,
+					compactionMaxRuntimeSeconds: 0,
+				}),
+				logger,
+			);
+
+			let resolveRawToHour!: (numberOfCompactedRawData: number) => void;
+			const firstRawToHourPromise = new Promise<number>((resolve) => {
+				resolveRawToHour = resolve;
+			});
+			const rawToHourSpy = vi
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockReturnValueOnce(firstRawToHourPromise)
+				.mockResolvedValue(0);
+			vi.spyOn(insightsCompactionService, 'compactHourToDay').mockResolvedValue(0);
+			vi.spyOn(insightsCompactionService, 'compactDayToWeek').mockResolvedValue(0);
+
+			// ACT
+			const firstCompactionPromise = insightsCompactionService.compactInsights();
+			await Promise.resolve();
+
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Skipping insights compaction because another compaction run is active',
+			);
+
+			resolveRawToHour(0);
+			await firstCompactionPromise;
+
+			await insightsCompactionService.compactInsights();
+			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
+		});
+
+		test('accepts another run after the active run fails', async () => {
+			// ARRANGE
+			const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
+			const insightsCompactionService = new InsightsCompactionService(
+				mock<InsightsByPeriodRepository>(),
+				mock<InsightsRawRepository>(),
+				mock<InsightsConfig>({
+					compactionBatchSize: 2,
+					compactionBatchDelayMilliseconds: 0,
+					compactionMaxBatchesPerRun: 0,
+					compactionMaxRuntimeSeconds: 0,
+				}),
+				logger,
+			);
+			const rawToHourSpy = vi
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockRejectedValueOnce(new Error('compaction failed'))
+				.mockResolvedValue(0);
+			const hourToDaySpy = vi
+				.spyOn(insightsCompactionService, 'compactHourToDay')
+				.mockResolvedValue(0);
+			const dayToWeekSpy = vi
+				.spyOn(insightsCompactionService, 'compactDayToWeek')
+				.mockResolvedValue(0);
+
+			// ACT + ASSERT
+			await expect(insightsCompactionService.compactInsights()).rejects.toThrow(
+				'compaction failed',
+			);
+
+			await insightsCompactionService.compactInsights();
+			expect(rawToHourSpy).toHaveBeenCalledTimes(2);
+			expect(hourToDaySpy).toHaveBeenCalledTimes(1);
+			expect(dayToWeekSpy).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('compactInsights run limits', () => {
+		test('stops raw compaction after compactionMaxBatchesPerRun and resumes later', async () => {
+			// ARRANGE
+			overrideCompactionConfig({
+				compactionBatchSize: 2,
+				compactionMaxBatchesPerRun: 2,
+				compactionMaxRuntimeSeconds: 0,
+				compactionBatchDelayMilliseconds: 0,
+			});
+			const insightsCompactionService = Container.get(InsightsCompactionService);
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+			await createRawSuccessEvents(workflow, 5);
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			await expectRawCount(1);
+			await expect(getCompactedTotal('hour')).resolves.toBe(4);
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			await expectRawCount(0);
+			await expect(getCompactedTotal('hour')).resolves.toBe(5);
+		});
+
+		test('applies compactionMaxBatchesPerRun across compaction stages', async () => {
+			// ARRANGE
+			const config = Container.get(InsightsConfig);
+			overrideCompactionConfig({
+				compactionBatchSize: 2,
+				compactionMaxBatchesPerRun: 2,
+				compactionMaxRuntimeSeconds: 0,
+				compactionBatchDelayMilliseconds: 0,
+			});
+			const insightsCompactionService = Container.get(InsightsCompactionService);
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+
+			await createRawSuccessEvents(workflow, 1);
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: DateTime.utc()
+					.minus({ days: config.compactionHourlyToDailyThresholdDays + 1 })
+					.startOf('hour'),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'hour',
+				periodStart: DateTime.utc()
+					.minus({ days: config.compactionHourlyToDailyThresholdDays + 1, hours: 1 })
+					.startOf('hour'),
+			});
+			await createCompactedInsightsEvent(workflow, {
+				type: 'success',
+				value: 1,
+				periodUnit: 'day',
+				periodStart: DateTime.utc()
+					.minus({ days: config.compactionDailyToWeeklyThresholdDays + 1 })
+					.startOf('day'),
+			});
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			await expectRawCount(0);
+			await expect(getCompactedTotal('hour')).resolves.toBe(1);
+			await expect(getCompactedTotal('day')).resolves.toBe(3);
+			await expect(getCompactedTotal('week')).resolves.toBe(0);
+		});
+
+		test('stops after compactionMaxRuntimeSeconds and resumes later', async () => {
+			// ARRANGE
+			overrideCompactionConfig({
+				compactionBatchSize: 2,
+				compactionMaxBatchesPerRun: 0,
+				compactionMaxRuntimeSeconds: 1,
+				compactionBatchDelayMilliseconds: 0,
+			});
+			const insightsCompactionService = Container.get(InsightsCompactionService);
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+			await createRawSuccessEvents(workflow, 5);
+			const dateNowSpy = vi
+				.spyOn(Date, 'now')
+				.mockReturnValueOnce(0)
+				.mockReturnValueOnce(0)
+				.mockReturnValue(1000);
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			await expectRawCount(3);
+			await expect(getCompactedTotal('hour')).resolves.toBe(2);
+
+			dateNowSpy.mockRestore();
+			overrideCompactionConfig({ compactionMaxRuntimeSeconds: 0 });
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			await expectRawCount(0);
+			await expect(getCompactedTotal('hour')).resolves.toBe(5);
+		});
+	});
+
+	describe('raw compaction batch ordering', () => {
+		test('processes rows with identical timestamps in id order across limited runs', async () => {
+			// ARRANGE
+			overrideCompactionConfig({
+				compactionBatchSize: 2,
+				compactionMaxBatchesPerRun: 1,
+				compactionMaxRuntimeSeconds: 0,
+				compactionBatchDelayMilliseconds: 0,
+			});
+			const insightsCompactionService = Container.get(InsightsCompactionService);
+			const insightsRawRepository = Container.get(InsightsRawRepository);
+			const project = await createTeamProject();
+			const workflow = await createWorkflow({}, project);
+			const timestamp = DateTime.utc(2000, 1, 1, 0, 0);
+
+			const createdEvents: Array<Awaited<ReturnType<typeof createRawInsightsEvent>>> = [];
+			for (let i = 0; i < 4; i++) {
+				createdEvents.push(
+					await createRawInsightsEvent(workflow, { type: 'success', value: 1, timestamp }),
+				);
+			}
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			const remainingAfterFirstRun = await insightsRawRepository.find({ order: { id: 'ASC' } });
+			expect(remainingAfterFirstRun.map((event) => event.id)).toEqual(
+				createdEvents.slice(2).map((event) => event.id),
+			);
+			await expect(getCompactedTotal('hour')).resolves.toBe(2);
+
+			// ACT
+			await insightsCompactionService.compactInsights();
+
+			// ASSERT
+			await expectRawCount(0);
+			await expect(getCompactedTotal('hour')).resolves.toBe(4);
 		});
 	});
 

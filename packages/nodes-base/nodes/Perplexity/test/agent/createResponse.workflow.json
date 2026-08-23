@@ -1,0 +1,68 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [-80, -680],
+			"id": "a9105e3d-172b-411e-8c06-767a3ce1003a",
+			"name": "When clicking 'Test workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "agent",
+				"operation": "createResponse",
+				"model": {
+					"__rl": true,
+					"value": "openai/gpt-5.2",
+					"mode": "id"
+				},
+				"input": "What is 2+2?",
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.perplexity",
+			"typeVersion": 2,
+			"position": [-40, -380],
+			"id": "agent-node-1",
+			"name": "Agent Response",
+			"credentials": {
+				"perplexityApi": {
+					"id": "test",
+					"name": "Perplexity account"
+				}
+			}
+		}
+	],
+	"connections": {
+		"When clicking 'Test workflow'": {
+			"main": [
+				[
+					{
+						"node": "Agent Response",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Agent Response": [
+			{
+				"json": {
+					"id": "resp_test123",
+					"model": "openai/gpt-5.2",
+					"object": "response",
+					"status": "completed",
+					"output": [
+						{
+							"type": "message",
+							"role": "assistant",
+							"content": [{ "type": "output_text", "text": "2+2 equals 4." }]
+						}
+					]
+				}
+			}
+		]
+	}
+}

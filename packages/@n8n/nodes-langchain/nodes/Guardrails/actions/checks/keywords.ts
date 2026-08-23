@@ -1,4 +1,6 @@
 // Source: https://github.com/openai/openai-guardrails-js/blob/b9b99b4fb454f02a362c2836aec6285176ec40a8/src/checks/keywords.ts
+import { safeRegex } from 'n8n-workflow';
+
 import type { CreateCheckFn, GuardrailResult } from '../types';
 
 interface KeywordsConfig {
@@ -63,14 +65,12 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 	});
 
 	const patternText = `(?:${keywordPatterns.join('|')})`;
-	const pattern = new RegExp(patternText, 'giu'); // case-insensitive, global, unicode aware
 
 	const matches: string[] = [];
-	let match;
 	const seen = new Set<string>();
 
 	// Find all matches and collect unique ones (case-insensitive)
-	while ((match = pattern.exec(text)) !== null) {
+	for (const match of safeRegex.matchAll(patternText, text, 'giu')) {
 		const matchedText = match[0];
 		if (!seen.has(matchedText.toLowerCase())) {
 			matches.push(matchedText);

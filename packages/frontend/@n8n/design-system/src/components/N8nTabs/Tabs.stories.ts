@@ -9,6 +9,11 @@ export default {
 	component: N8nTabs,
 	argTypes: {},
 	parameters: {
+		docs: {
+			description: {
+				component: 'A tab navigation component for switching between content panels.',
+			},
+		},
 		backgrounds: { default: '--color--background--light-3' },
 	},
 };
@@ -94,6 +99,11 @@ const options: Array<TabOptions<string>> = [
 		label: 'Notification',
 		value: 'notification',
 		notification: true,
+	},
+	{
+		label: 'Count',
+		value: 'count',
+		tag: '2',
 	},
 	{
 		label: 'Settings',

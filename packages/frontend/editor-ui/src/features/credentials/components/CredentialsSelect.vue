@@ -59,11 +59,25 @@ function isSupported(name: string): boolean {
 
 	const checkedCredType = credentialsStore.getCredentialTypeByName(name);
 	if (!checkedCredType) return false;
+	if (checkedCredType.hidden) return false;
+
+	// Exclude credentials that opt into node-restriction when the current
+	// node is not in their supportedNodes list. Mirrors the server-side
+	// `isCredentialUsableByNode` policy so the UI does not offer a choice
+	// that the API/runtime would reject.
+	if (
+		checkedCredType.restrictToSupportedNodes &&
+		!checkedCredType.supportedNodes?.includes(props.node?.type ?? '')
+	) {
+		return false;
+	}
 
 	for (const property of supported.has) {
 		if (checkedCredType[property as keyof ICredentialType] !== undefined) {
-			// edge case: `httpHeaderAuth` has `authenticate` auth but belongs to generic auth
-			if (name === 'httpHeaderAuth' && property === 'authenticate') continue;
+			// generic-auth credentials (e.g. httpHeaderAuth) may also define
+			// `authenticate`; they belong in the generic auth dropdown, not the
+			// predefined credential type list
+			if (property === 'authenticate' && checkedCredType.genericAuth === true) continue;
 
 			return true;
 		}
@@ -136,6 +150,7 @@ defineExpose({ focus });
 					:value="credType.name"
 					:label="credType.displayName"
 					data-test-id="credential-select-option"
+					:data-credential-name="credType.name"
 				>
 					<div class="list-option">
 						<div class="option-headline">

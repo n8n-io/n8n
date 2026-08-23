@@ -24,10 +24,6 @@ import {
 } from 'reka-ui';
 import { computed, useCssModule, useTemplateRef } from 'vue';
 
-import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-import { get } from '@n8n/design-system/v2/utils';
-import type { GetItemKeys, GetModelValue } from '@n8n/design-system/v2/utils/types';
-
 import type {
 	SelectEmits,
 	SelectItem,
@@ -39,6 +35,9 @@ import type {
 	SelectItemProps,
 } from './Select.types';
 import N8nSelectItem from './SelectItem.vue';
+import Icon from '../../../components/N8nIcon/Icon.vue';
+import { get } from '../../utils';
+import type { GetItemKeys, GetModelValue } from '../../utils/types';
 
 defineOptions({ inheritAttrs: false });
 
@@ -216,7 +215,7 @@ const groups = computed<SelectItemProps[]>(() => {
 	font-weight: var(--font-weight--regular);
 	line-height: var(--line-height--md);
 	border: 1px solid transparent;
-	background-color: var(--color--background--light-2);
+	background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 	height: var(--spacing--lg);
 	position: relative;
 	gap: var(--spacing--3xs);
@@ -306,6 +305,7 @@ const groups = computed<SelectItemProps[]>(() => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	min-width: 0;
 }
 
 .selectItem {

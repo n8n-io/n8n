@@ -1,8 +1,9 @@
 import { vi } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 
-import type { ExecutionSummaryWithScopes } from './executions.types';
+import type { ExecutionSummaryWithScopes, IExecutionsListResponse } from './executions.types';
 import { useExecutionsStore } from './executions.store';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	makeRestApiRequest: vi.fn(),
@@ -72,6 +73,66 @@ describe('executions.store', () => {
 			await executionsStore.deleteExecutions({ deleteBefore: new Date() });
 
 			expect(executionsStore.executions).toEqual([]);
+		});
+	});
+
+	describe('pagination', () => {
+		// count is far larger than a page so the tests fail if loading more is ever
+		// driven by the total count again instead of page fullness.
+		const page = (n: number): IExecutionsListResponse => ({
+			count: 100_000,
+			estimated: true,
+			concurrentExecutionsCount: 0,
+			results: Array.from(
+				{ length: n },
+				(_, i) => ({ id: `${i}`, scopes: [] }) as unknown as ExecutionSummaryWithScopes,
+			),
+		});
+
+		const mockResponse = (n: number) =>
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce(page(n));
+
+		it('should allow loading more when the first page is full', async () => {
+			mockResponse(10);
+			await executionsStore.fetchExecutions({});
+			expect(executionsStore.hasMoreExecutions).toBe(true);
+		});
+
+		it('should not allow loading more when the first page is partial', async () => {
+			mockResponse(3);
+			await executionsStore.fetchExecutions({});
+			expect(executionsStore.hasMoreExecutions).toBe(false);
+		});
+
+		it('should stop allowing more once a paginated page comes back partial', async () => {
+			mockResponse(10);
+			await executionsStore.fetchExecutions({}, 'last-1');
+			expect(executionsStore.hasMoreExecutions).toBe(true);
+
+			mockResponse(4);
+			await executionsStore.fetchExecutions({}, 'last-2');
+			expect(executionsStore.hasMoreExecutions).toBe(false);
+		});
+
+		it('should not re-allow loading more when auto-refresh reloads a full first page', async () => {
+			// Exhausted the list via pagination.
+			mockResponse(2);
+			await executionsStore.fetchExecutions({}, 'last');
+			expect(executionsStore.hasMoreExecutions).toBe(false);
+
+			// Auto-refresh re-fetches a full first page (no lastId) — must stay false.
+			mockResponse(10);
+			await executionsStore.fetchExecutions({});
+			expect(executionsStore.hasMoreExecutions).toBe(false);
+		});
+
+		it('should allow loading more again after reset', async () => {
+			mockResponse(3);
+			await executionsStore.fetchExecutions({});
+			expect(executionsStore.hasMoreExecutions).toBe(false);
+
+			executionsStore.resetData();
+			expect(executionsStore.hasMoreExecutions).toBe(true);
 		});
 	});
 

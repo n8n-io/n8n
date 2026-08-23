@@ -4,6 +4,34 @@ import type { Scope } from '@n8n/permissions';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowAccessError } from '../mcp.errors';
+import {
+	CODE_BUILDER_VALIDATE_TOOL,
+	MCP_GET_SDK_REFERENCE_TOOL,
+} from './workflow-builder/constants';
+
+type SdkReferenceHintOptions = {
+	afterReference?: string;
+};
+
+/**
+ * Returns a hint nudging MCP clients to consult the SDK reference,
+ * but only when the error is a workflow code parse error.
+ */
+export function getSdkReferenceHint(
+	error: unknown,
+	options: SdkReferenceHintOptions = {},
+): string | undefined {
+	const isParseError =
+		error instanceof Error &&
+		(error.name === 'WorkflowCodeParseError' || error instanceof SyntaxError);
+	if (!isParseError) return undefined;
+
+	const afterReference =
+		options.afterReference ??
+		`Rewrite the code using the documented patterns, then call ${CODE_BUILDER_VALIDATE_TOOL.toolName} again before creating or updating a workflow.`;
+
+	return `The code failed to parse as n8n Workflow SDK code. This usually means it does not follow the required SDK patterns. Before retrying, call ${MCP_GET_SDK_REFERENCE_TOOL.toolName} to read the Workflow SDK reference. Use workflow(), trigger()/node(), .add()/.to(), expr(), and newCredential() exactly as documented. ${afterReference}`;
+}
 
 export type FoundWorkflow = NonNullable<
 	Awaited<ReturnType<WorkflowFinderService['findWorkflowForUser']>>
@@ -11,7 +39,42 @@ export type FoundWorkflow = NonNullable<
 
 export type GetMcpWorkflowOptions = {
 	includeActiveVersion?: boolean;
+	includeTags?: boolean;
+	includeParentFolder?: boolean;
 };
+
+/**
+ * Validates an already-fetched workflow for MCP operations: permission
+ * (present at all), archive, and MCP availability checks.
+ *
+ * @throws WorkflowAccessError with appropriate reason if validation fails
+ */
+export function validateMcpWorkflow<
+	T extends Pick<FoundWorkflow, 'id' | 'isArchived' | 'settings'>,
+>(workflow: T | null | undefined): T {
+	if (!workflow) {
+		throw new WorkflowAccessError(
+			"Workflow not found or you don't have permission to access it.",
+			'no_permission',
+		);
+	}
+
+	if (workflow.isArchived) {
+		throw new WorkflowAccessError(
+			`Workflow '${workflow.id}' is archived and cannot be accessed.`,
+			'workflow_archived',
+		);
+	}
+
+	if (!workflow.settings?.availableInMCP) {
+		throw new WorkflowAccessError(
+			'Workflow is not available in MCP. Enable MCP access from the workflow card in the workflows list, or from the workflow settings.',
+			'not_available_in_mcp',
+		);
+	}
+
+	return workflow;
+}
 
 /**
  * Validates and retrieves a workflow for MCP operations.
@@ -26,30 +89,12 @@ export async function getMcpWorkflow(
 	workflowFinderService: WorkflowFinderService,
 	options?: GetMcpWorkflowOptions,
 ): Promise<FoundWorkflow> {
-	const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, scopes, {
-		includeActiveVersion: options?.includeActiveVersion,
-	});
+	const workflow = await workflowFinderService.findWorkflowForUser(
+		workflowId,
+		user,
+		scopes,
+		options ?? {},
+	);
 
-	if (!workflow) {
-		throw new WorkflowAccessError(
-			"Workflow not found or you don't have permission to access it.",
-			'no_permission',
-		);
-	}
-
-	if (workflow.isArchived) {
-		throw new WorkflowAccessError(
-			`Workflow '${workflowId}' is archived and cannot be accessed.`,
-			'workflow_archived',
-		);
-	}
-
-	if (!workflow.settings?.availableInMCP) {
-		throw new WorkflowAccessError(
-			'Workflow is not available in MCP. Enable MCP access in workflow settings.',
-			'not_available_in_mcp',
-		);
-	}
-
-	return workflow;
+	return validateMcpWorkflow(workflow);
 }

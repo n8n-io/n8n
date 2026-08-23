@@ -7,7 +7,11 @@ import {
 	type ChatModelsResponse,
 	type ChatProviderSettingsDto,
 } from '@n8n/api-types';
-import type { DropdownMenuItemProps, IconOrEmoji } from '@n8n/design-system';
+import type {
+	AiModelSelectorMenuItemData,
+	DropdownMenuItemProps,
+	IconOrEmoji,
+} from '@n8n/design-system';
 import type { I18nClass } from '@n8n/i18n';
 import {
 	createFakeAgent,
@@ -25,10 +29,11 @@ import {
 	providerDisplayNames,
 } from './constants';
 
-type MenuItem = DropdownMenuItemProps<
-	string,
-	{ provider: ChatHubProvider; parts?: string[]; fullName?: string; description?: string }
->;
+export type ChatModelSelectorMenuItemData = AiModelSelectorMenuItemData & {
+	provider: ChatHubProvider;
+};
+
+type MenuItem = DropdownMenuItemProps<string, ChatModelSelectorMenuItemData>;
 
 export interface BuildMenuItemsOptions {
 	includeCustomAgents: boolean;
@@ -395,6 +400,9 @@ export function buildModelSelectorMenuItems(
 	let dividerInserted = false;
 
 	for (const provider of sortedProviders) {
+		if (!agents[provider]) {
+			continue;
+		}
 		const item = buildLlmProviderMenuItem(provider, agents[provider], options);
 
 		if (item) {

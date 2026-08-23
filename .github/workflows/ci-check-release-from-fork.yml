@@ -1,0 +1,69 @@
+name: 'CI: Block fork PRs to release branches'
+
+on:
+  pull_request:
+    branches:
+      - 'release/**'
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - edited
+
+jobs:
+  block-fork-prs:
+    runs-on: ubuntu-slim
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Check if PR is from a fork
+        id: check
+        run: |
+          if [ "${{ github.event.pull_request.head.repo.fork }}" = "true" ]; then
+            echo "fork=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fork=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Comment on PR explaining the block
+        if: steps.check.outputs.fork == 'true'
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+            });
+
+            const alreadyCommented = comments.some(
+              (c) => c.user.login === 'github-actions[bot]' && c.body.includes('Pull request blocked')
+            );
+
+            if (!alreadyCommented) {
+                const body = `
+              🚫 **Pull request blocked**
+
+              Pull requests from **forked repositories** are not allowed to target **release branches** in this repository.
+
+              **Target branch:** \`${context.payload.pull_request.base.ref}\`
+
+              If you believe this was blocked in error, contact the repository maintainers.
+              `;
+
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  body
+                });
+            }
+
+      - name: Fail workflow if from fork
+        if: steps.check.outputs.fork == 'true'
+        run: |
+          echo "PR from fork targeting a release branch is not allowed."
+          exit 1

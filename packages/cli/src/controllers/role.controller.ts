@@ -1,12 +1,18 @@
 import {
 	CreateRoleDto,
 	RoleAssignmentsResponseDto,
+	RoleDeleteQueryDto,
 	RoleGetQueryDto,
 	RoleListQueryDto,
+	RoleMembersResponseDto,
 	RoleProjectMembersResponseDto,
 	UpdateRoleDto,
 } from '@n8n/api-types';
-import type { RoleAssignmentsResponse, RoleProjectMembersResponse } from '@n8n/api-types';
+import type {
+	RoleAssignmentsResponse,
+	RoleMembersResponse,
+	RoleProjectMembersResponse,
+} from '@n8n/api-types';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -23,11 +29,16 @@ import {
 } from '@n8n/decorators';
 import { Role as RoleDTO } from '@n8n/permissions';
 
+import { EventService } from '@/events/event.service';
+import { assertCanManageRoleType, canReassignUsers } from '@/services/role-authorization';
 import { RoleService } from '@/services/role.service';
 
 @RestController('/roles')
 export class RoleController {
-	constructor(private readonly roleService: RoleService) {}
+	constructor(
+		private readonly roleService: RoleService,
+		private readonly eventService: EventService,
+	) {}
 
 	@Get('/')
 	async getAllRoles(
@@ -45,26 +56,45 @@ export class RoleController {
 	}
 
 	@Get('/:slug/assignments/:projectId/members')
-	@GlobalScope('role:manage')
 	async getRoleProjectMembers(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('slug') slug: string,
 		@Param('projectId') projectId: string,
 	): Promise<RoleProjectMembersResponse> {
+		const role = await this.roleService.getRole(slug);
+		assertCanManageRoleType({
+			roleType: role.roleType,
+			user: req.user,
+		});
 		const result = await this.roleService.getRoleProjectMembers(slug, projectId);
 		return RoleProjectMembersResponseDto.parse(result);
 	}
 
 	@Get('/:slug/assignments')
-	@GlobalScope('role:manage')
 	async getRoleAssignments(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('slug') slug: string,
 	): Promise<RoleAssignmentsResponse> {
+		const role = await this.roleService.getRole(slug);
+		assertCanManageRoleType({
+			roleType: role.roleType,
+			user: req.user,
+		});
 		const result = await this.roleService.getRoleAssignments(slug);
 		return RoleAssignmentsResponseDto.parse(result);
+	}
+
+	@Get('/:slug/members')
+	@GlobalScope('role:read')
+	async getRoleMembers(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('slug') slug: string,
+	): Promise<RoleMembersResponse> {
+		const result = await this.roleService.getRoleMembers(slug);
+		return RoleMembersResponseDto.parse(result);
 	}
 
 	@Get('/:slug')
@@ -78,36 +108,65 @@ export class RoleController {
 	}
 
 	@Patch('/:slug')
-	@GlobalScope('role:manage')
 	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	async updateRole(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('slug') slug: string,
 		@Body updateRole: UpdateRoleDto,
 	): Promise<RoleDTO> {
-		return await this.roleService.updateCustomRole(slug, updateRole);
+		const role = await this.roleService.getRole(slug);
+		assertCanManageRoleType({
+			roleType: role.roleType,
+			user: req.user,
+		});
+		return await this.roleService.updateCustomRole({
+			slug,
+			newRole: updateRole,
+			userId: req.user.id,
+		});
 	}
 
 	@Delete('/:slug')
-	@GlobalScope('role:manage')
 	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	async deleteRole(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('slug') slug: string,
+		@Query query: RoleDeleteQueryDto,
 	): Promise<RoleDTO> {
-		return await this.roleService.removeCustomRole(slug);
+		const role = await this.roleService.getRole(slug);
+		assertCanManageRoleType({
+			roleType: role.roleType,
+			user: req.user,
+		});
+		const reassignRoleSlug = canReassignUsers({ role, user: req.user })
+			? query.reassignRoleSlug
+			: undefined;
+		return await this.roleService.removeCustomRole({
+			slug,
+			reassignRoleSlug,
+			userId: req.user.id,
+		});
 	}
 
 	@Post('/')
-	@GlobalScope('role:manage')
 	@Licensed(LICENSE_FEATURES.CUSTOM_ROLES)
 	async createRole(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body createRole: CreateRoleDto,
 	): Promise<RoleDTO> {
-		return await this.roleService.createCustomRole(createRole);
+		assertCanManageRoleType({
+			roleType: createRole.roleType,
+			user: req.user,
+		});
+		const result = await this.roleService.createCustomRole(createRole);
+		this.eventService.emit('custom-role-created', {
+			userId: req.user.id,
+			roleSlug: result.slug,
+			scopes: result.scopes,
+		});
+		return result;
 	}
 }

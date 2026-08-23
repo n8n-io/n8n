@@ -6,7 +6,7 @@ import type { BinaryDataConfig } from '../../binary-data/binary-data.config';
 import * as binaryHelperFunctions from '../../execution-engine/node-execution-context/utils/binary-helper-functions';
 import { convertBinaryData } from '../convert-binary-data';
 
-jest.mock('../../execution-engine/node-execution-context/utils/binary-helper-functions');
+vi.mock('../../execution-engine/node-execution-context/utils/binary-helper-functions');
 
 describe('convertBinaryData', () => {
 	const workflowId = 'test-workflow-id';
@@ -14,12 +14,12 @@ describe('convertBinaryData', () => {
 	const mockBinaryDataConfig = { mode: 'default' } as BinaryDataConfig;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.spyOn(Container, 'get').mockReturnValue(mockBinaryDataConfig);
+		vi.clearAllMocks();
+		vi.spyOn(Container, 'get').mockReturnValue(mockBinaryDataConfig);
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('early returns', () => {
@@ -185,7 +185,7 @@ describe('convertBinaryData', () => {
 				data: '',
 			};
 
-			jest.spyOn(binaryHelperFunctions, 'prepareBinaryData').mockResolvedValue(convertedBinary);
+			vi.spyOn(binaryHelperFunctions, 'prepareBinaryData').mockResolvedValue(convertedBinary);
 
 			const responseData: IRunNodeResponse = {
 				data: [
@@ -242,7 +242,7 @@ describe('convertBinaryData', () => {
 				data: '',
 			};
 
-			jest.spyOn(binaryHelperFunctions, 'prepareBinaryData').mockResolvedValue(convertedBinary);
+			vi.spyOn(binaryHelperFunctions, 'prepareBinaryData').mockResolvedValue(convertedBinary);
 
 			const responseData: IRunNodeResponse = {
 				data: [
@@ -342,7 +342,7 @@ describe('convertBinaryData', () => {
 				data: '',
 			};
 
-			jest.spyOn(binaryHelperFunctions, 'prepareBinaryData').mockResolvedValue(convertedBinary);
+			vi.spyOn(binaryHelperFunctions, 'prepareBinaryData').mockResolvedValue(convertedBinary);
 
 			const responseData: IRunNodeResponse = {
 				data: [

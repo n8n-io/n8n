@@ -1,23 +1,38 @@
-import { mock } from 'jest-mock-extended';
+import type { Logger } from '@n8n/backend-common';
 import type { Request } from 'express';
+import { ExecutionContextService } from 'n8n-core';
+import type { Cipher, ExecutionContextHookRegistry } from 'n8n-core';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
 import type { AuthService } from '@/auth/auth.service';
+
 import { DynamicCredentialWebService } from '../dynamic-credential-web.service';
 
 describe('DynamicCredentialWebService', () => {
 	let service: DynamicCredentialWebService;
-	let mockAuthService: jest.Mocked<AuthService>;
+	let mockAuthService: Mocked<AuthService>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockAuthService = mock<AuthService>({
-			getCookieToken: jest.fn(),
-			getBrowserId: jest.fn(),
-			getMethod: jest.fn(),
-			getEndpoint: jest.fn(),
+			getCookieToken: vi.fn(),
+			getBrowserId: vi.fn(),
+			getMethod: vi.fn(),
+			getEndpoint: vi.fn(),
 		});
 
-		service = new DynamicCredentialWebService(mockAuthService);
+		// The real context builder, so these tests keep asserting the shape the resolver
+		// validates. Its collaborators are unused by the plaintext builder.
+		service = new DynamicCredentialWebService(
+			mockAuthService,
+			new ExecutionContextService(
+				mock<Logger>(),
+				mock<ExecutionContextHookRegistry>(),
+				mock<Cipher>(),
+			),
+		);
 	});
 
 	describe('getCredentialContextFromRequest', () => {

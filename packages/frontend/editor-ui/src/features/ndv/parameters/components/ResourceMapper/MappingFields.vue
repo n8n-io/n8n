@@ -13,7 +13,7 @@ import ParameterIssues from '../ParameterIssues.vue';
 import ParameterOptions from '../ParameterOptions.vue';
 import { computed } from 'vue';
 import { i18n as locale, useI18n } from '@n8n/i18n';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	fieldCannotBeDeleted,
 	isMatchingField,
@@ -69,7 +69,7 @@ const emit = defineEmits<{
 	refreshFieldList: [];
 }>();
 
-const ndvStore = useNDVStore();
+const ndvStore = injectNDVStore();
 
 function markAsReadOnly(field: ResourceMapperField): boolean {
 	if (
@@ -223,6 +223,15 @@ function getFieldDescription(field: ResourceMapperField): string {
 			}) || ''
 		);
 	}
+
+	if (resourceMapperMode.value === 'add' && field.required) {
+		return (
+			locale.baseText('resourceMapper.mandatoryField.title', {
+				interpolate: { fieldWord: singularFieldWord.value },
+			}) || ''
+		);
+	}
+
 	return '';
 }
 
@@ -241,9 +250,9 @@ function getParameterValue(parameterName: string): string | number | boolean | n
 }
 
 function getFieldIssues(field: INodeProperties): string[] {
-	if (!ndvStore.activeNode) return [];
+	if (!ndvStore.value.activeNode) return [];
 
-	const nodeIssues = ndvStore.activeNode.issues || ({} as INodeIssues);
+	const nodeIssues = ndvStore.value.activeNode.issues || ({} as INodeIssues);
 	const fieldName = parseResourceMapperFieldName(field.name);
 	if (!fieldName) return [];
 
@@ -261,6 +270,7 @@ function getParamType(field: ResourceMapperField): NodePropertyTypes {
 		case 'array':
 			return 'json';
 		case 'time':
+		case 'url':
 			return 'string';
 		default:
 			return (field.type as NodePropertyTypes) ?? 'string';
@@ -362,27 +372,12 @@ defineExpose({
 			}"
 		>
 			<div
-				v-if="resourceMapperMode === 'add' && field.required"
-				:class="['delete-option', 'mt-2xs', $style.parameterTooltipIcon]"
-			>
-				<N8nTooltip placement="top">
-					<template #content>
-						<span>{{
-							locale.baseText('resourceMapper.mandatoryField.title', {
-								interpolate: { fieldWord: singularFieldWord },
-							})
-						}}</span>
-					</template>
-					<N8nIcon icon="circle-help" />
-				</N8nTooltip>
-			</div>
-			<div
-				v-else-if="
+				v-if="
 					!isMatchingField(
 						field.name,
 						props.paramValue.matchingColumns,
 						props.showMatchingColumnsSelector,
-					)
+					) && !(resourceMapperMode === 'add' && field.required)
 				"
 				:class="['delete-option', 'mt-5xs']"
 			>
@@ -485,13 +480,6 @@ defineExpose({
 			border-color: var(--color--danger);
 		}
 	}
-}
-
-.parameterTooltipIcon {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1) !important;
-	width: 26px; // match trash button size
-	text-align: center;
 }
 
 .addOption {

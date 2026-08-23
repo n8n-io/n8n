@@ -2,18 +2,20 @@ import type { Document } from '@langchain/core/documents';
 import type { TextSplitter } from '@langchain/textsplitters';
 import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { Mock, Mocked } from 'vitest';
 
+import * as helpers from 'src/utils/helpers';
 import { N8nJsonLoader } from 'src/utils/n8n-json-loader';
 
 // Mock the helpers module
-jest.mock('src/utils/helpers', () => ({
-	getMetadataFiltersValues: jest.fn(),
+vi.mock('src/utils/helpers', () => ({
+	getMetadataFiltersValues: vi.fn(),
 }));
 
-const { getMetadataFiltersValues } = jest.requireMock('src/utils/helpers');
+const getMetadataFiltersValues = helpers.getMetadataFiltersValues as unknown as Mock;
 
 describe('N8nJsonLoader', () => {
-	let mockContext: jest.Mocked<IExecuteFunctions>;
+	let mockContext: Mocked<IExecuteFunctions>;
 	let mockNode: INode;
 
 	beforeEach(() => {
@@ -27,15 +29,15 @@ describe('N8nJsonLoader', () => {
 		};
 
 		mockContext = {
-			getNode: jest.fn().mockReturnValue(mockNode),
-			getNodeParameter: jest.fn(),
-		} as unknown as jest.Mocked<IExecuteFunctions>;
+			getNode: vi.fn().mockReturnValue(mockNode),
+			getNodeParameter: vi.fn(),
+		} as unknown as Mocked<IExecuteFunctions>;
 
 		getMetadataFiltersValues.mockReturnValue(undefined);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('constructor', () => {
@@ -51,7 +53,7 @@ describe('N8nJsonLoader', () => {
 
 		it('should create instance with text splitter', () => {
 			const mockSplitter = {
-				splitDocuments: jest.fn(),
+				splitDocuments: vi.fn(),
 			} as unknown as TextSplitter;
 
 			const loader = new N8nJsonLoader(mockContext, '', mockSplitter);
@@ -222,7 +224,7 @@ describe('N8nJsonLoader', () => {
 		];
 
 		const mockSplitter = {
-			splitDocuments: jest.fn().mockResolvedValue(mockDocuments),
+			splitDocuments: vi.fn().mockResolvedValue(mockDocuments),
 		} as unknown as TextSplitter;
 
 		mockContext.getNodeParameter.mockImplementation((param: string) => {

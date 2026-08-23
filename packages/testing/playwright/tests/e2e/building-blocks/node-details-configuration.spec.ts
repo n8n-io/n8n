@@ -60,7 +60,7 @@ test.describe(
 
 			await n8n.ndv.editFields.setSingleFieldValue('testField', 'string', 'Hello World');
 
-			const nameInput = n8n.ndv.getAssignmentName('assignments', 0).getByRole('textbox');
+			const nameInput = n8n.ndv.getAssignmentNameTextbox('assignments', 0);
 			await expect(nameInput).toHaveValue('testField');
 		});
 
@@ -73,9 +73,7 @@ test.describe(
 				{ name: 'booleanField', type: 'boolean', value: true },
 			]);
 
-			await expect(
-				n8n.ndv.getAssignmentCollectionContainer('assignments').getByTestId('assignment'),
-			).toHaveCount(3);
+			await expect(n8n.ndv.getAssignments('assignments')).toHaveCount(3);
 		});
 
 		test('should configure Edit Fields node with all field types', async ({ n8n }) => {
@@ -88,9 +86,7 @@ test.describe(
 				{ name: 'myArray', type: 'array', value: '["item1", "item2"]' },
 			]);
 
-			await expect(
-				n8n.ndv.getAssignmentCollectionContainer('assignments').getByTestId('assignment'),
-			).toHaveCount(4);
+			await expect(n8n.ndv.getAssignments('assignments')).toHaveCount(4);
 		});
 	},
 );

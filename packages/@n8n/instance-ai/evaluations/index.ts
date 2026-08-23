@@ -1,0 +1,89 @@
+// ---------------------------------------------------------------------------
+// Public API for the instance-ai workflow evaluation framework
+//
+// This module exports the domain logic used by the CLI (evaluations/cli/)
+// and available for custom orchestration. The run phases themselves live in
+// evaluations/run/ — see evaluations/ARCHITECTURE.md.
+// ---------------------------------------------------------------------------
+
+// -- Client & Auth --
+export { N8nClient } from './clients/n8n-client';
+export type { WorkflowResponse, WorkflowNodeResponse, ExecutionDetail } from './clients/n8n-client';
+
+// -- Test case data --
+export { loadWorkflowTestCasesWithFiles } from './data/workflows';
+export type { WorkflowTestCaseWithFile } from './data/workflows';
+
+// -- Credentials --
+export { createDeclaredCredentials, cleanupCredentials } from './credentials/seeder';
+export type { CreatedCredential } from './credentials/seeder';
+
+// -- MCP Registry --
+export { seedMcpRegistry } from './mcp-registry/seeder';
+export type { McpRegistrySeedResult } from './mcp-registry/seeder';
+
+// -- Concurrency helper --
+export { runWithConcurrency } from './harness/cleanup';
+
+// -- Runner (split API: build once, run scenarios independently) --
+export { buildWorkflow } from './harness/build-workflow';
+export type { BuildResult, BuildWorkflowConfig } from './harness/build-workflow';
+export { executeScenario } from './harness/scenario-execution';
+export { cleanupBuild } from './harness/cleanup';
+
+// -- Workflow discovery --
+export { snapshotWorkflowIds } from './outcome/workflow-discovery';
+
+// -- Logger --
+export { type EvalLogger, createLogger } from './harness/logger';
+
+// -- Types --
+export type {
+	WorkflowTestCase,
+	ExecutionScenario,
+	WorkflowTestCaseResult,
+	ExecutionScenarioResult,
+	ChecklistItem,
+	ChecklistResult,
+} from './types';
+
+// -- Comparison (regression detection) --
+export {
+	compareBuckets,
+	byVerdict,
+	improvements,
+	hardRegressions,
+	softRegressions,
+	watchList,
+	scenarioUnitKey,
+	expectationUnitKey,
+	unitKeyOf,
+} from './comparison/compare';
+export type {
+	ComparisonResult,
+	EvaluationUnitComparison,
+	EvaluationUnitCounts,
+	EvaluationUnitKind,
+	UnitRef,
+	ExperimentBucket,
+	AggregateComparison,
+	FailureCategoryComparison,
+} from './comparison/compare';
+export { bucketFromEvaluation } from './comparison/bucket-from-evaluation';
+export {
+	classifyScenario,
+	fishersExactOneSidedLeft,
+	wilsonInterval,
+} from './comparison/statistics';
+export type {
+	ScenarioVerdict,
+	ScenarioClassification,
+	ClassifyOptions,
+	TierThresholds,
+} from './comparison/statistics';
+export { formatComparisonMarkdown, formatComparisonTerminal } from './comparison/format';
+export {
+	fetchBaselineBucket,
+	findLatestBaseline,
+	BASELINE_EXPERIMENT_PREFIX,
+} from './comparison/fetch-baseline';

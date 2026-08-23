@@ -13,7 +13,7 @@ test.describe(
 		test('should traverse floating nodes with mouse', async ({ n8n }) => {
 			await n8n.start.fromImportedWorkflow('Floating_Nodes.json');
 			await n8n.canvas.getCanvasNodes().first().dblclick();
-			await expect(n8n.ndv.getContainer()).toBeVisible();
+			await expect(n8n.ndv.container).toBeVisible();
 
 			await expect(n8n.ndv.getFloatingNodeByPosition('inputMain')).toBeHidden();
 			await expect(n8n.ndv.getFloatingNodeByPosition('outputMain')).toBeVisible();
@@ -26,7 +26,7 @@ test.describe(
 				await expect(n8n.canvas.getSelectedNodes()).toHaveCount(1);
 
 				await n8n.canvas.getSelectedNodes().first().dblclick();
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 			}
 
 			await n8n.ndv.clickFloatingNodeByPosition('outputMain');
@@ -51,7 +51,7 @@ test.describe(
 			await n8n.start.fromImportedWorkflow('Floating_Nodes.json');
 
 			await n8n.canvas.getCanvasNodes().first().dblclick();
-			await expect(n8n.ndv.getContainer()).toBeVisible();
+			await expect(n8n.ndv.container).toBeVisible();
 
 			await expect(n8n.ndv.getFloatingNodeByPosition('inputMain')).toBeHidden();
 			await expect(n8n.ndv.getFloatingNodeByPosition('outputMain')).toBeVisible();
@@ -64,7 +64,7 @@ test.describe(
 				await expect(n8n.canvas.getSelectedNodes()).toHaveCount(1);
 
 				await n8n.canvas.getSelectedNodes().first().dblclick();
-				await expect(n8n.ndv.getContainer()).toBeVisible();
+				await expect(n8n.ndv.container).toBeVisible();
 			}
 
 			await n8n.ndv.navigateToNextFloatingNodeWithKeyboard();
@@ -87,7 +87,7 @@ test.describe(
 
 		test('should connect floating sub-nodes', async ({ n8n }) => {
 			await n8n.canvas.addNode('AI Agent', { closeNDV: false });
-			await expect(n8n.ndv.getContainer()).toBeVisible();
+			await expect(n8n.ndv.container).toBeVisible();
 
 			await n8n.ndv.connectAISubNode('ai_languageModel', 'Anthropic Chat Model');
 			await n8n.ndv.connectAISubNode('ai_memory', 'Redis Chat Memory');
@@ -100,7 +100,7 @@ test.describe(
 			await n8n.start.fromImportedWorkflow('Floating_Nodes.json');
 
 			await n8n.canvas.openNode('Merge');
-			await expect(n8n.ndv.getContainer()).toBeVisible();
+			await expect(n8n.ndv.container).toBeVisible();
 
 			expect(await n8n.ndv.getFloatingNodeCount('inputMain')).toBe(2);
 			await n8n.ndv.verifyFloatingNodeName('inputMain', 'Edit Fields1', 0);
@@ -109,7 +109,7 @@ test.describe(
 			await n8n.ndv.close();
 
 			await n8n.canvas.openNode('Merge1');
-			await expect(n8n.ndv.getContainer()).toBeVisible();
+			await expect(n8n.ndv.container).toBeVisible();
 
 			expect(await n8n.ndv.getFloatingNodeCount('inputMain')).toBe(2);
 			await n8n.ndv.verifyFloatingNodeName('inputMain', 'Edit Fields0', 0);

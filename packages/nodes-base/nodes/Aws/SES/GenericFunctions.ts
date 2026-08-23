@@ -9,7 +9,7 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, sanitizeXmlName } from 'n8n-workflow';
 import { parseString } from 'xml2js';
 import { getAwsCredentials } from '../GenericFunctions';
 
@@ -69,12 +69,20 @@ export async function awsApiRequestSOAP(
 	const response = await awsApiRequest.call(this, service, method, path, body, headers);
 	try {
 		return await new Promise((resolve, reject) => {
-			parseString(response as string, { explicitArray: false }, (err, data) => {
-				if (err) {
-					return reject(err);
-				}
-				resolve(data);
-			});
+			parseString(
+				response as string,
+				{
+					explicitArray: false,
+					tagNameProcessors: [sanitizeXmlName],
+					attrNameProcessors: [sanitizeXmlName],
+				},
+				(err, data) => {
+					if (err) {
+						return reject(err);
+					}
+					resolve(data);
+				},
+			);
 		});
 	} catch (error) {
 		return response;

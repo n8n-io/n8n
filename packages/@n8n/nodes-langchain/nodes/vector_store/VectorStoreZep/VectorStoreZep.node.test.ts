@@ -1,7 +1,30 @@
+vi.mock('@langchain/community/vectorstores/zep', () => {
+	class ZepVectorStore {}
+	return { ZepVectorStore };
+});
+
+vi.mock('@langchain/community/vectorstores/zep_cloud', () => {
+	class ZepCloudVectorStore {}
+	return { ZepCloudVectorStore };
+});
+
+vi.mock('@n8n/ai-utilities', () => ({
+	metadataFilterField: {},
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	createVectorStoreNode: (config: any) =>
+		class BaseNode {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			async supplyData(this: any, itemIndex: number) {
+				const vectorStore = await config.getVectorStoreClient(this, undefined, {}, itemIndex);
+				return { response: vectorStore };
+			}
+		},
+}));
+
 import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
 import { ZepCloudVectorStore } from '@langchain/community/vectorstores/zep_cloud';
-import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { VectorStoreZep } from './VectorStoreZep.node';
 
@@ -11,7 +34,7 @@ describe('VectorStoreZep', () => {
 	const executeFunctions = mock<ISupplyDataFunctions>({ helpers });
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		executeFunctions.addInputData.mockReturnValue({ index: 0 });
 	});

@@ -25,7 +25,7 @@ describe('PromptBuilder', () => {
 		});
 
 		it('should support factory functions for lazy evaluation', () => {
-			const factory = jest.fn(() => 'lazy content');
+			const factory = vi.fn(() => 'lazy content');
 			const result = prompt().section('LAZY', factory).build();
 
 			expect(factory).toHaveBeenCalledTimes(1);
@@ -33,7 +33,7 @@ describe('PromptBuilder', () => {
 		});
 
 		it('should call factory only once during build', () => {
-			const factory = jest.fn(() => 'content');
+			const factory = vi.fn(() => 'content');
 			const builder = prompt().section('TEST', factory);
 
 			builder.build();
@@ -59,14 +59,14 @@ describe('PromptBuilder', () => {
 		});
 
 		it('should not call factory when condition is falsy', () => {
-			const factory = jest.fn(() => 'never called');
+			const factory = vi.fn(() => 'never called');
 			prompt().sectionIf(false, 'LAZY', factory).build();
 
 			expect(factory).not.toHaveBeenCalled();
 		});
 
 		it('should call factory when condition is truthy', () => {
-			const factory = jest.fn(() => 'called');
+			const factory = vi.fn(() => 'called');
 			const result = prompt().sectionIf(true, 'LAZY', factory).build();
 
 			expect(factory).toHaveBeenCalledTimes(1);
@@ -355,7 +355,7 @@ describe('PromptBuilder', () => {
 		});
 
 		it('should not call formatter when condition is falsy', () => {
-			const formatter = jest.fn((ex: { a: number }) => String(ex.a));
+			const formatter = vi.fn((ex: { a: number }) => String(ex.a));
 			prompt()
 				.examplesIf(false, 'EXAMPLES', [{ a: 1 }], formatter)
 				.build();
