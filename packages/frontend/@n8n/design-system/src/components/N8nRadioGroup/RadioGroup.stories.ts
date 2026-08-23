@@ -6,7 +6,7 @@ import RadioGroup from './RadioGroup.vue';
 import RadioGroupItem from './RadioGroupItem.vue';
 
 const meta = {
-	title: 'Experimental/RadioGroup',
+	title: 'Core/RadioGroup',
 	component: RadioGroup,
 	parameters: {
 		docs: {

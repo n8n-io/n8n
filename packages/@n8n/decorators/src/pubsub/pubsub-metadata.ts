@@ -40,6 +40,8 @@ export type PubSubEventName =
 	| 'cancel-collection'
 	| 'agent-chat-integration-changed'
 	| 'agent-chat-subscription-changed'
+	| 'agent-chat-leader-channel-request'
+	| 'agent-chat-leader-channel-result'
 	| 'agent-config-changed'
 	| 'agent-tasks-changed'
 	| 'redaction-floor-changed';
