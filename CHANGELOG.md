@@ -1,3 +1,21 @@
+## [2.35.7](https://github.com/n8n-io/n8n/compare/n8n@2.35.6...n8n@2.35.7) (2026-08-21)
+
+
+### Bug Fixes
+
+* **core:** Raise AI Assistant model verification token limit ([#36798](https://github.com/n8n-io/n8n/issues/36798)) ([f87affe](https://github.com/n8n-io/n8n/commit/f87affed36c476ab472b52e797ad1cf59ba59058))
+
+
+## [2.35.6](https://github.com/n8n-io/n8n/compare/n8n@2.35.5...n8n@2.35.6) (2026-08-21)
+
+
+### Bug Fixes
+
+* **core:** Normalize env values before schema-based parsing ([#36732](https://github.com/n8n-io/n8n/issues/36732)) ([0664c7d](https://github.com/n8n-io/n8n/commit/0664c7db291d4ebc4c483fdc1b9178fb07d3f434))
+* **core:** Resolve end-user credentials when loading node parameters ([#36517](https://github.com/n8n-io/n8n/issues/36517)) ([6f6d04b](https://github.com/n8n-io/n8n/commit/6f6d04b29ee774e40e97956df0400956aeaf9cd7))
+* **core:** Wrap a trigger's closeFunction in an expression isolate at creation time ([#36698](https://github.com/n8n-io/n8n/issues/36698)) ([eb85ccd](https://github.com/n8n-io/n8n/commit/eb85ccde78b22d76ff5c640960f9fe1adff77465))
+
+
 ## [2.35.5](https://github.com/n8n-io/n8n/compare/n8n@2.35.4...n8n@2.35.5) (2026-08-20)
 
 
