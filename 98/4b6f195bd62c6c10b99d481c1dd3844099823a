@@ -1,0 +1,26 @@
+packages/@n8n/mcp-browser/src/tools/response-envelope.test.ts
+  s_14325c8d38891c::t_802b293c2aa8ac 229-247
+  s_14325c8d38891c::t_07c082112edf71 248-250
+  s_14325c8d38891c::t_14c3ab7bbe38c6 251-252
+packages/@n8n/mcp-browser/src/tools/response-envelope.ts
+  s_14325c8d38891c::t_1b701612937d28 30-48
+  s_14325c8d38891c::t_73939ac86baf39 67
+  s_14325c8d38891c::t_e11ce577e0759f 149,156,169,174-181
+  s_14325c8d38891c::t_3e389eeff7c7d8 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "984b6f195bd62c6c10b99d481c1dd3844099823a",
+  "prompts": {},
+  "sessions": {
+    "s_14325c8d38891c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3064c342-e5e8-42bd-a277-7854bf577fbe",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

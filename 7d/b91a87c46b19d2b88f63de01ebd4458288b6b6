@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/ProjectFile/test/read.operation.test.ts
+  s_b239e5ec600a48::t_ad2be9f3518dd3 58
+  s_b239e5ec600a48::t_ce78bc4d17f928 69
+packages/nodes-base/nodes/ProjectFile/common/utils.ts
+  s_b239e5ec600a48::t_f3848f7c87460d 37-40,42-43,46
+packages/nodes-base/nodes/ProjectFile/test/delete.operation.test.ts
+  s_b239e5ec600a48::t_b9a6f94eaeb5f3 19
+packages/nodes-base/nodes/ProjectFile/test/helpers.ts
+  s_b239e5ec600a48::t_8f20287c5771ad 83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7db91a87c46b19d2b88f63de01ebd4458288b6b6",
+  "prompts": {},
+  "sessions": {
+    "s_b239e5ec600a48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb525e80-f251-4a62-9109-617b677b1d8f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

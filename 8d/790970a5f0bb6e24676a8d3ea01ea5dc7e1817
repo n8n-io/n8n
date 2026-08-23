@@ -1,0 +1,41 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_59804710ac246a::t_863187fd53512f 34-45,51-52,55-65
+  s_59804710ac246a::t_89c07e5ff51b85 348,361,367-372,375-376,378-380,386,389-407,409-418,420-430,432-433,436-446
+  s_59804710ac246a::t_d07d4be795cacd 4
+  s_59804710ac246a::t_1f0297c9928ac0 349-358,362-366,374,377,381-385,387-388,408,419,431,434-435
+  s_59804710ac246a::t_3e034974b83d04 46-50,53-54
+  s_59804710ac246a::t_f86c62b8d47475 179-184
+packages/frontend/editor-ui/src/features/agents/components/AgentTaskModal.vue
+  s_59804710ac246a::t_b51b4fad7aae8a 69
+  s_59804710ac246a::t_4ba1abc9dd3a15 91-92
+  s_59804710ac246a::t_c14e64f52986ca 236,238
+  s_59804710ac246a::t_76962ea42b5ec6 24
+  s_59804710ac246a::t_3eb2b00b900b25 125-127
+  s_59804710ac246a::t_e5319dc79f611e 104-108
+  s_59804710ac246a::t_b82f66d34cb251 151,155
+  s_59804710ac246a::t_a44faa56891755 23
+  s_59804710ac246a::t_524db36b04112d 212-233
+  s_59804710ac246a::t_52ca6527379ab5 351
+  s_59804710ac246a::t_64362514437556 706-709
+  s_59804710ac246a::t_8482a80b3cb22d 570-589
+packages/frontend/editor-ui/src/features/agents/utils/scheduleBuilder.ts
+  s_59804710ac246a::t_fd9610a42ae803 132-136,145
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_59804710ac246a::t_de4c8d65cd3df3 7711-7712
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8d790970a5f0bb6e24676a8d3ea01ea5dc7e1817",
+  "prompts": {},
+  "sessions": {
+    "s_59804710ac246a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "630a9d8b-7a73-4d8a-96ac-3588b471e46f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

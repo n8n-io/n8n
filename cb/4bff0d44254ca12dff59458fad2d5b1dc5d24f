@@ -1,0 +1,93 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_3e2de9c50fdafd::t_ec04c385bcb5db 3657
+  s_3e2de9c50fdafd::t_c18eafe9a487b0 3658-3665,3669
+  s_3e2de9c50fdafd::t_c8d2481a92d698 3666-3667
+  s_3e2de9c50fdafd::t_243ea852b81a1c 3668
+packages/frontend/editor-ui/src/features/instanceRegistry/stores/__tests__/instanceRegistry.store.test.ts
+  s_3e2de9c50fdafd::t_b321dfcde97027 73-94,96,102
+  s_3e2de9c50fdafd::t_dd8cc016dd6bf9 8,15-16
+  s_3e2de9c50fdafd::t_48afac5fb08e4e 3
+  s_3e2de9c50fdafd::t_74f77162279f6e 72,95,97-101,103-115
+  s_3e2de9c50fdafd::t_c63829edb8daa2 45
+  s_3e2de9c50fdafd::t_253ad6fbb2728d 17-18
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_3e2de9c50fdafd::t_ddd3adde16b225 172-180
+  s_3e2de9c50fdafd::t_71f308e93f2d8b 171
+packages/frontend/@n8n/rest-api-client/src/api/index.ts
+  s_3e2de9c50fdafd::t_13340fa4eddff8 4
+packages/frontend/editor-ui/src/app/router.ts
+  s_3e2de9c50fdafd::t_d0a7538b1a5bf1 66-67
+  s_3e2de9c50fdafd::t_bb9b2071c80d17 1071-1080
+  s_3e2de9c50fdafd::t_36258703718069 1070
+packages/cli/src/commands/hypervisor.ts
+  s_3e2de9c50fdafd::t_a5399875117cd9 151
+  s_3e2de9c50fdafd::t_d15bbf42eaa734 61,71,83
+  s_3e2de9c50fdafd::t_0dbc0686ba52ec 129-130
+  s_3e2de9c50fdafd::t_d78bd05c14c85f 210-213
+  s_3e2de9c50fdafd::t_3944b49358d6fb 12
+packages/frontend/editor-ui/src/features/instanceRegistry/stores/instanceRegistry.store.ts
+  s_3e2de9c50fdafd::t_20946d3d1911f2 2,16,29-38,41,44
+  s_3e2de9c50fdafd::t_1ca20a06871e37 13-15
+  s_3e2de9c50fdafd::t_1777c7a8e111a2 1
+packages/cli/src/scaling/hypervisor-supervisor-info.ts
+  s_3e2de9c50fdafd::t_500e98492e7fb9 1
+  s_3e2de9c50fdafd::t_4bf5c82e7759a3 2-3,5,7-10,24-30,38-41,49-53,60-61,68-74,77-81,111-120,122,125-126,129-131,133-139,189-194,196-198,200-204,220-221
+  s_3e2de9c50fdafd::t_f34b99214da506 4,6,11-23,31-37,42-48,54-59,62-67,75-76,82-110
+  s_3e2de9c50fdafd::t_24d7ebdf080ecc 121,123-124,127-128,132,142-188,195,199,205-219
+  s_3e2de9c50fdafd::t_903e5554a3c162 140-141
+  s_3e2de9c50fdafd::t_982103b1d7a6e0 222-224
+packages/cli/src/commands/__tests__/hypervisor.test.ts
+  s_3e2de9c50fdafd::t_6462f5c9fa0b9a 197-207
+packages/@n8n/api-types/src/cluster-info-types.ts
+  s_3e2de9c50fdafd::t_2388f9734fd110 1-20
+  s_3e2de9c50fdafd::t_faee2019af77ed 21-32
+packages/cli/src/modules/instance-registry/instance-registry.module.ts
+  s_3e2de9c50fdafd::t_c59891212a18f4 17
+packages/frontend/@n8n/frontend-constants/src/views.ts
+  s_3e2de9c50fdafd::t_45c7f47831bdca 59
+packages/@n8n/api-types/src/index.ts
+  s_3e2de9c50fdafd::t_d0cb1b2a3dad73 12
+packages/frontend/@n8n/rest-api-client/src/api/cluster-info.ts
+  s_3e2de9c50fdafd::t_c7a1908017f783 1,7-9,11
+  s_3e2de9c50fdafd::t_f94ea0106afbd6 2-6,10,12-13
+packages/cli/src/modules/instance-registry/__tests__/cluster-info.controller.test.ts
+  s_3e2de9c50fdafd::t_f8456b0f9d2413 1,8-15,17-21,23,25,27,29-45,47-48,51-52,54
+  s_3e2de9c50fdafd::t_9eefe976dbdbd7 2-7,16,22,24,26,28,46,49-50,53,55-56
+packages/frontend/editor-ui/src/features/instanceRegistry/views/SettingsClusterView.vue
+  s_3e2de9c50fdafd::t_be137e259cf21b 2-5,12-17,25-80,82,84-86,90,97
+  s_3e2de9c50fdafd::t_d5e7807132b1f5 174-175,188-232
+  s_3e2de9c50fdafd::t_446df111c2c933 176-187
+  s_3e2de9c50fdafd::t_81bda72de298d0 1,6-11,18-21,24,87-89,91-96,98-173,233-313,320-332
+  s_3e2de9c50fdafd::t_2e45e638f323a9 314-319
+  s_3e2de9c50fdafd::t_0fe879210d3feb 81,83
+  s_3e2de9c50fdafd::t_9022e6ed4eacac 22-23
+  s_3e2de9c50fdafd::t_438752b9743303 333-334
+packages/cli/src/modules/instance-registry/cluster-info.controller.ts
+  s_3e2de9c50fdafd::t_4fd74071f792a6 1,8-12,16,20-26
+  s_3e2de9c50fdafd::t_20586ade2bfa88 2-7,13-15,17-19,27-28
+packages/cli/src/scaling/__tests__/hypervisor-supervisor-info.test.ts
+  s_3e2de9c50fdafd::t_80b91a0c73b946 37-39,44,47,59,63
+  s_3e2de9c50fdafd::t_f5bb04445dc228 26,28
+  s_3e2de9c50fdafd::t_47bfc4223a067b 119-146
+  s_3e2de9c50fdafd::t_fdcc147d792713 2,12-20,34-36,40-43,45-46,48-52,54-58,60-62,64-67,75-77
+  s_3e2de9c50fdafd::t_245bccc7610021 1,3-11,21-25,27,29-33,53,68-74,78-118,147
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  s_3e2de9c50fdafd::t_9ca121db3b0456 20
+  s_3e2de9c50fdafd::t_2f071f541b3800 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cb4bff0d44254ca12dff59458fad2d5b1dc5d24f",
+  "prompts": {},
+  "sessions": {
+    "s_3e2de9c50fdafd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71471209-e89f-4d40-8aa6-c40750a3f307",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

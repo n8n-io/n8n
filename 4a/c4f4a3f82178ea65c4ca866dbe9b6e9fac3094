@@ -1,0 +1,51 @@
+packages/@n8n/instance-ai/evaluations/harness/langsmith-seed.ts
+  s_79c1330350f45b::t_f8eb898e985a64 44,514
+packages/@n8n/agents/src/__tests__/workspace/workspace-tools.test.ts
+  s_79c1330350f45b::t_3343d6859bef26 256,258,284,289,291,305,319-337
+  s_79c1330350f45b::t_ee2aaf67a55d9f 106
+  s_79c1330350f45b::t_a18c9fb42608d9 338-339
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-applies-multiple-string-replacements.json
+  s_79c1330350f45b::t_918530a0a65afb 1-852
+packages/@n8n/agents/src/__tests__/integration/workspace-agent.test.ts
+  s_79c1330350f45b::t_a68e242e43d9e0 294,310,319-322,337,345-350
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-edits-files-with-append-copy-move-delete-and-rmdir-tools.json
+  s_79c1330350f45b::t_918530a0a65afb 92,378,1278,1358,1789,2309,2384,2464,2869
+  s_79c1330350f45b::t_181132114d5b3e 117,382,385,388,391,393,397-398,401,435,452,524,549,810,814,817,820,823,825,829-830,833,867,884,894,898,916,988,1013,1274,1281,1284,1287,1289,1293-1294,1297,1331,1348,1362,1380,1390,1394,1412,1484,1509,1770,1773-1774,1777,1780,1782-1783,1785,1790,1793,1827,1844,1854,1858,1876,1886,1890,1908,1918,1922,1938,2010,2035,2296,2299-2300,2303,2306,2308,2311,2315-2316,2319,2353,2370,2380,2402,2412,2416,2434,2444,2448,2474,2478,2496,2568,2593,2854,2858,2861,2864,2867,2873-2874,2877
+packages/@n8n/agents/src/workspace/tools/str-replace-file.ts
+  s_79c1330350f45b::t_6aadca7639dfe0 1,9,14-28,30,32-36,48-53,57,68-73
+packages/@n8n/instance-ai/evaluations/__tests__/langsmith-seed.test.ts
+  s_79c1330350f45b::t_353ada6ab95bd5 490,522,552,585
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-handles-multi-step-workflow-mkdir-write-list-read.json
+  s_79c1330350f45b::t_60834c3b807eb9 92,117,378,382,385,388,391,393,397-398,401,439,450,467,472,544,569,830,834,837,840,843,845,849-850,853,891,902,919,924,934,938,949,965,970,1042,1067,1328,1332,1335,1338,1341,1343,1347-1348,1351
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-execute-command-tool.json
+  s_79c1330350f45b::t_a87117c60f572b 92,117,378,382,385,388,391,393,397-398,401,435,451,523,548,809,813,816,819,822,824,828-829,832
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-file-stat-to-get-file-metadata.json
+  s_79c1330350f45b::t_d7426a60ca91d5 92,117,378,382,385,388,391,393,397-398,401,435,451,523,548,809,813,816,819,822,824,828-829,832
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-list-files-for-a-pre-existing-directory.json
+  s_79c1330350f45b::t_49a5ce60a01869 92,117,378,382,385,388,391,393,397-398,401,435,452,524,549,810,814,817,820,823,825,829-830,833
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/agent-uses-workspace-write-file-and-workspace-read-file-tools.json
+  s_79c1330350f45b::t_d64a914cca2070 92,117,378,382,385,388,391,393,397-398,401,435,452,524,549,810,814,817,820,823,825,829-830,833,867,884,894,898,914,986,1011,1272,1276,1279,1282,1285,1287,1291-1292,1295
+packages/@n8n/agents/src/__tests__/integration/cassettes/workspace-agent/stream-agent-writes-a-file-and-streams-the-response.json
+  s_79c1330350f45b::t_ede571076e2c7e 92,117,380,385,388,391,394,397,402-403,406,441,458,530,555,818,823,826,829,832,835,840-841,844
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "4ac4f4a3f82178ea65c4ca866dbe9b6e9fac3094",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_79c1330350f45b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "fc11374c-217f-4b82-8d49-21b3672edaf9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": null
+    }
+  }
+}

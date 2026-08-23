@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodePlaceholder.vue
+  s_82029241289295::t_c8870f316ec5e5 1-84
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_82029241289295::t_ce750cc778bae6 244-253,261
+packages/frontend/editor-ui/src/features/workflows/canvas/__tests__/utils.ts
+  s_82029241289295::t_d147310dcc2402 192-195,202-205,213-216,226-229,235,245
+  s_82029241289295::t_10a708c27b6201 29-35
+  s_82029241289295::t_55d917243e059c 12
+packages/frontend/editor-ui/src/features/workflows/canvas/components/Canvas.vue
+  s_82029241289295::t_9e2ab229fe1ef2 262-274
+  s_82029241289295::t_531b7d73d1ee19 1777
+  s_82029241289295::t_8bcae99df2859e 79
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasVirtualization.ts
+  s_82029241289295::t_259004fd2a0089 1-67
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNode.vue
+  s_82029241289295::t_e27953d545bd3f 433-442,445-453,456,458-512,514-522,524-537
+  s_82029241289295::t_e26a7a4362929c 88
+  s_82029241289295::t_2f944707ccea7c 16,23,30-31,33-36,45
+  s_82029241289295::t_9c39d061c4732e 138-173,175-185
+  s_82029241289295::t_1bf1531172115e 174
+  s_82029241289295::t_dc04d84297d8b9 137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c4dc59df0ec434f9a1e118428e0d4aa385fd8d16",
+  "prompts": {},
+  "sessions": {
+    "s_82029241289295": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ff8bef7-44df-43fc-b7fe-52a1f3a099b5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/cli/src/modules/oauth-server/oauth-server.service.ts
+  s_ef800c57a2bab6::t_a3fdf3a0761333 522-544
+  s_ef800c57a2bab6::t_42a8a6c4def391 26,37-38,112-113,367,374-383,518-521,545-546
+packages/cli/src/modules/oauth-server/__tests__/oauth-consent.service.test.ts
+  s_ef800c57a2bab6::t_b8cd55576fac00 623-716
+packages/cli/src/modules/oauth-server/__tests__/oauth-server.service.test.ts
+  s_ef800c57a2bab6::t_34d0d0515a2be4 8
+  s_ef800c57a2bab6::t_a6473b87901707 1471-1472
+  s_ef800c57a2bab6::t_2d525c947fbdfa 90-91
+  s_ef800c57a2bab6::t_07b0d222199b5b 197-198
+  s_ef800c57a2bab6::t_7d678add739574 1521-1522
+  s_ef800c57a2bab6::t_15b59dd14d0c4e 13
+  s_ef800c57a2bab6::t_c882aab01a084d 45-46
+  s_ef800c57a2bab6::t_5f4fd8075b1c8c 268-269
+  s_ef800c57a2bab6::t_22029452bd982d 420-470
+  s_ef800c57a2bab6::t_638aefa7f0d1f5 64-65
+  s_ef800c57a2bab6::t_6333e933c7d936 27
+  s_ef800c57a2bab6::t_591e540ed352cc 916-917
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "8c1bea87e53b4ee9ad02dd89697700b5dab48c35",
+  "prompts": {},
+  "sessions": {
+    "s_ef800c57a2bab6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8fcec7ec-93e6-494d-a46f-4242406ccfc3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

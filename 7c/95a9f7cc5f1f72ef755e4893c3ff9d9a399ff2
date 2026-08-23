@@ -1,0 +1,123 @@
+packages/cli/src/modules/operator-console/capture/ring-buffer.ts
+  s_63fb8ae124025a::t_482c3be8dfd2e6 140-176
+packages/frontend/editor-ui/src/features/settings/operatorConsole/operatorConsole.constants.ts
+  s_63fb8ae124025a::t_577294c1d064f7 6-37
+  s_63fb8ae124025a::t_a741b62bb25e84 1-5
+packages/frontend/editor-ui/src/features/settings/operatorConsole/components/OperatorConsoleLogList.vue
+  s_63fb8ae124025a::t_861a0f4455a473 1-103,119-163
+  s_63fb8ae124025a::t_2bc4c55b24a070 104-108,114-118
+  s_63fb8ae124025a::t_829eabba709c5b 109-113
+packages/frontend/editor-ui/src/features/settings/operatorConsole/operatorConsole.utils.test.ts
+  s_63fb8ae124025a::t_c860aae421c11d 1-73
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_63fb8ae124025a::t_8cc625159cd092 1622-1666
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/operatorLogs.ts
+  s_63fb8ae124025a::t_244bf5968d76e9 1
+  s_63fb8ae124025a::t_6c48735b2c2b64 2-12
+packages/cli/src/modules/operator-console/ai/log-query.adapter.ts
+  s_63fb8ae124025a::t_f2f0f0db3c3387 1-87
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.test.ts
+  s_63fb8ae124025a::t_e2158a54473eab 33
+packages/cli/src/modules/operator-console/operator-console.controller.ts
+  s_63fb8ae124025a::t_4883eb2018521a 1-131,134-184
+  ai_agent 132-133
+packages/cli/src/modules/operator-console/__tests__/redis-stream.source.test.ts
+  s_63fb8ae124025a::t_fb763e393d3bae 196-267
+  ai_agent 87-92,103-108,118-123,133-138,152-156
+  s_63fb8ae124025a::t_2318327604349f 66
+  s_63fb8ae124025a::t_bf2ef93c827a48 71,167,180,189
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_63fb8ae124025a::t_35786a3fb9a6b9 362-363
+  s_63fb8ae124025a::t_89732b00c63a78 364
+  s_63fb8ae124025a::t_cb65dc3fb58312 73
+packages/frontend/editor-ui/src/features/settings/operatorConsole/components/OperatorConsoleMarkerRow.vue
+  s_63fb8ae124025a::t_1e78b0d4753ad9 75-76,80-82
+  s_63fb8ae124025a::t_e445f9abb38b40 1-69,71-74,77-79,83-84
+  s_63fb8ae124025a::t_96fd30adea8904 70
+packages/frontend/editor-ui/src/app/modules.manifest.ts
+  s_63fb8ae124025a::t_1f2e9c285da66b 23
+  s_63fb8ae124025a::t_4f131344211ddb 8
+packages/frontend/editor-ui/src/features/settings/operatorConsole/operatorConsole.api.ts
+  s_63fb8ae124025a::t_a46e68279c0f10 1-23,25-55
+  s_63fb8ae124025a::t_12100fb0c8a035 24
+packages/cli/src/modules/operator-console/sources/redis-stream.source.ts
+  s_63fb8ae124025a::t_9bc1f9a38ecd19 320-327
+  s_63fb8ae124025a::t_0cf8da09d04539 93,99-101
+  s_63fb8ae124025a::t_1bc76d44be8cc3 147-198
+packages/cli/src/modules/operator-console/operator-console.module.ts
+  s_63fb8ae124025a::t_f31446859f7fba 49,53
+  s_63fb8ae124025a::t_4304268ff03d2f 66-67
+  s_63fb8ae124025a::t_84b0102fc25027 1-48,50-52,54-64,68,70-82
+  s_63fb8ae124025a::t_728109add49568 65,69
+packages/frontend/editor-ui/src/features/settings/operatorConsole/module.descriptor.ts
+  s_63fb8ae124025a::t_3a3c8f773ec7c9 1-52
+packages/frontend/editor-ui/src/features/settings/operatorConsole/operatorConsole.store.ts
+  s_63fb8ae124025a::t_794abc20c5ea19 1-201,204-377
+  s_63fb8ae124025a::t_0998ba6f0c3fd5 202-203
+packages/frontend/editor-ui/src/features/settings/operatorConsole/operatorConsole.types.ts
+  s_63fb8ae124025a::t_2392f20d8e19de 1-39
+packages/frontend/editor-ui/src/features/settings/operatorConsole/operatorConsole.store.test.ts
+  s_63fb8ae124025a::t_b7969d16cc58c4 2-357
+  s_63fb8ae124025a::t_12100fb0c8a035 1
+packages/frontend/editor-ui/src/features/settings/operatorConsole/OperatorConsoleView.test.ts
+  s_63fb8ae124025a::t_12100fb0c8a035 123
+  s_63fb8ae124025a::t_acf6eb68f29509 1-122,124-153
+packages/cli/src/modules/instance-ai/instance-ai-log-query.registry.ts
+  s_63fb8ae124025a::t_192c3003f82635 1-12,18,32
+  s_63fb8ae124025a::t_320d85bb578851 13-17,19-31
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  s_63fb8ae124025a::t_200a37d9540e0f 4135
+packages/cli/src/modules/operator-console/sources/composite-log.source.ts
+  s_63fb8ae124025a::t_24d40b94a382c9 1-96
+packages/frontend/editor-ui/src/features/settings/operatorConsole/components/OperatorConsoleLogRow.vue
+  s_63fb8ae124025a::t_6fc4a59b578761 1-140,142-157,159-180,182-189,191-193,195-197,199-201,203-207,209-213,215-226,228-231,233-237,240-244
+  s_63fb8ae124025a::t_0cf0585a4c2fe9 227,232,238-239
+  s_63fb8ae124025a::t_f20ccd90ba805d 158
+  s_63fb8ae124025a::t_4886d28ff6a3fd 141
+  s_63fb8ae124025a::t_a4242732626518 181,190,194,198,202,208,214
+packages/frontend/editor-ui/src/app/composables/usePushConnection/usePushConnection.ts
+  s_63fb8ae124025a::t_a03e27050fe22e 16
+  s_63fb8ae124025a::t_7124b62de28f18 90-91
+packages/frontend/editor-ui/src/features/settings/operatorConsole/operatorConsole.utils.ts
+  s_63fb8ae124025a::t_48df33b09b464f 1-10,17-64
+  s_63fb8ae124025a::t_1884b3de09f0bb 11-16
+packages/frontend/editor-ui/src/app/composables/usePushConnection/handlers/index.ts
+  s_63fb8ae124025a::t_e5043f7d41f16b 9
+packages/cli/src/modules/operator-console/sources/ring-buffer.source.ts
+  s_63fb8ae124025a::t_d9248ee256e2a0 38-49
+packages/cli/src/modules/operator-console/sources/log-source.ts
+  s_63fb8ae124025a::t_c425abf74cac43 46-51
+packages/cli/src/modules/operator-console/sources/log-file.source.ts
+  s_63fb8ae124025a::t_cd03d0542bad1e 108-111
+packages/frontend/editor-ui/src/features/settings/operatorConsole/components/OperatorConsoleFilterBar.vue
+  s_63fb8ae124025a::t_6152d7cc849407 34-36
+  s_63fb8ae124025a::t_d9cc7993c44108 8
+  s_63fb8ae124025a::t_d76652dd705db4 1-7,9-11,20-22,24-33,37-79,81-160,165-247
+  s_63fb8ae124025a::t_3c92d18ec1324b 23
+  s_63fb8ae124025a::t_93cd6922a5d47c 80
+  s_63fb8ae124025a::t_5bdc3dd5db6aaa 12-19,161-164
+packages/@n8n/backend-common/src/logging/logger.ts
+  s_63fb8ae124025a::t_87db131e048536 300-320
+packages/frontend/editor-ui/src/features/settings/operatorConsole/components/OperatorConsoleToolbar.vue
+  s_63fb8ae124025a::t_aa574895902fd5 1-46,50-83,85-95,97-109,111-120,122-175
+  s_63fb8ae124025a::t_5bdc3dd5db6aaa 47-49
+  s_63fb8ae124025a::t_1878b7d1e88555 84,96,110,121
+packages/frontend/editor-ui/src/features/settings/operatorConsole/OperatorConsoleView.vue
+  s_63fb8ae124025a::t_dd0b3d1d67e934 1-128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7c95a9f7cc5f1f72ef755e4893c3ff9d9a399ff2",
+  "prompts": {},
+  "sessions": {
+    "s_63fb8ae124025a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5cf8404-b5d2-4900-b9d5-47b84d4533a8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

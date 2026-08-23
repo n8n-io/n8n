@@ -1,0 +1,31 @@
+packages/cli/src/modules/git-connections.ee/database/repositories/git-connection-project.repository.ts
+  s_5017985d533c5d::t_4559cadab98c66 20-21,31,33,45
+  s_5017985d533c5d::t_5f5ee8557577dd 2
+  s_5017985d533c5d::t_22284983ac49c2 22-30,32,34-44
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_5017985d533c5d::t_b93511885c7329 361-364
+  s_5017985d533c5d::t_bbd217a43d1ccd 432,437-440
+  s_5017985d533c5d::t_971cf23ea77d50 433-436,441-442
+packages/cli/src/modules/git-connections.ee/__tests__/git-connection-project.repository.integration.test.ts
+  s_5017985d533c5d::t_fe7771c4cdb14b 1-43,47-118
+  s_5017985d533c5d::t_f269a035b88725 44-46
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_5017985d533c5d::t_3a62a620d3c800 244-248
+  s_5017985d533c5d::t_7c03c2f35c7cf4 249-252
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7b8a6493bf4dce83283dea5232dd6837b4af9743",
+  "prompts": {},
+  "sessions": {
+    "s_5017985d533c5d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e86117bf-3ea3-49d3-9f62-78587012d611",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

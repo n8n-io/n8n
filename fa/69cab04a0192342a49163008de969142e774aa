@@ -1,0 +1,36 @@
+docs/generated/postgres-schema/README.md
+  h_c63dce324dfc7b 98,288-292,1218-1231
+docs/generated/postgres-schema/public.binary_data.md
+  h_c63dce324dfc7b 21
+docs/generated/postgres-schema/public.project.md
+  h_c63dce324dfc7b 12,49,165-178
+docs/generated/postgres-schema/public.project_file.md
+  h_c63dce324dfc7b 1-125
+docs/generated/postgres-schema/public.user.md
+  h_c63dce324dfc7b 11,68-69,294-307
+docs/generated/postgres-schema/public.workflow_entity.md
+  h_c63dce324dfc7b 12,78-79,238-251
+docs/generated/sqlite-schema/README.md
+  h_c63dce324dfc7b 98,271-275,1205-1218
+docs/generated/sqlite-schema/binary_data.md
+  h_c63dce324dfc7b 9,32
+docs/generated/sqlite-schema/project.md
+  h_c63dce324dfc7b 23,55,171-184
+docs/generated/sqlite-schema/project_file.md
+  h_c63dce324dfc7b 1-129
+docs/generated/sqlite-schema/user.md
+  h_c63dce324dfc7b 22,74-75,300-313
+docs/generated/sqlite-schema/workflow_entity.md
+  h_c63dce324dfc7b 23,77-78,237-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "fa69cab04a0192342a49163008de969142e774aa",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

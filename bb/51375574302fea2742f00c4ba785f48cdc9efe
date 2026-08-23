@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/app/components/MainHeader/workflowHealthChecks.test.ts
+  s_8ab5ba2d436c6d::t_bd3092570a67d7 5-9,13,15-17
+  s_8ab5ba2d436c6d::t_48f206cb124650 64-67
+  s_8ab5ba2d436c6d::t_f814ad050ee602 68-69
+packages/frontend/editor-ui/src/app/components/MainHeader/workflowHealthChecks.ts
+  s_8ab5ba2d436c6d::t_baf40eaf7d1264 24-27
+  s_8ab5ba2d436c6d::t_f126bea944694b 3-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "bb51375574302fea2742f00c4ba785f48cdc9efe",
+  "prompts": {},
+  "sessions": {
+    "s_8ab5ba2d436c6d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3eacd850-21bb-4125-8c8c-5fb63227eeac",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

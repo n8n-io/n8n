@@ -1,0 +1,33 @@
+packages/cli/src/commands/__tests__/hypervisor.test.ts
+  s_3e2de9c50fdafd::t_1bd68b53315ecf 12
+  s_3e2de9c50fdafd::t_04ba1d6987c469 161-162,170-171
+  s_3e2de9c50fdafd::t_cf9057968d3344 9
+  s_3e2de9c50fdafd::t_1b68a6a4ad66ff 72-73
+  s_3e2de9c50fdafd::t_b3392a0c8e2920 40,43-46
+  s_3e2de9c50fdafd::t_e77b8e85acb244 76-94
+  s_3e2de9c50fdafd::t_be1427e79de786 74,157-160,163-169,172-241
+  s_3e2de9c50fdafd::t_d1e13a8d1ed3d4 75
+  s_3e2de9c50fdafd::t_827a5e4963c963 242-244
+packages/cli/src/commands/hypervisor.ts
+  s_3e2de9c50fdafd::t_3edcafe85b777f 153-159,170-172
+  s_3e2de9c50fdafd::t_b8705756c20817 117-118,126-133,138-146,149-152,160-167,173-175
+  s_3e2de9c50fdafd::t_07482f17efac8c 28-99
+  s_3e2de9c50fdafd::t_e13c1fb20bef19 100
+  s_3e2de9c50fdafd::t_2bd73c08c0a454 176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "2c3eb1a86b1f5bf33448d5e6e6dbada6566afdf0",
+  "prompts": {},
+  "sessions": {
+    "s_3e2de9c50fdafd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71471209-e89f-4d40-8aa6-c40750a3f307",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,35 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentInfoPanel.spec.ts
+  s_e2504e875a073c::t_5da95257ff0a5d 130-138,299,314-318,323-324,335-351,360-370
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_e2504e875a073c::t_194dc4607b310a 9-10,95,98-102,118-120,130,166-188,207,265,270-272
+  s_e2504e875a073c::t_51f04497bdcbea 127-128
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_e2504e875a073c::t_2e19ffd2c1a65c 486,492-510,514-516,545,589-592,627-631
+  s_e2504e875a073c::t_7e7731f09d079d 229
+  s_e2504e875a073c::t_262ae687b4005d 230-269,271-272,275,278-284,293,298,306,309,314,317,319,322,340,346,356-357,360,365,377,380-383,385,399,407,429,443,454-455,457
+  s_e2504e875a073c::t_430173accf519c 17-22,45-46,61-63,80-85,157-174
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_e2504e875a073c::t_c3d4a562508b91 5228
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_e2504e875a073c::t_de616855106933 4,6,25-26,57,73-74,175-202,212-215,242-243
+  s_e2504e875a073c::t_38d0ed28abfc1b 286-377
+  s_e2504e875a073c::t_dcca9aef0bd26c 244-245
+packages/frontend/editor-ui/src/features/agents/model-providers.ts
+  s_e2504e875a073c::t_194dc4607b310a 1-5,37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "d4fe950ca681c4e98f52d0f2c98d207ec855783c",
+  "prompts": {},
+  "sessions": {
+    "s_e2504e875a073c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ff50f-358b-7522-8664-26ba4394dffe",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

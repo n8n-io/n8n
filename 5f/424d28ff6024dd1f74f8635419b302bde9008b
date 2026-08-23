@@ -1,0 +1,25 @@
+packages/workflow/src/errors/failure.ts
+  s_3170ec9eca2475::t_890fb1f0767941 1-2,9-12,21-25,31-32,34-42
+packages/workflow/src/errors/index.ts
+  s_3170ec9eca2475::t_890fb1f0767941 17-25
+packages/workflow/test/errors/failure.test.ts
+  s_3170ec9eca2475::t_8b8540fedfcdbe 2,5-8,52
+packages/nodes-base/nodes/Google/Drive/test/GoogleDriveTrigger.node.test.ts
+  s_3170ec9eca2475::t_498dfb66abb7aa 515
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5f424d28ff6024dd1f74f8635419b302bde9008b",
+  "prompts": {},
+  "sessions": {
+    "s_3170ec9eca2475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ecafac38-def7-40e2-8506-9784e00ca5e4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

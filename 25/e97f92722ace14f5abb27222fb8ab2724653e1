@@ -1,0 +1,52 @@
+packages/cli/src/modules/mcp/mcp.service.ts
+  s_d0ae84c42ca875::t_70008f97041dc1 586-588
+  s_d0ae84c42ca875::t_f37c76b6c18689 70
+packages/@n8n/api-types/src/index.ts
+  s_11e36b4b15a9b4::t_c7f48612bf1a51 215-221
+packages/cli/src/modules/mcp/tools/data-table/index.ts
+  s_d0ae84c42ca875::t_80fc75777001dc 8
+packages/cli/src/modules/mcp/__tests__/data-table/get-data-table-rows.tool.test.ts
+  s_11e36b4b15a9b4::t_73f55dc72fd064 122-130
+  s_11e36b4b15a9b4::t_b24e1b319ff784 1-2
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_d0ae84c42ca875::t_c9aa51b618df57 75
+packages/cli/src/modules/mcp/tools/schemas.ts
+  s_11e36b4b15a9b4::t_efc583967bb90b 112-117
+packages/cli/src/modules/mcp/tools/data-table/get-data-table-rows.tool.ts
+  s_11e36b4b15a9b4::t_813394ed008cc9 109
+  s_11e36b4b15a9b4::t_0f1bd3c3a37108 66
+  s_d0ae84c42ca875::t_712658fa468335 34-36
+  s_11e36b4b15a9b4::t_adb3918c155dce 21-22,27-28
+  s_d0ae84c42ca875::t_06bceaae4e7e2f 6-13,15-19,23-25,32-33,37-65,67-108,110-112,121-124,129-162
+  s_d0ae84c42ca875::t_a7fc3ba748a5e4 113-120
+  s_11e36b4b15a9b4::t_ddfb3d16226a58 125-128
+  ai_agent 29-31
+  s_11e36b4b15a9b4::t_5a0bed54d11c42 1-5,14,20,26
+packages/cli/src/modules/mcp/tools/data-table/add-data-table-rows.tool.ts
+  s_11e36b4b15a9b4::t_75215b51970639 9
+  s_11e36b4b15a9b4::t_2124e0c94ba3c3 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "25e97f92722ace14f5abb27222fb8ab2724653e1",
+  "prompts": {},
+  "sessions": {
+    "s_11e36b4b15a9b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3dd1f1c-ab3b-4dbc-add6-37d528e26127",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    },
+    "s_d0ae84c42ca875": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ac35131-52b2-4914-9d2e-8a4a84155ba8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

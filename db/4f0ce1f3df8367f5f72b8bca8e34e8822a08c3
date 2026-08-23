@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.vue
+  s_0fa6ec0e54a067::t_729f90e201cd4c 69,184-196
+packages/frontend/editor-ui/src/features/ai/shared/components/ChannelSetupCard.test.ts
+  s_0fa6ec0e54a067::t_c0068789b2089c 35,83,185,259,262-266,280,291-292,297,299-300
+  s_0fa6ec0e54a067::t_3dc7323d8c60f7 241,251-258,260-261,267-270,272,274-275,277-279,281-285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "db4f0ce1f3df8367f5f72b8bca8e34e8822a08c3",
+  "prompts": {},
+  "sessions": {
+    "s_0fa6ec0e54a067": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019feaef-e753-7822-a73f-a401a4d32bb6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

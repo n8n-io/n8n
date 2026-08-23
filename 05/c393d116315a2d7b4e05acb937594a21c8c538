@@ -1,0 +1,20 @@
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_f019419fbecb2c::t_616f17cdb4c52e 238-240
+  s_f019419fbecb2c::t_6fe0d6017f50b3 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "05c393d116315a2d7b4e05acb937594a21c8c538",
+  "prompts": {},
+  "sessions": {
+    "s_f019419fbecb2c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a42e06b0-e319-474d-a003-d3f5ee778b5f",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
