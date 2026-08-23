@@ -17,42 +17,40 @@ const sampleGraph: WorkflowGraph = {
 	edges: [],
 };
 
+let container: StartedPostgreSqlContainer;
+let dataSource: DataSource;
+let workQueue: WorkQueue<OrchestrationMessage>;
+let url: string;
+let stop: () => Promise<void>;
+
+// One container for the file: both suites talk to the same schema, and each
+// test gets a fresh server over it.
+beforeAll(async () => {
+	container = await new PostgreSqlContainer(postgresVersions.primary).start();
+	dataSource = createDataSource(container.getConnectionUri());
+	await dataSource.initialize();
+	await dataSource.runMigrations();
+}, 120_000);
+
+beforeEach(async () => {
+	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	const { executionStore, executionReadStore } = createStores(dataSource);
+	({ url, stop } = await startEngineServer({
+		startExecution: new StartExecutionService(new AllowAllAdmittance(), executionStore, workQueue),
+		executionQuery: new ExecutionQueryService(executionReadStore),
+	}));
+});
+
+afterEach(async () => {
+	if (stop) await stop();
+});
+
+afterAll(async () => {
+	if (dataSource?.isInitialized) await dataSource.destroy();
+	if (container) await container.stop();
+});
+
 describe('POST /api/workflow-executions (integration)', () => {
-	let container: StartedPostgreSqlContainer;
-	let dataSource: DataSource;
-	let workQueue: WorkQueue<OrchestrationMessage>;
-	let url: string;
-	let stop: () => Promise<void>;
-
-	beforeAll(async () => {
-		container = await new PostgreSqlContainer(postgresVersions.primary).start();
-		dataSource = createDataSource(container.getConnectionUri());
-		await dataSource.initialize();
-		await dataSource.runMigrations();
-	}, 120_000);
-
-	beforeEach(async () => {
-		workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
-		const { executionStore, executionReadStore } = createStores(dataSource);
-		({ url, stop } = await startEngineServer({
-			startExecution: new StartExecutionService(
-				new AllowAllAdmittance(),
-				executionStore,
-				workQueue,
-			),
-			executionQuery: new ExecutionQueryService(executionReadStore),
-		}));
-	});
-
-	afterEach(async () => {
-		if (stop) await stop();
-	});
-
-	afterAll(async () => {
-		if (dataSource?.isInitialized) await dataSource.destroy();
-		if (container) await container.stop();
-	});
-
 	it('creates an execution row, publishes execution:enqueued, returns 201', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
@@ -171,44 +169,6 @@ describe('POST /api/workflow-executions (integration)', () => {
 });
 
 describe('GET /api/workflow-executions/:id (integration)', () => {
-	let container: StartedPostgreSqlContainer;
-	let dataSource: DataSource;
-	let url: string;
-	let stop: () => Promise<void>;
-
-	beforeAll(async () => {
-		container = await new PostgreSqlContainer(postgresVersions.primary).start();
-		dataSource = createDataSource(container.getConnectionUri());
-		await dataSource.initialize();
-		await dataSource.runMigrations();
-	}, 120_000);
-
-	beforeEach(async () => {
-		const { executionStore, executionReadStore } = createStores(dataSource);
-		const workQueue: WorkQueue<OrchestrationMessage> = {
-			publish: vi.fn(),
-			start: vi.fn(),
-			stop: vi.fn(),
-		};
-		({ url, stop } = await startEngineServer({
-			startExecution: new StartExecutionService(
-				new AllowAllAdmittance(),
-				executionStore,
-				workQueue,
-			),
-			executionQuery: new ExecutionQueryService(executionReadStore),
-		}));
-	});
-
-	afterEach(async () => {
-		if (stop) await stop();
-	});
-
-	afterAll(async () => {
-		if (dataSource?.isInitialized) await dataSource.destroy();
-		if (container) await container.stop();
-	});
-
 	async function createExecution(): Promise<string> {
 		const response = await request(url)
 			.post('/api/workflow-executions')

@@ -1,12 +1,8 @@
 import type { Server } from 'node:http';
 
-import type { ExecutionQueryService, StartExecutionService } from '../execution';
-import { createEngineServer } from '../server';
+import { createEngineServer, type EngineServerDeps } from '../server';
 
-export async function startEngineServer(deps: {
-	startExecution: StartExecutionService;
-	executionQuery: ExecutionQueryService;
-}): Promise<{
+export async function startEngineServer(deps: EngineServerDeps): Promise<{
 	url: string;
 	stop: () => Promise<void>;
 }> {

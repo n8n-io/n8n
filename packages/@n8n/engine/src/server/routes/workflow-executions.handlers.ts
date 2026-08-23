@@ -1,4 +1,4 @@
-import type { RequestHandler } from 'express';
+import type { Request, RequestHandler, Response } from 'express';
 import { z } from 'zod';
 
 import {
@@ -11,6 +11,14 @@ import type { ExecutionSnapshot, ExecutionStepsResponse, StepDetail } from '../a
 import { fail } from '../error-response';
 
 const ExecutionIdParams = z.object({ id: z.string().uuid() });
+
+/** The validated `:id`, or `null` once the 400 has been sent. */
+function parseExecutionId(req: Request, res: Response): string | null {
+	const parsed = ExecutionIdParams.safeParse(req.params);
+	if (parsed.success) return parsed.data.id;
+	fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
+	return null;
+}
 
 function toExecutionSnapshot(record: ExecutionView): ExecutionSnapshot {
 	return {
@@ -40,14 +48,11 @@ function toStepDetail(record: StepView): StepDetail {
 
 export function createGetExecutionHandler(executionQuery: ExecutionQueryService): RequestHandler {
 	return async (req, res) => {
-		const parsed = ExecutionIdParams.safeParse(req.params);
-		if (!parsed.success) {
-			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
-			return;
-		}
+		const id = parseExecutionId(req, res);
+		if (id === null) return;
 
 		try {
-			const execution = await executionQuery.getExecution(parsed.data.id);
+			const execution = await executionQuery.getExecution(id);
 			res.status(200).json(toExecutionSnapshot(execution));
 		} catch (error) {
 			if (error instanceof ExecutionNotFoundError) {
@@ -63,13 +68,10 @@ export function createGetExecutionStepsHandler(
 	executionQuery: ExecutionQueryService,
 ): RequestHandler {
 	return async (req, res) => {
-		const parsed = ExecutionIdParams.safeParse(req.params);
-		if (!parsed.success) {
-			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
-			return;
-		}
+		const id = parseExecutionId(req, res);
+		if (id === null) return;
 
-		const steps = await executionQuery.getSteps(parsed.data.id);
+		const steps = await executionQuery.getSteps(id);
 		const body: ExecutionStepsResponse = { steps: steps.map(toStepDetail) };
 		res.status(200).json(body);
 	};

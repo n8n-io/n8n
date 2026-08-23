@@ -4,11 +4,14 @@ import type { ExecutionQueryService } from '../execution';
 import type { StartExecutionService } from '../execution/start-execution.service';
 import { createWorkflowExecutionsRouter } from './routes/workflow-executions';
 
-/** Builds the engine HTTP app: `/healthz` plus the execution API. */
-export function createEngineServer(deps: {
+/** Services the engine API is built on, handed in at construction. */
+export interface EngineServerDeps {
 	startExecution: StartExecutionService;
 	executionQuery: ExecutionQueryService;
-}): { app: Application } {
+}
+
+/** Builds the engine HTTP app: `/healthz` plus the execution API. */
+export function createEngineServer(deps: EngineServerDeps): { app: Application } {
 	const app = express();
 	app.use(express.json());
 

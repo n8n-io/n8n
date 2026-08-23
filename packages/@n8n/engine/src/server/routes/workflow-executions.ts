@@ -3,9 +3,8 @@ import { z } from 'zod';
 
 import { AdmittanceRejectedError } from '../../admittance';
 import { UnimplementedError, type JsonValue } from '../../common';
-import type { ExecutionQueryService } from '../../execution';
-import type { StartExecutionService } from '../../execution/start-execution.service';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
+import type { EngineServerDeps } from '../create-engine-server';
 import { fail } from '../error-response';
 import {
 	createGetExecutionHandler,
@@ -57,10 +56,7 @@ const StartExecutionBody = z.object({
 	mode: z.enum(['production', 'manual']).optional(),
 });
 
-export function createWorkflowExecutionsRouter(deps: {
-	startExecution: StartExecutionService;
-	executionQuery: ExecutionQueryService;
-}): RouterType {
+export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterType {
 	const router = Router();
 
 	router.post('/', async (req, res) => {

@@ -42,12 +42,7 @@ type StepSummaryRow = {
 
 /** RETURNING rows come back keyed by database column name (snake_case). */
 type InsertedStepRow = { id: string; node_id: string; iteration: number };
-type ClaimedStepRow = {
-	id: string;
-	execution_id: string;
-	node_id: string;
-	iteration: number;
-};
+type ClaimedStepRow = { id: string; execution_id: string; node_id: string; iteration: number };
 
 /**
  * `(node_id, iteration) IN ((:n0, :i0), ...)` as a fragment + parameters, since
