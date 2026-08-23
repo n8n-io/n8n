@@ -5598,7 +5598,7 @@
 	"workflowReviews.detail.decision.ineligible.author": "You contributed a version to this review.",
 	"workflowReviews.emptyState.title.open": "No open reviews",
 	"workflowReviews.emptyState.title.closed": "No closed reviews",
-	"workflowReviews.emptyState.body.open": "Reviews waiting for you and versions you've submitted appear here.",
+	"workflowReviews.emptyState.body.open": "Reviews you authored or participate in appear here.",
 	"workflowReviews.emptyState.body.closed": "Reviews that were approved, rejected, or cancelled appear here.",
 	"workflowReviews.noSelection.title.open": "{count} open review | {count} open reviews",
 	"workflowReviews.noSelection.title.closed": "{count} closed review | {count} closed reviews",
