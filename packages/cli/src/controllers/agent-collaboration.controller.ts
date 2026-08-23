@@ -44,7 +44,7 @@ export class AgentCollaborationController {
 	) {
 		const { projectId } = req.params;
 		const user = req.user;
-		const userName = body.userName || user.firstName || user.email || 'Anonymous';
+		const userName = (body as any).userName || user.firstName || user.email || 'Anonymous';
 
 		await this.agentCollaborationService.joinAgent(agentId, user.id, userName, projectId);
 
@@ -118,15 +118,15 @@ export class AgentCollaborationController {
 		const user = req.user;
 
 		await this.agentCollaborationService.updateCursor(agentId, user.id, {
-			x: body.x,
-			y: body.y,
+			x: (body as any).x,
+			y: (body as any).y,
 		}, projectId);
 
 		return {
 			success: true,
 			agentId,
 			userId: user.id,
-			position: { x: body.x, y: body.y },
+			position: { x: (body as any).x, y: (body as any).y },
 		};
 	}
 
