@@ -274,6 +274,17 @@ export class AgentCollaborationService {
 				throw new UnexpectedError('User not authorized to collaborate on this agent');
 			}
 
+			// Revalidate project access for security
+			const projectId = this.agentProjectIds.get(agentId);
+			if (projectId) {
+				const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
+				if (!agent) {
+					// User lost project access - remove from session
+					await this.leaveAgent(agentId, userId, projectId);
+					return;
+				}
+			}
+
 			// Update activity timestamp for collaboration messages
 			this.userActivity.get(agentId)?.set(userId, Date.now());
 

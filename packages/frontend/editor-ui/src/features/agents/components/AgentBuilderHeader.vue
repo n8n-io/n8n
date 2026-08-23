@@ -7,7 +7,7 @@
  * which links back to the owning project/personal page.
  */
 import { computed, onMounted } from 'vue';
-import { useRouter, type RouteLocationRaw, type ComputedRef } from 'vue-router';
+import { useRouter, type RouteLocationRaw } from 'vue-router';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import {
 	N8nActionDropdown,

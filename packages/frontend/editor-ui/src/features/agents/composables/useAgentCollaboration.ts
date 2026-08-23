@@ -51,6 +51,10 @@ export function useAgentCollaboration(agentId?: string | Ref<string>, projectId?
 		return currentProjectId.value ? `/projects/${currentProjectId.value}/agent-collaboration` : '/agent-collaboration';
 	});
 
+	// Store previous IDs for cleanup
+	let previousAgentId: string | null = null;
+	let previousProjectId: string | null = null;
+
 	// Collaboration state
 	const isActive = ref(false);
 	const activeUsers = ref<string[]>([]);
@@ -96,6 +100,24 @@ export function useAgentCollaboration(agentId?: string | Ref<string>, projectId?
 			console.error('Failed to join agent collaboration:', err);
 		} finally {
 			isLoading.value = false;
+		}
+	}
+
+	/**
+	 * Leave the agent collaboration session with specific IDs
+	 */
+	async function leaveSessionWithIds(agentId: string, projectId: string) {
+		if (!isActive.value) return;
+
+		try {
+			const path = projectId ? `/projects/${projectId}/agent-collaboration/${agentId}/leave` : `/agent-collaboration/${agentId}/leave`;
+			await restApi.delete(path);
+			isActive.value = false;
+			activeUsers.value = [];
+			userCount.value = 0;
+			cursorPositions.value.clear();
+		} catch (err) {
+			console.error('Failed to leave agent collaboration:', err);
 		}
 	}
 
@@ -237,10 +259,14 @@ export function useAgentCollaboration(agentId?: string | Ref<string>, projectId?
 	// Watch for agentId or projectId changes to rejoin session
 	watch([currentAgentId, currentProjectId], async ([newAgentId, newProjectId], [oldAgentId, oldProjectId]) => {
 		if (newAgentId !== oldAgentId || newProjectId !== oldProjectId) {
-			// Leave previous session if active
-			if (isActive.value) {
-				await leaveSession();
+			// Leave previous session if active, using the old IDs
+			if (isActive.value && oldAgentId && oldProjectId) {
+				await leaveSessionWithIds(oldAgentId, oldProjectId);
 			}
+
+			// Update previous IDs
+			previousAgentId = newAgentId;
+			previousProjectId = newProjectId;
 
 			// Join new session if agentId is valid
 			if (newAgentId) {

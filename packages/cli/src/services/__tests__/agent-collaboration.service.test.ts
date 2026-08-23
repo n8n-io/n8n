@@ -275,6 +275,45 @@ describe('AgentCollaborationService', () => {
 			const cursors = service.getCursorPositions(agentId);
 			expect(cursors.get(mockUser.id)).toEqual({ x: 100, y: 200 });
 		});
+
+		it('should remove user when project access is lost during collaboration', async () => {
+			const agentId = 'agent-456';
+
+			await service.joinAgent(agentId, mockUser.id, 'Test User', mockProjectId);
+
+			// Simulate user losing project access
+			vi.mocked(mockAgentRepository.findByIdAndProjectId).mockResolvedValue(null);
+
+			const message = {
+				type: 'agent-collaboration' as const,
+				agentId,
+				payload: {
+					type: 'config-update',
+					data: { name: 'Updated Agent' },
+					userId: mockUser.id,
+				},
+			};
+
+			await service.handleClientMessage(message, mockUser.id);
+
+			// Verify user was removed from session
+			expect(service.isUserActive(agentId, mockUser.id)).toBe(false);
+			expect(mockBroadcastCallback).toHaveBeenCalledWith(
+				{
+					type: 'agent-presence',
+					data: {
+						type: 'agent-presence',
+						agentId,
+						payload: {
+							type: 'user-left',
+							userId: mockUser.id,
+							timestamp: expect.any(Number),
+						},
+					},
+				},
+				[mockUser.id],
+			);
+		});
 	});
 
 	describe('query methods', () => {

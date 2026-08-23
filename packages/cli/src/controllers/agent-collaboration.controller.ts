@@ -11,7 +11,7 @@ import {
 import type { Response } from 'express';
 
 import { AgentCollaborationService } from '@/services/agent-collaboration.service';
-import { JoinAgentSessionDto, UpdateCursorDto } from '@/dto/agent-collaboration.dto';
+import type { JoinAgentSessionDto, UpdateCursorDto } from '@/dto/agent-collaboration.dto';
 
 interface ProjectParams {
 	projectId: string;
@@ -40,12 +40,11 @@ export class AgentCollaborationController {
 		req: AuthenticatedRequest<ProjectParams>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body() body: unknown,
+		@Body() body: JoinAgentSessionDto,
 	) {
 		const { projectId } = req.params;
 		const user = req.user;
-		const parsedBody = JoinAgentSessionDto.parse(body);
-		const userName = parsedBody.userName || user.firstName || user.email || 'Anonymous';
+		const userName = body.userName || user.firstName || user.email || 'Anonymous';
 
 		await this.agentCollaborationService.joinAgent(agentId, user.id, userName, projectId);
 
@@ -113,22 +112,21 @@ export class AgentCollaborationController {
 		req: AuthenticatedRequest<ProjectParams>,
 		_res: Response,
 		@Param('agentId') agentId: string,
-		@Body() body: unknown,
+		@Body() body: UpdateCursorDto,
 	) {
 		const { projectId } = req.params;
 		const user = req.user;
-		const parsedBody = UpdateCursorDto.parse(body);
 
 		await this.agentCollaborationService.updateCursor(agentId, user.id, {
-			x: parsedBody.x,
-			y: parsedBody.y,
+			x: body.x,
+			y: body.y,
 		}, projectId);
 
 		return {
 			success: true,
 			agentId,
 			userId: user.id,
-			position: { x: parsedBody.x, y: parsedBody.y },
+			position: { x: body.x, y: body.y },
 		};
 	}
 
