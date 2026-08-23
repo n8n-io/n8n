@@ -166,7 +166,6 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	const rootStore = useRootStore();
 
 	const probeSettled = ref(false);
-	const hasAnyReviews = ref(false);
 	const openCount = ref(0);
 	const closedCount = ref(0);
 	const detail = ref<WorkflowReviewRequestDetail | null>(null);
@@ -205,8 +204,6 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 
 	const allSlices = [sections.waiting, sections.authored, sections.closed];
 
-	const showSidebar = computed(() => probeSettled.value && hasAnyReviews.value);
-
 	const activeSlices = computed(() =>
 		activeTab.value === 'closed' ? [sections.closed] : [sections.waiting, sections.authored],
 	);
@@ -216,16 +213,11 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	);
 
 	const isLoadingActiveTab = computed(
-		() =>
-			showSidebar.value &&
-			!hasItemsInActiveTab.value &&
-			activeSlices.value.some((slice) => slice.loading.value),
+		() => !hasItemsInActiveTab.value && activeSlices.value.some((slice) => slice.loading.value),
 	);
 
 	// Settled with nothing to show. A failed slice is not treated as empty.
-	const isEmpty = computed(
-		() => showSidebar.value && activeSlices.value.every((slice) => slice.isEmpty.value),
-	);
+	const isEmpty = computed(() => activeSlices.value.every((slice) => slice.isEmpty.value));
 
 	/**
 	 * Both open sections start together but apply independently. The rejection
@@ -261,7 +253,6 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 
 			openCount.value = summary.open;
 			closedCount.value = summary.closed;
-			hasAnyReviews.value = summary.open + summary.closed > 0;
 			probeSettled.value = true;
 		} catch (e) {
 			if (requestSeq !== probeRequestSeq) {
@@ -271,9 +262,7 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 			throw e;
 		}
 
-		if (hasAnyReviews.value) {
-			await fetchActiveTab();
-		}
+		await fetchActiveTab();
 	}
 
 	async function loadMore(section: ReviewInboxSectionKey) {
@@ -383,7 +372,6 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		probeRequestSeq += 1;
 		detailRequestSeq += 1;
 		probeSettled.value = false;
-		hasAnyReviews.value = false;
 		openCount.value = 0;
 		closedCount.value = 0;
 		detail.value = null;
@@ -397,7 +385,6 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 
 	return {
 		probeSettled,
-		hasAnyReviews,
 		openCount,
 		closedCount,
 		sections,
@@ -405,7 +392,6 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		detailLoading,
 		detailNotFound,
 		activeTab,
-		showSidebar,
 		isEmpty,
 		isLoadingActiveTab,
 		hasItemsInActiveTab,

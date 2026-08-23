@@ -115,7 +115,6 @@ describe('WorkflowReviewRequestsView', () => {
 
 		store = mockedStore(useReviewInboxStore);
 		store.probeSettled = false;
-		store.showSidebar = false;
 		store.detail = null;
 		store.detailLoading = false;
 		store.detailNotFound = false;
@@ -146,23 +145,11 @@ describe('WorkflowReviewRequestsView', () => {
 		await waitAllPromises();
 
 		expect(container.querySelector('.n8n-loading')).toBeInTheDocument();
-		expect(queryByTestId('workflow-reviews-disclaimer')).not.toBeInTheDocument();
-	});
-
-	it('shows the disclaimer when settled with no reviews', async () => {
-		store.probeSettled = true;
-
-		const { container, getByTestId, queryByTestId } = renderComponent();
-		await waitAllPromises();
-
-		expect(getByTestId('workflow-reviews-disclaimer')).toBeInTheDocument();
-		expect(container.querySelector('.n8n-loading')).not.toBeInTheDocument();
-		expect(queryByTestId('workflow-review-requests-sidebar')).not.toBeInTheDocument();
+		expect(queryByTestId('workflow-reviews-empty-state')).not.toBeInTheDocument();
 	});
 
 	it('does not fetch or select a review on the bare inbox path', async () => {
 		store.probeSettled = true;
-		store.showSidebar = true;
 		store.hasItemsInActiveTab = true;
 
 		const { getByTestId } = renderComponent();
@@ -174,7 +161,6 @@ describe('WorkflowReviewRequestsView', () => {
 
 	it('heads the no-selection state with the open count', async () => {
 		store.probeSettled = true;
-		store.showSidebar = true;
 		store.hasItemsInActiveTab = true;
 		store.openCount = 4;
 
@@ -188,7 +174,6 @@ describe('WorkflowReviewRequestsView', () => {
 
 	it('heads the no-selection state in the singular for one review', async () => {
 		store.probeSettled = true;
-		store.showSidebar = true;
 		store.hasItemsInActiveTab = true;
 		store.openCount = 1;
 
@@ -203,7 +188,6 @@ describe('WorkflowReviewRequestsView', () => {
 	it('heads the no-selection state with the closed count on the closed tab', async () => {
 		await router.replace('/workflow-review-requests?state=closed');
 		store.probeSettled = true;
-		store.showSidebar = true;
 		store.hasItemsInActiveTab = true;
 		store.openCount = 4;
 		store.closedCount = 2;
@@ -218,7 +202,6 @@ describe('WorkflowReviewRequestsView', () => {
 
 	it('waits with a skeleton while the active tab has no rows yet', async () => {
 		store.probeSettled = true;
-		store.showSidebar = true;
 		store.isLoadingActiveTab = true;
 
 		const { container, queryByTestId } = renderComponent();
@@ -232,7 +215,6 @@ describe('WorkflowReviewRequestsView', () => {
 	// section's own retry in the sidebar is the only message.
 	it('prompts neither for a selection nor an empty tab when the list failed', async () => {
 		store.probeSettled = true;
-		store.showSidebar = true;
 		store.isEmpty = false;
 		store.hasItemsInActiveTab = false;
 
@@ -246,7 +228,6 @@ describe('WorkflowReviewRequestsView', () => {
 	it('fetches the route review detail on mount', async () => {
 		await router.replace('/workflow-review-requests/req-1');
 		store.probeSettled = true;
-		store.showSidebar = true;
 
 		renderComponent();
 		await waitAllPromises();
@@ -257,7 +238,6 @@ describe('WorkflowReviewRequestsView', () => {
 	it('opens a review with its activity already loading', async () => {
 		await router.replace('/workflow-review-requests/req-1');
 		store.probeSettled = true;
-		store.showSidebar = true;
 
 		renderComponent();
 		await waitAllPromises();
@@ -268,7 +248,6 @@ describe('WorkflowReviewRequestsView', () => {
 	it('swaps in the activity of the next review the viewer picks', async () => {
 		await router.replace('/workflow-review-requests/req-1');
 		store.probeSettled = true;
-		store.showSidebar = true;
 
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
@@ -281,7 +260,6 @@ describe('WorkflowReviewRequestsView', () => {
 	it('selects a review with replace and preserves the query', async () => {
 		await router.replace('/workflow-review-requests?state=closed');
 		store.probeSettled = true;
-		store.showSidebar = true;
 		const replaceSpy = vi.spyOn(router, 'replace');
 		const pushSpy = vi.spyOn(router, 'push');
 
@@ -299,7 +277,6 @@ describe('WorkflowReviewRequestsView', () => {
 	it('drops the tab when selecting a different review, so it lands on Activity', async () => {
 		await router.replace('/workflow-review-requests/req-2?state=closed&tab=changes');
 		store.probeSettled = true;
-		store.showSidebar = true;
 		const replaceSpy = vi.spyOn(router, 'replace');
 
 		const { getByTestId } = renderComponent();
@@ -315,7 +292,6 @@ describe('WorkflowReviewRequestsView', () => {
 	it('keeps the tab when re-selecting the review already open', async () => {
 		await router.replace('/workflow-review-requests/req-1?tab=changes');
 		store.probeSettled = true;
-		store.showSidebar = true;
 		const replaceSpy = vi.spyOn(router, 'replace');
 
 		const { getByTestId } = renderComponent();
@@ -331,7 +307,6 @@ describe('WorkflowReviewRequestsView', () => {
 	it('clears the selection back to the bare inbox path', async () => {
 		await router.replace('/workflow-review-requests/req-1?state=closed');
 		store.probeSettled = true;
-		store.showSidebar = true;
 
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
@@ -347,7 +322,6 @@ describe('WorkflowReviewRequestsView', () => {
 	it('shows the detail skeleton while deep-linked detail is loading', async () => {
 		await router.replace('/workflow-review-requests/req-1');
 		store.probeSettled = true;
-		store.showSidebar = true;
 		store.detailLoading = true;
 		store.detail = null;
 
@@ -361,7 +335,6 @@ describe('WorkflowReviewRequestsView', () => {
 	it('renders an inline not-found state without redirecting', async () => {
 		await router.replace('/workflow-review-requests/missing');
 		store.probeSettled = true;
-		store.showSidebar = true;
 		store.detailNotFound = true;
 		const replaceSpy = vi.spyOn(router, 'replace');
 
@@ -376,7 +349,6 @@ describe('WorkflowReviewRequestsView', () => {
 	it('uses the list item until loaded detail is available', async () => {
 		await router.replace('/workflow-review-requests/req-1');
 		store.probeSettled = true;
-		store.showSidebar = true;
 		// Resolved by id across sections, so it works from either one.
 		store.findItemById.mockReturnValue(createInboxItem());
 
@@ -417,7 +389,6 @@ describe('WorkflowReviewRequestsView', () => {
 	it('writes tab changes to the query and preserves the selected review', async () => {
 		await router.replace('/workflow-review-requests/req-1');
 		store.probeSettled = true;
-		store.showSidebar = true;
 
 		const { getByTestId } = renderComponent();
 		getByTestId('select-closed-tab').click();
@@ -435,7 +406,6 @@ describe('WorkflowReviewRequestsView', () => {
 
 	it('updates the active tab when navigation changes the state query', async () => {
 		store.probeSettled = true;
-		store.showSidebar = true;
 		renderComponent();
 		await waitAllPromises();
 		store.setActiveTab.mockClear();
@@ -449,7 +419,6 @@ describe('WorkflowReviewRequestsView', () => {
 	describe('sidebar sections', () => {
 		beforeEach(() => {
 			store.probeSettled = true;
-			store.showSidebar = true;
 		});
 
 		it('passes both authorship sections on the open tab', async () => {
@@ -487,7 +456,6 @@ describe('WorkflowReviewRequestsView', () => {
 		beforeEach(async () => {
 			await router.replace('/workflow-review-requests/req-1');
 			store.probeSettled = true;
-			store.showSidebar = true;
 			store.detail = createDetail();
 		});
 
@@ -554,7 +522,6 @@ describe('WorkflowReviewRequestsView', () => {
 		beforeEach(async () => {
 			await router.replace('/workflow-review-requests/req-1');
 			store.probeSettled = true;
-			store.showSidebar = true;
 			store.detail = createDetail();
 			store.decideOnReview.mockResolvedValue(decisionResponse());
 		});

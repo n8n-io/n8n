@@ -5517,8 +5517,6 @@
 	"settings.security.workflowReviews.confirmDisable.message": "Workflow reviews will no longer be available on this instance. Existing project-level review settings will be ignored.",
 	"workflowReviews.menu.title": "Reviews",
 	"workflowReviews.page.title": "Reviews",
-	"workflowReviews.disclaimer.title": "No reviews waiting for you",
-	"workflowReviews.disclaimer.body": "Submit a workflow version for review before publishing, and it'll appear here.",
 	"workflowReviews.sidebar.tabs.open": "Open",
 	"workflowReviews.sidebar.tabs.closed": "Closed",
 	"workflowReviews.sidebar.section.waiting.title": "Waiting for your review",

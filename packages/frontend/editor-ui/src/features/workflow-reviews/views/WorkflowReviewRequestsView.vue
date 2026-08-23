@@ -31,7 +31,6 @@ const store = useReviewInboxStore();
 const activityStore = useReviewActivityStore();
 const {
 	probeSettled,
-	showSidebar,
 	activeTab,
 	detail,
 	detailLoading,
@@ -306,7 +305,6 @@ onUnmounted(() => {
 	<PageViewLayout full-width data-test-id="workflow-review-requests-view">
 		<div :class="$style.content">
 			<WorkflowReviewRequestsSidebar
-				v-if="showSidebar"
 				:sections="sidebarSections"
 				:active-tab="activeTab"
 				:open-count="openCount"
@@ -322,7 +320,7 @@ onUnmounted(() => {
 			<div :class="$style.main">
 				<div :class="$style.columnTitle">
 					<div
-						v-if="showSidebar && selectedItem"
+						v-if="selectedItem"
 						:class="$style.reviewTitle"
 						data-test-id="workflow-review-request-title-row"
 					>
@@ -334,15 +332,6 @@ onUnmounted(() => {
 							{{ selectedItem.title }}
 						</N8nHeading>
 					</div>
-					<N8nHeading
-						v-else-if="!showSidebar"
-						bold
-						tag="h2"
-						size="xlarge"
-						data-test-id="workflow-reviews-page-title"
-					>
-						{{ i18n.baseText('workflowReviews.page.title') }}
-					</N8nHeading>
 				</div>
 
 				<div :class="$style.mainBody">
@@ -372,18 +361,6 @@ onUnmounted(() => {
 						@update:tab="onDetailTabChange"
 						@decide="onDecide(selectedItem.id, $event)"
 					/>
-					<div
-						v-else-if="!showSidebar"
-						:class="$style.emptyStateWrapper"
-						data-test-id="workflow-reviews-disclaimer"
-					>
-						<N8nEmptyState
-							:class="$style.emptyState"
-							:icon="reviewsIcon"
-							:heading="i18n.baseText('workflowReviews.disclaimer.title')"
-							:description="i18n.baseText('workflowReviews.disclaimer.body')"
-						/>
-					</div>
 					<N8nLoading v-else-if="isLoadingActiveTab" :loading="true" :rows="3" />
 					<div
 						v-else-if="isEmpty"

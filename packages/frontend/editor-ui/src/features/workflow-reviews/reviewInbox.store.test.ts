@@ -95,7 +95,6 @@ describe('useReviewInboxStore', () => {
 			expect(store.openCount).toBe(3);
 			expect(store.closedCount).toBe(12);
 			expect(store.probeSettled).toBe(true);
-			expect(store.showSidebar).toBe(true);
 
 			expect(inboxCallsFor('waiting')).toHaveLength(1);
 			expect(inboxCallsFor('authored')).toHaveLength(1);
@@ -121,15 +120,16 @@ describe('useReviewInboxStore', () => {
 			expect(store.sections.closed.items).toHaveLength(1);
 		});
 
-		it('skips list fetches when both counts are zero', async () => {
+		it('still fetches the active tab when both counts are zero', async () => {
 			mockSummary(0, 0);
+			mockInbox({});
 
 			const store = useReviewInboxStore();
 			await store.probeInbox();
 
-			expect(workflowReviewsApi.fetchWorkflowReviewInbox).not.toHaveBeenCalled();
-			expect(store.hasAnyReviews).toBe(false);
-			expect(store.showSidebar).toBe(false);
+			expect(inboxCallsFor('waiting')).toHaveLength(1);
+			expect(inboxCallsFor('authored')).toHaveLength(1);
+			expect(store.isEmpty).toBe(true);
 		});
 
 		it('applies each section as soon as its own request settles', async () => {
@@ -172,7 +172,6 @@ describe('useReviewInboxStore', () => {
 			await probe;
 
 			expect(store.probeSettled).toBe(false);
-			expect(store.hasAnyReviews).toBe(false);
 			expect(workflowReviewsApi.fetchWorkflowReviewInbox).not.toHaveBeenCalled();
 		});
 
