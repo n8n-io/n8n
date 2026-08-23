@@ -672,6 +672,32 @@ describe('useReviewInboxStore', () => {
 			expect(store.detail).toEqual(expect.objectContaining({ id: 'req-2', title: 'Newer review' }));
 		});
 
+		it('keeps the detail on screen while refetching the same review', async () => {
+			const first = createDetail();
+			let resolveSecond!: (detail: WorkflowReviewRequestDetail) => void;
+			vi.mocked(workflowReviewsApi.fetchWorkflowReviewRequestDetail)
+				.mockResolvedValueOnce(first)
+				.mockImplementationOnce(
+					async () =>
+						await new Promise<WorkflowReviewRequestDetail>((resolve) => {
+							resolveSecond = resolve;
+						}),
+				);
+			const store = useReviewInboxStore();
+			await store.fetchDetail('req-1');
+
+			const secondFetch = store.fetchDetail('req-1');
+
+			// Same review as already loaded: no skeleton flash while the refetch is in flight.
+			expect(store.detail).toEqual(first);
+			expect(store.detailLoading).toBe(false);
+
+			resolveSecond({ ...first, title: 'Updated title' });
+			await secondFetch;
+
+			expect(store.detail).toEqual(expect.objectContaining({ title: 'Updated title' }));
+		});
+
 		it('does not clear the detail when switching tabs', async () => {
 			mockInbox({ closed: emptyPage() });
 			const store = useReviewInboxStore();

@@ -228,13 +228,15 @@ async function onDecide(id: string, input: WorkflowReviewDecisionInput) {
 	try {
 		const { autoPublish, state } = await store.decideOnReview(id, input);
 		// The selection does not change, so the `selectedReviewId` watcher never refires and the
-		// entry this decision just wrote needs an explicit refetch. Guarded because the await
-		// above lets the viewer pick another review meanwhile: refetching the old one would wipe
-		// its feed and discard the newer review's in-flight page, and following it to the closed
-		// tab would yank the viewer off the review they are now typing on.
+		// feed entry and detail this decision just wrote need an explicit refetch — the latter is
+		// what makes the "approved and published" callout show up without a reload. Guarded
+		// because the await above lets the viewer pick another review meanwhile: refetching the
+		// old one would wipe its feed and discard the newer review's in-flight page, and following
+		// it to the closed tab would yank the viewer off the review they are now typing on.
 		if (selectedReviewId.value === id) {
 			activityStore.clearDecisionNote(input.note ?? '');
 			void activityStore.fetchFeed(id);
+			void store.fetchDetail(id).catch(handleListError);
 			if (state === 'closed') {
 				followClosedReview(id);
 			}

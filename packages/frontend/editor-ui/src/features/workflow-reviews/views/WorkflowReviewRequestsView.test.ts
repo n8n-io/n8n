@@ -579,6 +579,17 @@ describe('WorkflowReviewRequestsView', () => {
 			expect(showError).not.toHaveBeenCalled();
 		});
 
+		it('refetches the detail after a decision on the selected review', async () => {
+			const { getByTestId } = renderComponent();
+			await waitAllPromises();
+			store.fetchDetail.mockClear();
+
+			getByTestId('approve-review').click();
+			await waitAllPromises();
+
+			expect(store.fetchDetail).toHaveBeenCalledWith('req-1');
+		});
+
 		it('submits a change request for the selected review', async () => {
 			const { getByTestId } = renderComponent();
 			await waitAllPromises();

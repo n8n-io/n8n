@@ -300,9 +300,14 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 
 	async function fetchDetail(id: string) {
 		const requestSeq = ++detailRequestSeq;
-		detail.value = null;
-		detailLoading.value = true;
-		detailNotFound.value = false;
+		// A same-review refetch (e.g. right after deciding on it) keeps the panel on screen
+		// instead of flashing the skeleton; only an actual switch clears it up front.
+		const switchedReview = detail.value?.id !== id;
+		if (switchedReview) {
+			detail.value = null;
+			detailLoading.value = true;
+			detailNotFound.value = false;
+		}
 
 		try {
 			const response = await fetchWorkflowReviewRequestDetail(rootStore.restApiContext, id);
