@@ -88,6 +88,9 @@ async function onSubmit() {
 		the focus ring's width: flush with the feed's clip edge, the ring's left line
 		would be cut off entirely. */
 	margin-inline: calc(-1 * var(--spacing--sm) + var(--border-width));
+	/* Include a small trailing inset in the observed box so scrollIntoView leaves
+		the growing input and its focus ring clear of the scrollport edge. */
+	padding-block-end: var(--spacing--4xs);
 }
 
 .srOnly {

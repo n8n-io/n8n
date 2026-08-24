@@ -392,14 +392,14 @@ function onListBackgroundClick() {
 	padding: 0 var(--spacing--2xs);
 }
 
-/* Idle rows melt into the page: no border, no fill. The border stays in the
-	layout (transparent) so the focus ring and hover cause no size shift. */
+/* Keep the surface visible so rows read as interactive, while retaining a
+	transparent border to prevent focus and state changes from shifting layout. */
 .card {
 	cursor: pointer;
 	padding: var(--spacing--xs);
 	align-items: stretch;
 	border: var(--border-width) solid transparent;
-	background-color: transparent;
+	background-color: var(--background--surface);
 	transition: background-color 0.3s ease;
 
 	&:hover:not(.cardSelected) {

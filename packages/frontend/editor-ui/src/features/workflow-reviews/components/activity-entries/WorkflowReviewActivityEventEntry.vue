@@ -275,7 +275,7 @@ const actorName = computed(() =>
 			<N8nText
 				v-if="content.note"
 				size="medium"
-				color="text-light"
+				color="text-dark"
 				:class="[$style.body, $style.line]"
 				data-test-id="workflow-review-activity-note"
 			>
