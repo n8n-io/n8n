@@ -4,8 +4,8 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 
 import { useI18n } from '../../composables/useI18n';
 import type { InputSize } from '../../types/input';
-import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
 import N8nInput from '../N8nInput';
 import N8nTooltip from '../N8nTooltip';
 
@@ -83,10 +83,10 @@ const copyButtonLabel = computed(() =>
 	<N8nInput :model-value="displayValue ?? value" :size="size" readonly :class="$style.copyInput">
 		<template #append>
 			<N8nTooltip :content="copyButtonLabel">
-				<N8nButton
+				<N8nIconButton
 					variant="ghost"
 					:size="buttonSize"
-					icon-only
+					icon="copy"
 					:aria-label="copyButtonLabel"
 					data-test-id="copy-input-button"
 					:class="$style.button"
@@ -103,7 +103,7 @@ const copyButtonLabel = computed(() =>
 							</Transition>
 						</span>
 					</template>
-				</N8nButton>
+				</N8nIconButton>
 			</N8nTooltip>
 		</template>
 	</N8nInput>
