@@ -35,12 +35,7 @@ import type {
 	MultiPartFormData,
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
-import {
-	BINARY_MODE_COMBINED,
-	FORM_NODE_TYPE,
-	FORM_TRIGGER_NODE_TYPE,
-	WAIT_NODE_TYPE,
-} from 'n8n-workflow';
+import { BINARY_MODE_COMBINED, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
 
 import {
 	formWebhook,
