@@ -1,6 +1,7 @@
 import express from 'express';
 import request from 'supertest';
-import { describe, expect, it } from 'vitest';
+import type { MockInstance } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAuthenticationMiddleware } from '../authenticate';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../identity-token';
@@ -18,6 +19,16 @@ const app = () => {
 };
 
 describe('createAuthenticationMiddleware', () => {
+	let consoleWarnMock: MockInstance;
+
+	beforeEach(() => {
+		consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		consoleWarnMock.mockRestore();
+	});
+
 	it('401s when no header is present', async () => {
 		const response = await request(app()).get('/');
 
@@ -40,6 +51,18 @@ describe('createAuthenticationMiddleware', () => {
 		const response = await request(app()).get('/').set('Authorization', 'Bearer garbage');
 
 		expect(response.body).toEqual({ error: 'unauthenticated' });
+	});
+
+	it('warns on a rejected attempt, naming the route it guarded', async () => {
+		await request(app()).get('/').set('Authorization', 'Bearer garbage');
+
+		expect(consoleWarnMock).toHaveBeenCalledWith('engine: rejected GET / - token rejected');
+	});
+
+	it('warns when no bearer token is present', async () => {
+		await request(app()).get('/');
+
+		expect(consoleWarnMock).toHaveBeenCalledWith('engine: rejected GET / - no bearer token');
 	});
 
 	it('200s and populates req.caller for a valid token', async () => {

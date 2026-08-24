@@ -8,13 +8,15 @@ const BEARER_PREFIX = /^bearer /i;
 /** Verifies `Authorization: Bearer <token>` on every request it guards, or 401s with no reason. */
 export function createAuthenticationMiddleware(verifier: IdentityVerifier): RequestHandler {
 	return (req, res, next) => {
-		const reject = (): void => {
+		// The reason is logged, never returned: an operator needs it, a caller must not have it.
+		const reject = (reason: string): void => {
+			console.warn(`engine: rejected ${req.method} ${req.originalUrl} - ${reason}`);
 			fail(res, 401, { error: 'unauthenticated' });
 		};
 
 		const header = req.header('authorization');
 		if (!header || !BEARER_PREFIX.test(header)) {
-			reject();
+			reject('no bearer token');
 			return;
 		}
 
@@ -23,7 +25,7 @@ export function createAuthenticationMiddleware(verifier: IdentityVerifier): Requ
 		try {
 			req.caller = verifier.verify(token);
 		} catch {
-			reject();
+			reject('token rejected');
 			return;
 		}
 
