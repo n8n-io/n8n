@@ -66,7 +66,7 @@ export const Z = {
 			}
 		};
 
-		return DtoClass as unknown as ZodClass<Output, T>;
+		return DtoClass as ZodClass<Output, T>;
 	},
 
 	/**
