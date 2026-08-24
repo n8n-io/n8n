@@ -29,8 +29,11 @@ describe('Test Telegram, message => sendAndWait', () => {
 	beforeEach(() => {
 		telegram = new Telegram();
 		mockExecuteFunctions = mock<IExecuteFunctions>();
-		customDataGet = vi.fn();
-		customDataSet = vi.fn();
+		const backingStore = new Map<string, string>();
+		customDataSet = vi.fn((key: string, value: string) => {
+			backingStore.set(key, value);
+		});
+		customDataGet = vi.fn((key: string) => backingStore.get(key) ?? '');
 		// mock-extended cannot proxy IWorkflowExecutionCustomData (index signature)
 		mockExecuteFunctions.customData = {
 			get: customDataGet,
@@ -182,6 +185,8 @@ describe('Test Telegram, message => sendAndWait', () => {
 			'tgDeleteTarget',
 			JSON.stringify({ chatId: 999, messageId: 55 }),
 		);
+		// A landed write must not trigger the dropped-write warning.
+		expect(mockExecuteFunctions.logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('should not store a delete target when deleteOnResponse is off', async () => {
@@ -231,7 +236,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({ deleteOnResponse: true }); // options (deleteOnResponse check)
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options.limitWaitTime.values
 		// Simulate the execution-metadata KV limit: set() drops the write silently.
-		customDataGet.mockReturnValue('');
+		customDataSet.mockImplementation(() => {});
 
 		await telegram.execute.call(mockExecuteFunctions);
 
