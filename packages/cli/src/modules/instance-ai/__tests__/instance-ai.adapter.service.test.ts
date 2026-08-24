@@ -3340,6 +3340,7 @@ function createRunAdapterForTests(
 		postExecutePromise?: Promise<unknown>;
 		threadId?: string;
 		queueMode?: boolean;
+		allowSendingParameterValues?: boolean;
 	},
 ) {
 	const mockWorkflowFinderService = {
@@ -3373,7 +3374,7 @@ function createRunAdapterForTests(
 			typeof InstanceAiAdapterService
 		>[0],
 		{
-			ai: { allowSendingParameterValues: false },
+			ai: { allowSendingParameterValues: options?.allowSendingParameterValues ?? false },
 			executions: { mode: options?.queueMode ? 'queue' : 'regular' },
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
@@ -3679,6 +3680,59 @@ describe('createExecutionAdapter run()', () => {
 				error: 'boom',
 			}),
 		);
+	});
+
+	it('scrubs secrets and PII from the tracked execution error', async () => {
+		const { adapter, mockTelemetry } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [], connections: {}, settings: {} },
+			{
+				execution: makeExecution({
+					status: 'error',
+					error: {
+						message:
+							'Auth failed for jane.doe@example.com using sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+					},
+				}),
+				threadId: 'thread-1',
+			},
+		);
+
+		await adapter.run('wf-1');
+
+		const tracked = mockTelemetry.track.mock.calls.find(
+			([event]) => event === 'Builder executed workflow',
+		);
+		expect(tracked?.[1].error).not.toContain('jane.doe@example.com');
+		expect(tracked?.[1].error).not.toContain('sk-ant-api03');
+		expect(tracked?.[1].error).toContain('[REDACTED]');
+	});
+
+	it('keeps upstream error details out of telemetry even when the privacy setting allows them', async () => {
+		const { adapter, mockTelemetry } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [], connections: {}, settings: {} },
+			{
+				execution: makeExecution({
+					status: 'error',
+					error: {
+						message: 'Request failed with status code 403',
+						description: 'Account 12 Ridge Road is suspended',
+					},
+				}),
+				threadId: 'thread-1',
+				allowSendingParameterValues: true,
+			},
+		);
+
+		const result = await adapter.run('wf-1');
+
+		// The agent still sees the upstream detail the operator opted into...
+		expect(result.error).toContain('Account 12 Ridge Road is suspended');
+		// ...but analytics only gets the sanitized message.
+		const tracked = mockTelemetry.track.mock.calls.find(
+			([event]) => event === 'Builder executed workflow',
+		);
+		expect(tracked?.[1].error).toContain('Request failed with status code 403');
+		expect(tracked?.[1].error).not.toContain('Ridge Road');
 	});
 
 	it('tracks timeout cancellation as an error status', async () => {
