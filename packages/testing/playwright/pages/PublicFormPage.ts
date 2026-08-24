@@ -1,4 +1,4 @@
-import { expect, type BrowserContext, type Locator } from '@playwright/test';
+import { expect, type BrowserContext, type FrameLocator, type Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
 
@@ -89,7 +89,75 @@ export class PublicFormPage extends BasePage {
 		return this.page.url();
 	}
 
+	/**
+	 * Wait for this tab itself to navigate away from the form — the author's
+	 * end-of-form redirect must take the whole tab, even when the form was
+	 * rendered inside the hosting shell's iframe.
+	 */
+	async waitForRedirect(url: string | RegExp, options?: { timeout?: number }) {
+		await this.page.waitForURL(url, options);
+	}
+
 	async close() {
 		await this.page.close();
+	}
+
+	// --- Hosting shell ---
+	// A form that needs the submitter's own accounts is served inside an n8n-owned
+	// shell page: the connect panel lives in the shell, the author's form in a
+	// sandboxed iframe beside it. The shell is on the real origin; the frame is not.
+
+	/** Root of the hosting shell wrapped around a form that needs connected accounts. */
+	get shell(): Locator {
+		return this.page.locator('.shell');
+	}
+
+	/** The author's form, rendered in the shell's sandboxed iframe. */
+	private get formFrame(): FrameLocator {
+		return this.page.frameLocator('#form-frame');
+	}
+
+	/** One account's row in the connect panel, by the credential it stands for. */
+	credentialRow(credentialId: string): Locator {
+		return this.page.locator(`.cred-row[data-cred-id="${credentialId}"]`).first();
+	}
+
+	/**
+	 * The authorize link the row's Connect button would open. Reading it lets a test
+	 * drive the provider flow directly instead of through a popup.
+	 */
+	async credentialConnectUrl(credentialId: string): Promise<string> {
+		const url = await this.credentialRow(credentialId).locator('.connect').getAttribute('data-url');
+		if (!url) throw new Error(`No connect link rendered for credential ${credentialId}`);
+		return url;
+	}
+
+	/**
+	 * The form's own OAuth2 flow sends the submitter through n8n's consent screen the
+	 * first time. Approve it if it is showing, then wait for the shell to render.
+	 */
+	async allowOAuthConsentAndWaitForShell() {
+		const allow = this.page.getByRole('button', { name: 'Allow access' });
+		await expect(allow.or(this.shell).first()).toBeVisible();
+		if (await allow.isVisible()) {
+			await allow.click();
+		}
+		await expect(this.shell).toBeVisible();
+	}
+
+	frameField(label: string): Locator {
+		return this.formFrame.getByLabel(label);
+	}
+
+	async fillFrameField(label: string, value: string) {
+		await this.frameField(label).fill(value);
+	}
+
+	async submitInFrame(buttonName = 'Submit') {
+		await this.formFrame.getByRole('button', { name: buttonName }).click();
+	}
+
+	frameText(text: string): Locator {
+		return this.formFrame.getByText(text);
 	}
 }

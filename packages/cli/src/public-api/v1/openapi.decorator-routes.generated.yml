@@ -43,6 +43,8 @@ paths:
   /role-mapping-rules/{roleMappingRuleId}:
     patch:
       $ref: ./handlers/role-mapping-rules/spec/paths/updateRoleMappingRule.generated.yml
+    delete:
+      $ref: ./handlers/role-mapping-rules/spec/paths/deleteRoleMappingRule.generated.yml
   /roles:
     get:
       $ref: ./handlers/roles/spec/paths/getAllRoles.generated.yml
@@ -61,6 +63,8 @@ paths:
   /workflows:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflows.generated.yml
+    post:
+      $ref: ./handlers/workflows/spec/paths/createWorkflow.generated.yml
   /workflows/{workflowId}:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflow.generated.yml
