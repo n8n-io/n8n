@@ -245,6 +245,8 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		const requestSeq = ++probeRequestSeq;
 		probeSettled.value = false;
 
+		let summaryError: Error | null = null;
+
 		try {
 			const summary = await fetchWorkflowReviewInboxSummary(rootStore.restApiContext);
 			if (requestSeq !== probeRequestSeq) {
@@ -253,16 +255,25 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 
 			openCount.value = summary.open;
 			closedCount.value = summary.closed;
-			probeSettled.value = true;
 		} catch (e) {
 			if (requestSeq !== probeRequestSeq) {
 				return;
 			}
-			probeSettled.value = true;
-			throw e;
+			// The summary only feeds the tab counts, so the lists are still fetched
+			summaryError = toError(e);
 		}
 
-		await fetchActiveTab();
+		probeSettled.value = true;
+
+		const listError = await fetchActiveTab().then(
+			() => null,
+			(e: unknown) => toError(e),
+		);
+
+		// The summary failure comes first: it is the one the view has no inline
+		// retry for, while a failed section shows its own.
+		const failure = summaryError ?? listError;
+		if (failure) throw failure;
 	}
 
 	async function loadMore(section: ReviewInboxSectionKey) {

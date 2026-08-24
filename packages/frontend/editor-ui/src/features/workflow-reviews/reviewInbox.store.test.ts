@@ -391,6 +391,7 @@ describe('useReviewInboxStore', () => {
 		});
 
 		it('settles the probe and rethrows when the summary fails', async () => {
+			mockInbox({});
 			vi.mocked(workflowReviewsApi.fetchWorkflowReviewInboxSummary).mockRejectedValue(
 				new Error('summary down'),
 			);
@@ -399,6 +400,39 @@ describe('useReviewInboxStore', () => {
 			await expect(store.probeInbox()).rejects.toThrow('summary down');
 
 			expect(store.probeSettled).toBe(true);
+		});
+
+		it('still loads the sections when the summary fails', async () => {
+			mockInbox({ waiting: page([makeItem({ id: 'waiting-1' })]), authored: emptyPage() });
+			vi.mocked(workflowReviewsApi.fetchWorkflowReviewInboxSummary).mockRejectedValue(
+				new Error('summary down'),
+			);
+
+			const store = useReviewInboxStore();
+			await expect(store.probeInbox()).rejects.toThrow('summary down');
+
+			// The counts are unknown, but the lists are not: the tab must not claim
+			// there is nothing to review.
+			expect(store.sections.waiting.items).toHaveLength(1);
+			expect(store.isEmpty).toBe(false);
+		});
+
+		it('reports the summary failure over a section failure', async () => {
+			mockInbox({
+				waiting: async () => {
+					throw new Error('network');
+				},
+			});
+			vi.mocked(workflowReviewsApi.fetchWorkflowReviewInboxSummary).mockRejectedValue(
+				new Error('summary down'),
+			);
+
+			const store = useReviewInboxStore();
+			await expect(store.probeInbox()).rejects.toThrow('summary down');
+
+			// The section keeps its own error, which is what its inline retry acts on.
+			expect(store.sections.waiting.error).toEqual(new Error('network'));
+			expect(store.isEmpty).toBe(false);
 		});
 	});
 
