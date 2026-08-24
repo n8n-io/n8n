@@ -291,6 +291,7 @@ describe('Start - AuthRolesService initialization', () => {
 
 			await start.init();
 
+			expect(multiMainSetup.registerEventHandlers).toHaveBeenCalledTimes(1);
 			expect(license.enableAutoRenewals).not.toHaveBeenCalled();
 		});
 

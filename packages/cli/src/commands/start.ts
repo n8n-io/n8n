@@ -303,10 +303,11 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			Container.get(MultiMainSetup).registerEventHandlers();
 
 			// Leadership may have already been taken over (at orchestration init, or
-			// via the periodic leader check) before the above subscribed the license's
-			// @OnLeaderTakeover() listener, in which case that one-shot event had no
-			// listener and was dropped. Reconcile explicitly — safe to call unconditionally,
-			// as enableAutoRenewals() is a no-op unless renewal is currently disabled.
+			// via the periodic leader check) before the line above subscribed the
+			// license's @OnLeaderTakeover() listener, in which case that one-shot
+			// event had no listener and was dropped. Reconcile explicitly: safe to
+			// call unconditionally, as enableAutoRenewals() is a no-op unless
+			// renewal is currently disabled.
 			if (this.instanceSettings.isLeader) this.license.enableAutoRenewals();
 		}
 
