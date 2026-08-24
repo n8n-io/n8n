@@ -4,6 +4,7 @@ import {
 	AlreadyConnectedError,
 	BrowserNotAvailableError,
 	ConnectionLostError,
+	ExtensionConflictError,
 	ExtensionNotConnectedError,
 	NotConnectedError,
 	type ConnectionLostReason,
@@ -38,6 +39,9 @@ export interface BrowserConnectionOptions {
 export class BrowserConnection {
 	private state: ConnectionState | null = null;
 	private disconnectReason: ConnectionLostReason | undefined;
+	private sessionBlockedBy: string[] = [];
+	/** Block seen since the current tool call began; consumed when it fails. */
+	private blockedDuringCall: string[] | undefined;
 	private readonly config: ResolvedConfig;
 	private readonly externalRelay?: CDPRelayServer;
 	private readonly externalCdpEndpoint?: string;
@@ -100,6 +104,11 @@ export class BrowserConnection {
 			this.requireBrowserAvailable(browser);
 		}
 
+		// A reconnect must not inherit the block it was told to escape.
+		this.disconnectReason = undefined;
+		this.sessionBlockedBy = [];
+		this.blockedDuringCall = undefined;
+
 		const connectConfig: ConnectConfig = {
 			browser,
 		};
@@ -108,13 +117,7 @@ export class BrowserConnection {
 		const adapter = this.pendingAdapter ?? (await this.createAdapter());
 		this.pendingAdapter = null;
 
-		// Listen for unexpected disconnections so we can invalidate state immediately
-		adapter.onDisconnect = (reason) => {
-			if (!this.state) return; // already disconnected
-			log.debug('unexpected disconnect, reason:', reason);
-			this.disconnectReason = reason;
-			this.state = null;
-		};
+		this.installAdapterHandlers(adapter);
 
 		try {
 			await adapter.launch(connectConfig);
@@ -143,6 +146,23 @@ export class BrowserConnection {
 		return { browser, pages };
 	}
 
+	private installAdapterHandlers(adapter: Adapter): void {
+		// Listen for unexpected disconnections so we can invalidate state immediately
+		adapter.onDisconnect = (reason, details) => {
+			if (!this.state) return; // already disconnected
+			log.debug('unexpected disconnect, reason:', reason);
+			this.disconnectReason = reason;
+			this.sessionBlockedBy = details?.blockingExtensionIds ?? [];
+			this.state = null;
+		};
+
+		// Not keyed by tab: the relay reports a CDP target id, which does not match
+		// the id an agent-created tab is tracked under.
+		adapter.onBlocked = ({ blockingExtensionIds }) => {
+			this.blockedDuringCall = blockingExtensionIds;
+		};
+	}
+
 	async disconnect(): Promise<void> {
 		const pending = this.pendingAdapter;
 		this.pendingAdapter = null;
@@ -154,6 +174,8 @@ export class BrowserConnection {
 		const { adapter } = this.state;
 		this.state = null;
 		this.disconnectReason = undefined;
+		this.sessionBlockedBy = [];
+		this.blockedDuringCall = undefined;
 
 		try {
 			await adapter.close();
@@ -164,12 +186,41 @@ export class BrowserConnection {
 
 	getConnection(): ConnectionState {
 		if (!this.state) {
+			if (this.disconnectReason === 'blocked_by_extension') {
+				// No state left, so browser_connect is the only way back.
+				throw ExtensionConflictError.sessionLost(this.sessionBlockedBy);
+			}
 			if (this.disconnectReason) {
 				throw new ConnectionLostError(this.disconnectReason);
 			}
 			throw new NotConnectedError();
 		}
 		return this.state;
+	}
+
+	/** Drops any earlier block, so only one arriving during this call explains its failure. */
+	beginToolCall(): void {
+		this.blockedDuringCall = undefined;
+	}
+
+	/** A blocked tab fails as an adapter timeout, which says nothing — so a block wins. */
+	explainFailure(error: unknown): unknown {
+		const blockingExtensionIds = this.blockedDuringCall;
+		this.blockedDuringCall = undefined;
+		if (blockingExtensionIds) {
+			// The only remaining trace of the real failure if this attribution is wrong.
+			log.debug('replacing failure with extension conflict, original:', error);
+			// The block can take the session down inside the very call it interrupts,
+			// so the two hints must not be chosen before checking.
+			return this.state
+				? ExtensionConflictError.tabLost(blockingExtensionIds)
+				: ExtensionConflictError.sessionLost(blockingExtensionIds);
+		}
+
+		if (error instanceof Error && error.name === 'TargetClosedError') {
+			return new ConnectionLostError('browser_closed');
+		}
+		return error;
 	}
 
 	get isConnected(): boolean {

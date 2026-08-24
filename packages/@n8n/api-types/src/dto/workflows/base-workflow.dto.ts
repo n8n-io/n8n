@@ -1,5 +1,5 @@
 import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
-import type { IPinData, IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
+import type { IPinData, IConnections, INode, IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
 export const WORKFLOW_NAME_MAX_LENGTH = 128;
@@ -65,26 +65,6 @@ export const workflowSettingsSchema: z.ZodType<IWorkflowSettings | null> = z
 	.passthrough()
 	.nullable();
 
-export const workflowStaticDataSchema = z.preprocess(
-	(val) => {
-		// If it's a string, try to parse it as JSON
-		if (typeof val === 'string') {
-			try {
-				return JSON.parse(val);
-			} catch {
-				throw new Error('Static data string must be valid JSON');
-			}
-		}
-		return val;
-	},
-	z.custom<IDataObject | null>(
-		(val) => val === null || (typeof val === 'object' && val !== null && !Array.isArray(val)),
-		{
-			message: 'Static data must be an object or null',
-		},
-	),
-);
-
 // Pin data is a record of node names to their pinned execution data
 export const workflowPinDataSchema = z.custom<IPinData | null>(
 	(val) => val === null || (typeof val === 'object' && val !== null && !Array.isArray(val)),
@@ -121,7 +101,10 @@ export const baseWorkflowShape = {
 
 	// Optional workflow configuration
 	settings: workflowSettingsSchema.optional(),
-	staticData: workflowStaticDataSchema.optional(),
+	// `staticData` is deliberately absent: it is backend-owned state (poll cursors,
+	// third-party webhook registrations) written by the execution engine, so these DTOs
+	// drop it rather than let a client set it. The public API still accepts it as a
+	// documented field — see `workflowEntityWriteFields`.
 	meta: workflowMetaSchema.optional(),
 	pinData: workflowPinDataSchema.optional(),
 	nodeGroups: workflowNodeGroupsSchema.optional(),

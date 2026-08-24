@@ -3,6 +3,8 @@ import type {
 	ApiKeyScopeRequirement,
 	Arg,
 	Controller,
+	DeprecationInfo,
+	ErrorResponse,
 	HandlerName,
 	Method,
 	ResponseDtoClass,
@@ -53,7 +55,8 @@ export interface ResolvedPublicApiRoute {
 	summary?: string;
 	description?: string;
 	tags?: string[];
-	errorResponses?: number[];
+	errorResponses?: ErrorResponse[];
+	deprecated?: DeprecationInfo;
 }
 
 /**
@@ -238,6 +241,7 @@ export function resolvePublicApiRoutes(): ResolvedPublicApiRoute[] {
 				description: route.description,
 				tags: route.tags,
 				errorResponses: route.errorResponses,
+				deprecated: route.deprecated,
 			});
 		}
 	}

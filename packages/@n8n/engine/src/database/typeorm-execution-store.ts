@@ -29,13 +29,23 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 	}
 
 	async loadExecution(id: string): Promise<ExecutionRecord> {
-		const row = await this.repo.findOneBy({ id });
+		// NOTE: `findOne({ where })`, not `findOneBy`: the latter's overload exceeds
+		// TypeScript's instantiation depth on the recursive `triggerOutputs` column type.
+		const row = await this.repo.findOne({ where: { id } });
 		if (!row) throw new ExecutionNotFoundError(id);
 		return row;
 	}
 
 	async transitionStatus(id: string, from: ExecutionStatus, to: ExecutionStatus): Promise<boolean> {
 		const result = await this.repo.update({ id, status: from }, { status: to });
+		return result.affected === 1;
+	}
+
+	async finishExecution(id: string, status: 'completed' | 'failed'): Promise<boolean> {
+		const result = await this.repo.update(
+			{ id, status: 'running' },
+			{ status, finishedAt: new Date() },
+		);
 		return result.affected === 1;
 	}
 }

@@ -1,7 +1,11 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 
 import type { InstanceAiContext } from '../../../types';
-import { resolveCredentialForApply } from '../credential-utils';
+import {
+	extractServiceHost,
+	resolveCredentialForApply,
+	serviceHostsMatch,
+} from '../credential-utils';
 
 function makeContext(
 	isAiGatewayCredentialType?: (credType: string) => Promise<boolean>,
@@ -71,5 +75,40 @@ describe('resolveCredentialForApply', () => {
 
 			expect(result.resolved).toBe(false);
 		});
+	});
+});
+
+describe('extractServiceHost', () => {
+	it.each([
+		['https://api.pexels.com/v1/search?query=x', 'api.pexels.com'],
+		['=https://queue.fal.run/fal-ai/kling/{{ $json.id }}', 'queue.fal.run'],
+		['HTTPS://API.APIFY.COM/v2/acts', 'api.apify.com'],
+	])('derives the host of %s', (url, host) => {
+		expect(extractServiceHost(url)).toBe(host);
+	});
+
+	it.each([['={{ $json.url }}'], ['not a url'], [''], [undefined], [42]])(
+		'returns undefined for %s',
+		(url) => {
+			expect(extractServiceHost(url)).toBeUndefined();
+		},
+	);
+});
+
+describe('serviceHostsMatch', () => {
+	it.each([
+		['api.pexels.com', 'api.pexels.com'],
+		['queue.fal.run', 'fal.run'],
+		['fal.run', 'queue.fal.run'],
+	])('matches %s with %s', (a, b) => {
+		expect(serviceHostsMatch(a, b)).toBe(true);
+	});
+
+	it.each([
+		['api.pexels.com', 'api.apify.com'],
+		['api.foo.co.uk', 'api.bar.co.uk'],
+		['fal.run', 'unfal.run'],
+	])('rejects %s vs %s', (a, b) => {
+		expect(serviceHostsMatch(a, b)).toBe(false);
 	});
 });

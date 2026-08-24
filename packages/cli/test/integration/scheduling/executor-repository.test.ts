@@ -461,6 +461,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 		it('bumps the epoch again on re-claim after a reschedule', async () => {
 			const { id, epoch } = await claimOne();
 			await taskRepository.rescheduleTask({ host: HOST_A, id, claimedEpoch: epoch }, 0, 'retry');
+			await taskRepository.update(id, { runAt: past() });
 
 			const [reclaimed] = await taskRepository.claimDueTasks(claimOpts({ host: HOST_B }));
 			expect(reclaimed.id).toBe(id);
@@ -1066,9 +1067,10 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(reloaded.missedAfter!.getTime()).toBe(runAt.getTime() + 90_000);
 		});
 
-		it("clamps an overdue row's recomputed deadline to now", async () => {
+		it("clamps an overdue-but-still-live row's recomputed deadline to now", async () => {
 			const runAt = past();
-			const task = await createTask({ runAt, missedAfter: new Date(runAt.getTime() + 30_000) });
+			const missedAfter = new Date(Date.now() + 60_000);
+			const task = await createTask({ runAt, missedAfter });
 
 			// DB-clock brackets, not `Date.now()`: a container's clock can drift from
 			// the test runner's host clock.
@@ -1080,6 +1082,16 @@ describe('ScheduledTaskRepository executor methods', () => {
 			const deadline = reloaded.missedAfter!.getTime();
 			expect(deadline).toBeGreaterThanOrEqual(before.getTime() + 90_000);
 			expect(deadline).toBeLessThanOrEqual(after.getTime() + 90_000);
+		});
+
+		it('leaves a row whose deadline has already passed alone', async () => {
+			const runAt = past();
+			const missedAfter = new Date(runAt.getTime() + 30_000);
+			const task = await createTask({ runAt, missedAfter });
+
+			await taskRepository.updateMissedAfterForJobs(taskRepository.manager, [job.id], 90);
+
+			expect((await reload(task.id)).missedAfter!.getTime()).toBe(missedAfter.getTime());
 		});
 
 		it('leaves a row with no deadline without one', async () => {

@@ -11,6 +11,10 @@ import { Telemetry } from '@/telemetry';
 import { createGetWorkflowSdkReferenceTool } from '../tools/workflow-builder/get-workflow-sdk-reference.tool';
 import { getSdkReferenceContent } from '../tools/workflow-builder/sdk-reference-content';
 
+// v2 SDK types structuredContent as an arbitrary JSON value; narrow for assertions.
+const structuredOf = (result: { structuredContent?: unknown }) =>
+	result.structuredContent as Record<string, unknown> | undefined;
+
 vi.mock('@n8n/ai-workflow-builder', () => ({
 	SDK_IMPORT_STATEMENT: "import { workflow } from '@n8n/workflow-sdk';",
 	MCP_GET_SDK_REFERENCE_TOOL: {
@@ -137,7 +141,7 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 					});
 
 					const enabledResult = await enabled.handler({ section: 'groups' }, {} as never);
-					expect(enabledResult.structuredContent?.reference).toContain(NODE_GROUPS_REFERENCE);
+					expect(structuredOf(enabledResult)?.reference).toContain(NODE_GROUPS_REFERENCE);
 				});
 			});
 
@@ -156,7 +160,7 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 					});
 
 					const disabledResult = await disabled.handler({ section: undefined }, {} as never);
-					expect(disabledResult.structuredContent?.reference).not.toContain(NODE_GROUPS_REFERENCE);
+					expect(structuredOf(disabledResult)?.reference).not.toContain(NODE_GROUPS_REFERENCE);
 				});
 			});
 		});

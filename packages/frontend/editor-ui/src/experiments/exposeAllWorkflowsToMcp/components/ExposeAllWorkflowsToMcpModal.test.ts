@@ -8,6 +8,14 @@ import userEvent from '@testing-library/user-event';
 import { defineComponent } from 'vue';
 import ExposeAllWorkflowsToMcpModal from './ExposeAllWorkflowsToMcpModal.vue';
 
+const { trackAutoExposeToggledSpy } = vi.hoisted(() => ({
+	trackAutoExposeToggledSpy: vi.fn(),
+}));
+
+vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({
+	useMcp: () => ({ trackAutoExposeToggled: trackAutoExposeToggledSpy }),
+}));
+
 vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
@@ -60,6 +68,8 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 			skippedCount: 0,
 			failedCount: 0,
 		});
+
+		mcpStore.setAutoExposeNewWorkflows.mockResolvedValue(true);
 	});
 
 	it('renders the copy and both actions', () => {
@@ -119,5 +129,16 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 
 		expect(useToast().showError).toHaveBeenCalled();
 		expect(experimentStore.trackConfirmed).not.toHaveBeenCalled();
+	});
+
+	it('enables auto-expose only after exposing all workflows succeeds', async () => {
+		const user = userEvent.setup();
+		const { getByTestId } = renderComponent({ pinia, props: defaultProps });
+
+		await user.click(getByTestId('expose-all-workflows-mcp-confirm-button'));
+
+		expect(mcpStore.toggleWorkflowsMcpAccess).toHaveBeenCalledWith({ allWorkflows: true }, true);
+		expect(mcpStore.setAutoExposeNewWorkflows).toHaveBeenCalledWith(true);
+		expect(trackAutoExposeToggledSpy).toHaveBeenCalledWith({ enabled: true, source: 'expose_all' });
 	});
 });

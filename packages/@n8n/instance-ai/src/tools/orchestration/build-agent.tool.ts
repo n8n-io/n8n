@@ -4,12 +4,11 @@
  * per invocation.
  *
  * This is the interactive contract: the delegate session includes the
- * builder's full standard toolset, so it may suspend on `ask_questions`,
- * `ask_credential`, `ask_embedding_credential`, or `configure_channel`. When
- * it does, this tool cascades the suspension through its own `ctx.suspend()`
- * — using payloads derived from the shared interaction contract in
- * `@n8n/api-types` — so the question renders as a card in the calling
- * assistant's chat and the orchestrator's own checkpoint survives a process
+ * builder's full standard toolset, so it may suspend for builder interactions
+ * or for a target-agent tool approval. This tool cascades the suspension
+ * through its own `ctx.suspend()` using the interaction contracts in
+ * `@n8n/api-types` and the SDK approval contract in `@n8n/agents`, so it renders
+ * as a card in the calling assistant's chat and the orchestrator checkpoint survives a process
  * restart. On resume, the target agent and the builder's open suspension are
  * both re-derived from persistence (no in-memory state carried across the
  * suspend boundary) and checked for identity against the `builderCheckpoint`
@@ -23,7 +22,7 @@
  * builder UI — it is a private sub-agent conversation.
  */
 import type { InterruptibleToolContext } from '@n8n/agents';
-import { createAbortError, Tool } from '@n8n/agents';
+import { APPROVAL_SUSPEND_SCHEMA, createAbortError, Tool } from '@n8n/agents';
 import {
 	BUILDER_CHECKPOINT_UNAVAILABLE_CODE,
 	BUILDER_NOT_CONFIGURED_CODE,
@@ -47,11 +46,17 @@ import {
 	type AgentBuilderTarget,
 } from './agent-target-binding';
 import { instanceAiBuilderThreadPrefix } from './builder-thread-id';
+import { failTraceRun, finishTraceRun, startSubAgentTrace, withTraceRun } from './tracing-utils';
 import {
 	consumeStreamCascading,
 	type ConsumeStreamCascadingResult,
 } from '../../stream/consume-with-hitl';
 import type { WorkSummary } from '../../stream/work-summary-accumulator';
+import {
+	emitAgentSnapshotTraceEvent,
+	type AgentSnapshotArtifact,
+	type AgentSnapshotReason,
+} from '../../tracing/agent-snapshot-event';
 import type {
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
@@ -60,7 +65,6 @@ import type {
 	SessionWorkflowRef,
 } from '../../types';
 import { ORCHESTRATION_TOOL_IDS } from '../tool-ids';
-import { failTraceRun, finishTraceRun, startSubAgentTrace, withTraceRun } from './tracing-utils';
 
 const BUILDER_SUB_AGENT_ROLE = 'agent-builder';
 const BUILDER_SUB_AGENT_KIND = 'agent-builder';
@@ -91,7 +95,8 @@ function isFriendlyMappableBuilderError(error: unknown): boolean {
 function didUpdateConfig(workSummary: WorkSummary): boolean {
 	const mutationToolNames = new Set<string>(CONFIG_MUTATION_TOOL_NAMES);
 	return workSummary.toolCalls.some(
-		(call) => call.succeeded && mutationToolNames.has(call.toolName),
+		(call) =>
+			call.succeeded && (call.configMutated === true || mutationToolNames.has(call.toolName)),
 	);
 }
 
@@ -102,7 +107,7 @@ function formatWorkflowContextEnvelope(workflowContext: SessionWorkflowRef[]): s
 	);
 	return [
 		'<session-workflows>',
-		'Workflows built in this session (attachable as {"type":"workflow"} tools — reference by workflow name, never by id):',
+		'Workflows built in this session (attachable with both workflowId and workflow name):',
 		...lines,
 		'</session-workflows>',
 	].join('\n');
@@ -116,6 +121,8 @@ function buildOutboundMessage(message: string, workflowContext?: SessionWorkflow
 /** Builder sessions are keyed per assistant thread + target agent; the resume
  *  leg must reconstruct the same `threadId` byte-identically after a restart. */
 function builderSessionFor(context: OrchestrationContext, agentId: string) {
+	const mcpTools =
+		context.mcpTools instanceof Map && context.mcpTools.size > 0 ? context.mcpTools : undefined;
 	const telemetry = context.tracing?.getTelemetry?.({
 		agentRole: BUILDER_SUB_AGENT_ROLE,
 		functionId: 'instance-ai.subagent.agent-builder',
@@ -132,6 +139,7 @@ function builderSessionFor(context: OrchestrationContext, agentId: string) {
 			? { memoryTaskObserver: context.tracing.onMemoryTaskEvent }
 			: {}),
 		abortSignal: context.abortSignal,
+		...(mcpTools ? { mcpTools } : {}),
 	};
 }
 
@@ -144,9 +152,9 @@ const buildAgentInputSchema = z.object({
 		.string()
 		.min(1)
 		.describe(
-			'The instruction or user message to forward to the agent builder. The builder cannot ' +
-				'see this chat — include every requirement, decision, and user answer already ' +
-				'gathered in this conversation, not just the latest message.',
+			'A faithful handoff to the agent builder, which cannot see this chat. Include the ' +
+				'user’s explicit requirements, decisions, and relevant prior answers, but never infer ' +
+				'or prescribe implementation details the user did not request.',
 		),
 	agentRef: z
 		.string()
@@ -242,12 +250,17 @@ const builderSuspendPayloadSchema = z.union([
 	questionsSuspendPayloadSchema,
 	credentialSuspendPayloadSchema,
 	channelSuspendPayloadSchema,
+	APPROVAL_SUSPEND_SCHEMA,
 ]);
 
 const buildAgentSuspendSchema = z.union([
 	questionsSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
 	credentialSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
 	channelSuspendPayloadSchema.extend({ builderCheckpoint: builderCheckpointRefSchema }),
+	APPROVAL_SUSPEND_SCHEMA.extend({
+		requestId: z.string(),
+		builderCheckpoint: builderCheckpointRefSchema,
+	}),
 ]);
 
 /**
@@ -333,6 +346,36 @@ function publishAgentBuilderCancelled(context: OrchestrationContext, builderAgen
 	});
 }
 
+/** Emit an `agent-snapshot` for the builder's target. Best-effort at both ends. */
+async function snapshotAgent(
+	context: OrchestrationContext,
+	delegate: InstanceAiBuilderDelegate,
+	target: AgentBuilderTarget,
+	reason: AgentSnapshotReason,
+): Promise<void> {
+	// No trace, no read — the delegate read costs a scope check and two queries.
+	// Matches the service-side call site, which early-returns on `!tracing`.
+	if (!context.tracing) return;
+	let artifact: AgentSnapshotArtifact | null = null;
+	try {
+		// An optional method may be absent, or return a non-promise on a mocked host.
+		artifact = (await delegate.readAgentArtifact?.(target.agentId)) ?? null;
+	} catch (error) {
+		context.logger.debug(
+			`[agent-snapshot] ${reason} read for ${target.agentId} failed: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return;
+	}
+	if (!artifact) return;
+	await emitAgentSnapshotTraceEvent(context.tracing, {
+		agentId: target.agentId,
+		projectId: target.projectId,
+		reason,
+		artifact,
+		logger: context.logger,
+	});
+}
+
 /** Publish the terminal `agent-completed` event and map the result to the tool output.
  *  A cancelled turn is intercepted by the caller, so that status never arrives here. */
 async function finishTurn(
@@ -412,6 +455,15 @@ async function runBuilderConsumeLoop(params: {
 		dedupeBase,
 	} = params;
 
+	// Every settled return goes through here, so the state a pass left behind is
+	// snapshotted on the error returns too — a pass that mutated the config, then
+	// suspended and failed on resume, is exactly the post-state a repair case
+	// grades. A suspend resumes and settles through here; a cancel throws past it.
+	const settle = async (output: BuildAgentOutput): Promise<BuildAgentOutput> => {
+		if (output.configUpdated) await snapshotAgent(context, delegate, target, 'config-updated');
+		return output;
+	};
+
 	const traceRun = await startSubAgentTrace(context, {
 		agentId: builderAgentId,
 		role: BUILDER_SUB_AGENT_ROLE,
@@ -445,12 +497,12 @@ async function runBuilderConsumeLoop(params: {
 		// not from the `delegate.streamBuild`/`resumeBuild` call sites.
 		const message = publishAgentBuilderFailure(context, builderAgentId, error);
 		if (isFriendlyMappableBuilderError(error)) {
-			return {
+			return await settle({
 				ok: false,
 				error: message,
 				configUpdated: carriedConfigUpdated,
 				...targetIdentity(target),
-			};
+			});
 		}
 		throw error;
 	}
@@ -499,7 +551,7 @@ async function runBuilderConsumeLoop(params: {
 			await failTraceRun(context, traceRun, new Error(output.error ?? 'builder run failed'));
 		}
 		await context.claimSubAgentUsage?.(dedupeBase, result.usage?.usage ?? [], result.status);
-		return { ...output, ...targetIdentity(target) };
+		return await settle({ ...output, ...targetIdentity(target) });
 	}
 
 	const configUpdatedSoFar = carriedConfigUpdated || didUpdateConfig(result.workSummary);
@@ -528,12 +580,12 @@ async function runBuilderConsumeLoop(params: {
 			result.usage?.usage ?? [],
 			'errored',
 		);
-		return {
+		return await settle({
 			ok: false,
 			error: message,
 			configUpdated: configUpdatedSoFar,
 			...targetIdentity(target),
-		};
+		});
 	}
 
 	// The builder-level requestId must not leak up: the FE confirms against the
@@ -881,30 +933,22 @@ async function resolveTargetForCall(
 export function createBuildAgentTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.BUILD_AGENT)
 		.description(
-			'Builds and edits n8n **Agent** artifacts only (instructions, model, tools, skills, ' +
-				'tasks, integrations, sub-agents) by delegating to the agents-module builder. It is ' +
-				'only for that purpose. When the request is workflow-anchored (via the intent gate / ' +
+			'Builds and edits n8n **Agent** artifacts (instructions, model, tools, skills, tasks, ' +
+				'integrations, sub-agents) and delegates draft agent test runs to the agents-module ' +
+				'builder. Load `agent-builder` via `load_skill` before calling this tool and follow it ' +
+				'for prerequisite creation, faithful handoff, targeting, interactive questions, ' +
+				'testing, and publishing. In `message`, forward only the user’s explicit requirements ' +
+				'and relevant prior decisions; never infer, invent, expand, recommend, or prescribe ' +
+				'implementation details. Do not translate a named outcome or service into an ' +
+				'implementation choice — for example, do not turn “a Slack agent” into a Slack node ' +
+				'tool. This tool is only for Agent artifacts. When the request is workflow-anchored ' +
+				'(via the intent gate / ' +
 				'`intent-recognition`), stay on the `workflow-builder` path and do not call this tool ' +
 				'at all — not to inspect nodes, not to list workflows, and not to compile custom ' +
 				'tools. If a workflow build seems to need a utility tool the workspace does not ' +
 				'provide, ask the user or use a placeholder; do not route around that by calling ' +
-				'`build-agent`. ' +
-				'Address agents in this conversation with `agentRef` (a short stable key you choose, ' +
-				'like a workflow `filePath`). Pass `name` with a fresh key to create the first agent; ' +
-				'repeat the same key to continue. Calls with neither key nor `agentId` keep editing ' +
-				'the current agent, and so does a fresh key once an agent is bound — naming an agent ' +
-				'never silently creates a second one. To build ANOTHER agent in the same ' +
-				'conversation, pass `createNew: true` with a different `agentRef` and `name`. To edit ' +
-				'an agent that was not built here, pass `agentId` (optionally with `agentRef`) once ' +
-				'to adopt it. The builder can also publish or unpublish the target ' +
-				'agent when the user asks to publish, activate, make it live/usable, or unpublish — ' +
-				'forward that intent in `message`; never tell the user to open the agent editor and ' +
-				'click Publish. When the builder needs user input (a choice, a ' +
-				'credential, or a chat channel), it surfaces automatically as an interactive card in ' +
-				'this chat — do not relay those questions yourself; this tool call resumes with the ' +
-				'user’s answer and returns the builder’s reply. Returns the builder’s reply, the ' +
-				'target `agentRef`/`agentId`, and whether it updated the agent config. Prefer the ' +
-				'returned `agentRef` on later calls for that agent.',
+				'`build-agent`. Returns the builder’s reply, the target `agentRef`/`agentId`, and ' +
+				'whether it updated the Agent config.',
 		)
 		.input(buildAgentInputSchema)
 		.output(buildAgentOutputSchema)
@@ -953,6 +997,12 @@ export function createBuildAgentTool(context: OrchestrationContext) {
 			const builderAgentId = builderAgentIdFor(boundTarget.agentId);
 
 			publishAgentSpawned(context, builderAgentId, boundTarget);
+
+			// Before the builder touches it: a repair-shaped eval case seeds from the
+			// state the turn opened on. A new agent has no prior state.
+			if (resolution.mode !== 'create') {
+				await snapshotAgent(context, delegate, boundTarget, 'target-resolved');
+			}
 
 			let turn: BuilderTurnStream;
 			try {

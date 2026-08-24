@@ -1,4 +1,4 @@
-import { UNLIMITED_CREDITS } from '@n8n/api-types';
+import { MOONSHOTAI_KIMI_K3_MODEL_ID, UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -13,6 +13,11 @@ vi.mock('@/services/proxy-token-manager', () => ({
 		}
 		getAuthHeaders = vi.fn();
 	},
+}));
+
+const createProxyLanguageModel = vi.hoisted(() => vi.fn());
+vi.mock('@/utils/ai-proxy-language-model', () => ({
+	createProxyLanguageModel: (...args: unknown[]) => createProxyLanguageModel(...args),
 }));
 
 import { InstanceAiModelService } from '../instance-ai-model.service';
@@ -123,6 +128,67 @@ describe('InstanceAiModelService', () => {
 			expect(client.getInstanceAiApiProxyToken).toHaveBeenCalledWith(
 				{ id: fakeUser.id },
 				expect.objectContaining({ userMessageId: expect.any(String) }),
+			);
+		});
+	});
+
+	describe('resolveProxyModel', () => {
+		const tokenManager = { getAuthHeaders: vi.fn() } as never;
+
+		it('passes the exact Kimi id to the shared proxy factory', async () => {
+			settingsService.getConfiguredModelId.mockReturnValue(MOONSHOTAI_KIMI_K3_MODEL_ID);
+			createProxyLanguageModel.mockResolvedValue({
+				provider: 'moonshotai',
+				modelId: 'kimi-k3',
+			});
+
+			await service.resolveProxyModel(fakeUser, 'https://proxy.base/', tokenManager);
+
+			expect(createProxyLanguageModel).toHaveBeenCalledWith({
+				proxyBaseUrl: 'https://proxy.base/',
+				modelId: MOONSHOTAI_KIMI_K3_MODEL_ID,
+				tokenManager,
+				feature: 'instance-ai',
+				n8nVersion: expect.any(String),
+				outboundHttp,
+				runId: undefined,
+				threadId: undefined,
+			});
+			expect(settingsService.resolveModelName).not.toHaveBeenCalled();
+		});
+
+		it('forwards the caller-provided run and thread ids to the proxy factory', async () => {
+			settingsService.getConfiguredModelId.mockReturnValue(MOONSHOTAI_KIMI_K3_MODEL_ID);
+			createProxyLanguageModel.mockResolvedValue({
+				provider: 'moonshotai',
+				modelId: 'kimi-k3',
+			});
+
+			await service.resolveProxyModel(fakeUser, 'https://proxy.base/', tokenManager, {
+				runId: 'run-42',
+				threadId: 'thread-7',
+			});
+
+			expect(createProxyLanguageModel).toHaveBeenCalledWith(
+				expect.objectContaining({ runId: 'run-42', threadId: 'thread-7' }),
+			);
+		});
+
+		it('keeps Anthropic routing for other configured models', async () => {
+			settingsService.getConfiguredModelId.mockReturnValue('anthropic/claude-opus-5');
+			settingsService.resolveModelName.mockReturnValue('claude-opus-5');
+			createProxyLanguageModel.mockResolvedValue({
+				provider: 'anthropic.messages',
+				modelId: 'claude-opus-5',
+			});
+
+			await service.resolveProxyModel(fakeUser, 'https://proxy.base', tokenManager);
+
+			expect(createProxyLanguageModel).toHaveBeenCalledWith(
+				expect.objectContaining({
+					modelId: 'claude-opus-5',
+					feature: 'instance-ai',
+				}),
 			);
 		});
 	});

@@ -12,10 +12,9 @@ import type {
 	ObservationLogMarker,
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,
-	TokenCounter,
 } from '../../types/sdk/observation-log';
-import { estimateObservationTokens } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 
 export type { ObservationLogObserveFn, ObservationLogObserverInput };
 
@@ -139,8 +138,16 @@ export function renderObserverTranscript(
 			.map((content) => content.text)
 			.join('\n');
 		if (text) {
-			lines.push(`[${timestamp}] ${message.role}:`);
-			lines.push(redactText(text).text);
+			// Messages synthesized from tool output (toMessage, e.g. MCP rich
+			// results) carry tool provenance and must stay inside the
+			// untrusted-data boundary like inline tool results.
+			if (message.origin?.kind === 'tool') {
+				lines.push(`[${timestamp}] tool_message ${message.origin.toolName}:`);
+				lines.push(wrapUntrustedObserverData(redactText(text).text, message.origin.toolName));
+			} else {
+				lines.push(`[${timestamp}] ${message.role}:`);
+				lines.push(redactText(text).text);
+			}
 		}
 
 		for (const toolCall of message.content.filter(isToolCallContent)) {
@@ -149,11 +156,11 @@ export function renderObserverTranscript(
 			);
 			if (toolCall.state === 'resolved') {
 				lines.push(
-					`[${timestamp}] tool_result ${toolCall.toolName} output=${serializeForObserver(toolCall.output, options)}`,
+					`[${timestamp}] tool_result ${toolCall.toolName} output=${wrapUntrustedObserverData(serializeForObserver(toolCall.output, options), toolCall.toolName)}`,
 				);
 			} else if (toolCall.state === 'rejected') {
 				lines.push(
-					`[${timestamp}] tool_result ${toolCall.toolName} error=${serializeErrorForObserver(toolCall.error, options)}`,
+					`[${timestamp}] tool_result ${toolCall.toolName} error=${wrapUntrustedObserverData(serializeErrorForObserver(toolCall.error, options), toolCall.toolName)}`,
 				);
 			}
 		}
@@ -182,7 +189,7 @@ export async function runObservationLogObserver(
 
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
 	const transcript = renderObserverTranscript(deltaMessages);
-	const tokenCount = tokenCounter(transcript);
+	const tokenCount = await tokenCounter(transcript);
 	if (tokenCount < opts.observerThresholdTokens) {
 		return { status: 'skipped', reason: 'below-threshold', tokenCount };
 	}
@@ -213,15 +220,28 @@ export async function runObservationLogObserver(
 		opts.onMalformedLine?.(line);
 	}
 
+	const prepared = await Promise.all(
+		parsed.entries.map(async (entry) => {
+			const text = redactText(entry.text).text;
+			return {
+				marker: entry.marker,
+				parentIndex: entry.parentIndex,
+				text,
+				tokenCount: await tokenCounter(text),
+			};
+		}),
+	);
+
 	const inserted: ObservationLogEntry[] = [];
-	for (const entry of parsed.entries) {
+	for (const entry of prepared) {
 		const parentId = entry.parentIndex === null ? null : (inserted[entry.parentIndex]?.id ?? null);
 		const [row] = await memory.appendObservationLogEntries([
 			{
 				observationScopeId,
 				marker: entry.marker,
-				text: redactText(entry.text).text,
+				text: entry.text,
 				parentId,
+				tokenCount: entry.tokenCount,
 				createdAt: new Date(now.getTime() + inserted.length),
 			},
 		]);
@@ -338,6 +358,20 @@ function safeJsonStringify(value: unknown): string {
 	} catch {
 		return JSON.stringify('[unserializable]');
 	}
+}
+
+function escapeXmlAttribute(value: string): string {
+	return value
+		.replace(/&/g, '&amp;')
+		.replace(/"/g, '&quot;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;');
+}
+
+export function wrapUntrustedObserverData(content: string, source: string): string {
+	const safeSource = escapeXmlAttribute(source);
+	const safeContent = content.replace(/<\/untrusted_tool_data/gi, '&lt;/untrusted_tool_data');
+	return `<untrusted_tool_data source="${safeSource}">${safeContent}</untrusted_tool_data>`;
 }
 
 async function advanceObserverCursor(

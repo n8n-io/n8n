@@ -651,6 +651,95 @@ describe('processRunExecutionData', () => {
 			});
 		});
 
+		test('executes requested tools in the order the actions were requested', async () => {
+			// ARRANGE
+			const executionOrder: string[] = [];
+			let response: EngineResponse | undefined;
+
+			const recordingTool = (name: string): INodeType => ({
+				...passThroughNode,
+				async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+					executionOrder.push(name);
+					return [this.getInputData()];
+				},
+			});
+
+			const toolNames = ['tool1', 'tool2', 'tool3'];
+			const toolNodes = toolNames.map((name) => createNodeData({ name, type: `${name}Type` }));
+
+			const nodeTypeWithRequests = modifyNode(passThroughNode)
+				.return({
+					actions: toolNames.map((nodeName, index) => ({
+						actionType: 'ExecutionNodeAction',
+						nodeName,
+						input: { query: nodeName },
+						type: 'ai_tool',
+						id: `action_${index}`,
+						metadata: { itemIndex: 0 },
+					})),
+					metadata: {},
+				})
+				.return((r) => {
+					response = r;
+					return [[{ json: { done: true } }]];
+				})
+				.done();
+
+			const nodeWithRequests = createNodeData({
+				name: 'nodeWithRequests',
+				type: 'nodeWithRequests',
+			});
+
+			const nodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				nodeWithRequests: { type: nodeTypeWithRequests, sourcePath: '' },
+				...Object.fromEntries(
+					toolNames.map((name) => [`${name}Type`, { type: recordingTool(name), sourcePath: '' }]),
+				),
+			});
+
+			const graph = new DirectedGraph().addNodes(nodeWithRequests, ...toolNodes);
+			for (const toolNode of toolNodes) {
+				graph.addConnections({ from: toolNode, to: nodeWithRequests, type: 'ai_tool' });
+			}
+			const workflow = graph.toWorkflow({
+				name: '',
+				active: false,
+				nodeTypes,
+				settings: { executionOrder: 'v1' },
+			});
+
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: nodeWithRequests.name, sourceData: null }] },
+				executionData: {
+					nodeExecutionStack: [
+						{
+							data: { main: [[{ json: { prompt: 'test prompt' } }]] },
+							node: nodeWithRequests,
+							source: { main: [{ previousNode: 'Start' }] },
+						},
+					],
+				},
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+
+			// ACT
+			const result = await workflowExecute.processRunExecutionData(workflow);
+
+			// ASSERT
+			// Tools run in request order, not reversed by the LIFO execution stack
+			expect(executionOrder).toEqual(toolNames);
+
+			// The responses handed back to the requesting node stay aligned with that order
+			expect((response?.actionResponses ?? []).map((r) => r.action.nodeName)).toEqual(toolNames);
+
+			// ...and so does what the logs panel sorts on
+			const runData = result.data.resultData.runData;
+			const executionIndexes = toolNames.map((name) => runData[name][0].executionIndex);
+			expect(executionIndexes).toEqual([...executionIndexes].sort((a, b) => a - b));
+		});
+
 		test('skips waiting tools processing when parent node cannot be found', async () => {
 			// ARRANGE
 			// This test simulates the scenario where executionData.source.main[0].previousNode

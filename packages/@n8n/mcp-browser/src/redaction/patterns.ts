@@ -31,7 +31,7 @@ export const BUILTIN_PATTERNS: SecretPattern[] = [
 	{ slug: 'anthropic_admin_key', pattern: /sk-ant-admin\d{2}-[A-Za-z0-9_-]{80,}/ },
 	{ slug: 'openai_api_key', pattern: /sk-proj-[A-Za-z0-9_-]{40,}/ },
 	{ slug: 'openai_service_account_key', pattern: /sk-svcacct-[A-Za-z0-9_-]{20,}/ },
-	{ slug: 'openai_legacy_api_key', pattern: /sk-[A-Za-z0-9]{48}/ },
+	{ slug: 'openai_legacy_api_key', pattern: /sk-[A-Za-z0-9]{48,}/ },
 	{ slug: 'huggingface_token', pattern: /hf_[A-Za-z0-9]{34,}/ },
 	{ slug: 'groq_api_key', pattern: /gsk_[A-Za-z0-9]{52}/ },
 	{ slug: 'perplexity_api_key', pattern: /pplx-[A-Za-z0-9]{48,}/ },
@@ -42,10 +42,16 @@ export const BUILTIN_PATTERNS: SecretPattern[] = [
 	{ slug: 'langsmith_api_key_v2', pattern: /lsv2_(?:pt|sk)_[a-f0-9]{40}_[a-f0-9]{16}/ },
 
 	// --- Cloud / infra ---
-	{ slug: 'google_api_key', pattern: /AIza[0-9A-Za-z_-]{35}/ },
+	// Open-ended and unanchored: a fixed count leaves the tail of a longer key in
+	// the text, and an anchor misses a key concatenated into a run.
+	{ slug: 'google_api_key', pattern: /AIza[0-9A-Za-z_-]{35,}|AQ\.[0-9A-Za-z_-]{30,}/ },
 	{ slug: 'google_oauth_client_secret', pattern: /GOCSPX-[A-Za-z0-9_-]{28,}/ },
 	{ slug: 'aws_access_key_id', pattern: /(?:AKIA|ASIA)[A-Z0-9]{16}/ },
-	{ slug: 'azure_ad_client_secret', pattern: /[A-Za-z0-9_-]{3,}~[A-Za-z0-9_-]{31,}/ },
+	// Anchored, or the unbounded prefix backtracks over every offset of a long run.
+	{
+		slug: 'azure_ad_client_secret',
+		pattern: /(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{3,}~[A-Za-z0-9_-]{31,}/,
+	},
 	{ slug: 'digitalocean_pat', pattern: /dop_v1_[a-f0-9]{64}/ },
 	{ slug: 'digitalocean_oauth_token', pattern: /doo_v1_[a-f0-9]{64}/ },
 	{ slug: 'digitalocean_refresh_token', pattern: /dor_v1_[a-f0-9]{64}/ },

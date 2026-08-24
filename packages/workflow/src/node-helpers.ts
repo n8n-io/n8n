@@ -626,8 +626,10 @@ function getParameterResolveOrder(
 		// Parameter has dependencies
 		for (const dependency of parameterDependencies[property.name]) {
 			if (!resolvedParameters.includes(dependency)) {
-				if (dependency.charAt(0) === '/') {
-					// Assume that root level dependencies are resolved
+				if (!Object.hasOwn(parameterDependencies, dependency)) {
+					// Not a parameter of this level (e.g. a `/root.path`), so it cannot be
+					// resolved here. `displayParameter` looks the value up later and hides
+					// the parameter if it is missing.
 					continue;
 				}
 				// Dependencies for that parameter are still missing so

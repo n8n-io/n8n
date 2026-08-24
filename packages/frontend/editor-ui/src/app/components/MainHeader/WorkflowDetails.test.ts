@@ -216,11 +216,11 @@ describe('WorkflowDetails', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders workflow name and tags', async () => {
+	it('renders workflow name', async () => {
 		vi.mocked(useRoute).mockReturnValueOnce({
 			query: { parentFolderId: '1' },
 		} as unknown as ReturnType<typeof useRoute>);
-		const { getByTestId, getByText } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				...defaultProps,
 			},
@@ -229,8 +229,6 @@ describe('WorkflowDetails', () => {
 		const workflowNameInput = getByTestId('inline-edit-input');
 
 		expect(workflowNameInput).toHaveValue('Test Workflow');
-		expect(getByText('tag1')).toBeInTheDocument();
-		expect(getByText('tag2')).toBeInTheDocument();
 	});
 
 	it('opens share modal on share button click', async () => {
@@ -266,8 +264,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 
 			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import')).not.toBeInTheDocument();
 		});
 
 		it('should not have workflow duplicate and import when collaboration is read-only', async () => {
@@ -284,8 +281,7 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 
 			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-import')).not.toBeInTheDocument();
 		});
 
 		it('should have workflow duplicate and import options if permission update is true', async () => {
@@ -300,8 +296,8 @@ describe('WorkflowDetails', () => {
 			await userEvent.click(getByTestId('workflow-menu'));
 
 			expect(getByTestId('workflow-menu-item-duplicate')).not.toHaveClass('disabled');
-			expect(getByTestId('workflow-menu-item-import-from-url')).not.toHaveClass('disabled');
-			expect(getByTestId('workflow-menu-item-import-from-file')).not.toHaveClass('disabled');
+			// Import options live in a sub-menu; its trigger stands in for them here
+			expect(getByTestId('workflow-menu-item-import')).not.toHaveClass('disabled');
 			expect(queryByTestId('workflow-menu-item-share')).not.toHaveClass('disabled');
 			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();

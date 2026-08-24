@@ -152,6 +152,34 @@ describe('POST /executions/delete', () => {
 
 		expect(executions).toHaveLength(0);
 	});
+
+	test('should hard-delete executions older than `deleteBefore`', async () => {
+		await saveExecution({ belongingTo: owner });
+
+		await testServer
+			.authAgentFor(owner)
+			.post('/executions/delete')
+			.send({ deleteBefore: new Date(Date.now() + 60_000).toISOString() })
+			.expect(200);
+
+		const executions = await getAllExecutions();
+
+		expect(executions).toHaveLength(0);
+	});
+
+	test('should reject an unparseable `deleteBefore`', async () => {
+		await saveExecution({ belongingTo: owner });
+
+		await testServer
+			.authAgentFor(owner)
+			.post('/executions/delete')
+			.send({ deleteBefore: 'not-a-date' })
+			.expect(400);
+
+		const executions = await getAllExecutions();
+
+		expect(executions).toHaveLength(1);
+	});
 });
 
 describe('POST /executions/stop', () => {

@@ -1,6 +1,7 @@
 export const enum WORKFLOW_MENU_ACTIONS {
 	DUPLICATE = 'duplicate',
 	DOWNLOAD = 'download',
+	IMPORT = 'import',
 	IMPORT_FROM_URL = 'import-from-url',
 	IMPORT_FROM_FILE = 'import-from-file',
 	PUSH = 'push',
@@ -10,6 +11,8 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	ARCHIVE = 'archive',
 	UNARCHIVE = 'unarchive',
 	RENAME = 'rename',
+	VERSION_HISTORY = 'version-history',
+	PRODUCTION_CHECKLIST = 'production-checklist',
 	CHANGE_OWNER = 'change-owner',
 	UNPUBLISH = 'unpublish',
 	SHARE = 'share',
