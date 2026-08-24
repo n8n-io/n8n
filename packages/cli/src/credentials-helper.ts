@@ -49,6 +49,16 @@ import { RESPONSE_ERROR_MESSAGES } from './constants';
 import { CredentialNotFoundError } from './errors/credential-not-found.error';
 import { CacheService } from './services/cache/cache.service';
 
+/** OAuth endpoint/flow fields the instance owns for a managed credential. */
+const MANAGED_OAUTH_PINNED_FIELDS = [
+	'authUrl',
+	'accessTokenUrl',
+	'grantType',
+	'authentication', // OAuth2
+	'requestTokenUrl',
+	'signatureMethod', // OAuth1
+] as const;
+
 const mockNode = {
 	name: '',
 	typeVersion: 1,
@@ -413,6 +423,19 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.accessTokenUrl = decryptedDataOriginal.accessTokenUrl;
 			decryptedData.grantType = decryptedDataOriginal.grantType;
 			decryptedData.authentication = decryptedDataOriginal.authentication;
+		} else if (this.credentialsOverwrites.usesManagedAuth(type, decryptedDataOriginal)) {
+			// For managed credentials the instance owns the OAuth endpoints. Honor an
+			// admin-configured overwrite for the field, otherwise pin the credential
+			// type default. The user's stored value is never used.
+			const overwrites = this.credentialsOverwrites.getOverwrites(type) ?? {};
+			for (const field of MANAGED_OAUTH_PINNED_FIELDS) {
+				const property = credentialsProperties.find((p) => p.name === field && p.type === 'hidden');
+				// Pinned endpoint/flow fields always default to a string; anything else is skipped.
+				if (typeof property?.default !== 'string') continue;
+				const overwritten = overwrites[field];
+				decryptedData[field] =
+					typeof overwritten === 'string' && overwritten !== '' ? overwritten : property.default;
+			}
 		}
 
 		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(credential);
