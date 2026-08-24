@@ -13,7 +13,7 @@ export { binaryToString } from './binary-string';
 export type { UseDefaultSsrfPolicy } from './use-default-ssrf-policy';
 export type { CustomFetch } from './undici/transport';
 export { OutboundHttp, type HttpRequestClient, type HttpTransport } from './outbound-http';
-export { retryabilityFromError } from './retryability';
+export { markNonRetryable, retryabilityFromError } from './retryability';
 export {
 	httpStatusFromError,
 	isAxiosError,
