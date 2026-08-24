@@ -14,6 +14,7 @@ import { z } from 'zod';
 
 import type { ResolvedPublicApiRoute } from '@/public-api/public-api-route-resolver';
 import {
+	isRequestBodyRequired,
 	resolvePublicApiRoutes,
 	scopeRequirementToString,
 	toOpenApiPathTemplate,
@@ -36,6 +37,7 @@ const ERROR_RESPONSE_REFS: Record<number, { $ref: string }> = {
 	403: { $ref: '../../../../shared/spec/responses/forbidden.yml' },
 	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
+	415: { $ref: '../../../../shared/spec/responses/unsupportedMediaType.yml' },
 };
 
 /** A `ResponseDtoClass` narrowed to the two fields the generator actually reads off it. */
@@ -133,6 +135,7 @@ function buildRequestBody(
 	if (!route.requestBodyDto) return undefined;
 
 	return {
+		...(isRequestBodyRequired(route.requestBodyDto) ? { required: true } : {}),
 		content: {
 			'application/json': {
 				schema: route.requestBodyDto.schema,
@@ -193,6 +196,9 @@ function buildResponses(
 	// If the route has an @ApiKeyScope decorator, we add an HTTP 403 as a possible response
 	if (route.requestBodyDto ?? route.requestQueryDto) {
 		responses[400] = ERROR_RESPONSE_REFS[400];
+	}
+	if (route.requestBodyDto) {
+		responses[415] = ERROR_RESPONSE_REFS[415];
 	}
 	responses[401] = ERROR_RESPONSE_REFS[401];
 	if (route.apiKeyScope) {
