@@ -120,6 +120,24 @@ describe('Confluence space:getAll operation', () => {
 		expect(result).toEqual(spaces(1, 2));
 	});
 
+	it('stops instead of looping when the API repeats a pagination cursor', async () => {
+		apiRequest
+			.mockResolvedValueOnce({
+				results: spaces(1, 2),
+				_links: { next: '/wiki/api/v2/spaces?cursor=abc' },
+			})
+			.mockResolvedValue({
+				results: spaces(3, 1),
+				_links: { next: '/wiki/api/v2/spaces?cursor=abc' },
+			});
+		const ctx = createContext({ returnAll: true });
+
+		const result = await execute.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(result).toEqual(spaces(1, 3));
+	});
+
 	it('returns an empty list for a response without results', async () => {
 		apiRequest.mockResolvedValueOnce({});
 		const ctx = createContext({ returnAll: true });

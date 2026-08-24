@@ -55,6 +55,7 @@ export const execute: ConfluenceOperation = async function (
 	}
 
 	const spaces: IDataObject[] = [];
+	const seenCursors = new Set<string>();
 	let cursor: string | undefined;
 	do {
 		const qs: IDataObject = { limit: Math.min(limit - spaces.length, PAGE_LIMIT) };
@@ -64,7 +65,10 @@ export const execute: ConfluenceOperation = async function (
 		const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 		spaces.push(...results);
 
-		cursor = extractNextCursor(response);
+		// A repeated cursor would refetch the same page forever; treat it as the end
+		const next = extractNextCursor(response);
+		cursor = next === undefined || seenCursors.has(next) ? undefined : next;
+		if (cursor !== undefined) seenCursors.add(cursor);
 	} while (cursor !== undefined && spaces.length < limit);
 
 	// The API treats `limit` as a page size, so an overshooting last page is trimmed
