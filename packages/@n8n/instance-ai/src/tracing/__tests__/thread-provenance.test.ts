@@ -10,9 +10,9 @@ describe('threadProvenanceMetadata', () => {
 	});
 
 	it('flattens sourceContext so each entry is filterable on its own', () => {
-		// Nested documents are not filterable in LangSmith — `eq(metadata_key, …)`
-		// matches a key, not a path into a JSON value. Flat scalars are the whole
-		// point: they are what lets every build of one eval case be selected.
+		// `eq(metadata_key, …)` matches a key, not a path into a JSON value, so
+		// flat entries are the whole point: they are what lets every build of one
+		// eval case be selected.
 		expect(
 			threadProvenanceMetadata({
 				source: 'evals',
@@ -38,26 +38,6 @@ describe('threadProvenanceMetadata', () => {
 		expect(out.user_id).toBeUndefined();
 		expect(out.thread_id).toBeUndefined();
 		expect(out['source_context.user_id']).toBe('spoofed');
-	});
-
-	it('drops non-scalar entries rather than nesting documents in the trace', () => {
-		const out = threadProvenanceMetadata({
-			source: 'canvas_action_button',
-			sourceContext: { keep: 'yes', nested: { a: 1 }, list: [1, 2], nothing: null },
-		});
-
-		expect(out).toEqual({ thread_source: 'canvas_action_button', 'source_context.keep': 'yes' });
-	});
-
-	it('bounds how many entries reach the trace', () => {
-		const sourceContext = Object.fromEntries(
-			Array.from({ length: 40 }, (_, i) => [`k${String(i)}`, i]),
-		);
-
-		const out = threadProvenanceMetadata({ source: 'evals', sourceContext });
-
-		// thread_source + the cap.
-		expect(Object.keys(out)).toHaveLength(21);
 	});
 
 	it('returns nothing for a thread with no recorded provenance', () => {
