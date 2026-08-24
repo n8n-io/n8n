@@ -7,7 +7,7 @@ import { ConnectionClosedError, ConnectionEndedError, ConnectionTimeoutError } f
 import { ImapSimple, type CloseReason, type ReconnectOptions } from './imap-simple';
 import { PartData } from './part-data';
 import type { Message, MessagePart } from './types';
-import { box, transportFactory, settle, type FakeImap } from '../test/fake-imap';
+import { box, NOWHERE, transportFactory, settle, type FakeImap } from '../test/fake-imap';
 
 vi.mock('./part-data', () => ({
 	// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -16,7 +16,7 @@ vi.mock('./part-data', () => ({
 
 const connect = async (reconnect?: ReconnectOptions, init?: (t: FakeImap) => void) => {
 	const factory = transportFactory(init);
-	const connection = await ImapSimple.connectWith(factory.create, reconnect);
+	const connection = await ImapSimple.connect(NOWHERE, reconnect, factory.create);
 	return { connection, imap: factory.latest(), factory };
 };
 
@@ -64,7 +64,9 @@ describe('ImapSimple', () => {
 		] as const)('rejects when the transport emits %s', async (event, expected) => {
 			const factory = transportFactory((t) => (t.connectResult = event));
 
-			await expect(ImapSimple.connectWith(factory.create)).rejects.toThrow(expected);
+			await expect(ImapSimple.connect(NOWHERE, undefined, factory.create)).rejects.toThrow(
+				expected,
+			);
 		});
 
 		it('reports an auth timeout as ConnectionTimeoutError', async () => {
@@ -73,15 +75,17 @@ describe('ImapSimple', () => {
 				t.connectError = Object.assign(new Error('timeout'), { source: 'timeout-auth' });
 			});
 
-			await expect(ImapSimple.connectWith(factory.create)).rejects.toThrow(ConnectionTimeoutError);
+			await expect(ImapSimple.connect(NOWHERE, undefined, factory.create)).rejects.toThrow(
+				ConnectionTimeoutError,
+			);
 		});
 
 		it('rejects when the mailbox cannot be selected', async () => {
 			const factory = transportFactory((t) => (t.mailbox = new Error('no such mailbox')));
 
-			await expect(ImapSimple.connectWith(factory.create, { mailbox: 'Nope' })).rejects.toThrow(
-				'no such mailbox',
-			);
+			await expect(
+				ImapSimple.connect(NOWHERE, { mailbox: 'Nope' }, factory.create),
+			).rejects.toThrow('no such mailbox');
 		});
 	});
 

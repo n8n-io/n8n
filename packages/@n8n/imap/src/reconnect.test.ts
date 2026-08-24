@@ -1,6 +1,6 @@
 import { ConnectionClosedError, ReconnectTimeoutError } from './errors';
 import { ImapSimple, type CloseReason } from './imap-simple';
-import { box, transportFactory, settle, type FakeImap } from '../test/fake-imap';
+import { box, NOWHERE, transportFactory, settle, type FakeImap } from '../test/fake-imap';
 
 const WATCHING = { mailbox: 'INBOX' };
 
@@ -10,11 +10,11 @@ const useTimers = () => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'
 afterEach(() => vi.useRealTimers());
 
 const connect = async (
-	reconnect: Parameters<typeof ImapSimple.connectWith>[1],
+	reconnect: Parameters<typeof ImapSimple.connect>[1],
 	init?: (transport: FakeImap, attempt: number) => void,
 ) => {
 	const factory = transportFactory(init);
-	const connection = await ImapSimple.connectWith(factory.create, reconnect);
+	const connection = await ImapSimple.connect(NOWHERE, reconnect, factory.create);
 
 	const events = {
 		error: vi.fn<(error: Error) => void>(),
@@ -248,9 +248,9 @@ describe('reconnect', () => {
 		it('tears the transport it opened down instead of leaving it connected', async () => {
 			const factory = transportFactory((t) => (t.mailbox = new Error('no such mailbox')));
 
-			await expect(ImapSimple.connectWith(factory.create, { mailbox: 'Nope' })).rejects.toThrow(
-				'no such mailbox',
-			);
+			await expect(
+				ImapSimple.connect(NOWHERE, { mailbox: 'Nope' }, factory.create),
+			).rejects.toThrow('no such mailbox');
 			await settle();
 
 			expect(factory.latest().end).toHaveBeenCalled();

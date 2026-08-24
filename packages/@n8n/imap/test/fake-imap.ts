@@ -3,7 +3,17 @@ import type Imap from 'imap';
 import type { Box, MailBoxes } from 'imap';
 import { vi } from 'vitest';
 
+import type { ImapConnectionOptions } from '../src/connection-options';
 import type { ImapTransport } from '../src/imap-simple';
+
+/** A fake transport never dials, but `connect` still wants somewhere to point. */
+export const NOWHERE: ImapConnectionOptions = {
+	host: 'imap.test',
+	port: 993,
+	secure: true,
+	user: 'user',
+	password: 'password',
+};
 
 export const box = (total = 0): Box =>
 	({ name: 'INBOX', messages: { total, new: 0 } }) as unknown as Box;
