@@ -1,0 +1,237 @@
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 8-13,26,43,46,247-311
+packages/cli/src/workflows/triggers/poll-cursor.service.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-2,14,22,27-28,30-45,80
+packages/frontend/@n8n/eslint-plugin-design-system/tsconfig.json
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-9
+packages/@n8n/engine/src/execution/__tests__/completion.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-78
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 5,10-11,57-60,362-366,369,395-453
+packages/nodes-base/nodes/Confluence/actions/page/append.operation.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-95
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 3-4,8,19-24,30,39,43,55-56,61,65,96,100,121,125,141,145,158,162,221,225-228,246-274,276,280,316,338,340
+packages/cli/src/executions/execution-persistence.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 604-605
+packages/@n8n/telemetry/src/telemetry-events.ts
+  ai_agent 8,18
+packages/@n8n/decorators/src/controller/types.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 18-23,78
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 29,71,92,1209-1214,1255-1257,1260,1264-1268,1270,1277,1279-1284,1287-1291,1294,1304-1305,1307-1311
+packages/cli/src/scheduling/poll-trigger-node/poll-job-provider.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 6,28
+packages/@n8n/engine/src/execution/__tests__/loop-ledger.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-30,33-34,37-38,41-45,47-49,52-54,56-59,61-64,66-69,71-72,74,76-79,81-82,84-85,88-89,91-107,109-119
+packages/@n8n/engine/src/execution/__tests__/step-settled-handler.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 106,204,213,216
+packages/cli/src/public-api/v1/openapi-gen/__tests__/decorator-routes.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 27,30,198-278
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 909-931
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/unpublishWorkflow.generated.yml
+  ai_agent 1-18,22-28
+packages/nodes-base/nodes/Confluence/actions/page/bodyEnvelope.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 12,14,36-37,50,61,71,137-142,155-165
+packages/cli/src/policy/__tests__/policy-violation.error.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-91
+packages/@n8n/engine/src/execution/__tests__/execution-start-handler.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 34
+packages/cli/src/public-api/v1/openapi-gen/__tests__/error-response-descriptions.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-22
+packages/cli/src/public-api/__tests__/public-api-route-resolver.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 321
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 52-67,99-116
+packages/nodes-base/nodes/Confluence/test/actions/page/append.operation.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-36,38-39,42-43,45,47-59,61-62,64-65,67-70,72-74,76,78-81,83,85-87,89-90,92-96,98-99,101-108,110-125,127,129-141,143-151,153,155-167,169-172,175-186,188-193,195-198,200-202,204-207,209,211-213,215-216,218-222,224-229,231-238,240-242,246-248,250-251
+packages/@n8n/api-types/src/dto/workflows/__tests__/workflow-public.dto.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1,131-137
+packages/nodes-base/nodes/Confluence/actions/page/pageWrite.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-2,4-5,8-11,14-19,21-28,30-36,38-49,51-56,58-73,75-76,78-84,86-105,107-119,122
+packages/@n8n/api-types/src/dto/workflows/__tests__/workflow-publish-blocked-error-public.dto.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-34
+packages/@n8n/engine/src/execution/step-ready-handler.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 3,6-14,113,125-129,131,133-139,144,148-149,174-209,211,221-222,232,234,236
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/index.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-7
+packages/nodes-base/nodes/Confluence/test/actions/page/delete.operation.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-210
+packages/@n8n/api-types/src/dto/index.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 155,157,162-169
+packages/@n8n/engine/src/database/typeorm-step-store.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 23-42,236,242,250-270
+pnpm-lock.yaml
+  ai_agent 597-598,2354-2356,5417-5462,6016,11875-11880,11939-11941,11947-11954,12001-12008,12013-12014,12018,29354,29356,29358-29359,29361,29363-29368,29428,29432-29439,29494-29503,29512,29514-29516
+packages/frontend/@n8n/eslint-plugin-design-system/vite.config.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-5
+packages/cli/src/workflows/publication/publication-status-reporter.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 19,29-34,70,228,231
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 311-387
+packages/frontend/@n8n/eslint-plugin-design-system/src/plugin.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-31
+packages/@n8n/config/src/decorators.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 26-28,30,33,39-42,61,92
+packages/@n8n/telemetry/src/events/workflow.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-24
+packages/cli/src/modules/agents/agent-sandbox-principal.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 13,87-88
+packages/cli/src/workflows/triggers/enabled-trigger-nodes.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1,6-15,43
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 13,17-19,25-26,68-70,131-133,367-429
+packages/frontend/@n8n/eslint-plugin-design-system/package.json
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-48
+packages/@n8n/db/src/repositories/execution.repository.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 121-122,130-143,145-153,646-647,686-687,699-701,984-985,1192-1193
+packages/@n8n/engine/src/execution/__tests__/settlement.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 4,6,25-33,61,73,90,118,124,130,153,156,166,188,206,285,347-511
+packages/@n8n/engine/src/execution/step-store.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 142-148,150-153,157-161
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 5,8,37,81-104,106-111,141-143
+packages/cli/src/workflow-execute-additional-data.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 402,424-425
+packages/cli/src/scheduling/poll-trigger-node/durable-poller-chain.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-21
+packages/cli/src/modules/agents/__tests__/agent-sandbox-principal.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 17-18
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 32,39-57,187,219-220,227-240
+packages/cli/src/workflows/publication/publication-result.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 8-20
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 27-29,33-35,39-40
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 43,216
+packages/nodes-base/nodes/Confluence/test/actions/page/update.operation.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-247
+packages/frontend/@n8n/design-system/src/components/N8nAiModelSelectorDropdown/AiModelSelectorDropdown.vue
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 213
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 677,688-703,705
+packages/@n8n/api-types/src/dto/workflows/__tests__/publish-workflow-public.dto.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-25
+pnpm-workspace.yaml
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 243
+packages/cli/src/public-api/public-api-route-resolver.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 7,58
+packages/cli/src/policy/policy-cleared.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-82
+packages/cli/test/integration/executions/poll-cursor-atomicity.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-2,50-54
+packages/@n8n/engine/src/execution/step-settled-handler.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 2,4,7-9,16,57,73-93,133-135,137,140-155,157,163,170
+packages/cli/src/public-api/v1/handlers/workflows/__tests__/workflow-publish-blocked.openapi.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 9-14,24-35,37,54
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 133-142,148,150-160
+packages/nodes-base/nodes/Confluence/actions/page/index.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 3,5,7,9,23-28,35-40,47-52,56,58,60
+packages/cli/src/workflows/triggers/__tests__/poll-cursor.service.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-2,19,26-33,40,45-49,68-115
+packages/@n8n/decorators/src/controller/api-error-response.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 4,9-11,14-17,23-26
+packages/cli/src/policy/__tests__/policy-cleared.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-80
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/publishWorkflow.generated.yml
+  ai_agent 1-580
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-job-provider.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 59-60
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 30-31,469,507,555,599,646,693
+packages/@n8n/eslint-config/package.json
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 62-65
+packages/cli/test/integration/public-api/executions.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 727-855
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 12,15-18,22,32-34,43-45,831-946
+packages/cli/src/policy/policy-violation.error.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-43
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1461-1469,1665-1677
+packages/@n8n/api-types/src/dto/workflows/workflow-public.dto.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 139-142
+packages/@n8n/config/src/configs/__tests__/security.config.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 22-23,25-31,33
+packages/@n8n/engine/src/execution/settlement.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1,3-4,8-11,14-17,21-24,29-31,33,37-49,53,55,60-65,69,72,75-94,96,100-113,116,119-146,149-156,159-213
+packages/cli/src/response-helper.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 99
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 62-67
+packages/@n8n/decorators/src/controller/__tests__/api-error-response.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 30,45-92
+packages/@n8n/config/test/config.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 875
+packages/cli/src/public-api/types.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 52-53
+packages/@n8n/api-types/src/dto/workflows/workflow-publish-blocked-error-public.dto.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-13
+packages/cli/src/workflows/workflow.service.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 28,1135-1145,1161,1164-1174,1202,1204
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/executions.yml
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 40-55,65-66
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 16,22,24,26
+packages/@n8n/engine/src/execution/loop-ledger.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-72
+packages/@n8n/config/test/decorators.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 3,67,87-127
+packages/cli/src/public-api/v1/handlers/executions/executions.handler.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 138-139,157-158
+packages/cli/src/__tests__/response-helper.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1,3-4,7-8,10-11,60-97
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/require-teleported-tooltip-in-dropdown.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-78
+packages/@n8n/api-types/src/dto/workflows/publish-workflow-public.dto.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-21
+packages/@n8n/db/src/repositories/__tests__/execution.repository.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 6-7,157-228
+packages/frontend/@n8n/eslint-plugin-design-system/README.md
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-21
+packages/@n8n/decorators/src/controller/index.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 24
+packages/@n8n/eslint-config/src/configs/frontend.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 5,17
+packages/frontend/@n8n/eslint-plugin-design-system/src/rules/require-teleported-tooltip-in-dropdown.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-70
+packages/cli/src/executions/execution.service.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 810-811,827-828
+packages/frontend/@n8n/eslint-plugin-design-system/eslint.config.mjs
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-8
+packages/@n8n/engine/src/execution/completion.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-42
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 46-47
+packages/@n8n/engine/src/execution/__tests__/step-ready-handler.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 4,8-9,80,687-834
+packages/nodes-base/nodes/Confluence/actions/page/update.operation.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-95
+packages/nodes-base/nodes/Confluence/actions/page/delete.operation.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1-97
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 1343,1351,1353-1354,1358-1365,1394,1419,1449,1485,1525,1531-1565,1567-1644,1671,1734,1767,1802
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 57-70,161-164
+packages/cli/src/workflows/publication/__tests__/publication-status-reporter.test.ts
+  s_14d296036e0ac5::t_5d4c7ae10bd0c0 137-144,146-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fa4b668686158d2774fe073762b4f289961e0615",
+  "prompts": {},
+  "sessions": {
+    "s_14d296036e0ac5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d3baca53-0dc1-4028-ab67-4ccbff152285",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

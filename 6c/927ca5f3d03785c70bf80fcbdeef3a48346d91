@@ -1,0 +1,23 @@
+packages/@n8n/config/src/decorators.ts
+  s_c0403ec2c18b97::t_fd6a350d0bc4e4 61
+  s_c0403ec2c18b97::t_98b1dfaafed438 39-42
+  s_c0403ec2c18b97::t_3fbd7954d65992 92
+packages/@n8n/config/test/decorators.test.ts
+  s_c0403ec2c18b97::t_e6c7b950e7874f 88-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6c927ca5f3d03785c70bf80fcbdeef3a48346d91",
+  "prompts": {},
+  "sessions": {
+    "s_c0403ec2c18b97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0adbcce-a327-4cad-ab7c-e49efa952a96",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

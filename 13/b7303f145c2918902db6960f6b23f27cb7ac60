@@ -1,0 +1,21 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/discloses-workflow-no-longer-active.json
+  s_d7dc19b022f345::t_3bcfb7489533ec 2,95-103,106-114,117-125,174-177
+packages/@n8n/instance-ai/evaluations/data/workflows/discloses-node-removed-outside-conversation.json
+  s_d7dc19b022f345::t_3bcfb7489533ec 2,92-100,103-111,150,159-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "13b7303f145c2918902db6960f6b23f27cb7ac60",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

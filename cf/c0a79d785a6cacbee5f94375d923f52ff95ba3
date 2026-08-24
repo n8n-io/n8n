@@ -1,0 +1,35 @@
+packages/cli/src/workflow-execute-additional-data.ts
+  s_6e0e8168b15a08::t_e91c2a2721fbfb 17,377
+packages/frontend/editor-ui/src/app/stores/workflowExecutionState.store.ts
+  s_6e0e8168b15a08::t_a72140039841c0 179,194
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_6e0e8168b15a08::t_e91c2a2721fbfb 14
+  s_6e0e8168b15a08::t_63d49aaa38cf10 532-533,537-538,573-574,588-589
+  s_6e0e8168b15a08::t_b482f159d987da 452-485,536,564,566,579,581
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeAgentChips.vue
+  s_6e0e8168b15a08::t_a72140039841c0 58,73,92
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_6e0e8168b15a08::t_e91c2a2721fbfb 254
+packages/cli/src/modules/agents/workflow-agent-stream.ts
+  s_6e0e8168b15a08::t_a72140039841c0 2,9,13,28,86
+  s_6e0e8168b15a08::t_63d49aaa38cf10 3
+  s_6e0e8168b15a08::t_e91c2a2721fbfb 47
+packages/workflow/src/interfaces.ts
+  s_6e0e8168b15a08::t_e91c2a2721fbfb 2342-2349,3691
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "cfc0a79d785a6cacbee5f94375d923f52ff95ba3",
+  "prompts": {},
+  "sessions": {
+    "s_6e0e8168b15a08": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a00185-b743-71c2-9839-c445afe0fdb8",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

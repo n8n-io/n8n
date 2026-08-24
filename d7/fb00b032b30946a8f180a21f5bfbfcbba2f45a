@@ -1,0 +1,21 @@
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  s_18539800e4d51a::t_998399c3dd5d8a 233
+  s_18539800e4d51a::t_bb90b2587c35aa 212
+  s_18539800e4d51a::t_83c472c27f7817 250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d7fb00b032b30946a8f180a21f5bfbfcbba2f45a",
+  "prompts": {},
+  "sessions": {
+    "s_18539800e4d51a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8461955e-1af7-4b38-b80d-37ee3aac54f2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/nodes-base/nodes/Confluence/actions/attachment/delete.operation.ts
+  s_208a7c96834666::t_d5b74d8f495293 97
+  s_208a7c96834666::t_a919c3cf36ceb3 1,3-6,9-18,29-31,78-88,96,99
+  s_208a7c96834666::t_e319be24337282 32-77,94-95
+  s_208a7c96834666::t_9da05220e63c65 2,7-8,19-28,92-93,98
+  s_208a7c96834666::t_b1607d0d68d5af 89-91
+packages/nodes-base/nodes/Confluence/actions/attachment/index.ts
+  s_208a7c96834666::t_342e0bae8eb337 21-22,24-25,36
+  s_208a7c96834666::t_9cb820b83afcc3 23
+  s_208a7c96834666::t_fa1f9aaf7ffa67 3,6
+  s_208a7c96834666::t_5afdecda3af723 20
+  s_208a7c96834666::t_b8c75355292364 33
+packages/nodes-base/nodes/Confluence/actions/router.ts
+  s_208a7c96834666::t_fb9cdb07dca3d6 35-37
+packages/nodes-base/nodes/Confluence/test/Confluence.node.test.ts
+  s_208a7c96834666::t_4c8f60b2dba27c 27,30
+packages/nodes-base/nodes/Confluence/test/actions/attachment/delete.operation.test.ts
+  s_208a7c96834666::t_0f970047f4666b 1,5,14-15,20,22-25,39,42,49,62-98
+  s_208a7c96834666::t_f2672b4998985d 43,50
+  s_208a7c96834666::t_8eb0330782196b 2-4,6-13,16-19,21,26-38,40-41,44-48,51-61,128-129
+  s_208a7c96834666::t_1ebf6a3842c8e6 99-127
+packages/nodes-base/nodes/Confluence/test/actions/router.test.ts
+  s_208a7c96834666::t_7401f1cfd5b5cb 52,64-66
+  s_208a7c96834666::t_3f7d8b8529b1c6 53-63,67-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "6680f23a7cf5c3267701f85e829d35b7556af2c1",
+  "prompts": {},
+  "sessions": {
+    "s_208a7c96834666": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9996a3c5-7637-487a-99bb-db72780d34e4",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": null
+    }
+  }
+}

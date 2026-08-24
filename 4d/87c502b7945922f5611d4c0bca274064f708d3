@@ -1,0 +1,51 @@
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_7a2db5f67669fb::t_ad740e88aac028 147
+  s_7a2db5f67669fb::t_dcc52db4af605e 67
+  s_7a2db5f67669fb::t_f7b2824001e821 17
+  s_5f6f4d2a449e67::t_489618b446cf11 14-15,30-38,134-136,148,155-167
+packages/@n8n/config/src/configs/scheduler.config.ts
+  s_5f6f4d2a449e67::t_e17d7df0c0baf8 275-278
+packages/cli/src/events/maps/poll-trigger-metrics.event-map.ts
+  s_7a2db5f67669fb::t_74540a7390dbf9 3-5
+  s_7a2db5f67669fb::t_97bacc76db443b 23-26
+packages/cli/src/metrics/prometheus/poll-trigger-metrics.service.ts
+  s_7a2db5f67669fb::t_73c990b0387c00 94-97
+  s_7a2db5f67669fb::t_3d006f0880bccf 58-63
+  s_7a2db5f67669fb::t_0f5bfe4f17e7e3 16-18
+packages/cli/src/metrics/prometheus/__tests__/poll-trigger-metrics.service.test.ts
+  s_7a2db5f67669fb::t_b2a6f09b22705f 202-217
+  s_7a2db5f67669fb::t_270533729e88ef 112
+  s_7a2db5f67669fb::t_e27f15b7fd1a0b 142
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_7a2db5f67669fb::t_dc5b4d584f5a60 32
+  s_7a2db5f67669fb::t_e382cc41f67c8c 43
+  s_5f6f4d2a449e67::t_0cfe30d65b5a97 435
+  s_5f6f4d2a449e67::t_51168482ccb905 396-416
+  s_7a2db5f67669fb::t_93317298de1440 13
+  s_7a2db5f67669fb::t_1c662d78f208fd 393-395
+  s_7a2db5f67669fb::t_eaf5b66bfc2b69 434
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4d87c502b7945922f5611d4c0bca274064f708d3",
+  "prompts": {},
+  "sessions": {
+    "s_5f6f4d2a449e67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4803adc6-abc4-47ce-850d-9994a6533361",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_7a2db5f67669fb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51cbd279-8268-44dd-ada6-dd76b730eb94",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

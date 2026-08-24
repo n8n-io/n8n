@@ -1,0 +1,28 @@
+packages/cli/src/scheduling/__tests__/durable-scheduler.test.ts
+  s_5f6f4d2a449e67::t_443662d93e5ce1 35
+  s_5f6f4d2a449e67::t_a790efe5fdef2c 188-190,197-206
+packages/@n8n/config/src/configs/scheduler.config.ts
+  s_5f6f4d2a449e67::t_5f693df710a956 273,280-285,288
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_5f6f4d2a449e67::t_fb35a43552d53d 169-170,174,176
+packages/@n8n/config/src/configs/__tests__/scheduler.config.test.ts
+  s_5f6f4d2a449e67::t_bd315ddf8e674f 46
+packages/@n8n/config/test/config.test.ts
+  s_5f6f4d2a449e67::t_9ce215e4dd4dc2 481
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e00a09a9b47a3574229c4445c7e775a631070e69",
+  "prompts": {},
+  "sessions": {
+    "s_5f6f4d2a449e67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4803adc6-abc4-47ce-850d-9994a6533361",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

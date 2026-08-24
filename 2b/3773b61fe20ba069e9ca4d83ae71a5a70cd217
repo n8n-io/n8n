@@ -1,0 +1,21 @@
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/addProjectToGitConnection.generated.yml
+  ai_agent 36-37
+packages/cli/src/public-api/v1/controllers/git-connections.public.controller.ts
+  s_acba6083221792::t_c4529bccaf15ac 225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b3773b61fe20ba069e9ca4d83ae71a5a70cd217",
+  "prompts": {},
+  "sessions": {
+    "s_acba6083221792": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "445078e6-3753-4428-820c-a091ec1e8b6d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

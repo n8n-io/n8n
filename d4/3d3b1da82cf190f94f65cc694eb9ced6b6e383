@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-ai/event-bus/__tests__/in-process-event-bus.test.ts
+  s_45e2f6fac3868c::t_8e6f770b7546e4 607
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  s_45e2f6fac3868c::t_8e6f770b7546e4 17-20,149,370
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d43d3b1da82cf190f94f65cc694eb9ced6b6e383",
+  "prompts": {},
+  "sessions": {
+    "s_45e2f6fac3868c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f39f7fb-75e7-4ba4-8950-d44a46855e76",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
