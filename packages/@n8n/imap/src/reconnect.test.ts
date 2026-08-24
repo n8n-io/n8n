@@ -1,4 +1,4 @@
-import { ReconnectTimeoutError } from './errors';
+import { ConnectionClosedError, ReconnectTimeoutError } from './errors';
 import { ImapSimple, type CloseReason } from './imap-simple';
 import { box, transportFactory, settle, type FakeImap } from '../test/fake-imap';
 
@@ -84,7 +84,7 @@ describe('reconnect', () => {
 	});
 
 	describe('when it cannot be restored', () => {
-		it('reports the failure and closes', async () => {
+		it('closes as dropped, carrying the attempt that failed', async () => {
 			const { events, imap } = await connect(WATCHING, (transport, attempt) => {
 				if (attempt > 0) transport.connectResult = 'close';
 			});
@@ -92,8 +92,8 @@ describe('reconnect', () => {
 			imap().drop();
 			await settle();
 
-			expect(events.error).toHaveBeenCalledTimes(1);
-			expect(events.close).toHaveBeenCalledWith('error');
+			expect(events.error).not.toHaveBeenCalled();
+			expect(events.close).toHaveBeenCalledWith('dropped', expect.any(ConnectionClosedError));
 		});
 
 		it('gives up on an attempt that never settles', async () => {
@@ -106,8 +106,7 @@ describe('reconnect', () => {
 			await vi.advanceTimersByTimeAsync(1000);
 			await settle();
 
-			expect(events.error).toHaveBeenCalledWith(expect.any(ReconnectTimeoutError));
-			expect(events.close).toHaveBeenCalledWith('error');
+			expect(events.close).toHaveBeenCalledWith('dropped', expect.any(ReconnectTimeoutError));
 		});
 	});
 
@@ -268,7 +267,7 @@ describe('reconnect', () => {
 
 			expect(factory.built).toHaveLength(1);
 			expect(events.reconnect).not.toHaveBeenCalled();
-			expect(events.close).toHaveBeenCalledWith('ended');
+			expect(events.close).toHaveBeenCalledWith('ended', undefined);
 		});
 	});
 });

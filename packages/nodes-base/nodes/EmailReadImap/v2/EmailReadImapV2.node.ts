@@ -341,13 +341,13 @@ export class EmailReadImapV2 implements INodeType {
 			this.logger.debug('Email Read Imap: Connection restored');
 		});
 
-		connection.onClose((reason) => {
+		connection.onClose((reason, cause) => {
 			// `error` was already reported through onError; only an unexplained close is news.
 			if (reason !== 'dropped') {
 				this.logger.debug(`Email Read Imap: Connection closed (${reason})`);
 				return;
 			}
-			this.logger.error('Email Read Imap: Connected closed unexpectedly');
+			this.logger.error('Email Read Imap: Connected closed unexpectedly', { error: cause });
 			this.emitError(
 				new NodeOperationError(this.getNode(), 'IMAP connection closed unexpectedly', {
 					description:
