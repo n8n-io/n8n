@@ -1,40 +1,30 @@
 import { z } from 'zod';
 
 import {
-	branchNameSchema,
+	gitConnectionPublicSchema,
 	gitConnectionTypeSchema,
-	gitKeyGeneratorTypeSchema,
-	repositoryUrlSchema,
+	gitConnectionUpdatableFieldsShape,
 } from './git-connections.dto';
 import { Z } from '../../zod-class';
 
-/**
- * Partial patch for the singleton instance Git connection settings. Every field
- * is optional; the service rejects an empty body and enforces that enabling
- * requires a fully configured connection.
- */
+/** Partial patch for the singleton instance Git settings; `enabled` in place of a `name`. */
 export class UpdateInstanceGitSettingsDto extends Z.class({
 	enabled: z.boolean().optional(),
-	repositoryUrl: repositoryUrlSchema.optional(),
-	branchName: branchNameSchema.optional(),
-	connectionType: gitConnectionTypeSchema.optional(),
-	keyGeneratorType: gitKeyGeneratorTypeSchema.optional(),
-	username: z.string().min(1).optional(),
-	password: z.string().min(1).optional(),
+	...gitConnectionUpdatableFieldsShape,
 }) {}
 
-export const instanceGitSettingsPublicSchema = z.object({
-	enabled: z.boolean(),
-	// Fields are nullable because the settings are readable before ever being
-	// configured (they default to a disabled, empty connection).
-	repositoryUrl: z.string().nullable(),
-	branchName: z.string().nullable(),
-	connectionType: gitConnectionTypeSchema.nullable(),
-	publicKey: z.string().nullable(),
-	keyGeneratorType: gitKeyGeneratorTypeSchema.nullable(),
-	baseCommit: z.string().nullable(),
-	createdAt: z.string().datetime().nullable(),
-	updatedAt: z.string().datetime().nullable(),
-});
+/**
+ * Like {@link gitConnectionPublicSchema} without `id`/`name` and with `enabled`.
+ * All fields are nullable: settings are readable before being configured.
+ */
+export const instanceGitSettingsPublicSchema = gitConnectionPublicSchema
+	.omit({ id: true, name: true })
+	.extend({
+		enabled: z.boolean(),
+		repositoryUrl: z.string().nullable(),
+		connectionType: gitConnectionTypeSchema.nullable(),
+		createdAt: z.string().datetime().nullable(),
+		updatedAt: z.string().datetime().nullable(),
+	});
 
 export class InstanceGitSettingsPublicDto extends Z.class(instanceGitSettingsPublicSchema.shape) {}

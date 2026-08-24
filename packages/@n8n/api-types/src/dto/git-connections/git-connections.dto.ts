@@ -24,14 +24,19 @@ export class CreateGitConnectionDto extends Z.class({
 	password: z.string().min(1).optional(),
 }) {}
 
-export class UpdateGitConnectionDto extends Z.class({
-	name: nameSchema.optional(),
+/** Optional connection fields shared by the connection and instance update DTOs. */
+export const gitConnectionUpdatableFieldsShape = {
 	repositoryUrl: repositoryUrlSchema.optional(),
 	branchName: branchNameSchema.optional(),
 	connectionType: gitConnectionTypeSchema.optional(),
 	keyGeneratorType: gitKeyGeneratorTypeSchema.optional(),
 	username: z.string().min(1).optional(),
 	password: z.string().min(1).optional(),
+};
+
+export class UpdateGitConnectionDto extends Z.class({
+	name: nameSchema.optional(),
+	...gitConnectionUpdatableFieldsShape,
 }) {}
 
 export class CloneGitConnectionDto extends Z.class({
