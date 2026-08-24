@@ -53,7 +53,7 @@ function getEdgeStatusClass(id: string) {
 	<div :class="$style.workflowDiffContent">
 		<div :class="$style.workflowDiff">
 			<!-- Source panel -->
-			<div :class="$style.workflowDiffPanel">
+			<div :class="[$style.workflowDiffPanel, { [$style.emptyWorkflowPanel]: !sourceExists }]">
 				<slot name="sourceLabel">
 					<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
 						{{ sourceLabel }}
@@ -96,7 +96,7 @@ function getEdgeStatusClass(id: string) {
 			</div>
 
 			<!-- Target panel -->
-			<div :class="$style.workflowDiffPanel">
+			<div :class="[$style.workflowDiffPanel, { [$style.emptyWorkflowPanel]: !targetExists }]">
 				<slot name="targetLabel">
 					<N8nText color="text-dark" size="small" :class="$style.sourceBadge">
 						{{ targetLabel }}
@@ -165,6 +165,13 @@ function getEdgeStatusClass(id: string) {
 	background: var(--canvas--color--background);
 }
 
+/* A missing side is context, not a second canvas. GitHub/GitLab similarly keep
+	the "new/deleted" fact visible while giving the actual changed content the
+	reviewing space. */
+.emptyWorkflowPanel {
+	flex: 0 0 var(--height--5xl);
+}
+
 .sourceBadge {
 	composes: sourceBadge from './workflowDiff.module.scss';
 }
@@ -175,6 +182,9 @@ function getEdgeStatusClass(id: string) {
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
+	gap: var(--spacing--4xs);
+	padding: var(--spacing--xs) var(--spacing--md);
+	text-align: center;
 }
 
 /* Node status styles - composed from shared module */

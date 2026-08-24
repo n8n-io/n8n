@@ -96,8 +96,9 @@ describe('WorkflowReviewDetailMetadata', () => {
 			props: { review: makeDetail() },
 		});
 
+		// The separator is a styled element, so no literal spaces surround it in textContent.
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Open • Waiting for review',
+			/Open\s*\|\s*Waiting for review/,
 		);
 		expect(getByText('Riley Reviewer')).toBeInTheDocument();
 		expect(queryByText('reviewer@example.com')).not.toBeInTheDocument();
@@ -149,7 +150,7 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Closed • Approved',
+			/Closed\s*\|\s*Approved/,
 		);
 	});
 
@@ -160,7 +161,7 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Closed • No decision',
+			/Closed\s*\|\s*No decision/,
 		);
 	});
 
@@ -170,7 +171,7 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Closed • Changes requested',
+			/Closed\s*\|\s*Changes requested/,
 		);
 	});
 
@@ -180,7 +181,7 @@ describe('WorkflowReviewDetailMetadata', () => {
 		});
 
 		expect(getByTestId('workflow-review-detail-status-card')).toHaveTextContent(
-			'Open • Changes requested',
+			/Open\s*\|\s*Changes requested/,
 		);
 	});
 

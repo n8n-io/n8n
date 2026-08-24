@@ -2,6 +2,7 @@ import type { WorkflowReviewActivityEntry } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
+import { fireEvent } from '@testing-library/vue';
 import { computed, nextTick } from 'vue';
 
 import { ReviewLinkedWorkflowsKey, type ReviewLinkedWorkflowContext } from '../constants';
@@ -72,6 +73,7 @@ describe('WorkflowReviewActivityFeed', () => {
 		store.entries = [];
 		store.loading = false;
 		store.loadingMore = false;
+		store.posting = false;
 		store.hasMore = false;
 		store.nextCursor = null;
 		store.error = null;
@@ -84,6 +86,36 @@ describe('WorkflowReviewActivityFeed', () => {
 		await nextTick();
 
 		expect(queryAllByTestId('workflow-review-activity-entry')).toHaveLength(3);
+	});
+
+	it('animates only the comment appended by the current post', async () => {
+		store.entries = [makeComment({ id: '1' })];
+		const { getAllByTestId } = renderComponent();
+		await nextTick();
+
+		store.posting = true;
+		store.entries = [...store.entries, makeComment({ id: '2' })];
+		await nextTick();
+
+		const items = getAllByTestId('workflow-review-activity-entry');
+		expect(items[0]).not.toHaveAttribute('data-entering');
+		expect(items[1]).toHaveAttribute('data-entering', 'true');
+
+		await fireEvent.animationEnd(items[1]);
+		expect(items[1]).not.toHaveAttribute('data-entering');
+	});
+
+	it('does not animate comments prepended by pagination', async () => {
+		store.entries = [makeComment({ id: '2' })];
+		const { getAllByTestId } = renderComponent();
+		await nextTick();
+
+		store.entries = [makeComment({ id: '1' }), ...store.entries];
+		await nextTick();
+
+		for (const item of getAllByTestId('workflow-review-activity-entry')) {
+			expect(item).not.toHaveAttribute('data-entering');
+		}
 	});
 
 	it('shows a loading state while the first page is in flight', () => {
@@ -798,6 +830,20 @@ describe('WorkflowReviewActivityFeed', () => {
 			const lastEntry = getByTestId('workflow-review-activity-entry');
 			expect(footer.closest('[role="listitem"]')).not.toBeNull();
 			expect(lastEntry.compareDocumentPosition(footer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		});
+
+		it('renders composer content as the last timeline item', async () => {
+			store.entries = [makeComment({ id: '1' })];
+
+			const { getByTestId } = renderComponent({
+				slots: { composer: '<div data-test-id="feed-composer-content" />' },
+			});
+			await nextTick();
+
+			const composer = getByTestId('feed-composer-content');
+			const lastEntry = getByTestId('workflow-review-activity-entry');
+			expect(composer.closest('[role="listitem"]')).not.toBeNull();
+			expect(lastEntry.compareDocumentPosition(composer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 		});
 	});
 });

@@ -24,8 +24,8 @@ const otherAuthors = computed(() =>
 	props.review.authors.filter((author) => author.id !== props.review.requester?.id),
 );
 
-const statusSummary = computed(
-	() => getWorkflowReviewStatusDisplay(i18n, props.review.state, props.review.decision).label,
+const statusDisplay = computed(() =>
+	getWorkflowReviewStatusDisplay(i18n, props.review.state, props.review.decision),
 );
 </script>
 
@@ -39,7 +39,13 @@ const statusSummary = computed(
 			</template>
 			<div :class="$style.status">
 				<WorkflowReviewStatusDot :state="review.state" :decision="review.decision" decorative />
-				<N8nText size="medium">{{ statusSummary }}</N8nText>
+				<N8nText size="medium">
+					{{ statusDisplay.stateLabel }}
+					<!-- Decorative, like the activity headline's divider; the dot's aria-label
+						keeps the shared combined form. -->
+					<span aria-hidden="true" :class="$style.statusSeparator">|</span>
+					{{ statusDisplay.decisionLabel }}
+				</N8nText>
 			</div>
 		</N8nCard>
 
@@ -136,9 +142,12 @@ const statusSummary = computed(
 
 <style module lang="scss">
 .metadata {
+	position: sticky;
+	top: var(--spacing--5xs);
 	display: flex;
 	flex: 0 0 min(18rem, 30%);
 	flex-direction: column;
+	align-self: flex-start;
 	gap: var(--spacing--2xs);
 	min-width: 14rem;
 	padding-top: var(--spacing--5xs);
@@ -161,6 +170,11 @@ const statusSummary = computed(
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.statusSeparator {
+	margin-inline: var(--spacing--3xs);
+	color: var(--text-color--subtler);
 }
 
 .section,
@@ -219,6 +233,7 @@ const statusSummary = computed(
 
 @container review-detail (max-width: 44rem) {
 	.metadata {
+		position: static;
 		flex-basis: auto;
 		width: 100%;
 		min-width: 0;

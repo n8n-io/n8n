@@ -3,12 +3,29 @@ import { WORKFLOW_REVIEW_TEXT_MAX_LENGTH } from '@n8n/api-types';
 import { N8nChatInput } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
+import { useResizeObserver } from '@vueuse/core';
 import { storeToRefs } from 'pinia';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import { useReviewActivityStore } from '../reviewActivity.store';
 
 const props = defineProps<{ canComment: boolean }>();
+
+const rootRef = ref<HTMLElement | null>(null);
+
+// The composer sits at the bottom of the feed's scroll container, so growing while
+// the viewer types would push the send button below the fold. Following every height
+// increase keeps it in view — and because the input animates its growth, the repeated
+// nudges track the animation frame by frame.
+let lastObservedHeight = 0;
+useResizeObserver(rootRef, (observerEntries) => {
+	const height = observerEntries[0]?.contentRect.height ?? 0;
+	// Skip the initial measurement: the feed owns the initial scroll position.
+	if (lastObservedHeight > 0 && height > lastObservedHeight) {
+		rootRef.value?.scrollIntoView({ block: 'nearest' });
+	}
+	lastObservedHeight = height;
+});
 
 const i18n = useI18n();
 const { showError } = useToast();
@@ -45,12 +62,13 @@ async function onSubmit() {
 <template>
 	<!-- Implicit label: the textarea has no id to point a `for` at, and
 		`inheritAttrs: false` would send an aria-label to the wrapper instead. -->
-	<label :class="$style.composer">
+	<label ref="rootRef" :class="$style.composer">
 		<span :class="$style.srOnly">
 			{{ i18n.baseText('workflowReviews.detail.activity.composer.label') }}
 		</span>
 		<N8nChatInput
 			v-model="draft"
+			layout="adaptive"
 			:max-length="WORKFLOW_REVIEW_TEXT_MAX_LENGTH"
 			:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"
 			refocus-after-send
@@ -66,9 +84,10 @@ async function onSubmit() {
 <style lang="scss" module>
 .composer {
 	display: block;
-	flex-shrink: 0;
-	/* Prevent focus-ring clipping and vertically align with feed comments */
-	padding: var(--spacing--lg) var(--spacing--2xs) var(--spacing--5xs) var(--spacing--5xs);
+	/* Nearly the boxed entries' negative inset (see _activity-card.scss), held back by
+		the focus ring's width: flush with the feed's clip edge, the ring's left line
+		would be cut off entirely. */
+	margin-inline: calc(-1 * var(--spacing--sm) + var(--border-width));
 }
 
 .srOnly {

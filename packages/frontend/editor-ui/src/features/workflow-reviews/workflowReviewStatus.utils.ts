@@ -4,6 +4,8 @@ import type { BaseTextKey, useI18n } from '@n8n/i18n';
 export type WorkflowReviewStatusDisplay = {
 	/** The shared `<state> • <decision>` label. */
 	label: string;
+	/** The state half alone, for surfaces that compose the two halves themselves. */
+	stateLabel: string;
 	/** The decision half alone, for surfaces where the state is implied. */
 	decisionLabel: string;
 	/** Color class of {@link WorkflowReviewStatusDot}. */
@@ -27,9 +29,10 @@ export function getWorkflowReviewStatusDisplay(
 			: (`workflowReviews.decision.${decision}` as BaseTextKey);
 
 	const decisionLabel = i18n.baseText(decisionKey);
+	const stateLabel = i18n.baseText(`workflowReviews.status.${state}` as BaseTextKey);
 	const label = i18n.baseText('workflowReviews.status.combinedLabel', {
 		interpolate: {
-			state: i18n.baseText(`workflowReviews.status.${state}` as BaseTextKey),
+			state: stateLabel,
 			decision: decisionLabel,
 		},
 	});
@@ -45,5 +48,5 @@ export function getWorkflowReviewStatusDisplay(
 				? 'approved'
 				: 'closed';
 
-	return { label, decisionLabel, colorClass };
+	return { label, stateLabel, decisionLabel, colorClass };
 }

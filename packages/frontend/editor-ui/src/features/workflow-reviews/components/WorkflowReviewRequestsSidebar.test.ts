@@ -136,8 +136,10 @@ describe('WorkflowReviewRequestsSidebar', () => {
 	});
 
 	describe('sections', () => {
-		it('always renders both open headers in order, waiting before authored', () => {
-			const { getAllByTestId } = renderComponent({ props: openProps() });
+		it('renders both open headers in order, waiting before authored, when both have rows', () => {
+			const { getAllByTestId } = renderComponent({
+				props: openProps([{ items: [makeItem()] }, { items: [makeItem({ id: 'req-2' })] }]),
+			});
 
 			const headers = getAllByTestId('workflow-review-section-header');
 			expect(headers.map((header) => header.dataset.section)).toEqual(['waiting', 'authored']);
@@ -145,27 +147,32 @@ describe('WorkflowReviewRequestsSidebar', () => {
 			expect(headers[1]).toHaveTextContent('Authored by you');
 		});
 
-		it('shows a per-section empty hint for the section that has no rows', () => {
+		it('hides a section that settled with no rows', () => {
 			const { getAllByTestId } = renderComponent({
 				props: openProps([{ items: [makeItem()] }, {}]),
 			});
 
-			const hints = getAllByTestId('workflow-review-section-empty');
-			expect(hints).toHaveLength(1);
-			expect(hints[0].dataset.section).toBe('authored');
-			expect(hints[0]).toHaveTextContent("You haven't authored any open reviews");
+			const headers = getAllByTestId('workflow-review-section-header');
+			expect(headers.map((header) => header.dataset.section)).toEqual(['waiting']);
 		});
 
-		it('renders no header and the flat closed empty state on the closed tab', () => {
-			const { queryAllByTestId, getByTestId } = renderComponent({ props: closedProps() });
+		it('renders no header on the closed tab', () => {
+			const { queryAllByTestId } = renderComponent({
+				props: closedProps({ items: [makeItem({ state: 'closed' })] }),
+			});
 
 			expect(queryAllByTestId('workflow-review-section-header')).toHaveLength(0);
-			expect(getByTestId('workflow-review-section-empty')).toHaveTextContent('No closed reviews');
+		});
+
+		it('renders nothing for the closed tab once it settles empty', () => {
+			const { container } = renderComponent({ props: closedProps() });
+
+			expect(container.querySelectorAll('[role="listbox"]')).toHaveLength(0);
 		});
 
 		it('gives each section its own labelled listbox holding only options', () => {
 			const { container } = renderComponent({
-				props: openProps([{ items: [makeItem()] }, {}]),
+				props: openProps([{ items: [makeItem()] }, { items: [makeItem({ id: 'req-2' })] }]),
 			});
 
 			const listboxes = container.querySelectorAll('[role="listbox"]');
@@ -194,16 +201,15 @@ describe('WorkflowReviewRequestsSidebar', () => {
 		});
 
 		// The member wording is already covered by the header-order test above.
-		it('drops the possessive waiting labels for an admin', () => {
+		it('drops the possessive waiting label for an admin', () => {
 			mockedStore(useUsersStore).isAdminOrOwner = true;
 
-			const { getAllByTestId } = renderComponent({ props: openProps([{}, {}]) });
+			const { getAllByTestId } = renderComponent({
+				props: openProps([{ items: [makeItem()] }, {}]),
+			});
 
 			expect(getAllByTestId('workflow-review-section-header')[0]).toHaveTextContent(
 				'Waiting for review',
-			);
-			expect(getAllByTestId('workflow-review-section-empty')[0]).toHaveTextContent(
-				'No reviews waiting',
 			);
 		});
 
@@ -318,12 +324,13 @@ describe('WorkflowReviewRequestsSidebar', () => {
 			expect(emitted().retry).toEqual([['waiting']]);
 		});
 
-		it('does not show the empty hint for a failed section', () => {
-			const { queryAllByTestId } = renderComponent({
+		it('keeps a failed section visible even when it has no rows', () => {
+			const { getByTestId } = renderComponent({
 				props: openProps([{ error: new Error('boom') }, { items: [makeItem()] }]),
 			});
 
-			expect(queryAllByTestId('workflow-review-section-empty')).toHaveLength(0);
+			expect(getByTestId('workflow-review-section-error').dataset.section).toBe('waiting');
+			expect(getByTestId('workflow-review-section-retry')).toBeInTheDocument();
 		});
 	});
 });

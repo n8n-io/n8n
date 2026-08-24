@@ -3,10 +3,12 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { WorkflowReviewRequestState } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nHeading, N8nLoading, N8nResizeWrapper, N8nText } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useResizablePanel } from '@/app/composables/useResizablePanel';
+import { LOCAL_STORAGE_WORKFLOW_REVIEW_SIDEBAR_WIDTH } from '@/app/constants/localStorage';
 import { useToast } from '@n8n/composables/useToast';
 
 import WorkflowReviewDetailTabs from '../components/WorkflowReviewDetailTabs.vue';
@@ -57,6 +59,25 @@ const sidebarSections = computed<ReviewInboxSidebarSection[]>(() =>
 
 const route = useRoute();
 const router = useRouter();
+
+const contentRef = ref<HTMLElement | null>(null);
+
+// Bounds in px: 240 (15rem) floor, 640 (40rem) or half the view — whichever is
+// smaller — ceiling. The default mirrors the sidebar's previous static width,
+// `clamp(15rem, 25vw, 25rem)`. Persisted as a fraction of the container, so a
+// window resize keeps the proportions instead of the pixel count.
+const {
+	size: sidebarWidth,
+	isResizing: isResizingSidebar,
+	onResize: onSidebarResize,
+	onResizeEnd: onSidebarResizeEnd,
+} = useResizablePanel(LOCAL_STORAGE_WORKFLOW_REVIEW_SIDEBAR_WIDTH, {
+	container: contentRef,
+	position: 'left',
+	defaultSize: (containerWidth) => Math.min(Math.max(containerWidth * 0.25, 240), 400),
+	minSize: 240,
+	maxSize: (containerWidth) => Math.max(240, Math.min(containerWidth * 0.5, 640)),
+});
 
 function firstParam(value: string | string[] | undefined): string | null {
 	const param = Array.isArray(value) ? value[0] : value;
@@ -275,20 +296,30 @@ onUnmounted(() => {
 
 <template>
 	<PageViewLayout full-width data-test-id="workflow-review-requests-view">
-		<div :class="$style.content">
-			<WorkflowReviewRequestsSidebar
+		<div ref="contentRef" :class="$style.content">
+			<N8nResizeWrapper
 				v-if="showSidebar"
-				:sections="sidebarSections"
-				:active-tab="activeTab"
-				:open-count="openCount"
-				:closed-count="closedCount"
-				:selected-id="selectedReviewId"
-				@select="onSelect"
-				@clear="onClearSelection"
-				@update:active-tab="onActiveTabChange"
-				@load-more="onLoadMore"
-				@retry="onRetrySection"
-			/>
+				:class="[$style.sidebarResizer, { [$style.sidebarResizing]: isResizingSidebar }]"
+				:style="{ width: `${sidebarWidth}px` }"
+				:width="sidebarWidth"
+				:supported-directions="['right']"
+				data-test-id="workflow-reviews-sidebar-resizer"
+				@resize="onSidebarResize"
+				@resizeend="onSidebarResizeEnd"
+			>
+				<WorkflowReviewRequestsSidebar
+					:sections="sidebarSections"
+					:active-tab="activeTab"
+					:open-count="openCount"
+					:closed-count="closedCount"
+					:selected-id="selectedReviewId"
+					@select="onSelect"
+					@clear="onClearSelection"
+					@update:active-tab="onActiveTabChange"
+					@load-more="onLoadMore"
+					@retry="onRetrySection"
+				/>
+			</N8nResizeWrapper>
 
 			<div :class="$style.main">
 				<div :class="$style.columnTitle">
@@ -383,6 +414,39 @@ onUnmounted(() => {
 	min-height: 0;
 	height: 100%;
 	overflow: hidden;
+}
+
+.sidebarResizer {
+	flex: 0 0 auto;
+	min-width: 0;
+
+	/* Widen the handle's hit area over the column divider and give it a visible
+		drag indicator, revealed on hover and while dragging. */
+	:global([data-test-id='resize-handle']) {
+		width: var(--spacing--2xs);
+		right: calc(-1 * var(--spacing--2xs) / 2);
+
+		&::after {
+			content: '';
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			left: 50%;
+			transform: translateX(-50%);
+			width: calc(2 * var(--border-width));
+			background-color: var(--color--foreground--shade-1);
+			opacity: 0;
+			transition: opacity 0.15s ease;
+		}
+
+		&:hover::after {
+			opacity: 1;
+		}
+	}
+}
+
+.sidebarResizing :global([data-test-id='resize-handle'])::after {
+	opacity: 1;
 }
 
 .main {

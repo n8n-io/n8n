@@ -1,4 +1,4 @@
-import type { ComputedRef, InjectionKey } from 'vue';
+import type { ComputedRef, InjectionKey, Ref } from 'vue';
 
 export const WORKFLOW_REVIEW_REQUESTS_VIEW = 'WorkflowReviewRequestsView';
 
@@ -19,6 +19,11 @@ export type ReviewLinkedWorkflowContext = {
 export const ReviewLinkedWorkflowsKey: InjectionKey<
 	ComputedRef<Map<string, ReviewLinkedWorkflowContext>>
 > = Symbol('reviewLinkedWorkflows');
+
+/** Shared scroll root for the activity feed and its sibling metadata rail. */
+export const ReviewDetailScrollContainerKey: InjectionKey<Ref<HTMLElement | null>> = Symbol(
+	'reviewDetailScrollContainer',
+);
 
 /**
  * Routing contract for the review inbox.

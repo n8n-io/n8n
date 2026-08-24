@@ -63,12 +63,6 @@ function sectionTitle(key: CollapsibleReviewInboxSection): string {
 		? i18n.baseText('workflowReviews.sidebar.section.waiting.titleAdmin')
 		: i18n.baseText(`workflowReviews.sidebar.section.${key}.title`);
 }
-
-function sectionEmptyText(key: CollapsibleReviewInboxSection): string {
-	return key === 'waiting' && usesImpersonalWaitingLabels.value
-		? i18n.baseText('workflowReviews.sidebar.section.waiting.emptyAdmin')
-		: i18n.baseText(`workflowReviews.sidebar.section.${key}.empty`);
-}
 const listRef = ref<HTMLElement | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
 
@@ -89,23 +83,24 @@ function isCollapsibleSection(key: ReviewInboxSectionKey): key is CollapsibleRev
 	return key !== 'closed';
 }
 
+// A section that settled with nothing to show disappears entirely — the view's
+// tab-level empty state speaks when every section is gone. Loading and failed
+// sections stay: one still owes an answer, the other owes its retry control.
 const groups = computed(() =>
-	props.sections.map((section) => {
-		const collapsibleKey = isCollapsibleSection(section.key) ? section.key : null;
-		return {
-			key: section.key,
-			section,
-			collapsible: collapsibleKey !== null,
-			title: collapsibleKey ? sectionTitle(collapsibleKey) : null,
-			emptyText: collapsibleKey
-				? sectionEmptyText(collapsibleKey)
-				: i18n.baseText('workflowReviews.sidebar.empty.closed'),
-			collapsed: collapsibleKey !== null && isCollapsed(collapsibleKey),
-			headerId: `workflow-review-section-header-${section.key}`,
-			groupId: `workflow-review-section-group-${section.key}`,
-			isEmpty: !section.loading && section.error === null && section.items.length === 0,
-		};
-	}),
+	props.sections
+		.filter((section) => section.loading || section.error !== null || section.items.length > 0)
+		.map((section) => {
+			const collapsibleKey = isCollapsibleSection(section.key) ? section.key : null;
+			return {
+				key: section.key,
+				section,
+				collapsible: collapsibleKey !== null,
+				title: collapsibleKey ? sectionTitle(collapsibleKey) : null,
+				collapsed: collapsibleKey !== null && isCollapsed(collapsibleKey),
+				headerId: `workflow-review-section-header-${section.key}`,
+				groupId: `workflow-review-section-group-${section.key}`,
+			};
+		}),
 );
 
 /** The closed tab keeps infinite scroll; the open tab loads more explicitly. */
@@ -254,15 +249,6 @@ function onListBackgroundClick() {
 						:data-section="group.key"
 						data-test-id="workflow-review-section-skeleton"
 					/>
-					<N8nText
-						v-else-if="group.isEmpty"
-						color="text-light"
-						size="small"
-						:data-section="group.key"
-						data-test-id="workflow-review-section-empty"
-					>
-						{{ group.emptyText }}
-					</N8nText>
 					<div v-if="group.section.loadingMore" :class="$style.loadingMore">
 						<N8nLoading :loading="true" :rows="1" />
 					</div>
@@ -305,14 +291,12 @@ function onListBackgroundClick() {
 </template>
 
 <style lang="scss" module>
+/* The view owns the column's width (it hosts the resize wrapper); the sidebar just fills it. */
 .sidebar {
-	--review-sidebar--width: clamp(15rem, 25vw, 25rem);
-
 	display: flex;
 	flex-direction: column;
-	flex: 0 0 var(--review-sidebar--width);
+	width: 100%;
 	min-width: 0;
-	max-width: var(--review-sidebar--width);
 	height: 100%;
 	border-right: var(--border-width) solid var(--border-color);
 }
@@ -325,11 +309,25 @@ function onListBackgroundClick() {
 }
 
 .header {
+	position: relative;
 	display: flex;
 	align-items: center;
 	height: var(--review-tab-bar--height, var(--height--sm));
 	padding-right: var(--spacing--md);
 	margin-bottom: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
+
+	/* Full-width baseline under the tab bar; the active tab's indicator sits on
+		top of it. Drawn at the indicator's overhang depth, not the header's own
+		bottom edge, so the two lines meet (see the view's `--review-tab-bar--*`). */
+	&::after {
+		content: '';
+		position: absolute;
+		left: 0;
+		right: var(--spacing--md);
+		bottom: calc(-1 * var(--review-tab-bar--indicator-overhang, 11px) - var(--border-width));
+		height: var(--border-width);
+		background-color: var(--border-color);
+	}
 }
 
 .list {
@@ -394,16 +392,18 @@ function onListBackgroundClick() {
 	padding: 0 var(--spacing--2xs);
 }
 
+/* Idle rows melt into the page: no border, no fill. The border stays in the
+	layout (transparent) so the focus ring and hover cause no size shift. */
 .card {
 	cursor: pointer;
 	padding: var(--spacing--xs);
 	align-items: stretch;
-	border: var(--border-width) solid var(--border-color);
+	border: var(--border-width) solid transparent;
+	background-color: transparent;
 	transition: background-color 0.3s ease;
 
 	&:hover:not(.cardSelected) {
-		background-color: var(--background--active);
-		border-color: transparent;
+		background-color: var(--background--hover);
 	}
 
 	&:focus-visible {
@@ -413,7 +413,6 @@ function onListBackgroundClick() {
 
 .cardSelected {
 	background-color: var(--background--active);
-	border-color: transparent;
 }
 
 .cardContent {
