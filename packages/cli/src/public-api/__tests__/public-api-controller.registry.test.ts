@@ -1,3 +1,4 @@
+import { Z } from '@n8n/api-types';
 import {
 	ApiResponse,
 	Body,
@@ -11,6 +12,7 @@ import { Container, Service } from '@n8n/di';
 import express from 'express';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
+import { z } from 'zod';
 
 import type { EventService } from '@/events/event.service';
 import {
@@ -99,6 +101,32 @@ describe('PublicApiControllerRegistry', () => {
 		const response = await request(activate()).get('/widgets').expect(200);
 
 		expect(response.headers.deprecation).toBeUndefined();
+	});
+
+	describe('validation failures', () => {
+		class WidgetValidationDto extends Z.class({
+			name: z.string(),
+			active: z.undefined({ invalid_type_error: 'is read-only' }),
+		}) {}
+
+		it('returns the formatted message as a 400', async () => {
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				create(_req: express.Request, _res: express.Response, @Body _body: WidgetValidationDto) {
+					return { ok: true };
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+			const response = await request(activate())
+				.post('/widgets')
+				.send({ name: 'w', active: false })
+				.expect(400);
+
+			expect(response.body.message).toBe('request/body/active is read-only');
+		});
 	});
 
 	describe('request media type', () => {

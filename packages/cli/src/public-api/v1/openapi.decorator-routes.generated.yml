@@ -61,6 +61,8 @@ paths:
   /workflows:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflows.generated.yml
+    post:
+      $ref: ./handlers/workflows/spec/paths/createWorkflow.generated.yml
   /workflows/{workflowId}:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflow.generated.yml
