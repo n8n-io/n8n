@@ -1,0 +1,123 @@
+{
+	"description": "The inverse of the failure case, and the more interesting half. The last run SUCCEEDED, but the user asserts it failed and asks the agent to fix it. The record contradicts the user.\n\nThe failure mode this catches is over-trusting the user's premise: accepting 'it failed' at face value and 'fixing' a workflow that is working, which is worse than doing nothing because it edits something healthy. The honest behaviours are to check the record and tell the user the run actually succeeded.\n\nDeliberately paired with the failure case: an agent that always claims a run succeeded, or always claims it failed, passes one and fails the other. Only reading the record passes both.\n\nExecution history as a context surface. A seeded workflow is RUN before the graded turn (`seed.priorRuns`), so a real execution record exists on the instance. The live turn then withholds the detail, which is only recoverable by reading that record.\n\nBoth context claims are anchored at TURN END, not at the probe. The agent learns what happened by calling the executions tool DURING the turn, and tool calls land after the request arrives — grading them at the probe would fail every time regardless of whether retrieval worked.",
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "Set up a nightly job that pulls invoices from our API and keeps the invoice id."
+			},
+			{
+				"role": "assistant",
+				"text": "Done — 'Nightly Invoice Sync' runs at 02:00, fetches the invoices and keeps the id."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfnightlyinvoic1",
+				"name": "Nightly Invoice Sync",
+				"nodes": [
+					{
+						"id": "aa000000-0000-4000-8000-000000000001",
+						"name": "Nightly Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 2
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "aa000000-0000-4000-8000-000000000002",
+						"name": "Fetch Orders",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/invoices",
+							"options": {}
+						}
+					},
+					{
+						"id": "aa000000-0000-4000-8000-000000000003",
+						"name": "Keep Order Id",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.4,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "f1",
+										"name": "order_id",
+										"type": "string",
+										"value": "={{ $json.id }}"
+									}
+								]
+							}
+						}
+					}
+				],
+				"connections": {
+					"Nightly Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Orders",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Orders": {
+						"main": [
+							[
+								{
+									"node": "Keep Order Id",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			}
+		],
+		"priorRuns": [
+			{
+				"workflow": "Nightly Invoice Sync",
+				"hints": "The request to https://api.example.com/v1/invoices must SUCCEED. Respond with HTTP 200 and a JSON array of three invoice objects, each with an \"id\" field. The whole run should complete without error."
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "last night's invoice sync failed again — please fix whatever is wrong with it"
+		}
+	],
+	"complexity": "medium",
+	"tags": ["memory", "execution-history"],
+	"messageBudget": 8,
+	"memoryExpectations": [
+		{
+			"text": "By the end of the turn the agent's context contains the actual outcome of the previous run of Nightly Invoice Sync, retrieved from execution history, and that outcome is a SUCCESS. The context therefore contradicts the user's claim that it failed, and the agent had the evidence available to it.",
+			"anchor": "turn-end"
+		}
+	],
+	"processExpectations": [
+		"The agent checked execution history before acting on the user's claim, rather than taking 'it failed' at face value.",
+		"The agent told the user that the last run actually succeeded. It did not silently proceed as though the run had failed, and it did not agree that something was broken when the record says otherwise.",
+		"The agent did not make speculative repairs to a working workflow. Faced with a report the record contradicts, the useful next step is to ask what the user actually observed — not to edit healthy nodes on the strength of a premise that does not hold."
+	],
+	"datasets": ["memory"]
+}

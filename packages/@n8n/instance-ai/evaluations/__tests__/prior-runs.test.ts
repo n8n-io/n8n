@@ -149,3 +149,48 @@ describe('executePriorRuns', () => {
 		expect(exec.mock.calls.map((c) => c[0])).toEqual(['id-b', 'id-a']);
 	});
 });
+
+describe('seed name uniquifier', () => {
+	// Seeding appends ` [seed <8hex>]` to artifact names, so the name a case authored is
+	// never the name on the instance. Matching the authored name is the whole point of
+	// the join, and getting this wrong fails every prior run at seed time.
+	it('resolves an authored name against the seed-suffixed one', async () => {
+		const exec: Mock<ExecFn> = vi.fn().mockResolvedValue(ok);
+		const out = await executePriorRuns(
+			makeClient(exec),
+			[{ workflow: 'Nightly Sync' }],
+			[wf('Nightly Sync [seed c4149feb]')],
+			['id-nightly'],
+			silentLogger,
+		);
+		expect(exec).toHaveBeenCalledWith('id-nightly', undefined, expect.any(Number));
+		expect(out[0].success).toBe(true);
+	});
+
+	it('still resolves when the caller passes unsuffixed names', async () => {
+		const exec: Mock<ExecFn> = vi.fn().mockResolvedValue(ok);
+		await executePriorRuns(
+			makeClient(exec),
+			[{ workflow: 'Nightly Sync' }],
+			[wf('Nightly Sync')],
+			['id-nightly'],
+			silentLogger,
+		);
+		expect(exec).toHaveBeenCalledWith('id-nightly', undefined, expect.any(Number));
+	});
+
+	it('names the authored form when a run truly does not resolve', async () => {
+		// A real typo must stay diagnosable — the message should show the name the author
+		// would recognise, not the suffixed one.
+		const exec: Mock<ExecFn> = vi.fn();
+		await expect(
+			executePriorRuns(
+				makeClient(exec),
+				[{ workflow: 'Nightly Snyc' }],
+				[wf('Nightly Sync [seed c4149feb]')],
+				['id-nightly'],
+				silentLogger,
+			),
+		).rejects.toThrow(/Seeded: Nightly Sync$/);
+	});
+});
