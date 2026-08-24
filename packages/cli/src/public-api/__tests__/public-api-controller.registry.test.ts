@@ -200,6 +200,19 @@ describe('PublicApiControllerRegistry', () => {
 			expect(response.body.message).toBe(`unsupported media type ${reported}`);
 		});
 
+		it('rejects a non-JSON media type when no body follows', async () => {
+			registerBodyRoute();
+
+			const response = await request(activate())
+				.post('/widgets')
+				.set('Content-Type', 'application/x-www-form-urlencoded')
+				.expect(415);
+
+			expect(response.body.message).toBe(
+				'unsupported media type application/x-www-form-urlencoded',
+			);
+		});
+
 		it('rejects a missing Content-Type when the body is required', async () => {
 			registerBodyRoute();
 
