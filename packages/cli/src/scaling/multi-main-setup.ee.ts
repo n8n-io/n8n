@@ -88,6 +88,12 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 
 	registerEventHandlers() {
 		this.metadata.subscribe((handler) => this.attachHandler(handler));
+
+		// Leadership may have already been taken over (at init, or via the
+		// periodic leader check) before handlers were subscribed above, in
+		// which case the one-shot 'leader-takeover' emit had no listener and
+		// was dropped. Replay it now so handlers reconcile to the current role.
+		if (this.instanceSettings.isLeader) this.emit('leader-takeover');
 	}
 
 	private attachHandler({ eventHandlerClass, methodName, eventName }: MultiMainEventHandler) {
