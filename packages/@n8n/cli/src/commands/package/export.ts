@@ -87,6 +87,13 @@ export default class PackageExport extends BaseCommand {
 			description: 'Which version of each workflow travels in the package',
 			aliases: ['workflow-version-policy'],
 		}),
+		// No default: the key is only sent when set, so older servers that reject unknown fields keep working.
+		credentialExportPolicy: Flags.string({
+			options: ['expression-values-only', 'no-values'],
+			description:
+				'Whether expression values from credential data are bundled into the package; literal values never travel (default on the instance: expression-values-only)',
+			aliases: ['credential-export-policy'],
+		}),
 	};
 
 	async run(): Promise<void> {
@@ -98,6 +105,7 @@ export default class PackageExport extends BaseCommand {
 		const includeTags = flags.includeTags !== 'false';
 		const missingWorkflowDependencyPolicy = flags.missingWorkflowDependencyPolicy;
 		const workflowVersionPolicy = flags.workflowVersionPolicy;
+		const credentialExportPolicy = flags.credentialExportPolicy;
 
 		// A package is either loose workflows/folders or whole projects, not both.
 		if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
@@ -119,6 +127,7 @@ export default class PackageExport extends BaseCommand {
 								includeTags,
 								missingWorkflowDependencyPolicy,
 								workflowVersionPolicy,
+								credentialExportPolicy,
 							}
 						: {
 								workflowIds,
@@ -127,6 +136,7 @@ export default class PackageExport extends BaseCommand {
 								includeTags,
 								missingWorkflowDependencyPolicy,
 								workflowVersionPolicy,
+								credentialExportPolicy,
 							},
 				);
 			} catch (error) {

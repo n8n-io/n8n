@@ -13,6 +13,7 @@ import type {
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
+import type { EventService } from '@/events/event.service';
 
 import { WorkflowReviewLifecycleService } from '../workflow-review-lifecycle.service';
 
@@ -23,6 +24,7 @@ describe('WorkflowReviewLifecycleService', () => {
 	const activityRepository = mock<WorkflowReviewActivityRepository>();
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
+	const eventService = mock<EventService>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
 
@@ -47,6 +49,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			activityRepository,
 			dbLockService,
 			collaborationService,
+			eventService,
 		);
 		dbLockService.withLockContext.mockImplementation(async (_id, fn) => await fn(ctx));
 		requestRepository.saveRequest.mockImplementation(async (request) => request);
@@ -97,6 +100,10 @@ describe('WorkflowReviewLifecycleService', () => {
 			expect(
 				collaborationService.broadcastWorkflowReviewStateChanged,
 			).toHaveBeenCalledExactlyOnceWith('wf-1');
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-closed', {
+				workflowReviewRequestId: 'req-1',
+				cause: { trigger: 'workflow-archived', actorKind: 'user', userId: 'user-9' },
+			});
 		});
 
 		it('attributes a system archive (no user) as a system actor', async () => {
@@ -117,6 +124,10 @@ describe('WorkflowReviewLifecycleService', () => {
 				}),
 				ctx,
 			);
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-closed', {
+				workflowReviewRequestId: 'req-1',
+				cause: { trigger: 'workflow-archived', actorKind: 'system', userId: null },
+			});
 		});
 
 		it('leaves the request open while a reviewable workflow remains outside the affected set', async () => {
@@ -140,6 +151,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			);
 			expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 			expect(request.state).toBe('open');
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('does nothing when no open request is linked — no write, no broadcast', async () => {
@@ -150,6 +162,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			expect(activityRepository.createActivity).not.toHaveBeenCalled();
 			expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 			expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 			expect(logger.error).not.toHaveBeenCalled();
 		});
 
@@ -161,6 +174,23 @@ describe('WorkflowReviewLifecycleService', () => {
 			expect(logger.error).toHaveBeenCalled();
 			expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
 		});
+
+		// The close is already committed by the time it is reported, so a listener that
+		// throws can neither fail the archive nor skip the sweep that follows it.
+		it('archives anyway when reporting the close throws, and still runs the sweep', async () => {
+			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
+				{ request: openRequest(), links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
+			]);
+			requestRepository.closeUnreviewableOpenRequests.mockResolvedValue(['req-9']);
+			eventService.emit.mockImplementation(() => {
+				throw new Error('listener down');
+			});
+
+			await expect(service.afterWorkflowArchived('wf-1', 'user-9')).resolves.toBeUndefined();
+
+			expect(logger.error).toHaveBeenCalled();
+			expect(requestRepository.closeUnreviewableOpenRequests).toHaveBeenCalledExactlyOnceWith(ctx);
+		});
 	});
 
 	describe('transfer', () => {
@@ -168,8 +198,14 @@ describe('WorkflowReviewLifecycleService', () => {
 			const first = openRequest({ id: 'req-1' });
 			const second = openRequest({ id: 'req-2' });
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
-				{ request: first, links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
-				{ request: second, links: [{ workflowId: 'wf-2', workflowVersionId: 'wfv-2' }] },
+				{
+					request: first,
+					links: [
+						{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' },
+						{ workflowId: 'wf-2', workflowVersionId: 'wfv-2' },
+					],
+				},
+				{ request: second, links: [{ workflowId: 'wf-3', workflowVersionId: 'wfv-3' }] },
 			]);
 
 			await service.afterWorkflowsTransferred(['wf-1', 'wf-2', 'wf-3'], 'user-9');
@@ -189,9 +225,20 @@ describe('WorkflowReviewLifecycleService', () => {
 			);
 			expect(first.state).toBe('closed');
 			expect(second.state).toBe('closed');
-			expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledTimes(2);
+			expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledTimes(3);
 			expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-1');
 			expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-2');
+			expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-3');
+			// One report per closed request, even though the first one lost two workflows.
+			expect(eventService.emit).toHaveBeenCalledTimes(2);
+			expect(eventService.emit).toHaveBeenCalledWith('workflow-review-closed', {
+				workflowReviewRequestId: 'req-1',
+				cause: { trigger: 'workflow-moved', actorKind: 'user', userId: 'user-9' },
+			});
+			expect(eventService.emit).toHaveBeenCalledWith('workflow-review-closed', {
+				workflowReviewRequestId: 'req-2',
+				cause: { trigger: 'workflow-moved', actorKind: 'user', userId: 'user-9' },
+			});
 		});
 
 		it('swallows repository errors on transfer too — the move already committed', async () => {
@@ -257,6 +304,10 @@ describe('WorkflowReviewLifecycleService', () => {
 			expect(
 				collaborationService.broadcastWorkflowReviewStateChanged,
 			).toHaveBeenCalledExactlyOnceWith('wf-1');
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-closed', {
+				workflowReviewRequestId: 'req-1',
+				cause: { trigger: 'workflow-deleted', actorKind: 'user', userId: 'user-9' },
+			});
 		});
 
 		it('evaluates a batch as one affected set: per-workflow cause entries, one close', async () => {
@@ -296,6 +347,10 @@ describe('WorkflowReviewLifecycleService', () => {
 					([input]) => input.type === 'review.closed',
 				),
 			).toHaveLength(1);
+			expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-closed', {
+				workflowReviewRequestId: 'req-1',
+				cause: { trigger: 'workflow-deleted', actorKind: 'user', userId: 'user-9' },
+			});
 		});
 
 		it('records nothing for a request that closed between capture and delete', async () => {
@@ -309,6 +364,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			await service.afterWorkflowsDeleted(['wf-1']);
 
 			expect(activityRepository.createActivity).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('consumes the capture: a second after-hook for the same workflow records nothing', async () => {
@@ -321,10 +377,12 @@ describe('WorkflowReviewLifecycleService', () => {
 
 			await service.afterWorkflowsDeleted(['wf-1']);
 			activityRepository.createActivity.mockClear();
+			eventService.emit.mockClear();
 
 			await service.afterWorkflowsDeleted(['wf-1']);
 
 			expect(activityRepository.createActivity).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('degrades to the sweep when nothing was captured', async () => {
@@ -421,7 +479,7 @@ describe('WorkflowReviewLifecycleService', () => {
 	describe('reconciliation sweep', () => {
 		it('closes the requests the mutation stranded and explains each of them', async () => {
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([]);
-			requestRepository.closeUnreviewableOpenRequests.mockResolvedValue(['req-9']);
+			requestRepository.closeUnreviewableOpenRequests.mockResolvedValue(['req-9', 'req-10']);
 
 			await service.afterWorkflowArchived('wf-1', 'user-9');
 
@@ -430,14 +488,26 @@ describe('WorkflowReviewLifecycleService', () => {
 			// close twice. The sweep is global, so the batch never reaches the query; it is log
 			// context only.
 			expect(requestRepository.closeUnreviewableOpenRequests).toHaveBeenCalledExactlyOnceWith(ctx);
-			expect(activityRepository.createActivity).toHaveBeenCalledExactlyOnceWith(
-				{
-					workflowReviewRequestId: 'req-9',
-					type: 'review.closed',
-					data: { reason: 'no-reviewable-workflows' },
-					createdById: null,
-				},
-				ctx,
+			for (const requestId of ['req-9', 'req-10']) {
+				expect(activityRepository.createActivity).toHaveBeenCalledWith(
+					{
+						workflowReviewRequestId: requestId,
+						type: 'review.closed',
+						data: { reason: 'no-reviewable-workflows' },
+						createdById: null,
+					},
+					ctx,
+				);
+				expect(eventService.emit).toHaveBeenCalledWith('workflow-review-closed', {
+					workflowReviewRequestId: requestId,
+					cause: { trigger: 'unknown', actorKind: 'system', userId: null },
+				});
+			}
+			expect(activityRepository.createActivity).toHaveBeenCalledTimes(2);
+			expect(eventService.emit).toHaveBeenCalledTimes(2);
+			expect(logger.info).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ closedRequestIds: ['req-9', 'req-10'] }),
 			);
 		});
 
@@ -448,6 +518,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			await service.afterWorkflowsDeleted(['wf-1']);
 
 			expect(logger.info).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		// The close and its explanation share one transaction, so an unwritable entry rolls the
@@ -460,6 +531,8 @@ describe('WorkflowReviewLifecycleService', () => {
 
 			expect(logger.error).toHaveBeenCalled();
 			expect(logger.info).not.toHaveBeenCalled();
+			// A close that rolled back must never be reported as one.
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		// An archive or a move whose close rolled back stays committed, so the sweep has to run

@@ -23,7 +23,7 @@ export const ReviewLinkedWorkflowsKey: InjectionKey<
 /**
  * Routing contract for the review inbox.
  *
- * Path: /workflow-review-requests/:reviewRequestId?
+ * Path: /reviews/:reviewRequestId?
  *   - `:reviewRequestId` is the open review (deep-linkable). Absent = inbox
  *     with nothing selected. Selection always navigates via router.replace.
  *

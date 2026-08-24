@@ -60,11 +60,19 @@
 			box-shadow: var(--box-shadow-card);
 			padding: 14px 18px;
 		}
-		.summary-icon { display: flex; flex-shrink: 0; color: var(--color-muted); }
+		.summary-info { position: relative; display: flex; flex-shrink: 0; }
+		.summary-icon { display: flex; background: none; border: 0; padding: 0; cursor: pointer; color: var(--color-muted); }
 		.summary-icon svg { display: block; }
 		.summary-icon .icon-ok, .req-summary.all-connected .summary-icon .icon-pending { display: none; }
 		.req-summary.all-connected .summary-icon { color: var(--color-ok); }
 		.req-summary.all-connected .summary-icon .icon-ok { display: block; }
+		/* Hover/focus for pointer + keyboard; `.open` is the tap toggle (iOS Safari
+		   doesn't focus buttons on tap, so :focus-within alone won't show it there). */
+		.summary-tooltip { display: none; position: absolute; top: 100%; left: -12px; padding-top: 8px; width: min(300px, calc(100vw - 32px)); z-index: 20; }
+		.summary-info:hover .summary-tooltip, .summary-info:focus-within .summary-tooltip, .summary-info.open .summary-tooltip { display: block; }
+		.summary-tooltip-body { display: block; background: var(--color-card-bg); border: 1px solid var(--color-card-border); border-radius: var(--border-radius-card); box-shadow: var(--box-shadow-dialog); padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--color-label); }
+		.summary-tooltip-body a { color: var(--color-primary); font-weight: 600; text-decoration: none; white-space: nowrap; }
+		.summary-tooltip-body a:hover { text-decoration: underline; }
 		.summary-text { flex: 1; min-width: 0; font-size: 13px; color: var(--color-header); }
 
 		/* --- Credential row (shared by the single-account panel + dialog) --- */
@@ -170,9 +178,14 @@
 	<div class='shell' data-submitter-email='{{submitterEmail}}'>
 		{{#if useDialog}}
 			<div class='req-summary{{#if allConnected}} all-connected{{/if}}' id='req-summary'>
-				<span class='summary-icon'>
-					<svg class='icon-pending' width='17' height='17' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.3' aria-hidden='true'><circle cx='8' cy='8' r='6.7' /><path d='M8 7.3v3.5' stroke-linecap='round' /><circle cx='8' cy='5.1' r='.8' fill='currentColor' stroke='none' /></svg>
-					<svg class='icon-ok' width='17' height='17' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.3' aria-hidden='true'><circle cx='8' cy='8' r='6.7' /><path d='m5.2 8.2 1.9 1.9 3.7-4' stroke-linecap='round' stroke-linejoin='round' /></svg>
+				<span class='summary-info' id='summary-info'>
+					<button type='button' class='summary-icon' aria-describedby='summary-tooltip' aria-label='About the accounts this form uses'>
+						<svg class='icon-pending' width='17' height='17' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.3' aria-hidden='true'><circle cx='8' cy='8' r='6.7' /><path d='M8 7.3v3.5' stroke-linecap='round' /><circle cx='8' cy='5.1' r='.8' fill='currentColor' stroke='none' /></svg>
+						<svg class='icon-ok' width='17' height='17' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.3' aria-hidden='true'><circle cx='8' cy='8' r='6.7' /><path d='m5.2 8.2 1.9 1.9 3.7-4' stroke-linecap='round' stroke-linejoin='round' /></svg>
+					</button>
+					<span class='summary-tooltip' role='tooltip' id='summary-tooltip'>
+						<span class='summary-tooltip-body'>Submitting this form runs actions on your behalf, using accounts you connect. You can disconnect them at any time. <a href='https://docs.n8n.io/administer/manage-credentials/end-user-credentials' target='_blank' rel='noopener noreferrer'>Learn more</a></span>
+					</span>
 				</span>
 				<span class='summary-text' id='summary-text'>{{summaryText}}</span>
 				<button class='btn btn-primary' id='open-dialog'><span class='dot'></span><span class='label'>{{#if allConnected}}Manage{{else}}Connect{{/if}}</span></button>
@@ -454,6 +467,18 @@
 				// Click elsewhere closes any open menu.
 				document.querySelectorAll('.cred-menu.open').forEach(function (m) { m.classList.remove('open'); });
 			});
+
+			// Tap fallback for the info tooltip: hover/focus don't fire on touch
+			// (iOS Safari doesn't focus buttons on tap), so the button toggles it.
+			var summaryInfo = document.getElementById('summary-info');
+			if (summaryInfo) {
+				summaryInfo.querySelector('.summary-icon').addEventListener('click', function () {
+					summaryInfo.classList.toggle('open');
+				});
+				document.addEventListener('click', function (e) {
+					if (!summaryInfo.contains(e.target)) summaryInfo.classList.remove('open');
+				});
+			}
 
 			// Dialog (two or more accounts)
 			var overlay = document.getElementById('overlay');

@@ -49,6 +49,28 @@ describe('Confluence router', () => {
 		]);
 	});
 
+	it('dispatches attachment:getMany and pairs the emitted items', async () => {
+		apiRequest.mockResolvedValue({ results: [{ id: 'a1', title: 'notes.txt' }] });
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'attachment',
+				operation: 'getMany',
+				page: { mode: 'id', value: '9' },
+				returnAll: true,
+				download: false,
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/pages/9/attachments',
+			{},
+			{ limit: 250 },
+		);
+		expect(result).toEqual([[{ json: { id: 'a1', title: 'notes.txt' }, pairedItem: { item: 0 } }]]);
+	});
+
 	it('dispatches page:delete and returns the deletion report', async () => {
 		const result = await router.call(
 			mockExecuteCtx({

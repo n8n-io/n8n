@@ -27,6 +27,12 @@ const VERIFICATION_TIMEOUT_MS = 30_000;
 const MAX_ERROR_MESSAGE_LENGTH = 512;
 
 /**
+ * The probe only needs the call to succeed, not its text, but OpenAI's
+ * Responses API rejects `max_output_tokens` below 16.
+ */
+const VERIFICATION_MAX_OUTPUT_TOKENS = 16;
+
+/**
  * Providers can echo credentials back in error messages. Scrub known secret
  * shapes (API keys, bearer tokens, key=value pairs), drop URL query strings
  * (e.g. ?key=...), and cap the length.
@@ -135,7 +141,7 @@ export class InstanceAiVerificationService {
 			await generateText({
 				model: createModel(modelConfig, createAiProxyFetch(this.outboundHttp)),
 				prompt: 'Reply with OK.',
-				maxOutputTokens: 8,
+				maxOutputTokens: VERIFICATION_MAX_OUTPUT_TOKENS,
 				abortSignal: AbortSignal.timeout(VERIFICATION_TIMEOUT_MS),
 			});
 			return { ok: true, latencyMs: Math.round(performance.now() - startedAt) };
