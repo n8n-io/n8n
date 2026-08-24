@@ -10,6 +10,9 @@ import type { ModalDefinition } from '../types/modal';
 const modals = shallowReactive(new Map<string, ModalDefinition>());
 const listeners = new Set<(modals: Map<string, ModalDefinition>) => void>();
 
+/** Declarations, not registrations — deliberately not emptied by `clear()`. */
+const adHocKeyPrefixes = new Set<string>();
+
 export function getAll(): Map<string, ModalDefinition> {
 	return new Map(modals);
 }
@@ -44,6 +47,30 @@ export function getKeys(): string[] {
 
 export function has(key: string): boolean {
 	return modals.has(key);
+}
+
+/**
+ * Declare that keys starting with `prefix` are minted at runtime and will never
+ * be registered, so the unknown-key warning can tell them apart from a modal
+ * whose registration was forgotten.
+ */
+export function declareAdHocKeyPrefix(prefix: string): void {
+	adHocKeyPrefixes.add(prefix);
+}
+
+/**
+ * Whether `key` was minted from a declared ad-hoc prefix — either the bare
+ * prefix or the `<prefix>-<id>` form features build per row.
+ *
+ * Prefix matching is the trade this makes: a forgotten registration whose key
+ * happens to share a declared prefix goes unwarned.
+ */
+export function isAdHocKey(key: string): boolean {
+	for (const prefix of adHocKeyPrefixes) {
+		if (key === prefix || key.startsWith(`${prefix}-`)) return true;
+	}
+
+	return false;
 }
 
 export function subscribe(listener: (modals: Map<string, ModalDefinition>) => void): () => void {

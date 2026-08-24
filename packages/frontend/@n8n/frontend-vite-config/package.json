@@ -1,0 +1,25 @@
+{
+  "name": "@n8n/frontend-vite-config",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "peerDependencies": {
+    "vite": "catalog:"
+  },
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "typescript": "catalog:typescript",
+    "vite": "catalog:"
+  },
+  "main": "index.ts",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "clean": "rimraf .turbo",
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write .",
+    "format:check": "biome ci ."
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
+}

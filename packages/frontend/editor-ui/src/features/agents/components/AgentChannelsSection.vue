@@ -29,6 +29,7 @@ const props = withDefaults(
 		isPublished: false,
 		validationIssues: () => [],
 		simpleChannelSetup: false,
+		ensureAgentPersisted: undefined,
 	},
 );
 
@@ -122,6 +123,7 @@ async function loadChannelDetails() {
 
 onMounted(() => {
 	void loadChannelDetails();
+	agentsEventBus.on('agentUpdated', onExternalAgentUpdated);
 });
 
 function onChannelSetup(event: { agentId?: string; source?: string } | undefined) {
@@ -135,6 +137,17 @@ onBeforeUnmount(() => agentsEventBus.off('agentUpdated', onChannelSetup));
 
 watch([() => props.projectId, () => props.agentId], () => {
 	void loadChannelDetails();
+});
+
+// After IAI builds an agent we shold refetch credentials and channels
+function onExternalAgentUpdated(event?: { agentId?: string; source?: string }) {
+	if (event?.source === 'agent-builder') return;
+	if (event?.agentId && event.agentId !== props.agentId) return;
+	void loadChannelDetails();
+}
+
+onBeforeUnmount(() => {
+	agentsEventBus.off('agentUpdated', onExternalAgentUpdated);
 });
 
 function openChannelModal() {

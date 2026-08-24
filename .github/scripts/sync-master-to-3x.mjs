@@ -64,11 +64,23 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 
 import {
+	attempt,
+	assertNoMarkers,
+	assertTreeMatches,
+	isAncestor,
+	mergeTree,
+	runGit,
+} from './branch-replay.mjs';
+import {
 	conflictedFiles,
 	breakingShas,
 	resolveLogins,
 	buildOutputs,
 } from './sync-conflict-owners.mjs';
+
+// Re-exported so this module stays the single entry point for the master→3.x flow, tests
+// included. The implementations are branch-pair-agnostic and shared with the bundle replay.
+export { attempt, assertNoMarkers, assertTreeMatches, isAncestor, mergeTree };
 
 export const TARGET_BRANCH = '3.x';
 export const SYNC_BRANCH = 'sync/master-to-3x';
@@ -94,8 +106,8 @@ const BOT_NAME = 'n8n-assistant[bot]';
 const BOT_EMAIL = 'n8n-assistant[bot]@users.noreply.github.com';
 
 // Real command runners. Each takes an args array and returns trimmed stdout,
-// throwing on a non-zero exit (mirrors `set -e`). Injectable for tests.
-const runGit = (args, opts = {}) => execFileSync('git', args, { encoding: 'utf8', ...opts }).trim();
+// throwing on a non-zero exit (mirrors `set -e`). Injectable for tests. (`runGit` is
+// shared — see branch-replay.mjs.)
 const runGh = (args, opts = {}) => execFileSync('gh', args, { encoding: 'utf8', ...opts }).trim();
 const runPnpm = (args, opts = {}) =>
 	execFileSync('pnpm', args, { encoding: 'utf8', ...opts }).trim();
@@ -106,57 +118,10 @@ export function targetBranch(env = process.env) {
 	return env.SYNC_TARGET_BRANCH || TARGET_BRANCH;
 }
 
-// Run a command for its exit status: `{ ok, out }` instead of a throw. Used for the git
-// commands whose non-zero exit is an expected answer, not a failure. stderr is captured
-// rather than inherited, so an expected-to-fail probe doesn't spill into the run log.
-export function attempt(run, args, opts = {}) {
-	try {
-		return { ok: true, out: run(args, { stdio: ['ignore', 'pipe', 'pipe'], ...opts }) ?? '' };
-	} catch (error) {
-		const out = `${error.stdout ?? ''}\n${error.stderr ?? ''}`.trim();
-		return { ok: false, out };
-	}
-}
-
 // True when a previous conflict PR is still open — the halt gate.
 export function hasOpenConflictPr(gh, label = CONFLICT_LABEL) {
 	const out = gh(['pr', 'list', '--state', 'open', '--label', label, '--json', 'number']);
 	return JSON.parse(out || '[]').length > 0;
-}
-
-export function isAncestor(git, maybeAncestor, descendant) {
-	return attempt(git, ['merge-base', '--is-ancestor', maybeAncestor, descendant]).ok;
-}
-
-/**
- * The tree a merge of the two commits would produce — the definition of the content 3.x
- * should end up with, computed without touching the working tree.
- *
- * `ok: false` means the two sides genuinely conflict; `conflictedPaths` then names the
- * clashing files, and `tree` is still written (conflicted blobs carry their markers) —
- * it is the comparison baseline for the relaxed tree guard.
- */
-export function mergeTree(git, a, b) {
-	const res = attempt(git, ['merge-tree', '--write-tree', '--name-only', a, b]);
-	// Line 0 is the toplevel tree OID (written even on conflict); the lines up to the
-	// first blank line are the conflicted filenames (`--name-only`). Informational
-	// messages follow the blank line, but `attempt` folds stderr in too — filter both.
-	const lines = res.out.split('\n');
-	const tree = lines[0]?.trim() ?? '';
-	let conflictedPaths = [];
-	if (!res.ok) {
-		const blank = lines.indexOf('', 1);
-		const section = lines.slice(1, blank === -1 ? undefined : blank);
-		conflictedPaths = [
-			...new Set(section.filter((l) => l && !/^(CONFLICT|Auto-merging|warning)/.test(l))),
-		];
-	}
-	return {
-		ok: res.ok,
-		tree: res.ok || conflictedPaths.length ? tree : '',
-		conflictedPaths,
-		out: res.out,
-	};
 }
 
 // Split conflicted paths into mechanically-resolvable ones and real code conflicts.
@@ -267,40 +232,6 @@ export function rebaseResolvingMechanical({
 		res = attempt(git, empty ? ['rebase', '--skip'] : ['rebase', '--continue']);
 	}
 	return { ok: true, resolved: [...resolved] };
-}
-
-/**
- * The content guard for every push: whichever route produced HEAD, its tree must be exactly
- * what merging 3.x with master yields — except on `allowedPaths`, the mechanical files the
- * merge itself could not resolve (always derived from the merge-tree conflict list, never
- * from what the run happened to touch). With no `allowedPaths` this is exact equality.
- */
-export function assertTreeMatches(git, expectedTree, allowedPaths = []) {
-	const actual = git(['rev-parse', 'HEAD^{tree}']);
-	if (actual === expectedTree) return;
-	if (allowedPaths.length === 0) {
-		throw new Error(
-			`Replayed tree ${actual} does not match the merge tree ${expectedTree}; refusing to push.`,
-		);
-	}
-	const out = git(['diff-tree', '-r', '--name-only', '--no-renames', expectedTree, actual]);
-	const allowed = new Set(allowedPaths);
-	const violations = (out ? out.split('\n') : []).filter((p) => p && !allowed.has(p));
-	if (violations.length > 0) {
-		throw new Error(
-			`Replayed tree deviates from the merge tree on non-mechanical paths:\n${violations.join('\n')}\nrefusing to push.`,
-		);
-	}
-}
-
-// Conflict markers must never reach 3.x — nightly images build from it. git grep exits 0
-// with matches, 1 with none and >1 on error, so an error must not be read as "clean".
-export function assertNoMarkers(git, rev = 'HEAD') {
-	const found = attempt(git, ['grep', '-I', '-l', '-e', '^<<<<<<< ', '-e', '^>>>>>>> ', rev]);
-	if (found.ok)
-		throw new Error(`Refusing to continue: conflict markers present in ${rev}:\n${found.out}`);
-	if (found.out.includes('fatal:'))
-		throw new Error(`Could not scan ${rev} for conflict markers:\n${found.out}`);
 }
 
 /**

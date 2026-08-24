@@ -18,17 +18,20 @@ export interface ListWorkflowReviewActivityResponse {
 	hasMore: boolean;
 }
 
-export const WORKFLOW_REVIEW_COMMENT_MAX_LENGTH = 10_000;
+export const WORKFLOW_REVIEW_TEXT_MAX_LENGTH = 10_000;
+
+/** Shared by the comment body and the decision note: same cap, same control-character rule. */
+export const reviewTextSchema = z
+	.string()
+	.trim()
+	.min(1)
+	.max(WORKFLOW_REVIEW_TEXT_MAX_LENGTH)
+	// NUL cannot be stored in a Postgres text column at all, so it would turn user input
+	// into a 500. The rest of C0 is non-printing junk with no place in a comment body, and
+	// is rejected in the same pass. \n, \r and \t are deliberately allowed through.
+	// eslint-disable-next-line no-control-regex
+	.refine((v) => !/[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(v), 'Contains control characters');
 
 export class CreateWorkflowReviewCommentDto extends Z.class({
-	body: z
-		.string()
-		.trim()
-		.min(1)
-		.max(WORKFLOW_REVIEW_COMMENT_MAX_LENGTH)
-		// NUL cannot be stored in a Postgres text column at all, so it would turn user input
-		// into a 500. The rest of C0 is non-printing junk with no place in a comment body, and
-		// is rejected in the same pass. \n, \r and \t are deliberately allowed through.
-		// eslint-disable-next-line no-control-regex
-		.refine((v) => !/[\x00-\x08\x0B\x0C\x0E-\x1F]/.test(v), 'Body contains control characters'),
+	body: reviewTextSchema,
 }) {}

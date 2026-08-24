@@ -21,7 +21,10 @@ import assert from 'node:assert';
 
 import { loadMemory } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
-import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
+import {
+	getFailureType,
+	wrapLangChainParserError,
+} from '@utils/output_parsers/langchainParserError';
 import {
 	getOptionalOutputParser,
 	type N8nOutputParser,
@@ -414,7 +417,9 @@ export async function toolsAgentExecute(
 			batchResults.forEach((result, index) => {
 				const itemIndex = i + index;
 				if (result.status === 'rejected') {
-					const error = wrapLangChainParserError(result.reason, this.getNode(), itemIndex);
+					const error = wrapLangChainParserError(result.reason, this.getNode(), itemIndex, {
+						enrichNonParserErrors: true,
+					});
 					failedItems++;
 					if (this.continueOnFail()) {
 						returnData.push({
@@ -459,8 +464,7 @@ export async function toolsAgentExecute(
 
 		return [returnData];
 	} catch (error) {
-		failureType =
-			error instanceof Error ? error.name || error.constructor.name || 'Error' : typeof error;
+		failureType = getFailureType(error);
 		throw error;
 	} finally {
 		applyAgentTracingMetadata(this, {

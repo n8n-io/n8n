@@ -1,4 +1,5 @@
 import type { WorkflowSourceCompileFailureReason } from './workflow-source-compiler';
+import { isWorkflowEditorLockedError } from '../../errors/workflow-editor-locked.error';
 import { isWorkflowNotFoundError } from '../../errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import { createRemediation } from '../../workflow-loop/remediation';
@@ -58,12 +59,26 @@ export function createWorkflowModifiedExternallyRemediation(): RemediationMetada
 	});
 }
 
+export function createWorkflowLockedByEditorRemediation(): RemediationMetadata {
+	return createRemediation({
+		category: 'blocked',
+		shouldEdit: false,
+		reason: 'workflow_locked_by_editor',
+		guidance:
+			'The workflow could not be saved because someone is editing it in the n8n editor right now — saving would overwrite their work. Stop editing the source and tell the user to finish or close their editing session, then retry.',
+	});
+}
+
 export function createSaveFailureRemediation(
 	error: unknown,
 	hasBoundWorkflowId: boolean,
 ): RemediationMetadata {
 	if (error instanceof WorkflowSaveConflictError) {
 		return createWorkflowModifiedExternallyRemediation();
+	}
+
+	if (isWorkflowEditorLockedError(error)) {
+		return createWorkflowLockedByEditorRemediation();
 	}
 
 	const text = getFailureText(error);

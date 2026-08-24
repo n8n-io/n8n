@@ -349,7 +349,7 @@ export class WorkflowValidationService {
 	 * - A custom resolver (OAuth, Slack, …) keys on an external identity extracted
 	 *   from trigger data, so it needs a trigger with a context establishment hook.
 	 * - The default/system resolver keys on the n8n user identity, so it needs a
-	 *   manual, chat, or sub-workflow trigger.
+	 *   trigger that establishes it (manual, sub-workflow, Chat Hub chat, MCP or webhook with n8n user auth).
 	 */
 	async validateDynamicCredentials(
 		nodes: INode[],
@@ -403,10 +403,9 @@ export class WorkflowValidationService {
 		const { allTriggersProvideExternalIdentity, allTriggersProvideN8nIdentity } = triggers;
 
 		if (workflowResolverId === this.dynamicCredentialsProxy.getSystemResolverId()) {
-			// System resolver: every trigger must establish the n8n user identity. The form
-			// trigger is only listed while the form OAuth2 flag is enabled — without it a
-			// form establishes no identity, so listing it would advertise a fix that
-			// doesn't work.
+			// System resolver: every trigger must establish the n8n user identity. Chat and MCP only
+			// qualify in their identity-carrying configurations; form is only listed while the form
+			// OAuth2 flag is enabled, since without it a form establishes no identity.
 			if (allTriggersProvideN8nIdentity) return undefined;
 
 			const triggersList = this.getN8nUserAuthTriggersList();
@@ -419,15 +418,15 @@ export class WorkflowValidationService {
 	}
 
 	/**
-	 * Describes which triggers the system resolver currently accepts, for the
-	 * publish-error copy. Manual, chat, MCP, sub-workflow, and webhook triggers
-	 * always qualify; form only joins the list while the form OAuth2 flag is
-	 * enabled, mirroring `classifyTriggerIdentities`.
+	 * Describes which trigger configurations the system resolver currently accepts,
+	 * for the publish-error copy. Chat only qualifies when available in Chat Hub and
+	 * MCP only with n8n user auth (OAuth2); form only joins while the form OAuth2
+	 * flag is enabled. Mirrors `classifyTriggerIdentity`.
 	 */
 	private getN8nUserAuthTriggersList(): string {
-		const formTrigger = isFormOAuth2Enabled() ? 'form or ' : '';
+		const authTriggers = isFormOAuth2Enabled() ? 'MCP, form, or webhook' : 'MCP or webhook';
 
-		return `manual, chat, MCP, sub-workflow, and ${formTrigger}webhook triggers with n8n user authentication`;
+		return `manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and ${authTriggers} triggers with n8n user authentication`;
 	}
 
 	/** Collects the ids of all credentials referenced by enabled nodes. */
@@ -450,7 +449,7 @@ export class WorkflowValidationService {
 	 * - `allTriggersProvideExternalIdentity`: every enabled trigger provides an external
 	 *   identity (context hook, Chat Hub, sub-workflow).
 	 * - `allTriggersProvideN8nIdentity`: every enabled trigger provides the n8n user
-	 *   identity (manual/chat, Chat Hub, sub-workflow).
+	 *   identity (manual, Chat Hub, MCP with n8n OAuth2, sub-workflow).
 	 *
 	 * A single unsupported trigger disqualifies the whole workflow, so a manual trigger
 	 * cannot mask another trigger that can't establish identity. A workflow with no

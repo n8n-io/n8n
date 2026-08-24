@@ -4,6 +4,7 @@ import type {
 	Arg,
 	Controller,
 	DeprecationInfo,
+	ErrorResponse,
 	HandlerName,
 	Method,
 	ResponseDtoClass,
@@ -54,7 +55,7 @@ export interface ResolvedPublicApiRoute {
 	summary?: string;
 	description?: string;
 	tags?: string[];
-	errorResponses?: number[];
+	errorResponses?: ErrorResponse[];
 	deprecated?: DeprecationInfo;
 }
 

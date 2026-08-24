@@ -170,6 +170,21 @@ const evalTestCaseObjectSchema = z
 				}),
 			)
 			.optional(),
+		/**
+		 * Opts this case into the credential-setup BROWSER lane, and picks what the
+		 * browser talks to. Replaces the old tag-pair convention, which you had to
+		 * know the magic strings for and which failed silently when half-specified.
+		 *
+		 *   "anthropic" (any shipped fixture id) → hermetic run against a lookalike
+		 *                                          page served AS the real hostname
+		 *   "local"                              → REAL provider site in the
+		 *                                          developer's own Chrome
+		 *
+		 * Omitted → no browser lane. Absence never means "real internet"; that
+		 * requires choosing `local` explicitly. An unknown id fails the run with
+		 * the available ids rather than silently booting nothing.
+		 */
+		credentialFixture: z.string().min(1).optional(),
 		/** History restored before the live turn — one slot, `mode` says where it
 		 *  comes from. See `CaseSeedSchema`. */
 		seed: CaseSeedSchema.optional(),

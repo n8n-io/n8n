@@ -140,7 +140,10 @@ const questionsResumeSchema = instanceAiApprovalResumeSchema.extend({
 		.optional(),
 });
 
-const resumeSchema = z.union([confirmResumeSchema, questionsResumeSchema]);
+/** The questions shape is a superset of the plain-approval one, so it covers both
+ *  suspend kinds. Deliberately not a `z.union`: the plain-approval branch would match
+ *  a questions payload first and strip `answers` on the way through. */
+export const evalsResumeSchema = questionsResumeSchema;
 
 type ConfirmResume = z.infer<typeof confirmResumeSchema>;
 type QuestionsResume = z.infer<typeof questionsResumeSchema>;
@@ -328,7 +331,7 @@ export function createEvalsTool(context: InstanceAiContext) {
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)
-		.resume(resumeSchema)
+		.resume(evalsResumeSchema)
 		.handler(async (input: Input, ctx) => {
 			switch (input.action) {
 				case 'offer':

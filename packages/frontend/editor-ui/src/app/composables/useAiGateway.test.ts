@@ -61,7 +61,11 @@ describe('useAiGateway', () => {
 
 		it('should fetch and update balance and budget when enabled', async () => {
 			mockIsAiGatewayEnabled.value = true;
-			mockGetGatewayWallet.mockResolvedValue({ balance: 7, budget: 10 });
+			mockGetGatewayWallet.mockResolvedValue({
+				balance: 7,
+				budget: 10,
+				hasEverToppedUp: false,
+			});
 
 			const { fetchWallet, balance, budget } = useAiGateway();
 

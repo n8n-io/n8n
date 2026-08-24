@@ -70,6 +70,7 @@ type ModuleName =
 	| 'ldap'
 	| 'redaction'
 	| 'source-control'
+	| 'git-connections'
 	| 'token-exchange'
 	| 'workflow-reviews';
 

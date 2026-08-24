@@ -205,6 +205,7 @@ export async function createInstanceAgent(
 		licenseHints: context.licenseHints,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
+		projectId: context.projectId,
 		workspaceRoot:
 			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 				? orchestrationContext.workspaceRoot

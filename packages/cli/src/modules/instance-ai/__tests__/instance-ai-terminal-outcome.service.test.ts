@@ -130,6 +130,7 @@ type Deps = {
 		updateLast: Mock;
 	};
 	telemetry: { track: Mock };
+	errorReporter: { report: Mock };
 	logger: { warn: Mock; debug: Mock; error: Mock };
 	runState: { getRunIdsForMessageGroup: Mock; cancelThread: Mock };
 	suspendedThreads: { dropPendingConfirmationsForThread: Mock };
@@ -192,6 +193,7 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 			updateLast: vi.fn(async () => {}),
 		},
 		telemetry: { track: vi.fn() },
+		errorReporter: { report: vi.fn() },
 		logger: { warn: vi.fn(), debug: vi.fn(), error: vi.fn() },
 		runState: {
 			getRunIdsForMessageGroup: vi.fn(() => ['run-1']),
@@ -221,6 +223,7 @@ function createService(snapshotTree?: InstanceAiAgentNode): {
 		dbSnapshotStorage: deps.dbSnapshotStorage,
 		agentMemory: {},
 		telemetry: deps.telemetry,
+		errorReporter: deps.errorReporter,
 		logger: deps.logger,
 		runState: deps.runState,
 		suspendedThreads: deps.suspendedThreads,
@@ -462,6 +465,35 @@ describe('InstanceAiTerminalOutcomeService — terminal response guard wiring', 
 		deps.publishRunFinish('thread-a', 'run-1', 'completed');
 
 		expect(deps.eventBus.events.map((event) => event.type)).toEqual(['text-delta', 'run-finish']);
+	});
+
+	it('reports a silent completed run so the stall is not lost', async () => {
+		const { service, deps } = createService();
+
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+			messageGroupId: 'group-1',
+		});
+
+		expect(deps.errorReporter.report).toHaveBeenCalledWith(
+			expect.any(Error),
+			expect.objectContaining({
+				component: 'instance-ai-terminal-guard',
+				severity: 'warning',
+				threadId: 'thread-a',
+				runId: 'run-1',
+			}),
+		);
+	});
+
+	it('does not report a completed run when silence is expected', async () => {
+		const { service, deps } = createService();
+
+		await service.evaluateTerminalResponse('thread-a', 'run-1', 'completed', {
+			messageGroupId: 'group-1',
+			suppressCompletedFallback: true,
+		});
+
+		expect(deps.errorReporter.report).not.toHaveBeenCalled();
 	});
 
 	it('does not publish completed fallback output when silence is expected', async () => {

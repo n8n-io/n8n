@@ -348,6 +348,7 @@ describe('createScheduler materialize', () => {
 			maxAttempts: 3,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: null,
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -393,6 +394,7 @@ describe('createScheduler materialize', () => {
 			maxAttempts: 3,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: null,
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -1045,6 +1047,7 @@ describe('createScheduler tracing', () => {
 			maxAttempts: 3,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: null,
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -1097,6 +1100,7 @@ describe('createScheduler tracing', () => {
 			maxAttempts: 3,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: null,
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -1392,6 +1396,7 @@ describe('createScheduler metrics', () => {
 			maxAttempts: 3,
 			misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 			misfireGraceSeconds: 60,
+			ownerKey: null,
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.retireSuperseded.mockResolvedValue(0);
@@ -1498,6 +1503,23 @@ describe('createScheduler metrics', () => {
 		});
 		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
 		expect(metrics.recordDeadLettered).not.toHaveBeenCalled();
+	});
+
+	it('maps a handler that finished after losing its lease onto a lease-lost metric', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const { scheduler, taskStore } = makeScheduler({ metrics });
+		scheduler.registerTaskHandler('test-task', { execute: vi.fn().mockResolvedValue(undefined) });
+		taskStore.claimDueTasks.mockResolvedValue([claimedTask()]);
+		taskStore.beginDispatch.mockResolvedValue(1);
+		// The lease was reclaimed while the handler ran: the terminal write matches no row.
+		taskStore.completeTask.mockResolvedValue(0);
+
+		await scheduler.execute();
+
+		await vi.waitFor(() => {
+			expect(metrics.recordLeaseLost).toHaveBeenCalledWith('test-task');
+		});
+		expect(metrics.recordFireOutcome).not.toHaveBeenCalled();
 	});
 
 	it('does not let a throwing metrics sink break a pass', async () => {

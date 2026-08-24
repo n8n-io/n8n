@@ -160,6 +160,7 @@ import IconLucideInfo from '~icons/lucide/info';
 import IconLucideItalic from '~icons/lucide/italic';
 import IconLucideKeyRound from '~icons/lucide/key-round';
 import IconLucideLanguages from '~icons/lucide/languages';
+import IconLucideLaptop from '~icons/lucide/laptop';
 import IconLucideLayers from '~icons/lucide/layers';
 import IconLucideLayoutTemplate from '~icons/lucide/layout-template';
 import IconLucideLightbulb from '~icons/lucide/lightbulb';
@@ -200,6 +201,7 @@ import IconLucidePause from '~icons/lucide/pause';
 import IconLucidePen from '~icons/lucide/pen';
 import IconLucidePencil from '~icons/lucide/pencil';
 import IconLucidePencilOff from '~icons/lucide/pencil-off';
+import IconLucidePictureInPicture2 from '~icons/lucide/picture-in-picture-2';
 import IconLucidePin from '~icons/lucide/pin';
 import IconLucidePlay from '~icons/lucide/play';
 import IconLucidePlug from '~icons/lucide/plug';
@@ -273,6 +275,7 @@ import IconLucideVault from '~icons/lucide/vault';
 import IconLucideVideo from '~icons/lucide/video';
 import IconLucideVolume2 from '~icons/lucide/volume-2';
 import IconLucideVolumeX from '~icons/lucide/volume-x';
+import IconLucideWallet from '~icons/lucide/wallet';
 import IconLucideWandSparkles from '~icons/lucide/wand-sparkles';
 import IconLucideWaypoints from '~icons/lucide/waypoints';
 import IconLucideWorkflow from '~icons/lucide/workflow';
@@ -663,6 +666,7 @@ export const updatedIconSet = {
 	italic: IconLucideItalic,
 	'key-round': IconLucideKeyRound,
 	languages: IconLucideLanguages,
+	laptop: IconLucideLaptop,
 	layers: IconLucideLayers,
 	'layout-template': IconLucideLayoutTemplate,
 	lightbulb: IconLucideLightbulb,
@@ -701,6 +705,7 @@ export const updatedIconSet = {
 	pen: IconLucidePen,
 	pencil: IconLucidePencil,
 	'pencil-off': IconLucidePencilOff,
+	'picture-in-picture-2': IconLucidePictureInPicture2,
 	pin: IconLucidePin,
 	play: IconLucidePlay,
 	plug: IconLucidePlug,
@@ -771,6 +776,7 @@ export const updatedIconSet = {
 	video: IconLucideVideo,
 	'volume-2': IconLucideVolume2,
 	'volume-x': IconLucideVolumeX,
+	wallet: IconLucideWallet,
 	'wand-sparkles': IconLucideWandSparkles,
 	waypoints: IconLucideWaypoints,
 	workflow: IconLucideWorkflow,

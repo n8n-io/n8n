@@ -17,6 +17,8 @@ interface ExportFlags {
 	includeVariableValues?: string;
 	includeTags?: string;
 	missingWorkflowDependencyPolicy?: string;
+	workflowVersionPolicy?: string;
+	credentialExportPolicy?: string;
 }
 
 /** The command methods we stub to isolate behaviour from oclif/networking. */
@@ -130,6 +132,81 @@ describe('package export command', () => {
 			includeVariableValues: true,
 			includeTags: true,
 			missingWorkflowDependencyPolicy: 'reference-only',
+		});
+	});
+
+	it('forwards a non-default workflow version policy for workflows and folders', async () => {
+		const { command, exportPackage } = stubCommand({
+			workflowId: ['wf-1'],
+			folderId: ['fld-1'],
+			output: '/tmp/mixed.n8np',
+			workflowVersionPolicy: 'published-strict',
+		});
+
+		await command.run();
+
+		expect(exportPackage).toHaveBeenCalledWith({
+			workflowIds: ['wf-1'],
+			folderIds: ['fld-1'],
+			includeVariableValues: true,
+			includeTags: true,
+			missingWorkflowDependencyPolicy: 'fail',
+			workflowVersionPolicy: 'published-strict',
+		});
+	});
+
+	it('forwards a non-default workflow version policy for projects', async () => {
+		const { command, exportPackage } = stubCommand({
+			projectId: ['proj-1'],
+			output: '/tmp/projects.n8np',
+			workflowVersionPolicy: 'ignore-unpublished',
+		});
+
+		await command.run();
+
+		expect(exportPackage).toHaveBeenCalledWith({
+			projectIds: ['proj-1'],
+			includeVariableValues: true,
+			includeTags: true,
+			missingWorkflowDependencyPolicy: 'fail',
+			workflowVersionPolicy: 'ignore-unpublished',
+		});
+	});
+
+	it('forwards a non-default credential export policy for workflows and folders', async () => {
+		const { command, exportPackage } = stubCommand({
+			workflowId: ['wf-1'],
+			output: '/tmp/team.n8np',
+			credentialExportPolicy: 'no-values',
+		});
+
+		await command.run();
+
+		expect(exportPackage).toHaveBeenCalledWith({
+			workflowIds: ['wf-1'],
+			folderIds: [],
+			includeVariableValues: true,
+			includeTags: true,
+			missingWorkflowDependencyPolicy: 'fail',
+			credentialExportPolicy: 'no-values',
+		});
+	});
+
+	it('forwards a non-default credential export policy for projects', async () => {
+		const { command, exportPackage } = stubCommand({
+			projectId: ['proj-1'],
+			output: '/tmp/projects.n8np',
+			credentialExportPolicy: 'no-values',
+		});
+
+		await command.run();
+
+		expect(exportPackage).toHaveBeenCalledWith({
+			projectIds: ['proj-1'],
+			includeVariableValues: true,
+			includeTags: true,
+			missingWorkflowDependencyPolicy: 'fail',
+			credentialExportPolicy: 'no-values',
 		});
 	});
 

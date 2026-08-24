@@ -108,6 +108,54 @@ describe('confluenceApiRequest', () => {
 		expect(error?.messages).toContain('boom');
 	});
 
+	it("surfaces Atlassian's v2 error envelope instead of the generic status message", async () => {
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockRejectedValueOnce({
+				message: 'Request failed with status code 404',
+				response: {
+					status: 404,
+					data: {
+						errors: [
+							{
+								status: 404,
+								code: 'NOT_FOUND',
+								title: 'Page not found',
+								detail: 'No page with this ID exists',
+							},
+						],
+					},
+				},
+			});
+
+		const error = await confluenceApiRequest
+			.call(ctx, 'GET', '/wiki/api/v2/pages/1')
+			.then(() => null)
+			.catch((thrown: NodeApiError) => thrown);
+
+		expect(error).toBeInstanceOf(NodeApiError);
+		expect(error?.message).toBe('Page not found');
+		expect(error?.description).toBe('No page with this ID exists');
+	});
+
+	it('falls back to the generic wrap when the envelope carries no usable title', async () => {
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockRejectedValueOnce({
+				message: 'boom',
+				response: { status: 500, data: { errors: [{ title: '' }] } },
+			});
+
+		const error = await confluenceApiRequest
+			.call(ctx, 'GET', '/wiki/api/v2/pages')
+			.then(() => null)
+			.catch((thrown: NodeApiError) => thrown);
+
+		expect(error).toBeInstanceOf(NodeApiError);
+		expect(error?.httpCode).toBe('500');
+		expect(error?.messages).toContain('boom');
+	});
+
 	it('surfaces the cloudId lookup error when no site matches', async () => {
 		ctx.getCredentials.mockResolvedValue({ domain: 'https://missing.atlassian.net' });
 

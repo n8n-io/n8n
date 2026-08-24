@@ -1,5 +1,3 @@
-process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
-
 import {
 	createTeamProject,
 	createWorkflow,
@@ -21,6 +19,7 @@ import {
 import { Container } from '@n8n/di';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { EventService } from '@/events/event.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -67,7 +66,6 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 	testServer.license.enable('feat:workflowReviews');
 
 	await testDb.truncate([
@@ -162,6 +160,8 @@ async function getActivity(agent: SuperAgentTest, requestId: string, limit?: num
 describe('Commenting on a review', () => {
 	test('shows a comment in the feed the instant its writer posts it', async () => {
 		const { request } = await seedReviewInTeamProject(member);
+		// Spied rather than mocked: the real container's listeners must keep running.
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
 
 		const post = await memberAgent
 			.post(`/workflow-review-requests/${request.id}/comments`)
@@ -184,6 +184,11 @@ describe('Commenting on a review', () => {
 			createdBy: expect.objectContaining({ id: member.id }),
 			messages: [expect.objectContaining({ body: 'Looks good to me' })],
 		});
+		// The comment body never leaves the feed.
+		expect(emit).toHaveBeenCalledWith('workflow-review-comment-created', {
+			user: expect.objectContaining({ id: member.id }),
+			workflowReviewRequestId: request.id,
+		});
 	});
 
 	test('lets a reviewer who can approve the review comment on it', async () => {
@@ -203,39 +208,24 @@ describe('Commenting on a review', () => {
 		expect(detail.body.data.viewerCanDecide).toBe(true);
 	});
 
-	test('lets a reader who cannot approve read the feed but not post to it', async () => {
-		// The review lives in teamProject (where member may publish) while the workflow
-		// moved to a project member can only read.
-		const destinationProject = await createTeamProject('Destination Project', owner);
-		await linkUserToProject(member, destinationProject, 'project:viewer');
-		const workflow = await createWorkflow({}, destinationProject);
-		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
-		const request = await seedRequest(workflow.id, 'version-pinned', owner);
+	// Every viewer is an admin, an author, or an assigned reviewer, so a reader who
+	// cannot comment cannot reach a review either. The eligibility service unit tests
+	// cover what such a viewer would get.
 
-		await getActivity(memberAgent, request.id);
-		const detail = await memberAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
-		expect(detail.body.data.viewerCanComment).toBe(false);
-
-		await memberAgent
-			.post(`/workflow-review-requests/${request.id}/comments`)
-			.send({ body: 'Can I?' })
-			.expect(403);
-	});
-
-	test('refuses a requester who can no longer read the workflow under review', async () => {
+	test('hides the review from a requester who can no longer read the workflow under review', async () => {
 		const destinationProject = await createTeamProject('Out Of Reach', owner);
 		const workflow = await createWorkflow({}, destinationProject);
 		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-pinned' });
 		const request = await seedRequest(workflow.id, 'version-pinned', viewer);
 
-		// The requester still reads their own review, but that alone is not a write right
-		const detail = await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(200);
-		expect(detail.body.data.viewerCanComment).toBe(false);
-
+		// Seeing a review requires still holding read on what it reviews — the feed
+		// and the comment box disappear together with the review itself.
+		await viewerAgent.get(`/workflow-review-requests/${request.id}`).expect(404);
+		await viewerAgent.get(`/workflow-review-requests/${request.id}/activity`).expect(404);
 		await viewerAgent
 			.post(`/workflow-review-requests/${request.id}/comments`)
 			.send({ body: 'Still here' })
-			.expect(403);
+			.expect(404);
 	});
 
 	test('lets a requester downgraded to view-only keep commenting on their own review', async () => {
@@ -257,6 +247,11 @@ describe('Commenting on a review', () => {
 
 	test('refuses everyone once the reviewed workflow is deleted, but keeps the feed readable', async () => {
 		const { workflow, request } = await seedReviewInTeamProject(owner);
+		// Member reads through their reviewer assignment; owner through the admin scope
+		await Container.get(WorkflowReviewRequestReviewerRepository).addReviewers(
+			{ workflowReviewRequestId: request.id, userIds: [member.id] },
+			{},
+		);
 		await ownerAgent
 			.post(`/workflow-review-requests/${request.id}/comments`)
 			.send({ body: 'Before the deletion' })
@@ -290,26 +285,31 @@ describe('Commenting on a review', () => {
 			.expect(404);
 	});
 
-	test.each(['approved', 'closed'] as const)(
-		'keeps existing comments visible and still accepts new ones on a %s review',
-		async (settled) => {
+	// Whatever closed the review — an approval or a lifecycle close — the outcome is the
+	// same: the feed stays readable, new comments are refused with a conflict.
+	test.each([
+		['approved', { state: 'closed', decision: 'approved' }],
+		['lifecycle-closed', { state: 'closed' }],
+	] as const)(
+		'keeps existing comments visible but refuses new ones on a %s review',
+		async (_close, update) => {
 			const { request } = await seedReviewInTeamProject(owner);
 			await ownerAgent
 				.post(`/workflow-review-requests/${request.id}/comments`)
-				.send({ body: 'Before it settled' })
+				.send({ body: 'Before it closed' })
 				.expect(201);
-			await requestRepository.update(
-				request.id,
-				settled === 'approved' ? { decision: 'approved' } : { state: 'closed' },
-			);
+			await requestRepository.update(request.id, update);
 
 			const feed = await getActivity(ownerAgent, request.id);
 			expect(feed.data).toHaveLength(1);
 
 			await ownerAgent
 				.post(`/workflow-review-requests/${request.id}/comments`)
-				.send({ body: 'After it settled' })
-				.expect(201);
+				.send({ body: 'After it closed' })
+				.expect(409);
+
+			// Nothing was written: the refusal happened before the comment, not after.
+			expect((await getActivity(ownerAgent, request.id)).data).toHaveLength(1);
 		},
 	);
 
@@ -362,6 +362,241 @@ describe('Commenting on a review', () => {
 	});
 });
 
+describe('Recording the review lifecycle in the feed', () => {
+	/** Two history versions so the review can be re-pinned from one to the other. */
+	async function createReviewableWorkflow() {
+		const workflow = await createWorkflow({ name: 'Reviewed workflow' }, teamProject);
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-1' });
+		await createWorkflowHistoryItem(workflow.id, { versionId: 'version-2' });
+		return workflow;
+	}
+
+	/** Opened by `member`, so `owner` is free to decide on it without an admin override. */
+	async function openReview(workflowId: string, workflowVersionId = 'version-1') {
+		const response = await memberAgent
+			.post('/workflow-review-requests')
+			.send({
+				title: 'Please review',
+				workflows: [{ workflowId, workflowVersionId, workflowVersionName: 'Release candidate' }],
+				reviewerUserIds: [owner.id],
+			})
+			.expect(201);
+		return response.body.data.id as string;
+	}
+
+	const entryTypes = (feed: { data: FeedEntry[] }) => feed.data.map((entry) => entry.type);
+
+	test('shows who opened the review and which version they submitted', async () => {
+		const workflow = await createReviewableWorkflow();
+
+		const requestId = await openReview(workflow.id);
+
+		const feed = await getActivity(memberAgent, requestId);
+		expect(feed.data).toHaveLength(1);
+		expect(feed.data[0]).toMatchObject({
+			type: 'review.opened',
+			typeVersion: 1,
+			createdBy: expect.objectContaining({ id: member.id }),
+		});
+		expect(feed.data[0].data).toEqual({
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+		});
+	});
+
+	test('records the note and the reviewed version when a reviewer requests changes', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${requestId}/decision`)
+			.send({ decision: 'changes_requested', note: 'Please rename the node' })
+			.expect(200);
+
+		const feed = await getActivity(ownerAgent, requestId);
+		expect(entryTypes(feed)).toEqual(['review.opened', 'review.changes_requested']);
+		expect(feed.data[1]).toMatchObject({
+			createdBy: expect.objectContaining({ id: owner.id }),
+		});
+		expect(feed.data[1].data).toEqual({
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+			note: 'Please rename the node',
+		});
+	});
+
+	test('refuses to request changes without a note, and records nothing', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${requestId}/decision`)
+			.send({ decision: 'changes_requested' })
+			.expect(400);
+
+		expect(entryTypes(await getActivity(ownerAgent, requestId))).toEqual(['review.opened']);
+		expect(await requestRepository.findById(requestId, {})).toMatchObject({
+			state: 'open',
+			decision: 'pending',
+		});
+	});
+
+	test('records the note a reviewer leaves when they approve', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${requestId}/decision`)
+			.send({ decision: 'approved', note: 'Ships as is' })
+			.expect(200);
+
+		const feed = await getActivity(ownerAgent, requestId);
+		// The approval auto-publishes the pinned version, so its record follows.
+		expect(entryTypes(feed)).toEqual(['review.opened', 'review.approved', 'workflow.published']);
+		expect(feed.data[1].data).toEqual({
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+			note: 'Ships as is',
+		});
+	});
+
+	test('records an approval left without a note as having none', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${requestId}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		const feed = await getActivity(ownerAgent, requestId);
+		// `null`, not a missing key: "no note given" and "the payload did not parse" are
+		// different things on an audit record.
+		expect(feed.data[1].data).toEqual({
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+			note: null,
+		});
+	});
+
+	test('still names the workflow an approved version came from after that workflow is deleted', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${requestId}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		await workflowEntityRepository.delete(workflow.id);
+
+		// The pin cascades away with the workflow, so the entry is the only record left of which
+		// version was approved.
+		expect(await workflowRepository.findByRequestId(requestId, {})).toEqual([]);
+
+		const feed = await getActivity(ownerAgent, requestId);
+		expect(feed.data[1].data).toEqual({
+			workflowVersions: [{ workflowId: workflow.id, workflowVersionId: 'version-1' }],
+			note: null,
+		});
+	});
+
+	test('records the version a re-pinned review moved from and to, scoped to that workflow', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${requestId}/update-version`)
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: 'version-2',
+				workflowVersionName: 'Second attempt',
+			})
+			.expect(200);
+
+		const feed = await getActivity(memberAgent, requestId);
+		expect(entryTypes(feed)).toEqual(['review.opened', 'review.version_updated']);
+		// In `data`, never a column: a scoping column would cascade, so a workflow delete would
+		// take the entry with it.
+		expect(feed.data[1].data).toEqual({
+			workflowId: workflow.id,
+			fromWorkflowVersionId: 'version-1',
+			toWorkflowVersionId: 'version-2',
+		});
+	});
+
+	test('keeps a version update in the feed after its workflow is deleted', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${requestId}/update-version`)
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: 'version-2',
+				workflowVersionName: 'Second attempt',
+			})
+			.expect(200);
+
+		// Straight from the repository, as a folder-hierarchy cascade does, so nothing but the
+		// database's own cascades decides what survives.
+		await workflowEntityRepository.delete(workflow.id);
+
+		const feed = await getActivity(memberAgent, requestId);
+		expect(entryTypes(feed)).toEqual(['review.opened', 'review.version_updated']);
+		expect(feed.data[1].data).toMatchObject({ workflowId: workflow.id });
+	});
+
+	test('records nothing when a review is re-pinned to the version it already covers', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+
+		await memberAgent
+			.post(`/workflow-review-requests/${requestId}/update-version`)
+			.send({
+				workflowId: workflow.id,
+				workflowVersionId: 'version-1',
+				workflowVersionName: 'Renamed only',
+			})
+			.expect(200);
+
+		expect(entryTypes(await getActivity(memberAgent, requestId))).toEqual(['review.opened']);
+	});
+
+	test('leaves the review undecided when its feed entry cannot be written', async () => {
+		const workflow = await createReviewableWorkflow();
+		const requestId = await openReview(workflow.id);
+		vi.spyOn(activityRepository, 'createActivity').mockRejectedValueOnce(new Error('write failed'));
+
+		await ownerAgent
+			.post(`/workflow-review-requests/${requestId}/decision`)
+			.send({ decision: 'approved' })
+			.expect(500);
+
+		expect(await requestRepository.findById(requestId, {})).toMatchObject({
+			state: 'open',
+			decision: 'pending',
+		});
+		expect(entryTypes(await getActivity(ownerAgent, requestId))).toEqual(['review.opened']);
+	});
+
+	// Only a stored row can be malformed, so these are seeded past the write union.
+	test.each([
+		['a decision whose payload is not an object', 'review.changes_requested', 'oops'],
+		['a close with a reason this version does not know', 'review.closed', { reason: 'nope' }],
+		['a version update missing its version ids', 'review.version_updated', { from: 1 }],
+		['an opening entry written in an older shape', 'review.opened', { index: 1 }],
+	])('serves %s without its details rather than failing the feed', async (_label, type, data) => {
+		const { request } = await seedReviewInTeamProject(owner);
+		await activityRepository.createActivity(
+			{ workflowReviewRequestId: request.id, type, data, createdById: owner.id } as never,
+			{},
+		);
+
+		const feed = await getActivity(ownerAgent, request.id);
+
+		expect(feed.data).toHaveLength(1);
+		expect(feed.data[0].type).toBe(type);
+		expect(feed.data[0].data).toBeNull();
+	});
+});
+
 describe('Reading the activity feed', () => {
 	/** Non-comment entries, cheap to seed and enough to pin the paging arithmetic. */
 	async function seedEntries(workflowReviewRequestId: string, count: number) {
@@ -371,7 +606,7 @@ describe('Reading the activity feed', () => {
 				{
 					workflowReviewRequestId,
 					type: 'review.opened',
-					data: { index },
+					data: { workflowVersions: [] },
 					createdById: owner.id,
 				},
 				{},
@@ -495,10 +730,14 @@ describe('Reading the activity feed', () => {
 		]);
 	});
 
-	// The owner reaches every review through global `workflow:publish`, which short-circuits the
-	// project lookup. Only a project member exercises the project-scoped path.
-	test('shows the feed to a project member who can publish there', async () => {
+	// The owner reaches every review through the admin scope, which short-circuits the
+	// project lookup. Only an assigned reviewer exercises the involvement path.
+	test('shows the feed to an assigned reviewer', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
+		await Container.get(WorkflowReviewRequestReviewerRepository).addReviewers(
+			{ workflowReviewRequestId: request.id, userIds: [member.id] },
+			{},
+		);
 		const [id] = await seedEntries(request.id, 1);
 
 		const feed = await getActivity(memberAgent, request.id);
@@ -508,7 +747,10 @@ describe('Reading the activity feed', () => {
 
 	test('shows a non-comment activity entry with its details intact and no messages', async () => {
 		const { request } = await seedReviewInTeamProject(owner);
-		const data = { workflowVersionIds: ['version-pinned'], note: 'needs work' };
+		const data = {
+			workflowVersions: [{ workflowId: 'workflow-reviewed', workflowVersionId: 'version-pinned' }],
+			note: 'needs work',
+		};
 		await activityRepository.createActivity(
 			{
 				workflowReviewRequestId: request.id,

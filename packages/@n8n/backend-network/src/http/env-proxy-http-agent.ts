@@ -13,8 +13,10 @@ type HttpProxyReqOpts = HttpAddRequestArgs[1];
 /**
  * `http.Agent` that delegates per-request env-proxy routing and caching to a shared {@link EnvProxyRouter}.
  *
- * The optional SSRF `lookup` is applied to the direct path only
- * (behind a proxy it would resolve the proxy host, so the proxy validates the target).
+ * The optional SSRF `lookup` is applied to the direct path only.
+ * A proxy named by the environment belongs to the deployment rather than to a request.
+ * The policy that decides which targets a workflow may reach does not decide such a
+ * proxy (see `buildNodeAgents`).
  *
  * Also backs `installGlobalProxyAgent` (http-proxy.ts), keeping a single env-proxy agent implementation.
  */

@@ -1,7 +1,6 @@
 import type { BuiltTool } from '../../types/sdk/tool';
 import type { WorkspaceFilesystem, WorkspaceSandbox } from '../types';
 import { createAppendFileTool } from './append-file';
-import { createBatchStrReplaceFileTool } from './batch-str-replace-file';
 import { createCopyFileTool } from './copy-file';
 import { createDeleteFileTool } from './delete-file';
 import { createExecuteCommandTool } from './execute-command';
@@ -26,7 +25,6 @@ export const CORE_WORKSPACE_TOOL_NAMES: ReadonlySet<string> = new Set([
 	'workspace_read_tool_result',
 	'workspace_write_file',
 	'workspace_str_replace_file',
-	'workspace_batch_str_replace_file',
 	'workspace_execute_command',
 ]);
 
@@ -37,7 +35,6 @@ export function createWorkspaceTools(workspace: WorkspaceLike): BuiltTool[] {
 		tools.push(createReadFileTool(workspace.filesystem));
 		tools.push(createReadToolResultTool(workspace.filesystem));
 		tools.push(createStrReplaceFileTool(workspace.filesystem));
-		tools.push(createBatchStrReplaceFileTool(workspace.filesystem));
 		tools.push(createWriteFileTool(workspace.filesystem));
 		tools.push(createListFilesTool(workspace.filesystem));
 		tools.push(createFileStatTool(workspace.filesystem));

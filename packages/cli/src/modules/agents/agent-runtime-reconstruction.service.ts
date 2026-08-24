@@ -49,6 +49,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
+import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import {
 	AgentSandboxRuntimeService,
 	sanitizeSandboxErrorDetail,
@@ -135,6 +136,7 @@ export interface ReconstructAgentRuntimeParams {
 	user?: User;
 	/** Runtime seams inherited from the delegating parent run (see {@link AgentRuntimeInstrumentation}). */
 	instrumentation?: AgentRuntimeInstrumentation;
+	sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 }
 
 async function getChatIntegrationToolServices() {
@@ -195,6 +197,7 @@ export class AgentRuntimeReconstructionService {
 		user?: User,
 		instrumentation?: AgentRuntimeInstrumentation,
 		workflowToolExecutionMode: WorkflowToolExecutionMode = 'manual',
+		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		let config = agentEntity.schema;
 		if (!config) {
@@ -242,6 +245,7 @@ export class AgentRuntimeReconstructionService {
 			subAgentDelegation,
 			user,
 			instrumentation,
+			sandboxPrincipalHash,
 		});
 	}
 
@@ -355,6 +359,7 @@ export class AgentRuntimeReconstructionService {
 		subAgentDelegation: SubAgentDelegationConfig;
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
+		sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 	}): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const {
 			config,
@@ -373,6 +378,7 @@ export class AgentRuntimeReconstructionService {
 			subAgentDelegation,
 			user,
 			instrumentation,
+			sandboxPrincipalHash,
 		} = options;
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
@@ -454,6 +460,7 @@ export class AgentRuntimeReconstructionService {
 			credentialIntegrations,
 			user,
 			instrumentation,
+			sandboxPrincipalHash,
 		});
 
 		return { agent: reconstructed, toolRegistry: buildToolRegistry(resolvedTools) };
@@ -579,6 +586,7 @@ export class AgentRuntimeReconstructionService {
 		credentialIntegrations: AgentIntegrationConfig[];
 		user?: User;
 		instrumentation?: AgentRuntimeInstrumentation;
+		sandboxPrincipalHash?: AgentSandboxPrincipalHash;
 	}): Promise<void> {
 		const {
 			agent,
@@ -595,13 +603,25 @@ export class AgentRuntimeReconstructionService {
 			credentialIntegrations,
 			user,
 			instrumentation,
+			sandboxPrincipalHash,
 		} = params;
 
 		agent.tool(createGetEnvironmentTool());
 
 		if (runtimeProfile !== 'inline' && this.agentSandboxRuntimeService.isEnabled()) {
+			if (!sandboxPrincipalHash) {
+				throw new UserError(
+					'Agent workspace scope is missing and the runtime cannot be reconstructed',
+				);
+			}
 			try {
-				agent.workspace(await this.agentWorkspaceService.getAgentWorkspace(projectId, agentId));
+				agent.workspace(
+					await this.agentWorkspaceService.getAgentWorkspace(
+						projectId,
+						agentId,
+						sandboxPrincipalHash,
+					),
+				);
 			} catch (error) {
 				this.logger.warn('Failed to attach agent workspace', {
 					projectId,

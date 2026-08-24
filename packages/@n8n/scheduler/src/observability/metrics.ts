@@ -15,6 +15,11 @@ export interface SchedulerMetrics {
 	recordRetry(taskType: string): void;
 	/** Delay between when a task was due (`scheduledFor`) and when it actually fired. */
 	observeDispatchLagSeconds(taskType: string, seconds: number): void;
+	/**
+	 * A handler finished after its lease was reclaimed, so another instance may
+	 * have run the same occurrence concurrently.
+	 */
+	recordLeaseLost(taskType: string): void;
 
 	/** Outcome of one materialization pass. */
 	recordMaterialized(occurrences: number, deferredJobs: number): void;
@@ -40,6 +45,7 @@ export const noopMetrics: SchedulerMetrics = {
 	recordFireOutcome() {},
 	recordRetry() {},
 	observeDispatchLagSeconds() {},
+	recordLeaseLost() {},
 	recordMaterialized() {},
 	recordMisfired() {},
 	recordRetired() {},

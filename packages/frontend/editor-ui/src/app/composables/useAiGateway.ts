@@ -13,6 +13,7 @@ export function useAiGateway() {
 
 	const balance = computed(() => aiGatewayStore.balance);
 	const budget = computed(() => aiGatewayStore.budget);
+	const creditsLabelKey = computed(() => aiGatewayStore.creditsLabelKey);
 	const fetchError = computed(() => aiGatewayStore.fetchError);
 
 	const isEnabled = computed(() => settingsStore.isAiGatewayEnabled);
@@ -59,6 +60,7 @@ export function useAiGateway() {
 		isEnabled,
 		balance,
 		budget,
+		creditsLabelKey,
 		fetchError,
 		fetchConfig,
 		fetchWallet,
