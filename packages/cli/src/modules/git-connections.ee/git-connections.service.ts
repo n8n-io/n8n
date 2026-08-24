@@ -64,8 +64,6 @@ export class GitConnectionsService {
 		this.logger = this.logger.scoped('git-connections');
 	}
 
-	private readonly authDeps = gitAuthDeps(this.gitService, this.cipher);
-
 	async create(input: CreateGitConnectionDto) {
 		this.gitService.validateRepositoryUrl(input.repositoryUrl, input.connectionType);
 		if (input.branchName) await this.gitService.validateBranchName(input.branchName);
@@ -82,7 +80,11 @@ export class GitConnectionsService {
 			keyGeneratorType: null,
 			baseCommit: null,
 		});
-		const auth = await computeAuthenticationUpdate(emptyGitAuthMaterial(), input, this.authDeps);
+		const auth = await computeAuthenticationUpdate(
+			emptyGitAuthMaterial(),
+			input,
+			gitAuthDeps(this.gitService, this.cipher),
+		);
 		if (auth) Object.assign(connection, auth);
 		return this.toPublic(await this.repository.save(connection));
 	}
@@ -121,7 +123,11 @@ export class GitConnectionsService {
 		if (input.repositoryUrl !== undefined) updated.repositoryUrl = input.repositoryUrl;
 		if (input.branchName !== undefined) updated.branchName = input.branchName;
 
-		const auth = await computeAuthenticationUpdate(current, input, this.authDeps);
+		const auth = await computeAuthenticationUpdate(
+			current,
+			input,
+			gitAuthDeps(this.gitService, this.cipher),
+		);
 		if (auth) Object.assign(updated, auth);
 
 		const saved = await this.repository.save(updated);

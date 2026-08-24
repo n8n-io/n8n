@@ -43,8 +43,6 @@ export class InstanceGitConnectionService {
 		private readonly cipher: Cipher,
 	) {}
 
-	private readonly authDeps = gitAuthDeps(this.gitService, this.cipher);
-
 	async get(): Promise<InstanceGitConnectionPublicDto> {
 		return this.toPublic(await this.getPreferences());
 	}
@@ -73,7 +71,11 @@ export class InstanceGitConnectionService {
 		if (input.repositoryUrl !== undefined) updated.repositoryUrl = input.repositoryUrl;
 		if (input.branchName !== undefined) updated.branchName = input.branchName;
 
-		const auth = await computeAuthenticationUpdate(current, input, this.authDeps);
+		const auth = await computeAuthenticationUpdate(
+			current,
+			input,
+			gitAuthDeps(this.gitService, this.cipher),
+		);
 		if (auth) Object.assign(updated, auth);
 
 		const targetEnabled = input.enabled ?? current.enabled;
