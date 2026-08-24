@@ -60,7 +60,11 @@ function copy() {
 					'ph-no-capture': redactValue,
 				}"
 				data-test-id="copy-input"
+				role="button"
+				:tabindex="disableCopy ? -1 : 0"
 				@click="copy"
+				@keydown.enter="copy"
+				@keydown.space.prevent="copy"
 			>
 				<span ref="copyInputValue">{{ value }}</span>
 				<div v-if="!disableCopy" :class="$style.copyButton">

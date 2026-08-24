@@ -26,6 +26,7 @@ import { useRecentResources } from '@/features/shared/commandBar/composables/use
 import { usePostHog } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePromotionsEnabled } from '@/features/integrations/gitConnections.ee/composables/usePromotionsEnabled';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import {
@@ -58,6 +59,8 @@ const SettingsPersonalView = async () =>
 const SettingsUsersView = async () =>
 	await import('@/features/settings/users/views/SettingsUsersView.vue');
 const SettingsResolversView = async () => await import('@/features/resolvers/ResolversView.vue');
+const GitConnectionsView = async () =>
+	await import('@/features/integrations/gitConnections.ee/views/GitConnectionsView.vue');
 const SettingsCommunityNodesView = async () =>
 	await import('@/features/settings/communityNodes/views/SettingsCommunityNodesView.vue');
 const SettingsApiView = async () =>
@@ -978,6 +981,34 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'environments',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'git-connections',
+				name: VIEWS.GIT_CONNECTIONS_SETTINGS,
+				component: GitConnectionsView,
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						// `gitConnection:list` implies create/update/delete: owner/admin-only scopes that
+						// are not offered to custom global roles (no `gitConnection` group in
+						// GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS). Re-check if that ever changes.
+						rbac: {
+							scope: 'gitConnection:list',
+						},
+						custom: () => {
+							const { isEnabled } = usePromotionsEnabled();
+							return isEnabled.value;
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'git-connections',
 							};
 						},
 					},
