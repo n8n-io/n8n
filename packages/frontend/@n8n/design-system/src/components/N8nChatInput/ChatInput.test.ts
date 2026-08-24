@@ -178,6 +178,10 @@ describe('N8nChatInput', () => {
 	});
 
 	describe('adaptive layout', () => {
+		afterEach(() => {
+			vi.restoreAllMocks();
+		});
+
 		it('does not reserve the multiline minimum height', () => {
 			const { container } = renderComponent({
 				props: {
@@ -205,6 +209,7 @@ describe('N8nChatInput', () => {
 		});
 
 		it('falls back to multiline for a custom send button label', () => {
+			const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 			const { container } = renderComponent({
 				props: {
 					layout: 'adaptive',
@@ -218,11 +223,13 @@ describe('N8nChatInput', () => {
 			const chatContainer = container.querySelector('.container') as HTMLElement;
 			expect(chatContainer.style.minHeight).toBe('80px');
 			expect(chatContainer.classList.toString()).not.toContain('adaptiveContainer');
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('Falling back to `multiline`'));
 		});
 
 		it.each(['left-actions', 'actions', 'extra-actions', 'right-actions'])(
 			'falls back to multiline for the %s slot',
 			(slotName) => {
+				const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 				const { container } = renderComponent({
 					props: {
 						layout: 'adaptive',
@@ -239,6 +246,7 @@ describe('N8nChatInput', () => {
 				expect(chatContainer.style.minHeight).toBe('80px');
 				expect(chatContainer.classList.toString()).not.toContain('adaptiveContainer');
 				expect(container).toHaveTextContent('Custom action');
+				expect(warn).toHaveBeenCalledWith(expect.stringContaining('Falling back to `multiline`'));
 			},
 		);
 
