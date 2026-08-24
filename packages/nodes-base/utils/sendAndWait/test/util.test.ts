@@ -2,6 +2,8 @@ import type { Request, Response } from 'express';
 import { type MockProxy, mock } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
+	INode,
+	INodeExecutionData,
 	INodeProperties,
 	IWebhookFunctions,
 	IWorkflowSettings,
@@ -62,32 +64,43 @@ describe('Send and Wait utils tests', () => {
 				]),
 			);
 		});
-
-		it('should always render modern custom-form fields regardless of host node version', () => {
+		it('should embed legacy and modern custom-form field schemas gated by Field Naming', () => {
 			const result = getSendAndWaitProperties([], 'message');
 
 			const customFormProps = result.filter((p) =>
 				(p.displayOptions?.show?.responseType as string[] | undefined)?.includes('customForm'),
 			);
-			const fields = customFormProps.find(
+			const schemas = customFormProps.filter(
 				(p) => p.name === 'formFields' && p.type === 'fixedCollection',
 			);
-			if (!fields) throw new Error('formFields fixedCollection not found');
-			expect(customFormProps.filter((p) => p.name === 'formFields')).toHaveLength(1);
+			// Legacy carries the Form node's own 2.4/2.5 collection pair; modern collapses
+			// both into the current dynamic-attributes editor.
+			const byNaming = (naming: string) =>
+				schemas.filter(
+					(p) => (p.displayOptions?.show?.formFieldsNaming as string[] | undefined)?.[0] === naming,
+				);
+			expect(byNaming('legacy')).toHaveLength(2);
+			expect(byNaming('modern')).toHaveLength(1);
 
-			const collection = fields.options?.[0] as { values: INodeProperties[] } | undefined;
-			if (!collection) throw new Error('form field values not found');
-			const values = collection.values;
-			expect(values.some((v) => v.name === 'fieldLabel' && v.displayName === 'Label')).toBe(true);
-			expect(
-				values.some((v) => v.name === 'fieldName' && v.displayName === 'Custom Field Name'),
-			).toBe(true);
-			expect(values.some((v) => v.name === 'fieldLabel' && v.displayName === 'Field Name')).toBe(
-				false,
+			const valuesOf = (schema: INodeProperties) =>
+				(schema.options?.[0] as { values: INodeProperties[] }).values;
+
+			// Legacy keeps the version-gated variants exactly as the Form node defines them.
+			const legacyValues = valuesOf(byNaming('legacy')[0]);
+			expect(legacyValues.some((v) => v.displayName === 'Field Name')).toBe(true);
+
+			// Modern always shows Label + Custom Field Name, free of @version gating.
+			const modernValues = valuesOf(byNaming('modern')[0]);
+			expect(modernValues.some((v) => v.name === 'fieldLabel' && v.displayName === 'Label')).toBe(
+				true,
 			);
 			expect(
-				values.every((v) => v.displayOptions?.show?.['@version'] === undefined),
+				modernValues.some((v) => v.name === 'fieldName' && v.displayName === 'Custom Field Name'),
 			).toBe(true);
+			expect(modernValues.some((v) => v.displayName === 'Field Name')).toBe(false);
+			expect(modernValues.every((v) => v.displayOptions?.show?.['@version'] === undefined)).toBe(
+				true,
+			);
 		});
 
 		it('should include extra options when provided', () => {
@@ -507,6 +520,87 @@ describe('Send and Wait utils tests', () => {
 				buttonLabel: 'Test button',
 				dangerousCustomCss: 'body { background-color: red; }',
 			});
+		});
+
+		it.each(['legacy', undefined])(
+			'should key customForm output by field label when Field Naming is %s',
+			async (formFieldsNaming) => {
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'POST',
+					contentType: 'multipart/form-data',
+				} as any);
+				mockWebhookFunctions.getResponseObject.mockReturnValue({
+					send: vi.fn(),
+				} as any);
+				mockWebhookFunctions.getNode.mockReturnValue({
+					typeVersion: 1.2,
+					type: 'n8n-nodes-base.gmail',
+					name: 'Node',
+				} as unknown as INode);
+				mockWebhookFunctions.getTimezone.mockReturnValue('UTC');
+				mockWebhookFunctions.getBodyData.mockReturnValue({
+					data: { 'field-0': 'test answer' },
+					files: {},
+				});
+				mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+					const params: { [key: string]: any } = {
+						responseType: 'customForm',
+						defineForm: 'fields',
+						formFieldsNaming,
+						'formFields.values': [
+							{ fieldLabel: 'Email Address', fieldName: 'email', fieldType: 'text' },
+						],
+						options: {},
+					};
+					return params[parameterName];
+				});
+
+				const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+				const item = (result.workflowData as INodeExecutionData[][])[0][0];
+				const data = item.json.data as Record<string, unknown>;
+				expect(data['Email Address']).toBe('test answer');
+				expect(data.email).toBeUndefined();
+			},
+		);
+
+		it('should key customForm output by custom field name when Field Naming is modern', async () => {
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'POST',
+				contentType: 'multipart/form-data',
+			} as any);
+			mockWebhookFunctions.getResponseObject.mockReturnValue({
+				send: vi.fn(),
+			} as any);
+			mockWebhookFunctions.getNode.mockReturnValue({
+				typeVersion: 1.2,
+				type: 'n8n-nodes-base.gmail',
+				name: 'Node',
+			} as unknown as INode);
+			mockWebhookFunctions.getTimezone.mockReturnValue('UTC');
+			mockWebhookFunctions.getBodyData.mockReturnValue({
+				data: { 'field-0': 'test answer' },
+				files: {},
+			});
+			mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+				const params: { [key: string]: any } = {
+					responseType: 'customForm',
+					defineForm: 'fields',
+					formFieldsNaming: 'modern',
+					'formFields.values': [
+						{ fieldLabel: 'Email Address', fieldName: 'email', fieldType: 'text' },
+					],
+					options: {},
+				};
+				return params[parameterName];
+			});
+
+			const result = await sendAndWaitWebhook.call(mockWebhookFunctions);
+
+			const item = (result.workflowData as INodeExecutionData[][])[0][0];
+			const data = item.json.data as Record<string, unknown>;
+			expect(data.email).toBe('test answer');
+			expect(data['Email Address']).toBeUndefined();
 		});
 
 		it('should resolve expressions in HTML fields for customForm GET webhook', async () => {

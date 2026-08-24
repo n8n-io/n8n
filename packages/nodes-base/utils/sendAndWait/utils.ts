@@ -47,7 +47,8 @@ type FormResponseTypeOptions = {
 
 const INPUT_FIELD_IDENTIFIER = 'field-0';
 
-// Output identifiers resolve like Form >=2.5: prefer fieldName, fall back to fieldLabel.
+// Used when Field Naming is set to "Label + Custom Field Name"; identifiers resolve
+// like Form >=2.5: prefer fieldName, fall back to fieldLabel.
 const FORM_FIELD_IDENTIFIER_VERSION = 2.5;
 
 const appendAttributionOption: INodeProperties = {
@@ -236,10 +237,46 @@ export function getSendAndWaitProperties(
 				},
 			],
 		},
+		{
+			displayName: 'Field Naming',
+			name: 'formFieldsNaming',
+			type: 'options',
+			default: 'legacy',
+			description: 'How to name form fields and their output keys',
+			displayOptions: {
+				show: {
+					responseType: ['customForm'],
+				},
+			},
+			options: [
+				{
+					name: 'Field Name (legacy)',
+					value: 'legacy',
+					description:
+						'A single Field Name per element, shown as the label and used as the output key',
+				},
+				{
+					name: 'Label + Custom Field Name',
+					value: 'modern',
+					description:
+						'Separate Label and optional Custom Field Name, matching the current Form node; a custom name becomes the output key. Changing this may change existing output keys.',
+				},
+			],
+		},
 		...updateDisplayOptions(
 			{
 				show: {
 					responseType: ['customForm'],
+					formFieldsNaming: ['legacy'],
+				},
+			},
+			formFieldsProperties,
+		),
+		...updateDisplayOptions(
+			{
+				show: {
+					responseType: ['customForm'],
+					formFieldsNaming: ['modern'],
 				},
 			},
 			modernizeFormFieldsVersions(formFieldsProperties),
@@ -507,13 +544,15 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 			};
 		}
 		if (method === 'POST') {
+			const useModernIdentifiers =
+				this.getNodeParameter('formFieldsNaming', 'legacy') === 'modern';
 			const returnItem = await prepareFormReturnItem(
 				this,
 				fields,
 				'production',
 				true,
 				undefined,
-				FORM_FIELD_IDENTIFIER_VERSION,
+				useModernIdentifiers ? FORM_FIELD_IDENTIFIER_VERSION : undefined,
 			);
 			const json = returnItem.json;
 
