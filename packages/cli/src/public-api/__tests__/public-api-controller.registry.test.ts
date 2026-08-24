@@ -31,6 +31,11 @@ describe('PublicApiControllerRegistry', () => {
 	function activate(): express.Express {
 		const app = express();
 		app.use(express.json());
+		// mirrors the app-wide bodyParser, which defaults an absent body to `{}`
+		app.use((req, _res, next) => {
+			req.body ??= {};
+			next();
+		});
 		const router = express.Router({ mergeParams: true });
 		new PublicApiControllerRegistry(
 			Container.get(ControllerRegistryMetadata),
@@ -130,6 +135,20 @@ describe('PublicApiControllerRegistry', () => {
 	});
 
 	describe('request media type', () => {
+		class OptionalWidgetBodyDto extends Z.class({ name: z.string().optional() }) {}
+
+		function registerOptionalBodyRoute() {
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method(_req: unknown, _res: unknown, @Body body: OptionalWidgetBodyDto) {
+					return body;
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		}
+
 		function registerBodyRoute() {
 			@Service()
 			class WidgetsPublicController {
@@ -198,6 +217,54 @@ describe('PublicApiControllerRegistry', () => {
 				.post('/widgets')
 				.set('Content-Type', 'application/x-www-form-urlencoded')
 				.expect(415);
+		});
+
+		it('rejects a missing Content-Type when the body is required', async () => {
+			registerBodyRoute();
+
+			const response = await request(activate()).post('/widgets').expect(415);
+
+			expect(response.body.message).toBe('unsupported media type undefined');
+		});
+
+		it('accepts a missing Content-Type when every body field is optional', async () => {
+			registerOptionalBodyRoute();
+
+			await request(activate()).post('/widgets').expect(200);
+		});
+
+		it('lowercases the media type and its charset in the message', async () => {
+			registerBodyRoute();
+
+			const response = await request(activate())
+				.post('/widgets')
+				.set('Content-Type', 'text/PlAiN; charset=UTF-8')
+				.send('a')
+				.expect(415);
+
+			expect(response.body.message).toBe('unsupported media type text/plain; charset=utf-8');
+		});
+
+		it('drops the boundary parameter from the message', async () => {
+			registerBodyRoute();
+
+			const response = await request(activate())
+				.post('/widgets')
+				.set('Content-Type', 'multipart/form-data; boundary=XYZ')
+				.send('a')
+				.expect(415);
+
+			expect(response.body.message).toBe('unsupported media type multipart/form-data');
+		});
+
+		it('accepts application/json carrying an unrelated parameter', async () => {
+			registerBodyRoute();
+
+			await request(activate())
+				.post('/widgets')
+				.set('Content-Type', 'application/json; Foo=BAR')
+				.send({ name: 'a' })
+				.expect(200);
 		});
 	});
 });

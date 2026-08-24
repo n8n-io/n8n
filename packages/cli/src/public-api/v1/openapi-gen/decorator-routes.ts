@@ -14,6 +14,7 @@ import { z } from 'zod';
 
 import type { ResolvedPublicApiRoute } from '@/public-api/public-api-route-resolver';
 import {
+	isRequestBodyRequired,
 	resolvePublicApiRoutes,
 	scopeRequirementToString,
 	toOpenApiPathTemplate,
@@ -158,6 +159,7 @@ function buildRequestBody(
 	if (!route.requestBodyDto) return undefined;
 
 	return {
+		...(isRequestBodyRequired(route.requestBodyDto) ? { required: true } : {}),
 		content: {
 			'application/json': {
 				schema: route.requestBodyDto.schema,

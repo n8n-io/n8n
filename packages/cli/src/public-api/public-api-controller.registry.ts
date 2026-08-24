@@ -14,6 +14,8 @@ import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import {
 	apiKeyScopesSatisfy,
+	isDtoArg,
+	isRequestBodyRequired,
 	resolveRouteArgs,
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
@@ -23,12 +25,40 @@ import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-res
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
-function assertJsonRequestBody(req: Request) {
-	const contentType = req.headers['content-type'];
-	if (!contentType) return;
+/**
+ * The media type as `express-openapi-validator` reports it: lower-cased, parameters sorted, and
+ * `boundary` left out. Migrated routes keep returning the string their callers already had.
+ */
+function normalizeMediaType(contentType: string): string {
+	const [rawMediaType] = contentType.split(';');
+	const parameters: Record<string, string> = {};
 
-	if (contentType.split(';')[0].trim().toLowerCase() !== 'application/json') {
-		throw new UnsupportedMediaTypeError(`unsupported media type ${contentType}`);
+	for (const [, name, value] of contentType.matchAll(/;\s*([^=]+)=([^;]+)/g)) {
+		const key = name.toLowerCase();
+		parameters[key] = key === 'charset' ? value.toLowerCase() : value;
+	}
+
+	const suffix = Object.keys(parameters)
+		.sort()
+		.filter((key) => key !== 'boundary')
+		.map((key) => `; ${key}=${parameters[key]}`)
+		.join('');
+
+	return rawMediaType.toLowerCase().trim() + suffix;
+}
+
+function assertJsonRequestBody(req: Request, bodyRequired: boolean) {
+	const contentType = req.headers['content-type'];
+
+	if (!contentType) {
+		if (bodyRequired) throw new UnsupportedMediaTypeError('unsupported media type undefined');
+		return;
+	}
+
+	const mediaType = normalizeMediaType(contentType);
+
+	if (mediaType.split(';')[0] !== 'application/json') {
+		throw new UnsupportedMediaTypeError(`unsupported media type ${mediaType}`);
 	}
 }
 
@@ -69,10 +99,11 @@ export class PublicApiControllerRegistry {
 				route.successStatus,
 			);
 
-			const expectsJsonBody = resolvedArgs.some((arg) => arg.type === 'body');
+			const bodyDto = resolvedArgs.find((arg) => isDtoArg(arg, 'body'))?.dto;
+			const bodyRequired = bodyDto ? isRequestBodyRequired(bodyDto) : false;
 
 			const handler = async (req: Request, res: Response) => {
-				if (expectsJsonBody) assertJsonRequestBody(req);
+				if (bodyDto) assertJsonRequestBody(req, bodyRequired);
 
 				const args: unknown[] = [req, res];
 				for (const arg of resolvedArgs) {

@@ -16,6 +16,7 @@ import {
 import type { Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
+import { Z } from '@n8n/api-types';
 import { z } from 'zod';
 
 import {
@@ -133,6 +134,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(params?.shape).toHaveProperty('id');
 		expect(operation.config.request?.query).toBeDefined();
 		expect(operation.config.request?.body).toEqual({
+			required: true,
 			content: { 'application/json': { schema: WidgetBodyDto.schema } },
 		});
 	});
@@ -194,6 +196,34 @@ describe('getDecoratorGeneratedOperations', () => {
 
 		expect(() => getDecoratorGeneratedOperations()).toThrow(UnexpectedError);
 		expect(() => getDecoratorGeneratedOperations()).toThrow(/ApiErrorResponse\(418\)/);
+	});
+
+	it('marks the request body required when an empty object is not valid', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(200)
+			method(_req: unknown, _res: unknown, @Body _body: WidgetBodyDto) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.request?.body?.required).toBe(true);
+	});
+
+	it('leaves the request body optional when every field is optional', () => {
+		class OptionalBodyDto extends Z.class({ name: z.string().optional() }) {}
+
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(200)
+			method(_req: unknown, _res: unknown, @Body _body: OptionalBodyDto) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.request?.body?.required).toBeUndefined();
 	});
 
 	it('documents a 415 for a route that takes a request body', () => {
