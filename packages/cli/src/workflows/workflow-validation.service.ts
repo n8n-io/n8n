@@ -417,8 +417,10 @@ export class WorkflowValidationService {
 
 	/**
 	 * Describes which trigger configurations the system resolver currently accepts,
-	 * for the publish-error copy. Chat only qualifies when available in Chat Hub and
-	 * MCP only with n8n user auth (OAuth2). Mirrors `classifyTriggerIdentity`.
+	 * for the publish-error copy. Chat only qualifies when available in Chat Hub — a
+	 * `n8nUserAuth` chat trigger establishes no identity at runtime, so it's not
+	 * listed here regardless of the chat OAuth2 flag; MCP only with n8n user auth
+	 * (OAuth2). Mirrors `classifyTriggerIdentity`.
 	 */
 	private getN8nUserAuthTriggersList(): string {
 		return 'manual and sub-workflow triggers, chat triggers available in n8n Chat Hub, and MCP, form, or webhook triggers with n8n user authentication';

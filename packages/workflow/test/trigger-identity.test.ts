@@ -50,6 +50,18 @@ describe('classifyTriggerIdentity', () => {
 				});
 			},
 		);
+
+		// A chat trigger establishes no identity at runtime through `n8nUserAuth`,
+		// regardless of the chat OAuth2 flag (which classification ignores).
+		it.each(['n8nUserAuth', 'none', 'basicAuth'])(
+			'provides no identity for authentication %s',
+			(authentication) => {
+				expect(classifyTriggerIdentity(CHAT_TRIGGER_NODE_TYPE, { authentication })).toEqual({
+					providesN8nIdentity: false,
+					providesExternalIdentity: false,
+				});
+			},
+		);
 	});
 
 	describe('MCP Trigger', () => {
