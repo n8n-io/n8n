@@ -19,6 +19,7 @@ import { rm } from 'fs/promises';
 import type * as _fsPromises from 'fs/promises';
 import { Container } from '@n8n/di';
 import type { Request } from 'express';
+import jwt from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
@@ -34,7 +35,12 @@ import type {
 	MultiPartFormData,
 	NodeTypeAndVersion,
 } from 'n8n-workflow';
-import { BINARY_MODE_COMBINED, FORM_TRIGGER_NODE_TYPE, WAIT_NODE_TYPE } from 'n8n-workflow';
+import {
+	BINARY_MODE_COMBINED,
+	FORM_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	WAIT_NODE_TYPE,
+} from 'n8n-workflow';
 
 import {
 	formWebhook,
@@ -849,7 +855,12 @@ describe('FormTrigger, formWebhook', () => {
 
 		const setupContext = (
 			ctx: ReturnType<typeof mock<IWebhookFunctions>>,
-			overrides: { method: 'GET' | 'POST'; cookie?: string; options?: IDataObject } = {
+			overrides: {
+				method: 'GET' | 'POST';
+				cookie?: string;
+				options?: IDataObject;
+				headers?: Record<string, string>;
+			} = {
 				method: 'GET',
 			},
 		) => {
@@ -858,6 +869,7 @@ describe('FormTrigger, formWebhook', () => {
 			const end = vi.fn();
 			const setHeader = vi.fn();
 			const render = vi.fn();
+			const cookie = vi.fn();
 			const request = {
 				method: overrides.method,
 				originalUrl: '/form/test',
@@ -865,12 +877,14 @@ describe('FormTrigger, formWebhook', () => {
 				headers: {
 					host: 'localhost:5678',
 					...(overrides.cookie ? { cookie: overrides.cookie } : {}),
+					...(overrides.headers ?? {}),
 				},
 				protocol: 'http',
 				contentType: overrides.method === 'POST' ? 'multipart/form-data' : undefined,
 			};
 
 			ctx.getNode.mockReturnValue({ typeVersion: 2.6 } as INode);
+			ctx.getWorkflow.mockReturnValue({ id: 'workflow-1', name: 'wf', active: true });
 			ctx.getNodeParameter.calledWith('options').mockReturnValue(overrides.options ?? {});
 			ctx.getNodeParameter.calledWith('formTitle').mockReturnValue('Test Form');
 			ctx.getNodeParameter.calledWith('formDescription').mockReturnValue('Test Description');
@@ -885,6 +899,7 @@ describe('FormTrigger, formWebhook', () => {
 				end,
 				setHeader,
 				render,
+				cookie,
 			} as any);
 			ctx.getMode.mockReturnValue('manual');
 			ctx.getInstanceId.mockReturnValue('instanceId');
@@ -892,7 +907,7 @@ describe('FormTrigger, formWebhook', () => {
 			ctx.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
 			ctx.getChildNodes.mockReturnValue([]);
 
-			return { status, writeHead, end, setHeader, render };
+			return { status, writeHead, end, setHeader, render, cookie };
 		};
 
 		beforeEach(() => {
@@ -1060,6 +1075,143 @@ describe('FormTrigger, formWebhook', () => {
 
 			const json = (result as any).workflowData[0][0].json;
 			expect(json.user).toBeUndefined();
+		});
+
+		// The follow-up pages are reached by navigating, which can present no header
+		// and — from the sandboxed form document — no session cookie either.
+		describe('form page auth cookie', () => {
+			const setupMultiPageGet = (ctx: ReturnType<typeof mock<IWebhookFunctions>>) => {
+				const res = setupContext(ctx, { method: 'GET', cookie: 'n8n-auth=valid.jwt.token' });
+				ctx.validateCookieAuth.mockResolvedValue(authedUser);
+				ctx.getChildNodes.mockReturnValue([
+					{ name: 'Form', type: FORM_NODE_TYPE, typeVersion: 2.5, disabled: false },
+				]);
+				ctx.evaluateExpression.mockReturnValue(
+					'http://localhost:5678/form-waiting/__UNKNOWN__' as never,
+				);
+				return res;
+			};
+
+			it('is set on GET for a form with a next page, scoped to the form-waiting path', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { cookie } = setupMultiPageGet(ctx);
+
+				await formWebhook(ctx);
+
+				expect(cookie).toHaveBeenCalledWith(
+					'n8n-form-auth',
+					expect.any(String),
+					expect.objectContaining({
+						httpOnly: true,
+						sameSite: 'lax',
+						secure: false,
+						path: '/form-waiting',
+					}),
+				);
+			});
+
+			it('carries the submitter and the workflow it was issued for', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { cookie } = setupMultiPageGet(ctx);
+
+				await formWebhook(ctx);
+
+				const [, token] = cookie.mock.calls[0] as [string, string];
+				expect(jwt.decode(token)).toMatchObject({
+					sub: authedUser.id,
+					email: authedUser.email,
+					wfid: 'workflow-1',
+				});
+				// No run exists yet at the trigger, so nothing binds it to one.
+				expect(jwt.decode(token)).not.toHaveProperty('eid');
+			});
+
+			it('is not set for a single-page form, which never navigates', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { cookie } = setupContext(ctx, {
+					method: 'GET',
+					cookie: 'n8n-auth=valid.jwt.token',
+				});
+				ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+				await formWebhook(ctx);
+
+				expect(cookie).not.toHaveBeenCalled();
+			});
+		});
+
+		// The rendered form only hands its page navigations to its host when that host
+		// is the n8n hosting shell; anywhere else it must keep navigating itself.
+		describe('host-driven page navigation', () => {
+			const setupRender = (
+				ctx: ReturnType<typeof mock<IWebhookFunctions>>,
+				headers?: Record<string, string>,
+			) => {
+				const res = setupContext(ctx, {
+					method: 'GET',
+					cookie: 'n8n-auth=valid.jwt.token',
+					headers,
+				});
+				ctx.validateCookieAuth.mockResolvedValue(authedUser);
+				ctx.evaluateExpression.mockReturnValue(
+					'http://localhost:5678/form-waiting/__UNKNOWN__' as never,
+				);
+				return res;
+			};
+
+			it('is offered inside a same-origin frame, scoped to the form-waiting path', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupRender(ctx, {
+					'sec-fetch-dest': 'iframe',
+					'sec-fetch-site': 'same-origin',
+				});
+
+				await formWebhook(ctx);
+
+				expect(render).toHaveBeenCalledWith(
+					'form-trigger',
+					expect.objectContaining({ hostNavigationPath: '/form-waiting' }),
+				);
+			});
+
+			it('is not offered to a top-level form', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupRender(ctx, { 'sec-fetch-dest': 'document' });
+
+				await formWebhook(ctx);
+
+				expect(render).toHaveBeenCalledWith(
+					'form-trigger',
+					expect.objectContaining({ hostNavigationPath: undefined }),
+				);
+			});
+
+			it('is not offered to a form embedded on another site', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupRender(ctx, {
+					'sec-fetch-dest': 'iframe',
+					'sec-fetch-site': 'cross-site',
+				});
+
+				await formWebhook(ctx);
+
+				expect(render).toHaveBeenCalledWith(
+					'form-trigger',
+					expect.objectContaining({ hostNavigationPath: undefined }),
+				);
+			});
+
+			it('is not offered when the browser sends no fetch metadata', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupRender(ctx);
+
+				await formWebhook(ctx);
+
+				expect(render).toHaveBeenCalledWith(
+					'form-trigger',
+					expect.objectContaining({ hostNavigationPath: undefined }),
+				);
+			});
 		});
 	});
 
@@ -3978,6 +4130,10 @@ describe('validateFormPageAuth', () => {
 		lastName: 'User',
 	};
 
+	const pageNode = { id: 'page-node', webhookId: 'page-webhook' } as INode;
+	const WORKFLOW_ID = 'workflow-1';
+	const EXECUTION_ID = 'exec-id';
+
 	const buildContext = (method: 'GET' | 'POST', cookie?: string) => {
 		const res = {
 			writeHead: vi.fn(),
@@ -3985,7 +4141,12 @@ describe('validateFormPageAuth', () => {
 			setHeader: vi.fn(),
 			status: vi.fn().mockReturnValue({ send: vi.fn() }),
 		};
-		const req = {
+		const req: {
+			method: string;
+			originalUrl: string;
+			headers: Record<string, string>;
+			protocol: string;
+		} = {
 			method,
 			originalUrl: '/form-waiting/exec-id',
 			headers: {
@@ -3997,8 +4158,15 @@ describe('validateFormPageAuth', () => {
 		const ctx = mock<IWebhookFunctions>();
 		ctx.getRequestObject.mockReturnValue(req as unknown as Request);
 		ctx.getResponseObject.mockReturnValue(res as never);
+		ctx.getNode.mockReturnValue(pageNode);
+		ctx.getWorkflow.mockReturnValue({ id: WORKFLOW_ID, name: 'wf', active: true });
+		ctx.getExecutionId.mockReturnValue(EXECUTION_ID);
 		return { ctx, res, req };
 	};
+
+	/** The cookie the form pages present, as the page renders set it. */
+	const pageAuthCookie = (binding: { workflowId?: string; executionId?: string }) =>
+		`n8n-form-auth=${generateFormUserAuthToken(pageNode, authedUser, binding)}`;
 
 	it('returns empty object and skips validation when authentication is not n8nUserAuth', async () => {
 		const { ctx } = buildContext('GET');
@@ -4082,7 +4250,10 @@ describe('validateFormPageAuth', () => {
 			firstName: 'Test',
 			lastName: 'User',
 		};
-		const token = generateFormUserAuthToken(node, authedFormUser);
+		const token = generateFormUserAuthToken(node, authedFormUser, {
+			workflowId: WORKFLOW_ID,
+			executionId: EXECUTION_ID,
+		});
 
 		const res = {
 			writeHead: vi.fn(),
@@ -4100,6 +4271,7 @@ describe('validateFormPageAuth', () => {
 		ctx.getRequestObject.mockReturnValue(req as unknown as Request);
 		ctx.getResponseObject.mockReturnValue(res as never);
 		ctx.getNode.mockReturnValue(node);
+		ctx.getExecutionId.mockReturnValue(EXECUTION_ID);
 
 		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
 
@@ -4107,6 +4279,148 @@ describe('validateFormPageAuth', () => {
 		expect(result.responded).toBeFalsy();
 		// cookie path wasn't attempted because there's no cookie
 		expect(ctx.validateCookieAuth).not.toHaveBeenCalled();
+	});
+
+	// A page is reached by navigating to it, which can attach no header — and, from a
+	// sandboxed form document, no session cookie either. The form page auth cookie is
+	// the only credential such a request carries.
+	describe('form page auth cookie', () => {
+		it('returns the authedUser from a cookie minted before the run started', async () => {
+			const { ctx } = buildContext('GET', pageAuthCookie({ workflowId: WORKFLOW_ID }));
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.authedUser).toEqual(authedUser);
+			expect(result.responded).toBeFalsy();
+			expect(ctx.validateCookieAuth).not.toHaveBeenCalled();
+		});
+
+		it('returns the authedUser from a cookie bound to the execution being served', async () => {
+			const { ctx } = buildContext(
+				'GET',
+				pageAuthCookie({ workflowId: WORKFLOW_ID, executionId: EXECUTION_ID }),
+			);
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.authedUser).toEqual(authedUser);
+		});
+
+		it('parses the cookie alongside other cookies', async () => {
+			const { ctx } = buildContext(
+				'GET',
+				`other=value; ${pageAuthCookie({ workflowId: WORKFLOW_ID })}; another=thing`,
+			);
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.authedUser).toEqual(authedUser);
+		});
+
+		it('ignores a cookie bound to another workflow', async () => {
+			const { ctx, res } = buildContext('GET', pageAuthCookie({ workflowId: 'other-workflow' }));
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.responded).toBe(true);
+			expect(res.writeHead).toHaveBeenCalledWith(
+				302,
+				expect.objectContaining({ Location: expect.stringContaining('/signin?redirect=') }),
+			);
+		});
+
+		it('ignores a cookie bound to another execution', async () => {
+			const { ctx, res } = buildContext(
+				'GET',
+				pageAuthCookie({ workflowId: WORKFLOW_ID, executionId: 'other-execution' }),
+			);
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.responded).toBe(true);
+			expect(res.writeHead).toHaveBeenCalledWith(302, expect.any(Object));
+		});
+
+		it('ignores a token that carries no workflow binding', async () => {
+			const { ctx, res } = buildContext('GET', pageAuthCookie({}));
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.responded).toBe(true);
+			expect(res.writeHead).toHaveBeenCalledWith(302, expect.any(Object));
+		});
+
+		it('ignores an expired cookie', async () => {
+			const realNow = Date.now();
+			vi.useFakeTimers();
+			let cookie: string;
+			try {
+				vi.setSystemTime(realNow - 2 * 60 * 60 * 1000);
+				cookie = pageAuthCookie({ workflowId: WORKFLOW_ID });
+			} finally {
+				vi.useRealTimers();
+			}
+			const { ctx, res } = buildContext('GET', cookie);
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.responded).toBe(true);
+			expect(res.writeHead).toHaveBeenCalledWith(302, expect.any(Object));
+		});
+
+		it('ignores a malformed cookie', async () => {
+			const { ctx, res } = buildContext('GET', 'n8n-form-auth=garbage');
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.responded).toBe(true);
+			expect(res.writeHead).toHaveBeenCalledWith(302, expect.any(Object));
+		});
+
+		it('falls back to the session cookie when the form cookie does not verify', async () => {
+			const { ctx } = buildContext('GET', 'n8n-form-auth=garbage; n8n-auth=valid.jwt.token');
+			ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(ctx.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
+			expect(result.authedUser).toEqual(authedUser);
+		});
+
+		it('is not consulted on POST, which carries the token in a header', async () => {
+			const token = generateFormUserAuthToken(pageNode, authedUser, {
+				workflowId: WORKFLOW_ID,
+				executionId: EXECUTION_ID,
+			});
+			const { ctx, req } = buildContext('POST', pageAuthCookie({ workflowId: WORKFLOW_ID }));
+			req.headers = { ...req.headers, 'x-auth-token': token };
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.authedUser).toEqual(authedUser);
+		});
+	});
+
+	// The OAuth2 token's audience is the trigger's URL, which a page's own resource
+	// URL is not, so a page can never satisfy that check — it must not try.
+	it('does not attempt the OAuth2 flow even when it is enabled', async () => {
+		vi.stubEnv('N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2', 'true');
+		try {
+			const { ctx, res } = buildContext('GET');
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(ctx.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+			expect(ctx.validateN8nOAuth2Token).not.toHaveBeenCalled();
+			expect(ctx.establishTriggerIdentity).not.toHaveBeenCalled();
+			expect(result.responded).toBe(true);
+			expect(res.writeHead).toHaveBeenCalledWith(
+				302,
+				expect.objectContaining({ Location: expect.stringContaining('/signin?redirect=') }),
+			);
+		} finally {
+			vi.unstubAllEnvs();
+		}
 	});
 });
 
@@ -4118,20 +4432,21 @@ describe('generateFormUserAuthToken / verifyFormUserAuthToken', () => {
 		firstName: 'Test',
 		lastName: 'User',
 	};
+	const binding = { workflowId: 'workflow-id' };
 
 	it('round-trips a freshly generated token', () => {
-		const token = generateFormUserAuthToken(node, user);
+		const token = generateFormUserAuthToken(node, user, binding);
 		expect(verifyFormUserAuthToken(token, node)).toEqual(user);
 	});
 
 	it('rejects a token signed for a different node', () => {
-		const token = generateFormUserAuthToken(node, user);
+		const token = generateFormUserAuthToken(node, user, binding);
 		const otherNode = { id: 'node-2', webhookId: 'webhook-2' } as INode;
 		expect(verifyFormUserAuthToken(token, otherNode)).toBeNull();
 	});
 
 	it('rejects a tampered signature', () => {
-		const token = generateFormUserAuthToken(node, user);
+		const token = generateFormUserAuthToken(node, user, binding);
 		const parts = token.split('.');
 		parts[2] = parts[2].replace(/.$/, (c) => (c === 'A' ? 'B' : 'A'));
 		const tampered = parts.join('.');
@@ -4139,7 +4454,7 @@ describe('generateFormUserAuthToken / verifyFormUserAuthToken', () => {
 	});
 
 	it('rejects a tampered payload', () => {
-		const token = generateFormUserAuthToken(node, user);
+		const token = generateFormUserAuthToken(node, user, binding);
 		const parts = token.split('.');
 		parts[1] = Buffer.from(
 			JSON.stringify({
@@ -4160,7 +4475,7 @@ describe('generateFormUserAuthToken / verifyFormUserAuthToken', () => {
 		vi.useFakeTimers();
 		try {
 			vi.setSystemTime(realNow - 2 * 60 * 60 * 1000);
-			const token = generateFormUserAuthToken(node, user);
+			const token = generateFormUserAuthToken(node, user, binding);
 			vi.setSystemTime(realNow);
 			expect(verifyFormUserAuthToken(token, node)).toBeNull();
 		} finally {
@@ -4172,5 +4487,40 @@ describe('generateFormUserAuthToken / verifyFormUserAuthToken', () => {
 		expect(verifyFormUserAuthToken('garbage', node)).toBeNull();
 		expect(verifyFormUserAuthToken('a.b', node)).toBeNull();
 		expect(verifyFormUserAuthToken('a.b.c.d', node)).toBeNull();
+	});
+
+	it('accepts a token minted without an execution for any execution', () => {
+		const token = generateFormUserAuthToken(node, user, binding);
+		expect(verifyFormUserAuthToken(token, node, 'exec-1')).toEqual(user);
+		expect(verifyFormUserAuthToken(token, node, undefined)).toEqual(user);
+	});
+
+	it('accepts a token bound to the execution being served', () => {
+		const token = generateFormUserAuthToken(node, user, { ...binding, executionId: 'exec-1' });
+		expect(verifyFormUserAuthToken(token, node, 'exec-1')).toEqual(user);
+	});
+
+	it('rejects a token bound to another execution', () => {
+		const token = generateFormUserAuthToken(node, user, { ...binding, executionId: 'exec-1' });
+		expect(verifyFormUserAuthToken(token, node, 'exec-2')).toBeNull();
+		expect(verifyFormUserAuthToken(token, node, undefined)).toBeNull();
+	});
+
+	// Tokens minted by an older version carry neither binding claim and stay valid
+	// for the node they name, so a rolling deploy doesn't invalidate open forms.
+	it('accepts a token carrying neither binding claim', () => {
+		const token = jwt.sign(
+			{
+				sub: user.id,
+				email: user.email,
+				firstName: user.firstName,
+				lastName: user.lastName,
+				nid: node.id,
+				wid: node.webhookId,
+			},
+			'test-hmac-secret',
+			{ algorithm: 'HS256', expiresIn: 60 },
+		);
+		expect(verifyFormUserAuthToken(token, node, 'exec-1')).toEqual(user);
 	});
 });

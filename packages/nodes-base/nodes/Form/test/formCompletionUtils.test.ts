@@ -86,6 +86,12 @@ describe('formCompletionUtils', () => {
 		mockWebhookFunctions = mock<IWebhookFunctions>();
 
 		mockWebhookFunctions.getNode.mockReturnValue(mockNode);
+		mockWebhookFunctions.getWorkflow.mockReturnValue({
+			id: 'workflow-id',
+			name: 'Workflow',
+			active: true,
+		});
+		mockWebhookFunctions.getExecutionId.mockReturnValue('execution-id');
 	});
 
 	afterEach(() => {
@@ -471,7 +477,11 @@ describe('formCompletionUtils', () => {
 				authToken: string;
 			};
 			expect(renderArgs.authToken).toBeTruthy();
-			expect(verifyFormUserAuthToken(renderArgs.authToken, mockNode)).toEqual(authedUser);
+			// Bound to the run that rendered the page, so it is only accepted for it.
+			expect(verifyFormUserAuthToken(renderArgs.authToken, mockNode, 'execution-id')).toEqual(
+				authedUser,
+			);
+			expect(verifyFormUserAuthToken(renderArgs.authToken, mockNode, 'other-execution')).toBeNull();
 		});
 
 		it('should NOT set Content-Security-Policy header when form HTML sandboxing is disabled', async () => {

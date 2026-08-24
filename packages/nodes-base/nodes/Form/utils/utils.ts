@@ -60,7 +60,21 @@ type FormUserAuthClaims = {
 	lastName: string;
 	nid: string;
 	wid: string;
+	/** Workflow the token was minted for. */
+	wfid?: string;
+	/** Execution the token was minted for, when one was already running. */
+	eid?: string;
 };
+
+/** Binding claims tying a form auth token to the run that minted it. */
+export type FormUserAuthTokenBinding = {
+	workflowId?: string;
+	executionId?: string;
+};
+
+function isOptionalString(value: unknown): boolean {
+	return value === undefined || typeof value === 'string';
+}
 
 function isFormUserAuthClaims(value: unknown): value is FormUserAuthClaims {
 	if (typeof value !== 'object' || value === null) return false;
@@ -71,8 +85,19 @@ function isFormUserAuthClaims(value: unknown): value is FormUserAuthClaims {
 		typeof c.firstName === 'string' &&
 		typeof c.lastName === 'string' &&
 		typeof c.nid === 'string' &&
-		typeof c.wid === 'string'
+		typeof c.wid === 'string' &&
+		isOptionalString(c.wfid) &&
+		isOptionalString(c.eid)
 	);
+}
+
+function userFromFormUserAuthClaims(claims: FormUserAuthClaims): IUser {
+	return {
+		id: claims.sub,
+		email: claims.email,
+		firstName: claims.firstName,
+		lastName: claims.lastName,
+	};
 }
 
 export function isFormOAuth2Enabled(): boolean {
@@ -243,6 +268,7 @@ export function prepareFormData({
 	authToken,
 	shellInner,
 	hasAuthenticatedSubmitter,
+	hostNavigationPath,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -261,6 +287,7 @@ export function prepareFormData({
 	authToken?: string;
 	shellInner?: boolean;
 	hasAuthenticatedSubmitter?: boolean;
+	hostNavigationPath?: string;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -287,6 +314,7 @@ export function prepareFormData({
 		shellInner: shellInner || undefined,
 		// Only set for forms that can be gated, so the rest never ship the client handling.
 		hasAuthenticatedSubmitter: hasAuthenticatedSubmitter || undefined,
+		hostNavigationPath: hostNavigationPath || undefined,
 	};
 
 	if (redirectUrl) {
@@ -638,6 +666,9 @@ export function renderForm({
 		authToken,
 		shellInner,
 		hasAuthenticatedSubmitter,
+		hostNavigationPath: isHostedInFormShell(context.getRequestObject(), shellInner)
+			? (getFormWaitingBasePath(context) ?? undefined)
+			: undefined,
 	});
 
 	if (!isFormHtmlSandboxingDisabled()) {
@@ -670,6 +701,23 @@ function buildAbsoluteFormUrl(req: Request): string {
 	return `${protocol}://${host}${req.originalUrl}`;
 }
 
+/**
+ * True when this render is the hosting shell's frame — either the shell's own
+ * inner render (flagged in the URL) or a follow-up page the shell navigated its
+ * frame to. Only then may the form hand its page navigations to the host.
+ *
+ * Derived from `Sec-Fetch-*` so a form embedded on someone else's site is never
+ * mistaken for the shell, and so browsers that don't send those headers simply
+ * keep navigating the form themselves.
+ */
+function isHostedInFormShell(req: Request, shellInner?: boolean): boolean {
+	if (shellInner) return true;
+	return (
+		req.headers?.['sec-fetch-dest'] === 'iframe' &&
+		req.headers?.['sec-fetch-site'] === 'same-origin'
+	);
+}
+
 export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
 	return nodes.some(
 		(n) =>
@@ -685,10 +733,16 @@ export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
  * cookie is `SameSite=Lax`).
  *
  * The `nid` and `wid` claims bind the token to a specific node + webhook,
- * preventing replay across forms. Signed with HS256 using the instance's
- * hmac signature secret.
+ * preventing replay across forms. `wfid`/`eid` additionally bind it to the
+ * workflow and — for tokens minted while a run is in progress — that run, which
+ * is what lets the same token be accepted as the form page auth cookie. Signed
+ * with HS256 using the instance's hmac signature secret.
  */
-export function generateFormUserAuthToken(node: INode, user: IUser): string {
+export function generateFormUserAuthToken(
+	node: INode,
+	user: IUser,
+	binding: FormUserAuthTokenBinding,
+): string {
 	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
 	const payload: FormUserAuthClaims = {
 		sub: user.id,
@@ -697,6 +751,8 @@ export function generateFormUserAuthToken(node: INode, user: IUser): string {
 		lastName: user.lastName,
 		nid: node.id,
 		wid: node.webhookId ?? '',
+		...(binding.workflowId ? { wfid: binding.workflowId } : {}),
+		...(binding.executionId ? { eid: binding.executionId } : {}),
 	};
 	return jwt.sign(payload, secret, {
 		algorithm: 'HS256',
@@ -705,11 +761,28 @@ export function generateFormUserAuthToken(node: INode, user: IUser): string {
 }
 
 /**
- * Verify a form auth token issued by `generateFormUserAuthToken`. Returns the
- * encoded user on success or `null` on any failure (bad format, expired,
- * wrong signature, wrong node). The caller decides how to surface the failure.
+ * Verify a form auth token issued by `generateFormUserAuthToken` and presented
+ * in the `x-auth-token` header. Returns the encoded user on success or `null` on
+ * any failure (bad format, expired, wrong signature, wrong node, wrong
+ * execution). The caller decides how to surface the failure.
+ *
+ * A token carrying an `eid` is only accepted for that execution. Tokens minted
+ * before a run existed carry none and stay valid for the node they name.
  */
-export function verifyFormUserAuthToken(token: string, node: INode): IUser | null {
+export function verifyFormUserAuthToken(
+	token: string,
+	node: INode,
+	executionId?: string,
+): IUser | null {
+	const claims = decodeFormUserAuthClaims(token);
+	if (!claims) return null;
+	if (claims.nid !== node.id) return null;
+	if (claims.wid !== (node.webhookId ?? '')) return null;
+	if (claims.eid !== undefined && claims.eid !== executionId) return null;
+	return userFromFormUserAuthClaims(claims);
+}
+
+function decodeFormUserAuthClaims(token: string): FormUserAuthClaims | null {
 	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
 	let claims: unknown;
 	try {
@@ -717,15 +790,26 @@ export function verifyFormUserAuthToken(token: string, node: INode): IUser | nul
 	} catch {
 		return null;
 	}
-	if (!isFormUserAuthClaims(claims)) return null;
-	if (claims.nid !== node.id) return null;
-	if (claims.wid !== (node.webhookId ?? '')) return null;
-	return {
-		id: claims.sub,
-		email: claims.email,
-		firstName: claims.firstName,
-		lastName: claims.lastName,
-	};
+	return isFormUserAuthClaims(claims) ? claims : null;
+}
+
+/**
+ * Verify a form auth token presented as the form page auth cookie. Unlike the
+ * `x-auth-token` variant this is not bound to a single node: the cookie rides
+ * along a navigation to whichever node serves the next page of the same form,
+ * so it is bound to the workflow (`wfid`) and, once a run exists, to that run
+ * (`eid`). Tokens predating those claims are not accepted here.
+ */
+function verifyFormPageAuthCookie(
+	token: string,
+	workflowId: string | undefined,
+	executionId: string | undefined,
+): IUser | null {
+	const claims = decodeFormUserAuthClaims(token);
+	if (!claims) return null;
+	if (!claims.wfid || !workflowId || claims.wfid !== workflowId) return null;
+	if (claims.eid !== undefined && claims.eid !== executionId) return null;
+	return userFromFormUserAuthClaims(claims);
 }
 
 function trimTrailingSlash(url: string): string {
@@ -738,16 +822,22 @@ function trimTrailingSlash(url: string): string {
 // (the page sends it back as `x-auth-token` on POST), so this is not a new exposure.
 const FORM_OAUTH_COOKIE_NAME = 'n8n-form-oauth';
 
-function formOAuthCookieOptions(req: Request, resourceUrl: string) {
-	// Derive `secure` from the request scheme (honouring x-forwarded-proto, as
-	// buildAbsoluteFormUrl does) rather than config, so the cookie is actually sent
-	// back on the follow-up GET over http in dev while staying Secure over https.
+/**
+ * Derive `secure` from the request scheme (honouring x-forwarded-proto, as
+ * buildAbsoluteFormUrl does) rather than config, so form cookies are actually
+ * sent back over http in dev while staying Secure over https.
+ */
+function isSecureRequest(req: Request): boolean {
 	const forwardedProto = req.headers['x-forwarded-proto'];
 	const proto = (typeof forwardedProto === 'string' ? forwardedProto.trim() : '') || req.protocol;
+	return proto === 'https';
+}
+
+function formOAuthCookieOptions(req: Request, resourceUrl: string) {
 	return {
 		httpOnly: true,
 		sameSite: 'lax' as const, // must be Lax: sent on our own top-level 302 → GET
-		secure: proto === 'https',
+		secure: isSecureRequest(req),
 		path: new URL(resourceUrl).pathname, // scope the bearer token to this form
 	};
 }
@@ -766,6 +856,66 @@ function readFormOAuthToken(req: Request): string | null {
 
 function clearFormOAuthToken(res: Response, req: Request, resourceUrl: string): void {
 	res.clearCookie(FORM_OAUTH_COOKIE_NAME, formOAuthCookieOptions(req, resourceUrl));
+}
+
+// Carries the submitter's identity to the follow-up pages of a multi-page form.
+// Those pages are reached by a navigation, which can present neither the
+// `x-auth-token` header nor — from a sandboxed, opaque-origin form document —
+// the `n8n-auth` session cookie.
+const FORM_AUTH_COOKIE_NAME = 'n8n-form-auth';
+
+/**
+ * Path the form-waiting endpoint is served under, or `null` when it can't be
+ * derived. It is configurable and the instance may sit behind a path prefix, so
+ * derive it rather than assume it: `$execution.resumeFormUrl` is
+ * `<formWaitingBaseUrl>/<executionId>`, and dropping the last segment leaves the
+ * base path.
+ */
+function getFormWaitingBasePath(context: IWebhookFunctions): string | null {
+	try {
+		const resumeFormUrl = context.evaluateExpression('{{ $execution.resumeFormUrl }}') as string;
+		const { pathname } = new URL(resumeFormUrl);
+		return pathname.slice(0, pathname.lastIndexOf('/')) || null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Hand the follow-up pages of a multi-page form their own auth token, scoped to
+ * the form-waiting path. Re-set on every page render, so a long form's later
+ * pages get a token that is still within its TTL.
+ */
+export function setFormAuthCookie(context: IWebhookFunctions, token: string): void {
+	const req = context.getRequestObject();
+	context.getResponseObject().cookie(FORM_AUTH_COOKIE_NAME, token, {
+		httpOnly: true,
+		// Lax, and only ever sent on a navigation the shell (or the top-level page)
+		// initiates from the real origin.
+		sameSite: 'lax',
+		secure: isSecureRequest(req),
+		// Nothing narrower is derivable when the base path is unknown; the cookie is
+		// httpOnly and expires with the token either way.
+		path: getFormWaitingBasePath(context) ?? '/',
+		maxAge: FORM_USER_AUTH_TOKEN_TTL_SECONDS * 1000,
+	});
+}
+
+/**
+ * Resolve the submitter from the form page auth cookie, or `null` when it is
+ * absent or doesn't verify for the workflow/execution being served.
+ */
+function readFormAuthCookieUser(context: IWebhookFunctions): IUser | null {
+	const req = context.getRequestObject();
+	// Parse the raw Cookie header rather than `req.cookies` because the webhook
+	// path may bypass cookie-parser middleware in some deployments.
+	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-form-auth=([^;]+)/);
+	if (!match) return null;
+	return verifyFormPageAuthCookie(
+		decodeURIComponent(match[1].trim()),
+		context.getWorkflow().id,
+		context.getExecutionId(),
+	);
 }
 
 /**
@@ -909,7 +1059,7 @@ async function authenticateFormUserOrRespond(
 
 	const formToken = req.headers['x-auth-token'];
 	if (typeof formToken === 'string' && formToken) {
-		const user = verifyFormUserAuthToken(formToken, context.getNode());
+		const user = verifyFormUserAuthToken(formToken, context.getNode(), context.getExecutionId());
 		if (user) return { user, token: null };
 	}
 
@@ -930,6 +1080,14 @@ async function authenticateFormUserOrRespond(
  * Multi-step Form/Wait nodes inherit `authentication` from the upstream
  * Form Trigger. This wrapper short-circuits when n8nUserAuth isn't in use.
  *
+ * A page is reached by navigating to it, which cannot carry an `x-auth-token`
+ * header, so a GET is authenticated from the form page auth cookie first. Every
+ * other request — and any GET whose cookie is missing or doesn't verify — falls
+ * through to the session cookie / `x-auth-token` checks, unchanged.
+ *
+ * Form pages never take the OAuth2 branch: the OAuth2 token's audience is the
+ * trigger's URL, which a page's own resource URL is not.
+ *
  * Returns `{ authedUser }` on success, `{ responded: true }` after sending a
  * 302/401 on failure, or `{}` if the trigger doesn't require auth.
  */
@@ -938,6 +1096,12 @@ export async function validateFormPageAuth(
 	triggerAuthentication: string,
 ): Promise<{ authedUser?: IUser; responded?: boolean }> {
 	if (triggerAuthentication !== 'n8nUserAuth') return {};
+
+	if (context.getRequestObject().method === 'GET') {
+		const cookieUser = readFormAuthCookieUser(context);
+		if (cookieUser) return { authedUser: cookieUser };
+	}
+
 	const { user } = (await authenticateFormUserOrRespond(context, false)) ?? {};
 	return user ? { authedUser: user } : { responded: true };
 }
@@ -959,6 +1123,7 @@ function renderFormShell({
 	resourceUrl,
 	credentials,
 	submitterEmail,
+	formWaitingPath,
 }: {
 	res: Response;
 	req: Request;
@@ -966,6 +1131,7 @@ function renderFormShell({
 	resourceUrl: string;
 	credentials: CredentialCheckStatus[];
 	submitterEmail?: string;
+	formWaitingPath?: string;
 }) {
 	// The iframe loads the same form via a real URL (so the form's relative POST
 	// works exactly as it does top-level today) flagged as the inner render.
@@ -977,6 +1143,8 @@ function renderFormShell({
 		formTitle,
 		iframeSrc: `${inner.pathname}${inner.search}`,
 		resourceUrl,
+		// The only paths the shell will move its frame to on the form's request.
+		formWaitingPath,
 		...buildFormShellViewModel(credentials, submitterEmail),
 	});
 }
@@ -1192,6 +1360,17 @@ export async function formWebhook(
 			responseMode = 'responseNode';
 		}
 
+		// A multi-page form hops to `/form-waiting/<execution>` by navigating, which
+		// carries neither the `x-auth-token` header nor — from the hosting shell's
+		// opaque-origin frame — the `n8n-auth` session cookie. Give the follow-up pages
+		// their own path-scoped token so they can authenticate the same submitter.
+		if (authentication === 'n8nUserAuth' && authedUser && hasNextPage) {
+			setFormAuthCookie(
+				context,
+				generateFormUserAuthToken(node, authedUser, { workflowId: context.getWorkflow().id }),
+			);
+		}
+
 		// The inner render is the form loaded inside the hosting-shell iframe. Honor the
 		// flag only for iframe navigations (per Sec-Fetch-Dest, absent on older browsers)
 		// so a hand-typed URL can't skip the connect UI; the POST gate enforces regardless.
@@ -1237,6 +1416,7 @@ export async function formWebhook(
 						resourceUrl,
 						credentials: credentialStatus.credentials,
 						submitterEmail: authedUser?.email,
+						formWaitingPath: getFormWaitingBasePath(context) ?? undefined,
 					});
 					return { noWebhookResponse: true };
 				}
@@ -1250,7 +1430,9 @@ export async function formWebhook(
 					// Cookies aren't sent on POST from the sandboxed form page
 					// (null origin + SameSite=Lax). Embed an HMAC token so the
 					// POST handler can re-authenticate the user.
-					authToken = generateFormUserAuthToken(node, authedUser);
+					authToken = generateFormUserAuthToken(node, authedUser, {
+						workflowId: context.getWorkflow().id,
+					});
 				} else {
 					authToken = oAuth2Token;
 				}

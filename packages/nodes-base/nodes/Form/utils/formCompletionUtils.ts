@@ -122,7 +122,10 @@ export const renderFormCompletion = async (
 	// resumes the paused workflow) can re-authenticate the user — cookies
 	// aren't sent on fetch from the sandboxed completion page.
 	const authToken = authedUser
-		? generateFormUserAuthToken(context.getNode(), authedUser)
+		? generateFormUserAuthToken(context.getNode(), authedUser, {
+				workflowId: context.getWorkflow().id,
+				executionId: context.getExecutionId(),
+			})
 		: undefined;
 
 	res.render('form-trigger-completion', {

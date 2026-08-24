@@ -38,6 +38,12 @@ describe('Form Node', () => {
 
 		mockExecuteFunctions.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
 		mockWebhookFunctions.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
+		mockWebhookFunctions.getWorkflow.mockReturnValue({
+			id: 'workflow-id',
+			name: 'Workflow',
+			active: true,
+		});
+		mockWebhookFunctions.getExecutionId.mockReturnValue(testExecutionId);
 	});
 
 	describe('execute method', () => {
@@ -769,6 +775,7 @@ describe('Form Node', () => {
 				end: vi.fn(),
 				setHeader: vi.fn(),
 				status: vi.fn().mockReturnValue({ send: vi.fn() }),
+				cookie: vi.fn(),
 			};
 			mockWebhookFunctions.getResponseObject.mockReturnValue(
 				mockResponseObject as unknown as Response,
