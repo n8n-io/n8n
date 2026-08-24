@@ -24,7 +24,15 @@ export class CreateGitConnectionDto extends Z.class({
 	password: z.string().min(1).optional(),
 }) {}
 
-/** Optional connection fields shared by the connection and instance update DTOs. */
+/**
+ * Optional connection fields shared by the project and instance update DTOs.
+ * Both `PUT /git-connections/:id` and `PUT /instance-git-connection` accept
+ * exactly these fields, so any field added here is automatically accepted by
+ * both surfaces. Keep it to fields both `GitConnectionsService.update` and
+ * `InstanceGitConnectionService.update` actually consume — a field only one
+ * side handles would be silently accepted and ignored by the other. Fields
+ * specific to one surface belong on its own DTO, not here.
+ */
 export const gitConnectionUpdatableFieldsShape = {
 	repositoryUrl: repositoryUrlSchema.optional(),
 	branchName: branchNameSchema.optional(),
