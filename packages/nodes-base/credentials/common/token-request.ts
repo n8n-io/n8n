@@ -25,6 +25,7 @@ export const TOKEN_REQUEST_TIMEOUT = 30_000;
  * layer entirely (no SSRF guard, no proxy, no timeout).
  */
 export function getTokenRequestClient(host: 'fixed-vendor' | 'user-controlled'): HttpRequestClient {
-	const useDefaultSsrfPolicy: UseDefaultSsrfPolicy = host === 'fixed-vendor' ? 'unsafe' : 'safe';
-	return Container.get(OutboundHttp).requests({ useDefaultSsrfPolicy });
+	return host === 'fixed-vendor'
+		? Container.get(OutboundHttp).requests({ useDefaultSsrfPolicy: 'unsafe' })
+		: Container.get(OutboundHttp).requests();
 }
