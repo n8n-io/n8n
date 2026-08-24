@@ -35,10 +35,10 @@ export class CreateAgentChannelStatusTable1787213245846 implements ReversibleMig
 					.int.notNull.default(0)
 					.comment('Consecutive failed startup attempts by this process, reset on success'),
 				column('backoffUntil')
-					.timestamp()
+					.timestampTimezone()
 					.comment('Earliest this process should retry; null when there is nothing to retry'),
 				column('expiresAt')
-					.timestamp()
+					.timestampTimezone()
 					.comment(
 						'When this row stops counting unless its owner refreshes it; null never expires',
 					),
