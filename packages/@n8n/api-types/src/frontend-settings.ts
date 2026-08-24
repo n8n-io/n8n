@@ -186,7 +186,6 @@ export interface FrontendSettings {
 		enabled: boolean;
 		host: string;
 	};
-	missingPackages?: boolean;
 	executionMode: 'regular' | 'queue';
 	/** Whether multi-main mode is enabled and licensed for this main instance. */
 	isMultiMain: boolean;

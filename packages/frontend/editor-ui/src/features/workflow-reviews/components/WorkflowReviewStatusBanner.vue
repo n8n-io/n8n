@@ -4,6 +4,8 @@ import { N8nButton, N8nHeading, N8nPopover, N8nText, N8nTooltip } from '@n8n/des
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
+import { getVersionLabel } from '@/features/workflows/workflowHistory/utils';
+
 import { formatUserDisplayName } from '../workflowReviews.utils';
 
 type BannerAction = 'submit-changes';
@@ -49,8 +51,14 @@ const i18n = useI18n();
 
 const isOpen = ref(false);
 
-/** Matches the workflow-version labels used elsewhere in the editor. */
-const pinnedVersionLabel = computed(() => props.review?.workflowVersionId?.slice(0, 8) ?? '');
+const pinnedVersionLabel = computed(() => {
+	const review = props.review;
+	if (!review?.workflowVersionId) return '';
+
+	return getVersionLabel({
+		workflowHistory: { versionId: review.workflowVersionId, name: review.workflowVersionName },
+	});
+});
 
 const actorName = computed(() => {
 	const actor = props.review?.decisionBy;
@@ -71,8 +79,6 @@ const hasDivergentVersion = computed(() => {
 
 const status = computed<BannerStatus | null>(() => {
 	const review = props.review;
-	// A pruned pin (LIGO-879) leaves nothing to name or publish, so stay silent
-	// rather than render copy about a version that no longer exists.
 	if (!review?.workflowVersionId) return null;
 
 	const version = pinnedVersionLabel.value;
@@ -81,7 +87,9 @@ const status = computed<BannerStatus | null>(() => {
 		if (review.decision === 'changes_requested') {
 			const actor = actorName.value;
 			return {
-				pill: i18n.baseText('workflowReviews.editorBanner.changesRequested.pill'),
+				pill: hasDivergentVersion.value
+					? i18n.baseText('workflowReviews.editorBanner.pendingStale.pill')
+					: i18n.baseText('workflowReviews.editorBanner.changesRequested.pill'),
 				title: i18n.baseText('workflowReviews.editorBanner.changesRequested.title'),
 				body: actor
 					? i18n.baseText('workflowReviews.editorBanner.changesRequested.body', {

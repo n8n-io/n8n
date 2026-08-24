@@ -137,8 +137,13 @@ const addOptionalFieldButtonText = computed(() => {
 	return locale.nodeText(activeNode.value?.type).addOptionalFieldButtonText(props.parameter);
 });
 
+// Keyed by stable index so revealed fields follow their item when the list is
+// reordered or an earlier item is deleted.
 const getOptionalValuesKey = (propertyName: string, index?: number): string => {
-	return index !== undefined ? `${propertyName}-${index}` : propertyName;
+	if (index !== undefined) {
+		return `${propertyName}-${itemState.getItemStableIndex(propertyName, index)}`;
+	}
+	return propertyName;
 };
 
 const hasNonDefaultValue = (

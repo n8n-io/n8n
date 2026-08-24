@@ -328,8 +328,10 @@ const onCheckboxChange = (index: number) => {
 		}
 	}
 
+	// The pre box (background + padding) comes from the global .n8n-markdown
+	// styles in css/markdown.scss; a second box on code doubles it up.
 	pre > code {
-		background-color: var(--color--background);
+		background-color: transparent;
 		color: var(--color--text--shade-1);
 	}
 
@@ -432,6 +434,7 @@ input[type='checkbox'] + label {
 	}
 
 	pre > code {
+		padding: var(--spacing--sm);
 		background-color: var(--sticky--code--color--background);
 		color: var(--sticky--code--color--text);
 	}
@@ -468,7 +471,6 @@ input[type='checkbox'] + label {
 
 	pre > code {
 		display: block;
-		padding: var(--spacing--sm);
 		overflow-x: auto;
 	}
 

@@ -51,7 +51,7 @@ export const createSearchFoldersTool = (
 	name: 'search_folders',
 	config: {
 		description:
-			"Search for folders within a project. Use this to resolve a folder name to an ID before creating a workflow in a folder, creating or updating a folder, or moving workflows into a folder. Each result includes the folder's full name path — when multiple folders match a name, use the paths to ask the user which one they meant. Requires a projectId — use search_projects first if needed.",
+			"Search for folders within a project. Use this to resolve a folder name to an ID before searching workflows inside a folder, creating a workflow in a folder, creating or updating a folder, or moving workflows into a folder. Each result includes the folder's full name path — when multiple folders match a name, use the paths to ask the user which one they meant. Requires a projectId — use search_projects first if needed.",
 		inputSchema,
 		outputSchema,
 		annotations: {

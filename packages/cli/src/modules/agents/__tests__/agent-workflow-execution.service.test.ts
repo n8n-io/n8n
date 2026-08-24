@@ -23,6 +23,7 @@ import type { Agent } from '../entities/agent.entity';
 import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gateway.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
+import type { WorkflowAgentStreamObserver } from '../workflow-agent-stream';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -658,6 +659,7 @@ describe('AgentWorkflowExecutionService', () => {
 				runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
 			};
 			Object.assign(runtime.agent, { tool: vi.fn(), declaredTools: [] });
+			const streamObserver = vi.fn<WorkflowAgentStreamObserver>().mockResolvedValue(undefined);
 
 			const result = await service.executeInlineForWorkflow(
 				inlinePayload,
@@ -669,6 +671,7 @@ describe('AgentWorkflowExecutionService', () => {
 				'production',
 				undefined,
 				workflowContext,
+				streamObserver,
 			);
 
 			// No entity lookup — the embedded config is the source of truth.
@@ -697,6 +700,11 @@ describe('AgentWorkflowExecutionService', () => {
 			);
 
 			expect(result.response).toBe('answer');
+			expect(streamObserver.mock.calls.map(([event]) => event)).toEqual([
+				{ type: 'response-begin' },
+				{ type: 'response-delta', delta: 'answer' },
+				{ type: 'response-end' },
+			]);
 			// Inline runs have no persisted session.
 			expect(result.session).toBeNull();
 			expect(executionService.startExecutionRecording).not.toHaveBeenCalled();
@@ -1023,25 +1031,71 @@ describe('AgentWorkflowExecutionService', () => {
 		it('tracks a failed inline turn before rethrowing a stream reader error', async () => {
 			const { service, reconstructionService, telemetry } = makeService();
 			const runtime = makeRuntime();
+			const streamObserver = vi.fn<WorkflowAgentStreamObserver>().mockResolvedValue(undefined);
 			runtime.agent.stream.mockResolvedValue({
 				stream: makeFailingStream(new Error('reader failed while consuming stream')),
 			});
 			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
 
-			await expect(
-				service.executeInlineForWorkflow(
-					inlinePayload,
-					'hello',
-					'execution-1',
-					'thread-1',
-					projectId,
-				),
-			).rejects.toThrow('reader failed while consuming stream');
+			const execution = service.executeInlineForWorkflow(
+				inlinePayload,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				streamObserver,
+			);
+			await expect(execution).rejects.toMatchObject({
+				message: 'reader failed while consuming stream',
+				description: 'reader failed while consuming stream',
+			});
+			expect(streamObserver.mock.calls.map(([event]) => event)).toEqual([
+				{ type: 'response-begin' },
+				{ type: 'response-delta', delta: 'partial answer' },
+			]);
 
 			// Telemetry fires even for failed runs — the rethrow happens after.
 			expect(telemetry.trackAgentTurnFinished).toHaveBeenCalledWith(
 				expect.objectContaining({ agent_type: 'inline', turn_status: 'failed' }),
 			);
+		});
+
+		it('exposes a runtime stream error through the engine-owned error chunk', async () => {
+			const { service, reconstructionService } = makeService();
+			const runtime = makeRuntime([
+				{ type: 'text-start', id: 'text-1' },
+				{ type: 'text-delta', id: 'text-1', delta: 'partial answer' },
+				{ type: 'error', error: new Error('runtime stream failed') },
+				{ type: 'finish', finishReason: 'error' },
+			]);
+			const streamObserver = vi.fn<WorkflowAgentStreamObserver>().mockResolvedValue(undefined);
+			reconstructionService.reconstructFromResolvedSource.mockResolvedValue(runtime);
+
+			const execution = service.executeInlineForWorkflow(
+				inlinePayload,
+				'hello',
+				'execution-1',
+				'thread-1',
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				streamObserver,
+			);
+
+			await expect(execution).rejects.toMatchObject({
+				message: 'Agent execution failed: runtime stream failed',
+				description: 'Agent execution failed: runtime stream failed',
+			});
+			expect(streamObserver.mock.calls.map(([event]) => event)).toEqual([
+				{ type: 'response-begin' },
+				{ type: 'response-delta', delta: 'partial answer' },
+			]);
 		});
 
 		it('surfaces inline compile failures as an OperationalError', async () => {

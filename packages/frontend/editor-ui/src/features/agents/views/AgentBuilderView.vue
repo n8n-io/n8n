@@ -417,6 +417,7 @@ async function fetchAgent(
 	if (isStaleAgentTarget(targetProjectId, targetAgentId)) return;
 	agent.value = data;
 	agentName.value = data.name;
+	upsertProjectAgentsListCache(targetProjectId, data);
 }
 
 async function fetchAgentFiles(
@@ -1822,6 +1823,7 @@ function onSwitchAgent(nextAgentId: string) {
 			:artifact-mode="isArtifactMode"
 			:editing-locked="props.artifactEditingLocked"
 			:config-validation-status="configValidation?.status ?? null"
+			:config-validation-issues="configValidation?.issues ?? []"
 			:before-publish="refreshValidationBeforePublish"
 			:is-preview-open="isPreviewDockOpen"
 			@header-action="onHeaderAction"

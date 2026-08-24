@@ -365,6 +365,7 @@ export {
 	parseObservationLogMarkdown,
 	renderObserverTranscript,
 	runObservationLogObserver,
+	wrapUntrustedObserverData,
 } from './runtime/memory/observation-log-observer';
 export {
 	normalizeObservationLogReflection,

@@ -1458,6 +1458,15 @@ describe.each(['activate', 'publish'])('POST /workflows/:id/%s', (action) => {
 		expect(await workflowRepository.isActive(workflow.id)).toBe(true);
 	});
 
+	test('should not return the shared field', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('shared');
+	});
+
 	test('should set activeVersionId', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
@@ -1651,6 +1660,21 @@ describe.each(['deactivate', 'unpublish'])('POST /workflows/:id/%s', (action) =>
 		});
 
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
+	});
+
+	test('should return the shared field', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.shared).toEqual([
+			expect.objectContaining({
+				workflowId: workflow.id,
+				projectId: memberPersonalProject.id,
+				project: expect.objectContaining({ id: memberPersonalProject.id }),
+			}),
+		]);
 	});
 
 	test('should return 403 when user lacks workflow:publish permission', async () => {

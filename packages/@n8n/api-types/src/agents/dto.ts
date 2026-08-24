@@ -23,6 +23,30 @@ export const AGENTS_LIST_SORT_OPTIONS = [
 	'updatedAt:desc',
 ] as const;
 
+export const AGENT_SESSION_STATUSES = [
+	'running',
+	'succeeded',
+	'error',
+	'cancelled',
+	'interrupted',
+] as const;
+
+export const AGENT_SESSION_ORIGINS = [
+	'preview',
+	'instance-ai',
+	'mcp',
+	'sub-agent',
+	'schedule',
+	'workflow',
+	'slack',
+	'telegram',
+	'linear',
+	'discord',
+] as const;
+
+export type AgentSessionStatus = (typeof AGENT_SESSION_STATUSES)[number];
+export type AgentSessionOrigin = (typeof AGENT_SESSION_ORIGINS)[number];
+
 const agentListFilterSchema = z
 	.object({
 		query: z.string().trim().min(1).max(128).optional(),
@@ -62,6 +86,20 @@ export class ListAgentsQueryDto extends Z.class({
 	filter: agentListFilterValidator,
 	sortBy: z.enum(AGENTS_LIST_SORT_OPTIONS).optional(),
 }) {}
+
+export class ListAgentSessionsQueryDto extends Z.class({
+	cursor: z.string().optional(),
+	limit: z.string().optional(),
+	status: z.enum(AGENT_SESSION_STATUSES).optional(),
+	origin: z.enum(AGENT_SESSION_ORIGINS).optional(),
+	updatedAfter: z.coerce.date().optional(),
+	updatedBefore: z.coerce.date().optional(),
+}) {}
+
+export type AgentSessionQueryFilters = Pick<
+	ListAgentSessionsQueryDto,
+	'status' | 'origin' | 'updatedAfter' | 'updatedBefore'
+>;
 
 export class AgentProviderModelsQueryDto extends Z.class({
 	credentialId: z.string().min(1).max(64).optional(),

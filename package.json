@@ -219,7 +219,8 @@
       "@vitest/browser@<4.1.10": "4.1.10",
       "immutable": "5.1.8",
       "nanoid@<3.3.18": "catalog:",
-      "@zone-eu/mailsplit@<5.4.15": "5.4.15"
+      "@zone-eu/mailsplit@<5.4.15": "5.4.15",
+      "strnum@<2.4.2": "2.4.2"
     },
     "patchedDependencies": {
       "axios": "patches/axios.patch",
@@ -237,6 +238,7 @@
       "v-code-diff": "patches/v-code-diff.patch",
       "vuedraggable@4.1.0": "patches/vuedraggable@4.1.0.patch",
       "assert@2.1.0": "patches/assert@2.1.0.patch",
+      "reka-ui@2.5.0": "patches/reka-ui@2.5.0.patch",
       "lodash@4.18.1": "patches/lodash@4.18.1.patch",
       "@langchain/openai@1.4.4": "patches/@langchain__openai@1.4.4.patch",
       "@langchain/google-common@2.1.24": "patches/@langchain__google-common@2.1.24.patch",

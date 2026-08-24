@@ -198,6 +198,7 @@ export class SourceControlImportService {
 					id: remote.id,
 					versionId: remote.versionId ?? '',
 					name: remote.name,
+					description: remote.description,
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
@@ -219,6 +220,7 @@ export class SourceControlImportService {
 				id: true,
 				versionId: true,
 				name: true,
+				description: true,
 				updatedAt: true,
 				parentFolder: {
 					id: true,
@@ -242,6 +244,7 @@ export class SourceControlImportService {
 				id: local.id,
 				versionId: local.versionId,
 				name: local.name,
+				description: local.description ?? null,
 				localId: local.id,
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
@@ -264,6 +267,7 @@ export class SourceControlImportService {
 				id: true,
 				versionId: true,
 				name: true,
+				description: true,
 				updatedAt: true,
 				parentFolder: {
 					id: true,
@@ -300,6 +304,7 @@ export class SourceControlImportService {
 				id: local.id,
 				versionId: local.versionId,
 				name: local.name,
+				description: local.description ?? null,
 				localId: local.id,
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
@@ -870,7 +875,8 @@ export class SourceControlImportService {
 		}
 
 		if (archivedByPull) {
-			await this.workflowMutationHooks.afterWorkflowArchived(id);
+			// A pull is a system mutation: no acting user to attribute the archive to.
+			await this.workflowMutationHooks.afterWorkflowArchived(id, null);
 		}
 
 		try {
@@ -1880,11 +1886,10 @@ export class SourceControlImportService {
 			if (workflow) workflows.push(workflow);
 		}
 
-		// The hook may throw to abort the deletion, so it runs for every workflow
-		// before any destructive teardown — a rejection halfway through the batch
-		// must not leave earlier workflows deactivated with their executions gone.
+		// Capture-only, before any destructive teardown, while the rows the deletes
+		// will cascade away still exist. A pull is a system mutation: no acting user.
 		for (const workflow of workflows) {
-			await this.workflowMutationHooks.beforeWorkflowDeleted(workflow.id);
+			await this.workflowMutationHooks.beforeWorkflowDeleted(workflow.id, null);
 		}
 
 		for (const workflow of workflows) {

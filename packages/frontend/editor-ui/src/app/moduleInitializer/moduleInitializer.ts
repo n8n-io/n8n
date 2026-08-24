@@ -127,7 +127,7 @@ export const registerModuleCommands = () => {
  * Initialize module routes, done in main.ts
  */
 export const registerModuleRoutes = (router: Router) => {
-	assertUniqueRouteNames(modules);
+	assertUniqueRouteNames(modules, router);
 
 	modules.forEach((module) => {
 		module.routes?.forEach((route) => {

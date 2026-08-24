@@ -74,4 +74,8 @@ describe('ImportWorkflowsCommand', () => {
 			await expect(command.run()).resolves.toBeUndefined();
 		});
 	});
+
+	test('needs the expression engine', () => {
+		expect(new ImportWorkflowsCommand().needsExpressionEngine).toBe(true);
+	});
 });
