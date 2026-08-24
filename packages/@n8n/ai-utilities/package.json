@@ -150,7 +150,7 @@
     "n8n-workflow": "workspace:*",
     "tmp-promise": "3.0.3",
     "js-tiktoken": "catalog:",
-    "@thednp/dommatrix": "^2.0.12",
+    "@thednp/dommatrix": "^3.1.1",
     "pdf-parse": "catalog:",
     "undici": "catalog:undici-v7"
   },

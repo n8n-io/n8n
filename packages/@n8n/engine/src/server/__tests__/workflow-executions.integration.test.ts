@@ -5,6 +5,7 @@ import request from 'supertest';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
+import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import { createDataSource, createStores, WorkflowExecution } from '../../database';
 import { StartExecutionService } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
@@ -15,6 +16,12 @@ const sampleGraph: WorkflowGraph = {
 	nodes: [{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} }],
 	edges: [],
 };
+
+const secret = 'a'.repeat(32);
+
+const authHeader = () => ({
+	authorization: `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
+});
 
 describe('POST /api/workflow-executions (integration)', () => {
 	let container: StartedPostgreSqlContainer;
@@ -35,6 +42,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		const { executionStore } = createStores(dataSource);
 		({ url, stop } = await startEngineServer(
 			new StartExecutionService(new AllowAllAdmittance(), executionStore, workQueue),
+			new SharedSecretIdentityVerifier(secret),
 		));
 	});
 
@@ -50,6 +58,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('creates an execution row, publishes execution:enqueued, returns 201', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
@@ -76,6 +85,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects an invalid body with 400', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({ workflowId: 'wf-1' }); // missing graph
 
 		expect(response.status).toBe(400);
@@ -85,6 +95,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects a bare-object triggerOutputs with 400 (the legacy, dropped shape)', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
@@ -98,6 +109,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it.each([['str'], [42]])('rejects triggerOutputs %p with 400', async (triggerOutputs) => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({ workflowId: 'wf-1', graph: sampleGraph, triggerOutputs });
 
 		expect(response.status).toBe(400);
@@ -105,7 +117,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	});
 
 	it('rejects an empty-array triggerOutputs with 400 (send null or omit for "no payload")', async () => {
-		const response = await request(url).post('/api/workflow-executions').send({
+		const response = await request(url).post('/api/workflow-executions').set(authHeader()).send({
 			workflowId: 'wf-1',
 			graph: sampleGraph,
 			triggerOutputs: [],
@@ -118,6 +130,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects a triggerOutputs with more slots than the cap with 400', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
@@ -131,6 +144,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects a graph without a trigger with 400, creating nothing', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: { nodes: [{ id: 'a', name: 'A', type: 'v1-node' }], edges: [] },
@@ -144,6 +158,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects a graph with back-edges with 501, creating nothing', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: {
