@@ -34,15 +34,6 @@ const config = {
 	rootDir: rootDir,
 };
 
-// Define backend patches to keep during deployment
-const PATCHES_TO_KEEP = [
-	'pdfjs-dist',
-	'pkce-challenge',
-	'bull',
-	'lodash',
-	'@confluentinc/kafka-javascript',
-];
-
 // #endregion ===== Configuration =====
 
 // #region ===== Helper Functions =====
@@ -164,9 +155,11 @@ if (excludeTestController) {
 // top level, so cdxgen would miss the transitive tree (the manifest would be incomplete).
 // Re-enable hoisting for the licenses build only — shipped images keep the non-hoisted
 // layout, since regular builds leave N8N_GENERATE_LICENSES unset.
+// `PNPM_CONFIG_*` and not `npm_config_*`: pnpm 11 no longer reads npm-style env config,
+// so an `npm_config_` name here is silently ignored and the SBOM comes out incomplete.
 const generateLicenses = process.env.N8N_GENERATE_LICENSES === 'true';
 if (generateLicenses) {
-	process.env.npm_config_shamefully_hoist = 'true';
+	process.env.PNPM_CONFIG_SHAMEFULLY_HOIST = 'true';
 }
 
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled`;
