@@ -116,7 +116,6 @@ export function resolveRouteArgs(
 	return resolved;
 }
 
-/** Every decorator route must state its success status via `@ApiResponse`. */
 /**
  * Whether a caller must send a body: an empty object being invalid means one is needed. Mirrors
  * `requestBody.required` in the hand-written specs, without a second place to declare it.
@@ -125,6 +124,7 @@ export function isRequestBodyRequired(dto: ZodClass): boolean {
 	return !dto.safeParse({}).success;
 }
 
+/** Every decorator route must state its success status via `@ApiResponse`. */
 export function resolveSuccessStatus(
 	controllerName: string,
 	handlerName: HandlerName,
