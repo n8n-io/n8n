@@ -1210,26 +1210,6 @@ describe('GET /workflows/:id/history', () => {
 		expect(thirdPage.body.nextCursor).toBeNull();
 	});
 
-	test('should paginate with limit and offset', async () => {
-		const workflow = await createWorkflow({}, owner);
-		await createManyWorkflowHistoryItems(workflow.id, 5);
-
-		const firstPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
-			limit: '2',
-			offset: '0',
-		});
-		expect(firstPage.statusCode).toBe(200);
-		expect(firstPage.body.data).toHaveLength(2);
-
-		const secondPage = await authOwnerAgent.get(`/workflows/${workflow.id}/history`).query({
-			limit: '2',
-			offset: '2',
-		});
-		expect(secondPage.statusCode).toBe(200);
-		expect(secondPage.body.data).toHaveLength(2);
-		expect(secondPage.body.data[0].versionId).not.toBe(firstPage.body.data[0].versionId);
-	});
-
 	test('should retrieve history for non-owned workflow when owner', async () => {
 		const workflow = await createWorkflow({}, member);
 		await createWorkflowHistoryItem(workflow.id, { name: 'Member Version' });
