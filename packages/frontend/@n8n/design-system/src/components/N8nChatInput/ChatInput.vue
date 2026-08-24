@@ -35,10 +35,10 @@ export interface N8nChatInputProps {
 	 *   their own bottom row.
 	 * - 'single-line': one fixed row; Enter always submits.
 	 * - 'adaptive': starts as a single row with the send button inline and grows
-	 *   smoothly with the content, up to `maxLinesBeforeScroll`. Keyboard behavior
-	 *   matches 'multiline' (Shift+Enter inserts a newline). Supports only the
-	 *   default icon-only send/stop button; custom labels or action slots fall
-	 *   back to 'multiline'.
+	 *   with the content, up to `maxLinesBeforeScroll`. Keyboard behavior matches
+	 *   'multiline' (Shift+Enter inserts a newline). Supports only the default
+	 *   icon-only send/stop button; custom labels or action slots fall back to
+	 *   'multiline'.
 	 */
 	layout?: 'multiline' | 'single-line' | 'adaptive';
 	autosize?: boolean | { minRows: number; maxRows: number };
@@ -85,20 +85,25 @@ const { t } = useI18n();
 const textareaRef = ref<HTMLTextAreaElement>();
 const isFocused = ref(false);
 const textValue = ref(props.modelValue || '');
-const hasCustomActions = computed(
-	() =>
-		Boolean(props.buttonLabel) ||
-		Boolean(
-			slots['left-actions'] ?? slots.actions ?? slots['extra-actions'] ?? slots['right-actions'],
-		),
-);
-const effectiveLayout = computed(() =>
-	props.layout === 'adaptive' && hasCustomActions.value ? 'multiline' : props.layout,
-);
+function hasCustomActions() {
+	return Boolean(
+		props.buttonLabel ||
+			slots['left-actions'] ||
+			slots.actions ||
+			slots['extra-actions'] ||
+			slots['right-actions'],
+	);
+}
+
+// Read fresh on every use instead of via a computed: slots are not reactive, so a
+// computed would cache the first result and miss action slots that appear later.
+function effectiveLayout() {
+	return props.layout === 'adaptive' && hasCustomActions() ? 'multiline' : props.layout;
+}
 
 if (import.meta.env.DEV) {
 	watchEffect(() => {
-		if (props.layout === 'adaptive' && hasCustomActions.value) {
+		if (props.layout === 'adaptive' && hasCustomActions()) {
 			// eslint-disable-next-line no-console
 			console.warn(
 				'[N8nChatInput] `layout="adaptive"` supports only the default icon-only send/stop button. ' +
@@ -114,7 +119,7 @@ const autosizeRows = computed(() =>
 		: { minRows: 1, maxRows: props.maxLinesBeforeScroll },
 );
 const isAutosizeEnabled = computed(
-	() => effectiveLayout.value !== 'single-line' && props.autosize !== false,
+	() => props.layout !== 'single-line' && props.autosize !== false,
 );
 const { textareaStyles, calculateTextareaHeight, clearTextareaHeight } = useAutosizeTextarea({
 	textarea: textareaRef,
@@ -138,11 +143,11 @@ const sendDisabled = computed(
 			props.creditsRemaining === 0),
 );
 
-const containerStyle = computed(() => {
-	// Only the classic multiline composer reserves the tall block; 'adaptive'
-	// starts at one row and lets the autosized textarea drive the height.
-	return effectiveLayout.value === 'multiline' ? { minHeight: '80px' } : undefined;
-});
+// Only the classic multiline composer reserves the tall block; 'adaptive' starts
+// at one row and lets the autosized textarea drive the height.
+function containerStyle() {
+	return effectiveLayout() === 'multiline' ? { minHeight: '80px' } : undefined;
+}
 
 const hasNoCredits = computed(() => {
 	return (
@@ -169,7 +174,7 @@ watch(
 	async (newValue) => {
 		textValue.value = newValue || '';
 		await nextTick();
-		if (effectiveLayout.value === 'single-line' || props.autosize === false) return;
+		if (!isAutosizeEnabled.value) return;
 
 		// Wait for an additional animation frame to ensure DOM has fully updated
 		await new Promise(requestAnimationFrame);
@@ -177,19 +182,10 @@ watch(
 	},
 );
 
-watch([effectiveLayout, () => props.autosize], ([layout, autosize]) => {
-	if (layout === 'single-line' || autosize === false) {
-		clearTextareaHeight();
-		return;
-	}
-
-	void nextTick(() => adjustHeight());
-});
-
 watch(textValue, (newValue, oldValue) => {
 	emit('update:modelValue', newValue);
 	// Single-line layout has fixed height; only multiline needs autosizing.
-	if (effectiveLayout.value === 'single-line' || props.autosize === false) return;
+	if (!isAutosizeEnabled.value) return;
 
 	// Only adjust height if value actually changed
 	if (newValue !== oldValue) {
@@ -218,7 +214,7 @@ async function handleStop() {
 }
 
 async function handleKeyDown(event: KeyboardEvent) {
-	if (effectiveLayout.value === 'single-line' && event.key === 'Enter' && !event.isComposing) {
+	if (effectiveLayout() === 'single-line' && event.key === 'Enter' && !event.isComposing) {
 		event.preventDefault();
 		if (!sendDisabled.value) {
 			await handleSubmit();
@@ -309,11 +305,11 @@ defineExpose({
 					{
 						[$style.focused]: isFocused,
 						[$style.disabled]: disabled || hasNoCredits,
-						[$style.singleLineContainer]: effectiveLayout === 'single-line',
-						[$style.adaptiveContainer]: effectiveLayout === 'adaptive',
+						[$style.singleLineContainer]: effectiveLayout() === 'single-line',
+						[$style.adaptiveContainer]: effectiveLayout() === 'adaptive',
 					},
 				]"
-				:style="containerStyle"
+				:style="containerStyle()"
 				@click.self="handleContainerClick"
 			>
 				<slot name="leading" />
@@ -328,8 +324,8 @@ defineExpose({
 					:class="[
 						$style.textarea,
 						{
-							[$style.singleLineTextarea]: effectiveLayout === 'single-line',
-							[$style.adaptiveTextarea]: effectiveLayout === 'adaptive',
+							[$style.singleLineTextarea]: effectiveLayout() === 'single-line',
+							[$style.adaptiveTextarea]: effectiveLayout() === 'adaptive',
 						},
 						'ignore-key-press-node-creator',
 						'ignore-key-press-canvas',
@@ -341,17 +337,15 @@ defineExpose({
 					@keydown="handleKeyDown"
 					@focus="handleFocus"
 					@blur="handleBlur"
-					@input="
-						effectiveLayout === 'single-line' || autosize === false ? undefined : adjustHeight
-					"
+					@input="isAutosizeEnabled ? adjustHeight : undefined"
 					@click="handleFocusableRegionClick"
 				/>
 				<div
 					:class="[
 						$style.bottomActions,
 						{
-							[$style.singleLineActions]: effectiveLayout === 'single-line',
-							[$style.adaptiveActions]: effectiveLayout === 'adaptive',
+							[$style.singleLineActions]: effectiveLayout() === 'single-line',
+							[$style.adaptiveActions]: effectiveLayout() === 'adaptive',
 						},
 					]"
 					@click="handleFocusableRegionClick"
@@ -385,7 +379,7 @@ defineExpose({
 					</div>
 				</div>
 			</div>
-			<div v-if="$slots.trailing && effectiveLayout !== 'single-line'" :class="$style.trailing">
+			<div v-if="$slots.trailing && effectiveLayout() !== 'single-line'" :class="$style.trailing">
 				<slot name="trailing" />
 			</div>
 		</div>
@@ -436,12 +430,11 @@ defineExpose({
 
 /* Adaptive: one visual row that grows with the autosized textarea. The send button
 	is pinned to the bottom-right corner instead of holding a dedicated actions row,
-	so the only moving part while typing is the (transitioned) textarea height — the
-	button just rides the bottom edge. See the overrides next to the single-line
-	ones at the end of this stylesheet. */
+	so the textarea height is the only thing that moves while typing — the button
+	just rides the bottom edge. See the overrides next to the single-line ones at
+	the end of this stylesheet. */
 .adaptiveContainer {
 	position: relative;
-	justify-content: center;
 	/* The pinned button is taller than one line of text; without this floor it
 		would poke out of the single-row state. */
 	min-height: calc(var(--height--md) + 2 * var(--spacing--2xs));
@@ -528,12 +521,6 @@ defineExpose({
 	/* A 24px text line plus 4px above and below matches the 32px send button,
 		leaving the same 8px inset on every side in the compact state. */
 	padding-block: var(--spacing--4xs);
-	/* The autosize composable writes explicit pixel heights, so they interpolate. */
-	transition: height 0.15s ease;
-
-	@media (prefers-reduced-motion: reduce) {
-		transition: none;
-	}
 }
 
 .adaptiveActions {

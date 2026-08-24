@@ -2,6 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { fireEvent } from '@testing-library/vue';
 import { mount } from '@vue/test-utils';
 import { vi } from 'vitest';
+import { defineComponent, h, nextTick, ref } from 'vue';
 
 import N8nChatInput from './ChatInput.vue';
 import { createComponentRenderer } from '../../__tests__/render';
@@ -249,6 +250,34 @@ describe('N8nChatInput', () => {
 				expect(warn).toHaveBeenCalledWith(expect.stringContaining('Falling back to `multiline`'));
 			},
 		);
+
+		it('falls back to multiline when an action slot appears after mount', async () => {
+			const showAction = ref(false);
+			const Host = defineComponent({
+				setup() {
+					return () =>
+						h(
+							N8nChatInput,
+							{ layout: 'adaptive' },
+							showAction.value ? { 'right-actions': () => h('button', 'Custom action') } : {},
+						);
+				},
+			});
+
+			const wrapper = mount(Host, {
+				attachTo: document.body,
+				global: { stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'] },
+			});
+			const chatContainer = wrapper.find('.container');
+			expect(chatContainer.classes().join(' ')).toContain('adaptiveContainer');
+
+			showAction.value = true;
+			await nextTick();
+
+			expect(wrapper.find('.container').classes().join(' ')).not.toContain('adaptiveContainer');
+			expect(wrapper.find('.container').attributes('style')).toContain('min-height: 80px');
+			wrapper.unmount();
+		});
 
 		it('autosizes the textarea like multiline', async () => {
 			const originalDescriptor = Object.getOwnPropertyDescriptor(
