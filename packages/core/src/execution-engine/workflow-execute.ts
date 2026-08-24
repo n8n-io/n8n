@@ -1640,27 +1640,35 @@ export class WorkflowExecute {
 						stack: e.stack,
 					};
 
-					// Set the incoming data of the node that it can be saved correctly
+					// Set the incoming data of the node that it can be saved correctly.
+					// The stack is empty for an execution containing only a Chat Trigger, and there
+					// is then no node to attribute the failure to — record the error on its own
+					// rather than throwing over the top of it.
+					const startItem = this.runExecutionData.executionData!.nodeExecutionStack.at(0);
 
-					executionData = this.runExecutionData.executionData!.nodeExecutionStack[0];
-					const taskData: ITaskData = {
-						startTime: Date.now(),
-						executionIndex: 0,
-						executionTime: 0,
-						data: {
-							main: executionData.data.main,
-						},
-						source: [],
-						executionStatus: 'error',
-						hints: [],
-					};
-					this.runExecutionData.resultData = {
-						runData: {
-							[executionData.node.name]: [taskData],
-						},
-						lastNodeExecuted: executionData.node.name,
-						error: executionError,
-					};
+					if (startItem) {
+						executionData = startItem;
+						const taskData: ITaskData = {
+							startTime: Date.now(),
+							executionIndex: 0,
+							executionTime: 0,
+							data: {
+								main: executionData.data.main,
+							},
+							source: [],
+							executionStatus: 'error',
+							hints: [],
+						};
+						this.runExecutionData.resultData = {
+							runData: {
+								[executionData.node.name]: [taskData],
+							},
+							lastNodeExecuted: executionData.node.name,
+							error: executionError,
+						};
+					} else {
+						this.runExecutionData.resultData.error = executionError;
+					}
 
 					throw error;
 				}
