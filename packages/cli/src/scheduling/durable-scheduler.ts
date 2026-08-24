@@ -14,6 +14,7 @@ import { InstanceSettings, Tracing } from 'n8n-core';
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { withOwnerKeys } from './owner-key';
+import { isDurablePollerChainEnabled } from './poll-trigger-node/durable-poller-chain';
 import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 import { createSchedulerTracer } from './scheduler-tracer';
@@ -92,7 +93,7 @@ export class DurableScheduler implements Scheduler {
 		if (enabled) {
 			warnOnMisfireGrace(logger, config);
 			warnOnDrainRate(logger, config);
-			warnOnPollTimeout(logger, config);
+			warnOnPollTimeout(logger, globalConfig);
 		}
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
@@ -169,9 +170,12 @@ function warnOnDrainRate(logger: Logger, config: GlobalConfig['scheduler']): voi
  * start the same poll while the first one is still running. Equality counts
  * too, since the poll deadline only starts after the occurrence's setup reads.
  */
-function warnOnPollTimeout(logger: Logger, config: GlobalConfig['scheduler']): void {
-	const { enabledForPollTriggers, pollTimeoutSeconds, leaseDurationSeconds } = config;
-	if (enabledForPollTriggers && pollTimeoutSeconds >= leaseDurationSeconds) {
+function warnOnPollTimeout(logger: Logger, globalConfig: GlobalConfig): void {
+	const { pollTimeoutSeconds, leaseDurationSeconds } = globalConfig.scheduler;
+	if (
+		isDurablePollerChainEnabled(globalConfig.scheduler, globalConfig.workflows) &&
+		pollTimeoutSeconds >= leaseDurationSeconds
+	) {
 		logger.warn(
 			'Scheduler poll timeout reaches the lease duration; a poll can still be running when its lease expires and another instance takes the run over',
 			{ pollTimeoutSeconds, leaseDurationSeconds },

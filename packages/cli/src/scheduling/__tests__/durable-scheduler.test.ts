@@ -34,6 +34,7 @@ describe('DurableScheduler', () => {
 		enabledForPollTriggers = false,
 		pollTimeoutSeconds = 45,
 		leaseDurationSeconds = 60,
+		useWorkflowPublicationService = true,
 	} = {}) {
 		const inner = mock<Scheduler & SchedulerPasses>();
 		vi.mocked(createScheduler).mockReturnValue(inner);
@@ -68,6 +69,7 @@ describe('DurableScheduler', () => {
 					pollTimeoutSeconds,
 					leaseDurationSeconds,
 				},
+				workflows: { useWorkflowPublicationService },
 			}),
 			tracing,
 			scheduleTriggerTaskHandler,
@@ -218,6 +220,22 @@ describe('DurableScheduler', () => {
 				enabledForPollTriggers: false,
 				pollTimeoutSeconds: 120,
 				leaseDurationSeconds: 60,
+			});
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('poll timeout'),
+				expect.anything(),
+			);
+		});
+
+		// Without the publication service the durable poller chain is inactive and
+		// polls run on the legacy in-memory path, where the timeout does not apply.
+		it('does not warn when the workflow publication service is disabled', () => {
+			const { logger } = makeScheduler({
+				enabledForPollTriggers: true,
+				pollTimeoutSeconds: 120,
+				leaseDurationSeconds: 60,
+				useWorkflowPublicationService: false,
 			});
 
 			expect(logger.warn).not.toHaveBeenCalledWith(
