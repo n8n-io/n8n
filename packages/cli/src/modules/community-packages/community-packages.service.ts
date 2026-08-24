@@ -475,17 +475,14 @@ export class CommunityPackagesService {
 
 			let loader: PackageDirectoryLoader;
 			try {
-				await this.loadNodesAndCredentials.unloadPackage(packageName);
-				loader = await this.loadNodesAndCredentials.loadPackage(packageName);
+				loader = await this.reloadPackage(packageName);
 			} catch (error) {
 				await this.restoreFailedPackageInstallation(packageName, {
 					backupDirectory,
 					previousVersion,
 					reloadPackage: isUpdate,
 				});
-				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, {
-					cause: error,
-				});
+				throw error;
 			}
 
 			if (loader.loadedNodes.length > 0) {
@@ -597,8 +594,7 @@ export class CommunityPackagesService {
 
 			const authToken = this.getNpmAuthToken();
 			await this.downloadPackage(packageName, packageVersion, authToken);
-			await this.loadNodesAndCredentials.unloadPackage(packageName);
-			await this.loadNodesAndCredentials.loadPackage(packageName);
+			await this.reloadPackage(packageName);
 			await this.loadNodesAndCredentials.postProcessLoaders();
 			this.loadNodesAndCredentials.releaseTypes();
 			this.logger.info(`Community package installed: ${packageName}`);
@@ -613,6 +609,16 @@ export class CommunityPackagesService {
 			this.loadNodesAndCredentials.releaseTypes();
 			this.logger.info(`Community package uninstalled: ${packageName}`);
 		});
+	}
+
+	/** Swaps the in-memory nodes for whatever is now in the package's directory. */
+	private async reloadPackage(packageName: string): Promise<PackageDirectoryLoader> {
+		try {
+			await this.loadNodesAndCredentials.unloadPackage(packageName);
+			return await this.loadNodesAndCredentials.loadPackage(packageName);
+		} catch (error) {
+			throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, { cause: error });
+		}
 	}
 
 	private resolvePackageDirectory(packageName: string) {
@@ -655,8 +661,7 @@ export class CommunityPackagesService {
 			// valid on disk to load and we'd just unload a working loader for nothing.
 			if (backupDirectory && reloadPackage) {
 				try {
-					await this.loadNodesAndCredentials.unloadPackage(packageName);
-					await this.loadNodesAndCredentials.loadPackage(packageName);
+					await this.reloadPackage(packageName);
 					await this.loadNodesAndCredentials.postProcessLoaders();
 					this.loadNodesAndCredentials.releaseTypes();
 				} catch (cleanupError) {
