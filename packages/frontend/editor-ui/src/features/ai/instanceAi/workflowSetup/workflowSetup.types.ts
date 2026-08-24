@@ -14,6 +14,8 @@ export interface WorkflowSetupSection {
 	parameterNames: string[];
 	credentialTargetNodes: Array<{ id: string; name: string; type: string }>;
 	setupHint?: InstanceAiCredentialSetupHint;
+	/** The user asked for a fresh credential: don't preselect an existing one. */
+	preferNewCredential?: boolean;
 }
 
 /**

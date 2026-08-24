@@ -20,7 +20,10 @@ const routerResolve = vi.fn((to: { name?: string; params?: Record<string, string
 	href: `/${to.name ?? ''}/${Object.values(to.params ?? {}).join('/')}`,
 }));
 const routeQuery = reactive<Record<string, string | undefined>>({});
+const routeParams = reactive({ projectId: 'p1', agentId: 'a1' });
 let routeName = 'AgentBuilderView';
+type RouteGuard = (to: { params: Record<string, string> }) => void | Promise<void>;
+const routeGuards: { leave?: RouteGuard; update?: RouteGuard } = {};
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 const showMessageMock = vi.fn();
@@ -56,11 +59,15 @@ vi.mock('vue-router', () => ({
 	}),
 	useRoute: () => ({
 		name: routeName,
-		params: { projectId: 'p1', agentId: 'a1' },
+		params: routeParams,
 		query: routeQuery,
 	}),
-	onBeforeRouteLeave: vi.fn(),
-	onBeforeRouteUpdate: vi.fn(),
+	onBeforeRouteLeave: (guard: RouteGuard) => {
+		routeGuards.leave = guard;
+	},
+	onBeforeRouteUpdate: (guard: RouteGuard) => {
+		routeGuards.update = guard;
+	},
 	RouterLink: { template: '<a><slot/></a>' },
 }));
 
@@ -634,12 +641,17 @@ function resetViewMocks() {
 	openModalWithDataMock.mockReset();
 	closeModalMock.mockReset();
 	routeName = 'AgentBuilderView';
+	routeParams.projectId = 'p1';
+	routeParams.agentId = 'a1';
+	routeGuards.leave = undefined;
+	routeGuards.update = undefined;
 	agentEvalsFlagMock.enabled = false;
 	generateDraftCasesMock.mockReset();
 	generateDraftCasesMock.mockResolvedValue({ cases: [] });
 	for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 	sessionThreads.length = 0;
 	fetchedSessionThreads.length = 0;
+	history.replaceState({}, '');
 	sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
 	// Reset to a built agent; tests that need an unbuilt agent override locally.
 	intendedConfig = {
@@ -701,6 +713,70 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-chat-mode-toggle"]').exists()).toBe(false);
+	});
+
+	it('persists a route-backed agent only after its first configuration change', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		createAgentMock.mockResolvedValueOnce(makeAgentResponse());
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		expect(getAgentMock).not.toHaveBeenCalled();
+		expect(fetchConfigMock).not.toHaveBeenCalled();
+		expect(createAgentMock).not.toHaveBeenCalled();
+		expect(editor.props('agentUnsaved')).toBe(true);
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+
+		expect(createAgentMock).toHaveBeenCalledOnce();
+		expect(createAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', expect.any(String), {
+			id: 'a1',
+		});
+		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
+		await vi.waitFor(() => expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1'));
+		expect(fetchSessionThreadsMock).toHaveBeenCalledWith('p1', 'a1');
+	});
+
+	it('settles a route-backed create before switching agents', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		const pendingCreate = Promise.withResolvers<ReturnType<typeof makeAgentResponse>>();
+		createAgentMock.mockReturnValueOnce(pendingCreate.promise);
+		getAgentMock.mockImplementation(async (_context, projectId: string, id: string) =>
+			makeAgentResponse({ id, projectId }),
+		);
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await nextTick();
+		expect(routeGuards.update).toBeDefined();
+		const navigation = routeGuards.update?.({
+			params: { projectId: 'p1', agentId: 'a2' },
+		});
+		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
+
+		pendingCreate.resolve(makeAgentResponse({ id: 'a1' }));
+		await navigation;
+		await flushPromises();
+
+		expect(history.state.instanceAiPendingAgentId).toBeUndefined();
+		const agentAHistoryState = { ...history.state };
+		getAgentMock.mockClear();
+
+		history.replaceState({}, '');
+		routeParams.agentId = 'a2';
+		await vi.waitFor(() =>
+			expect(getAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a2'),
+		);
+
+		getAgentMock.mockClear();
+		history.replaceState(agentAHistoryState, '');
+		routeParams.agentId = 'a1';
+		await vi.waitFor(() =>
+			expect(getAgentMock).toHaveBeenCalledWith(expect.anything(), 'p1', 'a1'),
+		);
+		expect(editor.props('agentUnsaved')).toBe(false);
 	});
 
 	it('loads credentials through the workflow-scoped credentials endpoint for the agent project', async () => {

@@ -6,7 +6,7 @@ const REKA_UI = 'reka-ui';
  * Only the design-system Pagination wrapper may reach Reka UI pagination primitives.
  * Consumers must use `N8nPagination` from `@n8n/design-system`.
  */
-const ALLOWED_PATH = /[/\\]v2[/\\]components[/\\]Pagination[/\\]/;
+const ALLOWED_PATH = /[/\\]design-system[/\\]src[/\\]components[/\\]N8nPagination[/\\]/;
 
 const isPaginationExport = (name: string): boolean => name.startsWith('Pagination');
 

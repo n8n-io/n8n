@@ -1,0 +1,61 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import { ExecutionsConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
+
+import { EngineDataPlaneClient } from '../engine-data-plane-client';
+import { EngineV2Module } from '../engine-v2.module';
+import { EngineV2Runtime } from '../engine-v2.runtime';
+
+describe('EngineV2Module', () => {
+	let module: EngineV2Module;
+	let executionsConfig: ExecutionsConfig;
+	let runtime: EngineV2Runtime;
+	let client: EngineDataPlaneClient;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+
+		executionsConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
+		runtime = mockInstance(EngineV2Runtime);
+		client = mockInstance(EngineDataPlaneClient);
+		Container.set(EngineDataPlaneProxyService, new EngineDataPlaneProxyService());
+
+		module = new EngineV2Module();
+	});
+
+	describe('init', () => {
+		it('refuses to start in queue mode', async () => {
+			executionsConfig.mode = 'queue';
+
+			await expect(module.init()).rejects.toThrow('does not support queue mode');
+			expect(runtime.init).not.toHaveBeenCalled();
+		});
+
+		it('starts the runtime in regular mode', async () => {
+			await module.init();
+
+			expect(runtime.init).toHaveBeenCalled();
+		});
+
+		it('registers the client as the data plane provider', async () => {
+			const proxy = Container.get(EngineDataPlaneProxyService);
+			const request = { workflowId: 'wf-1', graph: { nodes: [], edges: [] } };
+			await expect(proxy.startExecution(request)).rejects.toThrow('N8N_ENABLED_MODULES');
+
+			await module.init();
+			await proxy.startExecution(request);
+
+			expect(client.startExecution).toHaveBeenCalledWith(request);
+		});
+	});
+
+	describe('shutdown', () => {
+		it('shuts the runtime down', async () => {
+			await module.shutdown();
+
+			expect(runtime.shutdown).toHaveBeenCalled();
+		});
+	});
+});

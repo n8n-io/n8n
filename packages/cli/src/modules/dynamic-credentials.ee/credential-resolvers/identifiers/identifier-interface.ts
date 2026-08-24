@@ -22,10 +22,15 @@ export interface ITokenIdentifier {
 	 *
 	 * @param context - Credential context with execution details
 	 * @param identifierOptions - Implementation-specific options
+	 * @param executionId - Optional execution ID for context
 	 * @returns Unique identifier string
 	 * @throws {IdentifierValidationError} When validation or resolution fails
 	 */
-	resolve(context: ICredentialContext, identifierOptions: Record<string, unknown>): Promise<string>;
+	resolve(
+		context: ICredentialContext,
+		identifierOptions: Record<string, unknown>,
+		executionId?: string,
+	): Promise<string>;
 
 	/**
 	 * Validates identifier options before use

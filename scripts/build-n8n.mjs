@@ -35,7 +35,13 @@ const config = {
 };
 
 // Define backend patches to keep during deployment
-const PATCHES_TO_KEEP = ['pdfjs-dist', 'pkce-challenge', 'bull'];
+const PATCHES_TO_KEEP = [
+	'pdfjs-dist',
+	'pkce-challenge',
+	'bull',
+	'lodash',
+	'@confluentinc/kafka-javascript',
+];
 
 // #endregion ===== Configuration =====
 

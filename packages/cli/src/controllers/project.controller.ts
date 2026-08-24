@@ -286,7 +286,7 @@ export class ProjectController {
 	}
 
 	@Post('/:projectId/users')
-	@ProjectScope('project:update')
+	@ProjectScope('project:manageMembers')
 	async addProjectUsers(
 		req: AuthenticatedRequest,
 		res: Response,
@@ -331,7 +331,7 @@ export class ProjectController {
 	}
 
 	@Patch('/:projectId/users/:userId')
-	@ProjectScope('project:update')
+	@ProjectScope('project:manageMembers')
 	async changeProjectUserRole(
 		req: AuthenticatedRequest,
 		res: Response,
@@ -360,7 +360,7 @@ export class ProjectController {
 	}
 
 	@Delete('/:projectId/users/:userId')
-	@ProjectScope('project:update')
+	@ProjectScope('project:manageMembers')
 	async deleteProjectUser(
 		req: AuthenticatedRequest,
 		res: Response,

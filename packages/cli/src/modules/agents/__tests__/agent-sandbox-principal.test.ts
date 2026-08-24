@@ -14,8 +14,8 @@ describe('hashAgentSandboxPrincipal', () => {
 				'7Zqe0BHA0mDnH7Ci9p-Zy7W2uVPQhf_4h01KkKpHnlU',
 			],
 			[
-				{ type: 'workflow-session', workflowId: 'workflow|one', sessionId: 'session|two' },
-				'U1yUIOzcWHMbn3uOWB_UKJCbW1yZ_aqsOZJl_o3omc0',
+				{ type: 'project-session', projectId: 'project|one', sessionId: 'session|two' },
+				'hvv8BfUEg9z51q2osaDXES2zFyThZImKNiT2euVvAUA',
 			],
 			[
 				{

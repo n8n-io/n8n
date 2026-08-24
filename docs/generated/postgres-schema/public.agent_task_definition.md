@@ -10,6 +10,7 @@
 | id | varchar(32) |  | false |  |  | Application-generated task ID referenced from agent JSON config |
 | name | varchar(128) |  | false |  |  |  |
 | objective | text |  | false |  |  | User-authored instruction sent to the agent when this task runs |
+| timezone | varchar(64) |  | true |  |  | IANA timezone the cron is evaluated in; null falls back to the instance timezone |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -47,6 +48,7 @@ erDiagram
   varchar_32_ id
   varchar_128_ name
   text objective
+  varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
 }
 "public.agents" {

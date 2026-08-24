@@ -35,6 +35,7 @@
 	},
 	"action": {
 		"default_title": "n8n Browser Use",
+		"default_popup": "drawer.html",
 		"default_icon": {
 			"16": "icons/icon-16.png",
 			"32": "icons/icon-32.png",

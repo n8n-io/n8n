@@ -284,6 +284,21 @@ describe('SessionDetailPanel — HITL sequence', () => {
 });
 
 describe('SessionDetailPanel — other kinds', () => {
+	it('shows a fatal execution error in a danger callout', () => {
+		const w = mountIt({
+			kind: 'execution-error',
+			executionId: 'e1',
+			executionStatus: 'error',
+			timestamp: 100,
+			content: 'Model request failed',
+		});
+
+		expect(w.get('[data-testid="execution-error-callout"]').text()).toContain(
+			'Model request failed',
+		);
+		expect(w.get('[data-test-id="detail-execution-error-badge"]').text()).toBe('Error');
+	});
+
 	it('renders Input/Output JSON sections for generic tool calls', () => {
 		const w = mountIt({
 			kind: 'tool',

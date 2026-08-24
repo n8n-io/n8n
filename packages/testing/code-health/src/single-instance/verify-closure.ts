@@ -1,5 +1,5 @@
-import { analyze, collectCopies, distinctCopies, EXPECTED_DUPLICATES } from './collect-copies.js';
-import { CURATED_LIBS } from './libs.js';
+import { analyze, collectCopies } from './collect-copies.js';
+import { describeFailureCount, formatCuratedReport } from './explain-duplicates.js';
 
 /**
  * Exit code for "the closure was checked and curated duplicates were found".
@@ -21,23 +21,13 @@ export function runVerifyClosure(dir: string): number {
 	const { duplicates, failures } = analyze(found);
 
 	console.log(`\nSingle-instance dependency verifier — root: ${dir}`);
-	const curatedDups = new Map(duplicates.filter((d) => d.isCurated).map((d) => [d.name, d]));
 	console.log('\nCurated single-instance libraries (enforced):');
-	for (const lib of CURATED_LIBS) {
-		const dup = curatedDups.get(lib);
-		if (!dup) {
-			const copies = distinctCopies(found.get(lib) ?? []);
-			console.log(
-				`  ${lib}: ${copies.length === 0 ? 'not present' : `OK (1 copy, v${copies[0].version})`}`,
-			);
-			continue;
-		}
-		console.log(
-			`  ${lib}: ${dup.allowed ? 'ALLOWED DUP' : 'FAIL'} — ${dup.copies.length} physical copies:`,
-		);
-		for (const c of dup.copies) console.log(`      v${c.version}  ${c.realPath}`);
-		if (dup.allowed) console.log(`      allowlisted: ${EXPECTED_DUPLICATES[lib]}`);
-	}
+	// Paths, not requirers: this runs against a pruned `pnpm deploy` closure, whose nesting is a
+	// virtual store rather than "package X forced this copy".
+	const report = formatCuratedReport(found, duplicates, (dup) =>
+		dup.copies.map((c) => `      v${c.version}  ${c.realPath}`),
+	);
+	for (const line of report) console.log(line);
 
 	const otherDups = duplicates.filter((d) => !d.isCurated);
 	if (otherDups.length > 0) {
@@ -51,8 +41,10 @@ export function runVerifyClosure(dir: string): number {
 
 	console.log('');
 	if (failures.length > 0) {
-		console.error(
-			`FAIL: curated ${failures.length === 1 ? 'library resolves' : 'libraries resolve'} to multiple physical copies: ${failures.map((f) => f.name).join(', ')}`,
+		// stdout, not stderr: the streams interleave in CI logs, and build-n8n.mjs pipes stdout — a
+		// verdict on stderr can land in the middle of the list it summarises, or out of view.
+		console.log(
+			`FAIL: ${describeFailureCount(failures.length)}: ${failures.map((f) => f.name).join(', ')}`,
 		);
 		return EXIT_DUPLICATES_FOUND;
 	}

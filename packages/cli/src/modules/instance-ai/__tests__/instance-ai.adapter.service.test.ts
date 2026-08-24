@@ -45,6 +45,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 }));
 
 import { Container } from '@n8n/di';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
 import { Expression } from 'n8n-workflow';
 import type {
@@ -2078,6 +2079,29 @@ describe('createWorkflowAdapter', () => {
 		mockedUserHasScopes.mockResolvedValue(true);
 	});
 
+	it('summarizes pinned data as node names and item counts, without payloads', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-pins',
+			pinData: {
+				'Get Job Alert Emails': [{ json: { id: 'msg_1' } }, { json: { id: 'msg_2' } }],
+				'Empty Pin': [],
+			},
+		});
+
+		await expect(adapter.getPinnedDataSummary?.('wf-pins')).resolves.toEqual([
+			{ nodeName: 'Get Job Alert Emails', itemCount: 2 },
+			{ nodeName: 'Empty Pin', itemCount: 0 },
+		]);
+	});
+
+	it('returns an empty pinned-data summary when the workflow has no pins', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-clean' });
+
+		await expect(adapter.getPinnedDataSummary?.('wf-clean')).resolves.toEqual([]);
+	});
+
 	it('preserves node-level execution options when returning WorkflowJSON', async () => {
 		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
 		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
@@ -2121,6 +2145,64 @@ describe('createWorkflowAdapter', () => {
 				onError: 'continueErrorOutput',
 			}),
 		);
+	});
+
+	it('returns AI Gateway-managed credentials in a shape accepted by workflow codegen', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-managed',
+			name: 'Managed model workflow',
+			active: false,
+			versionId: 'version-id',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-01-01'),
+			nodes: [
+				{
+					id: 'agent-id',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 3.1,
+					position: [0, 0],
+					parameters: { promptType: 'define', text: 'Summarize the input.' },
+				},
+				{
+					id: 'model-id',
+					name: 'Google Gemini Chat Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					typeVersion: 1.1,
+					position: [0, 200],
+					parameters: { modelName: 'models/gemini-3-flash-preview' },
+					credentials: {
+						googlePalmApi: {
+							id: null,
+							name: 'n8n credits',
+							__aiGatewayManaged: true,
+						},
+					},
+				},
+			],
+			connections: {
+				'Google Gemini Chat Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+			settings: {},
+		});
+
+		const workflow = await adapter.getAsWorkflowJSON('wf-managed');
+
+		expect(workflow.nodes[1].credentials).toEqual({
+			googlePalmApi: {
+				id: null,
+				name: 'n8n credits',
+				__aiGatewayManaged: true,
+			},
+		});
+		const code = generateWorkflowCode(workflow);
+		expect(code).toContain("newCredential('n8n credits')");
+		expect(code).not.toContain("newCredential('n8n credits', 'null')");
 	});
 
 	it('returns the version graph with current workflow metadata when a versionId is passed', async () => {
@@ -2492,6 +2574,30 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('notifies open editors after a successful update so stale canvases reload', async () => {
+		// Without this an open editor keeps state the save replaced (e.g. cleared
+		// pinned data) and resurrects it via the overwrite-conflict dialog.
+		const { adapter, mockCollaborationService, mockUser } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON);
+
+		expect(mockCollaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+			'wf-existing',
+			mockUser.id,
+		);
+	});
+
+	it('does not notify editors when the update fails', async () => {
+		const { adapter, mockCollaborationService, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+		mockWorkflowService.update.mockRejectedValueOnce(new Error('save failed'));
+
+		await expect(
+			adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON),
+		).rejects.toThrow('save failed');
+		expect(mockCollaborationService.broadcastWorkflowUpdate).not.toHaveBeenCalled();
+	});
+
 	it('clears existing node groups when the SDK workflow declares none (update is authoritative)', async () => {
 		// Regression: the SDK omits `nodeGroups` when no `.group(...)` is declared. The
 		// update path must treat that as "no groups" and send [] so a removed group is
@@ -2547,7 +2653,7 @@ describe('createWorkflowAdapter', () => {
 					parameters: {},
 					credentials: {
 						slackApi: { name: 'Slack' },
-						gmailOAuth2Api: { id: '', name: 'Gmail' },
+						gmailOAuth2: { id: '', name: 'Gmail' },
 						openAiApi: { id: null, name: 'OpenAI' },
 						httpHeaderAuth: { id: 'cred-1', name: 'HTTP Header' },
 					},
@@ -2608,7 +2714,7 @@ describe('createWorkflowAdapter', () => {
 					parameters: {},
 					credentials: {
 						slackApi: { name: 'Slack' },
-						gmailOAuth2Api: { id: '  ', name: 'Gmail' },
+						gmailOAuth2: { id: '  ', name: 'Gmail' },
 					},
 				},
 			],
@@ -3331,6 +3437,32 @@ function createRunAdapterForTests(
 describe('createExecutionAdapter run()', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('reports workflow-pinned nodes on the run result', async () => {
+		const { adapter } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+				pinData: { 'Get Job Alert Emails': [{ json: { id: 'msg_1' } }] },
+			},
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		const result = await adapter.run('wf-1');
+
+		expect(result.workflowPinnedNodeNames).toEqual(['Get Job Alert Emails']);
+	});
+
+	it('omits workflow-pinned nodes from the run result when the workflow has none', async () => {
+		const { adapter } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [] },
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		const result = await adapter.run('wf-1');
+
+		expect(result).not.toHaveProperty('workflowPinnedNodeNames');
 	});
 
 	it('forces save settings so the agent can read the result back', async () => {
@@ -4605,6 +4737,44 @@ describe('createCredentialAdapter', () => {
 			});
 
 			await expect(credentialService.isTestable!('kafka')).resolves.toBe(false);
+		});
+	});
+
+	describe('credentialTypeExists', () => {
+		const loader = {
+			knownCredentials: { gmailOAuth2: {} },
+			getCredential: (type: string) => {
+				// Runtime-registered types resolve through a loader without being in
+				// knownCredentials (e.g. MCP registry).
+				if (type === 'linearMcpOAuth2Api') return { type: { name: type } };
+				throw new Error(`Unrecognized credential type: ${type}`);
+			},
+		};
+
+		it('is true for a known credential type', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loader,
+			});
+
+			await expect(credentialService.credentialTypeExists!('gmailOAuth2')).resolves.toBe(true);
+		});
+
+		it('is true for a runtime-registered type resolvable only via getCredential', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loader,
+			});
+
+			await expect(credentialService.credentialTypeExists!('linearMcpOAuth2Api')).resolves.toBe(
+				true,
+			);
+		});
+
+		it('is false for an unregistered type', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loader,
+			});
+
+			await expect(credentialService.credentialTypeExists!('gmailOAuth2Api')).resolves.toBe(false);
 		});
 	});
 });
