@@ -81,6 +81,9 @@ export class InstanceGitConnectionService {
 		updated.enabled = targetEnabled;
 
 		const now = new Date().toISOString();
+		// `createdAt` marks the first update, not the first full configuration: we
+		// intentionally stamp it even for a no-op update (e.g. disabling a connection
+		// that was never configured).
 		updated.createdAt = current.createdAt ?? now;
 		updated.updatedAt = now;
 
