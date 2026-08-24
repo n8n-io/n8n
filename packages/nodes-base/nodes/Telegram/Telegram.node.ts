@@ -2074,16 +2074,20 @@ export class Telegram implements INodeType {
 				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 				// Persist the message identity so the resume webhook can delete it;
 				// prefer the API response since Telegram resolves @channelusername to a numeric id.
-				const sentMessage = (await apiRequest.call(this, 'POST', 'sendMessage', body)) as {
-					chat?: { id?: string | number };
-					message_id?: number;
-				};
+				const sentMessage = await apiRequest.call(this, 'POST', 'sendMessage', body);
+				// apiRequest returns the Telegram envelope ({ ok, result }), not the message.
+				// Prefer the API response: Telegram resolves @channelusername to a numeric id.
+				const result = (
+					sentMessage as
+						| { result?: { chat?: { id?: string | number }; message_id?: number } }
+						| undefined
+				)?.result;
 				if (options.deleteOnResponse === true) {
 					this.customData.set(
 						'tgDeleteTarget',
 						JSON.stringify({
-							chatId: sentMessage.chat?.id ?? body.chat_id,
-							messageId: sentMessage.message_id,
+							chatId: result?.chat?.id ?? body.chat_id,
+							messageId: result?.message_id,
 						}),
 					);
 				}

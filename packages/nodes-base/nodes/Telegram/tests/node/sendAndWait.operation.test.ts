@@ -166,8 +166,8 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({ deleteOnResponse: true }); // options (deleteOnResponse check)
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options.limitWaitTime.values
 		(genericFunctions.apiRequest as Mock).mockResolvedValueOnce({
-			message_id: 55,
-			chat: { id: 999 },
+			ok: true,
+			result: { message_id: 55, chat: { id: 999 } },
 		});
 
 		await telegram.execute.call(mockExecuteFunctions);
