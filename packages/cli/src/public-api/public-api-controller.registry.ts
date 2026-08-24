@@ -22,11 +22,6 @@ import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-res
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
-/**
- * The legacy validator answered 415 for any `Content-Type` other than JSON - including when the
- * body was empty - and allowed a request that sent none at all. A migrated route matches that, so
- * the behaviour and the published spec stay in step.
- */
 function assertJsonRequestBody(req: Request) {
 	const contentType = req.headers['content-type'];
 	if (!contentType) return;

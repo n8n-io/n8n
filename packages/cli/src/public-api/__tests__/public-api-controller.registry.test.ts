@@ -102,8 +102,6 @@ describe('PublicApiControllerRegistry', () => {
 	});
 
 	describe('request media type', () => {
-		// Declared per test: the outer beforeEach swaps in a fresh metadata registry, so a class
-		// declared once at describe level would register into the discarded one.
 		function registerBodyRoute() {
 			@Service()
 			class WidgetsPublicController {
