@@ -304,6 +304,9 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 				return;
 			}
 			detail.value = response;
+			// A same-review refetch skips the clear above, so a 404 from an earlier
+			// one would keep the panel on "not found" behind the review it just got.
+			detailNotFound.value = false;
 		} catch (e) {
 			if (requestSeq !== detailRequestSeq) {
 				return;

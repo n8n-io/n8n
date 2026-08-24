@@ -697,6 +697,24 @@ describe('useReviewInboxStore', () => {
 			expect(store.detail).toEqual(expect.objectContaining({ title: 'Updated title' }));
 		});
 
+		it('clears not found when a later refetch of the same review succeeds', async () => {
+			const detail = createDetail();
+			vi.mocked(workflowReviewsApi.fetchWorkflowReviewRequestDetail)
+				.mockResolvedValueOnce(detail)
+				.mockRejectedValueOnce(new ResponseError('gone', { httpStatusCode: 404 }))
+				.mockResolvedValueOnce({ ...detail, title: 'Back again' });
+			const store = useReviewInboxStore();
+			await store.fetchDetail('req-1');
+
+			await store.fetchDetail('req-1');
+			expect(store.detailNotFound).toBe(true);
+
+			await store.fetchDetail('req-1');
+
+			expect(store.detail).toEqual(expect.objectContaining({ title: 'Back again' }));
+			expect(store.detailNotFound).toBe(false);
+		});
+
 		it('does not clear the detail when switching tabs', async () => {
 			mockInbox({ closed: emptyPage() });
 			const store = useReviewInboxStore();
