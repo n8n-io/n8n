@@ -255,12 +255,12 @@ export const stepRequest = (
 
 export const testStepExecutor = (
 	graph: WorkflowGraph,
-	outputsByStepId: Record<string, StepSlots> = {},
+	outputsByNodeId: Record<string, StepSlots> = {},
 ): V1StepExecutor =>
 	new V1StepExecutor({
 		nodeTypes: testNodeTypes,
 		additionalDataFactory: testAdditionalDataFactory,
-		loadStepData: async () => await Promise.resolve({ graph, outputsByStepId }),
+		loadStepData: async () => await Promise.resolve({ graph, outputsByNodeId }),
 	});
 
 export const items = (...objects: JsonObject[]): StepSlots => [objects.map((json) => ({ json }))];

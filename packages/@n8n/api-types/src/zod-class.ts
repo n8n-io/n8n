@@ -8,6 +8,13 @@ export interface ZodClass<T = unknown, Shape extends z.ZodRawShape = z.ZodRawSha
 	extend<U extends z.ZodRawShape>(shape: U): ZodClass<T & z.infer<z.ZodObject<U>>, Shape & U>;
 }
 
+export interface ZodArrayClass<T, Item extends z.ZodTypeAny = z.ZodTypeAny> {
+	new (data: T): T;
+	schema: z.ZodArray<Item>;
+	safeParse(data: unknown): z.SafeParseReturnType<unknown, T>;
+	parse(data: unknown): T;
+}
+
 /**
  * Replacement for: https://www.npmjs.com/package/zod-class
  *
@@ -55,5 +62,38 @@ export const Z = {
 		};
 
 		return DtoClass as unknown as ZodClass<Output, T>;
+	},
+
+	/**
+	 * Array-rooted counterpart to `Z.class`, for endpoints whose request body or response is a bare
+	 * JSON array rather than an object. Same usage as `Z.class`:
+	 *
+	 * ```ts
+	 * export class TagIdsPublicDto extends Z.array(z.object({ id: z.string() })) {}
+	 * ```
+	 */
+	array: <Item extends z.ZodTypeAny>(
+		itemSchema: Item,
+	): ZodArrayClass<Array<z.infer<Item>>, Item> => {
+		const schema = z.array(itemSchema);
+		type Output = Array<z.infer<Item>>;
+
+		const ArrayDtoClass = class {
+			static schema = schema;
+
+			constructor(data: Output) {
+				return schema.parse(data);
+			}
+
+			static safeParse(data: unknown) {
+				return schema.safeParse(data);
+			}
+
+			static parse(data: unknown): Output {
+				return schema.parse(data);
+			}
+		};
+
+		return ArrayDtoClass as unknown as ZodArrayClass<Output, Item>;
 	},
 };

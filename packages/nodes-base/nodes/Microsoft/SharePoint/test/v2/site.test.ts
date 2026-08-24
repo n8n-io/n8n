@@ -6,7 +6,7 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { versionDescription } from '../../v2/actions/versionDescription';
 import { MicrosoftSharePointV2 } from '../../v2/MicrosoftSharePointV2.node';
-import { getSites, resolveSiteId, siteRLC } from '../../v2/site';
+import { getSites, resolveSiteId, SITE_ID_REGEX, siteRLC } from '../../v2/site';
 import * as transport from '../../v2/transport';
 import type * as _importType0 from '../../v2/transport';
 
@@ -198,7 +198,9 @@ describe('Microsoft SharePoint v2 — resolveSiteId', () => {
 		vi.clearAllMocks();
 		ctx = mockDeep<IExecuteFunctions>();
 		ctx.getNode.mockReturnValue(mock<INode>({ typeVersion: 2 }));
-		apiRequest.mockResolvedValue({ id: 'contoso.sharepoint.com,g1,g2' });
+		apiRequest.mockResolvedValue({
+			id: 'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE',
+		});
 	});
 
 	// Graph documents both shapes: a bare hostname addresses that host's root
@@ -230,7 +232,9 @@ describe('Microsoft SharePoint v2 — resolveSiteId', () => {
 	])('resolves %s via the documented Graph addressing', async (_name, url, endpoint) => {
 		setSite({ mode: 'url', value: url });
 
-		await expect(resolveSiteId.call(ctx, 0)).resolves.toBe('contoso.sharepoint.com,g1,g2');
+		await expect(resolveSiteId.call(ctx, 0)).resolves.toBe(
+			'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE',
+		);
 
 		expect(apiRequest).toHaveBeenCalledWith('GET', endpoint, {}, { $select: 'id' });
 	});
@@ -261,11 +265,52 @@ describe('Microsoft SharePoint v2 — resolveSiteId', () => {
 		);
 	});
 
-	it('returns an ID as given, without a request', async () => {
-		setSite({ mode: 'id', value: 'contoso.sharepoint.com,g1,g2' });
+	const COMPOSITE_ID =
+		'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE';
 
-		await expect(resolveSiteId.call(ctx, 0)).resolves.toBe('contoso.sharepoint.com,g1,g2');
+	it.each([
+		['a composite hostname,GUID,GUID ID', COMPOSITE_ID],
+		['a bare site GUID', '2C712604-1370-44E7-A1F5-426573FDA80A'],
+		['a bare hostname', 'contoso.sharepoint.com'],
+		['the literal "root"', 'root'],
+	])('returns %s as given, without a request', async (_name, value) => {
+		setSite({ mode: 'id', value });
+
+		await expect(resolveSiteId.call(ctx, 0)).resolves.toBe(value);
 		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	// The live repro was a composite ID pasted with a trailing quote, forwarded
+	// to Graph verbatim and answered with a raw 400 that never named the field
+	it.each([
+		['a trailing quote', `${COMPOSITE_ID}"`],
+		['an embedded space', COMPOSITE_ID.replace(',2D', ', 2D')],
+		['a site URL pasted into ID mode', 'https://contoso.sharepoint.com/sites/a'],
+	])('rejects an ID with %s before any request', async (_name, value) => {
+		setSite({ mode: 'id', value });
+
+		await expect(resolveSiteId.call(ctx, 0)).rejects.toThrow("The 'Site' ID is not valid");
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	it("does not regex-check list-mode values — they come from Graph's own search", async () => {
+		setSite({ mode: 'list', value: 'not a valid typed id "at all"' });
+
+		await expect(resolveSiteId.call(ctx, 0)).resolves.toBe('not a valid typed id "at all"');
+	});
+
+	it('validates typed IDs in the By ID mode with the same pattern the runtime guard uses', () => {
+		const idMode = siteRLC.modes?.find((mode) => mode.name === 'id');
+
+		expect(idMode?.validation).toEqual([
+			{
+				type: 'regex',
+				properties: {
+					regex: SITE_ID_REGEX,
+					errorMessage: expect.stringContaining('hostname,GUID,GUID'),
+				},
+			},
+		]);
 	});
 
 	it('resolves a repeated site URL once when given a per-run cache', async () => {
@@ -273,10 +318,10 @@ describe('Microsoft SharePoint v2 — resolveSiteId', () => {
 		const siteIdCache = new Map<string, string>();
 
 		await expect(resolveSiteId.call(ctx, 0, siteIdCache)).resolves.toBe(
-			'contoso.sharepoint.com,g1,g2',
+			'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE',
 		);
 		await expect(resolveSiteId.call(ctx, 1, siteIdCache)).resolves.toBe(
-			'contoso.sharepoint.com,g1,g2',
+			'contoso.sharepoint.com,2C712604-1370-44E7-A1F5-426573FDA80A,2D2244C3-251A-49EA-93A8-39E1C3A060FE',
 		);
 
 		expect(apiRequest).toHaveBeenCalledTimes(1);

@@ -1,13 +1,7 @@
 import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import {
-	ExecutionRepository,
-	FolderRepository,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	User,
-} from '@n8n/db';
+import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -21,6 +15,8 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { FolderFinderService } from '@/services/folder-finder.service';
+import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -91,7 +87,7 @@ describe('getAllowedToolNames', () => {
 describe('McpService scope enforcement', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 
-	const buildService = ({ builderEnabled = true } = {}) =>
+	const buildService = ({ builderEnabled = true, foldersLicensed = true } = {}) =>
 		new McpService(
 			mockLogger(),
 			mockInstance(ExecutionsConfig, { mode: 'regular' }),
@@ -119,7 +115,7 @@ describe('McpService scope enforcement', () => {
 			mockInstance(WorkflowCreationService),
 			mockInstance(NodeTypes),
 			mockInstance(ProjectRepository),
-			mockInstance(FolderRepository),
+			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),
 			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
@@ -127,7 +123,9 @@ describe('McpService scope enforcement', () => {
 			mockInstance(CollaborationService),
 			mockInstance(NodeResourceExplorerService),
 			mockInstance(TagService),
-			mockInstance(LicenseState),
+			mockInstance(LicenseState, {
+				isFoldersLicensed: vi.fn().mockReturnValue(foldersLicensed),
+			}),
 			mockInstance(PostHogClient),
 			mockInstance(WorkflowHistoryService),
 			mockInstance(WorkflowsConfig),
@@ -138,6 +136,7 @@ describe('McpService scope enforcement', () => {
 			}),
 			mockInstance(ModuleRegistry),
 			mockInstance(EventService),
+			mockInstance(FolderService),
 		);
 
 	beforeEach(() => {
@@ -176,6 +175,20 @@ describe('McpService scope enforcement', () => {
 		expect(gated).toEqual([...BUILDER_TOOLS].sort());
 	});
 
+	it('does not register folder tools when folders are not licensed', async () => {
+		const server = await buildService({ foldersLicensed: false }).getServer(
+			user,
+			mcpFeatureFlags(),
+		);
+		const registered = getRegisteredToolNames(server);
+
+		expect(registered).not.toContain('search_folders');
+		expect(registered).not.toContain('create_folder');
+		expect(registered).not.toContain('update_folder');
+		expect(registered).not.toContain('move_workflows_to_folder');
+		expect(registered).toContain('search_projects');
+	});
+
 	it('registers all tools when no scopes are provided (API keys, legacy tokens)', async () => {
 		const service = buildService();
 		const unscoped = await service.getServer(user, mcpFeatureFlags());
@@ -211,6 +224,7 @@ describe('McpService scope enforcement', () => {
 				'get_workflow_details',
 				'get_workflow_history',
 				'get_workflow_version',
+				'get_workflow_versions_diff',
 			]),
 		);
 	});

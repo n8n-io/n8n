@@ -16,6 +16,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'get_workflow_details',
 		'get_workflow_history',
 		'get_workflow_version',
+		'get_workflow_versions_diff',
 		// Read-only builder support tools
 		'search_nodes',
 		'get_node_types',
@@ -31,6 +32,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'restore_workflow_version',
 		'publish_workflow',
 		'unpublish_workflow',
+		'move_workflows_to_folder',
 		// Builder support tools, so a write-only grant can still build
 		'search_nodes',
 		'get_node_types',
@@ -72,7 +74,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_connect_services', 'explore_node_resources'],
-	'dataTable:read': ['search_data_tables'],
+	'dataTable:read': ['search_data_tables', 'get_data_table_rows'],
 	// Writing requires finding tables, so search rides along.
 	'dataTable:write': [
 		'search_data_tables',
@@ -84,8 +86,24 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'add_data_table_rows',
 	],
 	'project:read': ['search_projects', 'search_folders'],
+	// Creating or moving folders requires finding projects and folders first,
+	// so the search tools ride along on a write-only grant.
+	'project:write': ['create_folder', 'update_folder', 'search_projects', 'search_folders'],
 	'tag:read': ['list_workflow_tags'],
 };
+
+/**
+ * Tools that operate on folders and therefore require the `feat:folders`
+ * license, matching the gate on the REST and public API folder endpoints.
+ * Only registered (and advertised on the consent screen) when the instance
+ * is licensed for folders.
+ */
+export const FOLDER_FEATURE_TOOLS: ReadonlySet<string> = new Set([
+	'search_folders',
+	'create_folder',
+	'update_folder',
+	'move_workflows_to_folder',
+]);
 
 /**
  * Tools only registered when the workflow builder is enabled
@@ -106,6 +124,7 @@ export const BUILDER_TOOLS: ReadonlySet<string> = new Set([
 	'explore_node_resources',
 	'search_projects',
 	'search_folders',
+	...FOLDER_FEATURE_TOOLS,
 ]);
 
 export const AGENT_TOOLS: ReadonlySet<string> = new Set([

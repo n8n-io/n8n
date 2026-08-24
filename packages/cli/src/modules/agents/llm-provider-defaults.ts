@@ -22,23 +22,26 @@ export interface LlmProviderDefault {
 export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	anthropicApi: {
 		provider: 'anthropic',
-		defaultModel: 'claude-sonnet-4-6',
+		defaultModel: 'claude-sonnet-5',
 	},
 	openAiApi: {
 		provider: 'openai',
-		defaultModel: 'gpt-5-mini',
+		defaultModel: 'gpt-5.6-terra',
 	},
 	googlePalmApi: {
 		provider: 'google',
-		defaultModel: 'gemini-2.5-pro',
+		// The 3.x Pro line is still preview-only; 3.6 Flash is the stable GA pick.
+		defaultModel: 'gemini-3.6-flash',
 	},
 	xAiApi: {
 		provider: 'xai',
-		defaultModel: 'grok-4',
+		defaultModel: 'grok-4.6',
 	},
 	groqApi: {
 		provider: 'groq',
-		defaultModel: 'llama-3.3-70b-versatile',
+		// Groq shut down its Llama 3.x models in Aug 2026; this is their
+		// recommended replacement.
+		defaultModel: 'openai/gpt-oss-120b',
 	},
 	mistralCloudApi: {
 		provider: 'mistral',
@@ -50,11 +53,11 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	},
 	cohereApi: {
 		provider: 'cohere',
-		defaultModel: 'command-r-plus',
+		defaultModel: 'command-a-plus-05-2026',
 	},
 	openRouterApi: {
 		provider: 'openrouter',
-		defaultModel: 'anthropic/claude-sonnet-4.6',
+		defaultModel: 'anthropic/claude-sonnet-5',
 	},
 	nvidiaApi: {
 		provider: 'nvidia',
@@ -62,7 +65,7 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 	},
 	vercelAiGatewayApi: {
 		provider: 'vercel',
-		defaultModel: 'anthropic/claude-sonnet-4.6',
+		defaultModel: 'anthropic/claude-sonnet-5',
 	},
 };
 

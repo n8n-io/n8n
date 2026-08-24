@@ -50,4 +50,15 @@ export const WORKFLOW_RULES = `Follow these rules strictly when generating workf
    - When wiring N branches to a Merge node, the indices are \`0, 1, ..., N-1\` — never \`1, 2, ..., N\`.
    - Counter-examples to AVOID:
      - WRONG: \`sourceA.to(merge.input(1))\` followed by \`sourceB.to(merge.input(2))\` — this skips input 0 entirely; the first branch is silently dropped.
-     - CORRECT: \`sourceA.to(merge.input(0))\` followed by \`sourceB.to(merge.input(1))\`.`;
+     - CORRECT: \`sourceA.to(merge.input(0))\` followed by \`sourceB.to(merge.input(1))\`.
+
+7. **Inserting a node into an existing connection changes what downstream receives**
+   - A node receives ONLY its immediate predecessor's output. Inserting C between A→B means B now reads C's output — \`$json\` references and auto-mapped ("map automatically") fields in B silently switch from A's data to C's.
+   - Write/create/send nodes (rows appended, sheets/pages created, messages sent) output their **API response** — ids, metadata, \`ok\` flags — NOT the data that flowed into them. Inserting one in-line before another write (e.g. a create-if-missing step before an append) replaces the payload with metadata.
+   - Keep the data path intact instead:
+     - **Branch in parallel**: wire the inserted node as a sibling branch off the data producer, so the original data still flows into the downstream node.
+     - **Reorder upstream**: place the inserted step before the data-producing node (trigger → ensure-target → produce data → write).
+     - **Reference explicitly**: have the downstream node read \`$('Data Node').item.json.field\` instead of \`$json\`.
+   - Counter-example to AVOID:
+     - WRONG: \`code.to(ensureSheet).to(appendRows)\` — appendRows maps the create-sheet response, not the rows from \`code\`.
+     - CORRECT: \`trigger.to(ensureSheet).to(code).to(appendRows)\` — the ensure step runs before the data is produced, and the write still receives the data.`;

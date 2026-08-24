@@ -74,8 +74,8 @@ export class DataTableExporter {
 			const baseDir = this.resolveBaseDir(dataTable, request.projectTargetsById);
 			const target = allocatorFor(baseDir).allocate(dataTable.name);
 
-			request.writer.writeDirectory(target);
-			request.writer.writeFile(
+			await request.writer.writeDirectory(target);
+			await request.writer.writeFile(
 				`${target}/data-table.json`,
 				JSON.stringify(this.dataTableSerializer.serialize(dataTable), null, '\t'),
 			);

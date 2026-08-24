@@ -54,6 +54,7 @@ describe('SourceControlService', () => {
 		mock(),
 		mock(),
 		mock(),
+		mock(),
 	);
 	const sourceControlImportService = mock<SourceControlImportService>();
 	const sourceControlExportService = mock<SourceControlExportService>();

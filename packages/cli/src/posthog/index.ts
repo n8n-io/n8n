@@ -1,5 +1,6 @@
 import {
 	AGENT_EVALS_FLAG,
+	CANVAS_NODE_CONTEXT_FLAG,
 	CONFIG_EVALUATIONS_ENABLED_VARIANT,
 	CONFIG_EVALUATIONS_FLAG,
 	EVAL_COLLECTIONS_FLAG,
@@ -189,27 +190,43 @@ export class PostHogClient {
 	}
 
 	/**
-	 * Applies env-var overrides on top of PostHog-resolved flags. The override
-	 * is force-enable only — `false` defers to PostHog. Cached PostHog data is
-	 * stored without overrides so changing the env var (across restarts)
+	 * Applies env-var overrides on top of PostHog-resolved flags. Cached PostHog
+	 * data is stored without overrides so changing an env var (across restarts)
 	 * doesn't poison the cache.
+	 *
+	 * Both tiers win over PostHog. Between themselves, the generic map goes
+	 * first so a dedicated per-feature env var always has the final say:
+	 * 1. The generic map (`N8N_FEATURE_FLAG_OVERRIDES`) — sets a flag to any
+	 *    value, so unlike tier 2 it can force a flag *off* as well as on.
+	 * 2. Per-feature booleans (`N8N_CONFIG_EVALS_ENABLED`, …) — force-enable
+	 *    only; `false` defers to PostHog. Applied last so the generic map
+	 *    cannot undo a feature an operator enabled explicitly.
 	 */
 	private applyEnvOverrides(flags: FeatureFlags): FeatureFlags {
-		const overrides: FeatureFlags = {};
+		const overrides: FeatureFlags = { ...this.globalConfig.featureFlags.override };
+
 		if (this.globalConfig.evaluation.collectionsEnabled) {
 			overrides[EVAL_COLLECTIONS_FLAG] = true;
 		}
+
 		// `088_config_evaluations` is multivariate — the enabled arm is the
 		// `variant` string, not a boolean (`isConfigEvalsEnabled` checks for it).
 		if (this.globalConfig.evaluation.configEvalsEnabled) {
 			overrides[CONFIG_EVALUATIONS_FLAG] = CONFIG_EVALUATIONS_ENABLED_VARIANT;
 		}
+
 		if (this.globalConfig.evaluation.agentEvalsEnabled) {
 			overrides[AGENT_EVALS_FLAG] = true;
 		}
+
 		if (this.globalConfig.instanceAi.mcpConnectionsEnabled) {
 			overrides[INSTANCE_AI_MCP_CONNECTIONS_FLAG] = INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT;
 		}
+
+		if (this.globalConfig.instanceAi.canvasNodeContextEnabled) {
+			overrides[CANVAS_NODE_CONTEXT_FLAG] = true;
+		}
+
 		return Object.keys(overrides).length === 0 ? flags : { ...flags, ...overrides };
 	}
 }

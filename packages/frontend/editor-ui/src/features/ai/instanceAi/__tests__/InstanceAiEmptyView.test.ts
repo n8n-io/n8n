@@ -83,6 +83,7 @@ const {
 	},
 	appSettingsStoreMock: {
 		isCloudDeployment: false,
+		settings: { releaseChannel: 'stable' },
 	},
 	promptSuggestionsV2: Array.from({ length: 12 }, (_, index) => ({
 		type: 'prompt',
@@ -382,6 +383,20 @@ const InstanceAiInputStub = defineComponent({
 	},
 });
 
+const InstanceAiFreeNudgeStub = defineComponent({
+	name: 'InstanceAiFreeNudgeStub',
+	props: {
+		eligible: { type: Boolean, required: true },
+	},
+	setup(props) {
+		return () =>
+			h('div', {
+				'data-test-id': 'instance-ai-free-nudge-stub',
+				'data-eligible': String(props.eligible),
+			});
+	},
+});
+
 const renderView = createComponentRenderer(InstanceAiEmptyView, {
 	global: {
 		provide: {
@@ -389,6 +404,7 @@ const renderView = createComponentRenderer(InstanceAiEmptyView, {
 		},
 		stubs: {
 			InstanceAiInput: InstanceAiInputStub,
+			InstanceAiFreeNudge: InstanceAiFreeNudgeStub,
 		},
 	},
 });
@@ -439,6 +455,9 @@ describe('InstanceAiEmptyView', () => {
 			sendMessage: vi.fn().mockResolvedValue(undefined),
 		} as unknown as ThreadRuntime;
 		store.getOrCreateRuntime.mockReturnValue(thread);
+		store.creditsQuota = 100;
+		store.showCreditWarning = false;
+		store.quotaLocked = false;
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
 		experimentMocks.splitBelowInputVariant.value = false;
@@ -459,6 +478,14 @@ describe('InstanceAiEmptyView', () => {
 		vi.useRealTimers();
 		vi.clearAllMocks();
 		vi.unstubAllGlobals();
+	});
+
+	it('resets the browser tab title left behind by the previous thread', () => {
+		document.title = 'Previous thread - n8n';
+
+		renderView();
+
+		expect(document.title).toBe('AI Assistant - n8n');
 	});
 
 	it('passes the fixed suggestions to the empty-state composer', () => {
@@ -624,6 +651,7 @@ describe('InstanceAiEmptyView', () => {
 
 		expect(getByTestId('instance-ai-proactive-starter')).toHaveTextContent('starter');
 		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-free-nudge-stub')).not.toBeInTheDocument();
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('unset');
@@ -637,6 +665,7 @@ describe('InstanceAiEmptyView', () => {
 
 		expect(getByTestId('instance-ai-split-empty-state')).toBeInTheDocument();
 		expect(queryByTestId('instance-ai-empty-state')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-free-nudge-stub')).not.toBeInTheDocument();
 	});
 
 	it('passes the experiment placeholder key and fixed-rows to the input inside the split layout', () => {
@@ -706,7 +735,38 @@ describe('InstanceAiEmptyView', () => {
 		const { getByTestId, queryByTestId } = renderView();
 
 		expect(getByTestId('instance-ai-empty-state')).toBeInTheDocument();
+		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
+		expect(getByTestId('instance-ai-free-nudge-stub').parentElement).toContainElement(
+			getByTestId('instance-ai-input-stub'),
+		);
 		expect(queryByTestId('instance-ai-split-empty-state')).not.toBeInTheDocument();
+	});
+
+	it('keeps the free nudge ineligible until credits are loaded', async () => {
+		store.creditsQuota = undefined;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'false');
+
+		store.creditsQuota = 100;
+		await flushPromises();
+
+		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
+	});
+
+	it('keeps the free nudge mounted and reveals it after the credit warning is dismissed', async () => {
+		store.showCreditWarning = true;
+
+		const { getByTestId } = renderView();
+		const nudge = getByTestId('instance-ai-free-nudge-stub');
+
+		expect(nudge).toHaveAttribute('data-eligible', 'false');
+
+		await fireEvent.click(getByTestId('credit-banner-dismiss'));
+		await flushPromises();
+
+		expect(nudge).toHaveAttribute('data-eligible', 'true');
 	});
 
 	it('tracks personalized prompt suggestions exposure for the control variant', () => {
@@ -922,6 +982,7 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-workflow-builder-unavailable')).toBeVisible();
 		expect(getByText('Workflow builder unavailable')).toBeVisible();
 		expect(getByTestId('instance-ai-input-availability')).toHaveTextContent('unavailable');
+		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'false');
 
 		await fireEvent.click(getByTestId('instance-ai-input-stub-submit'));
 		await flushPromises();
@@ -938,10 +999,13 @@ describe('InstanceAiEmptyView', () => {
 		const { getByTestId } = renderView();
 
 		expect(getByTestId('template-examples-catalog')).toBeInTheDocument();
+		expect(getByTestId('instance-ai-free-nudge-stub')).toHaveAttribute('data-eligible', 'true');
 
 		await fireEvent.click(getByTestId('template-example-card'));
 		await flushPromises();
 
+		expect(getByTestId('instance-ai-input-stub')).toHaveClass('inputPulse');
+		expect(getByTestId('instance-ai-free-nudge-stub')).not.toHaveClass('inputPulse');
 		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
 			'Build me an invoice automation',
 		);

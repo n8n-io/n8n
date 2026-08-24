@@ -1,3 +1,4 @@
+import type { CredentialConnectionStatus } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import {
@@ -96,7 +97,7 @@ export class EnterpriseCredentialsService {
 	}
 
 	async getOne(credentialId: string) {
-		return await this.credentialsFinderService.findCredentialById(credentialId);
+		return await this.credentialsFinderService.findById(credentialId);
 	}
 
 	async getOneForUser(user: User, credentialId: string, includeDecryptedData: boolean) {
@@ -157,7 +158,7 @@ export class EnterpriseCredentialsService {
 
 		const { data: _, ...rest } = credential;
 
-		const enriched: typeof rest & { connectedByMe?: boolean; connectedUserCount?: number } = rest;
+		const enriched: typeof rest & CredentialConnectionStatus = rest;
 		await this.credentialsService.populateConnectedByMe([enriched], user);
 
 		if (credential.isResolvable) {
@@ -227,9 +228,10 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
-		// Transferring an end-user credential into a project is equivalent to creating
-		// one there, so it must clear the same createEndUser gate.
+		// Transferring an end-user credential into a project is equivalent to
+		// creating one there: same createEndUser gate, no personal projects.
 		if (credential.isResolvable) {
+			this.credentialsService.ensureEndUserCredentialAllowedInProject(destinationProject);
 			await this.credentialsService.ensureCanManageEndUserCredential(user, destinationProject.id);
 		}
 

@@ -1,6 +1,9 @@
 import type { AgentJsonToolConfig } from '@n8n/api-types';
 
-import { validateNodeToolConfigs } from '../node-tool-validation';
+import {
+	findHttpRequestToolUrlFromAiViolations,
+	validateNodeToolConfigs,
+} from '../node-tool-validation';
 
 const { mockValidateNodeConfig } = vi.hoisted(() => ({
 	mockValidateNodeConfig: vi.fn(),
@@ -20,6 +23,65 @@ const nodeTool = (operation: string): AgentJsonToolConfig => ({
 		nodeTypeVersion: 2.2,
 		nodeParameters: { resource: 'message', operation },
 	},
+});
+
+const configuredNodeTool = (
+	name: string,
+	nodeType: string,
+	nodeParameters: Record<string, unknown>,
+): AgentJsonToolConfig => ({
+	type: 'node',
+	name,
+	node: { nodeType, nodeTypeVersion: 4.5, nodeParameters },
+});
+
+describe('HTTP Request URL validation', () => {
+	it('finds $fromAI only in modern HTTP Request URL fields', () => {
+		expect(
+			findHttpRequestToolUrlFromAiViolations([
+				configuredNodeTool('HTTP Request Tool', 'n8n-nodes-base.httpRequestTool', {
+					url: "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('url') }}",
+				}),
+				configuredNodeTool('HTTP Request', 'n8n-nodes-base.httpRequest', {
+					url: "={{ $FromAI ('url') }}",
+				}),
+				configuredNodeTool('Malformed HTTP Request', 'n8n-nodes-base.httpRequestTool', {
+					url: "={{ $fromAI('url' }}",
+				}),
+			]),
+		).toEqual([
+			{
+				toolIndex: 0,
+				toolName: 'HTTP Request Tool',
+				path: 'tools.0.node.nodeParameters.url',
+			},
+			{
+				toolIndex: 1,
+				toolName: 'HTTP Request',
+				path: 'tools.1.node.nodeParameters.url',
+			},
+			{
+				toolIndex: 2,
+				toolName: 'Malformed HTTP Request',
+				path: 'tools.2.node.nodeParameters.url',
+			},
+		]);
+
+		expect(
+			findHttpRequestToolUrlFromAiViolations([
+				configuredNodeTool('Fixed HTTP Request', 'n8n-nodes-base.httpRequestTool', {
+					url: '={{ $json.url }}',
+					body: "={{ $fromAI('body') }}",
+				}),
+				configuredNodeTool('Legacy HTTP Request', '@n8n/n8n-nodes-langchain.toolHttpRequest', {
+					url: "={{ $fromAI('url') }}",
+				}),
+				configuredNodeTool('Other Node', 'n8n-nodes-base.slackTool', {
+					url: "={{ $fromAI('url') }}",
+				}),
+			]),
+		).toEqual([]);
+	});
 });
 
 describe('validateNodeToolConfigs', () => {

@@ -414,7 +414,7 @@ describe('DataTable Handler', () => {
 					returnData: true,
 					dryRun: false,
 				},
-				user: { id: userId },
+				user: makeUser(['dataTable:readRow']),
 			} as unknown as DataTableRequest.UpdateRows;
 
 			const mockRow = { id: 1, status: 'updated', createdAt: new Date(), updatedAt: new Date() };
@@ -440,7 +440,7 @@ describe('DataTable Handler', () => {
 					returnData: true,
 					dryRun: true,
 				},
-				user: { id: userId },
+				user: makeUser(['dataTable:readRow']),
 			} as unknown as DataTableRequest.UpdateRows;
 
 			const mockDryRunResult = [
@@ -512,7 +512,7 @@ describe('DataTable Handler', () => {
 					returnData: true,
 					dryRun: false,
 				},
-				user: { id: userId },
+				user: makeUser(['dataTable:readRow']),
 			} as unknown as DataTableRequest.UpsertRow;
 
 			const mockRow = {
@@ -580,7 +580,7 @@ describe('DataTable Handler', () => {
 					returnData: 'true',
 					dryRun: 'false',
 				},
-				user: { id: userId },
+				user: makeUser(['dataTable:readRow']),
 			} as unknown as DataTableRequest.DeleteRows;
 
 			const mockRow = { id: 1, name: 'Deleted', createdAt: new Date(), updatedAt: new Date() };
@@ -631,7 +631,7 @@ describe('DataTable Handler', () => {
 					returnData: 'true',
 					dryRun: 'true',
 				},
-				user: { id: userId },
+				user: makeUser(['dataTable:readRow']),
 			} as unknown as DataTableRequest.DeleteRows;
 
 			const mockRows = [{ id: 1, status: 'test', createdAt: new Date(), updatedAt: new Date() }];

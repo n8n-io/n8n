@@ -99,17 +99,16 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
     </div>
   </div>
   <div data-v-c73ff18f="" class="pagination">
-    <div data-v-c73ff18f="" class="el-pagination is-background is-background"><button type="button" class="btn-prev is-first" disabled="" aria-label="Go to previous page" aria-disabled="true"><i class="el-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-            <path fill="currentColor" d="M609.408 149.376 277.76 489.6a32 32 0 0 0 0 44.672l331.648 340.352a29.12 29.12 0 0 0 41.728 0 30.592 30.592 0 0 0 0-42.752L339.264 511.936l311.872-319.872a30.592 30.592 0 0 0 0-42.688 29.12 29.12 0 0 0-41.728 0z"></path>
-          </svg></i></button>
-      <ul class="el-pager">
-        <li class="is-active number" aria-current="true" aria-label="page 1" tabindex="0"> 1 </li>
-        <!--v-if-->
-        <!--v-if-->
-        <li class="number" aria-current="false" aria-label="page 2" tabindex="0">2</li>
-      </ul><button type="button" class="btn-next is-last" aria-label="Go to next page" aria-disabled="false"><i class="el-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-            <path fill="currentColor" d="M340.864 149.312a30.592 30.592 0 0 0 0 42.752L652.736 512 340.864 831.872a30.592 30.592 0 0 0 0 42.752 29.12 29.12 0 0 0 41.728 0L714.24 534.336a32 32 0 0 0 0-44.672L382.592 149.376a29.12 29.12 0 0 0-41.728 0z"></path>
-          </svg></i></button>
+    <div data-v-c73ff18f="" class="n8n-pagination paginationContainer medium" data-test-id="pagination">
+      <!--v-if-->
+      <nav>
+        <div class="paginationList" data-test-id="pagination-list"><span class="disabledTrigger" data-state="closed" data-grace-area-trigger=""><n8n-button-stub icon="chevron-left" variant="ghost" size="medium" loading="false" icononly="true" disabled="true" class="" aria-label="Previous page" type="button" data-test-id="pagination-prev"></n8n-button-stub></span>
+          <!--v-if--><button data-type="page" aria-label="Page 1" aria-current="page" data-selected="true" type="button" class="paginationItem" data-test-id="pagination-item" value="1">1</button><button data-type="page" aria-label="Page 2" type="button" class="paginationItem" data-test-id="pagination-item" value="2">2</button><span class="" data-state="closed" data-grace-area-trigger=""><n8n-button-stub icon="chevron-right" variant="ghost" size="medium" loading="false" icononly="true" disabled="false" class="" aria-label="Next page" type="button" data-test-id="pagination-next"></n8n-button-stub></span>
+          <!--v-if-->
+        </div>
+      </nav>
+      <!--v-if-->
+      <!--v-if-->
     </div>
     <div data-v-c73ff18f="" class="pageSizeSelector">
       <div data-v-c73ff18f="" class="n8n-select container withPrepend">

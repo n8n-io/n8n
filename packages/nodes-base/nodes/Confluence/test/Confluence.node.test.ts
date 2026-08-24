@@ -7,10 +7,24 @@ import { Confluence } from '../Confluence.node';
 describe('Confluence Node', () => {
 	const node = new Confluence();
 
-	it('should ship gated: hidden, no properties, not usable as a tool', () => {
+	it('should stay hidden and off the AI-tool surface while operations land', () => {
 		expect(node.description.hidden).toBe(true);
-		expect(node.description.properties).toEqual([]);
+		expect(node.description.properties.length).toBeGreaterThan(0);
 		expect(node.description.usableAsTool).toBeUndefined();
+	});
+
+	it('should expose the page resource with the append, create, delete, get and update operations', () => {
+		const resource = node.description.properties.find((p) => p.name === 'resource');
+		expect(resource?.options).toEqual([expect.objectContaining({ value: 'page' })]);
+
+		const operation = node.description.properties.find((p) => p.name === 'operation');
+		expect(operation?.options).toEqual([
+			expect.objectContaining({ value: 'append' }),
+			expect.objectContaining({ value: 'create' }),
+			expect.objectContaining({ value: 'delete' }),
+			expect.objectContaining({ value: 'get' }),
+			expect.objectContaining({ value: 'update' }),
+		]);
 	});
 
 	it('should reference the confluenceCloudOAuth2Api credential by name', () => {

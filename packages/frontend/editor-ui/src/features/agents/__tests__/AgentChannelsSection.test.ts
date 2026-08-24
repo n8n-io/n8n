@@ -31,18 +31,20 @@ vi.mock('@n8n/i18n', () => ({
 vi.mock('../components/AgentChannelModal.vue', () => ({
 	default: {
 		name: 'AgentChannelModal',
-		props: ['simpleSetup'],
-		template: '<div data-testid="agent-channel-modal-stub" :data-simple-setup="simpleSetup" />',
+		props: ['simpleSetup', 'isPublished'],
+		template:
+			'<div data-testid="agent-channel-modal-stub" :data-simple-setup="simpleSetup" :data-is-published="isPublished" />',
 	},
 }));
 
-function mountSection(simpleChannelSetup?: boolean) {
+function mountSection(simpleChannelSetup?: boolean, isPublished = false) {
 	return mount(AgentChannelsSection, {
 		props: {
 			connectedTriggers: [],
 			projectId: 'project-id',
 			agentId: 'agent-id',
 			simpleChannelSetup,
+			isPublished,
 		},
 		global: {
 			stubs: {
@@ -76,5 +78,16 @@ describe('AgentChannelsSection', () => {
 			expect(modal.exists()).toBe(true);
 			expect(modal.attributes('data-simple-setup')).toBe('true');
 		});
+	});
+
+	it('forwards publication state to the channel modal', async () => {
+		const wrapper = mountSection(undefined, true);
+
+		await wrapper.find('[data-testid="agent-channels-add-channel"]').trigger('click');
+		await flushPromises();
+
+		expect(
+			wrapper.find('[data-testid="agent-channel-modal-stub"]').attributes('data-is-published'),
+		).toBe('true');
 	});
 });

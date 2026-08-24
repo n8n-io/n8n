@@ -105,7 +105,21 @@ function parseApprovalInput(value: unknown): ApprovalInput | undefined {
 		...(typeof value.displayName === 'string' &&
 			value.displayName.length > 0 && { displayName: value.displayName }),
 		args: value.args,
+		...(value.details !== undefined && { details: value.details }),
 	};
+}
+
+function preserveApprovalDetails(next: unknown, previous: unknown): unknown {
+	const nextApproval = parseApprovalInput(next);
+	const previousApproval = parseApprovalInput(previous);
+	if (
+		!nextApproval ||
+		nextApproval.details !== undefined ||
+		previousApproval?.details === undefined
+	) {
+		return next;
+	}
+	return { ...nextApproval, details: previousApproval.details };
 }
 
 function isDeclinedToolOutput(value: unknown): boolean {
@@ -240,6 +254,7 @@ export function convertDbMessages(dbMessages: AgentPersistedMessageDto[]): ChatM
 					state,
 					...(part.startTime !== undefined && { startTime: part.startTime }),
 					...(part.endTime !== undefined && { endTime: part.endTime }),
+					...(part.suspendPayload !== undefined && { suspendPayload: part.suspendPayload }),
 					...(part.childTrace && { childProgress: part.childTrace }),
 					displaySummary: summariseToolCall(part.toolName, output, part.input),
 				};
@@ -305,7 +320,10 @@ export function applyOpenSuspensions(
 				toolCall.state = TOOL_CALL_STATE.SUSPENDED;
 				toolCall.runId = suspension.runId;
 				if (suspension.suspendPayload !== undefined) {
-					toolCall.suspendPayload = suspension.suspendPayload;
+					toolCall.suspendPayload = preserveApprovalDetails(
+						suspension.suspendPayload,
+						toolCall.suspendPayload,
+					);
 				}
 				const rebuilt = rebuildInteractiveFromHistory(toolCall);
 				if (rebuilt) {

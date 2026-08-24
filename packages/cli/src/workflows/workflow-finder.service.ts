@@ -181,7 +181,11 @@ export class WorkflowFinderService {
 		workflowIds: string[],
 		user: User,
 		scopes: Scope[],
-		options: { includeParentFolder?: boolean; includeTags?: boolean } = {},
+		options: {
+			includeParentFolder?: boolean;
+			includeTags?: boolean;
+			includeActiveVersion?: boolean;
+		} = {},
 	): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) return [];
 
@@ -189,7 +193,11 @@ export class WorkflowFinderService {
 		const sharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: { ...where, workflowId: In(workflowIds) },
 			relations: {
-				workflow: { parentFolder: options.includeParentFolder, tags: options.includeTags },
+				workflow: {
+					parentFolder: options.includeParentFolder,
+					tags: options.includeTags,
+					activeVersion: options.includeActiveVersion,
+				},
 			},
 		});
 
@@ -227,6 +235,43 @@ export class WorkflowFinderService {
 		}
 
 		return byFolder;
+	}
+
+	/**
+	 * Workflows a project owns, each paired with the folder holding it (`null` at the
+	 * project root). Archived workflows are excluded unless asked for; a reconciling
+	 * caller includes them so a folder holding only archived work still reads as occupied.
+	 *
+	 * The widest of the three scope lookups here — use {@link findRootWorkflowIdsInProject} when
+	 * only the project root matters, or {@link findWorkflowIdsByFolder} for folders that need not
+	 * belong to one project. This one is for reconciling a whole project, so it is the only one
+	 * that carries names and filters archived rows.
+	 */
+	async findOwnedWorkflowPlacementsInProject(
+		projectId: string,
+		options: { includeArchived?: boolean } = {},
+	): Promise<
+		Array<{ id: string; name: string; parentFolderId: string | null; isArchived: boolean }>
+	> {
+		const rows = await this.sharedWorkflowRepository.find({
+			where: {
+				project: { id: projectId },
+				role: 'workflow:owner',
+				...(options.includeArchived ? {} : { workflow: { isArchived: false } }),
+			},
+			relations: { workflow: { parentFolder: true } },
+			select: {
+				workflowId: true,
+				workflow: { id: true, name: true, isArchived: true, parentFolder: { id: true } },
+			},
+		});
+
+		return rows.map(({ workflow }) => ({
+			id: workflow.id,
+			name: workflow.name,
+			parentFolderId: workflow.parentFolder?.id ?? null,
+			isArchived: workflow.isArchived,
+		}));
 	}
 
 	/**

@@ -1,5 +1,6 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
+import { LoggerProxy } from 'n8n-workflow';
 import { EventEmitter } from 'node:events';
 
 import { initSseStream, pumpChunks, type FlushableResponse } from '../agent-sse-stream';
@@ -37,6 +38,20 @@ function createResponse() {
 	}) as unknown as FlushableResponse;
 
 	return { res, socket };
+}
+
+async function collectSerializedEvents(chunks: StreamChunk[]): Promise<AgentSseEvent[]> {
+	const { res } = createResponse();
+	const { send } = initSseStream(res);
+	await pumpChunks(toAsyncIterable(chunks), send);
+
+	const events = vi.mocked(res.write).mock.calls.flatMap(([payload]) => {
+		if (typeof payload !== 'string' || !payload.startsWith('data: ')) return [];
+		return [JSON.parse(payload.slice('data: '.length)) as AgentSseEvent];
+	});
+	res.emit('close');
+
+	return events;
 }
 
 describe('agent-sse-stream — connection setup', () => {
@@ -119,11 +134,14 @@ describe('agent-sse-stream — stringifyError (via pumpChunks error chunk)', () 
 	});
 
 	it('falls back to "Unknown error" when JSON.stringify throws (circular ref)', async () => {
+		const warn = vi.mocked(LoggerProxy.warn);
+		warn.mockClear();
 		const circular: Record<string, unknown> = {};
 		circular.self = circular;
 
 		const events = await collectEvents([{ type: 'error', error: circular }]);
 		expect(events).toEqual([{ type: 'error', message: 'Unknown error' }]);
+		expect(warn).toHaveBeenCalledExactlyOnceWith('Failed to stringify agent streaming error');
 	});
 
 	it('handles null via JSON.stringify (typeof null === "object")', async () => {
@@ -310,6 +328,114 @@ describe('agent-sse-stream — tool execution lifecycle chunks', () => {
 				toolName: 'delegate_subagent',
 				isError: false,
 				endTime: 1_014,
+			},
+		]);
+	});
+
+	it('preserves successful structured tool output across SSE serialization', async () => {
+		const events = await collectSerializedEvents([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				output: { records: 2 },
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'lookup',
+				output: { records: 2 },
+			},
+		]);
+	});
+
+	it('normalizes native Error tool failures across SSE serialization', async () => {
+		// Regression coverage for AGENT-618: native Error properties must survive the wire format.
+		const events = await collectSerializedEvents([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'write_records',
+				output: new Error('Column "status" no longer exists'),
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-2',
+				toolName: 'write_records',
+				output: new Error('Column "owner" no longer exists'),
+				isError: true,
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-1',
+				toolName: 'write_records',
+				output: 'Column "status" no longer exists',
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-2',
+				toolName: 'write_records',
+				output: 'Column "owner" no longer exists',
+				isError: true,
+			},
+		]);
+	});
+
+	it('scrubs secrets from every failed tool output across SSE serialization', async () => {
+		const apiKey = `sk-${'a'.repeat(20)}`;
+		const events = await collectSerializedEvents([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-error',
+				toolName: 'write_records',
+				output: new Error('Request failed with password=hunter2'),
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-string',
+				toolName: 'write_records',
+				output: 'Request failed with password=hunter2',
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-object',
+				toolName: 'write_records',
+				output: { message: 'Request failed', detail: apiKey },
+				isError: true,
+			},
+		]);
+
+		expect(events).toEqual([
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-error',
+				toolName: 'write_records',
+				output: 'Request failed with [REDACTED]',
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-string',
+				toolName: 'write_records',
+				output: 'Error: Request failed with [REDACTED]',
+				isError: true,
+			},
+			{
+				type: 'tool-result',
+				toolCallId: 'tc-object',
+				toolName: 'write_records',
+				output: '{\n  "message": "Request failed",\n  "detail": "[REDACTED]"\n}',
+				isError: true,
 			},
 		]);
 	});

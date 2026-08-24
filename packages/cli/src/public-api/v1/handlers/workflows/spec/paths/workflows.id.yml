@@ -1,31 +1,3 @@
-get:
-  x-eov-operation-id: getWorkflow
-  x-required-scope: workflow:read
-  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
-  tags:
-    - Workflow
-  summary: Retrieve a workflow
-  description: Retrieve a workflow.
-  parameters:
-    - name: excludePinnedData
-      in: query
-      required: false
-      description: Set this to avoid retrieving pinned data
-      schema:
-        type: boolean
-        example: true
-    - $ref: '../schemas/parameters/workflowId.yml'
-  responses:
-    '200':
-      description: Operation successful.
-      content:
-        application/json:
-          schema:
-            $ref: '../schemas/workflow.yml'
-    '401':
-      $ref: '../../../../shared/spec/responses/unauthorized.yml'
-    '404':
-      $ref: '../../../../shared/spec/responses/notFound.yml'
 delete:
   x-eov-operation-id: deleteWorkflow
   x-required-scope: workflow:delete

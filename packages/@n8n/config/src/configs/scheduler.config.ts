@@ -49,6 +49,10 @@ export class SchedulerConfig {
 	 * A larger window commits more runs to the database in advance (more resilient
 	 * to downtime, slightly more storage churn); a smaller one keeps less ahead.
 	 * Must be greater than 0.
+	 *
+	 * Together with {@link executorIntervalSeconds} this also sets a lower bound on
+	 * the misfire grace a Schedule Trigger node may ask for, so raising it raises
+	 * the effective grace of any node configured below the new value.
 	 */
 	@Env('N8N_SCHEDULER_MATERIALIZATION_WINDOW', positiveIntSchema)
 	materializationWindowSeconds: number = Time.minutes.toSeconds;
@@ -78,6 +82,10 @@ export class SchedulerConfig {
 	 * This sets the worst-case delay between a run's scheduled time and when it
 	 * actually starts. Lower it for tighter timing at the cost of more frequent
 	 * polling. Must be greater than 0.
+	 *
+	 * Together with {@link materializationWindowSeconds} this also sets a lower bound
+	 * on the misfire grace a Schedule Trigger node may ask for, so raising it raises
+	 * the effective grace of any node configured below the new value.
 	 */
 	@Env('N8N_SCHEDULER_EXECUTOR_INTERVAL', positiveIntSchema)
 	executorIntervalSeconds: number = 5;
@@ -278,6 +286,21 @@ export class SchedulerConfig {
 	pollTimeoutSeconds: number = Time.minutes.toSeconds;
 
 	/**
+	 * Whether a poll trigger's cursor advance and the execution it produced are saved
+	 * together, atomically. When disabled, a crash between the two can leave a poll
+	 * pointing past items whose execution was never saved (or vice versa).
+	 *
+	 * Requires {@link enabled} and {@link enabledForPollTriggers} to also be on;
+	 * on its own it has no effect.
+	 *
+	 * The env var name keeps its historic `N8N_POLLER_` prefix from before this flag
+	 * moved into the scheduler config; it is referenced by the rollout plan, so do
+	 * not rename it mid-ramp.
+	 */
+	@Env('N8N_POLLER_DURABLE_CURSORS_ENABLED')
+	durableCursorsEnabled: boolean = false;
+
+	/**
 	 * Temporary escape hatch for the durable-scheduler rollout (preview to GA).
 	 * Off by default; intended to be removed once the durable scheduler is GA.
 	 *
@@ -309,6 +332,11 @@ export class SchedulerConfig {
 	 * How late, in seconds, a scheduled run may start and still count as on time. A
 	 * run later than this counts as missed, and the schedule's misfire policy decides
 	 * whether it still runs at all. Must be greater than 0, and capped at 30 days.
+	 *
+	 * This is the default a schedule inherits. A Schedule Trigger node may set its own
+	 * grace instead, which is raised to the lower bound described on
+	 * {@link executorIntervalSeconds} and {@link materializationWindowSeconds} if it
+	 * falls below it.
 	 *
 	 * Should exceed {@link executorIntervalSeconds} and {@link materializationWindowSeconds}:
 	 * a run has to survive until the next executor tick to be offered at all. The
