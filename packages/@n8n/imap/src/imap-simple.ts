@@ -252,6 +252,8 @@ export class ImapSimple {
 
 	private closeReason(): CloseReason {
 		if (this.ended) return 'ended';
+		// A restore that gave up is a drop, even if an unrelated handler failed earlier.
+		if (this.dropCause) return 'dropped';
 		return this.failure ? 'error' : 'dropped';
 	}
 
