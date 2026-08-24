@@ -228,6 +228,16 @@ describe('WorkflowReviewRequestsSidebar', () => {
 			expect(queryAllByTestId('workflow-review-section-header')).toHaveLength(0);
 		});
 
+		it('renders the tabs without counts while they are unknown', () => {
+			const { getByTestId } = renderComponent({
+				props: { ...openProps(), openCount: null, closedCount: null },
+			});
+
+			const tabs = getByTestId('workflow-reviews-tabs');
+			expect(tabs).toHaveTextContent('Open');
+			expect(tabs.querySelectorAll('.n8n-tag')).toHaveLength(0);
+		});
+
 		it('shows the whole-list skeleton while the probe that precedes the lists runs', () => {
 			const { getAllByTestId, queryAllByTestId } = renderComponent({
 				props: { ...openProps(), probing: true },

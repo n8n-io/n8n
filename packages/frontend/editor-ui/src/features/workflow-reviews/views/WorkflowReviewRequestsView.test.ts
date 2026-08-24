@@ -172,6 +172,19 @@ describe('WorkflowReviewRequestsView', () => {
 		).toBeInTheDocument();
 	});
 
+	it('names the tab in the no-selection state while the count is unknown', async () => {
+		store.probeSettled = true;
+		store.hasItemsInActiveTab = true;
+		store.openCount = null;
+
+		const { getByTestId } = renderComponent();
+		await waitAllPromises();
+
+		expect(
+			within(getByTestId('workflow-reviews-no-selection')).getByText('Open reviews'),
+		).toBeInTheDocument();
+	});
+
 	it('heads the no-selection state in the singular for one review', async () => {
 		store.probeSettled = true;
 		store.hasItemsInActiveTab = true;

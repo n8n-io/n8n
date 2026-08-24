@@ -5516,6 +5516,8 @@
 	"settings.security.workflowReviews.confirmDisable.headline": "Disable workflow reviews",
 	"settings.security.workflowReviews.confirmDisable.message": "Workflow reviews will no longer be available on this instance. Existing project-level review settings will be ignored.",
 	"workflowReviews.menu.title": "Reviews",
+	"workflowReviews.openReviews": "Open reviews",
+	"workflowReviews.closedReviews": "Closed reviews",
 	"workflowReviews.page.title": "Reviews",
 	"workflowReviews.sidebar.tabs.open": "Open",
 	"workflowReviews.sidebar.tabs.closed": "Closed",

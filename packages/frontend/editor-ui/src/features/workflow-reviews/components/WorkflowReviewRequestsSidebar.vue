@@ -36,8 +36,9 @@ const props = defineProps<{
 	sections: ReviewInboxSidebarSection[];
 	probing: boolean; // summary probe before loading lists
 	activeTab: WorkflowReviewRequestState;
-	openCount: number;
-	closedCount: number;
+	/** `null` while the counts are unknown, which renders the tab without a tag. */
+	openCount: number | null;
+	closedCount: number | null;
 	selectedId: string | null;
 }>();
 
@@ -68,16 +69,20 @@ function sectionTitle(key: CollapsibleReviewInboxSection): string {
 const listRef = ref<HTMLElement | null>(null);
 const loadMoreSentinel = ref<HTMLElement | null>(null);
 
+function countTag(count: number | null): string | undefined {
+	return count === null ? undefined : String(count);
+}
+
 const tabOptions = computed(() => [
 	{
 		label: i18n.baseText('workflowReviews.sidebar.tabs.open'),
 		value: 'open' as const,
-		tag: String(props.openCount),
+		tag: countTag(props.openCount),
 	},
 	{
 		label: i18n.baseText('workflowReviews.sidebar.tabs.closed'),
 		value: 'closed' as const,
-		tag: String(props.closedCount),
+		tag: countTag(props.closedCount),
 	},
 ]);
 

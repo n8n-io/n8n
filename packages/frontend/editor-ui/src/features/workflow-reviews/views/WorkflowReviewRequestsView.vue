@@ -115,12 +115,20 @@ const noSelectionCount = computed(() =>
 	activeTab.value === 'closed' ? closedCount.value : openCount.value,
 );
 
-const noSelectionHeading = computed(() =>
-	i18n.baseText(`workflowReviews.noSelection.title.${activeTab.value}`, {
-		adjustToNumber: noSelectionCount.value,
-		interpolate: { count: String(noSelectionCount.value) },
-	}),
-);
+// The count comes from the summary, which can fail on its own; the heading then
+// names the tab instead of claiming a number the store does not have.
+const noSelectionHeading = computed(() => {
+	const count = noSelectionCount.value;
+	if (count === null) {
+		return activeTab.value === 'closed'
+			? i18n.baseText('workflowReviews.closedReviews')
+			: i18n.baseText('workflowReviews.openReviews');
+	}
+	return i18n.baseText(`workflowReviews.noSelection.title.${activeTab.value}`, {
+		adjustToNumber: count,
+		interpolate: { count: String(count) },
+	});
+});
 
 let isMounted = false;
 

@@ -415,6 +415,8 @@ describe('useReviewInboxStore', () => {
 			// there is nothing to review.
 			expect(store.sections.waiting.items).toHaveLength(1);
 			expect(store.isEmpty).toBe(false);
+			expect(store.openCount).toBeNull();
+			expect(store.closedCount).toBeNull();
 		});
 
 		it('reports the summary failure over a section failure', async () => {
@@ -790,8 +792,8 @@ describe('useReviewInboxStore', () => {
 		expect(store.sections.authored.items).toEqual([]);
 		expect(store.sections.closed.items).toEqual([]);
 		expect(store.activeTab).toBe('open');
-		expect(store.openCount).toBe(0);
-		expect(store.closedCount).toBe(0);
+		expect(store.openCount).toBeNull();
+		expect(store.closedCount).toBeNull();
 	});
 });
 

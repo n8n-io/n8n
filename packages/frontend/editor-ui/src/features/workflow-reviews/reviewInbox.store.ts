@@ -166,8 +166,10 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	const rootStore = useRootStore();
 
 	const probeSettled = ref(false);
-	const openCount = ref(0);
-	const closedCount = ref(0);
+	// `null` until the summary that carries them succeeds — a failed summary must
+	// not report an empty inbox over lists that loaded fine.
+	const openCount = ref<number | null>(null);
+	const closedCount = ref<number | null>(null);
 	const detail = ref<WorkflowReviewRequestDetail | null>(null);
 	const detailLoading = ref(false);
 	const detailNotFound = ref(false);
@@ -368,8 +370,8 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		}
 
 		if (summary.state === 'closed') {
-			openCount.value = Math.max(0, openCount.value - 1);
-			closedCount.value += 1;
+			if (openCount.value !== null) openCount.value = Math.max(0, openCount.value - 1);
+			if (closedCount.value !== null) closedCount.value += 1;
 		}
 
 		// The sections only show items matching the active tab filter.
@@ -386,8 +388,8 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		probeRequestSeq += 1;
 		detailRequestSeq += 1;
 		probeSettled.value = false;
-		openCount.value = 0;
-		closedCount.value = 0;
+		openCount.value = null;
+		closedCount.value = null;
 		detail.value = null;
 		detailLoading.value = false;
 		detailNotFound.value = false;
