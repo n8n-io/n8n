@@ -1,4 +1,6 @@
 import {
+	CreatedWorkflowPublicDto,
+	CreateWorkflowPublicDto,
 	GetWorkflowQueryDto,
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
@@ -15,6 +17,7 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import type {
 	AuthenticatedRequest,
+	Folder,
 	SharedWorkflow,
 	TagEntity,
 	WorkflowEntity,
@@ -43,12 +46,15 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { EventService } from '@/events/event.service';
+import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import {
 	decodeCursor,
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
 import { TagService } from '@/services/tag.service';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -74,6 +80,16 @@ function toPublicTag(tag: TagEntity) {
 		name: tag.name,
 		createdAt: tag.createdAt.toISOString(),
 		updatedAt: tag.updatedAt.toISOString(),
+	};
+}
+
+function toPublicFolder(folder: Folder) {
+	return {
+		id: folder.id,
+		name: folder.name,
+		parentFolderId: folder.parentFolderId,
+		createdAt: folder.createdAt.toISOString(),
+		updatedAt: folder.updatedAt.toISOString(),
 	};
 }
 
@@ -161,11 +177,13 @@ export class WorkflowsPublicController {
 	constructor(
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly workflowService: WorkflowService,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
+		private readonly redactionEnforcementService: RedactionEnforcementService,
 	) {}
 
 	private get workflowTagsEnabled(): boolean {
@@ -251,6 +269,40 @@ export class WorkflowsPublicController {
 					: null,
 			})),
 			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
+		};
+	}
+
+	@Post('/')
+	@ApiKeyScope('workflow:create')
+	@ApiSummary('Create a workflow')
+	@ApiDescription('Create a workflow in your instance.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, CreatedWorkflowPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(422)
+	async createWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: CreateWorkflowPublicDto,
+	): Promise<CreatedWorkflowPublicDto> {
+		const { projectId, parentFolderId, shared: _shared, ...rest } = body;
+
+		const workflow = createWorkflowEntityFromPayload(rest);
+
+		await this.redactionEnforcementService.assertNewPolicyAllowed(body.settings.redactionPolicy);
+
+		const createdWorkflow = await this.workflowCreationService.createWorkflow(req.user, workflow, {
+			projectId,
+			parentFolderId: parentFolderId ?? undefined,
+			publicApi: true,
+			source: 'api',
+		});
+
+		return {
+			...this.toWorkflowPublicDto(createdWorkflow),
+			parentFolder: createdWorkflow.parentFolder
+				? toPublicFolder(createdWorkflow.parentFolder)
+				: null,
 		};
 	}
 
