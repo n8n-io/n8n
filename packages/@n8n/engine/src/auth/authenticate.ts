@@ -10,7 +10,9 @@ export function createAuthenticationMiddleware(verifier: IdentityVerifier): Requ
 	return (req, res, next) => {
 		// The reason is logged, never returned: an operator needs it, a caller must not have it.
 		const reject = (reason: string): void => {
-			console.warn(`engine: rejected ${req.method} ${req.originalUrl} - ${reason}`);
+			// Query string dropped: it can carry values that must not reach a log.
+			const path = req.originalUrl.split('?')[0];
+			console.warn(`engine: rejected ${req.method} ${path} - ${reason}`);
 			fail(res, 401, { error: 'unauthenticated' });
 		};
 

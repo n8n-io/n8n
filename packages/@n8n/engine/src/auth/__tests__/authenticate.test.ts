@@ -65,6 +65,12 @@ describe('createAuthenticationMiddleware', () => {
 		expect(consoleWarnMock).toHaveBeenCalledWith('engine: rejected GET / - no bearer token');
 	});
 
+	it('keeps the query string out of the log', async () => {
+		await request(app()).get('/?token=secret-value');
+
+		expect(consoleWarnMock).toHaveBeenCalledWith('engine: rejected GET / - no bearer token');
+	});
+
 	it('200s and populates req.caller for a valid token', async () => {
 		const token = mintIdentityToken(secret, caller);
 
