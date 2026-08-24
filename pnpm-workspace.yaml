@@ -456,6 +456,8 @@ allowBuilds:
   '@sentry-internal/node-cpu-profiler': false
   '@sentry-internal/node-native-stacktrace': false
   '@sentry/cli': false
+  '@sentry/node-cpu-profiler': false
+  '@sentry/node-native-stacktrace': false
   '@swc/core': false
   '@vscode/ripgrep': true
   agent-browser: false
