@@ -19,6 +19,7 @@ import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import { ResponseError } from '@n8n/rest-api-client';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
@@ -1415,6 +1416,78 @@ describe('useWorkflowSaving', () => {
 				expect(saveStore.retryCount).toBe(initialRetryCount + 1);
 				expect(saveStore.lastError).toBe(errorMessage);
 				expect(saveStore.isRetrying).toBe(true);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('does not retry autosave after a permanent client error', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-autosave-client-error',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+			const errorMessage = 'Workflow name is required';
+
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(
+				new ResponseError(errorMessage, { httpStatusCode: 400 }),
+			);
+
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+
+			const saveStore = useWorkflowSaveStore();
+			const { saveCurrentWorkflow } = useWorkflowSaving({
+				router,
+			});
+
+			const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, true);
+
+			expect(result).toBe(false);
+			expect(saveStore.pendingSave).toBeNull();
+			expect(saveStore.retryCount).toBe(0);
+			expect(saveStore.isRetrying).toBe(false);
+			expect(saveStore.lastError).toBe(errorMessage);
+		});
+
+		it('does not immediately re-arm debounced autosave after a permanent client error', async () => {
+			vi.useFakeTimers();
+
+			try {
+				mockedStore(useSettingsStore).isAutosaveEnabled = true;
+				prepareHydratedWorkflow('w-autosave-client-error-debounced');
+				const updateSpy = vi
+					.spyOn(workflowsStore, 'updateWorkflow')
+					.mockRejectedValue(
+						new ResponseError('Workflow name is required', { httpStatusCode: 400 }),
+					);
+				const saveStore = useWorkflowSaveStore();
+				const uiStore = useUIStore();
+
+				uiStore.markStateDirty();
+
+				const { autoSaveWorkflow } = useWorkflowSaving({ router, ownsAutoSave: true });
+
+				autoSaveWorkflow();
+				expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+
+				await vi.advanceTimersByTimeAsync(
+					getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE_MAX_WAIT) + 1000,
+				);
+
+				expect(updateSpy).toHaveBeenCalledTimes(1);
+				expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
+				expect(saveStore.retryCount).toBe(0);
+				expect(saveStore.isRetrying).toBe(false);
+				expect(uiStore.stateIsDirty).toBe(true);
+
+				await vi.advanceTimersByTimeAsync(
+					getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE_MAX_WAIT) + 1000,
+				);
+
+				expect(updateSpy).toHaveBeenCalledTimes(1);
 			} finally {
 				vi.useRealTimers();
 			}
