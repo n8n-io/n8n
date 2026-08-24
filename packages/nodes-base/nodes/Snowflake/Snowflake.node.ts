@@ -321,8 +321,9 @@ export class Snowflake implements INodeType {
 						returnData = returnData.concat(executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
+							const errorMessage = error instanceof Error ? error.message : String(error);
 							const executionErrorData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray({ error: (error as Error).message }),
+								this.helpers.returnJsonArray({ error: errorMessage }),
 								{ itemData: { item: i } },
 							);
 							returnData = returnData.concat(executionErrorData);
