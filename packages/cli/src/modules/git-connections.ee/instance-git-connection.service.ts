@@ -1,9 +1,4 @@
-import type {
-	GitConnectionType,
-	GitKeyGeneratorType,
-	InstanceGitSettingsPublicDto,
-	UpdateInstanceGitSettingsDto,
-} from '@n8n/api-types';
+import type { InstanceGitSettingsPublicDto, UpdateInstanceGitSettingsDto } from '@n8n/api-types';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
@@ -12,25 +7,25 @@ import { jsonParse, OperationalError } from 'n8n-workflow';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY } from './constants';
-import { applyAuthenticationUpdate, gitAuthDeps } from './git-connections-auth.utils';
+import {
+	applyAuthenticationUpdate,
+	emptyGitAuthMaterial,
+	gitAuthDeps,
+	type GitAuthMaterial,
+} from './git-connections-auth.utils';
 import { GitConnectionsGitService } from './git-connections-git.service';
 
 /**
  * Persisted shape of the singleton instance connection. Mirrors the project
  * `GitConnection` entity (minus `name`, plus `enabled`), but everything is
  * nullable so the settings are readable before the connection is configured.
- * Secrets are stored inline, encrypted, and stripped in {@link toPublic}.
+ * Reuses {@link GitAuthMaterial} for the shared auth fields. Secrets are stored
+ * inline, encrypted, and stripped in {@link toPublic}.
  */
-type InstanceGitConnectionPreferences = {
+type InstanceGitConnectionPreferences = GitAuthMaterial & {
 	enabled: boolean;
 	repositoryUrl: string | null;
 	branchName: string | null;
-	connectionType: GitConnectionType | null;
-	publicKey: string | null;
-	encryptedPrivateKey: string | null;
-	encryptedUsername: string | null;
-	encryptedPassword: string | null;
-	keyGeneratorType: GitKeyGeneratorType | null;
 	/** Last reconciled commit; server-managed, not set by this settings-only feature yet. */
 	baseCommit: string | null;
 	createdAt: string | null;
@@ -125,15 +120,10 @@ export class InstanceGitConnectionService {
 
 	private defaultPreferences(): InstanceGitConnectionPreferences {
 		return {
+			...emptyGitAuthMaterial(),
 			enabled: false,
 			repositoryUrl: null,
 			branchName: null,
-			connectionType: null,
-			publicKey: null,
-			encryptedPrivateKey: null,
-			encryptedUsername: null,
-			encryptedPassword: null,
-			keyGeneratorType: null,
 			baseCommit: null,
 			createdAt: null,
 			updatedAt: null,
