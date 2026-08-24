@@ -189,11 +189,29 @@ describe('PollTriggerTaskHandler', () => {
 				buildWorkflowData(),
 				triggerNode,
 				{ taskId: 'task-1', leaseEpoch: 1 },
+				undefined,
 			);
 			expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
 				workflow,
 				triggerNode,
 				pollFunctions,
+			);
+		});
+
+		test('threads the cursor from the top-of-tick state read into the poll context', async () => {
+			pollBackoffService.getState.mockResolvedValue({
+				cursor: { lastItemId: 'prefetched' },
+				consecutiveErrors: 0,
+				backoffUntil: null,
+			});
+
+			await handler.execute(buildTask(), report);
+
+			expect(triggerExecutionContextFactory.createPollExecutionContext).toHaveBeenCalledWith(
+				buildWorkflowData(),
+				triggerNode,
+				{ taskId: 'task-1', leaseEpoch: 1 },
+				{ lastItemId: 'prefetched' },
 			);
 		});
 

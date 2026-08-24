@@ -92,10 +92,10 @@ export class PollCursorService {
 	 * @param nodeId - Poll trigger node to resolve the cursor for.
 	 * @param nodeStaticData - Node's current cursor value, used to seed the new
 	 *   storage the first time this node migrates.
-	 * @param prefetchedCursor - Cursor the task handler already read from the
-	 *   node's row at the start of the tick. When present, this method returns it
-	 *   instead of re-reading the row; when absent, either nothing was prefetched
-	 *   or the row does not exist yet, so the read-or-insert path runs as before.
+	 * @param prefetchedCursor - Cursor the task handler already read at the start
+	 *   of the tick. When present, it is returned as-is and the row is not read
+	 *   again. When absent, the read-or-insert path runs as before: nothing was
+	 *   prefetched, or the row does not exist yet.
 	 * @returns The cursor to use if this node is on the new storage, otherwise
 	 *   `{ migrated: false }` to keep using the node's own static data.
 	 */

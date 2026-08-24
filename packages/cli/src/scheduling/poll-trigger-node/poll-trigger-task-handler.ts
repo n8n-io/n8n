@@ -111,10 +111,12 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		const node = this.resolveTriggerNode(workflowData, nodeId, task);
 
 		const { workflow, pollFunctions } =
-			await this.triggerExecutionContextFactory.createPollExecutionContext(workflowData, node, {
-				taskId: task.id,
-				leaseEpoch: task.leaseEpoch,
-			});
+			await this.triggerExecutionContextFactory.createPollExecutionContext(
+				workflowData,
+				node,
+				{ taskId: task.id, leaseEpoch: task.leaseEpoch },
+				state?.cursor,
+			);
 
 		// Poll and hand-off share one staging scope, so a cursor staged here can only
 		// be committed by this poll and never by a later occurrence.
