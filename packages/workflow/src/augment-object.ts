@@ -53,7 +53,7 @@ export function augmentArray<T>(data: T[]): T[] {
 				return Reflect.getOwnPropertyDescriptor(newData, key);
 			}
 
-			return Object.getOwnPropertyDescriptor(data, key) ?? defaultPropertyDescriptor;
+			return Reflect.getOwnPropertyDescriptor(newData, key);
 		},
 		has(target, key) {
 			return Reflect.has(newData ?? target, key);

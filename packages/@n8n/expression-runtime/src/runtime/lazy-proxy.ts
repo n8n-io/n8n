@@ -205,14 +205,14 @@ export function createDeepLazyProxy(
 					return {
 						configurable: true,
 						enumerable: true,
-						writable: false,
+						writable: true,
 						value: proxy[prop],
 					};
 				}
 				return undefined;
 			}
 			if (resolveObjectKeys().includes(prop)) {
-				return { configurable: true, enumerable: true, writable: false };
+				return { configurable: true, enumerable: true, writable: true };
 			}
 			return undefined;
 		},

@@ -39,6 +39,16 @@ describe('AugmentObject', () => {
 
 			expect(augmentedObject.reverse()).toEqual([null, 4, 3, 1]);
 			expect(originalObject).toEqual(copyOriginal);
+
+			const toSort = augmentArray(['Mango', 'Apple', 'Kiwi']);
+			expect(toSort.sort()).toEqual(['Apple', 'Kiwi', 'Mango']);
+			expect(Object.getOwnPropertyDescriptor(toSort, '0')?.value).toEqual('Apple');
+
+			const toFill = augmentArray([1, 2, 3]);
+			expect(toFill.fill(9, 0, 2)).toEqual([9, 9, 3]);
+
+			const toCopyWithin = augmentArray([1, 2, 3, 4, 5]);
+			expect(toCopyWithin.copyWithin(0, 3)).toEqual([4, 5, 3, 4, 5]);
 		});
 
 		test('should work with arrays on any level', () => {
