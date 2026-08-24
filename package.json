@@ -201,7 +201,6 @@
       "@daytona/sdk@0.194.0>@aws-sdk/client-s3": "3.808.0",
       "@daytona/sdk@0.194.0>@aws-sdk/lib-storage": "3.808.0",
       "@daytona/sdk@0.194.0>@opentelemetry/sdk-trace-base": "2.7.1",
-      "@n8n/agents>@opentelemetry/sdk-trace-base": "2.7.1",
       "langsmith": "0.6.0",
       "hono": "4.12.34",
       "@tiptap/core": "catalog:",
