@@ -6,6 +6,11 @@ import { isTransientExecutionAbort } from './transient-error';
 import type { N8nClient } from '../clients/n8n-client';
 import type { SeedPriorRun } from '../types';
 
+/** Drop the ` [seed <8hex>]` uniquifier that seeding adds to artifact names. */
+function stripSeedSuffix(name: string): string {
+	return name.replace(/ \[seed [0-9a-f]{8}\]$/i, '');
+}
+
 /** Matches the post-build execution path, which retries the same class of abort. */
 const MAX_ATTEMPTS = 3;
 
@@ -42,7 +47,16 @@ export async function executePriorRuns(
 			`Cannot resolve prior runs: seeded ${String(seededWorkflows.length)} workflow(s) but got ${String(seededWorkflowIds.length)} id(s) back`,
 		);
 	}
-	const idByName = new Map(seededWorkflows.map((wf, i) => [wf.name, seededWorkflowIds[i]]));
+	// Seeding appends a ` [seed <8hex>]` uniquifier to workflow names, so the name the
+	// case authored is never the name that reaches the instance. Index alignment is the
+	// reliable join (input order is guaranteed); the stripped name is registered too so
+	// this works whether the caller passes authored or remapped workflows.
+	const idByName = new Map<string, string>();
+	for (const [i, wf] of seededWorkflows.entries()) {
+		const id = seededWorkflowIds[i];
+		idByName.set(wf.name, id);
+		idByName.set(stripSeedSuffix(wf.name), id);
+	}
 
 	const results: Array<{
 		workflow: string;
@@ -57,7 +71,7 @@ export async function executePriorRuns(
 			// The schema refuses unknown names at authoring time, so reaching here means the
 			// seed's own remapping diverged — worth failing loudly rather than skipping.
 			throw new Error(
-				`Prior run names workflow "${run.workflow}", which was not seeded. Seeded: ${[...idByName.keys()].join(', ') || '(none)'}`,
+				`Prior run names workflow "${run.workflow}", which was not seeded. Seeded: ${seededWorkflows.map((wf) => stripSeedSuffix(wf.name)).join(', ') || '(none)'}`,
 			);
 		}
 
