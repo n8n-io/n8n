@@ -24,7 +24,7 @@ import { DbLock } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
-import { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
+import { WorkflowReviewAdminService } from '../workflow-review-admin.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
@@ -94,14 +94,9 @@ describe('WorkflowReviewRequestService.decide', () => {
 		reviewerRepository,
 		activityRepository,
 		userRepository,
-		// Real service over the same mocks, so the override assertions below
-		// exercise the actual eligibility logic decide() shares with the read side.
-		new WorkflowReviewEligibilityService(
-			workflowFinderService,
-			authorRepository,
-			reviewerRepository,
-			projectRelationRepository,
-		),
+		// Real service over the same mock, so the override assertions below exercise
+		// the actual admin rule decide() shares with the read side.
+		new WorkflowReviewAdminService(projectRelationRepository),
 		roleService,
 		dbLockService,
 		collaborationService,

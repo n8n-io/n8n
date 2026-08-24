@@ -45,7 +45,11 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { WorkflowReviewAccessService } from './workflow-review-access.service';
-import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
+import { WorkflowReviewAdminService } from './workflow-review-admin.service';
+import {
+	resolveDecisionCapability,
+	type WorkflowReviewDecisionFacts,
+} from './workflow-review-decision-policy';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toEligibleReviewer, toRequestSummary } from './workflow-review.mapper';
 /** Omitted stays omitted (column untouched); an empty/whitespace string clears to null. */
@@ -90,7 +94,7 @@ export class WorkflowReviewRequestService {
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly activityRepository: WorkflowReviewActivityRepository,
 		private readonly userRepository: UserRepository,
-		private readonly eligibilityService: WorkflowReviewEligibilityService,
+		private readonly adminService: WorkflowReviewAdminService,
 		private readonly roleService: RoleService,
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
@@ -677,14 +681,16 @@ export class WorkflowReviewRequestService {
 			throw new NotFoundError('Could not find review request');
 		}
 
-		// 404 (not 403) so callers without access can't probe which requests exist
-		const workflow = await this.workflowFinderService.findWorkflowForUser(
-			workflowRow.workflowId,
-			user,
-			['workflow:read'],
+		const canReadPinnedWorkflow = Boolean(
+			await this.workflowFinderService.findWorkflowForUser(workflowRow.workflowId, user, [
+				'workflow:read',
+			]),
 		);
-		if (!workflow) {
-			throw new NotFoundError('Could not find workflow');
+		// The policy's `missing_permission` verdict, applied here rather than below:
+		// 404 (not 403) so callers without access can't probe which requests exist, and
+		// ahead of the lifecycle check so a closed review does not leak one either.
+		if (!canReadPinnedWorkflow) {
+			throw new NotFoundError('Could not find review request');
 		}
 
 		this.assertRequestUpdatable(request);
@@ -692,10 +698,7 @@ export class WorkflowReviewRequestService {
 		// Resolved before the lock: this query must not run inside the lock
 		// transaction, where it would need a second pooled connection while the
 		// transaction holds one — a deadlock on a single-connection pool.
-		const hasAdminOverride = await this.eligibilityService.hasAdminOverride(
-			user,
-			request.projectId,
-		);
+		const hasAdminOverride = await this.adminService.isAdminForProject(user, request.projectId);
 
 		// Fast path: reject ineligible callers before queueing on the lock.
 		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor(
@@ -706,7 +709,12 @@ export class WorkflowReviewRequestService {
 			{ workflowReviewRequestId, userId: user.id },
 			{},
 		);
-		this.assertDecisionAllowed(isAuthor, isAssignedReviewer, hasAdminOverride);
+		this.assertDecisionAllowed({
+			canReadPinnedWorkflow,
+			isAuthor,
+			isAssignedReviewer,
+			hasAdminOverride,
+		});
 
 		// Resolved pre-lock (role/user lookups must not run inside the lock transaction).
 		// Drives both auto-publish and whether the close is attributed to the reviewer
@@ -752,7 +760,12 @@ export class WorkflowReviewRequestService {
 					{ workflowReviewRequestId, userId: user.id },
 					ctx,
 				);
-				this.assertDecisionAllowed(isAuthorNow, isAssignedReviewerNow, hasAdminOverride);
+				this.assertDecisionAllowed({
+					canReadPinnedWorkflow,
+					isAuthor: isAuthorNow,
+					isAssignedReviewer: isAssignedReviewerNow,
+					hasAdminOverride,
+				});
 
 				// Re-read the pinned row too: a concurrent sync that won the lock may
 				// have re-pinned, and the summary must reflect the version being decided on.
@@ -952,28 +965,25 @@ export class WorkflowReviewRequestService {
 	}
 
 	/**
-	 * Assigned reviewers (or admins) may decide, including after they submit or
-	 * sync a version. Non-reviewer authors stay blocked unless an admin override
-	 * applies. Called before and again inside the decision lock, since the author
-	 * and assignee sets can change while the caller waits. The override is
-	 * resolved once, pre-lock: the lock guards author/assignee rows, not role
-	 * membership — like every other authorization check in `decide`, roles are
-	 * evaluated up front.
+	 * {@link resolveDecisionCapability} as the endpoint presents it: a refusal is a
+	 * 403 for an author, who already knows the review exists, and a hiding 404 for
+	 * everyone else. Called before and again inside the decision lock, since the
+	 * author and assignee sets can change while the caller waits. The read and the
+	 * override are resolved once, pre-lock: the lock guards author/assignee rows,
+	 * not role membership — like every other authorization check in `decide`, roles
+	 * are evaluated up front.
 	 */
-	private assertDecisionAllowed(
-		isAuthor: boolean,
-		isAssignedReviewer: boolean,
-		hasAdminOverride: boolean,
-	): void {
-		if (hasAdminOverride || isAssignedReviewer) {
+	private assertDecisionAllowed(facts: WorkflowReviewDecisionFacts): void {
+		const capability = resolveDecisionCapability(facts);
+		if (capability.allowed) {
 			return;
 		}
 
-		if (isAuthor) {
+		if (capability.reason === 'author') {
 			throw new ForbiddenError('Authors cannot decide on their own review request');
 		}
 
-		throw new NotFoundError('Could not find workflow');
+		throw new NotFoundError('Could not find review request');
 	}
 
 	/**

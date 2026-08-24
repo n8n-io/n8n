@@ -1656,10 +1656,13 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 	test('returns 404 for a non-assigned editor', async () => {
 		const { request } = await seedRequest(owner, {}, []);
 
-		await memberAgent
+		const response = await memberAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
 			.send({ decision: 'approved' })
 			.expect(404);
+
+		// Same wording as an unknown id, so the refusal doesn't reveal the review exists.
+		expect(response.body.message).toBe('Could not find review request');
 	});
 
 	test('allows an assigned viewer to decide', async () => {
@@ -1717,10 +1720,12 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 	});
 
 	test('returns 404 for an unknown review request id', async () => {
-		await memberAgent
+		const response = await memberAgent
 			.post('/workflow-review-requests/unknown-request/decision')
 			.send({ decision: 'approved' })
 			.expect(404);
+
+		expect(response.body.message).toBe('Could not find review request');
 	});
 
 	test('returns 409 for a closed review request', async () => {

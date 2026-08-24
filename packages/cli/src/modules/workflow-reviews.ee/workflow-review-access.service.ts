@@ -1,5 +1,4 @@
 import {
-	ProjectRelationRepository,
 	ProjectRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -11,17 +10,14 @@ import {
 	type WorkflowReviewRequestWorkflowDetailRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import {
-	GLOBAL_ADMIN_ROLE_SLUG,
-	GLOBAL_OWNER_ROLE_SLUG,
-	PROJECT_ADMIN_ROLE_SLUG,
-	hasGlobalScope,
-} from '@n8n/permissions';
+import { hasGlobalScope } from '@n8n/permissions';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
+import { WorkflowReviewAdminService } from './workflow-review-admin.service';
 
 export interface ReadableWorkflowReviewRequest {
 	request: WorkflowReviewRequest;
@@ -42,7 +38,7 @@ export class WorkflowReviewAccessService {
 		private readonly projectService: ProjectService,
 		private readonly roleService: RoleService,
 		private readonly projectRepository: ProjectRepository,
-		private readonly projectRelationRepository: ProjectRelationRepository,
+		private readonly adminService: WorkflowReviewAdminService,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
@@ -56,17 +52,16 @@ export class WorkflowReviewAccessService {
 	 * part in, as author or assigned reviewer. Either way they must still be able to
 	 * read one of the workflows the review covers.
 	 *
-	 * Built-in role slugs only, matching the eligibility service's admin override.
+	 * Admin is {@link WorkflowReviewAdminService}'s rule, the same one the decision
+	 * policy's override builds on.
 	 */
 	async resolveInboxVisibility(user: User): Promise<InboxVisibility> {
-		if (user.role.slug === GLOBAL_ADMIN_ROLE_SLUG || user.role.slug === GLOBAL_OWNER_ROLE_SLUG) {
+		if (this.adminService.isGlobalAdmin(user)) {
 			return { scope: 'all' };
 		}
 
 		const [adminProjectIds, readableProjectIds, readableWorkflowRoles] = await Promise.all([
-			this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, [
-				PROJECT_ADMIN_ROLE_SLUG,
-			]),
+			this.adminService.findAdminProjectIds(user),
 			this.resolveReadableProjectIds(user),
 			this.roleService.rolesWithScope('workflow', ['workflow:read']),
 		]);

@@ -13,6 +13,7 @@ import type {
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowReviewAccessService } from '../workflow-review-access.service';
+import { WorkflowReviewAdminService } from '../workflow-review-admin.service';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectService } from '@/services/project.service.ee';
@@ -51,7 +52,9 @@ describe('WorkflowReviewAccessService', () => {
 		projectService,
 		roleService,
 		projectRepository,
-		projectRelationRepository,
+		// Real service over the same mock, so visibility keeps exercising the admin
+		// rule the decision policy shares.
+		new WorkflowReviewAdminService(projectRelationRepository),
 		requestRepository,
 		workflowRepository,
 		authorRepository,
