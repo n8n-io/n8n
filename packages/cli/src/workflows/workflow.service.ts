@@ -1282,7 +1282,12 @@ export class WorkflowService {
 	 * If the user does not have the permissions to delete the workflow this does
 	 * nothing and returns void.
 	 */
-	async delete(user: User, workflowId: string, force = false): Promise<WorkflowEntity | undefined> {
+	async delete(
+		user: User,
+		workflowId: string,
+		force = false,
+		options?: { publicApi?: boolean },
+	): Promise<WorkflowEntity | undefined> {
 		await this.externalHooks.run('workflow.delete', [
 			workflowId,
 			toWorkflowLifecycleHookActor(user),
@@ -1342,7 +1347,11 @@ export class WorkflowService {
 		// committed delete, so it must not throw — the module swallows its own errors.
 		await this.workflowMutationHooks.afterWorkflowsDeleted([workflowId]);
 
-		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
+		this.eventService.emit('workflow-deleted', {
+			user,
+			workflowId,
+			publicApi: options?.publicApi ?? false,
+		});
 		await this.externalHooks.run('workflow.afterDelete', [
 			workflowId,
 			toWorkflowLifecycleHookActor(user),
@@ -1467,6 +1476,11 @@ export class WorkflowService {
 
 	async unarchiveForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
 		return await this.unarchive(user, workflowId, { publicApi: true });
+	}
+
+	async deleteForPublicApi(user: User, workflowId: string): Promise<WorkflowEntity | undefined> {
+		// The public API deletes without requiring the workflow to be archived first.
+		return await this.delete(user, workflowId, true, { publicApi: true });
 	}
 
 	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {
