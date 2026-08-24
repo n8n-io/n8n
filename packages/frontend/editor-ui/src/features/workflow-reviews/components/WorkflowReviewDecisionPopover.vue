@@ -120,12 +120,13 @@ async function onComment() {
 			<div :class="$style.content" data-test-id="workflow-review-decision-popover">
 				<N8nInput
 					:id="noteInputId"
-					:aria-label="i18n.baseText('workflowReviews.detail.decision.note.label')"
 					v-model="decisionNote"
+					:aria-label="i18n.baseText('workflowReviews.detail.decision.note.label')"
 					type="textarea"
 					:rows="3"
 					:maxlength="WORKFLOW_REVIEW_TEXT_MAX_LENGTH"
 					:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"
+					:class="$style.note"
 					data-test-id="workflow-review-decision-note"
 				/>
 				<div :class="$style.actions">
@@ -179,6 +180,10 @@ async function onComment() {
 
 <style lang="scss" module>
 .popover {
+	--review-decision-popover--chrome-height: calc(
+		var(--spacing--xs) + var(--spacing--xs) + var(--spacing--xs) + var(--height--sm)
+	);
+
 	padding: var(--spacing--xs);
 }
 
@@ -186,6 +191,19 @@ async function onComment() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+}
+
+.note {
+	:global(textarea) {
+		/* Reka updates this value for the chosen side as the viewport changes.
+			Reserve two popover insets, the content gap, and the action row so
+			native textarea resizing can never push the decisions off-screen. */
+		max-height: calc(
+			var(--reka-popover-content-available-height, 75dvh) - var(
+					--review-decision-popover--chrome-height
+				)
+		);
+	}
 }
 
 .actions {
