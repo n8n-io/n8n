@@ -9,7 +9,7 @@ import type {
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
-import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
 
@@ -41,7 +41,11 @@ import {
 /** V5 list endpoints return at most this many rows per page. */
 const PAGE_SIZE = 25;
 
-/** Backstop so a misbehaving endpoint cannot spin the paginator forever. */
+/**
+ * Backstop so a misbehaving endpoint cannot spin the paginator forever. Reaching
+ * it is an error rather than a silent stop: returning a partial list from
+ * "Return All" would look like a complete one.
+ */
 const MAX_LIST_PAGES = 200;
 
 /** n8n uses camelCase parameter names; the API uses kebab-case layer properties. */
@@ -424,6 +428,8 @@ async function fetchList(
 	const limit = returnAll ? Infinity : (ctx.getNodeParameter('limit', i) as number);
 
 	const items: IDataObject[] = [];
+	let exhausted = false;
+
 	for (let page = 1; page <= MAX_LIST_PAGES; page++) {
 		const batch = (await bannerbearApiRequest.call(
 			ctx,
@@ -435,11 +441,34 @@ async function fetchList(
 			},
 		)) as IDataObject[];
 
-		if (!Array.isArray(batch) || batch.length === 0) break;
+		if (!Array.isArray(batch) || batch.length === 0) {
+			exhausted = true;
+			break;
+		}
+
 		items.push(...batch);
 
-		if (items.length >= limit) break;
-		if (batch.length < PAGE_SIZE) break;
+		if (items.length >= limit) {
+			exhausted = true;
+			break;
+		}
+
+		if (batch.length < PAGE_SIZE) {
+			exhausted = true;
+			break;
+		}
+	}
+
+	if (!exhausted) {
+		throw new NodeOperationError(
+			ctx.getNode(),
+			`Too many records to return at once from ${resource}`,
+			{
+				description:
+					`Stopped after ${MAX_LIST_PAGES} pages, around ${MAX_LIST_PAGES * PAGE_SIZE} records, ` +
+					'so the result would have been incomplete. Turn off Return All and set a Limit instead.',
+			},
+		);
 	}
 
 	return returnAll ? items : items.slice(0, limit);

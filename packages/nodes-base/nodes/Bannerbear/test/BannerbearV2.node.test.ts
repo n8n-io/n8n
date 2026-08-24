@@ -346,6 +346,15 @@ describe('Bannerbear node -> pagination', () => {
 		expect(ctx.helpers.httpRequestWithAuthentication).toHaveBeenCalledTimes(2);
 	});
 
+	// Silently returning 5,000 of 6,000 records from "Return All" would read as a
+	// complete list, so hitting the page cap has to be an error.
+	it('raises rather than truncating when the page cap is reached', async () => {
+		const ctx = execContext({ resource: 'workflowRun', operation: 'getAll', returnAll: true }, []);
+		ctx.helpers.httpRequestWithAuthentication = vi.fn().mockResolvedValue(page(1, 25));
+
+		await expect(node.execute.call(ctx)).rejects.toThrow(/Too many records/);
+	});
+
 	it('stops on a short page without asking for another', async () => {
 		const ctx = execContext({ resource: 'workflowRun', operation: 'getAll', returnAll: true }, [
 			page(1, 3),
