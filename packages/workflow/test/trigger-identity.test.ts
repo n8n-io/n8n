@@ -50,6 +50,21 @@ describe('classifyTriggerIdentity', () => {
 				});
 			},
 		);
+
+		// A chat trigger establishes no identity at runtime through `n8nUserAuth`, so
+		// `isChatOAuth2Enabled` must not flip this classification regardless of value.
+		it.each(['n8nUserAuth', 'none', 'basicAuth'])(
+			'provides no identity for authentication %s even when chat OAuth2 is enabled',
+			(authentication) => {
+				expect(
+					classifyTriggerIdentity(
+						CHAT_TRIGGER_NODE_TYPE,
+						{ authentication },
+						{ isChatOAuth2Enabled: true },
+					),
+				).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
+			},
+		);
 	});
 
 	describe('MCP Trigger', () => {
