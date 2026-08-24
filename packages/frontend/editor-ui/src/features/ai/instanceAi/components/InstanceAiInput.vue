@@ -7,6 +7,7 @@ import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { EXTENDED_PROMPT_MAX_LENGTH } from '@/features/ai/shared/constants';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiPromptSuggestions from './InstanceAiPromptSuggestions.vue';
+import InstanceAiInputMenu from './InstanceAiInputMenu.vue';
 import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 import {
 	base64EncodedSize,
@@ -532,6 +533,7 @@ const resizable = computed(() => {
 			:max-length="EXTENDED_PROMPT_MAX_LENGTH"
 			show-voice
 			:show-attach="!props.isPlanEditMode"
+			:show-attach-button="false"
 			:attached-encoded-bytes="attachedEncodedBytes"
 			@submit="handleSubmit"
 			@stop="handleStop"
@@ -619,6 +621,12 @@ const resizable = computed(() => {
 						@remove="handleFileRemove"
 					/>
 				</div>
+			</template>
+			<template v-if="!props.isPlanEditMode" #footer-start>
+				<InstanceAiInputMenu
+					:disabled="isBusy || isGatedBySetup"
+					@attach-files="chatInputRef?.openFilePicker()"
+				/>
 			</template>
 		</ChatInputBase>
 		<slot name="footer"></slot>

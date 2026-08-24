@@ -33,6 +33,7 @@ export interface ReplayApiCall {
 
 export class MemoryMessageContextStore implements IntegrationMessageContextStore {
 	private readonly contexts = new Map<string, IntegrationMessageContext>();
+	private readonly bindings = new Map<string, { threadId: string; resourceId: string }>();
 
 	async getLatest(threadId: string): Promise<IntegrationMessageContext | null> {
 		return await Promise.resolve(this.contexts.get(threadId) ?? null);
@@ -46,6 +47,33 @@ export class MemoryMessageContextStore implements IntegrationMessageContextStore
 		this.contexts.set(threadId, context);
 		await Promise.resolve();
 		return;
+	}
+
+	async bindSession(
+		derivedThreadId: string,
+		origin: { threadId: string; resourceId: string },
+	): Promise<void> {
+		if (derivedThreadId === origin.threadId) return;
+		if (this.bindings.has(derivedThreadId)) return; // first write wins
+		this.bindings.set(derivedThreadId, origin);
+		await Promise.resolve();
+	}
+
+	async resolveSession(
+		derivedThreadId: string,
+	): Promise<{ threadId: string; resourceId: string } | null> {
+		return await Promise.resolve(this.bindings.get(derivedThreadId) ?? null);
+	}
+
+	async unbindSession(derivedThreadId: string): Promise<void> {
+		this.bindings.delete(derivedThreadId);
+		await Promise.resolve();
+	}
+
+	async clearSessionBindings(_originThreadId: string): Promise<void> {
+		// The in-memory store does not track the origin→derived list; tests
+		// that need unbind semantics call unbindSession directly.
+		await Promise.resolve();
 	}
 
 	latest(): IntegrationMessageContext | undefined {

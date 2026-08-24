@@ -32,7 +32,7 @@ describe('M1 acceptance (integration)', () => {
 
 	it('runs a single v1 node (Set) workflow to completion with correct rows', async () => {
 		const graph = setWorkflow([{ name: 'greeting', value: 'hello', type: 'string' }]);
-		const { execution, steps, byNode } = await runWorkflow(graph, { name: 'ada' });
+		const { execution, steps, byNode } = await runWorkflow(graph, [[{ json: { name: 'ada' } }]]);
 
 		expect(steps).toHaveLength(2);
 		expect(byNode('trigger')?.status).toBe('completed');
@@ -65,7 +65,7 @@ describe('M1 acceptance (integration)', () => {
 			),
 		);
 
-		const { execution, steps, byNode } = await runWorkflow(graph, { seed: 's' });
+		const { execution, steps, byNode } = await runWorkflow(graph, [[{ json: { seed: 's' } }]]);
 
 		expect(steps).toHaveLength(4);
 		for (const nodeId of ['trigger', 'node-a', 'node-b', 'node-c']) {
@@ -97,9 +97,9 @@ describe('M1 acceptance (integration)', () => {
 			),
 		);
 
-		const { execution, byNode } = await runWorkflow(graph, {
-			orders: [{ n: 1 }, { n: 2 }, { n: 3 }],
-		});
+		const { execution, byNode } = await runWorkflow(graph, [
+			[{ json: { orders: [{ n: 1 }, { n: 2 }, { n: 3 }] } }],
+		]);
 
 		expect(byNode('mark')?.outputs).toEqual([
 			[
@@ -120,10 +120,38 @@ describe('M1 acceptance (integration)', () => {
 				type: 'string',
 			},
 		]);
-		const { set } = { set: (await runWorkflow(graph, { name: 'ada' })).byNode('set-node') };
+		const { set } = {
+			set: (await runWorkflow(graph, [[{ json: { name: 'ada' } }]])).byNode('set-node'),
+		};
 
 		expect(set?.outputs).toEqual([
 			[expect.objectContaining({ json: { byInput: 'ada!', byReference: 'ada?' } })],
+		]);
+	});
+
+	it('emits one item per trigger payload item, with by-reference expressions still resolving', async () => {
+		const graph = setWorkflow([
+			{ name: 'byInput', value: '={{ $json.n }}', type: 'number' },
+			{
+				name: 'byReference',
+				value: "={{ $('When clicking Execute').first().json.x }}",
+				type: 'string',
+			},
+		]);
+		const { byNode } = await runWorkflow(graph, [
+			[
+				{ json: { x: 'from-trigger', n: 1 } },
+				{ json: { x: 'from-trigger', n: 2 } },
+				{ json: { x: 'from-trigger', n: 3 } },
+			],
+		]);
+
+		expect(byNode('set-node')?.outputs).toEqual([
+			[
+				expect.objectContaining({ json: { byInput: 1, byReference: 'from-trigger' } }),
+				expect.objectContaining({ json: { byInput: 2, byReference: 'from-trigger' } }),
+				expect.objectContaining({ json: { byInput: 3, byReference: 'from-trigger' } }),
+			],
 		]);
 	});
 
@@ -131,7 +159,7 @@ describe('M1 acceptance (integration)', () => {
 		const graph = setWorkflow([
 			{ name: 'boom', value: "={{ $('Ghost').first().json.x }}", type: 'string' },
 		]);
-		const { execution, steps, byNode } = await runWorkflow(graph, { name: 'ada' });
+		const { execution, steps, byNode } = await runWorkflow(graph, [[{ json: { name: 'ada' } }]]);
 
 		expect(steps).toHaveLength(2);
 		expect(byNode('set-node')?.status).toBe('failed');
@@ -161,7 +189,7 @@ describe('M1 acceptance (integration)', () => {
 			),
 		);
 
-		const { execution, steps, byNode } = await runWorkflow(graph, {});
+		const { execution, steps, byNode } = await runWorkflow(graph, [[]]);
 
 		expect(byNode('node-a')?.status).toBe('failed');
 		expect(byNode('node-b')).toBeUndefined();

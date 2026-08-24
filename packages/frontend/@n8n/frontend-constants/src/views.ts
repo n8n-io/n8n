@@ -56,7 +56,6 @@ export enum VIEWS {
 	EVALUATION_COLLECTION_COMPARE = 'EvaluationCollectionCompare',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
-	OPENTELEMETRY_SETTINGS = 'SettingsOpenTelemetryView',
 	SSO_SETTINGS = 'SSoSettings',
 	ENCRYPTION_KEYS_SETTINGS = 'EncryptionKeysSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',

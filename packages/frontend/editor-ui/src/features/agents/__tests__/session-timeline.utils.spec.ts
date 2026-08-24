@@ -10,7 +10,9 @@ import {
 	flattenExecutionsToTimelineItems,
 	itemStatusFilterKey,
 	matchesSearch,
+	isErroredToolCallTimelineItem,
 	matchesTimelineFilters,
+	timelineItemErrorMessage,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
 
@@ -86,6 +88,7 @@ describe('timeline status filters', () => {
 	const approved = item({ kind: 'hitl-response', hitlResponseStatus: 'approved' });
 	const declined = item({ kind: 'hitl-response', hitlResponseStatus: 'declined' });
 	const errored = item({ kind: 'tool', toolOutcome: 'error' });
+	const executionError = item({ kind: 'execution-error', executionStatus: 'error' });
 	const handledWorkflowError = item({
 		kind: 'workflow',
 		toolOutcome: 'success',
@@ -97,6 +100,7 @@ describe('timeline status filters', () => {
 		expect(itemStatusFilterKey(declined)).toBe('declined');
 		expect(itemStatusFilterKey(errored)).toBe('error');
 		expect(itemStatusFilterKey(handledWorkflowError)).toBe('error');
+		expect(itemStatusFilterKey(executionError)).toBe('error');
 		expect(
 			itemStatusFilterKey(item({ kind: 'hitl-response', hitlResponseStatus: 'responded' })),
 		).toBeUndefined();
@@ -110,6 +114,7 @@ describe('timeline status filters', () => {
 		expect(matchesTimelineFilters(errored, new Set(['error']))).toBe(true);
 		expect(matchesTimelineFilters(errored, new Set(['tool']))).toBe(true);
 		expect(matchesTimelineFilters(handledWorkflowError, new Set(['error']))).toBe(true);
+		expect(matchesTimelineFilters(executionError, new Set(['error']))).toBe(true);
 	});
 });
 
@@ -224,6 +229,7 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		cost: null,
 		timeline: null,
 		error: null,
+		failureSummary: null,
 		hitlStatus: null,
 		source: null,
 		...overrides,
@@ -291,6 +297,36 @@ describe('flattenExecutionsToTimelineItems', () => {
 		const items = flattenExecutionsToTimelineItems([exec()]);
 		expect(items).toHaveLength(0);
 	});
+
+	it.each([
+		['error', 'Model failed'],
+		['interrupted', 'Agent execution was interrupted'],
+	] as const)('adds a selectable synthetic item for an %s execution', (status, error) => {
+		const items = flattenExecutionsToTimelineItems([
+			exec({
+				status,
+				error,
+				stoppedAt: '2026-04-24T10:00:05Z',
+			}),
+		]);
+
+		expect(items).toEqual([
+			{
+				kind: 'execution-error',
+				executionId: 'e-1',
+				executionStatus: status,
+				content: error,
+				timestamp: Date.parse('2026-04-24T10:00:05Z'),
+			},
+		]);
+	});
+
+	it.each(['success', 'cancelled'] as const)(
+		'does not add a synthetic item for a %s execution',
+		(status) => {
+			expect(flattenExecutionsToTimelineItems([exec({ status })])).toEqual([]);
+		},
+	);
 
 	it('maps a generic HITL flow to tool call, request, and user response items', () => {
 		const items = flattenExecutionsToTimelineItems([
@@ -661,5 +697,190 @@ describe('flattenExecutionsToTimelineItems', () => {
 			withTimeline([{ type: 'text', content: 'b', timestamp: 200 }], { id: 'e-b' }),
 		]);
 		expect(items.map((i) => i.content)).toEqual(['a', 'b']);
+	});
+});
+
+describe('isErroredToolCallTimelineItem', () => {
+	it.each([
+		['runtime hard failure', { kind: 'tool', toolSuccess: false }],
+		['toolOutcome error', { kind: 'tool', toolOutcome: 'error' }],
+		['generic error string', { kind: 'tool', toolSuccess: true, toolOutput: { error: 'boom' } }],
+		[
+			'integration error object',
+			{
+				kind: 'tool',
+				toolSuccess: true,
+				toolOutput: { ok: false, error: { code: 'ACTION_FAILED', message: 'Action failed' } },
+			},
+		],
+		[
+			'workflow error status',
+			{ kind: 'workflow', toolSuccess: true, toolOutput: { status: 'error' } },
+		],
+		[
+			'delegate failed status',
+			{ kind: 'tool', toolSuccess: true, toolOutput: { status: 'failed' } },
+		],
+		[
+			'workspace success false',
+			{ kind: 'tool', toolSuccess: true, toolOutput: { success: false } },
+		],
+		['integration ok false', { kind: 'tool', toolSuccess: true, toolOutput: { ok: false } }],
+		['MCP isError true', { kind: 'tool', toolSuccess: true, toolOutput: { isError: true } }],
+	] satisfies Array<[string, Partial<TimelineItem>]>)('flags %s', (_label, partial) => {
+		expect(isErroredToolCallTimelineItem(item(partial))).toBe(true);
+	});
+
+	it.each([
+		['empty error string', { toolOutput: { error: '' } }],
+		['empty nested error message', { toolOutput: { error: { message: '' } } }],
+		['success status', { toolOutput: { status: 'success' } }],
+		['success true', { toolOutput: { success: true } }],
+		['ok true', { toolOutput: { ok: true } }],
+		['isError false', { toolOutput: { isError: false } }],
+		['non-record output', { toolOutput: 'failed' }],
+		['in-flight call', { toolSuccess: undefined, toolOutput: undefined }],
+	] satisfies Array<[string, Partial<TimelineItem>]>)('does not flag %s', (_label, partial) => {
+		expect(
+			isErroredToolCallTimelineItem(item({ kind: 'tool', toolSuccess: true, ...partial })),
+		).toBe(false);
+	});
+
+	it('does not flag user/agent/suspension kinds', () => {
+		expect(isErroredToolCallTimelineItem(item({ kind: 'user', toolSuccess: false }))).toBe(false);
+		expect(isErroredToolCallTimelineItem(item({ kind: 'agent', toolSuccess: false }))).toBe(false);
+		expect(isErroredToolCallTimelineItem(item({ kind: 'suspension', toolSuccess: false }))).toBe(
+			false,
+		);
+	});
+});
+
+describe('timelineItemErrorMessage', () => {
+	it('extracts the error message from a thrown tool call', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({ kind: 'tool', toolSuccess: false, toolOutput: { error: 'timed out' } }),
+			),
+		).toBe('timed out');
+	});
+
+	it('extracts the error message from a workflow soft-failure', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'workflow',
+					toolSuccess: true,
+					toolOutput: { status: 'error', error: 'node X failed' },
+				}),
+			),
+		).toBe('node X failed');
+	});
+
+	it('extracts a nested integration error message', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						ok: false,
+						error: { code: 'NO_MESSAGE_CONTEXT', message: 'No message context' },
+					},
+				}),
+			),
+		).toBe('No message context');
+	});
+
+	it('extracts MCP structuredContent.error', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						isError: true,
+						content: [{ type: 'text', text: '{"error":"Workflow not found"}' }],
+						structuredContent: { error: 'Workflow not found' },
+					},
+				}),
+			),
+		).toBe('Workflow not found');
+	});
+
+	it('extracts MCP structuredContent.error.message', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						isError: true,
+						content: [{ type: 'text', text: 'ignored' }],
+						structuredContent: { error: { message: 'Tool execution failed' } },
+					},
+				}),
+			),
+		).toBe('Tool execution failed');
+	});
+
+	it('extracts MCP text content when structuredContent has no error', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						isError: true,
+						content: [{ type: 'text', text: 'Access denied by user' }],
+					},
+				}),
+			),
+		).toBe('Access denied by user');
+	});
+
+	it('extracts MCP JSON text envelopes without dumping extra payload fields', () => {
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: {
+						isError: true,
+						content: [
+							{
+								type: 'text',
+								text: JSON.stringify({ error: 'Selector not found', snapshot: '<huge>' }),
+							},
+						],
+					},
+				}),
+			),
+		).toBe('Selector not found');
+	});
+
+	it('returns empty string when no error message is present', () => {
+		expect(
+			timelineItemErrorMessage(item({ kind: 'tool', toolSuccess: false, toolOutput: {} })),
+		).toBe('');
+		expect(
+			timelineItemErrorMessage(
+				item({ kind: 'workflow', toolSuccess: true, toolOutput: { status: 'error' } }),
+			),
+		).toBe('');
+		expect(
+			timelineItemErrorMessage(
+				item({
+					kind: 'tool',
+					toolSuccess: true,
+					toolOutput: { isError: true, content: [{ type: 'image', data: 'abc' }] },
+				}),
+			),
+		).toBe('');
+	});
+
+	it('returns empty string for non-failed items', () => {
+		expect(
+			timelineItemErrorMessage(item({ kind: 'tool', toolSuccess: true, toolOutput: { ok: true } })),
+		).toBe('');
 	});
 });

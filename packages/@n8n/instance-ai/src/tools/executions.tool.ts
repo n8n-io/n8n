@@ -197,7 +197,7 @@ async function findAllowedWorkflowByName(
 	if (process.env.E2E_TESTS !== 'true' || allowList === undefined) return undefined;
 
 	for (const allowedName of allowList) {
-		const workflows = await context.workflowService.list({ query: allowedName, limit: 10 });
+		const { workflows } = await context.workflowService.list({ query: allowedName, limit: 10 });
 		const match = workflows.find((workflow) => hasWorkflowName(allowList, workflow.name));
 		if (match) return { id: match.id, name: match.name };
 	}

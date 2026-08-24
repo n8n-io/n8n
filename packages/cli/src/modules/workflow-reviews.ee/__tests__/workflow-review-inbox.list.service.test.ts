@@ -1,10 +1,9 @@
-import { mockInstance } from '@n8n/backend-test-utils';
 import { LicenseState } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type {
 	InboxVisibility,
 	User,
 	UserRepository,
-	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestReviewerRepository,
@@ -12,19 +11,18 @@ import type {
 import { WorkflowReviewRequestRepository, WorkflowReviewRequestWorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-
 import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
 import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 
+import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+
 describe('WorkflowReviewInboxService', () => {
 	const workflowReviewPolicyService = mockInstance(WorkflowReviewPolicyService);
 	const accessService = mock<WorkflowReviewAccessService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
-	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowReviewRequestRepository = mockInstance(WorkflowReviewRequestRepository);
 	const workflowReviewRequestWorkflowRepository = mockInstance(
 		WorkflowReviewRequestWorkflowRepository,
@@ -40,7 +38,6 @@ describe('WorkflowReviewInboxService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		reviewerRepository.findByRequestIds.mockResolvedValue([]);
@@ -51,7 +48,6 @@ describe('WorkflowReviewInboxService', () => {
 			new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 			accessService,
 			workflowHistoryService,
-			publishedVersionRepository,
 			workflowReviewRequestRepository,
 			workflowReviewRequestWorkflowRepository,
 			reviewerRepository,

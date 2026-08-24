@@ -254,6 +254,76 @@ describe('ChatIntegrationActionExecutor', () => {
 		});
 	});
 
+	it('re-anchors a Slack DM at the sent message ts when openDM returns the channel pseudo-thread', async () => {
+		// openDM returns the conversation-scoped pseudo-thread (empty thread_ts);
+		// follow-ups arrive in the thread anchored at the sent message's own ts.
+		const sentMessage = { id: '100.200', threadId: 'slack:D123:' };
+		const dmThread = {
+			id: 'slack:D123:',
+			post: vi.fn().mockResolvedValue(sentMessage),
+		};
+		const sentThread = {
+			id: 'slack:D123:100.200',
+			subscribe: vi.fn().mockResolvedValue(undefined),
+		};
+		const chat = mock<ChatInstance>();
+		chat.openDM.mockResolvedValue(dmThread as never);
+		chat.thread.mockReturnValue(sentThread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: 'U123', message: { text: 'Hello' } },
+			awaitResponse: false,
+		});
+
+		expect(chat.thread).toHaveBeenCalledWith('slack:D123:100.200');
+		expect(sentThread.subscribe).toHaveBeenCalled();
+		expect(result).toMatchObject({
+			ok: true,
+			messageContext: {
+				target: { type: 'dm', userId: 'U123', threadId: 'slack:D123:100.200' },
+				messageId: '100.200',
+			},
+		});
+	});
+
+	it('re-anchors a Slack channel post at the sent message ts', async () => {
+		// A top-level channel post returns the channel pseudo-thread (empty
+		// thread_ts); threaded replies arrive anchored at the sent message ts.
+		const sentMessage = { id: '456.789', threadId: 'slack:C123:' };
+		const channel = { post: vi.fn().mockResolvedValue(sentMessage) };
+		const sentThread = { subscribe: vi.fn().mockResolvedValue(undefined) };
+		const chat = mock<ChatInstance>();
+		chat.channel.mockReturnValue(channel as never);
+		chat.thread.mockReturnValue(sentThread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, buildRegistry());
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_channel_message',
+			input: { channelId: 'C123', message: { text: 'Scheduled update' } },
+			awaitResponse: false,
+		});
+
+		expect(chat.thread).toHaveBeenCalledWith('slack:C123:456.789');
+		expect(sentThread.subscribe).toHaveBeenCalled();
+		expect(result).toMatchObject({
+			ok: true,
+			messageContext: {
+				target: { type: 'channel', channelId: 'slack:C123', threadId: 'slack:C123:456.789' },
+				messageId: '456.789',
+			},
+		});
+	});
+
 	it('posts generic message card buttons with their labels', async () => {
 		const sentMessage = {
 			id: '123.456',

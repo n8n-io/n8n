@@ -79,6 +79,11 @@ type Props = {
 	showAll?: boolean;
 	hideIssues?: boolean;
 	skipAutoSelect?: boolean;
+	/** The user asked for a fresh credential (Instance AI setup surfaces). Nothing
+	 *  is preselected, and the empty picker invites creation ("Connect to X")
+	 *  instead of reading as a list to choose from. Existing credentials stay
+	 *  selectable — the user may change their mind once they see them. */
+	preferNewCredential?: boolean;
 	/** When true, skip all global store writes (workflowsStore, nodeHelpers).
 	 *  Used by Instance AI to render credential selection without polluting the active workflow. */
 	standalone?: boolean;
@@ -114,6 +119,7 @@ const props = withDefaults(defineProps<Props>(), {
 	showAll: false,
 	hideIssues: false,
 	skipAutoSelect: false,
+	preferNewCredential: false,
 	standalone: false,
 	skipCredentialsFetch: false,
 });
@@ -552,11 +558,15 @@ function getSelectedName(type: string) {
 }
 
 function getSelectPlaceholder(type: string, issues: string[]) {
-	return issues.length && getSelectedName(type)
-		? i18n.baseText('nodeCredentials.selectedCredentialUnavailable', {
-				interpolate: { name: getSelectedName(type) },
-			})
-		: i18n.baseText('nodeCredentials.selectCredential');
+	if (issues.length && getSelectedName(type)) {
+		return i18n.baseText('nodeCredentials.selectedCredentialUnavailable', {
+			interpolate: { name: getSelectedName(type) },
+		});
+	}
+	// Asked-for-fresh slots read as the create affordance they are, matching the
+	// no-credentials-yet empty state instead of "Select Credential".
+	if (props.preferNewCredential) return entryPlaceholder(type);
+	return i18n.baseText('nodeCredentials.selectCredential');
 }
 
 function clearSelectedCredential(credentialType: string) {

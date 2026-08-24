@@ -323,6 +323,68 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 	});
 
+	it('registers the parent MCP tools for an initial builder turn', async () => {
+		const { service, user, credentialProvider } = setup();
+		const notionSearch = fakeTool('notion_search');
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				mcpTools: new Map([[notionSearch.name, notionSearch]]),
+			}),
+		);
+
+		expect(agentsSdkMocks.registeredToolNames).toContain('notion_search');
+	});
+
+	it('registers the parent MCP tools for a resumed builder turn', async () => {
+		const { service, user, credentialProvider, n8nCheckpointStorage } = setup();
+		const notionSearch = fakeTool('notion_search');
+		n8nCheckpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: {} as never });
+
+		await drain(
+			service.resumeBuild(
+				'agent-1',
+				'project-1',
+				'builder-run-1',
+				'tool-call-1',
+				{},
+				credentialProvider,
+				user,
+				{
+					...baseSession,
+					mcpTools: new Map([[notionSearch.name, notionSearch]]),
+				},
+			),
+		);
+
+		expect(agentsSdkMocks.registeredToolNames).toContain('notion_search');
+	});
+
+	it('does not let an MCP tool replace a native builder tool', async () => {
+		const nativeReadConfig = fakeTool('read_config');
+		const mcpReadConfig = fakeTool('read_config');
+		const { service, logger, user, credentialProvider } = setup({
+			json: [nativeReadConfig],
+			shared: [],
+		});
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				mcpTools: new Map([[mcpReadConfig.name, mcpReadConfig]]),
+			}),
+		);
+
+		expect(agentsSdkMocks.registeredToolNames.filter((name) => name === 'read_config')).toEqual([
+			'read_config',
+		]);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped MCP tool that conflicts with an agent builder tool',
+			{ toolName: 'read_config', agentId: 'agent-1' },
+		);
+	});
+
 	it('cancelCheckpoint expires the checkpoint scoped to the agent', async () => {
 		const { service, n8nCheckpointStorage } = setup();
 

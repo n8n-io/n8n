@@ -84,13 +84,15 @@ describe('execution start (integration)', () => {
 		const { executionId } = await startExecution.start({
 			workflowId: 'wf-1',
 			graph,
-			triggerPayload: null,
+			triggerOutputs: [[{ json: { hello: 'world' } }]],
 		});
 		await ready;
 
+		// `findOne({ where })`, not `findOneByOrFail`: the latter's overload exceeds
+		// TypeScript's instantiation depth on the recursive `triggerOutputs` column type.
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
-			.findOneByOrFail({ id: executionId });
+			.findOneOrFail({ where: { id: executionId } });
 		expect(row.status).toBe('running');
 
 		const steps = await dataSource
@@ -99,6 +101,7 @@ describe('execution start (integration)', () => {
 		const triggerStep = steps.find((s) => s.nodeId === 'trigger');
 		const firstStep = steps.find((s) => s.nodeId === 'step-a');
 		expect(triggerStep?.status).toBe('completed');
+		expect(triggerStep?.outputs).toEqual([[{ json: { hello: 'world' } }]]);
 		expect(firstStep?.status).toBe('queued');
 
 		// step:ready references the durable step-record id, not the node id.
@@ -119,7 +122,7 @@ describe('execution start (integration)', () => {
 			status: 'queued',
 			mode: 'production',
 			graph,
-			triggerPayload: null,
+			triggerOutputs: null,
 		});
 
 		// Delivered twice, both awaited — the CAS is what makes the second a no-op.
@@ -127,9 +130,11 @@ describe('execution start (integration)', () => {
 		await handler.handle(event);
 		await handler.handle(event);
 
+		// `findOne({ where })`, not `findOneByOrFail`: the latter's overload exceeds
+		// TypeScript's instantiation depth on the recursive `triggerOutputs` column type.
 		const row = await dataSource
 			.getRepository(WorkflowExecution)
-			.findOneByOrFail({ id: executionId });
+			.findOneOrFail({ where: { id: executionId } });
 		expect(row.status).toBe('running');
 
 		const steps = await dataSource

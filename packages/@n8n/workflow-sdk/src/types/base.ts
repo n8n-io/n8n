@@ -296,6 +296,11 @@ export function generateUniqueName(baseName: string, exists: (name: string) => b
 // Internal: Serialization types
 // =============================================================================
 
+/** Persisted managed references use a null ID with the managed marker. */
+type NodeJSONCredential =
+	| { id?: string; name: string; __aiGatewayManaged?: boolean }
+	| { id: null; name: string; __aiGatewayManaged?: boolean };
+
 /**
  * Node JSON representation (for serialization)
  */
@@ -306,7 +311,7 @@ export interface NodeJSON {
 	typeVersion: number;
 	position: [number, number];
 	parameters?: IDataObject;
-	credentials?: Record<string, { id?: string; name: string }>;
+	credentials?: Record<string, NodeJSONCredential>;
 	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;

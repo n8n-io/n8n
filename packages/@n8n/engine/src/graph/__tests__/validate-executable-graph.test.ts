@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { UnimplementedError } from '../../common';
-import { GraphValidationError, validateExecutableGraph } from '../validate-executable-graph';
+import { GraphValidationError } from '../graph-validation.error';
+import { validateExecutableGraph } from '../validate-executable-graph';
 import type { WorkflowGraph } from '../workflow-graph';
 
 const validGraph: WorkflowGraph = {

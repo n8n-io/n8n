@@ -7,9 +7,11 @@ import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
 import {
+	executionErrorLabel,
+	executionErrorMessage,
 	formatDuration,
 	hitlTimelineName,
-	isErroredToolCallTimelineItem,
+	isErroredTimelineItem,
 	isSubAgentTimelineItem,
 	matchesTimelineFilters,
 	timelineItemStatus,
@@ -114,6 +116,8 @@ function popoverLabel(item: TimelineItem): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
+		case 'execution-error':
+			return executionErrorLabel(item, i18n);
 		case 'suspension':
 			return i18n.baseText(
 				item.hitlRequestType === 'approval'
@@ -142,6 +146,8 @@ function popoverName(item: TimelineItem): string {
 			return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 		case 'node':
 			return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
+		case 'execution-error':
+			return executionErrorMessage(item, i18n);
 		case 'suspension':
 		case 'hitl-response':
 			return hitlTimelineName(item, i18n);
@@ -351,7 +357,9 @@ onBeforeUnmount(() => {
 							:data-test-id="
 								activePopoverStatus.kind === 'hitl-response'
 									? 'timeline-popover-hitl-response-badge'
-									: 'timeline-popover-tool-error-badge'
+									: activePopover.segment.item.kind === 'execution-error'
+										? 'timeline-popover-execution-error-badge'
+										: 'timeline-popover-tool-error-badge'
 							"
 						>
 							{{ i18n.baseText(activePopoverStatus.labelKey) }}
@@ -384,13 +392,9 @@ onBeforeUnmount(() => {
 					type="button"
 					data-test-id="timeline-block"
 					:data-timeline-index="seg.index"
-					:data-error="isErroredToolCallTimelineItem(seg.item) ? 'true' : undefined"
+					:data-error="isErroredTimelineItem(seg.item) ? 'true' : undefined"
 					:aria-label="blockAriaLabel(seg.item)"
-					:class="[
-						$style.block,
-						props.selectedIndex === seg.index && $style.selected,
-						isErroredToolCallTimelineItem(seg.item) && $style.error,
-					]"
+					:class="[$style.block, props.selectedIndex === seg.index && $style.selected]"
 					:data-selected="props.selectedIndex === seg.index ? 'true' : undefined"
 					:style="eventStyle(seg.item)"
 					@mouseenter="showPopover(seg, $event)"
@@ -503,16 +507,6 @@ onBeforeUnmount(() => {
 	outline-offset: var(--spacing--5xs);
 	/* Lift above neighbouring idle stripes so the highlight outline doesn't
 	   get covered by the adjacent .idle background. */
-	z-index: 2;
-}
-
-.error {
-	outline: var(--focus--border-width) solid var(--border-color--danger);
-	outline-offset: var(--spacing--5xs);
-	z-index: 1;
-}
-
-.selected.error {
 	z-index: 2;
 }
 

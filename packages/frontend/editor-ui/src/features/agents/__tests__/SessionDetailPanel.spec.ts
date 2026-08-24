@@ -1,4 +1,3 @@
-/* eslint-disable import-x/no-extraneous-dependencies -- test-only patterns */
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { createRouter, createMemoryHistory, type Router } from 'vue-router';
@@ -137,6 +136,24 @@ describe('SessionDetailPanel — workflow branches', () => {
 		expect(w.find('[data-test-id="wf-log-viewer"]').exists()).toBe(true);
 	});
 
+	it('shows a soft-failure callout alongside the workflow execution viewer', () => {
+		const w = mountIt({
+			kind: 'workflow',
+			executionId: 'e1',
+			timestamp: 0,
+			workflowId: 'wf-1',
+			workflowName: 'WF',
+			workflowExecutionId: 'exec-1',
+			toolSuccess: true,
+			toolOutput: { status: 'error', error: 'Node X failed' },
+		});
+		const callout = w.find('[data-test-id="workflow-error-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain('Node X failed');
+		expect(w.find('[data-test-id="wf-log-viewer"]').exists()).toBe(true);
+		expect(w.find('[data-test-id="detail-tool-error-badge"]').exists()).toBe(true);
+	});
+
 	it('opens the full execution in a new tab when the header button is clicked', async () => {
 		const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 		const w = mountIt({
@@ -267,6 +284,21 @@ describe('SessionDetailPanel — HITL sequence', () => {
 });
 
 describe('SessionDetailPanel — other kinds', () => {
+	it('shows a fatal execution error in a danger callout', () => {
+		const w = mountIt({
+			kind: 'execution-error',
+			executionId: 'e1',
+			executionStatus: 'error',
+			timestamp: 100,
+			content: 'Model request failed',
+		});
+
+		expect(w.get('[data-testid="execution-error-callout"]').text()).toContain(
+			'Model request failed',
+		);
+		expect(w.get('[data-test-id="detail-execution-error-badge"]').text()).toBe('Error');
+	});
+
 	it('renders Input/Output JSON sections for generic tool calls', () => {
 		const w = mountIt({
 			kind: 'tool',
@@ -280,6 +312,65 @@ describe('SessionDetailPanel — other kinds', () => {
 		expect(w.text()).toContain('Output');
 		// Tool kind should NOT use ToolIoView (it's reserved for node-backed calls).
 		expect(w.find('[data-test-id="tool-io-view"]').exists()).toBe(false);
+	});
+
+	it('shows a generic tool soft-failure message and header icon', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'load_skill',
+			toolSuccess: true,
+			toolOutput: { success: false, error: 'Skill not found' },
+		});
+		const callout = w.find('[data-test-id="tool-error-callout"]');
+		expect(callout.exists()).toBe(true);
+		expect(callout.text()).toContain('Skill not found');
+		expect(w.find('[data-test-id="detail-tool-error-badge"]').exists()).toBe(true);
+	});
+
+	it('shows a nested integration error message', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'slack_action',
+			toolSuccess: true,
+			toolOutput: {
+				ok: false,
+				error: { code: 'NO_MESSAGE_CONTEXT', message: 'No message context' },
+			},
+		});
+		expect(w.find('[data-test-id="tool-error-callout"]').text()).toContain('No message context');
+	});
+
+	it('shows an MCP structuredContent error message', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'github_create_issue',
+			toolSuccess: true,
+			toolOutput: {
+				isError: true,
+				content: [{ type: 'text', text: '{"error":"Repository not found"}' }],
+				structuredContent: { error: 'Repository not found' },
+			},
+		});
+		expect(w.find('[data-test-id="tool-error-callout"]').text()).toContain('Repository not found');
+	});
+
+	it('does not show a failure callout or header icon for a successful tool', () => {
+		const w = mountIt({
+			kind: 'tool',
+			executionId: 'e1',
+			timestamp: 0,
+			toolName: 'http',
+			toolSuccess: true,
+			toolOutput: { ok: true },
+		});
+		expect(w.find('[data-test-id="tool-error-callout"]').exists()).toBe(false);
+		expect(w.find('[data-test-id="detail-tool-error-badge"]').exists()).toBe(false);
 	});
 
 	it('renders the ToolIoView for node tool calls', () => {
@@ -312,9 +403,7 @@ describe('SessionDetailPanel — other kinds', () => {
 		});
 		const callout = w.find('[data-test-id="node-error-callout"]');
 		expect(callout.exists()).toBe(true);
-		expect(callout.text()).toContain(
-			'Tool experienced an error: Node does not have any credentials set',
-		);
+		expect(callout.text()).toContain('Tool call failed: Node does not have any credentials set');
 		expect(w.get('[data-test-id="detail-tool-error-badge"]').text()).toBe('Error');
 	});
 
@@ -333,7 +422,7 @@ describe('SessionDetailPanel — other kinds', () => {
 		});
 		const callout = w.find('[data-test-id="node-error-callout"]');
 		expect(callout.exists()).toBe(true);
-		expect(callout.text()).toContain('Tool experienced an error');
+		expect(callout.text()).toContain('Tool call failed');
 		expect(callout.text()).not.toContain(':');
 	});
 

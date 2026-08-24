@@ -172,6 +172,9 @@ const updateTaskFieldsSchema = z
 		name: agentTaskSchema.shape.name.optional(),
 		objective: agentTaskSchema.shape.objective.optional().describe(TASK_OBJECTIVE_GUIDANCE),
 		cronExpression: agentTaskSchema.shape.cronExpression.optional(),
+		timezone: agentTaskSchema.shape.timezone.describe(
+			'IANA zone the cron runs in. Pass null to move the task back to the instance timezone.',
+		),
 	})
 	.strict()
 	.refine((updates) => Object.keys(updates).length > 0, {
@@ -1171,7 +1174,7 @@ export class AgentsBuilderToolsService {
 			.description(
 				'List the target agent scheduled tasks, including each persisted body and whether its ' +
 					'current config reference is enabled. Use this to identify a task before updating it. Returns ' +
-					'{ ok: true, tasks: [{ id, name, objective, cronExpression, enabled }] } or ' +
+					'{ ok: true, tasks: [{ id, name, objective, cronExpression, timezone, enabled }] } or ' +
 					'{ ok: false, errors }.',
 			)
 			.input(z.object({}).strict())
@@ -1186,11 +1189,13 @@ export class AgentsBuilderToolsService {
 					);
 					return {
 						ok: true,
-						tasks: tasks.map(({ id, name, objective, cronExpression }) => ({
+						tasks: tasks.map(({ id, name, objective, cronExpression, timezone }) => ({
 							id,
 							name,
 							objective,
 							cronExpression,
+							// Null means the task runs on the instance timezone.
+							timezone,
 							enabled: enabledByTaskId.get(id) ?? false,
 						})),
 					};
@@ -1261,6 +1266,9 @@ export class AgentsBuilderToolsService {
 								cronExpression: agentTaskSchema.shape.cronExpression.describe(
 									'A 5-field cron expression for when the task runs, e.g. "0 9 * * 1-5" = weekdays at 09:00.',
 								),
+								timezone: agentTaskSchema.shape.timezone.describe(
+									'IANA timezone the cron runs in, e.g. "Europe/London". Set it when the user names a timezone or a location; omit it to use the instance timezone.',
+								),
 							}),
 						)
 						.min(1)
@@ -1272,7 +1280,12 @@ export class AgentsBuilderToolsService {
 				async ({
 					tasks,
 				}: {
-					tasks: Array<{ name: string; objective: string; cronExpression: string }>;
+					tasks: Array<{
+						name: string;
+						objective: string;
+						cronExpression: string;
+						timezone?: string | null;
+					}>;
 				}) => {
 					// Each task is already validated against `.input()` (agentTaskSchema
 					// shapes) by the tool runtime before the handler runs.

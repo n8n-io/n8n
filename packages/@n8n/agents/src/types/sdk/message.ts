@@ -168,6 +168,18 @@ export type ContentProvider = ContentMetadata & {
 	value: Record<string, unknown>;
 };
 
+/**
+ * Provenance for messages that were not authored by the user or the model,
+ * e.g. produced from a tool result via `toMessage`. Consumers that build
+ * derived transcripts (like the observation log observer) use this to keep
+ * tool-sourced content inside untrusted-data boundaries. Never sent to the
+ * model — `toAiMessages` only reads `role`/`content`.
+ */
+export interface MessageOrigin {
+	kind: 'tool';
+	toolName: string;
+}
+
 // LLM message that can be passed to the LLM
 export interface Message {
 	id?: string;
@@ -176,6 +188,7 @@ export interface Message {
 	content: MessageContent[];
 	name?: string;
 	providerOptions?: ProviderOptions;
+	origin?: MessageOrigin;
 }
 
 export interface AgentMessageBase {

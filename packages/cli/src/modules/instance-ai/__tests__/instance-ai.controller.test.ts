@@ -237,7 +237,7 @@ describe('InstanceAiController', () => {
 				context: {
 					source: 'credential-modal',
 					credential: {
-						credentialType: 'gmailOAuth2Api',
+						credentialType: 'gmailOAuth2',
 						displayName: 'Gmail OAuth2 API',
 						documentationUrl:
 							'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',

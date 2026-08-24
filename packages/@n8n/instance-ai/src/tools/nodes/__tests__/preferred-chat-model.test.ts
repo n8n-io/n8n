@@ -121,4 +121,15 @@ describe('buildChatModelProviderMismatchWarnings', () => {
 
 		expect(warnings).toEqual([]);
 	});
+
+	it('does not warn for disabled chat-model nodes', () => {
+		const disabledNode = {
+			name: 'Disabled OpenAI',
+			type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
+			disabled: true,
+		};
+		const warnings = buildChatModelProviderMismatchWarnings([disabledNode], [gemini]);
+
+		expect(warnings).toEqual([]);
+	});
 });

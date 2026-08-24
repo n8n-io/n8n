@@ -236,6 +236,73 @@ describe('WorkflowSettingsVue', () => {
 		expect(getByTestId('workflow-caller-policy')).toBeVisible();
 	});
 
+	it('should lock caller policy to none when executeWorkflow is excluded', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		vi.spyOn(settingsStore, 'isExecuteWorkflowNodeExcluded', 'get').mockReturnValue(true);
+		workflowDocumentStore.setSettings({
+			callerPolicy: 'workflowsFromAList',
+			callerIds: 'abc',
+			executionOrder: 'v1',
+		});
+
+		const { getByTestId, queryByTestId } = createComponent({ pinia });
+		await flushPromises();
+
+		expect(
+			within(getByTestId('workflow-caller-policy-select')).getByRole('combobox'),
+		).toBeDisabled();
+		expect(queryByTestId('workflow-caller-policy-workflow-ids')).not.toBeInTheDocument();
+	});
+
+	it('should warn that the `any` caller policy is deprecated', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		workflowDocumentStore.setSettings({ executionOrder: 'v1', callerPolicy: 'any' });
+
+		const { getByTestId } = createComponent({ pinia });
+		await flushPromises();
+
+		expect(getByTestId('workflow-caller-policy-any-deprecation')).toBeVisible();
+	});
+
+	it('should not warn about deprecation for a supported caller policy', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		workflowDocumentStore.setSettings({ executionOrder: 'v1', callerPolicy: 'none' });
+
+		const { queryByTestId } = createComponent({ pinia });
+		await flushPromises();
+
+		expect(queryByTestId('workflow-caller-policy-any-deprecation')).not.toBeInTheDocument();
+	});
+
+	// An instance that lost the Sharing feature can still carry `any`, and has to be able
+	// to leave it before v3 removes the option.
+	it('should render the caller policy without sharing when the stored policy is `any`', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
+		workflowDocumentStore.setSettings({ executionOrder: 'v1', callerPolicy: 'any' });
+
+		const { getByTestId } = createComponent({ pinia });
+		await flushPromises();
+
+		expect(getByTestId('workflow-caller-policy')).toBeVisible();
+		expect(getByTestId('workflow-caller-policy-any-deprecation')).toBeVisible();
+	});
+
+	it('should keep the caller policy visible after switching away from `any` without sharing', async () => {
+		settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
+		workflowDocumentStore.setSettings({ executionOrder: 'v1', callerPolicy: 'any' });
+
+		const { getByTestId, queryByTestId } = createComponent({ pinia });
+		await flushPromises();
+
+		const dropdownItems = await getDropdownItems(getByTestId('workflow-caller-policy-select'));
+		await userEvent.click(dropdownItems[0]);
+		await flushPromises();
+
+		// The row stays so the change can be saved; only the warning goes away.
+		expect(getByTestId('workflow-caller-policy')).toBeVisible();
+		expect(queryByTestId('workflow-caller-policy-any-deprecation')).not.toBeInTheDocument();
+	});
+
 	describe('Custom span attributes', () => {
 		beforeEach(() => {
 			settingsStore.settings.activeModules = ['dynamic-credentials', 'otel'];

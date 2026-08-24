@@ -82,6 +82,26 @@ to a workflow `filePath`.
 
 Naming or renaming the current Agent never silently creates another one.
 
+## Saved sub-agent dependencies
+
+When the user asks for an Agent that uses other newly built Agents as saved
+sub-agents, treat publication as a dependency:
+
+1. Build each child Agent under its own `agentRef` before attaching it to the
+   parent.
+2. A saved sub-agent must be published before the parent can attach it. Building
+   the child does not imply publication. Never attach a draft child or pass its
+   raw `agentId` to the parent builder as a user requirement.
+3. If the user already asked to publish, activate, or make the Agents usable,
+   call `build-agent` for the child and faithfully forward that publication
+   intent. Otherwise, ask whether to publish the child before continuing with
+   the parent attachment.
+4. Wait for the child publication to succeed. Then call `build-agent` for the
+   parent and identify the child by its display name. The parent builder must
+   discover the published child and map its name to the valid stored ID.
+5. If publication is declined or fails, leave the child unattached and explain
+   that saved sub-agents must be published first.
+
 ## Builder-owned interactions
 
 When the user asks to test, run, publish, activate, make usable, unpublish, or

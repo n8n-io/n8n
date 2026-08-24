@@ -42,7 +42,9 @@ export const sourcePackages = [
  * A module that aliases the other modules lets a cross-module import resolve in its own test run.
  * The module tsconfig base holds that boundary.
  */
-export const modulePackages: Array<{ name: string; dir: string; entry?: boolean }> = [];
+export const modulePackages: Array<{ name: string; dir: string; entry?: boolean }> = [
+	{ name: '@n8n/frontend-module-instance-registry', dir: 'modules/instance-registry/frontend' },
+];
 
 // The code below makes the Vite aliases from the two tables. Keep this code in the same file as
 // the tables. A second file needs an import with a `.ts` specifier. That import causes error

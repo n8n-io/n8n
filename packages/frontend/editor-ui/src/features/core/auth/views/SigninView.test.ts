@@ -126,6 +126,24 @@ describe('SigninView', () => {
 		expect(showMessage).not.toHaveBeenCalled();
 	});
 
+	it('should show a no-access toast when the SSO login was denied by role mapping', () => {
+		const route = useRoute();
+		vi.spyOn(route, 'query', 'get').mockReturnValue({
+			ssoError: 'access-denied',
+		});
+
+		renderComponent();
+
+		expect(showMessage).toHaveBeenCalledWith({
+			title: "You don't have access to n8n",
+			message:
+				'Your role or permissions do not currently give you access to n8n. Please speak to your administrator if you think this is incorrect.',
+			type: 'error',
+			duration: 0,
+		});
+		expect(notificationsStore.setNotificationsSuppressed.mock.calls).toEqual([[false], [true]]);
+	});
+
 	it('should show and submit email/password form (happy path)', async () => {
 		await signInWithValidUser();
 
