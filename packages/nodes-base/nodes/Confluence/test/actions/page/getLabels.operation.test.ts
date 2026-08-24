@@ -71,6 +71,16 @@ describe('Confluence page:getLabels operation', () => {
 		expect(apiRequest).toHaveBeenCalledWith('GET', ENDPOINT, {}, { limit: 50, sort: 'name' });
 	});
 
+	// `prefix: ''` would be a hard 400 against the enum-typed param
+	it.each([[''], [['']]])('omits prefix when it resolves to %j', async (prefix) => {
+		apiRequest.mockResolvedValueOnce({ results: [{ id: '1' }] });
+		const ctx = mockExecuteCtx({ ...baseParams, options: { prefix } });
+
+		await execute.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledWith('GET', ENDPOINT, {}, { limit: 50 });
+	});
+
 	it.each([
 		[['my', 'team'], 'my,team'],
 		[['my'], 'my'],
