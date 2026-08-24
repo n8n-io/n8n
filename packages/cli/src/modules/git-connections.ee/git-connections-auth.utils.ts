@@ -19,6 +19,21 @@ export type GitAuthMaterial = {
 	keyGeneratorType: GitKeyGeneratorType | null;
 };
 
+/**
+ * Auth material to apply, computed from an update. `connectionType` is
+ * non-nullable: a computed update always has a concrete type in play, so
+ * `Object.assign`ing this onto the `GitConnection` entity can never write null
+ * into its non-nullable column. The compiler enforces this inside the helper.
+ */
+export type GitAuthResult = {
+	connectionType: GitConnectionType;
+	publicKey: string | null;
+	encryptedPrivateKey: string | null;
+	encryptedUsername: string | null;
+	encryptedPassword: string | null;
+	keyGeneratorType: GitKeyGeneratorType | null;
+};
+
 type GitAuthInput = {
 	connectionType?: GitConnectionType;
 	keyGeneratorType?: GitKeyGeneratorType;
@@ -53,17 +68,21 @@ export const emptyGitAuthMaterial = (): GitAuthMaterial => ({
 });
 
 /**
- * Apply auth changes onto {@link updated}, preserving existing secrets when the
- * caller doesn't touch them. Handles first-time configuration (no type yet) and
- * switching between SSH and HTTPS. Creation is the same operation with
+ * Compute the auth material to apply for an update, preserving existing secrets
+ * when the caller doesn't touch them. Handles first-time configuration (no type
+ * yet) and switching between SSH and HTTPS. Creation is the same operation with
  * {@link emptyGitAuthMaterial} as `current`.
+ *
+ * Returns `null` when there is nothing to apply (no connection type in play, or
+ * an already-SSH connection whose key isn't changing). Callers apply a non-null
+ * result with `Object.assign`; the result's non-nullable `connectionType` makes
+ * writing null into the entity's column a compile error.
  */
-export async function applyAuthenticationUpdate(
-	updated: GitAuthMaterial,
+export async function computeAuthenticationUpdate(
 	current: GitAuthMaterial,
 	input: GitAuthInput,
 	deps: GitAuthDeps,
-): Promise<void> {
+): Promise<GitAuthResult | null> {
 	const targetType = input.connectionType ?? current.connectionType;
 
 	// No connection type set or being set: auth material has no context to attach to.
@@ -75,7 +94,7 @@ export async function applyAuthenticationUpdate(
 		) {
 			throw new BadRequestError('Connection type is required to set authentication');
 		}
-		return;
+		return null;
 	}
 
 	if (targetType === 'ssh') {
@@ -87,18 +106,19 @@ export async function applyAuthenticationUpdate(
 			if (input.keyGeneratorType && input.keyGeneratorType !== current.keyGeneratorType) {
 				throw new BadRequestError('SSH key type cannot be changed after creation');
 			}
-			return;
+			return null;
 		}
 		// First-time SSH or switching from HTTPS: generate a fresh key pair.
 		const keyType = input.keyGeneratorType ?? 'ed25519';
 		const pair = await deps.generateSshKeyPair(keyType);
-		updated.connectionType = 'ssh';
-		updated.publicKey = pair.publicKey;
-		updated.encryptedPrivateKey = await deps.encrypt(pair.privateKey);
-		updated.keyGeneratorType = keyType;
-		updated.encryptedUsername = null;
-		updated.encryptedPassword = null;
-		return;
+		return {
+			connectionType: 'ssh',
+			publicKey: pair.publicKey,
+			encryptedPrivateKey: await deps.encrypt(pair.privateKey),
+			keyGeneratorType: keyType,
+			encryptedUsername: null,
+			encryptedPassword: null,
+		};
 	}
 
 	if (input.keyGeneratorType !== undefined) {
@@ -107,14 +127,20 @@ export async function applyAuthenticationUpdate(
 	// Require credentials when switching to (or first configuring) HTTPS.
 	const switching = current.connectionType !== 'https';
 	validateHttpsCredentials(input.username, input.password, switching);
-	updated.connectionType = 'https';
-	if (input.username !== undefined && input.password !== undefined) {
-		updated.encryptedUsername = await deps.encrypt(input.username);
-		updated.encryptedPassword = await deps.encrypt(input.password);
-	}
-	updated.publicKey = null;
-	updated.encryptedPrivateKey = null;
-	updated.keyGeneratorType = null;
+	const settingCredentials = input.username !== undefined && input.password !== undefined;
+	return {
+		connectionType: 'https',
+		// Preserve the existing credentials when the caller doesn't change them.
+		encryptedUsername: settingCredentials
+			? await deps.encrypt(input.username!)
+			: current.encryptedUsername,
+		encryptedPassword: settingCredentials
+			? await deps.encrypt(input.password!)
+			: current.encryptedPassword,
+		publicKey: null,
+		encryptedPrivateKey: null,
+		keyGeneratorType: null,
+	};
 }
 
 export function validateHttpsCredentials(username?: string, password?: string, required = false) {

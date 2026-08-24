@@ -30,7 +30,7 @@ import { GitConnection } from './database/entities/git-connection.entity';
 import { GitConnectionProjectRepository } from './database/repositories/git-connection-project.repository';
 import { GitConnectionRepository } from './database/repositories/git-connection.repository';
 import {
-	applyAuthenticationUpdate,
+	computeAuthenticationUpdate,
 	emptyGitAuthMaterial,
 	gitAuthDeps,
 } from './git-connections-auth.utils';
@@ -82,7 +82,8 @@ export class GitConnectionsService {
 			keyGeneratorType: null,
 			baseCommit: null,
 		});
-		await applyAuthenticationUpdate(connection, emptyGitAuthMaterial(), input, this.authDeps);
+		const auth = await computeAuthenticationUpdate(emptyGitAuthMaterial(), input, this.authDeps);
+		if (auth) Object.assign(connection, auth);
 		return this.toPublic(await this.repository.save(connection));
 	}
 
@@ -120,7 +121,8 @@ export class GitConnectionsService {
 		if (input.repositoryUrl !== undefined) updated.repositoryUrl = input.repositoryUrl;
 		if (input.branchName !== undefined) updated.branchName = input.branchName;
 
-		await applyAuthenticationUpdate(updated, current, input, this.authDeps);
+		const auth = await computeAuthenticationUpdate(current, input, this.authDeps);
+		if (auth) Object.assign(updated, auth);
 
 		const saved = await this.repository.save(updated);
 		if (changesTarget) await this.resetWorkingCopy(id);

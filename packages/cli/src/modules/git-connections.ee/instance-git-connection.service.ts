@@ -11,7 +11,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY } from './constants';
 import {
-	applyAuthenticationUpdate,
+	computeAuthenticationUpdate,
 	emptyGitAuthMaterial,
 	gitAuthDeps,
 	type GitAuthMaterial,
@@ -73,7 +73,8 @@ export class InstanceGitConnectionService {
 		if (input.repositoryUrl !== undefined) updated.repositoryUrl = input.repositoryUrl;
 		if (input.branchName !== undefined) updated.branchName = input.branchName;
 
-		await applyAuthenticationUpdate(updated, current, input, this.authDeps);
+		const auth = await computeAuthenticationUpdate(current, input, this.authDeps);
+		if (auth) Object.assign(updated, auth);
 
 		const targetEnabled = input.enabled ?? current.enabled;
 		if (targetEnabled) this.assertConfigured(updated);

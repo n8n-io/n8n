@@ -212,6 +212,16 @@ describe('GitConnectionsService (credential state machine)', () => {
 			expect(saved.keyGeneratorType).toBeNull();
 		});
 
+		it('preserves existing https credentials when they are not part of the update', async () => {
+			repository.findOneBy.mockResolvedValue(httpsEntity());
+			await service.update('1', { branchName: 'release' } as UpdateGitConnectionDto);
+
+			expect(cipher.encryptV2).not.toHaveBeenCalled();
+			const saved = repository.save.mock.calls.at(-1)![0] as GitConnection;
+			expect(saved.encryptedUsername).toBe('enc:user');
+			expect(saved.encryptedPassword).toBe('enc:pass');
+		});
+
 		it('invalidates the cached working copy on a branch-only change', async () => {
 			repository.findOneBy.mockResolvedValue(sshEntity());
 			await service.update('1', { branchName: 'release' } as UpdateGitConnectionDto);
