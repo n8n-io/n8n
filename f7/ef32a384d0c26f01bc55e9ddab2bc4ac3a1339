@@ -6,6 +6,8 @@ packages/testing/playwright/playwright.config.ts
   s_9fc8be0aa06faa::t_726c1de4f39cb1 87
 .github/workflows/test-dev-server-smoke-reusable.yml
   s_9fc8be0aa06faa::t_ed357819b4eb81 41-44
+packages/frontend/editor-ui/vite.config.mts
+  s_81c6ae39c83974::t_87e8c58b665cc1 168-173
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -13,6 +15,14 @@ packages/testing/playwright/playwright.config.ts
   "base_commit_sha": "f7ef32a384d0c26f01bc55e9ddab2bc4ac3a1339",
   "prompts": {},
   "sessions": {
+    "s_81c6ae39c83974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2a3857c-dcc3-4658-b86e-6436a170b7e9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    },
     "s_9fc8be0aa06faa": {
       "agent_id": {
         "tool": "claude",
