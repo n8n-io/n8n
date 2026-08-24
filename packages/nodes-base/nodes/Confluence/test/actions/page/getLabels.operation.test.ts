@@ -170,6 +170,25 @@ describe('Confluence page:getLabels operation', () => {
 		expect(await execute.call(ctx, 0)).toEqual([]);
 	});
 
+	// An expression can deliver a numeric string, e.g. from HTTP or form data
+	it('accepts a numeric-string Limit', async () => {
+		apiRequest.mockResolvedValueOnce({ results: [{ id: '1' }] });
+		const ctx = mockExecuteCtx({ ...baseParams, limit: '50' });
+
+		await execute.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledWith('GET', ENDPOINT, {}, { limit: 50 });
+	});
+
+	it('floors a fractional Limit', async () => {
+		apiRequest.mockResolvedValueOnce({ results: [{ id: '1' }, { id: '2' }] });
+		const ctx = mockExecuteCtx({ ...baseParams, limit: 2.9 });
+
+		await execute.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledWith('GET', ENDPOINT, {}, { limit: 2 });
+	});
+
 	it.each([['abc'], [0], [-1], [undefined]])(
 		'throws and makes no request when Limit resolves to %j',
 		async (limit) => {

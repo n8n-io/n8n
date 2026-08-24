@@ -81,7 +81,7 @@ export const execute: ConfluenceOperation = async function (
 	const returnAll = this.getNodeParameter('returnAll', itemIndex, false);
 	let total = Number.POSITIVE_INFINITY;
 	if (!returnAll) {
-		const rawLimit = this.getNodeParameter('limit', itemIndex, 50);
+		const rawLimit = Number(this.getNodeParameter('limit', itemIndex, 50));
 		if (!Number.isFinite(rawLimit) || rawLimit < 1) {
 			throw new NodeOperationError(this.getNode(), 'Limit must be a number of at least 1', {
 				itemIndex,

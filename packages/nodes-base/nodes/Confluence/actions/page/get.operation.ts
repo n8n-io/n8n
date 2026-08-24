@@ -231,7 +231,7 @@ export const execute: ConfluenceOperation = async function (
 		return shapeBody(page, bodyFormat);
 	}
 
-	const rawMaxPages = this.getNodeParameter('maxPages', itemIndex, 100) as number;
+	const rawMaxPages = Number(this.getNodeParameter('maxPages', itemIndex, 100));
 	if (!Number.isFinite(rawMaxPages) || rawMaxPages < 1) {
 		throw new NodeOperationError(this.getNode(), 'Max Pages must be a number of at least 1', {
 			itemIndex,
