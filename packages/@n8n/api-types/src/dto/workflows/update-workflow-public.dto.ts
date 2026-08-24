@@ -10,7 +10,6 @@ export class UpdateWorkflowPublicDto extends Z.class(
 	{
 		...workflowUpdatePublicShape,
 		description: z.string().optional().openapi(workflowUpdateFieldDocs.description),
-		// Update moves an existing workflow, so null and absent mean different things here.
 		parentFolderId: z
 			.string()
 			.nullable()

@@ -2740,6 +2740,20 @@ describe('PUT /workflows/:id', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
+	test('should reject projectId, which only create accepts', async () => {
+		const workflow = await createWorkflowWithHistory({}, member);
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+			name: 'testing',
+			nodes: [],
+			connections: {},
+			settings: {},
+			projectId: memberPersonalProject.id,
+		});
+
+		expect(response.statusCode).toBe(400);
+	});
+
 	test('should update the description', async () => {
 		const workflow = await createWorkflowWithHistory({}, member);
 

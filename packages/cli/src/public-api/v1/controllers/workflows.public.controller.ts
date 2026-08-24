@@ -138,7 +138,6 @@ function toPublicListSharedWorkflow(sharedWorkflow: SharedWorkflow) {
 	};
 }
 
-/** The list query and `WorkflowService.update` both return an active version with no publish history. */
 function toPublicActiveVersionWithoutHistory(activeVersion: WorkflowHistory) {
 	return {
 		versionId: activeVersion.versionId,
@@ -549,10 +548,6 @@ export class WorkflowsPublicController {
 		};
 	}
 
-	/**
-	 * Delete does not load the active version, and the old handler serialised the entity directly,
-	 * so the key stays absent rather than becoming null.
-	 */
 	private toDeletedWorkflowPublicDto(workflow: WorkflowEntity): DeletedWorkflowPublicDto {
 		return {
 			...this.toWorkflowFieldsPublicDto(workflow),
