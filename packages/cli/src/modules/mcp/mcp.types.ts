@@ -1,9 +1,10 @@
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import type { WorkflowPublishBlockedReason } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
-import type { Mcpauth_type } from '@/services/oauth-token-verifier-proxy.service';
+import type { Mcpauth_type, McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 
 import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
@@ -136,6 +137,33 @@ export type JSONRPCRequest = {
 export type McpClientInfo = {
 	name?: string;
 	version?: string;
+};
+
+/**
+ * What the MCP auth middleware resolved from the bearer token, carried on the
+ * request for the handlers downstream of it. Both fields are absent until the
+ * middleware runs.
+ */
+export type McpAuthenticatedRequest = AuthenticatedRequest & {
+	mcpCaller?: McpCallerAuth;
+	/** `undefined` = not scope-bearing (API key) → full tool access. */
+	mcpScopes?: string[];
+};
+
+/**
+ * The same resolution, in the shape the MCP server is built from. Read off the
+ * request by the controller so nothing below it touches Express, and passed as
+ * one object because scopes gate which tools register while the caller only
+ * labels the tool-call events.
+ */
+export type McpAuthContext = {
+	/**
+	 * Required, because this is the field that gates which tools register: a
+	 * partial context must not be able to silently expose every tool. `undefined`
+	 * = not scope-bearing (API key, legacy token) → all tools register.
+	 */
+	grantedScopes: string[] | undefined;
+	caller?: McpCallerAuth;
 };
 
 export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';

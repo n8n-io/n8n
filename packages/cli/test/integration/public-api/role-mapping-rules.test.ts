@@ -127,7 +127,9 @@ describe('Role mapping rules in Public API', () => {
 				.send({ ...validInstancePayload, expression: '' });
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toBe('String must contain at least 1 character(s)');
+			expect(response.body.message).toBe(
+				'request/body/expression String must contain at least 1 character(s)',
+			);
 		});
 
 		it('rejects a project rule without projectIds with 400', async () => {
@@ -693,7 +695,9 @@ describe('Role mapping rules in Public API', () => {
 				.send({ expression: '' });
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toBe('String must contain at least 1 character(s)');
+			expect(response.body.message).toBe(
+				'request/body/expression String must contain at least 1 character(s)',
+			);
 		});
 
 		it('rejects an instance rule carrying projectIds with 400', async () => {
