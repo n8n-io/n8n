@@ -107,6 +107,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'workflow:move',
 	'workflow:enableRedaction',
 	'workflow:disableRedaction',
+	'webhook:list',
 	'workersView:manage',
 	'project:list',
 	'project:create',

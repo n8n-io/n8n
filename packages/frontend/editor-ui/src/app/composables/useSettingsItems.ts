@@ -154,6 +154,14 @@ export function useSettingsItems() {
 				route: { to: { name: VIEWS.LDAP_SETTINGS } },
 			},
 			{
+				id: 'settings-webhooks',
+				icon: 'webhook',
+				label: i18n.baseText('settings.webhooks'),
+				position: 'top',
+				available: canUserAccessRouteByName(VIEWS.WEBHOOKS_SETTINGS),
+				route: { to: { name: VIEWS.WEBHOOKS_SETTINGS } },
+			},
+			{
 				id: 'settings-workersview',
 				icon: 'waypoints',
 				label: i18n.baseText('mainSidebar.workersView'),

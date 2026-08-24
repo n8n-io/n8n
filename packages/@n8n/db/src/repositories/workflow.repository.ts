@@ -287,6 +287,29 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		});
 	}
 
+	/**
+	 * Retrieve id, name and the published version (with its nodes) of every
+	 * unarchived workflow that has an active version.
+	 */
+	async findPublishedWithActiveVersionNodes() {
+		return await this.find({
+			select: ['id', 'name'],
+			where: { activeVersionId: Not(IsNull()), isArchived: false },
+			relations: { activeVersion: true },
+		});
+	}
+
+	/**
+	 * Retrieve id, name, nodes and connections of every unarchived workflow
+	 * without a published (active) version.
+	 */
+	async findUnpublishedWithNodes() {
+		return await this.find({
+			select: ['id', 'name', 'nodes', 'connections'],
+			where: { activeVersionId: IsNull(), isArchived: false },
+		});
+	}
+
 	async findPreExistingWorkflows(workflowIds: string[]): Promise<WorkflowEntity[]> {
 		if (workflowIds.length === 0) {
 			return [];
