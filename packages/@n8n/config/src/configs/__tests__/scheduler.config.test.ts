@@ -43,7 +43,7 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.allowSkipDurableScheduler).toBe(false);
 			expect(scheduler.maxAttempts).toBe(5);
 			expect(scheduler.enabledForPollTriggers).toBe(false);
-			expect(scheduler.pollTimeoutSeconds).toBe(60);
+			expect(scheduler.pollTimeoutSeconds).toBe(45);
 		});
 	});
 

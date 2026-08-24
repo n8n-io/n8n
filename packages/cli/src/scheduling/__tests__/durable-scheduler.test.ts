@@ -32,7 +32,7 @@ describe('DurableScheduler', () => {
 		materializationWindowSeconds = 60,
 		misfireGraceSeconds = 60,
 		enabledForPollTriggers = false,
-		pollTimeoutSeconds = 60,
+		pollTimeoutSeconds = 45,
 		leaseDurationSeconds = 60,
 	} = {}) {
 		const inner = mock<Scheduler & SchedulerPasses>();
@@ -185,10 +185,25 @@ describe('DurableScheduler', () => {
 			);
 		});
 
-		it('does not warn when the timeout fits inside the lease', () => {
+		// The poll deadline starts after the occurrence's setup reads, so a timeout
+		// equal to the lease already lets a full-length poll outlive it.
+		it('warns when the timeout equals the lease', () => {
 			const { logger } = makeScheduler({
 				enabledForPollTriggers: true,
 				pollTimeoutSeconds: 60,
+				leaseDurationSeconds: 60,
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('poll timeout'),
+				expect.objectContaining({ pollTimeoutSeconds: 60, leaseDurationSeconds: 60 }),
+			);
+		});
+
+		it('does not warn when the timeout fits inside the lease', () => {
+			const { logger } = makeScheduler({
+				enabledForPollTriggers: true,
+				pollTimeoutSeconds: 45,
 				leaseDurationSeconds: 60,
 			});
 

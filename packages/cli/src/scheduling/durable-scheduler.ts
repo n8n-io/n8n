@@ -166,13 +166,14 @@ function warnOnDrainRate(logger: Logger, config: GlobalConfig['scheduler']): voi
 /**
  * Warn when a poll may still be in flight after the lease on its occurrence has
  * expired: the reaper can then reclaim the occurrence and another instance can
- * start the same poll while the first one is still running.
+ * start the same poll while the first one is still running. Equality counts
+ * too, since the poll deadline only starts after the occurrence's setup reads.
  */
 function warnOnPollTimeout(logger: Logger, config: GlobalConfig['scheduler']): void {
 	const { enabledForPollTriggers, pollTimeoutSeconds, leaseDurationSeconds } = config;
-	if (enabledForPollTriggers && pollTimeoutSeconds > leaseDurationSeconds) {
+	if (enabledForPollTriggers && pollTimeoutSeconds >= leaseDurationSeconds) {
 		logger.warn(
-			'Scheduler poll timeout is above the lease duration; a poll can still be running when its lease expires and another instance takes the run over',
+			'Scheduler poll timeout reaches the lease duration; a poll can still be running when its lease expires and another instance takes the run over',
 			{ pollTimeoutSeconds, leaseDurationSeconds },
 		);
 	}
