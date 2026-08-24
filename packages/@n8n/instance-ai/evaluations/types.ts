@@ -329,6 +329,25 @@ export interface MemoryExpectation {
 	anchor?: ContextAnchor;
 }
 
+/**
+ * A run of a seeded workflow, performed BEFORE the graded turn.
+ *
+ * Creates a real execution record in the instance's history, so a case can ask about
+ * "the last run" and the honest answer requires reading it. Without this, execution
+ * history is unreachable as a context surface: the harness only ever executes a
+ * workflow *after* the build.
+ */
+export interface SeedPriorRun {
+	/** Seeded workflow to run, by its declared `name`. */
+	workflow: string;
+	/**
+	 * Steer the mock layer, exactly as `executionScenarios[].dataSetup` does — this is
+	 * how a prior run is made to FAIL in a specific way, which is the interesting case:
+	 * the user reports "it broke again" and the agent has to go and find out how.
+	 */
+	hints?: string;
+}
+
 /** One deterministic claim about the agent's captured context. */
 export interface ContextAssertion {
 	text: string;

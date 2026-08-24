@@ -44,6 +44,7 @@ import {
 import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
+import { executePriorRuns } from './prior-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -240,6 +241,10 @@ export interface BuildResult {
 	events?: CapturedEvent[];
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
 	threadId?: string;
+	/** Outcomes of any pre-turn runs of seeded workflows. Present so an author can
+	 *  confirm the history the agent was handed — in particular whether a run failed,
+	 *  which for these cases is usually the intended setup rather than a fault. */
+	priorRuns?: Array<{ workflow: string; workflowId: string; success: boolean; errors: string[] }>;
 	/** The SEPARATE thread the seeded history went into, when the case declares a
 	 *  session boundary. Present only when it differs from `threadId`, so cleanup can
 	 *  delete it without double-deleting the live thread on ordinary cases. */
@@ -504,6 +509,14 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let restoredWorkflowIds: string[] = [];
 	let restoredDataTableIds: string[] = [];
 	let restoredAgentIds: string[] = [];
+	/** Outcomes of any pre-turn runs, so the caller can see what history the agent was
+	 *  given — and, crucially, whether the run failed as the case intended. */
+	let priorRunResults: Array<{
+		workflow: string;
+		workflowId: string;
+		success: boolean;
+		errors: string[];
+	}> = [];
 	/** The agent the seeded history last targeted — graded and executed first. */
 	let seedActiveAgentId: string | undefined;
 	// TRUST-311 follow-up: scenario seed tables are created empty before the build
@@ -790,6 +803,19 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				logger.info(
 					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${boundarySuffix}${config.laneTag ?? ''}`,
 				);
+				// Run seeded workflows BEFORE the live turn, so their executions exist in
+				// history for the turn to ask about. Has to happen here: after the workflows
+				// exist, and before the agent is given anything to respond to.
+				if (config.seed?.mode === 'inline' && config.seed.priorRuns?.length) {
+					priorRunResults = await executePriorRuns(
+						client,
+						config.seed.priorRuns,
+						remapped.workflows,
+						restoredWorkflowIds,
+						logger,
+						config.laneTag,
+					);
+				}
 			} catch (error: unknown) {
 				seedingFailed = true;
 				throw new Error(
@@ -1017,6 +1043,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					events,
 					threadId,
 					seedThreadId: seedThreadIdForCleanup,
+					priorRuns: priorRunResults.length > 0 ? priorRunResults : undefined,
 					proxyDecisionStats,
 					transcript,
 					credentialViewPinned,
@@ -1037,6 +1064,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				events,
 				threadId,
 				seedThreadId: seedThreadIdForCleanup,
+				priorRuns: priorRunResults.length > 0 ? priorRunResults : undefined,
 				proxyDecisionStats,
 				transcript,
 				credentialViewPinned,
@@ -1078,6 +1106,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			events,
 			threadId,
 			seedThreadId: seedThreadIdForCleanup,
+			priorRuns: priorRunResults.length > 0 ? priorRunResults : undefined,
 			proxyDecisionStats,
 			transcript,
 			workflowChecks,
@@ -1099,6 +1128,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			events,
 			threadId,
 			seedThreadId: seedThreadIdForCleanup,
+			priorRuns: priorRunResults.length > 0 ? priorRunResults : undefined,
 			credentialViewPinned,
 			seedingFailed,
 			laneBootFailed,

@@ -111,6 +111,24 @@ export const CaseSeedSchema = z.discriminatedUnion('mode', [
 		 * judge does not expect continuity the agent cannot have.
 		 */
 		sessionBoundary: z.boolean().optional(),
+		/**
+		 * Workflows to RUN before the graded turn, creating real execution records the
+		 * agent can look up. Names must match seeded `workflows[].name`.
+		 *
+		 * A failing prior run is the point rather than a problem: `hints` steers the mock
+		 * layer, so a case can establish "the 06:00 run died on the HTTP node" and then ask
+		 * only "it broke again". The build is NOT failed when a prior run fails.
+		 */
+		priorRuns: z
+			.array(
+				z
+					.object({
+						workflow: z.string().min(1),
+						hints: z.string().min(1).optional(),
+					})
+					.strict(),
+			)
+			.optional(),
 	}).strict(),
 	/** Reproduce a real conversation from its LangSmith trace at run time (seed =
 	 *  before the live turn, live = that turn). Commits only the thread id;
@@ -343,6 +361,20 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 				message:
 					'a case needs at least one executionScenario, or a process/outcome/memory expectation, or a context assertion to grade it',
 			});
+		}
+		// A prior run needs a workflow to run. Catching it at authoring time beats a
+		// mid-build failure, which reads like an infrastructure fault rather than a typo.
+		if (c.seed?.mode === 'inline' && c.seed.priorRuns?.length) {
+			const names = new Set(c.seed.workflows.map((w) => w.name));
+			for (const [index, run] of c.seed.priorRuns.entries()) {
+				if (!names.has(run.workflow)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						path: ['seed', 'priorRuns', index, 'workflow'],
+						message: `priorRuns names workflow "${run.workflow}", which this seed does not declare. Seeded workflow names: ${[...names].join(', ') || '(none)'}`,
+					});
+				}
+			}
 		}
 	});
 
