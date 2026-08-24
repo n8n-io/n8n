@@ -1,3 +1,4 @@
+import fastGlob from 'fast-glob';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import path from 'node:path';
@@ -34,13 +35,6 @@ export function errorMapper(
 	return new NodeOperationError(this.getNode(), error, { itemIndex, message, description });
 }
 
-export function escapeSpecialCharacters(str: string) {
-	// Escape parentheses and square brackets (glob metacharacters)
-	str = str.replace(/[()[\]]/g, '\\$&');
-
-	return str;
-}
-
 export function normalizeFileSelector(fileSelectorRaw: string) {
 	let fileSelector = String(fileSelectorRaw);
 
@@ -49,7 +43,15 @@ export function normalizeFileSelector(fileSelectorRaw: string) {
 		fileSelector = path.win32.normalize(fileSelector).replace(/\\/g, '/');
 	}
 
-	fileSelector = escapeSpecialCharacters(fileSelector);
-
 	return fileSelector;
+}
+
+/** Literal path first, so existing selectors resolve as before; glob pattern only as a fallback. */
+export async function globFileSelector(fileSelector: string) {
+	// win32 on every platform: it quotes `()[]{}` but leaves `*`/`?` alone.
+	const escaped = fastGlob.win32.escapePath(fileSelector);
+	if (escaped === fileSelector) return await fastGlob(fileSelector);
+
+	const literalMatches = await fastGlob(escaped);
+	return literalMatches.length ? literalMatches : await fastGlob(fileSelector);
 }

@@ -1,4 +1,3 @@
-import glob from 'fast-glob';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -9,7 +8,7 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
-import { errorMapper, normalizeFileSelector } from '../helpers/utils';
+import { errorMapper, globFileSelector, normalizeFileSelector } from '../helpers/utils';
 
 export const properties: INodeProperties[] = [
 	{
@@ -29,7 +28,7 @@ export const properties: INodeProperties[] = [
 		default: '',
 		required: true,
 		placeholder: 'e.g. /home/user/Pictures/**/*.png',
-		hint: 'Supports patterns, learn more <a href="https://github.com/micromatch/picomatch#basic-globbing" target="_blank">here</a>',
+		hint: 'Supports patterns, learn more <a href="https://github.com/micromatch/picomatch#basic-globbing" target="_blank">here</a>. [ ] ( ) match literally when such a path exists, otherwise they are read as pattern syntax.',
 		description:
 			"Specify a file's path or path pattern to read multiple files. Always use forward-slashes for path separator even on Windows.",
 	},
@@ -104,7 +103,7 @@ export async function execute(this: IExecuteFunctions, items: INodeExecutionData
 				dataPropertyName = options.dataPropertyName as string;
 			}
 
-			const files = await glob(fileSelector);
+			const files = await globFileSelector(fileSelector);
 
 			if (files.length === 0 && nodeVersion > 1) {
 				throw new NodeOperationError(this.getNode(), 'No file(s) found', {
