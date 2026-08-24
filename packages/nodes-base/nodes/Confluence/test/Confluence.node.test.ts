@@ -30,6 +30,7 @@ describe('Confluence Node', () => {
 		expect(operationOptions('attachment')).toEqual([
 			expect.objectContaining({ value: 'delete' }),
 			expect.objectContaining({ value: 'getMany' }),
+			expect.objectContaining({ value: 'upload' }),
 		]);
 		// Delete sorts first alphabetically; the default must stay non-destructive
 		expect(operationProperty('attachment')?.default).toBe('getMany');
