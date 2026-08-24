@@ -19,7 +19,7 @@ export class CreateAgentChannelStatusTable1787213245846 implements ReversibleMig
 					.varchar(64)
 					.primary.comment('Chat integration platform for this channel'),
 				column('credentialId')
-					.varchar(255)
+					.varchar(36)
 					.primary.comment('Credential connection that backs this channel'),
 				column('hostId')
 					.varchar(128)

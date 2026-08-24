@@ -354,7 +354,7 @@ erDiagram
   integer attempts
   timestamp_3__with_time_zone backoffUntil
   timestamp_3__with_time_zone createdAt
-  varchar_255_ credentialId
+  varchar_36_ credentialId
   text errorMessage
   timestamp_3__with_time_zone expiresAt
   varchar_128_ hostId

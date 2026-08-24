@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_channel_status" ("agentId" varchar(36) NOT NULL, "integrationType" varchar(64) NOT NULL, "credentialId" varchar(255) NOT NULL, "hostId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "errorMessage" text, "attempts" integer NOT NULL DEFAULT (0), "backoffUntil" datetime(3), "expiresAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_channel_status_status" CHECK ("status" IN ('connected', 'error')), CONSTRAINT "FK_7a723e6aad04d88057dea6a21f4" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, PRIMARY KEY ("agentId", "integrationType", "credentialId", "hostId"))
+CREATE TABLE "agent_channel_status" ("agentId" varchar(36) NOT NULL, "integrationType" varchar(64) NOT NULL, "credentialId" varchar(36) NOT NULL, "hostId" varchar(128) NOT NULL, "status" varchar(16) NOT NULL, "errorMessage" text, "attempts" integer NOT NULL DEFAULT (0), "backoffUntil" datetime(3), "expiresAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_channel_status_status" CHECK ("status" IN ('connected', 'error')), CONSTRAINT "FK_7a723e6aad04d88057dea6a21f4" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, PRIMARY KEY ("agentId", "integrationType", "credentialId", "hostId"))
 ```
 
 </details>
@@ -19,7 +19,7 @@ CREATE TABLE "agent_channel_status" ("agentId" varchar(36) NOT NULL, "integratio
 | attempts | INTEGER | 0 | false |  |  |  |
 | backoffUntil | datetime(3) |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| credentialId | varchar(255) |  | false |  |  |  |
+| credentialId | varchar(36) |  | false |  |  |  |
 | errorMessage | TEXT |  | true |  |  |  |
 | expiresAt | datetime(3) |  | true |  |  |  |
 | hostId | varchar(128) |  | false |  |  |  |
@@ -59,7 +59,7 @@ erDiagram
   INTEGER attempts
   datetime_3_ backoffUntil
   datetime_3_ createdAt
-  varchar_255_ credentialId PK
+  varchar_36_ credentialId PK
   TEXT errorMessage
   datetime_3_ expiresAt
   varchar_128_ hostId PK

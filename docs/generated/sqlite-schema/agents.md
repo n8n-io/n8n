@@ -105,7 +105,7 @@ erDiagram
   INTEGER attempts
   datetime_3_ backoffUntil
   datetime_3_ createdAt
-  varchar_255_ credentialId PK
+  varchar_36_ credentialId PK
   TEXT errorMessage
   datetime_3_ expiresAt
   varchar_128_ hostId PK

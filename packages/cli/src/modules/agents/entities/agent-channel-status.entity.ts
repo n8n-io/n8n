@@ -54,7 +54,7 @@ export class AgentChannelStatus extends WithTimestamps {
 
 	@PrimaryColumn({
 		type: 'varchar',
-		length: 255,
+		length: 36,
 		comment: 'Credential connection that backs this channel',
 	})
 	credentialId: string;

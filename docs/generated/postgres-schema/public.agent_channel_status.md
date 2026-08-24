@@ -8,7 +8,7 @@
 | attempts | integer | 0 | false |  |  | Consecutive failed startup attempts by this process, reset on success |
 | backoffUntil | timestamp(3) with time zone |  | true |  |  | Earliest this process should retry; null when there is nothing to retry |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| credentialId | varchar(255) |  | false |  |  | Credential connection that backs this channel |
+| credentialId | varchar(36) |  | false |  |  | Credential connection that backs this channel |
 | errorMessage | text |  | true |  |  | Why this process could not start the channel; null once it succeeds |
 | expiresAt | timestamp(3) with time zone |  | true |  |  | When this row stops counting unless its owner refreshes it; null never expires |
 | hostId | varchar(128) |  | false |  |  | Process that observed this; the only writer of this row |
@@ -52,7 +52,7 @@ erDiagram
   integer attempts
   timestamp_3__with_time_zone backoffUntil
   timestamp_3__with_time_zone createdAt
-  varchar_255_ credentialId
+  varchar_36_ credentialId
   text errorMessage
   timestamp_3__with_time_zone expiresAt
   varchar_128_ hostId
