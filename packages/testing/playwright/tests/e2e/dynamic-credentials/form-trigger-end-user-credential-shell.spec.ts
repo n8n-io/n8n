@@ -38,9 +38,6 @@ test.use({
 		env: {
 			N8N_ENV_FEAT_DYNAMIC_CREDENTIALS: 'true',
 			N8N_DYNAMIC_CREDENTIALS_ENDPOINT_AUTH_TOKEN: 'e2e-test-endpoint-token',
-			// Gates end-user credentials on the Form Trigger: without it the form never
-			// authenticates the submitter over OAuth2 and no shell is rendered.
-			N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2: 'true',
 		},
 	},
 	ignoreHTTPSErrors: true, // Keycloak uses a self-signed certificate

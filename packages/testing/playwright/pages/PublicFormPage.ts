@@ -46,7 +46,9 @@ export class PublicFormPage extends BasePage {
 		const allow = this.page.getByRole('button', { name: 'Allow access' });
 		await expect(allow).toBeEnabled();
 		await allow.click();
-		await expect(this.page.locator('#n8n-form')).toBeVisible();
+		// A form that needs connected accounts renders the hosting shell instead of
+		// the bare form, so wait for either.
+		await expect(this.page.locator('#n8n-form').or(this.shell).first()).toBeVisible();
 	}
 
 	async fillField(label: string, value: string) {
