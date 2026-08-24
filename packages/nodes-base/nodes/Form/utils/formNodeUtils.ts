@@ -83,6 +83,9 @@ export const renderFormNode = async (
 		buttonLabel,
 		customCss: options.customCss,
 		authToken,
+		// The submit-time credential gate (Form.node.ts POST) can refuse this page
+		// too, so ship the client-side 428 handling whenever there's a submitter.
+		hasAuthenticatedSubmitter: !!authedUser,
 	});
 
 	return {

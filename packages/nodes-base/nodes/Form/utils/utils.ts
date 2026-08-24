@@ -649,6 +649,11 @@ export function renderForm({
 
 	formFields = prepareFormFields(formFields);
 
+	// A follow-up page the shell navigated its frame to is the shell's inner render
+	// just like the flagged page-1 request — it must render the readiness listener
+	// and leave the submit button's enabled state to the shell's connect panel.
+	const inShell = isHostedInFormShell(context.getRequestObject(), shellInner);
+
 	const data = prepareFormData({
 		formTitle,
 		formDescription,
@@ -664,9 +669,9 @@ export function renderForm({
 		customCss,
 		nodeVersion: context.getNode().typeVersion,
 		authToken,
-		shellInner,
+		shellInner: inShell,
 		hasAuthenticatedSubmitter,
-		hostNavigationPath: getHostNavigationPath(context, shellInner),
+		hostNavigationPath: getHostNavigationPath(context, inShell),
 	});
 
 	if (!isFormHtmlSandboxingDisabled()) {
@@ -748,6 +753,38 @@ export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
 			n.type === FORM_NODE_TYPE || (n.type === WAIT_NODE_TYPE && n.parameters?.resume === 'form'),
 	);
 };
+
+/**
+ * Submit-time credential readiness gate, shared by the trigger's POST and the
+ * Form node's POST. Answers 428 with the missing-credential list when the
+ * submitter's required accounts aren't all connected, 503 when the check itself
+ * fails. Returns true when a response was sent and the submission must not
+ * proceed. A no-op (`undefined` readiness) outside the dynamic-credentials flow.
+ */
+export async function respondIfCredentialsNotReady(
+	context: IWebhookFunctions,
+	res: Response,
+): Promise<boolean> {
+	let readiness: CredentialCheckResult | undefined;
+	try {
+		readiness = await context.checkTriggerCredentialStatus();
+	} catch (error) {
+		// Fail closed. Throwing here is swallowed by the webhook layer, which then
+		// enqueues the execution anyway — exactly the doomed run we're preventing.
+		context.logger.error('Form submit credential readiness check failed', { error });
+		res.status(503).json({ status: 'credential_readiness_check_failed' });
+		return true;
+	}
+
+	if (readiness && !readiness.readyToExecute) {
+		// 428, matching the webhook trigger's gate (webhook-helpers.ts) so all
+		// trigger paths answer an unconnected credential the same way.
+		res.status(428).json(buildCredentialConnectionsRequiredResponse(readiness));
+		return true;
+	}
+
+	return false;
+}
 
 /**
  * Generate a form auth token for n8nUserAuth. The token embeds the user info
@@ -1529,25 +1566,11 @@ export async function formWebhook(
 	// iframe. It also works off the state at render time, so a required credential can
 	// be revoked — or the page simply left open — between render and submit. Re-check
 	// here, after identity establishment and before the execution is enqueued, so a
-	// stale page can't spawn a run that dies at credential resolution. Scoped to the
-	// trigger: the Wait node shares `formWebhook`, but its form resume continues an
-	// already-running execution.
+	// stale page can't spawn a run that dies at credential resolution. The Form node
+	// runs the same gate on its own POST (Form.node.ts); the Wait node shares
+	// `formWebhook`, so scope this call site to the trigger.
 	if (node.type === FORM_TRIGGER_NODE_TYPE) {
-		let readiness: CredentialCheckResult | undefined;
-		try {
-			readiness = await context.checkTriggerCredentialStatus();
-		} catch (error) {
-			// Fail closed. Throwing here is swallowed by the webhook layer, which then
-			// enqueues the execution anyway — exactly the doomed run we're preventing.
-			context.logger.error('Form submit credential readiness check failed', { error });
-			res.status(503).json({ status: 'credential_readiness_check_failed' });
-			return { noWebhookResponse: true };
-		}
-
-		if (readiness && !readiness.readyToExecute) {
-			// 428, matching the webhook trigger's gate (webhook-helpers.ts) so both
-			// trigger paths answer an unconnected credential the same way.
-			res.status(428).json(buildCredentialConnectionsRequiredResponse(readiness));
+		if (await respondIfCredentialsNotReady(context, res)) {
 			return { noWebhookResponse: true };
 		}
 	}

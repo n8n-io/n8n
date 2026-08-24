@@ -305,7 +305,8 @@ describe('formNodeUtils', () => {
 				'http://localhost:5678/form-waiting/execution-1' as never,
 			);
 			const cookie = vi.fn();
-			const res = mock<Response>({ render: vi.fn(), cookie } as never);
+			const render = vi.fn();
+			const res = mock<Response>({ render, cookie } as never);
 			webhookFunctions.getResponseObject.mockReturnValue(res);
 
 			await renderFormNode(
@@ -317,7 +318,7 @@ describe('formNodeUtils', () => {
 				authedUser,
 			);
 
-			return { cookie };
+			return { cookie, render };
 		};
 
 		it('is set for an authenticated submitter, scoped to the form-waiting path', async () => {
@@ -339,6 +340,15 @@ describe('formNodeUtils', () => {
 				wfid: 'workflow-1',
 				eid: 'execution-1',
 			});
+		});
+
+		it('ships the client-side credential-gate handling for an authenticated submitter', async () => {
+			const { render } = await renderAuthedPage();
+
+			expect(render).toHaveBeenCalledWith(
+				'form-trigger',
+				expect.objectContaining({ hasAuthenticatedSubmitter: true }),
+			);
 		});
 
 		it('is not set when the page has no authenticated submitter', async () => {

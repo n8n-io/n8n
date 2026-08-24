@@ -31,6 +31,7 @@ import {
 	getNodeReference,
 	parseFormFields,
 	prepareFormReturnItem,
+	respondIfCredentialsNotReady,
 	validateFormPageAuth,
 } from './utils/utils';
 
@@ -411,6 +412,13 @@ export class Form extends Node {
 
 		if (method === 'GET') {
 			return await renderFormNode(context, res, trigger, fields, mode, authResult.authedUser);
+		}
+
+		// Same submit-time readiness gate as the trigger (see `formWebhook`): an
+		// account can be disconnected mid-journey from the hosting shell's panel,
+		// and resuming the execution anyway would kill it at credential resolution.
+		if (await respondIfCredentialsNotReady(context, res)) {
+			return { noWebhookResponse: true };
 		}
 
 		let useWorkflowTimezone = context.evaluateExpression(

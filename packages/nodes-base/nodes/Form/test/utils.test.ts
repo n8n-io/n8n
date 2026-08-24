@@ -1181,6 +1181,12 @@ describe('FormTrigger, formWebhook', () => {
 				await formWebhook(ctx);
 
 				expectHostNavigationPath(render, '/form-waiting');
+				// The follow-up page is the shell's inner frame too: it must render the
+				// readiness listener and leave its submit state to the connect panel.
+				expect(render).toHaveBeenCalledWith(
+					'form-trigger',
+					expect.objectContaining({ shellInner: true }),
+				);
 			});
 
 			// The flag is what carries the shell across a proxy that drops fetch metadata,
@@ -1215,6 +1221,10 @@ describe('FormTrigger, formWebhook', () => {
 				await formWebhook(ctx);
 
 				expectHostNavigationPath(render, undefined);
+				expect(render).toHaveBeenCalledWith(
+					'form-trigger',
+					expect.objectContaining({ shellInner: undefined }),
+				);
 			});
 
 			it('is not offered to a top-level page carrying the flag', async () => {
