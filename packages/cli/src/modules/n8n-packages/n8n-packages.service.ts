@@ -393,6 +393,9 @@ export class N8nPackagesService {
 		// for free while parsing; the directory reader reads lazily, so validate up front.
 		await reader.listEntries();
 		const manifest = await this.packageParser.getManifest(reader);
+		// Import from a directory only supports project packages, mirroring the directory
+		// export which only writes project packages. A non-project manifest means the
+		// directory is empty, so there is nothing to import.
 		if (!isProjectPackage(manifest)) return emptyImportResult(manifest);
 		const { result } = await this.dispatchImport(request, reader, manifest);
 		return result;
