@@ -30,16 +30,17 @@ function readMediaType(header: string): { mediaType: string; reported: string } 
 }
 
 /**
- * The legacy validator accepted only JSON, and rejected an absent `Content-Type` when the body was
- * required. Migrated routes keep both behaviours and the message that came with them.
+ * The legacy validator accepted only JSON, and rejected a header that names no media type when the
+ * body was required. Migrated routes keep both behaviours and the message that came with them.
  */
 export function assertJsonContentType(header: string | undefined, bodyRequired: boolean): void {
-	if (header === undefined) {
+	const { mediaType, reported } = readMediaType(header ?? '');
+
+	// An absent header and an empty one both name no media type, and both are reported as `undefined`.
+	if (mediaType === '') {
 		if (bodyRequired) throw new UnsupportedMediaTypeError('unsupported media type undefined');
 		return;
 	}
-
-	const { mediaType, reported } = readMediaType(header);
 
 	if (mediaType !== JSON_MEDIA_TYPE) {
 		throw new UnsupportedMediaTypeError(`unsupported media type ${reported}`);

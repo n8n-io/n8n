@@ -214,6 +214,29 @@ describe('PublicApiControllerRegistry', () => {
 			await request(activate()).post('/widgets').expect(200);
 		});
 
+		it.each(['', ' '])(
+			'treats the Content-Type %j as absent when every body field is optional',
+			async (header) => {
+				registerOptionalBodyRoute();
+
+				await request(activate()).post('/widgets').set('Content-Type', header).expect(200);
+			},
+		);
+
+		it.each(['', ' '])(
+			'treats the Content-Type %j as absent when the body is required',
+			async (header) => {
+				registerBodyRoute();
+
+				const response = await request(activate())
+					.post('/widgets')
+					.set('Content-Type', header)
+					.expect(415);
+
+				expect(response.body.message).toBe('unsupported media type undefined');
+			},
+		);
+
 		it('accepts application/json carrying an unrelated parameter', async () => {
 			registerBodyRoute();
 
