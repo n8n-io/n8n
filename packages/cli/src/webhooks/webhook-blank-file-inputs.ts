@@ -29,10 +29,11 @@ export const discardBlankFileInputs = async (files: ParsedFiles): Promise<Parsed
 	for (const [key, entries] of Object.entries(files)) {
 		if (!entries) continue;
 
-		const keptEntries = entries.filter((file) => !isBlankFileInput(file));
+		const keptEntries: formidable.File[] = [];
 
 		for (const file of entries) {
 			if (isBlankFileInput(file)) discarded.push(file);
+			else keptEntries.push(file);
 		}
 
 		if (keptEntries.length > 0) filled[key] = keptEntries;

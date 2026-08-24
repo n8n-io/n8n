@@ -59,17 +59,16 @@ export const createMultiFormDataParser = (maxFormDataSizeInMb: number) => {
 			// TODO: pass a custom `fileWriteStreamHandler` to create binary data files directly
 		});
 
-		const parsed = await new Promise<{ data: formidable.Fields; files: formidable.Files }>(
-			(resolve, reject) => {
-				form.parse(req, (error, data, files) => {
-					if (error) reject(mapFormParseError(error));
-					else resolve({ data, files });
-				});
-			},
-		);
+		// `parse` returns a promise when it is called without a callback.
+		let parsed: [formidable.Fields, formidable.Files];
+		try {
+			parsed = await form.parse(req);
+		} catch (error) {
+			throw mapFormParseError(error);
+		}
 
-		const { data } = parsed;
-		const files = await discardBlankFileInputs(parsed.files);
+		const [data, parsedFiles] = parsed;
+		const files = await discardBlankFileInputs(parsedFiles);
 
 		normalizeFormData(data);
 		normalizeFormData(files);
