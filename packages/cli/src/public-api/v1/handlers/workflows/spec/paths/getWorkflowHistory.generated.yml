@@ -5,7 +5,6 @@ summary: Retrieve workflow version history
 description: Returns a paginated list of workflow versions (version IDs and metadata) for a workflow.
 x-required-scope: workflow:read
 parameters:
-  - $ref: ../../../../shared/spec/parameters/offset.yml
   - $ref: ../../../../shared/spec/parameters/limit.yml
   - $ref: ../../../../shared/spec/parameters/cursor.yml
   - schema:
