@@ -983,16 +983,21 @@ describe('DurableJobProvisioner', () => {
 			taskType: 'agent:scheduled-task',
 			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
 			findExisting: vi.fn<() => Promise<ScheduledJob[]>>().mockResolvedValue([]),
-			payloadFor: vi.fn((jobName: string) => ({ agentId: 'agent-1', jobName })),
 			linkInserted: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
+		});
+
+		/** A linked desired job carrying its own row payload. */
+		const linkedJob = (name: string) => ({
+			...desiredJob(name),
+			payload: { agentId: 'agent-1', jobName: name },
 		});
 
 		it('inserts job rows without a workflow identity, stamping each with its own payload', async () => {
 			jobs.insertMany.mockResolvedValue([100, 101]);
 
 			const summary = await provisioner.provisionLinked(linkedScope(), [
-				desiredJob('agent-task:a:1'),
-				desiredJob('agent-task:a:2'),
+				linkedJob('agent-task:a:1'),
+				linkedJob('agent-task:a:2'),
 			]);
 
 			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
@@ -1020,8 +1025,8 @@ describe('DurableJobProvisioner', () => {
 			const scope = linkedScope();
 
 			await provisioner.provisionLinked(scope, [
-				desiredJob('agent-task:a:1'),
-				desiredJob('agent-task:a:2'),
+				linkedJob('agent-task:a:1'),
+				linkedJob('agent-task:a:2'),
 			]);
 
 			expect(scope.linkInserted).toHaveBeenCalledWith(manager, [
@@ -1039,7 +1044,7 @@ describe('DurableJobProvisioner', () => {
 				}),
 			]);
 
-			const summary = await provisioner.provisionLinked(scope, [desiredJob('agent-task:a:1')]);
+			const summary = await provisioner.provisionLinked(scope, [linkedJob('agent-task:a:1')]);
 
 			expect(scope.findExisting).toHaveBeenCalledWith(manager);
 			expect(jobs.findManyByWorkflowNode).not.toHaveBeenCalled();

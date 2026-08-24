@@ -48,6 +48,12 @@ export interface DesiredJob {
 	schedule: ScheduleDefinition;
 	/** The seeded next run (its clock). `null` for a rule that must never fire. */
 	firstRunAt: Date | null;
+	/**
+	 * Opaque handler input carried on the job's row, for owners whose payload varies
+	 * per job. Not part of the schedule identity: changing it alone does not
+	 * redefine the job.
+	 */
+	payload?: Record<string, unknown>;
 }
 
 /**

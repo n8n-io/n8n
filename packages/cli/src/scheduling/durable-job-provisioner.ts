@@ -50,11 +50,12 @@ export interface LinkedProvisionScope {
 	misfireGraceSeconds?: number;
 	/** The owner's existing jobs of this task type, within the transaction. */
 	findExisting(manager: EntityManager): Promise<ScheduledJob[]>;
-	/** Payload stamped on a desired job's row, by job name. */
-	payloadFor(jobName: string): Record<string, unknown>;
 	/** Record ownership of freshly inserted jobs, within the transaction. */
 	linkInserted(manager: EntityManager, jobs: Array<{ id: number; name: string }>): Promise<void>;
 }
+
+/** A linked owner's desired job; each carries its own row payload. */
+export type LinkedDesiredJob = DesiredJob & { payload: Record<string, unknown> };
 
 type ProvisionScope = WorkflowNodeProvisionScope | LinkedProvisionScope;
 
@@ -155,7 +156,7 @@ export class DurableJobProvisioner {
 	 */
 	async provisionLinked(
 		scope: LinkedProvisionScope,
-		desired: DesiredJob[],
+		desired: LinkedDesiredJob[],
 	): Promise<ProvisionSummary> {
 		return await this.provisioner.provision(scope, desired);
 	}
@@ -200,29 +201,31 @@ export class DurableJobProvisioner {
 
 	/**
 	 * The parts of provisioning that differ per scope kind: how the owner's
-	 * existing jobs are read, which identity columns stamp an inserted row, and
-	 * how ownership of fresh rows is recorded.
+	 * existing jobs are read, which owner columns and payload stamp an inserted
+	 * row, and how ownership of fresh rows is recorded.
 	 */
 	private scopeBinding(scope: ProvisionScope) {
 		if ('linkInserted' in scope) {
 			return {
 				findExisting: async (manager: EntityManager) => await scope.findExisting(manager),
-				identityColumns: (
-					jobName: string,
+				insertColumns: (
+					job: DesiredJob,
 				): Pick<NewScheduledJob, 'workflowId' | 'nodeId' | 'payload'> => ({
 					workflowId: null,
 					nodeId: null,
-					payload: scope.payloadFor(jobName),
+					// Always present at runtime: `provisionLinked` requires it on each job.
+					payload: job.payload ?? {},
 				}),
 				linkInserted: async (manager: EntityManager, jobs: Array<{ id: number; name: string }>) =>
 					await scope.linkInserted(manager, jobs),
 			};
 		}
+
 		const { workflowId, nodeId, payload } = scope;
 		return {
 			findExisting: async (manager: EntityManager) =>
 				await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId),
-			identityColumns: () => ({ workflowId, nodeId, payload }),
+			insertColumns: () => ({ workflowId, nodeId, payload }),
 			linkInserted: async () => {},
 		};
 	}
@@ -263,7 +266,7 @@ export class DurableJobProvisioner {
 						const rows = desired.map(
 							(job): NewScheduledJob => ({
 								name: job.name,
-								...binding.identityColumns(job.name),
+								...binding.insertColumns(job),
 								taskType,
 								...scheduleColumns(job.schedule),
 								nextRunAt: job.firstRunAt,
