@@ -20,6 +20,7 @@ import type {
 
 import { isCredentialsDataImap } from '@credentials/Imap.credentials';
 
+import { closeHandler } from '../connection-events';
 import { toImapCredentials } from '../credentials';
 
 export async function parseRawEmail(
@@ -449,20 +450,7 @@ export class EmailReadImapV1 implements INodeType {
 			this.logger.debug('IMAP connection was restored');
 		});
 
-		connection.onClose((reason, cause) => {
-			// `error` was already reported through onError; only an unexplained close is news.
-			if (reason !== 'dropped') {
-				this.logger.debug(`Email Read Imap: Connection closed (${reason})`);
-				return;
-			}
-			this.logger.error('Email Read Imap: Connection closed unexpectedly', { error: cause });
-			this.emitError(
-				new NodeOperationError(this.getNode(), 'IMAP connection closed unexpectedly', {
-					description:
-						'The IMAP server closed the connection without reporting an error, usually because the server (or a proxy/firewall) periodically closes long-lived connections, or was temporarily unavailable. n8n will automatically retry reactivating the workflow.',
-				}),
-			);
-		});
+		connection.onClose(closeHandler(this));
 
 		connection.onError((error) => {
 			this.logger.error('Email Read Imap node encountered a connection error', { error });
