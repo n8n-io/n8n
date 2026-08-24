@@ -128,6 +128,14 @@ Adaptive.args = {
 	maxLength: 1000,
 	layout: 'adaptive',
 };
+Adaptive.parameters = {
+	docs: {
+		description: {
+			story:
+				'Adaptive supports the default icon-only send/stop button. A custom button label or action slot falls back to the multiline layout.',
+		},
+	},
+};
 
 const workflowSuggestions: WorkflowSuggestion[] = [
 	{
