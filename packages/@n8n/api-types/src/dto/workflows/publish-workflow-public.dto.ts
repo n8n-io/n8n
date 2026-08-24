@@ -20,9 +20,6 @@ export const publishWorkflowPublicSchema = z.object({
 
 export class PublishWorkflowPublicDto extends Z.class(publishWorkflowPublicSchema.shape) {}
 
-// Same shape as above, and deliberately not shared with it: `/activate` has always documented
-// these three fields in terms of activation, so collapsing the two would change the published
-// spec for a route this PR only moves.
 export const activateWorkflowPublicSchema = z.object({
 	versionId: z.string().optional().openapi({
 		description:

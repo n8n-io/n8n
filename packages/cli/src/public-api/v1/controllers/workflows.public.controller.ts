@@ -62,7 +62,6 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
-/** Release-owned announcement date for the `/activate` and `/deactivate` aliases. */
 const DEPRECATED_ALIAS_SINCE = new Date('2026-07-23T00:00:00Z');
 
 const PUBLISH_CONFLICT_DESCRIPTION =
@@ -532,7 +531,6 @@ export class WorkflowsPublicController {
 		@Param('workflowId') workflowId: string,
 		@Body body: ActivateWorkflowPublicDto,
 	): Promise<WorkflowPublishPublicDto> {
-		// An alias, not a variant: delegating keeps the two from drifting apart.
 		return await this.publishWorkflow(req, res, workflowId, body);
 	}
 
