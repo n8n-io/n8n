@@ -196,6 +196,7 @@ describe('Start - AuthRolesService initialization', () => {
 			start.globalConfig = {
 				executions: { mode: 'queue' },
 				multiMainSetup: { enabled: true },
+				license: { autoRenewalEnabled: true },
 				endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 				database: { type: 'sqlite' },
 				sentry: {
@@ -231,6 +232,7 @@ describe('Start - AuthRolesService initialization', () => {
 			start.globalConfig = {
 				executions: { mode: 'queue' },
 				multiMainSetup: { enabled: true },
+				license: { autoRenewalEnabled: true },
 				endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 				database: { type: 'sqlite' },
 				sentry: {
@@ -257,6 +259,7 @@ describe('Start - AuthRolesService initialization', () => {
 		const queueGlobalConfig = () => ({
 			executions: { mode: 'queue' as const },
 			multiMainSetup: { enabled: true },
+			license: { autoRenewalEnabled: true },
 			endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 			database: { type: 'sqlite' as const },
 			sentry: {
@@ -288,6 +291,19 @@ describe('Start - AuthRolesService initialization', () => {
 			setupInstanceSettings('main', true, false);
 			// @ts-expect-error - Accessing protected property for testing
 			start.globalConfig = queueGlobalConfig();
+
+			await start.init();
+
+			expect(multiMainSetup.registerEventHandlers).toHaveBeenCalledTimes(1);
+			expect(license.enableAutoRenewals).not.toHaveBeenCalled();
+		});
+
+		it('does not reconcile license auto-renewal when auto-renewal is disabled', async () => {
+			setupInstanceSettings('main', true, true);
+			const config = queueGlobalConfig();
+			config.license.autoRenewalEnabled = false;
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = config;
 
 			await start.init();
 
@@ -329,6 +345,7 @@ describe('Start - AuthRolesService initialization', () => {
 		const multiMainConfig = {
 			executions: { mode: 'queue' as const },
 			multiMainSetup: { enabled: true },
+			license: { autoRenewalEnabled: true },
 			endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 			database: { type: 'sqlite' },
 			sentry: {

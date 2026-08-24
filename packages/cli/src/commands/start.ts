@@ -305,7 +305,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			// Catches leadership already taken over before this instance had a
 			// takeover listener subscribed, whose one-shot event would otherwise
 			// be lost for the process lifetime.
-			if (this.instanceSettings.isLeader && this.globalConfig.license.autoRenewalEnabled !== false) this.license.enableAutoRenewals();
+			if (this.instanceSettings.isLeader && this.globalConfig.license.autoRenewalEnabled)
+				this.license.enableAutoRenewals();
 		}
 
 		await this.executionContextHookRegistry.init();
