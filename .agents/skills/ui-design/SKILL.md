@@ -1,40 +1,25 @@
 ---
-name: n8n:design-system
-description: Guidelines on using Design System styles and components. Use when working on .vue files in packages/frontend. Triggers for tasks that include component architecture, styling, UI changes, or feature work.
+name: n8n:ui-design
+description: Guidelines on designing and building UI. Use when working on .vue files in packages/frontend. Triggers for tasks that include UI design, styling, component changes, or feature work.
 ---
 
-# Design System
+# UI Design
 
 Comprehensive guide for building, styling, and using components in the frontend.
 
-## When to Apply
-Reference these guidelines when:
-- Working on `.{vue|css|scss}` files in `packages/frontend`
-- Adding new components to `packages/frontend/@n8n/design-system`
-- Refactoring styles for Vue components
-- Implementing new UI components or features
-- Reviewing changes to UI
+## References
+- When styling components, use `packages/frontend/@n8n/design-system/src/styleguide/*.mdx`
+- For animations, use `rules/web-animation-guidelines.md`
+- When reviewing UI changes, use `rules/web-interface-guidelines.md`
 
-## Rules
-- Follow guidelines in `packages/frontend/@n8n/design-system/src/styleguide/*.mdx`
+## Best practices
 - ALWAYS use CSS variables for styles from `packages/frontend/@n8n/design-system/src/css/_tokens.scss` or `packages/frontend/@n8n/design-system/src/css/_primitives.scss`. Use hard-coded values only when no suitable tokens.
 - ALWAYS prefer using existing components from `packages/frontend/@n8n/design-system/src/components`. Prefer components that aren't marked `@deprecated`.
-- Use `light-dark()` when alternating colors for ligh/dark mode
 - If you need to add hover/active alpha behavior to solid components, prefer `color-mix()` with explicit percentages.
 - When working with animations or transitions, ALWAYS prefer using mixins from `packages/frontend/@n8n/design-system/src/css/mixins/motion.scss`
-- When reviewing animations, follow the guides in `rules/web-animation-guidelines.md`
-- When reviewing UI changes or adding new components, follow `rules/web-interface-guidelines.md`
 
-## Storybook Stories
-
-- ALWAYS add new stories to `packages/frontend/@n8n/design-system`.
-- Every story must use one of these title categories:
-  - `Style guide`: styles, tokens, and utilities
-  - `Core`: components used across the app
-  - `Areas/<Product area>`: patterns and components for a specific product area, for example `Areas/Settings` or `Areas/Assistant`
-  - `Experimental`: beta components that require caution
-
-## Examples
+## Components
+Use existing `design-system` components over creating custom implementations:
 - "Add a modal dialog for confirming workflow deletion" → Use `N8nDialog`
 - "Add a dropdown to select workflow status" → Use `N8nDropdown` or `N8nSelect`
 - "Add button with + icon to add new tiem" → Wrap `N8nButton` with `iconOnly` prop with `N8nTooltip` and wrap in `N8nTooltip`. Use `N8nIcon` and proper aria-label.
