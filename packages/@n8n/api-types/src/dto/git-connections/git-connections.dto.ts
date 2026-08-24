@@ -9,10 +9,10 @@ export type GitConnectionType = z.infer<typeof gitConnectionTypeSchema>;
 export type GitKeyGeneratorType = z.infer<typeof gitKeyGeneratorTypeSchema>;
 
 const nameSchema = z.string().trim().min(1).max(128);
-export const repositoryUrlSchema = z.string().trim().min(1);
+const repositoryUrlSchema = z.string().trim().min(1);
 // branchName maps to a `varchar(255)` column — cap it so over-long input is a
 // 400 at validation time rather than a 500 at insert.
-export const branchNameSchema = z.string().trim().min(1).max(255);
+const branchNameSchema = z.string().trim().min(1).max(255);
 
 export class CreateGitConnectionDto extends Z.class({
 	name: nameSchema,
