@@ -282,9 +282,9 @@ export class SchedulerConfig {
 	 * on its run can still be in flight when that claim expires and another
 	 * instance takes the run over. The default leaves that headroom, and the
 	 * scheduler warns at startup when the timeout reaches the lease duration.
-	 * Must be greater than 0.
+	 * Must be greater than 0 and at most one day.
 	 */
-	@Env('N8N_SCHEDULER_POLL_TIMEOUT', positiveIntSchema)
+	@Env('N8N_SCHEDULER_POLL_TIMEOUT', positiveIntSchema.max(Time.days.toSeconds))
 	pollTimeoutSeconds: number = 45;
 
 	/**

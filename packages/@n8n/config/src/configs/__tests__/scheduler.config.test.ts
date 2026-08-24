@@ -106,6 +106,15 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.allowSkipDurableScheduler).toBe(true);
 		});
 
+		it('should fall back to the default poll timeout when the value exceeds one day', () => {
+			vi.spyOn(console, 'warn').mockImplementation(() => {});
+			vi.stubEnv('N8N_SCHEDULER_POLL_TIMEOUT', '86401');
+
+			const { scheduler } = Container.get(GlobalConfig);
+
+			expect(scheduler.pollTimeoutSeconds).toBe(45);
+		});
+
 		it('should allow disabling the min-interval clamp with 0', () => {
 			vi.stubEnv('N8N_SCHEDULER_MIN_INTERVAL', '0');
 
