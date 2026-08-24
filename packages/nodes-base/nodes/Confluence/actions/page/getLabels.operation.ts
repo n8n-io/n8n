@@ -32,7 +32,8 @@ const properties: INodeProperties[] = [
 				name: 'prefix',
 				type: 'options',
 				default: 'global',
-				description: 'Filter the results to labels with this prefix',
+				description:
+					'Return only labels from one namespace. Every label belongs to exactly one, shown as the "prefix" field on each result. Leave this option out to return labels from all namespaces.',
 				options: [
 					{ name: 'Global', value: 'global' },
 					{ name: 'My', value: 'my' },
@@ -41,18 +42,26 @@ const properties: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Sort',
-				name: 'sort',
+				displayName: 'Sort By',
+				name: 'sortBy',
 				type: 'options',
 				default: 'name',
-				description: 'The order to return the labels in',
+				description: 'The field to order the labels by',
 				options: [
-					{ name: 'Created Date (Ascending)', value: 'created-date' },
-					{ name: 'Created Date (Descending)', value: '-created-date' },
-					{ name: 'ID (Ascending)', value: 'id' },
-					{ name: 'ID (Descending)', value: '-id' },
-					{ name: 'Name (Ascending)', value: 'name' },
-					{ name: 'Name (Descending)', value: '-name' },
+					{ name: 'Created Date', value: 'created-date' },
+					{ name: 'ID', value: 'id' },
+					{ name: 'Name', value: 'name' },
+				],
+			},
+			{
+				displayName: 'Sort Direction',
+				name: 'sortDirection',
+				type: 'options',
+				default: 'asc',
+				description: 'The direction to order in. Only applies when Sort By is set.',
+				options: [
+					{ name: 'ASC', value: 'asc' },
+					{ name: 'DESC', value: 'desc' },
 				],
 			},
 		],
@@ -93,7 +102,10 @@ export const execute: ConfluenceOperation = async function (
 
 	const qs: IDataObject = {};
 	if (prefixes.length > 0) qs.prefix = prefixes.join(',');
-	if (typeof options.sort === 'string' && options.sort !== '') qs.sort = options.sort;
+	// The API takes one enum encoding both field and direction, e.g. `name` / `-name`
+	if (typeof options.sortBy === 'string' && options.sortBy !== '') {
+		qs.sort = options.sortDirection === 'desc' ? `-${options.sortBy}` : options.sortBy;
+	}
 
 	return await fetchPaginatedResults.call(
 		this,

@@ -64,7 +64,7 @@ describe('Confluence page:getLabels operation', () => {
 
 	it('omits prefix when the option was added but nothing is selected', async () => {
 		apiRequest.mockResolvedValueOnce({ results: [{ id: '1' }] });
-		const ctx = mockExecuteCtx({ ...baseParams, options: { prefix: [], sort: 'name' } });
+		const ctx = mockExecuteCtx({ ...baseParams, options: { prefix: [], sortBy: 'name' } });
 
 		await execute.call(ctx, 0);
 
@@ -95,18 +95,28 @@ describe('Confluence page:getLabels operation', () => {
 		expect(apiRequest).toHaveBeenCalledWith('GET', ENDPOINT, {}, { limit: 50, prefix: expected });
 	});
 
-	it('passes a descending sort value through untouched', async () => {
+	it.each([
+		['created-date', 'desc', '-created-date'],
+		['created-date', 'asc', 'created-date'],
+		// Direction defaults to ascending, so Sort By alone must not carry a `-`
+		['name', undefined, 'name'],
+	])('combines sortBy %s and direction %s into sort=%s', async (sortBy, sortDirection, sort) => {
 		apiRequest.mockResolvedValueOnce({ results: [{ id: '1' }] });
-		const ctx = mockExecuteCtx({ ...baseParams, options: { sort: '-created-date' } });
+		const options = sortDirection === undefined ? { sortBy } : { sortBy, sortDirection };
+		const ctx = mockExecuteCtx({ ...baseParams, options });
 
 		await execute.call(ctx, 0);
 
-		expect(apiRequest).toHaveBeenCalledWith(
-			'GET',
-			ENDPOINT,
-			{},
-			{ limit: 50, sort: '-created-date' },
-		);
+		expect(apiRequest).toHaveBeenCalledWith('GET', ENDPOINT, {}, { limit: 50, sort });
+	});
+
+	it('omits sort when only a direction is set', async () => {
+		apiRequest.mockResolvedValueOnce({ results: [{ id: '1' }] });
+		const ctx = mockExecuteCtx({ ...baseParams, options: { sortDirection: 'desc' } });
+
+		await execute.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledWith('GET', ENDPOINT, {}, { limit: 50 });
 	});
 
 	it('follows the next cursor under Return All and forwards the extracted cursor', async () => {
