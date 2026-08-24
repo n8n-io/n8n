@@ -61,6 +61,7 @@ describe('Notion V3 transport', () => {
 		await expect(
 			notionApiRequestV3.call(context, 'GET', '/data_sources/missing'),
 		).rejects.toMatchObject({
+			message: 'The resource you are requesting could not be found',
 			description: 'Could not find data source.',
 		});
 	});
