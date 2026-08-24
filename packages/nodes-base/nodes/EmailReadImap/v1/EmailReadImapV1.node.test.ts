@@ -1,6 +1,7 @@
-import type { Arrival, ImapSimple as Connection, Message } from '@n8n/imap';
+import type { Arrival, CloseReason, ImapSimple as Connection, Message } from '@n8n/imap';
 import { ImapSimple } from '@n8n/imap';
 import type { IDataObject, INode, INodeTypeBaseDescription, ITriggerFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { mock, mockDeep, type DeepMockProxy } from 'vitest-mock-extended';
 
 import { type ICredentialsDataImap } from '@credentials/Imap.credentials';
@@ -45,6 +46,7 @@ describe('EmailReadImapV1', () => {
 	let connection: Connection;
 	let arrival: ((arrival: Arrival) => Promise<void>) | undefined;
 	let onError: ((error: Error) => void) | undefined;
+	let onClose: ((reason: CloseReason, cause?: Error) => void) | undefined;
 
 	const trigger = async (params: IDataObject = {}) => {
 		triggerFunctions.getNodeParameter.mockImplementation(
@@ -67,10 +69,12 @@ describe('EmailReadImapV1', () => {
 		staticData = {};
 		arrival = undefined;
 		onError = undefined;
+		onClose = undefined;
 
 		connection = {
 			onArrival: vi.fn((h) => ((arrival = h), connection)),
 			onError: vi.fn((h) => ((onError = h), connection)),
+			onClose: vi.fn((h) => ((onClose = h), connection)),
 			onReconnect: vi.fn(() => connection),
 			search: vi.fn().mockResolvedValue([message(7)]),
 			downloadText: vi.fn().mockResolvedValue('text'),
@@ -132,6 +136,25 @@ describe('EmailReadImapV1', () => {
 		await new Promise((resolve) => setImmediate(resolve));
 
 		expect(triggerFunctions.emitError).toHaveBeenCalledWith(error);
+	});
+
+	it('emits an actionable error when the server closes without explanation', async () => {
+		await trigger();
+
+		onClose?.('dropped', new Error('reconnect timed out'));
+
+		const emitted = triggerFunctions.emitError.mock.calls[0][0] as NodeOperationError;
+		expect(emitted).toBeInstanceOf(NodeOperationError);
+		expect(emitted.message).toBe('IMAP connection closed unexpectedly');
+		expect(emitted.description).toContain('closes long-lived connections');
+	});
+
+	it.each(['ended', 'error'] as const)('stays quiet on a %s close', async (reason) => {
+		await trigger();
+
+		onClose?.(reason);
+
+		expect(triggerFunctions.emitError).not.toHaveBeenCalled();
 	});
 
 	describe('formats', () => {
