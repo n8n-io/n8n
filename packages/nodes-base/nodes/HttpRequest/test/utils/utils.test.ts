@@ -132,6 +132,8 @@ describe('HTTP Node Utils', () => {
 	});
 
 	describe('sanitizeUiMessage', () => {
+		const STREAM_REPLACEMENT = 'Binary data got replaced with this text. Original was a stream.';
+
 		it('should remove large Buffers', async () => {
 			const requestOptions: IRequestOptions = {
 				method: 'POST',
@@ -141,6 +143,56 @@ describe('HTTP Node Utils', () => {
 
 			expect(sanitizeUiMessage(requestOptions, {}).body).toEqual(
 				'Binary data got replaced with this text. Original was a Buffer with a size of 900000 bytes.',
+			);
+		});
+
+		it('should remove a streamed body', () => {
+			const requestOptions: IRequestOptions = {
+				method: 'POST',
+				uri: 'https://example.com',
+				body: Readable.from(Buffer.alloc(10)),
+			};
+
+			expect(sanitizeUiMessage(requestOptions, {}).body).toEqual(STREAM_REPLACEMENT);
+		});
+
+		it('should remove a multipart upload built as form-data (node version >= 4.2)', () => {
+			const formData = new FormData();
+			formData.append('file', Readable.from(Buffer.alloc(10)), { filename: 'f.pdf' });
+			const requestOptions: IRequestOptions = {
+				method: 'POST',
+				uri: 'https://example.com',
+				formData,
+			};
+
+			expect(sanitizeUiMessage(requestOptions, {}).formData).toEqual(STREAM_REPLACEMENT);
+		});
+
+		it('should remove a stream nested in a formData field (node version < 4.2, V1, V2)', () => {
+			const requestOptions: IRequestOptions = {
+				method: 'POST',
+				uri: 'https://example.com',
+				formData: {
+					file: { value: Readable.from(Buffer.alloc(10)), options: { filename: 'f.pdf' } },
+					name: 'invoice',
+				},
+			};
+
+			expect(sanitizeUiMessage(requestOptions, {}).formData).toEqual({
+				file: { value: STREAM_REPLACEMENT, options: { filename: 'f.pdf' } },
+				name: 'invoice',
+			});
+		});
+
+		it('should keep the placeholder when the body also carries auth data', () => {
+			const requestOptions: IRequestOptions = {
+				method: 'POST',
+				uri: 'https://example.com',
+				body: Readable.from(Buffer.alloc(10)),
+			};
+
+			expect(sanitizeUiMessage(requestOptions, { body: ['token'] }).body).toEqual(
+				STREAM_REPLACEMENT,
 			);
 		});
 

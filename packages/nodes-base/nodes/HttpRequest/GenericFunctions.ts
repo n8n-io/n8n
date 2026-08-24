@@ -13,7 +13,7 @@ import {
 	type IOAuth2Options,
 	type IRequestOptions,
 } from 'n8n-workflow';
-import type { Readable } from 'stream';
+import { Stream, type Readable } from 'stream';
 import type { SecureContextOptions } from 'tls';
 
 import type { HttpSslAuthCredentials } from './interfaces';
@@ -37,8 +37,40 @@ export const replaceNullValues = (item: INodeExecutionData) => {
 
 export const REDACTED = '**hidden**';
 
+const STREAM_REPLACEMENT = 'Binary data got replaced with this text. Original was a stream.';
+
 function isObject(obj: unknown): obj is IDataObject {
 	return isPlainObject(obj);
+}
+
+/**
+ * Swaps an upload out of a value headed for the browser. A stream has to go
+ * before `deepCopy` runs: once the request is in flight its pipe chain is
+ * circular, and `deepCopy` faithfully preserves cycles.
+ *
+ * A multipart upload is a `form-data` instance from node version 4.2 on, but a
+ * plain `{ field: { value, options } }` map below that and in V1/V2 — hence the
+ * nested case.
+ */
+function replaceUploads(value: IDataObject[string]): IDataObject[string] {
+	if (value instanceof Stream) return STREAM_REPLACEMENT;
+
+	if (Buffer.isBuffer(value)) {
+		return value.length > 250000
+			? `Binary data got replaced with this text. Original was a Buffer with a size of ${value.length} bytes.`
+			: value;
+	}
+
+	if (!isObject(value)) return value;
+
+	const substituted: IDataObject = {};
+	for (const [key, entry] of Object.entries(value)) {
+		substituted[key] =
+			isObject(entry) && entry.value instanceof Stream
+				? { ...entry, value: STREAM_REPLACEMENT }
+				: entry;
+	}
+	return substituted;
 }
 
 function redactString(str: string, secrets: string[]): string {
@@ -71,35 +103,24 @@ export function sanitizeUiMessage(
 ) {
 	const { body, ...rest } = request as IDataObject;
 
-	let sendRequest: IDataObject = { body };
+	// `body` is not copied: `deepCopy` turns a Buffer into `{ type, data }`.
+	const sendRequest: IDataObject = { body: replaceUploads(body) };
 	for (const [key, value] of Object.entries(rest)) {
-		sendRequest[key] = deepCopy(value);
-	}
-
-	// Protect browser from sending large binary data
-	if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
-		sendRequest = {
-			...request,
-			body: `Binary data got replaced with this text. Original was a Buffer with a size of ${
-				(request.body as string).length
-			} bytes.`,
-		};
+		sendRequest[key] = deepCopy(replaceUploads(value));
 	}
 
 	// Remove credential information
-	for (const requestProperty of Object.keys(authDataKeys)) {
-		sendRequest = {
-			...sendRequest,
-			[requestProperty]: Object.keys(sendRequest[requestProperty] as object).reduce(
-				(acc: IDataObject, curr) => {
-					acc[curr] = authDataKeys[requestProperty].includes(curr)
-						? REDACTED
-						: (sendRequest[requestProperty] as IDataObject)[curr];
-					return acc;
-				},
-				{},
-			),
-		};
+	for (const [requestProperty, authKeys] of Object.entries(authDataKeys)) {
+		const target = sendRequest[requestProperty];
+		// A property swapped for a placeholder string has nothing to redact, and
+		// iterating it would yield one key per character.
+		if (!isObject(target)) continue;
+
+		const redacted = { ...target };
+		for (const key of authKeys) {
+			if (key in redacted) redacted[key] = REDACTED;
+		}
+		sendRequest[requestProperty] = redacted;
 	}
 	const HEADER_BLOCKLIST = new Set([
 		'authorization',
