@@ -9,6 +9,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
 
+/** The documented maximum page size shared by the v2 list endpoints, not a page-count limit */
 export const PAGE_LIMIT = 250;
 
 /**
@@ -143,6 +144,8 @@ export const spaceRLC: INodeProperties = {
  * "All Spaces" reset entry and By ID accepts an empty value. */
 export const optionalSpaceRLC: INodeProperties = {
 	...spaceRLC,
+	description:
+		'Limits page selection and By Title lookups to one space. Leave empty or pick "All Spaces" to search across all spaces.',
 	modes: (spaceRLC.modes ?? []).map((mode) => {
 		if (mode.name === 'list') {
 			return {

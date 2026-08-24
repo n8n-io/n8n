@@ -20,8 +20,6 @@ const MAX_DEPTH = 10;
 export const description: INodeProperties[] = [
 	{
 		...optionalSpaceRLC,
-		description:
-			'Limits page selection and By Title lookups to one space. Leave empty or pick "All Spaces" to search across all spaces.',
 		displayOptions: {
 			show: {
 				resource: ['page'],
