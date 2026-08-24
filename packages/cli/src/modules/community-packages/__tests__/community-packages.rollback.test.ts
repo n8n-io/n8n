@@ -212,6 +212,38 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 			});
 		});
 
+		test('keeps the downloaded package when loading it fails', async () => {
+			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
+
+			await communityPackagesService.handleInstallEvent({
+				packageName: PACKAGE_NAME,
+				packageVersion: '2.0.0',
+			});
+
+			// Not rolled back to 1.0.0: that would leave this instance behind the leader's
+			// record with nothing reporting it. The failure stays visible instead.
+			expect(existsSync(markerPath())).toBe(false);
+			expect(
+				JSON.parse(await readFile(path.join(packageDirectory, 'package.json'), 'utf-8')),
+			).toEqual({ name: PACKAGE_NAME, version: '2.0.0' });
+			// Disk and ledger agree, and the backup is not left behind.
+			expect(await nodeModulesEntries()).toEqual([PACKAGE_NAME]);
+			expect(await ledgerDependencies()).toEqual({ [PACKAGE_NAME]: '2.0.0' });
+		});
+
+		test('keeps the downloaded package when a first install fails to load', async () => {
+			// No previous copy to fall back on, unlike the shared beforeEach.
+			await rm(packageDirectory, { recursive: true, force: true });
+			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
+
+			await communityPackagesService.handleInstallEvent({
+				packageName: PACKAGE_NAME,
+				packageVersion: '2.0.0',
+			});
+
+			expect(await nodeModulesEntries()).toEqual([PACKAGE_NAME]);
+		});
+
 		test('leaves no backup directory behind once the install succeeds', async () => {
 			await communityPackagesService.handleInstallEvent({
 				packageName: PACKAGE_NAME,
