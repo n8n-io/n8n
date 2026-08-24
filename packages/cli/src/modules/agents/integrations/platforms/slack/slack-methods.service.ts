@@ -78,6 +78,7 @@ export class SlackMethodsService {
 			}
 			const response = await this.outboundHttp
 				.requests({
+					// Fixed public vendor host (slack.com), not user-controllable
 					useDefaultSsrfPolicy: 'unsafe',
 				})
 				.request({

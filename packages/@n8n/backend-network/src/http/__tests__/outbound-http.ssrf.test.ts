@@ -152,15 +152,19 @@ function makeBridge(blockedPath: string): { bridge: SsrfBridge; error: Error } {
 }
 
 // `ssrf` installs the scripted bridge as the instance's protection service, so
-// the transport picks it up through the default safe mode.
+// the transport picks it up through the default safe mode. `enabled` sets the
+// instance flag (default true).
 function makeTransport(
-	options?: NonNullable<Parameters<OutboundHttp['transport']>[0]> & { ssrf?: SsrfBridge },
+	options?: NonNullable<Parameters<OutboundHttp['transport']>[0]> & {
+		ssrf?: SsrfBridge;
+		enabled?: boolean;
+	},
 ) {
-	const { ssrf, ...transportOptions } = options ?? {};
+	const { ssrf, enabled = true, ...transportOptions } = options ?? {};
 	const service = ssrf ? mock<SsrfProtectionService>(ssrf) : mock<SsrfProtectionService>();
 	return new OutboundHttp(
 		service,
-		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<SsrfProtectionConfig>({ enabled }),
 		mock<Logger>(),
 	).transport(transportOptions);
 }
@@ -243,6 +247,34 @@ describe('SSRF end-to-end', () => {
 			await expect(res.text()).resolves.toBe('reached:/internal');
 			expect(bridge.validateUrl).not.toHaveBeenCalled();
 			expect(server.captured).toEqual(['/start', '/internal']);
+		});
+	});
+
+	describe('instance flag (SsrfProtectionConfig.enabled)', () => {
+		it('does not validate a safe transport when the instance disables protection', async () => {
+			const { bridge } = makeBridge('/internal');
+			const fetchFn = makeTransport({ ssrf: bridge, enabled: false, proxy: false }).asCustomFetch();
+
+			const res = await fetchFn(`${server.url}/start`);
+
+			expect(res.status).toBe(200);
+			await expect(res.text()).resolves.toBe('reached:/internal');
+			expect(bridge.validateUrl).not.toHaveBeenCalled();
+		});
+
+		it('validates an enforced transport even when the instance disables protection', async () => {
+			const { bridge } = makeBridge('/internal');
+			const fetchFn = makeTransport({
+				ssrf: bridge,
+				enabled: false,
+				useDefaultSsrfPolicy: 'enforced',
+				proxy: false,
+			}).asCustomFetch();
+
+			await expect(fetchFn(`${server.url}/start`)).rejects.toThrow();
+
+			expect(bridge.validateUrl).toHaveBeenCalledWith(validatedUrl(`${server.url}/internal`));
+			expect(server.captured).not.toContain('/internal');
 		});
 	});
 

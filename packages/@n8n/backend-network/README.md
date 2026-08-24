@@ -86,8 +86,8 @@ read that flag nor inject the `SsrfProtectionService` — passing `'safe'` (or
 nothing) is enough.
 
 Concretely, a `'safe'` call is guarded when the instance enables protection and
-passes through untouched when it does not; an `'unsafe'` call is never guarded,
-regardless of the flag.
+passes through untouched when it does not; an `'enforced'` call is always
+guarded and an `'unsafe'` call is never guarded, regardless of the flag.
 
 `SsrfProtectionConfig` (env-driven) also configures *how* the guard behaves once
 it runs — the blocked/allowed IP ranges (`N8N_SSRF_BLOCKED_IP_RANGES`,
@@ -102,7 +102,8 @@ user-controlled. Classify the **destination**, then pick:
 
 | Destination | Risk | What to pass |
 | --- | --- | --- |
-| User- or remote-controlled URL (workflow import URL, credential/OAuth URLs, a discovery document's second hop, a user-supplied registry, an LLM/web-research target) | **High** — attacker-influenceable | nothing — the default `'safe'` guards it when the instance enables protection |
+| User- or remote-controlled URL (workflow import URL, credential/OAuth URLs, a discovery document's second hop, a user-supplied registry) | **High** — attacker-influenceable | nothing — the default `'safe'` guards it when the instance enables protection |
+| URL an autonomous component picks on its own (an LLM/web-research target) | **High** — attacker-influenceable, and the operator never sees the URL | `useDefaultSsrfPolicy: 'enforced'` — guarded even when the instance leaves protection off |
 | Fixed n8n-owned host, or a fixed public vendor API (Slack, Linear, npm registry default, AWS service endpoint) | **Low** — not user-controllable | `useDefaultSsrfPolicy: 'unsafe'` + a one-line "fixed host" comment |
 | Admin-configured infrastructure that may legitimately be internal (SAML/OIDC IdP, OTLP collector, log-streaming destination, external-secrets manager) | **Low–medium** — operator-trusted | `useDefaultSsrfPolicy: 'unsafe'` + a "may point at internal X" comment. The `N8N_SSRF_ALLOWED_*` allowlists are the alternative when the instance runs with protection globally on. |
 

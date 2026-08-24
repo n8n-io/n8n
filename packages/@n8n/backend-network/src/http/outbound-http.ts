@@ -243,10 +243,13 @@ export class OutboundHttp {
 
 	/**
 	 * Resolves a caller's {@link UseDefaultSsrfPolicy} to the SSRF policy to enforce:
-	 * the container's `SsrfProtectionService` in `'safe'` mode when the instance
-	 * enables protection, nothing otherwise.
+	 * the container's `SsrfProtectionService` always in `'enforced'` mode, and in
+	 * `'safe'` mode when the instance enables protection, nothing otherwise.
 	 */
 	private resolveSsrf(useDefaultSsrfPolicy: UseDefaultSsrfPolicy = 'safe'): SsrfOption {
+		if (useDefaultSsrfPolicy === 'enforced') {
+			return this.ssrfProtection;
+		}
 		if (useDefaultSsrfPolicy === 'unsafe' || !this.ssrfConfig.enabled) {
 			return 'disabled';
 		}

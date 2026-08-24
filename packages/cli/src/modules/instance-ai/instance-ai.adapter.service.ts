@@ -2404,8 +2404,8 @@ export class InstanceAiAdapterService {
 		const settingsService = this.settingsService;
 
 		const { outboundHttp } = this;
-		// LLM/user-chosen URLs, so the default safe mode applies
-		const sharedTransport = outboundHttp.transport();
+		// LLM/user-chosen URLs, guarded even when the instance leaves protection off
+		const sharedTransport = outboundHttp.transport({ useDefaultSsrfPolicy: 'enforced' });
 		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
@@ -2462,6 +2462,7 @@ export class InstanceAiAdapterService {
 				const authorizeUrl = options?.authorizeUrl;
 				const transport = authorizeUrl
 					? outboundHttp.transport({
+							useDefaultSsrfPolicy: 'enforced',
 							authorize: async (target: URL) => await authorizeUrl(target.href),
 						})
 					: sharedTransport;
