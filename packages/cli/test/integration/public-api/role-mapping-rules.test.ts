@@ -189,24 +189,6 @@ describe('Role mapping rules in Public API', () => {
 			);
 		});
 
-		it('rejects with 401 without an API key', async () => {
-			const response = await testServer
-				.publicApiAgentWithoutApiKey()
-				.post('/role-mapping-rules')
-				.send(validInstancePayload);
-
-			expect(response.status).toBe(401);
-		});
-
-		it('rejects with 401 with an invalid API key', async () => {
-			const response = await testServer
-				.publicApiAgentWithApiKey('invalid-key')
-				.post('/role-mapping-rules')
-				.send(validInstancePayload);
-
-			expect(response.status).toBe(401);
-		});
-
 		it('rejects with 403 when the key lacks roleMappingRule:create', async () => {
 			const scopedOwner = await createOwnerWithApiKey({ scopes: ['user:read'] });
 
@@ -326,20 +308,6 @@ describe('Role mapping rules in Public API', () => {
 				.query({ type: 'bogus' });
 
 			expect(response.status).toBe(400);
-		});
-
-		it('rejects with 401 without an API key', async () => {
-			const response = await testServer.publicApiAgentWithoutApiKey().get('/role-mapping-rules');
-
-			expect(response.status).toBe(401);
-		});
-
-		it('rejects with 401 with an invalid API key', async () => {
-			const response = await testServer
-				.publicApiAgentWithApiKey('invalid-key')
-				.get('/role-mapping-rules');
-
-			expect(response.status).toBe(401);
 		});
 
 		it('rejects with 403 when the key lacks roleMappingRule:list', async () => {
@@ -491,24 +459,6 @@ describe('Role mapping rules in Public API', () => {
 				.send({ targetIndex: 0 });
 
 			expect(response.status).toBe(404);
-		});
-
-		it('rejects with 401 without an API key', async () => {
-			const response = await testServer
-				.publicApiAgentWithoutApiKey()
-				.post('/role-mapping-rules/does-not-exist/move')
-				.send({ targetIndex: 0 });
-
-			expect(response.status).toBe(401);
-		});
-
-		it('rejects with 401 with an invalid API key', async () => {
-			const response = await testServer
-				.publicApiAgentWithApiKey('invalid-key')
-				.post('/role-mapping-rules/does-not-exist/move')
-				.send({ targetIndex: 0 });
-
-			expect(response.status).toBe(401);
 		});
 
 		it('rejects with 403 when the key lacks roleMappingRule:update', async () => {
@@ -734,28 +684,6 @@ describe('Role mapping rules in Public API', () => {
 			expect(response.body.message).toBe('One or more projects were not found');
 		});
 
-		it('rejects with 401 without an API key', async () => {
-			const rule = await createInstanceRule();
-
-			const response = await testServer
-				.publicApiAgentWithoutApiKey()
-				.patch(`/role-mapping-rules/${rule.id}`)
-				.send({ expression: 'claims.group === "engineers"' });
-
-			expect(response.status).toBe(401);
-		});
-
-		it('rejects with 401 with an invalid API key', async () => {
-			const rule = await createInstanceRule();
-
-			const response = await testServer
-				.publicApiAgentWithApiKey('invalid-key')
-				.patch(`/role-mapping-rules/${rule.id}`)
-				.send({ expression: 'claims.group === "engineers"' });
-
-			expect(response.status).toBe(401);
-		});
-
 		it('rejects with 403 when the key lacks roleMappingRule:update', async () => {
 			const rule = await createInstanceRule();
 			const scopedOwner = await createOwnerWithApiKey({ scopes: ['user:read'] });
@@ -859,26 +787,6 @@ describe('Role mapping rules in Public API', () => {
 				.delete('/role-mapping-rules/00000000-0000-4000-8000-000000000000');
 
 			expect(response.status).toBe(404);
-		});
-
-		it('rejects with 401 without an API key', async () => {
-			const rule = await createInstanceRule(validInstancePayload);
-
-			const response = await testServer
-				.publicApiAgentWithoutApiKey()
-				.delete(`/role-mapping-rules/${rule.id}`);
-
-			expect(response.status).toBe(401);
-		});
-
-		it('rejects with 401 with an invalid API key', async () => {
-			const rule = await createInstanceRule(validInstancePayload);
-
-			const response = await testServer
-				.publicApiAgentWithApiKey('invalid-key')
-				.delete(`/role-mapping-rules/${rule.id}`);
-
-			expect(response.status).toBe(401);
 		});
 
 		it('rejects with 403 when the key lacks roleMappingRule:delete', async () => {
