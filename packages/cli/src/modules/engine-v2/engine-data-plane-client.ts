@@ -67,9 +67,16 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 			// Inspect the status here so engine failures map onto n8n error types
 			// instead of surfacing as a generic request error.
 			ignoreHttpStatusErrors: true,
+			// The identity token must reach the configured data plane and nowhere
+			// else. Following a redirect would forward it to whatever host the
+			// response names.
+			disableFollowRedirect: true,
 		});
 
-		if (response.statusCode >= 400) throw this.toError(response.statusCode, response.body);
+		// 3xx included: redirects are not followed, so a redirecting target is a
+		// misconfiguration, not a hop. Treating it as success would parse the
+		// redirect body as an execution result.
+		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
 
 		return response.body as StartExecutionResult;
 	}

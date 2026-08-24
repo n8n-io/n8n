@@ -71,6 +71,16 @@ describe('EngineDataPlaneClient', () => {
 			);
 		});
 
+		it('does not follow redirects, so the identity token reaches only the configured host', async () => {
+			respondWith(201, { executionId: 'exec-1' });
+
+			await client.startExecution(request);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({ disableFollowRedirect: true }),
+			);
+		});
+
 		it('dials the loopback, not the bind host', () => {
 			expect(clientOptions?.baseURL).toBe('http://127.0.0.1:3000');
 		});
@@ -139,6 +149,13 @@ describe('EngineDataPlaneClient', () => {
 				body: { error: 'boom' },
 				errorClass: OperationalError,
 				message: 'Engine responded with 500: boom',
+			},
+			{
+				case: 'a redirect the client refused to follow',
+				statusCode: 302,
+				body: '',
+				errorClass: OperationalError,
+				message: 'Engine responded with 302',
 			},
 			{
 				case: 'a body that is not the engine error shape',
