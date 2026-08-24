@@ -554,6 +554,35 @@ describe('CredentialsHelper', () => {
 			});
 		});
 
+		test('honors an admin overwrite for a pinned endpoint field, falling back to the type default for the rest', async () => {
+			registerType(managedOAuth2Type);
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+			credentialsOverwrites.getOverwrites.mockReturnValue({
+				accessTokenUrl: 'https://proxy.internal.example.com/token',
+			});
+
+			const result = await buildHelper(credentialsOverwrites).applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{
+					clientId: 'shared-client-id',
+					clientSecret: 'shared-client-secret',
+					authUrl: 'https://custom.example.com/authorize',
+					accessTokenUrl: 'https://custom.example.com/token',
+				},
+				managedOAuth2Type.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				// The admin overwrite wins over both the user value and the type default.
+				accessTokenUrl: 'https://proxy.internal.example.com/token',
+				// Fields without an overwrite still pin to the type default.
+				authUrl: 'https://slack.com/oauth/v2/authorize',
+			});
+		});
+
 		test('resolves hidden OAuth1 endpoint fields from the credential type for managed credentials', async () => {
 			registerType(managedOAuth1Type);
 			const credentialsOverwrites = mock<CredentialsOverwrites>();
