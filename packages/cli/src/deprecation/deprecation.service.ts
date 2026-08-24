@@ -80,18 +80,6 @@ export class DeprecationService {
 			checkValue: (value?: string) => value === undefined,
 		},
 		{
-			envVar: 'N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES',
-			message:
-				'The default for this variable will be reduced from 2 GiB to 256 MiB in a future version. Set it explicitly to keep your current limit.',
-			checkValue: (value?: string) => value === undefined,
-		},
-		{
-			envVar: 'N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES',
-			message:
-				'The default for this variable will be reduced from 5000 to 1000 in a future version. Set it explicitly to keep your current limit.',
-			checkValue: (value?: string) => value === undefined,
-		},
-		{
 			envVar: 'N8N_EXPRESSION_ENGINE',
 			message:
 				'The `legacy` expression engine runs expressions without isolation, is no longer considered secure, and will be removed in a future version. Remove this environment variable to use the default `vm` engine.',

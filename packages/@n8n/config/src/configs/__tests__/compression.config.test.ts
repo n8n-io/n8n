@@ -15,8 +15,8 @@ describe('CompressionNodeConfig', () => {
 	it('should use default values', () => {
 		const { compressionNode } = Container.get(GlobalConfig);
 
-		expect(compressionNode.maxDecompressedSize).toBe(2 * 1024 * 1024 * 1024);
-		expect(compressionNode.maxZipEntries).toBe(5000);
+		expect(compressionNode.maxDecompressedSize).toBe(256 * 1024 * 1024);
+		expect(compressionNode.maxZipEntries).toBe(1000);
 	});
 
 	it('should use custom max decompressed size from env', () => {
