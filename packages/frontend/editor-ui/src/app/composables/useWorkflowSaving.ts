@@ -157,6 +157,39 @@ export function useWorkflowSaving({
 		});
 	}
 
+	function scheduleAutoSaveRetry(retryDelay: number) {
+		saveStore.setRetrying(true);
+
+		setTimeout(() => {
+			saveStore.setRetrying(false);
+			// Trigger autosave again if workflow is still dirty
+			if (uiStore.stateIsDirty) {
+				scheduleAutoSave();
+			}
+		}, retryDelay);
+	}
+
+	function handleAutoSaveFailure(error: unknown, errorMessage: string): false {
+		// Handle autosave failures with exponential backoff
+		if (!shouldRetryAutoSaveFailure(error)) {
+			saveStore.resetRetry();
+			saveStore.setLastError(errorMessage);
+			showSaveErrorToast(errorMessage);
+
+			return false;
+		}
+
+		saveStore.incrementRetry();
+		saveStore.setLastError(errorMessage);
+
+		// Schedule retry with exponential backoff
+		const retryDelay = saveStore.getRetryDelay();
+		scheduleAutoSaveRetry(retryDelay);
+		showSaveErrorToast(errorMessage, retryDelay);
+
+		return false;
+	}
+
 	// Preview hosts (template, workflow history, execution) render the real canvas
 	// and scope their subtree read-only through the editor context. The context is
 	// injected, so it only resolves inside a component — fall back to no context
@@ -458,34 +491,8 @@ export function useWorkflowSaving({
 					}
 				}
 
-				// Handle autosave failures with exponential backoff
 				if (autosaved) {
-					if (!shouldRetryAutoSaveFailure(error)) {
-						saveStore.resetRetry();
-						saveStore.setLastError(errorMessage);
-						showSaveErrorToast(errorMessage);
-
-						return false;
-					}
-
-					saveStore.incrementRetry();
-					saveStore.setLastError(errorMessage);
-
-					// Schedule retry with exponential backoff
-					const retryDelay = saveStore.getRetryDelay();
-					saveStore.setRetrying(true);
-
-					setTimeout(() => {
-						saveStore.setRetrying(false);
-						// Trigger autosave again if workflow is still dirty
-						if (uiStore.stateIsDirty) {
-							scheduleAutoSave();
-						}
-					}, retryDelay);
-
-					showSaveErrorToast(errorMessage, retryDelay);
-
-					return false;
+					return handleAutoSaveFailure(error, errorMessage);
 				}
 
 				showSaveErrorToast(errorMessage);
