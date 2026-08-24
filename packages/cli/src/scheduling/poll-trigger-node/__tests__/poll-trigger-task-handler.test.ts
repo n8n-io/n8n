@@ -437,6 +437,26 @@ describe('PollTriggerTaskHandler', () => {
 			expect(vi.getTimerCount()).toBe(0);
 		});
 
+		test('discards the data of an abandoned poll that resolves after the timeout', async () => {
+			let resolvePoll: (data: INodeExecutionData[][]) => void = () => {};
+			triggersAndPollers.runPollFunction.mockReturnValue(
+				new Promise((resolve) => {
+					resolvePoll = resolve;
+				}),
+			);
+
+			const executing = handler.execute(buildTask(), report);
+			await vi.advanceTimersByTimeAsync(pollTimeoutMs);
+			await executing;
+			resolvePoll(pollData);
+			await vi.advanceTimersByTimeAsync(0);
+
+			// The tick was already reported as abandoned, so the late data is dropped:
+			// no hand-off, no cursor advance, no dispatch.
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+		});
+
 		test('discards an abandoned poll that fails after the timeout', async () => {
 			let rejectPoll: (error: Error) => void = () => {};
 			triggersAndPollers.runPollFunction.mockReturnValue(
