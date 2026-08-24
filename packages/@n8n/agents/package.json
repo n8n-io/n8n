@@ -113,7 +113,7 @@
     "@n8n/utils": "workspace:*",
     "@openrouter/ai-sdk-provider": "catalog:",
     "@opentelemetry/exporter-trace-otlp-http": ">=0.50.0",
-    "@opentelemetry/sdk-trace-base": ">=1.0.0",
+    "@opentelemetry/sdk-trace-base": "2.7.1",
     "@opentelemetry/sdk-trace-node": ">=1.0.0",
     "ai": "catalog:",
     "ajv": "^8.18.0",

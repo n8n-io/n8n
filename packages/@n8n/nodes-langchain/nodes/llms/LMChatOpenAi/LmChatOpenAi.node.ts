@@ -14,6 +14,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
+import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
 import { getCustomCredentialHeader, mergeCustomHeaders } from '@utils/helpers';
 
 import { openAiFailedAttemptHandler } from '../../vendors/OpenAi/helpers/error-handling';
@@ -875,7 +876,7 @@ export class LmChatOpenAi implements INodeType {
 		}
 
 		return {
-			response: model,
+			response: responsesApiEnabled ? model : wrapChatModelMessageInput(model),
 		};
 	}
 }

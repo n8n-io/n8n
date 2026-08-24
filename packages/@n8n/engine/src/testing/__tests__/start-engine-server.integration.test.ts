@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { SharedSecretIdentityVerifier } from '../../auth';
 import type { ExecutionQueryService, StartExecutionService } from '../../execution';
 import { startEngineServer } from '../start-engine-server';
 
@@ -13,6 +14,7 @@ describe('engine HTTP server (e2e)', () => {
 		({ url, stop } = await startEngineServer({
 			startExecution: {} as StartExecutionService,
 			executionQuery: {} as ExecutionQueryService,
+			identityVerifier: new SharedSecretIdentityVerifier('a'.repeat(32)),
 		}));
 	});
 

@@ -5,6 +5,7 @@ import request from 'supertest';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
+import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import { createDataSource, createStores, WorkflowExecution } from '../../database';
 import { ExecutionQueryService, StartExecutionService } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
@@ -16,6 +17,12 @@ const sampleGraph: WorkflowGraph = {
 	nodes: [{ id: 'trigger', name: 'Manual Trigger', type: 'trigger', config: {} }],
 	edges: [],
 };
+
+const secret = 'a'.repeat(32);
+
+const authHeader = () => ({
+	authorization: `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
+});
 
 let container: StartedPostgreSqlContainer;
 let dataSource: DataSource;
@@ -38,6 +45,7 @@ beforeEach(async () => {
 	({ url, stop } = await startEngineServer({
 		startExecution: new StartExecutionService(new AllowAllAdmittance(), executionStore, workQueue),
 		executionQuery: new ExecutionQueryService(executionReadStore),
+		identityVerifier: new SharedSecretIdentityVerifier(secret),
 	}));
 });
 
@@ -54,6 +62,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('creates an execution row, publishes execution:enqueued, returns 201', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
@@ -80,6 +89,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects an invalid body with 400', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({ workflowId: 'wf-1' }); // missing graph
 
 		expect(response.status).toBe(400);
@@ -89,6 +99,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects a bare-object triggerOutputs with 400 (the legacy, dropped shape)', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
@@ -102,6 +113,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it.each([['str'], [42]])('rejects triggerOutputs %p with 400', async (triggerOutputs) => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({ workflowId: 'wf-1', graph: sampleGraph, triggerOutputs });
 
 		expect(response.status).toBe(400);
@@ -109,7 +121,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	});
 
 	it('rejects an empty-array triggerOutputs with 400 (send null or omit for "no payload")', async () => {
-		const response = await request(url).post('/api/workflow-executions').send({
+		const response = await request(url).post('/api/workflow-executions').set(authHeader()).send({
 			workflowId: 'wf-1',
 			graph: sampleGraph,
 			triggerOutputs: [],
@@ -122,6 +134,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects a triggerOutputs with more slots than the cap with 400', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
@@ -135,6 +148,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects a graph without a trigger with 400, creating nothing', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: { nodes: [{ id: 'a', name: 'A', type: 'v1-node' }], edges: [] },
@@ -148,6 +162,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 	it('rejects a graph with back-edges with 501, creating nothing', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: {
@@ -172,6 +187,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 	async function createExecution(): Promise<string> {
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
@@ -183,7 +199,9 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 	it('returns the persisted status, mode, workflow id, graph and ISO timestamps', async () => {
 		const executionId = await createExecution();
 
-		const response = await request(url).get(`/api/workflow-executions/${executionId}`);
+		const response = await request(url)
+			.get(`/api/workflow-executions/${executionId}`)
+			.set(authHeader());
 
 		expect(response.status).toBe(200);
 		expect(response.body).toMatchObject({
@@ -200,16 +218,16 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 	});
 
 	it('returns 404 not_found for an unknown execution id', async () => {
-		const response = await request(url).get(
-			'/api/workflow-executions/00000000-0000-0000-0000-000000000000',
-		);
+		const response = await request(url)
+			.get('/api/workflow-executions/00000000-0000-0000-0000-000000000000')
+			.set(authHeader());
 
 		expect(response.status).toBe(404);
 		expect((response.body as { error: string }).error).toBe('not_found');
 	});
 
 	it('returns 400 invalid_request for a non-uuid id', async () => {
-		const response = await request(url).get('/api/workflow-executions/not-a-uuid');
+		const response = await request(url).get('/api/workflow-executions/not-a-uuid').set(authHeader());
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
@@ -223,6 +241,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		const runtime = createEngineRuntime({
 			dataSource,
 			admittance: new AllowAllAdmittance(),
+			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			externalDependencies: ({ executionStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
@@ -237,6 +256,7 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 
 		const postResponse = await request(runtime.app)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: sampleGraph,
@@ -245,9 +265,9 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 		const { executionId } = postResponse.body as { executionId: string };
 		await finished;
 
-		const response = await request(runtime.app).get(
-			`/api/workflow-executions/${executionId}/steps`,
-		);
+		const response = await request(runtime.app)
+			.get(`/api/workflow-executions/${executionId}/steps`)
+			.set(authHeader());
 		await runtime.stop();
 
 		expect(response.status).toBe(200);
@@ -263,16 +283,18 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 	});
 
 	it('returns 200 with an empty list from /steps for an unknown execution id', async () => {
-		const response = await request(url).get(
-			'/api/workflow-executions/00000000-0000-0000-0000-000000000000/steps',
-		);
+		const response = await request(url)
+			.get('/api/workflow-executions/00000000-0000-0000-0000-000000000000/steps')
+			.set(authHeader());
 
 		expect(response.status).toBe(200);
 		expect(response.body).toEqual({ steps: [] });
 	});
 
 	it('returns 400 invalid_request from /steps for a non-uuid id', async () => {
-		const response = await request(url).get('/api/workflow-executions/not-a-uuid/steps');
+		const response = await request(url)
+			.get('/api/workflow-executions/not-a-uuid/steps')
+			.set(authHeader());
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
