@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export interface ZodClass<T = unknown, Shape extends z.ZodRawShape = z.ZodRawShape> {
 	new (data: T): T;
-	schema: z.ZodObject<Shape, z.UnknownKeysParam>;
+	schema: z.ZodObject<Shape, 'strip' | 'strict'>;
 	safeParse(data: unknown): z.SafeParseReturnType<unknown, T>;
 	parse(data: unknown): T;
 	extend<U extends z.ZodRawShape>(shape: U): ZodClass<T & z.infer<z.ZodObject<U>>, Shape & U>;
