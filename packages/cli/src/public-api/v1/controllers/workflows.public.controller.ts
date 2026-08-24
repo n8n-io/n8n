@@ -1,4 +1,5 @@
 import {
+	ActivateWorkflowPublicDto,
 	CreatedWorkflowPublicDto,
 	CreateWorkflowPublicDto,
 	GetWorkflowQueryDto,
@@ -529,7 +530,7 @@ export class WorkflowsPublicController {
 		req: AuthenticatedRequest,
 		res: Response,
 		@Param('workflowId') workflowId: string,
-		@Body body: PublishWorkflowPublicDto,
+		@Body body: ActivateWorkflowPublicDto,
 	): Promise<WorkflowPublishPublicDto> {
 		// An alias, not a variant: delegating keeps the two from drifting apart.
 		return await this.publishWorkflow(req, res, workflowId, body);
