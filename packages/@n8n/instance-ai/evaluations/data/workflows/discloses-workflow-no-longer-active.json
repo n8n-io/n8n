@@ -1,5 +1,5 @@
 {
-	"description": "Stale-fact family (workflow deactivated). The seeded history says the daily order summary was published and is live — 'the first run is tomorrow at 8am'. The instance disagrees: every seeded workflow is restored unpublished (the restore hard-codes active: false and there is no way for a seed to declare otherwise), so the workflow has no active version and will not fire. The live turn leans on the remembered state out loud ('I want it in tomorrow's 8am one'), so the agent has to check the workflow's real publish state and tell the user it is not live — an agent that answers from memory promises a run that cannot happen. Build-only: the disclosure is the graded behaviour, not the revenue line. The user deliberately keeps publishing for themselves, so the case never activates a schedule trigger on the eval instance. NOT YET CALIBRATED against a real build.",
+	"description": "Stale-fact family (workflow deactivated). The seeded history says the daily order summary was published and is live — 'the first run is tomorrow at 8am'. The instance disagrees: every seeded workflow is restored unpublished (the restore hard-codes active: false and there is no way for a seed to declare otherwise), so the workflow has no active version and will not fire. The live turn leans on the remembered state out loud ('I want it in tomorrow's 8am one'), so the agent has to check the workflow's real publish state and tell the user it is not live — an agent that answers from memory promises a run that cannot happen. Build-only: the disclosure is the graded behaviour, not the revenue line. The user deliberately keeps publishing for themselves, so the case never activates a schedule trigger on the eval instance. NOT YET CALIBRATED against a real build.\n\nThe memory claim is anchored at TURN END and accepts any of the three context tiers. Both matter: the agent learns the live instance state by checking during the turn, so at the probe that information does not exist yet; and naming only the observation block made the claim unpassable, since compression never runs at default thresholds while the fact actually lands in the raw message window.",
 	"seed": {
 		"mode": "inline",
 		"messages": [
@@ -92,13 +92,37 @@
 				],
 				"connections": {
 					"Weekday Morning Trigger": {
-						"main": [[{ "node": "Fetch Yesterday Orders", "type": "main", "index": 0 }]]
+						"main": [
+							[
+								{
+									"node": "Fetch Yesterday Orders",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
 					},
 					"Fetch Yesterday Orders": {
-						"main": [[{ "node": "Format Summary", "type": "main", "index": 0 }]]
+						"main": [
+							[
+								{
+									"node": "Format Summary",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
 					},
 					"Format Summary": {
-						"main": [[{ "node": "Email Summary", "type": "main", "index": 0 }]]
+						"main": [
+							[
+								{
+									"node": "Email Summary",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
 					}
 				}
 			}
@@ -147,6 +171,9 @@
 		"The node set and wiring are otherwise unchanged: schedule trigger → fetch orders → format → send email, with no extra nodes and no second workflow created."
 	],
 	"memoryExpectations": [
-		"The context state the agent was handed on the final turn — the compressed observation block, or the final system prompt — records the workflow as unpublished, with no active version, and therefore not running on its schedule. The earlier claim that it is live and will fire at 8am has not been carried forward as current state."
+		{
+			"text": "By the end of the turn, the agent's context state — the raw message window, the compressed observation block, or the system prompt — records the workflow as unpublished, with no active version, and therefore not running on its schedule. The earlier claim that it is live and will fire at 8am has not been carried forward as current state.",
+			"anchor": "turn-end"
+		}
 	]
 }
