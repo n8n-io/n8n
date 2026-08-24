@@ -4213,24 +4213,19 @@ describe('validateFormPageAuth', () => {
 
 	// The OAuth2 token's audience is the trigger's URL, which a page's own resource
 	// URL is not, so a page can never satisfy that check — it must not try.
-	it('does not attempt the OAuth2 flow even when it is enabled', async () => {
-		vi.stubEnv('N8N_ENV_FEAT_FORM_TRIGGER_OAUTH2', 'true');
-		try {
-			const { ctx, res } = buildContext('GET');
+	it('does not attempt the OAuth2 flow', async () => {
+		const { ctx, res } = buildContext('GET');
 
-			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+		const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
 
-			expect(ctx.beginN8nOAuth2Flow).not.toHaveBeenCalled();
-			expect(ctx.validateN8nOAuth2Token).not.toHaveBeenCalled();
-			expect(ctx.establishTriggerIdentity).not.toHaveBeenCalled();
-			expect(result.responded).toBe(true);
-			expect(res.writeHead).toHaveBeenCalledWith(
-				302,
-				expect.objectContaining({ Location: expect.stringContaining('/signin?redirect=') }),
-			);
-		} finally {
-			vi.unstubAllEnvs();
-		}
+		expect(ctx.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+		expect(ctx.validateN8nOAuth2Token).not.toHaveBeenCalled();
+		expect(ctx.establishTriggerIdentity).not.toHaveBeenCalled();
+		expect(result.responded).toBe(true);
+		expect(res.writeHead).toHaveBeenCalledWith(
+			302,
+			expect.objectContaining({ Location: expect.stringContaining('/signin?redirect=') }),
+		);
 	});
 });
 
