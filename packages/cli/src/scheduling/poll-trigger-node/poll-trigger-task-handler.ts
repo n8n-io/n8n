@@ -1,4 +1,6 @@
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ClaimedTask, DispatchDecision, DispatchReporter, TaskHandler } from '@n8n/scheduler';
@@ -9,9 +11,10 @@ import {
 	runPollInStagingScope,
 	TriggersAndPollers,
 } from 'n8n-core';
-import type { INode, IWorkflowBase } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import type { Failure, INode, IWorkflowBase } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
 import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
@@ -20,6 +23,28 @@ import {
 	POLL_TRIGGER_TASK_TYPE,
 	type PollTriggerTaskPayload,
 } from './poll-trigger-task';
+
+/** Race sentinel: `poll()` can resolve to anything, so the deadline resolves to a symbol it cannot produce. */
+const TIMED_OUT = Symbol('poll timed out');
+
+/** Stands in for the error a hanging poll never threw, so backoff classifies the timeout as transient. */
+class PollTimeoutError extends OperationalError {
+	readonly failure: Failure = { cause: 'temporarily-unavailable' };
+
+	constructor() {
+		super('Poll exceeded its timeout and was abandoned');
+	}
+}
+
+/** An unref'd, cancellable deadline that resolves to {@link TIMED_OUT} after `ms`. */
+function timeoutAfter(ms: number): { timedOut: Promise<typeof TIMED_OUT>; cancel: () => void } {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const timedOut = new Promise<typeof TIMED_OUT>((resolve) => {
+		timer = setTimeout(() => resolve(TIMED_OUT), ms);
+		timer.unref();
+	});
+	return { timedOut, cancel: () => clearTimeout(timer) };
+}
 
 /**
  * Runs a due poll occurrence's `poll()` once and dispatches only when it returns new data.
@@ -30,6 +55,8 @@ import {
 export class PollTriggerTaskHandler implements TaskHandler {
 	readonly taskType = POLL_TRIGGER_TASK_TYPE;
 
+	private readonly pollTimeoutMs: number;
+
 	constructor(
 		private logger: Logger,
 		private readonly triggerExecutionContextFactory: TriggerExecutionContextFactory,
@@ -37,8 +64,11 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly errorReporter: ErrorReporter,
 		private readonly pollBackoffService: PollBackoffService,
+		private readonly eventService: EventService,
+		globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('scheduler');
+		this.pollTimeoutMs = globalConfig.scheduler.pollTimeoutSeconds * Time.seconds.toMilliseconds;
 	}
 
 	async execute(task: ClaimedTask, report: DispatchReporter): Promise<DispatchDecision> {
@@ -92,18 +122,59 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		// be committed by this poll and never by a later occurrence.
 		return await runPollInStagingScope(pollFunctions, async () => {
 			// Scheduled polls run outside any activation isolate window, so acquire and
-			// release one per tick; the finally releases even when poll() throws.
+			// release one per tick; the finally releases even when poll() throws, and
+			// even while an abandoned poll is still running. A late expression
+			// evaluation then fails and is discarded with the rest of that poll,
+			// whereas holding the isolate for a poll that may never settle would pin a
+			// pooled bridge for good.
 			await workflow.expression.acquireIsolate();
 			// Nothing past a returning poll is the source failing, so a hand-off or
 			// database error after it must not back the node off. A setup error before
 			// poll() does count: it repeats every tick just like a failing source.
 			let polled = false;
 			try {
-				const pollResponse = await this.triggersAndPollers.runPollFunction(
-					workflow,
-					node,
-					pollFunctions,
-				);
+				// `poll()` takes no abort signal, so the deadline abandons it rather than
+				// cancelling it: the call keeps running until it settles on its own, and its
+				// outcome is discarded. The cursor never moves on that path (it only moves
+				// through the staged commit or __emit below), so an abandoned tick leaves
+				// the poll window untouched for the next occurrence to cover.
+				const deadline = timeoutAfter(this.pollTimeoutMs);
+				const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
+				// Deliberately not chained: keeps an abandoned poll's eventual rejection from
+				// surfacing as an unhandled rejection once the race has moved on.
+				poll.catch(() => {});
+
+				let pollResponse: Awaited<typeof poll>;
+				try {
+					const outcome = await Promise.race([poll, deadline.timedOut]);
+					if (outcome === TIMED_OUT) {
+						this.eventService.emit('poll-tick-timed-out', { nodeType: node.type });
+						this.logger.warn('Poll exceeded its timeout and was abandoned', {
+							taskId: task.id,
+							jobId: task.jobId,
+							workflowId,
+							nodeId,
+							pollTimeoutMs: this.pollTimeoutMs,
+						});
+						// Not routed to the error workflow: an abandoned poll produces no run, and
+						// an error run is one. It does count as a poll failure, so a source that
+						// keeps hanging is re-polled at a widening interval like any failing source.
+						const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
+						if (isActive) {
+							await this.pollBackoffService.recordFailure({
+								workflowId,
+								nodeId,
+								error: new PollTimeoutError(),
+								state,
+								now: new Date(), // Fresh clock, not the tick's
+							});
+						}
+						return report.notDispatched();
+					}
+					pollResponse = outcome;
+				} finally {
+					deadline.cancel();
+				}
 				polled = true;
 
 				await this.pollBackoffService.recordSuccess({ workflowId, nodeId, state });
