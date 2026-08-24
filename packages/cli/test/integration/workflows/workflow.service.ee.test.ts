@@ -40,6 +40,7 @@ describe('EnterpriseWorkflowService', () => {
 			mock(), // folderRepository
 			mock(), // workflowPublishHistoryRepository
 			mock(), // workflowMutationHooks
+			mock(), // policyEnforcementService
 		);
 	});
 
