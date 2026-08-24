@@ -306,6 +306,7 @@ onUnmounted(() => {
 		<div :class="$style.content">
 			<WorkflowReviewRequestsSidebar
 				:sections="sidebarSections"
+				:probing="!probeSettled"
 				:active-tab="activeTab"
 				:open-count="openCount"
 				:closed-count="closedCount"

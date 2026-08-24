@@ -79,6 +79,7 @@ function makeSection(
 function openProps(overrides: Partial<ReviewInboxSidebarSection>[] = [{}, {}]) {
 	return {
 		sections: [makeSection('waiting', overrides[0]), makeSection('authored', overrides[1])],
+		probing: false,
 		activeTab: 'open' as const,
 		openCount: 1,
 		closedCount: 0,
@@ -89,6 +90,7 @@ function openProps(overrides: Partial<ReviewInboxSidebarSection>[] = [{}, {}]) {
 function closedProps(overrides: Partial<ReviewInboxSidebarSection> = {}) {
 	return {
 		sections: [makeSection('closed', overrides)],
+		probing: false,
 		activeTab: 'closed' as const,
 		openCount: 0,
 		closedCount: 1,
@@ -223,6 +225,15 @@ describe('WorkflowReviewRequestsSidebar', () => {
 
 			expect(getAllByTestId('workflow-review-list-skeleton')).toHaveLength(1);
 			expect(queryAllByTestId('workflow-review-section-skeleton')).toHaveLength(0);
+			expect(queryAllByTestId('workflow-review-section-header')).toHaveLength(0);
+		});
+
+		it('shows the whole-list skeleton while the probe that precedes the lists runs', () => {
+			const { getAllByTestId, queryAllByTestId } = renderComponent({
+				props: { ...openProps(), probing: true },
+			});
+
+			expect(getAllByTestId('workflow-review-list-skeleton')).toHaveLength(1);
 			expect(queryAllByTestId('workflow-review-section-header')).toHaveLength(0);
 		});
 

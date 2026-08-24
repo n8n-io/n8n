@@ -34,6 +34,7 @@ export type ReviewInboxSidebarSection = {
 
 const props = defineProps<{
 	sections: ReviewInboxSidebarSection[];
+	probing: boolean; // summary probe before loading lists
 	activeTab: WorkflowReviewRequestState;
 	openCount: number;
 	closedCount: number;
@@ -84,7 +85,9 @@ function isCollapsibleSection(key: ReviewInboxSectionKey): key is CollapsibleRev
 	return key !== 'closed';
 }
 
-const isLoadingWholeList = computed(() => props.sections.every((section) => section.loading));
+const isLoadingWholeList = computed(
+	() => props.probing || props.sections.every((section) => section.loading),
+);
 
 const groups = computed(() =>
 	props.sections
