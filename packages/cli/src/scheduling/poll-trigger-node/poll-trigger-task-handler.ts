@@ -77,9 +77,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		const { workflowId, nodeId } = this.parsePayload(task);
 
 		const now = new Date();
-		const state = await this.pollBackoffService
-			.getFailureState(workflowId, nodeId)
-			.catch(() => null);
+		const state = await this.pollBackoffService.getState(workflowId, nodeId).catch(() => null);
 		if (this.pollBackoffService.isBackingOff(state, now)) {
 			this.logger.debug('Poll is backing off; skipping this occurrence', {
 				taskId: task.id,
