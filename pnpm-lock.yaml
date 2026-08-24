@@ -2289,6 +2289,9 @@ importers:
       express:
         specifier: 'catalog:'
         version: 5.1.0
+      jsonwebtoken:
+        specifier: 'catalog:'
+        version: 9.0.3
       pg:
         specifier: 8.21.0
         version: 8.21.0(pg-native@3.8.0)
@@ -2314,6 +2317,9 @@ importers:
       '@types/express':
         specifier: 'catalog:'
         version: 5.0.1
+      '@types/jsonwebtoken':
+        specifier: 'catalog:'
+        version: 9.0.10
       '@types/pg':
         specifier: ^8.15.6
         version: 8.20.0
