@@ -1,6 +1,7 @@
 import isbot from 'isbot';
 import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
+	DisplayCondition,
 	FormFieldsParameter,
 	IDataObject,
 	IExecuteFunctions,
@@ -46,6 +47,9 @@ type FormResponseTypeOptions = {
 
 const INPUT_FIELD_IDENTIFIER = 'field-0';
 
+// Output identifiers resolve like Form >=2.5: prefer fieldName, fall back to fieldLabel.
+const FORM_FIELD_IDENTIFIER_VERSION = 2.5;
+
 const appendAttributionOption: INodeProperties = {
 	displayName: 'Append n8n Attribution',
 	name: 'appendAttribution',
@@ -54,6 +58,41 @@ const appendAttributionOption: INodeProperties = {
 	description:
 		'Whether to include the phrase "This message was sent automatically with n8n" to the end of the message',
 };
+// Shared form field definitions gate fields on the Form node's version history; strip
+// that so every channel renders the modern schema (Label + Custom Field Name).
+function hasModernVersionCondition(version: Array<number | DisplayCondition>): boolean {
+	return version.some((entry) => typeof entry === 'object' && 'gte' in entry._cnd);
+}
+
+function modernizeFormFieldsVersions(properties: INodeProperties[]): INodeProperties[] {
+	const walk = (props: INodeProperties[]): INodeProperties[] =>
+		props.flatMap((property) => {
+			const version = property.displayOptions?.show?.['@version'];
+			if (version && !hasModernVersionCondition(version)) return [];
+
+			const displayOptions =
+				property.displayOptions && {
+					...property.displayOptions,
+					show: { ...property.displayOptions.show },
+				};
+			delete displayOptions?.show?.['@version'];
+
+			return [
+				{
+					...property,
+					...(displayOptions ? { displayOptions } : {}),
+					...(Array.isArray(property.options)
+						? {
+								options: property.options.map((option) =>
+									'values' in option ? { ...option, values: walk(option.values) } : option,
+								),
+							}
+						: {}),
+				},
+			];
+		});
+	return walk(properties);
+}
 
 // Operation Properties ----------------------------------------------------------
 export function getSendAndWaitProperties(
@@ -203,7 +242,7 @@ export function getSendAndWaitProperties(
 					responseType: ['customForm'],
 				},
 			},
-			formFieldsProperties,
+			modernizeFormFieldsVersions(formFieldsProperties),
 		),
 
 		{
@@ -468,7 +507,14 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 			};
 		}
 		if (method === 'POST') {
-			const returnItem = await prepareFormReturnItem(this, fields, 'production', true);
+			const returnItem = await prepareFormReturnItem(
+				this,
+				fields,
+				'production',
+				true,
+				undefined,
+				FORM_FIELD_IDENTIFIER_VERSION,
+			);
 			const json = returnItem.json;
 
 			delete json.submittedAt;

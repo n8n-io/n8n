@@ -2489,6 +2489,53 @@ describe('prepareFormReturnItem', () => {
 		expect(result.json.formMode).toBe('production');
 	});
 
+	it('should key output by custom field name when an explicit node version is passed', async () => {
+		mockContext.getBodyData.mockReturnValue({
+			data: { 'field-0': 'test value' },
+			files: {},
+		});
+		mockContext.getNode.mockReturnValue(
+			mock<INode>({ type: 'n8n-nodes-base.gmail', typeVersion: 1.2 }),
+		);
+
+		const formFields = [
+			{ fieldLabel: 'Email Address', fieldName: 'email', fieldType: 'text' as const },
+		];
+		const result = await prepareFormReturnItem(
+			mockContext,
+			formFields,
+			'production',
+			false,
+			undefined,
+			2.5,
+		);
+
+		expect(result.json.email).toBe('test value');
+		expect(result.json['Email Address']).toBeUndefined();
+	});
+
+	it('should fall back to the field label when no custom field name is set', async () => {
+		mockContext.getBodyData.mockReturnValue({
+			data: { 'field-0': 'test value' },
+			files: {},
+		});
+		mockContext.getNode.mockReturnValue(
+			mock<INode>({ type: 'n8n-nodes-base.gmail', typeVersion: 1.2 }),
+		);
+
+		const formFields = [{ fieldLabel: 'Email Address', fieldType: 'text' as const }];
+		const result = await prepareFormReturnItem(
+			mockContext,
+			formFields,
+			'production',
+			false,
+			undefined,
+			2.5,
+		);
+
+		expect(result.json['Email Address']).toBe('test value');
+	});
+
 	it('should process number fields correctly', async () => {
 		mockContext.getBodyData.mockReturnValue({
 			data: { 'field-0': '42' },

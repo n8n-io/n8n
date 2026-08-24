@@ -456,6 +456,7 @@ export async function prepareFormReturnItem(
 	mode: 'test' | 'production',
 	useWorkflowTimezone: boolean = false,
 	authedUser?: IUser,
+	nodeVersion: number = context.getNode().typeVersion,
 ) {
 	const req = context.getRequestObject() as MultiPartFormData.Request;
 	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
@@ -500,7 +501,7 @@ export async function prepareFormReturnItem(
 
 		const entryIndex = Number(key.replace(/field-/g, ''));
 		const field = isNaN(entryIndex) ? null : formFields[entryIndex];
-		const fieldLabel = field ? getFieldIdentifier(field, context.getNode().typeVersion) : key;
+		const fieldLabel = field ? getFieldIdentifier(field, nodeVersion) : key;
 
 		let fileCount = 0;
 		for (const file of processFiles) {
@@ -531,8 +532,7 @@ export async function prepareFormReturnItem(
 		}
 	}
 
-	addFormResponseDataToReturnItem(returnItem, formFields, bodyData, context.getNode().typeVersion);
-
+	addFormResponseDataToReturnItem(returnItem, formFields, bodyData, nodeVersion);
 	const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
 	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
 

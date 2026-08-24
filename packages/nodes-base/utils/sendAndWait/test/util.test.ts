@@ -63,6 +63,33 @@ describe('Send and Wait utils tests', () => {
 			);
 		});
 
+		it('should always render modern custom-form fields regardless of host node version', () => {
+			const result = getSendAndWaitProperties([], 'message');
+
+			const customFormProps = result.filter((p) =>
+				(p.displayOptions?.show?.responseType as string[] | undefined)?.includes('customForm'),
+			);
+			const fields = customFormProps.find(
+				(p) => p.name === 'formFields' && p.type === 'fixedCollection',
+			);
+			if (!fields) throw new Error('formFields fixedCollection not found');
+			expect(customFormProps.filter((p) => p.name === 'formFields')).toHaveLength(1);
+
+			const collection = fields.options?.[0] as { values: INodeProperties[] } | undefined;
+			if (!collection) throw new Error('form field values not found');
+			const values = collection.values;
+			expect(values.some((v) => v.name === 'fieldLabel' && v.displayName === 'Label')).toBe(true);
+			expect(
+				values.some((v) => v.name === 'fieldName' && v.displayName === 'Custom Field Name'),
+			).toBe(true);
+			expect(values.some((v) => v.name === 'fieldLabel' && v.displayName === 'Field Name')).toBe(
+				false,
+			);
+			expect(
+				values.every((v) => v.displayOptions?.show?.['@version'] === undefined),
+			).toBe(true);
+		});
+
 		it('should include extra options when provided', () => {
 			const targetProperties: INodeProperties[] = [
 				{
