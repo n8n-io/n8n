@@ -87,6 +87,14 @@ describe('InstanceGitConnectionService', () => {
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 		});
 
+		it('rejects enabling SSH without a repository URL before generating a key pair', async () => {
+			await expect(
+				service.update({ enabled: true, connectionType: 'ssh', keyGeneratorType: 'rsa' }),
+			).rejects.toThrow('A repository URL and connection type are required to enable');
+			expect(gitService.generateSshKeyPair).not.toHaveBeenCalled();
+			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
+		});
+
 		it('rejects a repository URL without a connection type', async () => {
 			await expect(service.update({ repositoryUrl: 'https://github.com/o/r.git' })).rejects.toThrow(
 				'Connection type is required to set a repository URL',

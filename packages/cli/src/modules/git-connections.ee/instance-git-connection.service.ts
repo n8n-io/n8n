@@ -67,6 +67,17 @@ export class InstanceGitConnectionService {
 		if (targetUrl && targetType) this.gitService.validateRepositoryUrl(targetUrl, targetType);
 		if (input.branchName) await this.gitService.validateBranchName(input.branchName);
 
+		const targetEnabled = input.enabled ?? current.enabled;
+		// Reject an enable with no configured target before the auth step, so the
+		// request fails fast instead of generating a throwaway SSH key pair first.
+		// The credential half of the precondition depends on the auth result and is
+		// checked by assertConfigured below.
+		if (targetEnabled && (!targetUrl || !targetType)) {
+			throw new BadRequestError(
+				'A repository URL and connection type are required to enable the instance Git connection',
+			);
+		}
+
 		const updated: InstanceGitConnectionPreferences = { ...current };
 		if (input.repositoryUrl !== undefined) updated.repositoryUrl = input.repositoryUrl;
 		if (input.branchName !== undefined) updated.branchName = input.branchName;
@@ -78,7 +89,6 @@ export class InstanceGitConnectionService {
 		);
 		if (auth) Object.assign(updated, auth);
 
-		const targetEnabled = input.enabled ?? current.enabled;
 		if (targetEnabled) this.assertConfigured(updated);
 		updated.enabled = targetEnabled;
 
