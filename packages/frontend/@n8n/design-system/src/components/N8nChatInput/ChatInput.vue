@@ -30,7 +30,15 @@ export interface N8nChatInputProps {
 	refocusAfterSend?: boolean;
 	autofocus?: boolean;
 	buttonLabel?: string;
-	layout?: 'multiline' | 'single-line';
+	/**
+	 * - 'multiline': the tall composer — a fixed minimum height with the actions on
+	 *   their own bottom row.
+	 * - 'single-line': one fixed row; Enter always submits.
+	 * - 'adaptive': starts as a single row with the send button inline and grows
+	 *   smoothly with the content, up to `maxLinesBeforeScroll`. Keyboard behavior
+	 *   matches 'multiline' (Shift+Enter inserts a newline).
+	 */
+	layout?: 'multiline' | 'single-line' | 'adaptive';
 	autosize?: boolean | { minRows: number; maxRows: number };
 	submitDisabled?: boolean;
 	sendButtonTestId?: string;
@@ -105,7 +113,9 @@ const sendDisabled = computed(
 );
 
 const containerStyle = computed(() => {
-	return props.layout === 'single-line' ? undefined : { minHeight: '80px' };
+	// Only the classic multiline composer reserves the tall block; 'adaptive'
+	// starts at one row and lets the autosized textarea drive the height.
+	return props.layout === 'multiline' ? { minHeight: '80px' } : undefined;
 });
 
 const hasNoCredits = computed(() => {
@@ -274,6 +284,7 @@ defineExpose({
 						[$style.focused]: isFocused,
 						[$style.disabled]: disabled || hasNoCredits,
 						[$style.singleLineContainer]: layout === 'single-line',
+						[$style.adaptiveContainer]: layout === 'adaptive',
 					},
 				]"
 				:style="containerStyle"
@@ -290,7 +301,10 @@ defineExpose({
 					v-model="textValue"
 					:class="[
 						$style.textarea,
-						{ [$style.singleLineTextarea]: layout === 'single-line' },
+						{
+							[$style.singleLineTextarea]: layout === 'single-line',
+							[$style.adaptiveTextarea]: layout === 'adaptive',
+						},
 						'ignore-key-press-node-creator',
 						'ignore-key-press-canvas',
 					]"
@@ -305,7 +319,13 @@ defineExpose({
 					@click="handleFocusableRegionClick"
 				/>
 				<div
-					:class="[$style.bottomActions, { [$style.singleLineActions]: layout === 'single-line' }]"
+					:class="[
+						$style.bottomActions,
+						{
+							[$style.singleLineActions]: layout === 'single-line',
+							[$style.adaptiveActions]: layout === 'adaptive',
+						},
+					]"
 					@click="handleFocusableRegionClick"
 				>
 					<div
@@ -386,6 +406,19 @@ defineExpose({
 	align-items: center;
 }
 
+/* Adaptive: one visual row that grows with the autosized textarea. The send button
+	is pinned to the bottom-right corner instead of holding a dedicated actions row,
+	so the only moving part while typing is the (transitioned) textarea height — the
+	button just rides the bottom edge. See the overrides next to the single-line
+	ones at the end of this stylesheet. */
+.adaptiveContainer {
+	position: relative;
+	justify-content: center;
+	/* The pinned button is taller than one line of text; without this floor it
+		would poke out of the single-row state. */
+	min-height: calc(var(--height--md) + 2 * var(--spacing--2xs));
+}
+
 .textarea {
 	width: 100%;
 	border: none;
@@ -456,6 +489,29 @@ defineExpose({
 
 .singleLineActions {
 	padding: 0;
+}
+
+/* Placed after `.textarea`, whose `padding` shorthand would otherwise win the tie. */
+.adaptiveTextarea {
+	/* Reserve the pinned button's column at every height: a width that differed
+		between the compact and grown states would re-wrap the text and make the
+		two states oscillate. */
+	padding-right: calc(var(--height--md) + var(--spacing--3xs));
+	/* A 24px text line plus 4px above and below matches the 32px send button,
+		leaving the same 8px inset on every side in the compact state. */
+	padding-block: var(--spacing--4xs);
+	/* The autosize composable writes explicit pixel heights, so they interpolate. */
+	transition: height 0.15s ease;
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+	}
+}
+
+.adaptiveActions {
+	position: absolute;
+	right: var(--spacing--2xs);
+	bottom: var(--spacing--2xs);
 }
 
 .leading {

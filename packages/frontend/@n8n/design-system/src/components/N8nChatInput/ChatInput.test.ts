@@ -177,6 +177,92 @@ describe('N8nChatInput', () => {
 		});
 	});
 
+	describe('adaptive layout', () => {
+		it('does not reserve the multiline minimum height', () => {
+			const { container } = renderComponent({
+				props: {
+					layout: 'adaptive',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const chatContainer = container.querySelector('.container') as HTMLElement;
+			expect(chatContainer.style.minHeight).toBe('');
+			expect(chatContainer.classList.toString()).toContain('adaptiveContainer');
+		});
+
+		it('keeps the multiline minimum height for the default layout', () => {
+			const { container } = renderComponent({
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const chatContainer = container.querySelector('.container') as HTMLElement;
+			expect(chatContainer.style.minHeight).toBe('80px');
+		});
+
+		it('autosizes the textarea like multiline', async () => {
+			const originalDescriptor = Object.getOwnPropertyDescriptor(
+				HTMLTextAreaElement.prototype,
+				'scrollHeight',
+			);
+			Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
+				configurable: true,
+				get(this: HTMLTextAreaElement) {
+					return this.value?.includes('\n') ? 72 : 24;
+				},
+			});
+
+			try {
+				const { container } = renderComponent({
+					props: {
+						layout: 'adaptive',
+						modelValue: '',
+					},
+					global: {
+						stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					},
+				});
+
+				const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+				textarea.value = 'Line 1\nLine 2\nLine 3';
+				await fireEvent.input(textarea);
+
+				await vi.waitFor(() => expect(textarea.getAttribute('style')).toContain('height: 72px'));
+			} finally {
+				if (originalDescriptor) {
+					Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', originalDescriptor);
+				} else {
+					Reflect.deleteProperty(HTMLTextAreaElement.prototype, 'scrollHeight');
+				}
+			}
+		});
+
+		it('submits on Enter and inserts a newline on Shift+Enter, like multiline', async () => {
+			const render = renderComponent({
+				props: {
+					layout: 'adaptive',
+					modelValue: 'Test message',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const textarea = render.container.querySelector('textarea') as HTMLTextAreaElement;
+
+			await fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
+			expect(render.emitted('submit')).toBeFalsy();
+			expect(render.emitted('update:modelValue')).toBeTruthy();
+
+			await fireEvent.keyDown(textarea, { key: 'Enter' });
+			expect(render.emitted('submit')).toBeTruthy();
+		});
+	});
+
 	describe('character limit', () => {
 		it('should show warning banner when at character limit', () => {
 			const { container } = renderComponent({
