@@ -212,42 +212,34 @@ describe('PublicApiControllerRegistry', () => {
 			);
 		});
 
-		it('rejects a missing Content-Type when the body is required', async () => {
+		const namesNoMediaType: Array<[string, string | undefined]> = [
+			['a request with no Content-Type', undefined],
+			['a request with an empty Content-Type', ''],
+			['a request with a whitespace Content-Type', ' '],
+		];
+
+		function postWithContentType(header: string | undefined) {
+			const pending = request(activate()).post('/widgets');
+
+			return header === undefined ? pending : pending.set('Content-Type', header);
+		}
+
+		it.each(namesNoMediaType)(
+			'accepts %s when every body field is optional',
+			async (_label, header) => {
+				registerOptionalBodyRoute();
+
+				await postWithContentType(header).expect(200);
+			},
+		);
+
+		it.each(namesNoMediaType)('rejects %s when the body is required', async (_label, header) => {
 			registerBodyRoute();
 
-			const response = await request(activate()).post('/widgets').expect(415);
+			const response = await postWithContentType(header).expect(415);
 
 			expect(response.body.message).toBe('unsupported media type undefined');
 		});
-
-		it('accepts a missing Content-Type when every body field is optional', async () => {
-			registerOptionalBodyRoute();
-
-			await request(activate()).post('/widgets').expect(200);
-		});
-
-		it.each(['', ' '])(
-			'treats the Content-Type %j as absent when every body field is optional',
-			async (header) => {
-				registerOptionalBodyRoute();
-
-				await request(activate()).post('/widgets').set('Content-Type', header).expect(200);
-			},
-		);
-
-		it.each(['', ' '])(
-			'treats the Content-Type %j as absent when the body is required',
-			async (header) => {
-				registerBodyRoute();
-
-				const response = await request(activate())
-					.post('/widgets')
-					.set('Content-Type', header)
-					.expect(415);
-
-				expect(response.body.message).toBe('unsupported media type undefined');
-			},
-		);
 
 		it('accepts application/json carrying an unrelated parameter', async () => {
 			registerBodyRoute();

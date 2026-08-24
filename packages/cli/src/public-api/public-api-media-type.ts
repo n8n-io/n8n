@@ -3,8 +3,8 @@ import { UnsupportedMediaTypeError } from '@/errors/response-errors/unsupported-
 const JSON_MEDIA_TYPE = 'application/json';
 
 /**
- * The media type, plus the string the legacy validator reports for it: lower-cased, parameters
- * sorted, `boundary` left out.
+ * The media type, plus the string the legacy validator reports: lower-cased, parameters sorted by
+ * name, `boundary` left out.
  */
 function readMediaType(header: string): { mediaType: string; reported: string } {
 	const [rawMediaType, ...parameterParts] = header.split(';');
@@ -30,13 +30,13 @@ function readMediaType(header: string): { mediaType: string; reported: string } 
 }
 
 /**
- * The legacy validator accepted only JSON, and rejected a header that names no media type when the
- * body was required. Migrated routes keep both behaviours and the message that came with them.
+ * The legacy validator accepted only JSON. It reported a header that names no media type — absent,
+ * empty, or whitespace — as the literal `undefined`, and rejected it only when the body was
+ * required. Migrated routes keep both behaviours and the messages that came with them.
  */
 export function assertJsonContentType(header: string | undefined, bodyRequired: boolean): void {
 	const { mediaType, reported } = readMediaType(header ?? '');
 
-	// An absent header and an empty one both name no media type, and both are reported as `undefined`.
 	if (mediaType === '') {
 		if (bodyRequired) throw new UnsupportedMediaTypeError('unsupported media type undefined');
 		return;

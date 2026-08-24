@@ -15,7 +15,6 @@ export function markPublicApiController(controllerClass: Controller, basePath: `
 }
 
 export class WidgetBodyDto extends Z.class({ name: z.string() }) {}
-/** Body DTO whose fields are all optional, so an empty body is valid. */
 export class OptionalWidgetBodyDto extends Z.class({ name: z.string().optional() }) {}
 export class WidgetQueryDto extends Z.class({ q: z.string().optional() }) {}
 export class WidgetResponseDto extends Z.class({ id: z.string() }) {}
