@@ -325,7 +325,8 @@ describe('formNodeUtils', () => {
 			const { cookie } = await renderAuthedPage();
 
 			expect(cookie).toHaveBeenCalledWith(
-				'n8n-form-auth',
+				// Named for the run, so concurrent forms don't overwrite each other.
+				'n8n-form-auth-ex-execution-1',
 				expect.any(String),
 				expect.objectContaining({ httpOnly: true, sameSite: 'lax', path: '/form-waiting' }),
 			);

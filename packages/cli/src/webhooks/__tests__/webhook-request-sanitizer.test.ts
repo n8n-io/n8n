@@ -267,9 +267,16 @@ describe('webhookRequestSanitizer', () => {
 	});
 
 	// The form endpoints skip sanitizing for their own node types, so removing these
-	// here only affects the webhooks that have no use for them.
+	// here only affects the webhooks that have no use for them. The form auth cookie
+	// names embed the workflow or execution they were minted for, hence the suffixes.
 	describe('when the form cookies are present', () => {
-		it.each(['n8n-form-auth', 'n8n-form-oauth'])('should remove %s from the header', (name) => {
+		const formCookieNames = [
+			'n8n-form-auth-wf-a-workflow-id',
+			'n8n-form-auth-ex-12345',
+			'n8n-form-oauth',
+		];
+
+		it.each(formCookieNames)('should remove %s from the header', (name) => {
 			mockRequest.headers = {
 				cookie: `${name}=abc123; other-cookie=value`,
 			};
@@ -279,7 +286,7 @@ describe('webhookRequestSanitizer', () => {
 			expect(mockRequest.headers.cookie).toBe('other-cookie=value');
 		});
 
-		it.each(['n8n-form-auth', 'n8n-form-oauth'])('should remove %s from parsed cookies', (name) => {
+		it.each(formCookieNames)('should remove %s from parsed cookies', (name) => {
 			mockRequest.cookies = {
 				[name]: 'abc123',
 				'other-cookie': 'value',
@@ -295,12 +302,12 @@ describe('webhookRequestSanitizer', () => {
 		it('should remove every disallowed cookie in one pass', () => {
 			mockRequest.headers = {
 				cookie:
-					'n8n-auth=a; n8n-browserId=b; n8n-form-auth=c; n8n-form-oauth=d; other-cookie=value',
+					'n8n-auth=a; n8n-browserId=b; n8n-form-auth-ex-12345=c; n8n-form-oauth=d; other-cookie=value',
 			};
 			mockRequest.cookies = {
 				'n8n-auth': 'a',
 				'n8n-browserId': 'b',
-				'n8n-form-auth': 'c',
+				'n8n-form-auth-ex-12345': 'c',
 				'n8n-form-oauth': 'd',
 				'other-cookie': 'value',
 			};

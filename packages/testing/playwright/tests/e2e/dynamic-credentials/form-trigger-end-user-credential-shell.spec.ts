@@ -9,8 +9,7 @@ import { PublicFormPage } from '../../../pages/PublicFormPage';
  * page inside the shell's sandboxed iframe, fill in the second page, and land on the
  * completion screen.
  *
- * This is the only coverage of the shell's iframe, and it is the coverage whose
- * absence let IAM-1249 ship. Submitting a page parks the execution on the waiting
+ * This is the only coverage of the shell's iframe. Submitting a page parks the execution on the waiting
  * webhook, and the next page is reached by *navigating* the frame to
  * `/form-waiting/<id>` — a request that can carry no `x-auth-token` header, and whose
  * `n8n-auth` session cookie the browser withholds when the opaque-origin frame

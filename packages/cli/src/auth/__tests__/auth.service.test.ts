@@ -13,7 +13,7 @@ import jwt from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
-import { AUTH_COOKIE_NAME, FORM_AUTH_COOKIE_NAME } from '@/constants';
+import { AUTH_COOKIE_NAME } from '@/constants';
 import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
@@ -961,42 +961,16 @@ describe('AuthService', () => {
 		});
 	});
 
-	// A multi-page form hands its follow-up pages an identity cookie of their own,
-	// so signing out has to take that one with it.
 	describe('clearCookie', () => {
-		it('should clear the session cookie and the form page cookie', () => {
-			globalConfig.endpoints.formWaiting = 'form-waiting';
-			urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.test/');
+		it('should clear the session cookie', () => {
 			const res = mock<Response>();
 
 			authService.clearCookie(res);
 
 			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
-			expect(res.clearCookie).toHaveBeenCalledWith(FORM_AUTH_COOKIE_NAME, {
-				path: '/form-waiting',
-			});
-		});
-
-		it('should scope the form page cookie to the instance path prefix', () => {
-			globalConfig.endpoints.formWaiting = 'form-waiting';
-			urlService.getWebhookBaseUrl.mockReturnValue('https://n8n.test/prefix/');
-			const res = mock<Response>();
-
-			authService.clearCookie(res);
-
-			expect(res.clearCookie).toHaveBeenCalledWith(FORM_AUTH_COOKIE_NAME, {
-				path: '/prefix/form-waiting',
-			});
-		});
-
-		it('should fall back to the root path when the base URL cannot be read', () => {
-			globalConfig.endpoints.formWaiting = 'form-waiting';
-			urlService.getWebhookBaseUrl.mockReturnValue('not a url');
-			const res = mock<Response>();
-
-			authService.clearCookie(res);
-
-			expect(res.clearCookie).toHaveBeenCalledWith(FORM_AUTH_COOKIE_NAME, { path: '/' });
+			// The form page cookies are not clearable from here: their names embed the
+			// workflow/execution they were minted for, unknown to this response.
+			expect(res.clearCookie).toHaveBeenCalledTimes(1);
 		});
 	});
 

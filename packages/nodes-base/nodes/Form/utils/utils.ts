@@ -936,7 +936,32 @@ function clearFormOAuthToken(res: Response, req: Request, resourceUrl: string): 
 // Those pages are reached by a navigation, which can present neither the
 // `x-auth-token` header nor — from a sandboxed, opaque-origin form document —
 // the `n8n-auth` session cookie.
-const FORM_AUTH_COOKIE_NAME = 'n8n-form-auth';
+//
+// The name carries the token's binding, so forms open in other tabs don't
+// overwrite each other's cookie: pages of a run use the run's id, and the
+// trigger — rendered before any run exists — uses the workflow's. Duplicated in
+// `packages/cli/src/constants.ts` (prefix only); keep both sides in step.
+const FORM_AUTH_COOKIE_PREFIX = 'n8n-form-auth';
+
+function getFormAuthCookieName(binding: FormUserAuthTokenBinding): string {
+	return binding.executionId
+		? `${FORM_AUTH_COOKIE_PREFIX}-ex-${binding.executionId}`
+		: `${FORM_AUTH_COOKIE_PREFIX}-wf-${binding.workflowId ?? ''}`;
+}
+
+/**
+ * Value of the request's cookie with exactly this name, or `null`. Parses the
+ * raw header (the webhook path may bypass cookie-parser) by splitting rather
+ * than a regex, since the name embeds a workflow or execution id.
+ */
+function readCookieValue(req: Request, name: string): string | null {
+	for (const part of (req.headers.cookie ?? '').split(';')) {
+		const separator = part.indexOf('=');
+		if (separator === -1 || part.slice(0, separator).trim() !== name) continue;
+		return decodeCookieValue(part.slice(separator + 1));
+	}
+	return null;
+}
 
 /**
  * Path the form-waiting endpoint is served under, or `null` when it can't be
@@ -960,9 +985,13 @@ function getFormWaitingBasePath(context: IWebhookFunctions): string | null {
  * the form-waiting path. Re-set on every page render, so a long form's later
  * pages get a token that is still within its TTL.
  */
-export function setFormAuthCookie(context: IWebhookFunctions, token: string): void {
+export function setFormAuthCookie(
+	context: IWebhookFunctions,
+	token: string,
+	binding: FormUserAuthTokenBinding,
+): void {
 	const req = context.getRequestObject();
-	context.getResponseObject().cookie(FORM_AUTH_COOKIE_NAME, token, {
+	context.getResponseObject().cookie(getFormAuthCookieName(binding), token, {
 		httpOnly: true,
 		// Lax, and only ever sent on a navigation the shell (or the top-level page)
 		// initiates from the real origin.
@@ -981,13 +1010,22 @@ export function setFormAuthCookie(context: IWebhookFunctions, token: string): vo
  */
 function readFormAuthCookieUser(context: IWebhookFunctions): IUser | null {
 	const req = context.getRequestObject();
-	// Parse the raw Cookie header rather than `req.cookies` because the webhook
-	// path may bypass cookie-parser middleware in some deployments.
-	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-form-auth=([^;]+)/);
-	if (!match) return null;
-	const token = decodeCookieValue(match[1]);
-	if (!token) return null;
-	return verifyFormPageAuthCookie(token, context.getWorkflow().id, context.getExecutionId());
+	const workflowId = context.getWorkflow().id;
+	const executionId = context.getExecutionId();
+	if (!workflowId) return null;
+	// The run's own cookie first; the trigger's workflow-scoped one covers the
+	// first hop into the run, made before the run existed.
+	const candidateNames = [
+		getFormAuthCookieName({ workflowId, executionId }),
+		getFormAuthCookieName({ workflowId }),
+	];
+	for (const name of candidateNames) {
+		const token = readCookieValue(req, name);
+		if (!token) continue;
+		const user = verifyFormPageAuthCookie(token, workflowId, executionId);
+		if (user) return user;
+	}
+	return null;
 }
 
 /**
@@ -1462,10 +1500,8 @@ export async function formWebhook(
 		// opaque-origin frame — the `n8n-auth` session cookie. Give the follow-up pages
 		// their own path-scoped token so they can authenticate the same submitter.
 		if (authentication === 'n8nUserAuth' && authedUser && hasNextPage) {
-			setFormAuthCookie(
-				context,
-				generateFormUserAuthToken(node, authedUser, { workflowId: context.getWorkflow().id }),
-			);
+			const binding = { workflowId: context.getWorkflow().id };
+			setFormAuthCookie(context, generateFormUserAuthToken(node, authedUser, binding), binding);
 		}
 
 		// The inner render is the form loaded inside the hosting-shell iframe. Honor the

@@ -9,7 +9,7 @@ import type { NextFunction, Request, Response } from 'express';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
 
-import { AUTH_COOKIE_NAME, FORM_AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { License } from '@/license';
@@ -209,28 +209,11 @@ export class AuthService {
 
 	clearCookie(res: Response) {
 		res.clearCookie(AUTH_COOKIE_NAME);
-		// A multi-page form hands its follow-up pages their own identity cookie, so
-		// dropping the session has to drop that one too. It is scoped to the
-		// form-waiting path and `clearCookie` only matches the path it was set with.
-		res.clearCookie(FORM_AUTH_COOKIE_NAME, { path: this.getFormWaitingPath() });
-	}
-
-	/**
-	 * Path the form-waiting endpoint is served under. Derived exactly as the Form
-	 * nodes derive the scope of their page auth cookie — from the pathname of a
-	 * resume URL, `<form-waiting base URL>/<execution id>`, minus the last segment —
-	 * so the two agree on the path even when the endpoint is configured oddly. Falls
-	 * back to `/`, as they do, when the URL can't be parsed.
-	 */
-	private getFormWaitingPath(): string {
-		const { formWaiting } = this.globalConfig.endpoints;
-		try {
-			const base = `${this.urlService.getWebhookBaseUrl()}${formWaiting}`;
-			const { pathname } = new URL(`${base}/an-execution-id`);
-			return pathname.slice(0, pathname.lastIndexOf('/')) || '/';
-		} catch {
-			return '/';
-		}
+		// The form page auth cookies (`n8n-form-auth-*`) are NOT cleared here: their
+		// names embed the workflow/execution they were minted for, and this response
+		// can neither read them (they're scoped to the form-waiting path) nor clear a
+		// cookie without naming it exactly. They are httpOnly, expire within an hour,
+		// and a session for a different user overrides them on the form pages.
 	}
 
 	async invalidateToken(req: AuthenticatedRequest) {

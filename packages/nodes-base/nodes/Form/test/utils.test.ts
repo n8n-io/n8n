@@ -1100,7 +1100,9 @@ describe('FormTrigger, formWebhook', () => {
 				await formWebhook(ctx);
 
 				expect(cookie).toHaveBeenCalledWith(
-					'n8n-form-auth',
+					// Named for the workflow: no run exists yet at the trigger, and other
+					// forms' cookies must not be overwritten.
+					'n8n-form-auth-wf-workflow-1',
 					expect.any(String),
 					expect.objectContaining({
 						httpOnly: true,
@@ -4243,9 +4245,20 @@ describe('validateFormPageAuth', () => {
 		return { ctx, res, req };
 	};
 
-	/** The cookie the form pages present, as the page renders set it. */
-	const pageAuthCookie = (binding: { workflowId?: string; executionId?: string }) =>
-		`n8n-form-auth=${generateFormUserAuthToken(pageNode, authedUser, binding)}`;
+	/** The name a page render gives the cookie: bound to the run, or — from the
+	 * trigger, before a run exists — to the workflow. */
+	const formAuthCookieName = (binding: { workflowId?: string; executionId?: string }) =>
+		binding.executionId
+			? `n8n-form-auth-ex-${binding.executionId}`
+			: `n8n-form-auth-wf-${binding.workflowId}`;
+
+	/** The cookie the form pages present, as the page renders set it. An explicit
+	 * `cookieName` mimics a stale or foreign token sitting under a name the served
+	 * page looks for. */
+	const pageAuthCookie = (
+		binding: { workflowId?: string; executionId?: string },
+		cookieName = formAuthCookieName(binding),
+	) => `${cookieName}=${generateFormUserAuthToken(pageNode, authedUser, binding)}`;
 
 	it('returns empty object and skips validation when authentication is not n8nUserAuth', async () => {
 		const { ctx } = buildContext('GET');
@@ -4396,8 +4409,31 @@ describe('validateFormPageAuth', () => {
 			expect(result.authedUser).toEqual(authedUser);
 		});
 
-		it('ignores a cookie bound to another workflow', async () => {
-			const { ctx, res } = buildContext('GET', pageAuthCookie({ workflowId: 'other-workflow' }));
+		it("selects this form's cookies among other forms' cookies", async () => {
+			// Each form journey names its cookie after its own run/workflow, so several
+			// can sit in the browser side by side without overwriting one another.
+			const { ctx } = buildContext(
+				'GET',
+				[
+					pageAuthCookie({ workflowId: 'other-workflow' }),
+					pageAuthCookie({ workflowId: WORKFLOW_ID, executionId: 'other-execution' }),
+					pageAuthCookie({ workflowId: WORKFLOW_ID, executionId: EXECUTION_ID }),
+				].join('; '),
+			);
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.authedUser).toEqual(authedUser);
+		});
+
+		it('ignores a token bound to another workflow sitting under the expected name', async () => {
+			const { ctx, res } = buildContext(
+				'GET',
+				pageAuthCookie(
+					{ workflowId: 'other-workflow' },
+					formAuthCookieName({ workflowId: WORKFLOW_ID }),
+				),
+			);
 
 			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
 
@@ -4408,10 +4444,13 @@ describe('validateFormPageAuth', () => {
 			);
 		});
 
-		it('ignores a cookie bound to another execution', async () => {
+		it('ignores a token bound to another execution sitting under the expected name', async () => {
 			const { ctx, res } = buildContext(
 				'GET',
-				pageAuthCookie({ workflowId: WORKFLOW_ID, executionId: 'other-execution' }),
+				pageAuthCookie(
+					{ workflowId: WORKFLOW_ID, executionId: 'other-execution' },
+					formAuthCookieName({ workflowId: WORKFLOW_ID, executionId: EXECUTION_ID }),
+				),
 			);
 
 			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
@@ -4421,7 +4460,10 @@ describe('validateFormPageAuth', () => {
 		});
 
 		it('ignores a token that carries no workflow binding', async () => {
-			const { ctx, res } = buildContext('GET', pageAuthCookie({}));
+			const { ctx, res } = buildContext(
+				'GET',
+				pageAuthCookie({}, formAuthCookieName({ workflowId: WORKFLOW_ID })),
+			);
 
 			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
 
@@ -4448,7 +4490,7 @@ describe('validateFormPageAuth', () => {
 		});
 
 		it('ignores a malformed cookie', async () => {
-			const { ctx, res } = buildContext('GET', 'n8n-form-auth=garbage');
+			const { ctx, res } = buildContext('GET', 'n8n-form-auth-ex-exec-id=garbage');
 
 			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
 
@@ -4457,7 +4499,10 @@ describe('validateFormPageAuth', () => {
 		});
 
 		it('falls back to the session cookie when the form cookie does not verify', async () => {
-			const { ctx } = buildContext('GET', 'n8n-form-auth=garbage; n8n-auth=valid.jwt.token');
+			const { ctx } = buildContext(
+				'GET',
+				'n8n-form-auth-ex-exec-id=garbage; n8n-auth=valid.jwt.token',
+			);
 			ctx.validateCookieAuth.mockResolvedValue(authedUser);
 
 			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
@@ -4469,7 +4514,10 @@ describe('validateFormPageAuth', () => {
 		// A value that isn't valid percent-encoding must be treated as no cookie, not
 		// surface as a failed request for every page load that carries it.
 		it('falls back to the session cookie when the form cookie value cannot be decoded', async () => {
-			const { ctx } = buildContext('GET', 'n8n-form-auth=%E0%A4%A; n8n-auth=valid.jwt.token');
+			const { ctx } = buildContext(
+				'GET',
+				'n8n-form-auth-ex-exec-id=%E0%A4%A; n8n-auth=valid.jwt.token',
+			);
 			ctx.validateCookieAuth.mockResolvedValue(authedUser);
 
 			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
@@ -4479,7 +4527,7 @@ describe('validateFormPageAuth', () => {
 		});
 
 		it('redirects rather than throwing when an undecodable cookie is all the request has', async () => {
-			const { ctx, res } = buildContext('GET', 'n8n-form-auth=%E0%A4%A');
+			const { ctx, res } = buildContext('GET', 'n8n-form-auth-ex-exec-id=%E0%A4%A');
 
 			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
 
