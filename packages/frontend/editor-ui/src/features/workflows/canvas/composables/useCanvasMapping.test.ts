@@ -317,11 +317,11 @@ describe('useCanvasMapping — node display sizes', () => {
 });
 
 describe('useCanvasMapping — getNodeExecutionSnapshot', () => {
-	it('reads hasExecutionError from executionIssuesByNodeName (single-node parity)', () => {
+	it('reads hasExecutionError from executionIssuesByNodeId (single-node parity)', () => {
 		const node = createTestNode({ id: 'a', name: 'Alpha' }) as INodeUi;
 		const rd = createEmptyCanvasRenderData();
-		rd.executionIssuesByNodeName.set(
-			'Alpha',
+		rd.executionIssuesByNodeId.set(
+			'a',
 			computed(() => ['Boom']),
 		);
 
@@ -474,7 +474,10 @@ describe('useCanvasMapping — mapped connections', () => {
 			Alpha: { main: [[{ node: 'Beta', type: 'main', index: 0 }]] },
 		});
 		const rd = createEmptyCanvasRenderData({ isExecutionDataDisplayed: true });
-		rd.executionPinDataByNodeName.Alpha = [{ json: { ok: true } }];
+		rd.executionPinDataByNodeId.set(
+			'a',
+			computed(() => [{ json: { ok: true } }]),
+		);
 		setRunData(rd, 'a', [{ executionStatus: 'success' } as ITaskData]);
 
 		const { connections: mapped } = useCanvasMapping({

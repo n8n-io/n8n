@@ -20,11 +20,12 @@ test.describe(
 			// The freed name is handed back to the replacement node, which must not
 			// inherit the deleted node's run data.
 			await n8n.canvas.addNode(CODE_NODE_NAME, { action: CODE_NODE_DISPLAY_NAME });
-
-			await expect(n8n.ndv.getNodeRunErrorMessage()).toBeHidden();
 			await n8n.ndv.close();
 
 			await expect(n8n.canvas.getNodeIssuesByName(CODE_NODE_DISPLAY_NAME)).toBeHidden();
+
+			await n8n.canvas.openNode(CODE_NODE_DISPLAY_NAME);
+			await expect(n8n.ndv.getNodeRunErrorMessage()).toBeHidden();
 		});
 	},
 );
