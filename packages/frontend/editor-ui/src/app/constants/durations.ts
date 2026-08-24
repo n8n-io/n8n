@@ -44,6 +44,9 @@ export const AGENT_EVAL_RUN_POLL_MAX_ERRORS = 3;
 
 export const LOADING_ANIMATION_MIN_DURATION = 1000;
 
+/** Keeps short agent tool and skill calls perceptible without adding continuous motion. */
+export const AGENT_CAPABILITY_ACTIVE_MIN_DURATION = 300;
+
 /** Hover-intent delays for reveal-on-hover affordances (e.g. a collapsed group's description). */
 export const HOVER_DELAY = {
 	/** Delay before a hovered affordance reveals its content. */

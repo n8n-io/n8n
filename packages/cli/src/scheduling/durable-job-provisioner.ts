@@ -309,7 +309,7 @@ export class DurableJobProvisioner {
 
 		// DB time, not this instance's clock, so the seed sizes its window the way a
 		// poll would and every instance agrees on it (see `DueJobs.now`).
-		const now = await this.tasks.readDbTime();
+		const now = await this.tasks.readDbTime(manager);
 
 		const seedTransaction: RunInTransaction = async (work) =>
 			await work({

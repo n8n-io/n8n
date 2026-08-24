@@ -2,7 +2,6 @@ import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from './projects.store';
 import { getResourcePermissions } from '@n8n/permissions';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { hasRole } from '@/app/utils/rbac/checks';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -14,6 +13,17 @@ const ProjectSettings = async () => await import('./views/ProjectSettings.vue');
 const ExecutionsView = async () =>
 	await import('@/features/execution/executions/views/ExecutionsView.vue');
 const ProjectVariables = async () => await import('./views/ProjectVariables.vue');
+
+function refreshInsightsSummary() {
+	void import('@/features/execution/insights')
+		.then(({ useInsightsStore }) => {
+			const insightsStore = useInsightsStore();
+			if (insightsStore.isSummaryEnabled) {
+				void insightsStore.weeklySummary.execute();
+			}
+		})
+		.catch(() => {});
+}
 
 const checkProjectAvailability = (to?: RouteLocationNormalized): boolean => {
 	if (!to?.params.projectId) {
@@ -177,11 +187,10 @@ export const projectsRoutes: RouteRecordRaw[] = [
 				return next({ name: CHAT_VIEW });
 			}
 
-			const insightsStore = useInsightsStore();
-			if (insightsStore.isSummaryEnabled) {
-				// refresh the weekly summary when entering the home route
-				void insightsStore.weeklySummary.execute();
-			}
+			// Refresh the weekly summary when entering the home route. The import is lazy and
+			// unawaited: this module is in the boot graph through the router, and a chunk that
+			// fails to load must not hold up navigation — the summary only stays stale.
+			refreshInsightsSummary();
 
 			next();
 		},

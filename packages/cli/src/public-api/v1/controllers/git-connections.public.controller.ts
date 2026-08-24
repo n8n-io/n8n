@@ -2,7 +2,10 @@ import {
 	CloneGitConnectionDto,
 	CreateGitConnectionDto,
 	GitConnectionListPublicDto,
+	GitConnectionProjectListPublicDto,
+	GitConnectionProjectPublicDto,
 	GitConnectionPublicDto,
+	GitConnectionPushResultDto,
 	ListGitConnectionsQueryDto,
 	MAX_ITEMS_PER_PAGE,
 	UpdateGitConnectionDto,
@@ -192,5 +195,92 @@ export class GitConnectionsPublicController {
 		@Param('id') id: string,
 	): Promise<void> {
 		await (await this.gitConnectionsService()).delete(id);
+	}
+
+	@Post('/:id/push')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:push')
+	@GlobalScope('gitConnection:push')
+	@ApiSummary('Push all projects linked to a Git connection')
+	@ApiDescription(
+		'Work in progress. Exports all linked projects to the local repository working copy. It does not commit or push changes to the selected branch yet.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, GitConnectionPushResultDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(503)
+	async pushGitConnectionProjects(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+	): Promise<GitConnectionPushResultDto> {
+		return await (await this.gitConnectionsService()).push(id, req.user);
+	}
+
+	@Get('/:id/projects')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:read')
+	@GlobalScope('gitConnection:read')
+	@ApiSummary('List projects added to a Git connection')
+	@ApiTags(tags)
+	@ApiResponse(200, GitConnectionProjectListPublicDto)
+	@ApiErrorResponse(404)
+	async getGitConnectionProjects(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+	): Promise<GitConnectionProjectListPublicDto> {
+		return await (await this.gitConnectionsService()).listProjects(id);
+	}
+
+	@Post('/:id/projects/:projectId')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:manageProjects')
+	@GlobalScope('gitConnection:manageProjects')
+	@ApiSummary('Add a project to a Git connection')
+	@ApiDescription(
+		'Adds a team project to the connection. A project can be added to only one connection.',
+	)
+	@ApiTags(tags)
+	@ApiResponse(200, GitConnectionProjectPublicDto)
+	@ApiErrorResponse(400)
+	@ApiErrorResponse(403)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async addProjectToGitConnection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+		@Param('projectId') projectId: string,
+	): Promise<GitConnectionProjectPublicDto> {
+		return await (await this.gitConnectionsService()).addProject({
+			user: req.user,
+			connectionId: id,
+			projectId,
+		});
+	}
+
+	@Delete('/:id/projects/:projectId')
+	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@ApiKeyScope('gitConnection:manageProjects')
+	@GlobalScope('gitConnection:manageProjects')
+	@ApiSummary('Remove a project from a Git connection')
+	@ApiTags(tags)
+	@ApiResponse(204)
+	@ApiErrorResponse(403)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	async removeProjectFromGitConnection(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('id') id: string,
+		@Param('projectId') projectId: string,
+	): Promise<void> {
+		await (await this.gitConnectionsService()).removeProject({
+			user: req.user,
+			connectionId: id,
+			projectId,
+		});
 	}
 }

@@ -2,7 +2,11 @@ import { Agent, type CheckpointStore, type RuntimeSkillSource, type Workspace } 
 
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
-import { ASK_USER_FALLBACK, SUBAGENT_OUTPUT_CONTRACT } from './shared-prompts';
+import {
+	ASK_USER_FALLBACK,
+	SUBAGENT_OUTPUT_CONTRACT,
+	UNTRUSTED_CONTENT_DOCTRINE,
+} from './shared-prompts';
 import { getDateTimeSection } from './system-prompt';
 import { toolRegistryValues } from '../tool-registry';
 import { buildAgentTraceInputs, mergeTraceRunInputs } from '../tracing/langsmith-tracing';
@@ -58,6 +62,7 @@ Keep diagnostics to 2-3 sentences maximum. Omit entirely when the task succeeded
 - One tool call at a time unless truly independent. Minimum tool calls needed.
 - You cannot delegate to other agents or create plans.
 - ${ASK_USER_FALLBACK}
+- ${UNTRUSTED_CONTENT_DOCTRINE}
 - ${SECRET_ASK_GUARDRAIL}`;
 
 export { SUB_AGENT_PROTOCOL };

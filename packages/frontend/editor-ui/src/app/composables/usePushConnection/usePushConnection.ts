@@ -24,6 +24,7 @@ import {
 	workflowDeactivated,
 	workflowAutoDeactivated,
 	workflowSettingsUpdated,
+	agentNodeProgress,
 } from '@/app/composables/usePushConnection/handlers';
 import type { PushHandlerOptions } from '@/app/composables/usePushConnection/handlers/types';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -76,6 +77,8 @@ export function usePushConnection({ router }: { router: ReturnType<typeof useRou
 		}
 
 		switch (event.type) {
+			case 'agentNodeProgress':
+				return await agentNodeProgress(event, options);
 			case 'testWebhookDeleted':
 				return await testWebhookDeleted(event, options);
 			case 'testWebhookReceived':

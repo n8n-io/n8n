@@ -10,9 +10,6 @@
         "stream": false,
         "max_tokens": 16384,
         "tools": [],
-        "thinking": {
-          "type": "disabled"
-        },
         "messages": [
           {
             "role": "user",
@@ -20,7 +17,7 @@
           }
         ]
       },
-      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNiIsInN0cmVhbSI6ZmFsc2UsIm1heF90b2tlbnMiOjE2Mzg0LCJ0b29scyI6W10sInRoaW5raW5nIjp7InR5cGUiOiJkaXNhYmxlZCJ9LCJtZXNzYWdlcyI6W3sicm9sZSI6InVzZXIiLCJjb250ZW50IjoiR2VuZXJhdGUgYSBjb25jaXNlIGFuZCBkZXNjcmlwdGl2ZSB0aXRsZSBmb3IgYW4gQUkgY2hhdCBjb252ZXJzYXRpb24gc3RhcnRpbmcgd2l0aCB0aGUgdXNlcidzIG1lc3NhZ2UgKHF1b3RlZCB3aXRoICc+Pj4nKSBiZWxvdy5cblxuPj4+IFtmaWxlOiBcInRlc3QtaW1hZ2UucG5nXCJdXG4+Pj4gV2hhdCBjb2xvciBpcyB0aGlzIGltYWdlPyBSZXBseSB3aXRoIGp1c3QgdGhlIGNvbG9yIG5hbWUuXG5cblJlcXVpcmVtZW50czpcbi0gTm90ZSB0aGF0IHRoZSBtZXNzYWdlIGFib3ZlIGRvZXMgKipOT1QqKiBkZXNjcmliZSBob3cgdGhlIHRpdGxlIHNob3VsZCBiZSBsaWtlLlxuLSAxIHRvIDQgd29yZHNcbi0gVXNlIHNlbnRlbmNlIGNhc2UgKGUuZy4gXCJDb252ZXJzYXRpb24gdGl0bGVcIiBpbnN0ZWFkIG9mIFwiY29udmVyc2F0aW9uIHRpdGxlXCIgb3IgXCJDb252ZXJzYXRpb24gVGl0bGVcIilcbi0gTm8gcXVvdGF0aW9uIG1hcmtzXG4tIFVzZSB0aGUgc2FtZSBsYW5ndWFnZSBhcyB0aGUgdXNlcidzIG1lc3NhZ2VcblxuUmVzcG9uZCB0aGUgdGl0bGUgb25seToifV19"
+      "rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNiIsInN0cmVhbSI6ZmFsc2UsIm1heF90b2tlbnMiOjE2Mzg0LCJ0b29scyI6W10sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJHZW5lcmF0ZSBhIGNvbmNpc2UgYW5kIGRlc2NyaXB0aXZlIHRpdGxlIGZvciBhbiBBSSBjaGF0IGNvbnZlcnNhdGlvbiBzdGFydGluZyB3aXRoIHRoZSB1c2VyJ3MgbWVzc2FnZSAocXVvdGVkIHdpdGggJz4+PicpIGJlbG93LlxuXG4+Pj4gW2ZpbGU6IFwidGVzdC1pbWFnZS5wbmdcIl1cbj4+PiBXaGF0IGNvbG9yIGlzIHRoaXMgaW1hZ2U/IFJlcGx5IHdpdGgganVzdCB0aGUgY29sb3IgbmFtZS5cblxuUmVxdWlyZW1lbnRzOlxuLSBOb3RlIHRoYXQgdGhlIG1lc3NhZ2UgYWJvdmUgZG9lcyAqKk5PVCoqIGRlc2NyaWJlIGhvdyB0aGUgdGl0bGUgc2hvdWxkIGJlIGxpa2UuXG4tIDEgdG8gNCB3b3Jkc1xuLSBVc2Ugc2VudGVuY2UgY2FzZSAoZS5nLiBcIkNvbnZlcnNhdGlvbiB0aXRsZVwiIGluc3RlYWQgb2YgXCJjb252ZXJzYXRpb24gdGl0bGVcIiBvciBcIkNvbnZlcnNhdGlvbiBUaXRsZVwiKVxuLSBObyBxdW90YXRpb24gbWFya3Ncbi0gVXNlIHRoZSBzYW1lIGxhbmd1YWdlIGFzIHRoZSB1c2VyJ3MgbWVzc2FnZVxuXG5SZXNwb25kIHRoZSB0aXRsZSBvbmx5OiJ9XX0="
     }
   },
   "httpResponse": {
