@@ -49,6 +49,8 @@ export declare namespace ExecutionRequest {
 			workflowId?: string;
 			lastId?: string;
 			projectId?: string;
+			startedAfter?: string;
+			startedBefore?: string;
 		}
 	>;
 

@@ -10,3 +10,5 @@ Forbidden:
   $ref: './forbidden.yml'
 PaymentRequired:
   $ref: './paymentRequired.yml'
+ServiceUnavailable:
+  $ref: './serviceUnavailable.yml'

@@ -161,6 +161,9 @@ onMounted(() => {
 				>
 					<component :is="resolveActivityComponent(entry)" :entry="entry" />
 				</div>
+				<div v-if="$slots.footer" role="listitem" :class="$style.item">
+					<slot name="footer" />
+				</div>
 			</div>
 		</template>
 	</div>

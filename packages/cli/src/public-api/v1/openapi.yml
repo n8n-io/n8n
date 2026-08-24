@@ -127,10 +127,6 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
   /workflows/{id}/deactivate:
     $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
-  /workflows/{id}/publish:
-    $ref: './handlers/workflows/spec/paths/workflows.id.publish.yml'
-  /workflows/{id}/unpublish:
-    $ref: './handlers/workflows/spec/paths/workflows.id.unpublish.yml'
   /workflows/{id}/test-runs:
     $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
   /workflows/{id}/test-runs/{runId}:

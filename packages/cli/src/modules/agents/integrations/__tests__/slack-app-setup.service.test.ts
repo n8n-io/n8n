@@ -1,4 +1,5 @@
 import type { Mock, Mocked } from 'vitest';
+import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -183,6 +184,7 @@ describe('Slack setup services', () => {
 			outboundHttp,
 			cacheService,
 			cipher,
+			mock<Logger>(),
 		);
 		const manualService = new SlackManualSetupService(
 			methods,

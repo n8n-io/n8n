@@ -188,6 +188,11 @@ const connectedClientsTotal = computed(
 	() => mcpStore.oauthClientTotals.all ?? mcpStore.oauthClientTotals.mine,
 );
 
+const onConnectClient = () => {
+	mcp.trackConnectClientClicked('settings');
+	mcpStore.openConnectPopover();
+};
+
 const openClientsView = () => {
 	void router.push({ name: MCP_CLIENTS_VIEW });
 };
@@ -296,7 +301,7 @@ onMounted(async () => {
 								icon="mcp"
 								:label="i18n.baseText('settings.mcp.yourClient.connect')"
 								data-test-id="mcp-connect-client-button"
-								@click="mcpStore.openConnectPopover()"
+								@click="onConnectClient"
 							/>
 						</template>
 					</N8nSettingsRow>

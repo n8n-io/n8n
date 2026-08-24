@@ -111,9 +111,23 @@ export const establishExecutionContext = async (
 
 	const executionData = runExecutionData.executionData;
 
+	// Call the execution context service to augment the context with any hook-based data
+	const executionContextService = Container.get(ExecutionContextService);
+
 	if (executionData.runtimeData) {
-		// Context is already established, no further action needed.
-		// This can happen, when a workflow is resumed from the database.
+		// Context is already established (e.g. established at webhook mint time,
+		// before the real executionId existed, or resumed from the database).
+		// Bind the now-known executionId to any sealed carrier so credential
+		// resolution can gate on executionPath. No-op for legacy (subject-less)
+		// carriers and when executionId is undefined; idempotent on resume.
+		// A retry reloads the original run's data under a NEW executionId, so its
+		// id must join the sealed carrier's path (allowInherit) or resolution would
+		// reject it. Resume keeps the same id, so the bind stays a no-op regardless.
+		executionData.runtimeData = await executionContextService.maybeBindExecutionId(
+			executionData.runtimeData,
+			additionalData?.executionId,
+			{ allowInherit: mode === 'retry' },
+		);
 		return;
 	}
 
@@ -128,6 +142,12 @@ export const establishExecutionContext = async (
 
 	if (additionalData?.encryptedRunnerIdentity) {
 		executionData.runtimeData.credentials = additionalData.encryptedRunnerIdentity;
+		if (executionData.runtimeData.credentials) {
+			executionData.runtimeData = await executionContextService.maybeBindExecutionId(
+				executionData.runtimeData,
+				additionalData.executionId,
+			);
+		}
 	}
 
 	if (runExecutionData.parentExecution) {
@@ -141,6 +161,12 @@ export const establishExecutionContext = async (
 			...executionData.runtimeData,
 			parentExecutionId: runExecutionData.parentExecution.executionId,
 		};
+
+		executionData.runtimeData = await executionContextService.maybeBindExecutionId(
+			executionData.runtimeData,
+			additionalData?.executionId,
+			{ allowInherit: true },
+		);
 
 		// The child inherits the parent's context, but its OWN execution record must
 		// still reflect context derived from the child workflow — most importantly
@@ -188,11 +214,16 @@ export const establishExecutionContext = async (
 			...executionData.runtimeData,
 			parentExecutionId: startItem.metadata.parentExecution.executionId,
 		};
+
+		// Bind this execution's id to any inherited sealed carrier so it stays
+		// resolvable within its own execution (mirrors the parentExecution branch).
+		executionData.runtimeData = await executionContextService.maybeBindExecutionId(
+			executionData.runtimeData,
+			additionalData?.executionId,
+			{ allowInherit: true },
+		);
 		return;
 	}
-
-	// Call the execution context service to augment the context with any hook-based data
-	const executionContextService = Container.get(ExecutionContextService);
 
 	try {
 		const { context, triggerItems } =

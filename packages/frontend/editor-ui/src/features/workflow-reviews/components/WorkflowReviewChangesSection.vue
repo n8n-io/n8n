@@ -13,6 +13,7 @@ import omit from 'lodash/omit';
 import { computed, markRaw } from 'vue';
 
 import WorkflowDiffView from '@/features/workflows/workflowDiff/WorkflowDiffView.vue';
+import { getVersionLabel } from '@/features/workflows/workflowHistory/utils';
 import type { IWorkflowDb } from '@/Interface';
 
 const props = defineProps<{
@@ -35,7 +36,7 @@ const isClosedWithoutApproval = computed(
  * Falsy rather than nullish: the publish endpoints accept `name: ""`.
  */
 const versionLabel = (snapshot: WorkflowReviewVersionSnapshot) =>
-	snapshot.name || snapshot.versionId.slice(0, 8);
+	getVersionLabel({ workflowHistory: snapshot });
 
 /**
  * A snapshot minus its identity and metadata — i.e. everything the diff renders.
