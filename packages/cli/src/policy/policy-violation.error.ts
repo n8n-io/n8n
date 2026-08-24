@@ -4,6 +4,10 @@ import { UserError } from 'n8n-workflow';
 /** `enforce*` only throws when something objected, so an empty list is a bug, not a case. */
 export type NonEmptyViolations = [PolicyViolation, ...PolicyViolation[]];
 
+/** Narrows a decision's violations to something `PolicyViolationError` will accept. */
+export const hasViolations = (violations: PolicyViolation[]): violations is NonEmptyViolations =>
+	violations.length > 0;
+
 function summarize(violations: NonEmptyViolations): string {
 	if (violations.length === 1) return violations[0].message;
 

@@ -217,6 +217,71 @@ export function findSetupHintProblems(
 export const INVALID_SETUP_HINT_MESSAGE =
 	'Each setup hint must be a secret-free template whose {{marker}}s match its placeholders one-to-one. Fix the recipe (or omit it entirely) and retry.';
 
+/**
+ * Registered type names often diverge from credential class names, and a
+ * made-up name sails through to a setup card the frontend cannot render.
+ * Resolve which requested types are unknown so setup fails fast with a
+ * corrective error instead. Types are trusted as-is when the service doesn't
+ * expose the lookup.
+ */
+async function findUnknownCredentialTypes(
+	context: InstanceAiContext,
+	credentialTypes: string[],
+): Promise<string[]> {
+	const service = context.credentialService;
+	if (!service.credentialTypeExists) return [];
+
+	const unknown: string[] = [];
+	for (const credentialType of new Set(credentialTypes)) {
+		// The templated type is created from the setupHint recipe, not looked up.
+		if (credentialType === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE) continue;
+		try {
+			if (!(await service.credentialTypeExists(credentialType))) {
+				unknown.push(credentialType);
+			}
+		} catch {
+			// Existence lookup failing is a soft signal — don't block setup on it.
+		}
+	}
+	return unknown;
+}
+
+/**
+ * Search queries for near-matches of an unknown type, most to least specific:
+ * the name itself, the name without its OAuth2/Api suffix, and the leading
+ * lowercase run (the service part of a camelCase name).
+ */
+function deriveTypeSuggestionQueries(credentialType: string): string[] {
+	const queries = [credentialType];
+	const withoutSuffix = credentialType.replace(/(?:OAuth2(?:Api)?|Api)$/, '');
+	if (withoutSuffix && !queries.includes(withoutSuffix)) queries.push(withoutSuffix);
+	const service = /^[a-z0-9]+/.exec(credentialType)?.[0];
+	if (service && !queries.includes(service)) queries.push(service);
+	return queries;
+}
+
+const MAX_TYPE_SUGGESTIONS = 5;
+
+async function suggestCredentialTypes(
+	context: InstanceAiContext,
+	credentialType: string,
+): Promise<Array<{ type: string; displayName: string }>> {
+	const service = context.credentialService;
+	if (!service.searchCredentialTypes) return [];
+
+	for (const query of deriveTypeSuggestionQueries(credentialType)) {
+		try {
+			const results = (await service.searchCredentialTypes(query)).filter(
+				(result) => !GENERIC_AUTH_CREDENTIAL_TYPES.has(result.type),
+			);
+			if (results.length > 0) return results.slice(0, MAX_TYPE_SUGGESTIONS);
+		} catch {
+			// Try the next, broader query.
+		}
+	}
+	return [];
+}
+
 // ── Action schemas ─────────────────────────────────────────────────────────
 
 const listAction = z.object({
@@ -290,7 +355,9 @@ const setupAction = z.object({
 			z.object({
 				credentialType: z
 					.string()
-					.describe('n8n credential type name (e.g. "slackApi", "gmailOAuth2Api")'),
+					.describe(
+						'n8n credential type name (e.g. "slackApi", "gmailOAuth2"). Must be the registered type name, which can differ from the credential class name — verify with action "search-types" when unsure.',
+					),
 				reason: z.string().optional().describe('Why this credential is needed (shown to user)'),
 				suggestedName: z
 					.string()
@@ -638,6 +705,27 @@ async function handleSetup(
 
 	// State 1: First call — look up existing credentials per type and suspend
 	if (resumeData === undefined || resumeData === null) {
+		const unknownTypes = await findUnknownCredentialTypes(
+			context,
+			input.credentials.map((req: { credentialType: string }) => req.credentialType),
+		);
+		if (unknownTypes.length > 0) {
+			const suggestions: Record<string, Array<{ type: string; displayName: string }>> = {};
+			for (const credentialType of unknownTypes) {
+				const matches = await suggestCredentialTypes(context, credentialType);
+				if (matches.length > 0) suggestions[credentialType] = matches;
+			}
+			return {
+				error: 'unknown_credential_type',
+				message: `No credential type named ${unknownTypes
+					.map((type) => `"${type}"`)
+					.join(
+						', ',
+					)} is registered on this instance. Type names can differ from credential class names. Pick the exact type from the suggestions, or find it with credentials(action: "search-types"), then retry.`,
+				...(Object.keys(suggestions).length > 0 ? { suggestions } : {}),
+			};
+		}
+
 		const hintProblems = input.credentials.flatMap(
 			(req: { credentialType: string; setupHint?: InstanceAiCredentialSetupHint }) => {
 				if (!req.setupHint) return [];

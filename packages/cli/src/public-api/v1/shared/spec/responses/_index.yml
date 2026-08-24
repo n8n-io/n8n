@@ -12,3 +12,5 @@ PaymentRequired:
   $ref: './paymentRequired.yml'
 UnsupportedMediaType:
   $ref: './unsupportedMediaType.yml'
+ServiceUnavailable:
+  $ref: './serviceUnavailable.yml'

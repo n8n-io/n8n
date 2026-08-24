@@ -1,9 +1,12 @@
 ARG NODE_VERSION=26.5.1
 ARG N8N_VERSION=snapshot
 
-# The runtime base has no compiler, so this stage supplies one.
 # The digest pins node:26.5.1-alpine3.24 for amd64 and arm64. Change the tag and the digest together.
-FROM node:26.5.1-alpine3.24@sha256:233761595746769ebfdb6090f44fc7cdf818ae0ce62d2b37e0367723b9823e36 AS toolchain
+ARG BUILDER_IMAGE=node:26.5.1-alpine3.24@sha256:233761595746769ebfdb6090f44fc7cdf818ae0ce62d2b37e0367723b9823e36
+ARG RUNTIME_IMAGE=n8nio/base:26.5.1@sha256:1b0bca5c94bbd04ad2120b9e9892a8bc717a1d88efa76fefe452c59bdc611d25
+
+# The runtime base has no compiler, so this stage supplies one.
+FROM ${BUILDER_IMAGE} AS toolchain
 RUN apk add --no-cache python3 make g++
 
 # Build isolated-vm in a separate stage. The only cache input is the module source.
@@ -40,12 +43,13 @@ COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
 # node-gyp-build finds build/Release first. Delete the prebuilds to remove the glibc fallback.
 RUN rm -rf /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/prebuilds
 
-# The digest pins n8nio/base:26.5.1 for amd64 and arm64. A separate workflow builds that
-# image, so a new base reaches this image only when you change the digest here.
-FROM n8nio/base:26.5.1@sha256:1b0bca5c94bbd04ad2120b9e9892a8bc717a1d88efa76fefe452c59bdc611d25
+# A separate workflow builds the base image, so a new base reaches this image only
+# when you change the reference here (see BUILDER_IMAGE/RUNTIME_IMAGE above).
+FROM ${RUNTIME_IMAGE}
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
+ARG IMAGE_DESCRIPTION="Workflow Automation Tool"
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
@@ -67,7 +71,7 @@ USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
 
 LABEL org.opencontainers.image.title="n8n" \
-      org.opencontainers.image.description="Workflow Automation Tool" \
+      org.opencontainers.image.description="${IMAGE_DESCRIPTION}" \
       org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
       org.opencontainers.image.url="https://n8n.io" \
       org.opencontainers.image.version=${N8N_VERSION}

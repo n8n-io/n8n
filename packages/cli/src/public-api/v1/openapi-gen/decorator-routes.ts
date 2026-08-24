@@ -37,6 +37,7 @@ export const ERROR_RESPONSE_REFS = {
 	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
 	415: { $ref: '../../../../shared/spec/responses/unsupportedMediaType.yml' },
+	503: { $ref: '../../../../shared/spec/responses/serviceUnavailable.yml' },
 } as const satisfies Record<number, { $ref: string }>;
 
 type DocumentedErrorStatus = keyof typeof ERROR_RESPONSE_REFS;
@@ -57,6 +58,7 @@ export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> 
 	404: 'The specified resource was not found.',
 	409: 'Conflict',
 	415: 'Unsupported media type.',
+	503: 'The requested service is temporarily unavailable.',
 };
 
 /** A `ResponseDtoClass` narrowed to the two fields the generator actually reads off it. */

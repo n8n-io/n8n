@@ -16,4 +16,8 @@ export class ExportPackageRequestDto extends Z.class({
 		.enum(['published-strict', 'prefer-published', 'ignore-unpublished', 'latest'])
 		.optional()
 		.default('latest'),
+	credentialExportPolicy: z
+		.enum(['expression-values-only', 'no-values'])
+		.optional()
+		.default('expression-values-only'),
 }) {}

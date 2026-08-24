@@ -6,6 +6,7 @@ import {
 	orchestratorAgentId,
 	releaseTraceClient,
 	submitLangsmithUserFeedback,
+	type BrowserExtensionTraceContext,
 	type InstanceAiTraceContext,
 	type ManagedBackgroundTask,
 	type ModelConfig,
@@ -202,6 +203,7 @@ export class InstanceAiTracingService {
 		proxyConfig?: ServiceProxyConfig;
 		resumeReason: OrchestratorResumeReason;
 		metadata?: Record<string, unknown>;
+		browserExtension?: BrowserExtensionTraceContext;
 		/** Defer process-local registration until the durable resume claim succeeds. */
 		register?: boolean;
 	}): Promise<InstanceAiTraceContext | undefined> {
@@ -226,6 +228,7 @@ export class InstanceAiTracingService {
 			},
 			n8nVersion: N8N_VERSION,
 			workflowSdkVersion: WORKFLOW_SDK_VERSION,
+			browserExtension: options.browserExtension,
 		});
 
 		if (tracing) {

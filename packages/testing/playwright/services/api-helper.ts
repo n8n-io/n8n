@@ -261,6 +261,22 @@ export class ApiHelpers {
 		return data.cursor;
 	}
 
+	async getPollerFailureState(
+		workflowId: string,
+		nodeId: string,
+	): Promise<{ consecutiveErrors: number; backoffUntil: string | null }> {
+		const response = await this.request.get('/rest/e2e/poller-state', {
+			params: { workflowId, nodeId },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to get poller failure state: ${await response.text()}`);
+		}
+		const { data } = (await response.json()) as {
+			data: { consecutiveErrors: number; backoffUntil: string | null };
+		};
+		return { consecutiveErrors: data.consecutiveErrors, backoffUntil: data.backoffUntil };
+	}
+
 	async countTaskRunners(): Promise<number> {
 		const response = await this.request.get('/rest/e2e/task-runners/count');
 		if (!response.ok()) {

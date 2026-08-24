@@ -238,6 +238,7 @@
       "v-code-diff": "patches/v-code-diff.patch",
       "vuedraggable@4.1.0": "patches/vuedraggable@4.1.0.patch",
       "assert@2.1.0": "patches/assert@2.1.0.patch",
+      "reka-ui@2.5.0": "patches/reka-ui@2.5.0.patch",
       "lodash@4.18.1": "patches/lodash@4.18.1.patch",
       "@langchain/openai@1.4.4": "patches/@langchain__openai@1.4.4.patch",
       "@langchain/google-common@2.1.24": "patches/@langchain__google-common@2.1.24.patch",
