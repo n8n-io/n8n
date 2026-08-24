@@ -2503,6 +2503,7 @@ export class InstanceAiService {
 			tracker: domainTracker,
 			runId,
 			permissionMode: context.permissions?.fetchUrl,
+			createCredentialPermissionMode: context.permissions?.createCredential,
 		});
 
 		// Compute gateway status for the system prompt. The direct browser
