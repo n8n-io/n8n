@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, toRef, useSlots, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, toRef, useSlots, watch, watchEffect } from 'vue';
 
 import { useAutosizeTextarea } from '../../composables/useAutosizeTextarea';
 import { useCharacterLimit } from '../../composables/useCharacterLimit';
@@ -95,6 +95,19 @@ const hasCustomActions = computed(
 const effectiveLayout = computed(() =>
 	props.layout === 'adaptive' && hasCustomActions.value ? 'multiline' : props.layout,
 );
+
+if (import.meta.env.DEV) {
+	watchEffect(() => {
+		if (props.layout === 'adaptive' && hasCustomActions.value) {
+			// eslint-disable-next-line no-console
+			console.warn(
+				'[N8nChatInput] `layout="adaptive"` supports only the default icon-only send/stop button. ' +
+					'Falling back to `multiline` because a custom button label or action slot was provided.',
+			);
+		}
+	});
+}
+
 const autosizeRows = computed(() =>
 	typeof props.autosize === 'object'
 		? props.autosize
