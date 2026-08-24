@@ -122,7 +122,11 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		// be committed by this poll and never by a later occurrence.
 		return await runPollInStagingScope(pollFunctions, async () => {
 			// Scheduled polls run outside any activation isolate window, so acquire and
-			// release one per tick; the finally releases even when poll() throws.
+			// release one per tick; the finally releases even when poll() throws, and
+			// even while an abandoned poll is still running. A late expression
+			// evaluation then fails and is discarded with the rest of that poll,
+			// whereas holding the isolate for a poll that may never settle would pin a
+			// pooled bridge for good.
 			await workflow.expression.acquireIsolate();
 			// Nothing past a returning poll is the source failing, so a hand-off or
 			// database error after it must not back the node off. A setup error before
