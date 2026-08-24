@@ -1,7 +1,9 @@
 import FormData from 'form-data';
 import { Readable } from 'stream';
+import { jsonParse } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	INodeExecutionData,
 	IRequestOptions,
 } from 'n8n-workflow';
@@ -182,6 +184,19 @@ describe('HTTP Node Utils', () => {
 				file: { value: STREAM_REPLACEMENT, options: { filename: 'f.pdf' } },
 				name: 'invoice',
 			});
+		});
+
+		// `__proto__` arrives as an own key on anything JSON.parse builds, and
+		// assigning it would retarget the copy's prototype and drop the key.
+		it('should keep an own __proto__ key without retargeting the prototype', () => {
+			const body = jsonParse('{"__proto__": {"injected": "yes"}, "keep": 1}');
+			const requestOptions: IRequestOptions = { method: 'POST', uri: 'https://example.com', body };
+
+			const sanitized = sanitizeUiMessage(requestOptions, {}).body as IDataObject;
+
+			expect(Object.getPrototypeOf(sanitized)).toBe(Object.prototype);
+			expect(Object.getOwnPropertyNames(sanitized)).toEqual(['__proto__', 'keep']);
+			expect(sanitized.injected).toBeUndefined();
 		});
 
 		it('should keep the placeholder when the body also carries auth data', () => {

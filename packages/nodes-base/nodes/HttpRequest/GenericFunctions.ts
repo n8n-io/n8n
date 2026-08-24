@@ -63,14 +63,17 @@ function replaceUploads(value: IDataObject[string]): IDataObject[string] {
 
 	if (!isObject(value)) return value;
 
-	const substituted: IDataObject = {};
-	for (const [key, entry] of Object.entries(value)) {
-		substituted[key] =
+	// `Object.fromEntries` defines each key instead of assigning it, so a request
+	// property carrying an own `__proto__` key keeps it rather than retargeting
+	// this object's prototype.
+	return Object.fromEntries(
+		Object.entries(value).map(([key, entry]) => [
+			key,
 			isObject(entry) && entry.value instanceof Stream
 				? { ...entry, value: STREAM_REPLACEMENT }
-				: entry;
-	}
-	return substituted;
+				: entry,
+		]),
+	) as IDataObject;
 }
 
 function redactString(str: string, secrets: string[]): string {
