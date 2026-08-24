@@ -1,3 +1,4 @@
+import { DatabaseConfig } from '@n8n/config';
 import { ScheduledTaskStatus } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { DataSource, In, type EntityManager, type ObjectLiteral } from '@n8n/typeorm';
@@ -9,15 +10,28 @@ import { BaseRepository } from './base-repository';
 import type { PollerCursor } from '../entities/poller-state';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
+import { dbNowLiteral, laterOfColumnAndNowPlusMsLiteral } from '../utils/dialect-time';
 
 export type { PollerCursor } from '../entities/poller-state';
 
 export type PollLeaseFence = { taskId: string; leaseEpoch: number };
 
+export interface PollerFailureState {
+	consecutiveErrors: number;
+	backoffUntil: Date | null;
+}
+
 @Service()
 export class PollerStateRepository extends BaseRepository<PollerState> {
-	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+	private readonly isPostgres: boolean;
+
+	constructor(
+		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
+		config: DatabaseConfig,
+	) {
 		super(PollerState, dataSource.manager, transactionRunner);
+		this.isPostgres = config.type === 'postgresdb';
 	}
 
 	/** The node's stored cursor, or `null` if it has never polled. */
@@ -96,7 +110,10 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 		const qb = manager
 			.createQueryBuilder()
 			.update(PollerState)
-			.set({ cursor, updatedAt: new Date() } as QueryDeepPartialEntity<PollerState>)
+			.set({
+				cursor,
+				updatedAt: () => dbNowLiteral(this.isPostgres),
+			} as QueryDeepPartialEntity<PollerState>)
 			.where({ workflowId, nodeId });
 
 		if (fence) {
@@ -132,6 +149,76 @@ export class PollerStateRepository extends BaseRepository<PollerState> {
 			workflowId: In(workflowIds),
 		});
 		return result.affected ?? 0;
+	}
+
+	/** The node's failure counters, or `null` if it has no stored row. */
+	async findFailureState(
+		workflowId: string,
+		nodeId: string,
+		ctx: OperationContext = {},
+	): Promise<PollerFailureState | null> {
+		const row = await this.managerFor(ctx).findOne(PollerState, {
+			select: ['consecutiveErrors', 'backoffUntil'],
+			where: { workflowId, nodeId },
+		});
+		return row === null
+			? null
+			: { consecutiveErrors: row.consecutiveErrors, backoffUntil: row.backoffUntil };
+	}
+
+	/**
+	 * Increments the failure counter and pushes the backoff deadline `delayMs` out from
+	 * DB-clock now, keeping a stored deadline that already stands further out. Update-only:
+	 * an upsert would have to invent a cursor value, seeding `{}` and destroying an
+	 * unmigrated node's static-data seed. A missing row is reported as `false`, not thrown.
+	 */
+	async recordFailure(
+		workflowId: string,
+		nodeId: string,
+		delayMs: number,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(PollerState)
+			.set({
+				// Both written in SQL rather than read-then-write, so two overlapping
+				// failing polls of the same node both count and neither shortens the
+				// other's deadline.
+				consecutiveErrors: () => '"consecutiveErrors" + 1',
+				backoffUntil: () =>
+					laterOfColumnAndNowPlusMsLiteral(this.isPostgres, '"backoffUntil"', delayMs),
+				updatedAt: () => dbNowLiteral(this.isPostgres),
+			} as QueryDeepPartialEntity<PollerState>)
+			.where('workflowId = :workflowId AND nodeId = :nodeId', { workflowId, nodeId })
+			.execute();
+
+		return result.affected === 1;
+	}
+
+	/**
+	 * Zeroes the counter and clears the deadline. Update-only, and guarded on the row
+	 * still carrying failures, so an already-clean row is never touched. `false`
+	 * therefore means either no row or nothing to clear.
+	 */
+	async clearFailures(
+		workflowId: string,
+		nodeId: string,
+		ctx: OperationContext = {},
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx)
+			.createQueryBuilder()
+			.update(PollerState)
+			.set({
+				consecutiveErrors: 0,
+				backoffUntil: null,
+				updatedAt: () => dbNowLiteral(this.isPostgres),
+			} as QueryDeepPartialEntity<PollerState>)
+			.where('workflowId = :workflowId AND nodeId = :nodeId', { workflowId, nodeId })
+			.andWhere('("consecutiveErrors" <> 0 OR "backoffUntil" IS NOT NULL)')
+			.execute();
+
+		return result.affected === 1;
 	}
 
 	private buildFenceClause(
