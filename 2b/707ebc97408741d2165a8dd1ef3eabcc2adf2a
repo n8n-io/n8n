@@ -1,0 +1,25 @@
+CONTRIBUTING.md
+  s_81c6ae39c83974::t_87c94a172f9047 238-247
+packages/testing/playwright/global-teardown.ts
+  s_81c6ae39c83974::t_1dcaeb08b9a52d 8-19
+packages/testing/playwright/scripts/run-local-isolated.mjs
+  s_81c6ae39c83974::t_1d984d7549a36c 12-13,79-80
+.github/workflows/test-dev-server-smoke-reusable.yml
+  s_81c6ae39c83974::t_1d984d7549a36c 19,39-42,46-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "2b707ebc97408741d2165a8dd1ef3eabcc2adf2a",
+  "prompts": {},
+  "sessions": {
+    "s_81c6ae39c83974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2a3857c-dcc3-4658-b86e-6436a170b7e9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
