@@ -1,6 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { AgentTaskSchedule } from '../entities/agent-task-schedule.entity';
 
@@ -23,6 +24,9 @@ export class AgentTaskScheduleRepository extends Repository<AgentTaskSchedule> {
 	 * A link already recorded is left as-is (see `ScheduledJobRepository.insertMany`)
 	 */
 	async insertMany(manager: EntityManager, links: NewAgentTaskSchedule[]): Promise<void> {
+		if (manager.queryRunner === undefined) {
+			throw new UnexpectedError('insertMany must run within a transaction');
+		}
 		if (links.length === 0) return;
 		await manager
 			.createQueryBuilder()

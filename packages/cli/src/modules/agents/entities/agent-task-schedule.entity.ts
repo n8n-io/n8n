@@ -15,6 +15,9 @@ import type { Agent } from './agent.entity';
  * Links a `scheduled_job` row to the agent that owns it. Agent jobs carry
  * `workflowId = NULL`, so this table is what makes them queryable and
  * cleanable per agent. One row per agent-owned job.
+ *
+ * Deleting the agent cascades the link rows, which are the only route from an
+ * agent to its jobs — deprovision the linked jobs BEFORE removing the agent row.
  */
 @Entity({ name: 'agent_task_schedule' })
 export class AgentTaskSchedule extends WithCreatedAt {

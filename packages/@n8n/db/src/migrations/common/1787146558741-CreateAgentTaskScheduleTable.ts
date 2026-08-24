@@ -5,8 +5,9 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
  * `workflowId = NULL`, so without this table they would be invisible to
  * per-agent queries and cleanup. One row per agent-owned job.
  *
- * Deleting the agent cascades the link rows; the jobs themselves are removed
- * by the agents module's reconcile path, which also handles unpublish.
+ * Deleting the agent cascades the link rows, which are the only route from an
+ * agent to its jobs — so the agents module must deprovision the linked jobs
+ * BEFORE removing the agent row; afterwards the jobs are unreachable.
  */
 export class CreateAgentTaskScheduleTable1787146558741 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
