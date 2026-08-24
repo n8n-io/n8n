@@ -19,6 +19,7 @@ import { useThread } from '../instanceAi.store';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
+import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
 import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import ThinkingBlock from './ThinkingBlock.vue';
@@ -152,16 +153,15 @@ function isPlanReviewUpdating(tc: InstanceAiToolCallState): boolean {
 	return thread.updatingPlanRequestIds.has(requestId);
 }
 
-/** PlanReviewPanel is read-only when its tool call has settled OR when the
- *  underlying confirmation has already been resolved client-side. Without the
- *  resolvedConfirmationIds check, a freshly-loading create-tasks call could
- *  briefly re-enable the old card's footer (toolCall.isLoading flips back to
- *  true on tool-call-start before the previous card's read-only catches up). */
-function isPlanCardReadOnly(tc: InstanceAiToolCallState): boolean {
+/** An in-transcript card is read-only once its tool call has settled OR its
+ *  confirmation was resolved client-side. Without the resolvedConfirmationIds
+ *  check, a freshly-loading create-tasks call could briefly re-enable the old
+ *  card's footer (toolCall.isLoading flips back to true on tool-call-start
+ *  before the previous card's read-only catches up). */
+function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 	if (!tc.isLoading) return true;
 	const requestId = tc.confirmation?.requestId;
-	if (requestId && thread.resolvedConfirmationIds.has(requestId)) return true;
-	return false;
+	return !!requestId && thread.resolvedConfirmationIds.has(requestId);
 }
 
 function handlePlanApprove(tc: InstanceAiToolCallState) {
@@ -194,7 +194,7 @@ function handlePlanApprove(tc: InstanceAiToolCallState) {
 
 function handlePlanAskForEdits(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
-	if (!requestId || isPlanCardReadOnly(tc)) return;
+	if (!requestId || isCardReadOnly(tc)) return;
 
 	thread.startPlanEdit({
 		requestId,
@@ -274,11 +274,21 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 				:planned-tasks="getPlanTasks(block.toolCall)"
 				:status="getPlanReviewStatus(block.toolCall)"
 				:updating="isPlanReviewUpdating(block.toolCall)"
-				:read-only="isPlanCardReadOnly(block.toolCall)"
+				:read-only="isCardReadOnly(block.toolCall)"
 				:expired="block.toolCall.confirmation?.expired"
 				@approve="handlePlanApprove(block.toolCall)"
 				@ask-for-edits="handlePlanAskForEdits(block.toolCall)"
 				@deny="handlePlanDeny(block.toolCall)"
+			/>
+
+			<InstanceAiMcpConnect
+				v-else-if="block.type === 'mcp-connect' && block.toolCall.confirmation?.mcpConnectRequest"
+				:key="block.toolCall.confirmation.requestId"
+				:request-id="block.toolCall.confirmation.requestId"
+				:input-thread-id="block.toolCall.confirmation.inputThreadId"
+				:servers="block.toolCall.confirmation.mcpConnectRequest.servers"
+				:read-only="isCardReadOnly(block.toolCall)"
+				:expired="block.toolCall.confirmation.expired"
 			/>
 
 			<!-- Answered questions (read-only after resolution) -->

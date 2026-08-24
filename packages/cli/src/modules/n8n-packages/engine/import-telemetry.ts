@@ -6,7 +6,7 @@ import type { TagImportPlan, TagImportRequest } from '../entities/tag/tag.types'
 import type { VariableImportRequest } from '../entities/variable/variable.types';
 import type { PersistedWorkflowOutcome } from '../entities/workflow/workflow-import.types';
 import { VariableParentPolicy } from '../n8n-packages.types';
-import type { ImportContext, ImportPackageRequest } from '../n8n-packages.types';
+import type { ImportContext, ResolvedImportPackageRequest } from '../n8n-packages.types';
 import type { ImportContentResult } from './import-orchestrator';
 import { reconcileVariableSummary } from './import-result';
 import type { PackageManifest } from '../spec/manifest.schema';
@@ -24,7 +24,7 @@ export interface PackageImportScope {
 export function emitPackageImportedEvent(
 	eventService: EventService,
 	params: {
-		request: ImportPackageRequest;
+		request: ResolvedImportPackageRequest;
 		manifest: PackageManifest;
 		scopes: PackageImportScope[];
 	},
@@ -32,6 +32,7 @@ export function emitPackageImportedEvent(
 	const { request, manifest, scopes } = params;
 
 	const workflowOutcomes = scopes.flatMap(({ imported }) => imported.workflowOutcomes);
+	const removedWorkflows = scopes.flatMap(({ imported }) => imported.removedWorkflows);
 	const credentialResults = scopes.map(({ imported }) => imported.credentialResult);
 	const importedWorkflows = workflowOutcomes.filter(({ status }) => status !== 'skipped');
 	const countByStatus = (status: PersistedWorkflowOutcome['status']) =>
@@ -73,10 +74,10 @@ export function emitPackageImportedEvent(
 		created: scopes.flatMap(({ imported }) => imported.variableResult.created),
 		stubbed: scopes.flatMap(({ imported }) => imported.variableResult.stubbed),
 		skipped: scopes.flatMap(({ imported }) => imported.variableResult.skippedExisting),
+		updated: scopes.flatMap(({ imported }) => imported.variableResult.updated),
 	});
-	// Rows, not reconciled names: a name created in two projects is two variables, and every sibling
-	// count reports entities the same way.
-	const countCreatedRows = (pick: (result: ImportContentResult) => string[]) =>
+	// Rows, not reconciled names: a name written in two projects is two rows.
+	const countRows = (pick: (result: ImportContentResult) => string[]) =>
 		scopes.reduce((total, { imported }) => total + pick(imported).length, 0);
 
 	// Tags are global, so several scopes may plan the same tag; count each id once.
@@ -101,10 +102,16 @@ export function emitPackageImportedEvent(
 			credentialMissingMode: request.credentialMissingMode,
 			workflowPublishingPolicy: request.workflowPublishingPolicy,
 			missingNodeTypeMode: request.missingNodeTypeMode,
+			projectConflictPolicy: request.projectConflictPolicy,
+			// Settled by the dispatcher before any importer runs, so analytics see what the import
+			// actually ran under rather than a blank meaning "same as the project policy".
+			folderConflictPolicy: request.folderConflictPolicy,
+			overwriteDeletionPolicy: request.overwriteDeletionPolicy,
 			dataTableMatchingMode: request.dataTableMatchingMode,
 			dataTableMissingMode: request.dataTableMissingMode,
 			dataTableSchemaConflictPolicy: request.dataTableSchemaConflictPolicy,
 			variableMissingMode: request.variableMissingMode,
+			variableConflictPolicy: request.variableConflictPolicy,
 			// An omitted policy places variables in the project, so report what the import did.
 			variableParentPolicy: request.variableParentPolicy ?? VariableParentPolicy.Project,
 			tagMissingMode: request.tagMissingMode,
@@ -122,6 +129,13 @@ export function emitPackageImportedEvent(
 				created: countByStatus('created'),
 				updated: countByStatus('updated'),
 				skipped: countByStatus('skipped'),
+				// Reconciliation removals, split by what actually happened — a `hard-delete` whose
+				// row could not be dropped yet counts as archived, like the API response reports it.
+				archived: removedWorkflows.filter(({ deletion }) => deletion === 'archived').length,
+				deleted: removedWorkflows.filter(({ deletion }) => deletion === 'deleted').length,
+			},
+			folders: {
+				removed: scopes.reduce((total, { imported }) => total + imported.removedFolders.length, 0),
 			},
 			credentials: {
 				matched: matchedCredentialIds.length,
@@ -136,8 +150,9 @@ export function emitPackageImportedEvent(
 			variables: {
 				matched: variableSummary.matched.length,
 				missing: variableSummary.missing.length,
-				created: countCreatedRows(({ variableResult }) => variableResult.created),
-				stubbed: countCreatedRows(({ variableResult }) => variableResult.stubbed),
+				created: countRows(({ variableResult }) => variableResult.created),
+				stubbed: countRows(({ variableResult }) => variableResult.stubbed),
+				updated: countRows(({ variableResult }) => variableResult.updated),
 				requirements: variableRequirements,
 			},
 			tags: {

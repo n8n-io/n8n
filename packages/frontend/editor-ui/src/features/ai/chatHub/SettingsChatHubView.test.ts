@@ -21,7 +21,7 @@ const { settingsState, setChatEnabledMock } = vi.hoisted(() => ({
 	setChatEnabledMock: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		get moduleSettings() {
 			return { 'chat-hub': createChatHubModuleSettings({ enabled: settingsState.enabled }) };

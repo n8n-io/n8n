@@ -4,7 +4,7 @@ import { ensureThread } from '../instanceAi.api';
 import { deleteThread as deleteThreadApi } from '../instanceAi.memory.api';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import type { InstanceAiThreadSummary } from '@n8n/api-types';
+import { UNLIMITED_CREDITS, type InstanceAiThreadSummary } from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -192,7 +192,8 @@ describe('useInstanceAiStore - credits', () => {
 	});
 
 	describe('credits push listener', () => {
-		it('writes creditsUsed onto the matching thread from the push payload', () => {
+		/** Registers the store's push listener and hands back the callback the store subscribed with. */
+		function startListening() {
 			let pushCb: (m: unknown) => void = () => {};
 			vi.mocked(usePushConnectionStore).mockReturnValue({
 				addEventListener: vi.fn((cb: (m: unknown) => void) => {
@@ -201,6 +202,11 @@ describe('useInstanceAiStore - credits', () => {
 				}),
 			} as unknown as ReturnType<typeof usePushConnectionStore>);
 
+			return (message: unknown) => pushCb(message);
+		}
+
+		it('writes creditsUsed onto the matching thread from the push payload', () => {
+			const pushCb = startListening();
 			const store = useInstanceAiStore();
 			store.threads.push(makeThread('t1', {}));
 			store.startCreditsPushListener();
@@ -216,6 +222,91 @@ describe('useInstanceAiStore - credits', () => {
 
 			expect(store.creditsClaimed).toBe(5);
 			expect(store.threadCreditsUsed('t1')).toBe(2.5);
+		});
+
+		it('picks up the quota lock from the push payload', () => {
+			const pushCb = startListening();
+			const store = useInstanceAiStore();
+			store.startCreditsPushListener();
+
+			pushCb({
+				type: 'updateInstanceAiCredits',
+				// What the activation-capped cohort receives: no usable figures, just the lock.
+				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0, quotaLocked: true },
+			});
+
+			expect(store.quotaLocked).toBe(true);
+			expect(store.showCreditWarning).toBe(true);
+		});
+
+		// A claim push carries no lock state, and claims can land after the lock — a background
+		// memory task, or a fire-and-forget HITL segment claim from an earlier run. Treating the
+		// absent field as `false` would clear the warning the lock had just raised.
+		it('keeps the quota lock when a later push omits it', () => {
+			const pushCb = startListening();
+			const store = useInstanceAiStore();
+			store.startCreditsPushListener();
+
+			pushCb({
+				type: 'updateInstanceAiCredits',
+				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0, quotaLocked: true },
+			});
+			expect(store.showCreditWarning).toBe(true);
+
+			// What a claim pushes: figures only, no lock state.
+			pushCb({
+				type: 'updateInstanceAiCredits',
+				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 },
+			});
+
+			expect(store.quotaLocked).toBe(true);
+			expect(store.showCreditWarning).toBe(true);
+		});
+
+		// Absence means "no opinion", but an explicit false is still an answer — an upgraded
+		// account must be able to get its balance back.
+		it('clears the quota lock when a push says so explicitly', () => {
+			const pushCb = startListening();
+			const store = useInstanceAiStore();
+			store.startCreditsPushListener();
+
+			pushCb({
+				type: 'updateInstanceAiCredits',
+				data: { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0, quotaLocked: true },
+			});
+			pushCb({
+				type: 'updateInstanceAiCredits',
+				data: { creditsQuota: 800, creditsClaimed: 12.5, quotaLocked: false },
+			});
+
+			expect(store.quotaLocked).toBe(false);
+			expect(store.showCreditWarning).toBe(false);
+		});
+	});
+
+	// For the activation-capped cohort the balance is masked, so `isLowCredits` can never fire.
+	describe('showCreditWarning', () => {
+		it('is false with no credit information', () => {
+			const store = useInstanceAiStore();
+			expect(store.showCreditWarning).toBe(false);
+		});
+
+		it('is true when credits are running low', () => {
+			const store = useInstanceAiStore();
+			store.creditsQuota = 100;
+			store.creditsClaimed = 95;
+
+			expect(store.showCreditWarning).toBe(true);
+		});
+
+		it('is true when the pool is locked despite a masked balance', () => {
+			const store = useInstanceAiStore();
+			store.creditsQuota = UNLIMITED_CREDITS;
+			store.creditsClaimed = 0;
+			store.quotaLocked = true;
+
+			expect(store.isLowCredits).toBe(false);
+			expect(store.showCreditWarning).toBe(true);
 		});
 	});
 

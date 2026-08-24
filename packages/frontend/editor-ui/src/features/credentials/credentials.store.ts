@@ -16,7 +16,7 @@ import type { ProjectSharingData } from '@/features/collaboration/projects/proje
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
-import { isEmpty, isPresent } from '@/app/utils/typesUtils';
+import { isEmpty } from '@/app/utils/typesUtils';
 import type {
 	ICredentialsDecrypted,
 	ICredentialType,
@@ -29,7 +29,7 @@ import { defineStore } from 'pinia';
 import { computed, ref, type DeepReadonly } from 'vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import * as aiApi from '@/features/ai/assistant/assistant.api';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
@@ -148,17 +148,28 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		};
 	});
 
-	const getNodesWithAccess = computed(() => {
-		return (credentialTypeName: string) => {
+	const isCredentialTypeTestable = computed(() => {
+		return (credentialTypeName: string): boolean => {
 			const credentialType = getCredentialTypeByName.value(credentialTypeName);
-			if (!credentialType) {
-				return [];
-			}
+			if (!credentialType) return false;
+			if (credentialType.test) return true;
+
 			const nodeTypesStore = useNodeTypesStore();
 
-			return (credentialType.supportedNodes ?? [])
-				.map((nodeType) => nodeTypesStore.getNodeType(nodeType))
-				.filter(isPresent);
+			// Every registered version has to be checked, not just the newest: `testedBy` is
+			// often declared only on an older version, and the backend resolves the test
+			// across all versions too. Reading one version hides tests that do exist.
+			return (credentialType.supportedNodes ?? []).some((nodeType) =>
+				nodeTypesStore
+					.getNodeVersions(nodeType)
+					.some((version) =>
+						nodeTypesStore
+							.getNodeType(nodeType, version)
+							?.credentials?.some(
+								(credential) => credential.name === credentialTypeName && credential.testedBy,
+							),
+					),
+			);
 		};
 	});
 
@@ -416,12 +427,21 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		await credentialsApi.disconnectOauthToken(rootStore.restApiContext, id);
 	};
 
-	const setConnectedByMe = (id: string, connectedByMe: boolean) => {
+	/**
+	 * Mirrors the caller's own connection state locally. The account identifier is
+	 * only known server-side, so it is cleared unless one is passed in — better no
+	 * label than a stale one from the previously connected account.
+	 */
+	const setConnectedByMe = (
+		id: string,
+		connectedByMe: boolean,
+		connectedAccountIdentifier?: string,
+	) => {
 		const existing = state.value.credentials[id];
 		if (existing) {
 			state.value.credentials = {
 				...state.value.credentials,
-				[id]: { ...existing, connectedByMe },
+				[id]: { ...existing, connectedByMe, connectedAccountIdentifier },
 			};
 		}
 	};
@@ -478,6 +498,16 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		}
 	};
 
+	/** Run a caller-chosen name through the server's numbering dedup ("X" → "X 2" on clash). */
+	const getDedupedCredentialName = async (name: string): Promise<string> => {
+		try {
+			const res = await credentialsApi.getCredentialsNewName(rootStore.restApiContext, name);
+			return res.name;
+		} catch (e) {
+			return name;
+		}
+	};
+
 	const setCredentialSharedWith = async (payload: {
 		sharedWithProjects: ProjectSharingData[];
 		credentialId: string;
@@ -526,7 +556,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		getCredentialById,
 		getCredentialTypeByName,
 		getCredentialByIdAndType,
-		getNodesWithAccess,
+		isCredentialTypeTestable,
 		getUsableCredentialByType,
 		credentialTypesById,
 		httpOnlyCredentialTypes,
@@ -554,6 +584,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		oAuth1Authorize,
 		oAuth2Authorize,
 		getNewCredentialName,
+		getDedupedCredentialName,
 		testCredential,
 		getCredentialTranslation,
 		setCredentialSharedWith,

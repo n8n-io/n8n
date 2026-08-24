@@ -35,6 +35,8 @@ import PCancelable from 'p-cancelable';
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { MaxStalledCountError } from '@/errors/max-stalled-count.error';
+// `no-cycle` still reports a cycle here, but only through the dynamic import
+// in `execute-error-workflow`, which creates no evaluation-order edge.
 // eslint-disable-next-line import-x/no-cycle
 import {
 	getLifecycleHooksForRegularMain,
@@ -180,16 +182,13 @@ export class WorkflowRunner {
 		this.activeExecutions.finalizeExecution(executionId);
 	}
 
-	/** Run the workflow
-	 * @param realtime This is used in queue mode to change the priority of an execution, making sure they are picked up quicker.
+	/**
+	 * Returns the masking error, if any, having already emptied the trigger-item stack
+	 * either way.
 	 */
-	async run(
+	async establishContextForPersistence(
 		data: IWorkflowExecutionDataProcess,
-		loadStaticData?: boolean,
-		realtime?: boolean,
-		existingExecution?: ResumableExecution,
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-	): Promise<string> {
+	): Promise<(ExecutionError & { node?: INode }) | undefined> {
 		// Establish the execution context before persisting to the DB.
 		// activeExecutions.add() -> executionPersistence.create() writes
 		// data.executionData to the DB; any header masking or runtimeData
@@ -233,6 +232,21 @@ export class WorkflowRunner {
 				establishContextError = error as ExecutionError & { node?: INode };
 			}
 		}
+
+		return establishContextError;
+	}
+
+	/** Run the workflow
+	 * @param realtime This is used in queue mode to change the priority of an execution, making sure they are picked up quicker.
+	 */
+	async run(
+		data: IWorkflowExecutionDataProcess,
+		loadStaticData?: boolean,
+		realtime?: boolean,
+		existingExecution?: ResumableExecution,
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+	): Promise<string> {
+		const establishContextError = await this.establishContextForPersistence(data);
 
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, existingExecution);
@@ -523,6 +537,7 @@ export class WorkflowRunner {
 			mcpSessionId: data.mcpSessionId,
 			mcpMessageId: data.mcpMessageId,
 			mcpToolCall: data.mcpToolCall,
+			mcpToolInput: data.mcpToolInput,
 		};
 
 		if (!this.scalingService) {

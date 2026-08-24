@@ -26,6 +26,7 @@ export interface ToolExecutionContext {
 	persistence?: {
 		threadId: string;
 		resourceId: string;
+		hostMetadata?: JSONObject;
 	};
 	/** Internal runtime event bridge for platform-managed tools. */
 	emitEvent?: (event: AgentEventData) => void;
@@ -136,7 +137,9 @@ export interface BuiltTool {
 	readonly handleCancellation?: boolean;
 	/** Run cleanup before the runtime auto-cancels a suspended tool call. */
 	readonly onCancellation?: (input: unknown, ctx: ToolCancellationContext) => Promise<void>;
-	readonly toMessage?: (output: unknown) => AgentMessage | undefined;
+	readonly toMessage?: (
+		output: unknown,
+	) => AgentMessage | undefined | Promise<AgentMessage | undefined>;
 	/**
 	 * Transform the handler output before sending it to the LLM as a tool result.
 	 * The raw output is stored in history; only the transformed version goes to the model.

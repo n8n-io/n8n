@@ -36,7 +36,7 @@ vi.mock('@/app/stores/aiGateway.store', () => ({
 	}),
 }));
 
-vi.mock('@/app/stores/settings.store', () => ({
+vi.mock('@n8n/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		get isAiGatewayEnabled() {
 			return aiGatewayState.isEnabled.value;

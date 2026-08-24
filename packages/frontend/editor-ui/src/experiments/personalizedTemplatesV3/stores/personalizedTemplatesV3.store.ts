@@ -3,7 +3,7 @@ import { PERSONALIZED_TEMPLATES_V3, VIEWS } from '@/app/constants';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { STORES } from '@n8n/stores';

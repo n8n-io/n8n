@@ -80,16 +80,35 @@ export async function resolveLogins(repo, shas, token, fetchFn = fetch) {
 }
 
 // Build the conflict-PR body, reviewer CSV, and Slack owner line.
-export function buildOutputs({ syncBranch, targetBranch = '3.x', files, owners }) {
+export function buildOutputs({
+	syncBranch,
+	targetBranch = '3.x',
+	files,
+	owners,
+	preResolved = [],
+	lockfileDeferred = false,
+	abandoned = [],
+}) {
 	const filesMd = files.map((f) => `- \`${f}\``).join('\n') || '_none detected_';
 	const ownersMd = owners.length
 		? owners.map((o) => `- @${o}`).join('\n')
 		: '_Could not auto-attribute — review the conflicted files manually._';
-	const slack = owners.length
-		? `Likely owners (GitHub): ${owners.map((o) => `@${o}`).join(' ')}`
-		: 'Could not auto-attribute owners.';
+	const abandonedWarning = abandoned.length
+		? `A previous PR for this recurring conflict (${abandoned.map((pr) => `#${pr.number}`).join(', ')}) was closed without being merged. Closing resolves nothing — the conflict comes back on the next sync. **Merge, don't close.**`
+		: '';
+	const slack = [
+		owners.length
+			? `Likely owners (GitHub): ${owners.map((o) => `@${o}`).join(' ')}`
+			: 'Could not auto-attribute owners.',
+		abandoned.length
+			? `⚠️ ${abandoned.map((pr) => `<${pr.url}|#${pr.number}>`).join(', ')} was closed without merging and the conflict is back — merge this one, don't close it.`
+			: '',
+	]
+		.filter(Boolean)
+		.join(' ');
 	const body = [
 		`Automated \`master\`→\`${targetBranch}\` sync hit a conflict.`,
+		...(abandonedWarning ? ['', '> [!WARNING]', `> ${abandonedWarning}`] : []),
 		'',
 		`**\`${targetBranch}\` was not touched.** This branch is \`master\` merged into \`${targetBranch}\` with the **conflict markers committed**, so you can see exactly what clashed. The required checks stay red until they are resolved, so this PR cannot be merged half-done.`,
 		'',
@@ -97,12 +116,27 @@ export function buildOutputs({ syncBranch, targetBranch = '3.x', files, owners }
 		`1. \`git fetch origin ${syncBranch} && git switch ${syncBranch}\``,
 		'2. Fix the conflict markers and commit them **in one commit of your own** (rather than amending the merge).',
 		`3. \`git push origin ${syncBranch}\``,
-		`4. **Merge this PR with the normal merge button.** \`master\`'s commits come in as-is and your fix stays its own commit — nothing is squashed.`,
+		`4. **Merge this PR with the normal merge button.** \`master\`'s commits come in as-is and your fix stays its own commit — nothing is squashed. Never close this PR unmerged: closing resolves nothing and the same conflict reopens on the next sync.`,
 		'',
 		`**Daily syncs are paused until this PR is merged.** The next sync then replays \`${targetBranch}\` onto master linearly again — which also drops this merge commit and its markers out of \`${targetBranch}\`'s history — and verifies the result is exactly what a merge would produce.`,
 		'',
 		'### Conflicted files',
 		filesMd,
+		...(preResolved.length
+			? [
+					'',
+					'### Auto-resolved for you',
+					'These tool-generated files also conflicted and were resolved mechanically — no action needed:',
+					preResolved.map((f) => `- \`${f}\``).join('\n'),
+				]
+			: []),
+		...(lockfileDeferred
+			? [
+					'',
+					'> [!NOTE]',
+					'> `pnpm-lock.yaml` still carries its conflict markers because a manifest (`package.json` / `pnpm-workspace.yaml`) is conflicted too, or its regeneration failed. After resolving the manifests, regenerate it with `pnpm install --lockfile-only` and commit the result.',
+				]
+			: []),
 		'',
 		'### Likely owners',
 		`Authors of the ${targetBranch} commits behind the conflicted files, requested as reviewers:`,

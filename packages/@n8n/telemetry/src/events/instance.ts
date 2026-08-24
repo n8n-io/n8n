@@ -64,8 +64,20 @@ export const INSTANCE_TELEMETRY = defineTelemetryEvents({
 					sandbox_provider: z.string(),
 					search_brave_set: z.boolean(),
 					search_searxng_set: z.boolean(),
+					model_env_set: z
+						.boolean()
+						.describe(
+							'Model connection env vars are set (API key or base URL). UI-credential model state is on the "AI Assistant setup completed" and "User viewed AI Assistant setup page" events instead',
+						),
+					model_id: z
+						.string()
+						.describe(
+							"Configured model identifier incl. provider, e.g. 'anthropic/claude-sonnet-4'",
+						),
 				})
-				.describe('Which sandbox and search providers are configured, never key values'),
+				.describe(
+					'Which model, sandbox and search providers are configured via env vars, never key values',
+				),
 			metrics: z.object({
 				metrics_enabled: z.boolean(),
 				metrics_category_default: z.boolean(),

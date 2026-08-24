@@ -4,7 +4,7 @@ import { defineStore } from 'pinia';
 import { useStorage } from '@n8n/composables/useStorage';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { FeatureFlags, IDataObject } from 'n8n-workflow';
 import { EXPERIMENTS_TO_TRACK, LOCAL_STORAGE_EXPERIMENT_OVERRIDES } from '@/app/constants';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -184,6 +184,9 @@ export const usePostHog = defineStore('posthog', () => {
 			session_recording: {
 				maskAllInputs: false,
 			},
+			...(!config.disableSessionRecording && {
+				tracing_headers: [new URL(rootStore.restUrl, window.location.origin).hostname],
+			}),
 		};
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {

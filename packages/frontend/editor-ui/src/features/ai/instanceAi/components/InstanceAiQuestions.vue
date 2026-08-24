@@ -82,7 +82,6 @@ const hasValidAnswer = computed(() => {
 });
 
 const showSkipButton = computed(() => {
-	if (isLastQuestion.value) return false;
 	if (currentQuestion.value?.type === 'single' && hasCustomText.value) return false;
 	return true;
 });
@@ -96,13 +95,13 @@ const showNextButton = computed(() => {
 const isNextEnabled = computed(() => {
 	const q = currentQuestion.value;
 	if (!q) return false;
-	if (isLastQuestion.value) return true;
-	if (q.type === 'single') return hasCustomText.value;
+	// Blank text is a valid submission — it advances marked as skipped
+	if (q.type === 'text') return true;
+	if (q.type === 'single') return hasValidAnswer.value;
 	if (q.type === 'multi') {
 		const answer = currentAnswer.value;
 		return (answer?.selectedOptions.length ?? 0) > 0 || hasCustomText.value;
 	}
-	if (q.type === 'text') return hasCustomText.value;
 	return false;
 });
 

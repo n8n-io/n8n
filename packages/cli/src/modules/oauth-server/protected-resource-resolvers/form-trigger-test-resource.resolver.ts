@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
@@ -10,7 +9,9 @@ import { UrlService } from '@/services/url.service';
 import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registrations.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { triggerResourceGate } from '../resource-gate';
 import {
+	FORM_TRIGGER_CONSENT_HINTS,
 	FORM_TRIGGER_SCOPES,
 	resourceUrlToWebhookPath,
 	trimSlashes,
@@ -84,26 +85,20 @@ export class FormTriggerTestResourceResolver implements ProtectedResourceResolve
 			// existing any-authenticated-user behaviour, so turning the feature flag on does
 			// not change who may submit an already-published form. Don't "align" these.
 			const requireExecute = node.parameters.requireExecuteAccess === true;
+			const audiences = [resourceUrl];
 			return {
 				id: 'workflow-form:' + workflowEntity.id,
 				isFirstParty: true,
 				getResourceUrl: () => resourceUrl,
-				getAudiences: () => [resourceUrl],
+				getAudiences: () => audiences,
 				getAllowedRedirectUris: async () => [resourceUrl],
 				scopes: FORM_TRIGGER_SCOPES,
 				displayName: workflowEntity.name,
-				authorize: async (user: User) => {
-					if (requireExecute) {
-						return (
-							await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-								[workflowEntity.id],
-								user,
-								['workflow:execute'],
-							)
-						).has(workflowEntity.id);
-					}
-					return true;
-				},
+				uiHints: FORM_TRIGGER_CONSENT_HINTS,
+				...triggerResourceGate(this.workflowFinderService, {
+					audiences,
+					executeAccessWorkflowId: requireExecute ? workflowEntity.id : undefined,
+				}),
 			};
 		}
 

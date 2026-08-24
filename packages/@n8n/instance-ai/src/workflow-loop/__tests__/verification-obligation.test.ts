@@ -2,6 +2,7 @@ import { createRemediation } from '../remediation';
 import {
 	deriveWorkflowVerificationObligation,
 	deriveWorkflowVerificationObligationFromOutcome,
+	isWorkflowVerificationObligationUnsettled,
 } from '../verification-obligation';
 import type {
 	AttemptRecord,
@@ -364,5 +365,104 @@ describe('deriveWorkflowVerificationObligationFromOutcome', () => {
 
 		expect(obligation.status).toBe('needs_setup');
 		expect(obligation.plannedTaskId).toBe('task-1');
+	});
+});
+
+// One-off builds settle immediately: executionIntent 'one-off' must never
+// derive an unsettled obligation, or the planned scheduler re-issues
+// verification follow-ups forever (the historical death loop — see the spec's
+// loop-safety audit in .agents/specs/instance-ai-one-off-operations.md).
+// The intent is deliberately a plain optional outcome field, NOT a new
+// readiness status: old readers strip unknown keys but hard-fail on unknown
+// union variants, and the loop storage parses the whole per-thread map as one
+// unit, so a new readiness variant would wipe all records on rollback.
+describe('one-off builds (executionIntent: one-off)', () => {
+	it('settles as not_verifiable with manual policy and is never unsettled', () => {
+		const obligation = deriveWorkflowVerificationObligation('thread-1', {
+			state: makeState(),
+			attempts: [makeAttempt()],
+			lastBuildOutcome: makeOutcome({ executionIntent: 'one-off' }),
+		});
+
+		expect(obligation.status).toBe('not_verifiable');
+		expect(obligation.policy).toBe('manual');
+		expect(obligation.executionIntent).toBe('one-off');
+		expect(obligation.blockingReason).toContain('verification is an optional pre-flight');
+		expect(isWorkflowVerificationObligationUnsettled(obligation)).toBe(false);
+	});
+
+	it('stays settled from outcome-only records (the planned scheduler path)', () => {
+		const obligation = deriveWorkflowVerificationObligationFromOutcome(
+			'thread-1',
+			makeOutcome({ executionIntent: 'one-off' }),
+			{ source: 'planned', plannedTaskId: 'task-1' },
+		);
+
+		expect(obligation.status).toBe('not_verifiable');
+		expect(isWorkflowVerificationObligationUnsettled(obligation)).toBe(false);
+	});
+
+	it('surfaces a blocked loop state as blocked (still settled)', () => {
+		const obligation = deriveWorkflowVerificationObligation('thread-1', {
+			state: makeState({ status: 'blocked', phase: 'blocked' }),
+			attempts: [makeAttempt()],
+			lastBuildOutcome: makeOutcome({ executionIntent: 'one-off' }),
+		});
+
+		expect(obligation.status).toBe('blocked');
+		expect(isWorkflowVerificationObligationUnsettled(obligation)).toBe(false);
+	});
+
+	it('lets successful pre-flight verify evidence win as verified, with no blocking reason', () => {
+		const obligation = deriveWorkflowVerificationObligation('thread-1', {
+			state: makeState(),
+			attempts: [makeAttempt()],
+			lastBuildOutcome: makeOutcome({
+				executionIntent: 'one-off',
+				verification: {
+					attempted: true,
+					success: true,
+					executionId: 'exec-1',
+					status: 'success',
+				},
+			}),
+		});
+
+		expect(obligation.status).toBe('verified');
+		expect(obligation.blockingReason).toBeUndefined();
+		expect(isWorkflowVerificationObligationUnsettled(obligation)).toBe(false);
+	});
+
+	it('settles failed pre-flight verify evidence with the concrete failure as blocking reason', () => {
+		const obligation = deriveWorkflowVerificationObligation('thread-1', {
+			state: makeState(),
+			attempts: [makeAttempt()],
+			lastBuildOutcome: makeOutcome({
+				executionIntent: 'one-off',
+				verification: {
+					attempted: true,
+					success: false,
+					executionId: 'exec-1',
+					status: 'error',
+					failureSignature: 'Sheet with name Registrations not found',
+				},
+			}),
+		});
+
+		expect(obligation.status).toBe('not_verifiable');
+		expect(obligation.blockingReason).toContain('Sheet with name Registrations not found');
+		expect(isWorkflowVerificationObligationUnsettled(obligation)).toBe(false);
+	});
+
+	it('leaves reusable and unspecified intents on the normal ready-to-verify path', () => {
+		for (const executionIntent of ['reusable', undefined] as const) {
+			const obligation = deriveWorkflowVerificationObligation('thread-1', {
+				state: makeState(),
+				attempts: [makeAttempt()],
+				lastBuildOutcome: makeOutcome({ executionIntent }),
+			});
+
+			expect(obligation.status).toBe('ready_to_verify');
+		}
 	});
 });

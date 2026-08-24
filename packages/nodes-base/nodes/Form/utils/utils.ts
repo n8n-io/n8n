@@ -7,6 +7,7 @@ import jwt from 'jsonwebtoken';
 import { DateTime } from 'luxon';
 import { getHtmlSandboxCSP, InstanceSettings, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
+	CredentialCheckStatus,
 	INode,
 	INodeExecutionData,
 	IUser,
@@ -15,6 +16,7 @@ import type {
 	IWebhookFunctions,
 	FormFieldsParameter,
 	NodeTypeAndVersion,
+	CredentialCheckResult,
 } from 'n8n-workflow';
 import {
 	FORM_NODE_TYPE,
@@ -27,6 +29,7 @@ import {
 	BINARY_MODE_COMBINED,
 	tryToParseJsonToFormFields,
 	UnexpectedError,
+	buildCredentialConnectionsRequiredResponse,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
@@ -238,6 +241,8 @@ export function prepareFormData({
 	customCss,
 	nodeVersion,
 	authToken,
+	shellInner,
+	hasAuthenticatedSubmitter,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -254,6 +259,8 @@ export function prepareFormData({
 	customCss?: string;
 	nodeVersion?: number;
 	authToken?: string;
+	shellInner?: boolean;
+	hasAuthenticatedSubmitter?: boolean;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -276,6 +283,10 @@ export function prepareFormData({
 		buttonLabel,
 		dangerousCustomCss: sanitizeCustomCss(customCss),
 		authToken,
+		// Only set inside the hosting shell, so the plain form's render data is unchanged.
+		shellInner: shellInner || undefined,
+		// Only set for forms that can be gated, so the rest never ship the client handling.
+		hasAuthenticatedSubmitter: hasAuthenticatedSubmitter || undefined,
 	};
 
 	if (redirectUrl) {
@@ -564,6 +575,8 @@ export function renderForm({
 	buttonLabel,
 	customCss,
 	authToken,
+	shellInner,
+	hasAuthenticatedSubmitter,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -578,6 +591,8 @@ export function renderForm({
 	buttonLabel?: string;
 	customCss?: string;
 	authToken?: string;
+	shellInner?: boolean;
+	hasAuthenticatedSubmitter?: boolean;
 }) {
 	const instanceId = context.getInstanceId();
 
@@ -621,6 +636,8 @@ export function renderForm({
 		customCss,
 		nodeVersion: context.getNode().typeVersion,
 		authToken,
+		shellInner,
+		hasAuthenticatedSubmitter,
 	});
 
 	if (!isFormHtmlSandboxingDisabled()) {
@@ -925,6 +942,133 @@ export async function validateFormPageAuth(
 	return user ? { authedUser: user } : { responded: true };
 }
 
+/**
+ * Render the trusted hosting shell: an n8n-controlled page on the real origin
+ * that shows the author's form inside a sandboxed (null-origin) iframe with a
+ * credential-connect panel beside it. The form's submit stays disabled while any
+ * required credential is missing; enforcement is server-side on POST regardless.
+ *
+ * The shell holds the connect panel — with the real per-credential authorize
+ * links — OUTSIDE the author-scriptable iframe DOM (the security win over
+ * connecting inside the form). It carries a live session, so it refuses framing.
+ */
+function renderFormShell({
+	res,
+	req,
+	formTitle,
+	resourceUrl,
+	credentials,
+	submitterEmail,
+}: {
+	res: Response;
+	req: Request;
+	formTitle: string;
+	resourceUrl: string;
+	credentials: CredentialCheckStatus[];
+	submitterEmail?: string;
+}) {
+	// The iframe loads the same form via a real URL (so the form's relative POST
+	// works exactly as it does top-level today) flagged as the inner render.
+	const inner = new URL(buildAbsoluteFormUrl(req));
+	inner.searchParams.set('n8nShellInner', '1');
+
+	res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
+	res.render('form-shell', {
+		formTitle,
+		iframeSrc: `${inner.pathname}${inner.search}`,
+		resourceUrl,
+		...buildFormShellViewModel(credentials, submitterEmail),
+	});
+}
+
+export type FormShellCredentialRow = {
+	id: string;
+	name: string;
+	type: string;
+	status: CredentialCheckStatus['status'];
+	connected: boolean;
+	/** Letter tile, used whenever the provider icon doesn't resolve. */
+	initial: string;
+	iconUrl?: string;
+	authorizationUrl?: string;
+	revokeUrl?: string;
+	resolverId?: string;
+	account?: string;
+	usedBy?: string;
+};
+
+export type FormShellViewModel = {
+	credentials: FormShellCredentialRow[];
+	total: number;
+	connectedCount: number;
+	useDialog: boolean;
+	allConnected: boolean;
+	summaryText: string;
+	footerText: string;
+	submitterEmail?: string;
+};
+
+/** Submitter-facing copy talks about accounts, never credentials — and never `account(s)`. */
+const accountsLabel = (count: number) => (count === 1 ? 'account' : 'accounts');
+
+/**
+ * The one-line state of the connect panel for two or more accounts. Mirrored by
+ * the shell's client-side `summaryText()`, which re-renders it in place as rows
+ * connect (a reload would bounce the submitter back through consent).
+ */
+export function formShellSummaryText(total: number, connectedCount: number): string {
+	const remaining = total - connectedCount;
+	if (remaining <= 0) return `All ${total} accounts connected · ready to submit`;
+	if (connectedCount === 0) return `${total} accounts needed to submit this form`;
+	return `${remaining} more ${accountsLabel(remaining)} needed to submit this form`;
+}
+
+/**
+ * View model for `form-shell.handlebars`. Two shapes: a single required account
+ * gets its own row with a Connect button that opens the OAuth popup directly;
+ * two or more collapse behind a summary line plus the "Connect your accounts"
+ * dialog.
+ */
+export function buildFormShellViewModel(
+	credentials: CredentialCheckStatus[],
+	submitterEmail?: string,
+): FormShellViewModel {
+	const initialOf = (name: string) => (name.trim().charAt(0) || '?').toUpperCase();
+	const rows: FormShellCredentialRow[] = credentials.map((c) => ({
+		id: c.credentialId,
+		name: c.credentialName,
+		type: c.credentialType,
+		status: c.status,
+		connected: c.status === 'configured',
+		initial: initialOf(c.credentialName),
+		iconUrl: c.iconUrl,
+		authorizationUrl: c.authorizationUrl,
+		revokeUrl: c.revokeUrl,
+		resolverId: c.resolverId,
+		// The connected identity shown as "Connected as …". For the system (n8n)
+		// resolver this is the submitter themselves; surfacing the exact OAuth
+		// provider account (when it differs) is a backend-enrichment follow-up.
+		account: c.status === 'configured' ? submitterEmail : undefined,
+		// `usedBy` (owning node) comes from the backend-enrichment follow-up.
+		usedBy: undefined,
+	}));
+
+	const total = rows.length;
+	const connectedCount = rows.filter((r) => r.connected).length;
+
+	return {
+		credentials: rows,
+		total,
+		connectedCount,
+		// Design: one account connects directly from its row; two or more collapse.
+		useDialog: total >= 2,
+		allConnected: total > 0 && connectedCount === total,
+		summaryText: formShellSummaryText(total, connectedCount),
+		footerText: `${connectedCount} of ${total} ${accountsLabel(total)} connected`,
+		submitterEmail,
+	};
+}
+
 export async function formWebhook(
 	context: IWebhookFunctions,
 	authProperty = FORM_TRIGGER_AUTHENTICATION_PROPERTY,
@@ -1048,6 +1192,57 @@ export async function formWebhook(
 			responseMode = 'responseNode';
 		}
 
+		// The inner render is the form loaded inside the hosting-shell iframe. Honor the
+		// flag only for iframe navigations (per Sec-Fetch-Dest, absent on older browsers)
+		// so a hand-typed URL can't skip the connect UI; the POST gate enforces regardless.
+		const secFetchDest = req.headers?.['sec-fetch-dest'];
+		const shellInner =
+			req.query.n8nShellInner === '1' && (secFetchDest === undefined || secFetchDest === 'iframe');
+
+		// Connect-before-submit: when the workflow needs the submitter's own
+		// (private) credentials, establish their identity from the OAuth2 token and
+		// check readiness server-side. As long as the trigger requires any end-user
+		// account — and we're not already rendering the inner iframe — wrap the form
+		// in the hosting shell (form + connect panel). No-op unless OAuth2 form auth
+		// and the dynamic-credentials module are both active.
+		if (
+			authentication === 'n8nUserAuth' &&
+			authedUser &&
+			isFormOAuth2Enabled() &&
+			oAuth2Token &&
+			!shellInner
+		) {
+			// Must name the endpoint actually being served (test vs production) — the
+			// OAuth2 token is bound to that resource, same as in the auth path above.
+			const resourceUrl = trimTrailingSlash(context.getWebhookResourceUrl('default') ?? '');
+			if (resourceUrl) {
+				await context.establishTriggerIdentity(oAuth2Token, resourceUrl);
+				const credentialStatus = await context.checkTriggerCredentialStatus();
+				// Gate on "needs end-user accounts", NOT on readiness: a fully connected
+				// submitter must keep the panel — which accounts the form uses, which
+				// identity, and Disconnect — otherwise it would vanish on the reload right
+				// after connecting. Forms with no end-user accounts fall through to the
+				// plain render below, unchanged.
+				if (credentialStatus?.credentials.length) {
+					// Hand the OAuth2 token to the same-site iframe GET via the one-hop
+					// cookie the OAuth2 flow already uses, so the inner form authenticates
+					// without re-running the provider redirect inside the frame.
+					setFormOAuthToken(res, req, resourceUrl, oAuth2Token);
+					// Pass ALL required credentials (connected + missing) so the card shows
+					// each one's state and the "{n} of {m} connected" progress.
+					renderFormShell({
+						res,
+						req,
+						formTitle,
+						resourceUrl,
+						credentials: credentialStatus.credentials,
+						submitterEmail: authedUser?.email,
+					});
+					return { noWebhookResponse: true };
+				}
+			}
+		}
+
 		let authToken: string | undefined;
 		if (node.typeVersion > 1) {
 			if (authentication === 'n8nUserAuth' && authedUser) {
@@ -1078,11 +1273,41 @@ export async function formWebhook(
 			buttonLabel,
 			customCss: options.customCss,
 			authToken,
+			shellInner,
+			hasAuthenticatedSubmitter: authentication === 'n8nUserAuth',
 		});
 
 		return {
 			noWebhookResponse: true,
 		};
+	}
+
+	// Submit-time readiness gate, and the only real enforcement: the hosting shell's
+	// disabled submit button is UX, re-enablable by author script inside the form's
+	// iframe. It also works off the state at render time, so a required credential can
+	// be revoked — or the page simply left open — between render and submit. Re-check
+	// here, after identity establishment and before the execution is enqueued, so a
+	// stale page can't spawn a run that dies at credential resolution. Scoped to the
+	// trigger: the Wait node shares `formWebhook`, but its form resume continues an
+	// already-running execution.
+	if (node.type === FORM_TRIGGER_NODE_TYPE) {
+		let readiness: CredentialCheckResult | undefined;
+		try {
+			readiness = await context.checkTriggerCredentialStatus();
+		} catch (error) {
+			// Fail closed. Throwing here is swallowed by the webhook layer, which then
+			// enqueues the execution anyway — exactly the doomed run we're preventing.
+			context.logger.error('Form submit credential readiness check failed', { error });
+			res.status(503).json({ status: 'credential_readiness_check_failed' });
+			return { noWebhookResponse: true };
+		}
+
+		if (readiness && !readiness.readyToExecute) {
+			// 428, matching the webhook trigger's gate (webhook-helpers.ts) so both
+			// trigger paths answer an unconnected credential the same way.
+			res.status(428).json(buildCredentialConnectionsRequiredResponse(readiness));
+			return { noWebhookResponse: true };
+		}
 	}
 
 	let { useWorkflowTimezone } = options;

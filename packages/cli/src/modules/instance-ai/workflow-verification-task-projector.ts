@@ -31,6 +31,7 @@ const DETAIL = {
 	verifying: 'Verifying workflow',
 	needsSetup: 'Needs setup',
 	couldNotVerify: 'Could not verify automatically',
+	verificationOptional: 'Verification optional - one-off run',
 	noWorkflow: 'No workflow to verify',
 	submitted: 'Submitted',
 	blocked: 'Blocked',
@@ -75,7 +76,13 @@ function obligationDetail(obligation: WorkflowVerificationObligation): string {
 		case 'needs_setup':
 			return DETAIL.needsSetup;
 		case 'not_verifiable':
-			return DETAIL.couldNotVerify;
+			// A one-off build settles as not_verifiable by design — verification is
+			// a choice there, not a failure. But evidence outranks the label: if a
+			// pre-flight verify actually ran and did not fully succeed, surface
+			// that instead of the benign one-off wording.
+			return obligation.executionIntent === 'one-off' && obligation.evidence?.attempted !== true
+				? DETAIL.verificationOptional
+				: DETAIL.couldNotVerify;
 		case 'blocked':
 			return obligation.blockingReason ?? DETAIL.blocked;
 	}

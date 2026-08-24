@@ -1,13 +1,15 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { createWorkflowWithHistory, testDb } from '@n8n/backend-test-utils';
 import {
 	DataSource,
 	type ScheduledJob,
 	ScheduledJobRepository,
 	ScheduledTaskRepository,
+	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createScheduler, totalDiscarded } from '@n8n/scheduler';
 import type { SchedulerDeps } from '@n8n/scheduler';
+import { v4 as uuid } from 'uuid';
 
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 
@@ -369,5 +371,79 @@ describe('scheduler materialization', () => {
 			expect(job.lastFiredAt!.getTime()).toBe(task!.scheduledFor.getTime());
 			expect(job.nextRunAt!.getTime() - job.lastFiredAt!.getTime()).toBe(3600 * 1000);
 		}
+	});
+
+	describe('rules of one node under the owner-wide coalesce policy', () => {
+		let workflowId: string;
+		let nodeId: string;
+
+		const createRule = async () =>
+			await createJob({
+				workflowId,
+				nodeId,
+				intervalSeconds: 3600,
+				misfirePolicy: 'coalesce_owner',
+				misfireGraceSeconds: 3600,
+				nextRunAt: secondsFromNow(3600),
+			});
+
+		beforeEach(async () => {
+			const workflow = await createWorkflowWithHistory({ active: true });
+			await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+				workflow.id,
+				workflow.versionId,
+			);
+			workflowId = workflow.id;
+			nodeId = uuid();
+		});
+
+		it('leaves one catch-up run pending and retires the occurrences it supersedes', async () => {
+			const rules = [await createRule(), await createRule(), await createRule()];
+			await jobRepo.backdateNextRunAt(workflowId, nodeId, 200);
+
+			const firstPass = await runMaterialization(0);
+			expect(firstPass).toMatchObject({ claimedJobs: 3, occurrences: 3 });
+			const queued = await taskRepo.find();
+			expect(queued).toHaveLength(3);
+			expect(queued.every((task) => task.status === 'pending')).toBe(true);
+
+			await jobRepo.update({ workflowId, nodeId }, { misfireGraceSeconds: 30 });
+			await jobRepo.backdateNextRunAt(workflowId, nodeId, 100);
+
+			const secondPass = await runMaterialization(0);
+
+			expect(secondPass).toMatchObject({
+				claimedJobs: 3,
+				occurrences: 1,
+				retiredOccurrences: 3,
+			});
+
+			const tasks = await taskRepo.find();
+			const pending = tasks.filter((task) => task.status === 'pending');
+			expect(pending).toHaveLength(1);
+			expect(pending[0].jobId).toBe(Math.min(...rules.map((rule) => rule.id)));
+			expect(pending[0].runAt.getTime()).toBeGreaterThan(pending[0].scheduledFor.getTime());
+
+			const missedIds = tasks
+				.filter((task) => task.status === 'missed')
+				.map((task) => task.id)
+				.sort();
+			expect(missedIds).toEqual(queued.map((task) => task.id).sort());
+		});
+
+		it('advances every rule clock even though only one catch-up run was recorded', async () => {
+			const rules = [await createRule(), await createRule(), await createRule()];
+			await jobRepo.update({ workflowId, nodeId }, { misfireGraceSeconds: 30 });
+			await jobRepo.backdateNextRunAt(workflowId, nodeId, 100);
+
+			await runMaterialization(0);
+
+			for (const rule of rules) {
+				const advanced = await jobRepo.findOneByOrFail({ id: rule.id });
+				expect(advanced.nextRunAt!.getTime()).toBeGreaterThan(Date.now());
+				expect(advanced.lastFiredAt).not.toBeNull();
+			}
+			expect(await taskRepo.count()).toBe(1);
+		});
 	});
 });

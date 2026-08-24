@@ -8,16 +8,20 @@ import type { ToolDescriptor } from '../types/sdk/tool-descriptor';
 import type { JSONObject } from '../types/utils/json';
 import { isZodSchema, zodToJsonSchema } from '../utils/zod';
 
-const APPROVAL_SUSPEND_SCHEMA = z.object({
+export const APPROVAL_SUSPEND_SCHEMA = z.object({
 	type: z.literal('approval'),
 	toolName: z.string(),
 	displayName: z.string().optional(),
 	args: z.unknown(),
 });
 
-const APPROVAL_RESUME_SCHEMA = z.object({
+export type ApprovalSuspendPayload = z.infer<typeof APPROVAL_SUSPEND_SCHEMA>;
+
+export const APPROVAL_RESUME_SCHEMA = z.object({
 	approved: z.boolean(),
 });
+
+export type ApprovalResumePayload = z.infer<typeof APPROVAL_RESUME_SCHEMA>;
 
 const APPROVAL_GATE_CONTINUATION_SCHEMA = z
 	.object({

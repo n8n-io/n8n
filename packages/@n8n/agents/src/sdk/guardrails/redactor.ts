@@ -16,6 +16,8 @@ export interface RedactionOptions {
 	 *  secrets), userinfo, fragment. Off by default so guardrail behavior is
 	 *  unchanged; telemetry/trace scrubbing opts in. */
 	preserveUrlStructure?: boolean;
+	/** Replace values under secret-shaped object keys. */
+	redactSensitiveKeys?: boolean;
 }
 
 export interface RedactionResult {
@@ -148,6 +150,8 @@ export function findMatchRanges(
 }
 
 const MAX_DEEP_DEPTH = 8;
+const SENSITIVE_KEY_PATTERN =
+	/(api[_-]?key|private[_-]?key|authorization|bearer|cookie|credentials?|password|secret|access[_-]?token|refresh[_-]?token|id[_-]?token|session[_-]?token|auth[_-]?token|(?:^|[._-])token$)/i;
 
 export interface DeepRedactionResult {
 	value: unknown;
@@ -165,17 +169,35 @@ export function redactDeep(
 	opts: RedactionOptions = {},
 	depth = 0,
 ): DeepRedactionResult {
+	return redactDeepValue(value, opts, depth);
+}
+
+function redactDeepValue(
+	value: unknown,
+	opts: RedactionOptions,
+	depth: number,
+	key?: string,
+): DeepRedactionResult {
+	if (opts.redactSensitiveKeys && key && SENSITIVE_KEY_PATTERN.test(key)) {
+		return { value: opts.placeholder ?? DEFAULT_PLACEHOLDER, matches: [{ category: 'secret' }] };
+	}
+
 	if (typeof value === 'string') {
 		const { text, matches } = redactText(value, opts);
 		return { value: text, matches };
 	}
 
-	if (depth >= MAX_DEEP_DEPTH) return { value, matches: [] };
+	if (depth >= MAX_DEEP_DEPTH) {
+		if (opts.redactSensitiveKeys && value !== null && typeof value === 'object') {
+			return { value: opts.placeholder ?? DEFAULT_PLACEHOLDER, matches: [{ category: 'secret' }] };
+		}
+		return { value, matches: [] };
+	}
 
 	if (Array.isArray(value)) {
 		const matches: Array<{ category: RedactionCategory }> = [];
 		const next = value.map((item) => {
-			const result = redactDeep(item, opts, depth + 1);
+			const result = redactDeepValue(item, opts, depth + 1, key);
 			matches.push(...result.matches);
 			return result.value;
 		});
@@ -186,7 +208,7 @@ export function redactDeep(
 		const matches: Array<{ category: RedactionCategory }> = [];
 		const next: Record<string, unknown> = {};
 		for (const [key, item] of Object.entries(value)) {
-			const result = redactDeep(item, opts, depth + 1);
+			const result = redactDeepValue(item, opts, depth + 1, key);
 			matches.push(...result.matches);
 			next[key] = result.value;
 		}

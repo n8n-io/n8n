@@ -39,7 +39,7 @@ describe('startStreamSession', () => {
 			cleanupRun,
 			updateState: vi.fn(),
 			emitError: vi.fn(),
-			getAbortFinish: () => ({}),
+			getTerminalFinish: () => ({}),
 			// Best-effort persist that fails: it must not skip the shutdown steps.
 			persistTurnOnAbort: async () => {
 				await Promise.resolve();

@@ -34,9 +34,10 @@ const ARTIFACT_ICON_MAP: Record<string, IconName> = {
 interface UseCanvasPreviewOptions {
 	thread: ThreadRuntime;
 	threadId: () => string;
+	initialAgentId?: () => string | undefined;
 }
 
-export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
+export function useCanvasPreview({ thread, initialAgentId }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 	const isPreviewOpen = ref(false);
@@ -128,9 +129,14 @@ export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	// attach yet), so it opens off the thread's pending marker instead — the user
 	// arrived here by asking for a new agent, so it should already be on screen.
 	const pendingAgentTabId = computed(() => allArtifactTabs.value.find((tab) => tab.pending)?.id);
+	const initialAgentTabId = computed(() => {
+		const agentId = initialAgentId?.();
+		if (!agentId) return undefined;
+		return allArtifactTabs.value.find((tab) => tab.type === 'agent' && tab.id === agentId)?.id;
+	});
 
 	const initialArtifactId = computed(
-		() => firstAttachedArtifactId.value ?? pendingAgentTabId.value,
+		() => firstAttachedArtifactId.value ?? pendingAgentTabId.value ?? initialAgentTabId.value,
 	);
 
 	// Open the arriving resource. Only when nothing is open, so it never steals

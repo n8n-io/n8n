@@ -96,7 +96,8 @@ describe('sanitizeAgentJsonConfig', () => {
 			tools: [
 				{
 					type: 'workflow',
-					workflow: 'wf-1',
+					workflowId: 'wf-1',
+					workflow: 'Run workflow',
 					name: 'Run workflow',
 					legacyWorkflowField: true,
 				},
@@ -130,7 +131,8 @@ describe('sanitizeAgentJsonConfig', () => {
 			tools: [
 				{
 					type: 'workflow',
-					workflow: 'wf-1',
+					workflowId: 'wf-1',
+					workflow: 'Run workflow',
 					name: 'Run workflow',
 				},
 				{
@@ -149,6 +151,50 @@ describe('sanitizeAgentJsonConfig', () => {
 								id: 'cred-1',
 								name: 'Slack',
 							},
+						},
+					},
+				},
+			],
+		});
+		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);
+	});
+
+	it('strips unknown keys from a managed node-tool credential while keeping its marker', () => {
+		const sanitized = sanitizeAgentJsonConfig({
+			...baseConfig,
+			tools: [
+				{
+					type: 'node',
+					name: 'Send message',
+					node: {
+						nodeType: 'n8n-nodes-base.slack',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+						credentials: {
+							slackApi: {
+								id: null,
+								name: 'n8n credits',
+								__aiGatewayManaged: true,
+								legacyCredentialField: true,
+							},
+						},
+					},
+				},
+			],
+		});
+
+		expect(sanitized).toEqual({
+			...baseConfig,
+			tools: [
+				{
+					type: 'node',
+					name: 'Send message',
+					node: {
+						nodeType: 'n8n-nodes-base.slack',
+						nodeTypeVersion: 1,
+						nodeParameters: {},
+						credentials: {
+							slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
 						},
 					},
 				},

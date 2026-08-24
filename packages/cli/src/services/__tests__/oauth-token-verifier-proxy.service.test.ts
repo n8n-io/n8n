@@ -30,7 +30,45 @@ describe('OAuthTokenVerifierProxy', () => {
 		expect(provider.verifyOAuthAccessToken).toHaveBeenCalledWith(
 			'some-token',
 			'https://n8n.example.com/mcp-server/http',
+			undefined,
 		);
 		expect(result).toEqual({ user, authType: 'oauth' });
+	});
+
+	it('should pass a sealed resource grant through to the provider', async () => {
+		const proxy = new OAuthTokenVerifierProxy();
+		const provider = mock<OAuthTokenVerifier>();
+		provider.verifyOAuthAccessToken.mockResolvedValue({ user: mock<User>(), authType: 'oauth' });
+		proxy.registerProvider(provider);
+
+		const grant = { audiences: ['https://n8n.example.com/webhook-test/abc?method=POST'] };
+
+		await proxy.verifyOAuthAccessToken('some-token', 'https://n8n.example.com/x', grant);
+
+		expect(provider.verifyOAuthAccessToken).toHaveBeenCalledWith(
+			'some-token',
+			'https://n8n.example.com/x',
+			grant,
+		);
+	});
+
+	describe('authorizeSealedGrant', () => {
+		const grant = { audiences: ['https://n8n.example.com/x'], executeAccessWorkflowId: 'wf' };
+
+		it('should fail closed when no provider is registered', async () => {
+			const proxy = new OAuthTokenVerifierProxy();
+
+			expect(await proxy.authorizeSealedGrant('user-1', grant)).toBe(false);
+		});
+
+		it('should delegate to the registered provider', async () => {
+			const proxy = new OAuthTokenVerifierProxy();
+			const provider = mock<OAuthTokenVerifier>();
+			provider.authorizeSealedGrant.mockResolvedValue(true);
+			proxy.registerProvider(provider);
+
+			expect(await proxy.authorizeSealedGrant('user-1', grant)).toBe(true);
+			expect(provider.authorizeSealedGrant).toHaveBeenCalledWith('user-1', grant);
+		});
 	});
 });
