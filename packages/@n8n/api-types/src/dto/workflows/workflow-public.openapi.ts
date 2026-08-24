@@ -132,6 +132,22 @@ export const workflowCreateFieldDocs = {
 	},
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
+/**
+ * The two fields whose update wording differs from create: `PUT` moves an existing workflow
+ * rather than placing a new one, and only `PUT` accepts `description`.
+ */
+export const workflowUpdateFieldDocs = {
+	description: {
+		description: 'Description of the workflow',
+		example: 'My workflow description',
+	},
+	parentFolderId: {
+		description:
+			'ID of the folder to move the workflow into. Pass null to move it to the project root; omit to leave its current folder unchanged.',
+		example: 'X8ovzm8lTQjcXRZQ',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
 export const nodesOpenApi: ZodOpenAPIMetadata = {
 	type: 'array',
 	...workflowCreateFieldDocs.nodes,
