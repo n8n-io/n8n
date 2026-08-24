@@ -64,6 +64,11 @@ const EMPTY_EXECUTION_STATUS_BY_NODE_ID = new Map<string, ComputedRef<ExecutionS
 const EMPTY_EXECUTION_RUN_DATA_BY_NODE_ID = new Map<string, ComputedRef<ITaskData[] | null>>();
 const EMPTY_EXECUTION_RUN_DATA_OUTPUT_MAP_BY_NODE_ID = new Map<string, ExecutionOutputMap>();
 const EMPTY_EXECUTION_WAITING_BY_NODE_ID = new Map<string, ComputedRef<string | undefined>>();
+const EMPTY_EXECUTION_ISSUES_BY_NODE_ID = new Map<string, ComputedRef<string[]>>();
+const EMPTY_EXECUTION_PIN_DATA_BY_NODE_ID = new Map<
+	string,
+	ComputedRef<IPinData[string] | undefined>
+>();
 
 export type WorkflowExecutionStateChangePayload = {
 	documentId: WorkflowDocumentId;
@@ -440,6 +445,18 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			const executionId = getResolvedActiveExecutionId();
 			if (!executionId) return EMPTY_EXECUTION_WAITING_BY_NODE_ID;
 			return useExecutionDataStore(createExecutionDataId(executionId)).executionWaitingByNodeId;
+		});
+
+		const activeExecutionIssuesByNodeId = computed(() => {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_ISSUES_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionIssuesByNodeId;
+		});
+
+		const activeExecutionPinDataByNodeId = computed(() => {
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) return EMPTY_EXECUTION_PIN_DATA_BY_NODE_ID;
+			return useExecutionDataStore(createExecutionDataId(executionId)).executionPinDataByNodeId;
 		});
 
 		const lastSuccessfulExecution = computed<IExecutionResponse | null>(() => {
@@ -1024,6 +1041,8 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 			activeExecutionRunDataByNodeId,
 			activeExecutionRunDataOutputMapByNodeId,
 			activeExecutionWaitingByNodeId,
+			activeExecutionIssuesByNodeId,
+			activeExecutionPinDataByNodeId,
 			activeAgentCapabilityKeysByNodeId,
 			executionRunningByNodeId,
 			executionWaitingForNextByNodeId,

@@ -212,10 +212,17 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		const executionWaitingByNodeId = shallowReactive(
 			new Map<string, ComputedRef<string | undefined>>(),
 		);
+		const executionIssuesByNodeId = shallowReactive(new Map<string, ComputedRef<string[]>>());
+		const executionPinDataByNodeId = shallowReactive(
+			new Map<string, ComputedRef<IPinData[string] | undefined>>(),
+		);
 
 		function computeExecutionStatus(nodeId: string): ExecutionStatus {
 			const node = getExecutionNodeById(nodeId);
-			if (!node) return 'new';
+			if (!node) {
+				return 'new';
+			}
+
 			const tasks = executionRunData.value?.[node.name] ?? [];
 			// A canceled top-of-stack tends to mask the prior "real" status — peek
 			// one task back so the UI shows the meaningful state.
@@ -223,14 +230,36 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			if (tasks.length > 1 && status === 'canceled') {
 				status = tasks.at(-2)?.executionStatus;
 			}
+
 			return status ?? 'new';
 		}
 
 		function computeExecutionRunData(nodeId: string): ITaskData[] | null {
 			const node = getExecutionNodeById(nodeId);
-			if (!node) return null;
+			if (!node) {
+				return null;
+			}
 			const tasks = executionRunData.value?.[node.name];
+
 			return tasks ?? null;
+		}
+
+		function computeNodeExecutionIssuesById(nodeId: string): string[] {
+			const node = getExecutionNodeById(nodeId);
+			if (!node) {
+				return [];
+			}
+
+			return computeNodeExecutionIssues(node.name);
+		}
+
+		function computeExecutionPinData(nodeId: string): IPinData[string] | undefined {
+			const node = getExecutionNodeById(nodeId);
+			if (!node) {
+				return undefined;
+			}
+
+			return executionPinDataByNodeName.value[node.name];
 		}
 
 		function computeExecutionWaiting(nodeId: string): string | undefined {
@@ -270,13 +299,17 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		}
 
 		function applyAddByIdEntry(nodeId: string) {
-			if (byIdScopes.has(nodeId)) return;
+			if (byIdScopes.has(nodeId)) {
+				return;
+			}
+
 			const scope = effectScope();
 			scope.run(() => {
 				executionStatusByNodeId.set(
 					nodeId,
 					structuralComputed(() => computeExecutionStatus(nodeId)),
 				);
+
 				// Plain `computed` (Object.is) rather than `structuralComputed(..., isEqual)`:
 				// per-task data can be megabytes for nodes with large outputs, and
 				// every push replaces the runData array reference with new content
@@ -286,11 +319,23 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 					nodeId,
 					computed(() => computeExecutionRunData(nodeId)),
 				);
+
 				executionWaitingByNodeId.set(
 					nodeId,
 					structuralComputed(() => computeExecutionWaiting(nodeId)),
 				);
+
+				executionIssuesByNodeId.set(
+					nodeId,
+					structuralComputed(() => computeNodeExecutionIssuesById(nodeId), isEqual),
+				);
+
+				executionPinDataByNodeId.set(
+					nodeId,
+					structuralComputed(() => computeExecutionPinData(nodeId), isEqual),
+				);
 			});
+
 			byIdScopes.set(nodeId, () => scope.stop());
 		}
 
@@ -300,6 +345,8 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionStatusByNodeId.delete(nodeId);
 			executionRunDataByNodeId.delete(nodeId);
 			executionWaitingByNodeId.delete(nodeId);
+			executionIssuesByNodeId.delete(nodeId);
+			executionPinDataByNodeId.delete(nodeId);
 		}
 
 		function applyReconcileByIdEntries(nodeIds: string[]) {
@@ -722,6 +769,8 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			executionStatusByNodeId,
 			executionRunDataByNodeId,
 			executionWaitingByNodeId,
+			executionIssuesByNodeId,
+			executionPinDataByNodeId,
 			executionRunDataOutputMapByNodeId,
 			executionStartedData: readonly(executionStartedData),
 			executionPairedItemMappings: readonly(executionPairedItemMappings),
