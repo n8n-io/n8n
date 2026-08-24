@@ -311,8 +311,8 @@ describe('GlobalConfig', () => {
 			disablePublicChat: false,
 		},
 		compressionNode: {
-			maxDecompressedSize: 2 * 1024 * 1024 * 1024,
-			maxZipEntries: 5000,
+			maxDecompressedSize: 256 * 1024 * 1024,
+			maxZipEntries: 1000,
 		},
 		mcpClient: {
 			cacheTtl: 300000,
