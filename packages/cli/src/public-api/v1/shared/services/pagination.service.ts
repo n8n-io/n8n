@@ -1,3 +1,4 @@
+import { MAX_ITEMS_PER_PAGE } from '@n8n/api-types';
 import { jsonParse } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -36,6 +37,29 @@ export function resolveOffsetPagination(query: {
 		} catch {
 			throw new BadRequestError('An invalid cursor was provided');
 		}
+	}
+
+	return { offset, limit };
+}
+
+/**
+ * Like `resolveOffsetPagination`, but re-validates the decoded cursor's `offset`/`limit`
+ * against the same bounds already enforced on the raw query params. A cursor is unsigned
+ * base64 a client can forge, so a cursor-only endpoint (no DB-backed `offset`/`limit`
+ * validation downstream) must not trust it blindly.
+ */
+export function resolveOffsetPaginationStrict(query: {
+	cursor?: string;
+	limit: number;
+	offset?: number;
+}): { offset: number; limit: number } {
+	const { offset, limit } = resolveOffsetPagination(query);
+
+	if (query.cursor) {
+		if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1) {
+			throw new BadRequestError('An invalid cursor was provided');
+		}
+		return { offset, limit: Math.min(limit, MAX_ITEMS_PER_PAGE) };
 	}
 
 	return { offset, limit };

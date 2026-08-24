@@ -59,6 +59,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'sourceControl:pull',
 	'sourceControl:push',
 	'sourceControl:manage',
+	'sourceControl:read',
 	'gitConnection:create',
 	'gitConnection:read',
 	'gitConnection:update',
