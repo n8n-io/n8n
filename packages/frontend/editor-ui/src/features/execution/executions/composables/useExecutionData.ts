@@ -9,17 +9,31 @@ export function useExecutionData({ node }: { node: ComputedRef<INode | undefined
 
 	const workflowRunData = computed(() => workflowExecutionStateStore.value.activeExecutionRunData);
 
-	const hasNodeRun = computed(() => {
-		return Boolean(
-			node.value &&
-				workflowRunData.value &&
-				Object.prototype.hasOwnProperty.bind(workflowRunData.value)(node.value.name),
-		);
+	const hasExecutionNodeSnapshot = computed(
+		() => (workflowExecution.value?.workflowData?.nodes?.length ?? 0) > 0,
+	);
+
+	const nodeRunData = computed(() => {
+		if (!node.value) {
+			return null;
+		}
+
+		if (hasExecutionNodeSnapshot.value) {
+			return (
+				workflowExecutionStateStore.value.activeExecutionRunDataByNodeId.get(node.value.id)
+					?.value ?? null
+			);
+		}
+
+		return workflowRunData.value?.[node.value.name] ?? null;
 	});
+
+	const hasNodeRun = computed(() => nodeRunData.value !== null);
 
 	return {
 		workflowExecution,
 		workflowRunData,
+		nodeRunData,
 		hasNodeRun,
 	};
 }
