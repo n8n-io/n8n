@@ -46,13 +46,7 @@ export class EngineConfig {
 	 * Shared secret the control plane signs its identity token with and the engine
 	 * verifies against. Both planes must hold the same value.
 	 *
-	 * Deliberately not the user-session JWT secret: a leak here must not let anyone
-	 * forge session cookies. Integrated mode generates one at boot when unset;
-	 * standalone refuses to start without it.
-	 *
-	 * Must be at least 32 characters: this one value authenticates the control
-	 * plane, so a guessable secret is a full bypass. A shorter value is dropped
-	 * and treated as unset.
+	 * This is in development and not ready for use.
 	 */
 	@Env('N8N_ENGINE_AUTH_SECRET', z.string().min(AUTH_SECRET_MIN_LENGTH))
 	authSecret: string = '';
