@@ -274,6 +274,44 @@ export type PubSubCommandMap = {
 	};
 
 	/**
+	 * Ask the current leader to start or stop a leader-only channel runtime
+	 * (e.g. Telegram in polling mode) on behalf of the main that handled the
+	 * user's request. See `LeaderChannelRelayService` for the mechanism.
+	 *
+	 * Broadcast to every main rather than targeted at the leader's host: the
+	 * leader key can be stale by the time we read it, and leadership can change
+	 * between publish and receive. Followers ignore this command, so whoever
+	 * holds leadership when it lands is the one that acts.
+	 *
+	 * `replyTo` carries the requester's host ID because the subscriber emits
+	 * only the payload — `senderId` is stripped before handlers see the message.
+	 *
+	 * A connect carries the whole config: it runs before the config is persisted,
+	 * so the leader cannot read it back. A teardown only needs the connection key,
+	 * which every caller already holds.
+	 */
+	'agent-chat-leader-channel-request': {
+		requestId: string;
+		replyTo: string;
+		agentId: string;
+	} & (
+		| { action: 'connect'; integration: AgentIntegrationConfig }
+		| { action: 'disconnect'; integration: { type: string; credentialId: string } }
+	);
+
+	/**
+	 * Acknowledge an `agent-chat-leader-channel-request`, targeted at the
+	 * requester's host ID. Published by the leader once the operation has fully
+	 * completed, so the requesting main can only report success after the
+	 * leader's startup or teardown finished.
+	 */
+	'agent-chat-leader-channel-result': {
+		requestId: string;
+		ok: boolean;
+		error?: string;
+	};
+
+	/**
 	 * Keep per-main thread subscription state in sync across the cluster. The
 	 * originating main persists the subscription change before publishing; peers
 	 * update their local in-memory subscription state so load-balanced follow-up

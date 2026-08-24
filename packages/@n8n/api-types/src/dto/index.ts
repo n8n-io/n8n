@@ -105,6 +105,7 @@ export {
 	GitConnectionProjectListPublicDto,
 	GitConnectionProjectPublicDto,
 	GitConnectionPublicDto,
+	GitConnectionPushResultDto,
 	ListGitConnectionsQueryDto,
 	UpdateGitConnectionDto,
 	gitConnectionTypeSchema,

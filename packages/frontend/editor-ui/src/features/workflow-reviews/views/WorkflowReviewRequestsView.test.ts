@@ -42,7 +42,7 @@ const router = createRouter({
 	history: createMemoryHistory(),
 	routes: [
 		{
-			path: '/workflow-review-requests/:reviewRequestId?',
+			path: '/reviews/:reviewRequestId?',
 			name: WORKFLOW_REVIEW_REQUESTS_VIEW,
 			component: { template: '<div />' },
 		},
@@ -111,7 +111,7 @@ describe('WorkflowReviewRequestsView', () => {
 		vi.mocked(useToast).mockReturnValue({ showError, showMessage } as unknown as ReturnType<
 			typeof useToast
 		>);
-		await router.push('/workflow-review-requests');
+		await router.push('/reviews');
 		await router.isReady();
 
 		store = mockedStore(useReviewInboxStore);
@@ -190,7 +190,7 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	it('names the closed tab in the no-selection state while the count is unknown', async () => {
-		await router.replace('/workflow-review-requests?state=closed');
+		await router.replace('/reviews?state=closed');
 		store.hasItemsInActiveTab = true;
 		store.closedCount = null;
 
@@ -215,7 +215,7 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	it('heads the no-selection state with the closed count on the closed tab', async () => {
-		await router.replace('/workflow-review-requests?state=closed');
+		await router.replace('/reviews?state=closed');
 		store.hasItemsInActiveTab = true;
 		store.openCount = 4;
 		store.closedCount = 2;
@@ -263,7 +263,7 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	it('fetches the route review detail on mount', async () => {
-		await router.replace('/workflow-review-requests/req-1');
+		await router.replace('/reviews/req-1');
 
 		renderComponent();
 		await waitAllPromises();
@@ -272,7 +272,7 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	it('opens a review with its activity already loading', async () => {
-		await router.replace('/workflow-review-requests/req-1');
+		await router.replace('/reviews/req-1');
 
 		renderComponent();
 		await waitAllPromises();
@@ -281,7 +281,7 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	it('swaps in the activity of the next review the viewer picks', async () => {
-		await router.replace('/workflow-review-requests/req-1');
+		await router.replace('/reviews/req-1');
 
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
@@ -292,7 +292,7 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	it('selects a review with replace and preserves the query', async () => {
-		await router.replace('/workflow-review-requests?state=closed');
+		await router.replace('/reviews?state=closed');
 		const replaceSpy = vi.spyOn(router, 'replace');
 		const pushSpy = vi.spyOn(router, 'push');
 
@@ -308,7 +308,7 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	it('drops the tab when selecting a different review, so it lands on Activity', async () => {
-		await router.replace('/workflow-review-requests/req-2?state=closed&tab=changes');
+		await router.replace('/reviews/req-2?state=closed&tab=changes');
 		const replaceSpy = vi.spyOn(router, 'replace');
 
 		const { getByTestId } = renderComponent();
@@ -322,7 +322,7 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	it('keeps the tab when re-selecting the review already open', async () => {
-		await router.replace('/workflow-review-requests/req-1?tab=changes');
+		await router.replace('/reviews/req-1?tab=changes');
 		const replaceSpy = vi.spyOn(router, 'replace');
 
 		const { getByTestId } = renderComponent();
@@ -336,7 +336,7 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	it('clears the selection back to the bare inbox path', async () => {
-		await router.replace('/workflow-review-requests/req-1?state=closed');
+		await router.replace('/reviews/req-1?state=closed');
 
 		const { getByTestId } = renderComponent();
 		await waitAllPromises();
@@ -344,13 +344,13 @@ describe('WorkflowReviewRequestsView', () => {
 		getByTestId('clear-review').click();
 		await waitAllPromises();
 
-		expect(router.currentRoute.value.fullPath).toBe('/workflow-review-requests?state=closed');
+		expect(router.currentRoute.value.fullPath).toBe('/reviews?state=closed');
 		expect(router.currentRoute.value.params.reviewRequestId).toBe('');
 		expect(store.clearDetail).toHaveBeenCalled();
 	});
 
 	it('shows the detail skeleton while deep-linked detail is loading', async () => {
-		await router.replace('/workflow-review-requests/req-1');
+		await router.replace('/reviews/req-1');
 		store.detailLoading = true;
 		store.detail = null;
 
@@ -362,7 +362,7 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	it('renders an inline not-found state without redirecting', async () => {
-		await router.replace('/workflow-review-requests/missing');
+		await router.replace('/reviews/missing');
 		store.detailNotFound = true;
 		const replaceSpy = vi.spyOn(router, 'replace');
 
@@ -371,11 +371,11 @@ describe('WorkflowReviewRequestsView', () => {
 
 		expect(getByTestId('workflow-review-detail-not-found')).toBeInTheDocument();
 		expect(replaceSpy).not.toHaveBeenCalled();
-		expect(router.currentRoute.value.fullPath).toBe('/workflow-review-requests/missing');
+		expect(router.currentRoute.value.fullPath).toBe('/reviews/missing');
 	});
 
 	it('uses the list item until loaded detail is available', async () => {
-		await router.replace('/workflow-review-requests/req-1');
+		await router.replace('/reviews/req-1');
 		// Resolved by id across sections, so it works from either one.
 		store.findItemById.mockReturnValue(createInboxItem());
 
@@ -397,7 +397,7 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	it('hydrates the tab from the query before loading', async () => {
-		await router.replace('/workflow-review-requests?state=closed');
+		await router.replace('/reviews?state=closed');
 		renderComponent();
 		await waitAllPromises();
 
@@ -406,7 +406,7 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	it('uses the open tab for an invalid state query', async () => {
-		await router.replace('/workflow-review-requests?state=bogus');
+		await router.replace('/reviews?state=bogus');
 		renderComponent();
 		await waitAllPromises();
 
@@ -414,7 +414,7 @@ describe('WorkflowReviewRequestsView', () => {
 	});
 
 	it('writes tab changes to the query and preserves the selected review', async () => {
-		await router.replace('/workflow-review-requests/req-1');
+		await router.replace('/reviews/req-1');
 
 		const { getByTestId } = renderComponent();
 		getByTestId('select-closed-tab').click();
@@ -435,7 +435,7 @@ describe('WorkflowReviewRequestsView', () => {
 		await waitAllPromises();
 		store.setActiveTab.mockClear();
 
-		await router.replace('/workflow-review-requests?state=closed');
+		await router.replace('/reviews?state=closed');
 		await waitAllPromises();
 
 		expect(store.setActiveTab).toHaveBeenCalledWith('closed');
@@ -452,7 +452,7 @@ describe('WorkflowReviewRequestsView', () => {
 		});
 
 		it('passes a single flat section on the closed tab', async () => {
-			await router.replace('/workflow-review-requests?state=closed');
+			await router.replace('/reviews?state=closed');
 
 			const { getByTestId } = renderComponent();
 			await waitAllPromises();
@@ -486,7 +486,7 @@ describe('WorkflowReviewRequestsView', () => {
 
 	describe('detail tabs', () => {
 		beforeEach(async () => {
-			await router.replace('/workflow-review-requests/req-1');
+			await router.replace('/reviews/req-1');
 			store.detail = createDetail();
 		});
 
@@ -499,7 +499,7 @@ describe('WorkflowReviewRequestsView', () => {
 		});
 
 		it('hydrates the changes tab from the query', async () => {
-			await router.replace('/workflow-review-requests/req-1?tab=changes');
+			await router.replace('/reviews/req-1?tab=changes');
 
 			const { getByTestId, queryByTestId } = renderComponent();
 			await waitAllPromises();
@@ -509,7 +509,7 @@ describe('WorkflowReviewRequestsView', () => {
 		});
 
 		it('falls back to the activity tab for an invalid tab query', async () => {
-			await router.replace('/workflow-review-requests/req-1?tab=bogus');
+			await router.replace('/reviews/req-1?tab=bogus');
 
 			const { getByTestId } = renderComponent();
 			await waitAllPromises();
@@ -518,7 +518,7 @@ describe('WorkflowReviewRequestsView', () => {
 		});
 
 		it('writes the tab to the query preserving selection and state', async () => {
-			await router.replace('/workflow-review-requests/req-1?state=closed');
+			await router.replace('/reviews/req-1?state=closed');
 
 			const { getByRole } = renderComponent();
 			await waitAllPromises();
@@ -551,7 +551,7 @@ describe('WorkflowReviewRequestsView', () => {
 		});
 
 		beforeEach(async () => {
-			await router.replace('/workflow-review-requests/req-1');
+			await router.replace('/reviews/req-1');
 			store.detail = createDetail();
 			store.decideOnReview.mockResolvedValue(decisionResponse());
 		});
@@ -686,9 +686,7 @@ describe('WorkflowReviewRequestsView', () => {
 			getByTestId('approve-review').click();
 			await waitAllPromises();
 
-			expect(router.currentRoute.value.fullPath).toBe(
-				'/workflow-review-requests/req-1?state=closed',
-			);
+			expect(router.currentRoute.value.fullPath).toBe('/reviews/req-1?state=closed');
 			expect(router.currentRoute.value.params.reviewRequestId).toBe('req-1');
 		});
 
@@ -705,9 +703,7 @@ describe('WorkflowReviewRequestsView', () => {
 			getByTestId('approve-review').click();
 			await waitAllPromises();
 
-			expect(router.currentRoute.value.fullPath).toBe(
-				'/workflow-review-requests/req-1?state=closed',
-			);
+			expect(router.currentRoute.value.fullPath).toBe('/reviews/req-1?state=closed');
 		});
 
 		it('stays on the open tab when the review stays open', async () => {
@@ -721,11 +717,11 @@ describe('WorkflowReviewRequestsView', () => {
 			getByTestId('request-changes').click();
 			await waitAllPromises();
 
-			expect(router.currentRoute.value.fullPath).toBe('/workflow-review-requests/req-1');
+			expect(router.currentRoute.value.fullPath).toBe('/reviews/req-1');
 		});
 
 		it('does not renavigate when already on the closed tab', async () => {
-			await router.replace('/workflow-review-requests/req-1?state=closed');
+			await router.replace('/reviews/req-1?state=closed');
 			store.activeTab = 'closed';
 
 			const { getByTestId } = renderComponent();
@@ -736,9 +732,7 @@ describe('WorkflowReviewRequestsView', () => {
 			await waitAllPromises();
 
 			expect(replaceSpy).not.toHaveBeenCalled();
-			expect(router.currentRoute.value.fullPath).toBe(
-				'/workflow-review-requests/req-1?state=closed',
-			);
+			expect(router.currentRoute.value.fullPath).toBe('/reviews/req-1?state=closed');
 		});
 
 		it('shows an error toast when the decision fails', async () => {
@@ -806,7 +800,7 @@ describe('WorkflowReviewRequestsView', () => {
 			const { getByTestId } = renderComponent();
 			await waitAllPromises();
 			getByTestId('approve-review').click();
-			await router.replace('/workflow-review-requests/req-2');
+			await router.replace('/reviews/req-2');
 			await waitAllPromises();
 			activityStore.fetchFeed.mockClear();
 
@@ -831,13 +825,13 @@ describe('WorkflowReviewRequestsView', () => {
 			const { getByTestId } = renderComponent();
 			await waitAllPromises();
 			getByTestId('approve-review').click();
-			await router.replace('/workflow-review-requests/req-2');
+			await router.replace('/reviews/req-2');
 			await waitAllPromises();
 
 			resolveDecision();
 			await waitAllPromises();
 
-			expect(router.currentRoute.value.fullPath).toBe('/workflow-review-requests/req-2');
+			expect(router.currentRoute.value.fullPath).toBe('/reviews/req-2');
 		});
 
 		it('shows no publish toast once the viewer has left the page', async () => {
