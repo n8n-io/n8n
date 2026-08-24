@@ -8,116 +8,77 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-// Owned by ENT-128 (parallel PR): coupled by name only, never import the class
+import { getAtlassianApiBaseUrl, getAtlassianCloudId } from '@utils/atlassian';
+
 export const CONFLUENCE_CREDENTIAL_NAME = 'confluenceCloudOAuth2Api';
 
-// Bearer-token origin invariant: every request URL is string-concatenated onto this
-// constant, so no caller input can change the host. Any future verbatim-URL param
-// (paginator next-link, uri override) needs an origin check first, see the one in
-// `microsoftApiRequest` (SharePoint v2 transport). User-supplied path segments in
-// future endpoints must be encodeURIComponent-ed.
-const ATLASSIAN_API_BASE = 'https://api.atlassian.com';
-
-export interface AccessibleResource {
-	id: string;
-	url: string;
-	name?: string;
+interface CaughtRequestError {
+	response?: { status?: unknown; data?: unknown };
 }
 
-/**
- * Pure hostname matcher, exported so ENT-128's credential Test can reuse the exact
- * matching this node routes with. Case-insensitive, never an exact-string comparison
- * (the trap in Jira's `getCloudId`).
- */
-export function matchSiteByHostname(
-	resources: AccessibleResource[],
-	hostname: string,
-): AccessibleResource | undefined {
-	const target = hostname.toLowerCase();
-	// Non-throwing on malformed entries: this is a reuse contract fed with an unvalidated API response
-	return resources.find((resource) => {
-		try {
-			return new URL(resource.url).hostname.toLowerCase() === target;
-		} catch {
-			return false;
-		}
-	});
+interface ExtractedApiError {
+	message: string;
+	description?: string;
+	data: IDataObject;
 }
 
-// Module-level cache: credentialId:hostname → cloudId (`_cloudIdCache` in Jira's
-// GenericFunctions is the precedent, but keyed per credential here: a shared hostname-only
-// key makes cold vs warm failures distinguishable, letting one user infer that another
-// credential on the instance reaches a given site).
-// Lives for the n8n process; a moved/deleted site needs a restart to re-resolve (same ceiling as Jira).
-// One asymmetry: a warm-cache hit skips the accessible-resources check, so a credential that
-// lost access to a site it once resolved fails at the API call with Atlassian's 403.
-const cloudIdCache = new Map<string, string>();
+function extractApiMessage(body: unknown): ExtractedApiError | undefined {
+	if (typeof body !== 'object' || body === null) return undefined;
+	const data = body as IDataObject;
+	const { errors: v2Errors, message: v1Message } = data as {
+		errors?: unknown;
+		message?: unknown;
+	};
 
-/** Test-only escape hatch for the module-level cache. */
-export function clearCloudIdCache(): void {
-	cloudIdCache.clear();
+	const first = Array.isArray(v2Errors)
+		? (v2Errors[0] as { title?: unknown; detail?: unknown } | undefined)
+		: undefined;
+	if (typeof first?.title === 'string' && first.title !== '') {
+		return {
+			message: first.title,
+			description:
+				typeof first.detail === 'string' && first.detail !== '' ? first.detail : undefined,
+			data,
+		};
+	}
+
+	if (typeof v1Message === 'string' && v1Message !== '') return { message: v1Message, data };
+
+	return undefined;
 }
 
-/** Reduce any pasted site-URL form (scheme optional, `/wiki` or deeper paths, any casing) to its lowercased hostname. */
-export function normalizeSiteUrl(siteUrl: string): string {
-	const trimmed = siteUrl.trim();
-	const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
-	return new URL(withScheme).hostname.toLowerCase();
-}
-
-export async function getConfluenceCloudId(
+// NodeApiError's constructor short-circuits on re-wrap (returns the same
+// instance, dropping any option overrides), so enrichment needs a fresh error.
+function toConfluenceApiError(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-	siteUrl: string,
-): Promise<string> {
-	let hostname: string;
-	try {
-		hostname = normalizeSiteUrl(siteUrl);
-	} catch {
-		throw new NodeOperationError(this.getNode(), `"${siteUrl}" is not a valid Confluence site URL`);
+	error: unknown,
+): NodeApiError {
+	const wrapped = error instanceof NodeApiError ? error : undefined;
+	const body = wrapped ? wrapped.context.data : (error as CaughtRequestError).response?.data;
+
+	const extracted = extractApiMessage(body);
+	if (extracted !== undefined) {
+		let httpCode: string | undefined;
+		if (wrapped) {
+			httpCode = wrapped.httpCode ?? undefined;
+		} else {
+			const status = (error as CaughtRequestError).response?.status;
+			httpCode =
+				typeof status === 'number' || typeof status === 'string' ? String(status) : undefined;
+		}
+
+		const sanitizedError: JsonObject = { message: extracted.message };
+		const fresh = new NodeApiError(this.getNode(), sanitizedError, {
+			message: extracted.message,
+			description: extracted.description,
+			httpCode,
+		});
+		// Keep the raw response body visible in the NDV's error-data pane
+		fresh.context.data = extracted.data;
+		return fresh;
 	}
-
-	const credentialId = this.getNode().credentials?.[CONFLUENCE_CREDENTIAL_NAME]?.id ?? '';
-	const cacheKey = `${credentialId}:${hostname}`;
-	const cached = cloudIdCache.get(cacheKey);
-	if (cached) return cached;
-
-	let resources: AccessibleResource[];
-	try {
-		resources = await this.helpers.httpRequestWithAuthentication.call(
-			this,
-			CONFLUENCE_CREDENTIAL_NAME,
-			{
-				method: 'GET',
-				url: `${ATLASSIAN_API_BASE}/oauth/token/accessible-resources`,
-				json: true,
-			},
-		);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
-
-	// A non-array body falls through to the no-match error instead of a raw TypeError
-	if (!Array.isArray(resources)) resources = [];
-
-	const site = matchSiteByHostname(resources, hostname);
-
-	if (!site) {
-		// Same guard class as matchSiteByHostname: malformed entries must not break the error message.
-		// Capped at 5 so the error stays readable and a bogus siteUrl cannot dump the full site list
-		// into persisted execution data.
-		const urls = resources
-			.filter((resource) => typeof resource?.url === 'string' && resource.url !== '')
-			.map((resource) => resource.url);
-		const reachable =
-			urls.slice(0, 5).join(', ') + (urls.length > 5 ? `, and ${urls.length - 5} more` : '');
-		throw new NodeOperationError(
-			this.getNode(),
-			`No Confluence site matched "${siteUrl}". This connection can access: ${reachable || 'no sites'}`,
-		);
-	}
-
-	cloudIdCache.set(cacheKey, site.id);
-	return site.id;
+	if (wrapped) return wrapped;
+	return new NodeApiError(this.getNode(), error as JsonObject);
 }
 
 export async function confluenceApiRequest(
@@ -128,8 +89,7 @@ export async function confluenceApiRequest(
 	qs: IDataObject = {},
 ): Promise<IDataObject> {
 	const credentials = await this.getCredentials(CONFLUENCE_CREDENTIAL_NAME);
-	// The key is `domain` (kept from Jira credentials for backwards compatibility)
-	// while the user-facing label is "Site URL"; see AtlassianOAuth2Api (ENT-128)
+	// Keyed `domain` for backwards compatibility with Jira credentials; labeled "Site URL" in the UI
 	const siteUrl = credentials.domain;
 	if (typeof siteUrl !== 'string' || siteUrl === '') {
 		throw new NodeOperationError(
@@ -137,11 +97,18 @@ export async function confluenceApiRequest(
 			'The Confluence credential is missing the Site URL field',
 		);
 	}
-	const cloudId = await getConfluenceCloudId.call(this, siteUrl);
+	const cloudId = await getAtlassianCloudId.call(
+		this,
+		CONFLUENCE_CREDENTIAL_NAME,
+		siteUrl,
+		'confluence',
+	);
 
+	// The URL is concatenated onto the api.atlassian.com base, so caller input can't
+	// change the host; a future verbatim-URL param needs an origin check first.
 	const options: IHttpRequestOptions = {
 		method,
-		url: `${ATLASSIAN_API_BASE}/ex/confluence/${encodeURIComponent(cloudId)}${endpoint}`,
+		url: `${getAtlassianApiBaseUrl('confluence', cloudId)}${endpoint}`,
 		body,
 		qs,
 		json: true,
@@ -154,6 +121,56 @@ export async function confluenceApiRequest(
 			options,
 		);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
+		throw toConfluenceApiError.call(this, error);
 	}
+}
+
+/**
+ * Fetches a binary resource (e.g. an attachment's server-relative `downloadLink`)
+ * through the gateway and returns its raw bytes. Same base-URL concatenation rule
+ * as `confluenceApiRequest`: the endpoint can never change the host.
+ */
+export async function confluenceApiRequestBinary(
+	this: IExecuteFunctions,
+	endpoint: string,
+): Promise<Buffer> {
+	const credentials = await this.getCredentials(CONFLUENCE_CREDENTIAL_NAME);
+	const siteUrl = credentials.domain;
+	if (typeof siteUrl !== 'string' || siteUrl === '') {
+		throw new NodeOperationError(
+			this.getNode(),
+			'The Confluence credential is missing the Site URL field',
+		);
+	}
+	const cloudId = await getAtlassianCloudId.call(
+		this,
+		CONFLUENCE_CREDENTIAL_NAME,
+		siteUrl,
+		'confluence',
+	);
+
+	// Downloads 302 to the Atlassian media host, which authenticates the hop via its
+	// own signed token in the redirect URL; the OAuth header must not follow cross-origin.
+	const options: IHttpRequestOptions = {
+		method: 'GET',
+		url: `${getAtlassianApiBaseUrl('confluence', cloudId)}${endpoint}`,
+		encoding: 'arraybuffer',
+		sendCredentialsOnCrossOriginRedirect: false,
+	};
+
+	let data: unknown;
+	try {
+		data = await this.helpers.httpRequestWithAuthentication.call(
+			this,
+			CONFLUENCE_CREDENTIAL_NAME,
+			options,
+		);
+	} catch (error) {
+		throw toConfluenceApiError.call(this, error);
+	}
+
+	if (Buffer.isBuffer(data)) return data;
+	if (data instanceof ArrayBuffer) return Buffer.from(data);
+	if (typeof data === 'string') return Buffer.from(data);
+	throw new NodeOperationError(this.getNode(), 'Confluence returned an unexpected binary response');
 }

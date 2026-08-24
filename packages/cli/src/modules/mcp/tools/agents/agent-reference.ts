@@ -96,6 +96,8 @@ directly on that object — there is no \`value\` wrapper. For example:
 - skill.delete: Set \`skillId\` to the skill to delete; its config reference is removed.
 - task.upsert: Set \`task\` to the complete task body. Omit \`taskId\` to create and attach a new
   scheduled task, or pass it to replace an existing one. \`enabled\` controls the task config reference.
+  On a replace, an omitted \`timezone\` keeps the zone the task already has; send \`null\` to move it
+  back to the instance timezone.
 - task.delete: Set \`taskId\` to the task to delete; its config reference is removed.
 - customTool.upsert: Set \`code\` to the tool source; it is compiled, validated, stored, and attached.
   Only \`@n8n/agents\` and \`zod\` imports are available. The default export must be a Tool builder

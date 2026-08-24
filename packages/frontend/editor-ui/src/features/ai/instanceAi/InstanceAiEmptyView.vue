@@ -10,6 +10,7 @@ import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import {
@@ -73,6 +74,7 @@ import {
 	TemplateExamplesCatalog,
 	TEMPLATE_PROMPT_SUFFIX,
 } from '@/experiments/instanceAiTemplateExamples';
+import { InstanceAiFreeNudge } from '@/experiments/instanceAiFreeNudge';
 
 // Experiment cleanup: remove with instanceAiPromptSuggestionsV2.
 const INSTANCE_AI_PROMPT_SUGGESTIONS_V2_TITLE_KEY: BaseTextKey =
@@ -117,13 +119,16 @@ function resolveLaunchSource(): InstanceAiThreadSource {
 
 const selectedProject = ref(resolveInitialProjectId());
 const settingsStore = useInstanceAiSettingsStore();
-const { isLowCredits } = storeToRefs(store);
+const { showCreditWarning, quotaLocked } = storeToRefs(store);
 const rootStore = useRootStore();
 const toast = useToast();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+// Opening a new conversation drops the tab title of the thread we came from —
+// this view mounts on every entry to the empty route, the parent layout doesn't.
+useDocumentTitle().set(i18n.baseText('instanceAi.view.title'));
 const { goToUpgrade } = usePageRedirectionHelper();
-const creditBanner = useCreditWarningBanner(isLowCredits);
+const creditBanner = useCreditWarningBanner(showCreditWarning);
 const { isFeatureEnabled: isProactiveAgentExperimentEnabled } =
 	useInstanceAiProactiveAgentExperiment();
 const { isFeatureEnabled: isPromptSuggestionsV2ExperimentEnabled } =
@@ -531,6 +536,7 @@ function handleShelfSuggestionInsert(payload: {
 						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
+						:amounts-hidden="quotaLocked"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
@@ -567,6 +573,7 @@ function handleShelfSuggestionInsert(payload: {
 							v-if="creditBanner.visible.value"
 							:credits-remaining="store.creditsRemaining"
 							:credits-quota="store.creditsQuota"
+							:amounts-hidden="quotaLocked"
 							@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 							@dismiss="creditBanner.dismiss()"
 						/>
@@ -595,18 +602,27 @@ function handleShelfSuggestionInsert(payload: {
 			</InstanceAiSplitEmptyState>
 			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
 				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
-				<div ref="centeredInput" :class="[$style.centeredInput, inputPulsing && $style.inputPulse]">
+				<div ref="centeredInput" :class="$style.centeredInput">
+					<InstanceAiFreeNudge
+						:eligible="
+							store.creditsQuota !== undefined &&
+							!creditBanner.visible.value &&
+							settingsStore.isWorkflowBuilderAvailable
+						"
+					/>
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
 						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
+						:amounts-hidden="quotaLocked"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
 						@dismiss="creditBanner.dismiss()"
 					/>
 					<WorkflowBuilderUnavailableNotice v-if="!settingsStore.isWorkflowBuilderAvailable" />
 					<InstanceAiInput
 						ref="chatInputRef"
+						:class="inputPulsing && $style.inputPulse"
 						:is-submitting="isStartingThread"
 						:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
 						:contextual-suggestion="templatePreviewPrompt"

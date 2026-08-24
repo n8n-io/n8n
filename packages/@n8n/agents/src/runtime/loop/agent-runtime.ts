@@ -54,6 +54,8 @@ import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
 import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
+import { removeToolResultRun, type WorkspaceFilesystem } from '../../workspace';
+import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
@@ -93,6 +95,7 @@ export interface AgentRuntimeConfig {
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
+	workspaceFilesystem?: WorkspaceFilesystem;
 	toolSearch?: {
 		topK?: number;
 	};
@@ -141,6 +144,7 @@ const MAX_LOOP_ITERATIONS = 30;
 
 /** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
 const MAX_EMPTY_TURN_RETRIES = 2;
+const logger = createFilteredLogger();
 
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
@@ -167,7 +171,7 @@ interface LoopContext {
  *
  * Memory strategy:
  * - `filterLlmMessages` strips custom messages before sending to the LLM.
- * - Memory stores ALL AgentMessages (including custom) unchanged.
+ * - Memory stores all messages, but expires run-scoped offload locators.
  * - New messages for each turn are tracked via AgentMessageList.turnDelta(),
  *   which uses Set-based source tracking to identify turn-only messages.
  *   The list serializes with id-based sets so it can survive process restarts.
@@ -221,6 +225,7 @@ export class AgentRuntime {
 			concurrency: config.toolCallConcurrency ?? 1,
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
 			tokenCounter,
+			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -289,7 +294,6 @@ export class AgentRuntime {
 			list = builtList;
 			return this.finalizeGenerate(rawResult, list);
 		} catch (error) {
-			await this.telemetry.flush(options);
 			const isAbort = abortScope.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (isAbort) {
@@ -299,6 +303,8 @@ export class AgentRuntime {
 			} else {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
+			await this.cleanupRun();
+			await this.telemetry.flush(options);
 			return {
 				runId: this.runId,
 				messages: list?.responseDelta() ?? [],
@@ -378,6 +384,7 @@ export class AgentRuntime {
 
 		let resumeData: unknown = data;
 		let abortScope: AgentAbortScope | undefined;
+		let resumeClaimed = false;
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
 		if (!isCancellation(resumeData) && resumeSchema) {
@@ -425,6 +432,7 @@ export class AgentRuntime {
 			if (!claimed) {
 				throw new StaleResumeError(`Run ${this.runId} is not suspended. Cannot resume.`);
 			}
+			resumeClaimed = true;
 			await options.onResumeClaimed?.();
 
 			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
@@ -483,6 +491,7 @@ export class AgentRuntime {
 			if (!isAbort) {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
+			if (resumeClaimed) await this.cleanupRun();
 			if (method === 'generate') {
 				return {
 					runId: this.runId,
@@ -880,6 +889,7 @@ export class AgentRuntime {
 				reasoning: staticLoopContext.reasoning,
 				providerOptions: staticLoopContext.providerOptions,
 				outputSpec: staticLoopContext.outputSpec,
+				maxOutputTokens: staticLoopContext.maxOutputTokens,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
 			};
 			let turn = await sink.callModel(modelCallContext);
@@ -1105,7 +1115,20 @@ export class AgentRuntime {
 
 	/** Clean up stored state for a run when it finishes without re-suspending. */
 	private async cleanupRun(): Promise<void> {
-		await this.runState.complete(this.runId);
+		try {
+			await this.runState.complete(this.runId);
+		} catch (error) {
+			logger.warn('Failed to clean up agent run checkpoint', { runId: this.runId, error });
+			return;
+		}
+
+		if (this.config.workspaceFilesystem) {
+			try {
+				await removeToolResultRun(this.config.workspaceFilesystem, this.runId);
+			} catch (error) {
+				logger.warn('Failed to clean up agent run tool results', { runId: this.runId, error });
+			}
+		}
 	}
 
 	/** Emit a TurnEnd event when an assistant message is present in `newMessages`. */

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, toRef, watch, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 import { N8nCallout, N8nIconButton, N8nSendStopButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import {
@@ -16,7 +16,11 @@ import { useAgentChatStream } from '../composables/useAgentChatStream';
 import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
-import type { AgentJsonConfig } from '../types';
+import type {
+	AgentContinueLoadedEvent,
+	AgentFixWithAssistantEvent,
+	AgentJsonConfig,
+} from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import { TOOL_CALL_STATE } from '../constants';
@@ -50,11 +54,11 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
-	'continue-loaded': [count: number];
+	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
-	'send-to-assistant': [executionId?: string];
+	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
 }>();
 
 const locale = useI18n();
@@ -62,6 +66,11 @@ const agentTelemetry = useAgentTelemetry();
 const toast = useToast();
 
 const attachedFiles = ref<File[]>([]);
+const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+
+function focusInput(options?: FocusOptions) {
+	chatInput.value?.focus(options);
+}
 
 const attachmentCapabilities = computed(() => {
 	const provider = props.agentConfig?.model?.split('/')[0];
@@ -126,6 +135,7 @@ const inputText = computed<string>({
 	},
 });
 const isPreparingToSend = ref(false);
+let disposed = false;
 
 const {
 	messages,
@@ -146,7 +156,9 @@ const {
 	agentId: toRef(props, 'agentId'),
 	continueSessionId: toRef(props, 'continueSessionId'),
 	onHistoryLoaded: (count) => {
-		if (props.continueSessionId) emit('continue-loaded', count);
+		if (props.continueSessionId) {
+			emit('continue-loaded', { sessionId: props.continueSessionId, count });
+		}
 	},
 });
 
@@ -193,6 +205,17 @@ const hasOpenSuspension = computed(() =>
 		),
 	),
 );
+// Tools still pending/running after the stream ended (desync): the backend
+// finished but their terminal events never arrived. Surfacing Stop here lets
+// the user clear the stale pulsing state without reloading the chat.
+const hasInFlightToolCalls = computed(() =>
+	messages.value.some((message) =>
+		message.toolCalls?.some(
+			(toolCall) =>
+				toolCall.state === TOOL_CALL_STATE.PENDING || toolCall.state === TOOL_CALL_STATE.RUNNING,
+		),
+	),
+);
 const showSuspensionStopAlongsideSend = computed(
 	() => hasOpenInteractiveQuestion.value && !isStreaming.value && !isCancelling.value,
 );
@@ -201,16 +224,25 @@ const showStopAsPrimaryAction = computed(
 		isStreaming.value ||
 		isCancelling.value ||
 		hasOpenApproval.value ||
-		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
+		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value) ||
+		(!isStreaming.value && hasInFlightToolCalls.value),
 );
 
-const chatPlaceholder = computed(() =>
-	hasOpenApproval.value
-		? locale.baseText('agents.chat.approval.inputPlaceholder')
-		: hasOpenInteractiveQuestion.value
-			? locale.baseText('agents.chat.answerQuestionPlaceholder')
-			: locale.baseText('agents.chat.input.placeholder'),
-);
+const chatPlaceholder = computed(() => {
+	if (hasOpenApproval.value) {
+		return locale.baseText('agents.chat.approval.inputPlaceholder');
+	}
+	if (hasOpenInteractiveQuestion.value) {
+		return locale.baseText('agents.chat.answerQuestionPlaceholder');
+	}
+
+	const agentName = props.agentConfig?.name?.trim();
+	return agentName
+		? locale.baseText('agents.chat.input.placeholder.withAgent', {
+				interpolate: { agentName },
+			})
+		: locale.baseText('agents.chat.input.placeholder');
+});
 
 watch(isStreaming, (v) => emit('update:streaming', v));
 
@@ -236,20 +268,31 @@ async function onSubmit() {
 
 	isPreparingToSend.value = true;
 	try {
-		await props.beforeSend?.();
-	} catch {
-		isPreparingToSend.value = false;
-		return;
-	}
-
-	try {
-		inputText.value = '';
-		attachedFiles.value = [];
+		const target = {
+			projectId: props.projectId,
+			agentId: props.agentId,
+			continueSessionId: props.continueSessionId,
+		};
+		const isCurrentTarget = () =>
+			!disposed &&
+			props.projectId === target.projectId &&
+			props.agentId === target.agentId &&
+			props.continueSessionId === target.continueSessionId;
+		try {
+			await props.beforeSend?.();
+		} catch {
+			return;
+		}
+		if (!isCurrentTarget()) return;
 
 		const fingerprint = await buildAgentConfigFingerprint(
 			props.agentConfig,
 			props.connectedTriggers,
 		);
+		if (!isCurrentTarget()) return;
+
+		inputText.value = '';
+		attachedFiles.value = [];
 		agentTelemetry.trackSubmittedMessage({
 			agentId: props.agentId,
 			status: props.agentStatus,
@@ -272,13 +315,14 @@ function sendMessageFromOutside(message: string) {
 	void onSubmit();
 }
 
-defineExpose({ sendMessageFromOutside });
+defineExpose({ focusInput, sendMessageFromOutside });
 
 onMounted(() => {
 	void loadHistory();
 });
 
 onBeforeUnmount(() => {
+	disposed = true;
 	if (isStreaming.value) void stopGenerating();
 });
 </script>
@@ -337,7 +381,7 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</div>
 
-		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" />
+		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" :agent-config="agentConfig" />
 		<AgentChatMessageList
 			v-else
 			:messages="messages"
@@ -352,9 +396,11 @@ onBeforeUnmount(() => {
 
 		<div :class="$style.inputArea">
 			<ChatInputBase
+				ref="chatInput"
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
 				:is-streaming="showStopAsPrimaryAction"
+				show-voice
 				:show-attach="showAttach"
 				:accepted-mime-types="acceptedMimeTypes"
 				:can-submit="
@@ -424,6 +470,9 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	width: 100%;
+	max-width: 800px;
+	margin: 0 auto;
 }
 
 .attachmentsStrip {

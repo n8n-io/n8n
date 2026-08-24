@@ -105,17 +105,17 @@ export type ExpectedField = {
 export const CANNED_METRIC_EXPECTED_FIELDS: Partial<Record<CannedMetricKey, ExpectedField>> = {
 	correctness: {
 		name: 'expectedAnswer',
-		labelKey: 'evaluations.wizardSidepanel.step2.expectedAnswer',
+		labelKey: 'evaluations.tests.detail.expectedAnswer',
 	},
 	stringSimilarity: {
 		name: 'expectedAnswer',
-		labelKey: 'evaluations.wizardSidepanel.step2.expectedAnswer',
+		labelKey: 'evaluations.tests.detail.expectedAnswer',
 	},
 	categorization: {
 		name: 'expectedAnswer',
-		labelKey: 'evaluations.wizardSidepanel.step2.expectedAnswer',
+		labelKey: 'evaluations.tests.detail.expectedAnswer',
 	},
-	toolsUsed: { name: 'expectedTools', labelKey: 'evaluations.wizardSidepanel.step2.expectedTools' },
+	toolsUsed: { name: 'expectedTools', labelKey: 'evaluations.tests.detail.expectedTools' },
 };
 
 export function getExpectedFieldsForMetrics(

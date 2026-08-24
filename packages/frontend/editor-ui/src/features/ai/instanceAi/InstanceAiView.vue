@@ -5,11 +5,12 @@ import { N8nResizeWrapper } from '@n8n/design-system';
 import { useEventListener, useSessionStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { claimDocumentTitle, useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
@@ -26,6 +27,7 @@ const route = useRoute();
 const router = useRouter();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
+const usersStore = useUsersStore();
 const telemetry = useTelemetry();
 const { isCtrlKeyPressed } = useDeviceSupport();
 const setupCompletionState = computed(
@@ -61,6 +63,10 @@ watch(setupCompletionState, (setupCompleted) => {
 	}
 });
 
+// The tab is named after the conversation, by whichever inner view is mounted
+// (thread → its title, empty → the default below). Claiming the title keeps the
+// workflow canvas embedded in a thread from renaming the tab after its workflow.
+claimDocumentTitle();
 documentTitle.set(i18n.baseText('instanceAi.view.title'));
 
 // --- Sidebar collapse & resize ---
@@ -122,6 +128,9 @@ onMounted(() => {
 	if (showOnboarding.value && route.name !== INSTANCE_AI_VIEW) {
 		void router.replace({ name: INSTANCE_AI_VIEW });
 	}
+	// New owners land here instead of the homepage, so the signup modals
+	// (personalization survey → community registration) must trigger here too.
+	void usersStore.showPersonalizationSurvey();
 	// In-app navigations expose the previous route via history state; direct
 	// visits (bookmark, external link) fall back to the document referrer.
 	const previousRoute = router.options.history.state.back;

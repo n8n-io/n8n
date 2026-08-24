@@ -51,6 +51,25 @@ If this affects the user's request, briefly let them know which server is unavai
 const EMPTY_RESPONSE_ERROR_FINISH_REASONS = new Set(['other', 'unknown', 'content-filter']);
 
 /**
+ * Whether a turn carries output the user can see or the loop can act on.
+ * Reasoning is neither: a thinking block the model never turned into an answer
+ * or a tool call leaves the run with nothing to show and nothing to do next.
+ */
+function hasActionableContent(messages: AgentMessage[]): boolean {
+	return messages.some(
+		(m) =>
+			'content' in m &&
+			Array.isArray(m.content) &&
+			m.content.some(
+				(c) =>
+					(c.type === 'text' && c.text.trim().length > 0) ||
+					c.type === 'tool-call' ||
+					c.type === 'file',
+			),
+	);
+}
+
+/**
  * Classify a turn that produced no output as a recognized failure, or return
  * `undefined` when it doesn't look like a provider rejection. Some providers
  * fail this way rather than erroring, reporting the cause only on their raw
@@ -63,7 +82,7 @@ export function classifyModelTurnError(turn: {
 	newMessages: AgentMessage[];
 	providerError?: RawProviderError;
 }): ModelTurnError | undefined {
-	if (turn.newMessages.length > 0) return undefined;
+	if (hasActionableContent(turn.newMessages)) return undefined;
 	if (!EMPTY_RESPONSE_ERROR_FINISH_REASONS.has(turn.aiFinishReason)) return undefined;
 
 	const guidance =
@@ -81,31 +100,29 @@ export function classifyModelTurnError(turn: {
 }
 
 /**
- * True when a turn finished with `stop` but produced no usable output — no
- * non-whitespace text, no tool call, no file. Some providers (observed with
- * Kimi via Together) occasionally emit such a turn mid-task, which would
- * silently end the run with work half-done; callers retry a bounded number
- * of times before accepting it. Reasoning-only turns count as empty: they
- * carry no user-visible output and no action.
+ * True when a turn produced no usable output — no non-whitespace text, no tool
+ * call, no file. Providers emit such a turn mid-task in more than one shape: a
+ * bare `stop` (observed with Kimi via Together), or a stream that dies before
+ * its terminal chunk, leaving the SDK to synthesize a finish from its defaults
+ * (`other`, no usage) around a reasoning-only message. Either way the run would
+ * end silently with work half-done, so callers retry a bounded number of times
+ * before accepting it. Reasoning-only turns count as empty: they carry no
+ * user-visible output and no action. `tool-calls` is the one finish reason that
+ * cannot be empty — the calls are the turn's output.
  */
 export function isEmptyModelTurn(turn: {
 	aiFinishReason: string;
 	newMessages: AgentMessage[];
 	structuredOutput?: unknown;
+	errorReason?: ModelTurnError;
 }): boolean {
-	if (turn.aiFinishReason !== 'stop') return false;
+	if (turn.aiFinishReason === 'tool-calls') return false;
 	if (turn.structuredOutput !== undefined) return false;
-	return !turn.newMessages.some(
-		(m) =>
-			'content' in m &&
-			Array.isArray(m.content) &&
-			m.content.some(
-				(c) =>
-					(c.type === 'text' && c.text.trim().length > 0) ||
-					c.type === 'tool-call' ||
-					c.type === 'file',
-			),
-	);
+	// A safety block is the provider's deterministic verdict on this prompt:
+	// re-issuing it earns the same answer and discards the captured reason,
+	// which is the only place the block is explained.
+	if (turn.errorReason?.type === 'prompt_blocked') return false;
+	return !hasActionableContent(turn.newMessages);
 }
 
 /** Extract all settled (resolved or rejected) tool-call blocks from a flat list of agent messages. */

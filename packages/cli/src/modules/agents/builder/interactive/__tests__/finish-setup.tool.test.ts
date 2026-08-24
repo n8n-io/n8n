@@ -73,6 +73,7 @@ describe('finish_setup tool', () => {
 				],
 			},
 		]);
+		expect(payload.projectId).toBe('project-1');
 		expect(
 			(payload.finishSetupChain as { collected: { credentials: unknown } }).collected.credentials,
 		).toEqual({

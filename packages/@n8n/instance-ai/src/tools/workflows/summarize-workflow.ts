@@ -5,7 +5,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type { WorkflowNode } from '../../types';
 
 export const STRUCTURE_ONLY_NOTE =
-	'Node parameters omitted to keep context small. Pass full: true to include them in one call, or use get-json / get-as-code (optionally with versionId) for parameter-level detail.';
+	'Node parameters omitted to keep context small. Pass full: true to include them in one call, or use get-as-code (optionally with versionId) for parameter-level detail.';
 
 // Below this, summarizing saves too little to be worth a possible second full fetch.
 export const PARAMETERS_INLINE_LIMIT_BYTES = 4096;
@@ -77,7 +77,9 @@ export async function summarizeWorkflowStructure(
 		return generateWorkflowCode({
 			name,
 			nodes: nodes.map((node) => ({
-				id: node.name,
+				// No real node id is available here, and codegen must never present a
+				// human name as one — this view is structure-only.
+				id: '',
 				name: node.name,
 				type: node.type,
 				typeVersion: node.typeVersion ?? 1,

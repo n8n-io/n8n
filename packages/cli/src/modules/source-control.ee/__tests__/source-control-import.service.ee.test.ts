@@ -163,6 +163,7 @@ describe('SourceControlImportService', () => {
 				id: 'workflow1',
 				versionId: 'v1',
 				name: 'Test Workflow',
+				description: 'Test description',
 				owner: {
 					type: 'personal',
 					personalEmail: 'email@email.com',
@@ -180,6 +181,7 @@ describe('SourceControlImportService', () => {
 					id: 'workflow1',
 					versionId: 'v1',
 					name: 'Test Workflow',
+					description: 'Test description',
 				}),
 			);
 		});
@@ -256,6 +258,7 @@ describe('SourceControlImportService', () => {
 			const mockWorkflowData1 = {
 				id: '1',
 				name: 'Workflow 1',
+				description: 'Workflow 1 description',
 				active: false,
 				nodes: [
 					{
@@ -318,6 +321,7 @@ describe('SourceControlImportService', () => {
 				expect.objectContaining({
 					id: mockWorkflowData1.id,
 					name: mockWorkflowData1.name,
+					description: mockWorkflowData1.description,
 					nodes: mockWorkflowData1.nodes,
 					connections: mockWorkflowData1.connections,
 					nodeGroups: mockWorkflowData1.nodeGroups,
@@ -345,6 +349,50 @@ describe('SourceControlImportService', () => {
 					name: mockWorkflowFile2,
 				},
 			]);
+		});
+
+		it('should not touch the local description when the file has no description key', async () => {
+			const mockUserId = 'user-id-123';
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), {
+					id: 'personal-project-id-123',
+					name: 'Personal Project',
+					type: 'personal',
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				}),
+			);
+			const legacyWorkflowData = {
+				id: '1',
+				name: 'Legacy Workflow',
+				active: false,
+				nodes: [],
+				connections: {},
+				versionId: 'v1',
+				owner: {
+					type: 'personal',
+					personalEmail: 'user@example.com',
+				},
+				parentFolderId: null,
+				nodeGroups: [],
+			};
+			const candidates = [mock<SourceControlledFile>({ file: '/mock/legacy.json', id: '1' })];
+
+			workflowRepository.findByIds.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: '1' }],
+				generatedMaps: [],
+				raw: [],
+			});
+			fsReadFile.mockResolvedValue(JSON.stringify(legacyWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			expect(workflowRepository.upsert).toHaveBeenCalledTimes(1);
+			const [upsertedWorkflow] = workflowRepository.upsert.mock.calls[0];
+			expect('description' in upsertedWorkflow).toBe(false);
 		});
 
 		it('should log and throw an error if a workflow file cannot be parsed', async () => {
@@ -850,7 +898,8 @@ describe('SourceControlImportService', () => {
 				await service.importWorkflowFromWorkFolder(candidates, mockUserId);
 
 				expect(workflowMutationHooks.afterWorkflowArchived).toHaveBeenCalledTimes(1);
-				expect(workflowMutationHooks.afterWorkflowArchived).toHaveBeenCalledWith('workflow1');
+				// A pull is a system mutation: no acting user to attribute the archive to.
+				expect(workflowMutationHooks.afterWorkflowArchived).toHaveBeenCalledWith('workflow1', null);
 				// The hook observes a committed mutation, so it must run after the upsert
 				expect(workflowRepository.upsert.mock.invocationCallOrder[0]).toBeLessThan(
 					workflowMutationHooks.afterWorkflowArchived.mock.invocationCallOrder[0],
@@ -916,7 +965,7 @@ describe('SourceControlImportService', () => {
 
 				await service.importWorkflowFromWorkFolder(candidates, mockUserId);
 
-				expect(workflowMutationHooks.afterWorkflowArchived).toHaveBeenCalledWith('workflow1');
+				expect(workflowMutationHooks.afterWorkflowArchived).toHaveBeenCalledWith('workflow1', null);
 			});
 		});
 
@@ -2954,8 +3003,9 @@ describe('SourceControlImportService', () => {
 				await service.deleteFoldersNotInWorkfolder(candidates as any);
 
 				expect(workflowMutationHooks.beforeWorkflowDeleted).toHaveBeenCalledTimes(1);
-				expect(workflowMutationHooks.beforeWorkflowDeleted).toHaveBeenCalledWith('wf-1');
-				// An abort must leave the workflow untouched: hook before trigger teardown
+				// A pull is a system mutation: no acting user to attribute the delete to.
+				expect(workflowMutationHooks.beforeWorkflowDeleted).toHaveBeenCalledWith('wf-1', null);
+				// The capture must see the rows the teardown and cascade will destroy
 				expect(
 					workflowMutationHooks.beforeWorkflowDeleted.mock.invocationCallOrder[0],
 				).toBeLessThan(activeWorkflowManager.remove.mock.invocationCallOrder[0]);
@@ -2964,23 +3014,7 @@ describe('SourceControlImportService', () => {
 				).toBeLessThan(folderRepository.delete.mock.invocationCallOrder[0]);
 			});
 
-			it('should abort folder deletion when beforeWorkflowDeleted rejects', async () => {
-				const candidates = [mock<SourceControlledFile>({ id: 'folder1', name: 'My folder' })];
-				const straggler = Object.assign(new WorkflowEntity(), { id: 'wf-1', active: true });
-				folderRepository.getAllFolderIdsInHierarchy.mockResolvedValueOnce([]);
-				workflowRepository.find.mockResolvedValueOnce([straggler]);
-				workflowRepository.findOne.mockResolvedValueOnce(straggler);
-				workflowMutationHooks.beforeWorkflowDeleted.mockRejectedValueOnce(new Error('hook failed'));
-
-				await expect(service.deleteFoldersNotInWorkfolder(candidates as any)).rejects.toThrow(
-					'Failed to delete folder(s) "My folder" (folder1) while pulling from source control: hook failed',
-				);
-
-				expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
-				expect(folderRepository.delete).not.toHaveBeenCalled();
-			});
-
-			it('should fire the afterWorkflowDeleted sweep once, after the folder row delete', async () => {
+			it('should fire the afterWorkflowsDeleted sweep once, after the folder row delete', async () => {
 				const candidates = [mock<SourceControlledFile>({ id: 'folder1' })];
 				const straggler = Object.assign(new WorkflowEntity(), { id: 'wf-1', active: false });
 				folderRepository.getAllFolderIdsInHierarchy.mockResolvedValueOnce([]);
@@ -2989,11 +3023,11 @@ describe('SourceControlImportService', () => {
 
 				await service.deleteFoldersNotInWorkfolder(candidates as any);
 
-				expect(workflowMutationHooks.afterWorkflowDeleted).toHaveBeenCalledTimes(1);
-				expect(workflowMutationHooks.afterWorkflowDeleted).toHaveBeenCalledWith('wf-1');
+				expect(workflowMutationHooks.afterWorkflowsDeleted).toHaveBeenCalledTimes(1);
+				expect(workflowMutationHooks.afterWorkflowsDeleted).toHaveBeenCalledWith(['wf-1']);
 				// Only the row delete cascades the workflows away, so the sweep must run after it
 				expect(
-					workflowMutationHooks.afterWorkflowDeleted.mock.invocationCallOrder[0],
+					workflowMutationHooks.afterWorkflowsDeleted.mock.invocationCallOrder[0],
 				).toBeGreaterThan(folderRepository.delete.mock.invocationCallOrder[0]);
 			});
 
@@ -3004,7 +3038,7 @@ describe('SourceControlImportService', () => {
 
 				await service.deleteFoldersNotInWorkfolder(candidates as any);
 
-				expect(workflowMutationHooks.afterWorkflowDeleted).not.toHaveBeenCalled();
+				expect(workflowMutationHooks.afterWorkflowsDeleted).not.toHaveBeenCalled();
 			});
 		});
 	});
@@ -3585,9 +3619,13 @@ describe('SourceControlImportService', () => {
 				await service.deleteTeamProjectsNotInWorkfolder(candidates);
 
 				expect(workflowMutationHooks.beforeWorkflowDeleted).toHaveBeenCalledTimes(2);
-				expect(workflowMutationHooks.beforeWorkflowDeleted).toHaveBeenCalledWith('wf-active');
-				expect(workflowMutationHooks.beforeWorkflowDeleted).toHaveBeenCalledWith('wf-inactive');
-				// An abort must leave the workflow untouched: hook before trigger teardown
+				// A pull is a system mutation: no acting user to attribute the deletes to.
+				expect(workflowMutationHooks.beforeWorkflowDeleted).toHaveBeenCalledWith('wf-active', null);
+				expect(workflowMutationHooks.beforeWorkflowDeleted).toHaveBeenCalledWith(
+					'wf-inactive',
+					null,
+				);
+				// The capture must see the rows the teardown and cascade will destroy
 				expect(
 					workflowMutationHooks.beforeWorkflowDeleted.mock.invocationCallOrder[0],
 				).toBeLessThan(activeWorkflowManager.remove.mock.invocationCallOrder[0]);
@@ -3596,51 +3634,7 @@ describe('SourceControlImportService', () => {
 				).toBeLessThan(projectRepository.delete.mock.invocationCallOrder[0]);
 			});
 
-			it('should abort project deletion when beforeWorkflowDeleted rejects', async () => {
-				const candidates = [mock<SourceControlledFile>({ id: 'project-1', name: 'My project' })];
-				sharedWorkflowRepository.find.mockResolvedValueOnce([
-					{ workflowId: 'wf-1' },
-				] as SharedWorkflow[]);
-				workflowRepository.findOne.mockResolvedValueOnce(
-					Object.assign(new WorkflowEntity(), { id: 'wf-1', active: false }),
-				);
-				workflowMutationHooks.beforeWorkflowDeleted.mockRejectedValueOnce(new Error('hook failed'));
-
-				await expect(service.deleteTeamProjectsNotInWorkfolder(candidates)).rejects.toThrow(
-					'Failed to delete project(s) "My project" (project-1) while pulling from source control: hook failed',
-				);
-
-				expect(executionPersistence.hardDeleteByWorkflowId).not.toHaveBeenCalled();
-				expect(projectRepository.delete).not.toHaveBeenCalled();
-			});
-
-			it('should run all hooks before any teardown, so a late rejection leaves earlier workflows untouched', async () => {
-				const candidates = [mock<SourceControlledFile>({ id: 'project-1', name: 'My project' })];
-				sharedWorkflowRepository.find.mockResolvedValueOnce([
-					{ workflowId: 'wf-1' },
-					{ workflowId: 'wf-2' },
-				] as SharedWorkflow[]);
-				workflowRepository.findOne
-					.mockResolvedValueOnce(Object.assign(new WorkflowEntity(), { id: 'wf-1', active: true }))
-					.mockResolvedValueOnce(
-						Object.assign(new WorkflowEntity(), { id: 'wf-2', active: false }),
-					);
-				workflowMutationHooks.beforeWorkflowDeleted
-					.mockResolvedValueOnce(undefined)
-					.mockRejectedValueOnce(new Error('hook failed'));
-
-				await expect(service.deleteTeamProjectsNotInWorkfolder(candidates)).rejects.toThrow(
-					'Failed to delete project(s) "My project" (project-1) while pulling from source control: hook failed',
-				);
-
-				// wf-1's hook already passed, but wf-2's rejection must abort before
-				// ANY teardown — wf-1 keeps its triggers and execution history
-				expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
-				expect(executionPersistence.hardDeleteByWorkflowId).not.toHaveBeenCalled();
-				expect(projectRepository.delete).not.toHaveBeenCalled();
-			});
-
-			it('should fire the afterWorkflowDeleted sweep once, after the project row delete', async () => {
+			it('should fire the afterWorkflowsDeleted sweep once for the whole batch, after the project row delete', async () => {
 				const candidates = [mock<SourceControlledFile>({ id: 'project-1' })];
 				sharedWorkflowRepository.find.mockResolvedValueOnce([
 					{ workflowId: 'wf-active' },
@@ -3657,10 +3651,13 @@ describe('SourceControlImportService', () => {
 				await service.deleteTeamProjectsNotInWorkfolder(candidates);
 
 				// The sweep searches globally for orphaned requests, so one call covers the batch
-				expect(workflowMutationHooks.afterWorkflowDeleted).toHaveBeenCalledTimes(1);
-				expect(workflowMutationHooks.afterWorkflowDeleted).toHaveBeenCalledWith('wf-active');
+				expect(workflowMutationHooks.afterWorkflowsDeleted).toHaveBeenCalledTimes(1);
+				expect(workflowMutationHooks.afterWorkflowsDeleted).toHaveBeenCalledWith([
+					'wf-active',
+					'wf-inactive',
+				]);
 				expect(
-					workflowMutationHooks.afterWorkflowDeleted.mock.invocationCallOrder[0],
+					workflowMutationHooks.afterWorkflowsDeleted.mock.invocationCallOrder[0],
 				).toBeGreaterThan(projectRepository.delete.mock.invocationCallOrder[0]);
 			});
 
@@ -3670,7 +3667,7 @@ describe('SourceControlImportService', () => {
 
 				await service.deleteTeamProjectsNotInWorkfolder(candidates);
 
-				expect(workflowMutationHooks.afterWorkflowDeleted).not.toHaveBeenCalled();
+				expect(workflowMutationHooks.afterWorkflowsDeleted).not.toHaveBeenCalled();
 			});
 		});
 	});

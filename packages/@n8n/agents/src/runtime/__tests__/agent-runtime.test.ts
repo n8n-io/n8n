@@ -3,6 +3,8 @@ import type { JSONSchema7 } from 'json-schema';
 import type { Mock, MockedFunction } from 'vitest';
 import { z } from 'zod';
 
+import { InMemoryFilesystem } from '../../__tests__/workspace/test-utils';
+import { Agent } from '../../sdk/agent';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
@@ -13,6 +15,7 @@ import type { StreamChunk } from '../../types/sdk/agent';
 import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 import type { BuiltTelemetry } from '../../types/telemetry';
+import { Workspace, getToolResultRunDirectory } from '../../workspace';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
 import { AgentEventBus } from '../state/event-bus';
@@ -758,6 +761,73 @@ describe('AgentRuntime — empty stop turn retry', () => {
 		await runtime.generate('hi');
 
 		expect(generateText).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// reasoning-only turn
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — reasoning-only turn', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	/**
+	 * The provider streamed thinking and then the stream ended without a
+	 * terminal chunk, so the SDK synthesizes the finish from its defaults: a
+	 * reasoning-only message, `other`, and no usage. Nothing the user can see
+	 * and nothing the loop can act on.
+	 */
+	function makeStreamReasoningOnly() {
+		return {
+			stream: makeChunkStream([{ type: 'reasoning-delta', id: 'r-1', text: 'thinking...' }]),
+			finishReason: Promise.resolve('other'),
+			usage: Promise.resolve({
+				inputTokens: undefined,
+				outputTokens: undefined,
+				totalTokens: undefined,
+			}),
+			response: Promise.resolve({
+				messages: [{ role: 'assistant', content: [{ type: 'reasoning', text: 'thinking...' }] }],
+			}),
+			toolCalls: Promise.resolve([]),
+		};
+	}
+
+	it('retries a reasoning-only turn instead of ending the run', async () => {
+		streamText
+			.mockReturnValueOnce(makeStreamReasoningOnly())
+			.mockReturnValueOnce(makeStreamSuccess('Recovered'));
+
+		const { runtime } = createRuntime();
+		const result = await runtime.stream('make my workflow smarter');
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		const text = chunks
+			.filter((chunk): chunk is StreamChunk & { type: 'text-delta' } => chunk.type === 'text-delta')
+			.map((chunk) => chunk.delta)
+			.join('');
+		expect(text).toBe('Recovered');
+	});
+
+	it('reports an error rather than finishing silently when every attempt is reasoning-only', async () => {
+		streamText.mockImplementation(() => makeStreamReasoningOnly());
+
+		const { runtime } = createRuntime();
+		const result = await runtime.stream('make my workflow smarter');
+		const chunks = await collectChunks(result.stream);
+
+		const finish = chunks.find(
+			(chunk): chunk is StreamChunk & { type: 'finish' } => chunk.type === 'finish',
+		);
+		expect(finish?.finishReason).toBe('error');
+		const error = chunks.find(
+			(chunk): chunk is StreamChunk & { type: 'error' } => chunk.type === 'error',
+		);
+		expect(String((error?.error as Error).message)).toContain('no output');
 	});
 });
 
@@ -4129,6 +4199,67 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 
 		await runtime.generate('go');
 		expect(handlerFn).not.toHaveBeenCalled();
+	});
+
+	it('rejects unknown keys against a closed JSON Schema', async () => {
+		const handlerFn = vi.fn().mockResolvedValue({ ok: true });
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			inputSchema: {
+				type: 'object',
+				additionalProperties: false,
+				properties: { query: { type: 'string' } },
+			},
+			handler: handlerFn,
+		};
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-1', 'json_tool', { query: 'cats', extra: true }),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		await runtime.generate('go');
+		expect(handlerFn).not.toHaveBeenCalled();
+	});
+
+	it('names the tool schema as the defect when it cannot be compiled', async () => {
+		const tool: BuiltTool = {
+			name: 'json_tool',
+			description: 'json tool',
+			inputSchema: { type: 'objct' } as unknown as JSONSchema7,
+			handler: async () => await Promise.resolve({ ok: true }),
+		};
+
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'json_tool', { query: 'cats' }))
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'test',
+			tools: [tool],
+		});
+
+		const result = await runtime.generate('go');
+
+		const assistantMsg = result.messages.find(
+			(m) =>
+				isLlmMessage(m) && m.role === 'assistant' && m.content.some((c) => c.type === 'tool-call'),
+		) as Message;
+		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(call.state === 'rejected' && call.error).toContain(
+			'input schema that could not be compiled',
+		);
 	});
 });
 
@@ -7724,5 +7855,501 @@ describe('AgentRuntime — oversized tool results', () => {
 		expect(envelope.head).toContain('MESSAGE_HEAD');
 		expect(envelope.tail).toContain('MESSAGE_TAIL');
 		expect(fileBlock).toMatchObject({ type: 'file', mediaType: 'text/plain', data: fileData });
+		expect(message).toMatchObject({ origin: { kind: 'tool', toolName: 'large_message' } });
+	});
+
+	describe('Workspace-backed oversized tool results', () => {
+		type OffloadedEnvelope = {
+			_offloaded: true;
+			path: string;
+			originalCharCount: number;
+			estimatedTokenCount: number;
+			requiredAction: {
+				toolName: 'workspace_read_tool_result';
+				input: { path: string; view: 'describe' };
+			};
+		};
+
+		function parseOffloadedEnvelope(value: string | undefined): OffloadedEnvelope {
+			try {
+				return JSON.parse(value ?? '') as OffloadedEnvelope;
+			} catch {
+				throw new Error('Expected a valid offloaded result envelope');
+			}
+		}
+
+		type ModelMessages = Array<{
+			role: string;
+			content: Array<{
+				type: string;
+				text?: string;
+				output?: { type: string; value: unknown };
+			}>;
+		}>;
+
+		function toolResultsFromModelMessages(messages: ModelMessages): unknown[] {
+			return messages
+				.filter((message) => message.role === 'tool')
+				.flatMap((message) => message.content)
+				.filter((part) => part.type === 'tool-result')
+				.map((part) => part.output?.value);
+		}
+
+		function modelToolResults(): unknown[] {
+			const call = generateText.mock.calls[1][0] as { messages: ModelMessages };
+			return toolResultsFromModelMessages(call.messages);
+		}
+
+		function createWorkspaceAgent(filesystem: InMemoryFilesystem, tools: BuiltTool[]) {
+			return new Agent('workspace-result-test')
+				.model('openai/gpt-4o-mini')
+				.instructions('Test')
+				.tool(tools)
+				.toolCallConcurrency(Infinity)
+				.workspace(new Workspace({ filesystem }));
+		}
+
+		function createRunScopedRuntime(
+			filesystem: InMemoryFilesystem,
+			tools: BuiltTool[],
+			runId: string,
+			eventBus?: AgentEventBus,
+			checkpointStorage: 'memory' | CheckpointStore = 'memory',
+		): AgentRuntime {
+			return new AgentRuntime({
+				name: 'workspace-result-test',
+				model: 'openai/gpt-4o-mini',
+				instructions: 'Test',
+				tools,
+				runId,
+				checkpointStorage,
+				workspaceFilesystem: filesystem,
+				toolCallConcurrency: Infinity,
+				...(eventBus ? { eventBus } : {}),
+			});
+		}
+
+		async function seedUnaffectedWorkspaceFiles(filesystem: InMemoryFilesystem): Promise<void> {
+			await filesystem.writeFile(`${getToolResultRunDirectory('concurrent-run')}/keep.json`, '{}', {
+				recursive: true,
+			});
+		}
+
+		async function expectOnlyCurrentRunRemoved(
+			filesystem: InMemoryFilesystem,
+			runId: string,
+		): Promise<void> {
+			await expect(filesystem.exists(getToolResultRunDirectory(runId))).resolves.toBe(false);
+			await expect(filesystem.exists(getToolResultRunDirectory('concurrent-run'))).resolves.toBe(
+				true,
+			);
+		}
+
+		const largeResultOutput = {
+			value: 'x '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000),
+		};
+		const largeResultTool: BuiltTool = {
+			name: 'large_result',
+			description: 'large result',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve(largeResultOutput),
+		};
+
+		it('stores complete concurrent transformed results without changing raw outputs', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const transformedOutputs = {
+				first: { value: `FIRST${'a '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}` },
+				second: { value: `SECOND${'b '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}` },
+			};
+			const tools = (Object.keys(transformedOutputs) as Array<keyof typeof transformedOutputs>).map(
+				(name): BuiltTool => ({
+					name,
+					description: name,
+					inputSchema: z.object({}),
+					handler: async () => await Promise.resolve({ raw: name }),
+					toModelOutput: () => transformedOutputs[name],
+				}),
+			);
+			const agent = createWorkspaceAgent(filesystem, tools);
+			const storedResultsSeenByNextModel: string[] = [];
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([
+						{ toolCallId: 'tc/first', toolName: 'first', args: {} },
+						{ toolCallId: 'tc/second', toolName: 'second', args: {} },
+					]),
+				)
+				.mockImplementationOnce(async ({ messages }: { messages: ModelMessages }) => {
+					for (const envelope of toolResultsFromModelMessages(messages) as OffloadedEnvelope[]) {
+						storedResultsSeenByNextModel.push(
+							String(await filesystem.readFile(envelope.path, { encoding: 'utf8' })),
+						);
+					}
+					return await Promise.resolve(makeGenerateSuccess());
+				});
+
+			const result = await agent.generate('run', {
+				persistence: { threadId: 'slack:C123:123.456', resourceId: 'user-1' },
+			});
+			const envelopes = modelToolResults() as OffloadedEnvelope[];
+
+			expect(envelopes).toHaveLength(2);
+			expect(new Set(envelopes.map(({ path }) => path)).size).toBe(2);
+			expect(envelopes.every(({ _offloaded }) => _offloaded)).toBe(true);
+			expect(envelopes.map(({ requiredAction }) => requiredAction)).toEqual(
+				envelopes.map(({ path }) => ({
+					toolName: 'workspace_read_tool_result',
+					input: { path, view: 'describe' },
+				})),
+			);
+			expect(storedResultsSeenByNextModel).toEqual([
+				JSON.stringify(transformedOutputs.first),
+				JSON.stringify(transformedOutputs.second),
+			]);
+			expect(result.toolCalls?.map(({ output }) => output)).toEqual([
+				{ raw: 'first' },
+				{ raw: 'second' },
+			]);
+			await expect(filesystem.exists(getToolResultRunDirectory(result.runId))).resolves.toBe(false);
+		});
+
+		it('retains current run results when checkpoint deletion fails', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const checkpointStorage: CheckpointStore = {
+				save: vi.fn(async () => await Promise.resolve()),
+				load: vi.fn().mockResolvedValue(undefined),
+				delete: vi.fn().mockRejectedValue(new Error('checkpoint delete failed')),
+			};
+			const runId = 'checkpoint-delete-failed-run';
+			const runtime = createRunScopedRuntime(
+				filesystem,
+				[largeResultTool],
+				runId,
+				undefined,
+				checkpointStorage,
+			);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([
+						{ toolCallId: 'tc-large', toolName: largeResultTool.name, args: {} },
+					]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
+
+			await runtime.generate('run');
+
+			expect(checkpointStorage.delete).toHaveBeenCalledWith(runId);
+			await expect(filesystem.exists(getToolResultRunDirectory(runId))).resolves.toBe(true);
+		});
+
+		it('removes only the current run results after a terminal model error', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const runId = 'failed-run';
+			await seedUnaffectedWorkspaceFiles(filesystem);
+			const runtime = createRunScopedRuntime(filesystem, [largeResultTool], runId);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([
+						{ toolCallId: 'tc-large', toolName: largeResultTool.name, args: {} },
+					]),
+				)
+				.mockRejectedValueOnce(new Error('model unavailable'));
+
+			await runtime.generate('run');
+
+			await expectOnlyCurrentRunRemoved(filesystem, runId);
+		});
+
+		it('removes only the current run results after cancellation', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const eventBus = new AgentEventBus();
+			const runId = 'cancelled-run';
+			eventBus.on(AgentEvent.ToolExecutionEnd, () => eventBus.abort());
+			const runtime = createRunScopedRuntime(filesystem, [largeResultTool], runId, eventBus);
+			generateText.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-large', toolName: largeResultTool.name, args: {} },
+				]),
+			);
+
+			await runtime.generate('run');
+
+			await expect(filesystem.exists(getToolResultRunDirectory(runId))).resolves.toBe(false);
+		});
+
+		it('completes terminal runs when result cleanup hangs', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const runId = 'hung-cleanup-run';
+			await filesystem.writeFile(`${getToolResultRunDirectory(runId)}/result.json`, '{}', {
+				recursive: true,
+			});
+			vi.spyOn(filesystem, 'rmdir').mockReturnValue(new Promise(() => undefined));
+			const runtime = createRunScopedRuntime(filesystem, [], runId);
+			generateText.mockResolvedValueOnce(makeGenerateSuccess());
+
+			await expect(runtime.generate('run')).resolves.toMatchObject({ finishReason: 'stop' });
+		});
+
+		it('retains offloaded results across suspension and re-suspension, then removes them', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const checkpointStorage = makeClaimingCheckpointStore();
+			const approvalTool = makeSuspendingTool('approval', async (_input, ctx) => {
+				if (ctx.resumeData) return { approved: true };
+				return await ctx.suspend({ reason: 'approve' });
+			});
+			const runId = 'suspended-run';
+			const runtime = createRunScopedRuntime(
+				filesystem,
+				[largeResultTool, approvalTool],
+				runId,
+				undefined,
+				checkpointStorage,
+			);
+			generateText.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{ toolCallId: 'tc-large', toolName: largeResultTool.name, args: {} },
+					{ toolCallId: 'tc-approval-1', toolName: approvalTool.name, args: {} },
+					{ toolCallId: 'tc-approval-2', toolName: approvalTool.name, args: {} },
+				]),
+			);
+
+			await runtime.generate('run', {
+				persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+			});
+
+			await expect(filesystem.exists(getToolResultRunDirectory(runId))).resolves.toBe(true);
+
+			const second = await runtime.resume(
+				'generate',
+				{ approved: true },
+				{ runId, toolCallId: 'tc-approval-1' },
+			);
+			expect(second.pendingSuspend?.map(({ toolCallId }) => toolCallId)).toEqual(['tc-approval-2']);
+			await expect(filesystem.exists(getToolResultRunDirectory(runId))).resolves.toBe(true);
+
+			let resultReadByResumedModel: string | undefined;
+			generateText.mockImplementationOnce(async ({ messages }: { messages: ModelMessages }) => {
+				const [resumedEnvelope] = toolResultsFromModelMessages(messages) as OffloadedEnvelope[];
+				resultReadByResumedModel = String(
+					await filesystem.readFile(resumedEnvelope.path, { encoding: 'utf8' }),
+				);
+				return await Promise.resolve(makeGenerateSuccess('done'));
+			});
+			await runtime.resume('generate', { approved: true }, { runId, toolCallId: 'tc-approval-2' });
+
+			expect(resultReadByResumedModel).toBe(JSON.stringify(largeResultOutput));
+			await expect(filesystem.exists(getToolResultRunDirectory(runId))).resolves.toBe(false);
+		});
+
+		it('stores oversized errors without changing the rejected tool-call state', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const tool: BuiltTool = {
+				name: 'large_error',
+				description: 'large error',
+				inputSchema: z.object({}),
+				handler: () => {
+					throw new Error(`ERROR_HEAD${'e '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}`);
+				},
+			};
+			const agent = createWorkspaceAgent(filesystem, [tool]);
+			let storedError: string | undefined;
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([{ toolCallId: 'tc-error', toolName: tool.name, args: {} }]),
+				)
+				.mockImplementationOnce(async ({ messages }: { messages: ModelMessages }) => {
+					const [errorEnvelope] = toolResultsFromModelMessages(messages);
+					const envelope = parseOffloadedEnvelope(
+						typeof errorEnvelope === 'string' ? errorEnvelope : undefined,
+					);
+					storedError = String(await filesystem.readFile(envelope.path, { encoding: 'utf8' }));
+					return await Promise.resolve(makeGenerateSuccess());
+				});
+
+			const result = await agent.generate('run', {
+				persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+			});
+			const toolCall = result.messages
+				.flatMap((message) => ('content' in message ? message.content : []))
+				.find(
+					(content): content is ContentToolCall =>
+						content.type === 'tool-call' && content.toolCallId === 'tc-error',
+				);
+
+			expect(toolCall?.state).toBe('rejected');
+			expect(storedError).toContain('ERROR_HEAD');
+		});
+
+		it('stores oversized custom-message text while preserving file content', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const fileData = Buffer.from('file').toString('base64');
+			const messageText = `MESSAGE${'m '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}`;
+			const tool: BuiltTool = {
+				name: 'large_message',
+				description: 'large message',
+				inputSchema: z.object({}),
+				handler: async () => await Promise.resolve({ ok: true }),
+				toMessage: async () =>
+					await Promise.resolve({
+						role: 'assistant',
+						content: [
+							{ type: 'text', text: messageText },
+							{ type: 'file', mediaType: 'text/plain', data: fileData },
+						],
+					}),
+			};
+			const agent = createWorkspaceAgent(filesystem, [tool]);
+			let storedMessage: string | undefined;
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([{ toolCallId: 'tc-message', toolName: tool.name, args: {} }]),
+				)
+				.mockImplementationOnce(async ({ messages }: { messages: ModelMessages }) => {
+					const envelopeText = messages
+						.filter((message) => message.role === 'assistant')
+						.flatMap((message) => message.content)
+						.find((part) => part.type === 'text')?.text;
+					const envelope = parseOffloadedEnvelope(envelopeText);
+					storedMessage = String(await filesystem.readFile(envelope.path, { encoding: 'utf8' }));
+					return await Promise.resolve(makeGenerateSuccess());
+				});
+
+			const result = await agent.generate('run', {
+				persistence: { threadId: 'thread-1', resourceId: 'user-1' },
+			});
+			const message = result.messages.find(
+				(candidate) =>
+					'content' in candidate &&
+					candidate.content.some((content) => content.type === 'file' && content.data === fileData),
+			);
+
+			expect(message && 'content' in message ? message.content : []).toContainEqual({
+				type: 'file',
+				mediaType: 'text/plain',
+				data: fileData,
+			});
+			expect(storedMessage).toBe(JSON.stringify([{ type: 'text', text: messageText }]));
+		});
+
+		it('falls back to bounded truncation when storing the result fails', async () => {
+			const filesystem = new InMemoryFilesystem();
+			vi.spyOn(filesystem, 'writeFile').mockRejectedValue(new Error('storage unavailable'));
+			const tool: BuiltTool = {
+				name: 'large_result',
+				description: 'large result',
+				inputSchema: z.object({}),
+				handler: async () =>
+					await Promise.resolve({
+						value: `HEAD${'x '.repeat(MAX_MODEL_TOOL_RESULT_TOKENS + 10_000)}TAIL`,
+					}),
+			};
+			const agent = createWorkspaceAgent(filesystem, [tool]);
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([{ toolCallId: 'tc-large', toolName: tool.name, args: {} }]),
+				)
+				.mockResolvedValueOnce(makeGenerateSuccess());
+
+			await agent.generate('run');
+
+			expect(modelToolResults()[0]).toMatchObject({ _truncated: true });
+		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// model stream stall handling
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — model stream stall handling', () => {
+	beforeEach(() => {
+		streamText.mockReset();
+	});
+
+	/**
+	 * streamText response that emits `chunks` then goes silent — a dead
+	 * connection. Always leads with the SDK's synthetic `start` lifecycle chunk,
+	 * which arrives before any provider byte and must not count as content.
+	 */
+	function makeStalledStream(chunks: Array<Record<string, unknown>> = []) {
+		chunks = [{ type: 'start' }, ...chunks];
+		return {
+			stream: (async function* () {
+				for (const c of chunks) yield await Promise.resolve(c);
+				await new Promise(() => {});
+			})(),
+			finishReason: new Promise(() => {}),
+			usage: new Promise(() => {}),
+			response: new Promise(() => {}),
+			toolCalls: new Promise(() => {}),
+		};
+	}
+
+	it('silently retries a turn that stalls before any content and completes', async () => {
+		streamText
+			.mockReturnValueOnce(makeStalledStream())
+			.mockReturnValueOnce(makeStreamSuccess('Recovered'));
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		const finish = chunks.filter((c) => c.type === 'finish').at(-1) as
+			| (StreamChunk & { type: 'finish'; finishReason: string })
+			| undefined;
+		expect(finish?.finishReason).toBe('stop');
+		const text = chunks
+			.filter(
+				(c): c is StreamChunk & { type: 'text-delta'; delta: string } => c.type === 'text-delta',
+			)
+			.map((c) => c.delta)
+			.join('');
+		expect(text).toBe('Recovered');
+		expect(runtime.getState().status).toBe('success');
+	});
+
+	it('fails without retry when the stalled turn already streamed content', async () => {
+		streamText
+			.mockReturnValueOnce(
+				makeStalledStream([{ type: 'text-delta', id: 'text-1', text: 'partial' }]),
+			)
+			// A wrongly-taken retry completes loudly instead of hanging the test.
+			.mockReturnValue(makeStreamSuccess('should-not-run'));
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(1);
+		const errorChunk = chunks.find((c) => c.type === 'error') as
+			| (StreamChunk & { type: 'error'; error: unknown })
+			| undefined;
+		expect(String(errorChunk?.error)).toContain('stalled');
+		expect(runtime.getState().status).toBe('failed');
+	});
+
+	it('surfaces the stall error when the retry stalls too', async () => {
+		streamText.mockReturnValueOnce(makeStalledStream()).mockReturnValueOnce(makeStalledStream());
+		const { runtime } = createRuntime();
+
+		const result = await runtime.stream('hi', {
+			modelStreamIdleTimeoutMs: 50,
+			modelStreamFirstOutputTimeoutMs: 50,
+		});
+		const chunks = await collectChunks(result.stream);
+
+		expect(streamText).toHaveBeenCalledTimes(2);
+		const errorChunk = chunks.find((c) => c.type === 'error') as
+			| (StreamChunk & { type: 'error'; error: unknown })
+			| undefined;
+		expect(String(errorChunk?.error)).toContain('stalled');
+		expect(runtime.getState().status).toBe('failed');
 	});
 });

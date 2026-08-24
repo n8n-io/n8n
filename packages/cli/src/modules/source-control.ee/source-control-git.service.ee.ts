@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { resolveProxyUrl } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { execSync } from 'child_process';
@@ -16,6 +15,10 @@ import type {
 	StatusResult,
 } from 'simple-git';
 
+import {
+	buildHttpsGitConfig,
+	buildSshCommand,
+} from '@/modules/git-connections.ee/git-connections-git.utils';
 import { OwnershipService } from '@/services/ownership.service';
 
 import {
@@ -130,47 +133,20 @@ export class SourceControlGitService {
 
 		if (preferences.connectionType === 'https') {
 			const credentials = await this.sourceControlPreferencesService.getDecryptedHttpsCredentials();
-			const escapeShellArg = (arg: string) => `'${arg.replace(/'/g, "'\"'\"'")}'`;
-			const credentialScript = `!f() { echo username=${escapeShellArg(credentials.username)}; echo password=${escapeShellArg(credentials.password)}; }; f`;
-
+			const config = buildHttpsGitConfig(preferences.repositoryUrl, credentials);
 			const httpsGitOptions = {
 				...this.gitOptions,
-				config: [
-					'credential.helper=' + credentialScript,
-					// ensures that the credentials are only used for the configured repositoryUrl of the environment
-					'credential.useHttpPath=true',
-				],
+				config,
 				unsafe: { allowUnsafeCredentialHelper: true },
 			};
-
-			// Add proxy configuration if proxy environment variables are set
-			const repositoryUrl = preferences.repositoryUrl;
-			const proxyUrl = resolveProxyUrl(repositoryUrl);
-			if (proxyUrl) {
-				// Git uses http.proxy for both HTTP and HTTPS URLs
-				this.logger.debug('Proxy configuration added', { proxyUrl });
-				httpsGitOptions.config.push(`http.proxy=${proxyUrl}`);
-			}
 
 			this.git = simpleGit(httpsGitOptions).env('GIT_TERMINAL_PROMPT', '0');
 		} else if (preferences.connectionType === 'ssh') {
 			const privateKeyPath = await this.sourceControlPreferencesService.getPrivateKeyPath();
-			const sshKnownHosts = path.join(sshFolder, 'known_hosts');
-
-			// Convert paths to POSIX format for SSH command (works cross-platform)
-			// Use regex to handle both Windows (\) and POSIX (/) separators regardless of current platform
-			const normalizedPrivateKeyPath = privateKeyPath.split(/[/\\]/).join('/');
-			const normalizedKnownHostsPath = sshKnownHosts.split(/[/\\]/).join('/');
-
-			// Escape double quotes to prevent command injection
-			const escapedPrivateKeyPath = normalizedPrivateKeyPath.replace(/"/g, '\\"');
-			const escapedKnownHostsPath = normalizedKnownHostsPath.replace(/"/g, '\\"');
-
-			// Quote paths to handle spaces and special characters
-			// Use StrictHostKeyChecking=accept-new to protect against MITM attacks:
-			// - First connection: accepts and saves host key to known_hosts
-			// - Subsequent connections: verifies against saved key
-			const sshCommand = `ssh -o UserKnownHostsFile="${escapedKnownHostsPath}" -o StrictHostKeyChecking=accept-new -i "${escapedPrivateKeyPath}"`;
+			const sshCommand = buildSshCommand({
+				privateKeyPath,
+				knownHostsPath: path.join(sshFolder, 'known_hosts'),
+			});
 
 			// Allow GIT_SSH_COMMAND so we can point SSH at n8n's own private key and known_hosts.
 			// This is safe because the command is constructed internally above, not from user input.

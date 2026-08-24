@@ -178,3 +178,7 @@ describe('Worker', () => {
 		});
 	});
 });
+
+test('worker needs the expression engine', () => {
+	expect(new Worker().needsExpressionEngine).toBe(true);
+});

@@ -26,7 +26,7 @@ export interface V1Execution extends Pick<IWorkflowBase, 'nodes' | 'connections'
 
 export interface StepData {
 	graph: WorkflowGraph;
-	outputsByStepId: Record<string, StepSlots>;
+	outputsByNodeId: Record<string, StepSlots>;
 }
 
 export type StepDataLoader = (context: StepExecutionContext) => Promise<StepData>;

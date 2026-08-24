@@ -1,0 +1,67 @@
+<!doctype html>
+<!--
+  Lookalike Slack app "Basic Information" page. Calibrated against a real
+  captured tree (LangTracer thread eca9cd8c, 2026-08-17).
+
+  The credentials shown HERE (client id/secret) drive the OAuth2 path, which
+  cannot complete hermetically: the authorize redirect and the token exchange
+  both leave the browser. The reachable hermetic path is the bot token on
+  Install App, so the sidebar link to it is the one that matters.
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Basic Information | n8n integration | Slack</title>
+	</head>
+	<body>
+		<nav aria-label="App settings">
+			<span>n8n integration</span>
+			<!-- Only routed pages are linked. An unrouted link falls through to
+			     defaultRoute and serves the app list, which looks like a working page
+			     and is the trap `matchRoute` exists to avoid. -->
+			<h4>Settings</h4>
+			<ul>
+				<li><a href="/apps/A0EVALAPP/general" aria-current="page">Basic Information</a></li>
+				<li><a href="/apps/A0EVALAPP/install-on-team">Install App</a></li>
+			</ul>
+			<h4>Features</h4>
+			<ul>
+				<li><a href="/apps/A0EVALAPP/oauth">OAuth &amp; Permissions</a></li>
+			</ul>
+		</nav>
+
+		<main>
+			<h1>Basic Information</h1>
+
+			<h2>App Credentials</h2>
+			<p>These credentials allow your app to access the Slack API.</p>
+
+			<label for="client-id">Client ID</label>
+			<input id="client-id" name="client-id" type="text" readonly value="553213193971.11823370532599" />
+
+			<label for="client-secret">Client Secret</label>
+			<input id="client-secret" name="client-secret" type="password" readonly value="8f2c41a7d9b64e05ac13ff721b0d6e94" />
+			<button type="button">Show</button>
+			<button type="button">Regenerate</button>
+
+			<label for="signing-secret">Signing Secret</label>
+			<input id="signing-secret" name="signing-secret" type="password" readonly value="4d61b0e7c2a94f83bb75e10c9f3a2d68" />
+			<button type="button">Show</button>
+			<button type="button">Regenerate</button>
+
+			<h2>Display Information</h2>
+			<p>n8n integration</p>
+
+			<button type="button" disabled>Discard Changes</button>
+			<button type="button" disabled>Save Changes</button>
+		</main>
+
+		<script>
+			// Keep every in-app link on the id this page was reached with.
+			const appId = window.location.pathname.split('/')[2];
+			for (const a of document.querySelectorAll('a[href^="/apps/"]')) {
+				a.setAttribute('href', a.getAttribute('href').replace(/^\/apps\/[^/]+/, '/apps/' + appId));
+			}
+		</script>
+	</body>
+</html>

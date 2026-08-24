@@ -4,6 +4,7 @@ import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowEntity } from '../../entities';
+import type { TransactionRunner } from '../../services/transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { mockInstance } from '../../utils/test-utils/mock-instance';
 import { FolderRepository } from '../folder.repository';
@@ -19,12 +20,14 @@ describe('WorkflowRepository', () => {
 	const folderRepository = mockInstance(FolderRepository);
 	const sharedWorkflowRepository = mockInstance(SharedWorkflowRepository);
 	const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
+	const transactionRunner = mock<TransactionRunner>();
 	const workflowRepository = new WorkflowRepository(
 		entityManager.connection,
 		globalConfig,
 		folderRepository,
 		sharedWorkflowRepository,
 		workflowHistoryRepository,
+		transactionRunner,
 	);
 
 	let queryBuilder: Mocked<SelectQueryBuilder<WorkflowEntity>>;
@@ -152,6 +155,7 @@ describe('WorkflowRepository', () => {
 				folderRepository,
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
+				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 
@@ -381,6 +385,7 @@ describe('WorkflowRepository', () => {
 				folderRepository,
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
+				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 
@@ -410,6 +415,7 @@ describe('WorkflowRepository', () => {
 				folderRepository,
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
+				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 
@@ -626,6 +632,7 @@ describe('WorkflowRepository', () => {
 				folderRepository,
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
+				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 			queryBuilder.getMany.mockResolvedValue([]);
@@ -687,6 +694,7 @@ describe('WorkflowRepository', () => {
 				folderRepository,
 				sharedWorkflowRepository,
 				workflowHistoryRepository,
+				transactionRunner,
 			);
 			vi.spyOn(sqliteWorkflowRepository, 'createQueryBuilder').mockReturnValue(updateQb);
 

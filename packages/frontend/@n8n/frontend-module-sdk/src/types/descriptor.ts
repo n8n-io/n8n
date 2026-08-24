@@ -31,6 +31,11 @@ export type FrontendModuleDescription = {
 	};
 	resources?: ResourceMetadata[];
 	modals?: ModalDefinition[];
+	/**
+	 * Prefixes for modal keys minted at runtime instead of registered. Declared
+	 * here so they arrive on the same path as `modals`, not by import side effect.
+	 */
+	adHocModalKeyPrefixes?: string[];
 	settingsPages?: IMenuItem[];
 
 	// --- descriptor v2 (all optional, additive) ---

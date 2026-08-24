@@ -1,12 +1,14 @@
-import type { Mock } from 'vitest';
 import { Logger } from '@n8n/backend-common';
 import { ApiKeyRepository, type AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request } from 'express';
+import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
-// eslint-disable-next-line import-x/order
+import { Telemetry } from '@/telemetry';
+
+import { McpProtectedResource } from '../mcp-protected-resource';
 import { McpServerMiddlewareService } from '../mcp-server-middleware.service';
 
 const mockAuthMiddleware = vi.fn().mockImplementation(async function (_req, _res, next) {
@@ -23,12 +25,10 @@ Container.set(McpServerMiddlewareService, mcpServerMiddlewareService);
 
 import { McpConfig } from '../mcp.config';
 import { MCP_CLIENT_INFO_META_KEY, MCP_PROTOCOL_VERSION_META_KEY } from '../mcp.constants';
-import { McpProtectedResource } from '../mcp-protected-resource';
 import type { McpController as McpControllerType, FlushableResponse } from '../mcp.controller';
 import { McpService } from '../mcp.service';
 import { McpSettingsService } from '../mcp.settings.service';
-import { Telemetry } from '@/telemetry';
-import type { UserConnectedToMCPEventPayload } from '../mcp.types';
+import type { McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 
 const mockHandleRequest = vi.fn().mockResolvedValue(undefined);
 // The controller wires createMcpHandler (per-request server factory) through
@@ -49,8 +49,8 @@ vi.mock('@modelcontextprotocol/node', () => ({
 }));
 
 type AuthenticatedMcpRequest = AuthenticatedRequest & {
-	mcpAuthType?: UserConnectedToMCPEventPayload['auth_type'];
-	mcpClientId?: string;
+	mcpCaller?: McpCallerAuth;
+	mcpScopes?: string[];
 };
 
 const createReq = (overrides: Partial<AuthenticatedMcpRequest> = {}): AuthenticatedMcpRequest =>
@@ -124,7 +124,7 @@ describe('McpController', () => {
 
 		await controller.build(
 			createReq({
-				mcpAuthType: 'oauth',
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
 				body: {
 					jsonrpc: '2.0',
 					method: 'initialize',
@@ -143,6 +143,19 @@ describe('McpController', () => {
 			error: 'MCP access is disabled',
 		});
 		expect(mcpService.resolveFeatureFlags as Mock).not.toHaveBeenCalled();
+	});
+
+	test('advertises the MCP routing headers in the CORS allow-list', async () => {
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(false);
+		const res = createRes();
+		res.header = vi.fn().mockReturnThis();
+
+		await controller.build(createReq(), res);
+
+		expect(res.header).toHaveBeenCalledWith(
+			'Access-Control-Allow-Headers',
+			'Content-Type, Authorization, X-Requested-With, MCP-Protocol-Version, Mcp-Method, Mcp-Name',
+		);
 	});
 
 	test('creates mcp server if MCP access is enabled', async () => {
@@ -170,7 +183,7 @@ describe('McpController', () => {
 
 		await controller.build(
 			createReq({
-				mcpAuthType: 'oauth',
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
 				body: {
 					jsonrpc: '2.0',
 					method: 'initialize',
@@ -209,7 +222,7 @@ describe('McpController', () => {
 		// envelope, so the connection event must fire off that method.
 		await controller.build(
 			createReq({
-				mcpAuthType: 'oauth',
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
 				body: {
 					jsonrpc: '2.0',
 					method: 'server/discover',
@@ -297,7 +310,7 @@ describe('McpController', () => {
 			expect.objectContaining({ id: 'user-1' }),
 			{ mcpApps: { enabled: true, variant: 'variant' }, canvasGroupsEnabled: false },
 			{ name: 'Claude', version: '1.0.0' },
-			undefined,
+			{ caller: undefined, grantedScopes: undefined },
 		);
 	});
 
@@ -330,10 +343,41 @@ describe('McpController', () => {
 			expect.objectContaining({ id: 'user-1' }),
 			{ mcpApps: { enabled: false, variant: 'control' }, canvasGroupsEnabled: false },
 			undefined,
-			undefined,
+			{ caller: undefined, grantedScopes: undefined },
 		);
 		// Non-initialize requests still skip telemetry tracking.
 		expect(telemetry.track).not.toHaveBeenCalled();
+	});
+
+	test('forwards the auth the middleware resolved to getServer', async () => {
+		// The auth middleware resolves these from the bearer token; the controller
+		// hands them to the server, which gates tools on the scopes and labels its
+		// tool-call events with the rest.
+		(mcpSettingsService.getEnabled as Mock).mockResolvedValue(true);
+		(mcpService.getServer as unknown as Mock).mockReturnValue({
+			connect: vi.fn().mockResolvedValue(undefined),
+			close: vi.fn().mockResolvedValue(undefined),
+		});
+		const res = createRes();
+
+		await controller.build(
+			createReq({
+				body: { jsonrpc: '2.0', method: 'tools/call' },
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
+				mcpScopes: ['workflow:read'],
+			}),
+			res,
+		);
+
+		expect(mcpService.getServer as unknown as Mock).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'user-1' }),
+			expect.anything(),
+			undefined,
+			{
+				caller: { authType: 'oauth', clientId: 'client-abc' },
+				grantedScopes: ['workflow:read'],
+			},
+		);
 	});
 
 	test('HEAD /http returns 401 with WWW-Authenticate header for auth scheme discovery', async () => {

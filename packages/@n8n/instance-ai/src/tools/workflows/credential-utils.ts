@@ -1,7 +1,8 @@
-import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, GENERIC_AUTH_CREDENTIAL_TYPES } from '@n8n/api-types';
 import type { NodeJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../types';
+export { GENERIC_AUTH_CREDENTIAL_TYPES };
 
 export interface AiGatewayCredential {
 	id: null;

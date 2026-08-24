@@ -14,7 +14,12 @@ import { createObservationLogObserveFn, createObservationLogReflectFn } from '@n
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { tokenUsageToBuilderUsageItems } from '@n8n/instance-ai';
+import {
+	resolveAIAPromptCaching,
+	resolveAIAReasoning,
+	tokenUsageToBuilderUsageItems,
+	type InstanceAiToolRegistry,
+} from '@n8n/instance-ai';
 import { jsonParse } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -70,6 +75,8 @@ export interface InstanceAiBuilderSessionOptions {
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
 	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only the host's consumption of it. */
 	abortSignal: AbortSignal;
+	/** The parent orchestrator's validated, approval-wrapped MCP tools. */
+	mcpTools?: InstanceAiToolRegistry;
 }
 
 @Service()
@@ -270,28 +277,43 @@ export class AgentsBuilderService {
 
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
-			.promptCaching({ anthropic: { ttl: '5m' } })
 			.instructions(finalInstructions)
 			.skills(runtimeSkills)
 			.memory(builderMemory)
 			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
 			.configuration({ maxIterations: 30 });
+		const promptCaching = resolveAIAPromptCaching(modelConfig);
+		if (promptCaching) {
+			builder.promptCaching(promptCaching);
+		}
 
 		if (session.telemetry) builder.telemetry(session.telemetry);
 		if (session.memoryTaskObserver) builder.memoryTaskObserver(session.memoryTaskObserver);
 
-		for (const tool of [...tools.json, ...tools.shared]) {
+		const plannerTodosTool = createPlannerTodosTool({
+			description: BUILDER_PLANNER_TODOS_DESCRIPTION,
+			systemInstruction: BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
+		});
+		const builderTools = [...tools.json, ...tools.shared, plannerTodosTool];
+		const claimedToolNames = new Set(builderTools.map((tool) => tool.name));
+
+		for (const tool of builderTools) {
 			builder.tool(tool);
 		}
 
-		builder.tool(
-			createPlannerTodosTool({
-				description: BUILDER_PLANNER_TODOS_DESCRIPTION,
-				systemInstruction: BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
-			}),
-		);
+		for (const [toolName, tool] of session.mcpTools ?? []) {
+			if (claimedToolNames.has(toolName)) {
+				this.logger.warn('Skipped MCP tool that conflicts with an agent builder tool', {
+					toolName,
+					agentId,
+				});
+				continue;
+			}
+			claimedToolNames.add(toolName);
+			builder.tool(tool);
+		}
 
-		builder.reasoning('medium');
+		builder.reasoning(resolveAIAReasoning(modelConfig));
 
 		return builder;
 	}

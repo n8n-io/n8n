@@ -32,6 +32,9 @@ jobs:
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
+        with:
+          # @codspeed/core prebuilds do not load on Node 26 (removed V8 symbol).
+          node-version: '24.18.1'
 
       - name: Run benchmarks
         uses: CodSpeedHQ/action@281164b0f014a4e7badd2c02cecad9b595b70537 # v4.11.1

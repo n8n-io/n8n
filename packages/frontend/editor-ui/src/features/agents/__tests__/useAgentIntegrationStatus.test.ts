@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ResponseError } from '@n8n/rest-api-client';
 
 import {
 	clearAgentIntegrationStatusCache,
@@ -83,5 +84,22 @@ describe('useAgentIntegrationStatus', () => {
 			linear: 'connected',
 			telegram: 'unknown',
 		});
+	});
+
+	it('clears a cached integration error', async () => {
+		apiMocks.connectIntegration.mockRejectedValue(
+			new ResponseError('Slack credential is already connected', { httpStatusCode: 409 }),
+		);
+		const status = useAgentIntegrationStatus(projectId, agentId);
+		await expect(status.connect('slack', 'cred-slack')).rejects.toThrow(
+			'Slack credential is already connected',
+		);
+		expect(status.errorMessages.value.slack).toBe('Slack credential is already connected');
+		expect(status.errorIsConflict.value.slack).toBe(true);
+
+		status.clearError('slack');
+
+		expect(status.errorMessages.value.slack).toBe('');
+		expect(status.errorIsConflict.value.slack).toBe(false);
 	});
 });

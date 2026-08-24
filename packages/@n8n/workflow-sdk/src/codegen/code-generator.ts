@@ -59,6 +59,18 @@ export interface ExecutionContextOptions {
 }
 
 /**
+ * Options for {@link generateCode}
+ */
+export interface GenerateCodeOptions extends ExecutionContextOptions {
+	/**
+	 * Emit each node's saved `id` into its config so a rebuild of the generated code
+	 * preserves node identity instead of minting fresh uuids. Off by default: only
+	 * surfaces that round-trip code back into a saved workflow should opt in.
+	 */
+	includeNodeIds?: boolean;
+}
+
+/**
  * Context for code generation
  */
 interface GenerationContext {
@@ -76,6 +88,42 @@ interface GenerationContext {
 	workflowStatusJSDoc?: string;
 	valuesExcluded?: boolean;
 	pinnedNodes?: Set<string>;
+	/** Graph node names allowed to emit their id; absent when id emission is off */
+	nodesWithEmittableId?: ReadonlySet<string>;
+}
+
+/**
+ * Collect the graph nodes whose id is safe to emit.
+ *
+ * Keyed by the graph's node name — deduplicated by `buildSemanticGraph`, unlike the raw
+ * `json.name`, a few real workflows of which collide. Ids are claimed in graph order, so a
+ * duplicated id (present in ~1% of real saved workflows) is kept only by the node that
+ * appears first; two nodes cannot both own one, and the rest are reassigned on save.
+ * Precomputing (rather than dropping ids as they are emitted) keeps emission
+ * order-independent and idempotent.
+ */
+function collectNodesWithEmittableId(graph: SemanticGraph): ReadonlySet<string> {
+	const claimedIds = new Set<string>();
+	const nodeNames = new Set<string>();
+
+	for (const [nodeName, node] of graph.nodes) {
+		const id = node.json.id;
+		if (!id || claimedIds.has(id)) continue;
+		claimedIds.add(id);
+		nodeNames.add(nodeName);
+	}
+
+	return nodeNames;
+}
+
+/**
+ * Emit the node's stable id. Pushed before `name` so it stays next to the node head
+ * instead of being stranded after a large `parameters` object.
+ */
+function appendNodeId(parts: string[], node: SemanticNode, ctx: GenerationContext): void {
+	if (!node.json.id || !ctx.nodesWithEmittableId?.has(node.name)) return;
+
+	parts.push(`id: '${escapeString(node.json.id)}'`);
 }
 
 /**
@@ -100,6 +148,8 @@ function generateSubnodeCall(
 	parts.push(`version: ${subnodeNode.json.typeVersion ?? 1}`);
 
 	const configParts: string[] = [];
+
+	appendNodeId(configParts, subnodeNode, ctx);
 
 	const defaultName = generateDefaultNodeName(subnodeNode.type);
 	if (subnodeNode.json.name && subnodeNode.json.name !== defaultName) {
@@ -291,6 +341,8 @@ function generateSubnodeCallWithVarRefs(
 
 	const configParts: string[] = [];
 
+	appendNodeId(configParts, subnodeNode, ctx);
+
 	const defaultName = generateDefaultNodeName(subnodeNode.type);
 	if (subnodeNode.json.name && subnodeNode.json.name !== defaultName) {
 		configParts.push(`name: '${escapeString(subnodeNode.json.name)}'`);
@@ -417,6 +469,8 @@ function generateNodeConfig(node: SemanticNode, ctx: GenerationContext): string 
 	parts.push(`${innerIndent}version: ${node.json.typeVersion ?? 1}`);
 
 	const configParts: string[] = [];
+
+	appendNodeId(configParts, node, ctx);
 
 	// Always include name for proper roundtrip - parser defaults may differ from codegen defaults
 	if (node.json.name) {
@@ -569,6 +623,8 @@ function generateStickyCall(node: SemanticNode, ctx: GenerationContext): string 
 
 	const options: string[] = [];
 
+	appendNodeId(options, node, ctx);
+
 	// Only include name if it's truthy - parser will generate unique names for unnamed sticky notes
 	if (node.json.name) {
 		options.push(`name: '${escapeString(node.json.name)}'`);
@@ -612,6 +668,8 @@ function generateMergeCall(node: SemanticNode, ctx: GenerationContext): string {
 	parts.push(`${innerIndent}version: ${node.json.typeVersion ?? 1}`);
 
 	const configParts: string[] = [];
+
+	appendNodeId(configParts, node, ctx);
 
 	// Always include name for proper roundtrip
 	if (node.json.name) {
@@ -1329,7 +1387,7 @@ export function generateCode(
 	tree: CompositeTree,
 	json: WorkflowJSON,
 	graph: SemanticGraph,
-	executionContext?: ExecutionContextOptions,
+	executionContext?: GenerateCodeOptions,
 ): string {
 	const ctx: GenerationContext = {
 		indent: 0,
@@ -1346,6 +1404,9 @@ export function generateCode(
 		workflowStatusJSDoc: executionContext?.workflowStatusJSDoc,
 		valuesExcluded: executionContext?.valuesExcluded,
 		pinnedNodes: executionContext?.pinnedNodes,
+		nodesWithEmittableId: executionContext?.includeNodeIds
+			? collectNodesWithEmittableId(graph)
+			: undefined,
 	};
 
 	// Pre-register all node variable names to detect and resolve collisions.

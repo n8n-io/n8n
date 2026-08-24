@@ -33,6 +33,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WebhookResponseMode,
 	OAuth2FailureReason,
+	OAuthResourceGrant,
 	Workflow,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
@@ -72,6 +73,7 @@ import {
 } from '@/services/oauth-token-verifier-proxy.service';
 import { OAuth2FlowProxy } from '@/services/oauth2-flow-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
@@ -415,7 +417,9 @@ function reconcileSeededExecutionStack(
 	if (!executionData?.nodeExecutionStack) return;
 
 	if (
-		[MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(workflowStartNode.type)
+		[MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(
+			workflowStartNode.type,
+		)
 	) {
 		merge(executionData.nodeExecutionStack, nodeExecutionStack);
 	} else if (shouldEstablishTriggerIdentity(workflowStartNode)) {
@@ -593,10 +597,15 @@ export async function executeWebhook(
 	additionalData.completeN8nOAuth2Flow = async (code: string, state: string) =>
 		await Container.get(OAuth2FlowProxy).complete(code, state);
 
+	// Captured here so `establishTriggerIdentity` seals the gate that admitted this
+	// request, instead of resolving the resource a second time.
+	let admittedBy: { resource: string; grant?: OAuthResourceGrant } | undefined;
+
 	additionalData.validateN8nOAuth2Token = async (token: string, resourceUrl: string) => {
 		const oauthTokenVerifierProxy = Container.get(OAuthTokenVerifierProxy);
 		const result = await oauthTokenVerifierProxy.verifyOAuthAccessToken(token, resourceUrl);
 		if (result.user) {
+			admittedBy = { resource: resourceUrl, grant: result.grant };
 			return {
 				valid: true,
 				user: {
@@ -614,10 +623,30 @@ export async function executeWebhook(
 		};
 	};
 
-	additionalData.establishTriggerIdentity = async (token: string, resource: string) => {
+	additionalData.establishTriggerIdentity = async (
+		token: string,
+		resource: string,
+		subject?: string,
+	) => {
+		// The run re-verifies this token after the trigger stops listening, so it carries
+		// the gate with it. Fall back to a lookup for callers that establish an identity
+		// without going through `validateN8nOAuth2Token`.
+		const grant =
+			admittedBy?.resource === resource
+				? admittedBy.grant
+				: (await Container.get(ProtectedResourceRegistry).getByResourceUrl(resource))?.getGrant?.();
+
+		if (!grant) {
+			// Not fatal now, but this is the state a queued or parked run later fails in.
+			Container.get(Logger).warn(
+				'Established a trigger identity without a resource grant; this run will depend on the protected resource still resolving',
+				{ workflowId: workflow.id, resource },
+			);
+		}
+
 		additionalData.encryptedRunnerIdentity = await Container.get(
 			ExecutionContextService,
-		).buildTriggerIdentityCredentials(token, resource);
+		).buildTriggerIdentityCredentials(token, resource, grant, subject);
 		if (runExecutionData) {
 			await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
 		}
@@ -868,6 +897,9 @@ export async function executeWebhook(
 			if (isMcpToolCall(mcpToolCallValue)) {
 				runData.mcpToolCall = mcpToolCallValue;
 			}
+
+			// The worker has no access to the request, so carry the node input the trigger built
+			runData.mcpToolInput = webhookResultData.toolInput;
 
 			// Handle MCP list tools relay - forward to main with SSE transport via pub/sub
 			const mcpListToolsRelayValue =

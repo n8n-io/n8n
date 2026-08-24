@@ -259,18 +259,20 @@ async function onWorkflowDeactivated() {
 				[$style['canvas-only']]: settingsStore.isCanvasOnly,
 			}"
 		>
-			<div v-show="!hideMenuBar && !settingsStore.isCanvasOnly" :class="$style['top-menu']">
-				<WorkflowDetails
-					v-if="workflowName"
-					:id="workflowId"
-					:tags="workflowTags"
-					:name="workflowName"
-					:current-folder="parentFolderForBreadcrumbs"
-					:is-archived="workflowIsArchived"
-					:description="workflowDescription"
-					@workflow:deactivated="onWorkflowDeactivated"
-				/>
-			</div>
+			<template v-if="!settingsStore.isCanvasOnly">
+				<div v-show="!hideMenuBar" :class="$style['top-menu']">
+					<WorkflowDetails
+						v-if="workflowName"
+						:id="workflowId"
+						:tags="workflowTags"
+						:name="workflowName"
+						:current-folder="parentFolderForBreadcrumbs"
+						:is-archived="workflowIsArchived"
+						:description="workflowDescription"
+						@workflow:deactivated="onWorkflowDeactivated"
+					/>
+				</div>
+			</template>
 			<TabBar
 				v-if="onWorkflowPage"
 				:items="tabBarItems"

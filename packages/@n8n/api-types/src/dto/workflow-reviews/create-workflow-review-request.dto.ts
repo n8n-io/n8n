@@ -21,6 +21,6 @@ export class CreateWorkflowReviewRequestDto extends Z.class({
 			}),
 		)
 		.length(1),
-	// UI sends at most one reviewer for now; array for future multi-reviewer support (LIGO-601)
-	reviewerUserIds: z.array(n8nIdSchema).max(10).optional(),
+	// UI sends exactly one reviewer for now; array for future multi-reviewer support (LIGO-601)
+	reviewerUserIds: z.array(n8nIdSchema).min(1).max(10),
 }) {}

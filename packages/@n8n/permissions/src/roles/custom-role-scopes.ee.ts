@@ -7,7 +7,7 @@ import type { Scope } from '@/types.ee';
  * every operation exists in that resource's definition in @n8n/permissions.
  */
 export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
-	project: ['read', 'update', 'delete', 'export'],
+	project: ['read', 'update', 'delete', 'export', 'manageMembers'],
 	folder: ['read', 'update', 'create', 'move', 'delete'],
 	workflow: [
 		'read',

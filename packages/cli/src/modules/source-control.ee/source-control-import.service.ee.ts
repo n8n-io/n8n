@@ -198,6 +198,7 @@ export class SourceControlImportService {
 					id: remote.id,
 					versionId: remote.versionId ?? '',
 					name: remote.name,
+					description: remote.description,
 					parentFolderId: remote.parentFolderId,
 					remoteId: remote.id,
 					filename: getWorkflowExportPath(remote.id, this.workflowExportFolder),
@@ -219,6 +220,7 @@ export class SourceControlImportService {
 				id: true,
 				versionId: true,
 				name: true,
+				description: true,
 				updatedAt: true,
 				parentFolder: {
 					id: true,
@@ -242,6 +244,7 @@ export class SourceControlImportService {
 				id: local.id,
 				versionId: local.versionId,
 				name: local.name,
+				description: local.description ?? null,
 				localId: local.id,
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
@@ -264,6 +267,7 @@ export class SourceControlImportService {
 				id: true,
 				versionId: true,
 				name: true,
+				description: true,
 				updatedAt: true,
 				parentFolder: {
 					id: true,
@@ -300,6 +304,7 @@ export class SourceControlImportService {
 				id: local.id,
 				versionId: local.versionId,
 				name: local.name,
+				description: local.description ?? null,
 				localId: local.id,
 				parentFolderId: local.parentFolder?.id ?? null,
 				filename: getWorkflowExportPath(local.id, this.workflowExportFolder),
@@ -870,7 +875,8 @@ export class SourceControlImportService {
 		}
 
 		if (archivedByPull) {
-			await this.workflowMutationHooks.afterWorkflowArchived(id);
+			// A pull is a system mutation: no acting user to attribute the archive to.
+			await this.workflowMutationHooks.afterWorkflowArchived(id, null);
 		}
 
 		try {
@@ -1858,7 +1864,7 @@ export class SourceControlImportService {
 	 * regardless — so we do the physical cleanup directly beforehand. The
 	 * `beforeWorkflowDeleted` mutation hook fires here so modules can run their
 	 * pre-delete side effects (e.g. closing open review requests), and the
-	 * caller fires `afterWorkflowDeleted` once the cascade has run (see
+	 * caller fires `afterWorkflowsDeleted` once the cascade has run (see
 	 * {@link sweepAfterWorkflowCascade}) — but external hooks
 	 * (`workflow.delete`/`workflow.afterDelete`) and the `workflow-deleted`
 	 * event still don't fire, a pre-existing gap for any cascade-deleted
@@ -1880,11 +1886,10 @@ export class SourceControlImportService {
 			if (workflow) workflows.push(workflow);
 		}
 
-		// The hook may throw to abort the deletion, so it runs for every workflow
-		// before any destructive teardown — a rejection halfway through the batch
-		// must not leave earlier workflows deactivated with their executions gone.
+		// Capture-only, before any destructive teardown, while the rows the deletes
+		// will cascade away still exist. A pull is a system mutation: no acting user.
 		for (const workflow of workflows) {
-			await this.workflowMutationHooks.beforeWorkflowDeleted(workflow.id);
+			await this.workflowMutationHooks.beforeWorkflowDeleted(workflow.id, null);
 		}
 
 		for (const workflow of workflows) {
@@ -1898,15 +1903,14 @@ export class SourceControlImportService {
 	}
 
 	/**
-	 * Fire `afterWorkflowDeleted` once the folder/project row delete has
+	 * Fire `afterWorkflowsDeleted` once the folder/project row delete has
 	 * cascaded the given workflows away, mirroring `WorkflowService.delete`:
 	 * the sweep behind the hook closes review requests opened after the
-	 * pre-delete hooks ran and now left without a workflow. It searches
-	 * globally for such orphans, so one call covers the whole batch.
+	 * pre-delete hooks ran and now left without a workflow.
 	 */
 	private async sweepAfterWorkflowCascade(cascadedWorkflowIds: string[]) {
 		if (cascadedWorkflowIds.length === 0) return;
-		await this.workflowMutationHooks.afterWorkflowDeleted(cascadedWorkflowIds[0]);
+		await this.workflowMutationHooks.afterWorkflowsDeleted(cascadedWorkflowIds);
 	}
 
 	/** Contextual error for a failed deletion during pull, so the operator learns which resource to look at. */

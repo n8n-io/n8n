@@ -2,13 +2,7 @@ import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
 import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
-import {
-	ExecutionRepository,
-	FolderRepository,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	User,
-} from '@n8n/db';
+import { ExecutionRepository, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
 import { InstanceSettings } from 'n8n-core';
 import type { IRun } from 'n8n-workflow';
 import { createEmptyRunExecutionData, ManualExecutionCancelledError } from 'n8n-workflow';
@@ -31,6 +25,8 @@ import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+import { FolderFinderService } from '@/services/folder-finder.service';
+import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -49,6 +45,7 @@ import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-a
 
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
+import type { McpAuthContext, McpClientInfo } from '../mcp.types';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
 // registration is spied on so its wiring options can be asserted.
@@ -108,7 +105,7 @@ describe('McpService', () => {
 			mockInstance(WorkflowCreationService),
 			mockInstance(NodeTypes),
 			mockInstance(ProjectRepository),
-			mockInstance(FolderRepository),
+			mockInstance(FolderFinderService),
 			mockInstance(SharedWorkflowRepository),
 			mockInstance(ExecutionRepository),
 			mockInstance(ExecutionService),
@@ -125,6 +122,7 @@ describe('McpService', () => {
 			mockAiGatewayService(),
 			mockInstance(ModuleRegistry),
 			eventService,
+			mockInstance(FolderService),
 		);
 	});
 
@@ -159,7 +157,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowCreationService),
 				mockInstance(NodeTypes),
 				mockInstance(ProjectRepository),
-				mockInstance(FolderRepository),
+				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
@@ -176,6 +174,7 @@ describe('McpService', () => {
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
+				mockInstance(FolderService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -365,7 +364,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowCreationService),
 				mockInstance(NodeTypes),
 				mockInstance(ProjectRepository),
-				mockInstance(FolderRepository),
+				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
@@ -382,6 +381,7 @@ describe('McpService', () => {
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
+				mockInstance(FolderService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1' });
@@ -648,8 +648,9 @@ describe('McpService', () => {
 			name: string,
 			impl: () => Promise<unknown>,
 			args: Record<string, unknown> = {},
+			{ clientInfo, auth }: { clientInfo?: McpClientInfo; auth?: McpAuthContext } = {},
 		) => {
-			const registerTool = mcpService.createToolRegistrar(server, mcpUser());
+			const registerTool = mcpService.createToolRegistrar(server, mcpUser(), clientInfo, auth);
 			const registered = registerTool({
 				name,
 				config: { description: 'test' },
@@ -826,6 +827,105 @@ describe('McpService', () => {
 			);
 		});
 
+		it('should emit `mcp-tool-called` with the calling user and OAuth client', async () => {
+			// `clientId` is the client the OAuth token was issued to, so usage can be
+			// attributed per client. `clientName` is only what the client calls itself.
+			const user = mcpUser();
+			const server = await mcpService.getServer(user, mcpFeatureFlags());
+
+			await registerAndInvoke(
+				server,
+				'my_tool',
+				async () => ({ content: [{ type: 'text', text: 'ok' }] }),
+				{},
+				{
+					clientInfo: { name: 'Claude', version: '1.2.3' },
+					auth: {
+						grantedScopes: undefined,
+						caller: { authType: 'oauth', clientId: 'client-abc' },
+					},
+				},
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					user,
+					toolName: 'my_tool',
+					authType: 'oauth',
+					clientId: 'client-abc',
+					clientName: 'Claude',
+				}),
+			);
+		});
+
+		it('should emit `mcp-tool-called` with the OAuth client when a tool fails', async () => {
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			await expect(
+				registerAndInvoke(
+					server,
+					'err_tool',
+					async () => {
+						throw new Error('boom');
+					},
+					{},
+					{
+						auth: {
+							grantedScopes: undefined,
+							caller: { authType: 'oauth', clientId: 'client-abc' },
+						},
+					},
+				),
+			).rejects.toThrow('boom');
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({
+					toolName: 'err_tool',
+					status: 'error',
+					authType: 'oauth',
+					clientId: 'client-abc',
+				}),
+			);
+		});
+
+		it('should pass the resolved auth through to every tool the server registers', async () => {
+			const user = mcpUser();
+			const registrarSpy = vi.spyOn(mcpService, 'createToolRegistrar');
+			const auth = {
+				grantedScopes: undefined,
+				caller: { authType: 'oauth' as const, clientId: 'client-abc' },
+			};
+
+			await mcpService.getServer(user, mcpFeatureFlags(), { name: 'Cursor' }, auth);
+
+			expect(registrarSpy).toHaveBeenCalledWith(expect.anything(), user, { name: 'Cursor' }, auth);
+		});
+
+		it('should report an API-key call as such, with no OAuth client', async () => {
+			// One MCP API key exists per user, so there is no client to name and no
+			// per-key identifier worth reporting beyond the user itself.
+			const server = await mcpService.getServer(mcpUser(), mcpFeatureFlags());
+
+			await registerAndInvoke(
+				server,
+				'my_tool',
+				async () => ({ content: [{ type: 'text', text: 'ok' }] }),
+				{},
+				{ auth: { grantedScopes: undefined, caller: { authType: 'api_key' } } },
+			);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({ authType: 'api_key' }),
+			);
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'mcp-tool-called',
+				expect.objectContaining({ clientId: expect.anything() }),
+			);
+		});
+
 		it('should not register builder tools when mcpBuilderEnabled is false', async () => {
 			const user = Object.assign(new User(), { id: 'user-1' });
 			const nodeCatalogService = mockInstance(NodeCatalogService);
@@ -854,7 +954,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowCreationService),
 				mockInstance(NodeTypes),
 				mockInstance(ProjectRepository),
-				mockInstance(FolderRepository),
+				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
@@ -871,6 +971,7 @@ describe('McpService', () => {
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
+				mockInstance(FolderService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -907,7 +1008,7 @@ describe('McpService', () => {
 				mockInstance(WorkflowCreationService),
 				mockInstance(NodeTypes),
 				mockInstance(ProjectRepository),
-				mockInstance(FolderRepository),
+				mockInstance(FolderFinderService),
 				mockInstance(SharedWorkflowRepository),
 				mockInstance(ExecutionRepository),
 				mockInstance(ExecutionService),
@@ -924,6 +1025,7 @@ describe('McpService', () => {
 				mockAiGatewayService(),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
+				mockInstance(FolderService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -985,7 +1087,7 @@ describe('McpService', () => {
 					mockInstance(WorkflowCreationService),
 					mockInstance(NodeTypes),
 					mockInstance(ProjectRepository),
-					mockInstance(FolderRepository),
+					mockInstance(FolderFinderService),
 					mockInstance(SharedWorkflowRepository),
 					mockInstance(ExecutionRepository),
 					mockInstance(ExecutionService),
@@ -1002,6 +1104,7 @@ describe('McpService', () => {
 					mockAiGatewayService(),
 					mockInstance(ModuleRegistry),
 					mockInstance(EventService),
+					mockInstance(FolderService),
 				);
 			};
 

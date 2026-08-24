@@ -134,6 +134,7 @@ export const defaultSettings: FrontendSettings = {
 		maxSize: 0,
 	},
 	workflowCallerPolicyDefaultOption: 'any',
+	excludeNodes: [],
 	workflowTagsDisabled: false,
 	workflowsAutosaveDisabled: false,
 	variables: {
