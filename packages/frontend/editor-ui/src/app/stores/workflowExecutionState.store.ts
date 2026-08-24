@@ -325,9 +325,18 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		 *  - otherwise                 -> undefined
 		 */
 		function getResolvedActiveExecutionId(): string | undefined {
-			if (typeof activeExecutionId.value === 'string') return activeExecutionId.value;
-			if (activeExecutionId.value === null) return IN_PROGRESS_EXECUTION_ID;
-			if (typeof displayedExecutionId.value === 'string') return displayedExecutionId.value;
+			if (typeof activeExecutionId.value === 'string') {
+				return activeExecutionId.value;
+			}
+
+			if (activeExecutionId.value === null) {
+				return IN_PROGRESS_EXECUTION_ID;
+			}
+
+			if (typeof displayedExecutionId.value === 'string') {
+				return displayedExecutionId.value;
+			}
+
 			return undefined;
 		}
 
@@ -717,10 +726,12 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		}
 
 		function clearActiveNodeExecutionData(nodeName: string) {
-			if (typeof activeExecutionId.value !== 'string') return;
-			useExecutionDataStore(createExecutionDataId(activeExecutionId.value)).clearNodeExecutionData(
-				nodeName,
-			);
+			const executionId = getResolvedActiveExecutionId();
+			if (!executionId) {
+				return;
+			}
+
+			useExecutionDataStore(createExecutionDataId(executionId)).clearNodeExecutionData(nodeName);
 		}
 
 		function setExecutionWaitingForWebhook(value: boolean) {
