@@ -20,19 +20,14 @@ export type GitAuthMaterial = {
 };
 
 /**
- * Auth material to apply, computed from an update. `connectionType` is
- * non-nullable: a computed update always has a concrete type in play, so
- * `Object.assign`ing this onto the `GitConnection` entity can never write null
- * into its non-nullable column. The compiler enforces this inside the helper.
+ * Auth material to apply, computed from an update. Identical to
+ * {@link GitAuthMaterial} except `connectionType` is non-nullable: a computed
+ * update always has a concrete type in play, so `Object.assign`ing this onto the
+ * `GitConnection` entity can never write null into its non-nullable column. The
+ * compiler enforces this inside the helper. Expressed as an intersection to stay
+ * in sync with {@link GitAuthMaterial} by construction.
  */
-export type GitAuthResult = {
-	connectionType: GitConnectionType;
-	publicKey: string | null;
-	encryptedPrivateKey: string | null;
-	encryptedUsername: string | null;
-	encryptedPassword: string | null;
-	keyGeneratorType: GitKeyGeneratorType | null;
-};
+export type GitAuthResult = GitAuthMaterial & { connectionType: GitConnectionType };
 
 type GitAuthInput = {
 	connectionType?: GitConnectionType;
