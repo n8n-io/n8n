@@ -108,6 +108,26 @@ describe('reconnect', () => {
 
 			expect(events.close).toHaveBeenCalledWith('dropped', expect.any(ReconnectTimeoutError));
 		});
+
+		it('still closes as dropped when a handler failed earlier on its own', async () => {
+			const { connection, events, imap } = await connect(WATCHING, (transport, attempt) => {
+				if (attempt > 0) transport.connectResult = 'close';
+			});
+			connection.onArrival(() => {
+				throw new Error('unparseable email');
+			});
+
+			imap().emit('mail', 1);
+			await settle();
+			expect(events.error).toHaveBeenCalledWith(
+				expect.objectContaining({ message: 'unparseable email' }),
+			);
+
+			imap().drop();
+			await settle();
+
+			expect(events.close).toHaveBeenCalledWith('dropped', expect.any(ConnectionClosedError));
+		});
 	});
 
 	describe('on a schedule', () => {
