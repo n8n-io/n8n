@@ -17,6 +17,7 @@ import { z } from 'zod';
 import type { EventService } from '@/events/event.service';
 import {
 	markPublicApiController,
+	OptionalWidgetBodyDto,
 	WidgetBodyDto,
 } from '@/public-api/__tests__/public-api-controller-test-utils';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
@@ -135,8 +136,6 @@ describe('PublicApiControllerRegistry', () => {
 	});
 
 	describe('request media type', () => {
-		class OptionalWidgetBodyDto extends Z.class({ name: z.string().optional() }) {}
-
 		function registerOptionalBodyRoute() {
 			@Service()
 			class WidgetsPublicController {
