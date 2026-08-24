@@ -7,6 +7,7 @@ import {
 	testModules,
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -101,6 +102,48 @@ describe('importPackageFromDirectory', () => {
 		expect(result.projects).toHaveLength(1);
 		expect(result.projects[0]).toMatchObject({ name: 'Alpha Project', status: 'created' });
 		expect(result.workflows.map((w) => w.name)).toEqual(['WF One']);
+	});
+
+	it('overwrites an existing project and workflow to match the directory', async () => {
+		const project = await createTeamProject('Alpha Project', owner);
+		const workflow = await createWorkflow({ name: 'WF One', nodes: [], connections: {} }, project);
+		await service.exportPackageToDirectory(
+			{ user: owner, projectIds: [project.id] },
+			{ targetDir: sourceDir },
+		);
+
+		// Leave the project and workflow in place but drift them away from the working
+		// copy, so the import must rewrite them rather than create fresh entities.
+		await Container.get(ProjectRepository).update(project.id, { name: 'Alpha Project (edited)' });
+		await Container.get(WorkflowRepository).update(workflow.id, { name: 'WF One (edited)' });
+
+		const result = await service.importPackageFromDirectory(
+			{ user: owner, ...importPolicy },
+			{ sourceDir },
+		);
+
+		expect(result.projects).toHaveLength(1);
+		expect(result.projects[0]).toMatchObject({
+			localId: project.id,
+			name: 'Alpha Project',
+			status: 'updated',
+		});
+		expect(result.workflows).toHaveLength(1);
+		expect(result.workflows[0]).toMatchObject({
+			localId: workflow.id,
+			name: 'WF One',
+			status: 'updated',
+		});
+
+		// The instance now matches the directory, and nothing was duplicated.
+		expect(await Container.get(ProjectRepository).count({ where: { type: 'team' } })).toBe(1);
+		expect((await Container.get(ProjectRepository).findOneBy({ id: project.id }))?.name).toBe(
+			'Alpha Project',
+		);
+		expect(await Container.get(WorkflowRepository).count()).toBe(1);
+		expect((await Container.get(WorkflowRepository).findOneBy({ id: workflow.id }))?.name).toBe(
+			'WF One',
+		);
 	});
 
 	it('does not emit the user package-import event', async () => {
