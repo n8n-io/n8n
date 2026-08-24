@@ -302,12 +302,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
 
-			// Leadership may have already been taken over (at orchestration init, or
-			// via the periodic leader check) before the line above subscribed the
-			// license's @OnLeaderTakeover() listener, in which case that one-shot
-			// event had no listener and was dropped. Reconcile explicitly: safe to
-			// call unconditionally, as enableAutoRenewals() is a no-op unless
-			// renewal is currently disabled.
+			// Catches leadership already taken over before this instance had a
+			// takeover listener subscribed, whose one-shot event would otherwise
+			// be lost for the process lifetime.
 			if (this.instanceSettings.isLeader) this.license.enableAutoRenewals();
 		}
 
