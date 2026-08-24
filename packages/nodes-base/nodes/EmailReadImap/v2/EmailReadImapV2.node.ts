@@ -17,6 +17,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { closeHandler } from '../connection-events';
 import { toImapCredentials } from '../credentials';
 import { getNewEmails } from './utils';
 
@@ -341,20 +342,7 @@ export class EmailReadImapV2 implements INodeType {
 			this.logger.debug('Email Read Imap: Connection restored');
 		});
 
-		connection.onClose((reason, cause) => {
-			// `error` was already reported through onError; only an unexplained close is news.
-			if (reason !== 'dropped') {
-				this.logger.debug(`Email Read Imap: Connection closed (${reason})`);
-				return;
-			}
-			this.logger.error('Email Read Imap: Connected closed unexpectedly', { error: cause });
-			this.emitError(
-				new NodeOperationError(this.getNode(), 'IMAP connection closed unexpectedly', {
-					description:
-						'The IMAP server closed the connection without reporting an error, usually because the server (or a proxy/firewall) periodically closes long-lived connections, or was temporarily unavailable. n8n will automatically retry reactivating the workflow.',
-				}),
-			);
-		});
+		connection.onClose(closeHandler(this));
 
 		connection.onError((error) => {
 			this.logger.debug(`IMAP connection experienced an error: (${imapErrorCode(error)})`, {

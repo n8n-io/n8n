@@ -136,14 +136,8 @@ export class ImapSimple {
 	static async connect(
 		options: ImapConnectionOptions,
 		reconnect?: ReconnectOptions,
-	): Promise<ImapSimple> {
-		return await ImapSimple.connectWith(() => new Imap(toImapOptions(options)), reconnect);
-	}
-
-	/** Runs over a transport the caller builds. Rebuilt on every reconnect, so a fake stays a fake. */
-	static async connectWith(
-		createTransport: () => ImapTransport,
-		reconnect?: ReconnectOptions,
+		/** Called again for every reconnect, so a fake transport stays a fake. */
+		createTransport: () => ImapTransport = () => new Imap(toImapOptions(options)),
 	): Promise<ImapSimple> {
 		const connection = new ImapSimple(createTransport, reconnect);
 		await connection.open();
@@ -433,27 +427,8 @@ export class ImapSimple {
 		});
 	}
 
-	/**
-	 * Search the currently open mailbox, and retrieve the results
-	 *
-	 * Results are in the form:
-	 *
-	 * [{
-	 *   attributes: object,
-	 *   parts: [ { which: string, size: number, body: string }, ... ]
-	 * }, ...]
-	 *
-	 * See node-imap's ImapMessage signature for information about `attributes`, `which`, `size`, and `body`.
-	 * For any message part that is a `HEADER`, the body is automatically parsed into an object.
-	 */
-	async search(
-		/** Criteria to use to search. Passed to node-imap's .search() 1:1 */
-		searchCriteria: SearchCriteria[],
-		/** Criteria to use to fetch the search results. Passed to node-imap's .fetch() 1:1 */
-		fetchOptions: Imap.FetchOptions,
-		/** Optional limit to restrict the number of messages fetched */
-		limit?: number,
-	) {
+	/** Matching messages, with any `HEADER` part parsed into an object. */
+	async search(searchCriteria: SearchCriteria[], fetchOptions: Imap.FetchOptions, limit?: number) {
 		return await new Promise<Message[]>((resolve, reject) => {
 			this.client.search(searchCriteria, (e, uids) => {
 				if (e) {
@@ -466,11 +441,7 @@ export class ImapSimple {
 					return;
 				}
 
-				// If limit is specified, take only the first N UIDs
-				let uidsToFetch = uids;
-				if (limit && limit > 0 && uids.length > limit) {
-					uidsToFetch = uids.slice(0, limit);
-				}
+				const uidsToFetch = limit && limit > 0 ? uids.slice(0, limit) : uids;
 
 				const fetch = this.client.fetch(uidsToFetch, fetchOptions);
 				let messagesRetrieved = 0;
@@ -496,10 +467,7 @@ export class ImapSimple {
 				const fetchOnEnd = () => {
 					fetch.removeListener('message', fetchOnMessage);
 					fetch.removeListener('error', fetchOnError);
-					// Suppress any errors emitted after fetch end to prevent uncaught
-					// exceptions from crashing the process. The fetch object may still
-					// emit errors (e.g. ECONNRESET) after 'end' if the connection drops
-					// while async message handlers are still in-flight.
+					// A fetch can still emit ECONNRESET after `end`, and an unhandled one is fatal.
 					fetch.on('error', () => {});
 				};
 
@@ -510,13 +478,8 @@ export class ImapSimple {
 		});
 	}
 
-	/** Download a "part" (either a portion of the message body, or an attachment) */
-	private async getPartData(
-		/** The message returned from `search()` */
-		message: Message,
-		/** The message part to be downloaded, from the `message.attributes.struct` Array */
-		part: MessagePart,
-	) {
+	/** One part of a message: a slice of the body, or an attachment. */
+	private async getPartData(message: Message, part: MessagePart) {
 		return await new Promise<PartData>((resolve, reject) => {
 			const fetch = this.client.fetch(message.attributes.uid, {
 				bodies: [part.partID],
@@ -546,8 +509,6 @@ export class ImapSimple {
 			const fetchOnEnd = () => {
 				fetch.removeListener('message', fetchOnMessage);
 				fetch.removeListener('error', fetchOnError);
-				// Suppress any errors emitted after fetch end to prevent uncaught
-				// exceptions from crashing the process.
 				fetch.on('error', () => {});
 			};
 
@@ -590,13 +551,7 @@ export class ImapSimple {
 		);
 	}
 
-	/** Adds the provided flag(s) to the specified message(s). */
-	async addFlags(
-		/** The messages uid */
-		uid: number[],
-		/** The flags to add to the message(s). */
-		flags: string | string[],
-	) {
+	async addFlags(uid: number[], flags: string | string[]) {
 		return await new Promise<void>((resolve, reject) => {
 			this.client.addFlags(uid, flags, (e) => (e ? reject(e) : resolve()));
 		});
