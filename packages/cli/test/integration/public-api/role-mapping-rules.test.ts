@@ -787,15 +787,24 @@ describe('Role mapping rules in Public API', () => {
 	});
 
 	describe('DELETE /role-mapping-rules/:roleMappingRuleId', () => {
-		it('deletes a rule and returns 204 with no content', async () => {
+		it('deletes a rule and returns 200 with the deleted rule', async () => {
 			const rule = await createInstanceRule(validInstancePayload);
 
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.delete(`/role-mapping-rules/${rule.id}`);
 
-			expect(response.status).toBe(204);
-			expect(response.body).toEqual({});
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({
+				id: rule.id,
+				expression: rule.expression,
+				role: rule.role,
+				type: rule.type,
+				order: rule.order,
+				projectIds: rule.projectIds,
+				createdAt: rule.createdAt,
+				updatedAt: rule.updatedAt,
+			});
 
 			const stored = await Container.get(RoleMappingRuleRepository).findOneBy({ id: rule.id });
 			expect(stored).toBeNull();
@@ -811,7 +820,7 @@ describe('Role mapping rules in Public API', () => {
 			await testServer
 				.publicApiAgentFor(owner)
 				.delete(`/role-mapping-rules/${second.id}`)
-				.expect(204);
+				.expect(200);
 
 			const remaining = await testServer
 				.publicApiAgentFor(owner)
@@ -835,7 +844,7 @@ describe('Role mapping rules in Public API', () => {
 			await testServer
 				.publicApiAgentFor(owner)
 				.delete(`/role-mapping-rules/${rule.id}`)
-				.expect(204);
+				.expect(200);
 
 			const stored = await Container.get(RoleMappingRuleRepository).findOneBy({ id: rule.id });
 			expect(stored).toBeNull();

@@ -800,7 +800,20 @@ describe('RoleMappingRuleService', () => {
 				userEmail: testUser.email,
 			});
 
-			expect(result).toEqual({ ruleType: 'instance' });
+			expect(result).toEqual({
+				id: rule.id,
+				expression: rule.expression,
+				role: rule.role.slug,
+				type: rule.type,
+				order: rule.order,
+				projectIds: rule.projects.map((p) => p.id),
+				createdAt: '2025-01-01T00:00:00.000Z',
+				updatedAt: '2025-01-01T00:00:00.000Z',
+			});
+			expect(roleMappingRuleRepository.findOne).toHaveBeenCalledWith({
+				where: { id: rule.id },
+				relations: ['projects', 'role'],
+			});
 			expect(roleMappingRuleRepository.remove).toHaveBeenCalledWith(rule);
 			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-deleted', {
 				user: { id: testUser.id, email: testUser.email },
@@ -975,7 +988,16 @@ describe('RoleMappingRuleService', () => {
 
 	describe('normalizeOrderForType', () => {
 		const makeRule = (id: string, order: number, type = 'instance') =>
-			({ id, order, type }) as unknown as RoleMappingRule;
+			({
+				id,
+				order,
+				type,
+				expression: 'true',
+				role: globalRole,
+				projects: [],
+				createdAt: new Date('2025-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+			}) as unknown as RoleMappingRule;
 
 		const updateSpy = vi.fn().mockResolvedValue(undefined);
 		const transactionSpy = vi.fn();

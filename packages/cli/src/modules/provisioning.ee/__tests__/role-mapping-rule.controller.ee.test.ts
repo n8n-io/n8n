@@ -213,7 +213,16 @@ describe('RoleMappingRuleController', () => {
 
 		it('should delete a role mapping rule when provisioning is licensed', async () => {
 			licenseState.isProvisioningLicensed.mockReturnValue(true);
-			roleMappingRuleService.delete.mockResolvedValue({ ruleType: 'instance' });
+			roleMappingRuleService.delete.mockResolvedValue({
+				id: ruleId,
+				expression: 'claims.group === "admins"',
+				role: 'global:member',
+				type: 'instance',
+				order: 0,
+				projectIds: [],
+				createdAt: '2025-01-01T00:00:00.000Z',
+				updatedAt: '2025-01-01T00:00:00.000Z',
+			});
 
 			const result = await controller.delete(req, res, ruleId);
 

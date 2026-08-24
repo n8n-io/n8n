@@ -14,8 +14,12 @@ parameters:
     name: roleMappingRuleId
     in: path
 responses:
-  '204':
+  '200':
     description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/roleMappingRulePublicDto.generated.yml
   '401':
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':

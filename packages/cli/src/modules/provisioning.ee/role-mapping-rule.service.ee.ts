@@ -279,28 +279,32 @@ export class RoleMappingRuleService {
 		id: string;
 		userId: string;
 		userEmail?: string;
-	}): Promise<{ ruleType: 'instance' | 'project' }> {
+	}): Promise<RoleMappingRuleResponse> {
 		if (typeof id !== 'string' || id.length === 0) {
 			throw new BadRequestError('Rule id is required');
 		}
 
-		const rule = await this.roleMappingRuleRepository.findOne({ where: { id } });
+		const rule = await this.roleMappingRuleRepository.findOne({
+			where: { id },
+			relations: ['projects', 'role'],
+		});
 
 		if (!rule) {
 			throw new NotFoundError('Could not find role mapping rule');
 		}
 
-		const ruleType = rule.type as 'instance' | 'project';
+		const result = this.toResponse(rule);
+
 		await this.roleMappingRuleRepository.remove(rule);
-		await this.normalizeOrderForType(ruleType);
+		await this.normalizeOrderForType(result.type);
 
 		this.eventService.emit('role-mapping-rule-deleted', {
 			user: { id: userId, email: userEmail },
 			ruleId: id,
-			ruleType,
+			ruleType: result.type,
 		});
 
-		return { ruleType };
+		return result;
 	}
 
 	async deleteAllOfType(type: 'instance' | 'project', tx?: EntityManager): Promise<number> {
