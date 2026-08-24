@@ -25,6 +25,7 @@ import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { EvaluationComparePage } from './EvaluationComparePage';
 import { ExecutionsPage } from './ExecutionsPage';
+import { GitConnectionsPage } from './GitConnectionsPage';
 import { InstanceAiPage } from './InstanceAiPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
@@ -121,6 +122,7 @@ export class n8nPage {
 	readonly workflowMenu: WorkflowMenu;
 
 	readonly settingsEnvironment: SettingsEnvironmentPage;
+	readonly gitConnections: GitConnectionsPage;
 	readonly secretsProviderSettings: SecretsProviderSettingsPage;
 	readonly securitySettings: SecuritySettingsPage;
 
@@ -198,6 +200,7 @@ export class n8nPage {
 		this.dataTable = new DataTableView(page);
 		this.dataTableDetails = new DataTableDetails(page);
 		this.settingsEnvironment = new SettingsEnvironmentPage(page);
+		this.gitConnections = new GitConnectionsPage(page);
 		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
 		this.securitySettings = new SecuritySettingsPage(page);
 
