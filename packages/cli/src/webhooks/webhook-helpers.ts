@@ -47,6 +47,7 @@ import {
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	getExecutableNodeNames,
 	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	OperationalError,
@@ -679,7 +680,21 @@ export async function executeWebhook(
 			return undefined;
 		}
 
-		return await credentialCheckProxy.checkCredentialStatus(workflow.id, executionContext);
+		// Restrict the check to nodes the firing trigger can actually reach, so a
+		// disjoint branch or a second trigger's chain doesn't demand accounts this
+		// run will never use. Same set drives the form connect panel and the submit
+		// gate (both call through here), keeping them in lockstep.
+		const reachableNodeNames = [
+			...getExecutableNodeNames(
+				workflow.connectionsBySourceNode,
+				workflow.connectionsByDestinationNode,
+				workflowStartNode.name,
+			),
+		];
+
+		return await credentialCheckProxy.checkCredentialStatus(workflow.id, executionContext, {
+			reachableNodeNames,
+		});
 	};
 
 	let didSendResponse = false;

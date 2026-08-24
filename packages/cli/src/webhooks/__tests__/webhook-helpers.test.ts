@@ -1175,6 +1175,8 @@ describe('executeWebhook credential-status gate', () => {
 		const workflow = mock<Workflow>({
 			id: WORKFLOW_ID,
 			name: 'Test Workflow',
+			connectionsBySourceNode: {},
+			connectionsByDestinationNode: {},
 			nodeTypes: {
 				getByNameAndVersion: vi
 					.fn()
@@ -1219,10 +1221,13 @@ describe('executeWebhook credential-status gate', () => {
 			gateResult: missingGateResult,
 		});
 
-		// Checked using the established identity and the workflow being called.
-		expect(checkCredentialStatus).toHaveBeenCalledWith(WORKFLOW_ID, {
-			credentials: 'encrypted-runner-identity',
-		});
+		// Checked using the established identity and the workflow being called,
+		// scoped to the nodes the firing trigger can reach (here: just the start node).
+		expect(checkCredentialStatus).toHaveBeenCalledWith(
+			WORKFLOW_ID,
+			{ credentials: 'encrypted-runner-identity' },
+			{ reachableNodeNames: ['Webhook'] },
+		);
 
 		expect(responseCallback).toHaveBeenCalledWith(null, {
 			data: missingGateResult,
@@ -1355,6 +1360,8 @@ describe('executeWebhook establishTriggerIdentity', () => {
 		const workflow = mock<Workflow>({
 			id: WORKFLOW_ID,
 			name: 'Test Workflow',
+			connectionsBySourceNode: {},
+			connectionsByDestinationNode: {},
 			nodeTypes: {
 				getByNameAndVersion: vi
 					.fn()

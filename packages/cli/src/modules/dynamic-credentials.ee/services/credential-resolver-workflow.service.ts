@@ -88,15 +88,20 @@ export class CredentialResolverWorkflowService {
 	 *
 	 * @param workflowId - The (root) workflow ID to check
 	 * @param credentialContext - Identity context used for credential authorization
-	 * @param user - Optional n8n session user whose access is enforced on the root workflow
+	 * @param options.user - Optional n8n session user whose access is enforced on the root workflow
+	 * @param options.reachableNodeNames - Optional set of root-workflow node names that can run on
+	 *   this trigger; when given, credentials on other root nodes (disjoint branches, other triggers'
+	 *   chains) are ignored. Omit to check every enabled node.
 	 * @returns Array of credential statuses (configured/missing) with resolver info
 	 * @throws {Error} When the root workflow is not found or resolver configuration is invalid
 	 */
 	async getWorkflowStatus(
 		workflowId: string,
 		credentialContext: ICredentialContext,
-		user?: User,
+		options: { user?: User; reachableNodeNames?: string[] } = {},
 	): Promise<CredentialStatus[]> {
+		const { user, reachableNodeNames } = options;
+		const reachable = reachableNodeNames ? new Set(reachableNodeNames) : undefined;
 		const visited = new Set<string>();
 		// credentialId -> set of distinct effective resolverIds of the workflows it appears in
 		// (fallback only; a credential-level resolverId still takes priority during the status
@@ -110,6 +115,7 @@ export class CredentialResolverWorkflowService {
 			visited,
 			user,
 			true,
+			reachable,
 		);
 
 		if (credentialFallbackResolvers.size === 0) {
@@ -151,9 +157,11 @@ export class CredentialResolverWorkflowService {
 	/**
 	 * Recursively walks a workflow and its sub-workflows, recording every resolvable-credential id
 	 * on an enabled node, mapped to the effective resolver of the workflow it was found in.
-	 * Disabled nodes are skipped so their accounts never appear in the status result. The
-	 * `visited` set prevents processing the same workflow twice (cycles, self-references,
-	 * diamond references).
+	 * Disabled nodes are skipped so their accounts never appear in the status result. When
+	 * `reachableRootNodeNames` is given, root-workflow nodes outside that set are skipped too —
+	 * they can't run on the firing trigger. The set applies to the root only; sub-workflow nodes
+	 * are named independently and always checked (over-inclusive, never fail-open). The `visited`
+	 * set prevents processing the same workflow twice (cycles, self-references, diamond references).
 	 */
 	private async collectResolvableCredentials(
 		workflowId: string,
@@ -161,6 +169,7 @@ export class CredentialResolverWorkflowService {
 		visited: Set<string>,
 		user: User | undefined,
 		isRoot: boolean,
+		reachableRootNodeNames: Set<string> | undefined,
 	): Promise<void> {
 		if (visited.has(workflowId)) {
 			return;
@@ -191,10 +200,18 @@ export class CredentialResolverWorkflowService {
 
 		const resolverId = this.dynamicCredentialsProxy.getEffectiveResolverId(workflow.settings);
 
-		for (const node of workflow.nodes ?? []) {
-			if (node.disabled) {
-				continue;
-			}
+		// Nodes that can actually run: enabled, and — on the root workflow when a reachable
+		// set is given — reachable from the firing trigger. Both credential collection and
+		// sub-workflow traversal use this, so an unreachable Execute Sub-workflow node doesn't
+		// drag its sub-workflow's accounts in either. Sub-workflow nodes (isRoot=false) name
+		// their nodes independently, so the reachable filter never applies to them.
+		const runnableNodes = (workflow.nodes ?? []).filter((node) => {
+			if (node.disabled) return false;
+			if (isRoot && reachableRootNodeNames && !reachableRootNodeNames.has(node.name)) return false;
+			return true;
+		});
+
+		for (const node of runnableNodes) {
 			for (const credentialName in node.credentials ?? {}) {
 				const credentialId = node.credentials?.[credentialName]?.id;
 				if (!credentialId) {
@@ -206,8 +223,10 @@ export class CredentialResolverWorkflowService {
 			}
 		}
 
-		for (const subWorkflowId of this.extractSubWorkflowIds(workflow.nodes ?? [])) {
-			await this.collectResolvableCredentials(subWorkflowId, acc, visited, user, false);
+		for (const subWorkflowId of this.extractSubWorkflowIds(runnableNodes)) {
+			// Reachability is a root-node-name filter; sub-workflows name their nodes
+			// independently, so it isn't propagated into them.
+			await this.collectResolvableCredentials(subWorkflowId, acc, visited, user, false, undefined);
 		}
 	}
 

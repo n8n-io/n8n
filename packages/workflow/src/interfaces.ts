@@ -1184,12 +1184,24 @@ export type CredentialCheckResult = {
 	credentials: CredentialCheckStatus[];
 };
 
+/**
+ * Restricts the status check to the nodes that can actually run on this trigger.
+ * When omitted, every enabled node in the workflow is checked (the safe default:
+ * over-asking for accounts is preferable to missing one). Callers that know which
+ * trigger is firing pass the reachable set so disjoint branches and other triggers'
+ * chains don't demand accounts they'll never use.
+ */
+export type CredentialCheckOptions = {
+	reachableNodeNames?: string[];
+};
+
 export type DynamicCredentialCheckProxyProvider = {
 	checkCredentialStatus(
 		workflowId: string,
 		executionContext: {
 			credentials?: string;
 		},
+		options?: CredentialCheckOptions,
 	): Promise<CredentialCheckResult>;
 };
 
@@ -1200,6 +1212,7 @@ export type CredentialCheckProxyFunctions = {
 		executionContext: {
 			credentials?: string;
 		},
+		options?: CredentialCheckOptions,
 	): Promise<CredentialCheckResult>;
 };
 
