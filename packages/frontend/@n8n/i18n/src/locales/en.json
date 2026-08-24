@@ -7922,6 +7922,7 @@
 	"agents.builder.header.saving": "Saving…",
 	"agents.builder.header.saved": "Saved",
 	"agents.builder.preview.button": "Preview",
+	"agents.builder.preview.showChat": "Show chat",
 	"agents.builder.preview.disabledTooltip": "This agent's configuration has errors. Resolve them before previewing.",
 	"agents.builder.preview.layout.change": "Change layout",
 	"agents.builder.preview.layout.floating": "Floating",
