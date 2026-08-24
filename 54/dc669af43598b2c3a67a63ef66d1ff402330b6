@@ -1,0 +1,95 @@
+packages/@n8n/db/src/repositories/__tests__/folder.repository.test.ts
+  s_af7a4e8964d154::t_47832b06453426 1-29,42
+  s_af7a4e8964d154::t_3a41d99493419d 30-41
+packages/@n8n/db/src/repositories/__tests__/workflow.repository.test.ts
+  s_af7a4e8964d154::t_5c67724498f347 577-592
+  s_af7a4e8964d154::t_6d96848d139a97 556-574
+packages/@n8n/db/src/repositories/folder.repository.ts
+  s_af7a4e8964d154::t_decbca6db335d9 17-27
+  s_af7a4e8964d154::t_6a9226464369ac 29,32-36,39
+  s_af7a4e8964d154::t_e8df03ef408b12 3
+  s_2a0d37a1c9547d::t_b9e83e66f8474f 8
+  s_af7a4e8964d154::t_2543de5fe1bb8c 28
+  s_af7a4e8964d154::t_bded9953e77c76 30-31,37-38,40-41
+  s_2a0d37a1c9547d::t_d2adc1f7fdbf77 420-446,448
+packages/@n8n/db/src/index.ts
+  s_2a0d37a1c9547d::t_6aa060052089fe 14
+packages/@n8n/db/src/repositories/shared-workflow.repository.ts
+  s_2a0d37a1c9547d::t_d5ba54fb69de0c 40-41,50-51,57-66
+  s_af7a4e8964d154::t_7f513acb6ce3c8 39,42-49,52
+  s_2a0d37a1c9547d::t_df52e1f530f633 20
+packages/@n8n/db/src/utils/__tests__/bind-parameter-chunks.test.ts
+  s_af7a4e8964d154::t_3a8ad1ffbf8a1e 18-19
+  s_af7a4e8964d154::t_4cc8ee82fb878d 1
+  s_2a0d37a1c9547d::t_efae7d267afa90 2-17,20-21,23-25,27-29
+  s_af7a4e8964d154::t_1580c9e47a1608 22,26
+packages/cli/src/services/folder-finder.service.ts
+  s_af7a4e8964d154::t_aabd9b06341285 74,76-79,81
+  s_2a0d37a1c9547d::t_2334175bc3def7 2
+  s_2a0d37a1c9547d::t_fd785494115781 25
+  s_af7a4e8964d154::t_5d24535af809a4 26
+  s_2a0d37a1c9547d::t_93677ec0bd51ae 75,80
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_2a0d37a1c9547d::t_6ad24c24148553 321,323-333,335-347,349
+  s_af7a4e8964d154::t_6315cbbe3f48f1 322
+  s_af7a4e8964d154::t_5d0363f2c80085 348,351
+  s_2a0d37a1c9547d::t_1f8b50db923484 201-218,220
+  s_2a0d37a1c9547d::t_c765501bfc204f 2
+  s_af7a4e8964d154::t_0fa3426d469509 179
+  s_2a0d37a1c9547d::t_aa44e0b47d4441 164-173,178
+  s_2a0d37a1c9547d::t_ffb2bfdc65c98d 229-245
+packages/cli/src/workflows/__tests__/workflow-finder.service.test.ts
+  s_af7a4e8964d154::t_0c8b992cfbb637 89,94,99-101
+  s_af7a4e8964d154::t_90feb04c8d5334 105-110,112-124
+  ai_agent 111
+packages/@n8n/db/src/repositories/__tests__/shared-workflow.repository.test.ts
+  s_af7a4e8964d154::t_b0fc7b89d1e128 105,107-109
+  s_af7a4e8964d154::t_cf209dd65d6b04 99-104,106,110-121
+  s_af7a4e8964d154::t_4382581d9076e9 123-142
+packages/cli/src/services/folder.service.ts
+  s_af7a4e8964d154::t_a76719ac05056f 9
+  s_af7a4e8964d154::t_7a7b5d2962216d 58
+packages/@n8n/db/src/repositories/workflow.repository.ts
+  s_af7a4e8964d154::t_b1c7954b3f0977 243-247,253-256
+  s_2a0d37a1c9547d::t_aa8c162df9196f 36
+  s_2a0d37a1c9547d::t_995abf4e437476 304-305,315-316
+  s_af7a4e8964d154::t_2b90facfa5a031 249-251
+  s_af7a4e8964d154::t_e2764956b5237e 303,306-314,317
+packages/cli/src/services/__tests__/folder-finder.service.test.ts
+  ai_agent 56
+  s_af7a4e8964d154::t_4cd32e8ba464d7 26,205,214
+  s_af7a4e8964d154::t_6cea133f9f8b60 61-64,70-71
+  s_af7a4e8964d154::t_e7adbefc66f49b 209
+  s_af7a4e8964d154::t_35abe7b3ca0636 52-55,57-60,65-69
+packages/cli/test/integration/database/repositories/folder.repository.test.ts
+  s_af7a4e8964d154::t_ca8901a5476a31 1-21
+packages/@n8n/db/src/utils/bind-parameter-chunks.ts
+  s_af7a4e8964d154::t_5289e4d1bb8622 1,4
+  s_2a0d37a1c9547d::t_ad5e95d2935724 3,5,9-16
+  s_af7a4e8964d154::t_08b996c28bb997 6-8
+  s_af7a4e8964d154::t_e0c66b74e9347d 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "54dc669af43598b2c3a67a63ef66d1ff402330b6",
+  "prompts": {},
+  "sessions": {
+    "s_2a0d37a1c9547d": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "340713c6-f56e-456b-a145-9dec6704c15e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    },
+    "s_af7a4e8964d154": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "71e735b0-d546-4e84-bbf1-e491a11e273a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}
