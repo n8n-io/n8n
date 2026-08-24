@@ -202,6 +202,11 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	 * skew visible with no in-flight record is a real divergence (e.g. a stalled
 	 * processor writing the mapping after losing its lease), never a normal
 	 * mid-flight state.
+	 *
+	 * Workflows whose most recent record is terminal `failed` are excluded, as in
+	 * {@link findTriggerStatusDriftedWorkflowIds}: a publication failing before the
+	 * mapping advances leaves the skew forever, so this would loop every pass. This
+	 * is broader than needed: it drops retryable failures too.
 	 */
 	async findVersionSkewedWorkflowIds(): Promise<string[]> {
 		const outboxTableName = this.getTableName('workflow_publication_outbox');
@@ -223,7 +228,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 				 SELECT 1 FROM ${outboxTableName} o
 				 WHERE o."workflowId" = w."id"
 				 AND o."status" IN ('${Status.Pending}', '${Status.InProgress}')
-			 )`,
+			 )
+			 AND COALESCE((
+				 SELECT o."status" FROM ${outboxTableName} o
+				 WHERE o."workflowId" = w."id"
+				 ORDER BY o."id" DESC LIMIT 1
+			 ), '') <> '${Status.Failed}'`,
 		);
 
 		return rows.map((row) => row.workflowId);

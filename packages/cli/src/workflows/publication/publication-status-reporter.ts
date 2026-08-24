@@ -11,6 +11,7 @@ import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
+import { isPolicyRefusal } from '@/policy/policy-violation.error';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type {
@@ -96,7 +97,11 @@ export class PublicationStatusReporter {
 					}
 					await this.outboxRepository.markFailed(record.id, result.error.message, trx);
 				});
-				this.errorReporter.error(result.error, { shouldBeLogged: true });
+				// An expected denial, already logged as a warning by the applier — the
+				// terminal state and the UI push stand, the fault report does not.
+				if (!isPolicyRefusal(result.error)) {
+					this.errorReporter.error(result.error, { shouldBeLogged: true });
+				}
 				this.pushFailedToActivate(record.workflowId, result.error.message);
 				return;
 			}

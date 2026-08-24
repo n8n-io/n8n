@@ -860,6 +860,10 @@ export class WorkflowService {
 			this._validateTriggerNodeIds(workflowId, versionToActivate);
 		}
 
+		// The candidate below shares this array with the version row, and the hook may
+		// mutate it in place, so snapshot what will actually be registered.
+		const nodesToPublish = structuredClone(versionToActivate.nodes);
+
 		// Run hook before destructive state changes so a rejection leaves
 		// the previous active version running instead of deactivating it.
 		const candidateWorkflow = this.workflowRepository.create({
@@ -881,6 +885,23 @@ export class WorkflowService {
 			throw new WorkflowActivationBadRequestError(ensureError(error).message, {
 				nodeId: getErrorNodeId(error),
 				description: getErrorDescription(error),
+			});
+		}
+
+		// Polices what gets registered — the version row, not the hook's candidate.
+		// Enforced on a same-version republish too.
+		if (this.policyEnforcementService.hasChecksFor('workflowPublish')) {
+			// Unguarded, as in `PolicyLifecycleHandler`: an unevaluated project rule is
+			// not a passed one, so a failed lookup fails the publish.
+			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+
+			await this.policyEnforcementService.enforceWorkflowPublish({
+				workflow: {
+					id: workflowId,
+					name: workflow.name,
+					nodes: nodesToPublish,
+				},
+				projectId: project.id,
 			});
 		}
 

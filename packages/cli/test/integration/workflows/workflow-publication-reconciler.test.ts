@@ -330,6 +330,42 @@ describe('WorkflowPublicationReconciler (integration)', () => {
 		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
 	});
 
+	// A publication failing before the mapping advances (e.g. a policy block) leaves
+	// the skew permanently, so re-enqueueing would loop on every pass.
+	test('leaves a workflow skewed by a terminally failed publication alone', async () => {
+		const owner = await createOwner();
+
+		const trigger = scheduleNode('skew-failed');
+		const workflow = await createWorkflowWithHistory({ active: true, nodes: [trigger] }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		await outboxRepository.enqueue(workflow.id, workflow.versionId, 'publish');
+		await consumer.processRecord((await outboxRepository.claimNextPendingRecord())!, abortSignal);
+
+		// A newer version is made active, but its publication fails before the
+		// mapping advances — so activeVersionId and publishedVersionId diverge.
+		const newVersionId = 'version-2-failed-publish';
+		await createWorkflowHistory(workflow, owner, undefined, {
+			versionId: newVersionId,
+			nodes: [trigger],
+		});
+		await setActiveVersion(workflow.id, newVersionId);
+		await outboxRepository.enqueue(workflow.id, newVersionId, 'publish');
+		const failing = (await outboxRepository.claimNextPendingRecord())!;
+		await outboxRepository.markFailed(failing.id, 'Blocked by policy');
+
+		expect(await publishedVersionRepository.getPublishedVersionId(workflow.id)).toBe(
+			workflow.versionId,
+		);
+
+		await reconciler.reconcile('reconcile');
+
+		// No third record: the skew is real but permanent, so the reconciler must
+		// not keep retrying it.
+		expect(await outboxRepository.countBy({ workflowId: workflow.id })).toBe(2);
+		expect(await outboxRepository.claimNextPendingRecord()).toBeNull();
+	});
+
 	test('removes a published-version mapping left behind by a missed unpublish', async () => {
 		const owner = await createOwner();
 

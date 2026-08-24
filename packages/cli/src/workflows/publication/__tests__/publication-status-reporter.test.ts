@@ -10,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
@@ -197,6 +198,23 @@ describe('PublicationStatusReporter', () => {
 				type: 'workflowFailedToActivate',
 				data: { workflowId: 'wf-1', errorMessage: 'registration failed' },
 			},
+		});
+	});
+
+	// An expected denial: the record must still fail and the UI must still be told,
+	// but it is not a fault to report.
+	test('failed by policy marks the record failed without reporting a fault', async () => {
+		const error = new PolicyViolationError([
+			{ kind: 'node-type-unavailable', checkId: 'check-1', message: 'Blocked by policy' },
+		]);
+
+		await reporter.report(makeRecord(), { type: 'failed', error });
+
+		expect(errorReporter.error).not.toHaveBeenCalled();
+		expect(outboxRepository.markFailed).toHaveBeenCalledWith(1, error.message, entityManager);
+		expect(push.broadcast).toHaveBeenCalledWith({
+			type: 'workflowFailedToActivate',
+			data: { workflowId: 'wf-1', errorMessage: error.message },
 		});
 	});
 
