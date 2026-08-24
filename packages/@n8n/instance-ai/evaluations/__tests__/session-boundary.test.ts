@@ -119,3 +119,74 @@ describe('seeded agents across a boundary', () => {
 		expect(parsed.success).toBe(true);
 	});
 });
+
+describe('seed.priorRuns', () => {
+	const seededWorkflow = {
+		id: 'wfnightlysync01',
+		name: 'Nightly Sync',
+		nodes: [],
+		connections: {},
+	};
+
+	it('accepts a prior run naming a seeded workflow', () => {
+		const parsed = EvalTestCaseSchema.safeParse({
+			...baseCase,
+			seed: {
+				mode: 'inline',
+				messages: [{ role: 'user', text: 'set up the nightly sync' }],
+				workflows: [seededWorkflow],
+				priorRuns: [{ workflow: 'Nightly Sync', hints: 'the HTTP call returns 500' }],
+			},
+		});
+		expect(parsed.success).toBe(true);
+	});
+
+	it('refuses a prior run naming a workflow the seed does not declare', () => {
+		// Caught at authoring time on purpose: mid-build this reads like an infrastructure
+		// fault rather than a typo in the case.
+		const parsed = EvalTestCaseSchema.safeParse({
+			...baseCase,
+			seed: {
+				mode: 'inline',
+				messages: [{ role: 'user', text: 'set up the nightly sync' }],
+				workflows: [seededWorkflow],
+				priorRuns: [{ workflow: 'Nightly Snyc' }],
+			},
+		});
+		expect(parsed.success).toBe(false);
+		if (!parsed.success) {
+			expect(JSON.stringify(parsed.error.issues)).toContain('does not declare');
+		}
+	});
+
+	it('refuses a prior run when the seed declares no workflows at all', () => {
+		const parsed = EvalTestCaseSchema.safeParse({
+			...baseCase,
+			seed: {
+				mode: 'inline',
+				messages: [{ role: 'user', text: 'hello' }],
+				priorRuns: [{ workflow: 'Nightly Sync' }],
+			},
+		});
+		expect(parsed.success).toBe(false);
+	});
+
+	it('is absent by default, so existing cases run nothing beforehand', () => {
+		const parsed = EvalTestCaseSchema.safeParse({
+			...baseCase,
+			seed: { mode: 'inline', messages: [{ role: 'user', text: 'hello' }] },
+		});
+		expect(parsed.success).toBe(true);
+		if (parsed.success && parsed.data.seed?.mode === 'inline') {
+			expect(parsed.data.seed.priorRuns).toBeUndefined();
+		}
+	});
+
+	it('is refused on a replay seed, which seeds no workflows to run', () => {
+		const parsed = EvalTestCaseSchema.safeParse({
+			...baseCase,
+			seed: { mode: 'replay', threadId: 'abc123', priorRuns: [{ workflow: 'Nightly Sync' }] },
+		});
+		expect(parsed.success).toBe(false);
+	});
+});
