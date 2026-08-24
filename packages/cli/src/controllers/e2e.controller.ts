@@ -271,14 +271,19 @@ export class E2EController {
 	}
 
 	/**
-	 * A poll node's stored cursor, so a test can assert on it directly instead of
-	 * inferring it from execution behaviour.
+	 * A poll node's stored cursor and failure counters, so a test can assert on them
+	 * directly instead of inferring them from execution behaviour.
 	 */
 	@Get('/poller-state', { skipAuth: true })
 	async getPollerState(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.query;
 		const cursor = await this.pollerStateRepository.findCursor(workflowId, nodeId);
-		return { cursor };
+		const failureState = await this.pollerStateRepository.findFailureState(workflowId, nodeId);
+		return {
+			cursor,
+			consecutiveErrors: failureState?.consecutiveErrors ?? 0,
+			backoffUntil: failureState?.backoffUntil ?? null,
+		};
 	}
 
 	/**
