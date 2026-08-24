@@ -90,6 +90,12 @@ describe('CommunityPackagesService (real filesystem)', () => {
 	const backupDirectories = async () =>
 		(await readdir(nodeModulesDir)).filter((entry) => entry.includes('.backup-'));
 
+	/** The manifest `npm outdated` reads, so its entries must match what is on disk. */
+	const readLedgerDependencies = async () => {
+		const content = await readFile(path.join(downloadFolder, 'package.json'), 'utf-8');
+		return JSON.parse(content).dependencies;
+	};
+
 	beforeEach(async () => {
 		vi.clearAllMocks();
 
@@ -146,6 +152,7 @@ describe('CommunityPackagesService (real filesystem)', () => {
 
 			expect(await readMarker()).toBe(PREVIOUS_VERSION);
 			expect(await backupDirectories()).toEqual([]);
+			expect(await readLedgerDependencies()).toEqual({ [PACKAGE_NAME]: PREVIOUS_VERSION });
 		});
 
 		test('keeps the existing directory when the new version fails to load', async () => {
@@ -159,6 +166,7 @@ describe('CommunityPackagesService (real filesystem)', () => {
 
 			expect(await readMarker()).toBe(PREVIOUS_VERSION);
 			expect(await backupDirectories()).toEqual([]);
+			expect(await readLedgerDependencies()).toEqual({ [PACKAGE_NAME]: PREVIOUS_VERSION });
 		});
 
 		test('replaces the directory and leaves no backup behind on success', async () => {
@@ -169,7 +177,26 @@ describe('CommunityPackagesService (real filesystem)', () => {
 
 			expect(await readMarker()).toBe(NEW_VERSION);
 			expect(await backupDirectories()).toEqual([]);
+			expect(await readLedgerDependencies()).toEqual({ [PACKAGE_NAME]: NEW_VERSION });
 		});
+	});
+
+	test('restores the previous version when an update fails to persist', async () => {
+		await writeExistingPackage();
+		stubNpmAndTar();
+		installedPackageRepository.replaceInstalledPackageWithNodes.mockRejectedValueOnce(
+			new Error('database is locked'),
+		);
+
+		await expect(
+			service.updatePackage(
+				PACKAGE_NAME,
+				mock<InstalledPackages>({ packageName: PACKAGE_NAME, installedVersion: PREVIOUS_VERSION }),
+			),
+		).rejects.toThrow('Failed to save installed package');
+
+		expect(await readMarker()).toBe(PREVIOUS_VERSION);
+		expect(await readLedgerDependencies()).toEqual({ [PACKAGE_NAME]: PREVIOUS_VERSION });
 	});
 
 	test('removes the partially downloaded directory when there was nothing to restore', async () => {
@@ -179,5 +206,6 @@ describe('CommunityPackagesService (real filesystem)', () => {
 		await expect(service.installPackage(PACKAGE_NAME)).rejects.toThrow();
 
 		expect(await readdir(nodeModulesDir)).toEqual([]);
+		expect(await readLedgerDependencies()).toEqual({});
 	});
 });

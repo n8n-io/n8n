@@ -461,6 +461,10 @@ describe('CommunityPackagesService', () => {
 						dependencies: { [PACKAGE_NAME]: '2.0.0' },
 					}),
 				)
+				// The restored directory, which the rollback reads to find the version to record.
+				.mockResolvedValueOnce(
+					JSON.stringify({ name: PACKAGE_NAME, version: COMMUNITY_PACKAGE_VERSION.CURRENT }),
+				)
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: 'installed-nodes',
@@ -574,6 +578,8 @@ describe('CommunityPackagesService', () => {
 						dependencies: { [PACKAGE_NAME]: '1.0.0' },
 					}),
 				)
+				// Nothing was restored, so the rollback finds no directory to read a version from.
+				.mockRejectedValueOnce(new Error('ENOENT'))
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: 'installed-nodes',
@@ -852,6 +858,9 @@ describe('CommunityPackagesService', () => {
 			vi.mocked(rename).mockImplementation(async () => {
 				callOrder.push('rename');
 			});
+			vi.mocked(readFile).mockResolvedValue(
+				JSON.stringify({ name: packageName, version: '1.0.0' }),
+			);
 			vi.spyOn(communityPackagesService, 'updatePackageJsonDependency').mockImplementation(
 				async () => {
 					callOrder.push('updatePackageJsonDependency');
@@ -860,31 +869,40 @@ describe('CommunityPackagesService', () => {
 
 			await (communityPackagesService as any).restoreFailedPackageInstallation(packageName, {
 				backupDirectory,
-				previousVersion: '1.0.0',
 			});
 
 			expect(callOrder).toEqual(['rename', 'updatePackageJsonDependency']);
 		});
 
-		test('rolls the package.json dependency back even when restoring the directory fails', async () => {
+		test('drops the package.json dependency when the directory could not be restored', async () => {
 			const packageName = 'n8n-nodes-test';
 			const backupDirectory = `${nodesDownloadDir}/node_modules/${packageName}.backup-123`;
 
 			vi.mocked(rm).mockResolvedValue(undefined);
 			vi.mocked(rename).mockRejectedValue(new Error('EPERM'));
-			const updateDependency = vi
-				.spyOn(communityPackagesService, 'updatePackageJsonDependency')
-				.mockResolvedValue(undefined);
+			vi.mocked(readFile)
+				// The restore failed, so there is no directory left to read a version from.
+				.mockRejectedValueOnce(new Error('ENOENT'))
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: 'installed-nodes',
+						private: true,
+						dependencies: { [packageName]: '2.0.0' },
+					}),
+				);
 
 			await (communityPackagesService as any).restoreFailedPackageInstallation(packageName, {
 				backupDirectory,
-				previousVersion: '1.0.0',
 				reloadPackage: true,
 			});
 
-			// The manifest must not keep naming the version that failed to install, even
-			// though the directory it describes could not be restored.
-			expect(updateDependency).toHaveBeenCalledWith(packageName, '1.0.0');
+			// An entry for a package that is not on disk gives `npm outdated` nothing to
+			// compare against, so the entry goes rather than naming the failed version.
+			expect(writeFile).toHaveBeenCalledWith(
+				path.join(nodesDownloadDir, 'package.json'),
+				JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }, null, 2),
+				'utf-8',
+			);
 			// The restore failed, so there is nothing valid on disk to reload: reloading
 			// would only unload a working loader without anything to put back in its place.
 			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();

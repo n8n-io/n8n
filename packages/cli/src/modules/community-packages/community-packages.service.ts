@@ -450,8 +450,6 @@ export class CommunityPackagesService {
 				authToken,
 			);
 
-			const previousVersion = isUpdate ? options.installedPackage.installedVersion : undefined;
-
 			// Whatever is currently on disk, kept aside so a failed install can be rolled back.
 			// Undefined when the package has no directory yet.
 			const backupDirectory = await this.backupPackageDirectory(packageName);
@@ -460,10 +458,7 @@ export class CommunityPackagesService {
 				await this.downloadPackage(packageName, packageVersion, authToken);
 			} catch (error) {
 				// No reload here: the previous package was not unloaded before the download
-				await this.restoreFailedPackageInstallation(packageName, {
-					backupDirectory,
-					previousVersion,
-				});
+				await this.restoreFailedPackageInstallation(packageName, { backupDirectory });
 
 				if (error instanceof Error && error.message === RESPONSE_ERROR_MESSAGES.PACKAGE_NOT_FOUND) {
 					throw new UserError('npm package not found', { extra: { packageName } });
@@ -477,7 +472,6 @@ export class CommunityPackagesService {
 			} catch (error) {
 				await this.restoreFailedPackageInstallation(packageName, {
 					backupDirectory,
-					previousVersion,
 					reloadPackage: isUpdate,
 				});
 				throw error;
@@ -496,7 +490,6 @@ export class CommunityPackagesService {
 				} catch (error) {
 					await this.restoreFailedPackageInstallation(packageName, {
 						backupDirectory,
-						previousVersion,
 						reloadPackage: isUpdate,
 					});
 
@@ -531,7 +524,6 @@ export class CommunityPackagesService {
 			} else {
 				await this.restoreFailedPackageInstallation(packageName, {
 					backupDirectory,
-					previousVersion,
 					reloadPackage: isUpdate,
 				});
 
@@ -655,9 +647,9 @@ export class CommunityPackagesService {
 
 	private async restoreFailedPackageInstallation(
 		packageName: string,
-		options: { backupDirectory?: string; previousVersion?: string; reloadPackage?: boolean },
+		options: { backupDirectory?: string; reloadPackage?: boolean },
 	) {
-		const { backupDirectory, previousVersion, reloadPackage = false } = options;
+		const { backupDirectory, reloadPackage = false } = options;
 
 		try {
 			await this.restorePackageDirectoryFromBackup(packageName, backupDirectory);
@@ -683,11 +675,12 @@ export class CommunityPackagesService {
 			});
 		}
 
-		// Independent of the restore above: a failed restore must not leave package.json
-		// pointing at the version that failed to install.
+		// Independent of the restore above: point the ledger at whatever is now on disk, so
+		// a failed restore can't leave package.json naming a package that isn't there.
 		try {
-			if (previousVersion) {
-				await this.updatePackageJsonDependency(packageName, previousVersion);
+			const restoredVersion = await this.readInstalledPackageVersion(packageName);
+			if (restoredVersion) {
+				await this.updatePackageJsonDependency(packageName, restoredVersion);
 			} else {
 				await this.removePackageJsonDependency(packageName);
 			}
