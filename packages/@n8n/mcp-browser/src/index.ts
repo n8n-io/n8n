@@ -8,13 +8,13 @@ export { BROWSER_USE_EXTENSION_ID, buildExtensionConnectUrl } from './extension-
 // behaviour here changes.
 export { BrowserDiscovery, getDefaultDiscovery } from './browser-discovery';
 export { createBrowserTools } from './tools/index';
-export { BROWSER_CREDENTIALS_RESOURCE } from './tools/credential';
 export { configureLogger } from './logger';
 export type { LogLevel } from './logger';
 export { parseServerOptions } from './server-config';
 export type { ServerOptions } from './server-config';
 export type {
 	AffectedResource,
+	AffectedResourceKind,
 	BrowserInfo,
 	DiscoveredBrowsers,
 	BrowserName,

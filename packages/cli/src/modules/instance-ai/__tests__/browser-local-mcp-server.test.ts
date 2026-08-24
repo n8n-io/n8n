@@ -16,7 +16,12 @@ function makeTool(overrides: Partial<ToolDefinition> = {}): ToolDefinition {
 		inputSchema: z.object({ url: z.string().optional() }),
 		execute: vi.fn(async () => ({ content: [{ type: 'text', text: 'ok' }] })),
 		getAffectedResources: vi.fn(async () => [
-			{ toolGroup: 'browser', resource: 'example.com', description: 'Browser: example.com' },
+			{
+				toolGroup: 'browser',
+				kind: 'host',
+				resource: 'example.com',
+				description: 'Browser: example.com',
+			},
 		]),
 		...overrides,
 	} as unknown as ToolDefinition;
@@ -104,7 +109,12 @@ describe('BrowserLocalMcpServer domain gating', () => {
 		it('does not gate when there is no real domain (sentinel host)', async () => {
 			const tool = makeTool({
 				getAffectedResources: vi.fn(async () => [
-					{ toolGroup: 'browser', resource: 'browser', description: 'Browser: browser' },
+					{
+						toolGroup: 'browser',
+						kind: 'host',
+						resource: 'browser',
+						description: 'Browser: browser',
+					},
 				]),
 			} as unknown as Partial<ToolDefinition>);
 			const server = makeServer(tool);
@@ -113,6 +123,31 @@ describe('BrowserLocalMcpServer domain gating', () => {
 			await call(server);
 
 			expect(tool.execute).toHaveBeenCalledTimes(1);
+		});
+
+		it('treats a host named "credentials" as a domain, not a credential write', async () => {
+			const tool = makeTool({
+				getAffectedResources: vi.fn(async () => [
+					{
+						toolGroup: 'browser',
+						kind: 'host',
+						resource: 'credentials',
+						description: 'Browser: credentials',
+					},
+				]),
+			} as unknown as Partial<ToolDefinition>);
+			const server = makeServer(tool);
+			// Credential writes are allowed outright; the domain still has to be approved.
+			server.setDomainGate(gate(tracker, 'require_approval', 'always_allow'));
+
+			const result = await call(server);
+
+			expect(result.isError).toBe(true);
+			const text = (result.content[0] as { text: string }).text;
+			const payload = JSON.parse(text.slice(GATEWAY_CONFIRMATION_REQUIRED_PREFIX.length));
+			expect(payload.options).toContain('allowForSession');
+			expect(tracker.isHostAllowed).toHaveBeenCalledWith('credentials', RUN_ID);
+			expect(tool.execute).not.toHaveBeenCalled();
 		});
 
 		it('executes unconditionally when no gate is bound', async () => {
@@ -181,7 +216,12 @@ describe('BrowserLocalMcpServer credential-creation gating', () => {
 			inputSchema: z.object({ name: z.string(), type: z.string() }),
 			execute: vi.fn(async () => ({ content: [{ type: 'text', text: 'ok' }] })),
 			getAffectedResources: vi.fn(async () => [
-				{ toolGroup: 'browser', resource: 'credentials', description: CREDENTIAL_DESCRIPTION },
+				{
+					toolGroup: 'browser',
+					kind: 'credential-write',
+					resource: 'credentials',
+					description: CREDENTIAL_DESCRIPTION,
+				},
 			]),
 		} as unknown as ToolDefinition;
 	}

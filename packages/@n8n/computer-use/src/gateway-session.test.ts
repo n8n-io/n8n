@@ -224,9 +224,27 @@ describe('GatewaySession', () => {
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
 				);
-				expect(session.check('browser', 'credentials')).toBe('ask');
+				expect(session.check('browser', 'credentials', 'credential-write')).toBe('ask');
 				// The group mode still covers ordinary domains.
-				expect(session.check('browser', 'example.com')).toBe('allow');
+				expect(session.check('browser', 'example.com', 'host')).toBe('allow');
+			});
+
+			it('treats a host named "credentials" as a domain, not a credential write', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('browser', 'credentials', 'host')).toBe('allow');
+			});
+
+			it('applies the group mode when no kind is given', () => {
+				const store = makeStore();
+				const session = new GatewaySession(
+					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
+					store as unknown as SettingsStore,
+				);
+				expect(session.check('browser', 'credentials')).toBe('allow');
 			});
 
 			it('honours an explicit session approval for the credentials resource', () => {
@@ -236,7 +254,7 @@ describe('GatewaySession', () => {
 					store as unknown as SettingsStore,
 				);
 				session.allowForSession('browser', 'credentials');
-				expect(session.check('browser', 'credentials')).toBe('allow');
+				expect(session.check('browser', 'credentials', 'credential-write')).toBe('allow');
 			});
 
 			it('honours an explicit persistent approval for the credentials resource', () => {
@@ -245,7 +263,7 @@ describe('GatewaySession', () => {
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
 				);
-				expect(session.check('browser', 'credentials')).toBe('allow');
+				expect(session.check('browser', 'credentials', 'credential-write')).toBe('allow');
 			});
 
 			it('still denies when the credentials resource is on the deny list', () => {
@@ -254,7 +272,7 @@ describe('GatewaySession', () => {
 					{ permissions: FULL_ALLOW_PERMISSIONS, dir: '/' },
 					store as unknown as SettingsStore,
 				);
-				expect(session.check('browser', 'credentials')).toBe('deny');
+				expect(session.check('browser', 'credentials', 'credential-write')).toBe('deny');
 			});
 		});
 

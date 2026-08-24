@@ -1,7 +1,7 @@
 import type { Mocked, MockedFunction } from 'vitest';
 
 import type { SecretsBuffer, ToolContext } from '../types';
-import { BROWSER_CREDENTIALS_RESOURCE, createCredentialTools } from './credential';
+import { createCredentialTools } from './credential';
 import { createMockConnection, findTool, structuredOf } from './test-helpers';
 
 // ---------------------------------------------------------------------------
@@ -493,7 +493,8 @@ describe('browser_create_credential', () => {
 			expect(resources).toEqual([
 				{
 					toolGroup: 'browser',
-					resource: BROWSER_CREDENTIALS_RESOURCE,
+					kind: 'credential-write',
+					resource: 'credentials',
 					description: 'Create credential "My Cred" (googleApi)',
 				},
 			]);

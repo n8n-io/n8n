@@ -12,7 +12,6 @@ import {
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { DomainAccessTracker, LocalMcpServer } from '@n8n/instance-ai';
-import { BROWSER_CREDENTIALS_RESOURCE } from '@n8n/mcp-browser';
 import type {
 	AffectedResource,
 	BrowserToolkit,
@@ -125,7 +124,7 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 			return undefined;
 		}
 
-		return affected.resource === BROWSER_CREDENTIALS_RESOURCE
+		return affected.kind === 'credential-write'
 			? gateCredentialCreation(gate, affected, confirmation)
 			: await gateDomainAccess(gate, affected, confirmation);
 	}

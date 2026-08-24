@@ -21,12 +21,8 @@ export function createCredentialTools(connection: BrowserConnection): ToolDefini
 	return [browserCaptureSecret(connection), browserCreateCredential(connection)];
 }
 
-/**
- * Resource id reported by `browser_create_credential`. Unlike every other browser
- * tool this is not a hostname, so callers gate it on a credential permission of
- * their own rather than on domain access.
- */
-export const BROWSER_CREDENTIALS_RESOURCE = 'credentials';
+/** Display/approval id reported by `browser_create_credential`. Not a hostname. */
+const BROWSER_CREDENTIALS_RESOURCE = 'credentials';
 
 // ---------------------------------------------------------------------------
 // browser_capture_secret
@@ -182,6 +178,7 @@ function browserCreateCredential(
 			return [
 				{
 					toolGroup: 'browser',
+					kind: 'credential-write',
 					resource: BROWSER_CREDENTIALS_RESOURCE,
 					description: `Create credential "${args.name}" (${args.type})`,
 				},

@@ -1,12 +1,8 @@
-import { BROWSER_CREDENTIALS_RESOURCE } from '@n8n/mcp-browser';
+import type { AffectedResourceKind } from '@n8n/mcp-browser';
 
 import type { PermissionMode, ToolGroup } from './config';
 import { isProtectedSettingsPath, TOOL_GROUP_DEFINITIONS } from './config';
 import type { SettingsStore } from './settings-store';
-
-function isCredentialCreationResource(toolGroup: ToolGroup, resource: string): boolean {
-	return toolGroup === 'browser' && resource === BROWSER_CREDENTIALS_RESOURCE;
-}
 
 /**
  * Holds all session-scoped state for a single gateway connection.
@@ -82,7 +78,7 @@ export class GatewaySession {
 	 * an approval aimed at that resource, so a group-wide mode alone leaves it at
 	 * 'ask'.
 	 */
-	check(toolGroup: ToolGroup, resource: string): PermissionMode {
+	check(toolGroup: ToolGroup, resource: string, kind?: AffectedResourceKind): PermissionMode {
 		// Self-protection: prevent tools from accessing the gateway settings directory
 		if (
 			(toolGroup === 'filesystemWrite' || toolGroup === 'filesystemRead') &&
@@ -97,7 +93,7 @@ export class GatewaySession {
 		if (this.hasSessionAllow(toolGroup, resource)) return 'allow';
 
 		const groupMode = this.getGroupMode(toolGroup);
-		if (groupMode === 'allow' && isCredentialCreationResource(toolGroup, resource)) return 'ask';
+		if (groupMode === 'allow' && kind === 'credential-write') return 'ask';
 		return groupMode;
 	}
 
