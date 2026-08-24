@@ -27,8 +27,12 @@ describe('Test Telegram, message => sendAndWait', () => {
 	beforeEach(() => {
 		telegram = new Telegram();
 		mockExecuteFunctions = mock<IExecuteFunctions>();
+		// mock-extended cannot proxy IWorkflowExecutionCustomData (index signature)
+		mockExecuteFunctions.customData = {
+			get: vi.fn(),
+			set: vi.fn(),
+		} as unknown as IExecuteFunctions['customData'];
 	});
-
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
@@ -56,6 +60,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // approvalOptions
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options (deleteOnResponse check)
 
 		// configureWaitTillDate
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); //options.limitWaitTime.values
@@ -102,6 +107,7 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options (deleteOnResponse check)
 		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 
 		(genericFunctions.apiRequest as Mock).mockRejectedValueOnce(new Error('chat_not_found'));
@@ -130,12 +136,71 @@ describe('Test Telegram, message => sendAndWait', () => {
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({});
 		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options (deleteOnResponse check)
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
 		(genericFunctions.apiRequest as Mock).mockRejectedValueOnce(new Error('chat_not_found'));
 
 		await expect(telegram.execute.call(mockExecuteFunctions)).rejects.toThrow('chat_not_found');
 		expect(mockExecuteFunctions.putExecutionToWait).not.toHaveBeenCalled();
+	});
+
+	it('should store the delete target in execution metadata when deleteOnResponse is on', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
+		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>());
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false); // chatApproval (prepareChatApproval)
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('chatID');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // approvalOptions
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({ deleteOnResponse: true }); // options
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval'); // responseType
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({ deleteOnResponse: true }); // options (deleteOnResponse check)
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options.limitWaitTime.values
+		(genericFunctions.apiRequest as Mock).mockResolvedValueOnce({
+			message_id: 55,
+			chat: { id: 999 },
+		});
+
+		await telegram.execute.call(mockExecuteFunctions);
+		expect(mockExecuteFunctions.customData.set).toHaveBeenCalledWith(
+			'tgDeleteTarget',
+			JSON.stringify({ chatId: 999, messageId: 55 }),
+		);
+	});
+
+	it('should not store a delete target when deleteOnResponse is off', async () => {
+		const items = [{ json: { data: 'test' } }];
+		mockExecuteFunctions.getInputData.mockReturnValue(items);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(SEND_AND_WAIT_OPERATION);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false);
+		mockExecuteFunctions.getNode.mockReturnValue(mock<INode>());
+		mockExecuteFunctions.getInstanceId.mockReturnValue('instanceId');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce(false); // chatApproval (prepareChatApproval)
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('chatID');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my message');
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('my subject');
+		mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+			'http://localhost/waiting-webhook/nodeID?approved=true&signature=abc',
+		);
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // approvalOptions
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce('approval'); // responseType
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options (deleteOnResponse check)
+		mockExecuteFunctions.getNodeParameter.mockReturnValueOnce({}); // options.limitWaitTime.values
+
+		await telegram.execute.call(mockExecuteFunctions);
+
+		expect(mockExecuteFunctions.customData.set).not.toHaveBeenCalled();
 	});
 });
 

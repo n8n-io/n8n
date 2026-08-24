@@ -82,6 +82,14 @@ export const telegramHitlProperties: INodeProperties[] = [
 	},
 ];
 
+export const deleteOnResponseOption: INodeProperties = {
+	displayName: 'Delete Message on Response',
+	name: 'deleteOnResponse',
+	type: 'boolean',
+	default: false,
+	description: 'Whether to delete the sent message once the user responds',
+};
+
 export interface TelegramChatApprovalOptions {
 	approverIds?: string;
 	unauthorizedReplyText?: string;

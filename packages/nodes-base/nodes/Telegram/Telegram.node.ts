@@ -23,7 +23,7 @@ import {
 	createSendAndWaitMessageBody,
 	getPropertyName,
 } from './GenericFunctions';
-import { telegramHitlProperties } from './hitl/descriptions';
+import { deleteOnResponseOption, telegramHitlProperties } from './hitl/descriptions';
 import { prepareChatApproval } from './hitl/setup';
 import { telegramSendAndWaitWebhook } from './hitl/webhook';
 import { appendAttributionOption } from '../../utils/descriptions';
@@ -2039,6 +2039,7 @@ export class Telegram implements INodeType {
 					noButtonStyle: true,
 					defaultApproveLabel: '✅ Approve',
 					defaultDisapproveLabel: '❌ Decline',
+					extraOptions: [deleteOnResponseOption],
 				},
 			).filter((p) => p.name !== 'subject'),
 		],
@@ -2070,7 +2071,22 @@ export class Telegram implements INodeType {
 			body = createSendAndWaitMessageBody(this, chatApproval);
 
 			try {
-				await apiRequest.call(this, 'POST', 'sendMessage', body);
+				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+				// Persist the message identity so the resume webhook can delete it;
+				// prefer the API response since Telegram resolves @channelusername to a numeric id.
+				const sentMessage = (await apiRequest.call(this, 'POST', 'sendMessage', body)) as {
+					chat?: { id?: string | number };
+					message_id?: number;
+				};
+				if (options.deleteOnResponse === true) {
+					this.customData.set(
+						'tgDeleteTarget',
+						JSON.stringify({
+							chatId: sentMessage.chat?.id ?? body.chat_id,
+							messageId: sentMessage.message_id,
+						}),
+					);
+				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					return [[{ json: { error: (error as JsonObject).message } }]];
