@@ -272,10 +272,10 @@ export class SchedulerConfig {
 	 * How long, in seconds, a single poll of an external source (an inbox, an API)
 	 * may take before it is abandoned. Defaults to 60 seconds.
 	 *
-	 * An abandoned poll records nothing: the poll's position in the source is left
-	 * where it was and the next scheduled poll covers the same ground, so no data
-	 * is skipped. Guards against a poll stuck on an unresponsive source running
-	 * indefinitely.
+	 * An abandoned poll skips no data: its position in the source is left where it
+	 * was and the next scheduled poll covers the same ground. It counts as a poll
+	 * failure, so a source that keeps timing out is polled at a widening interval.
+	 * Guards against a poll stuck on an unresponsive source running indefinitely.
 	 *
 	 * Keep it at or below {@link leaseDurationSeconds}: a poll allowed to run
 	 * longer than the claim on its run can still be in flight when that claim

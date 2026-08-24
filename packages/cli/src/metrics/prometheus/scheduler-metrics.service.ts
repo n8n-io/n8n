@@ -39,7 +39,6 @@ export class PrometheusSchedulerMetricsService
 	private tasksReclaimed!: promClient.Counter;
 	private tasksDeadLettered!: promClient.Counter;
 	private tasksPruned!: promClient.Counter;
-	private pollsTimedOut!: promClient.Counter;
 	private tasksLeaseLost!: promClient.Counter<'task_type'>;
 	private dispatchLagSeconds!: promClient.Histogram<'task_type'>;
 
@@ -122,11 +121,6 @@ export class PrometheusSchedulerMetricsService
 			help: 'Total number of finished scheduler tasks deleted by retention.',
 		});
 
-		this.pollsTimedOut = new promClient.Counter({
-			name: `${prefix}scheduler_polls_timed_out_total`,
-			help: 'Total number of poll-trigger polls abandoned after exceeding N8N_SCHEDULER_POLL_TIMEOUT.',
-		});
-
 		this.tasksLeaseLost = new promClient.Counter({
 			name: `${prefix}scheduler_tasks_lease_lost_total`,
 			help: 'Total number of scheduler tasks whose handler finished after the lease was reclaimed, so another instance may have run the same occurrence concurrently, by task type.',
@@ -149,7 +143,6 @@ export class PrometheusSchedulerMetricsService
 		this.tasksReclaimed.inc(0);
 		this.tasksDeadLettered.inc(0);
 		this.tasksPruned.inc(0);
-		this.pollsTimedOut.inc(0);
 	}
 
 	private initSnapshotGauges() {
@@ -285,12 +278,6 @@ export class PrometheusSchedulerMetricsService
 	recordPruned(deleted: number) {
 		if (this.initialized) {
 			this.tasksPruned.inc(deleted);
-		}
-	}
-
-	recordPollTimeout() {
-		if (this.initialized) {
-			this.pollsTimedOut.inc(1);
 		}
 	}
 }

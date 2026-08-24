@@ -10,7 +10,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
+import type { EventService } from '@/events/event.service';
 import { createNodeTypes } from '@/workflows/triggers/__tests__/trigger-test-utils';
 import type { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
@@ -29,7 +29,7 @@ describe('PollTriggerTaskHandler', () => {
 	const scopedLogger = mock<Logger>();
 	const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
-	const metrics = mock<PrometheusSchedulerMetricsService>();
+	const eventService = mock<EventService>();
 	const pollTimeoutSeconds = 60;
 	const globalConfig = mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds } });
 
@@ -40,7 +40,7 @@ describe('PollTriggerTaskHandler', () => {
 		workflowRepository,
 		errorReporter,
 		pollBackoffService,
-		metrics,
+		eventService,
 		globalConfig,
 	);
 
@@ -390,7 +390,30 @@ describe('PollTriggerTaskHandler', () => {
 			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
 			expect(onDispatch).not.toHaveBeenCalled();
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
-			expect(metrics.recordPollTimeout).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('poll-tick-timed-out', {
+				nodeType: triggerNode.type,
+			});
+			// The timeout counts as a transient poll failure, so a source that keeps
+			// hanging backs off like any failing source.
+			expect(pollBackoffService.recordFailure).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					nodeId: 'node-1',
+					error: expect.objectContaining({ failure: { cause: 'temporarily-unavailable' } }),
+				}),
+			);
+			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
+		});
+
+		test('records no failure for a workflow deactivated during a timed-out poll', async () => {
+			workflowRepository.isActive.mockResolvedValue(false);
+			triggersAndPollers.runPollFunction.mockReturnValue(new Promise(() => {}));
+
+			const executing = handler.execute(buildTask(), report);
+			await vi.advanceTimersByTimeAsync(pollTimeoutMs);
+			await executing;
+
+			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
 		});
 
 		test('keeps a poll that finishes just inside the timeout', async () => {
@@ -408,7 +431,8 @@ describe('PollTriggerTaskHandler', () => {
 
 			expect(pollFunctions.__emit).toHaveBeenCalledWith(pollData);
 			expect(onDispatch).toHaveBeenCalledTimes(1);
-			expect(metrics.recordPollTimeout).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith('poll-tick-timed-out', expect.anything());
+			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
 			// The deadline is cleared once the poll wins, so it can't outlive the tick.
 			expect(vi.getTimerCount()).toBe(0);
 		});

@@ -11,10 +11,10 @@ import {
 	runPollInStagingScope,
 	TriggersAndPollers,
 } from 'n8n-core';
-import type { INode, IWorkflowBase } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import type { Failure, INode, IWorkflowBase } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
-import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
+import { EventService } from '@/events/event.service';
 import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 
@@ -26,6 +26,15 @@ import {
 
 /** Race sentinel: `poll()` can resolve to anything, so the deadline resolves to a symbol it cannot produce. */
 const TIMED_OUT = Symbol('poll timed out');
+
+/** Stands in for the error a hanging poll never threw, so backoff classifies the timeout as transient. */
+class PollTimeoutError extends OperationalError {
+	readonly failure: Failure = { cause: 'temporarily-unavailable' };
+
+	constructor() {
+		super('Poll exceeded its timeout and was abandoned');
+	}
+}
 
 /** An unref'd, cancellable deadline that resolves to {@link TIMED_OUT} after `ms`. */
 function timeoutAfter(ms: number): { timedOut: Promise<typeof TIMED_OUT>; cancel: () => void } {
@@ -55,7 +64,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly errorReporter: ErrorReporter,
 		private readonly pollBackoffService: PollBackoffService,
-		private readonly metrics: PrometheusSchedulerMetricsService,
+		private readonly eventService: EventService,
 		globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped('scheduler');
@@ -122,9 +131,9 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			try {
 				// `poll()` takes no abort signal, so the deadline abandons it rather than
 				// cancelling it: the call keeps running until it settles on its own, and its
-				// outcome is discarded. Nothing is written on that path (the cursor only
-				// moves through the staged commit or __emit below), so an abandoned tick
-				// leaves the poll window untouched for the next occurrence to cover.
+				// outcome is discarded. The cursor never moves on that path (it only moves
+				// through the staged commit or __emit below), so an abandoned tick leaves
+				// the poll window untouched for the next occurrence to cover.
 				const deadline = timeoutAfter(this.pollTimeoutMs);
 				const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
 				// Deliberately not chained: keeps an abandoned poll's eventual rejection from
@@ -135,17 +144,27 @@ export class PollTriggerTaskHandler implements TaskHandler {
 				try {
 					const outcome = await Promise.race([poll, deadline.timedOut]);
 					if (outcome === TIMED_OUT) {
-						this.metrics.recordPollTimeout();
-						this.logger.warn('Poll exceeded its timeout and was abandoned; nothing was recorded', {
+						this.eventService.emit('poll-tick-timed-out', { nodeType: node.type });
+						this.logger.warn('Poll exceeded its timeout and was abandoned', {
 							taskId: task.id,
 							jobId: task.jobId,
 							workflowId,
 							nodeId,
 							pollTimeoutMs: this.pollTimeoutMs,
 						});
-						// Not routed to the error workflow: an abandoned poll is meant to have no
-						// effect at all, and an error run is one. Not retried either, since the
-						// source is the slow party and the next occurrence covers the same window.
+						// Not routed to the error workflow: an abandoned poll produces no run, and
+						// an error run is one. It does count as a poll failure, so a source that
+						// keeps hanging is re-polled at a widening interval like any failing source.
+						const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
+						if (isActive) {
+							await this.pollBackoffService.recordFailure({
+								workflowId,
+								nodeId,
+								error: new PollTimeoutError(),
+								state,
+								now: new Date(), // Fresh clock, not the tick's
+							});
+						}
 						return report.notDispatched();
 					}
 					pollResponse = outcome;
