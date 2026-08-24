@@ -444,6 +444,14 @@ describe('CommunityPackagesService', () => {
 
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
 			vi.mocked(readFile)
+				// The ledger as it stands before the update, which is what the rollback restores.
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: 'installed-nodes',
+						private: true,
+						dependencies: { [PACKAGE_NAME]: COMMUNITY_PACKAGE_VERSION.CURRENT },
+					}),
+				)
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,
@@ -557,6 +565,10 @@ describe('CommunityPackagesService', () => {
 
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
 			vi.mocked(readFile)
+				// Nothing on disk and nothing in the ledger, so there is no entry to restore.
+				.mockResolvedValueOnce(
+					JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }),
+				)
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,

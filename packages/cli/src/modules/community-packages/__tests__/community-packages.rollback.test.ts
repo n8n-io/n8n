@@ -64,6 +64,9 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 
 	const nodeModulesEntries = async () => await readdir(path.join(nodesDownloadDir, 'node_modules'));
 
+	const ledgerDependencies = async () =>
+		JSON.parse(await readFile(path.join(nodesDownloadDir, 'package.json'), 'utf-8')).dependencies;
+
 	beforeEach(async () => {
 		vi.clearAllMocks();
 
@@ -152,6 +155,8 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 			expect(
 				JSON.parse(await readFile(path.join(packageDirectory, 'package.json'), 'utf-8')),
 			).toEqual({ name: PACKAGE_NAME, version: '1.0.0' });
+			// The restored directory has to stay listed, or `npm outdated` stops seeing it.
+			expect(await ledgerDependencies()).toEqual({ [PACKAGE_NAME]: '1.0.0' });
 		});
 
 		test('keeps the existing package when loading the downloaded one fails', async () => {
@@ -164,6 +169,8 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 			expect(existsSync(markerPath())).toBe(true);
 			// The restored directory is loaded again, so its nodes stay available.
 			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(2);
+			// The download got as far as writing 2.0.0 to the ledger, so it has to be rolled back.
+			expect(await ledgerDependencies()).toEqual({ [PACKAGE_NAME]: '1.0.0' });
 		});
 
 		test('keeps the existing package when the downloaded one has no loadable nodes', async () => {

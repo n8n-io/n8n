@@ -450,7 +450,8 @@ export class CommunityPackagesService {
 				authToken,
 			);
 
-			const previousVersion = isUpdate ? options.installedPackage.installedVersion : undefined;
+			// The ledger entry to put back on failure, read before `downloadPackage` overwrites it.
+			const previousVersion = (await this.readPackageJson())?.dependencies[packageName];
 
 			// Keep whatever is on disk aside so any failure below can roll back to it. This has
 			// to run for a fresh install too: a directory can pre-exist one, after a crash
