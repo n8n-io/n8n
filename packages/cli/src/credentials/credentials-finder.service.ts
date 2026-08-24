@@ -1,5 +1,10 @@
 import type { SharedCredentials, User } from '@n8n/db';
-import { CredentialsEntity, CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import {
+	CredentialsEntity,
+	CredentialsRepository,
+	idChunks,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions';
@@ -283,20 +288,26 @@ export class CredentialsFinderService {
 			};
 		}
 
-		const sharedCredentials = await this.sharedCredentialsRepository.find({
-			select: { credentialsId: true },
-			where,
-		});
-
-		const result = new Set(sharedCredentials.map((sc) => sc.credentialsId));
+		const result = new Set<string>();
+		for (const chunk of idChunks(credentialIds)) {
+			const sharedCredentials = await this.sharedCredentialsRepository.find({
+				select: { credentialsId: true },
+				where: { ...where, credentialsId: In(chunk) },
+			});
+			for (const sharedCredential of sharedCredentials) {
+				result.add(sharedCredential.credentialsId);
+			}
+		}
 
 		// Also include global credentials if scopes allow read-only access
 		if (this.hasGlobalReadOnlyAccess(scopes)) {
-			const globalCreds = await this.credentialsRepository.find({
-				where: { id: In(credentialIds), isGlobal: true, usageScope: 'project' },
-				select: ['id'],
-			});
-			for (const gc of globalCreds) result.add(gc.id);
+			for (const chunk of idChunks(credentialIds)) {
+				const globalCreds = await this.credentialsRepository.find({
+					where: { id: In(chunk), isGlobal: true, usageScope: 'project' },
+					select: ['id'],
+				});
+				for (const gc of globalCreds) result.add(gc.id);
+			}
 		}
 
 		return result;

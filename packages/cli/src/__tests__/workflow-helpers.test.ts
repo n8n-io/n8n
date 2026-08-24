@@ -294,6 +294,44 @@ describe('replaceInvalidCredentials', () => {
 		});
 	});
 
+	it('should reuse a shared credential cache across workflows', async () => {
+		const credential = { id: 'cred-1', name: 'My Cred' } as CredentialsEntity;
+		credentialsRepository.findOneBy.mockResolvedValue(credential);
+		const cache = { credentialsByName: {}, credentialsById: {} };
+		const firstWorkflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-1', name: 'My Cred' },
+		});
+		const secondWorkflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-1', name: 'My Cred' },
+		});
+
+		await replaceInvalidCredentials(firstWorkflow, 'project-1', cache);
+		await replaceInvalidCredentials(secondWorkflow, 'project-1', cache);
+
+		expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
+		expect(firstWorkflow.nodes[0].credentials!.httpHeaderAuth).not.toBe(
+			secondWorkflow.nodes[0].credentials!.httpHeaderAuth,
+		);
+	});
+
+	it('should cache a name fallback under the stale credential id', async () => {
+		const credential = { id: 'cred-new', name: 'My Cred' } as CredentialsEntity;
+		credentialsRepository.findOneBy.mockResolvedValue(null);
+		credentialsRepository.findByNameAndTypeInProject.mockResolvedValue([credential]);
+		const cache = { credentialsByName: {}, credentialsById: {} };
+
+		for (let index = 0; index < 2; index++) {
+			await replaceInvalidCredentials(
+				makeWorkflow({ httpHeaderAuth: { id: 'cred-stale', name: 'My Cred' } }),
+				'project-1',
+				cache,
+			);
+		}
+
+		expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
+		expect(credentialsRepository.findByNameAndTypeInProject).toHaveBeenCalledTimes(1);
+	});
+
 	it('should skip credential types that resolve to object internal keys', async () => {
 		// JSON.parse keeps `__proto__` as an own enumerable key, unlike an object literal.
 		const credentials = JSON.parse(

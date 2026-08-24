@@ -1,7 +1,10 @@
 import { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import {
+	WorkflowCreationService,
+	type WorkflowCreateBatchContext,
+} from '@/workflows/workflow-creation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { workflowReferences } from './references/workflow-references';
@@ -148,10 +151,24 @@ export class WorkflowImporter {
 			...collectPlannedWorkflowBindings(plan.items),
 		]);
 		const resolvedBindings: PackageImportBindings = { ...bindings, workflows: workflowBindings };
+		const createItems = plan.items.filter((item) => item.action === 'create');
+		const batchContext =
+			createItems.length === 0
+				? undefined
+				: await this.workflowCreationService.prepareBatchContext(
+						context.user,
+						context.projectId,
+						createItems.flatMap((item) => {
+							const folderId = item.parentFolderId ?? context.folderId;
+							return folderId ? [folderId] : [];
+						}),
+						createItems.map(({ entity }) => entity),
+						resolvedBindings.credentials,
+					);
 
 		const outcomes: PersistedWorkflowOutcome[] = [];
 		for (const item of plan.items) {
-			outcomes.push(await this.applyItem(context, item, resolvedBindings));
+			outcomes.push(await this.applyItem(context, item, resolvedBindings, batchContext));
 		}
 
 		return { outcomes, bindings: resolvedBindings };
@@ -161,6 +178,7 @@ export class WorkflowImporter {
 		context: WorkflowImportContext,
 		item: WorkflowPlanItem,
 		bindings: PackageImportBindings,
+		batchContext: WorkflowCreateBatchContext | undefined,
 	): Promise<PersistedWorkflowOutcome> {
 		if (item.action === 'skip') {
 			return {
@@ -172,7 +190,7 @@ export class WorkflowImporter {
 
 		return {
 			status: item.action === 'create' ? 'created' : 'updated',
-			workflow: await this.persistWorkflow(context, item, bindings),
+			workflow: await this.persistWorkflow(context, item, bindings, batchContext),
 			sourceWorkflowId: item.sourceWorkflowId,
 			item,
 		};
@@ -182,6 +200,7 @@ export class WorkflowImporter {
 		context: WorkflowImportContext,
 		item: PersistedWorkflowPlanItem,
 		bindings: PackageImportBindings,
+		batchContext: WorkflowCreateBatchContext | undefined,
 	): Promise<WorkflowEntity> {
 		const tagIds =
 			item.tagIds && [...new Set(item.tagIds)].filter((id) => !context.droppedTagIds.has(id));
@@ -194,6 +213,7 @@ export class WorkflowImporter {
 				publicApi: true,
 				source: 'import',
 				sourceWorkflowId: item.sourceWorkflowId,
+				...(batchContext ? { batchContext } : {}),
 				...(tagIds !== undefined ? { tagIds } : {}),
 			});
 		}

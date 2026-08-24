@@ -358,17 +358,21 @@ export function removeDefaultValues(
 	return cleanedSettings;
 }
 
+export interface ReplaceInvalidCredentialsCache {
+	credentialsByName: Record<string, Record<string, INodeCredentialsDetails>>;
+	credentialsById: Record<string, Record<string, INodeCredentialsDetails>>;
+}
+
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
 export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 	workflow: T,
 	projectId: string,
+	cache: ReplaceInvalidCredentialsCache = { credentialsByName: {}, credentialsById: {} },
 ): Promise<T> {
 	const { nodes } = workflow;
 	if (!nodes) return workflow;
 
-	// caching
-	const credentialsByName: Record<string, Record<string, INodeCredentialsDetails>> = {};
-	const credentialsById: Record<string, Record<string, INodeCredentialsDetails>> = {};
+	const { credentialsByName, credentialsById } = cache;
 
 	// for loop to run DB fetches sequential and use cache to keep pressure off DB
 	// trade-off: longer response time for less DB queries
@@ -411,7 +415,9 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 							id: credentials[0].id,
 							name: credentials[0].name,
 						};
-						node.credentials[nodeCredentialType] = credentialsByName[nodeCredentialType][name];
+						node.credentials[nodeCredentialType] = {
+							...credentialsByName[nodeCredentialType][name],
+						};
 						continue;
 					}
 
@@ -422,7 +428,9 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 					};
 				} else {
 					// get credentials from cache
-					node.credentials[nodeCredentialType] = credentialsByName[nodeCredentialType][name];
+					node.credentials[nodeCredentialType] = {
+						...credentialsByName[nodeCredentialType][name],
+					};
 				}
 				continue;
 			}
@@ -446,8 +454,9 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 						id: credentials.id,
 						name: credentials.name,
 					};
-					node.credentials[nodeCredentialType] =
-						credentialsById[nodeCredentialType][nodeCredentials.id];
+					node.credentials[nodeCredentialType] = {
+						...credentialsById[nodeCredentialType][nodeCredentials.id],
+					};
 					continue;
 				}
 				// no credentials found for ID, check if some exist for name
@@ -459,23 +468,25 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 				// if credential name-type combination is unique, take it
 				if (credsByName?.length === 1) {
 					// add found credential to cache
-					credentialsById[nodeCredentialType][credsByName[0].id] = {
+					const resolvedCredential = {
 						id: credsByName[0].id,
 						name: credsByName[0].name,
 					};
-					node.credentials[nodeCredentialType] =
-						credentialsById[nodeCredentialType][credsByName[0].id];
+					credentialsById[nodeCredentialType][nodeCredentials.id] = resolvedCredential;
+					credentialsById[nodeCredentialType][credsByName[0].id] = resolvedCredential;
+					node.credentials[nodeCredentialType] = { ...resolvedCredential };
 					continue;
 				}
 
 				// nothing found - add invalid credentials to cache to prevent further DB checks
-				credentialsById[nodeCredentialType][nodeCredentials.id] = nodeCredentials;
+				credentialsById[nodeCredentialType][nodeCredentials.id] = { ...nodeCredentials };
 				continue;
 			}
 
 			// get credentials from cache
-			node.credentials[nodeCredentialType] =
-				credentialsById[nodeCredentialType][nodeCredentials.id];
+			node.credentials[nodeCredentialType] = {
+				...credentialsById[nodeCredentialType][nodeCredentials.id],
+			};
 		}
 	}
 
