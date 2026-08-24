@@ -32,7 +32,6 @@ export function useAddNodesToChat() {
 		selectedNodeIds: string[];
 		workflow: BuilderWorkflow;
 		isInsideThread: boolean;
-		threadId?: string;
 		onStaged?: () => void;
 		workflowName?: string;
 		workflowSnapshot?: IWorkflowDb;
@@ -47,8 +46,8 @@ export function useAddNodesToChat() {
 			});
 		}
 
-		if (params.isInsideThread && params.threadId) {
-			store.stageNodeSets(params.threadId, params.workflowId, built.attachment.sets);
+		if (params.isInsideThread) {
+			store.stageNodeSets(params.workflowId, built.attachment.sets);
 			params.onStaged?.();
 			return;
 		}

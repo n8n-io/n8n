@@ -373,8 +373,8 @@ function removeResource(index: number) {
 watch(
 	() => instanceAiStore.pendingComposerAttachments,
 	(pending) => {
-		if (!pending.some((entry) => entry.threadId === props.currentThreadId)) return;
-		const consumed = instanceAiStore.consumePendingAttachments(props.currentThreadId);
+		if (pending.length === 0) return;
+		const consumed = instanceAiStore.consumePendingAttachments();
 		for (const attachment of consumed) {
 			if (attachment.type === 'file') continue;
 			if (attachment.type === 'nodes') {

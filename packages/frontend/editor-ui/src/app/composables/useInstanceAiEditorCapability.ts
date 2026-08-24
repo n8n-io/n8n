@@ -52,12 +52,6 @@ export type InstanceAiCredentialHelpHandler = (
  * `openCredential` (the workflow is already the thread's subject).
  */
 export interface InstanceAiEditorCapability {
-	/**
-	 * The thread this editor is embedded in, when it is hosted inside an Instance
-	 * AI conversation (the workflow preview). Absent for the standalone editor.
-	 * Node-context add-to-chat stages into this thread's composer.
-	 */
-	currentThreadId?: string;
 	/** Open Instance AI about the editor's current workflow. */
 	openWorkflow?(source: InstanceAiEditorActionSource): Promise<void>;
 	/**

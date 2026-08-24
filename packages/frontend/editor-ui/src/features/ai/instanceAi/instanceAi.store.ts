@@ -74,11 +74,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	}
 
 	function disposeRuntime(threadId: string): void {
-		// Drop any composer attachments staged for this thread — the thread is being
-		// abandoned or deleted, so a later view must not restore stale node chips,
-		// and abandoned transitions must not grow the queue.
-		clearPendingAttachments(threadId);
-
 		const runtime = runtimes.get(threadId);
 		if (!runtime) return;
 
@@ -296,46 +291,26 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	// Staged attachments carry their destination thread id so that, when two thread
-	// views coexist during a route transition, only the matching composer consumes
-	// them — otherwise the discarded instance could steal them from the live one.
-	const pendingComposerAttachments = ref<
-		Array<{ threadId: string; attachment: InstanceAiAttachment }>
-	>([]);
+	const pendingComposerAttachments = ref<InstanceAiAttachment[]>([]);
 
-	function stageNodeSets(
-		threadId: string,
-		workflowId: string,
-		newSets: InstanceAiNodesAttachment['sets'],
-	): void {
+	function stageNodeSets(workflowId: string, newSets: InstanceAiNodesAttachment['sets']): void {
 		const existing = pendingComposerAttachments.value.find(
-			(entry): entry is { threadId: string; attachment: InstanceAiNodesAttachment } =>
-				entry.threadId === threadId &&
-				entry.attachment.type === 'nodes' &&
-				entry.attachment.workflowId === workflowId,
+			(a): a is InstanceAiNodesAttachment => a.type === 'nodes' && a.workflowId === workflowId,
 		);
 		if (existing) {
-			existing.attachment.sets = mergeNodeSets(existing.attachment.sets, newSets);
+			existing.sets = mergeNodeSets(existing.sets, newSets);
 		} else {
 			pendingComposerAttachments.value = [
 				...pendingComposerAttachments.value,
-				{ threadId, attachment: { type: 'nodes', workflowId, sets: newSets } },
+				{ type: 'nodes', workflowId, sets: newSets },
 			];
 		}
 	}
 
-	function consumePendingAttachments(threadId: string): InstanceAiAttachment[] {
-		const mine = pendingComposerAttachments.value.filter((entry) => entry.threadId === threadId);
-		pendingComposerAttachments.value = pendingComposerAttachments.value.filter(
-			(entry) => entry.threadId !== threadId,
-		);
-		return mine.map((entry) => entry.attachment);
-	}
-
-	function clearPendingAttachments(threadId: string): void {
-		pendingComposerAttachments.value = pendingComposerAttachments.value.filter(
-			(entry) => entry.threadId !== threadId,
-		);
+	function consumePendingAttachments(): InstanceAiAttachment[] {
+		const staged = pendingComposerAttachments.value;
+		pendingComposerAttachments.value = [];
+		return staged;
 	}
 
 	const composerFocusRequest = ref(0);

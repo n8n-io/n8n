@@ -162,9 +162,6 @@ const rootStore = useRootStore();
 // only `openCredential` — `openWorkflow` is omitted because the workflow is
 // already the thread's subject, which hides the editor hand-off button here.
 const instanceAiCapability: InstanceAiEditorCapability = {
-	// The embedded editor lives inside this thread — node-context add-to-chat
-	// stages into its composer rather than opening a new thread.
-	currentThreadId: thread.id,
 	openCredential: async (credential) => {
 		// The handoff context carries the recipe's verified key page and the
 		// paste-only steering; without it the agent re-researches or suggests
