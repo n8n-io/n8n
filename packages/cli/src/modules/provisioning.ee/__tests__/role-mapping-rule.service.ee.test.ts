@@ -1017,8 +1017,8 @@ describe('RoleMappingRuleService', () => {
 				makeRule('c', 3),
 			]);
 
-			roleMappingRuleRepository.findOne.mockResolvedValue(makeRule('x', 0));
-			roleMappingRuleRepository.remove.mockResolvedValue(makeRule('x', 0));
+			roleMappingRuleRepository.findOne.mockResolvedValue(makeRule('x', 1));
+			roleMappingRuleRepository.remove.mockResolvedValue(makeRule('x', 1));
 
 			await service.delete({ id: 'x', userId: testUser.id, userEmail: testUser.email });
 
