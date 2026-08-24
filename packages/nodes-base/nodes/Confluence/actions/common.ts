@@ -9,7 +9,7 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
 
-/** The documented maximum page size shared by the v2 list endpoints, not a page-count limit */
+/** The v2 list endpoints' documented max page size, and the max IDs per batched `/pages` request */
 export const PAGE_LIMIT = 250;
 
 /**
