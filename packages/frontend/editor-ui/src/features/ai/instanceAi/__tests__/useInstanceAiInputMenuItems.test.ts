@@ -5,13 +5,13 @@ import {
 	useInstanceAiInputMenuItems,
 } from '../composables/useInstanceAiInputMenuItems';
 import {
-	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 } from '../constants';
 
 const {
 	browserUseTelemetry,
+	ensureBrowserConnected,
 	computerUseTelemetry,
 	featureFlags,
 	mcpStore,
@@ -20,6 +20,7 @@ const {
 	uiStore,
 } = vi.hoisted(() => ({
 	browserUseTelemetry: { trackModalOpened: vi.fn() },
+	ensureBrowserConnected: vi.fn(),
 	computerUseTelemetry: { trackModalOpened: vi.fn() },
 	featureFlags: { browserUse: true, computerUse: true, mcp: true },
 	mcpStore: {
@@ -70,6 +71,9 @@ vi.mock('@/experiments/instanceAiMcpConnections', () => ({
 	}),
 }));
 
+vi.mock('../composables/useBrowserUseConnection', () => ({
+	useBrowserUseConnection: () => ({ ensureConnected: ensureBrowserConnected }),
+}));
 vi.mock('@/experiments/instanceAiBrowserUse', () => ({
 	useInstanceAiBrowserUseExperiment: () => ({
 		isFeatureEnabled: {
@@ -200,7 +204,9 @@ describe('useInstanceAiInputMenuItems', () => {
 			setDisconnected: () => {
 				settingsStore.browserUseConnectionStatus = 'disconnected';
 			},
-			modal: INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
+			// Browser Use reconnects through the shared flow, which opens a modal only when
+			// the extension actually needs the user.
+			modal: null,
 			title: 'instanceAi.inputMenu.browser.connectedTitle',
 		},
 	])(
@@ -216,7 +222,12 @@ describe('useInstanceAiInputMenuItems', () => {
 			expect(disconnectedConnectionCount.value).toBe(1);
 
 			await findItem(menuItems.value, `${id}-reconnect`)?.data?.action?.();
-			expect(uiStore.openModal).toHaveBeenCalledWith(modal);
+			if (modal) {
+				expect(uiStore.openModal).toHaveBeenCalledWith(modal);
+			} else {
+				expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
+				expect(uiStore.openModal).not.toHaveBeenCalled();
+			}
 		},
 	);
 
@@ -282,7 +293,6 @@ describe('useInstanceAiInputMenuItems', () => {
 		});
 		expect(mcpStore.disconnect).toHaveBeenCalledWith('1');
 		expect(settingsStore.disconnectComputerUse).toHaveBeenCalledOnce();
-		expect(browserUseTelemetry.trackModalOpened).toHaveBeenCalledWith('input_menu');
-		expect(uiStore.openModal).toHaveBeenCalledWith(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
+		expect(ensureBrowserConnected).toHaveBeenCalledWith('input_menu');
 	});
 });

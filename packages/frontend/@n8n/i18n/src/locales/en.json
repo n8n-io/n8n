@@ -6862,6 +6862,7 @@
 	"instanceAi.browserUse.step.connect.cta": "Open Browser Use extension",
 	"instanceAi.browserUse.step.connect.extensionMissing": "We can't detect the extension. Install it above, or check that it's enabled in your browser.",
 	"instanceAi.browserUse.directConnect.waiting": "Confirm the connection in the extension popup…",
+	"instanceAi.browserUse.directConnect.connecting": "Connecting to your browser…",
 	"instanceAi.browserUse.directConnect.failed": "Problems connecting your browser?",
 	"instanceAi.browserUse.directConnect.retry": "Try again",
 	"instanceAi.browserUse.unsupportedBrowser": "Browser Use requires Google Chrome or another Chromium-based browser like Microsoft Edge or Brave. Open n8n in a supported browser to continue.",
