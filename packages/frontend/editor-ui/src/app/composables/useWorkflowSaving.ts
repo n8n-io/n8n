@@ -140,6 +140,23 @@ export function useWorkflowSaving({
 	const workflowId = useWorkflowId();
 	const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
 
+	function showSaveErrorToast(errorMessage: string, retryDelay?: number) {
+		toast.showMessage({
+			title: i18n.baseText('workflowHelpers.showMessage.title'),
+			message:
+				retryDelay === undefined
+					? errorMessage
+					: i18n.baseText('generic.autosave.retrying', {
+							interpolate: {
+								error: errorMessage,
+								retryIn: `${Math.ceil(retryDelay / 1000)}s`,
+							},
+						}),
+			type: 'error',
+			...(retryDelay === undefined ? {} : { duration: retryDelay }),
+		});
+	}
+
 	// Preview hosts (template, workflow history, execution) render the real canvas
 	// and scope their subtree read-only through the editor context. The context is
 	// injected, so it only resolves inside a component — fall back to no context
@@ -446,11 +463,7 @@ export function useWorkflowSaving({
 					if (!shouldRetryAutoSaveFailure(error)) {
 						saveStore.resetRetry();
 						saveStore.setLastError(errorMessage);
-						toast.showMessage({
-							title: i18n.baseText('workflowHelpers.showMessage.title'),
-							message: errorMessage,
-							type: 'error',
-						});
+						showSaveErrorToast(errorMessage);
 
 						return false;
 					}
@@ -470,26 +483,12 @@ export function useWorkflowSaving({
 						}
 					}, retryDelay);
 
-					toast.showMessage({
-						title: i18n.baseText('workflowHelpers.showMessage.title'),
-						message: i18n.baseText('generic.autosave.retrying', {
-							interpolate: {
-								error: errorMessage,
-								retryIn: `${Math.ceil(retryDelay / 1000)}s`,
-							},
-						}),
-						type: 'error',
-						duration: retryDelay,
-					});
+					showSaveErrorToast(errorMessage, retryDelay);
 
 					return false;
 				}
 
-				toast.showMessage({
-					title: i18n.baseText('workflowHelpers.showMessage.title'),
-					message: errorMessage,
-					type: 'error',
-				});
+				showSaveErrorToast(errorMessage);
 
 				return false;
 			}
@@ -725,11 +724,7 @@ export function useWorkflowSaving({
 				return null;
 			}
 
-			toast.showMessage({
-				title: i18n.baseText('workflowHelpers.showMessage.title'),
-				message: getErrorMessage(e),
-				type: 'error',
-			});
+			showSaveErrorToast(getErrorMessage(e));
 
 			return null;
 		}
