@@ -60,6 +60,7 @@ export class InstanceGitConnectionService {
 		// fails fast instead of generating a throwaway SSH key pair first.
 		const targetType = input.connectionType ?? current.connectionType;
 		const targetUrl = input.repositoryUrl ?? current.repositoryUrl;
+
 		// A repository URL is only meaningful with a connection type to validate it
 		// against; reject rather than persist an unvalidated (and unusable) URL.
 		if (input.repositoryUrl !== undefined && !targetType) {
@@ -135,12 +136,10 @@ export class InstanceGitConnectionService {
 
 	private async save(prefs: InstanceGitConnectionPreferences) {
 		try {
-			// Atomic upsert on the singleton row so concurrent writes can't collide on
-			// the primary key (a plain insert-or-update would race on first configure).
 			await this.settingsRepository.upsertByKey(
 				INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY,
 				JSON.stringify(prefs),
-				true,
+				false,
 				{},
 			);
 		} catch (error) {

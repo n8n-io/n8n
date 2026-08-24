@@ -233,13 +233,14 @@ describe('InstanceGitConnectionService', () => {
 		});
 	});
 
-	it('persists under the instance settings key with loadOnStartup', async () => {
+	it('persists under the instance settings key without loading into global config', async () => {
 		await service.update({ connectionType: 'ssh' });
 
+		// loadOnStartup must be false so encrypted credentials stay out of global config.
 		expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
 			INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY,
 			expect.any(String),
-			true,
+			false,
 			{},
 		);
 	});
