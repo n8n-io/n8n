@@ -110,11 +110,16 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 				stderr: string,
 			) => void;
 
+			// Report a write failure as a `tar` failure, so it surfaces instead of leaving the
+			// callback uncalled and the test hanging.
 			void writeFile(
 				path.join(target, 'package.json'),
 				JSON.stringify({ name: PACKAGE_NAME, version: '2.0.0' }),
 				'utf-8',
-			).then(() => callback(null, 'Done', ''));
+			).then(
+				() => callback(null, 'Done', ''),
+				(error: Error) => callback(error, '', ''),
+			);
 		}) as unknown as typeof execFile);
 
 		loadNodesAndCredentials.loadPackage.mockResolvedValue(

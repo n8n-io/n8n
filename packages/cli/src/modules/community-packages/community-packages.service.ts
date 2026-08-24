@@ -700,9 +700,12 @@ export class CommunityPackagesService {
 				}
 			}
 		} catch (cleanupError) {
+			// `backupDirectory` is the only pointer to the files if the rename half failed: the
+			// loader skips `.backup-<ts>` directories, so nothing finds them again on its own.
 			this.logger.warn('Failed to restore community package directory after failed installation', {
 				error: ensureError(cleanupError),
 				packageName,
+				backupDirectory,
 			});
 		}
 	}
