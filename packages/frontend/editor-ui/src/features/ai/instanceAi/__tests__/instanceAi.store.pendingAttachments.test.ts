@@ -76,6 +76,17 @@ describe('instanceAi store — pending composer attachments', () => {
 		expect(t2[0].type === 'nodes' && t2[0].sets).toEqual(setsB);
 	});
 
+	it('disposing a thread drops its pending attachments but keeps other threads', () => {
+		const store = useInstanceAiStore();
+		store.stageNodeSets('t1', 'w1', setsA);
+		store.stageNodeSets('t2', 'w1', setsB);
+		store.disposeRuntime('t1');
+		expect(store.consumePendingAttachments('t1')).toEqual([]);
+		const t2 = store.consumePendingAttachments('t2');
+		expect(t2).toHaveLength(1);
+		expect(t2[0].type === 'nodes' && t2[0].sets).toEqual(setsB);
+	});
+
 	it('requestClearCanvasSelection bumps the counter the canvas watches', () => {
 		const store = useInstanceAiStore();
 		const before = store.clearCanvasSelectionRequest;

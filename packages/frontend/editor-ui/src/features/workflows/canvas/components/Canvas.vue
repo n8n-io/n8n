@@ -628,6 +628,7 @@ async function onAddNodesToChat(ids: string[] = selectedNodeIdsWithGroupMembers.
 		selectedNodeIds: ids,
 		workflow: buildBuilderWorkflow(),
 		isInsideThread: !instanceAiCapability.openWorkflow,
+		threadId: instanceAiCapability.currentThreadId,
 		onStaged: () => instanceAiStore.requestComposerFocus(),
 		workflowName: doc.name,
 		workflowSnapshot: doc.getSnapshot(),

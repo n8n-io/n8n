@@ -74,6 +74,11 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	}
 
 	function disposeRuntime(threadId: string): void {
+		// Drop any composer attachments staged for this thread — the thread is being
+		// abandoned or deleted, so a later view must not restore stale node chips,
+		// and abandoned transitions must not grow the queue.
+		clearPendingAttachments(threadId);
+
 		const runtime = runtimes.get(threadId);
 		if (!runtime) return;
 
@@ -325,6 +330,12 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			(entry) => entry.threadId !== threadId,
 		);
 		return mine.map((entry) => entry.attachment);
+	}
+
+	function clearPendingAttachments(threadId: string): void {
+		pendingComposerAttachments.value = pendingComposerAttachments.value.filter(
+			(entry) => entry.threadId !== threadId,
+		);
 	}
 
 	const composerFocusRequest = ref(0);
