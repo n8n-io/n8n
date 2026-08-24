@@ -227,7 +227,9 @@ describe('GET /api/workflow-executions/:id (integration)', () => {
 	});
 
 	it('returns 400 invalid_request for a non-uuid id', async () => {
-		const response = await request(url).get('/api/workflow-executions/not-a-uuid').set(authHeader());
+		const response = await request(url)
+			.get('/api/workflow-executions/not-a-uuid')
+			.set(authHeader());
 
 		expect(response.status).toBe(400);
 		expect((response.body as { error: string }).error).toBe('invalid_request');
