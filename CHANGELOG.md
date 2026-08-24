@@ -1,3 +1,11 @@
+## [2.36.6](https://github.com/n8n-io/n8n/compare/n8n@2.36.5...n8n@2.36.6) (2026-08-24)
+
+
+### Bug Fixes
+
+* **editor:** Show personalization survey and community registration modal on Instance AI landing page ([#36826](https://github.com/n8n-io/n8n/issues/36826)) ([8a38897](https://github.com/n8n-io/n8n/commit/8a3889774abb6d4b0e9c567d283affb3f4a2d254))
+
+
 ## [2.36.5](https://github.com/n8n-io/n8n/compare/n8n@2.36.4...n8n@2.36.5) (2026-08-21)
 
 
