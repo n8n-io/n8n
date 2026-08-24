@@ -1,0 +1,27 @@
+{
+	"nodes": [
+		{
+			"parameters": {
+				"operation": "send",
+				"from": "+0987654321",
+				"to": "+1234567890",
+				"toWhatsapp": true,
+				"messagingType": "template",
+				"contentSid": "HX1234567890",
+				"contentVariables": "{\"1\": \"John\"}"
+			},
+			"id": "ecc7480e-333e-436f-b253-333333333333",
+			"name": "twilioTemplate",
+			"type": "n8n-nodes-base.twilio",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"credentials": {
+				"twilioApi": {
+					"id": "1",
+					"name": "Twilio account"
+				}
+			}
+		}
+	],
+	"connections": {}
+}
