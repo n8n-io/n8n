@@ -89,6 +89,7 @@ const copyButtonLabel = computed(() =>
 					icon-only
 					:aria-label="copyButtonLabel"
 					data-test-id="copy-input-button"
+					:class="$style.button"
 					@click="onCopyClick"
 				>
 					<template #icon>
@@ -140,6 +141,12 @@ const copyButtonLabel = computed(() =>
 		margin: 0;
 		padding: 0;
 	}
+}
+
+.button {
+	/** Overrides radius so that hover state doesnt leave gaps in left corners **/
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
 }
 
 /*
