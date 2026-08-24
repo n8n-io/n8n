@@ -299,6 +299,21 @@ describe('webhookRequestSanitizer', () => {
 			});
 		});
 
+		it('should leave an unrelated cookie that merely begins with the prefix', () => {
+			mockRequest.headers = {
+				cookie: 'n8n-form-authentic=abc123; n8n-form-auth-ex-12345=def',
+			};
+			mockRequest.cookies = {
+				'n8n-form-authentic': 'abc123',
+				'n8n-form-auth-ex-12345': 'def',
+			};
+
+			sanitizeWebhookRequest(mockRequest);
+
+			expect(mockRequest.headers.cookie).toBe('n8n-form-authentic=abc123');
+			expect(mockRequest.cookies).toEqual({ 'n8n-form-authentic': 'abc123' });
+		});
+
 		it('should remove every disallowed cookie in one pass', () => {
 			mockRequest.headers = {
 				cookie:

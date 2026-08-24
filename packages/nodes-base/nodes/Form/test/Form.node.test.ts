@@ -908,7 +908,7 @@ describe('Form Node', () => {
 		});
 
 		describe('submit-time credential readiness gate', () => {
-			const setupAuthedPost = () => {
+			const setupAuthedPost = (operation: 'page' | 'completion' = 'page') => {
 				const json = vi.fn();
 				const mockResponseObject = {
 					render: vi.fn(),
@@ -931,7 +931,7 @@ describe('Form Node', () => {
 					mock<INode>({ type: 'n8n-nodes-base.form', typeVersion: 2.6 }),
 				);
 				mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-					if (paramName === 'operation') return 'page';
+					if (paramName === 'operation') return operation;
 					if (paramName === 'useJson') return false;
 					if (paramName === 'formFields.values') return [{ fieldLabel: 'test' }];
 					if (paramName === 'options') return {};
@@ -1002,6 +1002,33 @@ describe('Form Node', () => {
 
 				expect(status).toHaveBeenCalledWith(503);
 				expect(json).toHaveBeenCalledWith({ status: 'credential_readiness_check_failed' });
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
+
+			// The completion resume POST can arrive long after the last page's own gate
+			// ran (a lost redirect hop parks the run at the completion node), so it must
+			// be gated too — nodes can still follow the completion node.
+			it('gates the completion resume POST as well', async () => {
+				const { status, json } = setupAuthedPost('completion');
+				mockWebhookFunctions.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: false,
+					credentials: [
+						{
+							credentialId: 'cred-missing',
+							credentialName: 'My Gmail',
+							credentialType: 'gmailOAuth2',
+							resolverId: 'resolver-1',
+							status: 'missing',
+						},
+					],
+				});
+
+				const result = await form.webhook(mockWebhookFunctions);
+
+				expect(status).toHaveBeenCalledWith(428);
+				expect(json).toHaveBeenCalledWith(
+					expect.objectContaining({ status: 'credential_connections_required' }),
+				);
 				expect(result).toEqual({ noWebhookResponse: true });
 			});
 		});

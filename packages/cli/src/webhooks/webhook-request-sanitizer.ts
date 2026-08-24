@@ -14,9 +14,11 @@ const DISALLOWED_COOKIES = new Set([
 ]);
 
 // The form auth cookie's name appends the workflow or execution it was minted
-// for, so it is matched by prefix rather than listed above.
+// for (`<prefix>-…`), so it is matched by prefix rather than listed above. The
+// separator is required so an unrelated cookie that merely begins with the
+// prefix (e.g. `n8n-form-authentic`) passes through untouched.
 const isDisallowedCookie = (name: string) =>
-	DISALLOWED_COOKIES.has(name) || name.startsWith(FORM_AUTH_COOKIE_PREFIX);
+	DISALLOWED_COOKIES.has(name) || name.startsWith(`${FORM_AUTH_COOKIE_PREFIX}-`);
 
 /**
  * Removes a cookie with the given name from the request header

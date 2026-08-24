@@ -400,6 +400,15 @@ export class Form extends Node {
 
 		const method = context.getRequestObject().method;
 
+		// Same submit-time readiness gate as the trigger (see `formWebhook`): every
+		// POST here resumes the execution, and doing so with an account disconnected
+		// mid-journey — from the hosting shell's panel — would kill the run at
+		// credential resolution. That includes the completion resume POST, which can
+		// arrive long after the last page's own gate ran if its redirect hop was lost.
+		if (method === 'POST' && (await respondIfCredentialsNotReady(context, res))) {
+			return { noWebhookResponse: true };
+		}
+
 		if (operation === 'completion' && method === 'GET') {
 			return await renderFormCompletion(context, res, trigger, authResult.authedUser);
 		}
@@ -412,13 +421,6 @@ export class Form extends Node {
 
 		if (method === 'GET') {
 			return await renderFormNode(context, res, trigger, fields, mode, authResult.authedUser);
-		}
-
-		// Same submit-time readiness gate as the trigger (see `formWebhook`): an
-		// account can be disconnected mid-journey from the hosting shell's panel,
-		// and resuming the execution anyway would kill it at credential resolution.
-		if (await respondIfCredentialsNotReady(context, res)) {
-			return { noWebhookResponse: true };
 		}
 
 		let useWorkflowTimezone = context.evaluateExpression(
