@@ -34,6 +34,7 @@
     "dev": "tsdown --watch",
     "lint": "eslint . --quiet",
     "typecheck": "pnpm --sequential run \"/^typecheck:.+/\"",
+    "typecheck:frontend": "tsc --noEmit --project tsconfig.frontend.json",
     "typecheck:backend": "tsc --noEmit --project tsconfig.backend.json",
     "build": "pnpm typecheck && pnpm clean && tsdown && pnpm create-json-schema",
     "build:unchecked": "pnpm run build",
