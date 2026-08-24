@@ -13,7 +13,12 @@ import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import Bowser from 'bowser';
-import type { IDataObject, WorkflowSettings } from 'n8n-workflow';
+import {
+	EXECUTE_WORKFLOW_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	type IDataObject,
+	type WorkflowSettings,
+} from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
@@ -258,6 +263,20 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => settings.value.workflowCallerPolicyDefaultOption,
 	);
 
+	const isNodeTypeExcluded = (nodeType: string) => {
+		const excludeNodes = settings.value.excludeNodes;
+		return Array.isArray(excludeNodes) && excludeNodes.includes(nodeType);
+	};
+
+	const isExecuteWorkflowNodeExcluded = computed(() =>
+		isNodeTypeExcluded(EXECUTE_WORKFLOW_NODE_TYPE),
+	);
+
+	const isSubworkflowConversionDisabled = computed(
+		() =>
+			isExecuteWorkflowNodeExcluded.value || isNodeTypeExcluded(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE),
+	);
+
 	const permanentlyDismissedBanners = computed(() => settings.value.banners?.dismissed ?? []);
 
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
@@ -490,6 +509,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isMultiMain,
 		isWorkerViewAvailable,
 		workflowCallerPolicyDefaultOption,
+		isExecuteWorkflowNodeExcluded,
+		isSubworkflowConversionDisabled,
 		permanentlyDismissedBanners,
 		saveDataErrorExecution,
 		saveDataSuccessExecution,

@@ -722,7 +722,18 @@ describe('AiGatewayService', () => {
 			await expect(service.getWallet(USER_ID)).rejects.toThrow(UserError);
 		});
 
-		it('returns budget and balance from gateway wallet', async () => {
+		it('returns budget, balance, and hasEverToppedUp from gateway wallet', async () => {
+			requestMock
+				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
+				.mockResolvedValueOnce(ok({ budget: 10, balance: 7, hasEverToppedUp: true }));
+			const service = makeService();
+
+			const result = await service.getWallet(USER_ID);
+
+			expect(result).toEqual({ budget: 10, balance: 7, hasEverToppedUp: true });
+		});
+
+		it('defaults hasEverToppedUp to false when the gateway omits it', async () => {
 			requestMock
 				.mockResolvedValueOnce(ok({ token: 'mock-jwt', expiresIn: 3600 }))
 				.mockResolvedValueOnce(ok({ budget: 10, balance: 7 }));
@@ -730,7 +741,7 @@ describe('AiGatewayService', () => {
 
 			const result = await service.getWallet(USER_ID);
 
-			expect(result).toEqual({ budget: 10, balance: 7 });
+			expect(result).toEqual({ budget: 10, balance: 7, hasEverToppedUp: false });
 		});
 
 		it('sends JWT Bearer token in Authorization header to credits endpoint', async () => {

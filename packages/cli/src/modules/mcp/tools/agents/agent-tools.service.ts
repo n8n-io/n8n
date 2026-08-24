@@ -327,6 +327,13 @@ const updateIntegrationInput = {
 		.record(z.unknown())
 		.optional()
 		.describe('Integration settings; required for Telegram connect operations'),
+	replacesCredentialId: z
+		.string()
+		.min(1)
+		.optional()
+		.describe(
+			'On connect, the credential of the same type this one takes over from. Swaps both in one operation instead of a separate disconnect',
+		),
 } satisfies z.ZodRawShape;
 
 const callAgentRequestSchema = z.discriminatedUnion('type', [
@@ -1120,6 +1127,7 @@ export class McpAgentToolsService {
 				name: task.name,
 				objective: task.objective,
 				cronExpression: task.cronExpression,
+				timezone: task.timezone,
 				enabled: task.enabled,
 			})),
 			customTools: Object.entries(version.tools ?? {}).map(([id, tool]) => ({
@@ -1641,7 +1649,7 @@ export class McpAgentToolsService {
 	}
 
 	private async disconnectIntegration(user: User, input: UpdateIntegrationInput, agent: Agent) {
-		const { savedAgent: saved } = await this.integrationManagementService.disconnect({
+		const { savedAgent: saved, warning } = await this.integrationManagementService.disconnect({
 			agent,
 			user,
 			type: input.type,
@@ -1653,6 +1661,7 @@ export class McpAgentToolsService {
 			agentId: input.agentId,
 			integration: { type: input.type, credentialId: input.credentialId },
 			connected: false,
+			...(warning ? { warning } : {}),
 			published: saved.activeVersionId !== null,
 			activeVersionId: saved.activeVersionId,
 			configHash: getAgentConfigHash(this.configFromEntity(saved)),
@@ -1669,6 +1678,9 @@ export class McpAgentToolsService {
 			agent,
 			user,
 			integration: candidate,
+			...(input.replacesCredentialId
+				? { replaces: { type: input.type, credentialId: input.replacesCredentialId } }
+				: {}),
 			modifiedBy: 'mcp',
 		});
 		const result = {
@@ -1681,7 +1693,6 @@ export class McpAgentToolsService {
 			configHash: getAgentConfigHash(this.configFromEntity(saved)),
 		};
 		if (saved.activeVersionId === null) return { ...result, connected: false };
-
 		return {
 			...result,
 			connected: true,

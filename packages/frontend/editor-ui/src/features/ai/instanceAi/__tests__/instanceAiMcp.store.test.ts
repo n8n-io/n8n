@@ -1,6 +1,10 @@
 import { setActivePinia, createPinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { InstanceAiMcpConnectionResponse, McpRegistryServerResponse } from '@n8n/api-types';
+import type {
+	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionToolsResponse,
+	McpRegistryServerResponse,
+} from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: vi.fn().mockReturnValue({
@@ -9,10 +13,11 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const mockShowError = vi.fn();
+const mockShowMessage = vi.fn();
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
 		showError: (...args: unknown[]) => mockShowError(...args),
-		showMessage: vi.fn(),
+		showMessage: (...args: unknown[]) => mockShowMessage(...args),
 	}),
 }));
 
@@ -42,11 +47,13 @@ const mockFetchMcpConnections = vi.fn();
 const mockCreateMcpConnection = vi.fn();
 const mockUpdateMcpConnection = vi.fn();
 const mockDeleteMcpConnection = vi.fn();
+const mockFetchAllMcpConnectionTools = vi.fn();
 const mockFetchMcpConnectionTools = vi.fn();
 
 vi.mock('../instanceAi.mcp.api', () => ({
 	fetchMcpRegistryServers: (...args: unknown[]) => mockFetchMcpRegistryServers(...args),
 	fetchMcpConnections: (...args: unknown[]) => mockFetchMcpConnections(...args),
+	fetchAllMcpConnectionTools: (...args: unknown[]) => mockFetchAllMcpConnectionTools(...args),
 	fetchMcpConnectionTools: (...args: unknown[]) => mockFetchMcpConnectionTools(...args),
 	createMcpConnection: (...args: unknown[]) => mockCreateMcpConnection(...args),
 	updateMcpConnection: (...args: unknown[]) => mockUpdateMcpConnection(...args),
@@ -98,19 +105,72 @@ describe('useInstanceAiMcpStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		mockFetchMcpRegistryServers.mockReset();
+		mockFetchMcpConnections.mockReset();
+		mockFetchAllMcpConnectionTools.mockReset();
+		mockFetchAllMcpConnectionTools.mockResolvedValue([]);
+		mockFetchMcpConnectionTools.mockReset();
+		mockFetchMcpConnectionTools.mockResolvedValue({
+			id: 'conn-1',
+			status: 'connected',
+			tools: [],
+		} satisfies InstanceAiMcpConnectionToolsResponse);
+		mockCreateMcpConnection.mockReset();
+		mockUpdateMcpConnection.mockReset();
+		mockDeleteMcpConnection.mockReset();
 		deletionListeners.clear();
 		setActivePinia(createPinia());
 		store = useInstanceAiMcpStore();
 	});
 
 	describe('fetchConnections', () => {
-		it('loads connections into state', async () => {
+		it('marks connections as connecting until bulk tool loading completes', async () => {
+			const bulkRequest = createDeferred<InstanceAiMcpConnectionToolsResponse[]>();
 			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+			mockFetchAllMcpConnectionTools.mockReturnValue(bulkRequest.promise);
 
 			await store.fetchConnections();
 
-			expect(store.connections).toHaveLength(1);
-			expect(store.connections[0].id).toBe('conn-1');
+			expect(store.connections[0]).toMatchObject({ id: 'conn-1', status: 'connecting' });
+
+			bulkRequest.resolve([{ id: 'conn-1', status: 'connected', tools: [] }]);
+			await vi.waitFor(() => expect(store.connections[0].status).toBe('connected'));
+		});
+
+		it('applies bulk statuses and caches tools for connected servers', async () => {
+			mockFetchMcpConnections.mockResolvedValue([
+				makeConnection({ id: 'conn-1' }),
+				makeConnection({ id: 'conn-2', serverSlug: 'notion' }),
+			]);
+			mockFetchAllMcpConnectionTools.mockResolvedValue([
+				{ id: 'conn-1', status: 'connected', tools: [{ name: 'search' }] },
+				{ id: 'conn-2', status: 'disconnected', tools: [], failureReason: 'unknown' },
+			] satisfies InstanceAiMcpConnectionToolsResponse[]);
+
+			await store.fetchConnections();
+
+			await vi.waitFor(() => {
+				expect(store.connections.map(({ id, status }) => ({ id, status }))).toEqual([
+					{ id: 'conn-1', status: 'connected' },
+					{ id: 'conn-2', status: 'disconnected' },
+				]);
+			});
+			expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'search' }]);
+			expect(store.connectionToolsById.has('conn-2')).toBe(false);
+			expect(mockShowMessage).not.toHaveBeenCalled();
+		});
+
+		it('reports bulk tool check errors', async () => {
+			const error = new Error('boom');
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+			mockFetchAllMcpConnectionTools.mockRejectedValue(error);
+
+			await store.fetchConnections();
+
+			await vi.waitFor(() => {
+				expect(mockShowError).toHaveBeenCalledWith(error, 'instanceAi.mcp.error.checkConnections');
+			});
+			expect(store.connections[0].status).toBe('disconnected');
 		});
 
 		it('surfaces errors via toast', async () => {
@@ -129,6 +189,7 @@ describe('useInstanceAiMcpStore', () => {
 			await Promise.all([store.fetchConnections(), store.fetchConnections()]);
 
 			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(1);
+			expect(mockFetchAllMcpConnectionTools).toHaveBeenCalledTimes(1);
 			expect(store.connections).toHaveLength(1);
 		});
 
@@ -141,12 +202,44 @@ describe('useInstanceAiMcpStore', () => {
 			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(2);
 		});
 
+		it('ignores an older bulk result after connections are refetched', async () => {
+			const staleBulkRequest = createDeferred<InstanceAiMcpConnectionToolsResponse[]>();
+			const currentBulkRequest = createDeferred<InstanceAiMcpConnectionToolsResponse[]>();
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+			mockFetchAllMcpConnectionTools
+				.mockReturnValueOnce(staleBulkRequest.promise)
+				.mockReturnValueOnce(currentBulkRequest.promise);
+
+			await store.fetchConnections();
+			await store.fetchConnections();
+
+			staleBulkRequest.resolve([
+				{ id: 'conn-1', status: 'connected', tools: [{ name: 'stale_tool' }] },
+			]);
+			currentBulkRequest.resolve([
+				{ id: 'conn-1', status: 'disconnected', tools: [], failureReason: 'server_unavailable' },
+			]);
+
+			await vi.waitFor(() => expect(store.connections[0].status).toBe('disconnected'));
+			expect(store.connectionToolsById.has('conn-1')).toBe(false);
+		});
+
+		it('loads only once through the lazy entry point', async () => {
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+
+			await store.fetchConnectionsLazy();
+			await store.fetchConnectionsLazy();
+
+			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(1);
+			expect(mockFetchAllMcpConnectionTools).toHaveBeenCalledTimes(1);
+		});
+
 		it('leaves a failed fetch for the next caller to retry', async () => {
 			mockFetchMcpConnections.mockRejectedValueOnce(new Error('boom'));
 			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
 
-			await store.fetchConnections();
-			await store.fetchConnections();
+			await store.fetchConnectionsLazy();
+			await store.fetchConnectionsLazy();
 
 			expect(mockFetchMcpConnections).toHaveBeenCalledTimes(2);
 			expect(store.connections).toHaveLength(1);
@@ -185,11 +278,85 @@ describe('useInstanceAiMcpStore', () => {
 	});
 
 	describe('fetchConnectionToolsLazy', () => {
+		it.each([
+			['server_unavailable', 'instanceAi.mcp.error.connection.serverUnavailable'],
+			['authentication', 'instanceAi.mcp.error.connection.authentication'],
+			['unknown', 'instanceAi.mcp.error.connection.unknown'],
+		] as const)('shows the connection error for %s failures', async (failureReason, message) => {
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+			mockFetchAllMcpConnectionTools.mockResolvedValue([
+				{ id: 'conn-1', status: 'disconnected', tools: [], failureReason: 'unknown' },
+			]);
+			await store.fetchConnections();
+			await vi.waitFor(() => expect(store.connections[0].status).toBe('disconnected'));
+			mockFetchMcpConnectionTools.mockResolvedValue({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason,
+			});
+
+			await store.fetchConnectionToolsLazy('conn-1');
+
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: 'instanceAi.mcp.error.connection.title',
+				message,
+			});
+		});
+
+		it('shows the unknown connection error when the request fails', async () => {
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+			mockFetchAllMcpConnectionTools.mockResolvedValue([
+				{ id: 'conn-1', status: 'disconnected', tools: [], failureReason: 'unknown' },
+			]);
+			await store.fetchConnections();
+			await vi.waitFor(() => expect(store.connections[0].status).toBe('disconnected'));
+			mockFetchMcpConnectionTools.mockRejectedValue(new Error('boom'));
+
+			await store.fetchConnectionToolsLazy('conn-1');
+
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: 'instanceAi.mcp.error.connection.title',
+				message: 'instanceAi.mcp.error.connection.unknown',
+			});
+		});
+
+		it('retries a disconnected connection and caches its tools', async () => {
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+			mockFetchAllMcpConnectionTools.mockResolvedValue([
+				{ id: 'conn-1', status: 'disconnected', tools: [], failureReason: 'unknown' },
+			]);
+			await store.fetchConnections();
+			await vi.waitFor(() => expect(store.connections[0].status).toBe('disconnected'));
+
+			const toolsRequest = createDeferred<InstanceAiMcpConnectionToolsResponse>();
+			mockFetchMcpConnectionTools.mockReturnValue(toolsRequest.promise);
+			const retry = store.fetchConnectionToolsLazy('conn-1');
+
+			expect(store.connections[0].status).toBe('connecting');
+			toolsRequest.resolve({
+				id: 'conn-1',
+				status: 'connected',
+				tools: [{ name: 'search' }],
+			});
+			await retry;
+
+			expect(store.connections[0].status).toBe('connected');
+			expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'search' }]);
+		});
+
 		it('refreshes tools after credential changes and ignores the stale response', async () => {
-			const staleTools = [{ name: 'old_tool' }];
-			const freshTools = [{ name: 'fresh_tool' }];
-			const staleToolsRequest = createDeferred<typeof staleTools>();
-			const freshToolsRequest = createDeferred<typeof freshTools>();
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+			mockFetchAllMcpConnectionTools.mockResolvedValue([
+				{ id: 'conn-1', status: 'disconnected', tools: [], failureReason: 'unknown' },
+			]);
+			await store.fetchConnections();
+			await vi.waitFor(() => expect(store.connections[0].status).toBe('disconnected'));
+
+			const staleToolsRequest = createDeferred<InstanceAiMcpConnectionToolsResponse>();
+			const freshToolsRequest = createDeferred<InstanceAiMcpConnectionToolsResponse>();
 			mockFetchMcpConnectionTools
 				.mockReturnValueOnce(staleToolsRequest.promise)
 				.mockReturnValueOnce(freshToolsRequest.promise);
@@ -203,13 +370,21 @@ describe('useInstanceAiMcpStore', () => {
 			await store.updateConnection('conn-1', { credentialId: 'cred-2' });
 			expect(mockFetchMcpConnectionTools).toHaveBeenCalledTimes(2);
 
-			staleToolsRequest.resolve(staleTools);
+			staleToolsRequest.resolve({
+				id: 'conn-1',
+				status: 'connected',
+				tools: [{ name: 'old_tool' }],
+			});
 			await staleFetch;
 			expect(store.connectionToolsById.get('conn-1')).toBeUndefined();
 
-			freshToolsRequest.resolve(freshTools);
+			freshToolsRequest.resolve({
+				id: 'conn-1',
+				status: 'connected',
+				tools: [{ name: 'fresh_tool' }],
+			});
 			await vi.waitFor(() => {
-				expect(store.connectionToolsById.get('conn-1')).toEqual(freshTools);
+				expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'fresh_tool' }]);
 			});
 		});
 	});
@@ -217,12 +392,16 @@ describe('useInstanceAiMcpStore', () => {
 	describe('connect', () => {
 		it('appends the new connection on success', async () => {
 			const created = makeConnection({ id: 'conn-new' });
+			const toolsRequest = createDeferred<InstanceAiMcpConnectionToolsResponse>();
 			mockCreateMcpConnection.mockResolvedValue(created);
+			mockFetchMcpConnectionTools.mockReturnValue(toolsRequest.promise);
 
 			const result = await store.connect({ serverSlug: 'linear', credentialId: 'cred-1' });
 
-			expect(result).toEqual(created);
-			expect(store.connections).toContainEqual(created);
+			expect(result).toEqual({ ...created, status: 'connecting' });
+			expect(store.connections).toContainEqual({ ...created, status: 'connecting' });
+			toolsRequest.resolve({ id: 'conn-new', status: 'connected', tools: [] });
+			await vi.waitFor(() => expect(store.connections[0].status).toBe('connected'));
 		});
 
 		it('returns null and reports an error on failure', async () => {
@@ -246,7 +425,7 @@ describe('useInstanceAiMcpStore', () => {
 
 			const result = await store.updateConnection('conn-1', { inclusionMode: 'except' });
 
-			expect(result).toEqual(updated);
+			expect(result).toEqual({ ...updated, status: 'connecting' });
 			expect(store.connections[0].credentialName).toBe('Renamed');
 		});
 	});

@@ -1,12 +1,15 @@
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { Credentials } from 'n8n-core';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 
+import { selectCredentialDataForExport } from './credential-export-policy';
 import { CredentialSerializer } from './credential.serializer';
 import type { WorkflowCredentialRequirement } from './credential.types';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
+import type { CredentialExportPolicy } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageCredentialRequirement } from '../../spec/requirements.schema';
 
@@ -20,6 +23,7 @@ export interface CredentialExportRequest {
 	user: User;
 	requirements: WorkflowCredentialRequirement[];
 	writer: PackageWriter;
+	credentialExportPolicy: CredentialExportPolicy;
 	// Contains a map of projectId to export location
 	// p123 -> /project/p123/
 	projectTargetsById?: Map<string, string>;
@@ -68,12 +72,21 @@ export class CredentialExporter {
 			};
 
 			if (credential) {
+				const data = await selectCredentialDataForExport(
+					request.credentialExportPolicy,
+					async () =>
+						await new Credentials(
+							{ id: credential.id, name: credential.name },
+							credential.type,
+							credential.data,
+						).getData(),
+				);
 				const baseDir = this.resolveBaseDir(credential, request.projectTargetsById);
 				const target = allocatorFor(baseDir).allocate(name);
-				request.writer.writeDirectory(target);
-				request.writer.writeFile(
+				await request.writer.writeDirectory(target);
+				await request.writer.writeFile(
 					`${target}/credential.json`,
-					JSON.stringify(this.credentialSerializer.serialize(credential), null, '\t'),
+					JSON.stringify(this.credentialSerializer.serialize(credential, { data }), null, '\t'),
 				);
 				entries.push({ id, name, target });
 			}

@@ -1458,6 +1458,15 @@ describe.each(['activate', 'publish'])('POST /workflows/:id/%s', (action) => {
 		expect(await workflowRepository.isActive(workflow.id)).toBe(true);
 	});
 
+	test('should not return the shared field', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('shared');
+	});
+
 	test('should set activeVersionId', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
@@ -1653,6 +1662,21 @@ describe.each(['deactivate', 'unpublish'])('POST /workflows/:id/%s', (action) =>
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 	});
 
+	test('should return the shared field', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.shared).toEqual([
+			expect.objectContaining({
+				workflowId: workflow.id,
+				projectId: memberPersonalProject.id,
+				project: expect.objectContaining({ id: memberPersonalProject.id }),
+			}),
+		]);
+	});
+
 	test('should return 403 when user lacks workflow:publish permission', async () => {
 		// Create a custom role with workflow:update but not workflow:publish
 		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
@@ -1797,6 +1821,9 @@ describe('POST /workflows/:id/archive', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.isArchived).toBe(true);
 		expect(response.body.id).toBe(workflow.id);
+		expect(response.body.active).toBe(false);
+		expect(response.body.activeVersionId).toBeNull();
+		expect(response.body.activeVersion).toBeNull();
 	});
 
 	test('should return 200 when already archived (idempotent)', async () => {
@@ -1888,6 +1915,7 @@ describe('POST /workflows/:id/unarchive', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.isArchived).toBe(false);
 		expect(response.body.id).toBe(workflow.id);
+		expect(response.body.activeVersion).toBeNull();
 	});
 });
 
@@ -2565,7 +2593,7 @@ describe('PUT /workflows/:id', () => {
 					position: [240, 300],
 				},
 				{
-					id: 'uuid-1234',
+					id: 'uuid-5678',
 					parameters: {},
 					name: 'Cron',
 					type: 'n8n-nodes-base.cron',
@@ -3643,6 +3671,43 @@ describe('PUT /workflows/:id/tags', () => {
 });
 
 describe('PUT /workflows/:id/transfer', () => {
+	test('should fail due to missing API Key', testWithAPIKey('put', '/workflows/2/transfer', null));
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('put', '/workflows/2/transfer', 'abcXYZ'),
+	);
+
+	test('should return 404 when workflow does not exist', async () => {
+		const destinationProject = await createTeamProject('destination-project-404', member);
+
+		const response = await authOwnerAgent
+			.put('/workflows/00000000-0000-0000-0000-000000000000/transfer')
+			.send({ destinationProjectId: destinationProject.id });
+
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should return 403 when user lacks workflow:move permission', async () => {
+		const customRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:update'], {
+			roleType: 'project',
+			displayName: 'Custom Workflow Editor No Move',
+			description: 'Can read and update workflows but not move them',
+		});
+
+		const teamProject = await createTeamProject('Test Project Transfer', owner);
+		await linkUserToProject(member, teamProject, customRole.slug);
+
+		const workflow = await createWorkflow({}, teamProject);
+		const destinationProject = await createTeamProject('destination-project-403', member);
+
+		const response = await authMemberAgent
+			.put(`/workflows/${workflow.id}/transfer`)
+			.send({ destinationProjectId: destinationProject.id });
+
+		expect(response.statusCode).toBe(403);
+	});
+
 	test('should transfer workflow to project', async () => {
 		/**
 		 * Arrange

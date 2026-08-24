@@ -11,6 +11,7 @@ import { useCollaborationStore } from '@/features/collaboration/collaboration/co
 import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { INode, INodeTypeDescription } from 'n8n-workflow';
 import { NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
@@ -81,6 +82,7 @@ export function useContextMenuItems(
 ): ComputedRef<Item[]> {
 	const uiStore = useUIStore();
 	const nodeTypesStore = useNodeTypesStore();
+	const settingsStore = useSettingsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const sourceControlStore = useSourceControlStore();
 	const collaborationStore = useCollaborationStore();
@@ -262,7 +264,10 @@ export function useContextMenuItems(
 		}
 
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
-		const canExtract = nodes.some(isExecutable) && !nodes.every(isAiSubNode);
+		const canExtract =
+			!settingsStore.isSubworkflowConversionDisabled &&
+			nodes.some(isExecutable) &&
+			!nodes.every(isAiSubNode);
 
 		const i18nOptions = isGroupTarget
 			? {

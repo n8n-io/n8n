@@ -6,7 +6,6 @@ import { N8nSettingsLayout, N8nSettingsPageHeader } from '@n8n/design-system';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import type { OAuthClientFilters } from '@/features/ai/mcpAccess/clients.utils';
 import OAuthClientsTable from '@/features/ai/mcpAccess/components/tabs/OAuthClientsTable.vue';
@@ -17,11 +16,12 @@ import {
 	MCP_SETTINGS_VIEW,
 } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import { useUsersStore } from '@n8n/stores/users.store';
 
 const i18n = useI18n();
 const toast = useToast();
-const telemetry = useTelemetry();
+const mcp = useMcp();
 const router = useRouter();
 const documentTitle = useDocumentTitle();
 const mcpStore = useMCPStore();
@@ -49,7 +49,7 @@ const onOwnershipChange = async (ownership: 'mine' | 'all') => {
 		oAuthClientsLoading.value = true;
 		await mcpStore.setOAuthClientsOwnership(ownership);
 		if (ownership === 'all') {
-			telemetry.track('User viewed all MCP clients');
+			mcp.trackViewedAllClients();
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.oAuthClients'));
@@ -80,12 +80,21 @@ const onRevokeRequest = (client: OAuthClientResponseDto) => {
 	revokeClient.value = client;
 };
 
+/** An admin revoking someone else's grant rather than their own. */
+const isRevokingForOther = (client: OAuthClientResponseDto) =>
+	!!client.owner && client.owner.id !== usersStore.currentUser?.id;
+
 const onRevokeConfirm = async () => {
 	const client = revokeClient.value;
 	if (!client) return;
 	try {
 		revoking.value = true;
 		await mcpStore.removeOAuthClient(client.id, client.owner?.id);
+		mcp.trackClientAccessRevoked({
+			clientId: client.id,
+			clientName: client.name,
+			revokedForOther: isRevokingForOther(client),
+		});
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('settings.mcp.oAuthClients.revoke.success.title'),
@@ -146,9 +155,7 @@ onMounted(async () => {
 			:client="revokeClient"
 			:open="!!revokeClient"
 			:loading="revoking"
-			:revoking-for-other="
-				!!revokeClient?.owner && revokeClient.owner.id !== usersStore.currentUser?.id
-			"
+			:revoking-for-other="!!revokeClient && isRevokingForOther(revokeClient)"
 			@confirm="onRevokeConfirm"
 			@cancel="revokeClient = null"
 			@update:open="revokeClient = null"

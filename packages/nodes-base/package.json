@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.35.0",
+  "version": "2.36.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "typesVersions": {
@@ -359,6 +359,7 @@
       "dist/credentials/ShopifyOAuth2Api.credentials.js",
       "dist/credentials/Signl4Api.credentials.js",
       "dist/credentials/SlackApi.credentials.js",
+      "dist/credentials/SlackManagerOAuth2Api.credentials.js",
       "dist/credentials/SlackOAuth2Api.credentials.js",
       "dist/credentials/Sms77Api.credentials.js",
       "dist/credentials/Smtp.credentials.js",

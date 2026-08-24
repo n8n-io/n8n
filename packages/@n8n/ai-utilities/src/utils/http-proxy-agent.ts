@@ -2,26 +2,25 @@
  * Proxy/transport helpers for the AI model suppliers.
  *
  * These are the last AI proxy-fetch helpers not yet consolidated onto `@n8n/backend-network`.
- * They are kept here because their consumers (the langchain providers, e.g. `@langchain/openai` / `@langchain/anthropic`) pin
- * undici v6 and inject the proxy via `fetchOptions: { dispatcher }`,
- * while `@n8n/backend-network` builds undici v7 dispatchers.
  *
- * A v7 `Dispatcher` is not interoperable with a v6 `fetch` (the dispatch-handler protocol differs),
- * so the dispatcher produced here cannot simply come from backend-network.
+ * The dispatchers built here are handed to AI SDK clients via
+ * `fetchOptions: { dispatcher }` and dispatched by the global `fetch`. They
+ * must come from undici v7: a v7 dispatcher accepts the dispatch handlers of
+ * every supported Node's fetch, while a v6 dispatcher rejects the v7 handlers
+ * of Node >= 26 (`invalid onError method`).
  *
  * Proxy URL resolution and the Node `http(s).Agent` (both version-agnostic) do come from `@n8n/backend-network/proxy`,
  * so this module no longer depends on `proxy-from-env` / `https-proxy-agent` directly.
  *
- * TODO: once these consumers move to undici v7, drop these helpers and route
- * their calls through `@n8n/backend-network/transport` (use `asCustomFetch()`,
- * a self-contained `fetch` that is version-agnostic, rather than handing out a
- * raw dispatcher). See CAT-3377 for the consolidation this completes.
+ * TODO: drop these helpers and route their calls through
+ * `@n8n/backend-network/transport` (CAT-3377 consolidated the backend callers
+ * and left these runner-side ones in place).
  */
 import { createHttpsProxyAgent, resolveProxyUrl } from '@n8n/backend-network/proxy'; // `@n8n/backend-network/proxy` is a DI-free subpath: it pulls in only the proxy-agent libs
 import type { AgentOptions } from 'node:https';
 import type { LookupFunction } from 'node:net';
-/* eslint-disable n8n-local-rules/no-uncentralized-http -- langchain consumers pin undici v6, incompatible with backend-network's v7 dispatchers; see block comment below */
-import { Agent, ProxyAgent } from 'undici';
+/* eslint-disable n8n-local-rules/no-uncentralized-http -- raw dispatchers for AI SDK `fetchOptions`; see block comment above */
+import { Agent, ProxyAgent, fetch as undiciFetch } from 'undici';
 
 /**
  * Options for configuring HTTP agent timeouts.
@@ -113,11 +112,12 @@ export async function proxyFetch(
 	const targetUrl = input instanceof Request ? input.url : input.toString();
 	const dispatcher = getProxyAgent(targetUrl, timeoutOptions, lookup);
 
-	return await fetch(input, {
-		...init,
-		// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
+	// The dispatcher comes from this package's undici, so the request must use
+	// the same undici's fetch: the global fetch on Node >= 26 rejects it.
+	return (await undiciFetch(input as Parameters<typeof undiciFetch>[0], {
+		...(init as Parameters<typeof undiciFetch>[1]),
 		dispatcher,
-	});
+	})) as unknown as Response;
 }
 
 /**

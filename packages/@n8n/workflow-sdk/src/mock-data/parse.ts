@@ -94,7 +94,8 @@ export function repairStructuredOutput(
 	// Information extractors wrap in `{ output: ... }` like parser targets do,
 	// but have no ai_outputParser connection — include them explicitly. Their
 	// envelope is always `output`, even when no `__schema__` resolves; other
-	// roots must declare theirs (chainLlm with a parser emits fields FLAT).
+	// roots must declare theirs via their with-parser `__schema__` variant
+	// (Agent and chainLlm both declare `output` — the parser emits that wrapper).
 	const targets = new Set<string>(findOutputParserTargets(workflow).keys());
 	const extractorNames = new Set<string>();
 	for (const node of workflow.nodes) {

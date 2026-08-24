@@ -363,3 +363,7 @@ describe('Start - AuthRolesService initialization', () => {
 		});
 	});
 });
+
+test('start needs the expression engine', () => {
+	expect(new Start().needsExpressionEngine).toBe(true);
+});

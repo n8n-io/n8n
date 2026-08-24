@@ -1,12 +1,13 @@
+// Each import in this file must resolve with no build step.
+// Put an import that needs a `dist` in `vitest.config.mts`.
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
-import { defineConfig, mergeConfig, type UserConfig } from 'vite';
+import { defineConfig, type UserConfig } from 'vite';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import svgLoader from 'vite-svg-loader';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
 import { codecovVitePlugin } from '@codecov/vite-plugin';
 
-import { vitestConfig } from '@n8n/vitest-config/frontend';
 import icons from 'unplugin-icons/vite';
 import { lucideIconsPlugin } from '../@n8n/design-system/src/icons/lucide/vite';
 import browserslistToEsbuild from 'browserslist-to-esbuild';
@@ -14,6 +15,7 @@ import legacy from '@vitejs/plugin-legacy';
 import browserslist from 'browserslist';
 import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 import { nodePopularityPlugin } from './vite/vite-plugin-node-popularity.mjs';
+import { editorUiAliases } from './vite/aliases.mjs';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
@@ -23,84 +25,11 @@ const browsers = browserslist.loadConfig({ path: process.cwd() });
 
 const packagesDir = resolve(__dirname, '..', '..');
 
-const alias = [
-	{ find: '@', replacement: resolve(__dirname, 'src') },
-	{ find: 'stream', replacement: 'stream-browserify' },
-	// Stub out @n8n/expression-runtime for browser build (it pulls in isolated-vm, a Node.js-only native module)
-	{
-		find: '@n8n/expression-runtime',
-		replacement: resolve(__dirname, 'vite/expression-runtime-stub.ts'),
-	},
-	// Ensure bare imports resolve to sources (not dist)
-	{ find: '@n8n/i18n', replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src') },
-	{ find: '@n8n/chat-hub', replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src') },
-	{ find: '@n8n/tournament', replacement: resolve(packagesDir, '@n8n', 'tournament', 'src') },
-	{
-		find: /^@n8n\/chat(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'chat', 'src$1'),
-	},
-	{
-		find: /^@n8n\/chat-hub(.+)$/,
-		replacement: resolve(packagesDir, '@n8n', 'chat-hub', 'src$1'),
-	},
-	{
-		find: /^@n8n\/api-requests(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'api-requests', 'src$1'),
-	},
-	{
-		find: /^@n8n\/composables(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'composables', 'src$1'),
-	},
-	{
-		find: /^@n8n\/frontend-module-sdk$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'frontend-module-sdk', 'src/index.ts'),
-	},
-	{
-		find: /^@n8n\/constants(.+)$/,
-		replacement: resolve(packagesDir, '@n8n', 'constants', 'src$1'),
-	},
-	{
-		find: /^@n8n\/design-system$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src/index.ts'),
-	},
-	{
-		find: /^@n8n\/design-system(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'design-system', 'src$1'),
-	},
-	{
-		find: /^@n8n\/i18n(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'i18n', 'src$1'),
-	},
-	{
-		find: /^@n8n\/stores(.+)$/,
-		replacement: resolve(packagesDir, 'frontend', '@n8n', 'stores', 'src$1'),
-	},
-	{
-		find: /^@n8n\/telemetry$/,
-		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src/index.ts'),
-	},
-	{
-		find: /^@n8n\/telemetry(.+)$/,
-		replacement: resolve(packagesDir, '@n8n', 'telemetry', 'src$1'),
-	},
-	{
-		find: /^@n8n\/utils(.+)$/,
-		replacement: resolve(packagesDir, '@n8n', 'utils', 'src$1'),
-	},
-	...['orderBy', 'camelCase', 'cloneDeep', 'startCase'].map((name) => ({
-		find: new RegExp(`^lodash.${name}$`, 'i'),
-		replacement: `lodash/${name}`,
-	})),
-	{
-		find: /^lodash\.(.+)$/,
-		replacement: 'lodash/$1',
-	},
-	{
-		// For sanitize-html
-		find: 'source-map-js',
-		replacement: resolve(__dirname, 'vite/source-map-js-shim'),
-	},
-];
+// zod is the only single-instance-sensitive library the frontend bundles; dedupe it so
+// Vite resolves it to a single copy. The other curated libs are backend-only.
+const singleInstanceDedupe = ['zod'];
+
+const alias = editorUiAliases(__dirname, packagesDir);
 
 const { RELEASE: release } = process.env;
 
@@ -225,44 +154,41 @@ const plugins: UserConfig['plugins'] = [
 
 const target = browserslistToEsbuild(browsers);
 
-export default mergeConfig(
-	defineConfig({
-		define: {
-			// This causes test to fail but is required for actually running it
-			// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),
-			...(NODE_ENV === 'development' ? { 'process.env': {} } : {}),
-			BASE_PATH: `'${publicPath}'`,
-		},
-		plugins,
-		resolve: { alias },
-		base: publicPath,
-		envPrefix: ['VUE', 'N8N_ENV_FEAT'],
-		css: {
-			preprocessorMaxWorkers: 2,
-			preprocessorOptions: {
-				scss: {
-					additionalData: [
-						'',
-						'@use "@/app/css/_variables.scss" as *;',
-						'@use "@n8n/design-system/css/mixins" as mixins;',
-					].join('\n'),
-				},
+export default defineConfig({
+	define: {
+		// This causes test to fail but is required for actually running it
+		// ...(NODE_ENV !== 'test' ? { 'global': 'globalThis' } : {}),
+		...(NODE_ENV === 'development' ? { 'process.env': {} } : {}),
+		BASE_PATH: `'${publicPath}'`,
+	},
+	plugins,
+	resolve: { alias, dedupe: singleInstanceDedupe },
+	base: publicPath,
+	envPrefix: ['VUE', 'N8N_ENV_FEAT'],
+	css: {
+		preprocessorMaxWorkers: 2,
+		preprocessorOptions: {
+			scss: {
+				additionalData: [
+					'',
+					'@use "@/app/css/_variables.scss" as *;',
+					'@use "@n8n/design-system/css/mixins" as mixins;',
+				].join('\n'),
 			},
 		},
-		build: {
-			minify: !!release,
-			// Coverage builds emit INLINE maps so browser V8 coverage carries the
-			// map in the script source and monocart resolves offsets back to src.
-			sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
-			target,
-		},
-		optimizeDeps: {
-			exclude: ['wa-sqlite'],
-			rolldownOptions: {},
-		},
-		worker: {
-			format: 'es',
-		},
-	}),
-	vitestConfig,
-);
+	},
+	build: {
+		minify: !!release,
+		// Coverage builds emit INLINE maps so browser V8 coverage carries the
+		// map in the script source and monocart resolves offsets back to src.
+		sourcemap: process.env.BUILD_WITH_COVERAGE === 'true' ? 'inline' : !!release,
+		target,
+	},
+	optimizeDeps: {
+		exclude: ['wa-sqlite'],
+		rolldownOptions: {},
+	},
+	worker: {
+		format: 'es',
+	},
+});

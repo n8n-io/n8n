@@ -20,9 +20,11 @@ export interface WorkflowReviewRequestWorkflowDetail {
 	workflowVersionId: string | null;
 	/** Content of the pinned version; null when the history row no longer exists */
 	pinnedVersion: WorkflowReviewVersionSnapshot | null;
-	/**
-	 * Latest published version, resolved at read time; null = never published,
-	 * i.e. the diff baseline is empty.
+	/** Currently published version id; used to tell whether the pinned version has been published. */
+	publishedVersionId: string | null;
+	/** Diff baseline for the pinned version. While the review is open, this is
+	 * the live published pointer (null = never published). Once approved it is
+	 * the version frozen at approval time.
 	 */
 	baselineVersion: WorkflowReviewVersionSnapshot | null;
 }

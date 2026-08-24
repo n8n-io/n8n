@@ -38,6 +38,7 @@ const MAX_APPEND_ATTEMPTS = 5;
  * line published after run-finish, or a liveness timeout notice) would sit in
  * the coalescer forever; after this quiet period the open buffers are flushed
  * as blocks so they reach the durable log and replay/history stay complete.
+ * The same tick releases the thread's drain state.
  */
 const IDLE_FLUSH_MS = 3_000;
 
@@ -160,12 +161,84 @@ export class DurableEventLog {
 		if (existing) clearTimeout(existing);
 		const timer = setTimeout(() => {
 			this.idleFlushTimers.delete(threadId);
-			void this.flush(threadId).catch((error) => {
+			void this.settleIdleThread(threadId).catch((error) => {
 				this.logger.error('Instance AI event log idle flush failed', { threadId, error });
 			});
 		}, this.idleFlushMs);
 		timer.unref();
 		this.idleFlushTimers.set(threadId, timer);
+	}
+
+	/**
+	 * Flush the quiet thread's trailing deltas, then drop its drain state so the
+	 * per-thread maps don't accumulate one entry per thread the process has ever
+	 * served — a thread is only cleared explicitly or by the TTL prune,
+	 * which never reaches a non-leader main at all.
+	 *
+	 * All three are caches: `lastSeq` re-seeds from MAX(seq) (the append path
+	 * already drops it on a conflict), `emitters` is re-set by every publish, and
+	 * `lifecycles` mints a fresh token on demand — so a later publish for the
+	 * same thread just pays one seed query.
+	 */
+	private async settleIdleThread(threadId: string): Promise<void> {
+		await this.flush(threadId);
+		// flush() resolves from inside the drain, before the loop clears its
+		// `draining` entry — await the drain itself so "quiet" really means quiet.
+		await this.draining.get(threadId);
+		// Everything below is synchronous, so a publish cannot interleave between
+		// the checks and the deletes; one arriving after them simply recreates
+		// the state. Releasing under work in flight is not merely wasteful —
+		// dropping `emitters` while a drain is queued makes drainBatch bail and
+		// discard that batch — so bail on any sign of it.
+		//
+		// A publish during the awaits above already re-armed the timer, so that
+		// tick does the release.
+		if (this.idleFlushTimers.has(threadId)) return;
+		// The rest have no tick of their own: flush() enqueues a marker and calls
+		// ensureDraining without ever arming a timer (every run boundary does this
+		// via readRunEvents), and a drain batch that throws resolves its flush
+		// signals in ensureDraining's catch while leaving open buffers behind.
+		// Re-arm rather than deferring the release to a publish that may never
+		// come — a thread going silent in that window would keep its drain state
+		// for the process lifetime.
+		//
+		// `draining` is belt-and-braces: reaching here with a drain in flight
+		// needs one started without arming a timer, which today cannot happen
+		// (flush() only drains when pending/buffers are already non-empty, and
+		// both only fill via publish, which always arms one). Cheap to check, and
+		// releasing under an in-flight batch is not merely wasteful — dropping
+		// `lifecycles` makes the resuming batch bail, and its coalesced blocks are
+		// already out of `buffers`, so that streamed text would be lost.
+		if (
+			this.pendingByThread.has(threadId) ||
+			this.draining.has(threadId) ||
+			(this.buffers.get(threadId)?.size ?? 0) > 0
+		) {
+			this.scheduleIdleFlush(threadId);
+			return;
+		}
+		this.buffers.delete(threadId);
+		this.lastSeq.delete(threadId);
+		this.emitters.delete(threadId);
+		this.lifecycles.delete(threadId);
+	}
+
+	/**
+	 * Threads holding any drain state in this process. Every per-thread map, so
+	 * the count stays honest mid-drain too: a flush() with no prior publish
+	 * starts a drain without an emitter, leaving the thread in `draining` alone
+	 * until the batch bails.
+	 */
+	retainedThreadCount(): number {
+		return new Set([
+			...this.pendingByThread.keys(),
+			...this.draining.keys(),
+			...this.lastSeq.keys(),
+			...this.buffers.keys(),
+			...this.emitters.keys(),
+			...this.lifecycles.keys(),
+			...this.idleFlushTimers.keys(),
+		]).size;
 	}
 
 	async getEventsAfter(threadId: string, afterSeq: number): Promise<StoredEvent[]> {
@@ -590,6 +663,9 @@ export class DurableEventLog {
 			const text = this.takeBlock('text', fact.runId, agentId, buffer);
 			if (text) flushed.push(text);
 		}
+		// Don't leave an empty map behind: it would outlive the run and pin one
+		// entry per thread the process has served.
+		if (threadBuffers.size === 0) this.buffers.delete(threadId);
 		return flushed;
 	}
 

@@ -1,4 +1,5 @@
-import type { ExecutionSummaries } from '@n8n/db';
+import { DeleteExecutionsDto } from '@n8n/api-types';
+import type { AuthenticatedRequest, ExecutionSummaries, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -28,6 +29,28 @@ describe('ExecutionsController', () => {
 			const req = mock<ExecutionRequest.GetOne>({ params: { id: 'test' } });
 
 			await expect(executionsController.getOne(req)).rejects.toThrow(BadRequestError);
+		});
+	});
+
+	describe('delete', () => {
+		it('should 404 when no workflows are accessible', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+
+			await expect(
+				executionsController.delete(mock(), mock(), DeleteExecutionsDto.parse({ ids: ['1'] })),
+			).rejects.toThrow(NotFoundError);
+
+			expect(executionService.delete).not.toHaveBeenCalled();
+		});
+
+		it('should pass the user, payload and accessible workflow ids to the service', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
+			const user = mock<User>({ id: 'user-1' });
+			const payload = DeleteExecutionsDto.parse({ deleteBefore: '2026-01-01T00:00:00.000Z' });
+
+			await executionsController.delete(mock<AuthenticatedRequest>({ user }), mock(), payload);
+
+			expect(executionService.delete).toHaveBeenCalledWith(user, payload, ['wf-1']);
 		});
 	});
 

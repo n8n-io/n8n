@@ -6,7 +6,10 @@
 // deterministic shortcuts, repeat detection, and budget enforcement.
 // ---------------------------------------------------------------------------
 
+import type { InstanceAiCredentialSetupHint } from '@n8n/api-types';
+
 import type { N8nClient } from '../clients/n8n-client';
+import { createOneCredential } from '../credentials/seeder';
 import type { EvalLogger } from '../harness/logger';
 import type { CapturedEvent } from '../types';
 import { UserProxyLlm } from '../utils/user-proxy';
@@ -17,6 +20,17 @@ import {
 	type Decision,
 	type ProxyDecisionMode,
 } from '../utils/user-proxy/tools';
+
+// Spies on the real seeder so existing credential-creation tests (which assert
+// against `client.createCredential`) keep working unchanged, while the new
+// setupHint tests below can assert on what reaches `createOneCredential`
+// itself. The mock wraps the real implementation, so tests execute the full
+// minting path (including the seeder's throw when `httpTemplatedCustomAuth`
+// is reached without a valid hint).
+vi.mock('../credentials/seeder', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../credentials/seeder')>();
+	return { ...actual, createOneCredential: vi.fn(actual.createOneCredential) };
+});
 
 /** Returns a fresh fake each call — tests assert on individual `vi.fn()` call
  *  counts, so a single shared instance would leak state across tests. */
@@ -1138,6 +1152,88 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect(response.nodeCredentials).toBeUndefined();
 		}
 		expect(logger.warn).toHaveBeenCalled();
+	});
+
+	it("workflows(action='setup'): threads a valid setupHint through to credential creation for httpTemplatedCustomAuth", async () => {
+		const setupHint: InstanceAiCredentialSetupHint = {
+			template: { headers: { Authorization: '{{apiKey}}' } },
+			placeholders: [{ name: 'apiKey', title: 'API Key', optional: false }],
+		};
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Call API': { httpTemplatedCustomAuth: 'new' } }),
+		});
+		const { client } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Call the API every morning.' },
+				{ role: 'user', text: '[Set up the API credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-templated-auth', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Call API',
+					credentialType: 'httpTemplatedCustomAuth',
+					existingCredentials: [],
+					setupHint,
+				},
+			]),
+		);
+
+		expect(createOneCredential).toHaveBeenCalledWith(
+			client,
+			'httpTemplatedCustomAuth',
+			undefined,
+			expect.anything(),
+			expect.objectContaining({ setupHint }),
+		);
+	});
+
+	it("workflows(action='setup'): drops a malformed setupHint instead of forwarding a garbage partial object", async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: '{}',
+			nodeCredentialsJson: JSON.stringify({ 'Call API': { httpTemplatedCustomAuth: 'new' } }),
+		});
+		const { client } = fakeCredentialClient('cred-fresh');
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Call the API every morning.' },
+				{ role: 'user', text: '[Set up the API credential now.]' },
+			],
+			agent,
+			credentialCreation: { client, threadId: 'thread-1', allowlistedCredentialIds: [] },
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw-templated-auth-malformed', [
+				{
+					nodeId: 'n1',
+					nodeName: 'Call API',
+					credentialType: 'httpTemplatedCustomAuth',
+					existingCredentials: [],
+					// Missing the required `placeholders` field.
+					setupHint: { template: { headers: { Authorization: '{{apiKey}}' } } },
+				},
+			]),
+		);
+
+		expect(response.kind).toBeDefined();
+		expect(createOneCredential).toHaveBeenCalledWith(
+			client,
+			'httpTemplatedCustomAuth',
+			undefined,
+			expect.anything(),
+			expect.objectContaining({ setupHint: undefined }),
+		);
 	});
 
 	it("credentials(action='setup'): handles credential events deterministically without invoking the agent", async () => {

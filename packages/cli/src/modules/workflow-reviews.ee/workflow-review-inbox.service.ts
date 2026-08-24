@@ -10,7 +10,6 @@ import type {
 } from '@n8n/api-types';
 import {
 	UserRepository,
-	WorkflowPublishedVersionRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
@@ -46,7 +45,6 @@ export class WorkflowReviewInboxService {
 		private readonly featureGate: WorkflowReviewFeatureGate,
 		private readonly accessService: WorkflowReviewAccessService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
-		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
@@ -61,12 +59,13 @@ export class WorkflowReviewInboxService {
 	): Promise<ListWorkflowReviewInboxResponse> {
 		await this.featureGate.assertAvailable();
 
-		const projectIds = await this.accessService.resolveAccessibleProjectIds(user);
+		const visibility = await this.accessService.resolveInboxVisibility(user);
 		const { limit } = query;
 		const rows = await this.workflowReviewRequestRepository.findManyForInbox({
-			projectIds,
-			requesterId: user.id,
+			visibility,
 			state: query.state ?? 'open',
+			category:
+				query.category === undefined ? undefined : { userId: user.id, category: query.category },
 			limit: limit + 1,
 			cursor: query.cursor ? this.decodeInboxCursor(query.cursor) : undefined,
 		});
@@ -107,11 +106,8 @@ export class WorkflowReviewInboxService {
 	async getInboxSummaryForUser(user: User): Promise<GetWorkflowReviewInboxSummaryResponse> {
 		await this.featureGate.assertAvailable();
 
-		const projectIds = await this.accessService.resolveAccessibleProjectIds(user);
-		return await this.workflowReviewRequestRepository.countByStateForInbox({
-			projectIds,
-			requesterId: user.id,
-		});
+		const visibility = await this.accessService.resolveInboxVisibility(user);
+		return await this.workflowReviewRequestRepository.countByStateForInbox({ visibility });
 	}
 
 	async getDetail(
@@ -159,19 +155,38 @@ export class WorkflowReviewInboxService {
 	}
 
 	/**
-	 * Both diff sides for one child row. The baseline is resolved at read time, so
-	 * a publish during an open review moves what reviewers are diffing against.
+	 * Both sides of the diff for one child row: the version under review, and the
+	 * baseline to compare it against.
+	 *
+	 * While a review is open the baseline is the live published version, so a publish
+	 * during the review moves what reviewers see. Approval freezes it onto the row, and
+	 * a closed review reads only that frozen value.
+	 *
+	 * A closed review without one returns null, meaning "nothing to compare against".
+	 * It never falls back to the live version, which would show a diff nobody approved.
 	 */
 	private async toWorkflowDetail(
 		row: WorkflowReviewRequestWorkflowDetailRow,
 	): Promise<WorkflowReviewRequestWorkflowDetail> {
-		const publishedVersionId = await this.workflowPublishedVersionRepository.getPublishedVersionId(
-			row.workflowId,
-		);
+		// State and baseline come from the same row, so they cannot disagree. That
+		// matters here: approving a never-published workflow freezes a null baseline,
+		// which looks exactly like "nothing frozen yet", and only the state tells the
+		// two apart.
+		//
+		// A frozen baseline always wins, whatever state sits next to it, because only
+		// approval writes one. Null on a closed review can mean never published,
+		// approved while unpublished, or closed without an approval — callers tell those
+		// apart via `state` + `decision`.
+		//
+		// The live baseline comes from the workflow row: both publication paths maintain
+		// `activeVersionId`, while the publication-service table exists only on the
+		// outbox path — reading it there left the baseline empty on the default path.
+		const baselineVersionId =
+			row.baselineVersionId ?? (row.requestState === 'closed' ? null : row.activeVersionId);
 
 		const [pinnedVersion, baselineVersion] = await Promise.all([
 			this.findVersionSnapshot(row.workflowId, row.workflowVersionId),
-			this.findVersionSnapshot(row.workflowId, publishedVersionId),
+			this.findVersionSnapshot(row.workflowId, baselineVersionId),
 		]);
 
 		return {
@@ -179,6 +194,7 @@ export class WorkflowReviewInboxService {
 			workflowName: row.workflowName,
 			workflowVersionId: row.workflowVersionId,
 			pinnedVersion,
+			publishedVersionId: row.activeVersionId,
 			baselineVersion,
 		};
 	}

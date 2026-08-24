@@ -1,4 +1,4 @@
-import { WorkflowPublicDto } from '../workflow-public.dto';
+import { WorkflowPublicDto, WorkflowPublishPublicDto } from '../workflow-public.dto';
 
 const baseWorkflow = {
 	id: '1',
@@ -126,5 +126,14 @@ describe('WorkflowPublicDto', () => {
 		const { id: _id, ...withoutId } = baseWorkflow;
 		const result = WorkflowPublicDto.safeParse(withoutId);
 		expect(result.success).toBe(false);
+	});
+});
+
+describe('WorkflowPublishPublicDto', () => {
+	const { shared: _shared, ...workflowWithoutShared } = baseWorkflow;
+
+	test('accepts a workflow with no shared field', () => {
+		const result = WorkflowPublishPublicDto.safeParse(workflowWithoutShared);
+		expect(result.success).toBe(true);
 	});
 });

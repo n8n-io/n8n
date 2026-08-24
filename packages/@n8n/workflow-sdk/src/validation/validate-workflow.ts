@@ -23,6 +23,7 @@ import { containsPlaceholderMarker } from '../workflow-builder/string-utils';
  */
 export type ValidationErrorCode =
 	| 'NO_NODES'
+	| 'DUPLICATE_NODE_ID'
 	| 'MISSING_TRIGGER'
 	| 'DISCONNECTED_NODE'
 	| 'MISSING_PARAMETER'
@@ -608,6 +609,20 @@ export function validateWorkflow(
 								);
 							}
 						}
+					}
+
+					// An omitted discriminator falls back to the node default at runtime
+					// (the editor strips defaults on save), so a round-tripped workflow
+					// must not fail the build on it — surface it as informational.
+					if (error.missingDiscriminator) {
+						warnings.push(
+							ValidationWarning.informational(
+								'INVALID_PARAMETER',
+								`Node "${node.name}": ${message}`,
+								node.name,
+							),
+						);
+						continue;
 					}
 
 					// Report as WARNING (non-blocking) to maintain backwards compatibility
