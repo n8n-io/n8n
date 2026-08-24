@@ -161,7 +161,7 @@ export function prepareEmbeds(this: IExecuteFunctions, embeds: IDataObject[]) {
 			if (embedReturnData.color && typeof embedReturnData.color === 'string') {
 				embedReturnData.color = parseInt(embedReturnData.color.replace('#', ''), 16);
 			}
-			if (embedReturnData.video) {
+			if (embedReturnData.video && typeof embedReturnData.video === 'string') {
 				embedReturnData.video = {
 					url: embedReturnData.video,
 					width: 1270,

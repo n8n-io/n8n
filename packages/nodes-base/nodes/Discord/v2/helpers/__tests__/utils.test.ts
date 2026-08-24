@@ -472,5 +472,26 @@ describe('Discord V2 Utils', () => {
 				proxy_url: 'https://proxy.com/img.png',
 			});
 		});
+
+		it('should NOT double-wrap object video from JSON embeds', () => {
+			const embeds: IDataObject[] = [
+				{
+					inputMethod: 'json',
+					json: JSON.stringify({
+						title: 'Test',
+						video: { url: 'https://example.com/video.mp4', width: 1920, height: 1080 },
+					}),
+				},
+			];
+
+			const result = prepareEmbeds.call(mockExecuteFunctions, embeds);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].video).toEqual({
+				url: 'https://example.com/video.mp4',
+				width: 1920,
+				height: 1080,
+			});
+		});
 	});
 });
