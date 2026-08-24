@@ -51,9 +51,12 @@ const IDENTIFIER_KEY_PATTERN = /(?:^|_)(?:id|ids|hash)$/;
 const SECRET_KEY_PATTERN =
 	/(?:^|_)(?:password|passwd|pwd|secret|token|api_?key|apikey|access_?token|refresh_?token|id_?token|session_?token|auth_?token|authorization|cookie|private_?key)$/i;
 
-/** `clientSecret` → `client_secret`, so camelCase keys hit the same pattern. */
+/**
+ * `clientSecret` → `client_secret`, `private-key` → `private_key`, so
+ * camelCase and kebab-case keys both hit the same (snake_case) pattern.
+ */
 function toSnakeCase(key: string): string {
-	return key.replace(/([a-z0-9])([A-Z])/g, '$1_$2');
+	return key.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/-/g, '_');
 }
 
 /**

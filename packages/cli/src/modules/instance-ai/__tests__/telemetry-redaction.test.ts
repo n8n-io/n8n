@@ -93,6 +93,13 @@ describe('redactTelemetryProperties', () => {
 		).toEqual({ config: { clientSecret: '[REDACTED]', apiKey: '[REDACTED]' } });
 	});
 
+	it('catches kebab-case secret keys too', () => {
+		expect(redactTelemetryProperties({ 'private-key': 'plain', 'api-key': 'plain' })).toEqual({
+			'private-key': '[REDACTED]',
+			'api-key': '[REDACTED]',
+		});
+	});
+
 	it('keeps properties that only describe a credential', () => {
 		const properties = {
 			credential_type: 'httpBasicAuth',
