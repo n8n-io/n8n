@@ -26,5 +26,7 @@ export const TOKEN_REQUEST_TIMEOUT = 30_000;
  */
 export function getTokenRequestClient(host: 'fixed-vendor' | 'user-controlled'): HttpRequestClient {
 	const safetyMode: SafetyMode = host === 'fixed-vendor' ? 'unsafe' : 'safe';
-	return Container.get(OutboundHttp).requests({ safetyMode });
+	return host === 'fixed-vendor'
+		? Container.get(OutboundHttp).requests({ safetyMode: 'unsafe' })
+		: Container.get(OutboundHttp).requests();
 }
