@@ -1,5 +1,4 @@
-import { Logger } from '@n8n/backend-common';
-import { OnLifecycleEvent } from '@n8n/decorators';
+import { OnLifecycleEvent, PolicyCheckMetadata } from '@n8n/decorators';
 import type { WorkflowExecuteBeforeContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
@@ -19,10 +18,8 @@ export class PolicyLifecycleHandler {
 	constructor(
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly ownershipService: OwnershipService,
-		private readonly logger: Logger,
-	) {
-		this.logger = this.logger.scoped('policy');
-	}
+		private readonly checkMetadata: PolicyCheckMetadata,
+	) {}
 
 	@OnLifecycleEvent('workflowExecuteBefore')
 	async onWorkflowExecuteBefore(ctx: WorkflowExecuteBeforeContext): Promise<void> {
@@ -32,30 +29,21 @@ export class PolicyLifecycleHandler {
 		// leave the execution half-written.
 		if (!ctx.workflowInstance) return;
 
+		// Nothing registered means nothing to decide, and resolving the owning project below
+		// can fail — without this, a feature that is merely absent could fail an execution.
+		// Read per invocation, so module load order can't decide whether a check runs.
+		if (this.checkMetadata.getClasses().length === 0) return;
+
+		// Deliberately unguarded. Not knowing which project owns the workflow means
+		// project-scoped rules cannot be evaluated, and an unevaluated rule is not a passed
+		// one — so the run fails instead of proceeding under an assumed policy. This matches
+		// the other pre-execution gates (`credentials-permission-checker`,
+		// `subworkflow-policy-checker`), which also let this lookup throw.
+		const project = await this.ownershipService.getWorkflowProjectCached(ctx.workflow.id);
+
 		await this.policyEnforcementService.enforceWorkflowStart({
 			workflow: ctx.workflow,
-			projectId: await this.resolveProjectId(ctx),
+			projectId: project.id,
 		});
-	}
-
-	/**
-	 * `null` when the workflow has no owning project we can find — an unsaved workflow run
-	 * from the editor, say. Instance-scoped checks still run; project-scoped ones are skipped
-	 * rather than enforced, which is why this is logged rather than swallowed silently.
-	 */
-	private async resolveProjectId(ctx: WorkflowExecuteBeforeContext): Promise<string | null> {
-		try {
-			const project = await this.ownershipService.getWorkflowProjectCached(ctx.workflow.id);
-
-			return project.id;
-		} catch (error) {
-			this.logger.warn('Could not resolve the project for a workflow start policy check', {
-				workflowId: ctx.workflow.id,
-				executionId: ctx.executionId,
-				error,
-			});
-
-			return null;
-		}
 	}
 }

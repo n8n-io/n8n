@@ -1,11 +1,10 @@
-import type { Logger } from '@n8n/backend-common';
-import { mockLogger } from '@n8n/backend-test-utils';
 import type {
+	PolicyCheckClass,
 	PolicyCheckResult,
 	RegisteredPolicyCheck,
 	WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
-import { LifecycleMetadata, PolicyCheck } from '@n8n/decorators';
+import { LifecycleMetadata, PolicyCheck, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { ExecutionLifecycleHooks } from 'n8n-core';
 import type { IWorkflowBase, Workflow } from 'n8n-workflow';
@@ -46,13 +45,17 @@ const beforeContext = (
 describe('PolicyLifecycleHandler', () => {
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const ownershipService = mock<OwnershipService>();
-	const scopedLogger = mock<Logger>();
-	const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
+	const checkMetadata = mock<PolicyCheckMetadata>();
 
-	const handler = new PolicyLifecycleHandler(policyEnforcementService, ownershipService, logger);
+	const handler = new PolicyLifecycleHandler(
+		policyEnforcementService,
+		ownershipService,
+		checkMetadata,
+	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		checkMetadata.getClasses.mockReturnValue([mock<PolicyCheckClass>()]);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(mock({ id: 'proj-1' }));
 		policyEnforcementService.enforceWorkflowStart.mockResolvedValue(mock());
 	});
@@ -84,16 +87,26 @@ describe('PolicyLifecycleHandler', () => {
 		await expect(handler.onWorkflowExecuteBefore(beforeContext())).rejects.toBe(error);
 	});
 
-	it('still enforces with a null project when the project cannot be resolved', async () => {
-		ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('no shared row'));
+	it('blocks the run when the owning project cannot be resolved', async () => {
+		// An unevaluated project-scoped rule is not a passed one, so this must not degrade into
+		// enforcing with no project.
+		const error = new Error('no shared row');
+		ownershipService.getWorkflowProjectCached.mockRejectedValue(error);
+
+		await expect(handler.onWorkflowExecuteBefore(beforeContext())).rejects.toBe(error);
+
+		expect(policyEnforcementService.enforceWorkflowStart).not.toHaveBeenCalled();
+	});
+
+	it('does nothing at all when no policy check is registered', async () => {
+		// The feature being absent must never fail an execution, so it must not even reach the
+		// project lookup, which can throw.
+		checkMetadata.getClasses.mockReturnValue([]);
 
 		await handler.onWorkflowExecuteBefore(beforeContext());
 
-		expect(policyEnforcementService.enforceWorkflowStart).toHaveBeenCalledExactlyOnceWith({
-			workflow,
-			projectId: null,
-		});
-		expect(scopedLogger.warn).toHaveBeenCalledTimes(1);
+		expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+		expect(policyEnforcementService.enforceWorkflowStart).not.toHaveBeenCalled();
 	});
 
 	it('does not enforce when the event carries no workflow instance', async () => {
@@ -144,10 +157,11 @@ describe('workflowExecuteBefore wiring', () => {
 			ownership.getWorkflowProjectCached.mockResolvedValue(mock({ id: 'proj-1' }));
 
 			// The registry resolves the handler through DI, so the instance it gets has to be
-			// the one wired to the real enforcement service.
+			// the one wired to the real enforcement service. The real metadata registry is used
+			// on both sides, so `ConfigurableCheck` below is what makes the handler act.
 			Container.set(
 				PolicyLifecycleHandler,
-				new PolicyLifecycleHandler(enforcement, ownership, mockLogger()),
+				new PolicyLifecycleHandler(enforcement, ownership, Container.get(PolicyCheckMetadata)),
 			);
 
 			Container.get(ConfigurableCheck).result = { violations: [] };
