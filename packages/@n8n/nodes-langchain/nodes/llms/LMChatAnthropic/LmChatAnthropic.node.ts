@@ -723,7 +723,13 @@ export class LmChatAnthropic implements INodeType {
 			if (thinkingMode !== 'manual') return;
 			const message = error instanceof Error ? error.message : String(error);
 			const mentionsThinking = /thinking|budget_tokens/i.test(message);
-			const isRejection = /not supported|unsupported|not allowed|deprecated|invalid/i.test(message);
+			// Match the verb stem rather than the participle: providers phrase this both ways
+			// ("thinking is not supported" and "this model does not support thinking"), and
+			// "not supported" never appears in the active-voice form.
+			const isRejection =
+				/(?:not|n['’]?t) support|unsupported|not allowed|not permitted|deprecated|invalid|only supports/i.test(
+					message,
+				);
 			if (mentionsThinking && isRejection) {
 				throw new NodeOperationError(
 					this.getNode(),

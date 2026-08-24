@@ -617,15 +617,26 @@ describe('LmChatAnthropic', () => {
 			await lmChatAnthropic.supplyData.call(mockContext, 0);
 			expect(capturedHandler).toBeDefined();
 
-			expect(() =>
-				capturedHandler!(new Error('`thinking.budget_tokens` is not supported on this model.')),
-			).toThrow(NodeOperationError);
-			expect(() =>
-				capturedHandler!(new Error('`thinking.budget_tokens` is not supported on this model.')),
-			).toThrow(/claude-sonnet-5/);
+			// Providers phrase the rejection in either voice, so both must be recognised
+			for (const providerMessage of [
+				'`thinking.budget_tokens` is not supported on this model.',
+				'This model does not support thinking.',
+				"claude-sonnet-5 doesn't support the `thinking` parameter",
+				'unsupported parameter: thinking',
+				'This model only supports adaptive thinking',
+			]) {
+				expect(() => capturedHandler!(new Error(providerMessage))).toThrow(NodeOperationError);
+				expect(() => capturedHandler!(new Error(providerMessage))).toThrow(/claude-sonnet-5/);
+			}
 
 			// Unrelated errors should pass through without throwing
-			expect(() => capturedHandler!(new Error('rate limit exceeded'))).not.toThrow();
+			for (const unrelated of [
+				'rate limit exceeded',
+				'overloaded_error: the model is currently overloaded',
+				'Could not resolve authentication method',
+			]) {
+				expect(() => capturedHandler!(new Error(unrelated))).not.toThrow();
+			}
 		});
 
 		it('should not claim a manual-thinking problem when thinking is not manual', async () => {
