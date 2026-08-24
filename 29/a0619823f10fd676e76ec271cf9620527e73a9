@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/vite.config.mts
+  s_efb0e6e7ad51ed::t_aef55083c52c4e 26-28,30-31,166-188,232
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "29a0619823f10fd676e76ec271cf9620527e73a9",
+  "prompts": {},
+  "sessions": {
+    "s_efb0e6e7ad51ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a36c30c1-16ae-4c82-9c86-53d0f70b9c98",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
