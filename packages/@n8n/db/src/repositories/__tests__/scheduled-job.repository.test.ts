@@ -283,16 +283,20 @@ describe('ScheduledJobRepository', () => {
 	});
 
 	describe('deleteManyByIds', () => {
-		it('deletes the given ids', async () => {
-			await repository.deleteManyByIds(entityManager, [1, 2]);
+		it('deletes the given ids and returns the affected count', async () => {
+			entityManager.delete.mockResolvedValueOnce({ affected: 2, raw: [] });
+
+			const removed = await repository.deleteManyByIds(entityManager, [1, 2]);
 
 			expect(entityManager.delete).toHaveBeenCalledWith(ScheduledJob, [1, 2]);
+			expect(removed).toBe(2);
 		});
 
 		it('is a no-op when there are no ids', async () => {
-			await repository.deleteManyByIds(entityManager, []);
+			const removed = await repository.deleteManyByIds(entityManager, []);
 
 			expect(entityManager.delete).not.toHaveBeenCalled();
+			expect(removed).toBe(0);
 		});
 	});
 
