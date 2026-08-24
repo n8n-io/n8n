@@ -143,7 +143,7 @@ export async function computeAuthenticationUpdate(
 	};
 }
 
-export function validateHttpsCredentials(username?: string, password?: string, required = false) {
+function validateHttpsCredentials(username?: string, password?: string, required = false) {
 	if ((username === undefined) !== (password === undefined) || (required && !username)) {
 		throw new BadRequestError('HTTPS username and password must be provided together');
 	}
