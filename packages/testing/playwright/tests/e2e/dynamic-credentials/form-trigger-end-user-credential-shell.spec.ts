@@ -248,8 +248,11 @@ test.describe(
 				await expect(formPage.frameText(COMPLETION_MESSAGE)).toBeVisible();
 				await expect(formPage.shell).toBeVisible();
 
-				const execution = await api.workflows.waitForExecution(workflowId, 20_000);
-				expect(execution.status).toBe('success');
+				// The completion screen renders off the finished run, so by now there is
+				// nothing new to wait for — poll this workflow's one execution for its
+				// terminal status instead of waiting for another one to appear.
+				const execution = await api.workflows.waitForWorkflowStatus(workflowId, 'success', 20_000);
+				expect(execution.workflowId).toBe(workflowId);
 
 				await formPage.close();
 			} finally {

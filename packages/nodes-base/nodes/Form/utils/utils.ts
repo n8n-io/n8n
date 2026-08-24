@@ -666,9 +666,7 @@ export function renderForm({
 		authToken,
 		shellInner,
 		hasAuthenticatedSubmitter,
-		hostNavigationPath: isHostedInFormShell(context.getRequestObject(), shellInner)
-			? (getFormWaitingBasePath(context) ?? undefined)
-			: undefined,
+		hostNavigationPath: getHostNavigationPath(context, shellInner),
 	});
 
 	if (!isFormHtmlSandboxingDisabled()) {
@@ -706,16 +704,42 @@ function buildAbsoluteFormUrl(req: Request): string {
  * inner render (flagged in the URL) or a follow-up page the shell navigated its
  * frame to. Only then may the form hand its page navigations to the host.
  *
- * Derived from `Sec-Fetch-*` so a form embedded on someone else's site is never
- * mistaken for the shell, and so browsers that don't send those headers simply
- * keep navigating the form themselves.
+ * A follow-up page is recognised by the `n8nShellHosted` flag the shell appends
+ * to every URL it moves its frame to. Being told outright, rather than inferred
+ * from `Sec-Fetch-*`, keeps delegation working where those headers never arrive
+ * (a proxy that strips them) and keeps a same-origin frame that is *not* the
+ * shell from being treated as one.
+ *
+ * Where those headers do arrive they still have to agree — a same-origin frame —
+ * so a top-level document, or a form embedded on someone else's site, keeps
+ * navigating itself even with the flag in its URL.
+ *
+ * Nothing rests on the flag being unguessable: a frame that sets it on itself
+ * gains only the ability to ask its own parent to move it, and the shell accepts
+ * that ask for this form's own pages alone.
  */
 function isHostedInFormShell(req: Request, shellInner?: boolean): boolean {
 	if (shellInner) return true;
+	const secFetchDest = req.headers?.['sec-fetch-dest'];
+	const secFetchSite = req.headers?.['sec-fetch-site'];
 	return (
-		req.headers?.['sec-fetch-dest'] === 'iframe' &&
-		req.headers?.['sec-fetch-site'] === 'same-origin'
+		req.query?.n8nShellHosted === '1' &&
+		(secFetchDest === undefined || secFetchDest === 'iframe') &&
+		(secFetchSite === undefined || secFetchSite === 'same-origin')
 	);
+}
+
+/**
+ * The path prefix this render may ask the hosting shell to navigate to, or
+ * `undefined` when the render isn't in the shell's frame and so keeps navigating
+ * itself.
+ */
+export function getHostNavigationPath(
+	context: IWebhookFunctions,
+	shellInner?: boolean,
+): string | undefined {
+	if (!isHostedInFormShell(context.getRequestObject(), shellInner)) return undefined;
+	return getFormWaitingBasePath(context) ?? undefined;
 }
 
 export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
@@ -849,9 +873,22 @@ function setFormOAuthToken(res: Response, req: Request, resourceUrl: string, tok
 	});
 }
 
+/**
+ * Decode a cookie value, or `null` when it isn't valid percent-encoding. A value
+ * we can't read is treated as no cookie at all — the caller's other checks still
+ * get their turn — rather than throwing out of the request.
+ */
+function decodeCookieValue(value: string): string | null {
+	try {
+		return decodeURIComponent(value.trim());
+	} catch {
+		return null;
+	}
+}
+
 function readFormOAuthToken(req: Request): string | null {
 	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-form-oauth=([^;]+)/);
-	return match ? decodeURIComponent(match[1].trim()) : null;
+	return match ? decodeCookieValue(match[1]) : null;
 }
 
 function clearFormOAuthToken(res: Response, req: Request, resourceUrl: string): void {
@@ -911,11 +948,31 @@ function readFormAuthCookieUser(context: IWebhookFunctions): IUser | null {
 	// path may bypass cookie-parser middleware in some deployments.
 	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-form-auth=([^;]+)/);
 	if (!match) return null;
-	return verifyFormPageAuthCookie(
-		decodeURIComponent(match[1].trim()),
-		context.getWorkflow().id,
-		context.getExecutionId(),
-	);
+	const token = decodeCookieValue(match[1]);
+	if (!token) return null;
+	return verifyFormPageAuthCookie(token, context.getWorkflow().id, context.getExecutionId());
+}
+
+/**
+ * True when the request also carries a session that belongs to someone other
+ * than the form cookie's user — a sign-out and sign-in as a different person in
+ * the same browser. The live session wins: the form cookie is dropped and the
+ * request re-authenticates through the normal path. An unusable session cookie
+ * names nobody, so it leaves the form cookie alone.
+ */
+async function isSessionForDifferentUser(
+	context: IWebhookFunctions,
+	formCookieUser: IUser,
+): Promise<boolean> {
+	const req = context.getRequestObject();
+	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-auth=([^;]+)/);
+	if (!match) return false;
+	try {
+		const sessionUser = await context.validateCookieAuth(match[1].trim());
+		return sessionUser.id !== formCookieUser.id;
+	} catch {
+		return false;
+	}
 }
 
 /**
@@ -1082,8 +1139,9 @@ async function authenticateFormUserOrRespond(
  *
  * A page is reached by navigating to it, which cannot carry an `x-auth-token`
  * header, so a GET is authenticated from the form page auth cookie first. Every
- * other request — and any GET whose cookie is missing or doesn't verify — falls
- * through to the session cookie / `x-auth-token` checks, unchanged.
+ * other request — and any GET whose cookie is missing, doesn't verify, or names
+ * someone other than the session on the same request — falls through to the
+ * session cookie / `x-auth-token` checks, unchanged.
  *
  * Form pages never take the OAuth2 branch: the OAuth2 token's audience is the
  * trigger's URL, which a page's own resource URL is not.
@@ -1099,7 +1157,9 @@ export async function validateFormPageAuth(
 
 	if (context.getRequestObject().method === 'GET') {
 		const cookieUser = readFormAuthCookieUser(context);
-		if (cookieUser) return { authedUser: cookieUser };
+		if (cookieUser && !(await isSessionForDifferentUser(context, cookieUser))) {
+			return { authedUser: cookieUser };
+		}
 	}
 
 	const { user } = (await authenticateFormUserOrRespond(context, false)) ?? {};

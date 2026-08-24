@@ -736,37 +736,7 @@
 			const url = new URL(window.location.href);
 			let formSignature = url.searchParams.get('signature');
 
-			// Set only inside the n8n hosting shell's frame: the path prefix whose pages
-			// this form may hand to the host to navigate to. Empty everywhere else.
-			const hostNavigationPath = '{{hostNavigationPath}}';
-
-			function isHostNavigable(target) {
-				if (!hostNavigationPath) return false;
-				try {
-					const here = new URL(window.location.href);
-					const resolved = new URL(target, here);
-					if (resolved.origin !== here.origin) return false;
-					return resolved.pathname === hostNavigationPath
-						|| resolved.pathname.startsWith(hostNavigationPath + '/');
-				} catch (e) {
-					return false;
-				}
-			}
-
-			// Move to the next page of the form. Inside the hosting shell this document is
-			// sandboxed to an opaque origin, so a navigation it starts itself counts as
-			// cross-site and the browser withholds the form's own auth cookie — ask the
-			// shell, which runs on the real origin, to move the frame instead. Every other
-			// destination, and every form not hosted in the shell, navigates as before.
-			function navigateTo(target) {
-				if (window.parent !== window && isHostNavigable(target)) {
-					// targetOrigin '*': an opaque-origin document cannot name its parent's
-					// origin, and the payload is only a URL the parent can already read.
-					window.parent.postMessage({ type: 'n8n-form-navigate', url: String(target) }, '*');
-					return;
-				}
-				window.location.replace(target);
-			}
+			{{> formHostNavigation path=hostNavigationPath}}
 
 			function updateError(errorElement, action = 'add', message = '') {
 				if(action === 'add') {

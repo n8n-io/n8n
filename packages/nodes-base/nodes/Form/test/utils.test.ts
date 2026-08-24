@@ -860,6 +860,7 @@ describe('FormTrigger, formWebhook', () => {
 				cookie?: string;
 				options?: IDataObject;
 				headers?: Record<string, string>;
+				query?: IDataObject;
 			} = {
 				method: 'GET',
 			},
@@ -873,7 +874,7 @@ describe('FormTrigger, formWebhook', () => {
 			const request = {
 				method: overrides.method,
 				originalUrl: '/form/test',
-				query: {},
+				query: overrides.query ?? {},
 				headers: {
 					host: 'localhost:5678',
 					...(overrides.cookie ? { cookie: overrides.cookie } : {}),
@@ -1141,16 +1142,18 @@ describe('FormTrigger, formWebhook', () => {
 		});
 
 		// The rendered form only hands its page navigations to its host when that host
-		// is the n8n hosting shell; anywhere else it must keep navigating itself.
+		// is the n8n hosting shell; anywhere else it must keep navigating itself. The
+		// shell says so outright, by flagging every URL it moves its frame to.
 		describe('host-driven page navigation', () => {
 			const setupRender = (
 				ctx: ReturnType<typeof mock<IWebhookFunctions>>,
-				headers?: Record<string, string>,
+				overrides: { headers?: Record<string, string>; query?: IDataObject } = {},
 			) => {
 				const res = setupContext(ctx, {
 					method: 'GET',
 					cookie: 'n8n-auth=valid.jwt.token',
-					headers,
+					headers: overrides.headers,
+					query: overrides.query,
 				});
 				ctx.validateCookieAuth.mockResolvedValue(authedUser);
 				ctx.evaluateExpression.mockReturnValue(
@@ -1159,58 +1162,105 @@ describe('FormTrigger, formWebhook', () => {
 				return res;
 			};
 
-			it('is offered inside a same-origin frame, scoped to the form-waiting path', async () => {
+			const expectHostNavigationPath = (
+				render: ReturnType<typeof setupRender>['render'],
+				path?: string,
+			) =>
+				expect(render).toHaveBeenCalledWith(
+					'form-trigger',
+					expect.objectContaining({ hostNavigationPath: path }),
+				);
+
+			it('is offered to a page the shell navigated its frame to', async () => {
 				const ctx = mock<IWebhookFunctions>();
 				const { render } = setupRender(ctx, {
-					'sec-fetch-dest': 'iframe',
-					'sec-fetch-site': 'same-origin',
+					query: { n8nShellHosted: '1' },
+					headers: { 'sec-fetch-dest': 'iframe', 'sec-fetch-site': 'same-origin' },
 				});
 
 				await formWebhook(ctx);
 
-				expect(render).toHaveBeenCalledWith(
-					'form-trigger',
-					expect.objectContaining({ hostNavigationPath: '/form-waiting' }),
-				);
+				expectHostNavigationPath(render, '/form-waiting');
 			});
 
-			it('is not offered to a top-level form', async () => {
+			// The flag is what carries the shell across a proxy that drops fetch metadata,
+			// which is the whole point of not inferring the shell from those headers.
+			it('is offered when the browser sends no fetch metadata', async () => {
 				const ctx = mock<IWebhookFunctions>();
-				const { render } = setupRender(ctx, { 'sec-fetch-dest': 'document' });
+				const { render } = setupRender(ctx, { query: { n8nShellHosted: '1' } });
 
 				await formWebhook(ctx);
 
-				expect(render).toHaveBeenCalledWith(
-					'form-trigger',
-					expect.objectContaining({ hostNavigationPath: undefined }),
-				);
+				expectHostNavigationPath(render, '/form-waiting');
+			});
+
+			it("is offered to the shell's own inner render, which carries no flag yet", async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupRender(ctx, {
+					query: { n8nShellInner: '1' },
+					headers: { 'sec-fetch-dest': 'iframe' },
+				});
+
+				await formWebhook(ctx);
+
+				expectHostNavigationPath(render, '/form-waiting');
+			});
+
+			it('is not offered to a same-origin frame that is not the shell', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupRender(ctx, {
+					headers: { 'sec-fetch-dest': 'iframe', 'sec-fetch-site': 'same-origin' },
+				});
+
+				await formWebhook(ctx);
+
+				expectHostNavigationPath(render, undefined);
+			});
+
+			it('is not offered to a top-level page carrying the flag', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupRender(ctx, {
+					query: { n8nShellHosted: '1' },
+					headers: { 'sec-fetch-dest': 'document' },
+				});
+
+				await formWebhook(ctx);
+
+				expectHostNavigationPath(render, undefined);
 			});
 
 			it('is not offered to a form embedded on another site', async () => {
 				const ctx = mock<IWebhookFunctions>();
 				const { render } = setupRender(ctx, {
-					'sec-fetch-dest': 'iframe',
-					'sec-fetch-site': 'cross-site',
+					headers: { 'sec-fetch-dest': 'iframe', 'sec-fetch-site': 'cross-site' },
 				});
 
 				await formWebhook(ctx);
 
-				expect(render).toHaveBeenCalledWith(
-					'form-trigger',
-					expect.objectContaining({ hostNavigationPath: undefined }),
-				);
+				expectHostNavigationPath(render, undefined);
 			});
 
-			it('is not offered when the browser sends no fetch metadata', async () => {
+			// Otherwise an embedding page could opt itself in and be handed the URL of
+			// the form's next page.
+			it('is not offered to a form embedded on another site that carries the flag', async () => {
+				const ctx = mock<IWebhookFunctions>();
+				const { render } = setupRender(ctx, {
+					query: { n8nShellHosted: '1' },
+					headers: { 'sec-fetch-dest': 'iframe', 'sec-fetch-site': 'cross-site' },
+				});
+
+				await formWebhook(ctx);
+
+				expectHostNavigationPath(render, undefined);
+			});
+
+			it('is not offered to a plain top-level form', async () => {
 				const ctx = mock<IWebhookFunctions>();
 				const { render } = setupRender(ctx);
 
 				await formWebhook(ctx);
 
-				expect(render).toHaveBeenCalledWith(
-					'form-trigger',
-					expect.objectContaining({ hostNavigationPath: undefined }),
-				);
+				expectHostNavigationPath(render, undefined);
 			});
 		});
 	});
@@ -1308,6 +1358,25 @@ describe('FormTrigger, formWebhook', () => {
 				Location: 'http://localhost:5678/oauth/authorize?state=abc',
 			});
 			expect(end).toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		// A value that isn't valid percent-encoding must read as no cookie, so the flow
+		// simply restarts instead of the request failing.
+		it('restarts the flow when the one-hop cookie value cannot be decoded', async () => {
+			const ctx = mock<IWebhookFunctions>();
+			const { writeHead } = setupContext(ctx, {
+				method: 'GET',
+				headers: { cookie: 'n8n-form-oauth=%E0%A4%A' },
+			});
+			ctx.beginN8nOAuth2Flow.mockResolvedValue('http://localhost:5678/oauth/authorize?state=abc');
+
+			const result = await formWebhook(ctx);
+
+			expect(ctx.validateN8nOAuth2Token).not.toHaveBeenCalled();
+			expect(writeHead).toHaveBeenCalledWith(302, {
+				Location: 'http://localhost:5678/oauth/authorize?state=abc',
+			});
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
@@ -4385,6 +4454,73 @@ describe('validateFormPageAuth', () => {
 
 			expect(ctx.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
 			expect(result.authedUser).toEqual(authedUser);
+		});
+
+		// A value that isn't valid percent-encoding must be treated as no cookie, not
+		// surface as a failed request for every page load that carries it.
+		it('falls back to the session cookie when the form cookie value cannot be decoded', async () => {
+			const { ctx } = buildContext('GET', 'n8n-form-auth=%E0%A4%A; n8n-auth=valid.jwt.token');
+			ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(ctx.validateCookieAuth).toHaveBeenCalledWith('valid.jwt.token');
+			expect(result.authedUser).toEqual(authedUser);
+		});
+
+		it('redirects rather than throwing when an undecodable cookie is all the request has', async () => {
+			const { ctx, res } = buildContext('GET', 'n8n-form-auth=%E0%A4%A');
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.responded).toBe(true);
+			expect(res.writeHead).toHaveBeenCalledWith(302, expect.any(Object));
+		});
+
+		// The same browser can be signed out and signed back in as someone else while a
+		// form is open; the live session decides who the page is served to.
+		it("discards the cookie when the request also carries a different user's session", async () => {
+			const otherUser = {
+				id: 'user-2',
+				email: 'other@example.com',
+				firstName: 'Other',
+				lastName: 'User',
+			};
+			const { ctx } = buildContext(
+				'GET',
+				`${pageAuthCookie({ workflowId: WORKFLOW_ID })}; n8n-auth=valid.jwt.token`,
+			);
+			ctx.validateCookieAuth.mockResolvedValue(otherUser);
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.authedUser).toEqual(otherUser);
+		});
+
+		it('keeps the cookie when the session belongs to the same user', async () => {
+			const { ctx } = buildContext(
+				'GET',
+				`${pageAuthCookie({ workflowId: WORKFLOW_ID })}; n8n-auth=valid.jwt.token`,
+			);
+			ctx.validateCookieAuth.mockResolvedValue(authedUser);
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.authedUser).toEqual(authedUser);
+			expect(result.responded).toBeFalsy();
+		});
+
+		it('keeps the cookie when the session alongside it no longer validates', async () => {
+			const { ctx } = buildContext(
+				'GET',
+				`${pageAuthCookie({ workflowId: WORKFLOW_ID })}; n8n-auth=stale.jwt.token`,
+			);
+			ctx.validateCookieAuth.mockRejectedValue(new Error('Unauthorized'));
+
+			const result = await validateFormPageAuth(ctx, 'n8nUserAuth');
+
+			expect(result.authedUser).toEqual(authedUser);
+			expect(result.responded).toBeFalsy();
 		});
 
 		it('is not consulted on POST, which carries the token in a header', async () => {

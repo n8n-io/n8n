@@ -1,10 +1,18 @@
 import type { Request } from 'express';
 
-import { AUTH_COOKIE_NAME } from '@/constants';
+import { AUTH_COOKIE_NAME, FORM_AUTH_COOKIE_NAME, FORM_OAUTH_COOKIE_NAME } from '@/constants';
 
 const BROWSER_ID_COOKIE_NAME = 'n8n-browserId';
 
-const DISALLOWED_COOKIES = new Set([AUTH_COOKIE_NAME, BROWSER_ID_COOKIE_NAME]);
+// The form cookies belong to the form endpoints, which skip sanitizing entirely
+// for their own node types (see `authAllowlistedNodes`), so a form page still
+// receives them. Every other webhook has no use for them.
+const DISALLOWED_COOKIES = new Set([
+	AUTH_COOKIE_NAME,
+	BROWSER_ID_COOKIE_NAME,
+	FORM_AUTH_COOKIE_NAME,
+	FORM_OAUTH_COOKIE_NAME,
+]);
 
 /**
  * Removes a cookie with the given name from the request header
