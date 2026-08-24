@@ -250,16 +250,6 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 
 	/**
-	 * Delete all jobs of one task type, whoever owns them; their tasks cascade
-	 * away. For teardown of a whole consumer, e.g. when its feature flag is off.
-	 * @returns how many jobs were deleted (0 when the driver can't report it).
-	 */
-	async deleteByTaskType(manager: EntityManager, taskType: string): Promise<number> {
-		const result = await manager.delete(ScheduledJob, { taskType });
-		return result.affected ?? 0;
-	}
-
-	/**
 	 * Delete all jobs of one task type owned by a workflow; their tasks cascade away.
 	 * @returns how many jobs were deleted (0 when the driver can't report it).
 	 */

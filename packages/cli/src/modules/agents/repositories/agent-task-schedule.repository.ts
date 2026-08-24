@@ -10,8 +10,7 @@ export type NewAgentTaskSchedule = Pick<AgentTaskSchedule, 'jobId' | 'agentId' |
 /**
  * Ownership links between agents and their `scheduled_job` rows. Methods take
  * the caller's `EntityManager` so link writes commit atomically with the job
- * writes of the same provisioning transaction, mirroring the scheduler
- * repositories in `@n8n/db`.
+ * writes of the same provisioning transaction.
  */
 @Service()
 export class AgentTaskScheduleRepository extends Repository<AgentTaskSchedule> {
@@ -19,16 +18,9 @@ export class AgentTaskScheduleRepository extends Repository<AgentTaskSchedule> {
 		super(AgentTaskSchedule, dataSource.manager);
 	}
 
-	/** All ownership links of one agent, within the caller's transaction. */
-	async findManyByAgent(manager: EntityManager, agentId: string): Promise<AgentTaskSchedule[]> {
-		return await manager.find(AgentTaskSchedule, { where: { agentId } });
-	}
-
 	/**
 	 * Record ownership of freshly inserted jobs, within the caller's transaction.
-	 * A link already recorded is left as-is: job inserts converge on a concurrent
-	 * writer's rows (see `ScheduledJobRepository.insertMany`), whose links then
-	 * already exist.
+	 * A link already recorded is left as-is (see `ScheduledJobRepository.insertMany`)
 	 */
 	async insertMany(manager: EntityManager, links: NewAgentTaskSchedule[]): Promise<void> {
 		if (links.length === 0) return;

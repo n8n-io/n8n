@@ -511,6 +511,7 @@ describe('DurableJobProvisioner', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				"Raised an owner's misfire grace to the scheduler's minimum",
 				{
+					taskType: 'schedule-trigger',
 					workflowId: 'wf',
 					nodeId: 'node',
 					requestedMisfireGraceSeconds: 30.7,
@@ -528,6 +529,7 @@ describe('DurableJobProvisioner', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				"Lowered an owner's misfire grace to the scheduler's maximum",
 				{
+					taskType: 'schedule-trigger',
 					workflowId: 'wf',
 					nodeId: 'node',
 					requestedMisfireGraceSeconds: THIRTY_DAYS_IN_SECONDS + 500,
@@ -545,6 +547,7 @@ describe('DurableJobProvisioner', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				"Lowered an owner's misfire grace to the scheduler's maximum",
 				{
+					taskType: 'schedule-trigger',
 					workflowId: 'wf',
 					nodeId: 'node',
 					requestedMisfireGraceSeconds: THIRTY_DAYS_IN_SECONDS + 0.5,
@@ -566,6 +569,7 @@ describe('DurableJobProvisioner', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				"Raised an owner's misfire grace to the scheduler's minimum",
 				{
+					taskType: 'schedule-trigger',
 					workflowId: 'wf',
 					nodeId: 'node',
 					requestedMisfireGraceSeconds: 300,
@@ -978,7 +982,6 @@ describe('DurableJobProvisioner', () => {
 		const linkedScope = () => ({
 			taskType: 'agent:scheduled-task',
 			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
-			logContext: { agentId: 'agent-1' },
 			findExisting: vi.fn<() => Promise<ScheduledJob[]>>().mockResolvedValue([]),
 			payloadFor: vi.fn((jobName: string) => ({ agentId: 'agent-1', jobName })),
 			linkInserted: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),

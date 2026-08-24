@@ -45,12 +45,9 @@ interface WorkflowNodeProvisionScope {
  * themselves carry `workflowId`/`nodeId` NULL.
  */
 export interface LinkedProvisionScope {
-	linked: true;
 	taskType: string;
 	misfirePolicy: ScheduledJobMisfirePolicy;
 	misfireGraceSeconds?: number;
-	/** Identifies the owner in logs. */
-	logContext: Record<string, unknown>;
 	/** The owner's existing jobs of this task type, within the transaction. */
 	findExisting(manager: EntityManager): Promise<ScheduledJob[]>;
 	/** Payload stamped on a desired job's row, by job name. */
@@ -157,10 +154,10 @@ export class DurableJobProvisioner {
 	 * through the scope's callbacks within the same transaction.
 	 */
 	async provisionLinked(
-		scope: Omit<LinkedProvisionScope, 'linked'>,
+		scope: LinkedProvisionScope,
 		desired: DesiredJob[],
 	): Promise<ProvisionSummary> {
-		return await this.provisioner.provision({ linked: true, ...scope }, desired);
+		return await this.provisioner.provision(scope, desired);
 	}
 
 	/** Delete all of a node's jobs; their queued tasks cascade away. */
@@ -202,14 +199,13 @@ export class DurableJobProvisioner {
 	}
 
 	/**
-	 * The parts of provisioning that differ per scope kind: the owner's log
-	 * identity, how its existing jobs are read, which identity columns stamp an
-	 * inserted row, and how ownership of fresh rows is recorded.
+	 * The parts of provisioning that differ per scope kind: how the owner's
+	 * existing jobs are read, which identity columns stamp an inserted row, and
+	 * how ownership of fresh rows is recorded.
 	 */
 	private scopeBinding(scope: ProvisionScope) {
-		if ('linked' in scope) {
+		if ('linkInserted' in scope) {
 			return {
-				logContext: scope.logContext,
 				findExisting: async (manager: EntityManager) => await scope.findExisting(manager),
 				identityColumns: (
 					jobName: string,
@@ -224,7 +220,6 @@ export class DurableJobProvisioner {
 		}
 		const { workflowId, nodeId, payload } = scope;
 		return {
-			logContext: { workflowId, nodeId },
 			findExisting: async (manager: EntityManager) =>
 				await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId),
 			identityColumns: () => ({ workflowId, nodeId, payload }),
@@ -235,10 +230,7 @@ export class DurableJobProvisioner {
 	private provisionTransaction(scope: ProvisionScope): RunInProvisionTransaction {
 		const { taskType, misfirePolicy } = scope;
 		const binding = this.scopeBinding(scope);
-		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
-			scope.misfireGraceSeconds,
-			binding.logContext,
-		);
+		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(scope);
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
 				// Jobs freshly inserted or redefined this pass; their first window is
@@ -322,14 +314,11 @@ export class DurableJobProvisioner {
 			});
 	}
 
-	private resolveMisfireGraceSeconds(
-		requested: unknown,
-		logContext: Record<string, unknown>,
-	): number {
+	private resolveMisfireGraceSeconds(scope: ProvisionScope): number {
 		const { misfireGraceSeconds, executorIntervalSeconds, materializationWindowSeconds } =
 			this.globalConfig.scheduler;
 
-		const numeric = Number(requested);
+		const numeric = Number(scope.misfireGraceSeconds);
 		if (!Number.isFinite(numeric)) {
 			return misfireGraceSeconds;
 		}
@@ -356,7 +345,10 @@ export class DurableJobProvisioner {
 					? "Raised an owner's misfire grace to the scheduler's minimum"
 					: "Lowered an owner's misfire grace to the scheduler's maximum",
 				{
-					...logContext,
+					taskType: scope.taskType,
+					...('linkInserted' in scope
+						? {}
+						: { workflowId: scope.workflowId, nodeId: scope.nodeId }),
 					requestedMisfireGraceSeconds: numeric,
 					misfireGraceSeconds: effective,
 				},
