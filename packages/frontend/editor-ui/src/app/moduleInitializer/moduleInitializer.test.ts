@@ -1,5 +1,9 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { assertUniqueRouteNames, modalRegistry, pushHandlerRegistry } from '@n8n/frontend-module-sdk';
+import {
+	assertUniqueRouteNames,
+	modalRegistry,
+	pushHandlerRegistry,
+} from '@n8n/frontend-module-sdk';
 import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import merge from 'lodash/merge';
