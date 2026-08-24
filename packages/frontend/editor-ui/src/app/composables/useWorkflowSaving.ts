@@ -190,6 +190,68 @@ export function useWorkflowSaving({
 		return false;
 	}
 
+	async function handleConflictSaveFailure({
+		error,
+		errorMessage,
+		currentWorkflow,
+		id,
+		redirect,
+		autosaved,
+	}: {
+		error: unknown;
+		errorMessage: string;
+		currentWorkflow: string;
+		id: string | undefined;
+		redirect: boolean;
+		autosaved: boolean;
+	}): Promise<boolean> {
+		telemetry.track('User attempted to save locked workflow', {
+			workflowId: currentWorkflow,
+			sharing_role: getWorkflowProjectRole(currentWorkflow),
+		});
+
+		// Hide modal if we already showed it
+		// So that user could explore the workflow
+		if (!saveStore.conflictModalShown) {
+			if (autosaved) {
+				saveStore.setConflictModalShown(true);
+			}
+
+			const url = router.resolve({
+				name: VIEWS.WORKFLOW,
+				params: { workflowId: currentWorkflow },
+			}).href;
+
+			const overwrite = await message.confirm(
+				i18n.baseText('workflows.concurrentChanges.confirmMessage.message', {
+					interpolate: {
+						url,
+					},
+				}),
+				i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
+				{
+					confirmButtonText: i18n.baseText(
+						'workflows.concurrentChanges.confirmMessage.confirmButtonText',
+					),
+					cancelButtonText: i18n.baseText(
+						'workflows.concurrentChanges.confirmMessage.cancelButtonText',
+					),
+				},
+			);
+
+			if (overwrite === MODAL_CONFIRM) {
+				return await saveCurrentWorkflow({ id }, redirect, true);
+			}
+		}
+
+		// For autosaves, use retry logic so we still communicate autosave stopped working.
+		if (autosaved) {
+			return handleAutoSaveFailure(error, errorMessage);
+		}
+
+		return false;
+	}
+
 	// Preview hosts (template, workflow history, execution) render the real canvas
 	// and scope their subtree read-only through the editor context. The context is
 	// injected, so it only resolves inside a component — fall back to no context
@@ -445,50 +507,14 @@ export function useWorkflowSaving({
 				console.error(error);
 
 				if (isExistingWorkflowSave && getHttpStatusCode(error) === 409) {
-					telemetry.track('User attempted to save locked workflow', {
-						workflowId: currentWorkflow,
-						sharing_role: getWorkflowProjectRole(currentWorkflow),
+					return await handleConflictSaveFailure({
+						error,
+						errorMessage,
+						currentWorkflow,
+						id,
+						redirect,
+						autosaved,
 					});
-
-					// Hide modal if we already showed it
-					// So that user could explore the workflow
-					if (!saveStore.conflictModalShown) {
-						if (autosaved) {
-							saveStore.setConflictModalShown(true);
-						}
-
-						const url = router.resolve({
-							name: VIEWS.WORKFLOW,
-							params: { workflowId: currentWorkflow },
-						}).href;
-
-						const overwrite = await message.confirm(
-							i18n.baseText('workflows.concurrentChanges.confirmMessage.message', {
-								interpolate: {
-									url,
-								},
-							}),
-							i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
-							{
-								confirmButtonText: i18n.baseText(
-									'workflows.concurrentChanges.confirmMessage.confirmButtonText',
-								),
-								cancelButtonText: i18n.baseText(
-									'workflows.concurrentChanges.confirmMessage.cancelButtonText',
-								),
-							},
-						);
-
-						if (overwrite === MODAL_CONFIRM) {
-							return await saveCurrentWorkflow({ id }, redirect, true);
-						}
-					}
-
-					// For autosaves, fall through to retry logic below
-					// As we want to still communicate autosave stopped working
-					if (!autosaved) {
-						return false;
-					}
 				}
 
 				if (autosaved) {
