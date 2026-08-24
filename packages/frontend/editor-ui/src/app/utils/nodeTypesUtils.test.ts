@@ -246,5 +246,97 @@ describe('nodeTypesUtils', () => {
 
 			expect(getInactiveCredentials(node, httpRequestNodeType)).toEqual([]);
 		});
+
+		it('should clean up a stale credential despite an expression left in a hidden selector', () => {
+			const node = makeNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'slackApi',
+					// Hidden, so its expression resolves to nothing and must not block cleanup
+					genericAuthType: '={{ $json.authType }}',
+				},
+				credentials: {
+					slackApi: { id: '123', name: 'Slack' },
+					httpBasicAuth: { id: '456', name: 'Stale Basic Auth' },
+				},
+			});
+
+			expect(getInactiveCredentials(node, httpRequestNodeTypeWithAuthProperties)).toEqual([
+				'httpBasicAuth',
+			]);
+		});
+
+		it('should keep a declared ssl credential whose ssl toggle is off', () => {
+			const node = makeNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'slackApi',
+					provideSslCertificates: false,
+				},
+				credentials: {
+					slackApi: { id: '123', name: 'Slack' },
+					// Turning the SSL setting off hides this credential, but it is parallel to
+					// the auth credential rather than an alternative to it, so switching auth
+					// types must not throw the binding away.
+					httpSslAuth: { id: '456', name: 'SSL Cert' },
+				},
+			});
+
+			expect(getInactiveCredentials(node, httpRequestNodeTypeWithAuthProperties)).toEqual([]);
+		});
+
+		it('should still remove a hidden declared credential that the auth mode governs', () => {
+			// HTTP Request v2 still declares the v1-era generic types, gated on
+			// `authentication` values its current options can never hold.
+			const httpRequestV2NodeType: INodeTypeDescription = {
+				...httpRequestNodeTypeWithAuthProperties,
+				credentials: [
+					{
+						name: 'httpBasicAuth',
+						required: true,
+						displayOptions: { show: { authentication: ['httpBasicAuth'] } },
+					},
+					{
+						name: 'httpSslAuth',
+						required: true,
+						displayOptions: { show: { provideSslCertificates: [true] } },
+					},
+				],
+			};
+
+			const node = makeNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+				},
+				credentials: {
+					httpHeaderAuth: { id: '123', name: 'Header Auth' },
+					httpBasicAuth: { id: '456', name: 'Stale Basic Auth' },
+				},
+			});
+
+			expect(getInactiveCredentials(node, httpRequestV2NodeType)).toEqual(['httpBasicAuth']);
+		});
+
+		it('should not exempt declared credentials for nodes that do not select types by parameter', () => {
+			// The carve-out is scoped to the parameter-selected path; ordinary nodes keep
+			// matching the save-time display filter, which drops hidden credentials.
+			const resourceGatedNodeType: INodeTypeDescription = {
+				...nodeTypeDefaults,
+				displayName: 'Test Node',
+				name: 'n8n-nodes-base.testNode',
+				credentials: [{ name: 'legacyApi', displayOptions: { show: { resource: ['user'] } } }],
+			};
+
+			const node = makeNode({
+				parameters: { resource: 'channel' },
+				credentials: { legacyApi: { id: '123', name: 'Legacy' } },
+			});
+
+			expect(getInactiveCredentials(node, resourceGatedNodeType)).toEqual(['legacyApi']);
+		});
 	});
 });

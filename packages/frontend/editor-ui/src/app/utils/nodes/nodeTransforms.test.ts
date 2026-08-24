@@ -549,6 +549,72 @@ describe('serializeNode', () => {
 			});
 		});
 
+		it('keeps a declared ssl credential when the ssl setting is off', () => {
+			nodeTypeProvider.getNodeType.mockReturnValue(httpRequestNodeType);
+
+			const node = createNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'slackApi',
+					provideSslCertificates: false,
+				},
+				credentials: {
+					slackApi: { id: '1', name: 'Slack' },
+					httpSslAuth: { id: '2', name: 'SSL Cert' },
+					httpQueryAuth: { id: '3', name: 'Stale Query Auth' },
+				},
+			});
+
+			const result = serializeNode(nodeTypeProvider, node);
+
+			// The SSL credential is hidden but parallel to the auth credential, so it
+			// survives the auth switch that drops the stale generic one.
+			expect(result.credentials).toEqual({
+				slackApi: { id: '1', name: 'Slack' },
+				httpSslAuth: { id: '2', name: 'SSL Cert' },
+			});
+		});
+
+		it('drops a stale credential despite an expression in a hidden credential-type parameter', () => {
+			nodeTypeProvider.getNodeType.mockReturnValue({
+				...httpRequestNodeType,
+				properties: [
+					{
+						displayName: 'Credential Type',
+						name: 'nodeCredentialType',
+						type: 'credentialsSelect',
+						default: '',
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						displayOptions: { show: { authentication: ['genericCredentialType'] } },
+					},
+				],
+			} as INodeTypeDescription);
+
+			const node = createNode({
+				type: 'n8n-nodes-base.httpRequest',
+				parameters: {
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'slackApi',
+					genericAuthType: '={{ $json.authType }}',
+				},
+				credentials: {
+					slackApi: { id: '1', name: 'Slack' },
+					httpBasicAuth: { id: '2', name: 'Stale Basic Auth' },
+				},
+			});
+
+			const result = serializeNode(nodeTypeProvider, node);
+
+			expect(result.credentials).toEqual({ slackApi: { id: '1', name: 'Slack' } });
+		});
+
 		it('filters declared credentials by display state and drops unknown types', () => {
 			const declaredNodeType = {
 				name: 'n8n-nodes-base.testNode',

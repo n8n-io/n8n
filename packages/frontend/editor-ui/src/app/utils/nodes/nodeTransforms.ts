@@ -20,7 +20,10 @@ import {
 } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { getCredentialTypeName, isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
-import { hasProxyAuth } from '@/app/utils/nodeTypesUtils';
+import {
+	getInactiveCredentials,
+	usesParameterSelectedCredentials,
+} from '@/app/utils/nodeTypesUtils';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 /**
@@ -240,17 +243,16 @@ export function serializeNode(nodeTypeProvider: NodeTypeProvider, node: INodeUi)
 			const saveCredentials: INodeCredentials = {};
 			// Nodes that select their credential type through parameters (e.g. HTTP
 			// Request's nodeCredentialType / genericAuthType) don't declare those types
-			// in the node type description, so filter them against the actively used
-			// types instead. A null active set means the type can't be determined
-			// statically (e.g. an expression) — keep everything rather than drop one in use.
-			const usesParameterSelectedCredentials =
-				hasProxyAuth(node) || Object.keys(nodeParametersInput).includes('genericAuthType');
-			const activeCredentialTypes = usesParameterSelectedCredentials
-				? NodeHelpers.getActiveCredentialTypes(node, nodeType)
-				: null;
+			// in the node type description, so the display check below can't see them.
+			// Drop the ones the current configuration no longer uses instead, sharing the
+			// rule with the credential picker so both agree on what survives a save.
+			const parameterSelected = usesParameterSelectedCredentials(node);
+			const removableCredentialTypes = parameterSelected
+				? new Set(getInactiveCredentials(node, nodeType))
+				: new Set<string>();
 			for (const nodeCredentialTypeName of Object.keys(node.credentials)) {
-				if (usesParameterSelectedCredentials) {
-					if (activeCredentialTypes === null || activeCredentialTypes.has(nodeCredentialTypeName)) {
+				if (parameterSelected) {
+					if (!removableCredentialTypes.has(nodeCredentialTypeName)) {
 						saveCredentials[nodeCredentialTypeName] = node.credentials[nodeCredentialTypeName];
 					}
 					continue;
