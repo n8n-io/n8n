@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
 	IDENTITY_AUDIENCE,
@@ -14,7 +14,33 @@ import {
 const secret = 'a'.repeat(32);
 const caller = { cpId: 'cp-1', tenantId: 'tenant-1' };
 
+/** Past every deadline the verifier allows, so one advance covers expiry and max age. */
+const PAST_EVERY_DEADLINE_MS =
+	(IDENTITY_TOKEN_TTL_SECONDS + IDENTITY_TOKEN_CLOCK_TOLERANCE_SECONDS + 1) * 1000;
+
+/**
+ * Signs a token from raw claims, bypassing {@link mintIdentityToken}. Only for
+ * tokens the control plane cannot mint: a missing `exp`, a foreign audience, an
+ * expiry untied to the TTL. Anything the clock can express moves the clock
+ * instead, so these tests do not restate how a real token is built.
+ */
+const signRawToken = (claims: Record<string, unknown>, options: jwt.SignOptions = {}) =>
+	jwt.sign(claims, secret, {
+		algorithm: 'HS256',
+		issuer: IDENTITY_ISSUER,
+		audience: IDENTITY_AUDIENCE,
+		...options,
+	});
+
 describe('SharedSecretIdentityVerifier', () => {
+	beforeEach(() => {
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it('constructing rejects an under-length secret', () => {
 		expect(() => new SharedSecretIdentityVerifier('short')).toThrow();
 	});
@@ -37,89 +63,71 @@ describe('SharedSecretIdentityVerifier', () => {
 		expect(() => verifier.verify(token)).toThrow(InvalidIdentityTokenError);
 	});
 
-	it('rejects an expired token', () => {
-		const token = jwt.sign({ sub: caller.cpId, tenant_id: caller.tenantId }, secret, {
-			algorithm: 'HS256',
-			issuer: IDENTITY_ISSUER,
-			audience: IDENTITY_AUDIENCE,
-			expiresIn: -60, // longer ago than the verifier's clock-skew tolerance
-		});
+	it('accepts a token still inside its lifetime', () => {
+		const token = mintIdentityToken(secret, caller);
 		const verifier = new SharedSecretIdentityVerifier(secret);
+
+		vi.advanceTimersByTime((IDENTITY_TOKEN_TTL_SECONDS - 1) * 1000);
+
+		expect(verifier.verify(token)).toEqual(caller);
+	});
+
+	it('rejects a token once its lifetime has passed', () => {
+		const token = mintIdentityToken(secret, caller);
+		const verifier = new SharedSecretIdentityVerifier(secret);
+
+		vi.advanceTimersByTime(PAST_EVERY_DEADLINE_MS);
 
 		expect(() => verifier.verify(token)).toThrow(InvalidIdentityTokenError);
 	});
 
-	it('rejects a token without an expiration', () => {
-		const token = jwt.sign({ sub: caller.cpId, tenant_id: caller.tenantId }, secret, {
-			algorithm: 'HS256',
-			issuer: IDENTITY_ISSUER,
-			audience: IDENTITY_AUDIENCE,
-		});
+	it('rejects a token minted further ahead than the clock-skew tolerance', () => {
+		const now = Date.now();
 		const verifier = new SharedSecretIdentityVerifier(secret);
+
+		// Minted on a clock that runs ahead of this host by more than it tolerates.
+		vi.setSystemTime(now + (IDENTITY_TOKEN_CLOCK_TOLERANCE_SECONDS + 60) * 1000);
+		const token = mintIdentityToken(secret, caller);
+		vi.setSystemTime(now);
 
 		expect(() => verifier.verify(token)).toThrow(InvalidIdentityTokenError);
 	});
 
 	it('rejects a token older than the maximum age even when it has not expired', () => {
-		const token = jwt.sign(
-			{
-				sub: caller.cpId,
-				tenant_id: caller.tenantId,
-				iat: Math.floor(Date.now() / 1000) - IDENTITY_TOKEN_TTL_SECONDS - 60,
-			},
-			secret,
-			{
-				algorithm: 'HS256',
-				issuer: IDENTITY_ISSUER,
-				audience: IDENTITY_AUDIENCE,
-				expiresIn: 3600,
-			},
+		// `mintIdentityToken` ties `exp` to the TTL, so only a raw token can outlive it.
+		const token = signRawToken(
+			{ sub: caller.cpId, tenant_id: caller.tenantId },
+			{ expiresIn: '1h' },
 		);
 		const verifier = new SharedSecretIdentityVerifier(secret);
+
+		vi.advanceTimersByTime(PAST_EVERY_DEADLINE_MS);
 
 		expect(() => verifier.verify(token)).toThrow(InvalidIdentityTokenError);
 	});
 
-	it('rejects a token issued later than the clock-skew tolerance', () => {
-		const issuedAt = Math.floor(Date.now() / 1000) + IDENTITY_TOKEN_CLOCK_TOLERANCE_SECONDS + 60;
-		const token = jwt.sign(
-			{
-				sub: caller.cpId,
-				tenant_id: caller.tenantId,
-				iat: issuedAt,
-				exp: issuedAt + IDENTITY_TOKEN_TTL_SECONDS,
-			},
-			secret,
-			{
-				algorithm: 'HS256',
-				issuer: IDENTITY_ISSUER,
-				audience: IDENTITY_AUDIENCE,
-			},
-		);
+	it('rejects a token without an expiration', () => {
+		const token = signRawToken({ sub: caller.cpId, tenant_id: caller.tenantId });
 		const verifier = new SharedSecretIdentityVerifier(secret);
 
 		expect(() => verifier.verify(token)).toThrow(InvalidIdentityTokenError);
 	});
 
 	it('rejects a token with the wrong audience', () => {
-		const token = jwt.sign({ sub: caller.cpId, tenant_id: caller.tenantId }, secret, {
-			algorithm: 'HS256',
-			issuer: IDENTITY_ISSUER,
-			audience: 'someone-else',
-			expiresIn: 60,
-		});
+		const token = signRawToken(
+			{ sub: caller.cpId, tenant_id: caller.tenantId },
+			{ audience: 'someone-else', expiresIn: IDENTITY_TOKEN_TTL_SECONDS },
+		);
 		const verifier = new SharedSecretIdentityVerifier(secret);
 
 		expect(() => verifier.verify(token)).toThrow(InvalidIdentityTokenError);
 	});
 
 	it('rejects a token with the wrong issuer', () => {
-		const token = jwt.sign({ sub: caller.cpId, tenant_id: caller.tenantId }, secret, {
-			algorithm: 'HS256',
-			issuer: 'someone-else',
-			audience: IDENTITY_AUDIENCE,
-			expiresIn: 60,
-		});
+		const token = signRawToken(
+			{ sub: caller.cpId, tenant_id: caller.tenantId },
+			{ issuer: 'someone-else', expiresIn: IDENTITY_TOKEN_TTL_SECONDS },
+		);
 		const verifier = new SharedSecretIdentityVerifier(secret);
 
 		expect(() => verifier.verify(token)).toThrow(InvalidIdentityTokenError);
@@ -133,7 +141,7 @@ describe('SharedSecretIdentityVerifier', () => {
 				tenant_id: caller.tenantId,
 				iss: IDENTITY_ISSUER,
 				aud: IDENTITY_AUDIENCE,
-				exp: Math.floor(Date.now() / 1000) + 60,
+				exp: Math.floor(Date.now() / 1000) + IDENTITY_TOKEN_TTL_SECONDS,
 			}),
 		).toString('base64url');
 		const token = `${header}.${payload}.`;
@@ -143,12 +151,7 @@ describe('SharedSecretIdentityVerifier', () => {
 	});
 
 	it('rejects a token missing tenant_id', () => {
-		const token = jwt.sign({ sub: caller.cpId }, secret, {
-			algorithm: 'HS256',
-			issuer: IDENTITY_ISSUER,
-			audience: IDENTITY_AUDIENCE,
-			expiresIn: 60,
-		});
+		const token = signRawToken({ sub: caller.cpId }, { expiresIn: IDENTITY_TOKEN_TTL_SECONDS });
 		const verifier = new SharedSecretIdentityVerifier(secret);
 
 		expect(() => verifier.verify(token)).toThrow(InvalidIdentityTokenError);
