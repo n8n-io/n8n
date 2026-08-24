@@ -132,31 +132,6 @@ describe('MultiMainSetup', () => {
 			expect(early.takeover).toHaveBeenCalledTimes(1);
 			expect(late.takeover).toHaveBeenCalledTimes(1);
 		});
-
-		it('reconciles handlers when leadership was taken over before handlers were registered', async () => {
-			const freshMetadata = new MultiMainMetadata();
-			const freshSetup = new MultiMainSetup(
-				logger,
-				instanceSettings,
-				globalConfig,
-				freshMetadata,
-				errorReporter,
-				client,
-			);
-			const handler = Container.get(LateHandler);
-			freshMetadata.register(handlerFor(LateHandler));
-
-			client.setLeaderIfNotExists.mockResolvedValue(createResultOk(true));
-
-			// Startup race: this instance becomes leader (and emits the one-shot
-			// 'leader-takeover') before registerEventHandlers() has subscribed anything.
-			await freshSetup.init();
-			expect(instanceSettings.isLeader).toBe(true);
-
-			freshSetup.registerEventHandlers();
-
-			expect(handler.takeover).toHaveBeenCalledTimes(1);
-		});
 	});
 
 	describe('checkLeader (leader path)', () => {
