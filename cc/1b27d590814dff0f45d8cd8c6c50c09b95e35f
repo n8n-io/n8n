@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/vite.config.mts
+  s_81c6ae39c83974::t_5b8a83395d884f 19,25-27,42,163-182,185-199
+packages/frontend/editor-ui/vitest.config.mts
+  s_81c6ae39c83974::t_a3a1b7635b008b 2,8
+packages/frontend/editor-ui/vite/dev-ports.mts
+  s_81c6ae39c83974::t_d5438d31fbe635 1-55
+packages/frontend/editor-ui/vite/dev-ports.test.ts
+  s_81c6ae39c83974::t_134862e4283a89 1-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "cc1b27d590814dff0f45d8cd8c6c50c09b95e35f",
+  "prompts": {},
+  "sessions": {
+    "s_81c6ae39c83974": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2a3857c-dcc3-4658-b86e-6436a170b7e9",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}
