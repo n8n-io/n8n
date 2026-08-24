@@ -67,33 +67,44 @@ export class WorkflowCompilerService {
 	compile(workflow: IWorkflowBase, config: EvaluationConfig): IWorkflowBase {
 		this.assertNoReservedNames(workflow);
 
-		// Resolve the entry node and capture its current incoming edge BEFORE
+		const removedTriggerNames = new Set(
+			workflow.nodes.filter((n) => n.type === EVALUATION_TRIGGER_NODE_TYPE).map((n) => n.name),
+		);
+
+		// Resolve the entry node and capture its current incoming edge(s) BEFORE
 		// neutralising pre-existing evaluation nodes below. When the workflow's own
 		// trigger IS the pre-existing EvaluationTrigger (no separate canvas trigger
-		// feeding the entry node), pruning it also deletes its outgoing edge — if this
-		// lookup ran afterward, it would find no incoming connection left to attach the
-		// newly-injected trigger to and fail with "cannot inject evaluation trigger".
+		// feeding the entry node), pruning it also deletes its outgoing edge — if these
+		// lookups ran afterward, they'd find no incoming connection left to attach the
+		// newly-injected trigger to, and no name left to rewrite stale expressions from.
 		const entryNodeName = this.resolveEntryNode(workflow, config);
 		const userTriggerEdge = this.findUserTriggerEdgeTo(workflow.connections, entryNodeName);
 
+		// The EvaluationTrigger is always added as a NEW node; the user's original
+		// upstream node is left intact so expressions referencing it still read naturally
+		// in the editor. We then rewrite any `$("<replacedNode>")` references across the
+		// workflow to point at the new `__eval_trigger` so they resolve at runtime. Prefers
+		// a kept (non-evaluation) node when one also fed the entry node alongside a
+		// pre-existing EvaluationTrigger — that trigger's own edge is being replaced
+		// regardless and shouldn't count as a second "upstream node" candidate — but
+		// falls back to the pre-existing trigger's name when it was the only feeder, so
+		// e.g. a metric's `$("<oldTrigger>")` reference (captured from a workflow built
+		// entirely around evaluation) still gets rewritten before that node is deleted.
+		const replacedNodeName = this.findReplacedUpstreamNode(
+			workflow,
+			entryNodeName,
+			removedTriggerNames,
+		);
+
 		// Neutralise evaluation nodes the saved workflow already had so the
 		// compiled output doesn't end up with duplicate triggers / metrics.
-		workflow = this.prepareExistingEvaluationNodes(workflow);
+		workflow = this.prepareExistingEvaluationNodes(workflow, removedTriggerNames);
 
 		const entryPos = this.positionOf(workflow, entryNodeName) ?? [0, 0];
 		const endPos = this.positionOf(workflow, config.endNodeName) ?? [
 			entryPos[0] + NODE_STEP_X,
 			entryPos[1],
 		];
-
-		// The EvaluationTrigger is always added as a NEW node; the user's original
-		// upstream node is left intact so expressions referencing it still read naturally
-		// in the editor. We then rewrite any `$("<replacedNode>")` references across the
-		// workflow to point at the new `__eval_trigger` so they resolve at runtime.
-		// Resolved against the already-neutralised workflow: when a pre-existing
-		// EvaluationTrigger fed the entry node alongside the user's own trigger, its
-		// (now-removed) edge must not count as a second "upstream node" candidate.
-		const replacedNodeName = this.findReplacedUpstreamNode(workflow, entryNodeName);
 
 		// Anchor metric nodes clear of the user's entire workflow so they don't overlap
 		// existing nodes in the execution view. Vertical spacing per row depends on the
@@ -132,7 +143,11 @@ export class WorkflowCompilerService {
 		return { ...workflow, nodes, connections };
 	}
 
-	private findReplacedUpstreamNode(workflow: IWorkflowBase, entryNodeName: string): string | null {
+	private findReplacedUpstreamNode(
+		workflow: IWorkflowBase,
+		entryNodeName: string,
+		removedTriggerNames: Set<string>,
+	): string | null {
 		const upstreamNames = new Set<string>();
 		for (const [fromNode, conn] of Object.entries(workflow.connections)) {
 			for (const bucket of conn.main ?? []) {
@@ -141,9 +156,14 @@ export class WorkflowCompilerService {
 				}
 			}
 		}
-		if (upstreamNames.size !== 1) return null;
-		const [name] = upstreamNames;
-		return name;
+
+		// A kept (non-evaluation) node is "the user's original upstream node" whose
+		// references get rewritten; a pre-existing EvaluationTrigger feeding the same
+		// entry node alongside it doesn't count towards ambiguity.
+		const keptCandidates = [...upstreamNames].filter((name) => !removedTriggerNames.has(name));
+		if (keptCandidates.length === 1) return keptCandidates[0];
+		if (keptCandidates.length === 0 && upstreamNames.size === 1) return [...upstreamNames][0];
+		return null;
 	}
 
 	private computeMetricRowYs(metrics: EvaluationMetric[], baseY: number): number[] {
@@ -180,11 +200,10 @@ export class WorkflowCompilerService {
 	 * feeding the entry node — the normal case for a workflow that gained eval
 	 * nodes on top of a complete flow.
 	 */
-	private prepareExistingEvaluationNodes(workflow: IWorkflowBase): IWorkflowBase {
-		const removedTriggerNames = new Set(
-			workflow.nodes.filter((n) => n.type === EVALUATION_TRIGGER_NODE_TYPE).map((n) => n.name),
-		);
-
+	private prepareExistingEvaluationNodes(
+		workflow: IWorkflowBase,
+		removedTriggerNames: Set<string>,
+	): IWorkflowBase {
 		const nodes = workflow.nodes
 			.filter((n) => !removedTriggerNames.has(n.name))
 			.map((n) =>

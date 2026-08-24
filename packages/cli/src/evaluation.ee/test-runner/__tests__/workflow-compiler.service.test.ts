@@ -855,5 +855,31 @@ describe('WorkflowCompilerService', () => {
 				main: [[{ node: 'Agent', type: 'main', index: 0 }]],
 			});
 		});
+
+		it('rewrites expressions referencing the sole pre-existing EvaluationTrigger before removing it (TRUST-407)', () => {
+			const config = baseConfig();
+			config.metrics = [
+				{
+					id: 'm-expr',
+					name: 'Matches dataset',
+					type: 'expression',
+					config: {
+						expression: '={{ $("Old Eval Trigger").item.json.expectedAnswer === $json.output }}',
+						outputType: 'boolean',
+					},
+				},
+			];
+
+			const compiled = compiler.compile(workflowWithOnlyEvaluationTrigger(), config);
+			const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-expr')!;
+			const assignedValue = (metric.parameters.metrics as { assignments: Array<{ value: string }> })
+				.assignments[0].value;
+
+			// The reference to the (now-deleted) old trigger was rewritten to
+			// __eval_trigger — left as-is, this would fail at runtime with
+			// "Referenced node doesn't exist".
+			expect(assignedValue).toContain('$("__eval_trigger")');
+			expect(assignedValue).not.toContain('$("Old Eval Trigger")');
+		});
 	});
 });
