@@ -19,7 +19,6 @@ const OBSERVATION_SCHEMA = {
 		workflowName: { type: 'string' },
 		observations: {
 			type: 'array',
-			maxItems: 12,
 			items: {
 				type: 'object',
 				additionalProperties: false,
@@ -60,7 +59,6 @@ const LEARNINGS_SCHEMA = {
 	properties: {
 		learnings: {
 			type: 'array',
-			maxItems: 25,
 			items: {
 				type: 'object',
 				additionalProperties: false,
@@ -87,10 +85,10 @@ const LEARNINGS_SCHEMA = {
 					appliesWhen: { type: 'string' },
 					supportingWorkflowIds: { type: 'array', items: { type: 'string' } },
 					supportingObservationIds: { type: 'array', items: { type: 'string' } },
-					supportingWorkflowCount: { type: 'integer', minimum: 0 },
+					supportingWorkflowCount: { type: 'integer' },
 					counterexampleWorkflowIds: { type: 'array', items: { type: 'string' } },
-					counterexampleCount: { type: 'integer', minimum: 0 },
-					confidence: { type: 'number', minimum: 0, maximum: 1 },
+					counterexampleCount: { type: 'integer' },
+					confidence: { type: 'number' },
 					sensitivity: {
 						type: 'string',
 						enum: ['internal', 'public', 'sensitive'],
@@ -251,7 +249,103 @@ function redact(value, key = '') {
 	);
 }
 
+function removeCredentialIds(value) {
+	if (Array.isArray(value)) return value.map(removeCredentialIds);
+	if (value !== null && typeof value === 'object') {
+		return Object.fromEntries(
+			Object.entries(value).map(([entryKey, entryValue]) => [
+				entryKey,
+				removeCredentialIds(entryValue),
+			]),
+		);
+	}
+	if (typeof value !== 'string') return value;
+
+	return value
+		.replace(/\s*\(\s*(?:credential\s+)?id\s+[A-Za-z0-9_-]+\s*\)/gi, '')
+		.replace(
+			/(\bcredential(?:\s+named)?\s+['"][^'"]+['"])\s*,?\s*(?:credential\s+)?id\s+[A-Za-z0-9_-]+/gi,
+			'$1',
+		)
+		.replace(
+			/(\b(?:document|spreadsheet|folder|file)\s+id)\s+[A-Za-z0-9_-]{12,}/gi,
+			'$1 [redacted]',
+		);
+}
+
+function normalizeReducerOutput(output, observationDocuments) {
+	const observationOwners = new Map();
+	const knownWorkflowIds = new Set();
+	for (const document of observationDocuments) {
+		knownWorkflowIds.add(document.workflowId);
+		for (const observation of document.observations) {
+			observationOwners.set(observation.id, document.workflowId);
+		}
+	}
+
+	const sanitized = removeCredentialIds(output);
+	return {
+		...sanitized,
+		learnings: sanitized.learnings.map((learning) => {
+			const supportingObservationIds = [
+				...new Set(
+					learning.supportingObservationIds.filter((id) => observationOwners.has(id)),
+				),
+			];
+			const supportingWorkflowIds = [
+				...new Set(supportingObservationIds.map((id) => observationOwners.get(id))),
+			];
+			const counterexampleWorkflowIds = [
+				...new Set(
+					learning.counterexampleWorkflowIds.filter((id) => knownWorkflowIds.has(id)),
+				),
+			];
+			const supportingWorkflowCount = supportingWorkflowIds.length;
+
+			const statement = learning.statement
+				.replace(
+					/^(Across \d+ observed[^,]{0,80}\bworkflows?)\s*\([^)]*\)/i,
+					'$1',
+				)
+				.replace(
+					/^Across \d+(?=\s+observed[^,]{0,80}\bworkflows?\b)/i,
+					`Across ${supportingWorkflowCount}`,
+				)
+				.replace(/\ball\b\s*/gi, '')
+				.replace(/\bevery\b/gi, 'each')
+				.replace(/\balways\b/gi, 'consistently')
+				.replace(/\bexclusively\b/gi, 'only')
+				.replace(/\bnever\b/gi, 'not');
+
+			return {
+				...learning,
+				statement,
+				supportingWorkflowIds,
+				supportingObservationIds,
+				supportingWorkflowCount,
+				counterexampleWorkflowIds,
+				counterexampleCount: counterexampleWorkflowIds.length,
+			};
+		}),
+	};
+}
+
 function workflowForAnalysis(workflow) {
+	const nodes = workflow.nodes?.map((node) => ({
+		...node,
+		credentials:
+			node.credentials && typeof node.credentials === 'object'
+				? Object.fromEntries(
+						Object.entries(node.credentials).map(([credentialType, credential]) => [
+							credentialType,
+							credential && typeof credential === 'object'
+								? { name: credential.name }
+								: credential,
+						]),
+					)
+				: node.credentials,
+	}));
+
 	return redact({
 		id: workflow.id,
 		name: workflow.name,
@@ -259,7 +353,7 @@ function workflowForAnalysis(workflow) {
 		isArchived: workflow.isArchived,
 		createdAt: workflow.createdAt,
 		updatedAt: workflow.updatedAt,
-		nodes: workflow.nodes,
+		nodes,
 		connections: workflow.connections,
 		settings: workflow.settings,
 		meta: workflow.meta,
@@ -278,6 +372,7 @@ Rules:
 - Cite exact node IDs and node names. Do not invent nodes.
 - Do not write "the team always", "usually", or similar cross-workflow conclusions.
 - Do not include secrets, tokens, raw credential values, customer data, or long payloads.
+- Credential names and types may be useful evidence, but never include credential IDs.
 - Skip generic n8n facts unless their specific use is distinctive in this workflow.
 - Ignore disconnected nodes unless the observation explicitly says they are disconnected.
 - Prefer 3-10 useful observations. An empty list is valid for a trivial workflow.
@@ -309,12 +404,18 @@ For each candidate:
 - cite supporting workflow IDs and observation IDs;
 - count distinct supporting workflows;
 - count only explicit contradictions as counterexamples (omission is not a counterexample);
+- do not use "all", "every", "always", "exclusively", or equivalent universal language;
+- start cross-workflow claims with "Across N observed workflows" or otherwise state the evidence
+  scope explicitly, even when every applicable workflow appears to support the claim;
+- when support is partial, qualify the statement with its observed scope instead of generalizing;
 - explain transferability and assign calibrated confidence;
 - reject it if generic, unsupported, one-off, or not actionable.
 
 A one-workflow candidate may survive only when it is an explicit, useful environment mapping and
 must have appropriately lower confidence. Prefer a small set of strong learnings over an exhaustive
-catalogue.
+catalogue. Never repeat a credential ID, even if one appears in an observation. Omit database record
+IDs, secrets, tokens, and unnecessary personal data. Credential names and types may be retained when
+they are actionable.
 
 Project ID: ${projectId ?? 'unknown'}
 
@@ -390,8 +491,10 @@ async function callAnthropic({
 			throw new Error(`${label}: Anthropic API ${response.status}: ${body.slice(0, 500)}`);
 		}
 
-		const retryAfter = Number(response.headers.get('retry-after'));
-		const delay = Number.isFinite(retryAfter) ? retryAfter * 1000 : 2 ** attempt * 1000;
+		const retryAfterHeader = response.headers.get('retry-after');
+		const retryAfter = retryAfterHeader === null ? Number.NaN : Number(retryAfterHeader);
+		const delay =
+			Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2 ** attempt * 1000;
 		console.warn(`${label}: API ${response.status}; retrying in ${delay}ms`);
 		await sleep(delay);
 	}
@@ -548,7 +651,9 @@ async function main() {
 	}
 
 	if (options.stage === 'all' || options.stage === 'reduce') {
-		const observations = await loadObservations(workflows, outputDirectory);
+		const observations = removeCredentialIds(
+			await loadObservations(workflows, outputDirectory),
+		);
 		const result = await callAnthropic({
 			apiKey,
 			model: options.model,
@@ -558,8 +663,9 @@ async function main() {
 			schema: LEARNINGS_SCHEMA,
 			label: 'reducer',
 		});
+		const sanitizedOutput = normalizeReducerOutput(result.output, observations);
 		await writeJsonAtomic(join(outputDirectory, 'learnings.json'), {
-			...result.output,
+			...sanitizedOutput,
 			_request: {
 				model: result.model,
 				effort: options.effort,
@@ -571,8 +677,8 @@ async function main() {
 		run.reducer = {
 			messageId: result.messageId,
 			usage: result.usage,
-			learningCount: result.output.learnings.length,
-			rejectedCount: result.output.rejected.length,
+			learningCount: sanitizedOutput.learnings.length,
+			rejectedCount: sanitizedOutput.rejected.length,
 		};
 	}
 
