@@ -183,19 +183,19 @@ describe('ImapSimple', () => {
 		it('is `ended` when the caller ends it', async () => {
 			const closed = await closeReason((_imap, connection) => connection.end());
 
-			expect(closed).toHaveBeenCalledWith('ended');
+			expect(closed).toHaveBeenCalledWith('ended', undefined);
 		});
 
 		it('is `dropped` when the server goes away silently', async () => {
 			const closed = await closeReason((imap) => imap.drop());
 
-			expect(closed).toHaveBeenCalledWith('dropped');
+			expect(closed).toHaveBeenCalledWith('dropped', undefined);
 		});
 
 		it('is `error` when a failure preceded it', async () => {
 			const closed = await closeReason((imap) => imap.drop(new Error('ECONNRESET')));
 
-			expect(closed).toHaveBeenCalledWith('error');
+			expect(closed).toHaveBeenCalledWith('error', undefined);
 		});
 
 		it('is reported once', async () => {

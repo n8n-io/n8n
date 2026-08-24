@@ -160,6 +160,9 @@ export class ImapSimple {
 	/** The error reported, if any; the close that follows is its consequence, not a separate event. */
 	private failure: Error | undefined;
 
+	/** Why an unrecoverable drop gave up, for the close it reports and for an `open` that raced it. */
+	private dropCause: Error | undefined;
+
 	/** `close` was emitted; the connection is spent and stays silent from here on. */
 	private closed = false;
 
@@ -180,7 +183,7 @@ export class ImapSimple {
 	private readonly handlers: {
 		arrival?: (arrival: Arrival) => Promise<void> | void;
 		error?: (error: Error) => void;
-		close?: (reason: CloseReason) => void;
+		close?: (reason: CloseReason, cause?: Error) => void;
 		reconnect?: () => void;
 		flags?: (event: FlagsEvent) => void;
 	} = {};
@@ -208,7 +211,7 @@ export class ImapSimple {
 	}
 
 	/** Handles the connection going for good. Nothing is reported after it. */
-	onClose(handler: (reason: CloseReason) => void): this {
+	onClose(handler: (reason: CloseReason, cause?: Error) => void): this {
 		this.handlers.close = handler;
 		return this;
 	}
@@ -242,7 +245,7 @@ export class ImapSimple {
 	private reportClose(): void {
 		if (this.closed) return;
 		this.closed = true;
-		this.report('close', (handler) => handler(this.closeReason()));
+		this.report('close', (handler) => handler(this.closeReason(), this.dropCause));
 	}
 
 	get endedByCaller(): boolean {
@@ -267,7 +270,7 @@ export class ImapSimple {
 		// place or given up; either way this one is stale.
 		if (attempt !== this.attempt) {
 			this.discard(client);
-			if (this.closed) throw this.failure ?? new ConnectionLostError();
+			if (this.closed) throw this.failure ?? this.dropCause ?? new ConnectionLostError();
 			return;
 		}
 
@@ -349,7 +352,9 @@ export class ImapSimple {
 			await withTimeout(this.reopen(attempt), this.reconnectTimeout);
 		} catch (error) {
 			if (attempt !== this.attempt || !this.canRestore()) return;
-			this.reportError(error);
+			// A drop nothing could be done about, so the close carries `dropped` and the attempt
+			// that failed. Reporting an error first would relabel it as one the caller can read.
+			this.dropCause = error instanceof Error ? error : new Error(String(error));
 			this.reportClose();
 		}
 	}
