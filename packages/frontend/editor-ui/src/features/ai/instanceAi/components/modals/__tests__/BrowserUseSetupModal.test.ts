@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
-import { defineComponent, h, reactive, ref, watch } from 'vue';
+import { reactive } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import BrowserUseSetupContent from '../BrowserUseSetupContent.vue';
 import BrowserUseSetupModal from '../BrowserUseSetupModal.vue';
@@ -230,51 +230,14 @@ describe('BrowserUseSetupModal', () => {
 			return rendered;
 		}
 
-		it('closes the view and reports the success as a toast when auto-connecting', async () => {
-			const { emitted } = await renderContentAndConnect({ autoConnect: true });
-
-			expect(emitted('close')).toHaveLength(1);
-			expect(showMessageMock).toHaveBeenCalledWith({
-				type: 'success',
-				title: 'instanceAi.browserUse.connected',
-				message: 'instanceAi.browserUse.connected.toastMessage',
-			});
-		});
-
+		// Closing the modal and reporting success now belong to useBrowserUseConnection, which
+		// drives every connect — including the remembered one that never opens this view.
 		it('keeps the connected status in place when not auto-connecting', async () => {
 			const { emitted, getByText } = await renderContentAndConnect({ embedded: true });
 
 			expect(emitted('close')).toBeUndefined();
 			expect(showMessageMock).not.toHaveBeenCalled();
 			expect(getByText('instanceAi.browserUse.connected')).toBeVisible();
-		});
-
-		// The credential setup flow watches the same connection state and closes the modal
-		// itself, so the toast has to be reported before this view is torn down.
-		it('reports the success even when an outside watcher closes the view first', async () => {
-			const store = reactive(makeSettingsStore());
-			settingsStoreMock.mockReturnValue(store);
-
-			const host = defineComponent({
-				setup() {
-					const visible = ref(true);
-					watch(
-						() => store.browserConnected,
-						(connected) => {
-							if (connected) visible.value = false;
-						},
-					);
-					return () => (visible.value ? h(BrowserUseSetupContent, { autoConnect: true }) : null);
-				},
-			});
-
-			createComponentRenderer(host)();
-			await flushPromises();
-
-			store.browserConnected = true;
-			await flushPromises();
-
-			expect(showMessageMock).toHaveBeenCalledTimes(1);
 		});
 	});
 

@@ -3,8 +3,6 @@ name: 'Test: E2E on -pc image'
 # Boots the pointer-compressed n8n image and runs the e2e suite against it.
 
 on:
-  schedule:
-    - cron: '0 2 * * *' # after the nightly Docker build at midnight
   workflow_dispatch:
     inputs:
       image:

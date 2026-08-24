@@ -8,6 +8,8 @@ import type {
 import {
 	AllowAllAdmittance,
 	createEngineRuntime,
+	mintIdentityToken,
+	SharedSecretIdentityVerifier,
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '@n8n/engine';
@@ -48,6 +50,9 @@ export const realNodeTypes: INodeTypes = {
 };
 
 export const converter = new V1WorkflowConverter();
+
+const authSecret = 'a'.repeat(32);
+const caller = { cpId: 'cp-1', tenantId: 'tenant-1' };
 
 export type Assignment = { name: string; value: string | number; type: string };
 
@@ -102,6 +107,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 		const runtime = createEngineRuntime({
 			dataSource,
 			admittance: new AllowAllAdmittance(),
+			identityVerifier: new SharedSecretIdentityVerifier(authSecret),
 			// also how the test reaches the stores the runtime owns
 			externalDependencies: ({ executionStore, stepStore }) => {
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
@@ -125,6 +131,7 @@ export function makeRunWorkflow(getDataSource: () => EngineDataSource) {
 		// over HTTP, because that is the engine's only boundary
 		const response = await request(runtime.app)
 			.post('/api/workflow-executions')
+			.set('Authorization', `Bearer ${mintIdentityToken(authSecret, caller)}`)
 			.send({ workflowId: 'wf-m1', graph, triggerOutputs, mode })
 			.expect(201);
 		const { executionId } = response.body as StartExecutionResult;

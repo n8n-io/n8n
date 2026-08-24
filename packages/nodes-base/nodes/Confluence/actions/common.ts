@@ -196,14 +196,44 @@ export async function resolveSpaceKey(
 	return space.key;
 }
 
-export function extractNextCursor(response: IDataObject): string | undefined {
+export type NextPageParam = { key: 'cursor' | 'start'; value: string };
+
+export function extractNextPageParam(response: IDataObject): NextPageParam | undefined {
 	const next = (response._links as IDataObject | undefined)?.next;
 	if (typeof next !== 'string' || next === '') return undefined;
+
+	let params: URLSearchParams;
 	try {
-		return new URL(next, 'https://api.atlassian.com').searchParams.get('cursor') ?? undefined;
+		params = new URL(next, 'https://api.atlassian.com').searchParams;
 	} catch {
 		return undefined;
 	}
+	const cursor = params.get('cursor');
+	if (cursor !== null && cursor !== '') return { key: 'cursor', value: cursor };
+	// Older responses page by start offset instead of cursor
+	const start = params.get('start');
+	return start === null || start === '' ? undefined : { key: 'start', value: start };
+}
+
+export function extractNextCursor(response: IDataObject): string | undefined {
+	const next = extractNextPageParam(response);
+	return next?.key === 'cursor' ? next.value : undefined;
+}
+
+/** Validates a count parameter that an expression may hand back as a numeric string. */
+export function parsePositiveInt(
+	this: IExecuteFunctions,
+	raw: unknown,
+	label: string,
+	itemIndex: number,
+): number {
+	const value = Number(raw);
+	if (!Number.isFinite(value) || value < 1) {
+		throw new NodeOperationError(this.getNode(), `${label} must be a number of at least 1`, {
+			itemIndex,
+		});
+	}
+	return Math.floor(value);
 }
 
 function asString(value: unknown): string {
