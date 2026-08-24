@@ -5634,6 +5634,60 @@ describe('NodeHelpers', () => {
 			},
 		);
 
+		it('should ignore an expression left in a hidden credential-type parameter', () => {
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([]),
+				properties: [
+					{
+						displayName: 'Credential Type',
+						name: 'nodeCredentialType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['extends:oAuth2Api'],
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['has:genericAuth'],
+						displayOptions: { show: { authentication: ['genericCredentialType'] } },
+					},
+				],
+			};
+			// The hidden genericAuthType holds an expression from a previous setup. It
+			// resolves to nothing while hidden, so it must not make the active set
+			// indeterminable and stop callers from cleaning up.
+			const node = makeNode({
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'slackApi',
+				genericAuthType: '={{ $json.authType }}',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['slackApi']));
+		});
+
+		it('should return null when an expression sits in a displayed credential-type parameter', () => {
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([]),
+				properties: [
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['has:genericAuth'],
+						displayOptions: { show: { authentication: ['genericCredentialType'] } },
+					},
+				],
+			};
+			const node = makeNode({
+				authentication: 'genericCredentialType',
+				genericAuthType: '={{ $json.authType }}',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toBeNull();
+		});
+
 		it('should return null when evaluating the node configuration throws', () => {
 			const nodeType = makeNodeType([{ name: 'testApi' }]);
 			const throwingParameters = new Proxy(

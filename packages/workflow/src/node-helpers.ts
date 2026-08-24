@@ -546,9 +546,6 @@ export function getActiveCredentialTypes(
 		const { nodeCredentialType, genericAuthType } = node.parameters;
 		for (const paramName of ['nodeCredentialType', 'genericAuthType'] as const) {
 			const paramValue = paramName === 'nodeCredentialType' ? nodeCredentialType : genericAuthType;
-			if (isExpression(paramValue)) {
-				return null;
-			}
 			if (typeof paramValue !== 'string' || !paramValue) {
 				continue;
 			}
@@ -567,6 +564,13 @@ export function getActiveCredentialTypes(
 				!displayParameter(node.parameters, paramDescription, node, nodeTypeDescription)
 			) {
 				continue;
+			}
+
+			// Checked after the hidden check: a hidden parameter holds no active value,
+			// expression or not, so a leftover expression must not make the whole node
+			// indeterminable and block cleanup.
+			if (isExpression(paramValue)) {
+				return null;
 			}
 
 			activeTypes.add(paramValue);
