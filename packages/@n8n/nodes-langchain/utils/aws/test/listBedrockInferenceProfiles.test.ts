@@ -106,6 +106,18 @@ describe('listBedrockInferenceProfiles', () => {
 		);
 	});
 
+	it('dedupes profiles returned by both requests', async () => {
+		const httpMock = httpMockFor(
+			{ inferenceProfileSummaries: [systemProfile, applicationProfile] },
+			{ inferenceProfileSummaries: [applicationProfile] },
+		);
+		const ctx = contextFor(httpMock);
+
+		const profiles = await listBedrockInferenceProfiles(ctx, api);
+
+		expect(profiles).toEqual([systemProfile, applicationProfile]);
+	});
+
 	it('tolerates responses without inferenceProfileSummaries', async () => {
 		const httpMock = httpMockFor({}, {});
 		const ctx = contextFor(httpMock);

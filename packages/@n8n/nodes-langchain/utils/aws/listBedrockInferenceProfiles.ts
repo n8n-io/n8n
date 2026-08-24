@@ -60,5 +60,6 @@ export async function listBedrockInferenceProfiles(
 	if (systemDefined.status === 'rejected' && application.status === 'rejected') {
 		throw systemDefined.reason;
 	}
-	return profiles;
+	// Dedupe by ARN in case both requests return overlapping profile lists.
+	return [...new Map(profiles.map((profile) => [profile.inferenceProfileArn, profile])).values()];
 }
