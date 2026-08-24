@@ -51,6 +51,18 @@ export async function searchSpaces(
 	return { results, paginationToken: cursor };
 }
 
+export async function searchSpacesWithAll(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	const search = await searchSpaces.call(this, filter, paginationToken);
+	if (paginationToken === undefined && (filter ?? '').trim() === '') {
+		search.results.unshift({ name: 'All Spaces', value: '' });
+	}
+	return search;
+}
+
 async function fetchSearchPage(
 	this: ILoadOptionsFunctions,
 	cql: string,

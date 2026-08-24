@@ -12,7 +12,10 @@ import {
 	applyBranchReadOnlyOverrides,
 	buildDataTablesSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
+	buildSetupSkipGrantKey,
+	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
+	confirmationRequestPayloadSchema,
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	errorPayloadSchema,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
@@ -22,7 +25,13 @@ import {
 	InstanceAiEnsureThreadRequest,
 	findUnbackedSeedWorkflowTools,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiThreadMessagesQuery,
+	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
 	instanceAiEvalSeedAgentSchema,
+	instanceAiAttachmentSchema,
+	instanceAiResourceAttachmentSchema,
 	INSTANCE_AI_THREAD_SOURCES,
 	isInstanceAiSandboxProvider,
 	isKnownInstanceAiErrorCode,
@@ -221,6 +230,14 @@ function makeConfirmation(
 		...overrides,
 	};
 }
+
+describe('confirmationRequestPayloadSchema', () => {
+	it('preserves an explicit credential selection requirement', () => {
+		const payload = makeConfirmation({ requireUserSelection: true });
+
+		expect(confirmationRequestPayloadSchema.parse(payload)).toEqual(payload);
+	});
+});
 
 describe('isDisplayableConfirmationRequest', () => {
 	it('treats approval and text messages as displayable', () => {
@@ -452,6 +469,25 @@ describe('data-tables session grant keys', () => {
 describe('workflow update session grant keys', () => {
 	it('builds per-workflow keys matching the frontend always-allow format', () => {
 		expect(buildUpdateWorkflowSessionGrantKey('wf-1')).toBe('workflows:update:wf-1');
+	});
+});
+
+describe('workflow-setup skip keys', () => {
+	it('round-trips credential types and ignores unrelated keys', () => {
+		const keys = new Set([
+			buildSetupSkipGrantKey('slackApi'),
+			buildSetupSkipGrantKey('Wait for Form'),
+			'executions:run:wf-1',
+		]);
+
+		expect(buildSetupSkipGrantKey('slackApi')).toBe('workflows:setup-skip:slackApi');
+		expect(parseSetupSkipGrants(keys)).toEqual(new Set(['slackApi', 'Wait for Form']));
+	});
+
+	it('does not collide with the workflow-update namespace', () => {
+		expect(parseSetupSkipGrants(new Set([buildUpdateWorkflowSessionGrantKey('wf-1')])).size).toBe(
+			0,
+		);
 	});
 });
 
@@ -751,5 +787,153 @@ describe('total attachment budget', () => {
 
 	it('leaves room for more than one max-size file', () => {
 		expect(MAX_TOTAL_ATTACHMENT_DECODED_BYTES).toBeGreaterThan(MAX_ATTACHMENT_DECODED_BYTES);
+	});
+});
+
+describe('instanceAiAttachmentSchema — nodes attachment', () => {
+	const nodesAttachment = (overrides: Record<string, unknown> = {}) => ({
+		type: 'nodes',
+		workflowId: 'wf-1',
+		sets: [{ nodes: [{ id: 'n1', name: 'HTTP Request' }] }],
+		...overrides,
+	});
+
+	it('accepts a single set with one loose node and no optional fields', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment());
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts a chain set with inputNode, outputNode, and canvasGroupId', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{
+						nodes: [
+							{ id: 'n1', name: 'HTTP Request' },
+							{ id: 'n2', name: 'Set' },
+							{ id: 'n3', name: 'IF' },
+						],
+						inputNode: { id: 'n0', name: 'Webhook' },
+						outputNode: { id: 'n4', name: 'Slack' },
+						canvasGroupId: 'g1',
+						canvasGroupName: 'My Group 1',
+					},
+				],
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts two sets at once', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{ nodes: [{ id: 'n1' }] },
+					{ nodes: [{ id: 'n2' }, { id: 'n3' }], inputNode: { id: 'n1' } },
+				],
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects a missing workflowId', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ workflowId: undefined }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects an empty sets array', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets: [] }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a set with an empty nodes array', () => {
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets: [{ nodes: [] }] }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects more than 50 sets', () => {
+		const sets = Array.from({ length: 51 }, (_, i) => ({ nodes: [{ id: `n${i}` }] }));
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets }));
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects more than 50 nodes in a single set', () => {
+		const nodes = Array.from({ length: 51 }, (_, i) => ({ id: `n${i}` }));
+		const result = instanceAiAttachmentSchema.safeParse(nodesAttachment({ sets: [{ nodes }] }));
+		expect(result.success).toBe(false);
+	});
+
+	it('accepts node refs without a name', () => {
+		const result = instanceAiAttachmentSchema.safeParse(
+			nodesAttachment({
+				sets: [
+					{
+						nodes: [{ id: 'n1' }],
+						inputNode: { id: 'n0' },
+						outputNode: { id: 'n2' },
+					},
+				],
+			}),
+		);
+		expect(result.success).toBe(true);
+	});
+
+	it('still accepts file, workflow, and agent attachments unchanged', () => {
+		expect(
+			instanceAiAttachmentSchema.safeParse({
+				type: 'file',
+				data: 'YQ==',
+				mimeType: 'text/plain',
+				fileName: 'a.txt',
+			}).success,
+		).toBe(true);
+		expect(instanceAiAttachmentSchema.safeParse({ type: 'workflow', id: 'wf-1' }).success).toBe(
+			true,
+		);
+		expect(
+			instanceAiAttachmentSchema.safeParse({ type: 'agent', id: 'agent-1', projectId: 'proj-1' })
+				.success,
+		).toBe(true);
+	});
+
+	it('is also accepted by instanceAiResourceAttachmentSchema', () => {
+		const result = instanceAiResourceAttachmentSchema.safeParse(nodesAttachment());
+		expect(result.success).toBe(true);
+	});
+});
+
+describe('InstanceAiThreadMessagesQuery', () => {
+	it('defaults to the first page at the default limit', () => {
+		expect(InstanceAiThreadMessagesQuery.parse({})).toEqual({
+			limit: INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
+			page: 0,
+		});
+	});
+
+	it('coerces the string query params a URL carries', () => {
+		expect(InstanceAiThreadMessagesQuery.parse({ limit: '25', page: '2', raw: 'true' })).toEqual({
+			limit: 25,
+			page: 2,
+			raw: 'true',
+		});
+	});
+
+	it('accepts the ceilings', () => {
+		const result = InstanceAiThreadMessagesQuery.safeParse({
+			limit: INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
+			page: INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{ limit: INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT + 1 },
+		{ limit: 0 },
+		{ limit: -1 },
+		{ limit: 1.5 },
+		{ page: INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE + 1 },
+		{ page: -1 },
+	])('rejects out-of-range paging (%o)', (query) => {
+		expect(InstanceAiThreadMessagesQuery.safeParse(query).success).toBe(false);
 	});
 });

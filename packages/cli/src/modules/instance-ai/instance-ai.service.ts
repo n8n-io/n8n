@@ -17,6 +17,7 @@ import {
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
 	type InstanceAiFileAttachment,
+	type InstanceAiNodesAttachment,
 	type InstanceAiResourceAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
@@ -110,6 +111,7 @@ import {
 	WorkflowLoopStorage,
 	ThreadTaskStorage,
 } from '@n8n/instance-ai';
+import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import type { Scope } from '@n8n/permissions';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { lazyImport } from '@n8n/utils/lazy-import';
@@ -135,6 +137,7 @@ import { assertNever } from '@/utils';
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
+import { CanvasNodeContextFlagGate } from './canvas-node-context-flag-gate';
 import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
@@ -195,6 +198,7 @@ import {
 	type ResumableOrphan,
 } from './suspended-run-restorer.service';
 import { SuspendedThreadPersistenceService } from './suspended-thread-persistence.service';
+import { redactTelemetryProperties, redactTelemetryText } from './telemetry-redaction';
 import {
 	InstanceAiTracingService,
 	type MessageTraceFinalization,
@@ -242,30 +246,74 @@ function buildSuspensionTraceOutputs(runId: string, suspension: SuspensionInfo |
  * block so they're available once the user actually asks for something.
  * Returns an empty string when there are none.
  */
-function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttachment[]): string {
-	if (contextAttachments.length === 0) return '';
+/** Renders one canvas node-selection attachment as one line per set. */
+function buildNodesAttachmentLine(attachment: InstanceAiNodesAttachment): string {
+	const setLines = attachment.sets.map((set) => {
+		const names = set.nodes.map((node) => node.name ?? node.id);
+
+		const label =
+			names.length === 1
+				? `Node "${names[0]}"`
+				: `A chain of connected nodes: ${names.join(' → ')}`;
+
+		const input = set.inputNode ? `, preceded by "${set.inputNode.name ?? set.inputNode.id}"` : '';
+
+		const output = set.outputNode
+			? `, followed by "${set.outputNode.name ?? set.outputNode.id}"`
+			: '';
+
+		const group = set.canvasGroupName
+			? `, part of canvas group "${set.canvasGroupName}"`
+			: set.canvasGroupId
+				? `, part of canvas group \`${set.canvasGroupId}\``
+				: '';
+
+		return `  - ${label}${input}${output}${group}.`;
+	});
+
+	return `- Selected nodes in workflow \`${attachment.workflowId}\`:\n${setLines.join('\n')}`;
+}
+
+export function buildContextResourcesBlock(
+	contextAttachments: InstanceAiResourceAttachment[],
+): string {
+	if (contextAttachments.length === 0) {
+		return '';
+	}
+
 	const lines = contextAttachments.map((attachment) => {
+		if (attachment.type === 'nodes') {
+			return buildNodesAttachmentLine(attachment);
+		}
+
 		const name = attachment.name ? ` "${attachment.name}"` : '';
+
 		if (attachment.type === 'agent') {
 			if (attachment.pending) {
 				return `- New unsaved Agent artifact${name} (pending id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
 			}
 			return `- Agent${name} (id: \`${attachment.id}\`, in project \`${attachment.projectId}\`).`;
 		}
+
+		// Attachment type must be workflow at this point
 		// Only mention the execution when one was actually handed off.
 		const execution = attachment.executionId
 			? `, currently viewing its execution \`${attachment.executionId}\``
 			: '';
+
 		return `- Workflow${name} (id: \`${attachment.id}\`)${execution}.`;
 	});
+
 	const header = contextAttachments.some((attachment) => attachment.type === 'agent')
 		? 'The user opened this conversation from the agent editor, where they are looking at:'
 		: 'The user opened this conversation from the workflow editor, where they are looking at:';
+
 	const pendingAgentGuidance = contextAttachments.some(
 		(attachment) => attachment.type === 'agent' && attachment.pending,
 	)
 		? "Treat references such as “the agent” as this pending artifact. It has no persisted agent row yet. When the user asks to build or change it, use `build-agent`'s new-agent path with a name; do not pass its pending id as an existing `agentId`. The thread's pending target will make creation reuse that id."
 		: '';
+
 	const prose = [
 		header,
 		...lines,
@@ -279,6 +327,13 @@ function buildContextResourcesBlock(contextAttachments: InstanceAiResourceAttach
 	// reload from the leading JSON line — keeping the resource durable without
 	// persisting it as visible text.
 	return `${EDITOR_CONTEXT_OPEN_TAG}\n${JSON.stringify(contextAttachments)}\n\n${prose}\n${EDITOR_CONTEXT_CLOSE_TAG}`;
+}
+
+/** Workflow/agent attachments carry a display name; a nodes attachment doesn't. */
+function isNamedResourceAttachment(
+	attachment: InstanceAiResourceAttachment,
+): attachment is InstanceAiWorkflowAttachment | InstanceAiAgentAttachment {
+	return attachment.type !== 'nodes' && Boolean(attachment.name);
 }
 
 function buildHandoffContextBlock(context: InstanceAiHandoffContext | undefined): string {
@@ -611,54 +666,6 @@ const MAX_CONSECUTIVE_FAILED_INTERNAL_FOLLOW_UPS = 3;
 
 const TITLE_REFINE_HISTORY_LIMIT = 50;
 
-/** Collapse the frontend's typed confirmation union into the flat payload
- *  consumed by native tool resume schemas and sub-agent HITL. Only the fields
- *  relevant to the submitted kind are populated — everything else stays undefined.
- *
- *  Most kinds carry implicit approval (you wouldn't be submitting answers,
- *  selected credentials, or a setup action otherwise) — only `approval`,
- *  `domainAccessDeny`, and `planDeny` carry a denial path. */
-function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData {
-	switch (request.kind) {
-		case 'approval':
-			return { approved: request.approved, userInput: request.userInput, scope: request.scope };
-		case 'domainAccessApprove':
-			return { approved: true, domainAccessAction: request.domainAccessAction };
-		case 'domainAccessDeny':
-			return { approved: false };
-		case 'planDeny':
-			return { approved: false, denied: true };
-		case 'questions':
-			return { approved: true, answers: request.answers };
-		case 'credentialSelection':
-			return { approved: true, credentials: request.credentials };
-		case 'credentialAutoSetup':
-			return {
-				approved: true,
-				autoSetup: { credentialType: request.credentialType, attemptId: request.attemptId },
-			};
-		case 'resourceDecision':
-			return { approved: true, resourceDecision: request.resourceDecision };
-		case 'mcpConnect':
-			return { approved: request.approved, connectedSlugs: request.connectedSlugs };
-		case 'setupWorkflowApply':
-			return {
-				approved: true,
-				action: 'apply',
-				nodeCredentials: request.nodeCredentials,
-				nodeParameters: request.nodeParameters,
-			};
-		case 'setupWorkflowTestTrigger':
-			return {
-				approved: true,
-				action: 'test-trigger',
-				testTriggerNode: request.testTriggerNode,
-				nodeCredentials: request.nodeCredentials,
-				nodeParameters: request.nodeParameters,
-			};
-	}
-}
-
 /** The built orchestrator agent type returned by `createInstanceAgent`. */
 type InstanceAgent = Awaited<ReturnType<typeof createInstanceAgent>>['agent'];
 
@@ -824,6 +831,7 @@ export class InstanceAiService {
 		private readonly creditService: InstanceAiCreditService,
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
+		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -870,7 +878,12 @@ export class InstanceAiService {
 		});
 		this.tracing = new InstanceAiTracingService({
 			logger: this.logger,
-			eventBus: this.eventBus,
+			// `first_visible_state` has to see the run's streamed text, which under
+			// the durable log lives in the log (as coalesced blocks), never in the
+			// bus cache.
+			eventReader: {
+				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
+			},
 			runState: this.runState,
 			dbSnapshotStorage: this.dbSnapshotStorage,
 			aiService: this.aiService,
@@ -886,23 +899,18 @@ export class InstanceAiService {
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
 			durableLog: globalConfig.instanceAi.durableLog,
-			// Flag-resolved reads: the terminal guard and outcome-replay dedup must
-			// see the run's events after a restart too, which only the durable log
-			// can provide (the bus cache is empty in a fresh process).
+			// The terminal guard and outcome-replay dedup must see the run's events
+			// after a restart too, which only the durable log can provide (the bus
+			// cache is empty in a fresh process).
 			eventBus: {
 				publish: (threadId, event) => this.eventBus.publish(threadId, event),
-				getEventsForRun: async (threadId, runId) =>
-					this.instanceAiConfig.durableLog
-						? await this.readDurableEventsForRuns(threadId, [runId])
-						: this.eventBus.getEventsForRun(threadId, runId),
-				getEventsForRuns: async (threadId, runIds) =>
-					this.instanceAiConfig.durableLog
-						? await this.readDurableEventsForRuns(threadId, runIds)
-						: this.eventBus.getEventsForRuns(threadId, runIds),
+				getEventsForRun: async (threadId, runId) => await this.readRunEvents(threadId, [runId]),
+				getEventsForRuns: async (threadId, runIds) => await this.readRunEvents(threadId, runIds),
 			},
 			dbSnapshotStorage: this.dbSnapshotStorage,
 			agentMemory: this.agentMemory,
 			telemetry: this.telemetry,
+			errorReporter: this.instanceAiErrorReporter,
 			logger: this.logger,
 			runState: this.runState,
 			suspendedThreads: this.suspendedThreads,
@@ -1017,6 +1025,27 @@ export class InstanceAiService {
 			await this.threadGrantRepo.grant(threadId, userId, key);
 		} catch (error) {
 			this.logger.warn('Failed to persist Instance AI session grant', {
+				threadId,
+				key,
+				error: getErrorMessage(error),
+			});
+		}
+	}
+
+	/**
+	 * Drop a per-user, thread-level grant. Used by decisions that are meant to be reversible
+	 * within a thread — e.g. the user skipped a credential's setup, then later asks for it.
+	 * Best-effort: a failed delete leaves the decision in place until the next run.
+	 */
+	private async revokeThreadSessionGrant(
+		threadId: string,
+		userId: string,
+		key: string,
+	): Promise<void> {
+		try {
+			await this.threadGrantRepo.revoke(threadId, userId, key);
+		} catch (error) {
+			this.logger.warn('Failed to revoke Instance AI session grant', {
 				threadId,
 				key,
 				error: getErrorMessage(error),
@@ -2448,6 +2477,10 @@ export class InstanceAiService {
 			sessionGrants.add(key);
 		};
 		context.grantSessionToolApproval = grantSessionToolApproval;
+		context.revokeSessionToolApproval = async (key: string) => {
+			await this.revokeThreadSessionGrant(threadId, user.id, key);
+			sessionGrants.delete(key);
+		};
 
 		// Domain-access approvals are stored as grant keys in `instance_ai_thread_grants` (via
 		// the same load/persist path as above), so they survive restart and are visible
@@ -2592,8 +2625,11 @@ export class InstanceAiService {
 		context.workspaceRoot = workspaceRoot;
 		context.threadId = threadId;
 		context.threadMemory = memory;
+		// Tool-emitted telemetry is an open-ended property bag (search queries,
+		// remediation reasons, node error strings) — scrub at the boundary so a
+		// new call site can't leak by omission.
 		context.trackTelemetry = (eventName, properties) => {
-			this.telemetry.track(eventName, properties);
+			this.telemetry.track(eventName, redactTelemetryProperties(properties));
 		};
 		const domainTools = createAllTools(context);
 
@@ -2610,7 +2646,7 @@ export class InstanceAiService {
 			logger: this.logger,
 			outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 			trackTelemetry: (eventName, properties) => {
-				this.telemetry.track(eventName, properties);
+				this.telemetry.track(eventName, redactTelemetryProperties(properties));
 			},
 			// Aggregate on the instance-AI thread (not the `ia-builder:` session
 			// thread) so the credit service's per-thread display total and FE push
@@ -3534,6 +3570,40 @@ export class InstanceAiService {
 	}
 
 	/**
+	 * Splits a message's attachments into the resource references that feed the
+	 * context block, gating canvas node-selection attachments behind
+	 * CANVAS_NODE_CONTEXT_FLAG per user. Workflow and agent references always pass
+	 * through — only `nodes` attachments are conditional.
+	 */
+	private async resolveContextAttachments(
+		attachments: InstanceAiAttachment[] | undefined,
+		user: User,
+	): Promise<InstanceAiResourceAttachment[]> {
+		const attachmentsOrEmpty = attachments ?? [];
+
+		const workflowAttachments = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiWorkflowAttachment => attachment.type === 'workflow',
+		);
+
+		const agentAttachments = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
+		);
+
+		const nodeAttachments = attachmentsOrEmpty.filter(
+			(attachment): attachment is InstanceAiNodesAttachment => attachment.type === 'nodes',
+		);
+
+		const canvasNodeContextEnabled =
+			nodeAttachments.length > 0 && (await this.canvasNodeContextFlagGate.isEnabled(user));
+
+		return [
+			...workflowAttachments,
+			...agentAttachments,
+			...(canvasNodeContextEnabled ? nodeAttachments : []),
+		];
+	}
+
+	/**
 	 * Run body for a fresh orchestrator turn. Never call directly — go through
 	 * `startExecuteRun` so the promise is registered with `inFlightExecutions`
 	 * and shutdown can drain it before the DB closes.
@@ -3561,16 +3631,8 @@ export class InstanceAiService {
 		const fileAttachments = (attachments ?? []).filter(
 			(attachment): attachment is InstanceAiFileAttachment => attachment.type === 'file',
 		);
-		const workflowAttachments = (attachments ?? []).filter(
-			(attachment): attachment is InstanceAiWorkflowAttachment => attachment.type === 'workflow',
-		);
-		const agentAttachments = (attachments ?? []).filter(
-			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
-		);
-		const contextAttachments: InstanceAiResourceAttachment[] = [
-			...workflowAttachments,
-			...agentAttachments,
-		];
+
+		const contextAttachments = await this.resolveContextAttachments(attachments, user);
 
 		const signal = abortController.signal;
 		let tracing: InstanceAiTraceContext | undefined;
@@ -3595,20 +3657,28 @@ export class InstanceAiService {
 					size: attachment.data.length,
 				}));
 			}
+
 			// `message` is the user's raw text, so without this the trace has no
 			// record that the editor handed the agent a resource.
 			if (contextAttachments.length) {
 				traceInput.resourceAttachments = contextAttachments.map((attachment) => {
+					if (attachment.type === 'nodes') {
+						return { type: attachment.type, id: attachment.workflowId };
+					}
+
 					const resource: TracedResourceAttachment = {
 						type: attachment.type,
 						id: attachment.id,
 					};
+
 					if (attachment.type === 'agent') {
 						resource.projectId = attachment.projectId;
 					}
+
 					if (attachment.type === 'workflow' && attachment.executionId) {
 						resource.executionId = attachment.executionId;
 					}
+
 					return resource;
 				});
 			}
@@ -3618,6 +3688,9 @@ export class InstanceAiService {
 
 			// Shared with createExecutionEnvironment so one ProxyTokenManager backs tracing + the run.
 			const proxyRunConfig = await this.createProxyRunConfig(user);
+
+			// Read per run: Chrome auto-updates extensions silently.
+			const browserExtension = this.browserSessionService.getExtensionTraceContext(user.id);
 
 			// Create the trace before run-start so the SSE event carries traceId (modelId lands at finalization).
 			if (resumeReason) {
@@ -3637,6 +3710,7 @@ export class InstanceAiService {
 							? { build_task_id: plannedBuild.buildTaskId }
 							: {}),
 					},
+					browserExtension,
 				});
 			} else {
 				tracing = await createInstanceAiTraceContext({
@@ -3649,6 +3723,7 @@ export class InstanceAiService {
 					proxyConfig: proxyRunConfig.tracingProxyConfig,
 					n8nVersion: N8N_VERSION,
 					workflowSdkVersion: WORKFLOW_SDK_VERSION,
+					browserExtension,
 				});
 			}
 
@@ -3828,10 +3903,11 @@ export class InstanceAiService {
 			// message), so title it with the workflow name and mark it refined so
 			// the LLM title pass doesn't summarize the internal context block.
 			const thread = await memory.getThread(threadId);
+
 			if (thread && !thread.title) {
 				const handoffTitle =
-					contextAttachments.find((attachment) => attachment.name)?.name ??
-					agentPreviewTitleFallback;
+					contextAttachments.find(isNamedResourceAttachment)?.name ?? agentPreviewTitleFallback;
+
 				await patchThread(memory, {
 					threadId,
 					update: ({ metadata }) =>
@@ -4068,7 +4144,7 @@ export class InstanceAiService {
 				if (intermediateText) {
 					this.telemetry.track('Builder sent message', {
 						thread_id: threadId,
-						message: intermediateText,
+						message: redactTelemetryText(intermediateText),
 						is_intermediate: true,
 					});
 				}
@@ -4203,7 +4279,9 @@ export class InstanceAiService {
 				status: finalStatus,
 				outputText,
 				modelId,
-				metadata: this.tracing.buildMessageTraceMetadata(threadId, runId, { status: finalStatus }),
+				metadata: await this.tracing.buildMessageTraceMetadata(threadId, runId, {
+					status: finalStatus,
+				}),
 			};
 			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
 				threadId,
@@ -4243,7 +4321,7 @@ export class InstanceAiService {
 			if (result.status === 'completed') {
 				this.telemetry.track('Builder sent message', {
 					thread_id: threadId,
-					message: outputText,
+					message: redactTelemetryText(outputText),
 				});
 				this.telemetry.track('Builder satisfied user intent', {
 					thread_id: threadId,
@@ -4281,7 +4359,7 @@ export class InstanceAiService {
 				messageTraceFinalization = {
 					status: 'cancelled',
 					reason: cancellationReason,
-					metadata: this.tracing.buildMessageTraceMetadata(threadId, runId, {
+					metadata: await this.tracing.buildMessageTraceMetadata(threadId, runId, {
 						status: 'cancelled',
 						cancellationReason,
 						runTimeout,
@@ -4357,7 +4435,9 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: 'error',
 				reason: errorMessage,
-				metadata: this.tracing.buildMessageTraceMetadata(threadId, runId, { status: 'error' }),
+				metadata: await this.tracing.buildMessageTraceMetadata(threadId, runId, {
+					status: 'error',
+				}),
 			};
 
 			const archivedWorkflowIds = await this.temporaryWorkflowService.reapForRun(
@@ -5095,24 +5175,7 @@ export class InstanceAiService {
 		// user, from `cancelThread`, or from a liveness timeout.
 		void this.suspendedThreads.dropPendingConfirmation(requestId);
 
-		// setup-workflow uses nodeCredentials (per-node) format for its credentials field;
-		// other tools use the flat credentials map. Prefer nodeCredentials when present.
-		const credentialsPayload = data.nodeCredentials ?? data.credentials;
-		const resumeData = {
-			approved: data.approved,
-			...(credentialsPayload ? { credentials: credentialsPayload } : {}),
-			...(data.userInput !== undefined ? { userInput: data.userInput } : {}),
-			...(data.domainAccessAction ? { domainAccessAction: data.domainAccessAction } : {}),
-			...(data.action ? { action: data.action } : {}),
-			...(data.nodeParameters ? { nodeParameters: data.nodeParameters } : {}),
-			...(data.testTriggerNode ? { testTriggerNode: data.testTriggerNode } : {}),
-			...(data.answers ? { answers: data.answers } : {}),
-			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
-			...(data.scope ? { scope: data.scope } : {}),
-			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
-			...(data.denied ? { denied: true } : {}),
-			...(data.connectedSlugs ? { connectedSlugs: data.connectedSlugs } : {}),
-		};
+		const resumeData = buildResumeData(data);
 
 		const resumeTracing = await this.tracing.createOrchestratorResumeTraceContext({
 			baseTracing: tracing,
@@ -5144,6 +5207,7 @@ export class InstanceAiService {
 					? { build_task_id: plannedBuild.buildTaskId }
 					: {}),
 			},
+			browserExtension: this.browserSessionService.getExtensionTraceContext(activeUser.id),
 			register: false,
 		});
 		const effectiveTracing = resumeTracing ?? tracing;
@@ -5423,7 +5487,7 @@ export class InstanceAiService {
 				if (intermediateText) {
 					this.telemetry.track('Builder sent message', {
 						thread_id: opts.threadId,
-						message: intermediateText,
+						message: redactTelemetryText(intermediateText),
 						is_intermediate: true,
 					});
 				}
@@ -5558,7 +5622,7 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: finalStatus,
 				outputText,
-				metadata: this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+				metadata: await this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 					status: finalStatus,
 				}),
 			};
@@ -5605,7 +5669,7 @@ export class InstanceAiService {
 				);
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
-					message: outputText,
+					message: redactTelemetryText(outputText),
 				});
 				this.telemetry.track('Builder satisfied user intent', {
 					thread_id: opts.threadId,
@@ -5645,7 +5709,7 @@ export class InstanceAiService {
 				messageTraceFinalization = {
 					status: 'cancelled',
 					reason: cancellationReason,
-					metadata: this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+					metadata: await this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 						status: 'cancelled',
 						cancellationReason,
 						runTimeout,
@@ -5722,7 +5786,7 @@ export class InstanceAiService {
 			messageTraceFinalization = {
 				status: 'error',
 				reason: errorMessage,
-				metadata: this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
+				metadata: await this.tracing.buildMessageTraceMetadata(opts.threadId, opts.runId, {
 					status: 'error',
 				}),
 			};
@@ -6397,7 +6461,7 @@ export class InstanceAiService {
 		await this.tracing.maybeFinalizeRunTraceRoot(suspended.runId, {
 			status: 'cancelled',
 			reason,
-			metadata: this.tracing.buildMessageTraceMetadata(suspended.threadId, suspended.runId, {
+			metadata: await this.tracing.buildMessageTraceMetadata(suspended.threadId, suspended.runId, {
 				status: 'cancelled',
 				cancellationReason: reason,
 				...(runTimeout ? { runTimeout } : {}),
@@ -6444,7 +6508,7 @@ export class InstanceAiService {
 			this.telemetry.track('Builder generation errored', {
 				thread_id: threadId,
 				run_id: runId,
-				error_message: errorInfo?.errorMessage ?? reason ?? 'unknown',
+				error_message: redactTelemetryText(errorInfo?.errorMessage ?? reason ?? 'unknown'),
 				...(errorInfo?.errorSource ? { error_source: errorInfo.errorSource } : {}),
 				...(userId ? { user_id: userId } : {}),
 			});
@@ -6729,16 +6793,18 @@ export class InstanceAiService {
 	}
 
 	/**
-	 * Read-own-writes barrier for decision reads from the durable log: settle
-	 * the thread's drain (including open coalesce buffers) so everything
-	 * published before this call is visible to the read. Used at run
-	 * boundaries — terminal-guard inputs and snapshot builds — where closing
-	 * the open segment early is correct anyway.
+	 * The one place the run-event source is chosen. With the durable log on it
+	 * is a read-own-writes barrier: settle the thread's drain (including open
+	 * coalesce buffers) so everything published before this call is visible,
+	 * then read the log. With it off the in-memory bus store is the only
+	 * source. Every caller is a run boundary — terminal-guard inputs, trace
+	 * metadata, snapshot builds — where closing the open segment early is
+	 * correct anyway.
 	 */
-	private async readDurableEventsForRuns(
-		threadId: string,
-		runIds: string[],
-	): Promise<InstanceAiEvent[]> {
+	private async readRunEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
+		if (!this.instanceAiConfig.durableLog) {
+			return this.eventBus.getEventsForRuns(threadId, runIds);
+		}
 		await this.eventLog.flush(threadId);
 		return await this.eventLog.getEventsForRuns(threadId, runIds);
 	}
@@ -6765,13 +6831,9 @@ export class InstanceAiService {
 					const snapshot = await snapshotStorage.getLatest(threadId, { messageGroupId, runId });
 					groupRunIds = snapshot?.runIds?.length ? snapshot.runIds : [runId];
 				}
-				events = this.instanceAiConfig.durableLog
-					? await this.readDurableEventsForRuns(threadId, groupRunIds)
-					: this.eventBus.getEventsForRuns(threadId, groupRunIds);
+				events = await this.readRunEvents(threadId, groupRunIds);
 			} else {
-				events = this.instanceAiConfig.durableLog
-					? await this.readDurableEventsForRuns(threadId, [runId])
-					: this.eventBus.getEventsForRun(threadId, runId);
+				events = await this.readRunEvents(threadId, [runId]);
 			}
 			// Durable-log flag on: the tree input comes from the DB, so long runs can
 			// no longer out-evict their own snapshot input (the empty-agentTree bug

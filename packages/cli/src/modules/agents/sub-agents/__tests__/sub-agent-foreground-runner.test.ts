@@ -18,6 +18,10 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AgentExecutionService } from '../../agent-execution.service';
 import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
+import {
+	encodeAgentSandboxHostMetadata,
+	hashAgentSandboxPrincipal,
+} from '../../agent-sandbox-principal';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner';
 import type {
@@ -302,6 +306,63 @@ describe('SubAgentForegroundRunner', () => {
 		expect(result.threadId).toEqual(expect.any(String));
 	});
 
+	it('inherits the parent workspace principal on the initial run and resume', async () => {
+		const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
+		const result = await runner.runForeground(
+			{ ...spawnRequest, parentSandboxPrincipalHash: principalHash },
+			{
+				projectId,
+				credentialProvider,
+				runType: 'production',
+			},
+		);
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenLastCalledWith(
+			expect.objectContaining({ sandboxPrincipalHash: principalHash }),
+		);
+		expect(childAgent.stream).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				persistence: expect.objectContaining({
+					hostMetadata: encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+				}),
+			}),
+		);
+
+		checkpointStorage.load.mockResolvedValue({
+			status: 'suspended',
+			persistence: {
+				threadId: result.threadId,
+				resourceId: result.threadId,
+				delegated: true,
+				hostMetadata: encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+			},
+			messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+			pendingToolCalls: {},
+		});
+		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
+		await runner.resumeForeground(
+			{
+				...delegatedRequest,
+				childRunId: 'child-run-1',
+				childToolCallId: 'tool-call-1',
+				childThreadId: result.threadId,
+				resumeData: { approved: true },
+				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+				parentThreadId,
+			},
+			{
+				projectId,
+				credentialProvider,
+				runType: 'production',
+			},
+		);
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenLastCalledWith(
+			expect.objectContaining({ sandboxPrincipalHash: principalHash }),
+		);
+	});
+
 	it('uses the saved n8n agent id as memory owner and records parent linkage', async () => {
 		sourceResolver.resolveForRuntime.mockResolvedValue({
 			...runtimeSource,
@@ -462,6 +523,15 @@ describe('SubAgentForegroundRunner', () => {
 				agentId: 'agent-1',
 				userMessage: null,
 				hitlStatus: 'resumed',
+				record: expect.objectContaining({
+					timeline: expect.arrayContaining([
+						expect.objectContaining({
+							type: 'hitl-response',
+							toolCallId: 'tool-call-1',
+							response: { approved: true },
+						}),
+					]),
+				}),
 			}),
 		);
 		expect(childAgent.close).toHaveBeenCalledTimes(1);

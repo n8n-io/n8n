@@ -191,6 +191,16 @@ describe('Instance AI runtime skills', () => {
 			const loadResult = await loadTool.handler?.({ skillId }, {});
 			expect(skillLoadText(loadResult)).toContain(`[Skill: "${skillId}"]`);
 		}
+
+		const agentBuilder = await source.loadSkill('agent-builder');
+		expect(agentBuilder?.instructions).toContain('## Saved sub-agent dependencies');
+		expect(agentBuilder?.instructions).toContain(
+			'A saved sub-agent must be published before the parent can attach it',
+		);
+		expect(agentBuilder?.instructions).toMatch(
+			/Never attach a draft child or pass its\s+raw `agentId`/,
+		);
+		expect(agentBuilder?.instructions).toContain('identify the child by its display name');
 	});
 
 	it('loads the bundled Computer Use credential setup skill', async () => {
@@ -401,10 +411,10 @@ describe('Instance AI runtime skills', () => {
 			'ask once whether the user wants to build an error workflow for that workflow',
 		);
 		expect(loaded?.instructions).toContain(
-			'Do not replace this explicit opt-in with a generic "add\n   anything else?", publish, or test question.',
+			'Do not replace this explicit opt-in with a generic "add\n    anything else?", publish, or test question.',
 		);
 		expect(loaded?.instructions).toMatch(
-			/ask only that question now; do not also ask about the error\s+workflow/,
+			/ask only whether the user wants the live test\. Do not\s+mention publishing or ask about the error workflow/,
 		);
 		expect(loaded?.instructions).toContain(
 			'The error workflow must be published before it can be assigned',
@@ -429,6 +439,15 @@ describe('Instance AI runtime skills', () => {
 		);
 		expect(loaded?.instructions).toContain(
 			'Only call `workflows(action="publish")` when the user explicitly asks',
+		);
+		expect(loaded?.instructions).toContain(
+			'Do not proactively offer, recommend, or mention publishing until a successful',
+		);
+		expect(loaded?.instructions).toContain(
+			'A user-run execution satisfies the publishing gate only',
+		);
+		expect(loaded?.instructions).toContain(
+			'Do not offer publishing as an alternative or describe the workflow as ready to\nuse or publish',
 		);
 
 		const loadTool = createSkillLoadTool(source);

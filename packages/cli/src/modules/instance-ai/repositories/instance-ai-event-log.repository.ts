@@ -84,17 +84,70 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		return rows.map((r) => this.toEvent(r));
 	}
 
-	/** Every fact of a thread in seq order, with the run and write-time context
-	 *  the fold-on-read history derivation needs. */
-	async getForThread(
+	/** Facts for specific runs in seq order, with the run and write-time context
+	 *  the fold-on-read history derivation needs. Scoped rather than
+	 *  whole-thread: a paged history read folds only the runs behind the page it
+	 *  returns. */
+	async getForThreadRuns(
 		threadId: string,
+		runIds: string[],
 	): Promise<Array<{ runId: string; createdAt: Date; event: InstanceAiEvent }>> {
-		const rows = await this.find({ where: { threadId }, order: { seq: 'ASC' } });
+		if (runIds.length === 0) return [];
+		const rows = await this.createQueryBuilder('e')
+			.where('e.threadId = :threadId', { threadId })
+			.andWhere('e.runId IN (:...runIds)', { runIds })
+			.orderBy('e.seq', 'ASC')
+			.getMany();
 		return rows.map((r) => ({
 			runId: r.runId,
 			createdAt: r.createdAt,
 			event: this.toEvent(r),
 		}));
+	}
+
+	/**
+	 * Distinct runs with at least one fact inside the half-open window
+	 * `[since, before)` — the runs whose trees a paged history read may need. A
+	 * run that straddles a bound is included, so the caller can widen to whole
+	 * runs rather than folding half of one.
+	 *
+	 * Selects no `payload`, so it does not pay the JSON cost of the rows it
+	 * scans. The scan itself is bounded by the thread (PK-led); if it ever shows
+	 * up in a profile, a `(threadId, createdAt)` index is the next lever —
+	 * `instance_ai_run_snapshots` already carries the equivalent one.
+	 */
+	async findRunIdsInWindow(
+		threadId: string,
+		window: { since?: Date; before?: Date },
+	): Promise<string[]> {
+		const qb = this.createQueryBuilder('e')
+			.select('e.runId', 'runId')
+			.distinct(true)
+			.where('e.threadId = :threadId', { threadId });
+		if (window.since) qb.andWhere('e.createdAt >= :since', { since: window.since });
+		if (window.before) qb.andWhere('e.createdAt < :before', { before: window.before });
+		const rows = await qb.getRawMany<{ runId: string }>();
+		return rows.map((r) => r.runId);
+	}
+
+	/**
+	 * Each run's `run-start` fact: the cheapest complete run-to-messageGroupId
+	 * map for a thread, one row per run. The windowed read needs the whole map
+	 * even though it folds a slice, because a group's runs must fold together.
+	 */
+	async getRunStarts(threadId: string): Promise<Array<{ runId: string; messageGroupId?: string }>> {
+		const rows = await this.find({
+			where: { threadId, type: 'run-start' },
+			order: { seq: 'ASC' },
+		});
+		return rows.map((r) => {
+			const event = this.toEvent(r);
+			const groupId = event.type === 'run-start' ? event.payload.messageGroupId : undefined;
+			return {
+				runId: r.runId,
+				messageGroupId: typeof groupId === 'string' && groupId ? groupId : undefined,
+			};
+		});
 	}
 
 	/** Timestamp of the run's most recent durable fact (sweep liveness proxy). */

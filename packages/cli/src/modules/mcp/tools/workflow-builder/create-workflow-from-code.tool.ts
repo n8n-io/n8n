@@ -41,7 +41,7 @@ import { getSdkReferenceHint } from '../workflow-validation.utils';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { Telemetry } from '@/telemetry';
 import {
-	dropInvalidNodeGroups,
+	dropInvalidWorkflowGroups,
 	makeGetNodeTypeForGrouping,
 	resolveNodeWebhookIds,
 } from '@/workflow-helpers';
@@ -336,7 +336,7 @@ export const createCreateWorkflowFromCodeTool = (
 			// own (fatal) check, so an invalid group is dropped and reported instead
 			// of aborting the whole creation.
 			const skippedGroups = options.canvasGroupsEnabled
-				? dropInvalidNodeGroups(newWorkflow, makeGetNodeTypeForGrouping(nodeTypes)).map(
+				? dropInvalidWorkflowGroups(newWorkflow, makeGetNodeTypeForGrouping(nodeTypes)).map(
 						(violation) => ({ groupName: violation.groupName, reason: violation.message }),
 					)
 				: [];

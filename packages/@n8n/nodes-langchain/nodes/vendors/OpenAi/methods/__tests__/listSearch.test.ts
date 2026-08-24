@@ -30,6 +30,8 @@ describe('modelSearch', () => {
 					{ id: 'babbage-002' },
 					{ id: 'whisper-1' },
 					{ id: 'dall-e-3' },
+					{ id: 'gpt-image-2' },
+					{ id: 'gpt-4o-transcribe' },
 					{ id: 'gpt-4o-realtime-preview' },
 				],
 			});

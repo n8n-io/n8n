@@ -91,8 +91,8 @@ export class VariableExporter {
 
 				const baseDir = this.resolveBaseDir(variable, request.projectTargetsById);
 				const target = allocatorFor(baseDir).allocate(variable.key);
-				request.writer.writeDirectory(target);
-				request.writer.writeFile(
+				await request.writer.writeDirectory(target);
+				await request.writer.writeFile(
 					`${target}/variable.json`,
 					JSON.stringify(
 						this.serializeOrBlock(variable, request.includeVariableValues),

@@ -440,6 +440,7 @@ const { isSelectionExtractable } = useSelectionValidation();
 // Groups that can be extracted to sub-workflows
 const extractableGroupIds = computed(() => {
 	const ids = new Set<string>();
+	if (settingsStore.isSubworkflowConversionDisabled) return ids;
 	for (const group of workflowDocumentStore.value.allGroups) {
 		if (isSelectionExtractable(group.nodeIds).valid) {
 			ids.add(group.id);
@@ -547,7 +548,10 @@ const keyMap = computed(() => {
 			run: () => emit('save:workflow'),
 		},
 		shift_alt_t: async () => await onTidyUp({ source: 'keyboard-shortcut' }),
-		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
+		alt_x: {
+			disabled: () => settingsStore.isSubworkflowConversionDisabled,
+			run: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
+		},
 		c: () => emit('start-chat'),
 		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
 		shift_alt_u: emitWithLastSelectedNode((id) => emit('copy:test:url', id)),

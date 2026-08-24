@@ -14,6 +14,7 @@ import {
 	SUB_AGENT_MAX_CHILDREN_MAX,
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from './sub-agent.schema';
+import { jsonValueSchema } from '../schemas/json-value.schema';
 
 export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
@@ -379,6 +380,22 @@ const CustomToolJsonConfigSchema = z.object({
 	requireApproval: z.boolean().optional(),
 });
 
+/**
+ * Per-field binding for a workflow tool's Execute Workflow Trigger inputs.
+ * - `ai`: field is advertised to the LLM and must be supplied at call time.
+ * - `fixed`: field is omitted from the LLM schema and injected at invoke time.
+ */
+export const WorkflowToolInputFieldSchema = z.discriminatedUnion('mode', [
+	z.object({ mode: z.literal('ai') }).strict(),
+	z
+		.object({
+			mode: z.literal('fixed'),
+			// Reject missing/undefined — fixed bindings must pin a concrete value.
+			value: jsonValueSchema,
+		})
+		.strict(),
+]);
+
 export const WorkflowToolJsonConfigSchema = z
 	.object({
 		type: z.literal('workflow'),
@@ -391,6 +408,12 @@ export const WorkflowToolJsonConfigSchema = z
 			.boolean()
 			.optional()
 			.describe('Whether to return all node outputs instead of just the last node'),
+		inputs: z
+			.record(z.string(), WorkflowToolInputFieldSchema)
+			.optional()
+			.describe(
+				'Optional per-field bindings for Execute Workflow Trigger inputs. Missing keys default to AI-determined.',
+			),
 	})
 	.strict();
 
@@ -515,6 +538,9 @@ export type AgentJsonConfig = z.infer<typeof AgentJsonConfigSchema>;
 export type RunnableAgentJsonConfig = z.infer<typeof RunnableAgentJsonConfigSchema>;
 export type AgentJsonToolConfig = z.infer<typeof AgentJsonToolConfigSchema>;
 export type AgentJsonWorkflowToolConfig = Extract<AgentJsonToolConfig, { type: 'workflow' }>;
+export type AgentJsonWorkflowToolInputField = NonNullable<
+	AgentJsonWorkflowToolConfig['inputs']
+>[string];
 export type AgentJsonNodeToolConfig = Extract<AgentJsonToolConfig, { type: 'node' }>;
 export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'custom' }>;
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;

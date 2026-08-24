@@ -21,6 +21,13 @@ export class InstanceAiModule implements ModuleInterface {
 		Container.get(SandboxSettingsService).registerCredentialUses();
 		credentialBroker.registerUse(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY);
 		await settingsService.loadFromDb();
+		// Instantiating the setup telemetry service registers its settings-updated
+		// listener. A setup finished by env vars only becomes observable at boot,
+		// so the once-per-instance completion telemetry is also checked here.
+		const { InstanceAiSetupTelemetryService } = await import(
+			'./instance-ai-setup-telemetry.service.js'
+		);
+		await Container.get(InstanceAiSetupTelemetryService).recordSetupCompletedIfNeeded();
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 
@@ -42,6 +49,17 @@ export class InstanceAiModule implements ModuleInterface {
 			void sweeper.sweep().catch((error: unknown) => {
 				logger.error('Interrupted-run sweep failed on startup', { error });
 			});
+		} else {
+			// Surfaced at boot because the off switch changes this main's resource
+			// profile, not just where events are read from: the legacy buffer is
+			// held per thread until that thread is deleted or expires, so memory
+			// grows with the threads this main serves. Fixed only for the
+			// durable-log path; the legacy one sunsets with the flag at Gate B.
+			Container.get(Logger)
+				.scoped('instance-ai')
+				.warn(
+					'N8N_INSTANCE_AI_DURABLE_LOG is off: Instance AI events are held in a per-thread in-memory buffer (500 events / 2MB each) instead of the durable log. Memory scales with the number of threads this main has served, and replay does not survive a restart. Intended as a temporary rollback switch.',
+				);
 		}
 
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {

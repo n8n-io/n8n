@@ -329,6 +329,7 @@ function mapSuspendedChunk(
 		suspendPayload.credentialRequests,
 		credentialRequestSchema,
 	);
+	const requireUserSelection = suspendPayload.requireUserSelection === true;
 	const projectId = presentString(suspendPayload.projectId);
 	const inputType = parseInputType(suspendPayload.inputType);
 	const questions = parseSchemaArray(suspendPayload.questions, questionItemSchema);
@@ -377,6 +378,7 @@ function mapSuspendedChunk(
 					: 'Confirmation required',
 			...(targetApproval ? { targetApproval } : {}),
 			...(credentialRequests ? { credentialRequests } : {}),
+			...(requireUserSelection ? { requireUserSelection } : {}),
 			...(projectId ? { projectId } : {}),
 			...(inputType ? { inputType } : {}),
 			...(domainAccess ? { domainAccess } : {}),

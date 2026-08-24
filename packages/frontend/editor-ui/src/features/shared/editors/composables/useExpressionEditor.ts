@@ -304,6 +304,8 @@ export const useExpressionEditor = ({
 				EditorView.contentAttributes.of({ 'data-gramm': 'false' }), // disable grammarly
 				EditorView.domEventHandlers({
 					mousedown: () => {
+						// A click sets its own cursor; don't override it with the initial position
+						hasReceivedFocus = true;
 						dragging.value = true;
 					},
 				}),

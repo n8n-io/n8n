@@ -29,6 +29,42 @@ export class FolderFinderService {
 		return new Set(folders.map(({ id }) => id));
 	}
 
+	/**
+	 * Resolves a folder id to itself plus, optionally, its descendant ids, with
+	 * **no access check** — unlike every `*ForUser` method on this class.
+	 *
+	 * Contract for callers: the returned ids may only be used to *narrow* a query
+	 * that already restricts rows to what the user may read, and must never be
+	 * returned to the caller or used to decide whether a folder may be touched.
+	 * Under that contract the absent check discloses nothing, because the calling
+	 * query still decides every visible row. Anything that hands folder data back
+	 * belongs on {@link findFoldersByIdsForUser} or
+	 * {@link findFolderSubtreesForUser} instead.
+	 *
+	 * The absent check is required, not merely tolerated. It mirrors the workflow
+	 * list endpoint, which filters by `parentFolderId` with no folder permission at
+	 * all and gates only the *returning* of folder rows behind `folder:list`. A
+	 * per-user check here would also break the round trip the filter exists for: a
+	 * workflow shared into someone's personal project keeps the parent folder of
+	 * its *home* project, so a member who may read the workflow — and who was just
+	 * handed its `parentFolderId` — usually has no relation to the project holding
+	 * that folder.
+	 *
+	 * Returns an empty array for a folder that does not exist, so callers can tell
+	 * an unknown id apart from a folder holding nothing.
+	 */
+	async findFolderFilterIdsWithoutAccessCheck(
+		folderId: string,
+		includeDescendants: boolean,
+	): Promise<string[]> {
+		const existing = await this.findExistingFolderIds([folderId]);
+		if (!existing.has(folderId)) return [];
+		if (!includeDescendants) return [folderId];
+
+		const descendantIds = await this.folderRepository.getAllFolderIdsInSubtrees([folderId]);
+		return [folderId, ...descendantIds];
+	}
+
 	async findFoldersByIdsForUser(
 		folderIds: string[],
 		user: User,

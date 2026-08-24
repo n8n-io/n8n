@@ -805,6 +805,14 @@ describe('Canvas', () => {
 
 			expect(rendered.queryByTestId('canvas-node-group-extract')).toBeNull();
 		});
+
+		it('hides the convert button when executeWorkflow is excluded', async () => {
+			vi.spyOn(useSettingsStore(), 'isSubworkflowConversionDisabled', 'get').mockReturnValue(true);
+
+			const rendered = await setupExpandedGroupWithLooseNodes();
+
+			expect(rendered.queryByTestId('canvas-node-group-extract')).toBeNull();
+		});
 	});
 
 	describe('expanded group selection', () => {
