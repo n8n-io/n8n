@@ -114,9 +114,9 @@ export {
 	type GitKeyGeneratorType,
 } from './git-connections/git-connections.dto';
 export {
-	InstanceGitSettingsPublicDto,
-	UpdateInstanceGitSettingsDto,
-} from './git-connections/instance-git-settings.dto';
+	InstanceGitConnectionPublicDto,
+	UpdateInstanceGitConnectionDto,
+} from './git-connections/instance-git-connection.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';

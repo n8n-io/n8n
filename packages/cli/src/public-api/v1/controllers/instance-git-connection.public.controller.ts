@@ -1,4 +1,4 @@
-import { InstanceGitSettingsPublicDto, UpdateInstanceGitSettingsDto } from '@n8n/api-types';
+import { InstanceGitConnectionPublicDto, UpdateInstanceGitConnectionDto } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -23,8 +23,8 @@ import { ServiceUnavailableError } from '@/errors/response-errors/service-unavai
 
 const tags = ['GitConnections'];
 
-@PublicApiController('/instance-git-settings')
-export class InstanceGitSettingsPublicController {
+@PublicApiController('/instance-git-connection')
+export class InstanceGitConnectionPublicController {
 	constructor(private readonly moduleRegistry: ModuleRegistry) {}
 
 	private async service() {
@@ -41,35 +41,35 @@ export class InstanceGitSettingsPublicController {
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:read')
 	@GlobalScope('gitConnection:read')
-	@ApiSummary('Retrieve the instance Git connection settings')
+	@ApiSummary('Retrieve the instance Git connection')
 	@ApiDescription(
-		'Returns the singleton instance-level Git connection settings. Defaults to a disabled, empty connection when never configured. Secrets are never returned.',
+		'Returns the singleton instance-level Git connection. Defaults to a disabled, empty connection when never configured. Secrets are never returned.',
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, InstanceGitSettingsPublicDto)
-	async getInstanceGitSettings(
+	@ApiResponse(200, InstanceGitConnectionPublicDto)
+	async getInstanceGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-	): Promise<InstanceGitSettingsPublicDto> {
-		return await (await this.service()).getSettings();
+	): Promise<InstanceGitConnectionPublicDto> {
+		return await (await this.service()).get();
 	}
 
 	@Put('/')
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:update')
 	@GlobalScope('gitConnection:update')
-	@ApiSummary('Update the instance Git connection settings')
+	@ApiSummary('Update the instance Git connection')
 	@ApiDescription(
 		'Updates only the supplied fields. Enabling requires a fully configured connection. Secrets are never returned.',
 	)
 	@ApiTags(tags)
-	@ApiResponse(200, InstanceGitSettingsPublicDto)
+	@ApiResponse(200, InstanceGitConnectionPublicDto)
 	@ApiErrorResponse(400)
-	async updateInstanceGitSettings(
+	async updateInstanceGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
-		@Body input: UpdateInstanceGitSettingsDto,
-	): Promise<InstanceGitSettingsPublicDto> {
-		return await (await this.service()).updateSettings(input);
+		@Body input: UpdateInstanceGitConnectionDto,
+	): Promise<InstanceGitConnectionPublicDto> {
+		return await (await this.service()).update(input);
 	}
 }

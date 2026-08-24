@@ -1,8 +1,8 @@
-operationId: getInstanceGitSettings
+operationId: getInstanceGitConnection
 tags:
   - GitConnections
-summary: Retrieve the instance Git connection settings
-description: Returns the singleton instance-level Git connection settings. Defaults to a disabled, empty connection when never configured. Secrets are never returned.
+summary: Retrieve the instance Git connection
+description: Returns the singleton instance-level Git connection. Defaults to a disabled, empty connection when never configured. Secrets are never returned.
 x-required-scope: gitConnection:read
 x-eov-operation-id: unreachable
 x-eov-operation-handler: v1/handlers/decorator-routed.handler
@@ -13,7 +13,7 @@ responses:
     content:
       application/json:
         schema:
-          $ref: ../../../../shared/spec/schemas/instanceGitSettingsPublicDto.generated.yml
+          $ref: ../../../../shared/spec/schemas/instanceGitConnectionPublicDto.generated.yml
   '401':
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':

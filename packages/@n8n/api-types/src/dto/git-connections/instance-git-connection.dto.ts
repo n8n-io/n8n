@@ -7,17 +7,17 @@ import {
 } from './git-connections.dto';
 import { Z } from '../../zod-class';
 
-/** Partial patch for the singleton instance Git settings; `enabled` in place of a `name`. */
-export class UpdateInstanceGitSettingsDto extends Z.class({
+/** Partial patch for the singleton instance Git connection; `enabled` in place of a `name`. */
+export class UpdateInstanceGitConnectionDto extends Z.class({
 	enabled: z.boolean().optional(),
 	...gitConnectionUpdatableFieldsShape,
 }) {}
 
 /**
  * Like {@link gitConnectionPublicSchema} without `id`/`name` and with `enabled`.
- * All fields are nullable: settings are readable before being configured.
+ * All fields are nullable: the connection is readable before being configured.
  */
-export const instanceGitSettingsPublicSchema = gitConnectionPublicSchema
+export const instanceGitConnectionPublicSchema = gitConnectionPublicSchema
 	.omit({ id: true, name: true })
 	.extend({
 		enabled: z.boolean(),
@@ -27,4 +27,6 @@ export const instanceGitSettingsPublicSchema = gitConnectionPublicSchema
 		updatedAt: z.string().datetime().nullable(),
 	});
 
-export class InstanceGitSettingsPublicDto extends Z.class(instanceGitSettingsPublicSchema.shape) {}
+export class InstanceGitConnectionPublicDto extends Z.class(
+	instanceGitConnectionPublicSchema.shape,
+) {}

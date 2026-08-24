@@ -1,4 +1,7 @@
-import type { InstanceGitSettingsPublicDto, UpdateInstanceGitSettingsDto } from '@n8n/api-types';
+import type {
+	InstanceGitConnectionPublicDto,
+	UpdateInstanceGitConnectionDto,
+} from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -8,12 +11,12 @@ import { mock } from 'vitest-mock-extended';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { InstanceGitConnectionService } from '@/modules/git-connections.ee/instance-git-connection.service';
 
-import { InstanceGitSettingsPublicController } from '../instance-git-settings.public.controller';
+import { InstanceGitConnectionPublicController } from '../instance-git-connection.public.controller';
 
-describe('InstanceGitSettingsPublicController', () => {
+describe('InstanceGitConnectionPublicController', () => {
 	const moduleRegistry = mock<ModuleRegistry>();
 	const serviceMock = mock<InstanceGitConnectionService>();
-	const controller = new InstanceGitSettingsPublicController(moduleRegistry);
+	const controller = new InstanceGitConnectionPublicController(moduleRegistry);
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
 
@@ -26,7 +29,7 @@ describe('InstanceGitSettingsPublicController', () => {
 	it('returns 503 on GET when the git-connections module is inactive', async () => {
 		moduleRegistry.isActive.mockReturnValue(false);
 
-		await expect(controller.getInstanceGitSettings(req, res)).rejects.toThrow(
+		await expect(controller.getInstanceGitConnection(req, res)).rejects.toThrow(
 			ServiceUnavailableError,
 		);
 	});
@@ -35,23 +38,23 @@ describe('InstanceGitSettingsPublicController', () => {
 		moduleRegistry.isActive.mockReturnValue(false);
 
 		await expect(
-			controller.updateInstanceGitSettings(req, res, {} as UpdateInstanceGitSettingsDto),
+			controller.updateInstanceGitConnection(req, res, {} as UpdateInstanceGitConnectionDto),
 		).rejects.toThrow(ServiceUnavailableError);
 	});
 
 	it('delegates GET to the service', async () => {
-		const settings = mock<InstanceGitSettingsPublicDto>({ enabled: false });
-		serviceMock.getSettings.mockResolvedValue(settings);
+		const connection = mock<InstanceGitConnectionPublicDto>({ enabled: false });
+		serviceMock.get.mockResolvedValue(connection);
 
-		await expect(controller.getInstanceGitSettings(req, res)).resolves.toBe(settings);
+		await expect(controller.getInstanceGitConnection(req, res)).resolves.toBe(connection);
 	});
 
 	it('delegates PUT to the service with the request body', async () => {
-		const input: UpdateInstanceGitSettingsDto = { enabled: false };
-		const settings = mock<InstanceGitSettingsPublicDto>({ enabled: false });
-		serviceMock.updateSettings.mockResolvedValue(settings);
+		const input: UpdateInstanceGitConnectionDto = { enabled: false };
+		const connection = mock<InstanceGitConnectionPublicDto>({ enabled: false });
+		serviceMock.update.mockResolvedValue(connection);
 
-		await expect(controller.updateInstanceGitSettings(req, res, input)).resolves.toBe(settings);
-		expect(serviceMock.updateSettings).toHaveBeenCalledWith(input);
+		await expect(controller.updateInstanceGitConnection(req, res, input)).resolves.toBe(connection);
+		expect(serviceMock.update).toHaveBeenCalledWith(input);
 	});
 });

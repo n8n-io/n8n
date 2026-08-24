@@ -1,4 +1,7 @@
-import type { InstanceGitSettingsPublicDto, UpdateInstanceGitSettingsDto } from '@n8n/api-types';
+import type {
+	InstanceGitConnectionPublicDto,
+	UpdateInstanceGitConnectionDto,
+} from '@n8n/api-types';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
@@ -42,11 +45,11 @@ export class InstanceGitConnectionService {
 
 	private readonly authDeps = gitAuthDeps(this.gitService, this.cipher);
 
-	async getSettings(): Promise<InstanceGitSettingsPublicDto> {
+	async get(): Promise<InstanceGitConnectionPublicDto> {
 		return this.toPublic(await this.getPreferences());
 	}
 
-	async updateSettings(input: UpdateInstanceGitSettingsDto): Promise<InstanceGitSettingsPublicDto> {
+	async update(input: UpdateInstanceGitConnectionDto): Promise<InstanceGitConnectionPublicDto> {
 		if (Object.keys(input).length === 0) {
 			throw new BadRequestError('At least one field is required');
 		}
@@ -147,7 +150,7 @@ export class InstanceGitConnectionService {
 		}
 	}
 
-	private toPublic(prefs: InstanceGitConnectionPreferences): InstanceGitSettingsPublicDto {
+	private toPublic(prefs: InstanceGitConnectionPreferences): InstanceGitConnectionPublicDto {
 		return {
 			enabled: prefs.enabled,
 			repositoryUrl: prefs.repositoryUrl,

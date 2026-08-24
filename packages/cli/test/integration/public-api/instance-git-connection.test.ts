@@ -7,7 +7,7 @@ import { INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY } from '@/modules/git-connectio
 import { createOwnerWithApiKey } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
-describe('Instance Git settings in Public API', () => {
+describe('Instance Git connection in Public API', () => {
 	const testServer = setupTestServer({
 		endpointGroups: ['publicApi'],
 		enabledFeatures: ['feat:gitConnections'],
@@ -28,7 +28,7 @@ describe('Instance Git settings in Public API', () => {
 	});
 
 	it('returns a disabled, empty connection before it is ever configured', async () => {
-		const response = await testServer.publicApiAgentFor(owner).get('/instance-git-settings');
+		const response = await testServer.publicApiAgentFor(owner).get('/instance-git-connection');
 
 		expect(response.status).toBe(200);
 		expect(response.body).toEqual({
@@ -46,7 +46,7 @@ describe('Instance Git settings in Public API', () => {
 
 	it('configures, reads back, and disables an HTTPS connection', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
-		const updateResponse = await agent.put('/instance-git-settings').send({
+		const updateResponse = await agent.put('/instance-git-connection').send({
 			enabled: true,
 			repositoryUrl: 'https://example.com/org/repo.git',
 			branchName: 'main',
@@ -68,7 +68,7 @@ describe('Instance Git settings in Public API', () => {
 		expect(updateResponse.body).not.toHaveProperty('encryptedUsername');
 		expect(updateResponse.body).not.toHaveProperty('encryptedPassword');
 
-		const getResponse = await agent.get('/instance-git-settings');
+		const getResponse = await agent.get('/instance-git-connection');
 		expect(getResponse.status).toBe(200);
 		expect(getResponse.body).toMatchObject({ enabled: true, connectionType: 'https' });
 
@@ -81,7 +81,7 @@ describe('Instance Git settings in Public API', () => {
 		expect(preferences.encryptedPassword).toBeTruthy();
 		expect(preferences.encryptedPassword).not.toBe('secret');
 
-		const disableResponse = await agent.put('/instance-git-settings').send({ enabled: false });
+		const disableResponse = await agent.put('/instance-git-connection').send({ enabled: false });
 		expect(disableResponse.status).toBe(200);
 		expect(disableResponse.body).toMatchObject({
 			enabled: false,
@@ -91,10 +91,13 @@ describe('Instance Git settings in Public API', () => {
 	});
 
 	it('generates an SSH key pair without exposing the private key', async () => {
-		const response = await testServer.publicApiAgentFor(owner).put('/instance-git-settings').send({
-			repositoryUrl: 'git@example.com:org/repo.git',
-			connectionType: 'ssh',
-		});
+		const response = await testServer
+			.publicApiAgentFor(owner)
+			.put('/instance-git-connection')
+			.send({
+				repositoryUrl: 'git@example.com:org/repo.git',
+				connectionType: 'ssh',
+			});
 
 		expect(response.status).toBe(200);
 		expect(response.body.publicKey).toMatch(/^ssh-ed25519 /);
@@ -106,7 +109,7 @@ describe('Instance Git settings in Public API', () => {
 	it('rejects enabling without a configured connection', async () => {
 		const response = await testServer
 			.publicApiAgentFor(owner)
-			.put('/instance-git-settings')
+			.put('/instance-git-connection')
 			.send({ enabled: true });
 
 		expect(response.status).toBe(400);
@@ -115,7 +118,7 @@ describe('Instance Git settings in Public API', () => {
 	it('rejects a repository URL without a connection type', async () => {
 		const response = await testServer
 			.publicApiAgentFor(owner)
-			.put('/instance-git-settings')
+			.put('/instance-git-connection')
 			.send({ repositoryUrl: 'https://example.com/org/repo.git' });
 
 		expect(response.status).toBe(400);
@@ -129,7 +132,7 @@ describe('Instance Git settings in Public API', () => {
 	it('rejects an empty body', async () => {
 		const response = await testServer
 			.publicApiAgentFor(owner)
-			.put('/instance-git-settings')
+			.put('/instance-git-connection')
 			.send({});
 
 		expect(response.status).toBe(400);
@@ -139,13 +142,13 @@ describe('Instance Git settings in Public API', () => {
 		const unscopedOwner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
 		const response = await testServer
 			.publicApiAgentFor(unscopedOwner)
-			.get('/instance-git-settings');
+			.get('/instance-git-connection');
 		expect(response.status).toBe(403);
 	});
 
 	it('rejects requests when Git connections is not licensed', async () => {
 		testServer.license.disable('feat:gitConnections');
-		const response = await testServer.publicApiAgentFor(owner).get('/instance-git-settings');
+		const response = await testServer.publicApiAgentFor(owner).get('/instance-git-connection');
 		expect(response.status).toBe(403);
 	});
 });

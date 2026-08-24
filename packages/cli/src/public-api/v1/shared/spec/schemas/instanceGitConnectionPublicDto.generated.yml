@@ -1,7 +1,5 @@
 type: object
 properties:
-  enabled:
-    type: boolean
   repositoryUrl:
     type: string
     nullable: true
@@ -34,8 +32,9 @@ properties:
     type: string
     nullable: true
     format: date-time
+  enabled:
+    type: boolean
 required:
-  - enabled
   - repositoryUrl
   - branchName
   - connectionType
@@ -44,3 +43,4 @@ required:
   - baseCommit
   - createdAt
   - updatedAt
+  - enabled

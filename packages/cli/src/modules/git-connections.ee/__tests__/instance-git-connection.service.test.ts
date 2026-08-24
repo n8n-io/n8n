@@ -1,4 +1,4 @@
-import type { UpdateInstanceGitSettingsDto } from '@n8n/api-types';
+import type { UpdateInstanceGitConnectionDto } from '@n8n/api-types';
 import type { SettingsRepository } from '@n8n/db';
 import type { Cipher } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -38,8 +38,8 @@ describe('InstanceGitConnectionService', () => {
 		gitService.generateSshKeyPair.mockResolvedValue({ publicKey: 'PUB', privateKey: 'PRIV' });
 	});
 
-	const configureHttps = async (extra: Partial<UpdateInstanceGitSettingsDto> = {}) =>
-		await service.updateSettings({
+	const configureHttps = async (extra: Partial<UpdateInstanceGitConnectionDto> = {}) =>
+		await service.update({
 			enabled: true,
 			repositoryUrl: 'https://github.com/o/r.git',
 			connectionType: 'https',
@@ -48,9 +48,9 @@ describe('InstanceGitConnectionService', () => {
 			...extra,
 		});
 
-	describe('getSettings', () => {
+	describe('get', () => {
 		it('returns a disabled, empty connection before it is ever configured', async () => {
-			const result = await service.getSettings();
+			const result = await service.get();
 
 			expect(result).toEqual({
 				enabled: false,
@@ -69,7 +69,7 @@ describe('InstanceGitConnectionService', () => {
 		it('never returns secrets', async () => {
 			await configureHttps();
 
-			const result = await service.getSettings();
+			const result = await service.get();
 
 			expect(result).not.toHaveProperty('encryptedUsername');
 			expect(result).not.toHaveProperty('encryptedPassword');
@@ -77,25 +77,25 @@ describe('InstanceGitConnectionService', () => {
 		});
 	});
 
-	describe('updateSettings validation', () => {
+	describe('update validation', () => {
 		it('rejects an empty body', async () => {
-			await expect(service.updateSettings({})).rejects.toThrow(BadRequestError);
+			await expect(service.update({})).rejects.toThrow(BadRequestError);
 		});
 
 		it('rejects enabling without a configured connection', async () => {
-			await expect(service.updateSettings({ enabled: true })).rejects.toThrow(BadRequestError);
+			await expect(service.update({ enabled: true })).rejects.toThrow(BadRequestError);
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 		});
 
 		it('rejects a repository URL without a connection type', async () => {
-			await expect(
-				service.updateSettings({ repositoryUrl: 'https://github.com/o/r.git' }),
-			).rejects.toThrow('Connection type is required to set a repository URL');
+			await expect(service.update({ repositoryUrl: 'https://github.com/o/r.git' })).rejects.toThrow(
+				'Connection type is required to set a repository URL',
+			);
 			expect(settingsRepository.upsertByKey).not.toHaveBeenCalled();
 		});
 
 		it('rejects auth material when no connection type is set or provided', async () => {
-			await expect(service.updateSettings({ username: 'user', password: 'pass' })).rejects.toThrow(
+			await expect(service.update({ username: 'user', password: 'pass' })).rejects.toThrow(
 				'Connection type is required to set authentication',
 			);
 		});
@@ -106,7 +106,7 @@ describe('InstanceGitConnectionService', () => {
 			});
 
 			await expect(
-				service.updateSettings({
+				service.update({
 					repositoryUrl: 'not-a-url',
 					connectionType: 'https',
 					username: 'user',
@@ -119,14 +119,14 @@ describe('InstanceGitConnectionService', () => {
 			gitService.validateBranchName.mockRejectedValueOnce(new BadRequestError('bad branch'));
 
 			await expect(
-				service.updateSettings({ connectionType: 'ssh', branchName: 'bad branch' }),
+				service.update({ connectionType: 'ssh', branchName: 'bad branch' }),
 			).rejects.toThrow('bad branch');
 		});
 	});
 
 	describe('SSH configuration', () => {
 		it('generates and stores an encrypted key pair on first configuration', async () => {
-			const result = await service.updateSettings({
+			const result = await service.update({
 				enabled: true,
 				repositoryUrl: 'git@github.com:o/r.git',
 				connectionType: 'ssh',
@@ -145,23 +145,23 @@ describe('InstanceGitConnectionService', () => {
 
 		it('rejects username/password for an SSH connection', async () => {
 			await expect(
-				service.updateSettings({ connectionType: 'ssh', username: 'u', password: 'p' }),
+				service.update({ connectionType: 'ssh', username: 'u', password: 'p' }),
 			).rejects.toThrow('Username and password are only valid for HTTPS connections');
 		});
 
 		it('rejects changing the SSH key type after creation', async () => {
-			await service.updateSettings({ connectionType: 'ssh' });
+			await service.update({ connectionType: 'ssh' });
 
-			await expect(service.updateSettings({ keyGeneratorType: 'rsa' })).rejects.toThrow(
+			await expect(service.update({ keyGeneratorType: 'rsa' })).rejects.toThrow(
 				'SSH key type cannot be changed after creation',
 			);
 		});
 
 		it('does not regenerate the key pair on an unrelated update', async () => {
-			await service.updateSettings({ connectionType: 'ssh' });
+			await service.update({ connectionType: 'ssh' });
 			gitService.generateSshKeyPair.mockClear();
 
-			await service.updateSettings({ branchName: 'main' });
+			await service.update({ branchName: 'main' });
 
 			expect(gitService.generateSshKeyPair).not.toHaveBeenCalled();
 			expect(savedPreferences()).toMatchObject({ encryptedPrivateKey: 'enc:PRIV' });
@@ -180,14 +180,14 @@ describe('InstanceGitConnectionService', () => {
 		});
 
 		it('requires username and password together on first configuration', async () => {
-			await expect(
-				service.updateSettings({ connectionType: 'https', username: 'user' }),
-			).rejects.toThrow('must be provided together');
+			await expect(service.update({ connectionType: 'https', username: 'user' })).rejects.toThrow(
+				'must be provided together',
+			);
 		});
 
 		it('rejects a key generator type for HTTPS', async () => {
 			await expect(
-				service.updateSettings({ connectionType: 'https', keyGeneratorType: 'rsa' }),
+				service.update({ connectionType: 'https', keyGeneratorType: 'rsa' }),
 			).rejects.toThrow('Key generator type is only valid for SSH connections');
 		});
 	});
@@ -196,7 +196,7 @@ describe('InstanceGitConnectionService', () => {
 		it('preserves stored secrets when updating an unrelated field', async () => {
 			await configureHttps();
 
-			await service.updateSettings({ branchName: 'main' });
+			await service.update({ branchName: 'main' });
 
 			expect(savedPreferences()).toMatchObject({
 				encryptedUsername: 'enc:user',
@@ -209,7 +209,7 @@ describe('InstanceGitConnectionService', () => {
 		it('disables while retaining the configuration', async () => {
 			await configureHttps();
 
-			const result = await service.updateSettings({ enabled: false });
+			const result = await service.update({ enabled: false });
 
 			expect(result).toMatchObject({
 				enabled: false,
@@ -219,9 +219,9 @@ describe('InstanceGitConnectionService', () => {
 		});
 
 		it('clears SSH material when switching to HTTPS', async () => {
-			await service.updateSettings({ connectionType: 'ssh' });
+			await service.update({ connectionType: 'ssh' });
 
-			await service.updateSettings({ connectionType: 'https', username: 'user', password: 'pass' });
+			await service.update({ connectionType: 'https', username: 'user', password: 'pass' });
 
 			expect(savedPreferences()).toMatchObject({
 				connectionType: 'https',
@@ -234,7 +234,7 @@ describe('InstanceGitConnectionService', () => {
 	});
 
 	it('persists under the instance settings key with loadOnStartup', async () => {
-		await service.updateSettings({ connectionType: 'ssh' });
+		await service.update({ connectionType: 'ssh' });
 
 		expect(settingsRepository.upsertByKey).toHaveBeenCalledWith(
 			INSTANCE_GIT_CONNECTION_SETTINGS_DB_KEY,

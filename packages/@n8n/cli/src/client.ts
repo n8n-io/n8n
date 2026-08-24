@@ -270,12 +270,12 @@ export class N8nClient {
 		return await this.del<undefined>(`/git-connections/${id}/projects/${projectId}`);
 	}
 
-	async getInstanceGitSettings() {
-		return await this.get<Record<string, unknown>>('/instance-git-settings');
+	async getInstanceGitConnection() {
+		return await this.get<Record<string, unknown>>('/instance-git-connection');
 	}
 
-	async updateInstanceGitSettings(body: unknown) {
-		return await this.put<Record<string, unknown>>('/instance-git-settings', body);
+	async updateInstanceGitConnection(body: unknown) {
+		return await this.put<Record<string, unknown>>('/instance-git-connection', body);
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────

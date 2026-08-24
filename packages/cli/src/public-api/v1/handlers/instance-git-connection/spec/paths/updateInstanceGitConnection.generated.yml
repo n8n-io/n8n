@@ -1,7 +1,7 @@
-operationId: updateInstanceGitSettings
+operationId: updateInstanceGitConnection
 tags:
   - GitConnections
-summary: Update the instance Git connection settings
+summary: Update the instance Git connection
 description: Updates only the supplied fields. Enabling requires a fully configured connection. Secrets are never returned.
 x-required-scope: gitConnection:update
 x-eov-operation-id: unreachable
@@ -44,7 +44,7 @@ responses:
     content:
       application/json:
         schema:
-          $ref: ../../../../shared/spec/schemas/instanceGitSettingsPublicDto.generated.yml
+          $ref: ../../../../shared/spec/schemas/instanceGitConnectionPublicDto.generated.yml
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
