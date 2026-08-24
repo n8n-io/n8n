@@ -102,6 +102,7 @@ export const execute: ConfluenceOperation = async function (
 	const endpoint = `/wiki/api/v2/pages/${encodeURIComponent(pageId)}/labels`;
 
 	const labels: IDataObject[] = [];
+	const seenCursors = new Set<string>();
 	let cursor: string | undefined;
 
 	while (labels.length < total) {
@@ -114,12 +115,10 @@ export const execute: ConfluenceOperation = async function (
 		const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 		for (const label of results) labels.push(label);
 
-		// An empty page can arrive with `next` still set (see listSearch.ts)
-		if (results.length === 0) break;
-
 		const next = extractNextCursor(response);
-		// A repeated cursor would append 250 labels per iteration forever under Return All
-		if (next === undefined || next === cursor) break;
+		// Any cursor cycle would append 250 labels per iteration forever under Return All
+		if (next === undefined || seenCursors.has(next)) break;
+		seenCursors.add(next);
 		cursor = next;
 	}
 

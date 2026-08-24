@@ -194,17 +194,42 @@ describe('Confluence page:getLabels operation', () => {
 		expect(labelsOf(result)).toHaveLength(2);
 	});
 
-	it('breaks out on an empty page that still carries a next link', async () => {
-		apiRequest.mockResolvedValue({
-			results: [],
-			_links: { next: '/wiki/api/v2/pages/123/labels?cursor=abc' },
+	it('breaks out when the server cycles between two cursors', async () => {
+		const pageWithNext = (cursor: string) => ({
+			results: [{ id: cursor }],
+			_links: { next: `${ENDPOINT}?cursor=${cursor}` },
 		});
+		apiRequest
+			.mockResolvedValueOnce(pageWithNext('a'))
+			.mockResolvedValueOnce(pageWithNext('b'))
+			.mockResolvedValueOnce(pageWithNext('a'))
+			// Only reached if the cycle isn't caught; ends the loop so the test can't hang
+			.mockResolvedValue({ results: [{ id: 'extra' }] });
 		const ctx = mockExecuteCtx({ ...baseParams, returnAll: true });
 
 		const result = await execute.call(ctx, 0);
 
-		expect(apiRequest).toHaveBeenCalledTimes(1);
-		expect(labelsOf(result)).toEqual([]);
+		expect(apiRequest.mock.calls.map(([, , , qs]) => qs?.cursor)).toEqual([undefined, 'a', 'b']);
+		expect(labelsOf(result)).toHaveLength(3);
+	});
+
+	it('keeps paging past an empty page that still carries a next link', async () => {
+		apiRequest
+			.mockResolvedValueOnce({ results: [], _links: { next: `${ENDPOINT}?cursor=page2` } })
+			.mockResolvedValueOnce({ results: [{ id: '1' }, { id: '2' }] });
+		const ctx = mockExecuteCtx({ ...baseParams, returnAll: true });
+
+		const result = await execute.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			ENDPOINT,
+			{},
+			{ limit: 250, cursor: 'page2' },
+		);
+		expect(labelsOf(result).map((label) => label.id)).toEqual(['1', '2']);
 	});
 
 	it('clamps the output to Limit when the server over-delivers', async () => {
