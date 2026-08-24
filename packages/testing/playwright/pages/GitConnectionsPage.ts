@@ -3,10 +3,6 @@ import type { Locator } from '@playwright/test';
 import { BasePage } from './BasePage';
 import { MessageBox } from './components/messageBoxLocators';
 
-/**
- * Page object for /settings/git-connections
- * Wraps the GitConnectionsView.vue settings page and its create/edit dialog.
- */
 export class GitConnectionsPage extends BasePage {
 	async goto(): Promise<void> {
 		await this.page.goto('/settings/git-connections');
@@ -50,5 +46,11 @@ export class GitConnectionsPage extends BasePage {
 		await this.getConnectionCard(name).getByRole('button').click();
 		await this.page.getByTestId('action-delete').click();
 		await new MessageBox(this.page).confirmButton.click();
+	}
+
+	async deleteConnectionIfPresent(name: string): Promise<void> {
+		await this.goto();
+		if ((await this.getConnectionCard(name).count()) === 0) return;
+		await this.deleteConnection(name);
 	}
 }

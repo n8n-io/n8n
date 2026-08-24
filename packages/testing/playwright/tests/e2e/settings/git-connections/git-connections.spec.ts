@@ -10,11 +10,17 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
 	},
 	() => {
+		const connectionName = `E2E git connection ${nanoid(8)}`;
+
+		// A leaked connection keeps a real working copy on the instance, so clean up
+		// even when the test failed part-way through.
+		test.afterEach(async ({ n8n }) => {
+			await n8n.gitConnections.deleteConnectionIfPresent(connectionName);
+		});
+
 		test('an admin can create a git connector, find it after a reload, and delete it', async ({
 			n8n,
 		}) => {
-			const connectionName = `E2E git connection ${nanoid(8)}`;
-
 			await n8n.gitConnections.goto();
 			await n8n.gitConnections.addGitConnector();
 			await n8n.gitConnections.fillConnection(connectionName, 'git@github.com:acme/promotions.git');

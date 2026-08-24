@@ -42,16 +42,17 @@ describe('BannerStack', () => {
 	});
 
 	it('copies the value when the field is activated from the keyboard', async () => {
-		const { getByTestId } = renderComponent();
+		const deployKey = 'ssh-ed25519 AAA';
+		const { getByTestId } = renderComponent({ props: { value: deployKey } });
 		const field = getByTestId('copy-input');
 		field.focus();
 
 		await userEvent.keyboard('{Enter}');
-		expect(copySpy).toHaveBeenCalledWith('');
+		expect(copySpy).toHaveBeenCalledWith(deployKey);
 
 		copySpy.mockClear();
 		await userEvent.keyboard(' ');
-		expect(copySpy).toHaveBeenCalledWith('');
+		expect(copySpy).toHaveBeenCalledWith(deployKey);
 	});
 
 	it('does not scroll the page when the field is activated with the space key', async () => {

@@ -102,6 +102,15 @@ describe('buildUpdatePayload', () => {
 		expect(payload).toEqual({ connectionType: 'https' });
 	});
 
+	it('sends nothing when only the password of an https connection was filled in', () => {
+		expect(
+			buildUpdatePayload(
+				form({ connectionType: 'https', password: 'new-token' }),
+				existing({ connectionType: 'https', keyGeneratorType: null, publicKey: null }),
+			),
+		).toEqual({});
+	});
+
 	it('sends username alongside a rotated password', () => {
 		expect(
 			buildUpdatePayload(

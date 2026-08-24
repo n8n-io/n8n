@@ -217,7 +217,7 @@ describe('router', () => {
 
 			settingsStore.settings.activeModules = isModuleActive ? ['git-connections'] : [];
 			settingsStore.settings.envFeatureFlags = {
-				N8N_ENV_FEAT_PROMOTIONS: isFlagOn,
+				N8N_ENV_FEAT_PROMOTIONS: isFlagOn ? 'true' : 'false',
 			} as typeof settingsStore.settings.envFeatureFlags;
 			rbacStore.setGlobalScopes(scopes);
 

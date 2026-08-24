@@ -77,7 +77,7 @@ describe('handleSessionExpired', () => {
 		const router = createRouterMock();
 		const hrefSpy = vi.spyOn(window.location, 'href', 'set');
 
-		await handleSessionExpired(router, useRootStore().publicApiContext.baseUrl);
+		await handleSessionExpired(router, '/api/v1');
 
 		expect(logout).toHaveBeenCalledTimes(1);
 		expect(hrefSpy).toHaveBeenCalledWith(SIGNIN_HREF);

@@ -61,8 +61,17 @@ const nameInput = useTemplateRef<InstanceType<typeof N8nInput>>('nameInput');
 
 const isEdit = computed(() => props.connectionId !== undefined);
 
-const isSwitchingToHttps = computed(
+const credentialsRequired = computed(
 	() => form.connectionType === 'https' && current.value?.connectionType !== 'https',
+);
+
+// Touching either half of the pair commits the user to both: the builder sends
+// them together or not at all, so a password-only edit would be a silent no-op.
+const areCredentialsIncomplete = computed(
+	() =>
+		form.connectionType === 'https' &&
+		(credentialsRequired.value || !!form.username || !!form.password) &&
+		!(form.username && form.password),
 );
 
 const isKeyTypeDisabled = computed(() => current.value?.connectionType === 'ssh');
@@ -76,9 +85,7 @@ const existingPublicKey = computed(() =>
 const isSaveDisabled = computed(() => {
 	if (isSubmitting.value || isLoading.value) return true;
 	if (!form.name.trim() || !form.repositoryUrl.trim()) return true;
-	// Credentials cannot be prefilled (the API never returns the username), so they
-	// are only mandatory when the connection does not already authenticate over https.
-	if (isSwitchingToHttps.value && (!form.username || !form.password)) return true;
+	if (areCredentialsIncomplete.value) return true;
 	return false;
 });
 
@@ -168,6 +175,7 @@ async function submit() {
 	<N8nDialog
 		:open="open"
 		size="medium"
+		:aria-description="i18n.baseText('settings.gitConnections.dialog.ariaDescription')"
 		@open-auto-focus="onOpenAutoFocus"
 		@update:open="onOpenChange"
 	>
@@ -192,7 +200,7 @@ async function submit() {
 			/>
 			<N8nDialogFooter>
 				<N8nButton data-test-id="git-connection-done-button" @click="close">
-					{{ i18n.baseText('settings.gitConnections.publicKey.done') }}
+					{{ i18n.baseText('settings.gitConnections.form.publicKey.done') }}
 				</N8nButton>
 			</N8nDialogFooter>
 		</div>
@@ -207,7 +215,6 @@ async function submit() {
 					id="git-connection-name"
 					ref="nameInput"
 					v-model="form.name"
-					:disabled="isLoading"
 					data-test-id="git-connection-name-input"
 				/>
 			</N8nInputLabel>
@@ -253,11 +260,11 @@ async function submit() {
 				>
 					<N8nOption
 						value="ssh"
-						:label="i18n.baseText('settings.gitConnections.form.connectionType.ssh')"
+						:label="i18n.baseText('settings.gitConnections.connectionType.ssh')"
 					/>
 					<N8nOption
 						value="https"
-						:label="i18n.baseText('settings.gitConnections.form.connectionType.https')"
+						:label="i18n.baseText('settings.gitConnections.connectionType.https')"
 					/>
 				</N8nSelect>
 			</N8nInputLabel>
@@ -291,7 +298,7 @@ async function submit() {
 				<N8nInputLabel
 					input-name="git-connection-username"
 					:label="i18n.baseText('settings.gitConnections.form.username')"
-					:required="isSwitchingToHttps"
+					:required="areCredentialsIncomplete"
 				>
 					<N8nInput
 						id="git-connection-username"
@@ -299,7 +306,7 @@ async function submit() {
 						autocomplete="off"
 						:disabled="isLoading"
 						:placeholder="
-							isSwitchingToHttps
+							credentialsRequired
 								? ''
 								: i18n.baseText('settings.gitConnections.form.credentials.keepPlaceholder')
 						"
@@ -309,7 +316,7 @@ async function submit() {
 				<N8nInputLabel
 					input-name="git-connection-password"
 					:label="i18n.baseText('settings.gitConnections.form.password')"
-					:required="isSwitchingToHttps"
+					:required="areCredentialsIncomplete"
 				>
 					<N8nInput
 						id="git-connection-password"
@@ -318,14 +325,14 @@ async function submit() {
 						autocomplete="new-password"
 						:disabled="isLoading"
 						:placeholder="
-							isSwitchingToHttps
+							credentialsRequired
 								? ''
 								: i18n.baseText('settings.gitConnections.form.credentials.keepPlaceholder')
 						"
 						data-test-id="git-connection-password-input"
 					/>
 				</N8nInputLabel>
-				<N8nText v-if="isSwitchingToHttps" size="small" color="text-light">
+				<N8nText v-if="areCredentialsIncomplete" size="small" color="text-light">
 					{{ i18n.baseText('settings.gitConnections.form.credentials.required') }}
 				</N8nText>
 			</template>

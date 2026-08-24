@@ -60,8 +60,9 @@ function copy() {
 					'ph-no-capture': redactValue,
 				}"
 				data-test-id="copy-input"
-				role="button"
-				:tabindex="disableCopy ? -1 : 0"
+				:role="disableCopy ? undefined : 'button'"
+				:tabindex="disableCopy ? undefined : 0"
+				:aria-label="disableCopy ? undefined : copyButtonText"
 				@click="copy"
 				@keydown.enter="copy"
 				@keydown.space.prevent="copy"

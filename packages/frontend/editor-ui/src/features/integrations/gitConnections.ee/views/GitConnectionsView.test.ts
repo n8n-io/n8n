@@ -27,6 +27,9 @@ const backend = vi.hoisted(() => {
 		failListing() {
 			failList = true;
 		},
+		stopFailingList() {
+			failList = false;
+		},
 		nextId: () => `conn-${++idCounter}`,
 		takeSaveFailure() {
 			const error = failNextSave;
@@ -243,6 +246,29 @@ describe('GitConnectionsView', () => {
 		});
 	});
 
+	it('will not save an https connector when only the password was retyped', async () => {
+		backend.connections.push(
+			sshConnection({
+				id: 'conn-https',
+				connectionType: 'https',
+				repositoryUrl: 'https://github.com/acme/workflows.git',
+				publicKey: null,
+				keyGeneratorType: null,
+			}),
+		);
+		renderView();
+
+		const dialog = await openEditDialog(await screen.findByTestId('git-connection-card'));
+		await waitFor(() =>
+			expect(within(dialog).getByTestId('git-connection-name-input')).toHaveValue('Production'),
+		);
+		await userEvent.type(within(dialog).getByTestId('git-connection-password-input'), 'new-token');
+		await userEvent.click(within(dialog).getByTestId('git-connection-save-button'));
+
+		expect(api.updateGitConnection).not.toHaveBeenCalled();
+		expect(screen.getByTestId('git-connection-dialog')).toBeInTheDocument();
+	});
+
 	it('shows the second connector when it is edited after the first one was closed', async () => {
 		backend.connections.push(
 			sshConnection({ id: 'conn-a', name: 'Alpha', repositoryUrl: 'git@host:alpha.git' }),
@@ -328,5 +354,11 @@ describe('GitConnectionsView', () => {
 		const errorState = await screen.findByTestId('git-connections-load-error');
 		expect(errorState).toHaveTextContent("Couldn't load git connections");
 		expect(screen.queryByTestId('git-connections-add')).not.toBeInTheDocument();
+
+		backend.connections.push(sshConnection());
+		backend.stopFailingList();
+		await userEvent.click(within(errorState).getByRole('button'));
+
+		expect(await screen.findByTestId('git-connection-card')).toHaveTextContent('Production');
 	});
 });

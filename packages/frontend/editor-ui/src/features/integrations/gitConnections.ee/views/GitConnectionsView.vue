@@ -15,12 +15,12 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { escapeHtml } from '@/app/utils/htmlUtils';
-import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, nextTick, onMounted, ref, useTemplateRef } from 'vue';
 
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
+import { escapeHtml } from '@/app/utils/htmlUtils';
 import GitConnectionDialog from '../components/GitConnectionDialog.vue';
 import {
 	deleteGitConnection,
@@ -29,12 +29,11 @@ import {
 } from '../gitConnections.api';
 
 type ConnectionRow = {
-	key: string;
+	id: string;
 	name: string;
-	repositoryUrl: string | null;
+	repositoryUrl: string;
 	branchName: string | null;
-	connectionType: GitConnectionType | null;
-	isInstanceLevel?: boolean;
+	connectionType: GitConnectionType;
 };
 
 const CONNECTION_ACTIONS = {
@@ -55,10 +54,10 @@ const dialogOpen = ref(false);
 const editingId = ref<string | undefined>(undefined);
 const addButton = useTemplateRef<{ $el?: HTMLElement }>('addButton');
 
+// LIGO-1020: the instance connection is prepended to this list
 const rows = computed<ConnectionRow[]>(() =>
-	// LIGO-1020: the instance connection is prepended here, marked instance-level
 	connections.value.map((connection) => ({
-		key: connection.id,
+		id: connection.id,
 		name: connection.name,
 		repositoryUrl: connection.repositoryUrl,
 		branchName: connection.branchName,
@@ -77,8 +76,8 @@ const connectorTypes = computed<Array<ActionDropdownItem<'git'>>>(() => [
 const connectionTypeLabel = (connectionType: GitConnectionType) =>
 	i18n.baseText(
 		connectionType === 'ssh'
-			? 'settings.gitConnections.form.connectionType.ssh'
-			: 'settings.gitConnections.form.connectionType.https',
+			? 'settings.gitConnections.connectionType.ssh'
+			: 'settings.gitConnections.connectionType.https',
 	);
 
 const rowActions = computed(() => [
@@ -86,8 +85,12 @@ const rowActions = computed(() => [
 	{ label: i18n.baseText('generic.delete'), value: CONNECTION_ACTIONS.DELETE },
 ]);
 
+let hasLoaded = false;
+
 async function load() {
-	isLoading.value = true;
+	// Only the first load shows the skeleton; a refetch keeps the list — and the
+	// Add button the dialog restores focus to — mounted.
+	isLoading.value = !hasLoaded;
 	loadError.value = false;
 	try {
 		connections.value = await fetchGitConnections(rootStore.publicApiContext);
@@ -96,6 +99,7 @@ async function load() {
 		connections.value = [];
 	} finally {
 		isLoading.value = false;
+		hasLoaded = true;
 	}
 }
 
@@ -114,11 +118,14 @@ function openEditDialog(id: string) {
 	dialogOpen.value = true;
 }
 
-function onDialogOpenChange(open: boolean) {
+async function onDialogOpenChange(open: boolean) {
 	dialogOpen.value = open;
-	// `v-if` unmounts the dialog before reka can run its close-auto-focus, so focus
-	// would otherwise fall back to `<body>`.
-	if (!open) addButton.value?.$el?.focus();
+	if (open) return;
+	// Focus has to wait for `v-if` to unmount the dialog: while it is still there
+	// reka's focus trap pulls focus straight back, and the unmount drops it to
+	// `<body>`.
+	await nextTick();
+	addButton.value?.$el?.focus();
 }
 
 async function confirmDelete(row: ConnectionRow) {
@@ -137,7 +144,7 @@ async function confirmDelete(row: ConnectionRow) {
 	if (confirmed !== MODAL_CONFIRM) return;
 
 	try {
-		await deleteGitConnection(rootStore.publicApiContext, row.key);
+		await deleteGitConnection(rootStore.publicApiContext, row.id);
 		toast.showMessage({
 			title: i18n.baseText('settings.gitConnections.toast.deleted'),
 			type: 'success',
@@ -150,7 +157,7 @@ async function confirmDelete(row: ConnectionRow) {
 
 async function onRowAction(action: string, row: ConnectionRow) {
 	if (action === CONNECTION_ACTIONS.EDIT) {
-		openEditDialog(row.key);
+		openEditDialog(row.id);
 	} else if (action === CONNECTION_ACTIONS.DELETE) {
 		await confirmDelete(row);
 	}
@@ -170,6 +177,19 @@ async function onRowAction(action: string, row: ConnectionRow) {
 			</div>
 		</div>
 
+		<div v-if="!loadError" :class="$style.actionBar">
+			<N8nActionDropdown :items="connectorTypes" @select="openCreateDialog">
+				<template #activator>
+					<N8nButton
+						ref="addButton"
+						icon="plus"
+						:label="i18n.baseText('settings.gitConnections.addConnector')"
+						data-test-id="git-connections-add"
+					/>
+				</template>
+			</N8nActionDropdown>
+		</div>
+
 		<N8nLoading2 v-if="isLoading" :rows="3" :shrink-last="false" />
 		<N8nEmptyState
 			v-else-if="loadError"
@@ -183,38 +203,13 @@ async function onRowAction(action: string, row: ConnectionRow) {
 			v-else-if="rows.length === 0"
 			:heading="i18n.baseText('settings.gitConnections.empty.title')"
 			:description="i18n.baseText('settings.gitConnections.empty.description')"
-		>
-			<template #additionalContent>
-				<N8nActionDropdown :items="connectorTypes" @select="openCreateDialog">
-					<template #activator>
-						<N8nButton
-							ref="addButton"
-							icon="plus"
-							:label="i18n.baseText('settings.gitConnections.addConnector')"
-							data-test-id="git-connections-add"
-						/>
-					</template>
-				</N8nActionDropdown>
-			</template>
-		</N8nEmptyState>
+		/>
 		<div v-else>
-			<div :class="$style.actionBar">
-				<N8nActionDropdown :items="connectorTypes" @select="openCreateDialog">
-					<template #activator>
-						<N8nButton
-							ref="addButton"
-							icon="plus"
-							:label="i18n.baseText('settings.gitConnections.addConnector')"
-							data-test-id="git-connections-add"
-						/>
-					</template>
-				</N8nActionDropdown>
-			</div>
-			<N8nCard v-for="row in rows" :key="row.key" class="mb-2xs" data-test-id="git-connection-card">
+			<N8nCard v-for="row in rows" :key="row.id" class="mb-2xs" data-test-id="git-connection-card">
 				<template #header>
 					<div :class="$style.cardHeader">
 						<N8nText tag="h2" bold>{{ row.name }}</N8nText>
-						<N8nBadge v-if="row.connectionType" theme="tertiary">
+						<N8nBadge theme="tertiary">
 							{{ connectionTypeLabel(row.connectionType) }}
 						</N8nBadge>
 					</div>

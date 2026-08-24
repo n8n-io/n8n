@@ -26,7 +26,7 @@ import { useRecentResources } from '@/features/shared/commandBar/composables/use
 import { usePostHog } from '@/app/stores/posthog.store';
 import { RESOURCE_CENTER_EXPERIMENT, TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
-import { usePromotionsEnabled } from '@/features/integrations/gitConnections.ee/composables/usePromotionsEnabled';
+import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import {
