@@ -621,12 +621,26 @@ describe('RoleMappingRuleService', () => {
 
 		it('should return 404 when rule id is unknown', async () => {
 			await expect(
-				service.patch('00000000-0000-4000-8000-000000000000', { expression: 'true' }),
+				service.patch({
+					id: '00000000-0000-4000-8000-000000000000',
+					dto: { expression: 'true' },
+					userId: testUser.id,
+					userEmail: testUser.email,
+				}),
 			).rejects.toThrow(NotFoundError);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should reject an empty patch payload', async () => {
-			await expect(service.patch(existingInstanceRule.id, {})).rejects.toThrow(BadRequestError);
+			await expect(
+				service.patch({
+					id: existingInstanceRule.id,
+					dto: {},
+					userId: testUser.id,
+					userEmail: testUser.email,
+				}),
+			).rejects.toThrow(BadRequestError);
 		});
 
 		it('should update expression and return loaded rule', async () => {
@@ -641,13 +655,22 @@ describe('RoleMappingRuleService', () => {
 			roleMappingRuleRepository.save.mockImplementation(async (r) => r as RoleMappingRule);
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(updatedRule);
 
-			const result = await service.patch(existingInstanceRule.id, {
-				expression: 'claims.new === 1',
+			const result = await service.patch({
+				id: existingInstanceRule.id,
+				dto: { expression: 'claims.new === 1' },
+				userId: testUser.id,
+				userEmail: testUser.email,
 			});
 
 			expect(result.expression).toBe('claims.new === 1');
 			expect(result.role).toBe(globalRole.slug);
 			expect(roleMappingRuleRepository.save).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rule-updated', {
+				user: { id: testUser.id, email: testUser.email },
+				ruleId: existingInstanceRule.id,
+				ruleType: 'instance',
+				patchedFields: ['expression'],
+			});
 		});
 
 		it('should return 409 when order collides with another rule', async () => {
@@ -675,9 +698,16 @@ describe('RoleMappingRuleService', () => {
 				return null;
 			});
 
-			await expect(service.patch(existingInstanceRule.id, { order: 5 })).rejects.toThrow(
-				ConflictError,
-			);
+			await expect(
+				service.patch({
+					id: existingInstanceRule.id,
+					dto: { order: 5 },
+					userId: testUser.id,
+					userEmail: testUser.email,
+				}),
+			).rejects.toThrow(ConflictError);
+
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
 		it('should allow patch that keeps the same type and order', async () => {
@@ -716,7 +746,12 @@ describe('RoleMappingRuleService', () => {
 			roleMappingRuleRepository.findOneOrFail.mockResolvedValue(updatedRule);
 
 			await expect(
-				service.patch(existingInstanceRule.id, { expression: 'true' }),
+				service.patch({
+					id: existingInstanceRule.id,
+					dto: { expression: 'true' },
+					userId: testUser.id,
+					userEmail: testUser.email,
+				}),
 			).resolves.toMatchObject({ order: 0, type: 'instance' });
 		});
 	});
@@ -1009,11 +1044,16 @@ describe('RoleMappingRuleService', () => {
 					makeRule('rule-3', 2, 'instance'),
 				]); // old type: instance has gap
 
-			await service.patch('rule-1', {
-				type: 'project',
-				role: projectRole.slug,
-				projectIds: ['p1'],
-				order: 0,
+			await service.patch({
+				id: 'rule-1',
+				dto: {
+					type: 'project',
+					role: projectRole.slug,
+					projectIds: ['p1'],
+					order: 0,
+				},
+				userId: testUser.id,
+				userEmail: testUser.email,
 			});
 
 			// Called twice: once for new type (project), once for old type (instance)

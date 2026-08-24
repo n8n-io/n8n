@@ -11,6 +11,8 @@
 //   pnpm session rm         delete the codespace
 import { execFileSync, spawnSync } from 'node:child_process';
 
+import { MARKETPLACE, PLUGINS } from '../.devcontainer/codespaces/plugins.mjs';
+
 const REPO = 'n8n-io/n8n';
 const DEVCONTAINER = '.devcontainer/codespaces/devcontainer.json';
 const MACHINE = 'premiumLinux'; // 8-core/32GB — the only size we use
@@ -73,26 +75,28 @@ const SECRETS = '. /usr/local/lib/codespaces-env.sh 2>/dev/null || true';
 // Worktrees share the pnpm store but not the turbo cache; a shared TURBO_CACHE_DIR
 // (seeded from the main checkout) keeps new-worktree builds at cache-hit speed.
 const CACHE = 'export TURBO_CACHE_DIR=/workspaces/.turbo-cache; [ -d "$TURBO_CACHE_DIR" ] || cp -r /workspaces/n8n/.turbo/cache "$TURBO_CACHE_DIR" 2>/dev/null || mkdir -p "$TURBO_CACHE_DIR"';
-// On a freshly created codespace, post-start.mjs installs the skills plugin via a
+// On a freshly created codespace, post-start.mjs installs the skills plugins via a
 // network clone that takes tens of seconds. If `claude` boots first it builds its
-// skill registry before the plugin exists on disk, and /reload-plugins can't
-// recover it in-process — so the first session silently loses every quality skill.
-// Run the idempotent install here to block until the plugin is on disk (a fast
+// skill registry before a plugin exists on disk, and /reload-plugins can't
+// recover it in-process — so the first session silently loses those skills.
+// Run the idempotent installs here to block until every plugin is on disk (a fast
 // no-op once cached). Mirrors the env vars post-start.mjs sets for the private
 // HTTPS clone; failures are tolerated so a plugin hiccup never blocks the session.
-const MARKETPLACE = 'n8n-io/n8n-agent-skills';
-const PLUGIN = 'quality@n8n-agent-skills';
-const ENSURE_PLUGIN = `export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1 CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1; claude plugin marketplace add ${MARKETPLACE} >/dev/null 2>&1 || true; claude plugin install ${PLUGIN} >/dev/null 2>&1 || true`;
+const ENSURE_PLUGINS = [
+	'export CLAUDE_CODE_PLUGIN_PREFER_HTTPS=1 CLAUDE_CODE_PLUGIN_KEEP_MARKETPLACE_ON_FAILURE=1',
+	`claude plugin marketplace add ${MARKETPLACE} >/dev/null 2>&1 || true`,
+	...PLUGINS.map((plugin) => `claude plugin install ${plugin} >/dev/null 2>&1 || true`),
+].join('; ');
 
 function remoteCommand(session, extraArgs) {
 	const claude = `claude ${extraArgs}`.trim();
-	if (session === 'agent') return `${SECRETS}; ${CACHE}; ${ENSURE_PLUGIN}; cd /workspaces/n8n && ${claude}`;
+	if (session === 'agent') return `${SECRETS}; ${CACHE}; ${ENSURE_PLUGINS}; cd /workspaces/n8n && ${claude}`;
 	const wt = `/workspaces/wt-${session}`;
 	const branch = `session/${session}`;
 	return [
 		SECRETS,
 		CACHE,
-		ENSURE_PLUGIN,
+		ENSURE_PLUGINS,
 		`if [ ! -d "${wt}" ]; then echo "Setting up worktree ${wt}…"`,
 		`git -C /workspaces/n8n worktree add "${wt}" -b "${branch}" 2>/dev/null || git -C /workspaces/n8n worktree add "${wt}" "${branch}"`,
 		`(cd "${wt}" && pnpm install); fi`,

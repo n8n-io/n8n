@@ -53,8 +53,6 @@ type PackageJson = {
 
 @Service()
 export class CommunityPackagesService {
-	missingPackages: string[] = [];
-
 	private readonly downloadFolder = this.instanceSettings.nodesDownloadDir;
 
 	private readonly packageJsonPath = join(this.downloadFolder, 'package.json');
@@ -85,19 +83,11 @@ export class CommunityPackagesService {
 		await this.checkForMissingPackages();
 	}
 
-	get hasMissingPackages() {
-		return this.missingPackages.length > 0;
-	}
-
 	async findInstalledPackage(packageName: string) {
 		return await this.installedPackageRepository.findOne({
 			where: { packageName },
 			relations: ['installedNodes'],
 		});
-	}
-
-	async isPackageInstalled(packageName: string) {
-		return await this.installedPackageRepository.exist({ where: { packageName } });
 	}
 
 	async getAllInstalledPackages() {
@@ -191,32 +181,24 @@ export class CommunityPackagesService {
 		}, []);
 	}
 
-	matchMissingPackages(installedPackages: PublicInstalledPackage[]) {
-		const missingPackagesList = this.missingPackages
-			.map((name) => {
-				try {
-					// Strip away versions but maintain scope and package name
-					const parsedPackageData = this.parseNpmPackageName(name);
-					return parsedPackageData.packageName;
-				} catch {
-					return;
-				}
-			})
-			.filter((i): i is string => i !== undefined);
+	/**
+	 * `some`, not `every`: a repair-reinstall (`saveInstalledPackageWithNodes`, unlike
+	 * `replaceInstalledPackageWithNodes`) doesn't delete `installedNodes` rows from a
+	 * previous version, so a package that dropped a node type keeps a stale row that
+	 * will never resolve. `every` would flag that package as failed forever.
+	 */
+	private areNodesLoaded(installedNodes: Array<{ type: string }>) {
+		return (
+			installedNodes.length === 0 ||
+			installedNodes.some((node) => this.loadNodesAndCredentials.isKnownNode(node.type))
+		);
+	}
 
-		const packages: PublicInstalledPackage[] = [];
-
-		for (const installedPackage of installedPackages) {
-			const pkg = { ...installedPackage };
-
-			if (missingPackagesList.includes(pkg.packageName)) {
-				pkg.failedLoading = true;
-			}
-
-			packages.push(pkg);
-		}
-
-		return packages;
+	withLoadStatus(installedPackages: PublicInstalledPackage[]): PublicInstalledPackage[] {
+		return installedPackages.map((installedPackage) => ({
+			...installedPackage,
+			failedLoading: !this.areNodesLoaded(installedPackage.installedNodes),
+		}));
 	}
 
 	async checkNpmPackageStatus(packageName: string) {
@@ -238,40 +220,64 @@ export class CommunityPackagesService {
 		return { status: NPM_PACKAGE_STATUS_GOOD };
 	}
 
-	hasPackageLoaded(packageName: string) {
-		if (!this.missingPackages.length) return true;
-
-		return !this.missingPackages.some(
-			(packageNameAndVersion) =>
-				packageNameAndVersion.startsWith(packageName) &&
-				packageNameAndVersion.replace(packageName, '').startsWith('@'),
-		);
+	isPackageLoaded(installedPackage: InstalledPackages) {
+		return this.areNodesLoaded(installedPackage.installedNodes);
 	}
 
-	removePackageFromMissingList(packageName: string) {
-		try {
-			this.missingPackages = this.missingPackages.filter(
-				(packageNameAndVersion) =>
-					!packageNameAndVersion.startsWith(packageName) ||
-					!packageNameAndVersion.replace(packageName, '').startsWith('@'),
-			);
-		} catch {
-			// do nothing
-		}
+	/**
+	 * Returns the ledger, or `null` if it is absent or unusable (e.g. truncated by a crash
+	 * mid-write). Absence is the normal state before the first install, so only an unusable
+	 * ledger is worth a warning.
+	 */
+	private async readPackageJson(): Promise<PackageJson | null> {
+		const content = await readFile(this.packageJsonPath, 'utf-8').catch(() => null);
+		if (content === null) return null;
+
+		// Checking `dependencies` rather than just the parse: `{}` parses fine but throws on
+		// the next mutation, and nothing would ever rebuild it.
+		const packageJson = jsonParse<PackageJson | null>(content, { fallbackValue: null });
+		if (packageJson?.dependencies) return packageJson;
+
+		this.logger.warn('Community package ledger is unusable, rebuilding it');
+		return null;
+	}
+
+	/** Reads the version a package actually has on disk, or `null` if absent or unreadable. */
+	private async readInstalledPackageVersion(packageName: string): Promise<string | null> {
+		const packageJsonPath = `${this.resolvePackageDirectory(packageName)}/package.json`;
+		const content = await readFile(packageJsonPath, 'utf-8').catch(() => null);
+		if (content === null) return null;
+
+		return jsonParse<{ version: string } | null>(content, { fallbackValue: null })?.version ?? null;
+	}
+
+	/**
+	 * Rebuilds the ledger from the database, the source of truth for what is installed.
+	 * Writing an empty `dependencies` instead would leave `npm outdated` with nothing
+	 * to compare, silently hiding available updates for every package.
+	 */
+	private async buildPackageJsonFromDatabase(): Promise<PackageJson> {
+		const installedPackages = await this.getAllInstalledPackages();
+
+		return {
+			name: 'installed-nodes',
+			private: true,
+			dependencies: Object.fromEntries(
+				installedPackages.map(({ packageName, installedVersion }) => [
+					packageName,
+					installedVersion,
+				]),
+			),
+		};
 	}
 
 	async ensurePackageJson() {
-		try {
-			await access(this.packageJsonPath, constants.F_OK);
-		} catch {
-			await mkdir(this.downloadFolder, { recursive: true });
-			const packageJson: PackageJson = {
-				name: 'installed-nodes',
-				private: true,
-				dependencies: {},
-			};
-			await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
-		}
+		if (await this.readPackageJson()) return;
+
+		const packageJson = await this.buildPackageJsonFromDatabase();
+
+		await mkdir(this.downloadFolder, { recursive: true });
+		await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 	}
 
 	async checkForMissingPackages() {
@@ -279,18 +285,15 @@ export class CommunityPackagesService {
 		const missingPackages = new Set<{ packageName: string; version: string }>();
 
 		installedPackages.forEach((installedPackage) => {
-			installedPackage.installedNodes.forEach((installedNode) => {
-				if (!this.loadNodesAndCredentials.isKnownNode(installedNode.type)) {
-					// Leave the list ready for installing in case we need.
-					missingPackages.add({
-						packageName: installedPackage.packageName,
-						version: installedPackage.installedVersion,
-					});
-				}
+			// Same rule as `withLoadStatus`, so the UI and this check can't disagree.
+			if (this.areNodesLoaded(installedPackage.installedNodes)) return;
+
+			// Leave the list ready for installing in case we need.
+			missingPackages.add({
+				packageName: installedPackage.packageName,
+				version: installedPackage.installedVersion,
 			});
 		});
-
-		this.missingPackages = [];
 
 		if (missingPackages.size === 0) return;
 
@@ -362,10 +365,6 @@ export class CommunityPackagesService {
 				'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
 			);
 		}
-
-		this.missingPackages = [...missingPackages].map(
-			(missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`,
-		);
 	}
 
 	async installPackage(
@@ -388,10 +387,17 @@ export class CommunityPackagesService {
 	async removePackage(packageName: string, installedPackage: InstalledPackages): Promise<void> {
 		await this.removeNpmPackage(packageName);
 		await this.removePackageFromDatabase(installedPackage);
-		void this.publisher.publishCommand({
-			command: 'community-package-uninstall',
-			payload: { packageName },
-		});
+		void this.publisher
+			.publishCommand({
+				command: 'community-package-uninstall',
+				payload: { packageName },
+			})
+			.catch((error) => {
+				this.logger.warn('Failed to publish community package uninstall event', {
+					error: ensureError(error),
+					packageName,
+				});
+			});
 	}
 
 	private getNpmRegistry() {
@@ -519,10 +525,21 @@ export class CommunityPackagesService {
 						});
 					}
 				}
-				void this.publisher.publishCommand({
-					command: isUpdate ? 'community-package-update' : 'community-package-install',
-					payload: { packageName, packageVersion },
-				});
+				// Publish the resolved version, not the requested specifier (e.g. `latest`),
+				// so peers install the exact version this instance just persisted.
+				const { installedVersion } = installedPackage;
+				void this.publisher
+					.publishCommand({
+						command: isUpdate ? 'community-package-update' : 'community-package-install',
+						payload: { packageName, packageVersion: installedVersion },
+					})
+					.catch((error) => {
+						this.logger.warn('Failed to publish community package install/update event', {
+							error: ensureError(error),
+							packageName,
+							packageVersion: installedVersion,
+						});
+					});
 				await this.loadNodesAndCredentials.postProcessLoaders();
 				this.loadNodesAndCredentials.releaseTypes();
 				this.logger.info(`Community package installed: ${packageName}`);
@@ -545,16 +562,39 @@ export class CommunityPackagesService {
 		packageName,
 		packageVersion,
 	}: { packageName: string; packageVersion: string }) {
-		await this.installOrUpdateNpmPackage(packageName, packageVersion);
+		try {
+			await this.installOrUpdateNpmPackage(packageName, packageVersion);
+		} catch (error) {
+			this.logger.error(`Failed to install community package ${packageName} from pubsub event`, {
+				error: ensureError(error),
+				packageName,
+				packageVersion,
+			});
+		}
 	}
 
 	@OnPubSubEvent('community-package-uninstall')
 	async handleUninstallEvent({ packageName }: { packageName: string }) {
-		await this.removeNpmPackage(packageName);
+		try {
+			await this.removeNpmPackage(packageName);
+		} catch (error) {
+			this.logger.error(`Failed to uninstall community package ${packageName} from pubsub event`, {
+				error: ensureError(error),
+				packageName,
+			});
+		}
 	}
 
 	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
 		return await this.packageMutex(async () => {
+			const onDiskVersion = await this.readInstalledPackageVersion(packageName);
+			if (onDiskVersion === packageVersion && this.loadNodesAndCredentials.loaders[packageName]) {
+				this.logger.debug(
+					`Community package ${packageName} already at ${packageVersion}, skipping`,
+				);
+				return;
+			}
+
 			const authToken = this.getNpmAuthToken();
 			await this.downloadPackage(packageName, packageVersion, authToken);
 			await this.loadNodesAndCredentials.unloadPackage(packageName);
@@ -768,8 +808,11 @@ export class CommunityPackagesService {
 	private async mutatePackageJsonDependencies(
 		mutate: (dependencies: PackageJson['dependencies']) => void,
 	) {
-		const existingContent = await readFile(this.packageJsonPath, 'utf-8');
-		const packageJson = jsonParse<PackageJson>(existingContent);
+		// Heal here too, not just at boot: an unreadable ledger would otherwise fail
+		// every install and uninstall until the process is restarted.
+		const packageJson =
+			(await this.readPackageJson()) ?? (await this.buildPackageJsonFromDatabase());
+
 		mutate(packageJson.dependencies);
 		await writeFile(this.packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 	}

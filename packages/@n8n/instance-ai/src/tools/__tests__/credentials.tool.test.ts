@@ -1471,6 +1471,142 @@ describe('credentials tool', () => {
 				}),
 			);
 		});
+
+		describe('credential type validation', () => {
+			function createValidatingContext(existingTypes: string[]) {
+				const context = createMockContext();
+				context.credentialService.credentialTypeExists = vi
+					.fn()
+					.mockImplementation(
+						async (type: string) => await Promise.resolve(existingTypes.includes(type)),
+					);
+				return context;
+			}
+
+			it('should return unknown_credential_type with suggestions instead of suspending', async () => {
+				const context = createValidatingContext(['gmailOAuth2']);
+				(context.credentialService.searchCredentialTypes as Mock).mockImplementation(
+					async (query: string) =>
+						await Promise.resolve(
+							query === 'gmail' ? [{ type: 'gmailOAuth2', displayName: 'Gmail OAuth2 API' }] : [],
+						),
+				);
+
+				const suspendFn = vi.fn();
+				const tool = createCredentialsTool(context);
+				const result = await executeTool(
+					tool,
+					{
+						action: 'setup' as const,
+						credentials: [{ credentialType: 'gmailOAuth2Api', reason: 'Send email' }],
+					},
+					suspendCtx(suspendFn),
+				);
+
+				expect(suspendFn).not.toHaveBeenCalled();
+				expect(result).toEqual({
+					error: 'unknown_credential_type',
+					message: expect.stringContaining('"gmailOAuth2Api"'),
+					suggestions: {
+						gmailOAuth2Api: [{ type: 'gmailOAuth2', displayName: 'Gmail OAuth2 API' }],
+					},
+				});
+				// The exact name is tried before falling back to the service prefix.
+				expect(context.credentialService.searchCredentialTypes).toHaveBeenNthCalledWith(
+					1,
+					'gmailOAuth2Api',
+				);
+				expect(context.credentialService.searchCredentialTypes).toHaveBeenNthCalledWith(2, 'gmail');
+			});
+
+			it('should omit suggestions when no near-match is found', async () => {
+				const context = createValidatingContext([]);
+
+				const tool = createCredentialsTool(context);
+				const result = await executeTool(
+					tool,
+					{
+						action: 'setup' as const,
+						credentials: [{ credentialType: 'noSuchThingApi' }],
+					},
+					suspendCtx(),
+				);
+
+				expect(result).toEqual({
+					error: 'unknown_credential_type',
+					message: expect.stringContaining('"noSuchThingApi"'),
+				});
+			});
+
+			it('should list only the unknown types when known and unknown are mixed', async () => {
+				const context = createValidatingContext(['slackApi']);
+
+				const result = await executeTool(
+					createCredentialsTool(context),
+					{
+						action: 'setup' as const,
+						credentials: [{ credentialType: 'slackApi' }, { credentialType: 'gmailOAuth2Api' }],
+					},
+					suspendCtx(),
+				);
+
+				expect(result).toMatchObject({ error: 'unknown_credential_type' });
+				expect((result as { message: string }).message).not.toContain('"slackApi"');
+				expect((result as { message: string }).message).toContain('"gmailOAuth2Api"');
+			});
+
+			it('should suspend normally when every requested type exists', async () => {
+				const context = createValidatingContext(['slackApi']);
+
+				const suspendFn = vi.fn();
+				await executeTool(
+					createCredentialsTool(context),
+					{
+						action: 'setup' as const,
+						credentials: [{ credentialType: 'slackApi', reason: 'Send messages' }],
+					},
+					suspendCtx(suspendFn),
+				);
+
+				expect(suspendFn).toHaveBeenCalledTimes(1);
+			});
+
+			it('should not look up the templated custom auth type', async () => {
+				const context = createValidatingContext([]);
+
+				const suspendFn = vi.fn();
+				await executeTool(
+					createCredentialsTool(context),
+					{
+						action: 'setup' as const,
+						credentials: [{ credentialType: 'httpTemplatedCustomAuth', reason: 'Custom API' }],
+					},
+					suspendCtx(suspendFn),
+				);
+
+				expect(context.credentialService.credentialTypeExists).not.toHaveBeenCalled();
+				expect(suspendFn).toHaveBeenCalledTimes(1);
+			});
+
+			it('should treat a failing existence lookup as known and proceed', async () => {
+				const context = createMockContext();
+				context.credentialService.credentialTypeExists = vi
+					.fn()
+					.mockRejectedValue(new Error('registry unavailable'));
+
+				const suspendFn = vi.fn();
+				await executeTool(
+					createCredentialsTool(context),
+					{
+						action: 'setup' as const,
+						credentials: [{ credentialType: 'slackApi' }],
+					},
+					suspendCtx(suspendFn),
+				);
+
+				expect(suspendFn).toHaveBeenCalledTimes(1);
+			});
+		});
 	});
 
 	// ── test ────────────────────────────────────────────────────────────────

@@ -3,10 +3,11 @@ import {
 	testWebhookReceived,
 	builderCreditsUpdated,
 	executionStarted,
+	agentNodeProgress,
 } from '@/app/composables/usePushConnection/handlers';
 import type { TestWebhookReceived } from '@n8n/api-types/push/webhook';
 import type { BuilderCreditsPushMessage } from '@n8n/api-types/push/builder-credits';
-import type { PushMessage } from '@n8n/api-types';
+import type { AgentNodeProgress, PushMessage } from '@n8n/api-types';
 import { pushHandlerRegistry } from '@n8n/frontend-module-sdk';
 import { useRouter } from 'vue-router';
 import type { OnPushMessageHandler } from '@/app/stores/pushConnection.store';
@@ -43,6 +44,7 @@ vi.mock('@/app/composables/usePushConnection/handlers', () => ({
 	workflowDeactivated: vi.fn(),
 	collaboratorsChanged: vi.fn(),
 	builderCreditsUpdated: vi.fn(),
+	agentNodeProgress: vi.fn(),
 }));
 
 vi.mock('vue-router', async (importOriginal) => {
@@ -126,6 +128,30 @@ describe('usePushConnection composable', () => {
 		pushConnection.terminate();
 
 		expect(removeEventListener).toHaveBeenCalledTimes(1);
+	});
+
+	it('routes agent capability progress to its execution-scoped handler', async () => {
+		pushConnection.initialize();
+		const handler = addEventListener.mock.calls[0][0];
+		const event: AgentNodeProgress = {
+			type: 'agentNodeProgress',
+			data: {
+				executionId: 'exec-1',
+				nodeId: 'node-1',
+				nodeName: 'Message an Agent',
+				runIndex: 0,
+				itemIndex: 0,
+				sequenceNumber: 0,
+				toolCallId: 'tc-1',
+				capability: { kind: 'tool', name: 'lookup' },
+				status: 'running',
+			},
+		};
+
+		handler(event);
+		await Promise.resolve();
+
+		expect(agentNodeProgress).toHaveBeenCalledWith(event, expect.any(Object));
 	});
 
 	it('should handle updateBuilderCredits event correctly', async () => {

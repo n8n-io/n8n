@@ -101,7 +101,7 @@ describe('WorkflowReviewActivityFeed', () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 
 		expect(getByTestId('workflow-review-activity-error')).toHaveTextContent(
-			'Could not load activity',
+			"Couldn't load activity",
 		);
 		expect(queryByTestId('workflow-review-activity-empty')).not.toBeInTheDocument();
 	});
@@ -393,19 +393,6 @@ describe('WorkflowReviewActivityFeed', () => {
 						text: 'Moved the workflow to another project',
 					},
 				],
-				[
-					// The workflow name comes from the detail surface; rendered bare without it.
-					'a published version of a workflow whose name is not available',
-					{
-						...systemEntry,
-						type: 'workflow.published',
-						data: { workflowId: 'wf-1', workflowVersionId: '234df342-5f2b-4e5a-9be6-79ee7bb1c02f' },
-					},
-					{
-						testId: 'workflow-review-activity-workflow-published',
-						text: 'Published Version 234df342',
-					},
-				],
 			],
 		)('shows %s', async (_label, entry, expected) => {
 			store.entries = [entry];
@@ -613,27 +600,6 @@ describe('WorkflowReviewActivityFeed', () => {
 			expect(getByTestId('workflow-review-activity-deleted-actor')).toBeInTheDocument();
 		});
 
-		it('names the publisher on a published entry', async () => {
-			store.entries = [
-				{
-					...systemEntry,
-					type: 'workflow.published',
-					data: { workflowId: 'wf-1', workflowVersionId: 'version-1' },
-					createdBy: {
-						id: 'user-1',
-						email: 'ada@example.com',
-						firstName: 'Ada',
-						lastName: 'Lovelace',
-					},
-				},
-			];
-
-			const { getByTestId } = renderComponent();
-			await nextTick();
-
-			expect(getByTestId('workflow-review-activity-actor')).toHaveTextContent('Ada Lovelace');
-		});
-
 		const renderWithLinkedWorkflows = (linked: Partial<ReviewLinkedWorkflowContext>) =>
 			renderComponent({
 				global: {
@@ -655,6 +621,27 @@ describe('WorkflowReviewActivityFeed', () => {
 					},
 				},
 			});
+
+		it('names the publisher on a published entry', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'workflow.published',
+					data: { workflowId: 'wf-1', workflowVersionId: 'version-1' },
+					createdBy: {
+						id: 'user-1',
+						email: 'ada@example.com',
+						firstName: 'Ada',
+						lastName: 'Lovelace',
+					},
+				},
+			];
+
+			const { getByTestId } = renderWithLinkedWorkflows({});
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-actor')).toHaveTextContent('Ada Lovelace');
+		});
 
 		it('names the published workflow when the detail surface provides its name', async () => {
 			store.entries = [
@@ -722,6 +709,26 @@ describe('WorkflowReviewActivityFeed', () => {
 
 			expect(getByTestId('workflow-review-activity-unknown')).toBeInTheDocument();
 			expect(queryByTestId('workflow-review-activity-workflow-published')).not.toBeInTheDocument();
+		});
+
+		// The workflow can be deleted after publishing, so the feed must still say what was
+		// published even though there is nothing left to link to.
+		it('names a published version as an unknown workflow when its workflow has since been deleted', async () => {
+			store.entries = [
+				{
+					...systemEntry,
+					type: 'workflow.published',
+					data: { workflowId: 'wf-1', workflowVersionId: '234df342-5f2b-4e5a-9be6-79ee7bb1c02f' },
+				},
+			];
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			await nextTick();
+
+			expect(getByTestId('workflow-review-activity-workflow-published')).toHaveTextContent(
+				'Published unknown workflow Version 234df342',
+			);
+			expect(queryByTestId('workflow-review-activity-workflow-link')).not.toBeInTheDocument();
 		});
 
 		it('names the reviewer who acted', async () => {

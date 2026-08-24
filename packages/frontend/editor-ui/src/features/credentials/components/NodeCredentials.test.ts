@@ -611,6 +611,182 @@ describe('NodeCredentials', () => {
 				source: 'user',
 			});
 		});
+
+		it('should drop credentials the node no longer uses when selecting a credential', async () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.setNodeTypes([
+				{
+					displayName: 'HTTP Request',
+					name: 'n8n-nodes-base.httpRequest',
+					group: ['input'],
+					version: [4, 4.1, 4.2],
+					description: 'Makes an HTTP request',
+					defaults: { name: 'HTTP Request' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [
+						{
+							name: 'httpSslAuth',
+							required: true,
+							displayOptions: { show: { provideSslCertificates: [true] } },
+						},
+					],
+					properties: [],
+				} as unknown as INodeTypeDescription,
+			]);
+
+			// Node switched from generic to predefined auth: the httpHeaderAuth entry is stale.
+			// Built from scratch (not from the shared httpNode fixture) because store actions
+			// in earlier tests mutate the fixture object in place.
+			const httpNodeWithStaleCred: INodeUi = {
+				parameters: {
+					method: 'GET',
+					url: '',
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'openAiApi',
+					provideSslCertificates: false,
+					options: {},
+				},
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [-200, -160],
+				id: 'e4b917b5-e994-42c7-8576-6ef28a7619b2',
+				name: 'HTTP Request Stale',
+				credentials: {
+					openAiApi: { id: 'c8vqdPpPClh4TgIO', name: 'OpenAi account' },
+					httpHeaderAuth: { id: 'staleCred', name: 'Header Auth' },
+				},
+			};
+
+			ndvStore.activeNode = httpNodeWithStaleCred;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
+			};
+
+			const { emitted } = renderComponent(
+				{ props: { node: httpNodeWithStaleCred } },
+				{ merge: true },
+			);
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(screen.queryByText('OpenAi account 2')!);
+
+			const events = emitted('credentialSelected');
+			const payload = (events[events.length - 1] as unknown[])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials).toEqual({
+				openAiApi: { id: 'secondCred', name: 'OpenAi account 2' },
+			});
+		});
+
+		it('should keep existing credentials when the node type is unknown', async () => {
+			// No node types registered: the active credential types cannot be determined,
+			// so selecting a credential must not remove any existing entries.
+			const httpNodeWithStaleCred: INodeUi = {
+				parameters: {
+					method: 'GET',
+					url: '',
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'openAiApi',
+					options: {},
+				},
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [-200, -160],
+				id: 'f5c917b5-e994-42c7-8576-6ef28a7619b3',
+				name: 'HTTP Request Unknown Type',
+				credentials: {
+					openAiApi: { id: 'c8vqdPpPClh4TgIO', name: 'OpenAi account' },
+					httpHeaderAuth: { id: 'staleCred', name: 'Header Auth' },
+				},
+			};
+
+			ndvStore.activeNode = httpNodeWithStaleCred;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
+			};
+
+			const { emitted } = renderComponent(
+				{ props: { node: httpNodeWithStaleCred } },
+				{ merge: true },
+			);
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(screen.queryByText('OpenAi account 2')!);
+
+			const events = emitted('credentialSelected');
+			const payload = (events[events.length - 1] as unknown[])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			// Presence matters (nothing was deleted); the renderer's merge:true option
+			// deep-merges nodes into the shared httpNode fixture, so avoid exact equality.
+			expect(payload.properties.credentials).toMatchObject({
+				openAiApi: { id: 'secondCred', name: 'OpenAi account 2' },
+				httpHeaderAuth: { id: 'staleCred', name: 'Header Auth' },
+			});
+		});
+
+		it('should never drop the just-selected credential even when it is not in the active set', async () => {
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			nodeTypesStore.setNodeTypes([
+				{
+					displayName: 'HTTP Request',
+					name: 'n8n-nodes-base.httpRequest',
+					group: ['input'],
+					version: [4, 4.1, 4.2],
+					description: 'Makes an HTTP request',
+					defaults: { name: 'HTTP Request' },
+					inputs: [NodeConnectionTypes.Main],
+					outputs: [NodeConnectionTypes.Main],
+					credentials: [],
+					properties: [],
+				} as unknown as INodeTypeDescription,
+			]);
+
+			// The node's configuration points at anthropicApi, so the openAiApi credential
+			// the user is about to pick (rendered via overrideCredType) is not in the
+			// active set — only the just-selected guard keeps it from being deleted.
+			const httpNodeOtherAuth: INodeUi = {
+				parameters: {
+					method: 'GET',
+					url: '',
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'anthropicApi',
+					options: {},
+				},
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [-200, -160],
+				id: 'a1b917b5-e994-42c7-8576-6ef28a7619b4',
+				name: 'HTTP Request Other Auth',
+				credentials: {
+					anthropicApi: { id: 'anthCred', name: 'Anthropic account' },
+				},
+			};
+
+			ndvStore.activeNode = httpNodeOtherAuth;
+			credentialsStore.state.credentials = {
+				c8vqdPpPClh4TgIO: createCredential(),
+				secondCred: createCredential({ id: 'secondCred', name: 'OpenAi account 2' }),
+			};
+
+			const { emitted } = renderComponent({ props: { node: httpNodeOtherAuth } }, { merge: true });
+
+			await userEvent.click(screen.getByTestId('node-credentials-select'));
+			await userEvent.click(screen.queryByText('OpenAi account 2')!);
+
+			const events = emitted('credentialSelected');
+			const payload = (events[events.length - 1] as unknown[])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials).toMatchObject({
+				anthropicApi: { id: 'anthCred', name: 'Anthropic account' },
+				openAiApi: { id: 'secondCred', name: 'OpenAi account 2' },
+			});
+		});
 	});
 
 	describe('resolvable credentials', () => {
