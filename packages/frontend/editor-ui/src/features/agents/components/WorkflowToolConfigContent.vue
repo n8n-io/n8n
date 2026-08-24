@@ -10,10 +10,11 @@
  *   - name (edited in the modal header's inline-text widget)
  *   - description (what the LLM reads to understand when to use the tool)
  *   - allOutputs (`true` returns every node output; `false` = last node only)
+ *   - inputs (optional AI vs fixed bindings for Execute Workflow Trigger fields)
  *
  * The underlying workflow's runtime input schema is inferred by
- * `WorkflowToolFactory.inferInputSchema` at invocation time based on the
- * trigger type — we don't configure it here.
+ * `WorkflowToolFactory.inferInputSchema` at invocation time; this form only
+ * lets the user pin fixed values so the LLM is not asked for them.
  */
 import { computed, onMounted, ref, watch } from 'vue';
 import dateformat from 'dateformat';
@@ -27,11 +28,17 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import type { AgentJsonWorkflowToolInputField } from '@n8n/api-types';
 import { useRouter } from 'vue-router';
 
 import { VIEWS } from '@/app/constants';
 import { useAgentToolCatalog } from '../composables/useAgentToolCatalog';
 import type { WorkflowToolRef } from '../types';
+import {
+	formatWorkflowToolFixedValue,
+	listWorkflowToolInputFields,
+	parseWorkflowToolFixedValue,
+} from '../utils/workflowToolInputFields';
 
 const props = defineProps<{
 	initialRef: WorkflowToolRef;
@@ -53,6 +60,9 @@ const description = ref(props.initialRef.description ?? '');
 const allOutputs = ref(props.initialRef.allOutputs ?? false);
 const workflow = ref(props.initialRef.workflow ?? '');
 const workflowId = ref<string | undefined>(props.initialRef.workflowId);
+const inputs = ref<NonNullable<WorkflowToolRef['inputs']>>({
+	...(props.initialRef.inputs ?? {}),
+});
 const isLoadingWorkflows = ref(true);
 const mode = ref<'list' | 'id'>('list');
 const enteredId = ref('');
@@ -71,6 +81,7 @@ watch(
 		allOutputs.value = updated.allOutputs ?? false;
 		workflow.value = updated.workflow ?? '';
 		workflowId.value = updated.workflowId;
+		inputs.value = { ...(updated.inputs ?? {}) };
 		mode.value = 'list';
 		enteredId.value = '';
 		isIdUnresolvable.value = false;
@@ -158,6 +169,73 @@ const selectedOptionId = computed(
 	() => targetWorkflowId.value ?? workflowId.value ?? workflow.value,
 );
 
+const declaredInputFields = computed(() => listWorkflowToolInputFields(targetWorkflow.value));
+
+function fieldBinding(fieldName: string): AgentJsonWorkflowToolInputField {
+	return inputs.value[fieldName] ?? { mode: 'ai' };
+}
+
+function fieldMode(fieldName: string): 'ai' | 'fixed' {
+	return fieldBinding(fieldName).mode;
+}
+
+function fieldType(fieldName: string): string | undefined {
+	return declaredInputFields.value.find((field) => field.name === fieldName)?.type;
+}
+
+function fieldFixedValue(fieldName: string): string {
+	const binding = fieldBinding(fieldName);
+	if (binding.mode !== 'fixed') return '';
+	return formatWorkflowToolFixedValue(binding.value);
+}
+
+// Raw text being typed per field. While editing, the input shows this
+// uncoerced text so fractional numbers (and in-progress JSON) survive
+// each keystroke. On blur the text is parsed and committed to `inputs`.
+const fieldInputText = ref<Record<string, string>>({});
+
+function fieldInputDisplay(fieldName: string): string {
+	return fieldInputText.value[fieldName] ?? fieldFixedValue(fieldName);
+}
+
+function handleFieldInput(fieldName: string, value: string | number) {
+	fieldInputText.value = { ...fieldInputText.value, [fieldName]: String(value) };
+}
+
+function commitFieldFixedValue(fieldName: string) {
+	const raw = fieldInputText.value[fieldName];
+	if (raw === undefined) return;
+	setFieldFixedValue(fieldName, raw);
+	const next = { ...fieldInputText.value };
+	delete next[fieldName];
+	fieldInputText.value = next;
+}
+
+function setFieldMode(fieldName: string, nextMode: string) {
+	if (nextMode !== 'ai' && nextMode !== 'fixed') return;
+	// Discard any in-progress text when the mode changes.
+	const nextText = { ...fieldInputText.value };
+	delete nextText[fieldName];
+	fieldInputText.value = nextText;
+	if (nextMode === 'ai') {
+		const next = { ...inputs.value };
+		delete next[fieldName];
+		inputs.value = next;
+		return;
+	}
+	setFieldFixedValue(fieldName, fieldFixedValue(fieldName));
+}
+
+function setFieldFixedValue(fieldName: string, value: string | number) {
+	inputs.value = {
+		...inputs.value,
+		[fieldName]: {
+			mode: 'fixed',
+			value: parseWorkflowToolFixedValue(String(value), fieldType(fieldName)),
+		},
+	};
+}
+
 function handleChangeName(newName: string) {
 	name.value = newName;
 }
@@ -179,6 +257,7 @@ function applyTarget(next: { id: string; name: string }) {
 	workflowId.value = next.id;
 	workflow.value = next.name;
 	description.value = '';
+	inputs.value = {};
 }
 
 function handleSelectWorkflow(optionId: string) {
@@ -219,12 +298,29 @@ function getWorkflowId() {
 	return targetWorkflowId.value;
 }
 
+function getInputs(): WorkflowToolRef['inputs'] {
+	// Commit any in-progress text so the value isn't lost when the user
+	// confirms the modal without blurring the field first.
+	for (const fieldName of Object.keys(fieldInputText.value)) {
+		commitFieldFixedValue(fieldName);
+	}
+	if (Object.keys(inputs.value).length === 0) return undefined;
+	// Drop bindings for fields that no longer exist on the selected workflow.
+	const allowed = new Set(declaredInputFields.value.map((field) => field.name));
+	const pruned: NonNullable<WorkflowToolRef['inputs']> = {};
+	for (const [key, binding] of Object.entries(inputs.value)) {
+		if (allowed.has(key)) pruned[key] = binding;
+	}
+	return Object.keys(pruned).length > 0 ? pruned : undefined;
+}
+
 defineExpose({
 	name,
 	description,
 	allOutputs,
 	getWorkflow,
 	getWorkflowId,
+	getInputs,
 	handleChangeName,
 	/** Fixed for parity with the node content's `nodeTypeDescription` expose — the
 	 *  workflow form has no node type to render in the header icon. */
@@ -373,6 +469,54 @@ defineExpose({
 			</N8nText>
 		</div>
 
+		<div
+			v-if="declaredInputFields.length > 0"
+			:class="$style.field"
+			data-test-id="agent-workflow-tool-inputs"
+		>
+			<label :class="$style.label">
+				{{ i18n.baseText('agents.toolConfig.workflow.inputs') }}
+			</label>
+			<N8nText size="xsmall" color="text-light">
+				{{ i18n.baseText('agents.toolConfig.workflow.inputs.hint') }}
+			</N8nText>
+			<div
+				v-for="field in declaredInputFields"
+				:key="field.name"
+				:class="$style.inputRow"
+				:data-test-id="`agent-workflow-tool-input-${field.name}`"
+			>
+				<div :class="$style.inputFieldOption">
+					<N8nText size="small" :bold="true" :class="$style.inputName">{{ field.name }}</N8nText>
+					<N8nSelect
+						:model-value="fieldMode(field.name)"
+						:class="$style.inputMode"
+						:data-test-id="`agent-workflow-tool-input-mode-${field.name}`"
+						@update:model-value="setFieldMode(field.name, $event)"
+					>
+						<N8nOption
+							value="ai"
+							:label="i18n.baseText('agents.toolConfig.workflow.inputs.mode.ai')"
+						/>
+						<N8nOption
+							value="fixed"
+							:label="i18n.baseText('agents.toolConfig.workflow.inputs.mode.fixed')"
+						/>
+					</N8nSelect>
+				</div>
+
+				<N8nInput
+					v-if="fieldMode(field.name) === 'fixed'"
+					:model-value="fieldInputDisplay(field.name)"
+					:class="$style.inputValue"
+					:placeholder="i18n.baseText('agents.toolConfig.workflow.inputs.value.placeholder')"
+					:data-test-id="`agent-workflow-tool-input-value-${field.name}`"
+					@update:model-value="handleFieldInput(field.name, $event)"
+					@blur="commitFieldFixedValue(field.name)"
+				/>
+			</div>
+		</div>
+
 		<div :class="$style.toggleRow">
 			<div :class="$style.toggleText">
 				<N8nText size="small" :bold="true">
@@ -469,5 +613,37 @@ defineExpose({
 	display: block;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.inputRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	flex-wrap: wrap;
+	flex-direction: row;
+}
+
+.inputName {
+	flex: 0 0 120px;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.inputFieldOption {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	flex-wrap: wrap;
+	width: 100%;
+}
+
+.inputMode {
+	flex: 0 0 200px;
+}
+
+.inputValue {
+	flex: 1;
+	min-width: 120px;
 }
 </style>

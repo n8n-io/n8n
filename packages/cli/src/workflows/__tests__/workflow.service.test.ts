@@ -1044,6 +1044,7 @@ describe('WorkflowService', () => {
 		let workflowHookContextServiceMock: MockProxy<WorkflowHookContextService>;
 		let pollTriggerJobRegistrarMock: MockProxy<PollTriggerJobRegistrar>;
 		let workflowPublishGuardMock: MockProxy<WorkflowPublishGuardProxy>;
+		let workflowMutationHooksMock: MockProxy<WorkflowMutationHooksProxy>;
 
 		const WORKFLOW_ID = 'workflow-1';
 		const PREVIOUS_VERSION_ID = 'v1';
@@ -1098,6 +1099,7 @@ describe('WorkflowService', () => {
 			workflowHookContextServiceMock = mock<WorkflowHookContextService>();
 			pollTriggerJobRegistrarMock = mock();
 			workflowPublishGuardMock = mock<WorkflowPublishGuardProxy>();
+			workflowMutationHooksMock = mock<WorkflowMutationHooksProxy>();
 
 			workflowRepositoryMock.create.mockImplementation(
 				(data) => Object.assign(new WorkflowEntity(), data) as WorkflowEntity,
@@ -1136,7 +1138,7 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublishedVersionRepository
 				workflowHookContextServiceMock, // workflowHookContextService
 				workflowPublishGuardMock, // workflowPublishGuard
-				mock(), // workflowMutationHooks
+				workflowMutationHooksMock, // workflowMutationHooks
 			);
 
 			// Bypass validation internals
@@ -1258,6 +1260,37 @@ describe('WorkflowService', () => {
 			await workflowService.deactivateWorkflow(mock<User>(), WORKFLOW_ID);
 
 			expect(workflowPublishGuardMock.assertCanPublish).not.toHaveBeenCalled();
+		});
+
+		test('fires the afterWorkflowPublished lifecycle hook once activation is committed', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+			workflowHistoryServiceMock.getVersion.mockResolvedValue(makeVersionToActivate());
+			workflowRepositoryMock.findOne.mockResolvedValue(workflow);
+			externalHooksMock.run.mockResolvedValue(undefined);
+			vi.spyOn(
+				workflowService as unknown as { _addToActiveWorkflowManager: () => Promise<void> },
+				'_addToActiveWorkflowManager',
+			).mockResolvedValue(undefined);
+
+			await workflowService.activateWorkflow(mock<User>({ id: 'user-1' }), WORKFLOW_ID, {
+				versionId: TARGET_VERSION_ID,
+			});
+
+			expect(workflowMutationHooksMock.afterWorkflowPublished).toHaveBeenCalledExactlyOnceWith({
+				workflowId: WORKFLOW_ID,
+				versionId: TARGET_VERSION_ID,
+				userId: 'user-1',
+			});
+		});
+
+		test('does not fire the afterWorkflowPublished lifecycle hook while unpublishing', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: PREVIOUS_VERSION_ID });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await workflowService.deactivateWorkflow(mock<User>(), WORKFLOW_ID);
+
+			expect(workflowMutationHooksMock.afterWorkflowPublished).not.toHaveBeenCalled();
 		});
 
 		test('republish blocked by hook leaves previous active version untouched', async () => {
@@ -1814,10 +1847,11 @@ describe('WorkflowService', () => {
 			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
 
-			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
+			await workflowService.delete(mock<User>({ id: 'user-1' }), WORKFLOW_ID, true);
 
 			expect(workflowMutationHooksMock.beforeWorkflowDeleted).toHaveBeenCalledExactlyOnceWith(
 				WORKFLOW_ID,
+				'user-1',
 			);
 			expect(
 				workflowMutationHooksMock.beforeWorkflowDeleted.mock.invocationCallOrder[0],
@@ -1835,34 +1869,17 @@ describe('WorkflowService', () => {
 			expect(workflowMutationHooksMock.beforeWorkflowDeleted).not.toHaveBeenCalled();
 		});
 
-		// Deactivation is not rolled back when a later step fails, so an aborted delete
-		// must not have torn the triggers down.
-		test('aborts the deletion, leaving the workflow running, when the hook throws', async () => {
-			globalConfigMock.workflows.useWorkflowPublicationService = false;
-			const workflow = makeWorkflowEntity({ active: true, activeVersionId: 'v1' });
-			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
-			workflowMutationHooksMock.beforeWorkflowDeleted.mockRejectedValue(new Error('db down'));
-
-			await expect(workflowService.delete(mock<User>(), WORKFLOW_ID, true)).rejects.toThrow(
-				'db down',
-			);
-
-			expect(activeWorkflowManagerMock.remove).not.toHaveBeenCalled();
-		});
-
-		// The hook may throw to abort the delete, so it has to run before the executions are purged,
-		// not just before the row.
-		test('aborts the deletion, leaving executions and the row intact, when the hook throws', async () => {
+		// The hook captures rows the cascade will destroy, so it must run before any
+		// destructive step — not just before the row delete.
+		test('runs the beforeWorkflowDeleted lifecycle hook before the executions are purged', async () => {
 			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
-			workflowMutationHooksMock.beforeWorkflowDeleted.mockRejectedValue(new Error('db down'));
 
-			await expect(workflowService.delete(mock<User>(), WORKFLOW_ID, true)).rejects.toThrow(
-				'db down',
-			);
+			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
 
-			expect(executionPersistenceMock.hardDeleteByWorkflowId).not.toHaveBeenCalled();
-			expect(workflowRepositoryMock.delete).not.toHaveBeenCalled();
+			expect(
+				workflowMutationHooksMock.beforeWorkflowDeleted.mock.invocationCallOrder[0],
+			).toBeLessThan(executionPersistenceMock.hardDeleteByWorkflowId.mock.invocationCallOrder[0]);
 		});
 
 		// It cleans up rows the cascade orphaned, which cannot be found until the row is gone.
@@ -1878,18 +1895,6 @@ describe('WorkflowService', () => {
 			expect(
 				workflowMutationHooksMock.afterWorkflowsDeleted.mock.invocationCallOrder[0],
 			).toBeGreaterThan(workflowRepositoryMock.delete.mock.invocationCallOrder[0]);
-		});
-
-		test('does not run the afterWorkflowsDeleted lifecycle hook when the deletion is aborted', async () => {
-			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
-			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
-			workflowMutationHooksMock.beforeWorkflowDeleted.mockRejectedValue(new Error('db down'));
-
-			await expect(workflowService.delete(mock<User>(), WORKFLOW_ID, true)).rejects.toThrow(
-				'db down',
-			);
-
-			expect(workflowMutationHooksMock.afterWorkflowsDeleted).not.toHaveBeenCalled();
 		});
 
 		test('deletes the workflow executions before the workflow itself', async () => {
@@ -2204,6 +2209,7 @@ describe('WorkflowService', () => {
 
 			expect(workflowMutationHooksMock.afterWorkflowArchived).toHaveBeenCalledExactlyOnceWith(
 				WORKFLOW_ID,
+				'user-1',
 			);
 		});
 

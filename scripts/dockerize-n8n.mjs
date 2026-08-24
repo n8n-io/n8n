@@ -142,7 +142,9 @@ const rootDir = isInScriptsDir ? path.join(__dirname, '..') : __dirname;
 
 const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
 const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
-const nodeVersion = process.env.NODE_VERSION || '24.16.0';
+// Keep in sync with NODE_VERSION in .github/workflows/docker-build-push.yml,
+// which is what the published images are actually built with.
+const nodeVersion = process.env.NODE_VERSION || '26.5.1';
 
 const config = {
 	base: {

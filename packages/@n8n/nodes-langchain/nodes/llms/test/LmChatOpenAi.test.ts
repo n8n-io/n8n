@@ -13,18 +13,24 @@ import {
 } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 
+import { wrapChatModelMessageInput } from '@utils/chatModelMessageWrapper';
+
 import * as common from '../LMChatOpenAi/common';
 import { LmChatOpenAi } from '../LMChatOpenAi/LmChatOpenAi.node';
 
 vi.mock('@langchain/openai');
 vi.mock('@n8n/ai-utilities');
 vi.mock('../LMChatOpenAi/common');
+vi.mock('@utils/chatModelMessageWrapper', () => ({
+	wrapChatModelMessageInput: vi.fn((model) => model),
+}));
 
 const MockedChatOpenAI = vi.mocked(ChatOpenAI);
 const MockedN8nLlmTracing = vi.mocked(N8nLlmTracing);
 const mockedMakeN8nLlmFailedAttemptHandler = vi.mocked(makeN8nLlmFailedAttemptHandler);
 const mockedCommon = vi.mocked(common);
 const mockedGetProxyAgent = vi.mocked(getProxyAgent);
+const mockedWrapChatModelMessageInput = vi.mocked(wrapChatModelMessageInput);
 const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 describe('LmChatOpenAi', () => {
@@ -640,6 +646,45 @@ describe('LmChatOpenAi', () => {
 				await expect(result).rejects.toThrow(NodeOperationError);
 			},
 		);
+
+		it('should wrap Chat Completions models to normalize empty tool-call content', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.2 });
+			const wrappedModel = { wrapped: true };
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+			mockedWrapChatModelMessageInput.mockReturnValueOnce(wrappedModel as never);
+
+			const result = await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(mockedWrapChatModelMessageInput).toHaveBeenCalledTimes(1);
+			expect(mockedWrapChatModelMessageInput).toHaveBeenCalledWith(
+				MockedChatOpenAI.mock.instances[0],
+			);
+			expect(result.response).toBe(wrappedModel);
+		});
+
+		it('should not wrap Responses API models', async () => {
+			const mockContext = setupMockContext({ typeVersion: 1.3 });
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'responsesApiEnabled') return true;
+				if (paramName === 'model.value') return 'gpt-4o-mini';
+				if (paramName === 'options') return {};
+				if (paramName === 'builtInTools') return {};
+				return undefined;
+			});
+			//@ts-expect-error - Mocking
+			mockedCommon.formatBuiltInTools = vi.fn().mockReturnValue([]);
+
+			const result = await lmChatOpenAi.supplyData.call(mockContext, 0);
+
+			expect(mockedWrapChatModelMessageInput).not.toHaveBeenCalled();
+			expect(result.response).toBe(MockedChatOpenAI.mock.instances[0]);
+		});
 	});
 
 	describe('methods', () => {

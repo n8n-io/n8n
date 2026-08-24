@@ -45,7 +45,6 @@ import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-hi
 import { UrlService } from '@/services/url.service';
 import { WorkflowStatisticsRollupService } from '@/services/workflow-statistics-rollup.service';
 import { WaitTracker } from '@/wait-tracker';
-import { DurablePollerGateService } from '@/workflows/triggers/durable-poller-gate.service';
 
 import { BaseCommand } from './base-command';
 
@@ -218,8 +217,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(DeprecationService).warn();
 
-		// Must complete before PollJobProvider.init() reads the verdict below.
-		await Container.get(DurablePollerGateService).init();
 		// Resolved lazily at activation time, so this only needs to run before the
 		// first workflow activation.
 		Container.get(PollJobProvider).init();
@@ -254,6 +251,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		await this.initCommunityPackages();
+
+		// Rewire: pick up @OnPubSubEvent handlers initCommunityPackages() just registered.
+		// The Subscriber is already live, so without this the window where incoming
+		// community-package-* commands have no listener stays open until server.ts's
+		// later PubSubRegistry.init() instead of closing here.
+		Container.get(PubSubRegistry).init();
 
 		// Initialize the auth roles service to make sure that roles are correctly setup for the instance.
 		// Only run on main instance - workers should not modify auth roles/scopes as they may have
@@ -298,6 +301,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		if (this.instanceSettings.isMultiMain) {
 			Container.get(MultiMainSetup).registerEventHandlers();
+
+			// Catches leadership already taken over before this instance had a
+			// takeover listener subscribed, whose one-shot event would otherwise
+			// be lost for the process lifetime.
+			if (this.instanceSettings.isLeader && this.globalConfig.license.autoRenewalEnabled)
+				this.license.enableAutoRenewals();
 		}
 
 		await this.executionContextHookRegistry.init();

@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ExternalDependencies, IStepExecutor } from '../../dependencies';
-import type { WorkflowGraph } from '../../graph';
+import { deriveLoops, type WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import { stepKeyId, type StepSlots, type StepStatus } from '../execution.types';
-import { StepReadyHandler } from '../step-ready-handler';
-import type { StepRecord, StepStore } from '../step-store';
+import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
+import type { StepRecord, StepStore, StepSummary } from '../step-store';
 
 /** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
 const at = (nodeId: string) => stepKeyId({ nodeId, iteration: 0 });
@@ -77,7 +77,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 			.fn()
 			.mockResolvedValue({ [at('trigger')]: stepRow('trigger', 'completed', [{}]) }),
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
-		loadLatestStep: vi.fn().mockResolvedValue(null),
+		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
 		...overrides,
@@ -683,4 +683,153 @@ describe('StepReadyHandler', () => {
 			expect(queue.publish).not.toHaveBeenCalled();
 		},
 	);
+});
+
+describe('StepReadyHandler over loop iterations', () => {
+	/**
+	 * ┌───────┐    ┌───┐ o0    ┌───┐
+	 * │trigger├───►│   ├──────►│ d │
+	 * └───────┘    │ B │       └───┘
+	 *              │   │ o1    ┌───┐
+	 *              │   ├──────►│ x │
+	 *              └─▲─┘       └─┬─┘
+	 *                └──(back)───┘
+	 */
+	const loopGraph: WorkflowGraph = {
+		nodes: [
+			{ id: 'trigger', name: 'T', type: 'trigger' },
+			{ id: 'B', name: 'B', type: 'batch' },
+			{ id: 'x', name: 'X', type: 'v1-node' },
+			{ id: 'd', name: 'D', type: 'v1-node' },
+		],
+		edges: [
+			{ from: 'trigger', to: 'B', outputIndex: 0, inputIndex: 0 },
+			{ from: 'B', to: 'x', outputIndex: 1, inputIndex: 0 },
+			{ from: 'x', to: 'B', outputIndex: 0, inputIndex: 0, isBackEdge: true },
+			{ from: 'B', to: 'd', outputIndex: 0, inputIndex: 0 },
+		],
+	};
+
+	/** A loop's latest row as the store returns it: filled slots, no payloads. */
+	function tipAt(iteration: number, filledOutputSlots: boolean[]): StepSummary {
+		return {
+			id: `step-B-${iteration}`,
+			nodeId: 'B',
+			iteration,
+			status: 'completed',
+			filledOutputSlots,
+		};
+	}
+
+	function rowAt(nodeId: string, iteration: number, outputs: StepRecord['outputs']): StepRecord {
+		return {
+			id: `step-${nodeId}-${iteration}`,
+			executionId: 'exec-1',
+			nodeId,
+			iteration,
+			status: 'completed',
+			outputs,
+			error: null,
+		};
+	}
+
+	it('reads the body input from the batch row at the same iteration', async () => {
+		const executor = makeExecutor();
+		const stepStore = makeStepStore(
+			{ id: 'step-x-2', nodeId: 'x', iteration: 2 },
+			{
+				loadStepsByKeys: vi.fn().mockResolvedValue({
+					[stepKeyId({ nodeId: 'B', iteration: 2 })]: rowAt('B', 2, [null, [{ json: { i: 2 } }]]),
+				}),
+			},
+		);
+		const handler = new StepReadyHandler(
+			makeExecutionStore({ graph: loopGraph }),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: executor },
+		);
+
+		await handler.handle({ ...event, stepId: 'step-x-2' });
+
+		expect(stepStore.loadStepsByKeys).toHaveBeenCalledWith('exec-1', [
+			{ nodeId: 'B', iteration: 2 },
+		]);
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({ inputs: [[{ json: { i: 2 } }]] }),
+		);
+	});
+
+	/**
+	 * A batch node's slot 0 carries both its entry edge and its return edge, which
+	 * the old check rejected outright as two edges into one slot. Asserted on the
+	 * resolution rather than through the handler, since running a batch step needs
+	 * an executor that does not exist yet.
+	 */
+	it('reads the batch node from the entry edge at iteration 0 and the return edge after it', () => {
+		const loops = deriveLoops(loopGraph);
+		const intoB = loopGraph.edges.filter((edge) => edge.to === 'B');
+
+		const readsAt = (iteration: number) =>
+			resolveInputReads(
+				intoB,
+				loops,
+				{ id: `step-B-${iteration}`, nodeId: 'B', iteration },
+				new Map(),
+			).map(({ edge, key }) => ({ from: edge.from, key }));
+
+		expect(readsAt(0)).toEqual([{ from: 'trigger', key: { nodeId: 'trigger', iteration: 0 } }]);
+		expect(readsAt(1)).toEqual([{ from: 'x', key: { nodeId: 'x', iteration: 0 } }]);
+	});
+
+	it('reads what follows the loop from the terminal row, whatever iteration that is', async () => {
+		const executor = makeExecutor();
+		const stepStore = makeStepStore(
+			{ id: 'step-d-0', nodeId: 'd', iteration: 0 },
+			{
+				loadLatestStepSummaries: vi.fn().mockResolvedValue({ B: tipAt(4, [true, false]) }),
+				loadStepsByKeys: vi.fn().mockResolvedValue({
+					[stepKeyId({ nodeId: 'B', iteration: 4 })]: rowAt('B', 4, [
+						[{ json: { done: true } }],
+						null,
+					]),
+				}),
+			},
+		);
+		const handler = new StepReadyHandler(
+			makeExecutionStore({ graph: loopGraph }),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: executor },
+		);
+
+		await handler.handle({ ...event, stepId: 'step-d-0' });
+
+		expect(stepStore.loadStepsByKeys).toHaveBeenCalledWith('exec-1', [
+			{ nodeId: 'B', iteration: 4 },
+		]);
+		expect(executor.execute).toHaveBeenCalledWith(
+			expect.objectContaining({ inputs: [[{ json: { done: true } }]] }),
+		);
+	});
+
+	it('throws, running nothing, when the loop it reads across has not ended', async () => {
+		// only the planner should queue such a step, so the rows and the plan disagree
+		const executor = makeExecutor();
+		const stepStore = makeStepStore(
+			{ id: 'step-d-0', nodeId: 'd', iteration: 0 },
+			{ loadLatestStepSummaries: vi.fn().mockResolvedValue({ B: tipAt(4, [false, true]) }) },
+		);
+		const handler = new StepReadyHandler(
+			makeExecutionStore({ graph: loopGraph }),
+			stepStore,
+			makeQueue(),
+			{ v1StepExecutor: executor },
+		);
+
+		await expect(handler.handle({ ...event, stepId: 'step-d-0' })).rejects.toThrow(
+			/across a loop that has not ended/,
+		);
+		expect(executor.execute).not.toHaveBeenCalled();
+	});
 });

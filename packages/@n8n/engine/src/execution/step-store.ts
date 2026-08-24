@@ -139,16 +139,26 @@ export interface StepStore {
 	): Promise<Record<StepKeyId, StepSummary>>;
 
 	/**
-	 * The node's highest-iteration row, or `null` when it has none. For a
-	 * batch node this is the loop's ledger tip.
+	 * Planning view of each named node's highest-iteration row, keyed by node id,
+	 * omitting the nodes with no row. For a batch node this is the row that says
+	 * whether its loop has ended.
+	 *
+	 * One query for every node asked about, since a settlement can span several
+	 * loops. The row ending a loop holds everything that loop accumulated, so this
+	 * returns the same slim view as `loadStepSummariesByKeys`, not the whole row.
 	 */
-	loadLatestStep(executionId: string, nodeId: string): Promise<StepRecord | null>;
+	loadLatestStepSummaries(
+		executionId: string,
+		nodeIds: string[],
+	): Promise<Record<string, StepSummary>>;
 
 	/**
 	 * How many of the execution's steps have settled (completed, failed,
-	 * skipped, or cancelled). Rows are unique per node and only exist for
-	 * reachable nodes, so comparing this against the graph's reachable node
-	 * count answers "has everything settled?" exactly.
+	 * skipped, or cancelled). Rows are unique per `(node, iteration)`, only exist
+	 * for reachable nodes, and never unsettle, so comparing this against the
+	 * number of rows the execution owes answers "has everything settled?" exactly.
+	 * A loop makes that number more than the node count, so the comparison runs
+	 * against `expectedSettledRows` rather than against the graph.
 	 */
 	countSettledSteps(executionId: string): Promise<number>;
 
