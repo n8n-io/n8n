@@ -452,11 +452,9 @@ export class CommunityPackagesService {
 
 			const previousVersion = isUpdate ? options.installedPackage.installedVersion : undefined;
 
-			// Keep the previous version aside so a failed update can be rolled back
-			const backupDirectory =
-				isUpdate && (await this.packageDirectoryExists(packageName))
-					? await this.backupPackageDirectory(packageName)
-					: undefined;
+			// Whatever is currently on disk, kept aside so a failed install can be rolled back.
+			// Undefined when the package has no directory yet.
+			const backupDirectory = await this.backupPackageDirectory(packageName);
 
 			try {
 				await this.downloadPackage(packageName, packageVersion, authToken);
@@ -510,18 +508,7 @@ export class CommunityPackagesService {
 
 				// The new version is now authoritative; later failures must not roll back,
 				// or the DB record would end up inconsistent with the restored files.
-				// Removing the backup is housekeeping — a failure here must not fail the update.
-				if (backupDirectory) {
-					try {
-						await rm(backupDirectory, { recursive: true, force: true, maxRetries: 3 });
-					} catch (error) {
-						this.logger.warn('Failed to remove community package backup directory', {
-							error: ensureError(error),
-							packageName,
-							backupDirectory,
-						});
-					}
-				}
+				await this.discardBackupDirectory(packageName, backupDirectory);
 				// Publish the resolved version, not the requested specifier (e.g. `latest`),
 				// so peers install the exact version this instance just persisted.
 				const { installedVersion } = installedPackage;
@@ -634,11 +621,29 @@ export class CommunityPackagesService {
 		}
 	}
 
-	private async backupPackageDirectory(packageName: string) {
+	/** Moves the package directory aside so it can be restored. `undefined` means there was nothing there. */
+	private async backupPackageDirectory(packageName: string): Promise<string | undefined> {
+		if (!(await this.packageDirectoryExists(packageName))) return undefined;
+
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 		const backupDirectory = `${packageDirectory}.backup-${Date.now()}`;
 		await rename(packageDirectory, backupDirectory);
 		return backupDirectory;
+	}
+
+	/** Housekeeping once the new version is committed — a failure here must not fail the install. */
+	private async discardBackupDirectory(packageName: string, backupDirectory: string | undefined) {
+		if (!backupDirectory) return;
+
+		try {
+			await rm(backupDirectory, { recursive: true, force: true, maxRetries: 3 });
+		} catch (error) {
+			this.logger.warn('Failed to remove community package backup directory', {
+				error: ensureError(error),
+				packageName,
+				backupDirectory,
+			});
+		}
 	}
 
 	/** Discards whatever is at `packageDirectory` and puts the backup back in its place, if any. */
@@ -704,9 +709,7 @@ export class CommunityPackagesService {
 
 		// Keep the previous install safe until the new one is fully built, so a failed
 		// pack/tar/npm-install never leaves the package permanently absent.
-		const backupDirectory = (await this.packageDirectoryExists(packageName))
-			? await this.backupPackageDirectory(packageName)
-			: undefined;
+		const backupDirectory = await this.backupPackageDirectory(packageName);
 
 		try {
 			await mkdir(packageDirectory, { recursive: true });
@@ -776,17 +779,7 @@ export class CommunityPackagesService {
 			throw error;
 		}
 
-		if (backupDirectory) {
-			try {
-				await rm(backupDirectory, { recursive: true, force: true, maxRetries: 3 });
-			} catch (error) {
-				this.logger.warn('Failed to remove community package backup directory', {
-					error: ensureError(error),
-					packageName,
-					backupDirectory,
-				});
-			}
-		}
+		await this.discardBackupDirectory(packageName, backupDirectory);
 
 		return packageDirectory;
 	}

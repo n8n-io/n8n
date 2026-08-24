@@ -1544,9 +1544,8 @@ describe('CommunityPackagesService', () => {
 				packageVersion: '1.0.0',
 			});
 
-			await Promise.resolve();
-			await Promise.resolve();
-			expect(callOrder).toEqual(['start:pkg-http']);
+			// Only pkg-http's download should have been reached; pkg-pubsub is still waiting on the mutex.
+			await vi.waitFor(() => expect(callOrder).toEqual(['start:pkg-http']));
 
 			releaseFirst();
 			await Promise.all([installCall, pubsubCall]);
