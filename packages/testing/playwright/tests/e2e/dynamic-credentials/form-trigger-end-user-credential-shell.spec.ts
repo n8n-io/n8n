@@ -29,8 +29,8 @@ import type { ApiHelpers } from '../../../services/api-helper';
  *   inside the little iframe.
  *
  * Uses the `dynamic-credentials` capability config (Keycloak as the account's OAuth2
- * provider, plus the seeded `system-n8n` resolver), inlined here so the unreleased
- * form-trigger OAuth2 flag can ride along.
+ * provider, plus the seeded `system-n8n` resolver), inlined here rather than reusing
+ * the named capability.
  */
 test.use({
 	capability: {
