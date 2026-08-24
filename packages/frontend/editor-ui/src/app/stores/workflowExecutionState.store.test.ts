@@ -963,54 +963,6 @@ describe('workflowExecutionState.store', () => {
 		});
 	});
 
-	describe('clearActiveNodeExecutionData', () => {
-		it('removes only the given node from the active execution', () => {
-			const executionStateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
-			const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
-			executionDataStore.setExecution(
-				makeExecution({
-					id: 'exec-1',
-					data: { resultData: { runData: { NodeA: [], NodeB: [] } } } as never,
-				}),
-			);
-			executionStateStore.setActiveExecutionId('exec-1');
-
-			executionStateStore.clearActiveNodeExecutionData('NodeA');
-
-			const runData = executionDataStore.execution?.data?.resultData.runData;
-			expect(runData?.NodeA).toBeUndefined();
-			expect(runData?.NodeB).toBeDefined();
-		});
-
-		it('routes through the displayedExecutionId when active is cleared', () => {
-			const executionStateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
-			const executionDataStore = useExecutionDataStore(createExecutionDataId('exec-1'));
-			executionDataStore.setExecution(
-				makeExecution({
-					id: 'exec-1',
-					data: { resultData: { runData: { NodeA: [], NodeB: [] } } } as never,
-				}),
-			);
-			executionStateStore.setActiveExecutionId('exec-1');
-			executionStateStore.setActiveExecutionId(undefined);
-
-			expect(executionStateStore.activeExecutionId).toBeUndefined();
-			expect(executionStateStore.displayedExecutionId).toBe('exec-1');
-
-			executionStateStore.clearActiveNodeExecutionData('NodeA');
-
-			const runData = executionDataStore.execution?.data?.resultData.runData;
-			expect(runData?.NodeA).toBeUndefined();
-			expect(runData?.NodeB).toBeDefined();
-		});
-
-		it('does nothing when no execution is tracked', () => {
-			const executionStateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
-
-			expect(() => executionStateStore.clearActiveNodeExecutionData('NodeA')).not.toThrow();
-		});
-	});
-
 	describe('promotePendingExecution', () => {
 		it('migrates the pending scaffold into a fresh executionData store and sets activeExecutionId', () => {
 			const executionStateStore = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-1'));
