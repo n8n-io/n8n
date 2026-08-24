@@ -1,5 +1,9 @@
 import { useI18n } from '@n8n/i18n';
-import { getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
+import {
+	EVALUATION_TRIGGER_NODE_TYPE,
+	getParentNodes,
+	mapConnectionsByDestination,
+} from 'n8n-workflow';
 import type { EvaluationConfigDto, UpsertEvaluationConfigDto } from '@n8n/api-types';
 
 import { useToast } from '@n8n/composables/useToast';
@@ -259,6 +263,14 @@ export function useEvaluationPersistenceHelpers() {
 		const allNodes = wf?.allNodes ?? [];
 		const byDest = mapConnectionsByDestination(connections);
 
+		// A pre-existing Evaluation Trigger can converge on the same node as the
+		// workflow's real trigger (added to enable evaluation without disturbing
+		// production) — it shouldn't count towards "which node feeds this point"
+		// ambiguity below. See `resolveSingleUpstream`.
+		const evaluationTriggerNames = new Set(
+			allNodes.filter((n) => n.type === EVALUATION_TRIGGER_NODE_TYPE).map((n) => n.name),
+		);
+
 		if (!wizardStore.isSliceMode) {
 			const aiNode = wizardStore.aiNodeName;
 			if (!aiNode) return { ok: false, reason: 'Pick an AI node to evaluate' };
@@ -278,9 +290,10 @@ export function useEvaluationPersistenceHelpers() {
 			for (const candidate of chain) {
 				if (triggerNames.has(candidate)) continue;
 				const parents = getParentNodes(byDest, candidate, 'main', 1);
-				if (parents.length === 1 && triggerNames.has(parents[0])) {
+				const resolved = resolveSingleUpstream(parents, evaluationTriggerNames);
+				if (resolved && triggerNames.has(resolved)) {
 					startNodeName = candidate;
-					upstreamNodeName = parents[0];
+					upstreamNodeName = resolved;
 					break;
 				}
 			}
@@ -303,13 +316,14 @@ export function useEvaluationPersistenceHelpers() {
 		if (!start || !end) return { ok: false, reason: 'Pick a start and end node for the slice' };
 
 		const parents = getParentNodes(byDest, start, 'main', 1);
-		if (parents.length !== 1) {
+		const resolved = resolveSingleUpstream(parents, evaluationTriggerNames);
+		if (!resolved) {
 			return {
 				ok: false,
 				reason: `Start node "${start}" must have exactly one upstream node (found ${parents.length})`,
 			};
 		}
-		return { ok: true, upstreamNodeName: parents[0], startNodeName: start, endNodeName: end };
+		return { ok: true, upstreamNodeName: resolved, startNodeName: start, endNodeName: end };
 	}
 
 	function showPersistError(error: unknown) {
@@ -322,6 +336,24 @@ export function useEvaluationPersistenceHelpers() {
 // ---------------------------------------------------------------------------
 // Module-level pure helpers (no closure dependencies)
 // ---------------------------------------------------------------------------
+
+/**
+ * Picks the sole "real" node from a list of upstream parents, ignoring any
+ * Evaluation Trigger among them — a pre-existing Evaluation Trigger can
+ * converge on the same node as a workflow's real trigger (added to enable
+ * evaluation without disturbing production), and shouldn't count towards
+ * ambiguity. Falls back to the Evaluation Trigger itself when it's the only
+ * parent (a workflow built entirely around evaluation, TRUST-407).
+ */
+export function resolveSingleUpstream(
+	parents: string[],
+	evaluationTriggerNames: Set<string>,
+): string | undefined {
+	const nonEvalParents = parents.filter((p) => !evaluationTriggerNames.has(p));
+	if (nonEvalParents.length === 1) return nonEvalParents[0];
+	if (nonEvalParents.length === 0 && parents.length === 1) return parents[0];
+	return undefined;
+}
 
 export function numericRowId(id: unknown): number | undefined {
 	if (typeof id === 'number') return id;

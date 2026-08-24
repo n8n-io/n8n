@@ -220,6 +220,7 @@ vi.mock('n8n-workflow', () => ({
 		return [];
 	}),
 	mapConnectionsByDestination: vi.fn(() => ({})),
+	EVALUATION_TRIGGER_NODE_TYPE: 'n8n-nodes-base.evaluationTrigger',
 }));
 
 // ---------------------------------------------------------------------------

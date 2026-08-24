@@ -7,7 +7,12 @@ import { EvaluationErrorCode } from '@n8n/api-types';
 import type { EvaluationConfig, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
-import { getChildNodes, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
+import {
+	EVALUATION_TRIGGER_NODE_TYPE,
+	getChildNodes,
+	getParentNodes,
+	mapConnectionsByDestination,
+} from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -113,10 +118,19 @@ export class EvaluationConfigValidator {
 		const byDest = mapConnectionsByDestination(workflow.connections);
 		const parents = getParentNodes(byDest, config.startNodeName, 'main', 1);
 
-		if (parents.length > 1) {
+		// A pre-existing Evaluation Trigger can converge on the entry node alongside
+		// the workflow's real trigger (added to enable evaluation without disturbing
+		// production) — the compiler always displaces whichever trigger fed the entry
+		// node, so that doesn't make it ambiguous. Only flag genuine ambiguity: more
+		// than one non-evaluation-trigger parent.
+		const nonEvalParents = parents.filter(
+			(name) => this.getNodeByName(workflow, name)?.type !== EVALUATION_TRIGGER_NODE_TYPE,
+		);
+
+		if (nonEvalParents.length > 1) {
 			errors.push({
 				code: EvaluationErrorCode.AMBIGUOUS_ENTRY_NODE,
-				message: `Entry node "${config.startNodeName}" has multiple upstream parents (${parents.join(', ')})`,
+				message: `Entry node "${config.startNodeName}" has multiple upstream parents (${nonEvalParents.join(', ')})`,
 				details: { nodeName: config.startNodeName },
 			});
 		}
