@@ -106,8 +106,6 @@ describe('PublicApiControllerRegistry', () => {
 			active: z.undefined({ invalid_type_error: 'is read-only' }),
 		}) {}
 
-		// `formatValidationError` is covered in public-api-validation-error.test.ts. This only checks
-		// that a failed `safeParse` reaches it and comes back as the 400 body.
 		it('returns the formatted message as a 400', async () => {
 			@Service()
 			class WidgetsPublicController {
