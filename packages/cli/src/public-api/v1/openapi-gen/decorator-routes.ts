@@ -36,6 +36,7 @@ export const ERROR_RESPONSE_REFS = {
 	403: { $ref: '../../../../shared/spec/responses/forbidden.yml' },
 	404: { $ref: '../../../../shared/spec/responses/notFound.yml' },
 	409: { $ref: '../../../../shared/spec/responses/conflict.yml' },
+	422: { $ref: '../../../../shared/spec/responses/unprocessableEntity.yml' },
 	503: { $ref: '../../../../shared/spec/responses/serviceUnavailable.yml' },
 } as const satisfies Record<number, { $ref: string }>;
 
@@ -56,6 +57,7 @@ export const ERROR_RESPONSE_DESCRIPTIONS: Record<DocumentedErrorStatus, string> 
 	403: 'Forbidden',
 	404: 'The specified resource was not found.',
 	409: 'Conflict',
+	422: 'Unprocessable Entity',
 	503: 'The requested service is temporarily unavailable.',
 };
 
