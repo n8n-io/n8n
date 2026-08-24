@@ -226,6 +226,7 @@ const testRunErrorDictionary: Partial<Record<TestRunErrorCode, BaseTextKey>> = {
 	EVALUATION_TRIGGER_NOT_CONFIGURED: 'evaluation.listRuns.error.evaluationTriggerNotConfigured',
 	EVALUATION_TRIGGER_DISABLED: 'evaluation.listRuns.error.evaluationTriggerDisabled',
 	EVALUATION_CONFIG_NOT_FOUND: 'evaluation.listRuns.error.evaluationConfigNotFound',
+	COMPILATION_FAILED: 'evaluation.listRuns.error.compilationFailed',
 	SET_OUTPUTS_NODE_NOT_CONFIGURED: 'evaluation.listRuns.error.setOutputsNodeNotConfigured',
 	SET_METRICS_NODE_NOT_FOUND: 'evaluation.listRuns.error.setMetricsNodeNotFound',
 	SET_METRICS_NODE_NOT_CONFIGURED: 'evaluation.listRuns.error.setMetricsNodeNotConfigured',

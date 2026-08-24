@@ -67,11 +67,19 @@ export class WorkflowCompilerService {
 	compile(workflow: IWorkflowBase, config: EvaluationConfig): IWorkflowBase {
 		this.assertNoReservedNames(workflow);
 
+		// Resolve the entry node and capture its current incoming edge BEFORE
+		// neutralising pre-existing evaluation nodes below. When the workflow's own
+		// trigger IS the pre-existing EvaluationTrigger (no separate canvas trigger
+		// feeding the entry node), pruning it also deletes its outgoing edge — if this
+		// lookup ran afterward, it would find no incoming connection left to attach the
+		// newly-injected trigger to and fail with "cannot inject evaluation trigger".
+		const entryNodeName = this.resolveEntryNode(workflow, config);
+		const userTriggerEdge = this.findUserTriggerEdgeTo(workflow.connections, entryNodeName);
+
 		// Neutralise evaluation nodes the saved workflow already had so the
 		// compiled output doesn't end up with duplicate triggers / metrics.
 		workflow = this.prepareExistingEvaluationNodes(workflow);
 
-		const entryNodeName = this.resolveEntryNode(workflow, config);
 		const entryPos = this.positionOf(workflow, entryNodeName) ?? [0, 0];
 		const endPos = this.positionOf(workflow, config.endNodeName) ?? [
 			entryPos[0] + NODE_STEP_X,
@@ -82,8 +90,10 @@ export class WorkflowCompilerService {
 		// upstream node is left intact so expressions referencing it still read naturally
 		// in the editor. We then rewrite any `$("<replacedNode>")` references across the
 		// workflow to point at the new `__eval_trigger` so they resolve at runtime.
+		// Resolved against the already-neutralised workflow: when a pre-existing
+		// EvaluationTrigger fed the entry node alongside the user's own trigger, its
+		// (now-removed) edge must not count as a second "upstream node" candidate.
 		const replacedNodeName = this.findReplacedUpstreamNode(workflow, entryNodeName);
-		const userTriggerEdge = this.findUserTriggerEdgeTo(workflow.connections, entryNodeName);
 
 		// Anchor metric nodes clear of the user's entire workflow so they don't overlap
 		// existing nodes in the execution view. Vertical spacing per row depends on the

@@ -821,5 +821,39 @@ describe('WorkflowCompilerService', () => {
 			expect(isEval).toBeDefined();
 			expect(isEval!.disabled).toBeUndefined();
 		});
+
+		// A workflow built entirely around evaluation (TRUST-407): the pre-existing
+		// EvaluationTrigger is the workflow's ONLY trigger, feeding the entry node
+		// directly — unlike `workflowWithExistingEvalNodes` above, there is no separate
+		// non-evaluation trigger to fall back on once the old trigger is removed.
+		function workflowWithOnlyEvaluationTrigger(): IWorkflowBase {
+			return {
+				...baseWorkflow(),
+				connections: {
+					'Old Eval Trigger': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+				},
+				nodes: [
+					baseWorkflow().nodes.find((n) => n.name === 'Agent')!,
+					{
+						id: 'n-old-trigger',
+						name: 'Old Eval Trigger',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.6,
+						position: [0, 200],
+						parameters: {},
+					},
+				],
+			} as unknown as IWorkflowBase;
+		}
+
+		it('compiles a workflow whose only trigger is the pre-existing EvaluationTrigger (TRUST-407)', () => {
+			const compiled = compiler.compile(workflowWithOnlyEvaluationTrigger(), baseConfig());
+
+			expect(compiled.nodes.find((n) => n.name === 'Old Eval Trigger')).toBeUndefined();
+			expect(compiled.connections['Old Eval Trigger']).toBeUndefined();
+			expect(compiled.connections.__eval_trigger).toEqual({
+				main: [[{ node: 'Agent', type: 'main', index: 0 }]],
+			});
+		});
 	});
 });
