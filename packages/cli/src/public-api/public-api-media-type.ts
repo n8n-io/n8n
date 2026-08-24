@@ -23,7 +23,7 @@ function readMediaType(header: string): { mediaType: string; reported: string } 
 	}
 
 	const reported = [...parameters.entries()]
-		.sort(([a], [b]) => a.localeCompare(b))
+		.sort(([a], [b]) => (a < b ? -1 : 1))
 		.reduce((out, [name, value]) => `${out}; ${name}=${value}`, mediaType);
 
 	return { mediaType, reported };
