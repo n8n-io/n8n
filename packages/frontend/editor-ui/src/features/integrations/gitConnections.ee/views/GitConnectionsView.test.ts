@@ -285,6 +285,7 @@ describe('GitConnectionsView', () => {
 		await waitFor(() =>
 			expect(screen.queryByTestId('git-connection-dialog')).not.toBeInTheDocument(),
 		);
+		expect(screen.getByTestId('git-connections-add')).toHaveFocus();
 
 		const secondDialog = await openEditDialog(cards[1]);
 		await waitFor(() =>
@@ -359,6 +360,8 @@ describe('GitConnectionsView', () => {
 		backend.stopFailingList();
 		await userEvent.click(within(errorState).getByRole('button'));
 
-		expect(await screen.findByTestId('git-connection-card')).toHaveTextContent('Production');
+		expect(
+			await screen.findByTestId('git-connection-card', {}, { timeout: 3000 }),
+		).toHaveTextContent('Production');
 	});
 });

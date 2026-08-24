@@ -215,6 +215,7 @@ async function submit() {
 					id="git-connection-name"
 					ref="nameInput"
 					v-model="form.name"
+					:readonly="isLoading"
 					data-test-id="git-connection-name-input"
 				/>
 			</N8nInputLabel>
@@ -306,7 +307,7 @@ async function submit() {
 						autocomplete="off"
 						:disabled="isLoading"
 						:placeholder="
-							credentialsRequired
+							areCredentialsIncomplete
 								? ''
 								: i18n.baseText('settings.gitConnections.form.credentials.keepPlaceholder')
 						"
@@ -325,7 +326,7 @@ async function submit() {
 						autocomplete="new-password"
 						:disabled="isLoading"
 						:placeholder="
-							credentialsRequired
+							areCredentialsIncomplete
 								? ''
 								: i18n.baseText('settings.gitConnections.form.credentials.keepPlaceholder')
 						"

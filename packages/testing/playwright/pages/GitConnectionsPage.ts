@@ -50,6 +50,9 @@ export class GitConnectionsPage extends BasePage {
 
 	async deleteConnectionIfPresent(name: string): Promise<void> {
 		await this.goto();
+		// `count()` doesn't retry, so wait for the list to have rendered or a still
+		// pending fetch reads as "nothing to clean up".
+		await this.getAddButton().waitFor();
 		if ((await this.getConnectionCard(name).count()) === 0) return;
 		await this.deleteConnection(name);
 	}
