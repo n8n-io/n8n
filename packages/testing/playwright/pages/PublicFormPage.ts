@@ -89,6 +89,15 @@ export class PublicFormPage extends BasePage {
 		return this.page.url();
 	}
 
+	/**
+	 * Wait for this tab itself to navigate away from the form — the author's
+	 * end-of-form redirect must take the whole tab, even when the form was
+	 * rendered inside the hosting shell's iframe.
+	 */
+	async waitForRedirect(url: string | RegExp, options?: { timeout?: number }) {
+		await this.page.waitForURL(url, options);
+	}
+
 	async close() {
 		await this.page.close();
 	}
