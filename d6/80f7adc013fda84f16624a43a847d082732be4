@@ -1,0 +1,19 @@
+packages/cli/src/modules/instance-ai/event-bus/durable-event-log.ts
+  s_45e2f6fac3868c::t_102a183e06813b 214-219,223,228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d680f7adc013fda84f16624a43a847d082732be4",
+  "prompts": {},
+  "sessions": {
+    "s_45e2f6fac3868c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f39f7fb-75e7-4ba4-8950-d44a46855e76",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

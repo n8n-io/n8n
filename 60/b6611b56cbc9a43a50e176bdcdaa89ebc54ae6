@@ -1,0 +1,45 @@
+packages/cli/src/credentials/__tests__/credentials.service.test.ts
+  s_1c2b9c253fefe3::t_1c5c09ff7555c0 1006,1015,1038,1044
+packages/cli/src/credentials/credentials.service.ee.ts
+  s_1c2b9c253fefe3::t_f78a39e2051e66 99
+packages/cli/src/modules/agents/builder/__tests__/agents-builder-settings.service.test.ts
+  s_1c2b9c253fefe3::t_3b493ba902b511 76,196,244
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_1c2b9c253fefe3::t_1d2b4cb0f79ed2 307,330
+packages/cli/src/oauth/oauth.service.ts
+  s_1c2b9c253fefe3::t_0f4832f07bfc2f 286
+packages/cli/src/modules/dynamic-credentials.ee/dynamic-credentials.controller.ts
+  s_1c2b9c253fefe3::t_5b813b87fcc2e0 313
+packages/cli/src/modules/agents/builder/__tests__/builder-model-live-lookup.service.test.ts
+  s_1c2b9c253fefe3::t_c1970ca6aabe6d 56,92,118,139,157,221,245
+packages/cli/src/public-api/v1/handlers/credentials/credentials.handler.ts
+  s_1c2b9c253fefe3::t_43b76d7cca19e3 166,252
+packages/cli/src/credentials/credentials-finder.service.ts
+  s_1c2b9c253fefe3::t_f6e18cbe224829 55
+packages/cli/src/services/__tests__/credentials-finder.service.test.ts
+  s_1c2b9c253fefe3::t_e03b67db6b749b 64,68,79
+packages/cli/src/modules/agents/builder/builder-model-live-lookup.service.ts
+  s_1c2b9c253fefe3::t_b9cf885d91dcb0 80
+packages/cli/src/modules/agents/builder/agents-builder-settings.service.ts
+  s_1c2b9c253fefe3::t_9624bdf5763d33 179
+packages/cli/src/credentials/credentials.service.ts
+  s_1c2b9c253fefe3::t_c123ec1c4650d6 1244
+packages/cli/src/public-api/v1/handlers/credentials/credentials.middleware.ts
+  s_1c2b9c253fefe3::t_9c02fd02e622a0 104,120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "60b6611b56cbc9a43a50e176bdcdaa89ebc54ae6",
+  "prompts": {},
+  "sessions": {
+    "s_1c2b9c253fefe3": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "487028d4-9167-48b0-8db8-796d6e266cb6",
+        "model": "grok-4.6"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

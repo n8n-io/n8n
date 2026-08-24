@@ -1,0 +1,34 @@
+packages/cli/src/modules/agents/agent-sandbox-runtime.service.ts
+  s_c62ec47c6846f4::t_60d8a390c26054 43-51,189-192,211-218,230,243,328,337,375,387
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_c62ec47c6846f4::t_2f0917993ac0fc 479-490
+packages/cli/src/modules/agents/__tests__/agent-sandbox-principal.test.ts
+  s_c62ec47c6846f4::t_b823969f21078f 26
+packages/cli/src/modules/agents/agent-sandbox-principal.ts
+  s_c62ec47c6846f4::t_c6370c082d6bf4 91
+packages/cli/src/modules/agents/__tests__/agent-sandbox-runtime.service.test.ts
+  s_c62ec47c6846f4::t_79c992bf0cd36e 191-192,196-198,247-248,250-253,255-256
+  s_c62ec47c6846f4::t_0f9dba19fd4f93 249,254,257-258
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_c62ec47c6846f4::t_36541ab47dc1a5 111
+  s_c62ec47c6846f4::t_039013538bba1e 249,257,274,309
+  s_c62ec47c6846f4::t_3ab45f7f90aad3 250,271,286
+packages/cli/src/workflow-execute-additional-data.ts
+  s_c62ec47c6846f4::t_bc8333ca95ddc7 421,423-436,448
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c37a3dad7e2f034d3f194aeed6d9dcb669b44af4",
+  "prompts": {},
+  "sessions": {
+    "s_c62ec47c6846f4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "974dbdb1-21b0-43ca-8c7c-f7de2b5387ae",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

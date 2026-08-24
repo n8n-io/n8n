@@ -1,0 +1,40 @@
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_ae758654abb2c1::t_73b20a15caafba 24
+  s_ae758654abb2c1::t_2eaf81a3e2ae40 65-66
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  ai_agent 7,16-17,22,62,157-158,176-177,202-203,223,288-290,294-297,314-319
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  ai_agent 19,51,159-161
+packages/cli/src/modules/n8n-packages/__tests__/import-project-from-directory.integration.test.ts
+  s_ae758654abb2c1::t_31e8b2e035b32a 42
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  ai_agent 9-13,42,50,120-124,147-153
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_ae758654abb2c1::t_eb75c8ed5027a0 54
+  s_ae758654abb2c1::t_b420fe317623cb 364-373
+  s_ae758654abb2c1::t_8469e05ae8d2dd 477-478
+pnpm-lock.yaml
+  ai_agent 478-479,6329,6341,11263-11264,11269-11270,11275-11276,11281-11282,11287-11288,11293-11294,11299-11300,11305-11306,11312-11313,11319-11320,11326-11327,11333-11334,11340-11341,11347-11348,11354-11355,11361-11362,11367-11368,11373-11374,11379-11380,20148-20149,20153-20154,20158-20159,29439,29442,29445,29448,29451,29454,29457,29460,29463,29466,29469,29472,29475,29478,29481,29484,29487,29490,29493,35660,35663,39864,39866-39884
+.claude/plugins/n8n/skills/gh-stack
+  ai_agent 1
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_ae758654abb2c1::t_0df8bdc0937e0d 409
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_ae758654abb2c1::t_b9e6cb387b8c19 279-286
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d4e53b1c024bf2be89d12fee3a3bad13792352bb",
+  "prompts": {},
+  "sessions": {
+    "s_ae758654abb2c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "caba367b-cd9b-4ed8-9e2d-d10b74f48e47",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
