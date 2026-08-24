@@ -293,7 +293,12 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 			// Handed back so a caller whose work outlives this resource can seal the gate it
 			// was just admitted by.
-			return { user, authType: 'oauth', scopes: authInfo.scopes, grant: resource?.getGrant?.() };
+			return {
+				user,
+				caller: { authType: 'oauth', clientId: authInfo.clientId },
+				scopes: authInfo.scopes,
+				grant: resource?.getGrant?.(),
+			};
 		} catch (error) {
 			const errorForSure = ensureError(error);
 			const reason =
