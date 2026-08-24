@@ -204,6 +204,44 @@ describe('N8nChatInput', () => {
 			expect(chatContainer.style.minHeight).toBe('80px');
 		});
 
+		it('falls back to multiline for a custom send button label', () => {
+			const { container } = renderComponent({
+				props: {
+					layout: 'adaptive',
+					buttonLabel: 'Send message',
+				},
+				global: {
+					stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+				},
+			});
+
+			const chatContainer = container.querySelector('.container') as HTMLElement;
+			expect(chatContainer.style.minHeight).toBe('80px');
+			expect(chatContainer.classList.toString()).not.toContain('adaptiveContainer');
+		});
+
+		it.each(['left-actions', 'actions', 'extra-actions', 'right-actions'])(
+			'falls back to multiline for the %s slot',
+			(slotName) => {
+				const { container } = renderComponent({
+					props: {
+						layout: 'adaptive',
+					},
+					slots: {
+						[slotName]: '<button>Custom action</button>',
+					},
+					global: {
+						stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'],
+					},
+				});
+
+				const chatContainer = container.querySelector('.container') as HTMLElement;
+				expect(chatContainer.style.minHeight).toBe('80px');
+				expect(chatContainer.classList.toString()).not.toContain('adaptiveContainer');
+				expect(container).toHaveTextContent('Custom action');
+			},
+		);
+
 		it('autosizes the textarea like multiline', async () => {
 			const originalDescriptor = Object.getOwnPropertyDescriptor(
 				HTMLTextAreaElement.prototype,
