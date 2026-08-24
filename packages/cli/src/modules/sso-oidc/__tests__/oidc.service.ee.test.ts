@@ -819,7 +819,7 @@ describe('OidcService', () => {
 
 			// The discovery / token / userinfo endpoints are admin-configured and may
 			// legitimately point at an internal IdP, so SSRF protection is disabled.
-			expect(outboundHttp.transport).toHaveBeenCalledWith({ safetyMode: 'unsafe' });
+			expect(outboundHttp.transport).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 		});
 
 		it('always calls discovery with the factory customFetch (no proxy/no-proxy branch)', async () => {

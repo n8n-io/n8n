@@ -10,7 +10,7 @@ export { removeEmptyBody } from './axios/request';
 export { parseIncomingMessage } from './parse-incoming-message';
 export { binaryToBuffer, streamToBuffer } from './binary-buffer';
 export { binaryToString } from './binary-string';
-export type { SafetyMode } from './safety-mode';
+export type { UseDefaultSsrfPolicy } from './use-default-ssrf-policy';
 export type { CustomFetch } from './undici/transport';
 export { OutboundHttp, type HttpRequestClient, type HttpTransport } from './outbound-http';
 export { retryabilityFromError } from './retryability';

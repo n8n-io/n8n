@@ -21,13 +21,16 @@ function makeTransport(options?: Parameters<OutboundHttp['transport']>[0]) {
 
 describe('transport getDispatcher proxy routing', () => {
 	it('defaults to env-based proxy (EnvHttpProxyAgent dispatcher)', () => {
-		const dispatcher = makeTransport({ safetyMode: 'unsafe' }).getDispatcher();
+		const dispatcher = makeTransport({ useDefaultSsrfPolicy: 'unsafe' }).getDispatcher();
 
 		expect(dispatcher).toBeInstanceOf(EnvHttpProxyAgent);
 	});
 
 	it('proxy: false → plain undici Agent', () => {
-		const dispatcher = makeTransport({ proxy: false, safetyMode: 'unsafe' }).getDispatcher();
+		const dispatcher = makeTransport({
+			proxy: false,
+			useDefaultSsrfPolicy: 'unsafe',
+		}).getDispatcher();
 
 		expect(dispatcher).toBeInstanceOf(Agent);
 		expect(dispatcher).not.toBeInstanceOf(EnvHttpProxyAgent);
@@ -35,7 +38,10 @@ describe('transport getDispatcher proxy routing', () => {
 	});
 
 	it('proxy: env → EnvHttpProxyAgent', () => {
-		const dispatcher = makeTransport({ proxy: 'env', safetyMode: 'unsafe' }).getDispatcher();
+		const dispatcher = makeTransport({
+			proxy: 'env',
+			useDefaultSsrfPolicy: 'unsafe',
+		}).getDispatcher();
 
 		expect(dispatcher).toBeInstanceOf(EnvHttpProxyAgent);
 	});
@@ -43,7 +49,7 @@ describe('transport getDispatcher proxy routing', () => {
 	it('proxy: explicit URL → ProxyAgent', () => {
 		const dispatcher = makeTransport({
 			proxy: 'http://proxy.internal:3128',
-			safetyMode: 'unsafe',
+			useDefaultSsrfPolicy: 'unsafe',
 		}).getDispatcher();
 
 		expect(dispatcher).toBeInstanceOf(ProxyAgent);

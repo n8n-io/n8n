@@ -126,7 +126,7 @@ export class TelemetryController {
 
 		const response = await this.outboundHttp
 			.requests({
-				safetyMode: 'unsafe', // the source-config host is fixed
+				useDefaultSsrfPolicy: 'unsafe', // the source-config host is fixed
 			})
 			.request({
 				method: 'GET',

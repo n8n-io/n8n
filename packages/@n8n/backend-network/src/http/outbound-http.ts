@@ -20,13 +20,13 @@ import { markHttpRequestError } from './client-request-error';
 import { executeLegacyRequest, type LegacyRequestCallbacks } from './legacy-request';
 import type { NodeAgentOptions, ProxyOption, SsrfOption } from './node-agents';
 import { buildNodeAgents } from './node-agents';
-import type { SafetyMode } from './safety-mode';
 import {
 	createDispatcherTransport,
 	type CustomFetch,
 	type RequestAuthorizer,
 	type TransportTimeoutOptions,
 } from './undici/transport';
+import type { UseDefaultSsrfPolicy } from './use-default-ssrf-policy';
 
 export interface HttpTransportOptions {
 	/**
@@ -41,7 +41,7 @@ export interface HttpTransportOptions {
 	 * Whether this transport enforces the instance's outbound network policy.
 	 * Defaults to `'safe'`. Pass `'unsafe'` to explicitly opt out.
 	 */
-	safetyMode?: SafetyMode;
+	useDefaultSsrfPolicy?: UseDefaultSsrfPolicy;
 	/**
 	 * Undici agent timeout overrides (ms). Unset fields keep undici's defaults.
 	 * Used for long-running outbound calls (e.g. LLM completions) that would
@@ -164,9 +164,9 @@ export interface HttpTransport {
  * - {@link transport}: you obtain transport primitives to hand to a third-party SDK.
  *
  * Every client and transport enforces the instance's outbound network policy by
- * default (`safetyMode: 'safe'`). Whether the SSRF guard actually runs is
+ * default (`useDefaultSsrfPolicy: 'safe'`). Whether the SSRF guard actually runs is
  * resolved here from `SsrfProtectionConfig.enabled` — callers never read that
- * flag. The only way to bypass the policy is an explicit `safetyMode: 'unsafe'`.
+ * flag. The only way to bypass the policy is an explicit `useDefaultSsrfPolicy: 'unsafe'`.
  */
 @Service()
 export class OutboundHttp {
@@ -177,11 +177,11 @@ export class OutboundHttp {
 	) {}
 
 	/**
-	 * A {@link HttpRequestClient} enforcing the given {@link SafetyMode}.
+	 * A {@link HttpRequestClient} enforcing the given {@link UseDefaultSsrfPolicy}.
 	 * Proxy is resolved per request from `IHttpRequestOptions.proxy` / the environment.
 	 */
 	requests(options?: HttpRequestClientOptions): HttpRequestClient {
-		const ssrf = this.resolveSsrf(options?.safetyMode);
+		const ssrf = this.resolveSsrf(options?.useDefaultSsrfPolicy);
 		const ssrfBridge = ssrf === 'disabled' ? undefined : ssrf;
 
 		const applyDefaults = (requestOptions: IHttpRequestOptions): IHttpRequestOptions =>
@@ -219,11 +219,11 @@ export class OutboundHttp {
 
 	/**
 	 * An {@link HttpTransport} carrying the given proxy policy and enforcing the
-	 * given {@link SafetyMode}.
+	 * given {@link UseDefaultSsrfPolicy}.
 	 */
 	transport(options?: HttpTransportOptions): HttpTransport {
 		const proxy = options?.proxy ?? 'env';
-		const ssrf = this.resolveSsrf(options?.safetyMode);
+		const ssrf = this.resolveSsrf(options?.useDefaultSsrfPolicy);
 		const timeouts = options?.timeouts;
 		const authorize = options?.authorize;
 
@@ -242,12 +242,12 @@ export class OutboundHttp {
 	}
 
 	/**
-	 * Resolves a caller's {@link SafetyMode} to the SSRF policy to enforce:
+	 * Resolves a caller's {@link UseDefaultSsrfPolicy} to the SSRF policy to enforce:
 	 * the container's `SsrfProtectionService` in `'safe'` mode when the instance
 	 * enables protection, nothing otherwise.
 	 */
-	private resolveSsrf(safetyMode: SafetyMode = 'safe'): SsrfOption {
-		if (safetyMode === 'unsafe' || !this.ssrfConfig.enabled) {
+	private resolveSsrf(useDefaultSsrfPolicy: UseDefaultSsrfPolicy = 'safe'): SsrfOption {
+		if (useDefaultSsrfPolicy === 'unsafe' || !this.ssrfConfig.enabled) {
 			return 'disabled';
 		}
 		return this.ssrfProtection;

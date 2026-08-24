@@ -1614,7 +1614,7 @@ describe('SamlService', () => {
 
 			expect(result).toBe(validMetadataXml);
 			// The metadata URL is admin-configured, so SSRF protection is disabled.
-			expect(outboundHttp.requests).toHaveBeenCalledWith({ safetyMode: 'unsafe' });
+			expect(outboundHttp.requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 			expect(httpRequest).toHaveBeenCalledWith({
 				url: metadataUrl,
 				method: 'GET',

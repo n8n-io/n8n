@@ -58,7 +58,7 @@ describe('OutboundHttp.requests', () => {
 	});
 
 	it('omits the bridge when SSRF protection is disabled', async () => {
-		const client = makeFacade().requests({ safetyMode: 'unsafe' });
+		const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 		await client.request(REQUEST);
 

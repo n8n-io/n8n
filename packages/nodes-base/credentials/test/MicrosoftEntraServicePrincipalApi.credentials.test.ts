@@ -189,9 +189,9 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 		it('mints via the SSRF-exempt fixed-vendor client', async () => {
 			await callPreAuthentication(baseCredentials);
 
-			// `{ safetyMode: 'unsafe' }` proves the fixed-vendor path; the `throw on
+			// `{ useDefaultSsrfPolicy: 'unsafe' }` proves the fixed-vendor path; the `throw on
 			// other DI token` mock proves nothing else is resolved from the container.
-			expect(requestsMock).toHaveBeenCalledWith({ safetyMode: 'unsafe' });
+			expect(requestsMock).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 		});
 
 		it('re-mints on each call without internal memoization', async () => {

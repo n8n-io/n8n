@@ -60,7 +60,7 @@ const blockedIpRangesSchema = z.string().transform(parseBlockedIpRanges);
  *
  * `OutboundHttp` guards every request by default and resolves {@link enabled}
  * internally. A call site can only bypass the guard by passing an explicit
- * `safetyMode: 'unsafe'` on `OutboundHttp.requests()` / `.transport()` — used
+ * `useDefaultSsrfPolicy: 'unsafe'` on `OutboundHttp.requests()` / `.transport()` — used
  * for fixed, n8n-owned or operator-configured destinations.
  *
  * Validation precedence inside the service: allowed hostname → blocked hostname

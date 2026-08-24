@@ -55,7 +55,7 @@ describe('transport asCustomFetch', () => {
 	});
 
 	it('dispatches through the bare dispatcher returned by getDispatcher() when SSRF is disabled', async () => {
-		const transport = makeFacade().transport({ proxy: false, safetyMode: 'unsafe' });
+		const transport = makeFacade().transport({ proxy: false, useDefaultSsrfPolicy: 'unsafe' });
 		const fetchFn = transport.asCustomFetch();
 
 		await fetchFn('https://api.example.com/data');

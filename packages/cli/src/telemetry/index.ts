@@ -190,7 +190,7 @@ export class Telemetry {
 
 			const { httpAgent, httpsAgent } = this.outboundHttp
 				.transport({
-					safetyMode: 'unsafe', // The data-plane host is fixed and the SDK owns the request lifecycle, so SSRF is disabled.
+					useDefaultSsrfPolicy: 'unsafe', // The data-plane host is fixed and the SDK owns the request lifecycle, so SSRF is disabled.
 				})
 				.getNodeAgent();
 			const axiosConfig: AxiosRequestConfig = {

@@ -34,7 +34,7 @@ export function createAiProxyFetch(outboundHttp: OutboundHttp): CustomFetch {
 	return outboundHttp
 		.transport({
 			proxy: 'env',
-			safetyMode: 'unsafe',
+			useDefaultSsrfPolicy: 'unsafe',
 			timeouts: {
 				headersTimeout: AI_REQUEST_TIMEOUT_MS,
 				bodyTimeout: AI_REQUEST_TIMEOUT_MS,

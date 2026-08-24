@@ -23,7 +23,7 @@ export class WorkflowTemplatesService {
 		outboundHttp: OutboundHttp,
 	) {
 		this.http = outboundHttp.requests({
-			safetyMode: 'unsafe', // Fixed, n8n-controlled templates host.
+			useDefaultSsrfPolicy: 'unsafe', // Fixed, n8n-controlled templates host.
 			timeout: TEMPLATE_REQUEST_TIMEOUT_MS,
 		});
 	}

@@ -337,7 +337,7 @@ describe('fetchAndExtract', () => {
 				mock<SsrfProtectionConfig>({ enabled: true }),
 				mock<Logger>(),
 			).transport({
-				safetyMode: ssrf === 'disabled' ? 'unsafe' : 'safe',
+				useDefaultSsrfPolicy: ssrf === 'disabled' ? 'unsafe' : 'safe',
 				authorize,
 			});
 		}

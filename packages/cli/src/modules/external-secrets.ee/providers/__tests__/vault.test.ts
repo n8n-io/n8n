@@ -102,7 +102,7 @@ describe('VaultProvider', () => {
 			expect(requests).toHaveBeenCalledWith({
 				baseURL: VAULT_URL,
 				headers: expect.any(Function),
-				safetyMode: 'unsafe',
+				useDefaultSsrfPolicy: 'unsafe',
 			});
 		});
 

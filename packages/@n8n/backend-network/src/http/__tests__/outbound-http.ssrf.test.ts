@@ -232,7 +232,10 @@ describe('SSRF end-to-end', () => {
 
 		it('follows the redirect without validation when SSRF is disabled', async () => {
 			const { bridge } = makeBridge('/internal');
-			const fetchFn = makeTransport({ safetyMode: 'unsafe', proxy: false }).asCustomFetch();
+			const fetchFn = makeTransport({
+				useDefaultSsrfPolicy: 'unsafe',
+				proxy: false,
+			}).asCustomFetch();
 
 			const res = await fetchFn(`${server.url}/start`);
 
@@ -262,7 +265,7 @@ describe('SSRF end-to-end', () => {
 
 		it('does not validate when SSRF is disabled (bare dispatcher)', async () => {
 			const { bridge } = makeBridge('/internal');
-			const client = makeTransport({ safetyMode: 'unsafe', proxy: false });
+			const client = makeTransport({ useDefaultSsrfPolicy: 'unsafe', proxy: false });
 			const dispatcher = client.getDispatcher();
 
 			const { fetch: undiciFetch } = await import('undici');
@@ -416,7 +419,10 @@ describe('proxy host validation', () => {
 		const bridge = denyingBridge(new Error('The proxy host is not permitted by policy'));
 
 		expect(() =>
-			makeTransport({ safetyMode: 'unsafe', proxy: 'http://127.0.0.1:3128' }).getDispatcher(),
+			makeTransport({
+				useDefaultSsrfPolicy: 'unsafe',
+				proxy: 'http://127.0.0.1:3128',
+			}).getDispatcher(),
 		).not.toThrow();
 		expect(bridge.validateConnectionHost).not.toHaveBeenCalled();
 	});

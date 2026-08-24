@@ -9,4 +9,4 @@
  *   for fixed, n8n-owned or operator-configured destinations, and state the
  *   reason in a comment at the call site.
  */
-export type SafetyMode = 'safe' | 'unsafe';
+export type UseDefaultSsrfPolicy = 'safe' | 'unsafe';

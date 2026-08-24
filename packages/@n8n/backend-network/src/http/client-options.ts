@@ -1,12 +1,12 @@
 import type { HttpRequestDefaultHeaders } from './client-default-headers';
-import type { SafetyMode } from './safety-mode';
+import type { UseDefaultSsrfPolicy } from './use-default-ssrf-policy';
 
 export interface HttpRequestClientOptions {
 	/**
 	 * Whether this client enforces the instance's outbound network policy.
 	 * Defaults to `'safe'`. Pass `'unsafe'` to explicitly opt out.
 	 */
-	safetyMode?: SafetyMode;
+	useDefaultSsrfPolicy?: UseDefaultSsrfPolicy;
 
 	/**
 	 * Base URL joined to each request's relative `url`.

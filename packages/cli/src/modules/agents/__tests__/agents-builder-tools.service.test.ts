@@ -300,7 +300,7 @@ describe('AgentsBuilderToolsService', () => {
 			service.getTools(agentId, projectId, credentialProvider, user);
 
 			expect(outboundHttp.transport).toHaveBeenCalledWith(
-				expect.not.objectContaining({ safetyMode: 'unsafe' }),
+				expect.not.objectContaining({ useDefaultSsrfPolicy: 'unsafe' }),
 			);
 		});
 

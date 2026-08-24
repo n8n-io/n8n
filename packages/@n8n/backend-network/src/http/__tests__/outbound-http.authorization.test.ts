@@ -163,7 +163,7 @@ describe('authorization end-to-end', () => {
 	it('authorizes the initial request and every redirect hop before fetching it', async () => {
 		const authorize = vi.fn<RequestAuthorizer>().mockResolvedValue(undefined);
 		const fetchFn = makeTransport({
-			safetyMode: 'unsafe',
+			useDefaultSsrfPolicy: 'unsafe',
 			proxy: false,
 			authorize,
 		}).asCustomFetch();
@@ -184,7 +184,7 @@ describe('authorization end-to-end', () => {
 			if (url.href.includes('/internal')) throw error;
 		});
 		const fetchFn = makeTransport({
-			safetyMode: 'unsafe',
+			useDefaultSsrfPolicy: 'unsafe',
 			proxy: false,
 			authorize,
 		}).asCustomFetch();

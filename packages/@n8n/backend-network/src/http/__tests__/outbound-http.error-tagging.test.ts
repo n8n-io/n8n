@@ -16,7 +16,7 @@ const client = () =>
 		mock<SsrfProtectionService>(),
 		mock<SsrfProtectionConfig>({ enabled: true }),
 		mock<Logger>(),
-	).requests({ safetyMode: 'unsafe' });
+	).requests({ useDefaultSsrfPolicy: 'unsafe' });
 
 describe('OutboundHttp error tagging', () => {
 	let server: LocalServer;

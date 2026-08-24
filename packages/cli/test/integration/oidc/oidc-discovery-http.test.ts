@@ -15,7 +15,7 @@ describe('OIDC discovery (real HTTP round-trip through the factory)', () => {
 			mock<Logger>(),
 		);
 		return outboundHttp
-			.transport({ safetyMode: 'unsafe' })
+			.transport({ useDefaultSsrfPolicy: 'unsafe' })
 			.asCustomFetch() as unknown as client.CustomFetch;
 	};
 

@@ -39,7 +39,7 @@ const data = await client.request({ method: 'GET', url: 'https://api.example.com
 ```
 
 `HttpRequestClientOptions` carry policy that applies to every call on the
-client — the `safetyMode`, a `baseURL`, and default `headers`. Set them once at
+client — the `useDefaultSsrfPolicy`, a `baseURL`, and default `headers`. Set them once at
 creation instead of repeating them per request:
 
 ```ts
@@ -62,8 +62,8 @@ dictated by what the consuming library accepts.
 
 Both `requests()` and `transport()` guard every call — and every redirect hop —
 by default. You do not pass a bridge, a service, or a config flag; the default
-`safetyMode: 'safe'` is applied for you. The only way to skip the guard is to
-opt out explicitly with `safetyMode: 'unsafe'`.
+`useDefaultSsrfPolicy: 'safe'` is applied for you. The only way to skip the guard is to
+opt out explicitly with `useDefaultSsrfPolicy: 'unsafe'`.
 
 This default is deliberate. Outbound HTTP in n8n is frequently driven by
 user-controlled input — credential URLs, workflow parameters, redirect targets
@@ -73,11 +73,11 @@ turning the n8n backend into a confused deputy (a Server-Side Request Forgery,
 or SSRF). Because the secure default lives in the factory rather than at each
 call site, forgetting to add protection cannot silently introduce a
 vulnerability — the unsafe choice is the explicit one, and a new call site is
-safe unless someone consciously writes `safetyMode: 'unsafe'`.
+safe unless someone consciously writes `useDefaultSsrfPolicy: 'unsafe'`.
 
 ### `enabled` is resolved inside `OutboundHttp`, not by callers
 
-`safetyMode` answers one question: *is this destination trusted enough to skip
+`useDefaultSsrfPolicy` answers one question: *is this destination trusted enough to skip
 the guard?* Only the calling code knows that, so it is decided per call. Whether
 the guard actually runs for a `'safe'` call is a separate, instance-wide
 decision that `OutboundHttp` resolves internally from
@@ -103,15 +103,15 @@ user-controlled. Classify the **destination**, then pick:
 | Destination | Risk | What to pass |
 | --- | --- | --- |
 | User- or remote-controlled URL (workflow import URL, credential/OAuth URLs, a discovery document's second hop, a user-supplied registry, an LLM/web-research target) | **High** — attacker-influenceable | nothing — the default `'safe'` guards it when the instance enables protection |
-| Fixed n8n-owned host, or a fixed public vendor API (Slack, Linear, npm registry default, AWS service endpoint) | **Low** — not user-controllable | `safetyMode: 'unsafe'` + a one-line "fixed host" comment |
-| Admin-configured infrastructure that may legitimately be internal (SAML/OIDC IdP, OTLP collector, log-streaming destination, external-secrets manager) | **Low–medium** — operator-trusted | `safetyMode: 'unsafe'` + a "may point at internal X" comment. The `N8N_SSRF_ALLOWED_*` allowlists are the alternative when the instance runs with protection globally on. |
+| Fixed n8n-owned host, or a fixed public vendor API (Slack, Linear, npm registry default, AWS service endpoint) | **Low** — not user-controllable | `useDefaultSsrfPolicy: 'unsafe'` + a one-line "fixed host" comment |
+| Admin-configured infrastructure that may legitimately be internal (SAML/OIDC IdP, OTLP collector, log-streaming destination, external-secrets manager) | **Low–medium** — operator-trusted | `useDefaultSsrfPolicy: 'unsafe'` + a "may point at internal X" comment. The `N8N_SSRF_ALLOWED_*` allowlists are the alternative when the instance runs with protection globally on. |
 
 ```ts
 // HIGH risk — `url` comes from user input. Guarded by default.
 const client = this.outboundHttp.requests();
 
 // LOW risk — fixed, n8n-owned host. Opt out explicitly.
-const client = this.outboundHttp.requests({ safetyMode: 'unsafe' });
+const client = this.outboundHttp.requests({ useDefaultSsrfPolicy: 'unsafe' });
 ```
 
 Whenever you opt out, **write a one-line comment stating why** — that comment is
@@ -126,7 +126,7 @@ classify the destination.
 Node request helpers (`this.helpers.httpRequest`,
 `httpRequestWithAuthentication`, and the deprecated `request`) go through
 `OutboundHttp.requests()` with the default safe mode. `IHttpRequestOptions`
-exposes no safety-mode field, so node code — community nodes included — cannot
+exposes no `useDefaultSsrfPolicy` field, so node code — community nodes included — cannot
 opt out of the instance's policy.
 
 The raw `httpRequest` function is not exported from the package barrel. It is

@@ -119,7 +119,7 @@ describe('getNodeAgent SSRF lookup injection', () => {
 
 	it('no lookup when SSRF is disabled', () => {
 		const { httpAgent, httpsAgent } = makeFacade()
-			.transport({ safetyMode: 'unsafe', proxy: false })
+			.transport({ useDefaultSsrfPolicy: 'unsafe', proxy: false })
 			.getNodeAgent();
 
 		expect(getAgentLookup(httpAgent)).toBeUndefined();
