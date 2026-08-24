@@ -306,6 +306,9 @@ export abstract class AbstractServer {
 		// service-to-service callers (e.g. Google Chat, Slack) are never silently
 		// blocked even if their User-Agent matches the bot heuristic.
 		const checkIfBot = isbot.spawn(['bot']);
+		// Trailing slash is intentional: all webhook routes use `/*path`, so a valid
+		// webhook URL always has a segment after the base (e.g. /webhook/<id>). A bare
+		// /webhook with no trailing path never maps to a webhook handler.
 		const webhookPrefixes = [
 			`/${this.endpointWebhook}/`,
 			`/${this.endpointWebhookTest}/`,

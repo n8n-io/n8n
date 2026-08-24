@@ -141,11 +141,28 @@ describe('AbstractServer health endpoints', () => {
 });
 
 describe('AbstractServer bot filter middleware', () => {
-	// Bot filter is the 3rd app.use call in start() with webhooksEnabled=false:
-	// [0] compression, [1] rawBodyReader, [2] bot filter, [3] bodyParser
-	const BOT_FILTER_INDEX = 2;
-
 	type Middleware = (req: express.Request, res: express.Response, next: () => void) => void;
+
+	/** Finds the bot filter by probing captured app.use calls — no index dependency. */
+	function findBotFilter(calls: typeof mockApp.use.mock.calls): Middleware {
+		const probeUA = 'Googlebot/2.1';
+		for (const [fn] of calls) {
+			if (typeof fn !== 'function') continue;
+			const middleware = fn as unknown as Middleware;
+			const req = mock<express.Request>({ headers: { 'user-agent': probeUA }, path: '/rest/test' });
+			const res = mock<express.Response>();
+			res.status.mockReturnValue(res);
+			const next = vi.fn();
+			try {
+				middleware(req, res, next);
+			} catch {
+				// Skip middlewares that throw with the probe request (e.g. rawBodyReader)
+				continue;
+			}
+			if (res.status.mock.calls.some(([code]) => code === 204)) return middleware;
+		}
+		throw new Error('Bot filter middleware not found in app.use calls');
+	}
 
 	let botFilter: Middleware;
 
@@ -184,7 +201,7 @@ describe('AbstractServer bot filter middleware', () => {
 		const server = new BotFilterTestServer();
 		await server.start();
 
-		botFilter = mockApp.use.mock.calls[BOT_FILTER_INDEX][0] as unknown as Middleware;
+		botFilter = findBotFilter(mockApp.use.mock.calls);
 	});
 
 	const botUA = 'Googlebot/2.1 (+http://www.google.com/bot.html)';
