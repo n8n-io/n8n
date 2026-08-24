@@ -1,9 +1,4 @@
-import type {
-	BuiltTool,
-	CredentialListItem,
-	CredentialProvider,
-	InterruptibleToolContext,
-} from '@n8n/agents';
+import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
 	channelSuspendPayloadSchema,
@@ -11,8 +6,10 @@ import {
 	interactionQuestionSchema,
 	questionAnswerSchema,
 	questionsSuspendPayloadSchema,
+	shouldAutoResolveCredential,
 	type InteractionQuestion,
 } from '@n8n/api-types';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
@@ -20,16 +17,17 @@ import { z } from 'zod';
 import type { BuilderTrackFn } from '../builder-config-telemetry';
 import { BUILDER_TOOLS } from '../builder-tool-names';
 
-/** Filters an already-fetched credential list down to one type, in the shape the setup cards need. */
-function credentialsOfType(
-	all: CredentialListItem[],
+async function listExistingCredentials(
+	credentialService: InstanceAiCredentialService,
+	projectId: string,
 	credentialType: string,
-): Array<{ id: string; name: string }> {
-	return all.filter((c) => c.type === credentialType).map((c) => ({ id: c.id, name: c.name }));
+): Promise<Array<{ id: string; name: string }>> {
+	const listed = await credentialService.list({ type: credentialType, projectId });
+	return listed.map((c) => ({ id: c.id, name: c.name }));
 }
 
 export interface FinishSetupToolDeps {
-	credentialProvider: CredentialProvider;
+	credentialService: InstanceAiCredentialService;
 	agentId: string;
 	projectId: string;
 	track: BuilderTrackFn;
@@ -218,18 +216,23 @@ async function computeInitialPlan(
 
 	if (credentialRequests.length) {
 		const integrationCredentialIds = (await deps.listIntegrationCredentialIds?.()) ?? [];
-		const all = await deps.credentialProvider.list();
 		const credentials: Record<string, z.infer<typeof credentialOutcomeSchema>> = {};
 
 		for (const slot of credentialRequests) {
 			const key = slot.credentialSlot ?? slot.credentialType;
-			const existingCredentials = credentialsOfType(all, slot.credentialType);
+			const existingCredentials = await listExistingCredentials(
+				deps.credentialService,
+				deps.projectId,
+				slot.credentialType,
+			);
 			const channelMatch = existingCredentials.find((credential) =>
 				integrationCredentialIds.includes(credential.id),
 			);
 			const autoResolved =
-				channelMatch ?? (existingCredentials.length === 1 ? existingCredentials[0] : undefined);
-
+				channelMatch ??
+				(shouldAutoResolveCredential(slot.credentialType, existingCredentials.length)
+					? existingCredentials[0]
+					: undefined);
 			if (autoResolved) {
 				credentials[key] = autoResolved;
 			} else {
@@ -281,7 +284,6 @@ async function mergeResumeIntoCollected(
 		return { ...previous, channels };
 	}
 
-	const all = await deps.credentialProvider.list();
 	const credentials = { ...(previous.credentials ?? {}) };
 	for (const slot of phase.slots) {
 		const key = slot.credentialSlot ?? slot.credentialType;
@@ -294,8 +296,13 @@ async function mergeResumeIntoCollected(
 			? {
 					id: credentialId,
 					name:
-						credentialsOfType(all, slot.credentialType).find((c) => c.id === credentialId)?.name ??
-						credentialId,
+						(
+							await listExistingCredentials(
+								deps.credentialService,
+								deps.projectId,
+								slot.credentialType,
+							)
+						).find((c) => c.id === credentialId)?.name ?? credentialId,
 				}
 			: 'skipped';
 	}
@@ -349,7 +356,6 @@ async function suspendForPhase(params: {
 		});
 	}
 
-	const all = await deps.credentialProvider.list();
 	const seenTypes = new Set<string>();
 	const credentialRequests: Array<{
 		credentialType: string;
@@ -365,7 +371,11 @@ async function suspendForPhase(params: {
 		credentialRequests.push({
 			credentialType: slot.credentialType,
 			reason: slot.purpose,
-			existingCredentials: credentialsOfType(all, slot.credentialType),
+			existingCredentials: await listExistingCredentials(
+				deps.credentialService,
+				deps.projectId,
+				slot.credentialType,
+			),
 		});
 	}
 	return await ctx.suspend({

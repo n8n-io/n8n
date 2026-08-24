@@ -18,6 +18,7 @@ import {
 	resolveAIAPromptCaching,
 	resolveAIAReasoning,
 	tokenUsageToBuilderUsageItems,
+	type InstanceAiCredentialService,
 	type InstanceAiToolRegistry,
 } from '@n8n/instance-ai';
 import { jsonParse } from 'n8n-workflow';
@@ -41,7 +42,7 @@ import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { streamAgentChunks } from '../utils/agent-stream';
-import { InstanceAiCredentialService } from '@n8n/instance-ai';
+
 /**
  * Builder session options for the agent-builder sub-agent. `AgentsBuilderService`
  * only ever streams for Instance AI's build-agent tool, so every field the

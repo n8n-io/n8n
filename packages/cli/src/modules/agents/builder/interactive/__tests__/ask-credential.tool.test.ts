@@ -28,6 +28,13 @@ function makeCredentialService(creds: CredentialListItem[]): InstanceAiCredentia
 	return credentialService;
 }
 
+function expectListed(credentialService: InstanceAiCredentialService, credentialType: string) {
+	expect(credentialService.list).toHaveBeenCalledWith({
+		type: credentialType,
+		projectId: 'project-1',
+	});
+}
+
 let track: Mock;
 
 function askCredentialTool(deps: Omit<AskCredentialToolDeps, 'track' | 'projectId'>) {
@@ -60,6 +67,7 @@ describe('ask_credential tool', () => {
 		);
 		expect(ctx.suspend).not.toHaveBeenCalled();
 		expect(track).not.toHaveBeenCalled();
+		expectListed(credentialService, 'slackApi');
 		expect(result).toEqual({
 			credentialId: 'c1',
 			credentialName: 'My Slack',
@@ -96,6 +104,7 @@ describe('ask_credential tool', () => {
 		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_REQUESTED_CREDENTIAL, {
 			credential_type: 'httpBearerAuth',
 		});
+		expectListed(credentialService, 'httpBearerAuth');
 	});
 
 	it('returns a node credentials map keyed by the requested credential slot when auto-resolving', async () => {
@@ -114,6 +123,7 @@ describe('ask_credential tool', () => {
 			ctx as never,
 		);
 
+		expectListed(credentialService, 'linearOAuth2Api');
 		expect(result).toEqual({
 			credentialId: 'c1',
 			credentialName: 'My Linear',
@@ -150,6 +160,7 @@ describe('ask_credential tool', () => {
 			credential_type: 'linearOAuth2Api',
 			outcome: 'provided',
 		});
+		expectListed(credentialService, 'linearOAuth2Api');
 	});
 
 	it('falls back to the id as the name when the selected credential is not in the list', async () => {
@@ -162,6 +173,7 @@ describe('ask_credential tool', () => {
 			ctx as never,
 		);
 
+		expectListed(credentialService, 'slackApi');
 		expect(result).toEqual({
 			credentialId: 'c9',
 			credentialName: 'c9',
@@ -200,6 +212,7 @@ describe('ask_credential tool', () => {
 		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_REQUESTED_CREDENTIAL, {
 			credential_type: 'slackApi',
 		});
+		expectListed(credentialService, 'slackApi');
 	});
 
 	it('suspends when no credentials of the type exist', async () => {
@@ -213,6 +226,7 @@ describe('ask_credential tool', () => {
 		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.BUILDER_REQUESTED_CREDENTIAL, {
 			credential_type: 'slackApi',
 		});
+		expectListed(credentialService, 'slackApi');
 	});
 
 	it('fails fast when the requested credential type is unknown', async () => {
@@ -246,6 +260,7 @@ describe('ask_credential tool', () => {
 			ctx as never,
 		);
 		expect(ctx.suspend).toHaveBeenCalledTimes(1);
+		expectListed(credentialService, 'braveSearchApi');
 	});
 
 	it('returns skipped when the credentials map has no entry for the requested type', async () => {
@@ -281,6 +296,7 @@ describe('ask_credential tool', () => {
 		);
 
 		expect(ctx.suspend).not.toHaveBeenCalled();
+		expectListed(credentialService, 'slackApi');
 		expect(result).toEqual({
 			credentialId: 'c2',
 			credentialName: 'Workspace Slack',
@@ -303,6 +319,7 @@ describe('ask_credential tool', () => {
 		await tool.handler!({ purpose: 'Slack', credentialType: 'slackApi' }, ctx as never);
 
 		expect(ctx.suspend).toHaveBeenCalledTimes(1);
+		expectListed(credentialService, 'slackApi');
 	});
 
 	it('lets an explicit resume selection win over the channel integration credential', async () => {
@@ -322,6 +339,7 @@ describe('ask_credential tool', () => {
 		);
 
 		expect(ctx.suspend).not.toHaveBeenCalled();
+		expectListed(credentialService, 'slackApi');
 		expect(result).toEqual({
 			credentialId: 'c1',
 			credentialName: 'Personal Slack',
@@ -394,6 +412,7 @@ describe('ask_embedding_credential tool', () => {
 				credentialRequests: [expect.objectContaining({ credentialType: 'openAiApi' })],
 			}),
 		);
+		expectListed(credentialService, 'openAiApi');
 	});
 
 	it('resolves the display name from the credential list when resuming, when assistant proxy is unavailable', async () => {
@@ -412,6 +431,7 @@ describe('ask_embedding_credential tool', () => {
 		);
 
 		expect(ctx.suspend).not.toHaveBeenCalled();
+		expectListed(credentialService, 'openAiApi');
 		expect(result).toEqual({
 			credentialId: 'c9',
 			credentialName: 'Picked OpenAI',

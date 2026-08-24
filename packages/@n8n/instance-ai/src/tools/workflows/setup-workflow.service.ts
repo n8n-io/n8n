@@ -506,7 +506,7 @@ async function resolveCredentialState(
 		!hasExistingOnNode &&
 		shouldAutoResolveCredential(credentialType, existingCredentials.length)
 	) {
-		isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
+		isAutoApplied = true;
 	}
 
 	const credToTest =

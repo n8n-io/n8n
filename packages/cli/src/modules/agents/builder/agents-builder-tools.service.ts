@@ -38,6 +38,7 @@ import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
@@ -91,7 +92,6 @@ import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { listAiGatewayManagedCredentialTypes } from '../json-config/reconcile-node-tool-gateway-credentials';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
-import { InstanceAiCredentialService } from '@n8n/instance-ai';
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
@@ -918,7 +918,7 @@ export class AgentsBuilderToolsService {
 			),
 			this.withConfigMutationMarker(
 				buildFinishSetupTool({
-					credentialProvider,
+					credentialService,
 					agentId,
 					projectId,
 					track,
