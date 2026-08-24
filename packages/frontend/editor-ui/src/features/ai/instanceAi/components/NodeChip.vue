@@ -69,6 +69,7 @@ function handleKeydown(event: KeyboardEvent) {
 		<span :class="$style.name" :title="label">{{ label }}</span>
 		<button
 			v-if="expanded != null"
+			type="button"
 			:class="$style.iconBtn"
 			data-testid="nodes-chip-expand"
 			tabindex="-1"
@@ -83,6 +84,7 @@ function handleKeydown(event: KeyboardEvent) {
 		</button>
 		<button
 			v-if="removable"
+			type="button"
 			:class="$style.iconBtn"
 			data-testid="nodes-chip-remove"
 			tabindex="-1"
@@ -133,6 +135,13 @@ function handleKeydown(event: KeyboardEvent) {
 	background: none;
 	padding: 0;
 	cursor: pointer;
+	border-radius: var(--radius--sm);
 	color: var(--color--text--shade-1);
+
+	&:hover,
+	&:focus-visible {
+		color: var(--color--text);
+		background: var(--color--foreground);
+	}
 }
 </style>

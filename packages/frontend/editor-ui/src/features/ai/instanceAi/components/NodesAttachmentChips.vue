@@ -95,7 +95,13 @@ const chips = computed<ChipVM[]>(() => {
 			return {
 				key: `set-${setIndex}`,
 				testid: 'nodes-chip-group',
-				label: set.canvasGroupName ?? '',
+				// A group without a name would render an empty label; fall back to the
+				// node-count bundle label so the chip stays readable and accessible.
+				label:
+					set.canvasGroupName ||
+					i18n.baseText('instanceAi.nodeContext.nodesBundle', {
+						interpolate: { count: set.nodes.length },
+					}),
 				icon: 'layers',
 				setIndex,
 			};
@@ -340,6 +346,7 @@ const totalNodeCount = computed(() =>
 							<span :class="$style.panelRowName">{{ node.name }}</span>
 							<button
 								v-if="isRemovable"
+								type="button"
 								:class="$style.panelRemove"
 								data-testid="nodes-chip-panel-remove"
 								tabindex="-1"
@@ -355,6 +362,7 @@ const totalNodeCount = computed(() =>
 		</template>
 		<button
 			v-if="showCollapseToggle"
+			type="button"
 			:class="$style.collapseToggle"
 			data-testid="nodes-chips-collapse"
 			@click.stop="isCollapsed = !isCollapsed"

@@ -17,6 +17,9 @@ vi.mock('../useInstanceAiHandoff', async (orig) => ({
 vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({ isFeatureEnabled: vi.fn(() => true) }),
 }));
+vi.mock('@/app/composables/useEditorContext', () => ({
+	useEditorContext: () => ({ instanceAi: { value: true } }),
+}));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: vi.fn(), showError: vi.fn() }),
 }));
@@ -44,7 +47,22 @@ describe('useAddNodesToChat', () => {
 		routerPush.mockClear();
 	});
 
-	it('Context A stages directly, does not stash/navigate', async () => {
+	it('Context A stages directly for its thread, does not stash/navigate', async () => {
+		const { addSelectedNodesToChat } = useAddNodesToChat();
+		await addSelectedNodesToChat({
+			workflowId: 'w1',
+			selectedNodeIds: ['n1'],
+			workflow: wf,
+			isInsideThread: true,
+			threadId: 't1',
+		});
+		expect(stageNodeSets).toHaveBeenCalledWith('t1', 'w1', expect.any(Array));
+		expect(stash).not.toHaveBeenCalled();
+		expect(openThreadForDraft).not.toHaveBeenCalled();
+		expect(routerPush).not.toHaveBeenCalled();
+	});
+
+	it('Context A without a thread id does not stage', async () => {
 		const { addSelectedNodesToChat } = useAddNodesToChat();
 		await addSelectedNodesToChat({
 			workflowId: 'w1',
@@ -52,10 +70,7 @@ describe('useAddNodesToChat', () => {
 			workflow: wf,
 			isInsideThread: true,
 		});
-		expect(stageNodeSets).toHaveBeenCalledWith('w1', expect.any(Array));
-		expect(stash).not.toHaveBeenCalled();
-		expect(openThreadForDraft).not.toHaveBeenCalled();
-		expect(routerPush).not.toHaveBeenCalled();
+		expect(stageNodeSets).not.toHaveBeenCalled();
 	});
 
 	it('Context B mints a thread, stashes the draft for it, and navigates there', async () => {

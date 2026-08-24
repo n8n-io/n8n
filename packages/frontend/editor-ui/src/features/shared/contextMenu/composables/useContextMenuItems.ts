@@ -70,6 +70,9 @@ const FOCUS_HANDOFF_ACTIONS = new Set<ContextMenuAction>([
 	'change_color',
 	'rename_group',
 	'group_nodes',
+	// Staging hands focus to the Instance AI composer; a focus restore here would
+	// steal it straight back to the canvas.
+	'add_nodes_to_chat',
 ]);
 
 export function isFocusHandoffAction(action: ContextMenuAction): boolean {
@@ -343,7 +346,10 @@ export function useContextMenuItems(
 		].filter(Boolean) as Item[];
 
 		const addToChatAction: Item | null =
-			!onlyStickies && nodes.length >= 1 && posthog.isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG)
+			!onlyStickies &&
+			nodes.length >= 1 &&
+			posthog.isFeatureEnabled(CANVAS_NODE_CONTEXT_FLAG) &&
+			instanceAi.value
 				? {
 						id: 'add_nodes_to_chat',
 						icon: 'sparkles',

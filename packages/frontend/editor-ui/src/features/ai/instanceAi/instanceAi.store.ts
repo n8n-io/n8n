@@ -291,26 +291,40 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		}
 	}
 
-	const pendingComposerAttachments = ref<InstanceAiAttachment[]>([]);
+	// Staged attachments carry their destination thread id so that, when two thread
+	// views coexist during a route transition, only the matching composer consumes
+	// them — otherwise the discarded instance could steal them from the live one.
+	const pendingComposerAttachments = ref<
+		Array<{ threadId: string; attachment: InstanceAiAttachment }>
+	>([]);
 
-	function stageNodeSets(workflowId: string, newSets: InstanceAiNodesAttachment['sets']): void {
+	function stageNodeSets(
+		threadId: string,
+		workflowId: string,
+		newSets: InstanceAiNodesAttachment['sets'],
+	): void {
 		const existing = pendingComposerAttachments.value.find(
-			(a): a is InstanceAiNodesAttachment => a.type === 'nodes' && a.workflowId === workflowId,
+			(entry): entry is { threadId: string; attachment: InstanceAiNodesAttachment } =>
+				entry.threadId === threadId &&
+				entry.attachment.type === 'nodes' &&
+				entry.attachment.workflowId === workflowId,
 		);
 		if (existing) {
-			existing.sets = mergeNodeSets(existing.sets, newSets);
+			existing.attachment.sets = mergeNodeSets(existing.attachment.sets, newSets);
 		} else {
 			pendingComposerAttachments.value = [
 				...pendingComposerAttachments.value,
-				{ type: 'nodes', workflowId, sets: newSets },
+				{ threadId, attachment: { type: 'nodes', workflowId, sets: newSets } },
 			];
 		}
 	}
 
-	function consumePendingAttachments(): InstanceAiAttachment[] {
-		const staged = pendingComposerAttachments.value;
-		pendingComposerAttachments.value = [];
-		return staged;
+	function consumePendingAttachments(threadId: string): InstanceAiAttachment[] {
+		const mine = pendingComposerAttachments.value.filter((entry) => entry.threadId === threadId);
+		pendingComposerAttachments.value = pendingComposerAttachments.value.filter(
+			(entry) => entry.threadId !== threadId,
+		);
+		return mine.map((entry) => entry.attachment);
 	}
 
 	const composerFocusRequest = ref(0);

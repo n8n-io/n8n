@@ -325,9 +325,6 @@ function submitComposerMessage(message: string, attachments?: InstanceAiAttachme
 	}
 
 	trackSelectedSuggestionSubmitted(message);
-	if (attachments?.some((a) => a.type === 'nodes')) {
-		instanceAiStore.requestClearCanvasSelection();
-	}
 
 	const submittedFiles = [...attachedFiles.value];
 	const submittedResources = [...attachedResources.value];
@@ -376,8 +373,8 @@ function removeResource(index: number) {
 watch(
 	() => instanceAiStore.pendingComposerAttachments,
 	(pending) => {
-		if (pending.length === 0) return;
-		const consumed = instanceAiStore.consumePendingAttachments();
+		if (!pending.some((entry) => entry.threadId === props.currentThreadId)) return;
+		const consumed = instanceAiStore.consumePendingAttachments(props.currentThreadId);
 		for (const attachment of consumed) {
 			if (attachment.type === 'file') continue;
 			if (attachment.type === 'nodes') {

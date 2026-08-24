@@ -739,7 +739,8 @@ function reconnectThreadAfterHydration(): void {
 		preview.openAgentPreview(agentAttachment.id, agentAttachment.projectId);
 	}
 	const draftAttachment = consumePendingDraftAttachment(props.threadId);
-	if (draftAttachment) store.stageNodeSets(draftAttachment.workflowId, draftAttachment.sets);
+	if (draftAttachment)
+		store.stageNodeSets(props.threadId, draftAttachment.workflowId, draftAttachment.sets);
 	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		await thread.loadThreadStatus();
@@ -879,6 +880,11 @@ function handleSubmit(
 				const input = chatInputRef.value;
 				if (input && !input.isDirty()) input.setText(message);
 				return;
+			}
+			// Clear the canvas selection only once the send succeeded — clearing it
+			// up front loses the selection on a failed send that the user retries.
+			if (submittedAttachments?.some((a) => a.type === 'nodes')) {
+				store.requestClearCanvasSelection();
 			}
 			const isCurrentHandoff = !handoffContext || pendingComposerContext.value === handoffContext;
 			const isCurrentDraft =

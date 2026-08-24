@@ -46,7 +46,7 @@ describe('InstanceAiInput — staged node attachments', () => {
 		const textbox = getByRole('textbox');
 		await userEvent.type(textbox, 'my question');
 
-		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
+		store.stageNodeSets('thread-1', 'w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
 
 		await waitFor(() => expect(store.pendingComposerAttachments).toHaveLength(0));
 
@@ -57,14 +57,14 @@ describe('InstanceAiInput — staged node attachments', () => {
 		const { findAllByTestId, queryAllByTestId } = renderComponent();
 		const store = useInstanceAiStore();
 
-		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
+		store.stageNodeSets('thread-1', 'w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
 		await findAllByTestId('nodes-chip-node');
 
-		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
+		store.stageNodeSets('thread-1', 'w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
 		await waitFor(() => expect(store.pendingComposerAttachments).toHaveLength(0));
 		expect(queryAllByTestId('nodes-chip-node')).toHaveLength(1);
 
-		store.stageNodeSets('w1', [{ nodes: [{ id: 'n2', name: 'B' }] }]);
+		store.stageNodeSets('thread-1', 'w1', [{ nodes: [{ id: 'n2', name: 'B' }] }]);
 		await waitFor(() => expect(queryAllByTestId('nodes-chip-node')).toHaveLength(2));
 	});
 
@@ -72,7 +72,7 @@ describe('InstanceAiInput — staged node attachments', () => {
 		const { container, emitted, findAllByTestId, queryAllByTestId } = renderComponent();
 		const store = useInstanceAiStore();
 
-		store.stageNodeSets('w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
+		store.stageNodeSets('thread-1', 'w1', [{ nodes: [{ id: 'n1', name: 'A' }] }]);
 		await findAllByTestId('nodes-chip-node');
 
 		// The composer uses `data-test-id`, while this file's queries are configured
