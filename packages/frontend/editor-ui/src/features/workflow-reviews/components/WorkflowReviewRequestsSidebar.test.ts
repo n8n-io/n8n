@@ -68,7 +68,6 @@ function makeSection(
 	return {
 		key,
 		items: [],
-		loading: false,
 		loadingMore: false,
 		hasMore: false,
 		error: null,
@@ -79,7 +78,8 @@ function makeSection(
 function openProps(overrides: Partial<ReviewInboxSidebarSection>[] = [{}, {}]) {
 	return {
 		sections: [makeSection('waiting', overrides[0]), makeSection('authored', overrides[1])],
-		probing: false,
+		loading: false,
+		initialLoadFailed: false,
 		activeTab: 'open' as const,
 		openCount: 1,
 		closedCount: 0,
@@ -90,7 +90,8 @@ function openProps(overrides: Partial<ReviewInboxSidebarSection>[] = [{}, {}]) {
 function closedProps(overrides: Partial<ReviewInboxSidebarSection> = {}) {
 	return {
 		sections: [makeSection('closed', overrides)],
-		probing: false,
+		loading: false,
+		initialLoadFailed: false,
 		activeTab: 'closed' as const,
 		openCount: 0,
 		closedCount: 1,
@@ -218,17 +219,16 @@ describe('WorkflowReviewRequestsSidebar', () => {
 			);
 		});
 
-		it('shows one skeleton and no headers while both open sections load', () => {
+		it('shows one skeleton and no headers while the active tab loads', () => {
 			const { getAllByTestId, queryAllByTestId } = renderComponent({
-				props: openProps([{ loading: true }, { loading: true }]),
+				props: { ...openProps(), loading: true },
 			});
 
 			expect(getAllByTestId('workflow-review-list-skeleton')).toHaveLength(1);
-			expect(queryAllByTestId('workflow-review-section-skeleton')).toHaveLength(0);
 			expect(queryAllByTestId('workflow-review-section-header')).toHaveLength(0);
 		});
 
-		it('renders the tabs without counts while they are unknown', () => {
+		it('renders the tabs without counts while the summary is unavailable', () => {
 			const { getByTestId } = renderComponent({
 				props: { ...openProps(), openCount: null, closedCount: null },
 			});
@@ -238,26 +238,16 @@ describe('WorkflowReviewRequestsSidebar', () => {
 			expect(tabs.querySelectorAll('.n8n-tag')).toHaveLength(0);
 		});
 
-		it('shows the whole-list skeleton while the probe that precedes the lists runs', () => {
+		it('keeps the whole-list skeleton while either open section is loading', () => {
 			const { getAllByTestId, queryAllByTestId } = renderComponent({
-				props: { ...openProps(), probing: true },
+				props: {
+					...openProps([{}, { items: [makeItem({ id: 'authored-1' })] }]),
+					loading: true,
+				},
 			});
 
 			expect(getAllByTestId('workflow-review-list-skeleton')).toHaveLength(1);
 			expect(queryAllByTestId('workflow-review-section-header')).toHaveLength(0);
-		});
-
-		it('shows the skeleton only in the loading section, leaving the sibling rendered', () => {
-			const { getAllByTestId } = renderComponent({
-				props: openProps([{ loading: true }, { items: [makeItem()] }]),
-			});
-
-			const skeletons = getAllByTestId('workflow-review-section-skeleton');
-			expect(skeletons).toHaveLength(1);
-			expect(skeletons[0].dataset.section).toBe('waiting');
-			// The header names the list the lone skeleton belongs to.
-			expect(getAllByTestId('workflow-review-section-header')).toHaveLength(2);
-			expect(getAllByTestId('workflow-review-request-row')).toHaveLength(1);
 		});
 	});
 
@@ -344,6 +334,39 @@ describe('WorkflowReviewRequestsSidebar', () => {
 	});
 
 	describe('errors', () => {
+		it('shows one retry when an initial failure leaves no usable rows', async () => {
+			const { getByTestId, queryAllByTestId, emitted } = renderComponent({
+				props: {
+					...openProps([{ error: new Error('boom') }, {}]),
+					initialLoadFailed: true,
+				},
+			});
+
+			expect(getByTestId('workflow-review-list-error')).toHaveTextContent("Couldn't load reviews");
+			expect(queryAllByTestId('workflow-review-request-row')).toHaveLength(0);
+
+			await fireEvent.click(getByTestId('workflow-review-list-retry'));
+
+			expect(emitted().retryActiveTab).toEqual([[]]);
+		});
+
+		it('shows a healthy sibling and gives the failed section its own retry', async () => {
+			const { getByTestId, getAllByTestId, queryByTestId, emitted } = renderComponent({
+				props: {
+					...openProps([{ error: new Error('boom') }, { items: [makeItem()] }]),
+					initialLoadFailed: true,
+				},
+			});
+
+			expect(queryByTestId('workflow-review-list-error')).not.toBeInTheDocument();
+			expect(getAllByTestId('workflow-review-request-row')).toHaveLength(1);
+			expect(getByTestId('workflow-review-section-error').dataset.section).toBe('waiting');
+
+			await fireEvent.click(getByTestId('workflow-review-section-retry'));
+
+			expect(emitted().retry).toEqual([['waiting']]);
+		});
+
 		it('keeps loaded rows and the sibling section visible and emits retry for that section', async () => {
 			const { getByTestId, getAllByTestId, emitted } = renderComponent({
 				props: openProps([
@@ -358,17 +381,6 @@ describe('WorkflowReviewRequestsSidebar', () => {
 			await fireEvent.click(getByTestId('workflow-review-section-retry'));
 
 			expect(emitted().retry).toEqual([['waiting']]);
-		});
-
-		it('keeps a failed section rendered even with no rows of its own', () => {
-			const { getByTestId, getAllByTestId } = renderComponent({
-				props: openProps([{ error: new Error('boom') }, { items: [makeItem()] }]),
-			});
-
-			// The header is the only thing naming the list that failed.
-			const headers = getAllByTestId('workflow-review-section-header');
-			expect(headers.map((header) => header.dataset.section)).toEqual(['waiting', 'authored']);
-			expect(getByTestId('workflow-review-section-error').dataset.section).toBe('waiting');
 		});
 	});
 });

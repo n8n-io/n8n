@@ -80,8 +80,8 @@ describe('useReviewInboxStore', () => {
 		vi.resetAllMocks();
 	});
 
-	describe('probing and section fetching', () => {
-		it('probes the summary and loads both open sections concurrently', async () => {
+	describe('summary and section fetching', () => {
+		it('loads the summary and both open sections', async () => {
 			mockSummary(3, 12);
 			mockInbox({
 				waiting: page([makeItem({ id: 'waiting-1' })]),
@@ -89,13 +89,11 @@ describe('useReviewInboxStore', () => {
 			});
 
 			const store = useReviewInboxStore();
-			await store.probeInbox();
+			await Promise.all([store.fetchSummary(), store.fetchActiveTab()]);
 
 			expect(workflowReviewsApi.fetchWorkflowReviewInboxSummary).toHaveBeenCalledTimes(1);
 			expect(store.openCount).toBe(3);
 			expect(store.closedCount).toBe(12);
-			expect(store.probeSettled).toBe(true);
-
 			expect(inboxCallsFor('waiting')).toHaveLength(1);
 			expect(inboxCallsFor('authored')).toHaveLength(1);
 			expect(inboxCallsFor('closed')).toHaveLength(0);
@@ -120,19 +118,29 @@ describe('useReviewInboxStore', () => {
 			expect(store.sections.closed.items).toHaveLength(1);
 		});
 
-		it('still fetches the active tab when both counts are zero', async () => {
-			mockSummary(0, 0);
+		it('fetches the active tab without waiting for the summary', async () => {
+			let resolveSummary!: (value: { open: number; closed: number }) => void;
+			vi.mocked(workflowReviewsApi.fetchWorkflowReviewInboxSummary).mockImplementationOnce(
+				async () =>
+					await new Promise<{ open: number; closed: number }>((resolve) => {
+						resolveSummary = resolve;
+					}),
+			);
 			mockInbox({});
 
 			const store = useReviewInboxStore();
-			await store.probeInbox();
+			const summary = store.fetchSummary();
+			await store.fetchActiveTab();
 
 			expect(inboxCallsFor('waiting')).toHaveLength(1);
 			expect(inboxCallsFor('authored')).toHaveLength(1);
 			expect(store.isEmpty).toBe(true);
+
+			resolveSummary({ open: 0, closed: 0 });
+			await summary;
 		});
 
-		it('applies each section as soon as its own request settles', async () => {
+		it('stores each section as soon as its own request settles', async () => {
 			let resolveAuthored!: (value: ListWorkflowReviewInboxResponse) => void;
 			mockInbox({
 				waiting: page([makeItem({ id: 'waiting-1' })]),
@@ -150,13 +158,14 @@ describe('useReviewInboxStore', () => {
 			});
 			expect(store.sections.waiting.loading).toBe(false);
 			expect(store.sections.authored.loading).toBe(true);
+			expect(store.isLoadingActiveTab).toBe(true);
 
 			resolveAuthored(page([makeItem({ id: 'authored-1' })]));
 			await fetching;
 			expect(store.sections.authored.items).toHaveLength(1);
 		});
 
-		it('does not apply probe results after reset', async () => {
+		it('does not apply summary results after reset', async () => {
 			let resolveSummary!: (value: { open: number; closed: number }) => void;
 			vi.mocked(workflowReviewsApi.fetchWorkflowReviewInboxSummary).mockImplementationOnce(
 				async () =>
@@ -166,13 +175,13 @@ describe('useReviewInboxStore', () => {
 			);
 
 			const store = useReviewInboxStore();
-			const probe = store.probeInbox();
+			const summary = store.fetchSummary();
 			store.reset();
 			resolveSummary({ open: 1, closed: 0 });
-			await probe;
+			await summary;
 
-			expect(store.probeSettled).toBe(false);
-			expect(workflowReviewsApi.fetchWorkflowReviewInbox).not.toHaveBeenCalled();
+			expect(store.openCount).toBeNull();
+			expect(store.closedCount).toBeNull();
 		});
 
 		it('ignores a stale response from an earlier fetch of the same section', async () => {
@@ -306,7 +315,7 @@ describe('useReviewInboxStore', () => {
 	});
 
 	describe('errors', () => {
-		it('keeps a failing section isolated from its sibling', async () => {
+		it('settles the active tab with one initial error when a section fails', async () => {
 			mockInbox({
 				waiting: async () => {
 					throw new Error('network');
@@ -315,11 +324,12 @@ describe('useReviewInboxStore', () => {
 			});
 
 			const store = useReviewInboxStore();
-			await expect(store.fetchActiveTab()).rejects.toThrow('network');
+			await store.fetchActiveTab();
 
 			expect(store.sections.waiting.error).toEqual(new Error('network'));
 			expect(store.sections.authored.error).toBeNull();
 			expect(store.sections.authored.items).toHaveLength(1);
+			expect(store.activeTabInitialLoadFailed).toBe(true);
 		});
 
 		it('keeps rows and the cursor after a failed load-more and retries the same page', async () => {
@@ -334,7 +344,7 @@ describe('useReviewInboxStore', () => {
 					throw new Error('boom');
 				},
 			});
-			await expect(store.loadMore('waiting')).rejects.toThrow('boom');
+			await store.loadMore('waiting');
 
 			expect(store.sections.waiting.items).toHaveLength(1);
 			expect(store.sections.waiting.nextCursor).toBe('cursor');
@@ -361,7 +371,7 @@ describe('useReviewInboxStore', () => {
 				},
 			});
 			const store = useReviewInboxStore();
-			await expect(store.fetchActiveTab()).rejects.toThrow('down');
+			await store.fetchActiveTab();
 
 			mockInbox({ waiting: page([makeItem({ id: 'waiting-1' })]) });
 			await store.retry('waiting');
@@ -374,7 +384,6 @@ describe('useReviewInboxStore', () => {
 		});
 
 		it('does not treat a failed section fetch as an empty inbox', async () => {
-			mockSummary(1, 0);
 			mockInbox({
 				waiting: async () => {
 					throw new Error('network');
@@ -382,7 +391,7 @@ describe('useReviewInboxStore', () => {
 			});
 
 			const store = useReviewInboxStore();
-			await expect(store.probeInbox()).rejects.toThrow('network');
+			await store.fetchActiveTab();
 
 			expect(store.isEmpty).toBe(false);
 			// The failure belongs to the section that suffered it, and to it alone.
@@ -390,61 +399,40 @@ describe('useReviewInboxStore', () => {
 			expect(store.sections.authored.error).toBeNull();
 		});
 
-		it('settles the probe and rethrows when the summary fails', async () => {
-			mockInbox({});
+		it('leaves counts unknown when the summary fails', async () => {
 			vi.mocked(workflowReviewsApi.fetchWorkflowReviewInboxSummary).mockRejectedValue(
 				new Error('summary down'),
 			);
 
 			const store = useReviewInboxStore();
-			await expect(store.probeInbox()).rejects.toThrow('summary down');
+			await store.fetchSummary();
 
-			expect(store.probeSettled).toBe(true);
+			expect(store.openCount).toBeNull();
+			expect(store.closedCount).toBeNull();
 		});
 
-		it('still loads the sections when the summary fails', async () => {
+		it('loads sections independently when the summary fails', async () => {
 			mockInbox({ waiting: page([makeItem({ id: 'waiting-1' })]), authored: emptyPage() });
 			vi.mocked(workflowReviewsApi.fetchWorkflowReviewInboxSummary).mockRejectedValue(
 				new Error('summary down'),
 			);
 
 			const store = useReviewInboxStore();
-			await expect(store.probeInbox()).rejects.toThrow('summary down');
+			await Promise.all([store.fetchSummary(), store.fetchActiveTab()]);
 
-			// The counts are unknown, but the lists are not: the tab must not claim
-			// there is nothing to review.
 			expect(store.sections.waiting.items).toHaveLength(1);
 			expect(store.isEmpty).toBe(false);
 			expect(store.openCount).toBeNull();
 			expect(store.closedCount).toBeNull();
 		});
-
-		it('reports the summary failure over a section failure', async () => {
-			mockInbox({
-				waiting: async () => {
-					throw new Error('network');
-				},
-			});
-			vi.mocked(workflowReviewsApi.fetchWorkflowReviewInboxSummary).mockRejectedValue(
-				new Error('summary down'),
-			);
-
-			const store = useReviewInboxStore();
-			await expect(store.probeInbox()).rejects.toThrow('summary down');
-
-			// The section keeps its own error, which is what its inline retry acts on.
-			expect(store.sections.waiting.error).toEqual(new Error('network'));
-			expect(store.isEmpty).toBe(false);
-		});
 	});
 
 	describe('isEmpty', () => {
 		it('is true on the open tab only when both sections are empty', async () => {
-			mockSummary(1, 0);
 			mockInbox({ waiting: page([makeItem({ id: 'waiting-1' })]), authored: emptyPage() });
 
 			const store = useReviewInboxStore();
-			await store.probeInbox();
+			await store.fetchActiveTab();
 			expect(store.isEmpty).toBe(false);
 
 			mockInbox({ waiting: emptyPage(), authored: emptyPage() });
@@ -453,11 +441,9 @@ describe('useReviewInboxStore', () => {
 		});
 
 		it('follows the closed slice on the closed tab', async () => {
-			mockSummary(0, 1);
 			mockInbox({ closed: emptyPage() });
 
 			const store = useReviewInboxStore();
-			await store.probeInbox();
 			await store.setActiveTab('closed');
 
 			expect(store.isEmpty).toBe(true);
@@ -466,19 +452,17 @@ describe('useReviewInboxStore', () => {
 
 	describe('active tab state', () => {
 		it('reports rows from either open section', async () => {
-			mockSummary(1, 0);
 			mockInbox({ waiting: emptyPage(), authored: page([makeItem({ id: 'authored-1' })]) });
 
 			const store = useReviewInboxStore();
-			await store.probeInbox();
+			await store.fetchActiveTab();
 
 			expect(store.hasItemsInActiveTab).toBe(true);
 			expect(store.isEmpty).toBe(false);
 			expect(store.isLoadingActiveTab).toBe(false);
 		});
 
-		it('is neither loading, empty, nor selectable once a section has failed', async () => {
-			mockSummary(1, 0);
+		it('reports one initial failure once both sections have settled', async () => {
 			mockInbox({
 				waiting: async () => {
 					throw new Error('network');
@@ -487,15 +471,15 @@ describe('useReviewInboxStore', () => {
 			});
 
 			const store = useReviewInboxStore();
-			await expect(store.probeInbox()).rejects.toThrow('network');
+			await store.fetchActiveTab();
 
 			expect(store.isLoadingActiveTab).toBe(false);
 			expect(store.isEmpty).toBe(false);
 			expect(store.hasItemsInActiveTab).toBe(false);
+			expect(store.activeTabInitialLoadFailed).toBe(true);
 		});
 
-		it('loads while a section is in flight with nothing to show', async () => {
-			mockSummary(1, 0);
+		it('loads until both open sections have settled', async () => {
 			let releaseWaiting = () => {};
 			mockInbox({
 				waiting: async () => {
@@ -508,12 +492,12 @@ describe('useReviewInboxStore', () => {
 			});
 
 			const store = useReviewInboxStore();
-			const probe = store.probeInbox();
+			const fetching = store.fetchActiveTab();
 			await vi.waitFor(() => expect(store.isLoadingActiveTab).toBe(true));
 			expect(store.isEmpty).toBe(false);
 
 			releaseWaiting();
-			await probe;
+			await fetching;
 
 			expect(store.isLoadingActiveTab).toBe(false);
 			expect(store.isEmpty).toBe(true);
@@ -529,7 +513,7 @@ describe('useReviewInboxStore', () => {
 			});
 
 			const store = useReviewInboxStore();
-			await store.probeInbox();
+			await Promise.all([store.fetchSummary(), store.fetchActiveTab()]);
 			return store;
 		}
 
@@ -673,13 +657,12 @@ describe('useReviewInboxStore', () => {
 		});
 
 		it('does not suppress the section empty states after a failed detail fetch', async () => {
-			mockSummary(1, 0);
 			mockInbox({ waiting: emptyPage(), authored: emptyPage() });
 			vi.mocked(workflowReviewsApi.fetchWorkflowReviewRequestDetail).mockRejectedValue(
 				new ResponseError('boom', { httpStatusCode: 500 }),
 			);
 			const store = useReviewInboxStore();
-			await store.probeInbox();
+			await store.fetchActiveTab();
 
 			await expect(store.fetchDetail('req-1')).rejects.toThrow('boom');
 
@@ -707,7 +690,7 @@ describe('useReviewInboxStore', () => {
 			expect(store.detail).toEqual(expect.objectContaining({ id: 'req-2', title: 'Newer review' }));
 		});
 
-		it('keeps the detail on screen while refetching the same review', async () => {
+		it('keeps detail visible while refetching the same review', async () => {
 			const first = createDetail();
 			let resolveSecond!: (detail: WorkflowReviewRequestDetail) => void;
 			vi.mocked(workflowReviewsApi.fetchWorkflowReviewRequestDetail)
@@ -723,7 +706,6 @@ describe('useReviewInboxStore', () => {
 
 			const secondFetch = store.fetchDetail('req-1');
 
-			// Same review as already loaded: no skeleton flash while the refetch is in flight.
 			expect(store.detail).toEqual(first);
 			expect(store.detailLoading).toBe(false);
 
@@ -782,7 +764,7 @@ describe('useReviewInboxStore', () => {
 			authored: page([makeItem({ id: 'req-2' })]),
 		});
 		const store = useReviewInboxStore();
-		await store.probeInbox();
+		await Promise.all([store.fetchSummary(), store.fetchActiveTab()]);
 
 		store.reset();
 

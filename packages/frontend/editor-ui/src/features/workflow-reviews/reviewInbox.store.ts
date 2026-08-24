@@ -30,10 +30,7 @@ export type ReviewInboxSectionKey = 'waiting' | 'authored' | 'closed';
 
 type RequestPage = (cursor?: string) => Promise<ListWorkflowReviewInboxResponse>;
 
-/**
- * One keyset-paginated list. State is per slice on purpose: a section that fails
- * or is still loading must not blank out its sibling.
- */
+/** One keyset-paginated list with its own pagination and load-more state. */
 function createInboxListSlice(requestPage: RequestPage) {
 	const items = ref<WorkflowReviewInboxItem[]>([]);
 	const nextCursor = ref<string | null>(null);
@@ -76,7 +73,6 @@ function createInboxListSlice(requestPage: RequestPage) {
 			if (seq !== requestSeq) return;
 			error.value = toError(e);
 			failedRequest.value = 'list';
-			throw e;
 		} finally {
 			if (seq === requestSeq) {
 				loading.value = false;
@@ -105,7 +101,6 @@ function createInboxListSlice(requestPage: RequestPage) {
 			// the same page instead of restarting the section.
 			error.value = toError(e);
 			failedRequest.value = 'loadMore';
-			throw e;
 		} finally {
 			if (seq === requestSeq) {
 				loadingMore.value = false;
@@ -144,6 +139,7 @@ function createInboxListSlice(requestPage: RequestPage) {
 	const isEmpty = computed(
 		() => !loading.value && error.value === null && items.value.length === 0,
 	);
+	const initialLoadFailed = computed(() => failedRequest.value === 'list');
 
 	return {
 		items,
@@ -153,6 +149,7 @@ function createInboxListSlice(requestPage: RequestPage) {
 		loadingMore,
 		error,
 		isEmpty,
+		initialLoadFailed,
 		fetchList,
 		loadMore,
 		retry,
@@ -165,9 +162,6 @@ function createInboxListSlice(requestPage: RequestPage) {
 export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	const rootStore = useRootStore();
 
-	const probeSettled = ref(false);
-	// `null` until the summary that carries them succeeds — a failed summary must
-	// not report an empty inbox over lists that loaded fine.
 	const openCount = ref<number | null>(null);
 	const closedCount = ref<number | null>(null);
 	const detail = ref<WorkflowReviewRequestDetail | null>(null);
@@ -176,7 +170,7 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	// The view hydrates this from `?state=` so the first list fetch uses the URL state.
 	const activeTab = ref<WorkflowReviewRequestState>('open');
 
-	let probeRequestSeq = 0;
+	let summaryRequestSeq = 0;
 	let detailRequestSeq = 0;
 
 	function requestPage(
@@ -214,17 +208,20 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		activeSlices.value.some((slice) => slice.items.value.length > 0),
 	);
 
-	const isLoadingActiveTab = computed(
-		() => !hasItemsInActiveTab.value && activeSlices.value.some((slice) => slice.loading.value),
+	const isLoadingActiveTab = computed(() =>
+		activeSlices.value.some((slice) => slice.loading.value),
+	);
+
+	const activeTabInitialLoadFailed = computed(() =>
+		activeSlices.value.some((slice) => slice.initialLoadFailed.value),
 	);
 
 	// Settled with nothing to show. A failed slice is not treated as empty.
 	const isEmpty = computed(() => activeSlices.value.every((slice) => slice.isEmpty.value));
 
 	/**
-	 * Both open sections start together but apply independently. The rejection
-	 * is still surfaced so the view can toast, while each slice keeps its own
-	 * error for its own retry control.
+	 * Both open sections start together and settle before the tab is rendered.
+	 * Each slice still owns its pagination state after the initial load.
 	 */
 	async function fetchActiveTab() {
 		if (activeTab.value === 'closed') {
@@ -232,50 +229,21 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 			return;
 		}
 
-		const results = await Promise.allSettled([
-			sections.waiting.fetchList(),
-			sections.authored.fetchList(),
-		]);
-
-		const failure = results.find((result) => result.status === 'rejected');
-		if (failure?.status === 'rejected') {
-			throw failure.reason;
-		}
+		await Promise.all([sections.waiting.fetchList(), sections.authored.fetchList()]);
 	}
 
-	async function probeInbox() {
-		const requestSeq = ++probeRequestSeq;
-		probeSettled.value = false;
-
-		let summaryError: Error | null = null;
+	async function fetchSummary() {
+		const requestSeq = ++summaryRequestSeq;
 
 		try {
 			const summary = await fetchWorkflowReviewInboxSummary(rootStore.restApiContext);
-			if (requestSeq !== probeRequestSeq) {
-				return;
-			}
+			if (requestSeq !== summaryRequestSeq) return;
 
 			openCount.value = summary.open;
 			closedCount.value = summary.closed;
-		} catch (e) {
-			if (requestSeq !== probeRequestSeq) {
-				return;
-			}
-			// The summary only feeds the tab counts, so the lists are still fetched
-			summaryError = toError(e);
+		} catch {
+			// Counts enhance the tabs and no-selection state, but never block the lists.
 		}
-
-		probeSettled.value = true;
-
-		const listError = await fetchActiveTab().then(
-			() => null,
-			(e: unknown) => toError(e),
-		);
-
-		// The summary failure comes first: it is the one the view has no inline
-		// retry for, while a failed section shows its own.
-		const failure = summaryError ?? listError;
-		if (failure) throw failure;
 	}
 
 	async function loadMore(section: ReviewInboxSectionKey) {
@@ -302,8 +270,6 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 
 	async function fetchDetail(id: string) {
 		const requestSeq = ++detailRequestSeq;
-		// A same-review refetch (e.g. right after deciding on it) keeps the panel on screen
-		// instead of flashing the skeleton; only an actual switch clears it up front.
 		const switchedReview = detail.value?.id !== id;
 		if (switchedReview) {
 			detail.value = null;
@@ -317,8 +283,6 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 				return;
 			}
 			detail.value = response;
-			// A same-review refetch skips the clear above, so a 404 from an earlier
-			// one would keep the panel on "not found" behind the review it just got.
 			detailNotFound.value = false;
 		} catch (e) {
 			if (requestSeq !== detailRequestSeq) {
@@ -385,9 +349,8 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	}
 
 	function reset() {
-		probeRequestSeq += 1;
+		summaryRequestSeq += 1;
 		detailRequestSeq += 1;
-		probeSettled.value = false;
 		openCount.value = null;
 		closedCount.value = null;
 		detail.value = null;
@@ -400,7 +363,6 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 	}
 
 	return {
-		probeSettled,
 		openCount,
 		closedCount,
 		sections,
@@ -410,8 +372,9 @@ export const useReviewInboxStore = defineStore('workflowReviewInbox', () => {
 		activeTab,
 		isEmpty,
 		isLoadingActiveTab,
+		activeTabInitialLoadFailed,
 		hasItemsInActiveTab,
-		probeInbox,
+		fetchSummary,
 		fetchActiveTab,
 		loadMore,
 		retry,

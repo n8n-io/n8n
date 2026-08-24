@@ -30,13 +30,13 @@ const store = useReviewInboxStore();
 // feed and the composer read the store themselves.
 const activityStore = useReviewActivityStore();
 const {
-	probeSettled,
 	activeTab,
 	detail,
 	detailLoading,
 	detailNotFound,
 	isEmpty,
 	isLoadingActiveTab,
+	activeTabInitialLoadFailed,
 	hasItemsInActiveTab,
 	openCount,
 	closedCount,
@@ -49,7 +49,6 @@ function toSidebarSection(key: ReviewInboxSectionKey): ReviewInboxSidebarSection
 	return {
 		key,
 		items: slice.items,
-		loading: slice.loading,
 		loadingMore: slice.loadingMore,
 		hasMore: slice.hasMore,
 		error: slice.error,
@@ -85,11 +84,11 @@ function stateFromQuery(value: unknown): WorkflowReviewRequestState {
 }
 
 // Clear on entry, not exit: a discarded layout-swap copy can unmount after the live
-// one has started probing, and a teardown clear would invalidate that probe.
+// one has started loading, and a teardown clear would invalidate those requests.
 store.reset();
 activityStore.reset();
 
-// Hydrate the tab before probing so the first list fetch uses the URL state.
+// Hydrate the tab before loading so the first list fetch uses the URL state.
 store.activeTab = stateFromQuery(route.query[REVIEW_INBOX_QUERY_PARAM.state]);
 
 const selectedListItem = computed(() =>
@@ -109,21 +108,17 @@ const reviewsIcon: EmptyStateIconCards = {
 	sides: ['file-diff', 'git-branch', 'circle-check', 'list', 'message-square'],
 };
 
-const notFoundIcon: IconOrEmoji = { type: 'icon', value: 'circle-alert' };
+const alertIcon: IconOrEmoji = { type: 'icon', value: 'circle-alert' };
 
-const noSelectionCount = computed(() =>
-	activeTab.value === 'closed' ? closedCount.value : openCount.value,
-);
-
-// The count comes from the summary, which can fail on its own; the heading then
-// names the tab instead of claiming a number the store does not have.
+// Counts are optional; name the tab when its summary is unavailable.
 const noSelectionHeading = computed(() => {
-	const count = noSelectionCount.value;
+	const count = activeTab.value === 'closed' ? closedCount.value : openCount.value;
 	if (count === null) {
 		return activeTab.value === 'closed'
 			? i18n.baseText('workflowReviews.closedReviews')
 			: i18n.baseText('workflowReviews.openReviews');
 	}
+
 	return i18n.baseText(`workflowReviews.noSelection.title.${activeTab.value}`, {
 		adjustToNumber: count,
 		interpolate: { count: String(count) },
@@ -132,7 +127,7 @@ const noSelectionHeading = computed(() => {
 
 let isMounted = false;
 
-function handleListError(error: unknown) {
+function handleLoadError(error: unknown) {
 	if (!isMounted) return;
 	showError(error, i18n.baseText('workflowReviews.error.load'));
 }
@@ -142,7 +137,7 @@ watch(
 	(id) => {
 		if (!isOnInbox()) return;
 		if (id) {
-			void store.fetchDetail(id).catch(handleListError);
+			void store.fetchDetail(id).catch(handleLoadError);
 			// Failures surface in the feed's own error row, never as a second toast.
 			void activityStore.fetchFeed(id);
 		} else {
@@ -157,7 +152,7 @@ watch(
 	() => route.query[REVIEW_INBOX_QUERY_PARAM.state],
 	(next) => {
 		if (!isOnInbox()) return;
-		void store.setActiveTab(stateFromQuery(next)).catch(handleListError);
+		void store.setActiveTab(stateFromQuery(next));
 	},
 );
 
@@ -191,20 +186,16 @@ function onDetailTabChange(tab: WorkflowReviewDetailTab) {
 	void router.replace({ query });
 }
 
-async function onLoadMore(section: ReviewInboxSectionKey) {
-	try {
-		await store.loadMore(section);
-	} catch (error) {
-		handleListError(error);
-	}
+function onLoadMore(section: ReviewInboxSectionKey) {
+	void store.loadMore(section);
 }
 
-async function onRetrySection(section: ReviewInboxSectionKey) {
-	try {
-		await store.retry(section);
-	} catch (error) {
-		handleListError(error);
-	}
+function onRetrySection(section: ReviewInboxSectionKey) {
+	void store.retry(section);
+}
+
+function onRetryActiveTab() {
+	void store.fetchActiveTab();
 }
 
 const deciding = ref(false);
@@ -243,8 +234,8 @@ async function onDecide(id: string, input: WorkflowReviewDecisionInput) {
 		if (selectedReviewId.value === id) {
 			activityStore.clearDecisionNote(input.note ?? '');
 			void activityStore.fetchFeed(id);
-			void store.fetchDetail(id).catch(handleListError);
 			if (state === 'closed') {
+				void store.fetchDetail(id).catch(handleLoadError);
 				followClosedReview(id);
 			}
 		}
@@ -285,7 +276,7 @@ async function onDecide(id: string, input: WorkflowReviewDecisionInput) {
 				selectedReviewId.value ? store.fetchDetail(selectedReviewId.value) : undefined,
 			]);
 		} catch (refetchError) {
-			handleListError(refetchError);
+			handleLoadError(refetchError);
 		}
 		// The feed too, or the panel keeps one missing the decision that beat this one. The
 		// note stays: the reviewer may want to retry with it.
@@ -295,13 +286,10 @@ async function onDecide(id: string, input: WorkflowReviewDecisionInput) {
 	}
 }
 
-onMounted(async () => {
+onMounted(() => {
 	isMounted = true;
-	try {
-		await store.probeInbox();
-	} catch (error) {
-		await handleListError(error);
-	}
+	void store.fetchSummary();
+	void store.fetchActiveTab();
 });
 
 onUnmounted(() => {
@@ -314,7 +302,8 @@ onUnmounted(() => {
 		<div :class="$style.content">
 			<WorkflowReviewRequestsSidebar
 				:sections="sidebarSections"
-				:probing="!probeSettled"
+				:loading="isLoadingActiveTab"
+				:initial-load-failed="activeTabInitialLoadFailed"
 				:active-tab="activeTab"
 				:open-count="openCount"
 				:closed-count="closedCount"
@@ -324,6 +313,7 @@ onUnmounted(() => {
 				@update:active-tab="onActiveTabChange"
 				@load-more="onLoadMore"
 				@retry="onRetrySection"
+				@retry-active-tab="onRetryActiveTab"
 			/>
 
 			<div :class="$style.main">
@@ -344,15 +334,14 @@ onUnmounted(() => {
 				</div>
 
 				<div :class="$style.mainBody">
-					<N8nLoading v-if="!probeSettled" :loading="true" :rows="3" />
 					<div
-						v-else-if="selectedReviewId && detailNotFound"
+						v-if="selectedReviewId && detailNotFound"
 						:class="$style.emptyStateWrapper"
 						data-test-id="workflow-review-detail-not-found"
 					>
 						<N8nEmptyState
 							:class="$style.emptyState"
-							:icon="notFoundIcon"
+							:icon="alertIcon"
 							:heading="i18n.baseText('workflowReviews.detail.notFound.title')"
 							:description="i18n.baseText('workflowReviews.detail.notFound.body')"
 						/>
@@ -371,6 +360,19 @@ onUnmounted(() => {
 						@decide="onDecide(selectedItem.id, $event)"
 					/>
 					<N8nLoading v-else-if="isLoadingActiveTab" :loading="true" :rows="3" />
+					<div
+						v-else-if="activeTabInitialLoadFailed && !hasItemsInActiveTab"
+						:class="$style.emptyStateWrapper"
+						data-test-id="workflow-reviews-load-error"
+					>
+						<N8nEmptyState
+							:class="$style.emptyState"
+							:icon="alertIcon"
+							:heading="i18n.baseText('workflowReviews.error.load')"
+							:button-text="i18n.baseText('generic.retry')"
+							@click:button="onRetryActiveTab"
+						/>
+					</div>
 					<div
 						v-else-if="isEmpty"
 						:class="$style.emptyStateWrapper"

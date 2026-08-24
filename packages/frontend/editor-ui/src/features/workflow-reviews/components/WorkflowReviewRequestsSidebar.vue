@@ -26,7 +26,6 @@ import type { ReviewInboxSectionKey } from '../reviewInbox.store';
 export type ReviewInboxSidebarSection = {
 	key: ReviewInboxSectionKey;
 	items: WorkflowReviewInboxItem[];
-	loading: boolean;
 	loadingMore: boolean;
 	hasMore: boolean;
 	error: Error | null;
@@ -34,9 +33,9 @@ export type ReviewInboxSidebarSection = {
 
 const props = defineProps<{
 	sections: ReviewInboxSidebarSection[];
-	probing: boolean; // summary probe before loading lists
+	loading: boolean;
+	initialLoadFailed: boolean;
 	activeTab: WorkflowReviewRequestState;
-	/** `null` while the counts are unknown, which renders the tab without a tag. */
 	openCount: number | null;
 	closedCount: number | null;
 	selectedId: string | null;
@@ -48,6 +47,7 @@ const emit = defineEmits<{
 	'update:activeTab': [tab: WorkflowReviewRequestState];
 	loadMore: [section: ReviewInboxSectionKey];
 	retry: [section: ReviewInboxSectionKey];
+	retryActiveTab: [];
 }>();
 
 const i18n = useI18n();
@@ -90,9 +90,8 @@ function isCollapsibleSection(key: ReviewInboxSectionKey): key is CollapsibleRev
 	return key !== 'closed';
 }
 
-const isLoadingWholeList = computed(
-	() => props.probing || props.sections.every((section) => section.loading),
-);
+const hasUsableRows = computed(() => props.sections.some((section) => section.items.length > 0));
+const showInitialLoadError = computed(() => props.initialLoadFailed && !hasUsableRows.value);
 
 const groups = computed(() =>
 	props.sections
@@ -106,13 +105,12 @@ const groups = computed(() =>
 				collapsed: collapsibleKey !== null && isCollapsed(collapsibleKey),
 				headerId: `workflow-review-section-header-${section.key}`,
 				groupId: `workflow-review-section-group-${section.key}`,
-				// A settled, empty section is dropped entirely. An errored one
-				// stays: its header is the only thing telling the viewer which list failed.
-				visible:
-					section.loading || section.error !== null || section.items.length > 0 || section.hasMore,
+				// A settled, empty section is dropped entirely. When another section
+				// has rows, an error stays visible with its section-specific retry.
+				visible: section.error !== null || section.items.length > 0 || section.hasMore,
 			};
 		})
-		.filter((group) => group.visible && !isLoadingWholeList.value),
+		.filter((group) => group.visible && !props.loading && !showInitialLoadError.value),
 );
 
 /** The closed tab keeps infinite scroll; the open tab loads more explicitly. */
@@ -176,11 +174,27 @@ function onListBackgroundClick() {
 
 		<div ref="listRef" :class="$style.list" @click.self="onListBackgroundClick">
 			<N8nLoading
-				v-if="isLoadingWholeList"
+				v-if="loading"
 				:loading="true"
 				:rows="3"
 				data-test-id="workflow-review-list-skeleton"
 			/>
+			<div
+				v-else-if="showInitialLoadError"
+				:class="$style.sectionError"
+				data-test-id="workflow-review-list-error"
+			>
+				<N8nText color="danger" size="small">
+					{{ i18n.baseText('workflowReviews.sidebar.error') }}
+				</N8nText>
+				<N8nButton
+					variant="subtle"
+					size="mini"
+					:label="i18n.baseText('generic.retry')"
+					data-test-id="workflow-review-list-retry"
+					@click="emit('retryActiveTab')"
+				/>
+			</div>
 
 			<div v-for="group in groups" :key="group.key" :class="$style.section">
 				<button
@@ -261,13 +275,6 @@ function onListBackgroundClick() {
 				</div>
 
 				<template v-if="!group.collapsed">
-					<N8nLoading
-						v-if="group.section.loading"
-						:loading="true"
-						:rows="3"
-						:data-section="group.key"
-						data-test-id="workflow-review-section-skeleton"
-					/>
 					<div v-if="group.section.loadingMore" :class="$style.loadingMore">
 						<N8nLoading :loading="true" :rows="1" />
 					</div>
@@ -304,7 +311,11 @@ function onListBackgroundClick() {
 			</div>
 
 			<!-- Outside the v-for: a ref inside one would resolve to an array. -->
-			<div v-if="closedSentinelActive" ref="loadMoreSentinel" :class="$style.sentinel" />
+			<div
+				v-if="closedSentinelActive && !loading && !showInitialLoadError"
+				ref="loadMoreSentinel"
+				:class="$style.sentinel"
+			/>
 		</div>
 	</aside>
 </template>
