@@ -199,6 +199,46 @@ describe('CommunityPackagesService (real filesystem)', () => {
 		expect(await readLedgerDependencies()).toEqual({ [PACKAGE_NAME]: PREVIOUS_VERSION });
 	});
 
+	// The follower applies an install the leader already committed, so it has no database
+	// row to roll back to — only the directory.
+	describe('pubsub follower', () => {
+		test('keeps the existing directory and its ledger entry when the download fails', async () => {
+			await writeExistingPackage();
+			stubNpmAndTar({ packFails: true });
+
+			await service.handleInstallEvent({ packageName: PACKAGE_NAME, packageVersion: NEW_VERSION });
+
+			expect(await readMarker()).toBe(PREVIOUS_VERSION);
+			expect(await backupDirectories()).toEqual([]);
+			expect(await readLedgerDependencies()).toEqual({ [PACKAGE_NAME]: PREVIOUS_VERSION });
+		});
+
+		test('restores and reloads the existing directory when the new version fails to load', async () => {
+			await writeExistingPackage();
+			stubNpmAndTar();
+			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
+
+			await service.handleInstallEvent({ packageName: PACKAGE_NAME, packageVersion: NEW_VERSION });
+
+			expect(await readMarker()).toBe(PREVIOUS_VERSION);
+			expect(await backupDirectories()).toEqual([]);
+			// The restored version has to go back into memory: it was unloaded to make way
+			// for the one that failed to load.
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(2);
+		});
+
+		test('replaces the directory and leaves no backup behind on success', async () => {
+			await writeExistingPackage();
+			stubNpmAndTar();
+
+			await service.handleInstallEvent({ packageName: PACKAGE_NAME, packageVersion: NEW_VERSION });
+
+			expect(await readMarker()).toBe(NEW_VERSION);
+			expect(await backupDirectories()).toEqual([]);
+			expect(await readLedgerDependencies()).toEqual({ [PACKAGE_NAME]: NEW_VERSION });
+		});
+	});
+
 	test('removes the partially downloaded directory when there was nothing to restore', async () => {
 		stubNpmAndTar();
 		loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));

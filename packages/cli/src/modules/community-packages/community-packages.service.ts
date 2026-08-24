@@ -572,8 +572,30 @@ export class CommunityPackagesService {
 			}
 
 			const authToken = this.getNpmAuthToken();
-			await this.downloadPackage(packageName, packageVersion, authToken);
-			await this.reloadPackage(packageName);
+
+			// Whatever is currently on disk, kept aside so a failed install can be rolled back.
+			// Undefined when the package has no directory yet.
+			const backupDirectory = await this.backupPackageDirectory(packageName);
+
+			try {
+				await this.downloadPackage(packageName, packageVersion, authToken);
+			} catch (error) {
+				// No reload here: the previous package was not unloaded before the download
+				await this.restoreFailedPackageInstallation(packageName, { backupDirectory });
+				throw error;
+			}
+
+			try {
+				await this.reloadPackage(packageName);
+			} catch (error) {
+				await this.restoreFailedPackageInstallation(packageName, {
+					backupDirectory,
+					reloadPackage: true,
+				});
+				throw error;
+			}
+
+			await this.discardBackupDirectory(packageName, backupDirectory);
 			await this.loadNodesAndCredentials.postProcessLoaders();
 			this.loadNodesAndCredentials.releaseTypes();
 			this.logger.info(`Community package installed: ${packageName}`);
@@ -700,79 +722,61 @@ export class CommunityPackagesService {
 		const registry = this.getNpmRegistry();
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 
-		// Keep the previous install safe until the new one is fully built, so a failed
-		// pack/tar/npm-install never leaves the package permanently absent.
-		const backupDirectory = await this.backupPackageDirectory(packageName);
+		await mkdir(packageDirectory, { recursive: true });
+
+		// TODO: make sure that this works for scoped packages as well
+		// if (packageName.startsWith('@') && packageName.includes('/')) {}
+		const tarOutput = await executeNpmCommand(
+			['pack', `${packageName}@${packageVersion}`, '--quiet'],
+			{ cwd: this.downloadFolder, registry, authToken },
+		);
+
+		const tarballName = tarOutput?.trim();
 
 		try {
-			await mkdir(packageDirectory, { recursive: true });
-
-			// TODO: make sure that this works for scoped packages as well
-			// if (packageName.startsWith('@') && packageName.includes('/')) {}
-			const tarOutput = await executeNpmCommand(
-				['pack', `${packageName}@${packageVersion}`, '--quiet'],
-				{ cwd: this.downloadFolder, registry, authToken },
+			await asyncExecFile(
+				'tar',
+				['-xzf', tarballName, '-C', packageDirectory, '--strip-components=1'],
+				{ cwd: this.downloadFolder },
 			);
 
-			const tarballName = tarOutput?.trim();
+			// Strip dev, optional, and peer dependencies before running `npm install`
+			const packageJsonPath = `${packageDirectory}/package.json`;
+			const packageJsonContent = await readFile(packageJsonPath, 'utf-8');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const {
+				devDependencies,
+				peerDependencies,
+				optionalDependencies,
+				...packageJson
+			}: {
+				version: string;
+				devDependencies: Record<string, string>;
+				peerDependencies: Record<string, string>;
+				optionalDependencies: Record<string, string>;
+			} = JSON.parse(packageJsonContent);
+			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 
-			try {
-				await asyncExecFile(
-					'tar',
-					['-xzf', tarballName, '-C', packageDirectory, '--strip-components=1'],
-					{ cwd: this.downloadFolder },
-				);
-
-				// Strip dev, optional, and peer dependencies before running `npm install`
-				const packageJsonPath = `${packageDirectory}/package.json`;
-				const packageJsonContent = await readFile(packageJsonPath, 'utf-8');
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const {
-					devDependencies,
-					peerDependencies,
-					optionalDependencies,
-					...packageJson
-				}: {
-					version: string;
-					devDependencies: Record<string, string>;
-					peerDependencies: Record<string, string>;
-					optionalDependencies: Record<string, string>;
-				} = JSON.parse(packageJsonContent);
-				await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
-
-				await executeNpmCommand(
-					[
-						'install',
-						'--audit=false',
-						'--fund=false',
-						'--bin-links=false',
-						'--install-strategy=shallow',
-						'--ignore-scripts=true',
-						'--package-lock=false',
-					],
-					{ cwd: packageDirectory, registry, authToken },
-				);
-				await this.updatePackageJsonDependency(packageName, packageJson.version);
-			} finally {
-				// `npm pack` failing to print a filename would otherwise resolve this to
-				// `downloadFolder` itself, and the non-recursive `rm` would mask the real error.
-				if (tarballName) {
-					await rm(join(this.downloadFolder, tarballName));
-				}
+			await executeNpmCommand(
+				[
+					'install',
+					'--audit=false',
+					'--fund=false',
+					'--bin-links=false',
+					'--install-strategy=shallow',
+					'--ignore-scripts=true',
+					'--package-lock=false',
+				],
+				{ cwd: packageDirectory, registry, authToken },
+			);
+			await this.updatePackageJsonDependency(packageName, packageJson.version);
+		} finally {
+			// `npm pack` failing to print a filename would otherwise resolve this to
+			// `downloadFolder` itself, and the non-recursive `rm` would mask the real error.
+			if (tarballName) {
+				await rm(join(this.downloadFolder, tarballName));
 			}
-		} catch (error) {
-			try {
-				await this.restorePackageDirectoryFromBackup(packageName, backupDirectory);
-			} catch (restoreError) {
-				this.logger.warn('Failed to restore community package directory after failed download', {
-					error: ensureError(restoreError),
-					packageName,
-				});
-			}
-			throw error;
 		}
-
-		await this.discardBackupDirectory(packageName, backupDirectory);
 
 		return packageDirectory;
 	}
