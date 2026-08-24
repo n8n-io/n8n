@@ -98,6 +98,56 @@ the source was **33% more expensive** at worse quality.
 
 ---
 
+## Building a custom eval — the declarable surface
+
+16 fields. `WORKFLOW_TEST_CASE_KEYS` in `harness/schema.ts` is the authoritative list;
+the schema is `.strict()`, so an unknown key fails the load rather than being ignored.
+
+```
+buildExpectations   complexity          contextAssertions   conversation
+credentialFixture   credentials         datasets            description
+executionScenarios  memoryExpectations  messageBudget       outcomeExpectations
+processExpectations seed                tags                triggerType
+```
+
+**Seeding state before the graded turn** — `seed.messages`, `seed.workflows` (≤50, names
+get a ` [seed <8hex>]` suffix), `seed.dataTables` (schema + rows), `seed.agents` (≤5),
+`seed.sessionBoundary` (history in a separate thread), `seed.priorRuns` (execute workflows
+pre-turn, `hints` steers success/failure), or `seed.mode: 'replay'` to reconstruct a real
+conversation from its LangSmith trace.
+
+**Grading** — `processExpectations` (transcript), `outcomeExpectations` (built workflow),
+`memoryExpectations` (captured context only, takes `anchor`), `contextAssertions` (exact
+match, no LLM, untruncated, takes `anchor` + `mustAppear`), `executionScenarios` (a real
+run after the build).
+
+**Steering the fake user** — multi-turn cases are driven by a user-proxy LLM. A
+`[Director note …]` instructs it: reject approvals, refuse to repeat a detail, deny
+network access. That is how the deny-web-search arm runs with no provider configured.
+Mind rule 6 below — placement is unforgiving.
+
+**Returned per iteration** — every verdict with its reason, the context/build
+classification, cache-aware token totals, tool-call count, and the captured context itself.
+
+Fastest start: copy the case closest to your shape from `data/workflows/`. The descriptions
+explain *why* each is built the way it is, including the ones that document a wrong turn.
+
+## What the harness cannot do today
+
+Know these before designing an experiment around it.
+
+| Gap | Consequence | Ticket |
+|---|---|---|
+| **No window / eviction control** | "What happens when context is too big" is unaskable. The window in `docs/memory.md` doesn't exist in code; the whole thread loads every run. `limit` is implemented in both stores and never called — ~1–3 days to wire | CONTEXT-82 |
+| **Binary pass/fail, no rubric** | "Almost right" scores as "completely wrong"; partial credit invisible. Feeds the run-to-run variance | CONTEXT-76 |
+| **No cross-thread context** | One boundary, two threads only. "You built this for me in another chat last week" is not expressible — and it is the next real red baseline | — |
+| **Executions are run, not seeded** | Six prior runs costs six real executions. Fine for a handful, too slow for hundreds | — |
+| **No multi-user / cross-project** | One user, one project | — |
+| **Presence, not attention** | We can prove a fact was in the window; we cannot show the model *attended* to it. "Had it and ignored it" is inferred by crossing verdicts, not observed | — |
+| **No automatic cost gate** | Tokens and tool calls are recorded and comparable, but nothing fails a run for costing more | — |
+| **Memory tier not in CI** | `--tier memory` is local-only; env passthrough deferred | CONTEXT-77 |
+| **Judges are non-deterministic** | Same case, same code: 3-of-3 one day, 1-of-3 the next. n≥5, and treat single runs as samples | — |
+
 ## Authoring rules, each learned from a real run
 
 1. **Anchor retrieval claims at `turn-end`.** Tool calls land at step 2+; the probe snapshot is

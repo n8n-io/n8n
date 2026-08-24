@@ -77,19 +77,66 @@ export N8N_AI_ASSISTANT_BASE_URL=""
 ./packages/cli/bin/n8n start   # comes up on 5678
 ```
 
-`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true` must be set **on the backend** — everything that
-grades context state degrades to `incomplete` without it (with an explicit reason, not a
-silent pass).
+### Env vars that matter
 
-**To make compression actually fire** (it never does at defaults — Observer 30K, Reflector
-40K, and no case gets close):
+All of these normally already live in `packages/cli/.env` or
+`packages/@n8n/instance-ai/.env` — check there before setting anything by hand. **Look for
+keys, never print values.**
+
+**Required, or nothing runs**
+
+| Var | Why |
+|---|---|
+| `N8N_ENABLED_MODULES` | must include `instance-ai` — the module is off by default, and without it there are no `/rest/instance-ai/*` routes to talk to |
+| `N8N_LICENSE_ACTIVATION_KEY` | Instance AI is licensed |
+| `N8N_INSTANCE_AI_MODEL` + `N8N_INSTANCE_AI_MODEL_API_KEY` | the builder's own model. No key, no build |
+| `ANTHROPIC_API_KEY` *(or `N8N_AI_ANTHROPIC_KEY`)* | the **judges** run on this, separately from the builder |
+| `N8N_EVAL_EMAIL` + `N8N_EVAL_PASSWORD` | the harness logs into the instance as a real user |
+
+**Required for anything that grades context**
+
+| Var | Why |
+|---|---|
+| `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED=true` | **on the backend.** This is what captures the context state. Without it every `memoryExpectation` and `contextAssertion` degrades to `incomplete` — with an explicit reason rather than a silent pass, but you get no signal |
+
+**Sandbox — needed because builds execute code**
+
+| Var | Why |
+|---|---|
+| `N8N_INSTANCE_AI_SANDBOX_ENABLED` | on |
+| `DAYTONA_API_KEY` + `DAYTONA_API_URL` | direct mode reads Daytona creds straight from env. Confirm with `Sandbox: enabled=true provider=daytona (from env)` in the backend log |
+
+**Optional but useful**
+
+| Var | Effect |
+|---|---|
+| `LANGSMITH_API_KEY` (+ `LANGSMITH_ENDPOINT`) | experiment tracking and a comparison URL per run. Without it a simpler direct loop runs — fine locally, but you lose the baseline diff |
+| `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | web search. **No `N8N_` prefix** — see gotcha 5. Without it, search-dependent cases can't pass |
+| `N8N_INSTANCE_AI_SEARXNG_URL` | alternative to Brave; no API key needed |
+| `N8N_EVAL_BASE_URL` | defaults to `http://localhost:5678` |
+| `N8N_INSTANCE_AI_EVAL_MODEL` | run the **judges** on a different model from the builder. Unset → falls back to `N8N_INSTANCE_AI_MODEL`, then to Sonnet |
+| `N8N_INSTANCE_AI_REASONING_EFFORT` | builder reasoning effort |
+| `N8N_EVAL_VERIFIER_DEBUG` | dumps the verifier's exact request — useful when a judge verdict looks wrong |
+
+**Tuning — the knobs you'll actually experiment with**
+
+| Var | Default | Note |
+|---|---|---|
+| `N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS` | 30,000 | **never reached by any case** |
+| `N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS` | 40,000 | same |
+
+**To make compression actually fire:**
 
 ```bash
 export N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS=2000
 export N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS=500
 ```
 
-Verify: memory jobs log `outcome: "ran"` instead of `"skipped"`.
+Verify: memory jobs log `outcome: "ran"` instead of `"skipped"`. At defaults you get
+`0 ran / N skipped`, which is why nothing in the suite exercised Tier 3 before.
+
+> There is **no** window/last-messages knob, despite `docs/memory.md` documenting
+> `N8N_INSTANCE_AI_LAST_MESSAGES`. It is bound to nothing. See §6.
 
 ---
 
@@ -110,7 +157,67 @@ against 16 uncached.** A single "input tokens" figure hides the term your change
 
 ---
 
-## 5. Five gotchas that will cost you a day
+## 5. Building your own case — what the harness gives you
+
+16 declarable fields. The ones you'll reach for when measuring context:
+
+**Establishing the state before the graded turn** — all under `seed`
+
+| Field | Does |
+|---|---|
+| `seed.messages` | prior conversation, carried in the case body |
+| `seed.workflows` | up to 50 workflows on the instance (names get a ` [seed <8hex>]` suffix) |
+| `seed.dataTables` | tables, with schema and rows |
+| `seed.agents` | up to 5 configured agents |
+| `seed.sessionBoundary` | put the seeded history in a **separate thread** — artifacts cross, conversation doesn't |
+| `seed.priorRuns` | **execute** seeded workflows before the turn, so execution history exists. `hints` steers success/failure |
+| `seed.mode: 'replay'` | reconstruct a real conversation from its LangSmith trace instead of authoring one |
+| `credentials` / `credentialFixture` | pin the credential view; opt into a browser lane |
+
+**Grading**
+
+| Field | Judged on | Use for |
+|---|---|---|
+| `processExpectations` | the transcript | behaviour — did it ask, disclose, avoid inventing |
+| `outcomeExpectations` | the built workflow | did the artifact come out right |
+| `memoryExpectations` | **captured context only** | did the fact reach the model. Takes `anchor` |
+| `contextAssertions` | captured context, exact match | a literal value, no LLM, untruncated. Takes `anchor` and `mustAppear` |
+| `executionScenarios` | a real run after the build | does the thing work |
+| `messageBudget` | — | cap the multi-turn proxy |
+
+**Steering the fake user.** Multi-turn cases are driven by a user-proxy LLM. A
+`[Director note …]` in a turn instructs it — reject approvals, refuse to repeat a
+detail, deny network access. That's how the deny-web-search arm works without a
+provider.
+
+**What you get back per iteration:** every verdict with its reason, the
+context/build classification, cache-aware token totals, tool-call count, and the
+captured context state itself.
+
+Start by copying the case closest to your shape from `data/workflows/` — the
+descriptions explain *why* each is built the way it is.
+
+---
+
+## 6. What the harness cannot do today
+
+Worth knowing before you design an experiment around it.
+
+| Gap | Consequence |
+|---|---|
+| **No window / eviction control** | You cannot ask "what happens when context is too big". The sliding window in `docs/memory.md` doesn't exist in code; the whole thread loads every run. ~1–3 days to wire — CONTEXT-82 |
+| **Binary pass/fail, no rubric** | "Almost right" scores the same as "completely wrong", and partial credit is invisible. Contributes to the run-to-run variance in gotcha 4 — CONTEXT-76 |
+| **No cross-thread context** | Only *one* boundary, and only between two threads. "You built this for me in another chat last week" is not expressible — and it's the next real red baseline |
+| **Executions are run, not seeded** | Establishing 6 prior runs costs 6 real executions. Fine for a handful, too slow for hundreds |
+| **No multi-user or cross-project context** | Everything is one user, one project |
+| **Presence, not attention** | We can prove a fact was in the context window. We cannot show the model *attended* to it — "had it and ignored it" is inferred by crossing verdicts, not observed |
+| **No automatic cost gate** | Token and tool-call numbers are recorded and can be compared, but nothing fails a run for costing more |
+| **Memory tier isn't in CI** | `--tier memory` is local-only; the env passthrough was deferred — CONTEXT-77 |
+| **Judges are non-deterministic** | Same case, same code, 3-of-3 one day and 1-of-3 the next. Use n≥5 and treat single runs as samples |
+
+---
+
+## 7. Five gotchas that will cost you a day
 
 1. **Compression never fires at defaults.** See §3. Every observational-memory task logs
    `skipped` until you lower the thresholds.
@@ -130,7 +237,7 @@ against 16 uncached.** A single "input tokens" figure hides the term your change
 
 ---
 
-## 6. What we already know (so you don't re-derive it)
+## 8. What we already know (so you don't re-derive it)
 
 - **Retention is not the bottleneck.** 83/83 context claims pass, at depths 1 → 21 turns.
   Facts inside a thread are simply present.
@@ -144,9 +251,8 @@ against 16 uncached.** A single "input tokens" figure hides the term your change
 - **The agent misreports its own sources under deprivation** — it claimed it had checked docs
   it never read. That's the signal your change most needs us to be able to trust.
 
-**Still blocked:** volume/eviction. The sliding window the docs describe doesn't exist in
-code — the whole thread loads every run. The `limit` plumbing is already implemented in both
-stores and simply never called (~1–3 days to wire). See CONTEXT-82.
+**Biggest open gap:** volume/eviction — see §6. The `limit` plumbing is already implemented
+in both stores and simply never called, so wiring it is ~1–3 days (CONTEXT-82).
 
 ---
 
