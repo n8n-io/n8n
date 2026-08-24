@@ -6,6 +6,7 @@ import type {
 	BuilderDelegateSession,
 	BuilderTurnStream,
 	InstanceAiBuilderDelegate,
+	InstanceAiCredentialService,
 } from '@n8n/instance-ai';
 import { type Scope } from '@n8n/permissions';
 import { Like } from '@n8n/typeorm';
@@ -105,6 +106,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 		user: User,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 	): InstanceAiBuilderDelegate {
 		// Mirrors the `@ProjectScope('agent:*')` guards on the agent-builder REST
 		// routes. The delegate calls the builder service directly, bypassing the
@@ -134,6 +136,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 						projectId,
 						message,
 						credentialProvider,
+						credentialService,
 						user,
 						this.buildSubAgentSession(session),
 					),
@@ -150,6 +153,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 						resume.toolCallId,
 						resume.resumeData,
 						credentialProvider,
+						credentialService,
 						user,
 						this.buildSubAgentSession(session),
 					),

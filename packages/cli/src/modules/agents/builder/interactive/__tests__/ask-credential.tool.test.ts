@@ -1,6 +1,8 @@
-import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
+import type { CredentialListItem } from '@n8n/agents';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	buildAskCredentialTool,
@@ -18,11 +20,12 @@ function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
 	return { resumeData: overrides?.resumeData, suspend: vi.fn(async (x: unknown) => x) };
 }
 
-function makeProvider(creds: CredentialListItem[]): CredentialProvider {
-	return {
-		list: vi.fn(async () => creds),
-		resolve: vi.fn(async () => ({})),
-	};
+function makeCredentialService(creds: CredentialListItem[]): InstanceAiCredentialService {
+	const credentialService = mock<InstanceAiCredentialService>();
+	credentialService.list.mockImplementation(async (options) =>
+		options?.type ? creds.filter((c) => c.type === options.type) : creds,
+	);
+	return credentialService;
 }
 
 let track: Mock;
@@ -45,11 +48,11 @@ beforeEach(() => {
 
 describe('ask_credential tool', () => {
 	it('auto-resolves when exactly one credential of the requested type exists, without tracking a request', async () => {
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'My Slack', type: 'slackApi' },
 			{ id: 'c2', name: 'OpenAI', type: 'openAiApi' },
 		]);
-		const tool = askCredentialTool({ credentialProvider });
+		const tool = askCredentialTool({ credentialService });
 		const ctx = makeCtx();
 		const result = await tool.handler!(
 			{ purpose: 'Slack', credentialType: 'slackApi' },
@@ -69,10 +72,10 @@ describe('ask_credential tool', () => {
 	it('suspends instead of auto-resolving when the sole credential is a generic auth type', async () => {
 		// One credential type serves every service, so the user must pick it —
 		// otherwise their only bearer token is attached to an arbitrary endpoint.
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'Bearer Auth account', type: 'httpBearerAuth' },
 		]);
-		const tool = askCredentialTool({ credentialProvider });
+		const tool = askCredentialTool({ credentialService });
 		const ctx = makeCtx();
 
 		await tool.handler!(
@@ -96,10 +99,10 @@ describe('ask_credential tool', () => {
 	});
 
 	it('returns a node credentials map keyed by the requested credential slot when auto-resolving', async () => {
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'My Linear', type: 'linearOAuth2Api' },
 		]);
-		const tool = askCredentialTool({ credentialProvider });
+		const tool = askCredentialTool({ credentialService });
 		const ctx = makeCtx();
 		const result = await tool.handler!(
 			{
@@ -121,10 +124,10 @@ describe('ask_credential tool', () => {
 	});
 
 	it('resolves the display name from the credential list when resuming with a selection', async () => {
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c9', name: 'Picked', type: 'linearOAuth2Api' },
 		]);
-		const tool = askCredentialTool({ credentialProvider });
+		const tool = askCredentialTool({ credentialService });
 		const ctx = makeCtx({ resumeData: { credentials: { linearOAuth2Api: 'c9' } } });
 
 		const result = await tool.handler!(
@@ -150,8 +153,8 @@ describe('ask_credential tool', () => {
 	});
 
 	it('falls back to the id as the name when the selected credential is not in the list', async () => {
-		const credentialProvider = makeProvider([]);
-		const tool = askCredentialTool({ credentialProvider });
+		const credentialService = makeCredentialService([]);
+		const tool = askCredentialTool({ credentialService });
 		const ctx = makeCtx({ resumeData: { credentials: { slackApi: 'c9' } } });
 
 		const result = await tool.handler!(
@@ -167,11 +170,11 @@ describe('ask_credential tool', () => {
 	});
 
 	it('suspends with a credentialRequests payload including existingCredentials when multiple credentials of the type exist', async () => {
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'Personal Slack', type: 'slackApi' },
 			{ id: 'c2', name: 'Workspace Slack', type: 'slackApi' },
 		]);
-		const tool = askCredentialTool({ credentialProvider });
+		const tool = askCredentialTool({ credentialService });
 		const ctx = makeCtx();
 		await tool.handler!({ purpose: 'Connect Slack', credentialType: 'slackApi' }, ctx as never);
 
@@ -200,8 +203,10 @@ describe('ask_credential tool', () => {
 	});
 
 	it('suspends when no credentials of the type exist', async () => {
-		const credentialProvider = makeProvider([{ id: 'c2', name: 'OpenAI', type: 'openAiApi' }]);
-		const tool = askCredentialTool({ credentialProvider });
+		const credentialService = makeCredentialService([
+			{ id: 'c2', name: 'OpenAI', type: 'openAiApi' },
+		]);
+		const tool = askCredentialTool({ credentialService });
 		const ctx = makeCtx();
 		await tool.handler!({ purpose: 'Slack', credentialType: 'slackApi' }, ctx as never);
 		expect(ctx.suspend).toHaveBeenCalledTimes(1);
@@ -211,9 +216,11 @@ describe('ask_credential tool', () => {
 	});
 
 	it('fails fast when the requested credential type is unknown', async () => {
-		const credentialProvider = makeProvider([{ id: 'c2', name: 'OpenAI', type: 'openAiApi' }]);
+		const credentialService = makeCredentialService([
+			{ id: 'c2', name: 'OpenAI', type: 'openAiApi' },
+		]);
 		const tool = askCredentialTool({
-			credentialProvider,
+			credentialService,
 			isCredentialTypeKnown: (credentialType) => credentialType === 'openAiApi',
 		});
 		const ctx = makeCtx();
@@ -225,9 +232,11 @@ describe('ask_credential tool', () => {
 	});
 
 	it('still suspends when the requested credential type is known but has no credentials', async () => {
-		const credentialProvider = makeProvider([{ id: 'c2', name: 'OpenAI', type: 'openAiApi' }]);
+		const credentialService = makeCredentialService([
+			{ id: 'c2', name: 'OpenAI', type: 'openAiApi' },
+		]);
 		const tool = askCredentialTool({
-			credentialProvider,
+			credentialService,
 			isCredentialTypeKnown: (credentialType) => credentialType === 'braveSearchApi',
 		});
 		const ctx = makeCtx();
@@ -240,8 +249,8 @@ describe('ask_credential tool', () => {
 	});
 
 	it('returns skipped when the credentials map has no entry for the requested type', async () => {
-		const credentialProvider = makeProvider([]);
-		const tool = askCredentialTool({ credentialProvider });
+		const credentialService = makeCredentialService([]);
+		const tool = askCredentialTool({ credentialService });
 		const ctx = makeCtx({ resumeData: { credentials: {} } });
 		const result = await tool.handler!(
 			{ purpose: 'Slack', credentialType: 'slackApi' },
@@ -256,12 +265,12 @@ describe('ask_credential tool', () => {
 	});
 
 	it('reuses the configured channel integration credential when it matches the requested type', async () => {
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'Personal Slack', type: 'slackApi' },
 			{ id: 'c2', name: 'Workspace Slack', type: 'slackApi' },
 		]);
 		const tool = askCredentialTool({
-			credentialProvider,
+			credentialService,
 			listIntegrationCredentialIds: async () => ['c2'],
 		});
 		const ctx = makeCtx();
@@ -280,13 +289,13 @@ describe('ask_credential tool', () => {
 	});
 
 	it('ignores channel integration credentials of a different type', async () => {
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'Personal Slack', type: 'slackApi' },
 			{ id: 'c2', name: 'Workspace Slack', type: 'slackApi' },
 			{ id: 'c3', name: 'Telegram Bot', type: 'telegramApi' },
 		]);
 		const tool = askCredentialTool({
-			credentialProvider,
+			credentialService,
 			listIntegrationCredentialIds: async () => ['c3'],
 		});
 		const ctx = makeCtx();
@@ -297,12 +306,12 @@ describe('ask_credential tool', () => {
 	});
 
 	it('lets an explicit resume selection win over the channel integration credential', async () => {
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'Personal Slack', type: 'slackApi' },
 			{ id: 'c2', name: 'Workspace Slack', type: 'slackApi' },
 		]);
 		const tool = askCredentialTool({
-			credentialProvider,
+			credentialService,
 			listIntegrationCredentialIds: async () => ['c2'],
 		});
 		const ctx = makeCtx({ resumeData: { credentials: { slackApi: 'c1' } } });
@@ -321,15 +330,15 @@ describe('ask_credential tool', () => {
 	});
 
 	it('returns skipped when the resume has no credentials map (explicit skip or denial)', async () => {
-		const credentialProvider = makeProvider([]);
-		const tool = askCredentialTool({ credentialProvider });
+		const credentialService = makeCredentialService([]);
+		const tool = askCredentialTool({ credentialService });
 		const ctx = makeCtx({ resumeData: { skipped: true } });
 		const result = await tool.handler!(
 			{ purpose: 'Slack', credentialType: 'slackApi' },
 			ctx as never,
 		);
 		expect(ctx.suspend).not.toHaveBeenCalled();
-		expect(credentialProvider.list).not.toHaveBeenCalled();
+		expect(credentialService.list).not.toHaveBeenCalled();
 		expect(result).toEqual({ skipped: true });
 		expect(track).toHaveBeenCalledWith(TELEMETRY_EVENT.AGENTS.USER_PROVIDED_CREDENTIAL, {
 			credential_type: 'slackApi',
@@ -340,9 +349,9 @@ describe('ask_credential tool', () => {
 
 describe('ask_embedding_credential tool', () => {
 	it('returns managed credential when assistant proxy is enabled', async () => {
-		const credentialProvider = makeProvider([]);
+		const credentialService = makeCredentialService([]);
 		const tool = askEmbeddingCredentialTool({
-			credentialProvider,
+			credentialService,
 			isAssistantProxyEnabled: () => true,
 		});
 		const ctx = makeCtx();
@@ -353,7 +362,7 @@ describe('ask_embedding_credential tool', () => {
 		);
 
 		expect(ctx.suspend).not.toHaveBeenCalled();
-		expect(credentialProvider.list).not.toHaveBeenCalled();
+		expect(credentialService.list).not.toHaveBeenCalled();
 		expect(result).toEqual({
 			credentialId: 'managed',
 			credentialName: 'Managed by n8n',
@@ -364,12 +373,12 @@ describe('ask_embedding_credential tool', () => {
 	});
 
 	it('suspends with the usual credential selector when assistant proxy is unavailable', async () => {
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c1', name: 'Personal OpenAI', type: 'openAiApi' },
 			{ id: 'c2', name: 'Team OpenAI', type: 'openAiApi' },
 		]);
 		const tool = askEmbeddingCredentialTool({
-			credentialProvider,
+			credentialService,
 			isAssistantProxyEnabled: () => false,
 		});
 		const ctx = makeCtx();
@@ -388,11 +397,11 @@ describe('ask_embedding_credential tool', () => {
 	});
 
 	it('resolves the display name from the credential list when resuming, when assistant proxy is unavailable', async () => {
-		const credentialProvider = makeProvider([
+		const credentialService = makeCredentialService([
 			{ id: 'c9', name: 'Picked OpenAI', type: 'openAiApi' },
 		]);
 		const tool = askEmbeddingCredentialTool({
-			credentialProvider,
+			credentialService,
 			isAssistantProxyEnabled: () => false,
 		});
 		const ctx = makeCtx({ resumeData: { credentials: { openAiApi: 'c9' } } });

@@ -41,7 +41,7 @@ import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
 import { streamAgentChunks } from '../utils/agent-stream';
-
+import { InstanceAiCredentialService } from '@n8n/instance-ai';
 /**
  * Builder session options for the agent-builder sub-agent. `AgentsBuilderService`
  * only ever streams for Instance AI's build-agent tool, so every field the
@@ -101,6 +101,7 @@ export class AgentsBuilderService {
 		projectId: string,
 		message: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
@@ -108,6 +109,7 @@ export class AgentsBuilderService {
 			agentId,
 			projectId,
 			credentialProvider,
+			credentialService,
 			user,
 			session,
 		);
@@ -143,6 +145,7 @@ export class AgentsBuilderService {
 		toolCallId: string,
 		resumeData: unknown,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
@@ -166,6 +169,7 @@ export class AgentsBuilderService {
 			agentId,
 			projectId,
 			credentialProvider,
+			credentialService,
 			user,
 			session,
 		);
@@ -205,6 +209,7 @@ export class AgentsBuilderService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): Promise<RuntimeAgent> {
@@ -240,6 +245,7 @@ export class AgentsBuilderService {
 			agentId,
 			projectId,
 			credentialProvider,
+			credentialService,
 			user,
 			{ threadId: session.hostThreadId, runId: session.runId },
 		);
