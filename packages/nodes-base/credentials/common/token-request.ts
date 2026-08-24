@@ -1,5 +1,5 @@
 import { OutboundHttp } from '@n8n/backend-network';
-import type { HttpRequestClient, UseDefaultSsrfPolicy } from '@n8n/backend-network';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 
 export const TOKEN_REQUEST_TIMEOUT = 30_000;

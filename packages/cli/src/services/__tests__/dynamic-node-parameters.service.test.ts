@@ -229,8 +229,8 @@ describe('DynamicNodeParametersService', () => {
 	// protection is enabled, they honour the same restrictions as node execution.
 	// Many such methods use the legacy `this.helpers.request` helper (e.g. nodes
 	// that build the request and set auth by hand), which routes through
-	// `OutboundHttp.requests({ ssrf })` — asserting that argument proves the
-	// bridge is forwarded end to end.
+	// `OutboundHttp.requests()` — asserting the no-argument call proves they get
+	// the default safe client, so the instance's egress policy applies.
 	describe('egress policy for method-name requests', () => {
 		const requestLegacy = vi.fn();
 		const requests = vi.fn();
