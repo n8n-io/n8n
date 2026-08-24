@@ -8,7 +8,6 @@ import { Router as createRouter } from 'express';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { UnsupportedMediaTypeError } from '@/errors/response-errors/unsupported-media-type.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -19,48 +18,12 @@ import {
 	resolveRouteArgs,
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
+import { assertJsonContentType } from '@/public-api/public-api-media-type';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
 import { deprecated } from '@/public-api/v1/shared/middlewares/global.middleware';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
-
-/**
- * The media type as `express-openapi-validator` reports it: lower-cased, parameters sorted, and
- * `boundary` left out. Migrated routes keep returning the string their callers already had.
- */
-function normalizeMediaType(contentType: string): string {
-	const [rawMediaType] = contentType.split(';');
-	const parameters: Record<string, string> = {};
-
-	for (const [, name, value] of contentType.matchAll(/;\s*([^=]+)=([^;]+)/g)) {
-		const key = name.toLowerCase();
-		parameters[key] = key === 'charset' ? value.toLowerCase() : value;
-	}
-
-	const suffix = Object.keys(parameters)
-		.sort()
-		.filter((key) => key !== 'boundary')
-		.map((key) => `; ${key}=${parameters[key]}`)
-		.join('');
-
-	return rawMediaType.toLowerCase().trim() + suffix;
-}
-
-function assertJsonRequestBody(req: Request, bodyRequired: boolean) {
-	const contentType = req.headers['content-type'];
-
-	if (!contentType) {
-		if (bodyRequired) throw new UnsupportedMediaTypeError('unsupported media type undefined');
-		return;
-	}
-
-	const mediaType = normalizeMediaType(contentType);
-
-	if (mediaType.split(';')[0] !== 'application/json') {
-		throw new UnsupportedMediaTypeError(`unsupported media type ${mediaType}`);
-	}
-}
 
 @Service()
 export class PublicApiControllerRegistry {
@@ -103,7 +66,7 @@ export class PublicApiControllerRegistry {
 			const bodyRequired = bodyDto ? isRequestBodyRequired(bodyDto) : false;
 
 			const handler = async (req: Request, res: Response) => {
-				if (bodyDto) assertJsonRequestBody(req, bodyRequired);
+				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
 
 				const args: unknown[] = [req, res];
 				for (const arg of resolvedArgs) {

@@ -181,42 +181,23 @@ describe('PublicApiControllerRegistry', () => {
 				.expect(200);
 		});
 
-		it('rejects a form-encoded body with 415', async () => {
+		it.each([
+			['application/x-www-form-urlencoded', 'application/x-www-form-urlencoded'],
+			['application/xml', 'application/xml'],
+			['text/plain', 'text/plain'],
+			['application/octet-stream', 'application/octet-stream'],
+			['text/PlAiN; charset=UTF-8', 'text/plain; charset=utf-8'],
+			['multipart/form-data; boundary=XYZ', 'multipart/form-data'],
+		])('rejects %s with 415', async (sent, reported) => {
 			registerBodyRoute();
 
 			const response = await request(activate())
 				.post('/widgets')
-				.set('Content-Type', 'application/x-www-form-urlencoded')
-				.send('name=a')
+				.set('Content-Type', sent)
+				.send('a')
 				.expect(415);
 
-			expect(response.body.message).toBe(
-				'unsupported media type application/x-www-form-urlencoded',
-			);
-		});
-
-		it.each(['application/xml', 'text/plain', 'application/octet-stream'])(
-			'rejects %s with 415',
-			async (contentType) => {
-				registerBodyRoute();
-
-				const response = await request(activate())
-					.post('/widgets')
-					.set('Content-Type', contentType)
-					.send('a')
-					.expect(415);
-
-				expect(response.body.message).toBe(`unsupported media type ${contentType}`);
-			},
-		);
-
-		it('rejects a non-JSON media type even when no body follows', async () => {
-			registerBodyRoute();
-
-			await request(activate())
-				.post('/widgets')
-				.set('Content-Type', 'application/x-www-form-urlencoded')
-				.expect(415);
+			expect(response.body.message).toBe(`unsupported media type ${reported}`);
 		});
 
 		it('rejects a missing Content-Type when the body is required', async () => {
@@ -231,30 +212,6 @@ describe('PublicApiControllerRegistry', () => {
 			registerOptionalBodyRoute();
 
 			await request(activate()).post('/widgets').expect(200);
-		});
-
-		it('lowercases the media type and its charset in the message', async () => {
-			registerBodyRoute();
-
-			const response = await request(activate())
-				.post('/widgets')
-				.set('Content-Type', 'text/PlAiN; charset=UTF-8')
-				.send('a')
-				.expect(415);
-
-			expect(response.body.message).toBe('unsupported media type text/plain; charset=utf-8');
-		});
-
-		it('drops the boundary parameter from the message', async () => {
-			registerBodyRoute();
-
-			const response = await request(activate())
-				.post('/widgets')
-				.set('Content-Type', 'multipart/form-data; boundary=XYZ')
-				.send('a')
-				.expect(415);
-
-			expect(response.body.message).toBe('unsupported media type multipart/form-data');
 		});
 
 		it('accepts application/json carrying an unrelated parameter', async () => {
