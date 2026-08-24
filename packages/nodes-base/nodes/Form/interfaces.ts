@@ -60,6 +60,13 @@ export type FormTriggerData = {
 	// redirects to the OAuth2 provider, which would make the client branch
 	// untestable without Keycloak and a license.
 	hasAuthenticatedSubmitter?: boolean;
+	// Set only when this render sits inside the n8n hosting shell's frame: the path
+	// prefix whose pages the form may ask the shell to navigate to, instead of
+	// navigating itself (a navigation the sandboxed document starts itself is
+	// treated as cross-site and loses the form's auth cookie). Absent everywhere
+	// else — including a form embedded on someone else's site — which leaves the
+	// form navigating itself, as it always has.
+	hostNavigationPath?: string;
 };
 
 export const FORM_TRIGGER_AUTHENTICATION_PROPERTY = 'authentication';

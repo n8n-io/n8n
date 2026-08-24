@@ -1,4 +1,5 @@
 import type { Mock, Mocked } from 'vitest';
+import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, User, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -183,6 +184,7 @@ describe('Slack setup services', () => {
 			outboundHttp,
 			cacheService,
 			cipher,
+			mock<Logger>(),
 		);
 		const manualService = new SlackManualSetupService(
 			methods,
@@ -283,8 +285,8 @@ describe('Slack setup services', () => {
 		expect(manifest.settings.event_subscriptions.request_url).toBe(webhookUrl);
 		expect(manifest.settings.event_subscriptions.bot_events).toEqual([
 			'app_mention',
-			'assistant_thread_started',
-			'assistant_thread_context_changed',
+			'app_context_changed',
+			'app_home_opened',
 			'message.channels',
 			'message.groups',
 			'message.im',
@@ -426,7 +428,11 @@ describe('Slack setup services', () => {
 			},
 			user,
 		);
-		const integration = { type: 'slack', credentialId: 'cred-slack' };
+		const integration = {
+			type: 'slack',
+			credentialId: 'cred-slack',
+			settings: { messagingExperience: 'agent' },
+		};
 		expect(integrationManagementService.connect).toHaveBeenCalledWith({
 			agent,
 			user,
@@ -481,7 +487,11 @@ describe('Slack setup services', () => {
 		expect(integrationManagementService.connect).toHaveBeenCalledWith({
 			agent,
 			user,
-			integration: { type: 'slack', credentialId: 'cred-slack' },
+			integration: {
+				type: 'slack',
+				credentialId: 'cred-slack',
+				settings: { messagingExperience: 'agent' },
+			},
 		});
 	});
 
@@ -515,7 +525,11 @@ describe('Slack setup services', () => {
 			state,
 		});
 
-		const integration = { type: 'slack', credentialId: 'cred-slack' };
+		const integration = {
+			type: 'slack',
+			credentialId: 'cred-slack',
+			settings: { messagingExperience: 'agent' },
+		};
 		expect(integrationManagementService.connect).toHaveBeenCalledWith({
 			agent: unpublishedAgent,
 			user,

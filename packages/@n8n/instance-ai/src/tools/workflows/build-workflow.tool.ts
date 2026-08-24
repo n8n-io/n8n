@@ -4,12 +4,18 @@ import {
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
-import { SDK_IMPORTABLE_FUNCTIONS, type WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	dropInvalidWorkflowJsonGroups,
+	SDK_IMPORTABLE_FUNCTIONS,
+	type WorkflowJSON,
+} from '@n8n/workflow-sdk';
+import { makeGetNodeTypeForGrouping } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 
+import { computeChatModelValidationIssues } from './chat-model-validation';
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { preserveExistingNodePositions } from './preserve-node-positions';
 import {
@@ -56,6 +62,7 @@ import {
 	normalizeWorkflowSourceFilePath,
 	readWorkflowSourceFile,
 	saveWorkflowSourceFileBinding,
+	type WorkflowSourceFileBinding,
 } from './workflow-file-bindings';
 import {
 	ensureUniqueNodeIds,
@@ -69,7 +76,11 @@ import {
 } from './workflow-json-utils';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
-import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
+import {
+	nodeGroupDroppedWarnings,
+	partitionWarnings,
+	type ValidationWarning,
+} from './workflow-validation-warnings';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
@@ -141,7 +152,7 @@ export const buildWorkflowInputSchema = z
 					'Pass a workspace-relative path like src/workflows/my-workflow.workflow.ts.',
 			})
 			.describe(
-				'Workspace-relative path to the workflow source file to build, e.g. src/workflows/my-workflow.workflow.ts. Supports TypeScript SDK files and WorkflowJSON .json files.',
+				'Workspace-relative path to the TypeScript SDK workflow source file to build, e.g. src/workflows/my-workflow.workflow.ts.',
 			),
 		sourceCode: z
 			.string()
@@ -343,6 +354,86 @@ function directPostBuildFlowHandoff(
 	};
 }
 
+interface ValidationFailureArgs {
+	context: InstanceAiContext;
+	blocking: ValidationWarning[];
+	informational: ValidationWarning[];
+	reason: string;
+	guidance: string;
+	summary: string;
+	binding: WorkflowSourceFileBinding;
+	sourceHash: string;
+	targetWorkflowId?: string;
+	filePath: string;
+	resolvedWorkItemId: string;
+	resolvedTaskId: string;
+	plannedTaskId?: string;
+	owner: WorkflowBuildOutcome['owner'];
+	isSupportingWorkflow?: boolean;
+	isAuxiliarySupportingWorkflow?: boolean;
+	withEscalation: (errors: string[]) => string[];
+}
+
+async function handleValidationFailure(args: ValidationFailureArgs) {
+	const {
+		context,
+		blocking,
+		informational,
+		reason,
+		guidance,
+		summary,
+		binding: initialBinding,
+		sourceHash,
+		targetWorkflowId,
+		filePath,
+		resolvedWorkItemId,
+		resolvedTaskId,
+		plannedTaskId,
+		owner,
+		isSupportingWorkflow = false,
+		isAuxiliarySupportingWorkflow = false,
+		withEscalation,
+	} = args;
+
+	const formattedErrors = withEscalation(
+		blocking.map((e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`),
+	);
+	const remediation = createCodeFixableRemediation({ reason, guidance });
+	const binding = await markSourceBuildFailed(context, initialBinding, sourceHash);
+	await reportFailedWorkflowBuildOutcome(context, {
+		targetWorkflowId,
+		sourceFilePath: filePath,
+		workItemId: resolvedWorkItemId,
+		taskId: resolvedTaskId,
+		plannedTaskId,
+		owner,
+		remediation,
+		errors: formattedErrors,
+		summary,
+		storeOnRunContext: !isAuxiliarySupportingWorkflow,
+	});
+	trackWorkflowSourceBuild(context, {
+		result: 'failure',
+		stage: 'validation',
+		binding,
+		targetWorkflowId,
+		isSupportingWorkflow,
+		isAuxiliarySupportingWorkflow,
+		remediation,
+		errorCount: formattedErrors.length,
+		warningCount: informational.length,
+	});
+	return {
+		success: false as const,
+		...sourceResponseBase(binding),
+		workflowId: targetWorkflowId,
+		workItemId: resolvedWorkItemId,
+		errors: formattedErrors,
+		remediation,
+		warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
+	};
+}
+
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	const failureTracker = new BuildFailureTracker();
 
@@ -351,7 +442,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			'Build and save a workflow from workflow source. ' +
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +
 				'When the workflow creates or writes Data Tables, also load `data-table-manager` first. ' +
-				'Use TypeScript SDK source for new workflows, or WorkflowJSON .json source for existing workflow edits. ' +
+				'Use TypeScript SDK .workflow.ts source for new and existing workflows. ' +
 				'Prefer writing the file with `workspace_write_file` / `workspace_str_replace_file` so `workflow-sdk validate` can run on it, then call this tool with filePath. ' +
 				'For a one-shot create/rewrite you may pass `sourceCode` instead (the tool writes filePath and builds).',
 		)
@@ -790,49 +881,26 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			informational = partitionedWarnings.informational;
 
 			if (partitionedWarnings.blocking.length > 0) {
-				const formattedErrors = withEscalation(
-					partitionedWarnings.blocking.map(
-						(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
-					),
-				);
-				const remediation = createCodeFixableRemediation({
+				return await handleValidationFailure({
+					context,
+					blocking: partitionedWarnings.blocking,
+					informational,
 					reason: 'workflow_source_validation_failed',
 					guidance:
 						'Edit the workspace source file using the validation diagnostics, then call build-workflow again with the same filePath.',
-				});
-				binding = await markSourceBuildFailed(context, binding, sourceHash);
-				await reportFailedWorkflowBuildOutcome(context, {
+					summary: 'Workflow source failed validation.',
+					binding,
+					sourceHash,
 					targetWorkflowId,
-					sourceFilePath: filePath,
-					workItemId: resolvedWorkItemId,
-					taskId: resolvedTaskId,
+					filePath,
+					resolvedWorkItemId,
+					resolvedTaskId,
 					plannedTaskId,
 					owner,
-					remediation,
-					errors: formattedErrors,
-					summary: 'Workflow source failed validation.',
-					storeOnRunContext: !isAuxiliarySupportingWorkflow,
-				});
-				trackWorkflowSourceBuild(context, {
-					result: 'failure',
-					stage: 'validation',
-					binding,
-					targetWorkflowId,
 					isSupportingWorkflow,
 					isAuxiliarySupportingWorkflow,
-					remediation,
-					errorCount: formattedErrors.length,
-					warningCount: informational.length,
+					withEscalation,
 				});
-				return {
-					success: false,
-					...sourceResponseBase(binding),
-					workflowId: targetWorkflowId,
-					workItemId: resolvedWorkItemId,
-					errors: formattedErrors,
-					remediation,
-					warnings: combineWarnings(informational.map((w) => formatWarning(w.code, w.message))),
-				};
 			}
 
 			const json = compiled.workflow;
@@ -894,8 +962,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			// a chat-model node for a provider the user has no credential for gets
 			// flagged with the LLM credentials they do have. Nodes the resolver
 			// covered with n8n credits are exempt — they run as built.
+			const chatModelBlocking: ValidationWarning[] = [];
 			for (const message of buildChatModelProviderMismatchWarnings(
-				json.nodes ?? [],
+				(json.nodes ?? []).filter((node) => !node.disabled),
 				[...credentialMap.values()].flat(),
 				mockResult.resolvedCredentialsByNode,
 			)) {
@@ -906,9 +975,53 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				});
 			}
 
+			for (const node of json.nodes ?? []) {
+				if (!node.name || node.disabled) continue;
+				const chatModelIssues = await computeChatModelValidationIssues(context, node);
+				for (const messages of Object.values(chatModelIssues)) {
+					for (const message of messages) {
+						chatModelBlocking.push({
+							code: 'chat_model_validation',
+							message: `${node.name}: ${message}`,
+							nodeName: node.name,
+							severity: 'error',
+						});
+					}
+				}
+			}
+
+			const partitionedChatModelWarnings = partitionWarnings(
+				downgradeUnchangedNodeBlockers(chatModelBlocking, json, savedWorkflowSnapshot),
+			);
+			informational.push(...partitionedChatModelWarnings.informational);
+
+			if (partitionedChatModelWarnings.blocking.length > 0) {
+				return await handleValidationFailure({
+					context,
+					blocking: partitionedChatModelWarnings.blocking,
+					informational,
+					reason: 'chat_model_validation_failed',
+					guidance:
+						'Fix the chat-model configuration using nodes(action="explore-resources") to pick a model the connected credential supports, then call build-workflow again.',
+					summary: 'Workflow uses a chat model or parameter the connected credential cannot run.',
+					binding,
+					sourceHash,
+					targetWorkflowId,
+					filePath,
+					resolvedWorkItemId,
+					resolvedTaskId,
+					plannedTaskId,
+					owner,
+					isSupportingWorkflow,
+					isAuxiliarySupportingWorkflow,
+					withEscalation,
+				});
+			}
+
 			await stripStaleCredentialsFromWorkflow(context, json);
 
 			try {
+				let droppedGroupCount = 0;
 				// Runs first: the passes below key off node ids, so they must be unique.
 				ensureUniqueNodeIds(json);
 				// Recovers the saved id of a surviving node whose source declared none — layered
@@ -918,6 +1031,17 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 				await preserveExistingNodePositions(json, targetWorkflowId, context);
+				const groupCountBeforeDrop = json.nodeGroups?.length ?? 0;
+				const droppedGroupWarnings = nodeGroupDroppedWarnings(
+					dropInvalidWorkflowJsonGroups(
+						json,
+						context.nodeTypesProvider
+							? makeGetNodeTypeForGrouping(context.nodeTypesProvider)
+							: null,
+					),
+				);
+				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
+				informational.push(...droppedGroupWarnings);
 
 				if (await hasLostAllSavedNodeIds(json, targetWorkflowId, context)) {
 					context.logger.debug('Build kept none of the saved node ids', {
@@ -1099,6 +1223,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						isSupportingWorkflow,
 						isAuxiliarySupportingWorkflow,
 						warningCount: informational.length,
+						droppedGroupCount,
 					});
 
 					return {

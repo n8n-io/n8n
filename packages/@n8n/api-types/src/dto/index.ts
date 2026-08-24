@@ -98,6 +98,21 @@ export {
 } from './source-control/pull-work-folder-request.dto';
 export { PushWorkFolderRequestDto } from './source-control/push-work-folder-request.dto';
 export { type GitCommitInfo } from './source-control/push-work-folder-response.dto';
+export {
+	CloneGitConnectionDto,
+	CreateGitConnectionDto,
+	GitConnectionListPublicDto,
+	GitConnectionProjectListPublicDto,
+	GitConnectionProjectPublicDto,
+	GitConnectionPublicDto,
+	GitConnectionPushResultDto,
+	ListGitConnectionsQueryDto,
+	UpdateGitConnectionDto,
+	gitConnectionTypeSchema,
+	gitKeyGeneratorTypeSchema,
+	type GitConnectionType,
+	type GitKeyGeneratorType,
+} from './git-connections/git-connections.dto';
 
 export { CreateCredentialDto } from './credentials/create-credential.dto';
 export { VariableListRequestDto } from './variables/variables-list-request.dto';
@@ -135,16 +150,30 @@ export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
 export { TagIdsPublicDto, WorkflowTagsPublicDto } from './workflows/workflow-tags-public.dto';
+export { CreateWorkflowPublicDto } from './workflows/create-workflow-public.dto';
 export { GetWorkflowQueryDto } from './workflows/get-workflow-query.dto';
 export { ListWorkflowsQueryDto } from './workflows/list-workflows-query.dto';
 export {
 	WorkflowPublicDto,
+	CreatedWorkflowPublicDto,
 	WorkflowListPublicDto,
+	WorkflowPublishPublicDto,
 	workflowPublicSchema,
+	createdWorkflowPublicSchema,
+	workflowPublishPublicSchema,
 	workflowListItemPublicSchema,
 	sharedWorkflowPublicSchema,
 	activeWorkflowVersionPublicSchema,
+	workflowParentFolderPublicSchema,
 } from './workflows/workflow-public.dto';
+export {
+	PublishWorkflowPublicDto,
+	publishWorkflowPublicSchema,
+} from './workflows/publish-workflow-public.dto';
+export {
+	WorkflowPublishBlockedErrorPublicDto,
+	workflowPublishBlockedErrorPublicSchema,
+} from './workflows/workflow-publish-blocked-error-public.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';
@@ -210,6 +239,7 @@ export {
 	PatchRoleMappingRuleDto,
 	type PatchRoleMappingRuleInput,
 } from './roles/patch-role-mapping-rule.dto';
+export { UpdateRoleMappingRulePublicDto } from './roles/update-role-mapping-rule-public.dto';
 export { MoveRoleMappingRuleDto } from './roles/move-role-mapping-rule.dto';
 export {
 	ListRoleMappingRuleQueryDto,
@@ -335,11 +365,6 @@ export type { EncryptionKeyResponseDto } from './encryption/encryption-key-respo
 export { CreateWorkflowReviewRequestDto } from './workflow-reviews/create-workflow-review-request.dto';
 export { DecideWorkflowReviewRequestDto } from './workflow-reviews/decide-workflow-review-request.dto';
 export { GetWorkflowReviewEligibleReviewersQueryDto } from './workflow-reviews/get-eligible-reviewers-query.dto';
-export {
-	GetWorkflowReviewStatusesDto,
-	type WorkflowReviewStatus,
-	type WorkflowReviewStatusesResponse,
-} from './workflow-reviews/get-workflow-review-statuses.dto';
 export {
 	ListWorkflowReviewRequestsQueryDto,
 	type WorkflowReviewRequestForWorkflow,

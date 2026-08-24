@@ -5,7 +5,8 @@
  */
 import { Tool } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { dropInvalidWorkflowJsonGroups, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { makeGetNodeTypeForGrouping } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -52,9 +53,11 @@ import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import {
 	grantSessionWorkflowUpdate,
 	canSkipWorkflowUpdateHitl,
+	formatWarning,
 } from './workflows/workflow-build-context';
 import { refreshWorkflowSourceFileBindingFromWorkflow } from './workflows/workflow-file-bindings';
-import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { ensureUniqueNodeIds, getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { nodeGroupDroppedWarnings } from './workflows/workflow-validation-warnings';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -199,7 +202,17 @@ const validateAction = z.object({
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	ignoreIssues: z
-		.array(z.enum(['parameters', 'credentials', 'input', 'execution', 'typeUnknown']))
+		.array(
+			z.enum([
+				'parameters',
+				'credentials',
+				'input',
+				'execution',
+				'typeUnknown',
+				'aiGateway',
+				'chatModel',
+			]),
+		)
 		.optional()
 		.describe('Issue categories to suppress from the result'),
 });
@@ -274,12 +287,12 @@ const suspendSchema = z.union([setupSuspendSchema, confirmationSuspendSchema]);
 
 // Resume: setup-specific fields plus optional session scope for generic approvals
 // (e.g. update "always allow" → persist `workflows:update:<id>`).
-const resumeSchema = setupResumeSchema.extend({
+export const workflowsResumeSchema = setupResumeSchema.extend({
 	scope: z.enum(['once', 'session']).optional(),
 });
 
 interface WorkflowToolContext {
-	resumeData: z.infer<typeof resumeSchema> | undefined;
+	resumeData: z.infer<typeof workflowsResumeSchema> | undefined;
 	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>;
 }
 
@@ -383,7 +396,7 @@ function getSupportedWorkflowActionSchemas(
 	return {
 		list: listAction,
 		get: getAction,
-		'get-json': getJsonAction,
+		...(surface !== 'orchestrator' ? { 'get-json': getJsonAction } : {}),
 		'get-as-code': getAsCodeAction,
 		delete: deleteAction,
 		unarchive: unarchiveAction,
@@ -547,6 +560,35 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 	}
 }
 
+/**
+ * Pinned-data summary for agent visibility. Pins live on the saved workflow but
+ * never inside the WorkflowJSON the agent round-trips (see
+ * `InstanceAiWorkflowService.getPinnedDataSummary`), so without this report the
+ * agent cannot tell that test runs feed nodes from saved pins instead of
+ * executing them. Failures degrade to "no report" — it must never break a read.
+ */
+async function getPinnedNodesReport(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<
+	| { pinnedNodes: Array<{ nodeName: string; itemCount: number }>; pinnedDataNote: string }
+	| undefined
+> {
+	try {
+		const pinnedNodes = await context.workflowService.getPinnedDataSummary?.(workflowId);
+		if (!pinnedNodes?.length) return undefined;
+		return {
+			pinnedNodes,
+			pinnedDataNote:
+				'These nodes have pinned data saved on the workflow (not part of the JSON). ' +
+				'Test executions output the pinned items instead of running these nodes, so such runs are not live tests of them. ' +
+				'If the pins are stale or AI-simulated sample data, ask the user to unpin them; rebuilding the workflow also clears them.',
+		};
+	} catch {
+		return undefined;
+	}
+}
+
 async function handleGetJson(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-json' }>,
@@ -558,7 +600,10 @@ async function handleGetJson(
 		if (!input.versionId) {
 			await rememberCurrentWorkflowChecksum(context, input.workflowId);
 		}
-		return json;
+		const pinnedReport = input.versionId
+			? undefined
+			: await getPinnedNodesReport(context, input.workflowId);
+		return pinnedReport ? { ...json, ...pinnedReport } : json;
 	} catch (error) {
 		return {
 			workflowId: input.workflowId,
@@ -1200,10 +1245,14 @@ async function handleValidate(
 	input: Extract<Input, { action: 'validate' }>,
 ) {
 	try {
-		return await validateWorkflowConfig(context, {
+		const result = await validateWorkflowConfig(context, {
 			workflowId: input.workflowId,
 			ignoreIssues: input.ignoreIssues,
 		});
+		// Pins are not validity issues, but a "valid" report that hides them lets
+		// the agent misread pin-fed test runs as live ones (INS-1216).
+		const pinnedReport = await getPinnedNodesReport(context, input.workflowId);
+		return pinnedReport ? { ...result, ...pinnedReport } : result;
 	} catch (error) {
 		return {
 			workflowId: input.workflowId,
@@ -1274,6 +1323,13 @@ async function handleUpdate(
 	const expectedChecksum = await getObservedWorkflowChecksum(context, input.workflowId);
 
 	try {
+		ensureUniqueNodeIds(input.workflow);
+		const droppedGroupWarnings = nodeGroupDroppedWarnings(
+			dropInvalidWorkflowJsonGroups(
+				input.workflow,
+				context.nodeTypesProvider ? makeGetNodeTypeForGrouping(context.nodeTypesProvider) : null,
+			),
+		);
 		const saved = expectedChecksum
 			? await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow, {
 					expectedChecksum,
@@ -1285,7 +1341,17 @@ async function handleUpdate(
 		if (saved.checksum) {
 			await rememberObservedWorkflowChecksum(context, input.workflowId, saved.checksum);
 		}
-		return { success: true, workflowId: input.workflowId };
+		return {
+			success: true,
+			workflowId: input.workflowId,
+			...(droppedGroupWarnings.length > 0
+				? {
+						warnings: droppedGroupWarnings.map((warning) =>
+							formatWarning(warning.code, warning.message),
+						),
+					}
+				: {}),
+		};
 	} catch (error) {
 		if (error instanceof WorkflowSaveConflictError) {
 			return {
@@ -1646,7 +1712,7 @@ export function createWorkflowsTool(
 		.description(getToolDescription(context, options))
 		.input(inputSchema)
 		.suspend(suspendSchema)
-		.resume(resumeSchema)
+		.resume(workflowsResumeSchema)
 		.handler(async (input, ctx) => {
 			const workflowInput = input as Input;
 			switch (workflowInput.action) {

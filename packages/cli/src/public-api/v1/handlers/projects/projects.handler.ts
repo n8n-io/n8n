@@ -178,7 +178,7 @@ const projectHandlers: ProjectHandlers = {
 	],
 	addUsersToProject: [
 		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:manageMembers' }),
 		async (req, res) => {
 			await assertProjectRolesNotManaged();
 
@@ -197,7 +197,7 @@ const projectHandlers: ProjectHandlers = {
 	],
 	changeUserRoleInProject: [
 		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:manageMembers' }),
 		async (req, res) => {
 			await assertProjectRolesNotManaged();
 
@@ -215,7 +215,7 @@ const projectHandlers: ProjectHandlers = {
 	],
 	deleteUserFromProject: [
 		isLicensed('feat:projectRole:admin'),
-		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:update' }),
+		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'project:manageMembers' }),
 		async (req, res) => {
 			await assertProjectRolesNotManaged();
 

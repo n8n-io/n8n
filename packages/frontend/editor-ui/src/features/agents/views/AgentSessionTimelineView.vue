@@ -11,10 +11,11 @@ import {
 } from '@/features/agents/constants';
 import { useAgentSessionLangSmithExport } from '@/features/agents/composables/useAgentSessionLangSmithExport';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
-import type {
-	AgentExecution,
-	AgentExecutionThread,
-	ThreadDetail,
+import {
+	defaultAgentSessionFilters,
+	type AgentExecution,
+	type AgentExecutionThread,
+	type ThreadDetail,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionTimelineHeader from '@/features/agents/components/AgentSessionTimelineHeader.vue';
 import AgentSessionTimelinePanel from '@/features/agents/components/AgentSessionTimelinePanel.vue';
@@ -198,7 +199,9 @@ watch(
 			const [loadedAgent] = await Promise.all([
 				getAgent(rootStore.restApiContext, nextProjectId, nextAgentId),
 				fetchConfig(nextProjectId, nextAgentId),
-				sessionsStore.fetchThreads(nextProjectId, nextAgentId),
+				sessionsStore.fetchThreads(nextProjectId, nextAgentId, {
+					filters: defaultAgentSessionFilters(),
+				}),
 			]);
 			if (requestId === previewLoadRequestId) agent.value = loadedAgent;
 		} finally {

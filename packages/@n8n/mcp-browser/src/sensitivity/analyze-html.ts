@@ -8,6 +8,8 @@ import {
 	hasButtonMatching,
 	highEntropyCandidates,
 	isSensitiveInput,
+	isSecretLabelledCell,
+	opaqueTokenCandidates,
 	getLabelTextByControlIdMap,
 	REVEAL_BUTTON_PATTERN,
 	REVEAL_PHRASE_PATTERNS,
@@ -64,6 +66,14 @@ function analyzeDocument(html: string, hits: Map<string, SecretHit>): void {
 		for (const value of sensitiveInputValues(field)) {
 			collectHit(hits, { type: 'password', value });
 		}
+	}
+
+	// A console renders an issued credential as static text beside its label, with
+	// no input to key off. A conservative first cut: div-soup rows, a second `dd`
+	// under one `dt`, and `thead` column headers are all still uncovered.
+	for (const cell of Array.from(document.querySelectorAll('dd, td'))) {
+		if (!isSecretLabelledCell(cell)) continue;
+		for (const hit of opaqueTokenCandidates(cell)) collectHit(hits, hit);
 	}
 
 	// Reveal dialogs are the high-risk flow: newly created credentials are often

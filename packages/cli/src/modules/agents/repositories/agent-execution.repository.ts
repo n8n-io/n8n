@@ -115,8 +115,9 @@ export class AgentExecutionRepository extends Repository<AgentExecution> {
 			.where('e."threadId" IN (:...threadIds)', { threadIds })
 			.andWhere('e."source" IS NOT NULL')
 			.andWhere(
-				`e."createdAt" = (SELECT MIN(e2."createdAt") FROM ${tableName} e2 ` +
-					'WHERE e2."threadId" = e."threadId" AND e2."source" IS NOT NULL)',
+				`e.id = (SELECT e2.id FROM ${tableName} e2 ` +
+					'WHERE e2."threadId" = e."threadId" AND e2."source" IS NOT NULL ' +
+					'ORDER BY e2."createdAt" ASC, e2.id ASC LIMIT 1)',
 			)
 			.getRawMany<{ threadId: string; source: string }>();
 

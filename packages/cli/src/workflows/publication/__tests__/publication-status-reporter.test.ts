@@ -134,15 +134,26 @@ describe('PublicationStatusReporter', () => {
 		});
 	});
 
-	test('skipped (workflow-not-found) marks the record completed and clears activation errors', async () => {
-		await reporter.report(makeRecord(), { type: 'skipped', reason: 'workflow-not-found' });
+	test.each([
+		{ reason: 'workflow-not-found' as const, message: 'Workflow not found' },
+		{ reason: 'node-ids-healed' as const, message: 'healed' },
+		{ reason: 'superseded' as const, message: 'superseded' },
+	])(
+		'skipped ($reason) completes the record, clears activation errors, and logs its own reason',
+		async ({ reason, message }) => {
+			await reporter.report(makeRecord(), { type: 'skipped', reason });
 
-		expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
-		expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
-		expect(outboxRepository.markFailed).not.toHaveBeenCalled();
-		expect(push.broadcast).not.toHaveBeenCalled();
-		expect(publisher.publishCommand).not.toHaveBeenCalled();
-	});
+			expect(outboxRepository.markCompleted).toHaveBeenCalledWith(1, entityManager);
+			expect(activationErrorsService.deregister).toHaveBeenCalledWith('wf-1');
+			expect(outboxRepository.markFailed).not.toHaveBeenCalled();
+			expect(push.broadcast).not.toHaveBeenCalled();
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining(message),
+				expect.objectContaining({ workflowId: 'wf-1' }),
+			);
+		},
+	);
 
 	test('version-missing marks the record failed without reporting an error', async () => {
 		await reporter.report(makeRecord(), { type: 'version-missing' });

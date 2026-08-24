@@ -264,7 +264,11 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		return await this.find({
 			where,
-			select: ['id', 'name', 'nodes'],
+			// `connections` is needed so `getWorkflowToolIncompatibilityReason` can
+			// scope its check to nodes reachable from a supported trigger; without
+			// it the backend falls back to scanning every enabled node and
+			// disagrees with the frontend picker, which fetches connections.
+			select: ['id', 'name', 'nodes', 'connections'],
 		});
 	}
 

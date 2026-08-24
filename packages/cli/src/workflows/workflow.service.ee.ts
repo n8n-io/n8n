@@ -477,7 +477,7 @@ export class EnterpriseWorkflowService {
 		}
 
 		// 7. transfer the workflow
-		await this.transferWorkflowOwnership([workflow], destinationProject);
+		await this.transferWorkflowOwnership(user, [workflow], destinationProject);
 
 		// 8. share credentials into the destination project
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
@@ -590,7 +590,7 @@ export class EnterpriseWorkflowService {
 		await Promise.all(deactivateWorkflowsPromises);
 
 		// 6. transfer the workflows
-		await this.transferWorkflowOwnership(workflows, destinationProject);
+		await this.transferWorkflowOwnership(user, workflows, destinationProject);
 
 		// 7. share credentials into the destination project
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
@@ -659,6 +659,7 @@ export class EnterpriseWorkflowService {
 	}
 
 	private async transferWorkflowOwnership(
+		user: User,
 		workflows: WorkflowEntity[],
 		destinationProject: Project,
 	) {
@@ -694,7 +695,7 @@ export class EnterpriseWorkflowService {
 		}
 
 		if (movedWorkflowIds.length > 0) {
-			await this.workflowMutationHooks.afterWorkflowsTransferred(movedWorkflowIds);
+			await this.workflowMutationHooks.afterWorkflowsTransferred(movedWorkflowIds, user.id);
 		}
 	}
 

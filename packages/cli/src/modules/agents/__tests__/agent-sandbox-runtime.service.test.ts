@@ -47,7 +47,7 @@ const otherWorkspaceSandboxId = '4197eecc-3092-54b8-9196-a4fecccea156';
 const knowledgeSandboxId = 'a54b9053-9f50-51e5-b971-e02942ff7b6b';
 
 type TestWorkspaceSandbox = WorkspaceSandbox &
-	Required<Pick<WorkspaceSandbox, '_start' | 'destroy' | 'executeCommand'>>;
+	Required<Pick<WorkspaceSandbox, '_start' | 'destroy' | 'deleteRemote' | 'executeCommand'>>;
 
 function makeAiService(overrides: Partial<AiService> = {}): AiService {
 	const aiService = mock<AiService>();
@@ -369,7 +369,8 @@ describe('AgentSandboxRuntimeService', () => {
 		const destroyedIds: string[] = [];
 		createSandboxMock.mockImplementation(async (config) => {
 			const target = makeSandbox(config.provider, config.id);
-			target.destroy.mockImplementation(async () => {
+			// Teardown must delete by identity even though these instances never started.
+			target.deleteRemote.mockImplementation(async () => {
 				destroyedIds.push(config.id);
 				if (config.id === `agent-kb-${knowledgeSandboxId}`) {
 					throw new Error('remote unavailable');

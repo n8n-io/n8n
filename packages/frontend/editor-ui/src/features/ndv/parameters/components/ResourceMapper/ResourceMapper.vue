@@ -17,6 +17,7 @@ import { deepCopy, NodeHelpers } from 'n8n-workflow';
 import { computed, inject, onMounted, reactive, watch } from 'vue';
 import {
 	ExpressionLocalResolveContextSymbol,
+	ResourceMapperRefreshEmptySchemaKey,
 	ResourceMapperSchemaAutoRefreshKey,
 } from '@/app/constants';
 import MappingModeSelect from './MappingModeSelect.vue';
@@ -57,6 +58,7 @@ const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const projectsStore = useProjectsStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 const schemaAutoRefreshEnabled = inject(ResourceMapperSchemaAutoRefreshKey, true);
+const refreshEmptySchemaEnabled = inject(ResourceMapperRefreshEmptySchemaKey, false);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const props = withDefaults(defineProps<Props>(), {
@@ -115,7 +117,18 @@ function getDefaultFieldValue(field?: ResourceMapperField): string | number | bo
 watch(
 	() => props.dependentParametersValues,
 	async (currentValue, oldValue) => {
-		if (oldValue !== null && currentValue !== null && oldValue !== currentValue) {
+		const dependencyBecameAvailable =
+			refreshEmptySchemaEnabled &&
+			oldValue === null &&
+			currentValue !== null &&
+			currentValue.length > 0 &&
+			state.paramValue.schema.length === 0;
+
+		if (
+			currentValue !== null &&
+			oldValue !== currentValue &&
+			(oldValue !== null || dependencyBecameAvailable)
+		) {
 			state.paramValue = {
 				...state.paramValue,
 				value: null,

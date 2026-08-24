@@ -1458,6 +1458,15 @@ describe.each(['activate', 'publish'])('POST /workflows/:id/%s', (action) => {
 		expect(await workflowRepository.isActive(workflow.id)).toBe(true);
 	});
 
+	test('should not return the shared field', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body).not.toHaveProperty('shared');
+	});
+
 	test('should set activeVersionId', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
@@ -1651,6 +1660,21 @@ describe.each(['deactivate', 'unpublish'])('POST /workflows/:id/%s', (action) =>
 		});
 
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
+	});
+
+	test('should return the shared field', async () => {
+		const workflow = await createActiveWorkflow({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/${action}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.shared).toEqual([
+			expect.objectContaining({
+				workflowId: workflow.id,
+				projectId: memberPersonalProject.id,
+				project: expect.objectContaining({ id: memberPersonalProject.id }),
+			}),
+		]);
 	});
 
 	test('should return 403 when user lacks workflow:publish permission', async () => {
@@ -2301,6 +2325,185 @@ describe('POST /workflows', () => {
 			expect(await workflowRepository.findOneBy({ name })).toBeNull();
 		});
 	});
+
+	describe('response contract', () => {
+		const expectedResponseKeys = [
+			'active',
+			'activeVersion',
+			'activeVersionId',
+			'connections',
+			'createdAt',
+			'description',
+			'id',
+			'isArchived',
+			'meta',
+			'name',
+			'nodeGroups',
+			'nodes',
+			'parentFolder',
+			'pinData',
+			'settings',
+			'shared',
+			'sourceWorkflowId',
+			'staticData',
+			'tags',
+			'triggerCount',
+			'updatedAt',
+			'versionCounter',
+			'versionId',
+		];
+
+		test('should return exactly the documented set of workflow fields', async () => {
+			const response = await authMemberAgent.post('/workflows').send(mockPostWorkflowPayload());
+
+			expect(response.statusCode).toBe(200);
+			expect(Object.keys(response.body).sort()).toEqual(expectedResponseKeys);
+			expect(response.body.parentFolder).toBeNull();
+			expect(response.body.tags).toEqual([]);
+			expect(response.body.activeVersion).toBeNull();
+			expect(response.body.shared).toHaveLength(1);
+			expect(Object.keys(response.body.shared[0]).sort()).toEqual([
+				'createdAt',
+				'project',
+				'projectId',
+				'role',
+				'updatedAt',
+				'workflowId',
+			]);
+			expect(Object.keys(response.body.shared[0].project).sort()).toEqual([
+				'createdAt',
+				'creatorId',
+				'customTelemetryTags',
+				'description',
+				'icon',
+				'id',
+				'name',
+				'type',
+				'updatedAt',
+			]);
+		});
+
+		test('should return the parent folder when parentFolderId is given', async () => {
+			const folder = await createFolder(memberPersonalProject, { name: 'Response Folder' });
+
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), parentFolderId: folder.id });
+
+			expect(response.statusCode).toBe(200);
+			expect(Object.keys(response.body.parentFolder).sort()).toEqual([
+				'createdAt',
+				'id',
+				'name',
+				'parentFolderId',
+				'updatedAt',
+			]);
+			expect(response.body.parentFolder).toMatchObject({
+				id: folder.id,
+				name: 'Response Folder',
+				parentFolderId: null,
+			});
+		});
+	});
+
+	describe('request contract', () => {
+		test.each([
+			{ key: 'id', value: '2tUt1wbLX592XDdX' },
+			{ key: 'active', value: false },
+			{ key: 'createdAt', value: '2026-01-01T00:00:00.000Z' },
+			{ key: 'updatedAt', value: '2026-01-01T00:00:00.000Z' },
+			{ key: 'isArchived', value: false },
+			{ key: 'versionId', value: 'a-version-id' },
+			{ key: 'triggerCount', value: 0 },
+			{ key: 'meta', value: {} },
+			{ key: 'tags', value: [] },
+			{ key: 'activeVersion', value: null },
+		] as const)('should reject the read-only field $key', async ({ key, value }) => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), [key]: value });
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toBe(`request/body/${key} is read-only`);
+		});
+
+		test('should accept and ignore a supplied shared list', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), shared: [] });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.shared).toHaveLength(1);
+			expect(response.body.shared[0].role).toBe('workflow:owner');
+		});
+
+		test('should reject a read-only field nested in a node', async () => {
+			const response = await authMemberAgent.post('/workflows').send({
+				...mockPostWorkflowPayload(),
+				nodes: [{ ...triggerNode, createdAt: '2026-01-01T00:00:00.000Z' }],
+			});
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should reject an unknown top-level field', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), notAWorkflowField: 'x' });
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should reject an unknown settings key', async () => {
+			const response = await authMemberAgent.post('/workflows').send({
+				...mockPostWorkflowPayload(),
+				settings: { executionOrder: 'v1', notASetting: true },
+			});
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should reject an unknown node key', async () => {
+			const response = await authMemberAgent.post('/workflows').send({
+				...mockPostWorkflowPayload(),
+				nodes: [{ ...triggerNode, notANodeField: 'x' }],
+			});
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should accept staticData as a JSON string', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), staticData: '{"lastId":1}' });
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('should reject staticData as a string that is not JSON', async () => {
+			const response = await authMemberAgent
+				.post('/workflows')
+				.send({ ...mockPostWorkflowPayload(), staticData: 'not json' });
+
+			expect(response.statusCode).toBe(400);
+		});
+
+		test('should reject a node group description over the length limit', async () => {
+			const response = await authMemberAgent.post('/workflows').send({
+				...mockPostWorkflowPayload(),
+				nodeGroups: [
+					{
+						id: 'group-1',
+						name: 'Too long',
+						nodeIds: [triggerNode.id],
+						description: 'x'.repeat(156),
+					},
+				],
+			});
+
+			expect(response.statusCode).toBe(400);
+		});
+	});
 });
 
 describe('POST /workflows redaction floor enforcement', () => {
@@ -2370,6 +2573,18 @@ describe('POST /workflows redaction floor enforcement', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(await savedRedactionPolicy(response.body.id)).toBe('non-manual');
+	});
+
+	test('reports the floor violation even when the payload is also otherwise invalid', async () => {
+		const response = await authOwnerAgent.post('/workflows').send({
+			name: 'redaction-floor-precedence',
+			nodes: [redactionTrigger],
+			connections: {},
+			settings: { redactionPolicy: 'none' },
+			nodeGroups: [{ id: 'group-1', name: 'Ghost', nodeIds: ['does-not-exist'] }],
+		});
+
+		expect(response.statusCode).toBe(422);
 	});
 });
 

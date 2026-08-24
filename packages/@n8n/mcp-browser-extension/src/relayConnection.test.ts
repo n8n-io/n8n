@@ -534,7 +534,6 @@ describe('RelayConnection', () => {
 		});
 
 		it('should return true for agent-created tabs after createTab', async () => {
-			relay.setSettings({ allowTabCreation: true, allowTabClosing: false });
 			(globalThis.chrome.tabs.create as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
 				id: 999,
 				title: 'New',
@@ -660,28 +659,10 @@ describe('RelayConnection', () => {
 		expect(ws.closed).toBe(false);
 	});
 
-	it('should reject createTab when tab creation is disabled', async () => {
-		relay.setSettings({ allowTabCreation: false, allowTabClosing: false });
-
-		ws.onmessage?.({
-			data: JSON.stringify({
-				id: 5,
-				method: 'createTab',
-				params: { url: 'https://example.com' },
-			}),
-		});
-		await tick();
-
-		expect(parseSent(ws)).toEqual(
-			expect.objectContaining({ error: expect.stringContaining('Tab creation is disabled') }),
-		);
-	});
-
-	it('should reject closeTab when tab closing is disabled', async () => {
+	it('should reject closeTab', async () => {
 		chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
 		await relay.addTab(42, 'Test', 'https://test.com');
 		const addedId = relay.getControlledIds()[0].targetId;
-		relay.setSettings({ allowTabCreation: true, allowTabClosing: false });
 		ws.sent.length = 0;
 
 		ws.onmessage?.({
@@ -694,8 +675,9 @@ describe('RelayConnection', () => {
 		await tick();
 
 		expect(parseSent(ws)).toEqual(
-			expect.objectContaining({ error: expect.stringContaining('Tab closing is disabled') }),
+			expect.objectContaining({ error: expect.stringContaining('does not allow closing tabs') }),
 		);
+		expect(relay.getControlledIds()).toHaveLength(1);
 	});
 
 	describe('spawned tab helpers', () => {
@@ -711,14 +693,6 @@ describe('RelayConnection', () => {
 			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
 			await relay.addTab(42, 'Test', 'https://test.com');
 			expect(relay.isControlledTab(42)).toBe(true);
-		});
-
-		it('isTabCreationAllowed reflects current settings', () => {
-			expect(relay.isTabCreationAllowed()).toBe(true);
-			relay.setSettings({ allowTabCreation: false, allowTabClosing: false });
-			expect(relay.isTabCreationAllowed()).toBe(false);
-			relay.setSettings({ allowTabCreation: true, allowTabClosing: false });
-			expect(relay.isTabCreationAllowed()).toBe(true);
 		});
 
 		it('markAsAgentCreated causes isAgentCreatedTab to return true', () => {
@@ -1106,24 +1080,6 @@ describe('RelayConnection', () => {
 			await tick();
 
 			expect(ws.closeReason).toBe('debugger_detached');
-		});
-
-		it('should close with extension_disconnected when last tab is closed via closeTab', async () => {
-			chrome.debugger.getTargets.mockResolvedValueOnce([mockTarget(42)]);
-			await relay.addTab(42, 'Test', 'https://test.com');
-			relay.setSettings({ allowTabCreation: true, allowTabClosing: true });
-			ws.sent.length = 0;
-
-			ws.onmessage?.({
-				data: JSON.stringify({
-					id: 1,
-					method: 'closeTab',
-					params: { id: targetIdForTab(42) },
-				}),
-			});
-			await tick();
-
-			expect(ws.closeReason).toBe('extension_disconnected');
 		});
 	});
 	describe('document preparation', () => {

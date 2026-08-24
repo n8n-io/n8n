@@ -7855,6 +7855,7 @@ describe('AgentRuntime — oversized tool results', () => {
 		expect(envelope.head).toContain('MESSAGE_HEAD');
 		expect(envelope.tail).toContain('MESSAGE_TAIL');
 		expect(fileBlock).toMatchObject({ type: 'file', mediaType: 'text/plain', data: fileData });
+		expect(message).toMatchObject({ origin: { kind: 'tool', toolName: 'large_message' } });
 	});
 
 	describe('Workspace-backed oversized tool results', () => {
