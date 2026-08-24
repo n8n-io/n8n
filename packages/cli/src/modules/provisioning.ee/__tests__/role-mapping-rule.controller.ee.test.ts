@@ -149,7 +149,12 @@ describe('RoleMappingRuleController', () => {
 			const result = await controller.patch(req, res, patchBody, ruleId);
 
 			expect(result).toEqual(updated);
-			expect(roleMappingRuleService.patch).toHaveBeenCalledWith(ruleId, patchBody);
+			expect(roleMappingRuleService.patch).toHaveBeenCalledWith({
+				id: ruleId,
+				dto: patchBody,
+				userId: req.user.id,
+				userEmail: req.user.email,
+			});
 		});
 	});
 

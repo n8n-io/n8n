@@ -63,6 +63,9 @@
       "config": {
         "description": "View and update CLI configuration"
       },
+      "git-connections": {
+        "description": "Create and manage Git repository connections"
+      },
       "source-control": {
         "description": "Pull changes from the configured source control provider"
       },
