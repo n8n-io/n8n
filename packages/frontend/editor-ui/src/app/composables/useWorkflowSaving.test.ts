@@ -153,6 +153,23 @@ describe('useWorkflowSaving', () => {
 		backendConnectionStore.setOnline(true);
 	});
 
+	function prepareHydratedWorkflow(workflowId: string) {
+		const workflow = createTestWorkflow({
+			id: workflowId,
+			nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+		});
+		mockRoute.params = { workflowId };
+		workflowsStore.setWorkflowId(workflowId);
+		workflowsListStore.workflowsById = {
+			...workflowsListStore.workflowsById,
+			[workflowId]: workflow,
+		};
+		const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		documentStore.hydrate(workflow);
+
+		return { workflow, documentStore };
+	}
+
 	describe('promptSaveUnsavedWorkflowChanges', () => {
 		it('should prompt the user to save changes and proceed if confirmed', async () => {
 			const workflow = createTestWorkflow({
@@ -237,6 +254,43 @@ describe('useWorkflowSaving', () => {
 			expect(confirm).not.toHaveBeenCalled();
 			expect(cancel).toHaveBeenCalled();
 			expect(next).toHaveBeenCalledWith();
+		});
+
+		it('cancels a scheduled autosave when the user discards changes', async () => {
+			vi.useFakeTimers();
+			try {
+				const { workflow } = prepareHydratedWorkflow('w-discard-cancel-autosave');
+				const updateSpy = vi
+					.spyOn(workflowsStore, 'updateWorkflow')
+					.mockResolvedValue({ ...workflow, checksum: 'test-checksum' });
+				const next = vi.fn();
+				const confirm = vi.fn();
+				const cancel = vi.fn();
+				const uiStore = useUIStore();
+				const saveStore = useWorkflowSaveStore();
+
+				uiStore.markStateDirty();
+				modalConfirmSpy.mockResolvedValue(MODAL_CANCEL);
+
+				const workflowSaving = useWorkflowSaving({ router, ownsAutoSave: true });
+				workflowSaving.autoSaveWorkflow();
+
+				expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+
+				await workflowSaving.promptSaveUnsavedWorkflowChanges(next, { confirm, cancel });
+
+				expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
+				expect(uiStore.stateIsDirty).toBe(false);
+
+				await vi.advanceTimersByTimeAsync(
+					getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE_MAX_WAIT) + 1000,
+				);
+
+				expect(updateSpy).not.toHaveBeenCalled();
+				expect(next).toHaveBeenCalledWith();
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('should restore the route if the modal is closed and the workflow is not new', async () => {
@@ -598,6 +652,38 @@ describe('useWorkflowSaving', () => {
 			);
 		});
 
+		it('allows a manual save before the document is marked hydrated', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-manual-unhydrated',
+				name: 'Manual unhydrated workflow',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+			});
+
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue({
+				...workflow,
+				checksum: 'test-checksum',
+			});
+
+			workflowsStore.setWorkflowId(workflow.id);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+			documentStore.setName(workflow.name);
+			documentStore.setNodes(workflow.nodes);
+			documentStore.setConnections(workflow.connections);
+
+			expect(documentStore.hydrated).toBe(false);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+			const saved = await saveCurrentWorkflow({ id: workflow.id }, true, false, false);
+
+			expect(saved).toBe(true);
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				workflow.id,
+				expect.objectContaining({ id: workflow.id, name: workflow.name }),
+				false,
+			);
+		});
+
 		it('should not include active=false in the request if the workflow has no activatable trigger node', async () => {
 			const workflow = createTestWorkflow({
 				id: 'w1',
@@ -808,6 +894,7 @@ describe('useWorkflowSaving', () => {
 
 	describe('autoSaveWorkflow', () => {
 		it('should not schedule autosave if a save is already in progress', () => {
+			prepareHydratedWorkflow('w-pending-save');
 			const saveStore = useWorkflowSaveStore();
 
 			// Simulate an ongoing save by setting pendingSave
@@ -824,6 +911,7 @@ describe('useWorkflowSaving', () => {
 		});
 
 		it('should schedule autosave when state is Idle', () => {
+			prepareHydratedWorkflow('w-schedule');
 			const saveStore = useWorkflowSaveStore();
 
 			// Ensure state is Idle
@@ -929,6 +1017,7 @@ describe('useWorkflowSaving', () => {
 			});
 
 			workflowsStore.setWorkflowId(workflow.id);
+			mockRoute.params = { workflowId: workflow.id };
 			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 			workflowsListStore.workflowsById = { [workflow.id]: workflow };
 
@@ -1332,6 +1421,7 @@ describe('useWorkflowSaving', () => {
 		});
 
 		it('should not schedule autosave when network is offline', () => {
+			prepareHydratedWorkflow('w-offline');
 			const saveStore = useWorkflowSaveStore();
 
 			backendConnectionStore.setOnline(false);
@@ -1345,6 +1435,7 @@ describe('useWorkflowSaving', () => {
 		});
 
 		it('should not schedule autosave when autosave is disabled via environment variable', () => {
+			prepareHydratedWorkflow('w-disabled');
 			const autosaveStore = useWorkflowSaveStore();
 			const settingsStore = mockedStore(useSettingsStore);
 
@@ -1364,6 +1455,7 @@ describe('useWorkflowSaving', () => {
 		});
 
 		it('should schedule autosave when autosave is enabled via environment variable', () => {
+			prepareHydratedWorkflow('w-enabled');
 			const autosaveStore = useWorkflowSaveStore();
 			const settingsStore = mockedStore(useSettingsStore);
 
@@ -1380,6 +1472,233 @@ describe('useWorkflowSaving', () => {
 
 			// State should be Scheduled
 			expect(autosaveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+		});
+	});
+
+	describe('autosave document hydration gate', () => {
+		const EDITABLE_FEATURES: EditorEnabledFeatures = {
+			readOnly: false,
+			expandGroups: 'all',
+			aiAssistant: false,
+			aiBuilder: false,
+			askAi: false,
+			executionSuccessToasts: false,
+			executionErrorToasts: false,
+		};
+
+		const probe: { current: ReturnType<typeof useWorkflowSaving> | null } = { current: null };
+
+		const AutosaveProbe = defineComponent({
+			name: 'AutosaveHydrationProbe',
+			setup() {
+				probe.current = useWorkflowSaving({ router, ownsAutoSave: true });
+				return () => h('div');
+			},
+		});
+
+		const AutosaveHostStub = defineComponent({
+			name: 'AutosaveHydrationHostStub',
+			props: {
+				workflowId: { type: String, required: true },
+			},
+			setup(props) {
+				provide(
+					WorkflowIdKey,
+					computed(() => props.workflowId),
+				);
+				provide(
+					EditorEnabledFeaturesKey,
+					computed<EditorEnabledFeatures>(() => EDITABLE_FEATURES),
+				);
+				return () => h(AutosaveProbe);
+			},
+		});
+
+		function takeProbe(): ReturnType<typeof useWorkflowSaving> {
+			const saving = probe.current;
+			if (!saving) throw new Error('AutosaveHydrationProbe did not initialise');
+			return saving;
+		}
+
+		function mountAutosaveHost(workflowId: string) {
+			probe.current = null;
+			const wrapper = mount(AutosaveHostStub, { props: { workflowId } });
+			return { wrapper, saving: takeProbe() };
+		}
+
+		async function flushAutoSave() {
+			await vi.advanceTimersByTimeAsync(
+				getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE_MAX_WAIT) + 1000,
+			);
+		}
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			mockedStore(useSettingsStore).isAutosaveEnabled = true;
+			useWorkflowSaveStore().reset();
+			useUIStore().markStateDirty();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+			probe.current = null;
+		});
+
+		it('defers scheduling while the current workflow document is not hydrated', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-hydration-pending',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+			});
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			const updateSpy = vi
+				.spyOn(workflowsStore, 'updateWorkflow')
+				.mockResolvedValue({ ...workflow, checksum: 'test-checksum' });
+			const createSpy = vi
+				.spyOn(workflowsStore, 'createNewWorkflow')
+				.mockResolvedValue(createTestWorkflow({ id: 'created' }));
+			const saveStore = useWorkflowSaveStore();
+			const uiStore = useUIStore();
+
+			const { saving } = mountAutosaveHost(workflow.id);
+
+			saving.autoSaveWorkflow();
+			await flushAutoSave();
+
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
+			expect(saveStore.retryCount).toBe(0);
+			expect(uiStore.stateIsDirty).toBe(true);
+			expect(updateSpy).not.toHaveBeenCalled();
+			expect(createSpy).not.toHaveBeenCalled();
+		});
+
+		it('drops a scheduled autosave if navigation lands on an unhydrated document before it fires', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-hydrated-first',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+			});
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+			const updateSpy = vi
+				.spyOn(workflowsStore, 'updateWorkflow')
+				.mockResolvedValue({ ...workflow, checksum: 'test-checksum' });
+			const createSpy = vi
+				.spyOn(workflowsStore, 'createNewWorkflow')
+				.mockResolvedValue(createTestWorkflow({ id: 'created' }));
+			const saveStore = useWorkflowSaveStore();
+
+			const { wrapper, saving } = mountAutosaveHost(workflow.id);
+
+			saving.autoSaveWorkflow();
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+
+			await wrapper.setProps({ workflowId: 'w-unhydrated-next' });
+			await flushAutoSave();
+
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
+			expect(saveStore.retryCount).toBe(0);
+			expect(useUIStore().stateIsDirty).toBe(true);
+			expect(updateSpy).not.toHaveBeenCalled();
+			expect(createSpy).not.toHaveBeenCalled();
+		});
+
+		it('drops a scheduled autosave if state becomes clean before it fires', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-clean-before-fire',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+			});
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+			const updateSpy = vi
+				.spyOn(workflowsStore, 'updateWorkflow')
+				.mockResolvedValue({ ...workflow, checksum: 'test-checksum' });
+			const createSpy = vi
+				.spyOn(workflowsStore, 'createNewWorkflow')
+				.mockResolvedValue(createTestWorkflow({ id: 'created' }));
+			const saveStore = useWorkflowSaveStore();
+			const uiStore = useUIStore();
+
+			const { saving } = mountAutosaveHost(workflow.id);
+
+			saving.autoSaveWorkflow();
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+
+			uiStore.markStateClean();
+			await flushAutoSave();
+
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
+			expect(saveStore.retryCount).toBe(0);
+			expect(uiStore.stateIsDirty).toBe(false);
+			expect(updateSpy).not.toHaveBeenCalled();
+			expect(createSpy).not.toHaveBeenCalled();
+		});
+
+		it('re-arms autosave when an existing workflow document becomes hydrated while dirty', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-hydration-rearm',
+				name: 'Hydrated workflow',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+			});
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			const updateSpy = vi
+				.spyOn(workflowsStore, 'updateWorkflow')
+				.mockResolvedValue({ ...workflow, checksum: 'test-checksum' });
+			const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+			const saveStore = useWorkflowSaveStore();
+
+			const { saving } = mountAutosaveHost(workflow.id);
+
+			saving.autoSaveWorkflow();
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
+
+			documentStore.hydrate(workflow);
+			await nextTick();
+
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+
+			await flushAutoSave();
+
+			expect(updateSpy).toHaveBeenCalledWith(
+				workflow.id,
+				expect.objectContaining({
+					name: workflow.name,
+					nodes: expect.arrayContaining([
+						expect.objectContaining({ name: workflow.nodes[0].name }),
+					]),
+				}),
+				false,
+			);
+		});
+
+		it('creates a new workflow by autosave only after the new document is hydrated', async () => {
+			const newWorkflowId = 'w-new-hydration';
+			const createdWorkflow = createTestWorkflow({
+				id: 'w-created-from-autosave',
+				name: 'Named new workflow',
+			});
+			const createSpy = vi
+				.spyOn(workflowsStore, 'createNewWorkflow')
+				.mockResolvedValue(createdWorkflow);
+			const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(newWorkflowId));
+			const saveStore = useWorkflowSaveStore();
+
+			const { saving } = mountAutosaveHost(newWorkflowId);
+
+			saving.autoSaveWorkflow();
+			await flushAutoSave();
+
+			expect(createSpy).not.toHaveBeenCalled();
+
+			documentStore.setName('Named new workflow');
+			documentStore.setHydrated(true);
+			await nextTick();
+
+			expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+
+			await flushAutoSave();
+
+			expect(createSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ name: 'Named new workflow', autosaved: true }),
+			);
 		});
 	});
 
@@ -1541,9 +1860,11 @@ describe('useWorkflowSaving', () => {
 			// Instance AI locks the canvas while its agent edits and then releases
 			// it; without this the agent's changes would sit unsaved.
 			const saveStore = useWorkflowSaveStore();
+			const workflow = createTestWorkflow({ id: 'w-rearm' });
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
 
 			const wrapper = mount(PreviewHostStub, {
-				props: { workflowId: 'w-rearm', readOnly: true },
+				props: { workflowId: workflow.id, readOnly: true },
 			});
 			useUIStore().markStateDirty();
 
