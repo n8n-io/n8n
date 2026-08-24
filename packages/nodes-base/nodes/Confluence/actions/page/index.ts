@@ -4,9 +4,10 @@ import * as append from './append.operation';
 import * as create from './create.operation';
 import * as del from './delete.operation';
 import * as get from './get.operation';
+import * as getLabels from './getLabels.operation';
 import * as update from './update.operation';
 
-export { append, create, del as delete, get, update };
+export { append, create, del as delete, get, getLabels, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -45,6 +46,12 @@ export const description: INodeProperties[] = [
 				action: 'Get a page',
 			},
 			{
+				name: 'Get Labels',
+				value: 'getLabels',
+				description: 'List the labels on a page',
+				action: 'Get page labels',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Replace the title and body of an existing page',
@@ -57,5 +64,6 @@ export const description: INodeProperties[] = [
 	...create.description,
 	...del.description,
 	...get.description,
+	...getLabels.description,
 	...update.description,
 ];

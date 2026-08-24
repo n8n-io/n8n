@@ -13,7 +13,7 @@ describe('Confluence Node', () => {
 		expect(node.description.usableAsTool).toBeUndefined();
 	});
 
-	it('should expose the page resource with the append, create, delete, get and update operations', () => {
+	it('should expose the page resource with the append, create, delete, get, getLabels and update operations', () => {
 		const resource = node.description.properties.find((p) => p.name === 'resource');
 		expect(resource?.options).toEqual([expect.objectContaining({ value: 'page' })]);
 
@@ -23,8 +23,22 @@ describe('Confluence Node', () => {
 			expect.objectContaining({ value: 'create' }),
 			expect.objectContaining({ value: 'delete' }),
 			expect.objectContaining({ value: 'get' }),
+			expect.objectContaining({ value: 'getLabels' }),
 			expect.objectContaining({ value: 'update' }),
 		]);
+	});
+
+	it('exposes the getLabels fields on the node description', () => {
+		const forGetLabels = node.description.properties.filter((p) =>
+			p.displayOptions?.show?.operation?.includes('getLabels'),
+		);
+
+		expect(forGetLabels.map((p) => p.name)).toEqual(
+			expect.arrayContaining(['page', 'returnAll', 'limit', 'options']),
+		);
+
+		const limit = forGetLabels.find((p) => p.name === 'limit');
+		expect(limit?.displayOptions?.show?.returnAll).toEqual([false]);
 	});
 
 	it('should reference the confluenceCloudOAuth2Api credential by name', () => {
