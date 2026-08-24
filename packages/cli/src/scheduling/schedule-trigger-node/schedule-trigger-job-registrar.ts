@@ -25,6 +25,12 @@ interface CollectedSchedule {
 	firstRunAt: Date | null;
 }
 
+interface PendingNodeRegistration {
+	misfirePolicy: ScheduledJobMisfirePolicy;
+	misfireGraceSeconds: number | undefined;
+	rules: CollectedSchedule[];
+}
+
 /**
  * One activation attempt's rule collection, from {@link ScheduleTriggerJobRegistrar.createSession}.
  *
@@ -153,13 +159,17 @@ export class ScheduleTriggerJobRegistrar {
 		 * {@link pendingKey}. An entry exists only between `createCollector` and
 		 * the `commit`/`discard` that consumes it.
 		 */
-		const pending = new Map<string, CollectedSchedule[]>();
+		const pending = new Map<string, PendingNodeRegistration>();
 
 		return {
 			createCollector: (workflow: Workflow, node: INode): SchedulingFunctions => {
 				const timezone = explicitTimezone(workflow);
 				const collected: CollectedSchedule[] = [];
-				pending.set(pendingKey(workflow.id, node.id), collected);
+				pending.set(pendingKey(workflow.id, node.id), {
+					misfirePolicy: resolveMisfirePolicy(node),
+					misfireGraceSeconds: resolveMisfireGraceSeconds(node, workflow.id, this.logger),
+					rules: collected,
+				});
 
 				return {
 					registerCron: ({ expression, recurrence, source }: Cron) => {
@@ -203,10 +213,16 @@ export class ScheduleTriggerJobRegistrar {
 
 			commit: async (workflowId: string, nodeId: string): Promise<void> => {
 				const key = pendingKey(workflowId, nodeId);
-				const collected = pending.get(key);
-				if (collected !== undefined) {
+				const entry = pending.get(key);
+				if (entry !== undefined) {
 					pending.delete(key);
-					await this.provisionCollected(workflowId, nodeId, collected);
+					await this.provisionCollected(
+						workflowId,
+						nodeId,
+						entry.rules,
+						entry.misfirePolicy,
+						entry.misfireGraceSeconds,
+					);
 				}
 			},
 
@@ -288,6 +304,8 @@ export class ScheduleTriggerJobRegistrar {
 		workflowId: string,
 		nodeId: string,
 		collected: CollectedSchedule[],
+		misfirePolicy: ScheduledJobMisfirePolicy,
+		misfireGraceSeconds: number | undefined,
 	): Promise<void> {
 		const seen = new Map<string, number>();
 		const desired = collected.map(({ schedule, firstRunAt }) => {
@@ -302,13 +320,16 @@ export class ScheduleTriggerJobRegistrar {
 		});
 
 		const payload: ScheduleTriggerTaskPayload = { workflowId, nodeId };
+		// `skip` matches the legacy engine, which never runs a missed occurrence
+		// late. Running late is a per-node opt-in (see `resolveMisfirePolicy`).
 		const summary = await this.jobProvisioner.provision(
 			workflowId,
 			nodeId,
 			SCHEDULE_TRIGGER_TASK_TYPE,
 			{ ...payload },
 			desired,
-			ScheduledJobMisfirePolicy.Coalesce,
+			misfirePolicy,
+			misfireGraceSeconds,
 		);
 
 		this.logger.debug('Provisioned durable schedules for trigger node', {
@@ -399,4 +420,48 @@ function withResolvedTimezone(schedule: Schedule, defaultTimezone: string): Sche
 		return { ...schedule, timezone: schedule.timezone ?? defaultTimezone };
 	}
 	return schedule;
+}
+
+/**
+ * Any value other than an explicit policy resolves to skipping, so an
+ * unrecognised value does not fail the activation. No `typeVersion` check is
+ * needed: `Workflow`'s constructor drops a parameter its `displayOptions` hide,
+ * so a node older than the option cannot arrive carrying it.
+ */
+function resolveMisfirePolicy(node: INode): ScheduledJobMisfirePolicy {
+	switch (node.parameters?.misfirePolicy) {
+		case 'coalesce':
+			return ScheduledJobMisfirePolicy.Coalesce;
+		case 'coalesce_owner':
+			return ScheduledJobMisfirePolicy.CoalesceOwner;
+		default:
+			return ScheduledJobMisfirePolicy.Skip;
+	}
+}
+
+function resolveMisfireGraceSeconds(
+	node: INode,
+	workflowId: string,
+	logger: Logger,
+): number | undefined {
+	const requested = node.parameters?.misfireGraceSeconds;
+	const isNumberLike = typeof requested === 'number' || typeof requested === 'string';
+	const numeric = isNumberLike ? Number(requested) : Number.NaN;
+	const stated = Number.isFinite(numeric) && numeric >= 1 ? numeric : undefined;
+
+	const isBlank = typeof requested === 'string' && requested.trim() === '';
+	const inherits =
+		requested === undefined ||
+		requested === null ||
+		requested === false ||
+		(numeric === 0 && !isBlank);
+
+	if (stated === undefined && !inherits) {
+		logger.warn(
+			'Schedule trigger node has an unusable misfire grace period; the instance setting applies',
+			{ workflowId, nodeId: node.id },
+		);
+	}
+
+	return stated;
 }

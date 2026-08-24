@@ -8,12 +8,13 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types';
+import type { ActionDropdownItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
+import { clearPendingThreadHandoff } from '../composables/useInstanceAiHandoff';
 
 const emit = defineEmits<{ collapse: [] }>();
 
@@ -79,6 +80,7 @@ async function handleDeleteThread(threadId: string) {
 	const wasActive = threadId === activeThreadId.value;
 	const deleted = await store.deleteThread(threadId);
 	if (!deleted) return;
+	clearPendingThreadHandoff(threadId);
 
 	if (wasActive) {
 		if (store.threads.length > 0) {

@@ -16,12 +16,8 @@ import {
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import { useRoute, useRouter } from 'vue-router';
-import type {
-	ChatUI,
-	RatingFeedback,
-	WorkflowSuggestion,
-} from '@n8n/design-system/types/assistant';
-import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system/types/assistant';
+import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '@n8n/design-system';
+import { isTaskAbortedMessage, isWorkflowUpdatedMessage } from '@n8n/design-system';
 import { nodeViewEventBus } from '@/app/event-bus';
 import { jsonParse } from 'n8n-workflow';
 import ExecuteMessage from './ExecuteMessage.vue';

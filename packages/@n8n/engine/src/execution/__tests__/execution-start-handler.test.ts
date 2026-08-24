@@ -28,21 +28,24 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		claimStep: vi.fn(),
 		completeStep: vi.fn(),
 		failStep: vi.fn(),
-		loadStepOutputs: vi.fn(),
-		loadCompletedNodeIds: vi.fn(),
-		hasActiveSteps: vi.fn(),
+		cancelQueuedSteps: vi.fn(),
+		loadStepsByKeys: vi.fn().mockResolvedValue({}),
+		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
+		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
+		countSettledSteps: vi.fn(),
 		hasFailedSteps: vi.fn(),
 	};
 }
 
-function record(graph: WorkflowGraph): ExecutionRecord {
+function record(graph: WorkflowGraph, overrides: Partial<ExecutionRecord> = {}): ExecutionRecord {
 	return {
 		id: 'exec-1',
 		workflowId: 'wf-1',
 		status: 'running',
 		mode: 'production',
 		graph,
-		triggerPayload: null,
+		triggerOutputs: null,
+		...overrides,
 	};
 }
 
@@ -56,7 +59,9 @@ describe('ExecutionStartHandler', () => {
 			edges: [{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 }],
 		};
 		const executionStore = makeExecutionStore({
-			loadExecution: vi.fn().mockResolvedValue(record(graph)),
+			loadExecution: vi
+				.fn()
+				.mockResolvedValue(record(graph, { triggerOutputs: [[{ json: { webhook: 'data' } }]] })),
 		});
 		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }]);
 		const stepStore = makeStepStore(createSteps);
@@ -66,15 +71,71 @@ describe('ExecutionStartHandler', () => {
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
 		expect(executionStore.transitionStatus).toHaveBeenCalledWith('exec-1', 'queued', 'running');
-		// only the trigger's row — planning is the step:completed handler's job
-		expect(createSteps).toHaveBeenCalledExactlyOnceWith([
-			{ executionId: 'exec-1', nodeId: 'trigger', status: 'completed' },
+		// only the trigger's row — planning is the step:settled handler's job.
+		// Its payload rides along as output slots, read downstream like any
+		// other predecessor's outputs.
+		expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{
+				nodeId: 'trigger',
+				iteration: 0,
+				status: 'completed',
+				outputs: [[{ json: { webhook: 'data' } }]],
+			},
 		]);
 		expect(queue.publish).toHaveBeenCalledExactlyOnceWith({
-			type: 'step:completed',
+			type: 'step:settled',
 			executionId: 'exec-1',
 			stepId: 'step-trigger',
 		});
+	});
+
+	it('records multi-slot trigger payloads verbatim, including dead slots', async () => {
+		const graph: WorkflowGraph = {
+			nodes: [{ id: 'trigger', name: 'T', type: 'trigger' }],
+			edges: [],
+		};
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue(
+				record(graph, {
+					triggerOutputs: [[{ json: { i1: true } }], null, [{ json: { i2: true } }]],
+				}),
+			),
+		});
+		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }]);
+		const stepStore = makeStepStore(createSteps);
+		const handler = new ExecutionStartHandler(executionStore, stepStore, makeOrchestrationQueue());
+
+		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
+
+		expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{
+				nodeId: 'trigger',
+				iteration: 0,
+				status: 'completed',
+				outputs: [[{ json: { i1: true } }], null, [{ json: { i2: true } }]],
+			},
+		]);
+	});
+
+	it('records no slots at all when the trigger has no payload', async () => {
+		// No payload means no data on any slot — every successor edge reads
+		// undefined and is treated as dead, same as any other step producing nothing.
+		const graph: WorkflowGraph = {
+			nodes: [{ id: 'trigger', name: 'T', type: 'trigger' }],
+			edges: [],
+		};
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue(record(graph, { triggerOutputs: null })),
+		});
+		const createSteps = vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }]);
+		const stepStore = makeStepStore(createSteps);
+		const handler = new ExecutionStartHandler(executionStore, stepStore, makeOrchestrationQueue());
+
+		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
+
+		expect(createSteps).toHaveBeenCalledExactlyOnceWith('exec-1', [
+			{ nodeId: 'trigger', iteration: 0, status: 'completed', outputs: [] },
+		]);
 	});
 
 	it('is a no-op when the execution cannot be claimed (duplicate delivery)', async () => {

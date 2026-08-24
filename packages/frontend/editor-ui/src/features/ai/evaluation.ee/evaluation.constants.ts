@@ -1,8 +1,7 @@
 import type { ChatHubLLMProvider } from '@n8n/api-types';
 
 import type { TestRunRecord } from './evaluation.api';
-import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
-import type { IconColor } from '@n8n/design-system/types/icon';
+import { type IconColor, type IconName } from '@n8n/design-system';
 
 import type { BaseTextKey } from '@n8n/i18n';
 import type { MetricCategory } from './evaluation.utils';
@@ -106,17 +105,17 @@ export type ExpectedField = {
 export const CANNED_METRIC_EXPECTED_FIELDS: Partial<Record<CannedMetricKey, ExpectedField>> = {
 	correctness: {
 		name: 'expectedAnswer',
-		labelKey: 'evaluations.wizardSidepanel.step2.expectedAnswer',
+		labelKey: 'evaluations.tests.detail.expectedAnswer',
 	},
 	stringSimilarity: {
 		name: 'expectedAnswer',
-		labelKey: 'evaluations.wizardSidepanel.step2.expectedAnswer',
+		labelKey: 'evaluations.tests.detail.expectedAnswer',
 	},
 	categorization: {
 		name: 'expectedAnswer',
-		labelKey: 'evaluations.wizardSidepanel.step2.expectedAnswer',
+		labelKey: 'evaluations.tests.detail.expectedAnswer',
 	},
-	toolsUsed: { name: 'expectedTools', labelKey: 'evaluations.wizardSidepanel.step2.expectedTools' },
+	toolsUsed: { name: 'expectedTools', labelKey: 'evaluations.tests.detail.expectedTools' },
 };
 
 export function getExpectedFieldsForMetrics(

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "2.34.0",
+  "version": "2.36.0",
   "description": "",
   "main": "index.js",
   "exports": {
@@ -309,10 +309,10 @@
     "jsdom": "23.0.1",
     "langchain": "catalog:",
     "lodash": "catalog:",
-    "mammoth": "1.12.0",
+    "mammoth": "1.12.1",
     "mime-types": "catalog:",
     "mongodb": "^6.17.0",
-    "mysql2": "3.17.0",
+    "mysql2": "catalog:",
     "n8n-core": "workspace:*",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",

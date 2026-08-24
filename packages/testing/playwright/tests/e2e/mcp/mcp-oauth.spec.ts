@@ -521,7 +521,9 @@ test.describe(
 				expect(toolNames).not.toContain('create_data_table');
 				expect(toolNames).not.toContain('publish_workflow');
 
-				// Calling a write tool is rejected because it is not registered
+				// Calling a write tool is rejected because it is not registered for
+				// this grant. The tool isn't in the server, so the v2 SDK answers with
+				// a JSON-RPC "not found" error (-32602) rather than an isError result.
 				const callResponse = await api.mcp.internalMcpSendMessageNoAuth(
 					api.mcp.createMessage('tools/call', {
 						name: 'create_data_table',
@@ -529,12 +531,9 @@ test.describe(
 					}),
 					{ Authorization: `Bearer ${tokens.access_token}` },
 				);
-				const callResult = await api.mcp.parseResponse<{
-					isError?: boolean;
-					content: Array<{ text: string }>;
-				}>(callResponse);
-				expect(callResult.isError).toBe(true);
-				expect(callResult.content[0].text).toContain('Tool create_data_table not found');
+				const callEnvelope = await api.mcp.parseResponseEnvelope(callResponse);
+				expect(callEnvelope.error?.code).toBe(-32602);
+				expect(callEnvelope.error?.message).toContain('create_data_table');
 			});
 		});
 	},

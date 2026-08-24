@@ -1,4 +1,10 @@
-import type { FrontendSettings } from '@n8n/api-types';
+import type { FrontendModuleSettings, FrontendSettings } from '@n8n/api-types';
+
+type DeepPartial<T> = T extends Array<infer U>
+	? Array<DeepPartial<U>>
+	: T extends object
+		? { [K in keyof T]?: DeepPartial<T[K]> }
+		: T;
 
 export class TestError extends Error {
 	constructor(message: string) {
@@ -47,6 +53,9 @@ export interface TestRequirements {
 	config?: {
 		/** Frontend settings to override (merged with default settings) */
 		settings?: Partial<FrontendSettings>;
+
+		/** Backend module settings to override (merged with the ones the instance reports) */
+		moduleSettings?: DeepPartial<FrontendModuleSettings>;
 
 		/** Feature flags to enable/disable for the test */
 		features?: Record<string, boolean>;

@@ -1,11 +1,13 @@
-import { SandboxClient, SandboxServiceError, type SandboxRecord } from '@n8n/sandbox-client';
+import { SandboxClient, SandboxServiceError } from '@n8n/sandbox-client';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 
 import { BaseSandbox } from './base-sandbox';
+import { raceWithAbort } from '../../sdk/abort';
 import type { CommandResult, ExecuteCommandOptions, ProviderStatus, SandboxInfo } from '../types';
 
 export interface N8nSandboxServiceSandboxOptions {
+	/** Lowercase UUID to create or reconnect to; the service generates one when omitted. */
 	id?: string;
 	apiKey?: string;
 	serviceUrl?: string;
@@ -59,23 +61,15 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 	}
 
 	override async start(): Promise<void> {
-		if (this.sandboxId) {
-			const existing = await this.tryGetExistingSandbox(this.sandboxId);
-			if (existing) {
-				this.createdAt = new Date(existing.createdAt * 1000);
-				return;
-			}
-		}
-
-		const sandbox = await this.client.createSandbox();
+		const sandbox = await this.createSandbox();
 		this.sandboxId = sandbox.id;
-		this.createdAt = new Date();
+		this.createdAt = new Date(sandbox.createdAt * 1000);
 	}
 
 	override async destroy(): Promise<void> {
 		if (!this.sandboxId) return;
 		try {
-			await this.client.deleteSandbox(this.sandboxId);
+			await this.withLifecycleTimeout(this.client.deleteSandbox(this.sandboxId));
 		} catch (error) {
 			if (error instanceof SandboxServiceError && error.status === 404) return;
 			throw error;
@@ -145,14 +139,23 @@ export class N8nSandboxServiceSandbox extends BaseSandbox {
 		return this.client;
 	}
 
-	/** Returns the remote sandbox record, or `null` if it no longer exists (404). */
-	private async tryGetExistingSandbox(sandboxId: string): Promise<SandboxRecord | null> {
+	private async createSandbox() {
+		const existingId = this.sandboxId;
+		const creation = existingId
+			? this.client.createSandbox({ id: existingId })
+			: this.client.createSandbox();
 		try {
-			return await this.client.getSandbox(sandboxId);
+			return await this.withLifecycleTimeout(creation);
 		} catch (error) {
-			if (error instanceof SandboxServiceError && error.status === 404) return null;
+			if (!existingId) {
+				void creation.then(async ({ id }) => await this.client.deleteSandbox(id)).catch(() => {});
+			}
 			throw error;
 		}
+	}
+
+	private async withLifecycleTimeout<T>(operation: Promise<T>): Promise<T> {
+		return await raceWithAbort(operation, AbortSignal.timeout(this.timeout));
 	}
 
 	/** Merges constructor-level env with per-command env, filtering out undefined values. */

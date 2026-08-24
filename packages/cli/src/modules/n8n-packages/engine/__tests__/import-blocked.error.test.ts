@@ -13,6 +13,13 @@ const folderConflict: BlockingIssue = {
 	expectedParentFolderId: 'anchor',
 };
 
+const projectConflict: BlockingIssue = {
+	type: 'project-conflict',
+	kind: 'fail-policy',
+	sourceProjectId: 'p1',
+	name: 'billing',
+};
+
 const credentialUnresolved: BlockingIssue = {
 	type: 'credential-unresolved',
 	kind: 'not_found',
@@ -39,6 +46,11 @@ const tagUnresolved = (
 describe('toImportBlockedError', () => {
 	it('maps a folder-conflict to 409 Conflict', () => {
 		const error = toImportBlockedError([folderConflict]);
+		expect(error).toBeInstanceOf(ConflictError);
+	});
+
+	it('maps a project-conflict to 409 Conflict', () => {
+		const error = toImportBlockedError([projectConflict]);
 		expect(error).toBeInstanceOf(ConflictError);
 	});
 

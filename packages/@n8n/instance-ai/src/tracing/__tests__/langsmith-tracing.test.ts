@@ -439,6 +439,7 @@ describe('createInstanceAiTraceContext', () => {
 			userId: 'user-1',
 			input: { message: 'What workflows do I have?' },
 			metadata: { n8n_version: '2.19.0' },
+			browserExtension: { connectionState: 'connected', version: '0.0.7' },
 		});
 
 		expect(tracing?.getTelemetry).toBeDefined();
@@ -466,6 +467,8 @@ describe('createInstanceAiTraceContext', () => {
 				user_id: 'user-1',
 				agent_role: 'orchestrator',
 				n8n_version: '2.19.0',
+				browser_extension_version: '0.0.7',
+				browser_connection_state: 'connected',
 				execution_mode: 'foreground',
 				trace_kind: 'message_turn',
 				langsmith_trace_id: tracing?.rootRun.traceId,
@@ -478,6 +481,36 @@ describe('createInstanceAiTraceContext', () => {
 		expect(typeof telemetry.metadata?.workflow_sdk_version).toBe('string');
 
 		await telemetry.provider?.shutdown();
+	});
+
+	it('records a connected extension that reports no version distinctly from no extension', async () => {
+		const connected = await createInstanceAiTraceContext({
+			threadId: 'thread-old-ext',
+			messageId: 'message-old-ext',
+			runId: 'run-old-ext',
+			userId: 'user-1',
+			input: { message: 'What workflows do I have?' },
+			browserExtension: { connectionState: 'connected' },
+		});
+
+		expect(connected?.rootRun.metadata).toEqual(
+			expect.objectContaining({ browser_connection_state: 'connected' }),
+		);
+		expect(connected?.rootRun.metadata).not.toHaveProperty('browser_extension_version');
+
+		const absent = await createInstanceAiTraceContext({
+			threadId: 'thread-no-ext',
+			messageId: 'message-no-ext',
+			runId: 'run-no-ext',
+			userId: 'user-1',
+			input: { message: 'What workflows do I have?' },
+			browserExtension: { connectionState: 'disconnected' },
+		});
+
+		expect(absent?.rootRun.metadata).toEqual(
+			expect.objectContaining({ browser_connection_state: 'disconnected' }),
+		);
+		expect(absent?.rootRun.metadata).not.toHaveProperty('browser_extension_version');
 	});
 
 	it('does not mutate LangSmith tracing environment flags while creating a context', async () => {

@@ -46,6 +46,38 @@ export class PublicFormPage extends BasePage {
 		await expect(this.page.getByText(text)).toBeVisible(options);
 	}
 
+	/** Form-level error banner above Submit (rejected submissions, not per-field validation). */
+	get submitError(): Locator {
+		return this.page.locator('#submit-error');
+	}
+
+	get submitButton(): Locator {
+		return this.page.locator('#submit-btn');
+	}
+
+	/** In-flight spinner inside the submit button. */
+	get submitSpinner(): Locator {
+		return this.page.locator('#submit-btn span');
+	}
+
+	/** The "Form Submitted" card, swapped in for the form once a submission lands. */
+	get submittedCard(): Locator {
+		return this.page.locator('#submitted-form');
+	}
+
+	get body(): Locator {
+		return this.page.locator('body');
+	}
+
+	/**
+	 * Hidden flag the template renders from the node's response mode. "true" means
+	 * the response body is consumed and written into the page, so submission
+	 * handling takes a different branch.
+	 */
+	get usesResponseData(): Locator {
+		return this.page.locator('#useResponseData');
+	}
+
 	/** Wait for the form submission POST to resolve, returning the response. */
 	async waitForSubmission() {
 		return await this.page.waitForResponse(

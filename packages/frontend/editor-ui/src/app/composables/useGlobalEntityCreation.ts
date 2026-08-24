@@ -3,6 +3,7 @@ import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { AGENTS_MODULE_NAME } from '@/features/agents/constants';
 import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
+import { useInstanceAiAvailable } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { sortByProperty } from '@n8n/utils/sort/sort-by-property';
@@ -18,10 +19,9 @@ import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environm
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { Scope } from '@n8n/permissions';
 import type { RouteLocationRaw } from 'vue-router';
-import { updatedIconSet, type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { updatedIconSet, type IconName } from '@n8n/design-system';
 
 type ProjectIcon = IconName | { type: 'icon'; value: IconName } | { type: 'emoji'; value: string };
 
@@ -93,12 +93,7 @@ export const useGlobalEntityCreation = () => {
 
 	const isAgentsModuleActive = computed(() => settingsStore.isModuleActive(AGENTS_MODULE_NAME));
 
-	const isInstanceAiAvailable = computed(
-		() =>
-			settingsStore.isModuleActive('instance-ai') &&
-			settingsStore.moduleSettings['instance-ai']?.enabled !== false &&
-			hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } }),
-	);
+	const isInstanceAiAvailable = useInstanceAiAvailable();
 
 	const instanceAiThreadItem = computed<Item | null>(() =>
 		isInstanceAiAvailable.value

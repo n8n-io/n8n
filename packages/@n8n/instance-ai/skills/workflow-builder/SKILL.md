@@ -70,6 +70,13 @@ For repairs, prefer editing the workspace file directly with file tools
 (`workspace_str_replace_file`) and calling `build-workflow` again with the same
 `filePath`.
 
+When a repair adds a node into an existing chain (an ensure-the-target-exists
+step, a dedupe, a notification), check what the downstream node reads before
+wiring it in-line — workflow rule 7 applies: an inserted write/create node
+replaces the payload flowing into the next node with its own API response.
+Branch it in parallel, reorder it upstream of the data producer, or make the
+downstream node reference the data node explicitly.
+
 ## Escalation
 
 If the service or workflow shape is clear, never stop before the first
@@ -115,15 +122,19 @@ setup steps or node semantics from memory when those sources can answer.
 1. **Knowledge base** — consult before
    building. Read the relevant `.md` guides and templates for each technique
    the request involves. Skip only for trivial mechanical edits you have
-   already reviewed in this thread.
-   - `knowledge-base/index.json` — catalog of technique guides
-     (`knowledge-base/best-practices/index.json`; read the linked `.md` files)
-     and orchestration reference docs (`knowledge-base/reference/index.json`)
-   - `knowledge-base/templates/` — curated SDK workflow examples: use
-     `workspace_execute_command` with `rg` or `find` to locate matches, then
-     read only the relevant `.ts` files — never load `templates/index.json`
-     wholesale
-   - `node-types/index.txt` — searchable catalog of available n8n nodes
+   already reviewed in this thread. The knowledge base lives at the workspace
+   root (NOT inside this skill's directory) — all paths below are
+   workspace-root-relative:
+   - `${N8N_WORKSPACE_DIR}/knowledge-base/index.json` — catalog of technique
+     guides (`${N8N_WORKSPACE_DIR}/knowledge-base/best-practices/index.json`;
+     read the linked `.md` files) and orchestration reference docs
+     (`${N8N_WORKSPACE_DIR}/knowledge-base/reference/index.json`)
+   - `${N8N_WORKSPACE_DIR}/knowledge-base/templates/` — curated SDK workflow
+     examples: use `workspace_execute_command` with `rg` or `find` to locate
+     matches, then read only the relevant `.ts` files —
+     never load `templates/index.json` wholesale
+   - `${N8N_WORKSPACE_DIR}/node-types/index.txt` — searchable catalog of
+     available n8n nodes
 2. **Runtime skills** — when another skill matches (e.g. `data-table-manager`,
    `debugging-executions`, `post-build-flow`), `load_skill` and follow it
    instead of improvising.
@@ -135,14 +146,19 @@ setup steps or node semantics from memory when those sources can answer.
 
 For workflows with multiple external systems, multiple requested effects,
 digests or reports, non-trivial branching, or Code nodes, read
-`knowledge-base/reference/workflow-builder-guardrails.md` before writing code.
-Use it as the build checklist for source preservation, fan-out/fan-in,
-effect-specific gating, and list itemization.
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-builder-guardrails.md`
+before writing code. Use it as the build checklist for source preservation,
+fan-out/fan-in, effect-specific gating, and list itemization.
 
 When mapping downstream fields from an OpenAI node, read
-`knowledge-base/reference/open-ai-output-shape.md` (v2+ text/response uses
-`$json.output[0].content[0].text`; v1 text/message uses `$json.message.content`
-— not `$json.text`).
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/open-ai-output-shape.md`
+(v2+ text/response uses `$json.output[0].content[0].text`; v1 text/message
+uses `$json.message.content` — not `$json.text`; `json_object`/`json_schema`
+output is already a parsed object, never `JSON.parse` it). When mapping fields
+from an Anthropic node, read
+`${N8N_WORKSPACE_DIR}/knowledge-base/reference/anthropic-output-shape.md`
+(`$json.content` is an array of blocks — read text with
+`$json.content[0].text`, never treat `$json.content` as a string).
 
 ## Workflow-Level Error Workflows
 
@@ -150,9 +166,10 @@ Error workflows are per-target-workflow (`settings.errorWorkflow` must be the
 real workflow ID of a separate **published** workflow with an active Error
 Trigger — never a name, placeholder, `activeVersionId`, or local SDK id).
 n8n has no global error workflow setting; mention that only if the user asks
-about global behavior. Before building or attaching an error workflow, load
-this skill's `references/error-workflows.md` linked file and follow its
-build → publish → assign steps. Do not create one before the user opts in.
+about global behavior. Do not offer or build an error workflow before the
+primary workflow is published. Before building or attaching an error
+workflow, load this skill's `references/error-workflows.md` linked file and
+follow its build → publish → assign steps.
 
 ## Mandatory Process
 
@@ -269,7 +286,8 @@ When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
 
 - The workflow is verified by structured tool evidence.
-- Setup is required and `workflows(action="setup")` has been routed or deferred.
+- Setup is required and `workflows(action="setup")` has been routed or deferred,
+  or the only setup left is for credentials the user skipped earlier.
 - A remediation guard says `shouldEdit: false`.
 - You are blocked after one repair attempt per unique failure signature.
 
@@ -307,6 +325,16 @@ decision after testing.
   workflow already had it. Otherwise use `newCredential('Suggested Credential
   Name')` — build tools mock unresolved credentials for verification and setup
   collects real ones later.
+- When the user explicitly asks for a **new** credential ("create a new Slack
+  credential"), the unresolved `newCredential('Name')` is not enough on its own —
+  the build would still attach their sole existing credential of that type, and
+  setup would preselect their most recent one. Pass the credential type in
+  `preferNewCredentials` on `build-workflow` **and** on
+  `workflows(action="setup")` (or `preferNew: true` on the entry of
+  `credentials(action="setup")`). The slot then stays unresolved through the build
+  and the card opens on credential creation, with existing credentials still
+  listed in case the user changes their mind. Pass it only on an explicit request,
+  never by default — reuse is the right behavior everywhere else.
 - When `build-workflow` returns `resolvedCredentialsByNode`, the build already
   attached a credential to those nodes — either an existing stored credential or
   an n8n credits–managed one (entries with `id: null` and `__aiGatewayManaged:
@@ -316,9 +344,30 @@ decision after testing.
 - Never use raw credential objects like `{ id: '...', name: '...' }` in SDK
   code; replace them with `newCredential()` when editing roundtripped code.
 - If a required credential type is not listed, call
-  `credentials(action="search-types")` with the service name. Prefer dedicated
-  credential types over generic auth; when generic auth is truly needed,
-  prefer `httpBearerAuth` over `httpHeaderAuth`.
+  `credentials(action="search-types")` with the service name. Pick in this
+  order:
+  1. A **dedicated credential type** whenever search finds one.
+  2. **Simplified Custom Auth** (`httpTemplatedCustomAuth`) for any service
+     without a dedicated type whose auth is expressible as header/query/body
+     values — this covers API keys and bearer tokens. When the provider
+     documents `Authorization: Bearer <token>`, do NOT reach for
+     `httpBearerAuth`: template it as
+     `{"headers":{"Authorization":"Bearer {{api_key}}"}}`. Set the HTTP
+     Request node's `genericAuthType` to `httpTemplatedCustomAuth`, and note
+     the provider's documented auth scheme (header format, key page, a cheap
+     authenticated GET endpoint) while you have the docs open: the setup call
+     needs them for the `credentialHints` recipe (see the post-build-flow
+     skill). Before that setup call, load the `credential-recipe-research`
+     skill and execute its lookup procedure — the recipe's template, docsUrl
+     and testUrl must come from pages fetched there, never from memory. Setup
+     rejects new plain generic credentials on HTTP Request nodes, so picking
+     Bearer/Header/Query/Custom Auth here means rebuilding — unless the user
+     explicitly asked for that plain type: an explicit user choice wins (setup
+     accepts it with `allowPlainGenericAuth: true`), don't argue with it.
+  3. Plain generic types (`httpBasicAuth`, `httpDigestAuth`, `oAuth2Api`, …)
+     only for what a template cannot express: basic auth's base64-encoded
+     pair, digest's challenge-response, OAuth flows — or when the user
+     explicitly asks for a specific plain type.
 - `credentials(action="list", type=...)` may include a synthetic n8n credits
   entry `{ id: null, name: "n8n credits", type, __aiGatewayManaged: true }`
   when the type is covered by n8n credits (see n8n credits Preference). It is
@@ -445,12 +494,13 @@ unsolicited `sticky()`, forbidden builder constructs (e.g. `.map()`), and
 repeated `.onTrue()` / `.onFalse()` overwrites on the same IF variable. Fix
 every reported error and warning before calling `build-workflow`.
 
-- Code nodes need not always be necessary. You can use other n8n nodes to do the same thing. 
+- Avoid code node where possible, use n8n nodes that help do the same thing.
+  If it makes it simpler, go ahead and use code node.
 - SDK builder code is a restricted subset of TypeScript that builds a static
   graph; it is not a Code node and does not run. Build strings with template
   literals; do runtime joining, aggregation, or transforms in a Code node or
   `expr()`. Full allowed/forbidden list:
-  `knowledge-base/reference/workflow-sdk-language.md`.
+  `${N8N_WORKSPACE_DIR}/knowledge-base/reference/workflow-sdk-language.md`.
 - Use `@n8n/workflow-sdk`.
 - Do not specify node positions. They are auto-calculated by the layout engine.
 - Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside
@@ -461,6 +511,15 @@ every reported error and warning before calling `build-workflow`.
   configs and from `sticky()` options alike. Positions are auto-calculated, and
   the saved workflow's own layout is restored on save, so nothing you drop here
   is lost. Leaving some in place is worse than dropping all of them.
+- When editing a pre-loaded workflow, keep every `config.id` value **exactly** as
+  `get-as-code` produced it, on the node it came with. `id` is the node's
+  permanent identity in n8n — execution logs, poll cursors, deduplication state
+  and the version diff are all keyed on it. Rename a node freely; the `id` stays.
+  Move it, rewire it, change its parameters — the `id` stays. Never invent, edit,
+  renumber or reuse an `id`, and never copy one from a template, another workflow
+  or another node. **Omit `id` entirely for any node you are adding** — one is
+  assigned on save. Deleting a node means deleting its `id` line with it. This is
+  the opposite of `position`: drop every `position`, keep every `id`.
 - Use `placeholder('hint')` directly as the parameter value. Do not wrap
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one
@@ -534,6 +593,21 @@ import {
 } from '@n8n/workflow-sdk';
 ```
 
+## Node Groups
+
+Organise multi-stage workflows into named node groups — visual frames on the canvas — so the
+result is readable the first time the user sees it. Group each clear stage (ingest → transform
+→ deliver); small workflows don't need groups. Give every group a one-sentence
+`description` — groups are collapsed by default, so name + description is what the user sees
+first.
+
+`.group(name, members, { description })` on the workflow builder; members are the node handles.
+Read `knowledge-base/reference/node-groups.md` for the exact rules (trigger nodes excluded,
+one connected section, AI sub-nodes stay with their Agent) before creating groups. Agent save
+tools drop an invalid group from the saved workflow and report a warning, so fix the source
+instead of re-emitting it. When editing an existing workflow, keep existing `.group(...)` calls
+and their descriptions intact unless the change is about grouping.
+
 ## Workflow Rules
 
 Follow these rules strictly when generating workflows:
@@ -579,6 +653,15 @@ Follow these rules strictly when generating workflows:
    match time units broadly (day/days, week/weeks…), and give every classifier
    an explicit fallback bucket — a one-phrasing regex silently misroutes every
    other phrasing.
+7. Inserting a node into an existing connection A→B changes what B receives:
+   `$json` and auto-mapped fields in B now read the inserted node's output, not
+   A's. Write/create/send nodes output their **API response** (ids, metadata,
+   `ok` flags), never the data that flowed into them — so inserting one
+   in-line (e.g. an ensure-the-target-exists step before a write) silently
+   replaces the payload with metadata. Keep the data path intact instead:
+   branch the inserted node in parallel from the data producer, reorder it
+   upstream of the data producer, or have B reference `$('Data Node')`
+   explicitly.
 
 ## Tool Naming Rules
 

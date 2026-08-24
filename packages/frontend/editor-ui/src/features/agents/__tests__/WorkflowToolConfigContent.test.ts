@@ -58,7 +58,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 	};
 });
 
-const TRIGGER_TYPE = SUPPORTED_WORKFLOW_TOOL_TRIGGERS[0];
+const TRIGGER_TYPE: string = SUPPORTED_WORKFLOW_TOOL_TRIGGERS[0];
 
 function workflow(
 	name: string,
@@ -75,7 +75,10 @@ function workflow(
 		description: overrides.description ?? '',
 		isArchived: overrides.isArchived ?? false,
 		updatedAt: overrides.updatedAt ?? '2026-07-01T12:00:00.000Z',
-		nodes: [{ type: TRIGGER_TYPE }],
+		nodes: [{ type: TRIGGER_TYPE }] as Array<{
+			type: string;
+			parameters?: Record<string, unknown>;
+		}>,
 	};
 }
 
@@ -267,14 +270,23 @@ describe('WorkflowToolConfigContent', () => {
 		});
 	});
 
-	it('opens the resolved target in a new tab', async () => {
+	it('keeps an id-backed target resolved after its workflow is renamed', async () => {
 		const open = vi.spyOn(window, 'open').mockImplementation(() => null);
-		setProjectWorkflows([workflow('Notify Sales', { id: 'wf-1' })]);
+		setProjectWorkflows([workflow('Renamed Sales', { id: 'wf-1' })]);
 
-		const { findByTestId } = renderComponent({ props: { initialRef: createRef() } });
+		const { findByTestId, queryByTestId } = renderComponent({
+			props: {
+				initialRef: createRef({
+					workflowId: 'wf-1',
+					workflow: 'Notify Sales',
+				}),
+			},
+		});
 		await fireEvent.click(await findByTestId('agent-workflow-tool-target-open'));
 
 		expect(open).toHaveBeenCalledWith('/workflow/wf-1', '_blank');
+		expect(queryByTestId('agent-workflow-tool-target-missing')).toBeNull();
+		expect(queryByTestId('agent-workflow-tool-target-duplicate')).toBeNull();
 	});
 
 	it('offers no open link when the target does not resolve', async () => {
@@ -327,5 +339,84 @@ describe('WorkflowToolConfigContent', () => {
 
 		expect(await findByTestId('agent-workflow-tool-target-unusable')).toBeTruthy();
 		expect(queryByTestId('agent-workflow-tool-target-missing')).toBeNull();
+	});
+
+	describe('workflow input bindings', () => {
+		function workflowWithInputs(
+			name: string,
+			fields: Array<{ name: string; type?: string }>,
+			overrides: { id?: string } = {},
+		) {
+			return {
+				...workflow(name, overrides),
+				nodes: [
+					{
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						parameters: {
+							inputSource: 'workflowInputs',
+							workflowInputs: { values: fields },
+						},
+					},
+				],
+			};
+		}
+
+		it('renders declared input fields for an Execute Workflow Trigger target', async () => {
+			setProjectWorkflows([
+				workflowWithInputs('Notify Sales', [
+					{ name: 'chatId', type: 'string' },
+					{ name: 'botName', type: 'string' },
+				]),
+			]);
+
+			const { findByTestId } = renderComponent({ props: { initialRef: createRef() } });
+
+			expect(await findByTestId('agent-workflow-tool-inputs')).toBeTruthy();
+			expect(await findByTestId('agent-workflow-tool-input-chatId')).toBeTruthy();
+			expect(await findByTestId('agent-workflow-tool-input-botName')).toBeTruthy();
+		});
+
+		it('shows a fixed value input when a binding is already fixed', async () => {
+			setProjectWorkflows([
+				workflowWithInputs('Notify Sales', [
+					{ name: 'chatId', type: 'string' },
+					{ name: 'botName', type: 'string' },
+				]),
+			]);
+
+			const { findByTestId, getByTestId } = renderComponent({
+				props: {
+					initialRef: createRef({
+						inputs: { botName: { mode: 'fixed', value: 'Jarvis' } },
+					}),
+				},
+			});
+
+			await findByTestId('agent-workflow-tool-input-value-botName');
+			expect(
+				(getByTestId('agent-workflow-tool-input-value-botName') as HTMLInputElement).value,
+			).toBe('Jarvis');
+		});
+
+		it('does not render input bindings for passthrough workflows', async () => {
+			setProjectWorkflows([
+				{
+					...workflow('Notify Sales'),
+					nodes: [
+						{
+							type: 'n8n-nodes-base.executeWorkflowTrigger',
+							parameters: { inputSource: 'passthrough' },
+						},
+					],
+				},
+			]);
+
+			const { findByTestId, queryByTestId } = renderComponent({
+				props: { initialRef: createRef() },
+			});
+			await findByTestId('agent-workflow-tool-target');
+
+			expect(queryByTestId('agent-workflow-tool-inputs')).toBeNull();
+		});
 	});
 });

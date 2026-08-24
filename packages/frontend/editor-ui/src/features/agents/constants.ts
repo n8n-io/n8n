@@ -6,7 +6,6 @@ export const AGENT_VIEW = 'AgentView';
 export const AGENT_SESSIONS_LIST_VIEW = 'AgentSessionsListView';
 export const AGENT_SESSION_DETAIL_VIEW = 'AgentSessionDetailView';
 export const PROJECT_AGENTS = 'ProjectAgents';
-export const AGENT_BUILDER_SETTINGS_VIEW = 'SettingsAgentBuilderView';
 
 export const AGENTS_MODULE_NAME = 'agents';
 
@@ -17,6 +16,7 @@ export const AGENT_TASK_MODAL_KEY = 'agentTaskModal';
 export const AGENT_SUB_AGENTS_MODAL_KEY = 'agentSubAgentsModal';
 export const AGENT_VECTOR_STORES_MODAL_KEY = 'agentVectorStoresModal';
 export const AGENT_JSON_IMPORT_MODAL_KEY = 'agentJsonImportModal';
+export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
 export const AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE = 'openAiApi';
 
 /** Synthetic tree key for the combined "Agent" panel (name/model/credential/instructions). */
@@ -28,6 +28,16 @@ export const CONFIG_JSON_SECTION_KEY = '__config_json';
 /** Synthetic tree key for the agent executions tab. */
 export const EXECUTIONS_SECTION_KEY = '__executions';
 
+/**
+ * Rows read in one page of an agent's eval cases. Set to the row route's own ceiling
+ * (`MAX_ITEMS_PER_PAGE`), which is the most this view can read without paging — so a
+ * dataset is fully editable up to that size. Generation caps a dataset at 20, but
+ * cases can also be added by hand or by attaching a table, and a row past this page
+ * would otherwise be invisible *and* uneditable while still counting toward the run.
+ * The card says so explicitly when the server's total exceeds what it loaded.
+ */
+export const AGENT_EVAL_CASES_PAGE_SIZE = 250;
+
 export {
 	CHAT_MESSAGE_STATUS,
 	TOOL_CALL_STATE,
@@ -37,3 +47,4 @@ export {
 
 /** Query-string key the builder uses to deep-link into a chat session. */
 export const CONTINUE_SESSION_ID_PARAM = 'continueSessionId';
+export const NEW_SESSION_PARAM = 'newSession';

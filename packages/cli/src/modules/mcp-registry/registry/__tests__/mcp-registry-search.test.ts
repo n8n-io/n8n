@@ -37,6 +37,7 @@ describe('searchMcpRegistryServers', () => {
 	it('maps a matched server to the config-ready shape', () => {
 		const [result] = searchMcpRegistryServers([server()], ['github']);
 		expect(result).toEqual({
+			slug: 'github',
 			name: 'github',
 			title: 'GitHub',
 			description: 'Work with GitHub repos',
@@ -57,6 +58,27 @@ describe('searchMcpRegistryServers', () => {
 		const [result] = searchMcpRegistryServers([sseOnly], ['sse-srv']);
 		expect(result.transport).toBe('sse');
 		expect(result.url).toBe('https://sse.example');
+	});
+
+	it('keeps the raw slug alongside the camelCased node name', () => {
+		const [result] = searchMcpRegistryServers([server({ slug: 'google-drive' })], ['google-drive']);
+		expect(result.slug).toBe('google-drive');
+		expect(result.name).toBe('googleDrive');
+		expect(result.credentialType).toBe('googleDriveMcpOAuth2Api');
+	});
+
+	it('ranks name matches above description matches', () => {
+		const servers = [
+			server({ slug: 'ci-bot', title: 'CI Bot', tagline: 'Mirrors issues to GitHub' }),
+			server({ slug: 'github-lite', title: 'GitHub Lite' }),
+			server(),
+		];
+
+		expect(searchMcpRegistryServers(servers, ['github']).map((result) => result.slug)).toEqual([
+			'github',
+			'github-lite',
+			'ci-bot',
+		]);
 	});
 
 	it('skips servers that have no usable remote', () => {

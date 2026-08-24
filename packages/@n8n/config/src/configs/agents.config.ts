@@ -71,13 +71,9 @@ export class AgentsConfig {
 	@Env('N8N_AGENTS_MODULES')
 	modules: AgentsModuleArray = [];
 
-	/** Enable Daytona sandbox for agent knowledge base operations. */
+	/** Enable sandbox-backed agent knowledge base operations. */
 	@Env('N8N_AGENTS_AI_SANDBOX_ENABLED')
 	sandboxEnabled: boolean = false;
-
-	/** Sandbox provider for agent knowledge base. Only `daytona` is supported. */
-	@Env('N8N_AGENTS_AI_SANDBOX_PROVIDER')
-	sandboxProvider: string = '';
 
 	/** Docker image for the Daytona sandbox (default: daytonaio/sandbox:0.5.0). */
 	@Env('N8N_AGENTS_AI_SANDBOX_IMAGE')
@@ -97,12 +93,4 @@ export class AgentsConfig {
 	/** When true, Daytona deletes the knowledge sandbox when it stops. */
 	@Env('N8N_AGENTS_AI_SANDBOX_EPHEMERAL')
 	sandboxEphemeral: boolean = false;
-
-	/** Daytona API URL (e.g. "https://app.daytona.io/api"). */
-	@Env('DAYTONA_API_URL')
-	daytonaApiUrl: string = '';
-
-	/** Daytona API key for authentication. */
-	@Env('DAYTONA_API_KEY')
-	daytonaApiKey: string = '';
 }

@@ -62,4 +62,23 @@ describe('scanDirectoryForPackages (real filesystem)', () => {
 			expect.objectContaining({ error: expect.any(Error) }),
 		);
 	});
+
+	// A crash between `CommunityPackagesService` backing up a package directory
+	// and cleaning up the backup can leave a `<package>.backup-<timestamp>`
+	// directory behind. It has the same package.json as the real package, so
+	// without being ignored it would resolve to the same package name and make
+	// the loader throw on a duplicate registration, bricking boot.
+	it('ignores a leftover package backup directory', async () => {
+		writePackage('n8n-nodes-good');
+		mkdirSync(path.join(nodeModulesDir, 'n8n-nodes-good.backup-1700000000000'));
+		writeFileSync(
+			path.join(nodeModulesDir, 'n8n-nodes-good.backup-1700000000000', 'package.json'),
+			JSON.stringify({ name: 'n8n-nodes-good', version: '1.0.0' }),
+		);
+
+		const loaders = await scanDirectoryForPackages(nodeModulesDir);
+
+		expect(loaders).toHaveLength(1);
+		expect(loaders[0].packageName).toBe('n8n-nodes-good');
+	});
 });

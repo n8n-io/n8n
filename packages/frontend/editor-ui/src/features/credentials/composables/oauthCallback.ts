@@ -82,6 +82,14 @@ export interface WaitForOAuthCallbackOptions {
 	 */
 	verifyConnected?: () => Promise<boolean>;
 	timeoutMs?: number;
+	/**
+	 * Resolve as aborted when `popup.closed` becomes true and a final
+	 * `verifyConnected` check does not confirm success. Enable this only for
+	 * flows where prompt cancellation is more important than COOP compatibility:
+	 * browsers also report COOP-severed popups as closed while they remain open.
+	 *
+	 */
+	abortOnPopupClose?: boolean;
 }
 
 /**
@@ -93,7 +101,9 @@ export interface WaitForOAuthCallbackOptions {
  * window is still open and the user is still authorizing. When the popup
  * reads as closed we instead start polling `verifyConnected` (when given) and
  * keep listening for callback messages until `timeoutMs` elapses or `signal`
- * aborts.
+ * aborts. Callers can opt into treating this signal as cancellation with
+ * `abortOnPopupClose`, accepting that COOP-severed popups are indistinguishable
+ * from popups the user actually closed.
  */
 export async function waitForOAuthCallback({
 	popup,
@@ -101,6 +111,7 @@ export async function waitForOAuthCallback({
 	signal,
 	verifyConnected,
 	timeoutMs = OAUTH_FLOW_TIMEOUT,
+	abortOnPopupClose = false,
 }: WaitForOAuthCallbackOptions): Promise<OAuthFlowOutcome> {
 	return await new Promise((resolve) => {
 		const oauthChannel = new BroadcastChannel('oauth-callback');
@@ -140,7 +151,12 @@ export async function waitForOAuthCallback({
 			if (verifyInFlight || settled || !verifyConnected) return;
 			verifyInFlight = true;
 			try {
-				if (await verifyConnected()) settle(OAUTH_CALLBACK_SUCCESS);
+				const connected = await verifyConnected();
+				if (connected) {
+					settle(OAUTH_CALLBACK_SUCCESS);
+				} else {
+					if (abortOnPopupClose && popup.closed) settle('aborted');
+				}
 			} catch {
 				// Treat verification errors as "not connected yet" and keep waiting.
 			} finally {
@@ -153,7 +169,11 @@ export async function waitForOAuthCallback({
 			clearInterval(popupClosedPoll);
 			if (verifyConnected) {
 				void verify();
-				verifyTimer = setInterval(() => void verify(), VERIFY_CONNECTED_INTERVAL);
+				verifyTimer = setInterval(() => {
+					void verify();
+				}, VERIFY_CONNECTED_INTERVAL);
+			} else if (abortOnPopupClose) {
+				settle('aborted');
 			}
 		}, POPUP_CLOSED_POLL_INTERVAL);
 

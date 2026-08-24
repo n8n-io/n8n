@@ -37,7 +37,7 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import type { IUser } from 'n8n-workflow';
 
 import { N8nBadge, N8nHeading, N8nIcon, N8nTabs } from '@n8n/design-system';
-import type { TabOptions } from '@n8n/design-system/types';
+import type { TabOptions } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowVersionFormModalEventBusEvents } from '../components/WorkflowVersionFormModal.vue';

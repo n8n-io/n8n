@@ -13,6 +13,7 @@ import validator from 'validator';
 import { PublicApiControllerRegistry } from './public-api-controller.registry';
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
@@ -321,6 +322,7 @@ function createLazyValidatorMiddleware(
 							handlers: {
 								ApiKeyAuth: authenticate,
 								BearerAuth: authenticate,
+								CookieAuth: authenticate,
 							},
 						},
 					}),
@@ -379,11 +381,13 @@ function createApiRouter(
 
 	const publicApiErrorHandler: ErrorRequestHandler = (
 		error: Error,
-		_req: express.Request,
+		req: express.Request,
 		res: express.Response,
 		_next: express.NextFunction,
 	) => {
-		sendPublicApiErrorResponse(res, error);
+		sendPublicApiErrorResponse(res, error, {
+			hasSessionCookie: Boolean(req.cookies?.[AUTH_COOKIE_NAME]),
+		});
 	};
 
 	apiController.use(publicApiErrorHandler);
@@ -410,6 +414,12 @@ export const loadPublicApiVersions = async (
 	};
 };
 
-export function isApiEnabled(): boolean {
+/**
+ * Whether API-key (token) based authentication is accepted on the public API.
+ * Public API routes are always registered regardless of this flag — the UI
+ * authenticates against them with the user's session cookie instead, which
+ * must keep working even when token-based access is disabled.
+ */
+export function isApiKeyAuthEnabled(): boolean {
 	return !Container.get(GlobalConfig).publicApi.disabled && !Container.get(License).isAPIDisabled();
 }
