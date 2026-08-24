@@ -9,8 +9,9 @@ export interface ConfluenceBodyEnvelope extends IDataObject {
 	value: string;
 }
 
-export function bodyProperties(operations: string[]): INodeProperties[] {
+export function bodyProperties(operations: string[], bodyHint?: string): INodeProperties[] {
 	const show = { resource: ['page'], operation: operations };
+	const hint = bodyHint === undefined ? {} : { hint: bodyHint };
 	return [
 		{
 			...bodyFormatOption,
@@ -32,7 +33,8 @@ export function bodyProperties(operations: string[]): INodeProperties[] {
 				{
 					name: 'Storage',
 					value: 'storage',
-					description: 'Confluence storage-format XHTML, e.g. <h2>Title</h2><p>Text</p>',
+					description:
+						'Confluence storage-format XHTML, e.g. &lt;h2&gt;Title&lt;/h2&gt;&lt;p&gt;Text&lt;/p&gt;',
 				},
 			],
 		},
@@ -45,6 +47,7 @@ export function bodyProperties(operations: string[]): INodeProperties[] {
 			description:
 				'Page content as plain text; each line becomes a paragraph. Blank lines and leading whitespace are removed.',
 			displayOptions: { show: { ...show, bodyFormat: ['plainText'] } },
+			...hint,
 		},
 		{
 			displayName: 'Body (Storage HTML)',
@@ -55,6 +58,7 @@ export function bodyProperties(operations: string[]): INodeProperties[] {
 			placeholder: '<h2>Heading</h2><p>Text</p>',
 			description: 'Page content in Confluence storage format',
 			displayOptions: { show: { ...show, bodyFormat: ['storage'] } },
+			...hint,
 		},
 		{
 			displayName: 'Body (ADF JSON)',
@@ -64,6 +68,7 @@ export function bodyProperties(operations: string[]): INodeProperties[] {
 			placeholder: '{ "type": "doc", "version": 1, "content": [] }',
 			description: 'Page content as an Atlassian Document Format document',
 			displayOptions: { show: { ...show, bodyFormat: ['atlas_doc_format'] } },
+			...hint,
 		},
 	];
 }
@@ -129,17 +134,35 @@ export function buildBodyEnvelope(
 	}
 }
 
+const fieldByFormat: Record<ConfluenceBodyFormat, string> = {
+	plainText: 'bodyPlainText',
+	storage: 'bodyStorage',
+	atlas_doc_format: 'bodyAdf',
+};
+
 export function readBodyEnvelope(
 	ctx: IExecuteFunctions,
 	itemIndex: number,
 ): ConfluenceBodyEnvelope {
 	const format = ctx.getNodeParameter('bodyFormat', itemIndex, 'plainText') as ConfluenceBodyFormat;
-	const fieldByFormat: Record<ConfluenceBodyFormat, string> = {
-		plainText: 'bodyPlainText',
-		storage: 'bodyStorage',
-		atlas_doc_format: 'bodyAdf',
-	};
 	const content = ctx.getNodeParameter(fieldByFormat[format], itemIndex, '');
+	try {
+		return buildBodyEnvelope(format, content);
+	} catch (error) {
+		throw new NodeOperationError(ctx.getNode(), (error as Error).message, { itemIndex });
+	}
+}
+
+/** Empty-means-keep variant for Update: a blank body field returns undefined
+ * instead of an empty envelope, so the caller resends the current content. */
+export function readBodyEnvelopeIfProvided(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+): ConfluenceBodyEnvelope | undefined {
+	const format = ctx.getNodeParameter('bodyFormat', itemIndex, 'plainText') as ConfluenceBodyFormat;
+	const content = ctx.getNodeParameter(fieldByFormat[format], itemIndex, '');
+	if (content === null || content === undefined) return undefined;
+	if (typeof content === 'string' && content.trim() === '') return undefined;
 	try {
 		return buildBodyEnvelope(format, content);
 	} catch (error) {

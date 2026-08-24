@@ -76,6 +76,8 @@ export namespace PubSub {
 		export type CancelCollection = ToCommand<'cancel-collection'>;
 		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
 		export type AgentChatSubscriptionChanged = ToCommand<'agent-chat-subscription-changed'>;
+		export type AgentChatLeaderChannelRequest = ToCommand<'agent-chat-leader-channel-request'>;
+		export type AgentChatLeaderChannelResult = ToCommand<'agent-chat-leader-channel-result'>;
 		export type AgentConfigChanged = ToCommand<'agent-config-changed'>;
 		export type AgentTasksChanged = ToCommand<'agent-tasks-changed'>;
 		export type RedactionFloorChanged = ToCommand<'redaction-floor-changed'>;
@@ -119,6 +121,8 @@ export namespace PubSub {
 		| Commands.CancelCollection
 		| Commands.AgentChatIntegrationChanged
 		| Commands.AgentChatSubscriptionChanged
+		| Commands.AgentChatLeaderChannelRequest
+		| Commands.AgentChatLeaderChannelResult
 		| Commands.AgentConfigChanged
 		| Commands.AgentTasksChanged
 		| Commands.RedactionFloorChanged;

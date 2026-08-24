@@ -20,6 +20,26 @@ import {
 	type StepSummary,
 } from '../execution/step-store';
 
+/**
+ * Per output slot: whether the step put data there. Computed in the query, so the
+ * potentially large outputs payload is never transferred. A slot counts as filled
+ * unless it holds JSON null.
+ */
+const FILLED_OUTPUT_SLOTS = `COALESCE(
+	(SELECT array_agg(jsonb_typeof(slot.value) <> 'null' ORDER BY slot.ordinality)
+	 FROM jsonb_array_elements(step.outputs) WITH ORDINALITY AS slot),
+	'{}'
+)`;
+
+/** What both summary queries select: every column but the outputs payload. */
+type StepSummaryRow = {
+	id: string;
+	nodeId: string;
+	iteration: number;
+	status: StepStatus;
+	filledOutputSlots: boolean[];
+};
+
 /** RETURNING rows come back keyed by database column name (snake_case). */
 type InsertedStepRow = { id: string; node_id: string; iteration: number };
 type ClaimedStepRow = { id: string; execution_id: string; node_id: string; iteration: number };
@@ -212,30 +232,14 @@ export class TypeOrmStepStore implements StepStore {
 	): Promise<Record<StepKeyId, StepSummary>> {
 		if (keys.length === 0) return {};
 
-		// The per-slot booleans are computed inside the query, so the potentially
-		// large outputs payloads are never transferred. A slot counts as filled
-		// unless it holds JSON null.
 		const { fragment, parameters } = stepKeyFilter(keys);
-		const rows: Array<{
-			id: string;
-			nodeId: string;
-			iteration: number;
-			status: StepStatus;
-			filledOutputSlots: boolean[];
-		}> = await this.repo
+		const rows: StepSummaryRow[] = await this.repo
 			.createQueryBuilder('step')
 			.select('step.id', 'id')
 			.addSelect('step.node_id', 'nodeId')
 			.addSelect('step.iteration', 'iteration')
 			.addSelect('step.status', 'status')
-			.addSelect(
-				`COALESCE(
-					(SELECT array_agg(jsonb_typeof(slot.value) <> 'null' ORDER BY slot.ordinality)
-					 FROM jsonb_array_elements(step.outputs) WITH ORDINALITY AS slot),
-					'{}'
-				)`,
-				'filledOutputSlots',
-			)
+			.addSelect(FILLED_OUTPUT_SLOTS, 'filledOutputSlots')
 			.where('step.execution_id = :executionId', { executionId })
 			.andWhere(fragment, parameters)
 			.getRawMany();
@@ -243,12 +247,27 @@ export class TypeOrmStepStore implements StepStore {
 		return Object.fromEntries(rows.map((row) => [stepKeyId(row), row]));
 	}
 
-	async loadLatestStep(executionId: string, nodeId: string): Promise<StepRecord | null> {
-		// NOTE: `findOne({ where })`, not `findOneBy`, as in `loadStep`.
-		return await this.repo.findOne({
-			where: { executionId, nodeId },
-			order: { iteration: 'DESC' },
-		});
+	async loadLatestStepSummaries(
+		executionId: string,
+		nodeIds: string[],
+	): Promise<Record<string, StepSummary>> {
+		if (nodeIds.length === 0) return {};
+
+		const rows: StepSummaryRow[] = await this.repo
+			.createQueryBuilder('step')
+			.distinctOn(['step.node_id'])
+			.select('step.id', 'id')
+			.addSelect('step.node_id', 'nodeId')
+			.addSelect('step.iteration', 'iteration')
+			.addSelect('step.status', 'status')
+			.addSelect(FILLED_OUTPUT_SLOTS, 'filledOutputSlots')
+			.where('step.execution_id = :executionId', { executionId })
+			.andWhere('step.node_id IN (:...nodeIds)', { nodeIds })
+			.orderBy('step.node_id')
+			.addOrderBy('step.iteration', 'DESC')
+			.getRawMany();
+
+		return Object.fromEntries(rows.map((row) => [row.nodeId, row]));
 	}
 
 	async countSettledSteps(executionId: string): Promise<number> {

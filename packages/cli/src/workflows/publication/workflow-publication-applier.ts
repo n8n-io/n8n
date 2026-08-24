@@ -10,14 +10,20 @@ import {
 	type WorkflowPublicationTriggerKind,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { INode, WorkflowActivateMode } from 'n8n-workflow';
 
+import { NodeTypes } from '@/node-types';
+import { Telemetry } from '@/telemetry';
+import { healNodeIds } from '@/workflows/publication/heal-node-ids';
 import type {
 	PublicationResult,
 	TriggerPublicationStatus,
 } from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
+import { isTriggerLikeNodeType } from '@/workflows/triggers/enabled-trigger-nodes';
+import { WorkflowService } from '@/workflows/workflow.service';
 import {
 	WorkflowTriggerActivator,
 	type TriggerActivationFailure,
@@ -59,6 +65,9 @@ export class WorkflowPublicationApplier {
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowTriggerActivator: WorkflowTriggerActivator,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly nodeTypes: NodeTypes,
+		private readonly workflowService: WorkflowService,
+		private readonly telemetry: Telemetry,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -119,6 +128,9 @@ export class WorkflowPublicationApplier {
 		record: WorkflowPublicationOutbox,
 		abort: TriggerOperationAbort,
 	): Promise<PublicationResult> {
+		const healSkip = await this.healBrokenNodeIds(workflow, newVersion);
+		if (healSkip !== null) return healSkip;
+
 		const oldTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
 		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
@@ -350,6 +362,71 @@ export class WorkflowPublicationApplier {
 		const oldVersion = currentlyPublishedVersion?.publishedVersion ?? null;
 
 		return { workflow, oldVersion, newVersion };
+	}
+
+	/**
+	 * Guards activation against a version whose nodes carry duplicate or missing
+	 * ids — wild data predating id enforcement, or reimported around it. Applying
+	 * such a version breaks everything keyed on `(workflowId, nodeId)`: its
+	 * trigger-status rows collide on their primary key and durable poll cursors
+	 * are shared between nodes. Instead, a corrected copy is published as a new
+	 * system-authored version and this record is skipped; the publish enqueued
+	 * the record that applies the healed version. Healing a healed version is a
+	 * no-op, so this converges instead of publishing forever. A lost publish
+	 * race (concurrent user publish, unpublish, or deletion) means something
+	 * newer superseded this version, and its own record does the work.
+	 */
+	private async healBrokenNodeIds(
+		workflow: WorkflowEntity,
+		newVersion: WorkflowHistory,
+	): Promise<PublicationResult | null> {
+		const healed = healNodeIds(newVersion.nodes, {
+			isTriggerLike: (node) => this.isTriggerLikeNode(node),
+		});
+		if (!healed.changed) return null;
+
+		this.logger.warn(
+			'Published version carries duplicate or missing node ids, publishing a healed version',
+			{
+				workflowId: workflow.id,
+				versionId: newVersion.versionId,
+				filled: healed.report.filled.length,
+				reassigned: healed.report.reassigned.length,
+				dropped: healed.report.dropped.length,
+			},
+		);
+
+		// Baseline on the version the healed copy was derived from: if anything
+		// newer was published while this record was in flight, the heal must lose.
+		const published = await this.workflowService.publishAsSystem(
+			workflow.id,
+			{
+				nodes: healed.nodes,
+				connections: newVersion.connections,
+				nodeGroups: newVersion.nodeGroups,
+			},
+			newVersion.versionId,
+		);
+
+		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW.NODE_IDS_HEALED, {
+			workflow_id: workflow.id,
+			filled_count: healed.report.filled.length,
+			reassigned_count: healed.report.reassigned.length,
+			dropped_count: healed.report.dropped.length,
+			superseded: !published.published,
+		});
+
+		return { type: 'skipped', reason: published.published ? 'node-ids-healed' : 'superseded' };
+	}
+
+	private isTriggerLikeNode(node: INode): boolean {
+		try {
+			return isTriggerLikeNodeType(this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion));
+		} catch {
+			// An unresolvable node type (e.g. an uninstalled community node) must not
+			// block healing; the keeper preference falls back to the first sharer.
+			return false;
+		}
 	}
 
 	/**

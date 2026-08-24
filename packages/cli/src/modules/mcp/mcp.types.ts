@@ -92,6 +92,8 @@ export type SearchWorkflowsParams = {
 	projectId?: string;
 	tags?: string[];
 	sortBy?: SearchWorkflowsSortBy;
+	folderId?: string;
+	includeSubfolders?: boolean;
 };
 
 export type SearchWorkflowsItem = {
@@ -103,12 +105,14 @@ export type SearchWorkflowsItem = {
 	updatedAt: string | null;
 	triggerCount: number | null;
 	availableInMCP: boolean;
+	parentFolderId: string | null;
 	tags: Array<{ id: string; name: string }>;
 };
 
 export type SearchWorkflowsResult = {
 	data: SearchWorkflowsItem[];
 	count: number;
+	error?: string;
 };
 
 export type WorkflowDetailsResult = z.infer<WorkflowDetailsOutputSchema>;

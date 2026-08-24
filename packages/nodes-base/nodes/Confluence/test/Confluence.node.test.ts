@@ -13,14 +13,17 @@ describe('Confluence Node', () => {
 		expect(node.description.usableAsTool).toBeUndefined();
 	});
 
-	it('should expose the page resource with the create and get operations', () => {
+	it('should expose the page resource with the append, create, delete, get and update operations', () => {
 		const resource = node.description.properties.find((p) => p.name === 'resource');
 		expect(resource?.options).toEqual([expect.objectContaining({ value: 'page' })]);
 
 		const operation = node.description.properties.find((p) => p.name === 'operation');
 		expect(operation?.options).toEqual([
+			expect.objectContaining({ value: 'append' }),
 			expect.objectContaining({ value: 'create' }),
+			expect.objectContaining({ value: 'delete' }),
 			expect.objectContaining({ value: 'get' }),
+			expect.objectContaining({ value: 'update' }),
 		]);
 	});
 

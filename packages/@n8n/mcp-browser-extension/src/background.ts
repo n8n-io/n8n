@@ -5,8 +5,9 @@
  * and tracks tab lifecycle for agent-created tabs only.
  */
 
+import { isHostApproved } from './approvedHosts';
 import { createLogger } from './logger';
-import { isAllowedPageOrigin, isAllowedRelayUrl } from './relayAllowlist';
+import { getRelayHostKey, isAllowedPageOrigin, isAllowedRelayUrl } from './relayAllowlist';
 import { RelayConnection, isEligibleTab } from './relayConnection';
 import type {
 	ExtensionMessage,
@@ -23,6 +24,16 @@ interface ConnectionState {
 }
 
 let activeConnection: ConnectionState | null = null;
+// Bumped per connect request. A handshake is slow enough that a newer one can finish while
+// an older is still opening, so the older must not commit itself over the live session.
+let connectGeneration = 0;
+
+/** A query param rather than a header because `WebSocket` cannot set request headers. */
+export function buildRelayWsUrl(relayUrl: string, version: string): string {
+	const url = new URL(relayUrl);
+	url.searchParams.set('extensionVersion', version);
+	return url.toString();
+}
 
 // ---------------------------------------------------------------------------
 // Relay URL storage (for deduplicating connect.html tabs)
@@ -237,10 +248,13 @@ chrome.runtime.onMessageExternal.addListener(
 		log.debug('external message received:', message.type, 'from', sender.origin);
 
 		if (message.type === 'connect') {
-			void handleExternalConnect(message.relayUrl).then(sendResponse, (error: unknown) => {
-				log.warn('external connect failed:', error);
-				sendResponse({ accepted: false });
-			});
+			void handleExternalConnect(message.relayUrl, sender.origin).then(
+				sendResponse,
+				(error: unknown) => {
+					log.warn('external connect failed:', error);
+					sendResponse({ accepted: false });
+				},
+			);
 			return true;
 		}
 
@@ -257,7 +271,10 @@ chrome.runtime.onMessageExternal.addListener(
 	},
 );
 
-async function handleExternalConnect(relayUrl: string): Promise<ExternalConnectResponse> {
+async function handleExternalConnect(
+	relayUrl: string,
+	senderOrigin: string | undefined,
+): Promise<ExternalConnectResponse> {
 	if (!isAllowedRelayUrl(relayUrl)) {
 		log.warn('refusing external connect to disallowed relay:', relayUrl);
 		return { accepted: false };
@@ -272,11 +289,26 @@ async function handleExternalConnect(relayUrl: string): Promise<ExternalConnectR
 
 	settleConnectFlow(false);
 
+	// Approved host asked for by its own instance — connect straight through. Pending is set
+	// before the handshake so a `connectResult` arriving mid-flight can attach its callback,
+	// and the drawer stays enabled because there is no confirmation page to focus.
+	const askedByRelayHost = getRelayHostKey(senderOrigin) === getRelayHostKey(relayUrl);
+	if (askedByRelayHost && (await isHostApproved(relayUrl))) {
+		log.debug('relay host previously approved, connecting without confirmation:', relayUrl);
+		const flow: PendingConnectFlow = { relayUrl, tabId: null, notify: null };
+		pendingConnectFlow = flow;
+		void connectToRelay(relayUrl, []).then((result) => {
+			// A newer request may already own the pending flow; only settle our own.
+			if (!result.success && pendingConnectFlow === flow) settleConnectFlow(false);
+		});
+		return { accepted: true, confirmationRequired: false };
+	}
+
 	const existing = await deliverRelayUrl(relayUrl);
 	const tabId = existing?.id ?? (await openConnectPopup(relayUrl));
 	pendingConnectFlow = { relayUrl, tabId, notify: null };
 	setDrawerEnabled(false);
-	return { accepted: true };
+	return { accepted: true, confirmationRequired: true };
 }
 
 async function openConnectPopup(relayUrl: string): Promise<number | null> {
@@ -420,11 +452,13 @@ async function connectToRelay(
 		return { success: false, error: 'Refusing to connect: not a recognized n8n instance.' };
 	}
 
-	// Clean up existing connection
+	// Clean up existing connection, then claim a generation — `disconnect` advances it, so
+	// taking ours first would make this attempt invalidate itself.
 	disconnect();
+	const generation = ++connectGeneration;
 
 	try {
-		const ws = new WebSocket(relayUrl);
+		const ws = new WebSocket(buildRelayWsUrl(relayUrl, chrome.runtime.getManifest().version));
 
 		await new Promise<void>((resolve, reject) => {
 			const timeout = setTimeout(() => {
@@ -454,16 +488,25 @@ async function connectToRelay(
 			throw error;
 		}
 
+		if (generation !== connectGeneration) {
+			log.debug('discarding superseded relay connection:', relayUrl);
+			relay.close('superseded');
+			return { success: false, error: 'Superseded by a newer connection request.' };
+		}
+
 		activeConnection = { relay, relayUrl };
 
 		relay.onclose = () => {
 			log.debug('relay connection closed');
+			// A superseded relay closing must not clear the session that replaced it.
+			if (activeConnection?.relay !== relay) return;
 			activeConnection = null;
 			updateBadge(0);
 			broadcastStatusChange();
 		};
 
 		relay.ontabcreated = () => {
+			if (activeConnection?.relay !== relay) return;
 			broadcastStatusChange();
 			updateBadge(relay.getControlledIds().length);
 		};
@@ -472,7 +515,9 @@ async function connectToRelay(
 		log.debug('connected, controlling', tabCount, 'tabs');
 		updateBadge(tabCount);
 		broadcastStatusChange();
-		settleConnectFlow(pendingConnectFlow?.relayUrl === relayUrl);
+		// Only our own flow: a newer request may already own the pending one, and settling it
+		// here would fail a page whose confirmation is still on screen.
+		if (pendingConnectFlow?.relayUrl === relayUrl) settleConnectFlow(true);
 		return { success: true };
 	} catch (error) {
 		log.error('connectToRelay failed:', error);
@@ -484,6 +529,9 @@ async function connectToRelay(
 }
 
 function disconnect(): void {
+	// Outside the guard below: a handshake that has not committed yet leaves
+	// `activeConnection` null, and it must still be invalidated by a teardown.
+	connectGeneration++;
 	if (activeConnection) {
 		log.debug('disconnecting');
 		activeConnection.relay.close('extension_disconnected');
@@ -507,7 +555,8 @@ function broadcastStatusChange(): void {
 // ---------------------------------------------------------------------------
 
 function updateBadge(tabCount: number): void {
-	const text = tabCount > 0 ? String(tabCount) : '';
+	// A prompt-free connect shows no UI at all, so mark the icon even before any tab attaches.
+	const text = tabCount > 0 ? String(tabCount) : activeConnection ? '•' : '';
 	void chrome.action.setBadgeText({ text });
 	void chrome.action.setBadgeBackgroundColor({ color: tabCount > 0 ? '#4CAF50' : '#999' });
 }
