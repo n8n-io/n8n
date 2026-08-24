@@ -387,7 +387,11 @@ describe('telegramSendAndWaitWebhook', () => {
 			chat_id: 999,
 			message_id: 55,
 		});
-		expect(genericFunctions.apiRequest).not.toHaveBeenCalledWith('POST', 'editMessageText', expect.anything());
+		expect(genericFunctions.apiRequest).not.toHaveBeenCalledWith(
+			'POST',
+			'editMessageText',
+			expect.anything(),
+		);
 		const resumed = (
 			result as { workflowData?: Array<Array<{ json: { data: { approved: boolean } } }>> }
 		).workflowData?.[0]?.[0]?.json.data;
@@ -402,11 +406,16 @@ describe('telegramSendAndWaitWebhook', () => {
 			if (name === 'responseType') return 'approval';
 			return fallback as never;
 		});
-		webhookFns.getRequestObject.mockReturnValue({ method: 'GET' } as never);
+		webhookFns.getRequestObject.mockReturnValue({
+			method: 'GET',
+			headers: {
+				'user-agent':
+					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
+			},
+		} as never);
 		customDataGet.mockReturnValue(JSON.stringify({ chatId: 999, messageId: 55 }));
 
 		const result = await telegramSendAndWaitWebhook.call(webhookFns);
-
 		expect(genericFunctions.apiRequest).toHaveBeenCalledWith('POST', 'deleteMessage', {
 			chat_id: 999,
 			message_id: 55,
@@ -463,7 +472,7 @@ describe('telegramSendAndWaitWebhook', () => {
 			if (name === 'responseType') return 'approval';
 			return fallback as never;
 		});
-		webhookFns.getRequestObject.mockReturnValue({ method: 'GET' } as never);
+		webhookFns.getRequestObject.mockReturnValue({ method: 'GET', headers: {} } as never);
 		// Executions waiting since before this feature have no stored target.
 		customDataGet.mockReturnValue('');
 
@@ -472,5 +481,29 @@ describe('telegramSendAndWaitWebhook', () => {
 		expect(genericFunctions.apiRequest).not.toHaveBeenCalled();
 		expect(sendAndWaitWebhook).toHaveBeenCalledTimes(1);
 		expect(result).toEqual({ noWebhookResponse: true });
+	});
+
+	it('does not delete on a bot-fetched approval link, mirroring the shared handler guard', async () => {
+		(sendAndWaitWebhook as Mock).mockResolvedValue({ noWebhookResponse: true });
+		webhookFns.getBodyData.mockReturnValue({});
+		webhookFns.getNodeParameter.mockImplementation((name: unknown, fallback?: unknown) => {
+			if (name === 'options') return { deleteOnResponse: true };
+			if (name === 'responseType') return 'approval';
+			return fallback as never;
+		});
+		webhookFns.getRequestObject.mockReturnValue({
+			method: 'GET',
+			headers: { 'user-agent': 'Twitterbot/1.0' },
+		} as never);
+		customDataGet.mockReturnValue(JSON.stringify({ chatId: 999, messageId: 55 }));
+
+		await telegramSendAndWaitWebhook.call(webhookFns);
+
+		expect(genericFunctions.apiRequest).not.toHaveBeenCalledWith(
+			'POST',
+			'deleteMessage',
+			expect.anything(),
+		);
+		expect(sendAndWaitWebhook).toHaveBeenCalledTimes(1);
 	});
 });

@@ -2090,6 +2090,13 @@ export class Telegram implements INodeType {
 							messageId: result?.message_id,
 						}),
 					);
+					// set() silently drops new keys once execution metadata is full
+					// (KV_LIMIT = 10); verify the write landed so the missing cleanup is visible.
+					if (!this.customData.get('tgDeleteTarget')) {
+						this.logger.warn(
+							'Telegram node: could not store the message identity for Delete Message on Response because execution custom data is full',
+						);
+					}
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {

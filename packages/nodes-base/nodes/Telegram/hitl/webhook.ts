@@ -1,11 +1,12 @@
 import { timingSafeEqual } from 'crypto';
 import { parseHitlCallbackReference } from 'n8n-core';
+import isbot from 'isbot';
 import type { IDataObject, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
 
 import type { TelegramChatApprovalOptions } from './descriptions';
 import { deriveHitlSecretToken } from './tokens';
 import type { SendAndWaitResponder } from '../../../utils/sendAndWait/interfaces';
-import { sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
+import { isMicrosoftPreviewService, sendAndWaitWebhook } from '../../../utils/sendAndWait/utils';
 import { apiRequest } from '../GenericFunctions';
 import type { CallbackQuery } from '../IEvent';
 
@@ -102,9 +103,19 @@ async function deleteMessageOnResponse(context: IWebhookFunctions): Promise<void
 	const options = context.getNodeParameter('options', {}) as IDataObject;
 	if (!options || options.deleteOnResponse !== true) return;
 
-	const method = context.getRequestObject().method;
+	const req = context.getRequestObject();
+	const method = req.method;
 	const responseType = context.getNodeParameter('responseType', 'approval') as string;
 	if ((responseType === 'freeText' || responseType === 'customForm') && method === 'GET') return;
+
+	// Mirror the shared handler's bot guard: a preview crawler fetching the
+	// approval link must not delete the message while the execution keeps waiting.
+	if (
+		responseType === 'approval' &&
+		(isbot(req.headers['user-agent']) || isMicrosoftPreviewService(req.headers['user-agent']))
+	) {
+		return;
+	}
 
 	let stored: { chatId?: string | number; messageId?: string | number } | undefined;
 	try {
