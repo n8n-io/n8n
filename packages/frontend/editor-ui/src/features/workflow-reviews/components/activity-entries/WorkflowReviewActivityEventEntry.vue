@@ -97,8 +97,7 @@ const causeKeys: Record<
  * survive a bad payload with a reduced sentence: a decision loses its note, a cause event
  * its actor.
  *
- * `workflow` is set only when the workflow still exists. It picks the message variant that
- * names the workflow, rendered as a link.
+ * `workflow` is set only when the workflow still exists.
  *
  * `namesActor` comes from the entry itself, never from `createdBy` — that is also null for
  * deleted users, whose actions must still read as a person's.
@@ -177,9 +176,7 @@ const content = computed<{
 			const versionName =
 				linked?.pinnedVersionId === entry.data.workflowVersionId ? linked.pinnedVersionName : null;
 			return {
-				key: workflow
-					? 'workflowReviews.detail.activity.workflowPublished'
-					: 'workflowReviews.detail.activity.workflowPublished.unknownWorkflow',
+				key: 'workflowReviews.detail.activity.workflowPublished',
 				workflow,
 				// The shared version-label convention: user-given name, id-derived fallback.
 				version: getVersionLabel({
@@ -259,12 +256,20 @@ const actorName = computed(() =>
 							<WorkflowReviewActivityWorkflowLink
 								:workflow-id="content.workflow.id"
 								:workflow-name="content.workflow.name"
+								:version="content.version"
 							/>
 						</template>
-						<template v-if="content.version" #version>{{ content.version }}</template>
+						<!-- `content.version` is only ever set for workflow.published, so this is reached
+							only when that entry's workflow has since been deleted. -->
+						<template v-else-if="content.version" #workflowName
+							><i :class="$style.unknownWorkflow">{{
+								i18n.baseText('workflowReviews.detail.activity.unknownWorkflow')
+							}}</i>
+							{{ content.version }}</template
+						>
 					</I18nT>
 				</N8nText>
-				<N8nText size="small" color="text-light" :class="[$style.line, $style.timeStamp]">
+				<N8nText size="small" color="text-light" :class="$style.timeStamp">
 					<time :datetime="entry.createdAt">
 						<TimeAgo :date="entry.createdAt" />
 					</time>
@@ -315,6 +320,10 @@ const actorName = computed(() =>
 
 .separator {
 	margin-inline: var(--spacing--3xs);
+}
+
+.unknownWorkflow {
+	font-style: italic;
 }
 
 .timeStamp {
