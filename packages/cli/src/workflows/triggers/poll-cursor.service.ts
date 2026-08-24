@@ -92,6 +92,10 @@ export class PollCursorService {
 	 * @param nodeId - Poll trigger node to resolve the cursor for.
 	 * @param nodeStaticData - Node's current cursor value, used to seed the new
 	 *   storage the first time this node migrates.
+	 * @param prefetchedCursor - Cursor the task handler already read from the
+	 *   node's row at the start of the tick. When present, this method returns it
+	 *   instead of re-reading the row; when absent, either nothing was prefetched
+	 *   or the row does not exist yet, so the read-or-insert path runs as before.
 	 * @returns The cursor to use if this node is on the new storage, otherwise
 	 *   `{ migrated: false }` to keep using the node's own static data.
 	 */
@@ -99,6 +103,7 @@ export class PollCursorService {
 		workflowId: string,
 		nodeId: string,
 		nodeStaticData: PollCursor,
+		prefetchedCursor?: PollerCursor,
 	): Promise<{ migrated: true; cursor: PollCursor } | { migrated: false }> {
 		if (!this.enabled) {
 			const existing = await this.pollerStateRepository.findCursor(workflowId, nodeId);
@@ -106,6 +111,10 @@ export class PollCursorService {
 				return { migrated: false };
 			}
 			return { migrated: true, cursor: toPollCursor(existing) };
+		}
+
+		if (prefetchedCursor !== undefined) {
+			return { migrated: true, cursor: toPollCursor(prefetchedCursor) };
 		}
 
 		const stored = await this.transactionRunner.run(
