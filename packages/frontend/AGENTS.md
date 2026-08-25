@@ -2,6 +2,9 @@
 
 Extra information, specific to the frontend codebase. Use this when doing any frontend work.
 
+- Frontend feature modules live at `packages/modules/<name>/frontend`, not under `editor-ui/src/features`.
+  Scaffold one with `pnpm n8n-module-sdk create` and follow `packages/@n8n/module-cli/frontend-module-guide.md`:
+  a module owns its tsconfig, lint and vitest, and must never import `@/…` or another `@n8n/frontend-module-*`.
 - When reviewing CSS/SCSS/Vue changes in `@n8n/design-system` or `editor-ui`, always use `n8n:design-system` skill.
 - ALWAYS follow the guides in `@n8n/design-system/src/styleguide/*.mdx`
 - PREFER using **semantic tokens** for styling from `@n8n/design-system/src/css/_tokens.scss` or `@n8n/design-system/src/css/_primitives.scss`.
