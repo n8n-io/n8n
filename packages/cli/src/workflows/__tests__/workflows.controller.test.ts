@@ -3,8 +3,8 @@ import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfBlockedIpError } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
-import type { AuthenticatedRequest, IExecutionResponse } from '@n8n/db';
+import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import type { AuthenticatedRequest, IExecutionResponse, WorkflowEntity } from '@n8n/db';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
@@ -13,7 +13,11 @@ import { WorkflowsController } from '../workflows.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ExecutionService } from '@/executions/execution.service';
+import type { License } from '@/license';
 import type { ProjectService } from '@/services/project.service.ee';
+import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
 describe('WorkflowsController', () => {
 	const controller = Object.create(WorkflowsController.prototype);
@@ -195,6 +199,53 @@ describe('WorkflowsController', () => {
 				await controller.getFromUrl(req, res, query);
 
 				expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			});
+		});
+	});
+
+	describe('getWorkflow', () => {
+		describe('sharing disabled', () => {
+			it('should include homeProject in the response', async () => {
+				/**
+				 * Arrange
+				 */
+				const workflowId = 'wf-123';
+				const homeProject = { id: 'proj-abc', name: 'My Project', type: 'personal' };
+
+				const license = mock<License>({ isSharingEnabled: vi.fn().mockReturnValue(false) });
+				const globalConfig = mock<GlobalConfig>({ tags: { disabled: false } });
+				const workflowFinderService = mock<WorkflowFinderService>();
+				const enterpriseWorkflowService = mock<EnterpriseWorkflowService>();
+				const workflowService = mock<WorkflowService>();
+
+				const workflow = mock<WorkflowEntity>({ id: workflowId, nodes: [], connections: {} });
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
+
+				// addOwnerAndSharings enriches the workflow with homeProject
+				const workflowWithMeta = { ...workflow, homeProject };
+				enterpriseWorkflowService.addOwnerAndSharings.mockReturnValue(workflowWithMeta as any);
+
+				workflowService.getWorkflowScopes.mockResolvedValue(['workflow:read']);
+
+				controller.license = license;
+				controller.globalConfig = globalConfig;
+				controller.workflowFinderService = workflowFinderService;
+				controller.enterpriseWorkflowService = enterpriseWorkflowService;
+				controller.workflowService = workflowService;
+
+				const getReq = mock<AuthenticatedRequest>({ params: { workflowId } });
+
+				/**
+				 * Act
+				 */
+				const result = await controller.getWorkflow(getReq as any);
+
+				/**
+				 * Assert
+				 */
+				expect(enterpriseWorkflowService.addOwnerAndSharings).toHaveBeenCalledWith(workflow);
+				expect(result).toMatchObject({ homeProject });
+				expect(result).not.toHaveProperty('shared');
 			});
 		});
 	});
