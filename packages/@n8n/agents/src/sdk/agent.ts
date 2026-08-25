@@ -1067,9 +1067,26 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			}
 		}
 		const telemetry = this.telemetryConfig ?? (await this.telemetryBuilder?.build());
+		// Loading a skill auto-loads its recommended deferred tools: the skill's
+		// instructions reference them directly, and pricing each behind a
+		// `load_tool` round makes the agent skip them for improvised paths.
+		const skillRecommendedTools = new Map<string, readonly string[]>();
+		if (this.skillSource) {
+			for (const entry of this.skillSource.registry.skills) {
+				if (!entry.recommendedTools?.length) continue;
+				skillRecommendedTools.set(entry.id, entry.recommendedTools);
+				skillRecommendedTools.set(entry.name, entry.recommendedTools);
+			}
+		}
 		const toolSearch =
-			finalDeferredTools.length > 0 && this.deferredToolSearchTopK !== undefined
-				? { topK: this.deferredToolSearchTopK }
+			finalDeferredTools.length > 0 &&
+			(this.deferredToolSearchTopK !== undefined || skillRecommendedTools.size > 0)
+				? {
+						...(this.deferredToolSearchTopK !== undefined
+							? { topK: this.deferredToolSearchTopK }
+							: {}),
+						...(skillRecommendedTools.size > 0 ? { skillRecommendedTools } : {}),
+					}
 				: undefined;
 		const runState = new RunStateManager(this.checkpointStore);
 

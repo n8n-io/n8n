@@ -1,6 +1,7 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
+import { SKILL_LOAD_TOOL_NAME } from '../../skills/types';
 import type { AgentDbMessage, ContentToolCall } from '../../types/sdk/message';
 import type { BuiltTool } from '../../types/sdk/tool';
 
@@ -74,6 +75,13 @@ function scoreTool(tool: BuiltTool, query: string): number {
 
 export interface DeferredToolManagerOptions {
 	topK?: number;
+	/**
+	 * Deferred tool names to auto-load when a skill is loaded, keyed by skill id
+	 * AND skill name. A skill's instructions reference these tools directly, so
+	 * making the agent spend a `load_tool` round on each one prices the
+	 * instructed path above the improvised one — and the agent skips the tools.
+	 */
+	skillRecommendedTools?: ReadonlyMap<string, readonly string[]>;
 }
 
 export class DeferredToolManager {
@@ -82,6 +90,8 @@ export class DeferredToolManager {
 	private readonly loadedToolNames = new Set<string>();
 
 	private readonly topK: number;
+
+	private readonly skillRecommendedTools: ReadonlyMap<string, readonly string[]>;
 
 	private readonly searchTool: BuiltTool;
 
@@ -99,6 +109,7 @@ export class DeferredToolManager {
 		}
 
 		this.topK = options.topK ?? DEFAULT_TOP_K;
+		this.skillRecommendedTools = options.skillRecommendedTools ?? new Map();
 		this.searchTool = this.createSearchTool();
 		this.loadTool = this.createLoadTool();
 	}
@@ -132,10 +143,17 @@ export class DeferredToolManager {
 		for (const message of messages) {
 			if (!('content' in message) || !Array.isArray(message.content)) continue;
 			for (const block of message.content) {
-				if (!this.isSuccessfulLoadToolCall(block)) continue;
-				const toolName = this.getLoadedToolNameFromOutput(block.output);
-				if (toolName && this.toolsByName.has(toolName)) {
-					this.loadedToolNames.add(toolName);
+				if (this.isSuccessfulLoadToolCall(block)) {
+					const toolName = this.getLoadedToolNameFromOutput(block.output);
+					if (toolName && this.toolsByName.has(toolName)) {
+						this.loadedToolNames.add(toolName);
+					}
+					continue;
+				}
+				for (const toolName of this.getRecommendedToolsFromSkillLoad(block)) {
+					if (this.toolsByName.has(toolName)) {
+						this.loadedToolNames.add(toolName);
+					}
 				}
 			}
 		}
@@ -240,5 +258,32 @@ export class DeferredToolManager {
 		if (!isRecord(output)) return undefined;
 		if (output.status !== 'loaded' && output.status !== 'already_loaded') return undefined;
 		return typeof output.toolName === 'string' ? output.toolName : undefined;
+	}
+
+	/**
+	 * A successful main-skill `load_skill` call auto-loads the skill's
+	 * recommended deferred tools. Linked-file loads (`filePath` set) and failed
+	 * loads (non-content output) load nothing.
+	 */
+	private getRecommendedToolsFromSkillLoad(block: unknown): readonly string[] {
+		if (this.skillRecommendedTools.size === 0) return [];
+		if (
+			!isRecord(block) ||
+			block.type !== 'tool-call' ||
+			block.toolName !== SKILL_LOAD_TOOL_NAME ||
+			block.state !== 'resolved'
+		) {
+			return [];
+		}
+		if (!isRecord(block.output) || block.output.type !== 'content') return [];
+		if (!isRecord(block.input) || block.input.filePath !== undefined) return [];
+		const identifiers = [block.input.skillId, block.input.name].filter(
+			(value): value is string => typeof value === 'string',
+		);
+		for (const identifier of identifiers) {
+			const tools = this.skillRecommendedTools.get(identifier);
+			if (tools) return tools;
+		}
+		return [];
 	}
 }
