@@ -1,0 +1,22 @@
+packages/cli/src/workflows/triggers/poll-cursor.service.ts
+  s_5fa111a231c8b4::t_171de2357bde0c 95-98
+  s_5fa111a231c8b4::t_bb224442b0227c 106,116-119
+packages/cli/src/workflows/triggers/__tests__/poll-cursor.service.test.ts
+  s_5fa111a231c8b4::t_7f2a43fbcb6e64 143-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "bb6d04b676c7b5918ea49670e1d3b0fd0cd02d13",
+  "prompts": {},
+  "sessions": {
+    "s_5fa111a231c8b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62a020c7-78d9-4f3c-99a9-db13d0a06806",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
