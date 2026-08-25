@@ -58,7 +58,6 @@ import {
 } from '@n8n/api-types';
 import CredentialIcon from './CredentialIcon.vue';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
-import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 
@@ -172,7 +171,6 @@ const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields, authoriz
 
 const aiGateway = useAiGateway();
 const { openTopUp } = useAiGatewayTopUp();
-const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
 const balancePill = computed(() => {
 	const balance = aiGateway.balance.value;
@@ -187,16 +185,6 @@ const balancePill = computed(() => {
 		type: depleted ? ('danger' as const) : ('default' as const),
 	};
 });
-
-// Refresh the balance after each run so the pill reflects consumed credits.
-watch(
-	() => workflowExecutionStateStore.value.activeExecution,
-	(executionData) => {
-		if (executionData?.finished || executionData?.stoppedAt !== undefined) {
-			void aiGateway.fetchWallet();
-		}
-	},
-);
 
 function entryPlaceholder(credentialType: string): string {
 	return i18n.baseText('nodeCredentials.quickConnect.connectTo', {
