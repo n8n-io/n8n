@@ -221,7 +221,7 @@ onMounted(fetchTests);
 						<N8nButton
 							variant="subtle"
 							size="small"
-							:disabled="isRunning(test.id)"
+							:disabled="isRunning(test.id) || isRunningAll"
 							:data-test-id="`workflow-test-run-${test.id}`"
 							@click="runTest(test.id)"
 						>
@@ -230,7 +230,7 @@ onMounted(fetchTests);
 						<N8nButton
 							variant="subtle"
 							size="small"
-							:disabled="isRunning(test.id)"
+							:disabled="isRunning(test.id) || isRunningAll"
 							:data-test-id="`workflow-test-delete-${test.id}`"
 							@click="deleteTest(test)"
 						>
@@ -287,6 +287,7 @@ onMounted(fetchTests);
 							:new-string="node.actual ?? ''"
 							language="json"
 							output-format="line-by-line"
+							hide-header
 						/>
 					</div>
 				</div>
