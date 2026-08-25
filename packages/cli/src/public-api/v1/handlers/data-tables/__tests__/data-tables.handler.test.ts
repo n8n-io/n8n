@@ -11,6 +11,7 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import type { DataTableRequest } from '@/public-api/types';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
+import { ProjectNotFoundError } from '@/services/project.service.ee';
 
 // Mock middleware before requiring handler
 const mockMiddleware = vi.fn(async (_req, _res, next) => next()) as any;
@@ -93,6 +94,30 @@ describe('DataTable Handler', () => {
 				hasHeaders: undefined,
 			});
 			expect(mockResponse.status).toHaveBeenCalledWith(201);
+		});
+
+		it('should map a missing project to BadRequestError', async () => {
+			const req = {
+				body: { name: 'test-table', columns: [], projectId },
+				user: makeUser(),
+			} as unknown as DataTableRequest.Create;
+			mockDataTableService.resolveOwningProjectId.mockRejectedValue(
+				new ProjectNotFoundError(projectId),
+			);
+
+			const handlerFn = mainHandler.createDataTable[1];
+			let caught: unknown;
+			try {
+				await handlerFn(req, mockResponse as Response);
+			} catch (error) {
+				caught = error;
+			}
+
+			expect(caught).toBeInstanceOf(BadRequestError);
+			expect(caught).toMatchObject({
+				message: `Project with ID "${projectId}" not found`,
+				httpStatusCode: 400,
+			});
 		});
 	});
 

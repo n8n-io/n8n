@@ -24,16 +24,20 @@ import { DataTableAccessDeniedError } from '@/modules/data-table/errors/data-tab
 import { DataTableNameConflictError } from '@/modules/data-table/errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
+import { ProjectNotFoundError } from '@/services/project.service.ee';
 
 const handleError = (error: unknown) => {
 	if (error instanceof DataTableValidationError) {
 		throw new BadRequestError(error.message);
 	}
+	if (error instanceof ProjectNotFoundError) {
+		throw new BadRequestError(`Project with ID "${error.projectId}" not found`);
+	}
 	if (error instanceof DataTableNotFoundError) {
 		throw new NotFoundError(error.message);
 	}
 	if (error instanceof DataTableAccessDeniedError) {
-		throw new ForbiddenError(error.message);
+		throw new ForbiddenError();
 	}
 	if (error instanceof DataTableNameConflictError) {
 		throw new ConflictError(error.message);

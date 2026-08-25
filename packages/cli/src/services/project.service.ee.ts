@@ -53,7 +53,7 @@ export class UnlicensedProjectRoleError extends UserError {
 }
 
 export class ProjectNotFoundError extends NotFoundError {
-	constructor(projectId: string) {
+	constructor(readonly projectId: string) {
 		super(`Could not find project with ID: ${projectId}`);
 	}
 
