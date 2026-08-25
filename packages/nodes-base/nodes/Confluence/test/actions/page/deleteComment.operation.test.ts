@@ -26,9 +26,10 @@ describe('page:deleteComment', () => {
 	});
 
 	it('trims and URL-encodes the comment ID', async () => {
-		await execute.call(mockExecuteCtx({ commentId: ' 555/6 ' }), 0);
+		const result = await execute.call(mockExecuteCtx({ commentId: ' 555/6 ' }), 0);
 
 		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/footer-comments/555%2F6');
+		expect(result).toEqual({ deleted: true, commentId: '555/6' });
 	});
 
 	it('rejects an empty comment ID before calling the API', async () => {

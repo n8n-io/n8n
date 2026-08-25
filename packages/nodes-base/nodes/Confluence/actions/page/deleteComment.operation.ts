@@ -55,6 +55,6 @@ export const execute: ConfluenceOperation = async function (
 		throw error;
 	}
 
-	// The API replies 204 with no body, so report what happened
+	// DELETE replies 204 with no body
 	return { deleted: true, commentId };
 };

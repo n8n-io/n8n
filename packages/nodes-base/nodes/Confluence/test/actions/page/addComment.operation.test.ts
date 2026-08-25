@@ -1,7 +1,7 @@
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import { execute } from '../../../actions/page/addComment.operation';
+import { description, execute } from '../../../actions/page/addComment.operation';
 import { confluenceApiRequest } from '../../../transport';
 import { mockExecuteCtx, testNode } from '../../shared';
 
@@ -27,6 +27,16 @@ describe('page:addComment', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		apiRequest.mockResolvedValue({ id: '555', pageId: '123' });
+	});
+
+	it('hides the space and page pickers when a parent comment ID is set', () => {
+		// Without the hide, the required page picker blocks reply-only executions
+		const hide = { parentCommentId: [{ _cnd: { regex: '\\S' } }] };
+		const byName = (name: string) => description.find((property) => property.name === name);
+
+		expect(byName('space')?.displayOptions?.hide).toEqual(hide);
+		expect(byName('page')?.displayOptions?.hide).toEqual(hide);
+		expect(byName('parentCommentId')?.displayOptions?.hide).toBeUndefined();
 	});
 
 	it('posts a top-level comment on the resolved page', async () => {
@@ -59,11 +69,10 @@ describe('page:addComment', () => {
 	it('treats a whitespace-only parent comment ID as absent', async () => {
 		await execute.call(mockExecuteCtx({ ...baseParams, parentCommentId: '   ' }), 0);
 
-		expect(apiRequest).toHaveBeenCalledWith(
-			'POST',
-			'/wiki/api/v2/footer-comments',
-			expect.objectContaining({ pageId: '123' }),
-		);
+		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/api/v2/footer-comments', {
+			pageId: '123',
+			body: { representation: 'storage', value: '<p>Nice page</p>' },
+		});
 	});
 
 	it('passes a storage-format body through verbatim', async () => {

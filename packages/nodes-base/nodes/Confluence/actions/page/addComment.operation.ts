@@ -12,8 +12,9 @@ import { optionalSpaceRLC, pageRLC, resolvePageId } from '../common';
 import type { ConfluenceOperation } from '../router';
 
 const showOnAddComment = { resource: ['page'], operation: ['addComment'] };
-// Replies target the parent comment, so the page pickers disappear once one is set
-const hideOnReply: IDisplayOptions['hide'] = { parentCommentId: [{ _cnd: { exists: true } }] };
+// Replies target the parent comment, so the page pickers disappear once one is set;
+// \S (not `exists`) keeps them visible for whitespace-only values, which execute treats as absent
+const hideOnReply: IDisplayOptions['hide'] = { parentCommentId: [{ _cnd: { regex: '\\S' } }] };
 
 export const description: INodeProperties[] = [
 	{
