@@ -33,7 +33,7 @@ graph TB
     subgraph Orchestrator ["Orchestrator Agent"]
         Service --> Factory[Agent Factory]
         Factory --> OrcAgent[Orchestrator]
-        OrcAgent --> PlanTool[Plan Tool]
+        OrcAgent --> CreateTasks[create-tasks]
         OrcAgent --> BuildTool[build-workflow]
         OrcAgent --> DirectTools[Domain Tools]
         OrcAgent --> MCPTools[MCP Tools]
@@ -65,11 +65,12 @@ graph TB
         Adapter --> NodeLoader[LoadNodesAndCredentials]
     end
 
-    subgraph Storage ["Storage (main n8n database)"]
-        Memory --> PostgreSQL
-        Memory --> SQLite
-        ThreadStorage --> PostgreSQL
-        ThreadStorage --> SQLite
+    subgraph Storage ["Storage"]
+        Memory --> PostgreSQL[PostgreSQL<br/>main n8n database]
+        Memory --> SQLite[SQLite<br/>main n8n database]
+        ThreadStorage -->|durable log on| PostgreSQL
+        ThreadStorage -->|durable log on| SQLite
+        ThreadStorage -->|durable log off| InMemory[Per-thread memory buffer]
     end
 
     subgraph Sandbox ["Sandbox (Optional)"]
@@ -221,11 +222,10 @@ The n8n integration layer.
   log disabled, replay uses a 500-event or 2 MB in-memory buffer per thread.
 - **Filesystem** — `LocalGateway` (remote daemon via SSE protocol).
   See `docs/filesystem-access.md`
-- **Entities and repositories** — 13 TypeORM pairs for threads, messages,
+- **Persistence** — 13 TypeORM entity/repository pairs for threads, messages,
   resources, observations, observation cursors and locks, checkpoints, run
   snapshots, event-log entries, pending confirmations, iteration logs, thread
   grants, and MCP registry connections
-- **Repositories** — data access layer (13 TypeORM repositories)
 
 ### `packages/@n8n/api-types` (Shared Types)
 
@@ -284,10 +284,10 @@ The event bus decouples agent execution from event delivery:
 - SSE supports both `Last-Event-ID` header and `?lastEventId` query parameter
 - Event storage depends on `N8N_INSTANCE_AI_DURABLE_LOG`: on (the default),
   coalesced step-level facts are appended to the `instance_ai_events` table
-  (the durable replay source, ids survive restarts) while token deltas stay
-  memory-only; off (the rollback switch until Gate B), events live only in a
-  bounded in-memory buffer (500 events / 2 MB per thread, FIFO-evicted, ids
-  reset on restart)
+  (the durable replay source, ids survive restarts) while token deltas remain
+  live-only and are not retained; off (the rollback switch until Gate B), events
+  live only in a bounded in-memory buffer (500 events / 2 MB per thread,
+  FIFO-evicted, ids reset on restart)
 - No need to pipe sub-agent streams through orchestrator tool execution
 - One active run per thread (additional `POST /chat` is rejected while active)
 - Cancellation via `POST /instance-ai/chat/:threadId/cancel` (idempotent)
@@ -407,10 +407,6 @@ To keep the orchestrator's context lean, tools are stratified into two tiers:
   `create-tasks` and the rest of the orchestration surface — discovered
   on-demand via `search_tools` and activated via `load_tool`
 
-The always-loaded set still contains the legacy names `web-search` and
-`fetch-url`. The current registry exposes these operations as actions of
-`research`, so the legacy names do not match a registered tool.
-
 Two entries in the always-loaded set are pinned for reasons worth knowing before
 changing the list. `n8n-docs` sits next to `research` because the research tool
 directs the model to n8n's own docs for n8n questions; deferring docs priced that
@@ -493,4 +489,7 @@ allowing the user to approve or deny access to specific hosts.
   calls have a 60-second server-side timeout. See `docs/filesystem-access.md`.
 - **Web research safety** — SSRF protection blocks private IPs, loopback, and non-HTTP(S) schemes.
   Post-redirect SSRF check prevents open-redirect attacks. Fetched content is treated as untrusted.
-- **Module gating** — chat and the main UI are gated by `InstanceAiSettingsService.isInstanceAiEnabled()`. Member-facing entry points are additionally gated by `isSetupCompleted()`, which resolves the admin model selection, assigned sandbox and search credentials, and whether the deployment is cloud or proxied
+- **Module gating** — `InstanceAiSettingsService.isInstanceAiEnabled()` gates
+  chat and the main UI. `isSetupCompleted()` also gates member-facing entry
+  points. It treats cloud and proxied deployments as configured. For direct
+  self-managed deployments, it evaluates model, sandbox, and search setup.

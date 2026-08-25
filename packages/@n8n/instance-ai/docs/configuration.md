@@ -11,7 +11,7 @@ persisted in settings takes precedence over `N8N_INSTANCE_AI_SANDBOX_PROVIDER`.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. The effective model must be non-empty for the agent to enable. Opus 5: `anthropic/claude-opus-5`. Vertex Claude: `google-vertex-anthropic/claude-opus-4-8`. |
+| `N8N_INSTANCE_AI_MODEL` | string | `anthropic/claude-opus-4-8` | LLM model in `provider/model` format for built-in providers, or a bare model name when `N8N_INSTANCE_AI_MODEL_URL` is set. The effective model must be non-empty for the agent to run successfully. Opus 5: `anthropic/claude-opus-5`. Vertex Claude: `google-vertex-anthropic/claude-opus-4-8`. |
 | `N8N_INSTANCE_AI_MODEL_URL` | string | `''` | Base URL for an OpenAI-compatible endpoint (e.g. `http://localhost:1234/v1` for LM Studio). When set, model requests go to this URL instead of the built-in provider. |
 | `N8N_INSTANCE_AI_MODEL_API_KEY` | string | `''` | Explicit API key for the environment-selected model. It works with built-in providers and custom endpoints. When it is empty, built-in providers can use their standard API-key environment variable. Some local endpoints do not require a key. |
 | `N8N_INSTANCE_AI_VERTEX_PROJECT_ID` | string | `''` | Google Cloud project for `google-vertex-anthropic/*`. Falls back to `GOOGLE_VERTEX_PROJECT`, then `project_id` in the service-account JSON. |
@@ -43,11 +43,11 @@ For built-in providers, the setup service recognizes `ANTHROPIC_API_KEY`,
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
 | `N8N_INSTANCE_AI_THINKING_ENABLED` | boolean | `true` | Extended thinking / reasoning. When `false`, reasoning is not enabled on the model. |
-| `N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED` | boolean | `false` | Force-enable the MCP-connections experiment. `false` falls back to the PostHog flag. The MCP registry module and admin MCP access must also be enabled before `mcp-servers` is wired. |
+| `N8N_INSTANCE_AI_MCP_CONNECTIONS_ENABLED` | boolean | `false` | Force-enable the MCP-connections experiment. `false` falls back to the PostHog flag. The MCP registry module and admin MCP access must also be enabled before the MCP registry discovery tool is wired. |
 | `N8N_INSTANCE_AI_NODE_CONTEXT_ENABLED` | boolean | `false` | Force-enable canvas node context. `false` falls back to the PostHog flag. |
 | `N8N_INSTANCE_AI_BROWSER_USE_ENABLED` | boolean | `true` | Computer Use browser tooling, used for credential setup. |
 | `N8N_INSTANCE_AI_ACTIVATION_CAPPED` | boolean | `false` | Activation capping. |
-| `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD` | number | `1` | Messages before an activation lock applies. |
+| `N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD` | number | `1` | Assistant messages that must be sent, in addition to instance activation, before an activation lock applies. |
 
 ### Debugging
 
@@ -145,7 +145,7 @@ These environment variables are read directly by `BuilderTemplatesService`.
 | `N8N_INSTANCE_AI_PRUNE_INTERVAL` | number | `3600000` | Interval in ms between scheduled pruning runs on the leader. Prunes stale checkpoints, expired pending confirmations, and expired conversation threads. 0 = disabled. |
 | `N8N_INSTANCE_AI_SNAPSHOT_RETENTION` | number | `86400000` | Retention period in ms for stale native persistence checkpoints before they are marked expired. |
 | `N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT` | number | `86400000` | Timeout in ms for HITL confirmation requests. 0 = no timeout. |
-| `N8N_INSTANCE_AI_CHECKPOINT_GC_RETENTION` | number | `604800000` | Retention period in ms for expired checkpoint tombstones before hard deletion. It must exceed snapshot retention. `0` keeps tombstones. |
+| `N8N_INSTANCE_AI_CHECKPOINT_GC_RETENTION` | number | `604800000` | Retention period in ms for expired checkpoint tombstones before hard deletion. `0` keeps tombstones. |
 
 ### Output Filtering
 
@@ -249,7 +249,12 @@ Runtime behavior:
 - Runs can be cancelled via `POST /instance-ai/chat/:threadId/cancel`
   (idempotent).
 
-## Minimal Setup
+## Minimal Model Connection
+
+These variables configure the minimum model connection. On direct self-hosted deployments,
+the model connection alone does not complete setup for member-facing entry points. You must
+also configure a sandbox and either configure web search or explicitly continue without it
+in Instance AI settings.
 
 ```bash
 # Configure the model. The instance-ai module is enabled by default.

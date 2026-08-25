@@ -82,9 +82,9 @@ The eval-setup background agent receives its task briefing and optional
 the orchestrator's observational memory. Its agent persistence stores the
 checkpoint data needed for resume and HITL handling.
 
-Past failed attempts are tracked through the `IterationLog` in the dedicated
-`instance_ai_iteration_logs` table. Retry briefings can include these entries
-without sharing the orchestrator's observational memory.
+An `IterationLog` database adapter is available through the dedicated
+`instance_ai_iteration_logs` table. The briefing builder can include these
+entries when supplied by a caller.
 
 ### Cross-user isolation
 

@@ -89,8 +89,8 @@ background tasks keep the entry alive. A TTL of `0` disables this cache
 eviction.
 
 Cache eviction does not destroy the remote sandbox. Daytona reclaims remote
-state through its configured lifecycle. The n8n sandbox service can reclaim
-idle state through its own service policy.
+state through its configured lifecycle. Remote reclamation for the n8n sandbox
+service is governed by that service's deployment policy, outside Instance AI.
 
 Explicit thread cleanup destroys a cached workspace. If no cache entry exists,
 the service can recompute and delete an n8n-sandbox ID. An uncached Daytona
@@ -104,17 +104,19 @@ entry that they already resolved.
 
 ## Workspace Initialization
 
-Initialization is lazy and idempotent. A marker file prevents repeated setup.
-The setup creates or materializes:
+Initialization is lazy and idempotent. A marker file prevents repeated base
+setup. Knowledge-base content is refreshed when an existing sandbox is
+reattached. The setup creates or materializes:
 
 | Path | Purpose |
 |------|---------|
-| `package.json` | Pinned `@n8n/workflow-sdk`, `tsx`, and Node type dependencies |
+| `package.json` | Pinned `@n8n/workflow-sdk`, `tsx`, and Node type dependencies in normal mode |
 | `tsconfig.json` | Strict TypeScript configuration |
 | `build.mjs` | Workflow SDK execution and JSON conversion |
 | `node-types/index.txt` | Searchable node-type catalog |
 | `src/` | Workflow source files |
 | `chunks/` | Reusable source modules |
+| `workflows/` | Existing workflows materialized as WorkflowJSON |
 | `knowledge-base/` | Best-practice, template, and SDK reference material |
 | `.sandbox-initialized` | Setup marker |
 
@@ -130,8 +132,9 @@ thread.
 
 ## Workflow Build Path
 
-The `build-workflow` tool reads a `.workflow.ts` or `.workflow.json` file from
-the runtime workspace.
+The `build-workflow` tool reads TypeScript (`.ts` or `.tsx`) or WorkflowJSON
+(`.json`) from the runtime workspace. The conventional filenames are
+`.workflow.ts` and `.workflow.json`.
 
 For TypeScript source, `compileWorkflowSource()` copies or resolves the source
 inside the workspace and runs:

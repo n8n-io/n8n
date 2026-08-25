@@ -28,8 +28,9 @@ and category metadata during initialization. It does not upload an initial
 directory tree. Files and directory trees are read on demand through the
 advertised tools.
 
-The bridge is outbound from the daemon to n8n. It works for self-hosted and
-cloud deployments without exposing a daemon port to the n8n server.
+The bridge is outbound from the daemon to n8n. It works for cloud deployments
+without exposing a daemon port to the n8n server. For a self-hosted deployment,
+the user must add `--allowed-origins <instance-origin>` to the generated command.
 
 ## Instance AI Interface
 
@@ -63,8 +64,10 @@ The reference daemon can advertise these tool groups:
 | Computer | Screenshots, mouse, and keyboard tools | `deny` |
 | Browser | Browser automation tools | `ask` |
 
-The daemon does not register a group whose mode is `deny`. Platform-dependent
-groups are also omitted when their native requirements are unavailable.
+The daemon does not register tool definitions for a group whose mode is `deny`.
+It also omits tool definitions for a platform-dependent group when its native
+requirements are unavailable. The category metadata still includes these
+groups with `enabled: false`.
 
 See the [Computer Use package reference](../../computer-use/README.md) for the
 complete tool and command reference.
@@ -84,8 +87,8 @@ not require the frontend to contact a localhost endpoint.
 5. The daemon initializes the server gateway and opens the SSE stream.
 6. The backend pushes the new gateway status to the frontend.
 
-The frontend displays the connected host, root directory, and enabled tool
-categories from the backend status response.
+The frontend displays the connected host, root directory, and tool-category
+status from the backend response.
 
 ## Gateway Protocol
 
@@ -120,7 +123,7 @@ a gateway that has not initialized its state.
   ],
   "hostIdentifier": "user@host",
   "toolCategories": [
-    { "name": "filesystemRead", "enabled": true, "writeAccess": false }
+    { "name": "filesystem", "enabled": true, "writeAccess": false }
   ]
 }
 ```
@@ -140,16 +143,17 @@ The SSE stream sends generic MCP calls in an event whose legacy type is
     "requestId": "gw_abc123",
     "toolCall": {
       "name": "read_file",
-      "arguments": { "path": "src/index.ts" }
+      "arguments": { "filePath": "src/index.ts" }
     }
   }
 }
 ```
 
-The daemon posts an MCP `result` or an error string to the matching response
-endpoint. The server waits up to 60 seconds for each call. It rejects pending
-calls on explicit disconnect. The SSE endpoint sends a keep-alive comment every
-15 seconds.
+A client can post an MCP `result` or a top-level error string to the matching
+response endpoint. The reference daemon encodes tool failures as MCP results
+with `isError`. The server waits up to 60 seconds for each call. It rejects
+pending calls on explicit disconnect. The SSE endpoint sends a keep-alive
+comment every 15 seconds.
 
 The daemon reconnects with backoff from 1 second to 30 seconds. The server also
 keeps gateway state for a reconnect grace period. The grace period starts at 10
@@ -175,9 +179,10 @@ endpoint.
 ### Static key
 
 `N8N_INSTANCE_AI_GATEWAY_API_KEY` enables a static gateway key. The static key
-maps to an environment gateway instead of a database user. It can initialize
-the gateway and serve tools. It cannot call the credential-creation endpoint,
-because that endpoint requires a user-scoped key.
+maps to an environment gateway instead of a database user. It can authenticate
+and initialize the gateway. The current per-user run wiring does not expose its
+tools to agent runs. It cannot call the credential-creation endpoint, because
+that endpoint requires a user-scoped key.
 
 ## Permissions and Safety
 
@@ -191,7 +196,9 @@ The daemon applies a permission mode to each tool group:
 
 Resource rules can allow once, allow for the session, always allow, deny once,
 or always deny. Filesystem write rules are scoped to paths. Shell rules are
-scoped to normalized commands. Browser rules are scoped to domains.
+scoped to normalized commands. Most browser navigation and page-action rules
+are scoped to domains. Some browser tools use special resource identifiers,
+such as `credentials`.
 
 Filesystem operations are restricted to the configured root. `read_file` has a
 1 MiB file limit and supports line-range pagination. Write tools use the same
@@ -207,7 +214,7 @@ key cannot use this endpoint.
 Any client can implement the protocol. A client must:
 
 1. Obtain an accepted gateway key.
-2. Initialize with MCP definitions and category metadata.
+2. Initialize with a root path and any MCP definitions or category metadata.
 3. Open the authenticated SSE stream.
 4. Execute each received MCP call under its own safety policy.
 5. Post an MCP result or an error for each request.

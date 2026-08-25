@@ -69,8 +69,8 @@ export N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 pnpm dev:ai
 ```
 
-The `instance-ai` module is enabled by default. `N8N_AI_ENABLED` controls older
-global AI features and is not an Instance AI runtime gate.
+The `instance-ai` module is enabled by default. `N8N_AI_ENABLED` is not an
+Instance AI runtime gate.
 
 The `pnpm --filter n8n-containers services` command writes
 `N8N_INSTANCE_AI_SANDBOX_PROVIDER`, `N8N_SANDBOX_SERVICE_URL`, and

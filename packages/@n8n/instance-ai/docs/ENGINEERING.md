@@ -30,11 +30,11 @@ const data: ExecutionResult = parseExecutionResult(response);
 ### Zod schemas are the source of truth
 
 Every tool has an input schema for what the LLM sends. A tool can also have an
-output schema when it returns one stable shape. `@n8n/agents` uses these
-schemas to describe tools to the LLM, validate data at runtime, and type-check
-the handler. If the TypeScript type and the Zod schema are defined separately,
-they drift. The LLM sees one contract, the code enforces another, and bugs hide
-until production.
+output schema when it returns one stable shape. `@n8n/agents` uses the input
+schema to describe tools to the LLM and validate input at runtime. Input and
+optional output schemas type-check the handler. If the TypeScript type and the
+Zod schema are defined separately, they drift. The LLM sees one contract, the
+code enforces another, and bugs hide until production.
 
 ```typescript
 // NEVER — separate schema and type that can drift
@@ -119,9 +119,9 @@ it('should stream tool-call event when agent uses a tool', async () => {
 
 ### Test the contract, not the internals
 
-The clean interface boundary makes each layer testable in isolation. Verify the contract at each boundary — not the wiring between
-them. Tools can be tested without `@n8n/agents`, the reducer without SSE, adapters
-without the agent.
+The clean interface boundary makes each layer testable in isolation. Verify the
+contract at each boundary — not the wiring between them. Tools can be tested
+without `@n8n/agents`, the reducer without SSE, adapters without the agent.
 
 For each tool, test:
 - Valid input → expected output shape
@@ -208,11 +208,12 @@ shared part into `@n8n/api-types` or a shared utility.
 
 ### Tool definitions
 
-`@n8n/agents` uses Zod schemas for runtime validation and LLM tool
-descriptions. The `.describe()` strings on schema fields become the
+`@n8n/agents` uses input Zod schemas for runtime validation and LLM tool
+descriptions. The `.describe()` strings on input schema fields become the
 parameter descriptions that the LLM sees. Missing or vague descriptions lead
-to bad tool calls. Use an output schema when a tool has one stable output shape.
-Consolidated tools with different output shapes can omit it.
+to bad tool calls. Use an output schema to type-check the handler when a tool
+has one stable output shape. Consolidated tools with different output shapes
+can omit it.
 
 - Always define an input schema
 - Define an output schema when all actions share one stable output shape
@@ -230,13 +231,13 @@ const listAction = z.object({
 });
 
 export function createWorkflowsTool(context: InstanceAiContext) {
-  return new Tool('workflows')
+  return new Tool(DOMAIN_TOOL_IDS.WORKFLOWS)
     .description('Read and manage workflows.')
     .input(z.discriminatedUnion('action', [listAction, /* ...other actions */]))
     .handler(async (input) => {
       // `input` is narrowed by `action`, so each branch is type-checked
       if (input.action === 'list') {
-        const workflows = await context.workflowService.list(input);
+        const { workflows } = await context.workflowService.list(input);
         return { workflows };
       }
       // ...

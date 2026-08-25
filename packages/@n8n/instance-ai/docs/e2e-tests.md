@@ -105,7 +105,12 @@ ID extraction is **field-name aware** — only fields named `id` or ending with 
 
 ### Why the Proxy Does Not Match Full Request Bodies
 
-During recording, the fixture's `transform` callback strips LLM request bodies down to an 80-character system prompt substring. This means MockServer matches requests by path and prompt prefix only, not by the full body. Since tool results flow into LLM request bodies (as tool_result content blocks), and those results now contain different IDs, the proxy would fail to match if it compared full bodies. The stable prompt prefix keeps the proxy deterministic regardless of tool output content.
+During recording, the fixture's `transform` callback replaces the full LLM
+request body with a regex containing an 80-character system prompt anchor and,
+when available, a stable anchor derived from the latest message or tool context.
+Volatile IDs and dynamic prompt content are normalized. Since tool results flow
+into LLM request bodies as `tool_result` content blocks, matching the full body
+would fail when replay produces different IDs or other runtime data.
 
 ### Shared State Across Runs
 
@@ -189,7 +194,7 @@ Each test's tool calls are recorded in `trace.jsonl` (newline-delimited JSON):
 {"kind":"header","version":1,"testName":"should-approve-workflow-execution","recordedAt":"2026-04-09T12:00:00Z"}
 {"stepId":1,"kind":"tool-call","agentRole":"orchestrator","toolName":"nodes","input":{...},"output":{...}}
 {"stepId":2,"kind":"tool-call","agentRole":"orchestrator","toolName":"build-workflow","input":{"filePath":"src/workflows/main.workflow.ts"},"output":{"workflowId":"5","filePath":"src/workflows/main.workflow.ts"}}
-{"stepId":4,"kind":"tool-suspend","agentRole":"orchestrator","toolName":"executions","input":{"action":"run","workflowId":"5"},"output":{"denied":true},"suspendPayload":{...}}
+{"stepId":4,"kind":"tool-suspend","agentRole":"orchestrator","toolName":"executions","input":{"action":"run","workflowId":"5"},"output":{},"suspendPayload":{...}}
 {"stepId":5,"kind":"tool-resume","agentRole":"orchestrator","toolName":"executions","input":{"action":"run","workflowId":"5"},"output":{"executionId":"exec-100"}}
 ```
 
@@ -207,7 +212,7 @@ The `TraceIndex` groups events by `agentRole` with independent cursors per role.
 ```
 orchestrator: [nodes, build-workflow, executions-suspend, executions-resume]
                 ^cursor=0
-eval-setup: [workflows-get-json, workflows-update]
+eval-setup: [workflows(action="get-json"), workflows(action="update")]
              ^cursor=0
 ```
 
@@ -219,8 +224,7 @@ Each test's HTTP exchanges are stored as individual JSON files:
 
 ```
 expectations/instance-ai/should-send-message-and-receive-assistant-response/
-  0000-1775805992870-unknown-host-POST-_v1_messages-8a23f6c2.json    ← Anthropic API call
-  0001-1775805993100-unknown-host-POST-_v1_messages-4de91b76.json    ← Next Anthropic API call
+  0000-1783350959265-unknown-host-POST-_v1_messages-9ed7b981.json  ← Anthropic API call
   trace.jsonl                                                     ← Tool trace
 ```
 
@@ -238,7 +242,12 @@ Expectations are loaded with `sequential: true`, which sets `remainingTimes: 1` 
 
 ### Request Body Matching
 
-LLM request bodies are replaced during recording with an 80-character substring of the system prompt. This is enough to distinguish between different types of calls (title generation vs. orchestrator vs. sub-agent) without being so specific that minor prompt changes break replay.
+LLM request bodies are replaced during recording with a regex containing an
+80-character system prompt anchor and, when available, a stable anchor from the
+latest message or tool context. The system anchor distinguishes call types
+(title generation, orchestrator, or sub-agent), while the latest-context anchor
+distinguishes successive calls of the same type without matching the full,
+volatile request body.
 
 ## Test Infrastructure
 
@@ -287,7 +296,7 @@ Enabled by `E2E_TESTS=true` (set automatically by the Playwright fixture base):
 | `instance-ai-timeouts.spec.ts` | 1 | Stuck background-task timeout *(currently marked `fixme`)* |
 | `instance-ai-workflow-execution.spec.ts` | 5 | Workflow and node runs, results, and reruns |
 | `instance-ai-workflow-preview.spec.ts` | 4 | Auto-open, nodes, execution state, and close behavior |
-| `instance-ai-workflow-setup.spec.ts` | 10 | Credential, parameter, skip, group, and subnode setup flows |
+| `instance-ai-workflow-setup.spec.ts` | 10 | Credential, parameter, skip, group, and subnode setup flows *(currently `fixme` on SQLite/coverage and skipped on multi-main)* |
 | `thread-launcher.spec.ts` | 2 | Valid and invalid template deep links |
 
 ## Running Tests
@@ -376,7 +385,7 @@ The architecture is deliberately tolerant of many common changes:
 | Change | Why It's Safe |
 |--------|---------------|
 | **Prompt wording changes** (within the same 80-char prefix) | Proxy matches on an 80-character substring of the system prompt, not the full text. Minor rewording that doesn't alter this prefix passes through unchanged. |
-| **Tool output differences** (new fields, different execution data) | The proxy does not match the full request body. Tool results flow into LLM request bodies as `tool_result` blocks, but the proxy matches by path and prompt prefix only. The `IdRemapper` compares by field path, so extra fields are ignored. |
+| **Tool output differences** (new fields, different execution data) | The proxy does not match the full request body. Its reduced regex uses stable message or tool-context anchors and normalizes volatile IDs. The `IdRemapper` compares by field path, so extra fields are ignored as long as they do not change the selected stable anchor. |
 | **Database auto-increment IDs** | This is the core problem the `IdRemapper` solves. IDs like `workflowId`, `executionId`, `credentialId` are automatically remapped between the recorded session and the current run. |
 | **Frontend component changes** | Tests assert on data-testid attributes and semantic content, not CSS or layout. Frontend refactors that preserve test IDs don't affect recordings. |
 | **Node catalog changes** (new community nodes, updated descriptions) | Community node API expectations have been removed — the proxy doesn't replay these. Only Anthropic API calls are replayed. |
@@ -397,7 +406,7 @@ LLM responses are frozen — the replay serves the exact same bytes regardless o
 
 ### Design Decisions That Maximize Robustness
 
-1. **80-character prompt prefix matching** — Long enough to distinguish between call types (title generation vs. orchestrator vs. sub-agent) but short enough that minor prompt edits don't break replay. The prefix is extracted during recording by the fixture's `transform` callback.
+1. **Prompt and latest-context anchors** — An 80-character system prompt anchor distinguishes call types (title generation vs. orchestrator vs. sub-agent). When available, a stable anchor from the latest message or tool context distinguishes successive calls of the same type. Both are extracted during recording by the fixture's `transform` callback.
 
 2. **Field-name-aware ID extraction** — The `IdRemapper` only compares fields named `id` or ending with `Id` (e.g., `workflowId`, `executionId`). This prevents false mappings from execution output data, web content, or other string fields that happen to differ between runs.
 
@@ -405,7 +414,7 @@ LLM responses are frozen — the replay serves the exact same bytes regardless o
 
 4. **Shared state across runs** — The `TraceIndex` and `IdRemapper` are shared across all runs within one test (orchestrator run, planned follow-up, eval-setup background task). This means a workflowId learned in run 1 is available for remapping in run 2.
 
-5. **Request body stripping** — During recording, LLM request bodies are replaced with just the prompt prefix. This means the recorded expectations don't encode tool results, conversation history, or any other dynamic content. Replay stays deterministic regardless of what tools return.
+5. **Reduced request-body matching** — During recording, full LLM request bodies are replaced with regex anchors for the agent type and stable turn context. Volatile IDs and dynamic prompt context are normalized so replay does not depend on the complete conversation or raw tool output.
 
 ### Keeping Tests Stable
 

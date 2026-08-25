@@ -8,9 +8,10 @@ Zod. Tools with one stable output shape can also define an output schema.
 Most domain tools are **action-based**: one tool per domain, with an `action`
 field selecting the operation. The input is a Zod discriminated union keyed on
 `action`, so the model receives a precise schema per action and the handler
-receives a narrowed type. Actions the host has not wired are absent from the
-union rather than present and failing at runtime. Tool ids live in
-`src/tools/tool-ids.ts`.
+receives a narrowed type. Capability-gated actions are generally absent from the
+union when the host has not wired them. Some tools instead keep an unavailable
+action or fallback tool surface and return an error or empty result. Tool ids
+live in `src/tools/tool-ids.ts`.
 
 | Tool | Actions |
 |------|---------|
@@ -137,8 +138,18 @@ available.
 ### `complete-checkpoint`
 
 Close out a `checkpoint` planned task with its verdict. The tool is registered
-for the orchestrator. It requires checkpoint follow-up context to complete a
-task.
+for the orchestrator and is intended only for checkpoint follow-up turns. The
+task must exist, have kind `checkpoint`, and be in the `running` state.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `taskId` | string | yes | Checkpoint task ID from the planned-task follow-up |
+| `status` | `"succeeded" \| "failed"` | yes | Checkpoint verdict |
+| `result` | string | no | Short user-visible outcome note |
+| `error` | string | no | Failure message when `status` is `failed` |
+| `outcome` | object | no | Structured evidence such as an execution ID, failed node, or data excerpt |
+
+**Returns**: `{ result: string, ok: boolean }`
 
 ### `eval-data`
 
@@ -159,16 +170,36 @@ source?, reason?, expectedOutputsNeedUserReview?, expectedOutputColumns?, table?
 ### `eval-setup-with-agent`
 
 Start the detached eval-setup agent after the evaluation proposal is approved.
-The agent receives `workflows` with only `get-json` and `update`, plus the full
-`nodes` domain tool. It does not receive credentials, data tables, workspace,
-the sandbox knowledge base, or MCP tools. Its persistence wrapper supports
-checkpoint and suspension state.
+The agent normally receives `workflows` with only `get-json` and `update`, plus
+the full `nodes` domain tool. It does not receive credentials, data tables,
+workspace, the sandbox knowledge base, or MCP tools. Its persistence wrapper
+supports checkpoint and suspension state.
+
+The two-action workflow restriction is applied when workflow updates are
+available and not blocked. If the host omits workflow permissions or blocks
+workflow updates, the restricted replacement is skipped and the agent retains
+the full workflow tool. Individual workflow action handlers then apply the
+permissions available in that context.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `workflowId` | string | yes | Workflow to add evaluations to |
+| `task` | string | yes | Exact task returned by `evals(action="propose")` |
+| `conversationContext` | string | no | Thread summary that anchors dataset design |
+
+**Returns**: `{ result: string, taskId: string }`
 
 ### `get-session` *(conditional)*
 
 Read a resolved Agent preview session — title, session number and transcript.
 Registered only when the host provides both `agentPreviewSession` and
 `resolvePreviewSession`.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `executionId` | string | no | Limit the transcript to one execution; omit for the whole session |
+
+**Returns**: `{ ok, title?, sessionNumber?, transcript?, error? }`
 
 ### `verify-built-workflow` *(conditional)*
 
@@ -661,9 +692,11 @@ Test whether a credential is valid and can connect to its service.
 
 ## `nodes` (6 actions)
 
-The full domain surface has six actions. The orchestrator receives only
-`type-definition` and `explore-resources`. Specialized agents that resolve the
-full domain tool can receive all six actions.
+The full domain surface has six actions. The orchestrator receives all six
+actions in the current registry. The tool also defines a restricted
+`type-definition` and `explore-resources` surface, but the orchestrator registry
+does not currently select it. Specialized agents that resolve the full domain
+tool can also receive all six actions.
 
 ### `nodes(action="list")`
 
@@ -953,9 +986,11 @@ template-search tool.
 | `knowledge-base/reference/*.md` | SDK language and output-shape reference |
 
 The tree is written by `src/knowledge-base/materialize-knowledge-base.ts`, which
-sources best practices and reference material from `@n8n/workflow-sdk/prompts/*`
-and templates from the host's `BuilderTemplatesService`. It also writes a
-workspace manifest alongside the root index.
+sources best practices and some reference material from
+`@n8n/workflow-sdk/prompts/*`, additional reference documents from the local
+`knowledge-base/reference/` directory, and templates from the host's
+`BuilderTemplatesService`. It also writes a workspace manifest alongside the
+root index.
 
 Use `workspace_read_file` and `workspace_grep` (or shell equivalents in the
 sandbox) to consult these before planning or building non-trivial workflows.
@@ -1068,9 +1103,9 @@ are the ones the server confirms on resume, not the ones the client claimed.
 
 The orchestrator receives the safe orchestrator domain surface and all
 registered orchestration tools. It does not receive raw workflow JSON read or
-update actions. It also receives only the two node actions needed for workflow
-building. The eval-setup background agent receives only its explicitly wired
-tool subset.
+update actions. It currently receives the full six-action `nodes` tool. The
+eval-setup background agent receives only its explicitly wired tool subset,
+except for the workflow-tool permission fallback described above.
 
 | Tool | Orchestrator | Eval-setup background agent |
 |---------------|:---:|:---:|
@@ -1078,10 +1113,10 @@ tool subset.
 | `n8n-docs` | ✅ | ❌ |
 | `evals` | ✅ (search/load) | ❌ |
 | `eval-config` | ✅ (conditional, search/load) | ❌ |
-| `workflows` | ✅ (without `get-json` or `update`) | ✅ (`get-json` and `update` only) |
+| `workflows` | ✅ (without `get-json` or `update`) | ✅ (`get-json` and `update` normally; full tool when permissions are missing or updates are blocked) |
 | `executions` | ✅ | ❌ |
 | `credentials` | ✅ | ❌ |
-| `nodes` | ✅ (`type-definition` and `explore-resources`) | ✅ (full domain tool) |
+| `nodes` | ✅ (full domain tool) | ✅ (full domain tool) |
 | `data-tables` | ✅ (direct, via `data-table-manager` skill) | ❌ |
 | `workspace` | ✅ | ❌ |
 | `ask-user` | ✅ | ❌ |
@@ -1125,9 +1160,11 @@ existing domain.
 4. Register it in `src/tools/index.ts` — `createAllTools`,
    `createOrchestratorDomainTools`, and/or `createOrchestrationTools`
 5. Decide whether it belongs in `ALWAYS_LOADED_TOOL_NAMES`. Everything not in
-   that set is reached through `search_tools` + `load_tool`, which is the right
-   default — but a tool whose job is to reveal an absence, or to redirect the
-   model's attention, cannot be found by searching for it
+   that set is normally reached through `search_tools` + `load_tool`. Tools in
+   `CHECKPOINT_FOLLOW_UP_TOOL_NAMES` are also loaded directly during checkpoint
+   follow-ups. Deferral is the right default, but a tool whose job is to reveal
+   an absence, or to redirect the model's attention, cannot be found by
+   searching for it
 6. For HITL tools, define `suspendSchema` and `resumeSchema` — `@n8n/agents` handles
    the suspension/resume lifecycle automatically
 7. Tool handlers are wrapped at registry registration time so Stop races
