@@ -13,6 +13,7 @@ export const DOMAIN_TOOL_IDS = {
 	NODES: 'nodes',
 	ASK_USER: 'ask-user',
 	BUILD_WORKFLOW: 'build-workflow',
+	PLAN_WORKFLOW_SKELETON: 'plan-workflow-skeleton',
 	PARSE_FILE: 'parse-file',
 	AGENTS: 'agents',
 	MCP_SERVERS: 'mcp-servers',

@@ -14,6 +14,7 @@ recommended_tools:
   - write_file
   - edit_file
   - execute_command
+  - plan-workflow-skeleton
   - build-workflow
   - workflows
   - nodes
@@ -200,7 +201,13 @@ follow its build → publish → assign steps.
    `workflows(action="get-as-code", workflowId)`, apply your edit to the
    returned code, and pass the n8n `workflowId` only on the first
    `build-workflow` call.
-6. Produce complete TypeScript SDK code and write it with
+6. For a new workflow, first call `plan-workflow-skeleton` with the topology
+   you intend to build — nodes (name, type, one-line purpose), connections
+   with ports, optional groups, no parameters. It is deterministic and
+   instant, and returns every structural problem at once. Fix all errors and
+   re-call until `valid`, resolve each warning or consciously dismiss it, and
+   use the returned `resolvedVersions` as each node's `typeVersion`. Then
+   produce complete TypeScript SDK code and write it with
    `workspace_write_file` (new/full rewrite) or `workspace_str_replace_file`
    (targeted edit). Do not put secrets in the source file.
    Before building, decide whether verification needs branch fixtures. When a

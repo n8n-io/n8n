@@ -85,6 +85,10 @@ const loadBuildWorkflowTool = lazyMod(
 	() =>
 		require('./workflows/build-workflow.tool') as typeof import('./workflows/build-workflow.tool'),
 );
+const loadPlanWorkflowSkeletonTool = lazyMod(
+	() =>
+		require('./workflows/plan-workflow-skeleton.tool') as typeof import('./workflows/plan-workflow-skeleton.tool'),
+);
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
 );
@@ -109,6 +113,10 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
+		[
+			DOMAIN_TOOL_IDS.PLAN_WORKFLOW_SKELETON,
+			loadPlanWorkflowSkeletonTool().createPlanWorkflowSkeletonTool(context),
+		],
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
@@ -142,6 +150,10 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
+		[
+			DOMAIN_TOOL_IDS.PLAN_WORKFLOW_SKELETON,
+			loadPlanWorkflowSkeletonTool().createPlanWorkflowSkeletonTool(context),
+		],
 	];
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
