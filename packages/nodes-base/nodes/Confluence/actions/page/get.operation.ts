@@ -10,6 +10,7 @@ import {
 	optionalSpaceRLC,
 	pageRLC,
 	resolvePageId,
+	shapeBody,
 } from '../common';
 import type { ConfluenceOperation } from '../router';
 
@@ -79,53 +80,6 @@ export const description: INodeProperties[] = [
 		},
 	},
 ];
-
-// Text extraction, not rendering: concatenate ADF text nodes, newline at block boundaries
-const ADF_BLOCK_TYPES = new Set([
-	'blockquote',
-	'bulletList',
-	'codeBlock',
-	'heading',
-	'listItem',
-	'orderedList',
-	'panel',
-	'paragraph',
-	'rule',
-	'table',
-	'tableRow',
-	'taskItem',
-	'taskList',
-]);
-
-function adfToPlainText(node: IDataObject): string {
-	if (node.type === 'text') return typeof node.text === 'string' ? node.text : '';
-	if (node.type === 'hardBreak') return '\n';
-	const content = Array.isArray(node.content) ? (node.content as IDataObject[]) : [];
-	let inner = '';
-	for (const child of content) {
-		inner += adfToPlainText(child);
-		if (node.type === 'tableRow') inner += ' ';
-	}
-	return ADF_BLOCK_TYPES.has(node.type as string) ? `${inner}\n` : inner;
-}
-
-function shapeBody(page: IDataObject, bodyFormat: ConfluenceBodyFormat): IDataObject {
-	if (bodyFormat !== 'plainText') return page;
-	const adf = (page.body as IDataObject | undefined)?.atlas_doc_format as IDataObject | undefined;
-	let value = '';
-	if (typeof adf?.value === 'string' && adf.value !== '') {
-		try {
-			const doc = JSON.parse(adf.value) as IDataObject;
-			value = adfToPlainText(doc)
-				.replace(/[ \t]+\n/g, '\n')
-				.replace(/\n{3,}/g, '\n\n')
-				.trim();
-		} catch {
-			value = '';
-		}
-	}
-	return { ...page, body: { plainText: { representation: 'plain_text', value } } };
-}
 
 /**
  * Discovery phase: flattened tree records from `/pages/{id}/descendants` (no bodies).

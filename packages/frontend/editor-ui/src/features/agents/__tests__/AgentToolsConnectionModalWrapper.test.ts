@@ -13,6 +13,8 @@ import { SAMPLE_SUBWORKFLOW_TRIGGER_ID } from '@/app/constants/samples';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -178,6 +180,8 @@ describe('AgentToolsConnectionModalWrapper', () => {
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 	let uiStore: ReturnType<typeof mockedStore<typeof useUIStore>>;
 	let workflowsListStore: ReturnType<typeof mockedStore<typeof useWorkflowsListStore>>;
+	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
+	let aiGatewayStore: ReturnType<typeof mockedStore<typeof useAiGatewayStore>>;
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let windowOpenMock: ReturnType<typeof vi.spyOn>;
 
@@ -190,6 +194,17 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 		uiStore = mockedStore(useUIStore);
 		workflowsListStore = mockedStore(useWorkflowsListStore);
+		settingsStore = mockedStore(useSettingsStore);
+		aiGatewayStore = mockedStore(useAiGatewayStore);
+
+		// The gateway is off by default, so the n8n Connect section stays out of
+		// the way of the tests that do not opt into it.
+		settingsStore.isAiGatewayEnabled = false;
+		aiGatewayStore.isNodeSupported = vi.fn().mockReturnValue(false);
+		aiGatewayStore.isNodeTypeVersionSupported = vi.fn().mockReturnValue(true);
+		aiGatewayStore.isCredentialTypeSupported = vi.fn().mockReturnValue(false);
+		nodeTypesStore.getNodeVersions = vi.fn().mockReturnValue([1]);
+
 		workflowsStore = mockedStore(useWorkflowsStore);
 		mockedStore(useProjectsStore).myProjects = [
 			{
@@ -845,6 +860,95 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			payload.data.onRemove();
 
 			expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [] });
+		});
+	});
+
+	describe('n8n Connect section', () => {
+		beforeEach(() => {
+			// Only Slack is gateway-backed; Wikipedia stays a regular own-cred tool.
+			settingsStore.isAiGatewayEnabled = true;
+			aiGatewayStore.isNodeSupported = vi.fn((name: string) => name === SLACK.name);
+			aiGatewayStore.isCredentialTypeSupported = vi.fn((type: string) => type === 'slackApi');
+			nodeTypesStore.visibleNodeTypesByOutputConnectionTypeNames = {
+				[NodeConnectionTypes.AiTool]: [SLACK.name, WIKIPEDIA.name],
+			};
+		});
+
+		it('keeps All first and default, with the n8n-connect tab right after it', async () => {
+			render();
+			await flushPromises();
+
+			// "All" stays the default tab; n8n Connect slots in right after it.
+			expect((modalAttrs.categories as string[]).slice(0, 2)).toEqual(['all', 'n8n-connect']);
+
+			const gateway = getItems().find((item) => item.id === `n8n-connect:${SLACK.name}`);
+			expect(gateway).toMatchObject({
+				category: 'n8n-connect',
+				freeCredits: true,
+				status: 'none',
+			});
+			// The own-credential entry stays put so the manual flow is unaffected.
+			expect(getItems().find((item) => item.id === `nodeType:${SLACK.name}`)).toBeDefined();
+			// A tool the gateway does not back must not leak into the section.
+			expect(
+				getItems().find((item) => item.id === `n8n-connect:${WIKIPEDIA.name}`),
+			).toBeUndefined();
+		});
+
+		it('hides the n8n-connect tab when the gateway is disabled', async () => {
+			settingsStore.isAiGatewayEnabled = false;
+			render();
+			await flushPromises();
+
+			expect(modalAttrs.categories as string[]).not.toContain('n8n-connect');
+			expect(getItems().some((item) => item.id.startsWith('n8n-connect:'))).toBe(false);
+		});
+
+		it('hides the n8n-connect tab when no available tool is gateway-eligible', async () => {
+			aiGatewayStore.isNodeSupported = vi.fn().mockReturnValue(false);
+			render();
+			await flushPromises();
+
+			expect(modalAttrs.categories as string[]).not.toContain('n8n-connect');
+		});
+
+		it('opens the config modal with the managed credential pre-selected', async () => {
+			const onConfirm = vi.fn();
+			render([], onConfirm);
+			await flushPromises();
+
+			const gateway = getItems().find((item) => item.id === `n8n-connect:${SLACK.name}`);
+			emitConnect(gateway!);
+
+			// Behaves like any other node tool — the config modal opens so the user
+			// can pick the operation — only the credential is handled for them.
+			expect(onConfirm).not.toHaveBeenCalled();
+			expect(uiStore.openModalWithData).toHaveBeenCalledTimes(1);
+
+			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+			expect(payload.name).toBe('agentToolConfigModal');
+			expect(payload.data.toolRef.node.credentials).toEqual({
+				slackApi: { id: null, name: '', __aiGatewayManaged: true },
+			});
+		});
+
+		it('commits the gateway tool once its config modal saves', async () => {
+			const onConfirm = vi.fn();
+			render([], onConfirm);
+			await flushPromises();
+
+			const gateway = getItems().find((item) => item.id === `n8n-connect:${SLACK.name}`);
+			emitConnect(gateway!);
+
+			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+			payload.data.onConfirm(payload.data.toolRef);
+
+			expect(onConfirm).toHaveBeenCalledTimes(1);
+			const [{ tools }] = onConfirm.mock.calls[0];
+			expect(tools[0].node.credentials).toEqual({
+				slackApi: { id: null, name: '', __aiGatewayManaged: true },
+			});
+			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 		});
 	});
 });

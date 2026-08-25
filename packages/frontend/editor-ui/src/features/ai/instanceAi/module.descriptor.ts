@@ -150,6 +150,15 @@ export const InstanceAiModule: FrontendModuleDescription = {
 	},
 	resources: [],
 	modals: INSTANCE_AI_MODALS,
+	pushHandlers: {
+		// Credits are instance-level state, so the module owns this push type through
+		// the SDK registry instead of a view-scoped store listener. The store is
+		// imported lazily so it stays out of the startup bundle.
+		updateInstanceAiCredits: async (event) => {
+			const { useInstanceAiStore } = await import('./instanceAi.store');
+			useInstanceAiStore().handleCreditsPush(event.data);
+		},
+	},
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',

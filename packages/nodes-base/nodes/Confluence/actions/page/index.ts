@@ -4,9 +4,10 @@ import * as append from './append.operation';
 import * as create from './create.operation';
 import * as del from './delete.operation';
 import * as get from './get.operation';
+import * as getManyByLabel from './getManyByLabel.operation';
 import * as update from './update.operation';
 
-export { append, create, del as delete, get, update };
+export { append, create, del as delete, get, getManyByLabel, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -45,6 +46,12 @@ export const description: INodeProperties[] = [
 				action: 'Get a page',
 			},
 			{
+				name: 'Get Many by Label',
+				value: 'getManyByLabel',
+				description: 'Retrieve all pages carrying a label',
+				action: 'Get many pages by label',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Replace the title and body of an existing page',
@@ -57,5 +64,6 @@ export const description: INodeProperties[] = [
 	...create.description,
 	...del.description,
 	...get.description,
+	...getManyByLabel.description,
 	...update.description,
 ];
