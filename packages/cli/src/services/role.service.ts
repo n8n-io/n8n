@@ -402,11 +402,11 @@ export class RoleService {
 			// End-user credentials require the recipient to connect their own
 			// account, so a global share must also grant `credential:connect`.
 			// Static credentials stay read-only.
-			if (
-				'isResolvable' in entity &&
-				entity.isResolvable &&
-				!entity.scopes.includes('credential:connect')
-			) {
+			if (!('isResolvable' in entity)) {
+				throw new UnexpectedError('isResolvable must be selected whenever isGlobal is');
+			}
+
+			if (entity.isResolvable && !entity.scopes.includes('credential:connect')) {
 				entity.scopes.push('credential:connect');
 			}
 		}
