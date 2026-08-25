@@ -159,6 +159,28 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openNewCredential, openModalWithData }),
 }));
 
+vi.mock('../composables/useModelCatalog', () => ({
+	useModelCatalog: () => ({
+		ensureLoaded: vi.fn(),
+		getDefaultModelForPicker: (
+			_credentials: Record<string, string | null> | null,
+			provider: string,
+		) =>
+			provider === 'openai'
+				? {
+						provider: 'openai',
+						model: 'gpt-5-mini',
+						name: 'GPT-5 mini',
+						description: null,
+						createdAt: null,
+						metadata: { functionCalling: true, available: true },
+					}
+				: null,
+		getVerificationStatus: (_projectId: string, _provider: string, credentialId: string) =>
+			credentialId === 'free-openai-credential' ? 'resolved' : 'loading',
+	}),
+}));
+
 const modelsByProvider: AgentModelsByProvider = {
 	anthropic: {
 		models: [
@@ -475,6 +497,7 @@ describe('AgentModelSelector', () => {
 		const wrapper = await mountSelector({ openai: null });
 
 		getDropdown(wrapper).vm.$emit('select', 'openai::select::free-openai-credential');
+		await wrapper.vm.$nextTick();
 
 		expect(wrapper.emitted('selectCredential')).toEqual([['openai', 'free-openai-credential']]);
 		expect(wrapper.emitted('change')).toEqual([[{ provider: 'openai', model: 'gpt-5-mini' }]]);

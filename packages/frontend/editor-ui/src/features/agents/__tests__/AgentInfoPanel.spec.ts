@@ -346,14 +346,10 @@ describe('AgentInfoPanel', () => {
 				.vm.$emit('select-credential', 'openai', 'credential-2');
 			await wrapper.vm.$nextTick();
 
-			defaultModelHolder.value = {
+			wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
 				provider: 'openai',
 				model: 'gpt-5-mini',
-				name: 'GPT-5 mini',
-				description: null,
-				createdAt: null,
-				metadata: { functionCalling: true, available: true },
-			};
+			});
 			await wrapper.vm.$nextTick();
 
 			expect(wrapper.emitted('update:config')).toContainEqual([
