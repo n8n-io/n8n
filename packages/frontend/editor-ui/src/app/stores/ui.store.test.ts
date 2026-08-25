@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { modalRegistry } from '@n8n/frontend-module-sdk';
 
-import type { ModalState } from '@/Interface';
+import type { ModalState, NewCredentialsModal } from '@/Interface';
 import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
@@ -293,6 +293,9 @@ describe('UI Store', () => {
 			});
 		});
 
+		const credentialModalState = () =>
+			useUIStore().modalsById[CREDENTIAL_EDIT_MODAL_KEY] as NewCredentialsModal;
+
 		it('should store the workflowId option in the modal state', () => {
 			const uiStore = useUIStore();
 
@@ -309,7 +312,7 @@ describe('UI Store', () => {
 				},
 			);
 
-			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].workflowId).toBe('wf-1');
+			expect(credentialModalState().workflowId).toBe('wf-1');
 		});
 
 		it('should clear a stale workflowId when reopened without one', () => {
@@ -329,17 +332,17 @@ describe('UI Store', () => {
 			);
 			uiStore.openNewCredential('slackApi');
 
-			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].workflowId).toBeUndefined();
+			expect(credentialModalState().workflowId).toBeUndefined();
 		});
 
 		it('should carry and clear workflowId through openExistingCredential', () => {
 			const uiStore = useUIStore();
 
 			uiStore.openExistingCredential('cred-1', { workflowId: 'wf-1' });
-			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].workflowId).toBe('wf-1');
+			expect(credentialModalState().workflowId).toBe('wf-1');
 
 			uiStore.openExistingCredential('cred-1');
-			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].workflowId).toBeUndefined();
+			expect(credentialModalState().workflowId).toBeUndefined();
 		});
 	});
 
