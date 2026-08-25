@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, useTemplateRef } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import {
 	N8nAiModelSelectorDropdown,
 	useDropdownSearch,
@@ -18,6 +18,7 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
 import ModelSelectorItemLeadingIcon from './model-selector/ModelSelectorItemLeadingIcon.vue';
 import { buildMenuItemId, parseMenuItemId } from './model-selector/menuItemId';
+import { useModelCatalog } from '../composables/useModelCatalog';
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
 	AGENT_MODEL_PROVIDERS,
@@ -81,6 +82,15 @@ const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 const aiGateway = useAiGateway();
+const { ensureLoaded, getDefaultModelForPicker, getVerificationStatus } = useModelCatalog();
+const pendingDefaultCredential = ref<{
+	provider: AgentModelProvider;
+	credentialId: string;
+} | null>(null);
+const forceModelOptionsDisabled = ref(false);
+const isResolvingDefaultModel = computed(
+	() => pendingDefaultCredential.value !== null || forceModelOptionsDisabled.value,
+);
 
 const aiGatewayBalancePill = computed(() => {
 	const balance = aiGateway.balance.value;
@@ -184,19 +194,6 @@ function getCredentialsForProvider(provider: AgentModelProvider) {
 	}
 
 	return [...credentialsById.values()].toSorted((a, b) => a.name.localeCompare(b.name));
-}
-
-function isFreeOpenAiCreditsCredential(
-	provider: AgentModelProvider,
-	credentialId: string,
-): boolean {
-	const credential = credentialsStore.getCredentialById(credentialId);
-
-	return (
-		provider === FREE_OPENAI_CREDITS_PROVIDER &&
-		credential?.type === getProviderCredentialTypes(FREE_OPENAI_CREDITS_PROVIDER)[0] &&
-		credential.isManaged
-	);
 }
 
 const canUseFreeOpenAiCredits = computed(
@@ -314,10 +311,11 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		? models.map<MenuItem>((model) => ({
 				id: buildMenuItemId(provider, 'model', model.model),
 				label: truncateBeforeLast(model.name, MAX_MODEL_NAME_CHARS),
-				disabled: false,
+				disabled: isResolvingDefaultModel.value,
 				checked: selectedModel?.provider === provider && selectedModel.model === model.model,
 				data: {
 					provider,
+					loading: isResolvingDefaultModel.value,
 					description: model.description ?? undefined,
 					descriptionTooltipTeleported: false,
 					fullName: `${model.name} ${model.model}`,
@@ -483,19 +481,47 @@ const filteredMenu = computed(() => {
 	});
 });
 
-function selectCredentialWithDefaultModel(
+function selectCredentialAndResolveDefaultModel(
 	provider: AgentModelProvider,
 	credentialId: string,
-	defaultModel?: string,
 ) {
+	void ensureLoaded(projectId);
 	emit('selectCredential', provider, credentialId);
-	const model =
-		defaultModel ??
-		(selectedModel?.provider !== provider
-			? modelsByProvider[provider]?.models[0]?.model
-			: undefined);
-	if (model) emit('change', { provider, model });
+	pendingDefaultCredential.value = { provider, credentialId };
 }
+
+function getPendingDefaultModelResolution() {
+	const pending = pendingDefaultCredential.value;
+	if (!pending) return null;
+
+	const pendingCredentials: AgentCredentialsByProvider = {
+		...(credentials ?? {}),
+		[pending.provider]: pending.credentialId,
+	};
+	const defaultModel = getDefaultModelForPicker(pendingCredentials, pending.provider);
+	const status = getVerificationStatus(projectId, pending.provider, pending.credentialId);
+	return { pending, defaultModel, status };
+}
+
+function handleDefaultModelResolution(result: ReturnType<typeof getPendingDefaultModelResolution>) {
+	if (!result || result.status === 'idle' || result.status === 'loading') return;
+	if (
+		pendingDefaultCredential.value?.provider !== result.pending.provider ||
+		pendingDefaultCredential.value.credentialId !== result.pending.credentialId
+	) {
+		return;
+	}
+
+	pendingDefaultCredential.value = null;
+	if (result.status === 'resolved' && result.defaultModel) {
+		emit('change', {
+			provider: result.defaultModel.provider,
+			model: result.defaultModel.model,
+		});
+	}
+}
+
+watch(getPendingDefaultModelResolution, handleDefaultModelResolution);
 
 function openNewCredential(provider: AgentModelProvider, credentialType: string) {
 	if (!disabled && canCreateCredentials.value) {
@@ -510,7 +536,7 @@ function openNewCredential(provider: AgentModelProvider, credentialType: string)
 			{
 				hideAskAssistant: true,
 				onCredentialCreated: function selectCreatedCredential(credential) {
-					emit('selectCredential', provider, credential.id);
+					selectCredentialAndResolveDefaultModel(provider, credential.id);
 				},
 				...(credentialModalAppendToBody ? { appendToBody: true } : {}),
 			},
@@ -532,18 +558,14 @@ async function onSelect(id: string) {
 	}
 
 	if (action === 'select') {
-		selectCredentialWithDefaultModel(
-			providerId,
-			value,
-			isFreeOpenAiCreditsCredential(providerId, value) ? FREE_OPENAI_CREDITS_MODEL : undefined,
-		);
+		selectCredentialAndResolveDefaultModel(providerId, value);
 		return;
 	}
 
 	if (action === 'n8nConnect') {
 		// Radio-style: selecting n8n credits always picks the managed tag. There's no
 		// toggle-off — you switch away by choosing another credential.
-		selectCredentialWithDefaultModel(providerId, AI_GATEWAY_MANAGED_TAG);
+		selectCredentialAndResolveDefaultModel(providerId, AI_GATEWAY_MANAGED_TAG);
 		return;
 	}
 
@@ -557,19 +579,27 @@ async function onSelect(id: string) {
 
 		if (!credential) return;
 
-		selectCredentialWithDefaultModel(providerId, credential.id, value);
+		selectCredentialAndResolveDefaultModel(providerId, credential.id);
 		return;
 	}
 
 	if (action === 'model') {
+		pendingDefaultCredential.value = null;
 		emit('change', { provider: providerId, model: value });
 	}
 }
 
+function openDropdown() {
+	if (!disabled) dropdownRef.value?.open();
+}
+
+function setModelOptionsDisabled(disabled: boolean) {
+	if (import.meta.env.DEV) forceModelOptionsDisabled.value = disabled;
+}
+
 defineExpose({
-	open: () => {
-		if (!disabled) dropdownRef.value?.open();
-	},
+	open: openDropdown,
+	setModelOptionsDisabled,
 });
 </script>
 
@@ -577,7 +607,7 @@ defineExpose({
 	<N8nAiModelSelectorDropdown
 		ref="dropdownRef"
 		:items="filteredMenu"
-		:is-loading="isLoading"
+		:is-loading="isLoading || isResolvingDefaultModel"
 		:selected-label="selectedLabel"
 		:selected-credential-name="selectedCredentialName"
 		:credentials-missing="isCredentialsMissing"

@@ -234,17 +234,8 @@ watch(
 function onSelectCredential(provider: AgentModelProvider, credentialId: string | null) {
 	selectCredential(provider, credentialId);
 	const parsed = parseModelString(modelToString(props.config?.model));
-	if (credentialId && parsed?.provider !== provider) {
-		pendingDefaultProvider.value = provider;
-	}
 	if (parsed?.provider === provider && credentialId) {
 		emit('update:config', { credential: credentialId });
-	}
-}
-
-function onConfigureCredential(provider: AgentModelProvider) {
-	if (!modelToString(props.config?.model)) {
-		pendingDefaultProvider.value = provider;
 	}
 }
 
@@ -298,7 +289,6 @@ function onInstructionsInput(value: string) {
 				data-testid="agent-model-selector"
 				@change="onModelChange"
 				@select-credential="onSelectCredential"
-				@configure-credential="onConfigureCredential"
 			/>
 			<N8nCallout
 				v-if="defaultModelHint && !props.disabled"

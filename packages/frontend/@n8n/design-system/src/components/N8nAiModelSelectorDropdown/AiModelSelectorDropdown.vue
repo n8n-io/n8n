@@ -100,6 +100,10 @@ function handleSelect(id: string) {
 	emit('select', id);
 }
 
+function getItemContentClass(item: AiModelSelectorMenuItem<TData>, className: string): string {
+	return item.data?.loading ? `${className} ${$style.itemLoading}` : className;
+}
+
 defineExpose({
 	open: () => {
 		if (!disabled) dropdownRef.value?.open();
@@ -157,22 +161,25 @@ defineExpose({
 		</template>
 
 		<template #item-leading="{ item, ui }">
-			<slot name="item-leading" :item="item" :ui="ui" />
+			<slot name="item-leading" :item="item" :ui="{ class: getItemContentClass(item, ui.class) }" />
 			<N8nIcon
 				v-if="!item.data && item.icon?.type === 'icon'"
 				:icon="item.icon.value"
-				:class="ui.class"
+				:class="getItemContentClass(item, ui.class)"
 				color="text-light"
 				size="large"
 			/>
-			<span v-else-if="!item.data && item.icon?.type === 'emoji'" :class="[$style.emoji, ui.class]">
+			<span
+				v-else-if="!item.data && item.icon?.type === 'emoji'"
+				:class="[$style.emoji, getItemContentClass(item, ui.class)]"
+			>
 				{{ item.icon.value }}
 			</span>
 		</template>
 
 		<template #item-label="{ item, ui }">
 			<template v-if="item.data?.parts">
-				<div :class="[$style.flattenedLabel, ui.class]">
+				<div :class="[$style.flattenedLabel, getItemContentClass(item, ui.class)]">
 					<template v-for="(part, index) in item.data.parts" :key="index">
 						<N8nText v-if="index > 0" color="text-light" :class="$style.separator">
 							<N8nIcon icon="chevron-right" size="small" />
@@ -186,10 +193,11 @@ defineExpose({
 					</template>
 				</div>
 			</template>
-			<div v-else :class="[$style.labelWithBadge, ui.class]">
-				<N8nText size="medium" :color="item.disabled ? 'text-xlight' : 'text-dark'">{{
-					item.label
-				}}</N8nText>
+			<div v-else :class="[$style.labelWithBadge, getItemContentClass(item, ui.class)]">
+				<span v-if="item.data?.loading" :class="$style.modelLoading" aria-hidden="true"></span>
+				<N8nText v-else size="medium" :color="item.disabled ? 'text-xlight' : 'text-dark'">
+					{{ item.label }}
+				</N8nText>
 				<N8nBadge
 					v-if="item.data?.badgeLabel"
 					:class="$style.badge"
@@ -212,7 +220,7 @@ defineExpose({
 			<N8nTooltip
 				v-if="item.data?.description"
 				:content="truncateBeforeLast(item.data.description, 320, 0)"
-				:class="ui.class"
+				:class="getItemContentClass(item, ui.class)"
 				placement="right"
 				:teleported="item.data?.descriptionTooltipTeleported ?? true"
 			>
@@ -358,6 +366,16 @@ defineExpose({
 	border-radius: var(--radius);
 	background-color: var(--background--active);
 
+	@include motion.skeleton-pulse;
+}
+
+.modelLoading {
+	display: inline-block;
+	flex-shrink: 0;
+	width: calc(var(--height--3xl) * 2);
+	height: var(--height--3xs);
+	border-radius: var(--radius);
+	background-color: var(--background--active);
 	@include motion.skeleton-pulse;
 }
 </style>
