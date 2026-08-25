@@ -192,20 +192,17 @@ describe('McpService scope enforcement', () => {
 	it('registers all tools when no scopes are provided (API keys, legacy tokens)', async () => {
 		const service = buildService();
 		const unscoped = await service.getServer(user, mcpFeatureFlags());
-		const fullyScoped = await service.getServer(
-			user,
-			mcpFeatureFlags(),
-			undefined,
-			Object.keys(TOOLS_BY_SCOPE),
-		);
+		const fullyScoped = await service.getServer(user, mcpFeatureFlags(), undefined, {
+			grantedScopes: Object.keys(TOOLS_BY_SCOPE),
+		});
 
 		expect(getRegisteredToolNames(fullyScoped)).toEqual(getRegisteredToolNames(unscoped));
 	});
 
 	it('registers only the tools covered by the granted scopes', async () => {
-		const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, [
-			'workflow:read',
-		]);
+		const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+			grantedScopes: ['workflow:read'],
+		});
 
 		expect(getRegisteredToolNames(server)).toEqual(new Set(TOOLS_BY_SCOPE['workflow:read']));
 	});
@@ -215,7 +212,7 @@ describe('McpService scope enforcement', () => {
 			user,
 			mcpFeatureFlags(),
 			undefined,
-			['workflow:read'],
+			{ grantedScopes: ['workflow:read'] },
 		);
 
 		expect(getRegisteredToolNames(server)).toEqual(
@@ -230,7 +227,9 @@ describe('McpService scope enforcement', () => {
 	});
 
 	it('registers no tools for an empty grant', async () => {
-		const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, []);
+		const server = await buildService().getServer(user, mcpFeatureFlags(), undefined, {
+			grantedScopes: [],
+		});
 
 		expect(getRegisteredToolNames(server)).toEqual(new Set());
 	});
@@ -240,7 +239,7 @@ describe('McpService scope enforcement', () => {
 			user,
 			mcpFeatureFlags({ mcpApps: { enabled: true, variant: 'variant' } }),
 			undefined,
-			['workflow:read'],
+			{ grantedScopes: ['workflow:read'] },
 		);
 
 		expect(getRegisteredToolNames(server)).not.toContain('create_workflow_from_code');
@@ -252,7 +251,7 @@ describe('McpService scope enforcement', () => {
 			user,
 			mcpFeatureFlags({ mcpApps: { enabled: true, variant: 'variant' } }),
 			undefined,
-			['workflow:write'],
+			{ grantedScopes: ['workflow:write'] },
 		);
 
 		expect(getRegisteredToolNames(server)).toContain('create_workflow_from_code');

@@ -712,7 +712,10 @@ and tools drive the build, including its interactive tools (`ask_questions`,
 lifecycle tools (`publish_agent`, `unpublish_agent`) on the bound target agent —
 the sub-agent session no longer excludes them. Forward publish/unpublish/
 activate/make-live intents to `build-agent`; never tell the user to open the
-agent editor and click Publish. Builder session state is keyed to
+agent editor and click Publish. The builder also inherits the orchestrator's
+validated, approval-wrapped MCP connector tools so it can use the same external
+context while designing the agent; connector tools that conflict with a native
+builder tool name are skipped. Builder session state is keyed to
 instance-AI-scoped threads (`ia-builder:<threadId>:<agentId>`) and never
 appears in the agents-module builder UI.
 
@@ -828,6 +831,10 @@ only the domain tools wired into that agent.
 | Sandbox-backed internals (`build-workflow` TypeScript compilation, `materialize-node-type`) | ✅ | ❌ |
 | MCP tools | ✅ | ❌ |
 | Computer Use browser tools | ✅ (direct, via credential skill when setting up credentials) | ❌ |
+
+The embedded Agent Builder is an exception to the specialized-background-agent
+column: it inherits the orchestrator's safe MCP connector tools. Eval setup and
+other specialized background agents do not.
 
 ---
 

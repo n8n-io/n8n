@@ -22,7 +22,7 @@ const sharedLookupFields = {
 	credentialType: z
 		.string()
 		.optional()
-		.describe('n8n credential type name, for example "gmailOAuth2Api".'),
+		.describe('n8n credential type name, for example "gmailOAuth2".'),
 	credentialDisplayName: z
 		.string()
 		.optional()

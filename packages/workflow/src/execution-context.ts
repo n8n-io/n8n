@@ -254,6 +254,36 @@ export const ExecutionContextSchema = z
 export type IExecutionContext = z.output<typeof ExecutionContextSchema>;
 
 /**
+ * Metadata shape for the `n8n-oauth` credential-context source.
+ *
+ * `subject` (the resolved n8n user id) and `executionPath` (the execution ids the
+ * seal is valid for) turn the carrier into a verify-once "sealed" identity: when a
+ * subject is present, resolution trusts it and binds to `executionPath` instead of
+ * re-verifying the stored token. Absent `subject` = the legacy token-verify carrier;
+ * `establishedAt`/`executionPath` are optional so those legacy carriers still parse.
+ *
+ * `grant` (see {@link OAuthResourceGrant}) is carried by grant-based triggers so a run
+ * can re-verify its token after the protected resource stops resolving. It is listed
+ * here so `maybeBindExecutionId` preserves it through its parse-and-re-encrypt round-trip;
+ * the identifier validates it against its own local schema.
+ */
+export const N8NOAuthMetadataSchema = z.object({
+	source: z.literal('n8n-oauth'),
+	subject: z.string().optional(),
+	resource: z.string(),
+	establishedAt: z.number().optional(),
+	executionPath: z.array(z.string()).optional(),
+	grant: z
+		.object({
+			audiences: z.array(z.string()).min(1),
+			executeAccessWorkflowId: z.string().optional(),
+		})
+		.optional(),
+});
+
+export type IN8NOAuthMetadata = z.output<typeof N8NOAuthMetadataSchema>;
+
+/**
  * Runtime representation of execution context with decrypted credential data.
  *
  * This type is identical to IExecutionContext except the `credentials` field

@@ -6,8 +6,6 @@ const LAZY_RUNTIME_IMPORT_MESSAGE =
 
 const restrictedLazyRuntimeImports = [
 	'@daytona/sdk',
-	'@joplin/turndown-plugin-gfm',
-	'@mozilla/readability',
 	'csv-parse/sync',
 	'linkedom',
 	'pdf-parse',

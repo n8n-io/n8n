@@ -293,7 +293,12 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 
 			// Handed back so a caller whose work outlives this resource can seal the gate it
 			// was just admitted by.
-			return { user, authType: 'oauth', scopes: authInfo.scopes, grant: resource?.getGrant?.() };
+			return {
+				user,
+				caller: { authType: 'oauth', clientId: authInfo.clientId },
+				scopes: authInfo.scopes,
+				grant: resource?.getGrant?.(),
+			};
 		} catch (error) {
 			const errorForSure = ensureError(error);
 			const reason =
@@ -311,6 +316,17 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				},
 			};
 		}
+	}
+
+	/**
+	 * Re-take a sealed grant's decision for a user, without the token. The sealed-identity
+	 * credential path calls this on every resolve, so a revoked `workflow:execute` stops
+	 * resolution mid-run. Loads the user with its role (a bare id lookup carries no scopes).
+	 */
+	async authorizeSealedGrant(userId: string, grant: OAuthResourceGrant): Promise<boolean> {
+		const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['role'] });
+		if (!user || user.disabled) return false;
+		return await authorizeAgainstGrant(this.workflowFinderService, grant, user);
 	}
 
 	/** Deletes every access and refresh token a user holds for a client. */

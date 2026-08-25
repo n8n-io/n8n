@@ -5,7 +5,8 @@
  */
 import { Tool } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { dropInvalidWorkflowJsonGroups, type WorkflowJSON } from '@n8n/workflow-sdk';
+import { makeGetNodeTypeForGrouping } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -52,9 +53,11 @@ import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import {
 	grantSessionWorkflowUpdate,
 	canSkipWorkflowUpdateHitl,
+	formatWarning,
 } from './workflows/workflow-build-context';
 import { refreshWorkflowSourceFileBindingFromWorkflow } from './workflows/workflow-file-bindings';
-import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { ensureUniqueNodeIds, getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { nodeGroupDroppedWarnings } from './workflows/workflow-validation-warnings';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -1320,6 +1323,13 @@ async function handleUpdate(
 	const expectedChecksum = await getObservedWorkflowChecksum(context, input.workflowId);
 
 	try {
+		ensureUniqueNodeIds(input.workflow);
+		const droppedGroupWarnings = nodeGroupDroppedWarnings(
+			dropInvalidWorkflowJsonGroups(
+				input.workflow,
+				context.nodeTypesProvider ? makeGetNodeTypeForGrouping(context.nodeTypesProvider) : null,
+			),
+		);
 		const saved = expectedChecksum
 			? await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow, {
 					expectedChecksum,
@@ -1331,7 +1341,17 @@ async function handleUpdate(
 		if (saved.checksum) {
 			await rememberObservedWorkflowChecksum(context, input.workflowId, saved.checksum);
 		}
-		return { success: true, workflowId: input.workflowId };
+		return {
+			success: true,
+			workflowId: input.workflowId,
+			...(droppedGroupWarnings.length > 0
+				? {
+						warnings: droppedGroupWarnings.map((warning) =>
+							formatWarning(warning.code, warning.message),
+						),
+					}
+				: {}),
+		};
 	} catch (error) {
 		if (error instanceof WorkflowSaveConflictError) {
 			return {

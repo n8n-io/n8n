@@ -105,7 +105,8 @@ describe('InstanceAiVerificationService', () => {
 			);
 			expect(createModelMock).toHaveBeenCalledWith(modelConfig, expect.any(Function));
 			expect(generateTextMock).toHaveBeenCalledWith(
-				expect.objectContaining({ prompt: 'Reply with OK.', maxOutputTokens: 8 }),
+				// OpenAI's Responses API rejects max_output_tokens below 16.
+				expect.objectContaining({ prompt: 'Reply with OK.', maxOutputTokens: 16 }),
 			);
 		});
 
@@ -158,11 +159,30 @@ describe('InstanceAiVerificationService', () => {
 		])('classifies model verification failures as $failure', async ({ error, failure }) => {
 			generateTextMock.mockRejectedValueOnce(error);
 
-			await expect(service.verifyModel(user, {})).resolves.toEqual({ ok: false, failure });
+			await expect(service.verifyModel(user, {})).resolves.toEqual({
+				ok: false,
+				failure,
+				error: expect.any(String),
+			});
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Instance AI model verification failed',
 				expect.objectContaining({ error: expect.any(String), failure }),
 			);
+		});
+
+		it('returns a scrubbed error detail on failure', async () => {
+			generateTextMock.mockRejectedValueOnce(
+				new Error('Incorrect API key provided: sk-proj-abcdef1234567890abcdef'),
+			);
+
+			const result = await service.verifyModel(user, {});
+
+			expect(result).toEqual({
+				ok: false,
+				failure: 'provider_error',
+				error: expect.stringContaining('[REDACTED]'),
+			});
+			expect(JSON.stringify(result)).not.toContain('sk-proj-abcdef');
 		});
 	});
 
@@ -230,6 +250,7 @@ describe('InstanceAiVerificationService', () => {
 			await expect(service.verifySandbox(user, {})).resolves.toEqual({
 				ok: false,
 				failure: 'timeout',
+				error: expect.any(String),
 			});
 
 			expect(workspace.destroy).toHaveBeenCalledOnce();
@@ -312,6 +333,7 @@ describe('InstanceAiVerificationService', () => {
 			await expect(service.verifySandbox(user, {})).resolves.toEqual({
 				ok: false,
 				failure: 'provider_error',
+				error: expect.any(String),
 			});
 		});
 
@@ -321,6 +343,7 @@ describe('InstanceAiVerificationService', () => {
 			await expect(service.verifySandbox(user, { provider: 'daytona' })).resolves.toEqual({
 				ok: false,
 				failure: 'quota_exceeded',
+				error: expect.any(String),
 			});
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Instance AI sandbox verification failed',
@@ -376,6 +399,7 @@ describe('InstanceAiVerificationService', () => {
 			await expect(service.verifySearch({})).resolves.toEqual({
 				ok: false,
 				failure: 'provider_error',
+				error: expect.any(String),
 			});
 		});
 
@@ -386,6 +410,7 @@ describe('InstanceAiVerificationService', () => {
 			await expect(service.verifySearch({})).resolves.toEqual({
 				ok: false,
 				failure: 'unreachable',
+				error: expect.any(String),
 			});
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Instance AI search verification failed',

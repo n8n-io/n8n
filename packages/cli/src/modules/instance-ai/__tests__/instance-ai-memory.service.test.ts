@@ -26,9 +26,61 @@ const mockAgentMemory = {
 };
 
 // Mock GlobalConfig
-const mockDbSnapshotStorage = { getAll: vi.fn().mockResolvedValue([]) };
+const mockDbSnapshotStorage = { getForWindow: vi.fn().mockResolvedValue([]) };
 const mockCheckpointRepository = { findActiveByThreadId: vi.fn().mockResolvedValue([]) };
-const mockEventLogRepository = { getForThread: vi.fn().mockResolvedValue([]) };
+
+interface LogRow {
+	runId: string;
+	createdAt: Date;
+	event: { runId: string; [key: string]: unknown };
+}
+
+/** Facts the log double serves. Tests describe the thread once with
+ *  `setLogRows`; the windowed queries the service issues are derived from that
+ *  list, so a windowing change shows up as a change in what folds. */
+let logRows: LogRow[] = [];
+
+function setLogRows(rows: LogRow[]): void {
+	logRows = rows;
+}
+
+const mockEventLogRepository = {
+	getRunStarts: vi.fn(),
+	findRunIdsInWindow: vi.fn(),
+	getForThreadRuns: vi.fn(),
+};
+
+/** Re-arms the derived implementations — a test that overrides one (e.g. to
+ *  reject) must not leak that into the next. */
+function installLogDouble(rows: LogRow[] = []): void {
+	setLogRows(rows);
+	mockEventLogRepository.getRunStarts.mockImplementation(async () =>
+		logRows
+			.filter((row) => row.event.type === 'run-start')
+			.map((row) => {
+				const payload = row.event.payload as { messageGroupId?: string } | undefined;
+				const groupId = payload?.messageGroupId;
+				return {
+					runId: row.runId,
+					messageGroupId: typeof groupId === 'string' ? groupId : undefined,
+				};
+			}),
+	);
+	mockEventLogRepository.findRunIdsInWindow.mockImplementation(
+		async (_threadId: string, window: { since?: Date; before?: Date }) => [
+			...new Set(
+				logRows
+					.filter((row) => !window.since || row.createdAt >= window.since)
+					.filter((row) => !window.before || row.createdAt < window.before)
+					.map((row) => row.runId),
+			),
+		],
+	);
+	mockEventLogRepository.getForThreadRuns.mockImplementation(
+		async (_threadId: string, runIds: string[]) =>
+			logRows.filter((row) => runIds.includes(row.runId)),
+	);
+}
 const mockDurableLogMetrics = { recordFoldRead: vi.fn(), notifyParserFallbacks: vi.fn() };
 
 function createService(
@@ -95,7 +147,7 @@ function makeThread(id: string, updatedAt: string) {
 describe('InstanceAiMemoryService.getRichMessages', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockDbSnapshotStorage.getAll.mockResolvedValue([]);
+		mockDbSnapshotStorage.getForWindow.mockResolvedValue([]);
 		mockListMessages.mockResolvedValue({ messages: [] });
 	});
 
@@ -117,7 +169,7 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 				},
 			],
 		});
-		mockDbSnapshotStorage.getAll.mockResolvedValue([
+		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
 			{
 				tree,
 				runId: 'run_abc',
@@ -353,8 +405,8 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockDbSnapshotStorage.getAll.mockResolvedValue([]);
-		mockEventLogRepository.getForThread.mockResolvedValue([]);
+		mockDbSnapshotStorage.getForWindow.mockResolvedValue([]);
+		installLogDouble();
 		mockListMessages.mockResolvedValue({ messages: [userMessage, assistantMessage] });
 	});
 
@@ -363,7 +415,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		// cancelled tree with none of the run's work (the INS-595 bug family).
 		// Snapshot rows keep being written flag-on (the rollback path until Gate
 		// B), but they are never read once the thread has log rows.
-		mockDbSnapshotStorage.getAll.mockResolvedValue([
+		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
 			{
 				tree: makeTree({ status: 'cancelled', textContent: '', timeline: [], toolCalls: [] }),
 				runId: 'run_abc',
@@ -371,7 +423,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 				updatedAt: at,
 			},
 		]);
-		mockEventLogRepository.getForThread.mockResolvedValue([
+		setLogRows([
 			eventRow(
 				{
 					type: 'run-start',
@@ -407,11 +459,11 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1);
 		// The stored rows are not even loaded: the snapshot query only runs when
 		// the fold needs its fallback.
-		expect(mockDbSnapshotStorage.getAll).not.toHaveBeenCalled();
+		expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
 	});
 
 	it('renders a run that crashed before its snapshot was written', async () => {
-		mockEventLogRepository.getForThread.mockResolvedValue([
+		setLogRows([
 			eventRow(
 				{
 					type: 'run-start',
@@ -448,7 +500,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		// controller). Deriving a partial group tree from the completed run
 		// would pair against a turn with no assistant message yet, so the whole
 		// group stays out of history until the turn completes.
-		mockEventLogRepository.getForThread.mockResolvedValue([
+		setLogRows([
 			eventRow(
 				{
 					type: 'run-start',
@@ -523,10 +575,10 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		// resurrect exactly the in-flight group state the exclusion keeps out
 		// of history.
 		mockListMessages.mockResolvedValue({ messages: [userMessage] });
-		mockDbSnapshotStorage.getAll.mockResolvedValue([
+		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
 			{ tree: makeTree(), runId: 'run_a', createdAt: at, updatedAt: at },
 		]);
-		mockEventLogRepository.getForThread.mockResolvedValue([
+		setLogRows([
 			eventRow(
 				{
 					type: 'run-start',
@@ -562,7 +614,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 			excludeRunIds: ['run_b'],
 		});
 
-		expect(mockDbSnapshotStorage.getAll).not.toHaveBeenCalled();
+		expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
 		expect(result.messages).toHaveLength(1);
 		expect(result.messages[0].role).toBe('user');
 	});
@@ -573,7 +625,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		// the live group id, and the completed sibling run_a must not derive a
 		// partial group entry.
 		mockListMessages.mockResolvedValue({ messages: [userMessage] });
-		mockEventLogRepository.getForThread.mockResolvedValue([
+		setLogRows([
 			eventRow(
 				{
 					type: 'run-start',
@@ -602,7 +654,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		});
 
 		expect(mockDurableLogMetrics.recordFoldRead).not.toHaveBeenCalled();
-		expect(mockDbSnapshotStorage.getAll).not.toHaveBeenCalled();
+		expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
 		expect(result.messages).toHaveLength(1);
 		expect(result.messages[0].role).toBe('user');
 	});
@@ -611,7 +663,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		// On a main that is not driving the run the controller's per-process run
 		// state is empty, so no excludeRunIds arrive. The log alone must identify
 		// the in-flight group: its run has a run-start but no terminal run-finish.
-		mockEventLogRepository.getForThread.mockResolvedValue([
+		setLogRows([
 			eventRow(
 				{
 					type: 'run-start',
@@ -657,12 +709,12 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		// Only run_done's entry is derived, exactly as the driving main would.
 		expect(mockDurableLogMetrics.recordFoldRead).toHaveBeenCalledWith(expect.any(Number), 1);
 		expect(result.messages[1].agentTree?.toolCalls).toHaveLength(1);
-		expect(mockDbSnapshotStorage.getAll).not.toHaveBeenCalled();
+		expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
 	});
 
 	it('renders nothing when the only group is in flight on another main instead of falling back', async () => {
 		mockListMessages.mockResolvedValue({ messages: [userMessage] });
-		mockEventLogRepository.getForThread.mockResolvedValue([
+		setLogRows([
 			eventRow(
 				{
 					type: 'run-start',
@@ -686,7 +738,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		const service = createService({ durableLog: true });
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
-		expect(mockDbSnapshotStorage.getAll).not.toHaveBeenCalled();
+		expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
 		expect(result.messages).toHaveLength(1);
 		expect(result.messages[0].role).toBe('user');
 	});
@@ -722,7 +774,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 				updatedAt: new Date('2026-01-01T00:00:01.000Z'),
 			},
 		]);
-		mockEventLogRepository.getForThread.mockResolvedValue([
+		setLogRows([
 			eventRow(
 				{
 					type: 'run-start',
@@ -788,7 +840,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 				},
 			],
 		});
-		mockEventLogRepository.getForThread.mockResolvedValue([
+		setLogRows([
 			// Turn 1: parent run answers at ~t10, spawns a background sibling.
 			eventRow(
 				{
@@ -890,7 +942,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 				{ type: 'text-block', runId, agentId: 'agent-001', responseId, payload: { text } },
 				at,
 			);
-		mockEventLogRepository.getForThread.mockResolvedValue([
+		setLogRows([
 			eventRow(
 				{
 					type: 'run-start',
@@ -942,7 +994,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 
 	it('keeps the stored snapshot tree for pre-log threads (no log rows)', async () => {
 		const tree = makeTree();
-		mockDbSnapshotStorage.getAll.mockResolvedValue([
+		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
 			{ tree, runId: 'run_abc', createdAt: at, updatedAt: at },
 		]);
 
@@ -955,10 +1007,10 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 
 	it('falls back to stored snapshots when the log read fails', async () => {
 		const tree = makeTree();
-		mockDbSnapshotStorage.getAll.mockResolvedValue([
+		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
 			{ tree, runId: 'run_abc', createdAt: at, updatedAt: at },
 		]);
-		mockEventLogRepository.getForThread.mockRejectedValue(new Error('db down'));
+		mockEventLogRepository.getRunStarts.mockRejectedValue(new Error('db down'));
 
 		const service = createService({ durableLog: true });
 		const result = await service.getRichMessages('user-1', 'thread-1');
@@ -968,12 +1020,12 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 
 	it('falls back to stored snapshots when the log derives nothing renderable', async () => {
 		const tree = makeTree();
-		mockDbSnapshotStorage.getAll.mockResolvedValue([
+		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
 			{ tree, runId: 'run_abc', createdAt: at, updatedAt: at },
 		]);
 		// The log holds only lifecycle facts — no renderable work, so no orphan
 		// card is derived and the stored snapshots keep rendering.
-		mockEventLogRepository.getForThread.mockResolvedValue([
+		setLogRows([
 			eventRow(
 				{
 					type: 'run-start',
@@ -1005,7 +1057,216 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 		const service = createService();
 		await service.getRichMessages('user-1', 'thread-1');
 
-		expect(mockEventLogRepository.getForThread).not.toHaveBeenCalled();
+		expect(mockEventLogRepository.getRunStarts).not.toHaveBeenCalled();
+	});
+
+	describe('hydration is scoped to the requested page', () => {
+		const oldAt = new Date('2025-06-01T00:00:00.000Z');
+
+		/** A complete, renderable run: start, one tool call, finish. */
+		function runRows(runId: string, when: Date, messageGroupId?: string) {
+			return [
+				eventRow(
+					{
+						type: 'run-start',
+						runId,
+						agentId: 'agent-001',
+						payload: { messageId: `m-${runId}`, ...(messageGroupId ? { messageGroupId } : {}) },
+					},
+					when,
+				),
+				eventRow(
+					{
+						type: 'tool-call',
+						runId,
+						agentId: 'agent-001',
+						payload: { toolCallId: `tc-${runId}`, toolName: `tool-${runId}`, args: {} },
+					},
+					when,
+				),
+				eventRow(
+					{
+						type: 'tool-result',
+						runId,
+						agentId: 'agent-001',
+						payload: { toolCallId: `tc-${runId}`, result: {} },
+					},
+					when,
+				),
+				eventRow(
+					{
+						type: 'run-finish',
+						runId,
+						agentId: 'agent-001',
+						payload: { status: 'completed' },
+					},
+					when,
+				),
+			];
+		}
+
+		it('folds only the runs behind the page, and keeps older turns off it', async () => {
+			// A long thread: one turn from months ago, one in the returned page.
+			// The old run's facts must neither be read nor rendered — before
+			// windowing its derived tree had no message to pair with and the
+			// parser surfaced it as a message of its own.
+			setLogRows([...runRows('run_old', oldAt), ...runRows('run_recent', at)]);
+
+			const service = createService({ durableLog: true });
+			const result = await service.getRichMessages('user-1', 'thread-1');
+
+			expect(mockEventLogRepository.getForThreadRuns).toHaveBeenCalledWith('thread-1', [
+				'run_recent',
+			]);
+			expect(result.messages).toHaveLength(2);
+			expect(result.messages[1].runId).toBe('run_recent');
+			expect(result.messages[1].agentTree?.toolCalls.map((tc) => tc.toolName)).toEqual([
+				'tool-run_recent',
+			]);
+		});
+
+		it('leaves the upper bound open on the newest page so an in-flight run still folds', async () => {
+			// A run whose turn has not committed yet has facts newer than every
+			// persisted message row. Clipping at the page's newest message would
+			// hide the turn the user is watching.
+			const laterAt = new Date('2026-01-01T00:00:09.000Z');
+			setLogRows([...runRows('run_recent', at), ...runRows('run_live', laterAt)]);
+
+			const service = createService({ durableLog: true });
+			const result = await service.getRichMessages('user-1', 'thread-1');
+
+			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {
+				since: userMessage.createdAt,
+			});
+			expect(mockEventLogRepository.getForThreadRuns).toHaveBeenCalledWith('thread-1', [
+				'run_recent',
+				'run_live',
+			]);
+			expect(result.messages.some((m) => m.runId === 'run_live')).toBe(true);
+		});
+
+		it('stops an older page where the next page starts, not at its own newest message', async () => {
+			// A turn's tree is written when its run ends — after the assistant row
+			// it pairs with. Clipping at the page's own newest message would drop
+			// the tree of the turn the page ends on, and no other page would claim
+			// it either.
+			const nextPageAt = new Date('2026-01-01T00:00:05.000Z');
+			mockListMessages.mockResolvedValue({
+				messages: [userMessage, assistantMessage],
+				newerBoundaryAt: nextPageAt,
+			});
+			setLogRows([...runRows('run_recent', at)]);
+
+			const service = createService({ durableLog: true });
+			await service.getRichMessages('user-1', 'thread-1', { page: 1 });
+
+			expect(mockListMessages).toHaveBeenCalledWith(
+				expect.objectContaining({ page: 1, withNewerBoundary: true }),
+			);
+			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {
+				since: userMessage.createdAt,
+				before: nextPageAt,
+			});
+		});
+
+		it('keeps the tree of the turn an older page ends on', async () => {
+			// The stored-snapshot path (durable log off) reads by snapshot
+			// createdAt, which lands just after the assistant row it pairs with.
+			const snapshotAt = new Date('2026-01-01T00:00:01.300Z');
+			const nextPageAt = new Date('2026-01-01T00:00:05.000Z');
+			const tree = makeTree();
+			mockListMessages.mockResolvedValue({
+				messages: [userMessage, assistantMessage],
+				newerBoundaryAt: nextPageAt,
+			});
+			mockDbSnapshotStorage.getForWindow.mockResolvedValue([
+				{ tree, runId: 'run_abc', createdAt: snapshotAt, updatedAt: snapshotAt },
+			]);
+
+			const service = createService();
+			const result = await service.getRichMessages('user-1', 'thread-1', { page: 1 });
+
+			expect(mockDbSnapshotStorage.getForWindow).toHaveBeenCalledWith('thread-1', {
+				since: userMessage.createdAt,
+				before: nextPageAt,
+			});
+			expect(result.messages[1].agentTree).toBe(tree);
+		});
+
+		it('hydrates nothing for an out-of-range older page', async () => {
+			// No message rows to pair a tree with, and no bounds to read one
+			// with: an unbounded read here would hydrate the whole thread to
+			// render nothing.
+			mockListMessages.mockResolvedValue({ messages: [] });
+			setLogRows([...runRows('run_recent', at)]);
+
+			const service = createService({ durableLog: true });
+			const result = await service.getRichMessages('user-1', 'thread-1', { page: 3 });
+
+			expect(mockEventLogRepository.findRunIdsInWindow).not.toHaveBeenCalled();
+			expect(mockDbSnapshotStorage.getForWindow).not.toHaveBeenCalled();
+			expect(result.messages).toEqual([]);
+		});
+
+		it('widens the window to whole message groups', async () => {
+			// A background run of the same group finishes after the page's last
+			// message. Folding the group without it would drop its work from the
+			// turn's tree, so the window has to pull the sibling back in.
+			const afterPage = new Date('2026-01-01T00:00:30.000Z');
+			mockListMessages.mockResolvedValue({
+				messages: [userMessage, assistantMessage],
+				newerBoundaryAt: new Date('2026-01-01T00:00:05.000Z'),
+			});
+			setLogRows([...runRows('run_parent', at, 'mg-1'), ...runRows('run_bg', afterPage, 'mg-1')]);
+
+			const service = createService({ durableLog: true });
+			const result = await service.getRichMessages('user-1', 'thread-1', { page: 1 });
+
+			// `run_bg` is outside the page bounds; it rides in on its group.
+			expect(mockEventLogRepository.getForThreadRuns).toHaveBeenCalledWith('thread-1', [
+				'run_parent',
+				'run_bg',
+			]);
+			const toolNames = result.messages[1].agentTree?.toolCalls.map((tc) => tc.toolName) ?? [];
+			expect(toolNames).toContain('tool-run_parent');
+			expect(toolNames).toContain('tool-run_bg');
+		});
+
+		it('reads unbounded for a page with no message rows', async () => {
+			// A thread whose only activity is a first, still-running turn has no
+			// message rows yet and must still render.
+			mockListMessages.mockResolvedValue({ messages: [] });
+			setLogRows([...runRows('run_live', at)]);
+
+			const service = createService({ durableLog: true });
+			const result = await service.getRichMessages('user-1', 'thread-1');
+
+			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {});
+			expect(result.messages).toHaveLength(1);
+			expect(result.messages[0].runId).toBe('run_live');
+		});
+
+		it('reads unbounded above on the newest page', async () => {
+			// Page 0 has no newer neighbour, so nothing clips the in-flight turn.
+			mockListMessages.mockResolvedValue({ messages: [userMessage, assistantMessage] });
+			setLogRows([...runRows('run_recent', at)]);
+
+			const service = createService({ durableLog: true });
+			await service.getRichMessages('user-1', 'thread-1');
+
+			expect(mockEventLogRepository.findRunIdsInWindow).toHaveBeenCalledWith('thread-1', {
+				since: userMessage.createdAt,
+			});
+		});
+
+		it('windows the stored-snapshot path too', async () => {
+			const service = createService();
+			await service.getRichMessages('user-1', 'thread-1');
+
+			expect(mockDbSnapshotStorage.getForWindow).toHaveBeenCalledWith('thread-1', {
+				since: userMessage.createdAt,
+			});
+		});
 	});
 });
 
