@@ -18,13 +18,14 @@ export const CHAT_SHELL_INNER_PARAM = 'n8nShellInner';
 export const CHAT_FRAME_SANDBOX = 'allow-scripts allow-forms allow-modals allow-popups';
 
 /**
- * Honour the inner-render flag only for iframe navigations (`Sec-Fetch-Dest`, absent on
- * browsers that don't send it) so a hand-typed URL still lands on the trusted shell.
+ * Honour the inner-render flag only for iframe navigations. Requires `Sec-Fetch-Dest:
+ * iframe` explicitly — a request with the header absent (any non-browser client, or a
+ * proxy that strips it) still lands on the trusted shell rather than being treated as
+ * one.
  */
 export function isShellInnerRequest(req: Request): boolean {
-	const secFetchDest = req.headers['sec-fetch-dest'];
 	if (req.query[CHAT_SHELL_INNER_PARAM] !== '1') return false;
-	return secFetchDest === undefined || secFetchDest === 'iframe';
+	return req.headers['sec-fetch-dest'] === 'iframe';
 }
 
 /** Relative, so the frame's POST resolves to the same webhook behind any host or prefix. */

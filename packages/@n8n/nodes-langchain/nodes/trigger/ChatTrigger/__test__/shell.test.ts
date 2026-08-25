@@ -43,11 +43,12 @@ describe('isShellInnerRequest', () => {
 		expect(isShellInnerRequest(req)).toBe(true);
 	});
 
-	// Older browsers don't send the header at all; refusing there would mean no chat.
-	it('honors the flag when the browser sends no Sec-Fetch-Dest', () => {
+	// A request with no header at all (any non-browser client, or a stripping proxy)
+	// must not be treated as an iframe navigation.
+	it('refuses the flag when Sec-Fetch-Dest is absent', () => {
 		const req = request({ query: { n8nShellInner: '1' } });
 
-		expect(isShellInnerRequest(req)).toBe(true);
+		expect(isShellInnerRequest(req)).toBe(false);
 	});
 
 	// A hand-typed URL is a top-level navigation, so it must land on the shell —
