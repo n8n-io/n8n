@@ -24,7 +24,6 @@ const i18n = useI18n();
 				size="medium"
 				icon="plus"
 				:label="i18n.baseText('communityNodeItem.label')"
-				outline
 			/>
 		</div>
 	</div>

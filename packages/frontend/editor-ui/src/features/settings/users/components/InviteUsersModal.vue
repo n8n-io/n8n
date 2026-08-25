@@ -388,7 +388,6 @@ onMounted(() => {
 				:loading="loading"
 				:disabled="!enabledButton"
 				:label="buttonLabel"
-				float="right"
 				@click="onSubmitClick"
 			/>
 		</template>

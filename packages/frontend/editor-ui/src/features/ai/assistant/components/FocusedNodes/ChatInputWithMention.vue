@@ -271,7 +271,6 @@ defineExpose({
 					v-if="isFeatureEnabled"
 					icon="at-sign"
 					variant="ghost"
-					:text="true"
 					size="small"
 					:title="i18n.baseText('focusedNodes.mentionTooltip')"
 					data-test-id="mention-node-button"

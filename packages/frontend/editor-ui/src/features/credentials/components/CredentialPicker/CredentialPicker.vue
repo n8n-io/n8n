@@ -269,7 +269,7 @@ watch(
 			>
 				<N8nIconButton
 					v-if="props.showDelete && props.selectedCredentialId"
-					native-type="button"
+					type="button"
 					:title="i18n.baseText('nodeCredentials.deleteCredential')"
 					icon="trash-2"
 					icon-size="large"

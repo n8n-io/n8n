@@ -226,7 +226,6 @@ function onAddToAi() {
 					data-test-id="add-to-ai-button"
 					variant="ghost"
 					size="small"
-					text
 					icon="sparkles"
 					:aria-label="i18n.baseText('node.addToAi')"
 					@click.stop="onAddToAi"

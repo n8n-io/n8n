@@ -81,7 +81,6 @@ onMounted(() => {
 			<N8nButton
 				:loading="loading"
 				:label="i18n.baseText('generic.confirm')"
-				float="right"
 				data-test-id="confirm-password-button"
 				@click="onSubmitClick"
 			/>

@@ -56,7 +56,6 @@ const i18n = useI18n();
 					variant="ghost"
 					size="large"
 					:class="$style['link']"
-					:bold="true"
 					@click="pageRedirectionHelper.goToVersions()"
 				>
 					<N8nIcon icon="info" class="mr-2xs" />

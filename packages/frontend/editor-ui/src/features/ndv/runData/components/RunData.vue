@@ -1615,7 +1615,6 @@ defineExpose({ enterEditMode });
 					"
 					v-show="!editMode.enabled"
 					:title="i18n.baseText('runData.editOutput')"
-					:circle="false"
 					:disabled="node?.disabled"
 					icon="pencil"
 					data-test-id="ndv-edit-pinned-data"

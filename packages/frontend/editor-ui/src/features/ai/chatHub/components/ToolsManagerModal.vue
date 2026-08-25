@@ -367,7 +367,6 @@ function handleSettingsChangeName(name: string) {
 				<div :class="$style.settingsHeaderLeft">
 					<N8nIconButton
 						icon="arrow-left"
-						text
 						size="large"
 						variant="ghost"
 						:class="$style.backButton"

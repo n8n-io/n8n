@@ -229,7 +229,7 @@ onBeforeMount(() => {
 				icon="funnel"
 				size="medium"
 				:aria-label="locale.baseText('forms.resourceFiltersDropdown.filters')"
-				:active="!!countSelectedFilterProps"
+				:aria-pressed="!!countSelectedFilterProps"
 				data-test-id="executions-filter-button"
 				:class="$style.filterButton"
 			>

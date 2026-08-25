@@ -73,7 +73,7 @@ function resetFilters() {
 					icon="funnel"
 					size="medium"
 					:icon-only="!hasFilters"
-					:active="hasFilters"
+					:aria-pressed="hasFilters"
 					:aria-label="i18n.baseText('forms.resourceFiltersDropdown.filters')"
 					data-test-id="mcp-clients-filters-trigger"
 				>

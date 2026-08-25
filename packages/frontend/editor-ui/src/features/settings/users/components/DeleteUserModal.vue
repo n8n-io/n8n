@@ -176,7 +176,6 @@ async function onSubmit() {
 				:loading="loading"
 				:disabled="!enabled"
 				:label="i18n.baseText('settings.users.delete')"
-				float="right"
 				data-test-id="confirm-delete-user-button"
 				@click="onSubmit"
 			/>

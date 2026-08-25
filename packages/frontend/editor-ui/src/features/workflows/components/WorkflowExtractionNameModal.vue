@@ -92,13 +92,11 @@ onMounted(() => {
 				<N8nButton
 					variant="subtle"
 					:label="i18n.baseText('generic.cancel')"
-					float="right"
 					data-test-id="cancel-button"
 					@click="close"
 				/>
 				<N8nButton
 					:label="i18n.baseText('generic.confirm')"
-					float="right"
 					:disabled="!workflowName"
 					data-test-id="submit-button"
 					@click="onSubmit"

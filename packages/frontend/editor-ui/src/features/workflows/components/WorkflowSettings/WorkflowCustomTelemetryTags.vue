@@ -187,7 +187,7 @@ const onModalOpenChange = (open: boolean) => {
 					<N8nButton
 						variant="subtle"
 						size="large"
-						native-type="button"
+						type="button"
 						:class="$style.customTelemetryTagsConfigure"
 						:aria-label="configureButtonAriaLabel"
 						data-test-id="workflow-settings-custom-telemetry-tags-configure"
@@ -321,7 +321,7 @@ const onModalOpenChange = (open: boolean) => {
 					icon="plus"
 					variant="subtle"
 					size="small"
-					native-type="button"
+					type="button"
 					:disabled="areControlsDisabled"
 					:class="$style.customTelemetryTagsAdd"
 					data-test-id="workflow-settings-custom-telemetry-tags-add"

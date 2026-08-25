@@ -81,7 +81,6 @@ function onFormReady(isReady: boolean) {
 		<template #footer>
 			<div>
 				<N8nButton
-					float="right"
 					:disabled="!readyToSubmit"
 					:label="i18n.baseText('settings.personal.save')"
 					size="large"

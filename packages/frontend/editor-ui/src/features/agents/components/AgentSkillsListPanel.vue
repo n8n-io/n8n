@@ -99,7 +99,6 @@ const totalCount = computed(() => props.skills.length);
 						<N8nIconButton
 							icon="trash-2"
 							variant="ghost"
-							text
 							:aria-label="i18n.baseText('agents.builder.skills.remove')"
 							data-testid="agent-skills-list-remove"
 							@click.stop="emit('remove-skill', id)"

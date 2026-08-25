@@ -95,7 +95,6 @@ const onUserActionToggle = (action: string) => {
 							variant="ghost"
 							iconOnly
 							icon="ellipsis"
-							square
 							:aria-label="i18n.baseText('mainSidebar.userMenu')"
 						/>
 					</div>

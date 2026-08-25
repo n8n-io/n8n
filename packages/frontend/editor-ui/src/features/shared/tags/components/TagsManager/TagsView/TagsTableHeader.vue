@@ -59,7 +59,6 @@ const onSearchChange = (search: string) => {
 				icon="plus"
 				:label="i18n.baseText('tagsTableHeader.addNew')"
 				size="large"
-				float="right"
 				@click="onAddNew"
 			/>
 		</ElCol>

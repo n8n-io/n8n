@@ -149,7 +149,6 @@ function openCredentialType() {
 			<div :class="$style.footer">
 				<N8nButton
 					:label="i18n.baseText('credentialSelectModal.continue')"
-					float="right"
 					size="large"
 					:disabled="!selected"
 					data-test-id="new-credential-type-button"

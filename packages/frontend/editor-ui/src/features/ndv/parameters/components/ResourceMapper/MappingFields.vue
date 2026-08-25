@@ -423,7 +423,7 @@ defineExpose({
 		>
 			<N8nButton
 				v-if="hasSingleFieldOption"
-				type="highlightFill"
+				variant="highlight-fill"
 				icon="plus"
 				:label="
 					locale.baseText('resourceMapper.addFieldToSend', {
@@ -441,7 +441,7 @@ defineExpose({
 			>
 				<template #trigger>
 					<N8nButton
-						type="highlightFill"
+						variant="highlight-fill"
 						icon="plus"
 						:label="
 							locale.baseText('resourceMapper.addFieldToSend', {

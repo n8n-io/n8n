@@ -559,7 +559,6 @@ onMounted(async () => {
 					variant="subtle"
 					:label="i18n.baseText('generic.cancel')"
 					:disabled="loading"
-					float="right"
 					data-test-id="cancel-move-folder-button"
 					@click="close"
 				/>
@@ -573,7 +572,6 @@ onMounted(async () => {
 							},
 						})
 					"
-					float="right"
 					data-test-id="confirm-move-folder-button"
 					@click="onSubmit"
 				/>

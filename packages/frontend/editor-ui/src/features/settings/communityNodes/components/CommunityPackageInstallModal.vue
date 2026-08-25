@@ -185,7 +185,6 @@ const onLearnMoreLinkClick = () => {
 						: i18n.baseText('settings.communityNodes.installModal.installButton.label')
 				"
 				size="large"
-				float="right"
 				data-test-id="install-community-package-button"
 				@click="onInstallClick"
 			/>

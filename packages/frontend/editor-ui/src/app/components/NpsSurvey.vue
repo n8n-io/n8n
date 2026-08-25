@@ -176,12 +176,7 @@ watch(
 						/>
 					</div>
 					<div :class="$style.button" data-test-id="nps-survey-feedback-button">
-						<N8nButton
-							:label="SEND"
-							float="right"
-							:disabled="!form.feedback.trim()"
-							@click="send"
-						/>
+						<N8nButton :label="SEND" :disabled="!form.feedback.trim()" @click="send" />
 					</div>
 				</div>
 			</section>

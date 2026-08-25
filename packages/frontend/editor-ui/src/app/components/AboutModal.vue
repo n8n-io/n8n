@@ -127,7 +127,6 @@ const copyDebugInfoToClipboard = async () => {
 		<template #footer>
 			<div class="action-buttons">
 				<N8nButton
-					float="right"
 					:label="i18n.baseText('about.close')"
 					data-test-id="close-about-modal-button"
 					@click="closeDialog"

@@ -309,7 +309,7 @@ watch(
 					v-if="!props.static && !(project.id === GLOBAL_GROUP.id && !canShareGlobally)"
 					variant="subtle"
 					icon-only
-					native-type="button"
+					type="button"
 					icon="trash-2"
 					:aria-label="locale.baseText('generic.delete')"
 					:disabled="props.readonly"

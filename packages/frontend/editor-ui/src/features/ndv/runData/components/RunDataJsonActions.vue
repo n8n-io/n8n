@@ -201,7 +201,6 @@ function handleCopyClick(commandData: { command: string }) {
 			v-if="noSelection"
 			:title="i18n.baseText('runData.copyToClipboard')"
 			icon="files"
-			:circle="false"
 			@click="handleCopyClick({ command: 'value' })"
 		/>
 		<ElDropdown
@@ -217,7 +216,6 @@ function handleCopyClick(commandData: { command: string }) {
 					variant="subtle"
 					:title="i18n.baseText('runData.copyToClipboard')"
 					icon="files"
-					:circle="false"
 				/>
 			</span>
 			<template #dropdown>

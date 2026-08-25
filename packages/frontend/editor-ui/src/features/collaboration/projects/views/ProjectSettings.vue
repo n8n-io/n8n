@@ -593,7 +593,7 @@ onMounted(async () => {
 				<div :class="$style.headerButtons">
 					<N8nButton
 						variant="subtle"
-						native-type="button"
+						type="button"
 						:disabled="!isDirty"
 						class="mr-2xs"
 						data-test-id="project-settings-cancel-button"
@@ -744,7 +744,7 @@ onMounted(async () => {
 					<N8nButton
 						variant="subtle"
 						size="large"
-						native-type="button"
+						type="button"
 						data-test-id="project-settings-delete-button"
 						@click.stop.prevent="onDelete"
 						>{{ i18n.baseText('projects.settings.danger.deleteProject') }}</N8nButton

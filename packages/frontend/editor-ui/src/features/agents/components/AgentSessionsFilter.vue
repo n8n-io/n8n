@@ -79,7 +79,7 @@ function reset() {
 				icon="funnel"
 				size="medium"
 				:aria-label="i18n.baseText('forms.resourceFiltersDropdown.filters')"
-				:active="activeFilterCount > 0"
+				:aria-pressed="activeFilterCount > 0"
 				data-test-id="agent-sessions-filter-button"
 				:class="$style.filterButton"
 			>

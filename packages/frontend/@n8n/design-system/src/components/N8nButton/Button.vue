@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/* eslint-disable vue/prop-name-casing */
 import { computed, useAttrs, useCssModule, watchEffect } from 'vue';
 
 import type { IconSize } from '../../types';
@@ -47,7 +48,7 @@ const componentTag = computed(() => {
 
 const buttonType = computed(() => {
 	if (componentTag.value === 'a') return undefined;
-	return (attrs.type as string | undefined) ?? 'button';
+	return props.type ?? 'button';
 });
 
 const isDisabled = computed(() => props.disabled || props.loading);
@@ -69,7 +70,7 @@ const classes = computed(() =>
 // Accessibility warning for icon-only buttons without accessible labels
 if (import.meta.env.DEV) {
 	watchEffect(() => {
-		if (props.iconOnly && !attrs['aria-label'] && !attrs.title) {
+		if (props.iconOnly && !props['aria-label'] && !props.title) {
 			console.warn(
 				'[N8nButton] Icon-only buttons should have an accessible label. ' +
 					'Add aria-label or title attribute.',
@@ -91,11 +92,19 @@ const handleClick = (event: MouseEvent) => {
 		v-bind="attrs"
 		:type="buttonType"
 		:href="href"
+		:target="href ? target : undefined"
 		:rel="href ? 'nofollow noopener noreferrer' : undefined"
 		:disabled="componentTag === 'button' ? isDisabled || undefined : undefined"
+		:id="id"
+		:title="title"
+		:role="role"
+		:aria-label="props['aria-label']"
+		:aria-controls="props['aria-controls']"
+		:aria-expanded="props['aria-expanded']"
+		:aria-pressed="props['aria-pressed']"
 		:aria-disabled="isDisabled || undefined"
 		:aria-busy="loading || undefined"
-		:tabindex="componentTag === 'a' && isDisabled ? -1 : attrs.tabindex"
+		:tabindex="componentTag === 'a' && isDisabled ? -1 : tabindex"
 		:class="classes"
 		:data-icon-only="iconOnly ? 'true' : undefined"
 		aria-live="polite"

@@ -61,7 +61,6 @@ const focusInput = async () => {
 			<div :class="$style.footer">
 				<N8nButton
 					variant="solid"
-					float="right"
 					:disabled="!url || !isValid"
 					data-test-id="confirm-workflow-import-url-button"
 					@click="confirm"
@@ -70,7 +69,6 @@ const focusInput = async () => {
 				</N8nButton>
 				<N8nButton
 					variant="subtle"
-					float="right"
 					data-test-id="cancel-workflow-import-url-button"
 					@click="closeModal"
 				>

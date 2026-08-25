@@ -137,7 +137,6 @@ async function onImport() {
 				/>
 				<div>
 					<N8nButton
-						float="right"
 						:label="i18n.baseText('importCurlModal.button.label')"
 						data-test-id="import-curl-modal-button"
 						@click="onImport"

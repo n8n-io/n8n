@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+/* eslint-disable vue/prop-name-casing */
 import type { IconButtonProps } from '../../types/button';
 import N8nButton from '../N8nButton';
 

@@ -254,7 +254,6 @@ onMounted(async () => {
 					<N8nButton
 						variant="solid"
 						icon="hard-drive-download"
-						float="right"
 						:label="i18n.baseText('mfa.setup.step2.button.download')"
 						data-test-id="mfa-recovery-codes-button"
 						@click="onDownloadClick"
@@ -266,7 +265,6 @@ onMounted(async () => {
 			<div v-if="showRecoveryCodes">
 				<div>
 					<N8nButton
-						float="right"
 						:disabled="!recoveryCodesDownloaded"
 						:label="i18n.baseText('mfa.setup.step2.button.save')"
 						size="large"
@@ -278,7 +276,6 @@ onMounted(async () => {
 			<div v-else>
 				<div>
 					<N8nButton
-						float="right"
 						:label="i18n.baseText('mfa.setup.step1.button.continue')"
 						size="large"
 						:disabled="!readyToSubmit"

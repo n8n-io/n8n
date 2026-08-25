@@ -126,7 +126,7 @@ defineExpose({ resetTouched });
 					icon="trash-2"
 					variant="ghost"
 					size="small"
-					native-type="button"
+					type="button"
 					:title="i18n.baseText('projects.settings.customSpanAttributes.remove')"
 					:aria-label="i18n.baseText('projects.settings.customSpanAttributes.remove')"
 					data-test-id="project-telemetry-tag-remove"
@@ -143,7 +143,7 @@ defineExpose({ resetTouched });
 		<N8nButton
 			icon="plus"
 			variant="subtle"
-			native-type="button"
+			type="button"
 			class="mt-2xs"
 			data-test-id="project-telemetry-tag-add"
 			@click.stop.prevent="addTag"

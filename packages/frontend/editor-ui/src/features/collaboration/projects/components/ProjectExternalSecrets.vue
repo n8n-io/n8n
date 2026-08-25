@@ -317,7 +317,6 @@ defineExpose({
 					variant="ghost"
 					size="xsmall"
 					class="mr-2xs"
-					element="a"
 					:href="i18n.baseText('settings.externalSecrets.docs')"
 					target="_blank"
 					data-test-id="secrets-provider-connections-learn-more"

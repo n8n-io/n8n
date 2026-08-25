@@ -223,7 +223,7 @@ function openCommandBar(event: MouseEvent) {
 				size="large"
 				icon="panel-right"
 				:aria-label="sidePanelTooltip"
-				:active="focusPanelActive"
+				:aria-pressed="focusPanelActive"
 				data-test-id="toggle-focus-panel-button"
 				@click="toggleFocusPanel"
 			/>

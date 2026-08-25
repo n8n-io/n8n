@@ -49,13 +49,7 @@ const emit = defineEmits<{
 
 <template>
 	<div class="pb-xl" :class="$style.container">
-		<N8nButton
-			variant="ghost"
-			icon="arrow-left"
-			:class="$style.backButton"
-			text
-			@click="emit('back')"
-		>
+		<N8nButton variant="ghost" icon="arrow-left" :class="$style.backButton" @click="emit('back')">
 			{{ backButtonText }}
 		</N8nButton>
 		<div class="mb-xl" :class="$style.headerContainer">

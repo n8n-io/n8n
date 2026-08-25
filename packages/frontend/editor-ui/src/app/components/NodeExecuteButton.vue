@@ -155,7 +155,7 @@ async function onClick() {
 			:variant="variant"
 			:size="size"
 			:icon="buttonIcon"
-			:square="square"
+			:icon-only="square"
 			:transparent-background="transparent"
 			:title="
 				!isTriggerNode && !tooltipText ? i18n.baseText('ndv.execute.testNode.description') : ''

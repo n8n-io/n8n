@@ -98,13 +98,7 @@ const onClick = async () => {
 			</div>
 		</template>
 		<template #footer>
-			<N8nButton
-				label="Done"
-				size="medium"
-				float="right"
-				data-test-id="close-button"
-				@click="onClick"
-			/>
+			<N8nButton label="Done" size="medium" data-test-id="close-button" @click="onClick" />
 		</template>
 	</Modal>
 </template>

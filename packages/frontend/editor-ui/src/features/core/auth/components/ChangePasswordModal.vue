@@ -161,7 +161,6 @@ onMounted(() => {
 			<N8nButton
 				:loading="loading"
 				:label="i18n.baseText('auth.changePassword')"
-				float="right"
 				data-test-id="change-password-button"
 				@click="onSubmitClick"
 			/>

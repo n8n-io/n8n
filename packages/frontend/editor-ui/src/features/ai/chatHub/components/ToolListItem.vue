@@ -88,7 +88,6 @@ const actionDisabled = computed(
 					<N8nIconButton
 						icon="settings"
 						variant="ghost"
-						text
 						:class="$style.actionButton"
 						@click="emit('configure')"
 					/>
@@ -98,7 +97,6 @@ const actionDisabled = computed(
 					<N8nIconButton
 						icon="trash-2"
 						variant="ghost"
-						text
 						:class="$style.actionButton"
 						@click="emit('remove')"
 					/>

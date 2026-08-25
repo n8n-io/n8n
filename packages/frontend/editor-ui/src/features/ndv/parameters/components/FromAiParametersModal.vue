@@ -168,7 +168,6 @@ const onUpdate = (change: FormFieldValueUpdate) => {
 				data-test-id="execute-workflow-button"
 				icon="flask-conical"
 				:label="i18n.baseText('fromAiParametersModal.execute')"
-				float="right"
 				@click="onExecute"
 			/>
 		</template>

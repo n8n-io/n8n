@@ -166,7 +166,7 @@ onMounted(async () => {
 		>
 			<N8nButton
 				variant="subtle"
-				native-type="button"
+				type="button"
 				:class="$style.toolsButton"
 				:disabled="disabled"
 				icon="plus"
@@ -197,7 +197,7 @@ onMounted(async () => {
 				<template #trigger>
 					<N8nButton
 						variant="subtle"
-						native-type="button"
+						type="button"
 						:disabled="disabled"
 						:icon="toolCount === 0 ? 'plus' : undefined"
 						data-test-id="chat-tools-button"
@@ -232,7 +232,6 @@ onMounted(async () => {
 						icon="settings"
 						variant="ghost"
 						size="medium"
-						text
 						:class="$style.settingsButton"
 						@click.stop="openToolsManager"
 					/>
@@ -249,7 +248,6 @@ onMounted(async () => {
 							icon="settings"
 							variant="ghost"
 							size="medium"
-							text
 							:class="$style.itemSettingsButton"
 							@click.stop="openToolSettings(item)"
 						/>

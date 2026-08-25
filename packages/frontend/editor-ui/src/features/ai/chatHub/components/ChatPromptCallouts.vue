@@ -99,8 +99,9 @@ const i18n = useI18n();
 		}}</N8nText>
 		<template #trailingContent>
 			<N8nButton
-				type="warning"
-				native-type="button"
+				class="n8n-button--warning"
+				variant="solid"
+				type="button"
 				size="small"
 				data-testid="dynamic-credentials-connect-button"
 				@click="emit('openDynamicCredentials')"

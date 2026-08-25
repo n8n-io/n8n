@@ -644,7 +644,6 @@ const onSubmit = async (values: object) => {
 				<N8nButton
 					:loading="isSaving"
 					:label="i18n.baseText('personalizationModal.getStarted')"
-					float="right"
 					@click="onSave"
 				/>
 			</div>

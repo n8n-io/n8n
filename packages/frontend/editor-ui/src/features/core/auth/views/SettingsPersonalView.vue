@@ -493,7 +493,6 @@ onBeforeUnmount(() => {
 		</div>
 		<div>
 			<N8nButton
-				float="right"
 				:label="i18n.baseText('settings.personal.save')"
 				size="large"
 				:disabled="!hasAnyChanges || !readyToSubmit"

@@ -132,7 +132,7 @@ watch(filtersLength, (value) => {
 						icon="funnel"
 						size="medium"
 						:iconOnly="shouldBeIconButton"
-						:active="hasFilters"
+						:aria-pressed="hasFilters"
 						:aria-label="i18n.baseText('forms.resourceFiltersDropdown.filters')"
 						:class="{
 							[$style['filter-button']]: true,

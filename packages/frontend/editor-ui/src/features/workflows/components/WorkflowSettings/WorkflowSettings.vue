@@ -1808,7 +1808,6 @@ onBeforeUnmount(() => {
 					:disabled="readOnlyEnv || !workflowPermissions.update || hasCustomTelemetryTagErrors"
 					:label="i18n.baseText('workflowSettings.save')"
 					size="large"
-					float="right"
 					@click="saveSettings"
 				/>
 			</div>

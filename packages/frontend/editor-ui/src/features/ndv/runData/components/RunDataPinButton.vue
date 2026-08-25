@@ -55,7 +55,7 @@ const visible = computed(() =>
 			variant="subtle"
 			size="small"
 			:class="$style.pinDataButton"
-			:active="props.pinnedData.hasData.value"
+			:aria-pressed="props.pinnedData.hasData.value"
 			icon="pin"
 			:aria-label="
 				locale.baseText(

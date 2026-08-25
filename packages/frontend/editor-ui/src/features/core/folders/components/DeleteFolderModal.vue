@@ -229,7 +229,6 @@ const onFolderSelected = (payload: ChangeLocationSearchResult) => {
 				:loading="loading"
 				:disabled="!enabled"
 				:label="i18n.baseText('generic.delete')"
-				float="right"
 				data-test-id="confirm-delete-folder-button"
 				@click="onSubmit"
 			/>

@@ -101,7 +101,7 @@ const onConfirmProvisioningSetting = () => {
 					<N8nButton
 						variant="ghost"
 						v-if="!hasDownloadedInstanceRoleCsv"
-						native-type="button"
+						type="button"
 						:icon="'file-download' as any"
 						data-test-id="provisioning-download-instance-roles-csv-button"
 						:disabled="downloadingInstanceRolesCsv"
@@ -118,7 +118,7 @@ const onConfirmProvisioningSetting = () => {
 					<N8nButton
 						variant="ghost"
 						v-if="!hasDownloadedProjectRoleCsv"
-						native-type="button"
+						type="button"
 						:icon="'file-download' as any"
 						data-test-id="provisioning-download-project-roles-csv-button"
 						:disabled="downloadingProjectRolesCsv"

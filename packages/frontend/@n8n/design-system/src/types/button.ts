@@ -1,4 +1,5 @@
 import { type ClassValue } from 'clsx';
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, HTMLAttributes } from 'vue';
 
 import { type IconSize } from './icon';
 import { type IconName } from '../components/N8nIcon/icons';
@@ -32,6 +33,16 @@ export interface ButtonProps {
 	iconSize?: IconSize;
 	/** @deprecated Use slot instead */
 	label?: string;
+	'aria-label'?: HTMLAttributes['aria-label'];
+	'aria-controls'?: HTMLAttributes['aria-controls'];
+	'aria-expanded'?: HTMLAttributes['aria-expanded'];
+	'aria-pressed'?: HTMLAttributes['aria-pressed'];
+	id?: HTMLAttributes['id'];
+	role?: HTMLAttributes['role'];
+	tabindex?: HTMLAttributes['tabindex'];
+	title?: HTMLAttributes['title'];
+	type?: ButtonHTMLAttributes['type'];
+	target?: AnchorHTMLAttributes['target'];
 }
 
 export interface IconButtonProps extends ButtonProps {

@@ -933,7 +933,7 @@ onMounted(async () => {
 								variant="subtle"
 								icon="funnel"
 								:class="$style.filterButton"
-								:active="Boolean(filterCount)"
+								:aria-pressed="Boolean(filterCount)"
 								data-test-id="source-control-filter-dropdown"
 							>
 								<N8nBadge v-if="filterCount" theme="primary" class="mr-4xs">

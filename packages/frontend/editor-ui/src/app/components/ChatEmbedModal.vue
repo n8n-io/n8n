@@ -191,7 +191,7 @@ function closeDialog() {
 
 		<template #footer>
 			<div class="action-buttons">
-				<N8nButton float="right" :label="i18n.baseText('chatEmbed.close')" @click="closeDialog" />
+				<N8nButton :label="i18n.baseText('chatEmbed.close')" @click="closeDialog" />
 			</div>
 		</template>
 	</Modal>

@@ -26,8 +26,7 @@ const i18n = useI18n();
 					i18n.baseText('chatHub.dynamicCredentials.drawer.title')
 				}}</N8nText>
 				<N8nIconButton
-					type="tertiary"
-					text
+					variant="ghost"
 					icon="x"
 					data-testid="dynamic-credentials-drawer-close"
 					@click="emit('close')"
