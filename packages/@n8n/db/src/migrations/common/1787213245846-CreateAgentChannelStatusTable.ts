@@ -9,6 +9,11 @@ const CHANNEL_STATUSES = ['connected', 'error'];
  * `integrationType` deliberately has no enum check: it mirrors the platform
  * registry, and constraining it here would mean a migration every time a
  * platform is added — for a table that only reports what happened.
+ *
+ * `credentialId` deliberately has no foreign key. A deleted credential is one of
+ * the likeliest reasons a channel is down, and deleting one neither rewrites the
+ * agent's channels nor stops them being started currently so the row saying "credential
+ * not found" has to be writable even if its credential is gone.
  */
 export class CreateAgentChannelStatusTable1787213245846 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
@@ -20,7 +25,9 @@ export class CreateAgentChannelStatusTable1787213245846 implements ReversibleMig
 					.primary.comment('Chat integration platform for this channel'),
 				column('credentialId')
 					.varchar(36)
-					.primary.comment('Credential connection that backs this channel'),
+					.primary.comment(
+						'Credential connection that backs this channel; no FK so a failure is still recordable after the credential is deleted',
+					),
 				column('hostId')
 					.varchar(128)
 					.primary.comment('Process that observed this; the only writer of this row'),

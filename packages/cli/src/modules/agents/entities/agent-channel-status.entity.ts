@@ -55,7 +55,8 @@ export class AgentChannelStatus extends WithTimestamps {
 	@PrimaryColumn({
 		type: 'varchar',
 		length: 36,
-		comment: 'Credential connection that backs this channel',
+		comment:
+			'Credential connection that backs this channel; no FK so a failure is still recordable after the credential is deleted',
 	})
 	credentialId: string;
 
