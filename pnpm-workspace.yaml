@@ -12,6 +12,10 @@ hoistPattern:
   - '*'
   - '!typescript'
 allowUnusedPatches: true
+# The docker build trims frontend manifests and deploys with --prod before later
+# scripts run; pnpm 11's pre-run install would reinstall production-only and prune
+# the devDependencies those scripts import.
+verifyDepsBeforeRun: false
 
 pmOnFail: warn
 fund: false

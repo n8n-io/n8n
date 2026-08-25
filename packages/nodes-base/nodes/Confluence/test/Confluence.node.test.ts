@@ -31,6 +31,7 @@ describe('Confluence Node', () => {
 			expect.objectContaining({ value: 'create' }),
 			expect.objectContaining({ value: 'delete' }),
 			expect.objectContaining({ value: 'get' }),
+			expect.objectContaining({ value: 'getManyByLabel' }),
 			expect.objectContaining({ value: 'update' }),
 		]);
 	});
