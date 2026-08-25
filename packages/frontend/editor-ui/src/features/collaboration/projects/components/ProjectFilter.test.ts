@@ -28,7 +28,7 @@ describe('ProjectFilter', () => {
 		projectsStore = mockedStore(useProjectsStore);
 		projectsStore.myProjects = projects;
 		projectsStore.availableProjects = projects;
-		projectsStore.getAvailableProjects.mockResolvedValue(projects);
+		projectsStore.getAvailableProjects.mockResolvedValue();
 		projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
 		projectsStore.globalProjectPermissions = { list: true };
 	});
@@ -79,6 +79,41 @@ describe('ProjectFilter', () => {
 		await waitFor(() => {
 			expect(projectsStore.getAvailableProjects).not.toHaveBeenCalled();
 		});
+	});
+
+	// Reported by filter: mounting with a non-null model showed an empty picker while
+	// the caller displayed filtered data. A consumer that restores its filter from the
+	// URL hits this on first paint.
+	it('shows the project a caller arrives with', async () => {
+		const { getByTestId } = renderComponent({
+			props: { modelValue: { id: teamProjects[0].id } },
+		});
+
+		const input = () =>
+			getByTestId('project-sharing-select').querySelector('input') as HTMLInputElement;
+		await waitFor(() => expect(input().value).toBe(teamProjects[0].name));
+	});
+
+	it('does not echo an arriving selection back at the caller', async () => {
+		const { emitted } = renderComponent({
+			props: { modelValue: { id: teamProjects[0].id } },
+		});
+
+		await waitFor(() => expect(projectsStore.getAvailableProjects).not.toHaveBeenCalled());
+		expect(emitted('update:modelValue')).toBeUndefined();
+	});
+
+	it('resolves an arriving selection that only the member preload can see', async () => {
+		projectsStore.globalProjectPermissions = { list: false };
+		projectsStore.availableProjects = [];
+
+		const { getByTestId } = renderComponent({
+			props: { modelValue: { id: teamProjects[1].id } },
+		});
+
+		const input = () =>
+			getByTestId('project-sharing-select').querySelector('input') as HTMLInputElement;
+		await waitFor(() => expect(input().value).toBe(teamProjects[1].name));
 	});
 
 	it('clears the shown selection when the caller resets the model to null', async () => {

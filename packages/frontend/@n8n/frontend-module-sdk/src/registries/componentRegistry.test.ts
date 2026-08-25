@@ -1,4 +1,4 @@
-import { defineComponent } from 'vue';
+import { computed, defineComponent } from 'vue';
 
 import * as componentRegistry from './componentRegistry';
 
@@ -40,6 +40,28 @@ describe('componentRegistry', () => {
 		expect(warn).toHaveBeenCalledWith(
 			'Component slot "project-filter" is already registered. Skipping.',
 		);
+	});
+
+	// The registry is `shallowReactive` so a module can resolve a slot with a plain
+	// `computed`. The shell registers slots lazily, after a module may already have
+	// read an empty slot — swapping in a plain `Map` would break that silently.
+	it('makes a computed reader see a later registration', () => {
+		const slot = computed(() => componentRegistry.get('project-filter'));
+		expect(slot.value).toBeUndefined();
+
+		componentRegistry.register('project-filter', First);
+
+		expect(slot.value).toBe(First);
+	});
+
+	it('makes a computed reader see an unregister', () => {
+		componentRegistry.register('project-filter', First);
+		const slot = computed(() => componentRegistry.get('project-filter'));
+		expect(slot.value).toBe(First);
+
+		componentRegistry.unregister('project-filter');
+
+		expect(slot.value).toBeUndefined();
 	});
 
 	it('frees the slot on unregister', () => {

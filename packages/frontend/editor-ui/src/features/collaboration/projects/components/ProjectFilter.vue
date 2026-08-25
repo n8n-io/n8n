@@ -20,6 +20,17 @@ defineProps<{
 	size?: SelectSize;
 }>();
 
+/**
+ * The slot contract is these props and the model — nothing else.
+ *
+ * Without this, an unknown attribute from a consumer falls through onto
+ * `ProjectSharing` and can imitate the prop it misspelled: a `placeholder` typo
+ * still reached the input as a bare attribute, so a broken contract rendered
+ * correctly. `class` is forwarded explicitly because consumers style the picker
+ * for their own layout.
+ */
+defineOptions({ inheritAttrs: false });
+
 const model = defineModel<SlotProjectSelection>({ required: true });
 
 const i18n = useI18n();
@@ -33,13 +44,34 @@ const filterFn = (project: ProjectListItem) =>
 
 const selected = ref<ProjectSharingData | null>(null);
 
-// Every non-null selection originates here, so only the clear direction is mirrored
-// inward — a caller reverting to "all projects" (e.g. after a 403) writes `null`.
-watch(model, (value) => {
-	if (!value) selected.value = null;
-});
+/** The project the model's id refers to, if this caller can already see it. */
+const findProject = (id: string) =>
+	[...projectsStore.availableProjects, ...projectsStore.myProjects].find(
+		(project) => project.id === id,
+	) ?? null;
+
+// The model carries an id; the picker needs the whole project to show a label. Keep
+// the two in step in both directions, and resolve an id the caller arrived with —
+// a consumer that restores its filter from the URL mounts with one already set.
+watch(
+	model,
+	(value) => {
+		if (!value) {
+			selected.value = null;
+			return;
+		}
+		if (selected.value?.id === value.id) return;
+		selected.value = findProject(value.id);
+	},
+	{ immediate: true },
+);
+
+// Guarded against the echo of the sync above, which would otherwise emit an
+// identical id straight back at the caller.
 watch(selected, (value) => {
-	model.value = value ? { id: value.id } : null;
+	const next = value ? { id: value.id } : null;
+	if (next?.id === model.value?.id) return;
+	model.value = next;
 });
 
 onBeforeMount(async () => {
@@ -48,12 +80,16 @@ onBeforeMount(async () => {
 	if (!projectsStore.globalProjectPermissions.list) {
 		await projectsStore.getAvailableProjects();
 	}
+
+	// The preload above may be what makes an arriving id resolvable.
+	if (model.value && !selected.value) selected.value = findProject(model.value.id);
 });
 </script>
 
 <template>
 	<ProjectSharing
 		v-model="selected"
+		:class="$attrs.class"
 		:search-fn="searchFn"
 		:filter-fn="filterFn"
 		:placeholder="placeholder"

@@ -2,6 +2,22 @@ import { defineConfig } from 'eslint/config';
 import { frontendConfig } from '@n8n/eslint-config/frontend';
 import oxlint from 'eslint-plugin-oxlint';
 
+/**
+ * Extraction ratchet. A feature that left the shell for a module package must not
+ * reappear under `features/`; the package entry is the only way in. One entry per
+ * extracted module, error level from the day it graduates.
+ *
+ * Spread this into EVERY block that sets `no-restricted-imports`. Flat config
+ * replaces a rule rather than merging it, so a block that omits this list silently
+ * turns the ratchet off for the files it matches.
+ */
+const extractedModulePatterns = [
+	{
+		group: ['@/features/execution/insights', '@/features/execution/insights/**'],
+		message: 'insights is now the @n8n/frontend-module-insights package. Import its entry.',
+	},
+];
+
 export default defineConfig(
 	frontendConfig,
 	{
@@ -293,12 +309,22 @@ export default defineConfig(
 		},
 	},
 	{
+		// The ratchet everywhere it is not already spread into a narrower block.
+		// See `extractedModulePatterns`: a narrower block that sets this rule must
+		// spread the list too, because flat config replaces rules.
+		files: ['src/**/*.ts', 'src/**/*.vue'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': ['error', { patterns: extractedModulePatterns }],
+		},
+	},
+	{
 		files: ['src/features/agents/**/*.ts', 'src/features/agents/**/*.vue'],
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
 				{
 					patterns: [
+						...extractedModulePatterns,
 						{
 							group: ['**/ndv/runData/components/RunData.vue'],
 							message:
@@ -337,26 +363,6 @@ export default defineConfig(
 		],
 		rules: {
 			'n8n-local-rules/no-dynamic-regexp': 'off',
-		},
-	},
-	{
-		// Extraction ratchet. A feature that left the shell for a module package must
-		// not reappear under `features/`; the package entry is the only way in. One
-		// entry per extracted module, error level from the day it graduates.
-		files: ['src/**/*.ts', 'src/**/*.vue'],
-		rules: {
-			'@typescript-eslint/no-restricted-imports': [
-				'error',
-				{
-					patterns: [
-						{
-							group: ['@/features/execution/insights', '@/features/execution/insights/**'],
-							message:
-								'insights is now the @n8n/frontend-module-insights package. Import its entry.',
-						},
-					],
-				},
-			],
 		},
 	},
 	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),

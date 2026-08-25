@@ -33,7 +33,7 @@ import { registerVitePreloadErrorHandler } from '@/app/plugins/vitePreloadError'
 import { registerModuleRoutes } from '@/app/moduleInitializer/moduleInitializer';
 import { registerEagerModals } from '@/app/modals.manifest';
 import { registerComponentSlots } from '@/app/componentSlots.manifest';
-import { setDefaultUpgradeRedirectGuard } from '@n8n/stores/registries/upgradeRedirectGuard';
+import { registerUpgradeRedirectGuard } from '@/app/upgradeRedirectGuard.manifest';
 import { installRenderTracker } from '@/app/dev/render-tracker';
 
 import type { VueScanOptions } from 'z-vue-scan';
@@ -58,15 +58,8 @@ registerEagerModals();
 // Shell-hosted components modules render — see componentSlots.manifest.ts
 registerComponentSlots();
 
-// The upgrade-CTA guard for callers that cannot import it — module packages must not
-// reach into `features/`. Loaded on the click, not here: the guard reads the AI builder
-// store, and importing that eagerly would put the builder in the boot chunk.
-setDefaultUpgradeRedirectGuard(async () => {
-	const { confirmIfBuilderStreaming } = await import(
-		'@/features/ai/assistant/composables/useBuilderStreamingGuard'
-	);
-	return await confirmIfBuilderStreaming();
-});
+// The upgrade-CTA guard modules rely on — see upgradeRedirectGuard.manifest.ts
+registerUpgradeRedirectGuard();
 
 app.use(TelemetryPlugin);
 app.use(PiniaVuePlugin);

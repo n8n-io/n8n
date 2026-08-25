@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./*": "./src/*.ts"
+    "./insights.module": "./src/insights.module.ts"
   },
   "scripts": {
     "clean": "rimraf .turbo",
