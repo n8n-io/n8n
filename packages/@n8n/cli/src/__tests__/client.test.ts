@@ -42,6 +42,22 @@ describe('N8nClient packages', () => {
 		vi.unstubAllGlobals();
 	});
 
+	describe('pushGitConnectionProjects', () => {
+		it('POSTs to the push endpoint and returns the connection id and export counts', async () => {
+			const response = {
+				connectionId: 'connection-id',
+				counts: { workflows: 0, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
+			};
+			fetchMock.mockResolvedValue(jsonResponse(200, response));
+
+			await expect(client.pushGitConnectionProjects('connection-id')).resolves.toEqual(response);
+
+			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n8n.example.com/api/v1/git-connections/connection-id/push');
+			expect(init.method).toBe('POST');
+		});
+	});
+
 	describe('exportPackage', () => {
 		it('posts the workflow IDs as JSON and returns the archive bytes', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1, 2, 3])));
@@ -105,6 +121,23 @@ describe('N8nClient packages', () => {
 				JSON.stringify({
 					projectIds: ['proj-1'],
 					missingWorkflowDependencyPolicy: 'include-in-package',
+				}),
+			);
+		});
+
+		it('includes the credential export policy when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({
+				workflowIds: ['a'],
+				credentialExportPolicy: 'no-values',
+			});
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(
+				JSON.stringify({
+					workflowIds: ['a'],
+					credentialExportPolicy: 'no-values',
 				}),
 			);
 		});

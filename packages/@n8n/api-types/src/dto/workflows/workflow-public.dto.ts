@@ -5,6 +5,7 @@ import { z } from 'zod';
 
 import {
 	connectionsOpenApi,
+	workflowCreateFieldDocs,
 	metaOpenApi,
 	nodeGroupsOpenApi,
 	nodesOpenApi,
@@ -135,6 +136,22 @@ export const workflowPublicSchema = z.object({
 });
 
 export class WorkflowPublicDto extends Z.class(workflowPublicSchema.shape) {}
+
+export const workflowParentFolderPublicSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	parentFolderId: z.string().nullable(),
+	createdAt: z.string().datetime(),
+	updatedAt: z.string().datetime(),
+});
+
+export const createdWorkflowPublicSchema = workflowPublicSchema.extend({
+	parentFolder: workflowParentFolderPublicSchema
+		.nullable()
+		.openapi(workflowCreateFieldDocs.parentFolder),
+});
+
+export class CreatedWorkflowPublicDto extends Z.class(createdWorkflowPublicSchema.shape) {}
 
 export const workflowPublishPublicSchema = workflowPublicSchema.omit({ shared: true });
 

@@ -173,7 +173,13 @@ export class AgentIntegrationManagementService {
 		// `connect` restarts a connection that is already live — a settings-only
 		// save, or re-connecting the same credential — so a rollback has to know
 		// whether step 1 created this connection or merely replaced it.
-		const wasLive = !!add && this.chatService.getChatInstance(agent.id, add) !== undefined;
+		//
+		// An unpublished agent has no live channel to begin with: it never receives
+		// events, so nothing was started for it to restore. The publication check is
+		// what makes that explicit — `isChannelLive` reports a leader-routed channel
+		// as live without being able to inspect the leader, so on its own it would
+		// have a draft's failed pre-connect validation start a runtime.
+		const wasLive = !!add && publishedBefore && this.chatService.isChannelLive(agent.id, add);
 		const persistedBefore =
 			add && state
 				? (state.integrations ?? []).find((entry) => matchesIntegrationRef(entry, add))
@@ -207,7 +213,7 @@ export class AgentIntegrationManagementService {
 					// both drops the failed attempt and puts the previous entry back.
 					await this.restorePersistedRuntime(agent, persistedBefore);
 				} else {
-					await this.chatService.disconnect(agent.id, add);
+					await this.releaseRuntimeQuietly(agent, add);
 				}
 			}
 			throw error;
@@ -274,7 +280,7 @@ export class AgentIntegrationManagementService {
 			return false;
 		}
 
-		if (connected && published && this.chatService.getChatInstance(agent.id, add) === undefined) {
+		if (connected && published && !this.chatService.isChannelLive(agent.id, add)) {
 			this.logger.info(
 				'[AgentIntegrationManagementService] Channel runtime went away while the mutation was in flight — restarting it',
 				{ agentId: agent.id, type: add.type },
@@ -381,7 +387,7 @@ export class AgentIntegrationManagementService {
 			'[AgentIntegrationManagementService] No persisted channel matched the removal — clearing runtime only',
 			{ agentId: agent.id, type: remove.type },
 		);
-		await this.chatService.disconnect(agent.id, remove);
+		await this.releaseRuntimeQuietly(agent, remove);
 
 		// A peer main can still hold this connection — an earlier removal whose
 		// broadcast was dropped leaves one behind — so tell the cluster too.
@@ -390,6 +396,29 @@ export class AgentIntegrationManagementService {
 		const parsed = AgentIntegrationSchema.safeParse(remove);
 		if (parsed.success) {
 			await this.chatService.broadcastIntegrationChange(agent.id, parsed.data, 'disconnect');
+		}
+	}
+
+	/**
+	 * Release a channel's runtime without letting the failure surface.
+	 *
+	 * These are compensating teardowns: one runs while an error is already on its
+	 * way to the caller, the other from a `finally` after the removal is durable.
+	 * A leader-routed teardown can time out, and neither caller can act on that —
+	 * reporting it would replace the failure that actually matters.
+	 */
+	private async releaseRuntimeQuietly(agent: Agent, integration: IntegrationRef): Promise<void> {
+		try {
+			await this.chatService.disconnect(agent.id, integration);
+		} catch (error) {
+			this.logger.warn(
+				'[AgentIntegrationManagementService] Could not release the channel runtime',
+				{
+					agentId: agent.id,
+					type: integration.type,
+					error,
+				},
+			);
 		}
 	}
 

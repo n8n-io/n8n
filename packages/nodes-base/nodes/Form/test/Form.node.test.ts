@@ -38,6 +38,12 @@ describe('Form Node', () => {
 
 		mockExecuteFunctions.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
 		mockWebhookFunctions.getWorkflowSettings.mockReturnValue(mock<IWorkflowSettings>({}));
+		mockWebhookFunctions.getWorkflow.mockReturnValue({
+			id: 'workflow-id',
+			name: 'Workflow',
+			active: true,
+		});
+		mockWebhookFunctions.getExecutionId.mockReturnValue(testExecutionId);
 	});
 
 	describe('execute method', () => {
@@ -769,6 +775,7 @@ describe('Form Node', () => {
 				end: vi.fn(),
 				setHeader: vi.fn(),
 				status: vi.fn().mockReturnValue({ send: vi.fn() }),
+				cookie: vi.fn(),
 			};
 			mockWebhookFunctions.getResponseObject.mockReturnValue(
 				mockResponseObject as unknown as Response,
@@ -898,6 +905,132 @@ describe('Form Node', () => {
 			expect(mockWebhookFunctions.validateCookieAuth).not.toHaveBeenCalled();
 			expect(mockResponseObject.writeHead).not.toHaveBeenCalled();
 			expect(mockResponseObject.render).toHaveBeenCalled();
+		});
+
+		describe('submit-time credential readiness gate', () => {
+			const setupAuthedPost = (operation: 'page' | 'completion' = 'page') => {
+				const json = vi.fn();
+				const mockResponseObject = {
+					render: vi.fn(),
+					writeHead: vi.fn(),
+					end: vi.fn(),
+					setHeader: vi.fn(),
+					status: vi.fn().mockReturnValue({ json, send: vi.fn() }),
+				};
+				mockWebhookFunctions.getResponseObject.mockReturnValue(
+					mockResponseObject as unknown as Response,
+				);
+				mockWebhookFunctions.getRequestObject.mockReturnValue({
+					method: 'POST',
+					contentType: 'multipart/form-data',
+					originalUrl: '/form-waiting/exec',
+					headers: { cookie: 'n8n-auth=valid.jwt.token' },
+					query: {},
+				} as unknown as Request);
+				mockWebhookFunctions.getNode.mockReturnValue(
+					mock<INode>({ type: 'n8n-nodes-base.form', typeVersion: 2.6 }),
+				);
+				mockWebhookFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+					if (paramName === 'operation') return operation;
+					if (paramName === 'useJson') return false;
+					if (paramName === 'formFields.values') return [{ fieldLabel: 'test' }];
+					if (paramName === 'options') return {};
+					return undefined;
+				});
+				mockWebhookFunctions.getBodyData.mockReturnValue({
+					data: { 'field-0': 'value' },
+					files: {},
+				});
+				setupParentTriggerWithAuth('n8nUserAuth', true);
+				mockWebhookFunctions.validateCookieAuth.mockResolvedValue(authedUser);
+				(mockWebhookFunctions as unknown as { logger: unknown }).logger = {
+					warn: vi.fn(),
+					error: vi.fn(),
+					debug: vi.fn(),
+					info: vi.fn(),
+				};
+				return { status: mockResponseObject.status, json };
+			};
+
+			it('returns 428 and does not resume when an account is not connected', async () => {
+				const { status, json } = setupAuthedPost();
+				mockWebhookFunctions.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: false,
+					credentials: [
+						{
+							credentialId: 'cred-missing',
+							credentialName: 'My Gmail',
+							credentialType: 'gmailOAuth2',
+							resolverId: 'resolver-1',
+							status: 'missing',
+						},
+					],
+				});
+
+				const result = await form.webhook(mockWebhookFunctions);
+
+				expect(status).toHaveBeenCalledWith(428);
+				expect(json).toHaveBeenCalledWith(
+					expect.objectContaining({ status: 'credential_connections_required' }),
+				);
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
+
+			it('resumes the execution when the check reports ready', async () => {
+				const { status } = setupAuthedPost();
+				mockWebhookFunctions.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: true,
+					credentials: [],
+				});
+
+				const result = await form.webhook(mockWebhookFunctions);
+
+				expect(status).not.toHaveBeenCalled();
+				expect(result).toMatchObject({
+					webhookResponse: { status: 200 },
+					workflowData: [[expect.anything()]],
+				});
+			});
+
+			it('fails closed with 503 when the check throws', async () => {
+				const { status, json } = setupAuthedPost();
+				mockWebhookFunctions.checkTriggerCredentialStatus.mockRejectedValue(
+					new Error('check failed'),
+				);
+
+				const result = await form.webhook(mockWebhookFunctions);
+
+				expect(status).toHaveBeenCalledWith(503);
+				expect(json).toHaveBeenCalledWith({ status: 'credential_readiness_check_failed' });
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
+
+			// The completion resume POST can arrive long after the last page's own gate
+			// ran (a lost redirect hop parks the run at the completion node), so it must
+			// be gated too — nodes can still follow the completion node.
+			it('gates the completion resume POST as well', async () => {
+				const { status, json } = setupAuthedPost('completion');
+				mockWebhookFunctions.checkTriggerCredentialStatus.mockResolvedValue({
+					readyToExecute: false,
+					credentials: [
+						{
+							credentialId: 'cred-missing',
+							credentialName: 'My Gmail',
+							credentialType: 'gmailOAuth2',
+							resolverId: 'resolver-1',
+							status: 'missing',
+						},
+					],
+				});
+
+				const result = await form.webhook(mockWebhookFunctions);
+
+				expect(status).toHaveBeenCalledWith(428);
+				expect(json).toHaveBeenCalledWith(
+					expect.objectContaining({ status: 'credential_connections_required' }),
+				);
+				expect(result).toEqual({ noWebhookResponse: true });
+			});
 		});
 	});
 

@@ -286,30 +286,34 @@ onMounted(async () => {
 				</div>
 			</div>
 			<footer v-if="!waitingForRedirect" :class="$style.footer">
-				<!-- Third-party clients: the trust acknowledgment lives inside the warning itself so it
-				     can't be missed: one block that says where access goes, shows the URL, asks for the check.
-				     First-party clients skip this entirely — their redirect URI is the form itself. -->
-				<N8nCallout
-					v-if="!error && !clientDetails?.isFirstParty && clientDetails?.redirectUri"
-					theme="warning"
-					data-test-id="consent-redirect-warning"
-				>
-					<div :class="$style['redirect-warning-content']">
-						<N8nText :bold="true" size="small">
+				<!-- Third-party clients: the redirect destination, with the trust acknowledgment
+				     below it in the action row so it reads as a step rather than banner small
+				     print. Both are gated on the same `trustRequired` as the Allow button, so the
+				     screen can never ask for a confirmation it doesn't show. First-party clients
+				     skip both — their redirect URI is the form itself. -->
+				<div v-if="!error && trustRequired" :class="$style.divided">
+					<N8nCallout
+						theme="secondary"
+						:iconless="true"
+						:class="$style['redirect-note']"
+						data-test-id="consent-redirect-warning"
+					>
+						<span :class="$style['redirect-note-title']">
 							{{ i18n.baseText('oauth.consentView.redirectWarning.title') }}
-						</N8nText>
-						<code :class="$style['redirect-warning-url']" data-test-id="consent-redirect-uri">
-							{{ clientDetails.redirectUri }}
+						</span>
+						<code :class="$style['redirect-url']" data-test-id="consent-redirect-uri">
+							{{ clientDetails?.redirectUri }}
 						</code>
-						<N8nCheckbox
-							v-model="redirectUriTrusted"
-							:class="$style['redirect-warning-confirm']"
-							:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
-							data-test-id="consent-redirect-confirm"
-						/>
-					</div>
-				</N8nCallout>
-				<div :class="$style['footer-actions']">
+					</N8nCallout>
+				</div>
+				<div :class="[$style['footer-actions'], $style.divided]">
+					<N8nCheckbox
+						v-if="!error && trustRequired"
+						v-model="redirectUriTrusted"
+						:class="$style['trust-confirm']"
+						:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
+						data-test-id="consent-redirect-confirm"
+					/>
 					<div :class="$style['button-group']">
 						<N8nButton
 							v-if="error"
@@ -508,6 +512,8 @@ onMounted(async () => {
 	}
 }
 
+/* The gap gives each separator the same breathing room above the line as the
+   `.divided` padding gives below it. */
 .footer {
 	width: 100%;
 	display: flex;
@@ -515,34 +521,60 @@ onMounted(async () => {
 	gap: var(--spacing--sm);
 }
 
-.redirect-warning-content {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
+/* Hairline separators keep the redirect note and the action row as distinct steps
+   without adding more nested boxes. */
+.divided {
+	padding-block-start: var(--spacing--sm);
+	border-block-start: var(--border-width, 1px) solid var(--border-color--subtle);
 }
 
-.redirect-warning-url {
-	font-size: var(--font-size--2xs);
-	word-break: break-all;
+/* The `secondary` callout theme is purple; retint it to a neutral grey so the note
+   reads as information rather than as a banner users learn to skip. Retinting the
+   theme's own custom properties rather than the resolved colors keeps this working
+   regardless of whether the callout's CSS is bundled before or after this file. */
+.redirect-note {
+	--callout--border-color--secondary: var(--border-color--subtle);
+	--callout--color--background--secondary: var(--background--subtle);
+	--callout--color--text--secondary: var(--text-color--subtle);
 }
 
-.redirect-warning-confirm {
-	margin-top: var(--spacing--3xs);
-	margin-bottom: 0;
+/* Both lines size themselves rather than restyling the callout's inner N8nText,
+   which is an implementation detail of the component. */
+.redirect-note-title,
+.redirect-url {
+	display: block;
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--lg);
 }
 
-/* CTAs sit at the right; the trust checkbox anchors the left edge of the row. */
+.redirect-url {
+	margin-block-start: var(--spacing--4xs);
+	font-family: var(--font-family--monospace);
+	overflow-wrap: anywhere;
+}
+
+/* The trust checkbox anchors the left edge of the row and keeps its full label
+   width, so the button group is what drops to a second line when space runs out. */
 .footer-actions {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	justify-content: flex-end;
-	gap: var(--spacing--sm);
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs) var(--spacing--sm);
 
+	/* The auto margin is what right-aligns the buttons, on both a shared line and a
+	   wrapped one, and when there is no checkbox at all (first-party, error). */
 	.button-group {
 		display: flex;
-		justify-content: flex-end;
+		align-items: center;
+		margin-inline-start: auto;
 		gap: var(--spacing--2xs);
 	}
+}
+
+/* Tone the label down to match the note it refers to; the checkbox's own default is
+   the darker body color. */
+.trust-confirm label {
+	color: var(--text-color--subtle);
 }
 </style>

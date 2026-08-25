@@ -28,18 +28,11 @@ export class AgentsModule implements ModuleInterface {
 		await import('./agent-sandbox.controller.js');
 		await import('./agents-list.controller.js');
 		await import('./agent-mcp-access.controller.js');
-		await import('./builder/agents-builder-settings.controller.js');
-
 		const { AgentsService } = await import('./agents.service.js');
 		Container.get(AgentsService);
 
 		const { AgentCredentialIndexListener } = await import('./agent-credential-index.listener.js');
 		Container.get(AgentCredentialIndexListener).init();
-
-		const { AgentsBuilderSettingsService } = await import(
-			'./builder/agents-builder-settings.service.js'
-		);
-		Container.get(AgentsBuilderSettingsService);
 
 		const { AgentExecutionService } = await import('./agent-execution.service.js');
 		Container.get(AgentExecutionService);

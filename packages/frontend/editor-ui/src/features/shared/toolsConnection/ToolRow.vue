@@ -219,7 +219,7 @@ function handleConnect() {
 				:class="$style.statusMarker"
 				data-test-id="tools-connection-row-connected"
 			>
-				<span :class="$style.statusDot" aria-hidden="true" />
+				<N8nIcon icon="check" :size="14" :class="$style.statusIconConnected" aria-hidden="true" />
 				{{ i18n.baseText('tools.connection.action.connected') }}
 			</span>
 			<span
@@ -256,9 +256,11 @@ function handleConnect() {
 					"
 					@click="handleConnect"
 				>
-					<span
+					<N8nIcon
 						v-if="!item.communityPreview && item.status === 'disconnected'"
-						:class="[$style.statusDot, $style.statusDotDisconnected]"
+						icon="circle-x"
+						:size="14"
+						:class="$style.statusIconDisconnected"
 						aria-hidden="true"
 					/>
 					{{ actionLabel }}
@@ -271,7 +273,12 @@ function handleConnect() {
 				data-test-id="tools-connection-row-disconnected"
 				@click="handleRowClick"
 			>
-				<span :class="[$style.statusDot, $style.statusDotDisconnected]" aria-hidden="true" />
+				<N8nIcon
+					icon="circle-x"
+					:size="14"
+					:class="$style.statusIconDisconnected"
+					aria-hidden="true"
+				/>
 				{{ i18n.baseText('tools.connection.action.reconnect') }}
 			</N8nButton>
 		</div>
@@ -397,11 +404,8 @@ function handleConnect() {
 	white-space: nowrap;
 }
 
-.statusDot {
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	background: var(--color--success);
+.statusIconConnected,
+.statusIconDisconnected {
 	flex-shrink: 0;
 }
 
@@ -412,7 +416,11 @@ function handleConnect() {
 	color: var(--color--text--tint-2);
 }
 
-.statusDotDisconnected {
-	background: var(--color--danger);
+.statusIconConnected {
+	color: var(--color--success);
+}
+
+.statusIconDisconnected {
+	color: var(--color--danger);
 }
 </style>

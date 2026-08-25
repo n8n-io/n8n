@@ -4,11 +4,15 @@ import type {
 	OutboundHttp,
 } from '@n8n/backend-network';
 import type { EngineConfig } from '@n8n/config';
+import { SharedSecretIdentityVerifier } from '@n8n/engine';
 import type { StartExecutionRequest } from '@n8n/engine';
+import type { InstanceSettings } from 'n8n-core';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
+
+const authSecret = 'a'.repeat(32);
 
 describe('EngineDataPlaneClient', () => {
 	const request: StartExecutionRequest = {
@@ -42,8 +46,9 @@ describe('EngineDataPlaneClient', () => {
 		});
 
 		return new EngineDataPlaneClient(
-			mock<EngineConfig>({ port: 3000, host: '0.0.0.0', baseUrl: '', ...config }),
+			mock<EngineConfig>({ port: 3000, host: '0.0.0.0', baseUrl: '', authSecret, ...config }),
 			outboundHttp,
+			mock<InstanceSettings>({ instanceId: 'instance-1' }),
 		);
 	};
 
@@ -66,6 +71,16 @@ describe('EngineDataPlaneClient', () => {
 			);
 		});
 
+		it('does not follow redirects, so the identity token reaches only the configured host', async () => {
+			respondWith(201, { executionId: 'exec-1' });
+
+			await client.startExecution(request);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({ disableFollowRedirect: true }),
+			);
+		});
+
 		it('dials the loopback, not the bind host', () => {
 			expect(clientOptions?.baseURL).toBe('http://127.0.0.1:3000');
 		});
@@ -84,6 +99,19 @@ describe('EngineDataPlaneClient', () => {
 
 		it('opts out of SSRF protection for the n8n-controlled engine host', () => {
 			expect(clientOptions?.ssrf).toBe('disabled');
+		});
+
+		it('sends an identity token the engine accepts, proving the caller is the instance id', () => {
+			const headers = clientOptions?.headers;
+			const resolved = typeof headers === 'function' ? headers() : headers;
+			const authorization = resolved?.authorization ?? '';
+
+			expect(authorization).toMatch(/^Bearer .+/);
+
+			const token = authorization.replace('Bearer ', '');
+			const verifier = new SharedSecretIdentityVerifier(authSecret);
+
+			expect(verifier.verify(token)).toEqual({ cpId: 'instance-1', tenantId: 'instance-1' });
 		});
 
 		it.each([
@@ -121,6 +149,13 @@ describe('EngineDataPlaneClient', () => {
 				body: { error: 'boom' },
 				errorClass: OperationalError,
 				message: 'Engine responded with 500: boom',
+			},
+			{
+				case: 'a redirect the client refused to follow',
+				statusCode: 302,
+				body: '',
+				errorClass: OperationalError,
+				message: 'Engine responded with 302',
 			},
 			{
 				case: 'a body that is not the engine error shape',
