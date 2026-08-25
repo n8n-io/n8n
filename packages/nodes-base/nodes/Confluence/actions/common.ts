@@ -347,6 +347,15 @@ export function extractNextCursor(response: IDataObject): string | undefined {
 	return next?.key === 'cursor' ? next.value : undefined;
 }
 
+/** `extractNextCursor` with a repeat guard: a cursor seen before ends the
+ * pagination instead of looping forever on a server that echoes it back. */
+export function nextUnseenCursor(response: IDataObject, seen: Set<string>): string | undefined {
+	const cursor = extractNextCursor(response);
+	if (cursor === undefined || seen.has(cursor)) return undefined;
+	seen.add(cursor);
+	return cursor;
+}
+
 /** Validates a count parameter that an expression may hand back as a numeric string. */
 export function parsePositiveInt(
 	this: IExecuteFunctions,
@@ -385,11 +394,8 @@ export async function fetchPaginatedResults(
 		const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 		records.push.apply(records, results);
 
-		const next = extractNextCursor(response);
-		if (next === undefined || seenCursors.has(next)) break;
-		seenCursors.add(next);
-		cursor = next;
-	} while (records.length < max);
+		cursor = nextUnseenCursor(response, seenCursors);
+	} while (cursor !== undefined && records.length < max);
 
 	return records.length > max ? records.slice(0, max) : records;
 }

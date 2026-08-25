@@ -183,6 +183,33 @@ describe('Confluence router', () => {
 		]);
 	});
 
+	it('dispatches page:getComments and fans the comments out into one item each', async () => {
+		apiRequest.mockResolvedValue({ results: [{ id: '900' }, { id: '901' }] });
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'getComments',
+				page: { mode: 'id', value: '1' },
+				returnAll: false,
+				limit: 50,
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/pages/1/footer-comments',
+			{},
+			{ 'body-format': 'storage', limit: 50 },
+		);
+		expect(result).toEqual([
+			[
+				{ json: { id: '900' }, pairedItem: { item: 0 } },
+				{ json: { id: '901' }, pairedItem: { item: 0 } },
+			],
+		]);
+	});
+
 	it('fans an array response out into one item per page', async () => {
 		apiRequest.mockImplementation(async (_method: string, url: string) =>
 			url.endsWith('/descendants')
