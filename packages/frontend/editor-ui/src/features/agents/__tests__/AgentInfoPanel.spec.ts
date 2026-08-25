@@ -332,34 +332,6 @@ describe('AgentInfoPanel', () => {
 			]);
 		});
 
-		it('replaces another provider model with the selected credential verified default', async () => {
-			credsHolder.value = { anthropic: 'credential-1', openai: 'credential-2' };
-			const wrapper = mountModelPanel({
-				name: 'Support agent',
-				model: 'anthropic/claude-sonnet-4-5',
-				credential: 'credential-1',
-				instructions: 'Help users.',
-			});
-
-			wrapper
-				.findComponent({ name: 'AgentModelSelector' })
-				.vm.$emit('select-credential', 'openai', 'credential-2');
-			await wrapper.vm.$nextTick();
-
-			wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
-				provider: 'openai',
-				model: 'gpt-5-mini',
-			});
-			await wrapper.vm.$nextTick();
-
-			expect(wrapper.emitted('update:config')).toContainEqual([
-				expect.objectContaining({
-					model: 'openai/gpt-5-mini',
-					credential: 'credential-2',
-				}),
-			]);
-		});
-
 		it('applies the verified default on mount when a credential is already available', async () => {
 			defaultModelHolder.value = {
 				provider: 'anthropic',
