@@ -52,7 +52,7 @@ import {
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 
 @Service()
-export class ModulesHooksRegistry {
+class ModulesHooksRegistry {
 	/**
 	 * `source` is not carried on `ExecutionLifecycleHooks`, so it is passed in
 	 * here to let module handlers tell agent-initiated runs from user ones.

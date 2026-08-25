@@ -5,11 +5,9 @@ import type {
 } from '@n8n/decorators';
 import { LifecycleMetadata, PolicyCheck } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { ExecutionLifecycleHooks } from 'n8n-core';
 import type { IWorkflowBase, Workflow } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ModulesHooksRegistry } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { OwnershipService } from '@/services/ownership.service';
@@ -135,37 +133,34 @@ describe('workflowExecuteBefore wiring', () => {
 		});
 	});
 
-	describe('through the hook chain', () => {
-		const runBeforeHook = async () => {
-			const hooks = new ExecutionLifecycleHooks('trigger', 'exec-1', workflow);
-			Container.get(ModulesHooksRegistry).addHooks(hooks);
+	// That a throw survives the hook chain is covered where the chain lives, in
+	// `execution-lifecycle/__tests__/execution-lifecycle-hooks.test.ts`.
+	describe('against the real decision service', () => {
+		const ownership = mock<OwnershipService>();
 
-			await hooks.runHook('workflowExecuteBefore', [mock<Workflow>(), undefined]);
-		};
-
-		beforeEach(() => {
+		const handler = () => {
 			// A fresh service each time: `setImplementation` is single-shot.
 			const enforcement = new PolicyEnforcementService();
 			enforcement.setImplementation(Container.get(PolicyDecisionService));
 
-			const ownership = mock<OwnershipService>();
+			return new PolicyLifecycleHandler(enforcement, ownership);
+		};
+
+		beforeEach(() => {
 			ownership.getWorkflowProjectCached.mockResolvedValue(mock({ id: 'proj-1' }));
-
-			// The registry resolves the handler through DI, so it has to be this instance —
-			// the one wired to the real service that `ConfigurableCheck` is registered with.
-			Container.set(PolicyLifecycleHandler, new PolicyLifecycleHandler(enforcement, ownership));
-
 			Container.get(ConfigurableCheck).result = { violations: [] };
 		});
 
 		it('lets an always-allowed start through', async () => {
-			await expect(runBeforeHook()).resolves.toBeUndefined();
+			await expect(handler().onWorkflowExecuteBefore(beforeContext())).resolves.toBeUndefined();
 		});
 
-		it('propagates a violation, so nothing in the chain swallows it', async () => {
+		it('throws a PolicyViolationError when a check reports one', async () => {
 			Container.get(ConfigurableCheck).result = { violations: [violation] };
 
-			await expect(runBeforeHook()).rejects.toThrow(PolicyViolationError);
+			await expect(handler().onWorkflowExecuteBefore(beforeContext())).rejects.toThrow(
+				PolicyViolationError,
+			);
 		});
 	});
 });
