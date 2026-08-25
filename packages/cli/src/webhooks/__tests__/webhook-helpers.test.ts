@@ -1621,6 +1621,27 @@ describe('executeWebhook in responseNode mode when the Respond node never runs',
 		expect(responseCallback.mock.calls[0]).toEqual([null, { data: undefined, responseCode: 200 }]);
 	});
 
+	it('does not answer again while an offloaded binary response is still streaming', async () => {
+		// The stream never arrives, so the binary branch has not answered yet when the
+		// execution fails. The post-execute handler must not answer in its place.
+		vi.mocked(Container.get(BinaryDataService).getAsStream).mockReturnValue(
+			new Promise<Readable>(() => {}),
+		);
+
+		const { responsePromise, postExecute, responseCallback } = await startWebhook();
+
+		responsePromise.resolve({
+			body: { binaryData: { id: 'binary-1' } },
+			headers: {},
+			statusCode: 200,
+		});
+		await new Promise(process.nextTick);
+		postExecute.resolve(erroredRun);
+		await new Promise(process.nextTick);
+
+		expect(responseCallback).not.toHaveBeenCalled();
+	});
+
 	it('does not answer twice when the node responded and the execution then succeeded', async () => {
 		const { responsePromise, postExecute, responseCallback } = await startWebhook();
 

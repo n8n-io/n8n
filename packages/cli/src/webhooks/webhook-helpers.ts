@@ -929,13 +929,21 @@ export async function executeWebhook(
 		let responsePromise: IDeferredPromise<IN8nHttpFullResponse> | undefined;
 		if (responseMode === 'responseNode') {
 			responsePromise = createDeferredPromise<IN8nHttpFullResponse>();
+			// Mark the request as answered as soon as the node produces a response, before
+			// `setupResponseNodePromise` starts writing it. Streaming offloaded binary data
+			// takes time, and a node failing during that wait must not answer a second time.
+			void responsePromise.promise.then(
+				(response) => {
+					if (response !== EXECUTION_ENDED_WITHOUT_RESPONSE) didSendResponse = true;
+				},
+				() => {
+					didSendResponse = true;
+				},
+			);
 			setupResponseNodePromise(
 				responsePromise,
 				res,
-				(error, data) => {
-					didSendResponse = true;
-					responseCallback(error, data);
-				},
+				responseCallback,
 				workflowStartNode,
 				executionId,
 				workflow,
