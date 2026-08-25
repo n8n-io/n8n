@@ -17,12 +17,13 @@ describe('Confluence Node', () => {
 		expect(node.description.usableAsTool).toBeUndefined();
 	});
 
-	it('should expose the attachment, page and search resources with their operations', () => {
+	it('should expose the attachment, page, search and space resources with their operations', () => {
 		const resource = node.description.properties.find((p) => p.name === 'resource');
 		expect(resource?.options).toEqual([
 			expect.objectContaining({ value: 'attachment' }),
 			expect.objectContaining({ value: 'page' }),
 			expect.objectContaining({ value: 'search' }),
+			expect.objectContaining({ value: 'space' }),
 		]);
 
 		expect(operationOptions('attachment')).toEqual([expect.objectContaining({ value: 'getMany' })]);
@@ -31,10 +32,28 @@ describe('Confluence Node', () => {
 			expect.objectContaining({ value: 'create' }),
 			expect.objectContaining({ value: 'delete' }),
 			expect.objectContaining({ value: 'get' }),
+			expect.objectContaining({ value: 'getLabels' }),
 			expect.objectContaining({ value: 'getManyByLabel' }),
 			expect.objectContaining({ value: 'update' }),
 		]);
 		expect(operationOptions('search')).toEqual([expect.objectContaining({ value: 'query' })]);
+		expect(operationOptions('space')).toEqual([
+			expect.objectContaining({ value: 'get' }),
+			expect.objectContaining({ value: 'getMany' }),
+		]);
+	});
+
+	it('exposes the getLabels fields on the node description', () => {
+		const forGetLabels = node.description.properties.filter((p) =>
+			p.displayOptions?.show?.operation?.includes('getLabels'),
+		);
+
+		expect(forGetLabels.map((p) => p.name)).toEqual(
+			expect.arrayContaining(['page', 'returnAll', 'limit', 'options']),
+		);
+
+		const limit = forGetLabels.find((p) => p.name === 'limit');
+		expect(limit?.displayOptions?.show?.returnAll).toEqual([false]);
 	});
 
 	it('should reference the confluenceCloudOAuth2Api credential by name', () => {

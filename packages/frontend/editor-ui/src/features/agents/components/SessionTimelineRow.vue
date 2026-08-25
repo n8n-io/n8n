@@ -10,6 +10,7 @@ import type { TimelineItem } from '../session-timeline.types';
 import {
 	executionErrorLabel,
 	executionErrorMessage,
+	hitlRequestLabelKey,
 	hitlTimelineName,
 	isSubAgentTimelineItem,
 	timelineItemStatus,
@@ -96,11 +97,7 @@ const label = computed((): string => {
 		case 'execution-error':
 			return executionErrorLabel(props.item, i18n);
 		case 'suspension':
-			return i18n.baseText(
-				props.item.hitlRequestType === 'approval'
-					? 'agentSessions.timeline.approvalRequested'
-					: 'agentSessions.timeline.hitlRequested',
-			);
+			return i18n.baseText(hitlRequestLabelKey(props.item.hitlRequestType));
 		case 'hitl-response':
 			return i18n.baseText('agentSessions.timeline.hitlResponse');
 		default:
