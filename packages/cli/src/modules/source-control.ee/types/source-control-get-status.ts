@@ -68,11 +68,11 @@ export class SourceControlGetStatus {
 		direction: 'push' | 'pull';
 		preferLocalVersion: string | boolean;
 		verbose: string | boolean;
-		origin?: 'ui' | 'publicApi';
 	}) {
 		this.direction = values.direction || 'push';
 		this.preferLocalVersion = booleanFromString(values.preferLocalVersion) || true;
 		this.verbose = booleanFromString(values.verbose) || false;
-		this.origin = values.origin ?? 'ui';
+		// Never read from `values`, an untrusted `origin` query parameter must not be propagated through.
+		this.origin = 'ui';
 	}
 }

@@ -18,7 +18,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
-import { SourceControlGetStatus } from '@/modules/source-control.ee/types/source-control-get-status';
 import { resolveOffsetPagination } from '@/public-api/v1/shared/services/pagination.service';
 import { paginateSourceControlledFiles } from '@/public-api/v1/shared/services/source-controlled-file-pagination.service';
 
@@ -48,26 +47,22 @@ export class SourceControlPublicController {
 		_res: Response,
 		@Query query: SourceControlStatusQueryPublicDto,
 	): Promise<SourceControlStatusPublicDto> {
+		await this.sourceControlScopedService.ensureIsAllowedToGetStatus(req);
+
 		if (!this.sourceControlPreferencesService.isSourceControlConnected()) {
 			throw new BadRequestError('Source Control is not connected to a repository');
 		}
 
-		await this.sourceControlScopedService.ensureIsAllowedToGetStatus(req);
-
 		const { offset, limit } = resolveOffsetPagination({ ...query, validateCursor: true });
 
-		const result = await this.sourceControlService.getStatus(
-			req.user,
-			new SourceControlGetStatus({
-				direction: query.direction,
-				preferLocalVersion: true,
-				verbose: false,
-				origin: 'publicApi',
-			}),
-		);
-		// `verbose: false` above guarantees a flat file list at runtime; `getStatus`'s return type
-		// widens to the verbose union because it's typed by `SourceControlGetStatus`, not by the
-		// literal passed in, so narrow explicitly rather than casting.
+		const result = await this.sourceControlService.getStatus(req.user, {
+			direction: query.direction,
+			preferLocalVersion: query.direction === 'push',
+			verbose: false,
+			origin: 'publicApi',
+		});
+
+		// `verbose: false` above guarantees a flat file list at runtime, narrow explicitly rather than casting.
 		const files = Array.isArray(result) ? result : result.sourceControlledFiles;
 
 		return paginateSourceControlledFiles(files, { offset, limit });

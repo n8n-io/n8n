@@ -1,4 +1,4 @@
-import type { SourceControlledFile } from '@n8n/api-types';
+import { MAX_ITEMS_PER_PAGE, type SourceControlledFile } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -266,6 +266,20 @@ describe('Source Control (Public API)', () => {
 			expect(response.status).toBe(403);
 		});
 
+		it('should authorize before revealing whether a repository is connected', async () => {
+			testServer.license.enable('feat:sourceControl');
+			// Source control deliberately left disconnected.
+			const member = await createMemberWithApiKey({ scopes: ['sourceControl:read'] });
+
+			const response = await testServer
+				.publicApiAgentFor(member)
+				.get(statusUrl)
+				.query({ direction: 'push' });
+
+			// 403 from RBAC, not the 400 that would disclose the connection state.
+			expect(response.status).toBe(403);
+		});
+
 		it('should return 200 with the status envelope for direction=push', async () => {
 			testServer.license.enable('feat:sourceControl');
 			mockConnected();
@@ -311,7 +325,13 @@ describe('Source Control (Public API)', () => {
 			expect(response.body).toEqual({ data: files, nextCursor: null });
 			expect(getStatusSpy).toHaveBeenCalledWith(
 				expect.objectContaining({ id: owner.id }),
-				expect.objectContaining({ direction: 'pull', origin: 'publicApi' }),
+				expect.objectContaining({
+					direction: 'pull',
+					// Pull previews the incoming side, matching what `pullWorkfolder` applies.
+					preferLocalVersion: false,
+					verbose: false,
+					origin: 'publicApi',
+				}),
 			);
 		});
 
@@ -373,8 +393,9 @@ describe('Source Control (Public API)', () => {
 			testServer.license.enable('feat:sourceControl');
 			mockConnected();
 
-			const files = Array.from({ length: 5 }, (_, i) =>
-				sourceControlledFileFixture(String(i), { file: `${i}.json` }),
+			// More files than the cap, so the page size itself proves the clamp.
+			const files = Array.from({ length: MAX_ITEMS_PER_PAGE + 50 }, (_, i) =>
+				sourceControlledFileFixture(String(i), { file: `${String(i).padStart(4, '0')}.json` }),
 			);
 			vi.spyOn(Container.get(SourceControlService), 'getStatus').mockResolvedValue(files);
 
@@ -384,8 +405,18 @@ describe('Source Control (Public API)', () => {
 				.query({ direction: 'push', limit: 1000 });
 
 			expect(response.status).toBe(200);
-			expect(response.body.data).toHaveLength(5);
-			expect(response.body.nextCursor).toBeNull();
+			expect(response.body.data).toHaveLength(MAX_ITEMS_PER_PAGE);
+			expect(response.body.nextCursor).not.toBeNull();
+
+			// The cursor must carry the clamped limit, not the requested one.
+			const nextPage = await testServer
+				.publicApiAgentFor(owner)
+				.get(statusUrl)
+				.query({ direction: 'push', cursor: response.body.nextCursor });
+
+			expect(nextPage.status).toBe(200);
+			expect(nextPage.body.data).toHaveLength(50);
+			expect(nextPage.body.nextCursor).toBeNull();
 		});
 
 		it('should return 400 for a forged cursor', async () => {
