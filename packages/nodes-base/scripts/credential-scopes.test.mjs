@@ -209,6 +209,35 @@ describe('diffScopes', () => {
 		expect(advisories).toHaveLength(1);
 	});
 
+	describe('a scope survives becoming computed only as a whole token', () => {
+		test.each([
+			// The Teams incident this guard exists for: #28141 narrowed
+			// `Group.ReadWrite.All` to `Group.Read.All`, which is not the same scope.
+			['a longer scope that contains it', 'Group.Read.All', '={{"Group.ReadWrite.All"}}'],
+			['a scope that ends with it', 'read', '={{"issues:read"}}'],
+			['an unrelated word that contains it', 'read', '={{"bread"}}'],
+		])('%s does not keep it alive', (_name, scope, source) => {
+			expect(diff(lit(scope), opaque(source)).removals).toEqual([{ credential: 'cred', scope }]);
+		});
+
+		test.each([
+			['quoted alongside others', 'read', '={{$self["c"] ? $self["e"] : "read write"}}'],
+			['comma separated', 'openid', '={{"a,openid,b"}}'],
+			[
+				'a URL scope wrapped in a .replace',
+				'https://storage.azure.com/.default',
+				'={{("https://storage.azure.com/.default").replace(/x/g, "y")}}',
+			],
+			[
+				'a scope carrying a placeholder',
+				'https://{subdomain}.sharepoint.com/.default',
+				'={{("https://{subdomain}.sharepoint.com/.default").replace(/a/g, $self["s"])}}',
+			],
+		])('%s keeps it', (_name, scope, source) => {
+			expect(diff(lit(scope), opaque(source)).removals).toEqual([]);
+		});
+	});
+
 	test('passes a scope dropped by a computed expression when it is allow-listed', () => {
 		const isAllowed = (credential, what) => credential === 'cred' && what.scope === 'write';
 		const { removals } = diff(lit('read', 'write'), opaque('={{f($self) + "read"}}'), isAllowed);

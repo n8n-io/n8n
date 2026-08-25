@@ -48,6 +48,18 @@ const isSingleConditionalWrapper = (raw) =>
 
 const splitScopes = (scopes) => new Set(scopes.split(/[\s,]+/).filter(Boolean));
 
+/** Characters that can sit inside a scope, so a match on one is not a whole scope. */
+const SCOPE_CHAR = '\\w.:/@~+-';
+
+/**
+ * Whether `source` still grants `scope`, as a whole token rather than a
+ * substring: `issues:read` and `bread` do not keep `read` alive.
+ */
+const grantsScope = (source, scope) => {
+	const escaped = scope.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	return new RegExp(`(?:^|[^${SCOPE_CHAR}])${escaped}(?:[^${SCOPE_CHAR}]|$)`).test(source);
+};
+
 /**
  * A credential's `scope` default is one of two shapes:
  *
@@ -128,13 +140,13 @@ export const diffScopes = (released, current, isAllowed = () => false) => {
 		if (!after) continue;
 
 		// A readable scope set that became computed cannot be diffed as a set, but
-		// each scope it used to grant is still a plain string: if one is gone from
+		// each scope it used to grant is still a plain token: if one is gone from
 		// the expression entirely, it was dropped. Restructuring that keeps every
 		// scope (wrapping in parens, adding a `.replace()` for a placeholder,
 		// switching to concatenation) leaves them all present and only reports.
 		if (before.kind === 'literal' && after.kind === 'opaque') {
 			for (const scope of before.scopes) {
-				if (after.source.includes(scope)) continue;
+				if (grantsScope(after.source, scope)) continue;
 				if (isAllowed(credential, { scope })) continue;
 				removals.push({ credential, scope });
 			}
