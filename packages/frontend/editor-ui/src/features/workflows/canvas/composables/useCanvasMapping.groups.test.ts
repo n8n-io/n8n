@@ -20,7 +20,7 @@ import {
 	GROUP_PADDING_Y_BOTTOM,
 	GROUP_PADDING_Y_TOP,
 } from '../stores/canvasNodeGroups.constants';
-import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
+import { DEFAULT_NODE_SIZE, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import { STICKY_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { createNodeExecutionSnapshot } from '../__tests__/utils';
 
@@ -62,6 +62,10 @@ function snapshotGetter(byId: Record<string, Partial<NodeExecutionSnapshot>> = {
 describe('computeGroupFrameRects', () => {
 	// Coordinates intentionally off the grid so an accidental snap() would surface.
 	const nodesRect = { x: 317, y: 213, width: 396, height: 120 };
+
+	it('keeps the group header height aligned with the default node height', () => {
+		expect(GROUP_HEADER_HEIGHT).toBe(DEFAULT_NODE_SIZE[1]);
+	});
 
 	it('anchors both rects at the same unsnapped top-left, offset by padding and header', () => {
 		const { collapsed, expanded } = computeGroupFrameRects(nodesRect);
