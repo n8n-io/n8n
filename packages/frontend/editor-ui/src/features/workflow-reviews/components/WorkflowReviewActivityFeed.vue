@@ -2,25 +2,55 @@
 import { N8nButton, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
-import { onMounted, ref, watch } from 'vue';
+import { computed, inject, ref, watch } from 'vue';
 
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
+import { ReviewDetailScrollContainerKey } from '../constants';
 import { useReviewActivityStore } from '../reviewActivity.store';
 import { resolveActivityComponent } from './activityEntryRegistry';
 
 const i18n = useI18n();
 const store = useReviewActivityStore();
-const { entries, loading, loadingMore, hasMore, error } = storeToRefs(store);
+const { entries, loading, loadingMore, hasMore, posting, error } = storeToRefs(store);
 
-const scrollContainer = ref<HTMLElement | null>(null);
+const feed = ref<HTMLElement | null>(null);
+const providedScrollContainer = inject(ReviewDetailScrollContainerKey, null);
+const scrollContainer = computed(() =>
+	providedScrollContainer ? providedScrollContainer.value : feed.value,
+);
 const list = ref<HTMLElement | null>(null);
 const sentinel = ref<HTMLElement | null>(null);
+const enteringCommentId = ref<string | null>(null);
 // Held back until the initial scroll position is applied, so the sentinel cannot
 // intersect at scrollTop 0 and pull in the whole feed before the user sees it.
 const initialScrollApplied = ref(false);
 
 let prependAnchor: { element: Element; top: number } | null = null;
+
+// `postComment` appends while `posting` is still true. Capture that synchronous
+// mutation before the promise's `finally` clears the flag; older-page prepends,
+// initial fetches, and server refetches must not replay this feedback animation.
+watch(
+	entries,
+	(next, previous) => {
+		if (next.length === 0) {
+			enteringCommentId.value = null;
+			return;
+		}
+		if (!posting.value) return;
+
+		const newest = next.at(-1);
+		if (newest?.type === 'comment.created' && !previous?.some((entry) => entry.id === newest.id)) {
+			enteringCommentId.value = newest.id;
+		}
+	},
+	{ flush: 'sync' },
+);
+
+function onCommentEntryAnimationEnd(entryId: string) {
+	if (enteringCommentId.value === entryId) enteringCommentId.value = null;
+}
 
 function scrollToBottom() {
 	const container = scrollContainer.value;
@@ -40,9 +70,9 @@ const { observe } = useIntersectionObserver({
 });
 
 watch(
-	[sentinel, hasMore, loadingMore, () => entries.value.length],
-	([sentinelElement, moreToLoad, isLoadingMore]) => {
-		if (sentinelElement && moreToLoad && !isLoadingMore) {
+	[scrollContainer, sentinel, hasMore, loadingMore, () => entries.value.length],
+	([container, sentinelElement, moreToLoad, isLoadingMore]) => {
+		if (container && sentinelElement && moreToLoad && !isLoadingMore) {
 			observe(sentinelElement);
 		}
 	},
@@ -90,15 +120,22 @@ function retry() {
 	void store.loadMore();
 }
 
-// Entries may already be loaded on mount (Changes -> Activity round trip).
-onMounted(() => {
-	if (entries.value.length > 0) scrollToBottom();
-	initialScrollApplied.value = true;
-});
+// Entries may already be loaded when the scroll root becomes available (including
+// a Changes -> Activity round trip). The parent-owned root arrives after the child
+// first renders, so key this to the element instead of the component mount.
+watch(
+	scrollContainer,
+	(container) => {
+		if (!container || initialScrollApplied.value) return;
+		if (entries.value.length > 0) scrollToBottom();
+		initialScrollApplied.value = true;
+	},
+	{ immediate: true, flush: 'post' },
+);
 </script>
 
 <template>
-	<div ref="scrollContainer" :class="$style.feed" data-test-id="workflow-review-activity-feed">
+	<div ref="feed" :class="$style.feed" data-test-id="workflow-review-activity-feed">
 		<div v-if="$slots.header" :class="$style.header">
 			<slot name="header" />
 		</div>
@@ -156,13 +193,20 @@ onMounted(() => {
 					v-for="entry in entries"
 					:key="entry.id"
 					role="listitem"
-					:class="$style.item"
+					:class="[$style.item, { [$style.itemEntering]: entry.id === enteringCommentId }]"
+					:data-entering="entry.id === enteringCommentId || undefined"
 					data-test-id="workflow-review-activity-entry"
+					@animationend.self="onCommentEntryAnimationEnd(entry.id)"
 				>
 					<component :is="resolveActivityComponent(entry)" :entry="entry" />
 				</div>
 				<div v-if="$slots.footer" role="listitem" :class="$style.item">
 					<slot name="footer" />
+				</div>
+				<!-- The composer lives on the timeline itself, threaded in by the same rail
+					as the entries above it, and scrolls with them. -->
+				<div v-if="$slots.composer" role="listitem" :class="$style.item">
+					<slot name="composer" />
 				</div>
 			</div>
 		</template>
@@ -170,23 +214,17 @@ onMounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .feed {
 	display: flex;
 	flex-direction: column;
 	flex: 1;
 	min-height: 0;
-	overflow: auto;
+	overflow: visible;
 	padding-block: var(--spacing--5xs) var(--spacing--sm);
-	/* Keeps the cards off the scrollbar that appears here when feed overflows */
+	/* Keeps cards clear of the shared detail-body scrollbar. */
 	padding-inline-end: var(--spacing--2xs);
-}
-
-/* The detail body stacks and takes over scrolling here, so the feed must bound itself or its
-	load-older sentinel never leaves the screen and drains every page. */
-@container review-detail (max-width: 44rem) {
-	.feed {
-		max-height: 60vh;
-	}
 }
 
 /* Same inset the list gives its entries, so a card here starts on the avatar column. */
@@ -213,6 +251,36 @@ onMounted(() => {
 
 .item {
 	position: relative;
+}
+
+/* A locally posted comment sharpens quickly, then finishes a gentle upward settle.
+	The longer movement keeps the blur from visually swallowing the spatial cue. */
+.itemEntering {
+	--animation--fade-in-up--duration: var(--animation--duration);
+	--animation--fade-in-up--easing: var(--easing--ease-out-quint);
+	--animation--fade-in-up--translate: var(--spacing--2xs);
+
+	@include motion.fade-in-up;
+
+	> * {
+		animation: review-comment-sharpen var(--animation--duration--snappy)
+			var(--easing--ease-out-quint);
+	}
+}
+
+@keyframes review-comment-sharpen {
+	from {
+		filter: blur(var(--animation--blur-swap--blur, 4px));
+	}
+	to {
+		filter: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.itemEntering > * {
+		animation: none;
+	}
 }
 
 /* Threads the entries into one timeline. Drawn in the gap above each entry rather than

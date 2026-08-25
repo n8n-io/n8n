@@ -2,9 +2,9 @@
 import type { WorkflowReviewInboxItem, WorkflowReviewRequestDetail } from '@n8n/api-types';
 import { N8nCallout, N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, provide } from 'vue';
+import { computed, provide, ref } from 'vue';
 
-import { ReviewLinkedWorkflowsKey } from '../constants';
+import { ReviewDetailScrollContainerKey, ReviewLinkedWorkflowsKey } from '../constants';
 import type { WorkflowReviewDecisionInput } from '../workflowReviews.api';
 import WorkflowReviewActivityFeed from './WorkflowReviewActivityFeed.vue';
 import WorkflowReviewChangesSection from './WorkflowReviewChangesSection.vue';
@@ -26,6 +26,8 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const detailBodyRef = ref<HTMLElement | null>(null);
+provide(ReviewDetailScrollContainerKey, detailBodyRef);
 
 const detail = computed<WorkflowReviewRequestDetail | null>(() =>
 	'workflows' in props.review ? props.review : null,
@@ -122,7 +124,11 @@ const tabOptions = computed(() => [
 			</div>
 		</div>
 
-		<div :class="$style.detailBody">
+		<div
+			ref="detailBodyRef"
+			:class="$style.detailBody"
+			data-test-id="workflow-review-detail-scroll"
+		>
 			<div
 				v-if="tab === 'activity'"
 				:class="$style.activityPanel"
@@ -172,13 +178,11 @@ const tabOptions = computed(() => [
 							</div>
 						</N8nCallout>
 					</template>
+					<!-- Closed reviews take no new comments (the backend 409s) -->
+					<template v-if="review.state === 'open'" #composer>
+						<WorkflowReviewCommentComposer :can-comment="viewerCanComment" />
+					</template>
 				</WorkflowReviewActivityFeed>
-
-				<!-- Closed reviews take no new comments (the backend 409s) -->
-				<WorkflowReviewCommentComposer
-					v-if="review.state === 'open'"
-					:can-comment="viewerCanComment"
-				/>
 			</div>
 
 			<div v-else :class="$style.panel" data-test-id="workflow-review-changes-panel">
@@ -219,49 +223,88 @@ const tabOptions = computed(() => [
 @use './activity-card' as *;
 
 .container {
+	/* Match the application page background in both themes. This is the token
+		used by the global body, rather than the white card/surface token. */
+	--review-detail--background: var(--color--background--light-2);
+
 	display: flex;
 	flex-direction: column;
 	height: 100%;
 	min-height: 0;
+	background-color: var(--review-detail--background);
 	container-name: review-detail;
 	container-type: inline-size;
 }
 
 .tabRow {
+	position: relative;
+	z-index: 1;
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	gap: var(--spacing--sm);
+	background-color: var(--review-detail--background);
+
+	/* The scrollport starts at the row's normal bottom edge, while the divider is
+		lower because the active-tab indicator overhangs the row. Cover that entire
+		strip with the same surface as the header so scrolled cards cannot show
+		through behind the tabs or divider. */
+	&::before {
+		content: '';
+		position: absolute;
+		z-index: 0;
+		inset: 0 0 calc(-1 * var(--review-tab-bar--indicator-overhang, 11px) - var(--border-width));
+		background-color: var(--review-detail--background);
+	}
 
 	> :global(.n8n-tabs) {
+		position: relative;
+		z-index: 1;
 		transform: translateY(var(--spacing--xs));
+	}
+
+	/* Full-width baseline under the tab bar, separating the tab/action row from
+		the detail body; the active tab's indicator sits on top of it. Same
+		geometry as the sidebar's tab bar (see the view's `--review-tab-bar--*`). */
+	&::after {
+		content: '';
+		position: absolute;
+		z-index: 2;
+		left: 0;
+		right: 0;
+		bottom: calc(-1 * var(--review-tab-bar--indicator-overhang, 11px) - var(--border-width));
+		height: var(--border-width);
+		background-color: var(--border-color);
 	}
 }
 
 .detailBody {
 	display: flex;
 	flex: 1;
+	align-items: flex-start;
 	gap: var(--spacing--sm);
 	min-height: 0;
+	overflow: auto;
 	padding-top: var(--review-tab-bar--gap, calc(var(--spacing--sm) + 11px));
 }
 
 .panel {
+	align-self: stretch;
 	flex: 1;
-	min-height: 0;
-	overflow: auto;
+	min-height: 100%;
+	overflow: visible;
 }
 
-/* Separate from `.panel`: the feed brings its own scroll container, and the
-	composer must stay out of it. */
+/* The detail body owns scrolling so activity and metadata move as one surface. */
 .activityPanel {
 	display: flex;
 	flex-direction: column;
 	flex: 1;
-	min-height: 0;
-	overflow: hidden;
-	max-width: var(--review-activity--max-width, 48rem);
-	margin-inline-end: auto;
+	min-height: 100%;
+	overflow: visible;
+	max-width: var(--review-activity--max-width, 45rem);
+	/* Symmetric auto margins center the column in the space beside the metadata rail. */
+	margin-inline: auto;
 }
 
 .descriptionCard {
@@ -299,13 +342,14 @@ const tabOptions = computed(() => [
 }
 
 .decisionActions {
+	position: relative;
+	z-index: 1;
 	flex-shrink: 0;
 }
 
 @container review-detail (max-width: 44rem) {
 	.detailBody {
 		flex-direction: column;
-		overflow: auto;
 	}
 
 	.panel {
@@ -317,7 +361,7 @@ const tabOptions = computed(() => [
 		flex: 1 1 0%;
 		overflow: visible;
 		max-width: none;
-		margin-inline-end: 0;
+		margin-inline: 0;
 	}
 }
 </style>

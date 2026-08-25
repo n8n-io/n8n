@@ -248,9 +248,11 @@ const actorName = computed(() =>
 						separator on the actorless entries. -->
 					<span aria-hidden="true" :class="$style.separator">|</span>
 				</N8nText>
+				<!-- The actor is the emphasized part; the sentence and its timestamp share one
+					muted run at the same size, so only the tone carries the hierarchy. -->
 				<N8nText
 					size="medium"
-					color="text-base"
+					color="text-light"
 					:class="$style.line"
 					:data-test-id="content.testId"
 				>
@@ -264,7 +266,7 @@ const actorName = computed(() =>
 						<template v-if="content.version" #version>{{ content.version }}</template>
 					</I18nT>
 				</N8nText>
-				<N8nText size="small" color="text-light" :class="[$style.line, $style.timeStamp]">
+				<N8nText size="medium" color="text-light" :class="[$style.line, $style.timeStamp]">
 					<time :datetime="entry.createdAt">
 						<TimeAgo :date="entry.createdAt" />
 					</time>
@@ -273,7 +275,7 @@ const actorName = computed(() =>
 			<N8nText
 				v-if="content.note"
 				size="medium"
-				color="text-light"
+				color="text-dark"
 				:class="[$style.body, $style.line]"
 				data-test-id="workflow-review-activity-note"
 			>
@@ -313,8 +315,10 @@ const actorName = computed(() =>
 	@include activity-headline;
 }
 
+/* Decorative, so it sits a step below even the muted sentence beside it. */
 .separator {
 	margin-inline: var(--spacing--3xs);
+	color: var(--text-color--disabled);
 }
 
 .timeStamp {

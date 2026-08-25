@@ -217,7 +217,8 @@ const targetLabel = computed(() =>
 	height: 100%;
 	min-height: 0;
 	border: var(--border-width) var(--border-style) var(--border-color--subtle);
-	border-radius: var(--radius--md);
+	/* 8px — the design's radii/m. Not `--radius--md`: that primitive is 16px. */
+	border-radius: var(--radius--lg);
 	overflow: hidden;
 }
 </style>

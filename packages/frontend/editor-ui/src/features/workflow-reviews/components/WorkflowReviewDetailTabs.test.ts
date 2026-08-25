@@ -5,6 +5,7 @@ import type {
 } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
+import { nextTick } from 'vue';
 
 import WorkflowReviewDetailTabs from './WorkflowReviewDetailTabs.vue';
 
@@ -19,7 +20,7 @@ vi.mock('./WorkflowReviewChangesSection.vue', () => ({
 
 vi.mock('./WorkflowReviewActivityFeed.vue', async () => {
 	const { computed, inject } = await import('vue');
-	const { ReviewLinkedWorkflowsKey } = await import('../constants');
+	const { ReviewDetailScrollContainerKey, ReviewLinkedWorkflowsKey } = await import('../constants');
 	return {
 		default: {
 			name: 'WorkflowReviewActivityFeed',
@@ -28,14 +29,16 @@ vi.mock('./WorkflowReviewActivityFeed.vue', async () => {
 					ReviewLinkedWorkflowsKey,
 					computed(() => new Map()),
 				);
+				const scrollContainer = inject(ReviewDetailScrollContainerKey, null);
 				return {
 					linkedWorkflowsJson: computed(() =>
 						JSON.stringify(Object.fromEntries(linkedWorkflows.value)),
 					),
+					hasScrollContainer: computed(() => Boolean(scrollContainer?.value)),
 				};
 			},
 			template:
-				'<div data-test-id="workflow-review-activity-feed" :data-linked-workflows="linkedWorkflowsJson"><slot name="header" /><slot name="footer" /></div>',
+				'<div data-test-id="workflow-review-activity-feed" :data-linked-workflows="linkedWorkflowsJson" :data-has-scroll-container="hasScrollContainer"><slot name="header" /><slot name="footer" /><slot name="composer" /></div>',
 		},
 	};
 });
@@ -158,9 +161,9 @@ describe('WorkflowReviewDetailTabs', () => {
 			expect(getByTestId('workflow-review-no-description')).toBeInTheDocument();
 		});
 
-		// The description has to sit inside the feed's scroll container for the two to scroll
-		// together, and the composer has to stay outside it to keep its place at the bottom.
-		it('scrolls the description with the feed and keeps the composer below both', () => {
+		// The detail body is the shared scroll root: the feed no longer owns a thin
+		// independent scrollbar, while the composer remains its last timeline item.
+		it('uses the detail body to scroll the feed and metadata together', async () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					review: makeDetail({ description: 'Adds retry logic' }),
@@ -170,11 +173,14 @@ describe('WorkflowReviewDetailTabs', () => {
 			});
 
 			const feed = getByTestId('workflow-review-activity-feed');
-			const description = getByTestId('workflow-review-description');
-			const composer = getByTestId('workflow-review-comment-composer');
+			const scrollContainer = getByTestId('workflow-review-detail-scroll');
+			await nextTick();
 
-			expect(feed).toContainElement(description);
-			expect(feed.compareDocumentPosition(composer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+			expect(feed).toContainElement(getByTestId('workflow-review-description'));
+			expect(feed).toContainElement(getByTestId('workflow-review-comment-composer'));
+			expect(feed).toHaveAttribute('data-has-scroll-container', 'true');
+			expect(scrollContainer).toContainElement(feed);
+			expect(scrollContainer).toContainElement(getByTestId('workflow-review-detail-metadata'));
 		});
 
 		it.each([
