@@ -1,3 +1,11 @@
+## [2.37.1](https://github.com/n8n-io/n8n/compare/n8n@2.37.0...n8n@2.37.1) (2026-08-25)
+
+
+### Bug Fixes
+
+* **core:** Route OAuth2 token requests through environment proxies in every process ([#37008](https://github.com/n8n-io/n8n/issues/37008)) ([5118020](https://github.com/n8n-io/n8n/commit/5118020fb66c1b148a62b69d840cf3123f95efc8))
+
+
 # [2.37.0](https://github.com/n8n-io/n8n/compare/n8n@2.36.0...n8n@2.37.0) (2026-08-25)
 
 
