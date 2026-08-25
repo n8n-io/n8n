@@ -9,24 +9,11 @@ export function useExecutionData({ node }: { node: ComputedRef<INode | undefined
 
 	const workflowRunData = computed(() => workflowExecutionStateStore.value.activeExecutionRunData);
 
-	const hasExecutionNodeSnapshot = computed(
-		() => (workflowExecution.value?.workflowData?.nodes?.length ?? 0) > 0,
+	// The store already dropped the entries of replaced nodes, so looking up by
+	// name cannot return a deleted node's data.
+	const nodeRunData = computed(() =>
+		node.value ? (workflowRunData.value?.[node.value.name] ?? null) : null,
 	);
-
-	const nodeRunData = computed(() => {
-		if (!node.value) {
-			return null;
-		}
-
-		if (hasExecutionNodeSnapshot.value) {
-			return (
-				workflowExecutionStateStore.value.activeExecutionRunDataByNodeId.get(node.value.id)
-					?.value ?? null
-			);
-		}
-
-		return workflowRunData.value?.[node.value.name] ?? null;
-	});
 
 	const hasNodeRun = computed(() => nodeRunData.value !== null);
 

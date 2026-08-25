@@ -1,10 +1,16 @@
-import { computed, type WritableComputedRef } from 'vue';
+import { computed } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
-import { mockedStore } from '@/__tests__/utils';
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import {
+	createTestNode,
+	createTestWorkflow,
+	createTestWorkflowExecutionResponse,
+} from '@/__tests__/mocks';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
-import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INode, IRunData, ITaskData } from 'n8n-workflow';
 import { useExecutionData } from './useExecutionData';
 
@@ -14,43 +20,29 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-const executedNode = createTestNode({ id: 'executed-node', name: 'Message a model' });
 const successfulTask = { executionStatus: 'success' } as ITaskData;
 
 describe('useExecutionData()', () => {
-	// With nothing provided the composable falls back to the workflows store's
-	// (empty) workflow id, so seed the execution-state store keyed by that id.
-	// Testing pinia makes getters writable; the cast makes that visible to TS.
+	// The composable falls back to the workflows store's (empty) workflow id when
+	// nothing is provided, so seed both stores keyed by that id and let the real
+	// `activeExecutionRunData` filter run.
 	function seedExecution({
-		snapshotNodes,
+		executedNodes,
+		documentNodes,
 		runData,
 	}: {
-		snapshotNodes: INode[] | undefined;
+		executedNodes: INode[];
+		documentNodes: INode[];
 		runData: IRunData;
 	}) {
-		const store = mockedStore(
-			useWorkflowExecutionStateStore,
-			createWorkflowDocumentId(''),
-		) as unknown as {
-			activeExecution: Partial<IExecutionResponse> | null;
-			activeExecutionRunData: IRunData;
-			activeExecutionRunDataByNodeId: Map<string, WritableComputedRef<ITaskData[] | null>>;
-		};
+		const documentId = createWorkflowDocumentId(useWorkflowsStore().workflowId);
 
-		store.activeExecution = {
-			...(snapshotNodes ? { workflowData: createTestWorkflow({ nodes: snapshotNodes }) } : {}),
-		};
-
-		store.activeExecutionRunData = runData;
-
-		store.activeExecutionRunDataByNodeId = new Map(
-			(snapshotNodes ?? []).map((node) => [
-				node.id,
-				computed({
-					get: () => runData[node.name] ?? null,
-					set: () => {},
-				}),
-			]),
+		useWorkflowDocumentStore(documentId).setNodes(documentNodes);
+		useWorkflowExecutionStateStore(documentId).setWorkflowExecutionData(
+			createTestWorkflowExecutionResponse({
+				workflowData: createTestWorkflow({ nodes: executedNodes }),
+				data: { resultData: { runData } } as never,
+			}),
 		);
 	}
 
@@ -60,54 +52,40 @@ describe('useExecutionData()', () => {
 	});
 
 	it('returns the run data of the node that the execution ran', () => {
+		const node = createTestNode({ id: 'executed-node', name: 'Message a model' });
 		seedExecution({
-			snapshotNodes: [executedNode],
+			executedNodes: [node],
+			documentNodes: [node],
 			runData: { 'Message a model': [successfulTask] },
 		});
 
-		const { nodeRunData, hasNodeRun } = useExecutionData({
-			node: computed(() => executedNode),
-		});
+		const { nodeRunData, hasNodeRun } = useExecutionData({ node: computed(() => node) });
 
 		expect(nodeRunData.value).toEqual([successfulTask]);
 		expect(hasNodeRun.value).toBe(true);
 	});
 
 	it('returns nothing for a node that reuses the name of a node the execution ran', () => {
+		const executed = createTestNode({ id: 'executed-node', name: 'Message a model' });
+		// Same name, different node: added after the run.
+		const replacement = createTestNode({ id: 'added-later', name: 'Message a model' });
 		seedExecution({
-			snapshotNodes: [executedNode],
+			executedNodes: [executed],
+			documentNodes: [replacement],
 			runData: { 'Message a model': [successfulTask] },
 		});
 
-		// Same name, different node: added after the run, so the execution's node
-		// snapshot does not know its id.
-		const replacementNode = createTestNode({ id: 'added-later', name: 'Message a model' });
-
-		const { nodeRunData, hasNodeRun } = useExecutionData({
-			node: computed(() => replacementNode),
-		});
+		const { nodeRunData, hasNodeRun } = useExecutionData({ node: computed(() => replacement) });
 
 		expect(nodeRunData.value).toBeNull();
 		expect(hasNodeRun.value).toBe(false);
 	});
 
-	it('falls back to the node name when the execution recorded no nodes', () => {
-		seedExecution({
-			snapshotNodes: undefined,
-			runData: { 'Message a model': [successfulTask] },
-		});
-
-		const { nodeRunData, hasNodeRun } = useExecutionData({
-			node: computed(() => createTestNode({ id: 'any-id', name: 'Message a model' })),
-		});
-
-		expect(nodeRunData.value).toEqual([successfulTask]);
-		expect(hasNodeRun.value).toBe(true);
-	});
-
 	it('returns nothing when there is no node', () => {
+		const node = createTestNode({ id: 'executed-node', name: 'Message a model' });
 		seedExecution({
-			snapshotNodes: [executedNode],
+			executedNodes: [node],
+			documentNodes: [node],
 			runData: { 'Message a model': [successfulTask] },
 		});
 

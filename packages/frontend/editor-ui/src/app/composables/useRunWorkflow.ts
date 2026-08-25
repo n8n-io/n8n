@@ -111,31 +111,6 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	const { startChat } = useCanvasOperations();
 	const chatStore = useChat();
 
-	// Drops the entries whose name now belongs to a different node than the one that produced them.
-	function dropRunDataOfReplacedNodes(runData: IRunData | null): IRunData | null {
-		if (!runData) {
-			return null;
-		}
-
-		const executedNodes = workflowExecutionState.value.activeExecution?.workflowData?.nodes;
-		if (!executedNodes?.length) {
-			return runData;
-		}
-
-		const executedIdByName = new Map(executedNodes.map((node) => [node.name, node.id]));
-
-		return Object.fromEntries(
-			Object.entries(runData).filter(([nodeName]) => {
-				// Id the node had on a previous execution run
-				const executedId = executedIdByName.get(nodeName);
-				// current Id of the node with that name in the workflow document, if any
-				const currentId = workflowDocumentStore.value.getNodeByName(nodeName)?.id;
-
-				return !executedId || !currentId || executedId === currentId;
-			}),
-		);
-	}
-
 	function sortNodesByYPosition(nodes: string[]) {
 		return [...nodes].sort((a, b) => {
 			const nodeA = workflowDocumentStore.value.getNodeByName(a)?.position ?? [0, 0];
@@ -208,9 +183,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				);
 			}
 
-			const runData = dropRunDataOfReplacedNodes(
-				workflowExecutionState.value.activeExecutionRunData,
-			);
+			const runData = workflowExecutionState.value.activeExecutionRunData;
 
 			const isNewWorkflow = !workflowsStore.isWorkflowSaved[workflowDocumentStore.value.workflowId];
 

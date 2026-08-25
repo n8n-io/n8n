@@ -330,9 +330,13 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 					structuralComputed(() => computeNodeExecutionIssuesById(nodeId), isEqual),
 				);
 
+				// Plain `computed` for the same reason as `executionRunDataByNodeId`
+				// above: this returns a reference out of the payload, so `Object.is`
+				// already short-circuits and `isEqual` would deep-compare pin data
+				// that can reach megabytes.
 				executionPinDataByNodeId.set(
 					nodeId,
-					structuralComputed(() => computeExecutionPinData(nodeId), isEqual),
+					computed(() => computeExecutionPinData(nodeId)),
 				);
 			});
 
