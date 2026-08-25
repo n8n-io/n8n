@@ -1,11 +1,15 @@
-import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { mockDeep } from 'vitest-mock-extended';
 
 import { Confluence } from '../Confluence.node';
+import { mockExecuteCtx } from './shared';
 
 describe('Confluence Node', () => {
 	const node = new Confluence();
+
+	const operationOptions = (resource: string) =>
+		node.description.properties.find(
+			(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes(resource),
+		)?.options;
 
 	it('should stay hidden and off the AI-tool surface while operations land', () => {
 		expect(node.description.hidden).toBe(true);
@@ -13,20 +17,16 @@ describe('Confluence Node', () => {
 		expect(node.description.usableAsTool).toBeUndefined();
 	});
 
-	it('should expose the attachment and page resources with their operations', () => {
+	it('should expose the attachment, page and search resources with their operations', () => {
 		const resource = node.description.properties.find((p) => p.name === 'resource');
 		expect(resource?.options).toEqual([
 			expect.objectContaining({ value: 'attachment' }),
 			expect.objectContaining({ value: 'page' }),
+			expect.objectContaining({ value: 'search' }),
 		]);
 
-		const operations = node.description.properties.filter((p) => p.name === 'operation');
-		const operationsFor = (resourceName: string) =>
-			operations.find((p) => (p.displayOptions?.show?.resource ?? []).includes(resourceName));
-		expect(operationsFor('attachment')?.options).toEqual([
-			expect.objectContaining({ value: 'getMany' }),
-		]);
-		expect(operationsFor('page')?.options).toEqual([
+		expect(operationOptions('attachment')).toEqual([expect.objectContaining({ value: 'getMany' })]);
+		expect(operationOptions('page')).toEqual([
 			expect.objectContaining({ value: 'append' }),
 			expect.objectContaining({ value: 'create' }),
 			expect.objectContaining({ value: 'delete' }),
@@ -35,6 +35,7 @@ describe('Confluence Node', () => {
 			expect.objectContaining({ value: 'getManyByLabel' }),
 			expect.objectContaining({ value: 'update' }),
 		]);
+		expect(operationOptions('search')).toEqual([expect.objectContaining({ value: 'query' })]);
 	});
 
 	it('exposes the getLabels fields on the node description', () => {
@@ -63,21 +64,7 @@ describe('Confluence Node', () => {
 	});
 
 	it('should throw a NodeOperationError when executed without an operation', async () => {
-		const ctx = mockDeep<IExecuteFunctions>();
-		ctx.getInputData.mockReturnValue([{ json: {} }]);
-		ctx.getNodeParameter.mockImplementation(
-			(_name: string, _itemIndex?: number, fallback?: unknown) => fallback as never,
-		);
-		ctx.getNode.mockReturnValue({
-			id: 'test-node',
-			name: 'Test Confluence Node',
-			type: 'n8n-nodes-base.confluence',
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-		});
-
-		const promise = node.execute.call(ctx);
+		const promise = node.execute.call(mockExecuteCtx({}));
 
 		await expect(promise).rejects.toThrow(NodeOperationError);
 		await expect(promise).rejects.toThrow('The operation ":" is not supported');
