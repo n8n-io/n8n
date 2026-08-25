@@ -1,6 +1,16 @@
 import type { ErrorLike } from './error-like';
 import { SerializableError } from './serializable-error';
 
+/**
+ * Matches the header row of a stack, e.g. `TypeError: x is not a function` or
+ * `Error [ERR_X]: ...`. Error names are not always `Error`-suffixed - `pg`'s
+ * `DatabaseError` sets `name` to `error` - so match any name followed by the
+ * message, instead of looking for an `Error:` prefix.
+ */
+const STACK_HEADER_REGEX = /^(?<errorType>[\w$]+(?: \[[^\]]+\])?): (?<errorDetails>.+)$/;
+
+const STACK_FRAME_REGEX = /^\s+at\s/;
+
 export class ExecutionError extends SerializableError {
 	description: string | null = null;
 
@@ -39,11 +49,11 @@ export class ExecutionError extends SerializableError {
 			return;
 		}
 
-		const messageRow = stackRows.find((line) => line.includes('Error:'));
+		const messageRow = this.toMessageRow(stackRows);
 		const lineNumberDisplay = this.toLineNumberDisplay(stackRows);
 
 		if (!messageRow) {
-			this.message = `Unknown error ${lineNumberDisplay}`;
+			this.message = `Unknown error ${lineNumberDisplay}`.trim();
 			return;
 		}
 
@@ -52,11 +62,23 @@ export class ExecutionError extends SerializableError {
 		if (errorType) this.description = errorType;
 
 		if (!errorDetails) {
-			this.message = `Unknown error ${lineNumberDisplay}`;
+			this.message = `Unknown error ${lineNumberDisplay}`.trim();
 			return;
 		}
 
-		this.message = `${errorDetails} ${lineNumberDisplay}`;
+		this.message = `${errorDetails} ${lineNumberDisplay}`.trim();
+	}
+
+	/**
+	 * Find the row holding `<error name>: <error message>`. V8 can prefix the
+	 * stack with a source excerpt, e.g. for syntax errors, so take the last
+	 * header row before the first stack frame.
+	 */
+	private toMessageRow(stackRows: string[]) {
+		const firstFrameIndex = stackRows.findIndex((row) => STACK_FRAME_REGEX.test(row));
+		const headerRows = firstFrameIndex === -1 ? stackRows : stackRows.slice(0, firstFrameIndex);
+
+		return headerRows.filter((row) => STACK_HEADER_REGEX.test(row)).at(-1);
 	}
 
 	private toLineNumberDisplay(stackRows: string[]) {
@@ -90,24 +112,13 @@ export class ExecutionError extends SerializableError {
 	}
 
 	private toErrorDetailsAndType(messageRow?: string) {
-		if (!messageRow) return [null, null];
+		const groups = messageRow?.match(STACK_HEADER_REGEX)?.groups;
 
-		const segments = messageRow.split(':').map((i) => i.trim());
-		if (segments[1] === "Cannot find module 'node") {
-			segments[1] = `${segments[1]}:${segments[2]}`;
-			segments.splice(2, 1);
-		}
+		if (!groups) return [null, null];
 
-		if (
-			segments.length >= 3 &&
-			segments[1]?.startsWith("Module 'node") &&
-			segments[2]?.includes("' is disallowed")
-		) {
-			segments[1] = `${segments[1]}:${segments[2]}`;
-			segments.splice(2, 1);
-		}
+		const { errorType, errorDetails } = groups;
 
-		const [errorDetails, errorType] = segments.reverse();
-		return [errorDetails, errorType === 'Error' ? null : errorType];
+		// `Error`, and driver names like `error`, tell the user nothing
+		return [errorDetails.trim(), errorType.toLowerCase() === 'error' ? null : errorType];
 	}
 }
