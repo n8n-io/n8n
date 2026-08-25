@@ -204,6 +204,16 @@ describe('downloadText', () => {
 		);
 	});
 
+	it('throws ConnectionLostError when the stream ended because the connection went away', async () => {
+		const { client, connection } = await setup();
+		client.download.mockResolvedValue({ content: yielding(Buffer.from('<p>hello ')) });
+		client.usable = false;
+
+		await expect(connection.downloadText(aMessage(42, alternative), 'html')).rejects.toThrow(
+			ConnectionLostError,
+		);
+	});
+
 	it('propagates a ConnectionLostError raised by the download itself', async () => {
 		const { client, connection } = await setup();
 		client.download.mockRejectedValue(new ConnectionLostError());
