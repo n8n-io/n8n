@@ -6,7 +6,7 @@
  * every node gets its own small, focused LLM call (its parameter schema, its
  * purpose, its neighbors and edge contracts), the calls run concurrently, and
  * the workflow source is then assembled deterministically via the SDK codegen
- * (skeleton topology + filled parameters → WorkflowJSON → generateWorkflowCode)
+ * (skeleton topology + filled parameters → WorkflowJSON → emitInstanceAi)
  * and written to the workspace for the normal build-workflow path.
  *
  * Fill posture is best-effort per node: a failed fill leaves that node's
@@ -15,7 +15,7 @@
  * uses, with one repair round per offending node.
  */
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
-import { generateWorkflowCode } from '@n8n/workflow-sdk';
+import { emitInstanceAi } from '@n8n/workflow-sdk';
 import type { IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -349,7 +349,9 @@ export async function fillWorkflowParameters(
 	}
 
 	const workflow = assembleWorkflow(input.skeleton, validation.resolvedVersions, fills);
-	const source = generateWorkflowCode(workflow);
+	// emitInstanceAi = codegen + the SDK import line; a bare generateWorkflowCode
+	// body fails the sandbox validate CLI with "trigger is not defined".
+	const source = emitInstanceAi(workflow);
 	await writeWorkspaceFile(context.workspace, input.filePath, source, {
 		logger: context.logger,
 		resourceLabel: 'Assembled workflow source file',

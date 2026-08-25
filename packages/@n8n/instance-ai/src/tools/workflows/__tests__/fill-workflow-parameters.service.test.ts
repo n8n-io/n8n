@@ -173,6 +173,9 @@ describe('fillWorkflowParameters', () => {
 		expect(writeWorkspaceFileMock).toHaveBeenCalledTimes(1);
 		const [, writtenPath, source] = writeWorkspaceFileMock.mock.calls[0];
 		expect(writtenPath).toBe('fill-test.workflow.ts');
+		// The file must be loadable as-is: the sandbox validate CLI imports it for
+		// real, so the SDK helpers used in the body need the import line.
+		expect(source).toMatch(/^import \{ [^}]*\btrigger\b[^}]* \} from '@n8n\/workflow-sdk';/);
 		expect(source).toContain('n8n-nodes-base.slack');
 		expect(source).toContain('#orders');
 		expect(source).toContain('Fill test workflow');
