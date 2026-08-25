@@ -76,6 +76,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
+import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
 import { createMultiFormDataParser } from '@/webhooks/webhook-form-data';
 import { extractWebhookLastNodeResponse } from '@/webhooks/webhook-last-node-response-extractor';
@@ -324,6 +325,13 @@ export function setupResponseNodePromise(
 ): void {
 	void responsePromise.promise
 		.then(async (response: IN8nHttpFullResponse) => {
+			if (response === EXECUTION_ENDED_WITHOUT_RESPONSE) {
+				// The execution ended without the Respond to Webhook node running. The
+				// post-execute handler answers instead, because only it knows whether the
+				// execution failed.
+				return;
+			}
+
 			const binaryData = (response.body as IDataObject)?.binaryData as IBinaryData;
 			if (binaryData?.id) {
 				if (response.statusCode) {
@@ -924,7 +932,10 @@ export async function executeWebhook(
 			setupResponseNodePromise(
 				responsePromise,
 				res,
-				responseCallback,
+				(error, data) => {
+					didSendResponse = true;
+					responseCallback(error, data);
+				},
 				workflowStartNode,
 				executionId,
 				workflow,
@@ -1064,6 +1075,14 @@ export async function executeWebhook(
 					const lastNodeTaskData = WorkflowHelpers.getLastExecutedNodeData(runData);
 					if (runData.data.resultData.error || lastNodeTaskData?.error !== undefined) {
 						if (!didSendResponse) {
+							// The node that failed is not named in the response, so log it here:
+							// this is the only channel where naming it is safe.
+							Container.get(Logger).warn('Webhook execution failed before a response was sent', {
+								executionId,
+								workflowId: workflowData.id,
+								responseMode,
+								lastNodeExecuted: runData.data.resultData.lastNodeExecuted,
+							});
 							responseCallback(null, {
 								data: {
 									message: 'Error in workflow',
@@ -1078,6 +1097,12 @@ export async function executeWebhook(
 					// in `responseNode` mode `responseCallback` is called by `responsePromise`
 					if (responseMode === 'responseNode' && responsePromise) {
 						await Promise.allSettled([responsePromise.promise]);
+						if (!didSendResponse) {
+							// The execution succeeded but never reached the Respond to Webhook node,
+							// so answer here rather than leaving the caller waiting.
+							responseCallback(null, { data: undefined, responseCode });
+							didSendResponse = true;
+						}
 						return undefined;
 					}
 
