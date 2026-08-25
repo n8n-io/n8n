@@ -91,11 +91,27 @@ const count = () => z.number().int().nonnegative();
  * outcome. Import overwrites the instance to match the working copy, so
  * `created` vs `updated` matters; a bare total would hide it. Kept to counts
  * (not per-entity lists) so the payload stays O(1) for a large working copy.
+ *
+ * `workflows.publishing` reports the publish sweep that runs after content is
+ * written: a workflow can be created/updated yet fail to activate (e.g.
+ * `blocked` on a stubbed credential). That phase runs post-write and cannot be
+ * rolled back, so it never fails the pull — it is reported here instead.
  */
 export const gitConnectionImportCountsSchema = z.object({
 	projects: z.object({ created: count(), updated: count(), skipped: count() }),
 	folders: z.object({ created: count(), skipped: count() }),
-	workflows: z.object({ created: count(), updated: count(), skipped: count() }),
+	workflows: z.object({
+		created: count(),
+		updated: count(),
+		skipped: count(),
+		publishing: z.object({
+			published: count(),
+			unpublished: count(),
+			unchanged: count(),
+			blocked: count(),
+			failed: count(),
+		}),
+	}),
 	credentials: z.object({ matched: count(), stubbed: count() }),
 	variables: z.object({
 		matched: count(),

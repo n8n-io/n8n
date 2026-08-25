@@ -74,9 +74,8 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	missingNodeTypeMode: MissingNodeTypeMode.Fail,
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'create-stub',
-	folderConflictPolicy: FolderConflictPolicy.Merge,
-	// Inert while folderConflictPolicy is `merge` (nothing is pruned); required by the type.
-	overwriteDeletionPolicy: OverwriteDeletionPolicy.Archive,
+	folderConflictPolicy: FolderConflictPolicy.Overwrite,
+	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 	dataTableMatchingMode: 'by-id',
 	dataTableMissingMode: DataTableMissingMode.Create,
 	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
@@ -369,7 +368,15 @@ export class GitConnectionsService {
 		return {
 			projects: tally(result.projects, ['created', 'updated', 'skipped'] as const),
 			folders: tally(result.folders, ['created', 'skipped'] as const),
-			workflows: tally(result.workflows, ['created', 'updated', 'skipped'] as const),
+			workflows: {
+				...tally(result.workflows, ['created', 'updated', 'skipped'] as const),
+				// The publish sweep runs after content is written and can't be rolled back, so a
+				// blocked/failed publish never fails the pull — surface it here instead.
+				publishing: tally(
+					result.workflows.map(({ publishing }) => ({ status: publishing.state })),
+					['published', 'unpublished', 'unchanged', 'blocked', 'failed'] as const,
+				),
+			},
 			credentials: {
 				matched: result.credentials.matched.length,
 				stubbed: result.credentials.stubbed.length,
