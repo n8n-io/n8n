@@ -1,9 +1,9 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as get from './get.operation';
-import * as getAll from './getAll.operation';
+import * as getMany from './getMany.operation';
 
-export { get, getAll };
+export { get, getMany };
 
 export const description: INodeProperties[] = [
 	{
@@ -25,13 +25,13 @@ export const description: INodeProperties[] = [
 			},
 			{
 				name: 'Get Many',
-				value: 'getAll',
+				value: 'getMany',
 				description: 'Retrieve many spaces',
 				action: 'Get many spaces',
 			},
 		],
-		default: 'getAll',
+		default: 'getMany',
 	},
 	...get.description,
-	...getAll.description,
+	...getMany.description,
 ];

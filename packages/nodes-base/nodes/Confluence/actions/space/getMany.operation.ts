@@ -4,15 +4,21 @@ import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { confluenceApiRequest } from '../../transport';
-import { PAGE_LIMIT, extractNextCursor, parsePositiveInt } from '../common';
+import {
+	PAGE_LIMIT,
+	extractNextCursor,
+	parsePositiveInt,
+	spaceDescriptionFormatQs,
+	spaceOptionsCollection,
+} from '../common';
 import type { ConfluenceOperation } from '../router';
 
-const properties: INodeProperties[] = [...returnAllOrLimit];
+const properties: INodeProperties[] = [...returnAllOrLimit, spaceOptionsCollection];
 
 const displayOptions = {
 	show: {
 		resource: ['space'],
-		operation: ['getAll'],
+		operation: ['getMany'],
 	},
 };
 
@@ -32,11 +38,17 @@ export const execute: ConfluenceOperation = async function (
 				itemIndex,
 			);
 
+	const options = this.getNodeParameter('options', itemIndex, {});
+	const descriptionFormatQs = spaceDescriptionFormatQs(options);
+
 	const spaces: IDataObject[] = [];
 	let cursor: string | undefined;
 	const seenCursors = new Set<string>();
 	do {
-		const qs: IDataObject = { limit: Math.min(limit - spaces.length, PAGE_LIMIT) };
+		const qs: IDataObject = {
+			...descriptionFormatQs,
+			limit: Math.min(limit - spaces.length, PAGE_LIMIT),
+		};
 		if (cursor !== undefined) qs.cursor = cursor;
 
 		const response = await confluenceApiRequest.call(this, 'GET', '/wiki/api/v2/spaces', {}, qs);

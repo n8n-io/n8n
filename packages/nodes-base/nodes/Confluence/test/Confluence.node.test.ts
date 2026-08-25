@@ -38,7 +38,7 @@ describe('Confluence Node', () => {
 		expect(operationOptions('search')).toEqual([expect.objectContaining({ value: 'query' })]);
 		expect(operationOptions('space')).toEqual([
 			expect.objectContaining({ value: 'get' }),
-			expect.objectContaining({ value: 'getAll' }),
+			expect.objectContaining({ value: 'getMany' }),
 		]);
 	});
 

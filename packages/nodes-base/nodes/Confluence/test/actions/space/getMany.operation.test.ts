@@ -2,7 +2,7 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import { mockDeep } from 'vitest-mock-extended';
 
-import { execute } from '../../../actions/space/getAll.operation';
+import { execute } from '../../../actions/space/getMany.operation';
 import { confluenceApiRequest } from '../../../transport';
 
 vi.mock('../../../transport', () => ({
@@ -35,7 +35,7 @@ function spaces(from: number, count: number) {
 	return Array.from({ length: count }, (_, i) => ({ id: String(from + i), name: `S${from + i}` }));
 }
 
-describe('Confluence space:getAll operation', () => {
+describe('Confluence space:getMany operation', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 	});
@@ -136,6 +136,68 @@ describe('Confluence space:getAll operation', () => {
 
 		expect(apiRequest).toHaveBeenCalledTimes(2);
 		expect(result).toEqual(spaces(1, 3));
+	});
+
+	it('stops instead of looping when cursors cycle through earlier pages', async () => {
+		apiRequest
+			.mockResolvedValueOnce({
+				results: spaces(1, 1),
+				_links: { next: '/wiki/api/v2/spaces?cursor=c1' },
+			})
+			.mockResolvedValueOnce({
+				results: spaces(2, 1),
+				_links: { next: '/wiki/api/v2/spaces?cursor=c2' },
+			})
+			.mockResolvedValue({
+				results: spaces(3, 1),
+				_links: { next: '/wiki/api/v2/spaces?cursor=c1' },
+			});
+		const ctx = createContext({ returnAll: true });
+
+		const result = await execute.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledTimes(3);
+		expect(result).toEqual(spaces(1, 3));
+	});
+
+	it('keeps following the cursor past an empty page that still has a next link', async () => {
+		apiRequest
+			.mockResolvedValueOnce({
+				results: [],
+				_links: { next: '/wiki/api/v2/spaces?cursor=abc' },
+			})
+			.mockResolvedValueOnce({ results: spaces(1, 2) });
+		const ctx = createContext({ returnAll: true });
+
+		const result = await execute.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledTimes(2);
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'GET',
+			'/wiki/api/v2/spaces',
+			{},
+			{ limit: 250, cursor: 'abc' },
+		);
+		expect(result).toEqual(spaces(1, 2));
+	});
+
+	it('passes the description format through when the option is set', async () => {
+		apiRequest.mockResolvedValueOnce({ results: spaces(1, 1) });
+		const ctx = createContext({
+			returnAll: false,
+			limit: 50,
+			options: { descriptionFormat: 'view' },
+		});
+
+		await execute.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/spaces',
+			{},
+			{ 'description-format': 'view', limit: 50 },
+		);
 	});
 
 	it('returns an empty list for a response without results', async () => {

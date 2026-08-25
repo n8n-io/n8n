@@ -49,7 +49,7 @@ describe('Confluence space:get operation', () => {
 		const result = await execute.call(ctx, 0);
 
 		expect(ctx.getNodeParameter).toHaveBeenCalledWith('space', 0, '', { extractValue: true });
-		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces/98432');
+		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces/98432', {}, {});
 		expect(result).toEqual(space);
 	});
 
@@ -59,7 +59,24 @@ describe('Confluence space:get operation', () => {
 
 		await execute.call(ctx, 0);
 
-		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces/111');
+		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces/111', {}, {});
+	});
+
+	it('passes the description format through when the option is set', async () => {
+		apiRequest.mockResolvedValueOnce({ id: '111' });
+		const ctx = createContext({
+			space: { mode: 'id', value: '111' },
+			options: { descriptionFormat: 'view' },
+		});
+
+		await execute.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/spaces/111',
+			{},
+			{ 'description-format': 'view' },
+		);
 	});
 
 	it('throws when the space reference is empty', async () => {

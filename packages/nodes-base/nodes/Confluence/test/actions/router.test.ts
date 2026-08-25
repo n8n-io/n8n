@@ -166,17 +166,17 @@ describe('Confluence router', () => {
 			}),
 		);
 
-		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces/98432');
+		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces/98432', {}, {});
 		expect(result).toEqual([
 			[{ json: { id: '98432', key: 'NQK', name: 'Docs' }, pairedItem: { item: 0 } }],
 		]);
 	});
 
-	it('dispatches space:getAll and fans the spaces out into one item each', async () => {
+	it('dispatches space:getMany and fans the spaces out into one item each', async () => {
 		apiRequest.mockResolvedValue({ results: [{ id: '1' }, { id: '2' }] });
 
 		const result = await router.call(
-			mockExecuteCtx({ resource: 'space', operation: 'getAll', returnAll: false, limit: 50 }),
+			mockExecuteCtx({ resource: 'space', operation: 'getMany', returnAll: false, limit: 50 }),
 		);
 
 		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces', {}, { limit: 50 });

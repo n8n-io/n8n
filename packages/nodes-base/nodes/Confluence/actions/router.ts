@@ -61,8 +61,8 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'space:get':
 					responseData = await space.get.execute.call(this, i);
 					break;
-				case 'space:getAll':
-					responseData = await space.getAll.execute.call(this, i);
+				case 'space:getMany':
+					responseData = await space.getMany.execute.call(this, i);
 					break;
 				default:
 					throw new NodeOperationError(

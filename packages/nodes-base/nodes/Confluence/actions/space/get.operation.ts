@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { confluenceApiRequest } from '../../transport';
-import { spaceRLC } from '../common';
+import { spaceDescriptionFormatQs, spaceOptionsCollection, spaceRLC } from '../common';
 import type { ConfluenceOperation } from '../router';
 
 const properties: INodeProperties[] = [
@@ -13,6 +13,7 @@ const properties: INodeProperties[] = [
 		required: true,
 		description: 'The space to retrieve',
 	},
+	spaceOptionsCollection,
 ];
 
 const displayOptions = {
@@ -35,9 +36,13 @@ export const execute: ConfluenceOperation = async function (
 		throw new NodeOperationError(this.getNode(), "The 'Space' parameter is empty", { itemIndex });
 	}
 
+	const options = this.getNodeParameter('options', itemIndex, {});
+
 	return await confluenceApiRequest.call(
 		this,
 		'GET',
 		`/wiki/api/v2/spaces/${encodeURIComponent(spaceId)}`,
+		{},
+		spaceDescriptionFormatQs(options),
 	);
 };
