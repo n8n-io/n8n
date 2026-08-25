@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { PollerConfig, SchedulerConfig, WorkflowsConfig } from '@n8n/config';
+import type { SchedulerConfig, WorkflowsConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
 	OperationContext,
@@ -41,10 +41,10 @@ describe('PollCursorService', () => {
 			pollerStateRepository,
 			txRunner,
 			executionPersistence,
-			mock<PollerConfig>({ durableCursorsEnabled }),
 			mock<SchedulerConfig>({
 				enabled: schedulerEnabled,
 				enabledForPollTriggers: schedulerEnabledForPollTriggers,
+				durableCursorsEnabled,
 			}),
 			mock<WorkflowsConfig>({ useWorkflowPublicationService }),
 			eventService,
@@ -137,6 +137,51 @@ describe('PollCursorService', () => {
 				'node-1',
 				expect.anything(),
 				txRunner.run.mock.calls[0][0],
+			);
+		});
+
+		it('uses a prefetched cursor without any read or transaction when the flag is on', async () => {
+			const service = buildService(true);
+
+			const resolved = await service.resolveCursor(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'from-static-data' },
+				{ lastItemId: 'prefetched' },
+			);
+
+			expect(resolved).toEqual({ migrated: true, cursor: { lastItemId: 'prefetched' } });
+			expect(pollerStateRepository.getOrCreateCursor).not.toHaveBeenCalled();
+			expect(pollerStateRepository.findCursor).not.toHaveBeenCalled();
+			expect(txRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('treats an empty prefetched cursor as a stored cursor, not a missing one', async () => {
+			const service = buildService(true);
+
+			const resolved = await service.resolveCursor('wf-1', 'node-1', { lastItemId: 'seed' }, {});
+
+			expect(resolved).toEqual({ migrated: true, cursor: {} });
+			expect(pollerStateRepository.getOrCreateCursor).not.toHaveBeenCalled();
+		});
+
+		it('falls back to getOrCreateCursor when no cursor was prefetched', async () => {
+			const service = buildService(true);
+			pollerStateRepository.getOrCreateCursor.mockResolvedValue({ lastItemId: 'from-db' });
+
+			const resolved = await service.resolveCursor(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'seed' },
+				undefined,
+			);
+
+			expect(resolved).toEqual({ migrated: true, cursor: { lastItemId: 'from-db' } });
+			expect(pollerStateRepository.getOrCreateCursor).toHaveBeenCalledWith(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'seed' },
+				expect.anything(),
 			);
 		});
 

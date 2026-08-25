@@ -131,7 +131,8 @@ export class WorkflowReviewAccessService {
 			throw new NotFoundError('Could not find review request');
 		}
 
-		// Rows come back id ASC, so the first is the pinned one.
+		// One workflow per review for now, so the only row is the pinned one. Ids are
+		// nanoids, so the query's id ordering just makes the pick deterministic.
 		const pinnedWorkflowId = workflowRows.at(0)?.workflowId ?? null;
 		return {
 			request,

@@ -608,6 +608,7 @@ export const applyPlannedTaskPermissions: typeof PlannedTaskPermissionsMod.apply
 export declare const PLANNED_TASK_PERMISSION_OVERRIDES: typeof PlannedTaskPermissionsMod.PLANNED_TASK_PERMISSION_OVERRIDES;
 export type {
 	InstanceAiContext,
+	InstanceAiToolRegistry,
 	InstanceAiWorkflowService,
 	InstanceAiExecutionService,
 	InstanceAiCredentialService,

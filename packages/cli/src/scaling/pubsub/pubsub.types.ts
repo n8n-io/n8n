@@ -60,6 +60,7 @@ export namespace PubSub {
 		export type WorkflowPublishWakeUp = ToCommand<'workflow-publish-wake-up'>;
 		export type RelayExecutionLifecycleEvent = ToCommand<'relay-execution-lifecycle-event'>;
 		export type RelayAgentExecutionUpdate = ToCommand<'relay-agent-execution-update'>;
+		export type ResumeAgentWorkflowTool = ToCommand<'resume-agent-workflow-tool'>;
 		export type RelayChatStreamEvent = ToCommand<'relay-chat-stream-event'>;
 		export type RelayInstanceAiEvent = ToCommand<'relay-instance-ai-event'>;
 		export type RelayInstanceAiTaskControl = ToCommand<'relay-instance-ai-task-control'>;
@@ -76,6 +77,8 @@ export namespace PubSub {
 		export type CancelCollection = ToCommand<'cancel-collection'>;
 		export type AgentChatIntegrationChanged = ToCommand<'agent-chat-integration-changed'>;
 		export type AgentChatSubscriptionChanged = ToCommand<'agent-chat-subscription-changed'>;
+		export type AgentChatLeaderChannelRequest = ToCommand<'agent-chat-leader-channel-request'>;
+		export type AgentChatLeaderChannelResult = ToCommand<'agent-chat-leader-channel-result'>;
 		export type AgentConfigChanged = ToCommand<'agent-config-changed'>;
 		export type AgentTasksChanged = ToCommand<'agent-tasks-changed'>;
 		export type RedactionFloorChanged = ToCommand<'redaction-floor-changed'>;
@@ -101,6 +104,7 @@ export namespace PubSub {
 		| Commands.WorkflowPublishWakeUp
 		| Commands.RelayExecutionLifecycleEvent
 		| Commands.RelayAgentExecutionUpdate
+		| Commands.ResumeAgentWorkflowTool
 		| Commands.RelayChatStreamEvent
 		| Commands.RelayInstanceAiEvent
 		| Commands.RelayInstanceAiTaskControl
@@ -119,6 +123,8 @@ export namespace PubSub {
 		| Commands.CancelCollection
 		| Commands.AgentChatIntegrationChanged
 		| Commands.AgentChatSubscriptionChanged
+		| Commands.AgentChatLeaderChannelRequest
+		| Commands.AgentChatLeaderChannelResult
 		| Commands.AgentConfigChanged
 		| Commands.AgentTasksChanged
 		| Commands.RedactionFloorChanged;

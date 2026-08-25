@@ -78,8 +78,11 @@ const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
 
 const projectIdRef = computed(() => props.projectId);
-const { list: projectAgents, ensureLoaded: ensureProjectAgentsLoaded } =
-	useProjectAgentsList(projectIdRef);
+const {
+	list: projectAgents,
+	ensureLoaded: ensureProjectAgentsLoaded,
+	refresh: refreshProjectAgents,
+} = useProjectAgentsList(projectIdRef);
 
 type TaskRow = AgentTaskDto & {
 	enabled: boolean;
@@ -104,10 +107,14 @@ const availableSubAgents = computed(() =>
 const selectedSubAgents = computed(() =>
 	selectedSubAgentRefs.value.map(({ agentId, useWhen }) => {
 		const agent = projectAgents.value?.find((candidate) => candidate.id === agentId);
-		const reasons = subAgentIssueMessages.value.get(agentId) ?? [];
+		const validationReasons = subAgentIssueMessages.value.get(agentId) ?? [];
+		const reasons =
+			validationReasons.length > 0 || agent || projectAgents.value === null
+				? validationReasons
+				: [i18n.baseText('agents.builder.validation.issue.subAgent.missingReference')];
 		return {
 			id: agentId,
-			name: agent?.name ?? agentId,
+			name: agent?.name ?? i18n.baseText('agents.builder.subAgents.unavailable'),
 			useWhen: useWhen ?? '',
 			invalid: reasons.length > 0,
 			invalidReasons: reasons,
@@ -254,13 +261,25 @@ async function reloadTasks() {
 	}
 }
 
+async function ensureSubAgentNamesLoaded() {
+	const agents = await ensureProjectAgentsLoaded();
+	const loadedIds = new Set(agents.map((agent) => agent.id));
+	if (selectedSubAgentIds.value.some((agentId) => !loadedIds.has(agentId))) {
+		await refreshProjectAgents();
+	}
+}
+
 onMounted(() => {
 	if (showSection('tasks')) void reloadTasks();
-	if (showSection('subAgents')) void ensureProjectAgentsLoaded().catch(() => {});
+	if (showSection('subAgents')) void ensureSubAgentNamesLoaded().catch(() => {});
 });
 
 watch([() => props.reloadKey, () => props.projectId, () => props.agentId], () => {
 	if (showSection('tasks')) void reloadTasks();
+});
+
+watch([() => props.projectId, selectedSubAgentIds], () => {
+	if (showSection('subAgents')) void ensureSubAgentNamesLoaded().catch(() => {});
 });
 
 function openTaskModal(task: TaskRow | null) {

@@ -35,6 +35,7 @@ import {
 	McpToolNameValidationError,
 	validateMcpToolName,
 } from '../../agent/mcp-tool-name-validation';
+import type { McpDescriptionTruncation } from '../../agent/sanitize-mcp-descriptions';
 import {
 	assertMcpJsonSchemaWithinLimits,
 	McpSchemaSanitizationError,
@@ -243,6 +244,18 @@ function buildNativeMcpMediaMessage(result: unknown): AgentMessage | undefined {
 // ---------------------------------------------------------------------------
 
 const LOCAL_GATEWAY_MCP_SOURCE = 'local gateway MCP';
+
+function warnTruncatedLocalMcpDescription(logger: Logger) {
+	return (truncation: McpDescriptionTruncation) => {
+		logger.warn('Truncated overlong local gateway MCP description', {
+			toolName: truncation.toolName,
+			source: LOCAL_GATEWAY_MCP_SOURCE,
+			path: truncation.path,
+			originalLength: truncation.originalLength,
+			limit: truncation.limit,
+		});
+	};
+}
 
 function warnSkippedLocalMcpSchema(logger: Logger) {
 	return (error: McpSchemaSanitizationError) => {
@@ -460,6 +473,7 @@ export function createToolsFromLocalMcpServer({
 
 	const sanitizedTools = sanitizeMcpToolSchemas(tools, {
 		onError: warnSkippedLocalMcpSchema(logger),
+		onDescriptionTruncated: warnTruncatedLocalMcpDescription(logger),
 	});
 	const safeTools = createToolRegistry();
 	addSafeMcpTools(safeTools, sanitizedTools, {
