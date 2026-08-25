@@ -36,6 +36,63 @@ const externalPackages = [
 const isExternal = (id: string) =>
 	externalPackages.some((name) => id === name || id.startsWith(`${name}/`));
 
+/**
+ * Two rewrites over the declarations `vite-plugin-dts` emits. Both target names
+ * TypeScript prints when it expands a full component instance type — which
+ * happens wherever a component exposes a template ref — and both produce
+ * declarations that no consumer can compile with `skipLibCheck: false`.
+ *
+ * 1. `OnCleanup` is declared in `@vue/reactivity` and only re-exported through
+ *    `@vue/runtime-core`, so TypeScript prints the declaring package. `vue` does
+ *    not re-export the name, and `@vue/reactivity` is not a dependency of this
+ *    package, so the reference resolves nowhere (TS2307, 18 errors over 11
+ *    files). The structural type is identical:
+ *    `export type OnCleanup = (cleanupFn: () => void) => void`.
+ *
+ * 2. `GlobalComponents` and `GlobalDirectives` are augmentable interfaces, so
+ *    they have no index signature and fail the `Record<string, Component>` and
+ *    `Record<string, Directive>` constraints TypeScript itself printed them into
+ *    (TS2344, 9 + 9 errors). Both parameters carry the component's own template
+ *    scope, which no consumer reads, so the constraints themselves are the
+ *    honest replacements.
+ *
+ * The alternative — narrowing every `defineExpose` that leaks an instance type —
+ * removes the expansions at the source. It is the better end state and a much
+ * larger change; the consumer harness probe (`design-system-consumer`) holds the
+ * line either way.
+ */
+const REWRITES = [
+	{
+		from: /import\('@vue\/reactivity'\)\.OnCleanup/g,
+		to: '((cleanupFn: () => void) => void)',
+	},
+	{
+		from: /import\('vue'\)\.GlobalComponents/g,
+		to: "Record<string, import('vue').Component>",
+	},
+	{
+		from: /import\('vue'\)\.GlobalDirectives/g,
+		to: "Record<string, import('vue').Directive>",
+	},
+] as const;
+
+function rewriteEmittedDeclaration(filePath: string, content: string) {
+	let rewritten = content;
+	for (const { from, to } of REWRITES) rewritten = rewritten.replace(from, to);
+
+	// A new name from a package we do not declare would ship the same broken
+	// reference as `OnCleanup` did, and silently. Fail the build instead.
+	const leak = /import\('(@vue\/(?!runtime-core)[^']+)'\)/.exec(rewritten);
+	if (leak) {
+		throw new Error(
+			`${filePath} names "${leak[1]}", which this package does not depend on. ` +
+				'Add a rewrite in vite.config.mts, or declare the dependency.',
+		);
+	}
+
+	return rewritten === content ? undefined : { content: rewritten };
+}
+
 /** Emit stylesheets at the dist root, everything else under `assets/`. */
 const assetFileNames = (name: string) => (asset: { names?: string[] }) =>
 	asset.names?.[0]?.endsWith('.css') ? name : 'assets/[name][extname]';
@@ -140,6 +197,7 @@ export default mergeConfig(
 				// module specifiers and leaves the imports dangling. Rejected in ADR-0002.
 				rollupTypes: false,
 				entryRoot: resolve(__dirname, 'src'),
+				beforeWriteFile: rewriteEmittedDeclaration,
 			}),
 		],
 		resolve: {
