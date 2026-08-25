@@ -9,14 +9,18 @@ export interface ConfluenceBodyEnvelope extends IDataObject {
 	value: string;
 }
 
-export function bodyProperties(operations: string[], bodyHint?: string): INodeProperties[] {
+export function bodyProperties(
+	operations: string[],
+	bodyHint?: string,
+	contentNoun = 'Page content',
+): INodeProperties[] {
 	const show = { resource: ['page'], operation: operations };
 	const hint = bodyHint === undefined ? {} : { hint: bodyHint };
 	return [
 		{
 			...bodyFormatOption,
 			default: 'plainText',
-			description: 'How the page content below is interpreted',
+			description: `How the ${contentNoun.toLowerCase()} below is interpreted`,
 			displayOptions: { show },
 			// Same values as the shared selector; write-oriented descriptions
 			options: [
@@ -44,8 +48,7 @@ export function bodyProperties(operations: string[], bodyHint?: string): INodePr
 			type: 'string',
 			typeOptions: { rows: 4 },
 			default: '',
-			description:
-				'Page content as plain text; each line becomes a paragraph. Blank lines and leading whitespace are removed.',
+			description: `${contentNoun} as plain text; each line becomes a paragraph. Blank lines and leading whitespace are removed.`,
 			displayOptions: { show: { ...show, bodyFormat: ['plainText'] } },
 			...hint,
 		},
@@ -56,7 +59,7 @@ export function bodyProperties(operations: string[], bodyHint?: string): INodePr
 			typeOptions: { rows: 4 },
 			default: '',
 			placeholder: '<h2>Heading</h2><p>Text</p>',
-			description: 'Page content in Confluence storage format',
+			description: `${contentNoun} in Confluence storage format`,
 			displayOptions: { show: { ...show, bodyFormat: ['storage'] } },
 			...hint,
 		},
@@ -66,7 +69,7 @@ export function bodyProperties(operations: string[], bodyHint?: string): INodePr
 			type: 'json',
 			default: '',
 			placeholder: '{ "type": "doc", "version": 1, "content": [] }',
-			description: 'Page content as an Atlassian Document Format document',
+			description: `${contentNoun} as an Atlassian Document Format document`,
 			displayOptions: { show: { ...show, bodyFormat: ['atlas_doc_format'] } },
 			...hint,
 		},

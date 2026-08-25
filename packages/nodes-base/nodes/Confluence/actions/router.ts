@@ -36,6 +36,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'attachment:getMany':
 					responseItems = await attachment.getMany.execute.call(this, i);
 					break;
+				case 'page:addComment':
+					responseData = await page.addComment.execute.call(this, i);
+					break;
 				case 'page:append':
 					responseData = await page.append.execute.call(this, i);
 					break;
@@ -44,6 +47,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					break;
 				case 'page:delete':
 					responseData = await page.delete.execute.call(this, i);
+					break;
+				case 'page:deleteComment':
+					responseData = await page.deleteComment.execute.call(this, i);
 					break;
 				case 'page:get':
 					responseData = await page.get.execute.call(this, i);

@@ -80,6 +80,42 @@ describe('Confluence router', () => {
 		expect(result).toEqual([[{ json: { id: 'a1', title: 'notes.txt' }, pairedItem: { item: 0 } }]]);
 	});
 
+	it('dispatches page:addComment and returns the created comment', async () => {
+		apiRequest.mockResolvedValue({ id: '555', pageId: '1' });
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'addComment',
+				page: { mode: 'id', value: '1' },
+				bodyFormat: 'plainText',
+				bodyPlainText: 'Nice page',
+				parentCommentId: '',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/api/v2/footer-comments', {
+			pageId: '1',
+			body: { representation: 'storage', value: '<p>Nice page</p>' },
+		});
+		expect(result).toEqual([[{ json: { id: '555', pageId: '1' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('dispatches page:deleteComment and returns the deletion report', async () => {
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'deleteComment',
+				commentId: '555',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/footer-comments/555');
+		expect(result).toEqual([
+			[{ json: { deleted: true, commentId: '555' }, pairedItem: { item: 0 } }],
+		]);
+	});
+
 	it('dispatches page:delete and returns the deletion report', async () => {
 		const result = await router.call(
 			mockExecuteCtx({

@@ -27,9 +27,11 @@ describe('Confluence Node', () => {
 
 		expect(operationOptions('attachment')).toEqual([expect.objectContaining({ value: 'getMany' })]);
 		expect(operationOptions('page')).toEqual([
+			expect.objectContaining({ value: 'addComment' }),
 			expect.objectContaining({ value: 'append' }),
 			expect.objectContaining({ value: 'create' }),
 			expect.objectContaining({ value: 'delete' }),
+			expect.objectContaining({ value: 'deleteComment' }),
 			expect.objectContaining({ value: 'get' }),
 			expect.objectContaining({ value: 'getManyByLabel' }),
 			expect.objectContaining({ value: 'update' }),
