@@ -422,7 +422,7 @@ describe('GlobalConfig', () => {
 			port: 5679,
 			maxOldSpaceSize: '',
 			maxConcurrency: 10,
-			taskTimeout: 300,
+			taskTimeout: 60,
 			taskRequestTimeout: 60,
 			taskAcceptTimeout: 2,
 			heartbeatInterval: 30,
