@@ -76,6 +76,7 @@ import {
 	useCssModule,
 	watch,
 } from 'vue';
+import { useCanvasVirtualization } from '../composables/useCanvasVirtualization';
 import { useViewportAutoAdjust } from '../composables/useViewportAutoAdjust';
 import CanvasBackground from './elements/background/CanvasBackground.vue';
 import CanvasArrowHeadMarker from './elements/edges/CanvasArrowHeadMarker.vue';
@@ -257,6 +258,19 @@ const {
 	onNodeMouseEnter,
 	onNodeMouseLeave,
 } = vueFlow;
+
+const virtualization = useCanvasVirtualization({
+	viewport,
+	dimensions,
+	defaultNodeCount: computed(
+		() =>
+			props.nodes.filter((node) => {
+				// props.nodes is CanvasNodeOrGroup[]; CanvasGroupNodeData has no `render`.
+				if (isCanvasGroupNode(node)) return false;
+				return node.data?.render.type === CanvasNodeRenderType.Default;
+			}).length,
+	),
+});
 
 const agentNodeGeometry = useCanvasAgentNodeGeometry({
 	canvasId: props.id,
@@ -1764,6 +1778,7 @@ provide(CanvasKey, {
 	viewport,
 	isExperimentalNdvActive,
 	isPaneMoving,
+	virtualization,
 });
 
 defineExpose({

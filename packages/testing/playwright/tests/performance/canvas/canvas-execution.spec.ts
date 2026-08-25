@@ -36,16 +36,20 @@ const METRIC_SLUG: Record<Exclude<PinScenario, 'none'>, 'small' | 'medium' | 'he
 	'heavy-concentrated': 'heavy',
 };
 
+// XL rows are unreachable while TIERS stays S/M/L (XL execution is manual,
+// stretch-only); they exist for Record<Tier, ...> exhaustiveness.
 const TIER_TIMEOUT_MS: Record<Tier, number> = {
 	S: 240_000,
 	M: 360_000,
 	L: 600_000,
+	XL: 1_200_000,
 };
 
 const EXEC_TIMEOUT_MS: Record<Tier, number> = {
 	S: 30_000,
 	M: 60_000,
 	L: 120_000,
+	XL: 240_000,
 };
 
 test.use({

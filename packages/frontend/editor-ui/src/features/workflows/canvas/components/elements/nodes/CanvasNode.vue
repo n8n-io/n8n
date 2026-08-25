@@ -13,20 +13,27 @@ import type {
 	CanvasConnectionPort,
 	CanvasElementPortWithRenderData,
 	CanvasNodeData,
+	CanvasNodeDefaultRender,
 	CanvasNodeEventBusEvents,
 	CanvasEventBusEvents,
 } from '../../../canvas.types';
 import { CanvasConnectionMode, CanvasNodeRenderType } from '../../../canvas.types';
 import CanvasNodeToolbar from './CanvasNodeToolbar.vue';
 import CanvasNodeRenderer from './CanvasNodeRenderer.vue';
+import CanvasNodePlaceholder from './render-types/CanvasNodePlaceholder.vue';
 import CanvasHandleRenderer from '../handles/CanvasHandleRenderer.vue';
 import { useNodeConnections } from '@/app/composables/useNodeConnections';
 import { CanvasNodeKey } from '@/app/constants';
 import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils';
 import { useContextMenu } from '@/features/shared/contextMenu/composables/useContextMenu';
 import type { NodeProps, XYPosition } from '@vue-flow/core';
-import { Position } from '@vue-flow/core';
+import { Handle, Position } from '@vue-flow/core';
+import { NodeConnectionTypes } from 'n8n-workflow';
 import { useCanvas } from '../../../composables/useCanvas';
+import {
+	isOutsideRect,
+	VIRTUALIZATION_MIN_NODE_SCREEN_PX,
+} from '../../../composables/useCanvasVirtualization';
 import {
 	createCanvasConnectionHandleString,
 	insertSpacersBetweenEndpoints,
@@ -35,7 +42,7 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import isEqual from 'lodash/isEqual';
 import CanvasNodeTrigger from './render-types/parts/CanvasNodeTrigger.vue';
-import { CONFIGURATION_NODE_RADIUS, GRID_SIZE } from '@/app/utils/nodeViewUtils';
+import { calculateNodeSize, CONFIGURATION_NODE_RADIUS, GRID_SIZE } from '@/app/utils/nodeViewUtils';
 
 type Props = NodeProps<CanvasNodeData> & {
 	readOnly?: boolean;
@@ -78,7 +85,7 @@ const props = defineProps<Props>();
 
 const contextMenu = useContextMenu();
 
-const { connectingHandle, isExperimentalNdvActive } = useCanvas();
+const { connectingHandle, isExperimentalNdvActive, virtualization } = useCanvas();
 
 const renderData = injectCanvasRenderData();
 
@@ -126,6 +133,55 @@ const dataTestId = computed(() =>
 		? undefined
 		: 'canvas-node',
 );
+
+/**
+ * Virtualization
+ */
+
+const isPlaceholder = computed(() => {
+	if (!virtualization.active.value) return false;
+	if (renderType.value !== CanvasNodeRenderType.Default) return false;
+	// hovered is a first-class exemption (not a fallback): hover inflates the node
+	// before any dblclick (NDV) or connection drop can land on a placeholder.
+	if (props.selected || props.dragging || props.resizing || props.hovered) return false;
+	const { rect, zoom } = virtualization.frame.value;
+	return (
+		props.dimensions.width * zoom < VIRTUALIZATION_MIN_NODE_SCREEN_PX ||
+		isOutsideRect(rect, props.position, props.dimensions)
+	);
+});
+
+// Only read when renderType is Default; empty options otherwise.
+const defaultRenderOptions = computed<CanvasNodeDefaultRender['options']>(() =>
+	props.data.render.type === CanvasNodeRenderType.Default ? props.data.render.options : {},
+);
+
+// Same call, same inputs as CanvasNodeDefault's nodeSize: this is the size
+// contract that keeps vue-flow's measured dimensions identical across the swap.
+const placeholderSize = computed(() =>
+	calculateNodeSize(
+		defaultRenderOptions.value.configuration ?? false,
+		defaultRenderOptions.value.configurable ?? false,
+		mainInputs.value.length,
+		mainOutputs.value.length,
+		nonMainInputs.value.length,
+		isExperimentalNdvActive.value,
+	),
+);
+
+// Mirrors CanvasHandleRenderer's connectable rules; duplicated for the spike so
+// the hot full-render path stays untouched.
+function placeholderConnectable(port: CanvasElementPortWithRenderData, mode: CanvasConnectionMode) {
+	const limitReached = !!port.maxConnections && port.connectionsCount >= port.maxConnections;
+	return {
+		start:
+			!limitReached &&
+			(mode === CanvasConnectionMode.Output || port.type !== NodeConnectionTypes.Main),
+		end:
+			!limitReached &&
+			(mode === CanvasConnectionMode.Input || port.type !== NodeConnectionTypes.Main),
+	};
+}
 
 /**
  * Event bus
@@ -374,83 +430,115 @@ onBeforeUnmount(() => {
 		:data-node-name="data.name"
 		:data-node-type="data.type"
 	>
-		<template
-			v-for="source in mappedOutputs"
-			:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
-		>
-			<CanvasHandleRenderer
-				v-bind="source"
-				:mode="CanvasConnectionMode.Output"
-				:is-read-only="readOnly"
+		<template v-if="isPlaceholder">
+			<Handle
+				v-for="source in mappedOutputs"
+				:id="source.handleId"
+				:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
+				type="source"
+				:position="source.position"
+				:style="source.offset"
+				:connectable-start="placeholderConnectable(source, CanvasConnectionMode.Output).start"
+				:connectable-end="placeholderConnectable(source, CanvasConnectionMode.Output).end"
 				:is-valid-connection="isValidConnection"
-				:data-node-name="data.name"
-				data-test-id="canvas-node-output-handle"
-				:data-index="source.index"
-				:data-connection-type="source.type"
-				@add="onAdd"
+			/>
+			<Handle
+				v-for="target in mappedInputs"
+				:id="target.handleId"
+				:key="`${target.handleId}(${target.index + 1}/${mappedInputs.length})`"
+				type="target"
+				:position="target.position"
+				:style="target.offset"
+				:connectable-start="placeholderConnectable(target, CanvasConnectionMode.Input).start"
+				:connectable-end="placeholderConnectable(target, CanvasConnectionMode.Input).end"
+				:is-valid-connection="isValidConnection"
+			/>
+			<CanvasNodePlaceholder
+				:width="placeholderSize.width"
+				:height="placeholderSize.height"
+				:configurable="defaultRenderOptions.configurable ?? false"
 			/>
 		</template>
+		<template v-else>
+			<template
+				v-for="source in mappedOutputs"
+				:key="`${source.handleId}(${source.index + 1}/${mappedOutputs.length})`"
+			>
+				<CanvasHandleRenderer
+					v-bind="source"
+					:mode="CanvasConnectionMode.Output"
+					:is-read-only="readOnly"
+					:is-valid-connection="isValidConnection"
+					:data-node-name="data.name"
+					data-test-id="canvas-node-output-handle"
+					:data-index="source.index"
+					:data-connection-type="source.type"
+					@add="onAdd"
+				/>
+			</template>
 
-		<template
-			v-for="target in mappedInputs"
-			:key="`${target.handleId}(${target.index + 1}/${mappedInputs.length})`"
-		>
-			<CanvasHandleRenderer
-				v-bind="target"
-				:mode="CanvasConnectionMode.Input"
-				:is-read-only="readOnly"
-				:is-valid-connection="isValidConnection"
-				data-test-id="canvas-node-input-handle"
-				:data-index="target.index"
-				:data-connection-type="target.type"
-				:data-node-name="data.name"
-				@add="onAdd"
+			<template
+				v-for="target in mappedInputs"
+				:key="`${target.handleId}(${target.index + 1}/${mappedInputs.length})`"
+			>
+				<CanvasHandleRenderer
+					v-bind="target"
+					:mode="CanvasConnectionMode.Input"
+					:is-read-only="readOnly"
+					:is-valid-connection="isValidConnection"
+					data-test-id="canvas-node-input-handle"
+					:data-index="target.index"
+					:data-connection-type="target.type"
+					:data-node-name="data.name"
+					@add="onAdd"
+				/>
+			</template>
+
+			<template v-if="slots.toolbar">
+				<slot name="toolbar" :inputs="mainInputs" :outputs="mainOutputs" :data="data" />
+			</template>
+
+			<CanvasNodeToolbar
+				v-else-if="hasToolbar"
+				data-test-id="canvas-node-toolbar"
+				:read-only="readOnly"
+				:can-execute="canExecute"
+				:class="$style.canvasNodeToolbar"
+				:show-status-icons="isExperimentalNdvActive"
+				:items-class="$style.canvasNodeToolbarItems"
+				@delete="onDelete"
+				@toggle="onDisabledToggle"
+				@run="onRun"
+				@update="onUpdate"
+				@open:contextmenu="onOpenContextMenuFromToolbar"
+				@focus="onFocus"
+				@add:ai="onAddToAi"
+			/>
+
+			<CanvasNodeRenderer
+				@activate="onActivate"
+				@deactivate="onDeactivate"
+				@move="onMove"
+				@update="onUpdate"
+				@open:contextmenu="onOpenContextMenuFromNode"
+				@delete="onDelete"
+				@replace:node="onReplaceNode"
+			/>
+
+			<CanvasNodeTrigger
+				v-if="
+					props.data.render.type === CanvasNodeRenderType.Default &&
+					props.data.render.options.trigger
+				"
+				:name="data.name"
+				:type="data.type"
+				:hovered="nearbyHovered"
+				:disabled="isDisabled"
+				:read-only="readOnly"
+				:class="$style.trigger"
+				:is-experimental-ndv-active="isExperimentalNdvActive"
 			/>
 		</template>
-
-		<template v-if="slots.toolbar">
-			<slot name="toolbar" :inputs="mainInputs" :outputs="mainOutputs" :data="data" />
-		</template>
-
-		<CanvasNodeToolbar
-			v-else-if="hasToolbar"
-			data-test-id="canvas-node-toolbar"
-			:read-only="readOnly"
-			:can-execute="canExecute"
-			:class="$style.canvasNodeToolbar"
-			:show-status-icons="isExperimentalNdvActive"
-			:items-class="$style.canvasNodeToolbarItems"
-			@delete="onDelete"
-			@toggle="onDisabledToggle"
-			@run="onRun"
-			@update="onUpdate"
-			@open:contextmenu="onOpenContextMenuFromToolbar"
-			@focus="onFocus"
-			@add:ai="onAddToAi"
-		/>
-
-		<CanvasNodeRenderer
-			@activate="onActivate"
-			@deactivate="onDeactivate"
-			@move="onMove"
-			@update="onUpdate"
-			@open:contextmenu="onOpenContextMenuFromNode"
-			@delete="onDelete"
-			@replace:node="onReplaceNode"
-		/>
-
-		<CanvasNodeTrigger
-			v-if="
-				props.data.render.type === CanvasNodeRenderType.Default && props.data.render.options.trigger
-			"
-			:name="data.name"
-			:type="data.type"
-			:hovered="nearbyHovered"
-			:disabled="isDisabled"
-			:read-only="readOnly"
-			:class="$style.trigger"
-			:is-experimental-ndv-active="isExperimentalNdvActive"
-		/>
 	</div>
 </template>
 

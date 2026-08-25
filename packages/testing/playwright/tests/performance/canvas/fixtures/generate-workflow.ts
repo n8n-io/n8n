@@ -5,19 +5,17 @@ import type { IPinData, IWorkflowBase } from 'n8n-workflow';
 
 import { buildPinDataForWorkflow, type PinScenario } from './pinned-payloads';
 
-export type Tier = 'S' | 'M' | 'L';
+export type Tier = 'S' | 'M' | 'L' | 'XL';
 
-// Tiers are intentionally conservative. We started with S/M/L/XL = 40/150/400/800
-// but canvas-execution at 400+ nodes crashes the Chromium renderer — run-data
-// fan-out across hundreds of executing nodes drives non-V8 renderer memory
-// pressure that raising the V8 heap doesn't fix (the reported jsHeapSizeLimit is
-// already ~4 GB, V8's pointer-compression cage; we run at the default, no launch
-// flag). Until the frontend optimization that lifts that ceiling lands, L = 200
-// is the largest tier the suite runs.
+// L = 200 remains the execution ceiling: canvas-execution at 400+ nodes crashes
+// the Chromium renderer via run-data fan-out across hundreds of executing nodes
+// (store-side memory pressure, not addressed by canvas virtualization). XL = 800
+// exercises canvas virtualization in the load/interactions benchmarks only.
 export const TIER_CONFIG: Record<Tier, { nodes: number; stickyNotes: number }> = {
 	S: { nodes: 30, stickyNotes: 2 },
 	M: { nodes: 80, stickyNotes: 4 },
 	L: { nodes: 200, stickyNotes: 8 },
+	XL: { nodes: 800, stickyNotes: 12 },
 };
 
 // Heavy-concentrated payload caps per tier. Scaled to the smaller tier sizes.
@@ -25,6 +23,7 @@ export const HEAVY_BUDGET_BY_TIER: Record<Tier, { heavyNodes: number; mediumNode
 	S: { heavyNodes: 2, mediumNodes: 6 },
 	M: { heavyNodes: 3, mediumNodes: 8 },
 	L: { heavyNodes: 5, mediumNodes: 12 },
+	XL: { heavyNodes: 6, mediumNodes: 16 },
 };
 
 export interface BuildOptions {

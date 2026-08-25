@@ -7,7 +7,7 @@ import { test, expect } from '../../../fixtures/base';
 import { attachMetric, getStableHeap } from '../../../utils/performance-helper';
 
 const ITERATIONS = 3;
-const TIERS: Tier[] = ['S', 'M', 'L'];
+const TIERS: Tier[] = ['S', 'M', 'L', 'XL'];
 
 test.use({
 	capability: {
@@ -29,7 +29,7 @@ test.describe(
 			}, testInfo) => {
 				test.skip(
 					tier !== 'S' && !!process.env.CI,
-					'CI only runs S tier; M / L run locally via `pnpm bench:canvas`',
+					'CI only runs S tier; M / L / XL run locally via `pnpm bench:canvas`',
 				);
 
 				const { workflow } = buildCanvasBenchmarkWorkflow({ tier });
