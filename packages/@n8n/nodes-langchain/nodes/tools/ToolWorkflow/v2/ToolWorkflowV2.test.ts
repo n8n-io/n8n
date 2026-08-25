@@ -148,6 +148,37 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			});
 		});
 
+		it('should sanitize credential-shaped values in the tool-called event', async () => {
+			const TEST_RESPONSE = { api_key: 'sk-live-abcdef123456' };
+
+			const mockExecuteWorkflowResponse: ExecuteWorkflowData = {
+				data: [[{ json: TEST_RESPONSE }]],
+				executionId: 'test-execution',
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockExecuteWorkflowResponse);
+			vi.spyOn(context, 'addInputData').mockReturnValue({ index: 0 });
+			vi.spyOn(context, 'getNodeParameter').mockReturnValue('database');
+			vi.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData);
+			vi.spyOn(context, 'cloneWith').mockReturnValue(context);
+
+			const tool = await service.createTool({
+				ctx: context,
+				name: 'TestTool',
+				description: 'Test Description',
+				itemIndex: 0,
+			});
+			const result = await tool.func('test query');
+
+			expect(result).toContain('sk-live-abcdef123456');
+			const payload = vi.mocked(context.logAiEvent).mock.calls[0][1];
+			expect(payload).toContain('[redacted]');
+			expect(payload).not.toContain('sk-live-abcdef123456');
+		});
+
 		it('returns un-stringified data if manualLogging is false (meaning it was called from the engine)', async () => {
 			const TEST_RESPONSE = { msg: 'test response' };
 

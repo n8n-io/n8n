@@ -131,6 +131,50 @@ describe('ToolCode', () => {
 				JSON.stringify({ query: 'hello', response: 'ok' }),
 			);
 		});
+
+		it('should sanitize credential-shaped values in the tool-called event', async () => {
+			const node = new ToolCode();
+
+			vi.mocked(JsTaskRunnerSandbox).mockImplementation(function (this: {
+				runCodeForTool: ReturnType<typeof vi.fn>;
+			}) {
+				this.runCodeForTool = vi.fn().mockResolvedValue('api_key: sk-live-abcdef123456');
+				return this;
+			} as unknown as new (
+				...args: unknown[]
+			) => JsTaskRunnerSandbox);
+
+			const logAiEvent = vi.fn();
+			const ctx = mock<ISupplyDataFunctions>({
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
+				getNodeParameter: vi.fn().mockImplementation((paramName) => {
+					switch (paramName) {
+						case 'description':
+							return 'description text';
+						case 'specifyInputSchema':
+							return false;
+						case 'language':
+							return 'javaScript';
+						case 'jsCode':
+							return 'return "ok";';
+						default:
+							return;
+					}
+				}),
+				getMode: vi.fn((): WorkflowExecuteMode => 'manual'),
+				addInputData: vi.fn(() => ({ index: 0 })),
+				addOutputData: vi.fn(),
+				logAiEvent,
+			});
+
+			const supplyDataResult = await node.supplyData.call(ctx, 0);
+			const tool = supplyDataResult.response as DynamicTool;
+
+			await expect(tool.func('query')).resolves.toBe('api_key: sk-live-abcdef123456');
+			const payload = logAiEvent.mock.calls[0][1];
+			expect(payload).toContain('api_key: [redacted]');
+			expect(payload).not.toContain('sk-live-abcdef123456');
+		});
 	});
 
 	describe('execute', () => {

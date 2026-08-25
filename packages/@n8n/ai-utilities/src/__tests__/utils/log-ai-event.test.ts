@@ -42,6 +42,41 @@ describe('logAiEvent', () => {
 			expect(mockExecuteFunctions.logAiEvent).toHaveBeenCalledTimes(1);
 		});
 
+		it('should sanitize credential-shaped values on tool-called events', () => {
+			logAiEvent(mockExecuteFunctions, 'ai-tool-called', {
+				query: { api_key: 'sk-live-abcdef123456' },
+				response: 'authorization: Bearer eyJhbGciOiJIUzI1NiJ9',
+			});
+
+			const payload = mockExecuteFunctions.logAiEvent.mock.calls[0][1];
+			expect(payload).toContain('api_key');
+			expect(payload).toContain('[redacted]');
+			expect(payload).not.toContain('sk-live-abcdef123456');
+			expect(payload).not.toContain('eyJhbGciOiJIUzI1NiJ9');
+		});
+
+		it('should sanitize credential-shaped values inside stringified JSON responses', () => {
+			logAiEvent(mockExecuteFunctions, 'ai-tool-called', {
+				query: 'test query',
+				response: JSON.stringify({ api_key: 'sk-live-abcdef123456' }, null, 2),
+			});
+
+			const payload = mockExecuteFunctions.logAiEvent.mock.calls[0][1];
+			expect(payload).toContain('[redacted]');
+			expect(payload).not.toContain('sk-live-abcdef123456');
+		});
+
+		it('should leave other events unsanitized', () => {
+			const data: IDataObject = { response: 'api_key: sk-live-abcdef123456' };
+
+			logAiEvent(mockExecuteFunctions, 'ai-llm-generated-output', data);
+
+			expect(mockExecuteFunctions.logAiEvent).toHaveBeenCalledWith(
+				'ai-llm-generated-output',
+				JSON.stringify(data),
+			);
+		});
+
 		it('should log different AI event types', () => {
 			const events: AiEvent[] = ['ai-llm-generated-output', 'ai-llm-errored', 'ai-tool-called'];
 			const data: IDataObject = { test: 'data' };
