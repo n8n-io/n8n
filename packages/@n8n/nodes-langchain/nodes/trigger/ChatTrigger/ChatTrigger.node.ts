@@ -10,6 +10,7 @@ import {
 	assertParamIsString,
 	getHighlightedInputKey,
 	HIGHLIGHTED_SESSION_KEY,
+	CHAT_TRIGGER_PATH_SUFFIX,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -39,8 +40,6 @@ import {
 } from './shell';
 import { createPage, createShellPage } from './templates';
 import { assertValidLoadPreviousSessionOption } from './types';
-
-const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
 
 const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
 const allowFileUploadsOption: INodeProperties = {
@@ -327,7 +326,7 @@ export class ChatTrigger extends Node {
 				name: 'setup',
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
-				path: CHAT_TRIGGER_PATH_IDENTIFIER,
+				path: CHAT_TRIGGER_PATH_SUFFIX,
 				ndvHideUrl: true,
 			},
 			{
@@ -335,7 +334,7 @@ export class ChatTrigger extends Node {
 				httpMethod: 'POST',
 				responseMode:
 					'={{$parameter.options?.["responseMode"] ?? ($parameter.availableInChat ? "streaming" : "lastNode") }}',
-				path: CHAT_TRIGGER_PATH_IDENTIFIER,
+				path: CHAT_TRIGGER_PATH_SUFFIX,
 				ndvHideMethod: true,
 				ndvHideUrl: isPublicChatTriggerDisabled() ? true : '={{ !$parameter.public }}',
 			},

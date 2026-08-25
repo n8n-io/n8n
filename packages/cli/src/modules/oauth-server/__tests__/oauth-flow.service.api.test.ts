@@ -4,7 +4,12 @@ import type { User } from '@n8n/db';
 import { WebhookRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
-import { FORM_TRIGGER_NODE_TYPE, UserError } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	CHAT_TRIGGER_PATH_SUFFIX,
+	FORM_TRIGGER_NODE_TYPE,
+	UserError,
+} from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { CacheService } from '@/services/cache/cache.service';
@@ -24,6 +29,7 @@ setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
 let owner: User;
 let member: User;
 let formEndpoint: string;
+let webhookEndpoint: string;
 
 let flow: OAuth2FlowService;
 let codes: OAuthAuthorizationCodeService;
@@ -63,6 +69,29 @@ const createProtectedFormWorkflow = async (ownedBy = owner) => {
 	return resourceUrlFor(webhookPath);
 };
 
+const chatTriggerNode = (): INode => ({
+	id: randomUUID(),
+	name: 'When chat message received',
+	type: CHAT_TRIGGER_NODE_TYPE,
+	typeVersion: 1.3,
+	position: [0, 0],
+	webhookId: randomUUID(),
+	parameters: { public: true, mode: 'hostedChat', authentication: 'n8nUserAuth' },
+});
+
+/** Active chat workflow + the two production webhook rows; returns the chat page URL. */
+const createProtectedChatWorkflow = async (ownedBy = owner) => {
+	const node = chatTriggerNode();
+	const path = `${randomUUID()}/${CHAT_TRIGGER_PATH_SUFFIX}`;
+	const workflow = await createWorkflowWithHistory({ active: true, nodes: [node] }, ownedBy);
+	await setActiveVersion(workflow.id, workflow.versionId);
+	await Container.get(WebhookRepository).insert([
+		{ workflowId: workflow.id, webhookPath: path, method: 'GET', node: node.name },
+		{ workflowId: workflow.id, webhookPath: path, method: 'POST', node: node.name },
+	]);
+	return `${webhookBaseUrl()}/${webhookEndpoint}/${path}`;
+};
+
 /**
  * Drive the browser legs the backend never performs itself in a test: pull the
  * PKCE challenge + state out of the authorize URL, materialize the virtual client
@@ -92,13 +121,20 @@ const authorizeAndMintCode = async (
 };
 
 beforeAll(async () => {
+	process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2 = 'true'; // gates the chat-trigger resolver
 	owner = await createOwner();
 	member = await createMember();
-	formEndpoint = Container.get(GlobalConfig).endpoints.form;
+	const { endpoints } = Container.get(GlobalConfig);
+	formEndpoint = endpoints.form;
+	webhookEndpoint = endpoints.webhook;
 	flow = Container.get(OAuth2FlowService);
 	codes = Container.get(OAuthAuthorizationCodeService);
 	oauthServer = Container.get(OAuthServerService);
 	tokenService = Container.get(OAuthTokenService);
+});
+
+afterAll(() => {
+	delete process.env.N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2;
 });
 
 afterEach(async () => {
@@ -236,5 +272,51 @@ describe('complete', () => {
 		const result = await flow.complete(code, state);
 
 		expect(result).toEqual({ valid: false, reason: 'invalid_grant' });
+	});
+});
+
+/**
+ * Direct cover for "a credential-connect OAuth request initiated from a chat session is
+ * accepted as legitimate": otherwise it only holds transitively through `N8NIdentifier`.
+ */
+describe('chat trigger resources', () => {
+	test('begins a flow against a chat resource and completes it into a chat-scoped token', async () => {
+		const chatResourceUrl = await createProtectedChatWorkflow();
+
+		const url = new URL(await flow.begin(chatResourceUrl));
+		expect(Object.fromEntries(url.searchParams)).toMatchObject({
+			client_id: chatResourceUrl,
+			redirect_uri: chatResourceUrl,
+			resource: chatResourceUrl,
+		});
+
+		const { code, state } = await authorizeAndMintCode(chatResourceUrl, member.id);
+		const result = await flow.complete(code, state);
+
+		// No execute gate on chat yet, so any authenticated visitor completes the flow.
+		expect(result).toMatchObject({ valid: true, user: { id: member.id } });
+		if (result.valid) {
+			expect(decodeJwtPayload(result.token).sub).toBe(member.id);
+			expect(decodeJwtPayload(result.token).aud).toBe(chatResourceUrl);
+		}
+	});
+
+	test('produces a token that another trigger resource rejects', async () => {
+		const chatResourceUrl = await createProtectedChatWorkflow();
+		const otherChatResourceUrl = await createProtectedChatWorkflow();
+		const formResourceUrl = await createProtectedFormWorkflow();
+		const { code, state } = await authorizeAndMintCode(chatResourceUrl, owner.id);
+
+		const result = await flow.complete(code, state);
+		expect(result.valid).toBe(true);
+
+		if (result.valid) {
+			await expect(
+				tokenService.verifyOAuthAccessToken(result.token, otherChatResourceUrl),
+			).resolves.toMatchObject({ user: null });
+			await expect(
+				tokenService.verifyOAuthAccessToken(result.token, formResourceUrl),
+			).resolves.toMatchObject({ user: null });
+		}
 	});
 });
