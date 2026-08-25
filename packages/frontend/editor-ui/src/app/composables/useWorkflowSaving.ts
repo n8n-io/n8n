@@ -533,6 +533,8 @@ export function useWorkflowSaving({
 		} = {},
 		redirect = true,
 	): Promise<IWorkflowDb['id'] | null> {
+		let createRequestFailed = false;
+
 		try {
 			const currentDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowId.value),
@@ -611,7 +613,13 @@ export function useWorkflowSaving({
 				workflowDataRequest.autosaved = autosaved;
 			}
 
-			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
+			let workflowData: IWorkflowDb;
+			try {
+				workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
+			} catch (e) {
+				createRequestFailed = true;
+				throw e;
+			}
 
 			workflowsListStore.addWorkflow(workflowData);
 
@@ -706,8 +714,15 @@ export function useWorkflowSaving({
 			onSaved?.(true); // First save of new workflow
 			return workflowData.id;
 		} catch (e) {
-			if (autosaved) {
+			if (autosaved && createRequestFailed) {
 				throw e;
+			}
+
+			if (autosaved) {
+				// The create request already succeeded; retrying this autosave
+				// would POST the same new workflow again.
+				console.error(e);
+				return null;
 			}
 
 			toast.showMessage({

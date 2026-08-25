@@ -18,6 +18,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { ResponseError } from '@n8n/rest-api-client';
 import { mockedStore } from '@/__tests__/utils';
@@ -1435,7 +1436,7 @@ describe('useWorkflowSaving', () => {
 
 				vi.spyOn(workflowsStore, 'createNewWorkflow').mockRejectedValue(new Error(errorMessage));
 
-				workflowsStore.setWorkflowId(newWorkflowId);
+				mockRoute.params = { workflowId: newWorkflowId };
 				useWorkflowDocumentStore(createWorkflowDocumentId(newWorkflowId)).hydrate(workflow);
 
 				const saveStore = useWorkflowSaveStore();
@@ -1458,6 +1459,56 @@ describe('useWorkflowSaving', () => {
 					}),
 				);
 			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('does not retry autosaved create when a post-create step fails', async () => {
+			vi.useFakeTimers();
+			const newWorkflowId = 'w-autosave-create-post-create-failure';
+			const createdWorkflow = createTestWorkflow({
+				id: 'w-autosave-created-before-post-create-failure',
+				name: 'Named new workflow',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+			});
+			const createSpy = vi
+				.spyOn(workflowsStore, 'createNewWorkflow')
+				.mockResolvedValue(createdWorkflow);
+			const focusPanelSpy = vi
+				.spyOn(useFocusPanelStore(), 'onNewWorkflowSave')
+				.mockImplementation(() => {
+					throw new Error('Focus panel failed');
+				});
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+			try {
+				mockRoute.params = { workflowId: newWorkflowId };
+				useWorkflowDocumentStore(createWorkflowDocumentId(newWorkflowId)).hydrate(
+					createTestWorkflow({
+						id: newWorkflowId,
+						name: 'Named new workflow',
+						nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+					}),
+				);
+
+				const saveStore = useWorkflowSaveStore();
+				const { saveCurrentWorkflow } = useWorkflowSaving({
+					router,
+				});
+
+				const result = await saveCurrentWorkflow({}, true, false, true);
+				await vi.advanceTimersByTimeAsync(saveStore.getRetryDelay() + 1);
+
+				expect(result).toBe(false);
+				expect(createSpy).toHaveBeenCalledTimes(1);
+				expect(workflowsListStore.getWorkflowById(createdWorkflow.id)).toEqual(createdWorkflow);
+				expect(saveStore.retryCount).toBe(0);
+				expect(saveStore.isRetrying).toBe(false);
+				expect(saveStore.lastError).toBeNull();
+				expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(Error));
+			} finally {
+				focusPanelSpy.mockRestore();
+				consoleErrorSpy.mockRestore();
 				vi.useRealTimers();
 			}
 		});
