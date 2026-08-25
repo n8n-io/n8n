@@ -47,6 +47,7 @@ export class InstanceGitConnectionPublicController {
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, InstanceGitConnectionPublicDto)
+	@ApiErrorResponse(503)
 	async getInstanceGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -65,6 +66,7 @@ export class InstanceGitConnectionPublicController {
 	@ApiTags(tags)
 	@ApiResponse(200, InstanceGitConnectionPublicDto)
 	@ApiErrorResponse(400)
+	@ApiErrorResponse(503)
 	async updateInstanceGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
