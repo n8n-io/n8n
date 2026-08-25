@@ -5,7 +5,7 @@ import type {
 	INodeParameterResourceLocator,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
 
@@ -75,6 +75,41 @@ export const pageRLC: INodeProperties = {
 			name: 'title',
 			type: 'string',
 			placeholder: 'e.g. Project plan',
+		},
+	],
+};
+
+export const labelRLC: INodeProperties = {
+	displayName: 'Label',
+	name: 'label',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description: 'The label to operate on',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getLabels',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. 123456',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '^[0-9]+$',
+						errorMessage: 'The label ID must be numeric',
+					},
+				},
+			],
 		},
 	],
 };
@@ -196,14 +231,95 @@ export async function resolveSpaceKey(
 	return space.key;
 }
 
-export function extractNextCursor(response: IDataObject): string | undefined {
+// Text extraction, not rendering: concatenate ADF text nodes, newline at block boundaries
+const ADF_BLOCK_TYPES = new Set([
+	'blockquote',
+	'bulletList',
+	'codeBlock',
+	'heading',
+	'listItem',
+	'orderedList',
+	'panel',
+	'paragraph',
+	'rule',
+	'table',
+	'tableRow',
+	'taskItem',
+	'taskList',
+]);
+
+function adfToPlainText(node: IDataObject): string {
+	if (node.type === 'text') return typeof node.text === 'string' ? node.text : '';
+	if (node.type === 'hardBreak') return '\n';
+	const content = Array.isArray(node.content) ? (node.content as IDataObject[]) : [];
+	let inner = '';
+	for (const child of content) {
+		inner += adfToPlainText(child);
+		if (node.type === 'tableRow') inner += ' ';
+	}
+	return ADF_BLOCK_TYPES.has(node.type as string) ? `${inner}\n` : inner;
+}
+
+/** Replaces a page's ADF body with plain text extracted from it. No server-side
+ * plain-text format exists, so callers request `atlas_doc_format` and shape here. */
+export function shapeBody(page: IDataObject, bodyFormat: ConfluenceBodyFormat): IDataObject {
+	if (bodyFormat !== 'plainText') return page;
+	const adf = (page.body as IDataObject | undefined)?.atlas_doc_format as IDataObject | undefined;
+	let value = '';
+	if (typeof adf?.value === 'string' && adf.value !== '') {
+		const doc = jsonParse<IDataObject | null>(adf.value, { fallbackValue: null }) ?? {};
+		// The walk can still throw on valid-JSON shapes it can't take (e.g. null nodes);
+		// a page with an unreadable body should yield an empty value, not fail the item
+		try {
+			value = adfToPlainText(doc)
+				.replace(/[ \t]+\n/g, '\n')
+				.replace(/\n{3,}/g, '\n\n')
+				.trim();
+		} catch {
+			value = '';
+		}
+	}
+	return { ...page, body: { plainText: { representation: 'plain_text', value } } };
+}
+
+export type NextPageParam = { key: 'cursor' | 'start'; value: string };
+
+export function extractNextPageParam(response: IDataObject): NextPageParam | undefined {
 	const next = (response._links as IDataObject | undefined)?.next;
 	if (typeof next !== 'string' || next === '') return undefined;
+
+	let params: URLSearchParams;
 	try {
-		return new URL(next, 'https://api.atlassian.com').searchParams.get('cursor') ?? undefined;
+		params = new URL(next, 'https://api.atlassian.com').searchParams;
 	} catch {
 		return undefined;
 	}
+	const cursor = params.get('cursor');
+	if (cursor !== null && cursor !== '') return { key: 'cursor', value: cursor };
+	// Older responses page by start offset instead of cursor
+	const start = params.get('start');
+	return start === null || start === '' ? undefined : { key: 'start', value: start };
+}
+
+export function extractNextCursor(response: IDataObject): string | undefined {
+	const next = extractNextPageParam(response);
+	return next?.key === 'cursor' ? next.value : undefined;
+}
+
+/** Validates a count parameter that an expression may hand back as a numeric string. */
+export function parsePositiveInt(
+	this: IExecuteFunctions,
+	raw: unknown,
+	label: string,
+	itemIndex: number,
+): number {
+	const value = Number(raw);
+	if (!Number.isFinite(value) || value < 1) {
+		throw new NodeOperationError(this.getNode(), `${label} must be a finite number of at least 1`, {
+			itemIndex,
+		});
+	}
+	return Math.floor(value);
 }
 
 function asString(value: unknown): string {

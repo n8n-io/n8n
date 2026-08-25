@@ -2,7 +2,9 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
+import * as attachment from './attachment';
 import * as page from './page';
+import * as search from './search';
 import { CONFLUENCE_CREDENTIAL_NAME } from '../transport';
 
 export const confluenceNodeDescription: INodeTypeDescription = {
@@ -34,12 +36,22 @@ export const confluenceNodeDescription: INodeTypeDescription = {
 			noDataExpression: true,
 			options: [
 				{
+					name: 'Attachment',
+					value: 'attachment',
+				},
+				{
 					name: 'Page',
 					value: 'page',
+				},
+				{
+					name: 'Search',
+					value: 'search',
 				},
 			],
 			default: 'page',
 		},
+		...attachment.description,
 		...page.description,
+		...search.description,
 	],
 };

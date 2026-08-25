@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import type { IWorkflowDb, PollLeaseFence } from '@n8n/db';
+import type { IWorkflowDb, PollerCursor, PollLeaseFence } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -276,6 +276,7 @@ export class TriggerExecutionContextFactory {
 		// service directly and this parameter will go away.
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 		fence?: PollLeaseFence,
+		prefetchedCursor?: PollerCursor,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
 			// A poll's staged snapshot lives in an async scope entered per poll, rather
@@ -292,6 +293,7 @@ export class TriggerExecutionContextFactory {
 					workflowData.id,
 					node.id,
 					workflow.getStaticData('node', node),
+					prefetchedCursor,
 				);
 				const store = resolved.migrated
 					? { migrated: true as const, snapshot: cloneDeep(resolved.cursor), seed: resolved.cursor }
@@ -421,6 +423,7 @@ export class TriggerExecutionContextFactory {
 		workflowData: IWorkflowBase,
 		node: INode,
 		fence?: PollLeaseFence,
+		prefetchedCursor?: PollerCursor,
 	): Promise<{ workflow: Workflow; pollFunctions: IPollFunctions }> {
 		const workflow = new Workflow({
 			id: workflowData.id,
@@ -448,6 +451,7 @@ export class TriggerExecutionContextFactory {
 			'update',
 			resolveWorkflowData,
 			fence,
+			prefetchedCursor,
 		);
 		// getPollFunctions already closed over these; its signature still requires them.
 		const pollFunctions = getPollFunctions(workflow, node, additionalData, 'trigger', 'update');

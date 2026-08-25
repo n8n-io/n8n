@@ -1,7 +1,9 @@
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import * as attachment from './attachment';
 import * as page from './page';
+import * as search from './search';
 
 /**
  * Compile-checked contract for operation modules. The router calls
@@ -12,6 +14,12 @@ export type ConfluenceOperation = (
 	itemIndex: number,
 ) => Promise<IDataObject | IDataObject[]>;
 
+/** Variant for operations that emit their own execution items (e.g. binary output). */
+export type ConfluenceBinaryOperation = (
+	this: IExecuteFunctions,
+	itemIndex: number,
+) => Promise<INodeExecutionData[]>;
+
 export async function router(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 	const items = this.getInputData();
 	const resource = this.getNodeParameter('resource', 0, '');
@@ -21,9 +29,13 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			let responseData: IDataObject | IDataObject[];
+			let responseData: IDataObject | IDataObject[] | undefined;
+			let responseItems: INodeExecutionData[] | undefined;
 
 			switch (`${resource}:${operation}`) {
+				case 'attachment:getMany':
+					responseItems = await attachment.getMany.execute.call(this, i);
+					break;
 				case 'page:append':
 					responseData = await page.append.execute.call(this, i);
 					break;
@@ -36,8 +48,14 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'page:get':
 					responseData = await page.get.execute.call(this, i);
 					break;
+				case 'page:getManyByLabel':
+					responseData = await page.getManyByLabel.execute.call(this, i);
+					break;
 				case 'page:update':
 					responseData = await page.update.execute.call(this, i);
+					break;
+				case 'search:query':
+					responseData = await search.query.execute.call(this, i);
 					break;
 				default:
 					throw new NodeOperationError(
@@ -47,7 +65,7 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				responseItems ?? this.helpers.returnJsonArray(responseData ?? []),
 				{ itemData: { item: i } },
 			);
 			returnData.push.apply(returnData, executionData);

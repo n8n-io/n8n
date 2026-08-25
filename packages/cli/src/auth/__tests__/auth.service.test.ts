@@ -961,6 +961,19 @@ describe('AuthService', () => {
 		});
 	});
 
+	describe('clearCookie', () => {
+		it('should clear the session cookie', () => {
+			const res = mock<Response>();
+
+			authService.clearCookie(res);
+
+			expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME);
+			// The form page cookies are not clearable from here: their names embed the
+			// workflow/execution they were minted for, unknown to this response.
+			expect(res.clearCookie).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('getCookieToken', () => {
 		it('should return token from cookies', () => {
 			const req = mock<AuthenticatedRequest>({
