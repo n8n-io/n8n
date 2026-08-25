@@ -30,7 +30,9 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@testcontainers/postgresql": "catalog:",
+    "@types/supertest": "^6.0.3",
     "n8n-nodes-base": "workspace:*",
+    "supertest": "^7.1.1",
     "testcontainers": "catalog:",
     "typescript": "catalog:typescript",
     "vitest": "catalog:"

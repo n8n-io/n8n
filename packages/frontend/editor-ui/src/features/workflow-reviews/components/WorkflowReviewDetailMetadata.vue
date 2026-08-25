@@ -217,11 +217,12 @@ const statusSummary = computed(
 	}
 }
 
-@media (max-width: 60rem) {
+@container review-detail (max-width: 44rem) {
 	.metadata {
 		flex-basis: auto;
 		width: 100%;
 		min-width: 0;
+		padding-inline-end: var(--spacing--2xs);
 	}
 }
 </style>

@@ -5,7 +5,19 @@
  */
 export type PublicationSkipReason =
 	/** The workflow row no longer exists. */
-	'workflow-not-found';
+	| 'workflow-not-found'
+	/**
+	 * The version carried duplicate or missing node ids; a corrected
+	 * system-authored version was published instead, and that publish enqueued
+	 * the record that applies it.
+	 */
+	| 'node-ids-healed'
+	/**
+	 * The version carried duplicate or missing node ids, but a concurrent
+	 * publish or unpublish won the race against the corrected version; whatever
+	 * won enqueued its own record.
+	 */
+	| 'superseded';
 
 import type { WorkflowPublicationTriggerKind } from '@n8n/db';
 

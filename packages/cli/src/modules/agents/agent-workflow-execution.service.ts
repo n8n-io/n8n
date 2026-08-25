@@ -47,6 +47,10 @@ import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { streamAgentChunks } from './utils/agent-stream';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
 import { describeStructuredOutputError } from './utils/structured-output-error';
+import {
+	WorkflowAgentStreamAdapter,
+	type WorkflowAgentStreamObserver,
+} from './workflow-agent-stream';
 
 interface WorkflowSandboxScope {
 	principalHash: AgentSandboxPrincipalHash;
@@ -67,6 +71,13 @@ function getFinalWorkflowResponse(messageRecord: MessageRecord): string {
 		.filter((event) => event.type === 'text')
 		.map((event) => event.content)
 		.join('');
+}
+
+function createWorkflowAgentExecutionError(message: string, cause?: Error): OperationalError {
+	return new OperationalError(message, {
+		description: message,
+		...(cause ? { cause } : {}),
+	});
 }
 
 /**
@@ -91,12 +102,19 @@ export class AgentWorkflowExecutionService {
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
 		const normalizedError = error instanceof Error ? error : new Error(String(error));
-		if (!outputSchema || normalizedError instanceof OperationalError) return normalizedError;
+		if (!outputSchema || normalizedError instanceof OperationalError) {
+			if ('description' in normalizedError && typeof normalizedError.description === 'string') {
+				return normalizedError;
+			}
+			return createWorkflowAgentExecutionError(normalizedError.message, normalizedError);
+		}
 
 		const structuredOutputError = describeStructuredOutputError(normalizedError.message);
-		if (!structuredOutputError) return normalizedError;
+		if (!structuredOutputError) {
+			return createWorkflowAgentExecutionError(normalizedError.message, normalizedError);
+		}
 
-		return new OperationalError(structuredOutputError, { cause: normalizedError });
+		return createWorkflowAgentExecutionError(structuredOutputError, normalizedError);
 	}
 
 	/**
@@ -249,6 +267,7 @@ export class AgentWorkflowExecutionService {
 			nodeName?: string;
 		};
 		recordingParams?: StartExecutionParams;
+		streamObserver?: WorkflowAgentStreamObserver;
 		sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
 	}): Promise<WorkflowAgentRunOutcome> {
 		const {
@@ -261,8 +280,10 @@ export class AgentWorkflowExecutionService {
 			outputSchema,
 			tracing,
 			recordingParams,
+			streamObserver,
 			sandboxScope,
 		} = params;
+		const streamAdapter = new WorkflowAgentStreamAdapter(streamObserver);
 
 		let agentExecutionId: string | undefined;
 		const recorder = new ExecutionRecorder(undefined, (timeline) => {
@@ -347,6 +368,7 @@ export class AgentWorkflowExecutionService {
 
 				for await (const value of streamAgentChunks(resultStream.stream)) {
 					recorder.record(value);
+					await streamAdapter.observe(value);
 
 					if (value.type === 'tool-call') {
 						toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
@@ -367,6 +389,7 @@ export class AgentWorkflowExecutionService {
 				recorder.record({ type: 'error', error: normalizedError });
 				recorder.record({ type: 'finish', finishReason: 'error' });
 				streamError = normalizedError;
+				streamAdapter.fail();
 			}
 		};
 
@@ -423,7 +446,7 @@ export class AgentWorkflowExecutionService {
 		}
 
 		if (recorder.suspended) {
-			throw new OperationalError(
+			throw createWorkflowAgentExecutionError(
 				'Agent execution suspended waiting for tool approval. ' +
 					'Suspend/resume is not supported in workflow execution context.',
 			);
@@ -433,14 +456,14 @@ export class AgentWorkflowExecutionService {
 			if (outputSchema) {
 				const structuredOutputError = describeStructuredOutputError(messageRecord.error);
 				if (structuredOutputError) {
-					throw new OperationalError(structuredOutputError);
+					throw createWorkflowAgentExecutionError(structuredOutputError);
 				}
 			}
-			throw new OperationalError(`Agent execution failed: ${messageRecord.error}`);
+			throw createWorkflowAgentExecutionError(`Agent execution failed: ${messageRecord.error}`);
 		}
 
 		if (messageRecord.finishReason === 'error') {
-			throw new OperationalError(
+			throw createWorkflowAgentExecutionError(
 				outputSchema
 					? 'Agent execution finished with an error while producing structured output. ' +
 							"The agent's model or provider may not support JSON Schema structured output."
@@ -475,6 +498,7 @@ export class AgentWorkflowExecutionService {
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
 		sandboxScope?: WorkflowSandboxScope,
+		streamObserver?: WorkflowAgentStreamObserver,
 	): Promise<ExecuteAgentData> {
 		return await this.executeForWorkflowInternal(
 			agentId,
@@ -487,6 +511,7 @@ export class AgentWorkflowExecutionService {
 			outputSchema,
 			workflowContext,
 			sandboxScope,
+			streamObserver,
 		);
 	}
 
@@ -501,6 +526,7 @@ export class AgentWorkflowExecutionService {
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
 		sandboxScope?: WorkflowSandboxScope,
+		streamObserver?: WorkflowAgentStreamObserver,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -558,6 +584,7 @@ export class AgentWorkflowExecutionService {
 					configuration: telemetryConfiguration,
 				},
 			},
+			streamObserver,
 			...(sandboxScope
 				? {
 						sandboxScope: {
@@ -620,6 +647,7 @@ export class AgentWorkflowExecutionService {
 		runType: AgentRunTelemetryType = 'production',
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
+		streamObserver?: WorkflowAgentStreamObserver,
 	): Promise<ExecuteAgentData> {
 		const { config, skills } = await this.validateInlineAgentConfig(inlineAgent);
 
@@ -694,6 +722,7 @@ export class AgentWorkflowExecutionService {
 				nodeId: workflowContext?.callingNodeId,
 				nodeName: workflowContext?.callingNodeName,
 			},
+			streamObserver,
 		});
 
 		// No `recordMessage` here: inline runs have no agent entity to attach a

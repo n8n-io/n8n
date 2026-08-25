@@ -21,7 +21,10 @@ import {
 	EXECUTE_WORKFLOW_NODE_TYPE_TEST,
 } from './ResourceMapper.test.constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { ResourceMapperSchemaAutoRefreshKey } from '@/app/constants';
+import {
+	ResourceMapperRefreshEmptySchemaKey,
+	ResourceMapperSchemaAutoRefreshKey,
+} from '@/app/constants';
 
 let nodeTypeStore: ReturnType<typeof useNodeTypesStore>;
 let projectsStore: MockedStore<typeof useProjectsStore>;
@@ -350,6 +353,30 @@ describe('ResourceMapper.vue', () => {
 			},
 		});
 		await waitAllPromises();
+		expect(fetchFieldsSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it('fetches an empty schema when its dependency first becomes available', async () => {
+		fetchFieldsSpy.mockResolvedValueOnce(null);
+		const { rerender } = renderComponent({
+			props: {
+				dependentParametersValues: null,
+				node: createTestNode({
+					parameters: { columns: { mappingMode: 'defineBelow', value: null } },
+				}),
+			},
+			global: {
+				provide: {
+					[ResourceMapperRefreshEmptySchemaKey as symbol]: true,
+				},
+			},
+		});
+		await waitAllPromises();
+		fetchFieldsSpy.mockClear();
+
+		await rerender({ dependentParametersValues: 'table-id' });
+		await waitAllPromises();
+
 		expect(fetchFieldsSpy).toHaveBeenCalledTimes(1);
 	});
 

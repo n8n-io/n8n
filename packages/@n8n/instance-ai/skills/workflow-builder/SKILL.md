@@ -325,6 +325,16 @@ decision after testing.
   workflow already had it. Otherwise use `newCredential('Suggested Credential
   Name')` — build tools mock unresolved credentials for verification and setup
   collects real ones later.
+- When the user explicitly asks for a **new** credential ("create a new Slack
+  credential"), the unresolved `newCredential('Name')` is not enough on its own —
+  the build would still attach their sole existing credential of that type, and
+  setup would preselect their most recent one. Pass the credential type in
+  `preferNewCredentials` on `build-workflow` **and** on
+  `workflows(action="setup")` (or `preferNew: true` on the entry of
+  `credentials(action="setup")`). The slot then stays unresolved through the build
+  and the card opens on credential creation, with existing credentials still
+  listed in case the user changes their mind. Pass it only on an explicit request,
+  never by default — reuse is the right behavior everywhere else.
 - When `build-workflow` returns `resolvedCredentialsByNode`, the build already
   attached a credential to those nodes — either an existing stored credential or
   an n8n credits–managed one (entries with `id: null` and `__aiGatewayManaged:
@@ -593,8 +603,9 @@ first.
 
 `.group(name, members, { description })` on the workflow builder; members are the node handles.
 Read `knowledge-base/reference/node-groups.md` for the exact rules (trigger nodes excluded,
-one connected section, AI sub-nodes stay with their Agent) before creating groups — an invalid
-group is rejected on save. When editing an existing workflow, keep existing `.group(...)` calls
+one connected section, AI sub-nodes stay with their Agent) before creating groups. Agent save
+tools drop an invalid group from the saved workflow and report a warning, so fix the source
+instead of re-emitting it. When editing an existing workflow, keep existing `.group(...)` calls
 and their descriptions intact unless the change is about grouping.
 
 ## Workflow Rules

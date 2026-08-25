@@ -12,9 +12,11 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	SharedWorkflowRepository,
 	type WorkflowEntity,
+	WorkflowHistoryRepository,
 	WorkflowPublishedVersionRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationOutboxStatus,
 	WorkflowRepository,
 	ProjectRepository,
 } from '@n8n/db';
@@ -24,8 +26,10 @@ import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { ExternalHooks } from '@/external-hooks';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -33,6 +37,7 @@ import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
+import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
@@ -63,6 +68,8 @@ const workflowValidationService = mockInstance(WorkflowValidationService);
 const nodeTypes = mockInstance(NodeTypes);
 const webhookServiceMock = mockInstance(WebhookService);
 const workflowPublishGuard = mock<WorkflowPublishGuardProxy>();
+const workflowPublicationNotifier = mock<WorkflowPublicationNotifier>();
+const externalHooks = mock<ExternalHooks>();
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
@@ -83,7 +90,7 @@ beforeAll(async () => {
 		Container.get(OwnershipService), // ownershipService
 		mock(),
 		workflowHistoryService,
-		mock(),
+		externalHooks,
 		activeWorkflowManager,
 		Container.get(RoleService), // roleService
 		Container.get(ProjectService), // projectService
@@ -100,13 +107,16 @@ beforeAll(async () => {
 		mock(), // licenseState
 		Container.get(ProjectRepository), // projectRepository
 		mock(), // redactionEnforcementService
-		mock(), // workflowPublicationNotifier
+		workflowPublicationNotifier,
 		mock(), // scheduleTriggerJobRegistrar
 		mock(), // pollTriggerJobRegistrar
 		workflowPublishedVersionRepository,
 		Container.get(WorkflowHookContextService), // workflowHookContextService
 		workflowPublishGuard,
 		mock(), // workflowMutationHooks
+		// Real service on purpose: with no policy backend registered it clears every save,
+		// so these tests also prove save behavior is unchanged when the module is off.
+		Container.get(PolicyEnforcementService), // policyEnforcementService
 	);
 });
 
@@ -1164,5 +1174,158 @@ describe('getMany()', () => {
 			const workflowIds = result.workflows.map((w) => w.id).sort();
 			expect(workflowIds).toEqual([teamWorkflow1.id, teamWorkflow2.id].sort());
 		});
+	});
+});
+
+describe('publishAsSystem()', () => {
+	const systemNodes = (): INode[] => [
+		{
+			id: uuid(),
+			name: 'Trigger',
+			type: 'n8n-nodes-base.scheduleTrigger',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		},
+	];
+
+	beforeEach(() => {
+		workflowPublicationNotifier.requestDrain.mockClear();
+	});
+
+	it('publishes a system-authored version without a user', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
+		const previousActiveVersionId = workflow.activeVersionId as string;
+		// Desync the draft from the active version (the helper creates them equal):
+		// the method must key everything on activeVersionId, and with the ids equal
+		// a wrong-field bug would be invisible.
+		const draftVersionId = uuid();
+		await workflowRepository.update({ id: workflow.id }, { versionId: draftVersionId });
+		// Compare against the stored row: the helper's in-memory updatedAt carries
+		// sub-second precision that the insert already dropped.
+		const storedBefore = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
+		const nodes = systemNodes();
+		const nodeGroups = [
+			{ id: uuid(), name: 'Group', nodeIds: [nodes[0].id], description: undefined },
+		];
+
+		externalHooks.run.mockClear();
+		const result = await workflowService.publishAsSystem(
+			workflow.id,
+			{ nodes, connections: {}, nodeGroups },
+			previousActiveVersionId,
+		);
+
+		expect(result.published).toBe(true);
+		if (!result.published) throw new Error('unreachable');
+		const { versionId } = result;
+
+		const versionRow = await Container.get(WorkflowHistoryRepository).findOneOrFail({
+			where: { versionId },
+		});
+		expect(versionRow.workflowId).toBe(workflow.id);
+		expect(versionRow.authors).toBe('n8n');
+		expect(versionRow.nodes).toEqual(nodes);
+		expect(versionRow.nodeGroups).toEqual(nodeGroups);
+
+		const updated = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
+		expect(updated.activeVersionId).toBe(versionId);
+		expect(updated.active).toBe(true);
+		// The draft plane stays untouched: same draft version, nodes, and updatedAt.
+		expect(updated.versionId).toBe(draftVersionId);
+		expect(updated.nodes).toEqual(workflow.nodes);
+		expect(updated.updatedAt.getTime()).toBe(storedBefore.updatedAt.getTime());
+
+		const activated = await workflowPublishHistoryRepository.findBy({
+			workflowId: workflow.id,
+			versionId,
+			event: 'activated',
+		});
+		expect(activated).toEqual([expect.objectContaining({ userId: null })]);
+		const deactivated = await workflowPublishHistoryRepository.findBy({
+			workflowId: workflow.id,
+			versionId: previousActiveVersionId,
+			event: 'deactivated',
+		});
+		expect(deactivated).toEqual([expect.objectContaining({ userId: null })]);
+
+		const outboxRecord = await outboxRepository.findOneOrFail({
+			where: { workflowId: workflow.id },
+		});
+		expect(outboxRecord.publishedVersionId).toBe(versionId);
+		expect(outboxRecord.status).toBe(WorkflowPublicationOutboxStatus.Pending);
+		expect(workflowPublicationNotifier.requestDrain).toHaveBeenCalled();
+		// No lifecycle hook fires: the workflow's active state did not change, and
+		// hook consumers must not observe a phantom user-less activation.
+		expect(externalHooks.run).not.toHaveBeenCalled();
+	});
+
+	it('returns superseded for a workflow without an active version and writes nothing', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const result = await workflowService.publishAsSystem(
+			workflow.id,
+			{ nodes: systemNodes(), connections: {}, nodeGroups: [] },
+			uuid(),
+		);
+
+		expect(result).toEqual({ published: false, reason: 'superseded' });
+		const untouched = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
+		expect(untouched.activeVersionId).toBeNull();
+		expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
+		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
+	});
+
+	it('returns superseded for a missing workflow', async () => {
+		await expect(
+			workflowService.publishAsSystem(
+				uuid(),
+				{ nodes: systemNodes(), connections: {}, nodeGroups: [] },
+				uuid(),
+			),
+		).resolves.toEqual({ published: false, reason: 'superseded' });
+	});
+
+	it('refuses to publish when the active version moved past the caller baseline', async () => {
+		// The caller (the applier) baselines on the version it healed. A user
+		// publishing a newer clean version while that record was in flight must
+		// win: the healed copy of the older version is discarded, not published
+		// over the newer one.
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({}, owner);
+		const healedSourceVersionId = workflow.activeVersionId as string;
+		const interloperVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: interloperVersionId });
+		const publishHistoryBefore = await workflowPublishHistoryRepository.findBy({
+			workflowId: workflow.id,
+		});
+		const versionRowsBefore = await Container.get(WorkflowHistoryRepository).countBy({
+			workflowId: workflow.id,
+		});
+
+		// The user's newer publish lands before the system publish is attempted.
+		await workflowRepository.update({ id: workflow.id }, { activeVersionId: interloperVersionId });
+
+		const result = await workflowService.publishAsSystem(
+			workflow.id,
+			{ nodes: systemNodes(), connections: {}, nodeGroups: [] },
+			healedSourceVersionId,
+		);
+
+		expect(result).toEqual({ published: false, reason: 'superseded' });
+		const after = await workflowRepository.findOneOrFail({ where: { id: workflow.id } });
+		expect(after.activeVersionId).toBe(interloperVersionId);
+		// A lost race writes nothing — including the system-authored version row,
+		// which would otherwise linger as a phantom entry in version history.
+		expect(await workflowPublishHistoryRepository.findBy({ workflowId: workflow.id })).toEqual(
+			publishHistoryBefore,
+		);
+		expect(
+			await Container.get(WorkflowHistoryRepository).countBy({ workflowId: workflow.id }),
+		).toBe(versionRowsBefore);
+		expect(await outboxRepository.findBy({ workflowId: workflow.id })).toEqual([]);
+		expect(workflowPublicationNotifier.requestDrain).not.toHaveBeenCalled();
 	});
 });

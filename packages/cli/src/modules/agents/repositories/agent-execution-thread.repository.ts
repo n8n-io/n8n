@@ -1,6 +1,8 @@
+import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { DataSource, LessThan, Repository } from '@n8n/typeorm';
+import { DataSource, Repository, type SelectQueryBuilder } from '@n8n/typeorm';
 
+import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
 
 const SESSION_NUMBER_RETRY_ATTEMPTS = 3;
@@ -103,17 +105,48 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 		agentId: string,
 		limit: number,
 		cursor?: string,
+		filters: AgentSessionQueryFilters = {},
 	): Promise<AgentExecutionThreadPage> {
-		const where: Record<string, unknown> = { projectId, agentId };
+		const query = this.createQueryBuilder('thread')
+			.where('thread.projectId = :projectId', { projectId })
+			.andWhere('thread.agentId = :agentId', { agentId })
+			.orderBy('thread.updatedAt', 'DESC')
+			.take(limit + 1);
+
 		if (cursor) {
-			where.updatedAt = LessThan(new Date(cursor));
+			query.andWhere('thread.updatedAt < :cursor', { cursor: new Date(cursor) });
+		}
+		if (filters.updatedAfter) {
+			query.andWhere('thread.updatedAt >= :updatedAfter', {
+				updatedAfter: filters.updatedAfter,
+			});
+		}
+		if (filters.updatedBefore) {
+			query.andWhere('thread.updatedAt <= :updatedBefore', {
+				updatedBefore: filters.updatedBefore,
+			});
+		}
+		if (filters.status) {
+			const latestStatus = this.latestExecutionStatusSubquery(query);
+			const failureExists = this.failureExistsSubquery(query);
+			if (filters.status === 'succeeded') {
+				query.andWhere(`(${latestStatus}) = 'success' AND NOT EXISTS ${failureExists}`);
+			} else if (filters.status === 'error') {
+				query.andWhere(
+					`((${latestStatus}) = 'error' OR ` +
+						`((${latestStatus}) = 'success' AND EXISTS ${failureExists}))`,
+				);
+			} else {
+				query.andWhere(`(${latestStatus}) = :sessionStatus`, {
+					sessionStatus: filters.status,
+				});
+			}
+		}
+		if (filters.origin) {
+			this.applyOriginFilter(query, filters.origin);
 		}
 
-		const threads = await this.find({
-			where,
-			order: { updatedAt: 'DESC' },
-			take: limit + 1,
-		});
+		const threads = await query.getMany();
 
 		const hasMore = threads.length > limit;
 		if (hasMore) threads.pop();
@@ -122,6 +155,63 @@ export class AgentExecutionThreadRepository extends Repository<AgentExecutionThr
 			threads,
 			nextCursor: hasMore ? threads[threads.length - 1].updatedAt.toISOString() : null,
 		};
+	}
+
+	private latestExecutionStatusSubquery(query: SelectQueryBuilder<AgentExecutionThread>): string {
+		return query
+			.subQuery()
+			.select('latestExecution.status')
+			.from(AgentExecution, 'latestExecution')
+			.where('latestExecution.threadId = thread.id')
+			.orderBy('latestExecution.createdAt', 'DESC')
+			.addOrderBy('latestExecution.id', 'DESC')
+			.limit(1)
+			.getQuery();
+	}
+
+	private failureExistsSubquery(query: SelectQueryBuilder<AgentExecutionThread>): string {
+		return query
+			.subQuery()
+			.select('1')
+			.from(AgentExecution, 'failedExecution')
+			.where('failedExecution.threadId = thread.id')
+			.andWhere('failedExecution.failureSummary IS NOT NULL')
+			.getQuery();
+	}
+
+	private applyOriginFilter(
+		query: SelectQueryBuilder<AgentExecutionThread>,
+		origin: AgentSessionOrigin,
+	): void {
+		const firstSource = query
+			.subQuery()
+			.select('sourceExecution.source')
+			.from(AgentExecution, 'sourceExecution')
+			.where('sourceExecution.threadId = thread.id')
+			.andWhere('sourceExecution.source IS NOT NULL')
+			.orderBy('sourceExecution.createdAt', 'ASC')
+			.addOrderBy('sourceExecution.id', 'ASC')
+			.limit(1)
+			.getQuery();
+		const normalizedSource = `LOWER(TRIM(COALESCE((${firstSource}), '')))`;
+		const isSubAgent =
+			'(thread."parentThreadId" IS NOT NULL OR ' +
+			`${normalizedSource} IN ('subagent', 'sub-agent'))`;
+		const isSchedule =
+			`(NOT ${isSubAgent} AND ` + `(thread."taskId" IS NOT NULL OR ${normalizedSource} = 'task'))`;
+		const isDirect = `(NOT ${isSubAgent} AND NOT ${isSchedule})`;
+
+		if (origin === 'sub-agent') {
+			query.andWhere(isSubAgent);
+		} else if (origin === 'schedule') {
+			query.andWhere(isSchedule);
+		} else if (origin === 'preview') {
+			query.andWhere(`${isDirect} AND ${normalizedSource} IN ('', 'chat', 'n8n_chat')`);
+		} else {
+			query.andWhere(`${isDirect} AND ${normalizedSource} = :sessionOrigin`, {
+				sessionOrigin: origin,
+			});
+		}
 	}
 
 	async findByParentThreadId(

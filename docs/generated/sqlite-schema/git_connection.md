@@ -22,7 +22,7 @@ CREATE TABLE "git_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" var
 | encryptedPassword | TEXT |  | true |  |  |  |
 | encryptedPrivateKey | TEXT |  | true |  |  |  |
 | encryptedUsername | TEXT |  | true |  |  |  |
-| id | varchar(36) |  | false |  |  |  |
+| id | varchar(36) |  | false | [git_connection_project](git_connection_project.md) |  |  |
 | keyGeneratorType | varchar(16) |  | true |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | publicKey | TEXT |  | true |  |  |  |
@@ -51,6 +51,7 @@ CREATE TABLE "git_connection" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" var
 ```mermaid
 erDiagram
 
+"git_connection_project" }o--|| "git_connection" : "FOREIGN KEY (gitConnectionId) REFERENCES git_connection (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "git_connection" {
   varchar_64_ baseCommit
@@ -65,6 +66,12 @@ erDiagram
   varchar_128_ name
   TEXT publicKey
   TEXT repositoryUrl
+  datetime_3_ updatedAt
+}
+"git_connection_project" {
+  datetime_3_ createdAt
+  varchar_36_ gitConnectionId FK
+  varchar_36_ projectId PK
   datetime_3_ updatedAt
 }
 ```

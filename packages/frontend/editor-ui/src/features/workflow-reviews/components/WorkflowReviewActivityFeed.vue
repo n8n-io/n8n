@@ -108,12 +108,12 @@ onMounted(() => {
 			:class="$style.errorRow"
 			data-test-id="workflow-review-activity-error"
 		>
-			<N8nText color="text-light" size="small">
+			<N8nText color="danger" size="small">
 				{{ i18n.baseText('workflowReviews.detail.activity.error.load') }}
 			</N8nText>
 			<N8nButton
 				size="mini"
-				variant="ghost"
+				variant="subtle"
 				data-test-id="workflow-review-activity-retry"
 				@click="retry()"
 			>
@@ -131,12 +131,12 @@ onMounted(() => {
 				only place a refetch can show progress. -->
 			<N8nLoading v-if="loadingMore || loading" :loading="true" :rows="1" />
 			<div v-if="error" :class="$style.errorRow">
-				<N8nText color="text-light" size="small">
+				<N8nText color="danger" size="small">
 					{{ i18n.baseText('workflowReviews.detail.activity.error.load') }}
 				</N8nText>
 				<N8nButton
 					size="mini"
-					variant="ghost"
+					variant="subtle"
 					data-test-id="workflow-review-activity-load-more-retry"
 					@click="retry()"
 				>
@@ -161,6 +161,9 @@ onMounted(() => {
 				>
 					<component :is="resolveActivityComponent(entry)" :entry="entry" />
 				</div>
+				<div v-if="$slots.footer" role="listitem" :class="$style.item">
+					<slot name="footer" />
+				</div>
 			</div>
 		</template>
 	</div>
@@ -180,7 +183,7 @@ onMounted(() => {
 
 /* The detail body stacks and takes over scrolling here, so the feed must bound itself or its
 	load-older sentinel never leaves the screen and drains every page. */
-@media (max-width: 60rem) {
+@container review-detail (max-width: 44rem) {
 	.feed {
 		max-height: 60vh;
 	}
@@ -229,8 +232,8 @@ onMounted(() => {
 .errorRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
-	padding-bottom: var(--spacing--xs);
+	gap: var(--spacing--md);
+	padding-block: var(--spacing--xs);
 }
 
 .sentinel {

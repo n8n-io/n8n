@@ -1,5 +1,10 @@
-import type { AgentIntegrationDisconnectWarning, RichCardComponentType } from '@n8n/api-types';
+import type {
+	AgentIntegrationConfig,
+	AgentIntegrationDisconnectWarning,
+	RichCardComponentType,
+} from '@n8n/api-types';
 import { Container, Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
@@ -118,8 +123,36 @@ export class SlackIntegration extends AgentChatIntegration {
 		return await Container.get(SlackManagedSetupService).deleteAppForCredential(ctx);
 	}
 
-	async prepareSentThread(thread: Thread<unknown, unknown>): Promise<void> {
+	async prepareSentThread(
+		thread: Thread<unknown, unknown>,
+		integration: AgentIntegrationConfig,
+	): Promise<void> {
+		if (this.usesAgentMessagingExperience(integration) && this.isConversationScopedDm(thread.id)) {
+			return;
+		}
 		await subscribeSlackThread(thread);
+	}
+
+	messageThreadId(
+		message: { id: string; threadId: string; raw?: unknown },
+		context?: { inbound?: boolean },
+	): string | undefined {
+		// 1:1 DMs and group DMs (MPIMs) are conversation-scoped. Re-anchoring
+		// each inbound top-level message at its own ts would split that into a
+		// new session per message. Private-channel G ids still re-anchor below.
+		// Outbound still re-anchors so threaded replies bind at the sent
+		// message ts. Threaded inbound already has thread_ts and is not
+		// rewritten below.
+		if (context?.inbound && this.isConversationScopedInbound(message)) return undefined;
+		// Only Slack thread ids are `slack:{channel}:{threadTs}`. A top-level
+		// post or DM arrives on the channel-level pseudo-thread (empty threadTs);
+		// anchor it at the message's own id so replies correlate. Already-threaded
+		// messages keep their id.
+		const match = /^slack:([CDG][^:]*):(.*)$/.exec(message.threadId);
+		if (!match) return undefined;
+		const [, channel, threadTs] = match;
+		if (threadTs) return undefined;
+		return `slack:${channel}:${message.id}`;
 	}
 
 	getPlatformAgentContext(chat: ChatInstance): PlatformAgentContext {
@@ -166,7 +199,11 @@ export class SlackIntegration extends AgentChatIntegration {
 		const botToken = this.extractBotToken(ctx.credential);
 		const signingSecret = this.extractSigningSecret(ctx.credential);
 		const { createSlackAdapter } = await loadSlackAdapter();
-		return createSlackAdapter({ botToken, signingSecret });
+		return createSlackAdapter({
+			botToken,
+			signingSecret,
+			agentView: this.usesAgentMessagingExperience(ctx.integration),
+		});
 	}
 
 	/**
@@ -220,6 +257,25 @@ export class SlackIntegration extends AgentChatIntegration {
 		throw new Error(
 			'The Slack credential is missing a signing secret, which is required for agent integrations. ' +
 				'Edit the credential and add your Slack app\'s "Signing Secret" (found under Basic Information in the Slack API dashboard).',
+		);
+	}
+
+	private usesAgentMessagingExperience(integration: AgentIntegrationConfig): boolean {
+		return integration.type === 'slack' && integration.settings?.messagingExperience === 'agent';
+	}
+
+	private isConversationScopedDm(threadId: string): boolean {
+		return /^slack:D[^:]+:$/.test(threadId);
+	}
+
+	private isConversationScopedInbound(message: { threadId: string; raw?: unknown }): boolean {
+		if (this.isConversationScopedDm(message.threadId)) return true;
+		// G is shared by MPIMs and legacy private channels; only MPIMs are
+		// one conversation. Missing channel_type is treated as a channel.
+		return (
+			/^slack:G[^:]+:$/.test(message.threadId) &&
+			isRecord(message.raw) &&
+			message.raw.channel_type === 'mpim'
 		);
 	}
 }
