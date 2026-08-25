@@ -6,10 +6,10 @@ import { computed } from 'vue';
 import type { TestRunRecord } from '../../evaluation.api';
 import { averageNormalizedScore } from '../../evaluation.utils';
 
-const STATUS_PILL_THEME: Record<string, 'success' | 'warning' | 'danger' | 'tertiary'> = {
+const STATUS_PILL_THEME: Record<string, 'success' | 'warning' | 'danger' | 'outline'> = {
 	completed: 'success',
-	running: 'tertiary',
-	new: 'tertiary',
+	running: 'outline',
+	new: 'outline',
 	error: 'danger',
 	cancelled: 'warning',
 	success: 'success',
@@ -44,7 +44,7 @@ const score = computed<number | null>(() => {
 	return avg === null ? null : Math.round(avg * 100);
 });
 
-const statusTheme = computed(() => STATUS_PILL_THEME[props.run.status] ?? 'tertiary');
+const statusTheme = computed(() => STATUS_PILL_THEME[props.run.status] ?? 'outline');
 
 const statusLabel = computed(() => {
 	const key = STATUS_FRIENDLY_KEY[props.run.status];
@@ -74,7 +74,7 @@ const formattedDate = computed(() => {
 			<N8nText size="small" bold>#{{ run.id.slice(0, 8) }}</N8nText>
 			<N8nText size="xsmall" color="text-light">{{ formattedDate }}</N8nText>
 		</div>
-		<N8nBadge v-if="datasetName" theme="tertiary" size="small" :class="$style.datasetChip">
+		<N8nBadge v-if="datasetName" variant="outline" :class="$style.datasetChip">
 			{{ datasetName }}
 		</N8nBadge>
 		<span v-else :class="$style.datasetEmpty">
@@ -89,9 +89,7 @@ const formattedDate = computed(() => {
 			>{{ score }}%</N8nText
 		>
 		<N8nText v-else size="small" color="text-light" :class="$style.scoreText">—</N8nText>
-		<N8nBadge :theme="statusTheme" size="small" :class="$style.statusPill">{{
-			statusLabel
-		}}</N8nBadge>
+		<N8nBadge :variant="statusTheme" :class="$style.statusPill">{{ statusLabel }}</N8nBadge>
 	</div>
 </template>
 

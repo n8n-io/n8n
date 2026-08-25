@@ -3,8 +3,6 @@ import type { BaseTextKey } from '@n8n/i18n';
 import type { TestTableColumn } from './TestTableBase.vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
-import type { BadgeTheme } from '@n8n/design-system';
-
 import { N8nBadge, N8nTooltip } from '@n8n/design-system';
 defineProps<{
 	column: TestTableColumn<T>;
@@ -39,15 +37,18 @@ const errorTooltipMap: Record<string, BaseTextKey> = {
 };
 
 // FIXME: move status logic to a parent component
-const statusThemeMap: Record<string, BadgeTheme> = {
-	new: 'default',
+const statusThemeMap: Record<
+	string,
+	'default' | 'primary' | 'secondary' | 'outline' | 'warning' | 'danger' | 'success'
+> = {
+	new: 'outline',
 	running: 'warning',
 	evaluation_running: 'warning',
 	completed: 'success',
 	error: 'danger',
 	success: 'success',
 	warning: 'warning',
-	cancelled: 'default',
+	cancelled: 'outline',
 };
 
 const statusLabelMap: Record<string, string> = {
@@ -97,7 +98,7 @@ function getErrorTooltipUrl(column: TestTableColumn<T>, row: T): string | undefi
 		<template #content>
 			<div v-n8n-html="getErrorTooltip(column, row)" />
 		</template>
-		<N8nBadge :theme="statusThemeMap[row.status]" class="mr-4xs">
+		<N8nBadge :variant="statusThemeMap[row.status]" class="mr-4xs">
 			{{ statusLabelMap[row.status] }}
 		</N8nBadge>
 	</N8nTooltip>

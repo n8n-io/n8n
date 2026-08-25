@@ -237,10 +237,10 @@ function moveResource() {
 		<template #header>
 			<N8nText tag="h2" bold :class="$style.cardHeading">
 				{{ data.name }}
-				<N8nBadge v-if="readOnly" class="ml-3xs" theme="tertiary" bold>
+				<N8nBadge v-if="readOnly" class="ml-3xs" variant="outline">
 					{{ locale.baseText('credentials.item.readonly') }}
 				</N8nBadge>
-				<N8nBadge v-if="needsSetup" class="ml-3xs" theme="warning">
+				<N8nBadge v-if="needsSetup" class="ml-3xs" variant="warning">
 					{{ locale.baseText('credentials.item.needsSetup') }}
 				</N8nBadge>
 			</N8nText>

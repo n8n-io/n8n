@@ -248,8 +248,7 @@ function onListBackgroundClick() {
 								<div :class="$style.cardMeta">
 									<N8nBadge
 										v-if="item.workflowName"
-										theme="tertiary"
-										:show-border="false"
+										variant="outline"
 										:class="$style.workflowBadge"
 										data-test-id="workflow-review-request-workflow-badge"
 									>
