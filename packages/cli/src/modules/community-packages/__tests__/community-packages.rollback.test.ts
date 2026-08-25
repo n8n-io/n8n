@@ -197,6 +197,30 @@ describe('CommunityPackagesService install rollback (real filesystem)', () => {
 		});
 	});
 
+	describe('update with a missing or malformed ledger', () => {
+		test('restores the previous version from the database instead of dropping the entry', async () => {
+			// Unlike the shared beforeEach's valid ledger, this one can't be read at all.
+			await writeFile(path.join(nodesDownloadDir, 'package.json'), 'not valid json', 'utf-8');
+			installedPackageRepository.find.mockResolvedValue([
+				mock<InstalledPackages>({ packageName: PACKAGE_NAME, installedVersion: '1.0.0' }),
+			]);
+			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
+
+			await expect(
+				communityPackagesService.updatePackage(
+					PACKAGE_NAME,
+					mock<InstalledPackages>({ packageName: PACKAGE_NAME, installedVersion: '1.0.0' }),
+					'2.0.0',
+				),
+			).rejects.toThrow('The specified package could not be loaded');
+
+			// The download rebuilt the ledger from the DB and pointed it at 2.0.0; the rollback
+			// has to restore 1.0.0 from the DB record, not drop the entry because the read at the
+			// start of the update failed.
+			expect(await ledgerDependencies()).toEqual({ [PACKAGE_NAME]: '1.0.0' });
+		});
+	});
+
 	describe('pub/sub follower', () => {
 		test('keeps the existing package when the download fails', async () => {
 			vi.mocked(executeNpmCommand).mockRejectedValueOnce(new Error('download failed'));

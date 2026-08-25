@@ -451,7 +451,12 @@ export class CommunityPackagesService {
 			);
 
 			// The ledger entry to put back on failure, read before `downloadPackage` overwrites it.
-			const previousVersion = (await this.readPackageJson())?.dependencies[packageName];
+			// Falls back to the DB record on update: if the ledger was missing or malformed,
+			// `downloadPackage` rebuilds it from the DB anyway, so that's the real previous value.
+			const previousVersion = isUpdate
+				? ((await this.readPackageJson())?.dependencies[packageName] ??
+					options.installedPackage.installedVersion)
+				: (await this.readPackageJson())?.dependencies[packageName];
 
 			// Keep whatever is on disk aside so any failure below can roll back to it. This has
 			// to run for a fresh install too: a directory can pre-exist one, after a crash
