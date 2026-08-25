@@ -169,9 +169,8 @@ const projectLocation = computed(() => {
 		>
 			<N8nBadge
 				:class="[$style.badge, $style.projectBadge, projectLocation && $style.link]"
-				theme="tertiary"
+				variant="outline"
 				data-test-id="card-badge"
-				:show-border="showBadgeBorder"
 			>
 				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
 				<RouterLink v-if="projectLocation" :to="projectLocation">
