@@ -1,15 +1,9 @@
-import type {
-	IDataObject,
-	IExecuteFunctions,
-	IGetNodeParameterOptions,
-	INode,
-	INodeParameterResourceLocator,
-} from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { mockDeep } from 'vitest-mock-extended';
 
 import { execute } from '../../../actions/page/removeLabel.operation';
 import { confluenceApiRequest } from '../../../transport';
+import { mockExecuteCtx } from '../../shared';
 
 vi.mock('../../../transport', () => ({
 	CONFLUENCE_CREDENTIAL_NAME: 'confluenceCloudOAuth2Api',
@@ -17,32 +11,6 @@ vi.mock('../../../transport', () => ({
 }));
 
 const apiRequest = vi.mocked(confluenceApiRequest);
-
-const mockNode: INode = {
-	id: 'test-node',
-	name: 'Test Confluence Node',
-	type: 'n8n-nodes-base.confluence',
-	typeVersion: 1,
-	position: [0, 0],
-	parameters: {},
-};
-
-function createContext(params: Record<string, unknown>) {
-	const ctx = mockDeep<IExecuteFunctions>();
-	ctx.getNode.mockReturnValue(mockNode);
-	ctx.getNodeParameter.mockImplementation(
-		(name: string, _itemIndex?: number, fallback?: unknown, options?: IGetNodeParameterOptions) => {
-			// `in`, not `??`: a parameter whose expression resolves to undefined keeps
-			// that value instead of picking up the fallback, as the real context does
-			const value = name in params ? params[name] : fallback;
-			if (options?.extractValue && value && typeof value === 'object' && 'value' in value) {
-				return (value as INodeParameterResourceLocator).value as never;
-			}
-			return value as never;
-		},
-	);
-	return ctx;
-}
 
 describe('Confluence page:removeLabel operation', () => {
 	beforeEach(() => {
@@ -52,7 +20,7 @@ describe('Confluence page:removeLabel operation', () => {
 	});
 
 	it('deletes the trimmed label by name in the query string and reports it', async () => {
-		const ctx = createContext({
+		const ctx = mockExecuteCtx({
 			page: { mode: 'id', value: '123' },
 			labelName: '  runbook  ',
 		});
@@ -74,7 +42,7 @@ describe('Confluence page:removeLabel operation', () => {
 		['an expression resolving to undefined', undefined],
 	])('throws without calling the API when the label is %s', async (_case, labelName) => {
 		// By Title, so a guard placed after the page lookup would still issue a request
-		const ctx = createContext({ page: { mode: 'title', value: 'Doc' }, labelName });
+		const ctx = mockExecuteCtx({ page: { mode: 'title', value: 'Doc' }, labelName });
 
 		await expect(execute.call(ctx, 0)).rejects.toThrow(NodeOperationError);
 		await expect(execute.call(ctx, 0)).rejects.toThrow("The 'Label' parameter is empty");
@@ -82,7 +50,7 @@ describe('Confluence page:removeLabel operation', () => {
 	});
 
 	it('rejects a comma-separated list instead of removing nothing', async () => {
-		const ctx = createContext({
+		const ctx = mockExecuteCtx({
 			page: { mode: 'title', value: 'Doc' },
 			labelName: 'qa-alpha, qa-beta',
 		});
@@ -92,8 +60,31 @@ describe('Confluence page:removeLabel operation', () => {
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
+	it('resolves a By Title selection to its page ID before deleting', async () => {
+		apiRequest.mockResolvedValueOnce({ results: [{ id: '777', title: 'Doc', spaceId: '1' }] });
+		const ctx = mockExecuteCtx({ page: { mode: 'title', value: 'Doc' }, labelName: 'runbook' });
+
+		const result = await execute.call(ctx, 0);
+
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			1,
+			'GET',
+			'/wiki/api/v2/pages',
+			{},
+			{ title: 'Doc', limit: 250 },
+		);
+		expect(apiRequest).toHaveBeenNthCalledWith(
+			2,
+			'DELETE',
+			'/wiki/rest/api/content/777/label',
+			{},
+			{ name: 'runbook' },
+		);
+		expect(result).toEqual({ removed: true, pageId: '777', label: 'runbook' });
+	});
+
 	it('passes a label containing a slash through the query string untouched', async () => {
-		const ctx = createContext({ page: { mode: 'id', value: '123' }, labelName: 'team/qa' });
+		const ctx = mockExecuteCtx({ page: { mode: 'id', value: '123' }, labelName: 'team/qa' });
 
 		const result = await execute.call(ctx, 0);
 

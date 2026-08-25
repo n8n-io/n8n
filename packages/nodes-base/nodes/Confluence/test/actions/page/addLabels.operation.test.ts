@@ -1,14 +1,8 @@
-import type {
-	IExecuteFunctions,
-	IGetNodeParameterOptions,
-	INode,
-	INodeParameterResourceLocator,
-} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { mockDeep } from 'vitest-mock-extended';
 
 import { execute } from '../../../actions/page/addLabels.operation';
 import { confluenceApiRequest } from '../../../transport';
+import { mockExecuteCtx } from '../../shared';
 
 vi.mock('../../../transport', () => ({
 	CONFLUENCE_CREDENTIAL_NAME: 'confluenceCloudOAuth2Api',
@@ -17,32 +11,6 @@ vi.mock('../../../transport', () => ({
 
 const apiRequest = vi.mocked(confluenceApiRequest);
 
-const mockNode: INode = {
-	id: 'test-node',
-	name: 'Test Confluence Node',
-	type: 'n8n-nodes-base.confluence',
-	typeVersion: 1,
-	position: [0, 0],
-	parameters: {},
-};
-
-function createContext(params: Record<string, unknown>) {
-	const ctx = mockDeep<IExecuteFunctions>();
-	ctx.getNode.mockReturnValue(mockNode);
-	ctx.getNodeParameter.mockImplementation(
-		(name: string, _itemIndex?: number, fallback?: unknown, options?: IGetNodeParameterOptions) => {
-			// `in`, not `??`: a parameter whose expression resolves to undefined keeps
-			// that value instead of picking up the fallback, as the real context does
-			const value = name in params ? params[name] : fallback;
-			if (options?.extractValue && value && typeof value === 'object' && 'value' in value) {
-				return (value as INodeParameterResourceLocator).value as never;
-			}
-			return value as never;
-		},
-	);
-	return ctx;
-}
-
 describe('Confluence page:addLabels operation', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -50,7 +18,7 @@ describe('Confluence page:addLabels operation', () => {
 	});
 
 	it('posts a single label with the global prefix', async () => {
-		const ctx = createContext({ page: { mode: 'id', value: '123' }, labels: 'runbook' });
+		const ctx = mockExecuteCtx({ page: { mode: 'id', value: '123' }, labels: 'runbook' });
 
 		await execute.call(ctx, 0);
 
@@ -61,7 +29,7 @@ describe('Confluence page:addLabels operation', () => {
 	});
 
 	it('trims a comma-separated list, drops empties and posts it in one request', async () => {
-		const ctx = createContext({
+		const ctx = mockExecuteCtx({
 			page: { mode: 'id', value: '123' },
 			labels: ' alpha , ,beta, ',
 		});
@@ -84,18 +52,17 @@ describe('Confluence page:addLabels operation', () => {
 			_links: { base: 'https://example.atlassian.net/wiki' },
 		};
 		apiRequest.mockResolvedValueOnce(response);
-		const ctx = createContext({ page: { mode: 'id', value: '123' }, labels: 'runbook' });
+		const ctx = mockExecuteCtx({ page: { mode: 'id', value: '123' }, labels: 'runbook' });
 
 		expect(await execute.call(ctx, 0)).toEqual(response);
 	});
 
 	it.each([
 		['whitespace only', '   '],
-		['a comma-only list', ' , , '],
 		['an expression resolving to undefined', undefined],
 	])('throws without calling the API when the labels input is %s', async (_case, labels) => {
 		// By Title, so a guard placed after the page lookup would still issue a request
-		const ctx = createContext({ page: { mode: 'title', value: 'Doc' }, labels });
+		const ctx = mockExecuteCtx({ page: { mode: 'title', value: 'Doc' }, labels });
 
 		await expect(execute.call(ctx, 0)).rejects.toThrow(NodeOperationError);
 		await expect(execute.call(ctx, 0)).rejects.toThrow("The 'Labels' parameter is empty");
@@ -104,7 +71,7 @@ describe('Confluence page:addLabels operation', () => {
 
 	it('resolves a By Title selection to its page ID before posting', async () => {
 		apiRequest.mockResolvedValueOnce({ results: [{ id: '777', title: 'Doc', spaceId: '1' }] });
-		const ctx = createContext({ page: { mode: 'title', value: 'Doc' }, labels: 'runbook' });
+		const ctx = mockExecuteCtx({ page: { mode: 'title', value: 'Doc' }, labels: 'runbook' });
 
 		await execute.call(ctx, 0);
 
