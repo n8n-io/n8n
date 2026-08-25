@@ -33,13 +33,13 @@ let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
 let anchorClickSpy: ReturnType<typeof vi.spyOn> | undefined;
 const {
-	fetchAllCredentialsForWorkflowMock,
+	fetchUsableCredentialsMock,
 	fetchAllCredentialsMock,
 	fetchCredentialTypesMock,
 	setCredentialsMock,
 	agentPermissionsMock,
 } = vi.hoisted(() => ({
-	fetchAllCredentialsForWorkflowMock: vi.fn().mockResolvedValue(undefined),
+	fetchUsableCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchAllCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchCredentialTypesMock: vi.fn().mockResolvedValue(undefined),
 	setCredentialsMock: vi.fn(),
@@ -88,7 +88,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 		allCredentials: [],
 		getCredentialsByType: () => [],
 		fetchAllCredentials: fetchAllCredentialsMock,
-		fetchAllCredentialsForWorkflow: fetchAllCredentialsForWorkflowMock,
+		fetchUsableCredentials: fetchUsableCredentialsMock,
 		fetchCredentialTypes: fetchCredentialTypesMock,
 		setCredentials: setCredentialsMock,
 	}),
@@ -783,7 +783,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await renderView();
 
 		expect(setCredentialsMock).toHaveBeenCalledWith([]);
-		expect(fetchAllCredentialsForWorkflowMock).toHaveBeenCalledWith({ projectId: 'p1' });
+		expect(fetchUsableCredentialsMock).toHaveBeenCalledWith({ projectId: 'p1' });
 		expect(fetchAllCredentialsMock).not.toHaveBeenCalled();
 	});
 

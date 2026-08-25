@@ -133,11 +133,15 @@ model; reuse only what applies. Decorators, all from `@n8n/decorators`:
 
 ## List endpoints (cursor pagination)
 
-Copy the cursor flow from `tags.public.controller.ts`. Use `publicApiPaginationSchema`
-plus `decodeCursor` / `encodeNextCursor` from the shared pagination service; the
+Copy the cursor flow from `tags.public.controller.ts`. The input DTO takes
+`limit: publicApiPaginationSchema.limit` plus `cursor: z.string().optional()` —
+pick `limit` off the schema, never spread the whole `publicApiPaginationSchema`
+(it also exports `offset`, which must never be a Public API query param). Use
+`decodeCursor` / `encodeNextCursor` from the shared pagination service; the
 cursor is opaque; return `{ data, nextCursor }` (never a bare array) with
 `nextCursor: null` on the last page; an invalid cursor is a `400`. Preserve an
-existing endpoint's pagination as-is. Detail:
+existing endpoint's cursor semantics as-is — but an `offset` param is a
+defect to remove, not a contract to preserve. Detail:
 [List endpoints and cursor pagination](reference.md#list-endpoints-and-cursor-pagination).
 
 ## Wiring checklist
