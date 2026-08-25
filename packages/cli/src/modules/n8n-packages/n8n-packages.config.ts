@@ -14,7 +14,7 @@ export class PackageImportConfig {
 
 	/** Maximum number of entries in a package. */
 	@Env('N8N_IMPORT_MAX_ENTRIES')
-	maxEntries: number = 5_000;
+	maxEntries: number = 20_000;
 
 	/** Maximum length in characters of a single entry path. */
 	@Env('N8N_IMPORT_MAX_PATH_LENGTH')

@@ -34,6 +34,10 @@ import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
  */
 @Service()
 export class N8nPackageParser {
+	private readonly manifests = new WeakMap<PackageReader, Promise<PackageManifest>>();
+
+	private readonly dataTables = new WeakMap<PackageReader, Promise<SerializedDataTable[]>>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly nodeTypes: NodeTypes,
@@ -41,6 +45,15 @@ export class N8nPackageParser {
 	) {}
 
 	async getManifest(reader: PackageReader): Promise<PackageManifest> {
+		let manifest = this.manifests.get(reader);
+		if (!manifest) {
+			manifest = this.parseManifest(reader);
+			this.manifests.set(reader, manifest);
+		}
+		return await manifest;
+	}
+
+	private async parseManifest(reader: PackageReader): Promise<PackageManifest> {
 		try {
 			return packageManifestSchema.parse(await reader.readManifest());
 		} catch (error) {
@@ -75,6 +88,15 @@ export class N8nPackageParser {
 
 	/** Reads the package's data table schemas. */
 	async getDataTables(reader: PackageReader): Promise<SerializedDataTable[]> {
+		let dataTables = this.dataTables.get(reader);
+		if (!dataTables) {
+			dataTables = this.readDataTables(reader);
+			this.dataTables.set(reader, dataTables);
+		}
+		return await dataTables;
+	}
+
+	private async readDataTables(reader: PackageReader): Promise<SerializedDataTable[]> {
 		const manifest = await this.getManifest(reader);
 
 		const dataTables: SerializedDataTable[] = [];
@@ -290,8 +312,12 @@ export class N8nPackageParser {
 			});
 		}
 
-		return jsonParse<T>(content.toString('utf-8'), {
-			errorMessage: `Package ${label} file at ${path} is not valid JSON.`,
-		});
+		try {
+			return jsonParse<T>(content.toString('utf-8'), {
+				errorMessage: `Package ${label} file at ${path} is not valid JSON.`,
+			});
+		} finally {
+			reader.releaseFile?.(path);
+		}
 	}
 }

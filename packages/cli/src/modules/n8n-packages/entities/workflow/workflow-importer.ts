@@ -1,4 +1,4 @@
-import { WorkflowEntity } from '@n8n/db';
+import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import {
@@ -182,6 +182,7 @@ export class WorkflowImporter {
 		batchContext: WorkflowCreateBatchContext | undefined,
 	): Promise<PersistedWorkflowOutcome> {
 		if (item.action === 'skip') {
+			item.entity = item.existing;
 			return {
 				status: 'skipped',
 				workflow: item.existing,
@@ -189,9 +190,18 @@ export class WorkflowImporter {
 			};
 		}
 
+		const workflow = await this.persistWorkflow(context, item, bindings, batchContext);
+		// Planning is complete, so point the plan at the saved workflow instead of
+		// retaining the package and target node graphs beside the persisted one.
+		item.entity = workflow;
+		if (item.action === 'update') {
+			workflow.parentFolder ??= item.existing.parentFolder;
+			item.existing = workflow;
+		}
+
 		return {
 			status: item.action === 'create' ? 'created' : 'updated',
-			workflow: await this.persistWorkflow(context, item, bindings, batchContext),
+			workflow,
 			sourceWorkflowId: item.sourceWorkflowId,
 			item,
 		};
@@ -236,17 +246,13 @@ export function collectPlannedWorkflowBindings(items: WorkflowPlanItem[]): Impor
 	return new Map(items.map((item) => [item.sourceWorkflowId, planItemTargetId(item)]));
 }
 
-/** Clones package content for persistence without mutating the import plan. */
+/** Applies resolved bindings after planning, when the package entity is no longer read as source data. */
 function prepareEntityForPersist(
 	source: WorkflowEntity,
 	bindings: PackageImportBindings,
 	decidedId?: string,
 ): WorkflowEntity {
-	const entity = Object.assign(new WorkflowEntity(), source, {
-		nodes: structuredClone(source.nodes),
-		...(source.settings ? { settings: structuredClone(source.settings) } : {}),
-		...(decidedId !== undefined ? { id: decidedId } : {}),
-	});
+	const entity = Object.assign(source, decidedId !== undefined ? { id: decidedId } : {});
 	applyCredentialBindingsInPlace(entity, bindings.credentials);
 	for (const reference of workflowReferences) reference.apply(entity, bindings);
 	return entity;

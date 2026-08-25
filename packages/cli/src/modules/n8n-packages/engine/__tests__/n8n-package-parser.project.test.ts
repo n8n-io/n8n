@@ -66,4 +66,14 @@ describe('N8nPackageParser.getProjects — custom span attributes', () => {
 
 		expect(project.customTelemetryTags).toBeUndefined();
 	});
+
+	it('validates each package manifest only once', async () => {
+		const reader = makeReader(baseManifest(), {});
+		const readManifest = vi.spyOn(reader, 'readManifest');
+
+		await parser.getManifest(reader);
+		await parser.getManifest(reader);
+
+		expect(readManifest).toHaveBeenCalledOnce();
+	});
 });

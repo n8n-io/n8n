@@ -67,6 +67,21 @@ describe('TarPackageReader', () => {
 				]),
 			);
 		});
+
+		it('releases file content without changing the package entry list', async () => {
+			const entryPath = 'workflows/a/workflow.json';
+			const buffer = await buildPackage((writer) => {
+				writer.writeFile('manifest.json', '{"packageFormatVersion":"1"}');
+				writer.writeFile(entryPath, '{}');
+			});
+			const reader = new TarPackageReader(buffer, DEFAULT_LIMITS);
+
+			await reader.readManifest();
+			reader.releaseFile(entryPath);
+
+			await expect(reader.readFile(entryPath)).rejects.toThrow(/does not contain entry/i);
+			await expect(reader.listEntries()).resolves.toContain(entryPath);
+		});
 	});
 
 	describe('manifest gating', () => {

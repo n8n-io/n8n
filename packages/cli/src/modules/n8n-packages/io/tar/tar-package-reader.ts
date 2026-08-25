@@ -20,19 +20,29 @@ export interface TarReaderLimits {
 export class TarPackageReader implements PackageReader {
 	private entries: Map<string, Buffer> | null = null;
 
+	private loading: Promise<Map<string, Buffer>> | null = null;
+
+	private manifest: PackageManifest | null = null;
+
+	private entryPaths: string[] | null = null;
+
 	constructor(
-		private readonly buffer: Buffer,
+		private buffer: Buffer | null,
 		private readonly limits: TarReaderLimits,
 	) {}
 
 	async readManifest(): Promise<PackageManifest> {
+		if (this.manifest) return this.manifest;
+
 		const entries = await this.load();
 		const manifest = entries.get(MANIFEST_PATH);
 		if (!manifest) {
 			throw new BadRequestError('Package is missing manifest.json');
 		}
 		try {
-			return jsonParse<PackageManifest>(manifest.toString('utf-8'));
+			this.manifest = jsonParse<PackageManifest>(manifest.toString('utf-8'));
+			entries.delete(MANIFEST_PATH);
+			return this.manifest;
 		} catch {
 			throw new BadRequestError('Package manifest is not valid JSON');
 		}
@@ -47,14 +57,20 @@ export class TarPackageReader implements PackageReader {
 		return content;
 	}
 
+	releaseFile(entryPath: string): void {
+		this.entries?.delete(entryPath);
+	}
+
 	async listEntries(): Promise<string[]> {
-		const entries = await this.load();
-		return Array.from(entries.keys());
+		await this.load();
+		return [...(this.entryPaths ?? [])];
 	}
 
 	private async load(): Promise<Map<string, Buffer>> {
 		if (this.entries) return this.entries;
-		this.entries = await this.parse();
+		this.loading ??= this.parse();
+		this.entries = await this.loading;
+		this.entryPaths = Array.from(this.entries.keys());
 		return this.entries;
 	}
 
@@ -90,6 +106,11 @@ export class TarPackageReader implements PackageReader {
 	}
 
 	private async parse(): Promise<Map<string, Buffer>> {
+		const source = this.buffer;
+		if (!source) {
+			throw new BadRequestError('Package archive is no longer available');
+		}
+
 		const { maxEntries, maxEntryBytes, maxUncompressedBytes } = this.limits;
 		const entries = new Map<string, Buffer>();
 		let totalUncompressedBytes = 0;
@@ -187,7 +208,11 @@ export class TarPackageReader implements PackageReader {
 			parser.on('end', () => {
 				if (!aborted) resolve(entries);
 			});
-			parser.end(this.buffer);
+			try {
+				parser.end(source);
+			} finally {
+				this.buffer = null;
+			}
 		});
 	}
 }

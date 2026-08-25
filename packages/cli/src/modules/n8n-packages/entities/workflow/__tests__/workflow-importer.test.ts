@@ -111,6 +111,11 @@ describe('WorkflowImporter.apply', () => {
 			'existing-update',
 			{ publicApi: true, source: 'import' },
 		);
+		expect(items[0].entity).toBe(created);
+		expect(items[1].entity).toBe(updated);
+		expect(items[1].existing?.nodes).toBe(updated.nodes);
+		expect(items[1].existing?.parentFolder).toBe(existingUpdate.parentFolder);
+		expect(items[2].entity).toBe(existingSkip);
 	});
 
 	it('does not prepare a batch context when no workflows are created', async () => {
