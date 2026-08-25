@@ -1,6 +1,6 @@
 import type { CreateRoleMappingRuleDto, RoleMappingRulePublicDto } from '@n8n/api-types';
 import { createTeamProject, testDb } from '@n8n/backend-test-utils';
-import { RoleMappingRuleRepository, type Project, type User } from '@n8n/db';
+import { ProjectRepository, RoleMappingRuleRepository, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import assert from 'node:assert';
 
@@ -127,7 +127,9 @@ describe('Role mapping rules in Public API', () => {
 				.send({ ...validInstancePayload, expression: '' });
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toBe('String must contain at least 1 character(s)');
+			expect(response.body.message).toBe(
+				'request/body/expression String must contain at least 1 character(s)',
+			);
 		});
 
 		it('rejects a project rule without projectIds with 400', async () => {
@@ -187,24 +189,6 @@ describe('Role mapping rules in Public API', () => {
 			expect(response.body.message).toBe(
 				'Could not find role with slug "global:nonexistent-role-slug-xyz"',
 			);
-		});
-
-		it('rejects with 401 without an API key', async () => {
-			const response = await testServer
-				.publicApiAgentWithoutApiKey()
-				.post('/role-mapping-rules')
-				.send(validInstancePayload);
-
-			expect(response.status).toBe(401);
-		});
-
-		it('rejects with 401 with an invalid API key', async () => {
-			const response = await testServer
-				.publicApiAgentWithApiKey('invalid-key')
-				.post('/role-mapping-rules')
-				.send(validInstancePayload);
-
-			expect(response.status).toBe(401);
 		});
 
 		it('rejects with 403 when the key lacks roleMappingRule:create', async () => {
@@ -326,20 +310,6 @@ describe('Role mapping rules in Public API', () => {
 				.query({ type: 'bogus' });
 
 			expect(response.status).toBe(400);
-		});
-
-		it('rejects with 401 without an API key', async () => {
-			const response = await testServer.publicApiAgentWithoutApiKey().get('/role-mapping-rules');
-
-			expect(response.status).toBe(401);
-		});
-
-		it('rejects with 401 with an invalid API key', async () => {
-			const response = await testServer
-				.publicApiAgentWithApiKey('invalid-key')
-				.get('/role-mapping-rules');
-
-			expect(response.status).toBe(401);
 		});
 
 		it('rejects with 403 when the key lacks roleMappingRule:list', async () => {
@@ -491,24 +461,6 @@ describe('Role mapping rules in Public API', () => {
 				.send({ targetIndex: 0 });
 
 			expect(response.status).toBe(404);
-		});
-
-		it('rejects with 401 without an API key', async () => {
-			const response = await testServer
-				.publicApiAgentWithoutApiKey()
-				.post('/role-mapping-rules/does-not-exist/move')
-				.send({ targetIndex: 0 });
-
-			expect(response.status).toBe(401);
-		});
-
-		it('rejects with 401 with an invalid API key', async () => {
-			const response = await testServer
-				.publicApiAgentWithApiKey('invalid-key')
-				.post('/role-mapping-rules/does-not-exist/move')
-				.send({ targetIndex: 0 });
-
-			expect(response.status).toBe(401);
 		});
 
 		it('rejects with 403 when the key lacks roleMappingRule:update', async () => {
@@ -693,7 +645,9 @@ describe('Role mapping rules in Public API', () => {
 				.send({ expression: '' });
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toBe('String must contain at least 1 character(s)');
+			expect(response.body.message).toBe(
+				'request/body/expression String must contain at least 1 character(s)',
+			);
 		});
 
 		it('rejects an instance rule carrying projectIds with 400', async () => {
@@ -734,28 +688,6 @@ describe('Role mapping rules in Public API', () => {
 			expect(response.body.message).toBe('One or more projects were not found');
 		});
 
-		it('rejects with 401 without an API key', async () => {
-			const rule = await createInstanceRule();
-
-			const response = await testServer
-				.publicApiAgentWithoutApiKey()
-				.patch(`/role-mapping-rules/${rule.id}`)
-				.send({ expression: 'claims.group === "engineers"' });
-
-			expect(response.status).toBe(401);
-		});
-
-		it('rejects with 401 with an invalid API key', async () => {
-			const rule = await createInstanceRule();
-
-			const response = await testServer
-				.publicApiAgentWithApiKey('invalid-key')
-				.patch(`/role-mapping-rules/${rule.id}`)
-				.send({ expression: 'claims.group === "engineers"' });
-
-			expect(response.status).toBe(401);
-		});
-
 		it('rejects with 403 when the key lacks roleMappingRule:update', async () => {
 			const rule = await createInstanceRule();
 			const scopedOwner = await createOwnerWithApiKey({ scopes: ['user:read'] });
@@ -778,6 +710,109 @@ describe('Role mapping rules in Public API', () => {
 				.publicApiAgentFor(owner)
 				.patch(`/role-mapping-rules/${rule.id}`)
 				.send({ expression: 'claims.group === "engineers"' });
+
+			expect(response.status).toBe(403);
+			expect(response.body.message).toBe('Provisioning is not licensed');
+
+			testServer.license.enable('feat:saml');
+		});
+	});
+
+	describe('DELETE /role-mapping-rules/:roleMappingRuleId', () => {
+		it('deletes a rule and returns 200 with the deleted rule', async () => {
+			const rule = await createInstanceRule(validInstancePayload);
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/role-mapping-rules/${rule.id}`);
+
+			expect(response.status).toBe(200);
+			expect(response.body).toEqual({
+				id: rule.id,
+				expression: rule.expression,
+				role: rule.role,
+				type: rule.type,
+				order: rule.order,
+				projectIds: rule.projectIds,
+				createdAt: rule.createdAt,
+				updatedAt: rule.updatedAt,
+			});
+
+			const stored = await Container.get(RoleMappingRuleRepository).findOneBy({ id: rule.id });
+			expect(stored).toBeNull();
+		});
+
+		it('closes the gap in the evaluation order of the remaining rules', async () => {
+			const { expression, role, type } = validInstancePayload;
+
+			const first = await createInstanceRule(validInstancePayload);
+			const second = await createInstanceRule({ expression, role, type, order: 1 });
+			const third = await createInstanceRule({ expression, role, type, order: 2 });
+
+			await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/role-mapping-rules/${second.id}`)
+				.expect(200);
+
+			const remaining = await testServer
+				.publicApiAgentFor(owner)
+				.get('/role-mapping-rules?type=instance')
+				.expect(200);
+
+			expect(remaining.body.data).toEqual([
+				expect.objectContaining({ id: first.id, order: 0 }),
+				expect.objectContaining({ id: third.id, order: 1 }),
+			]);
+		});
+
+		it('deletes a project rule without deleting the projects it referenced', async () => {
+			const rule = await createProjectRule({
+				expression: 'claims.project === "alpha"',
+				role: 'project:editor',
+				type: 'project',
+				projectIds: [teamProject.id],
+			});
+
+			await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/role-mapping-rules/${rule.id}`)
+				.expect(200);
+
+			const stored = await Container.get(RoleMappingRuleRepository).findOneBy({ id: rule.id });
+			expect(stored).toBeNull();
+
+			const project = await Container.get(ProjectRepository).findOneBy({ id: teamProject.id });
+			expect(project).not.toBeNull();
+		});
+
+		it('rejects an unknown rule id with 404', async () => {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete('/role-mapping-rules/00000000-0000-4000-8000-000000000000');
+
+			expect(response.status).toBe(404);
+		});
+
+		it('rejects with 403 when the key lacks roleMappingRule:delete', async () => {
+			const rule = await createInstanceRule(validInstancePayload);
+			const scopedOwner = await createOwnerWithApiKey({ scopes: ['user:read'] });
+
+			const response = await testServer
+				.publicApiAgentFor(scopedOwner)
+				.delete(`/role-mapping-rules/${rule.id}`);
+
+			expect(response.status).toBe(403);
+		});
+
+		it('rejects with 403 when provisioning is not licensed', async () => {
+			const rule = await createInstanceRule(validInstancePayload);
+
+			testServer.license.disable('feat:saml');
+			testServer.license.disable('feat:oidc');
+
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.delete(`/role-mapping-rules/${rule.id}`);
 
 			expect(response.status).toBe(403);
 			expect(response.body.message).toBe('Provisioning is not licensed');

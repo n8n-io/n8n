@@ -182,7 +182,7 @@ describe('WorkflowReviewRequestService', () => {
 
 			expect(result.id).toBe('req-1');
 			expect(dbLockService.withLockContext).toHaveBeenCalledWith(
-				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+				DbLock.WORKFLOW_REVIEW_MUTATION,
 				expect.any(Function),
 			);
 			expect(requestRepository.createRequest).toHaveBeenCalledWith(

@@ -17,6 +17,14 @@ describe('EngineDataPlaneProxyService', () => {
 		proxy = new EngineDataPlaneProxyService();
 	});
 
+	it('is unavailable until a provider registers', () => {
+		expect(proxy.isAvailable()).toBe(false);
+
+		proxy.registerProvider(mock<EngineDataPlaneProvider>());
+
+		expect(proxy.isAvailable()).toBe(true);
+	});
+
 	it('explains how to enable the engine when no provider is registered', async () => {
 		await expect(proxy.startExecution(request)).rejects.toThrow(UserError);
 		await expect(proxy.startExecution(request)).rejects.toThrow('N8N_ENABLED_MODULES');

@@ -29,10 +29,14 @@ vi.mock('../workflows/setup-workflow.service', () => ({
 	buildCompletedReport: vi.fn().mockReturnValue([]),
 }));
 
-// Mock the dynamic import of @n8n/workflow-sdk used by get-as-code
-vi.mock('@n8n/workflow-sdk', () => ({
-	generateWorkflowCode: vi.fn().mockReturnValue('// generated code'),
-}));
+// Mock code generation used by get-as-code while keeping shared SDK helpers real.
+vi.mock('@n8n/workflow-sdk', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/workflow-sdk')>();
+	return {
+		...actual,
+		generateWorkflowCode: vi.fn().mockReturnValue('// generated code'),
+	};
+});
 
 const emptyList = { workflows: [], total: 0, totalInScope: 0 };
 
@@ -1232,6 +1236,171 @@ describe('workflows tool', () => {
 				expect((result as { error: string }).error).toMatch(/modified outside this conversation/);
 				expect((result as { error: string }).error).toMatch(/action="get"/);
 			});
+		});
+
+		it('drops invalid node groups before saving and reports coded warnings', async () => {
+			const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v2',
+				checksum: 'checksum-saved',
+			});
+			const workflow = {
+				name: 'Updated WF',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [
+					{
+						id: 'group-1',
+						name: 'Broken group',
+						nodeIds: ['missing-node', 'another-missing-node'],
+					},
+				],
+			};
+
+			const result = await executeTool<{
+				success: boolean;
+				workflowId?: string;
+				warnings?: string[];
+			}>(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow },
+				{} as never,
+			);
+
+			expect(result).toMatchObject({ success: true, workflowId: 'wf1' });
+			expect(result.warnings).toHaveLength(1);
+			expect(result.warnings?.join('\n')).toContain('[NODE_GROUP_DROPPED]');
+			expect(result.warnings?.join('\n')).toContain('Broken group');
+			expect(result.warnings?.join('\n')).toContain('missing-node');
+			expect(result.warnings?.join('\n')).toContain('another-missing-node');
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+				'wf1',
+				expect.objectContaining({ nodeGroups: [] }),
+			);
+		});
+
+		it('saves valid node groups unchanged and returns no node-group warnings', async () => {
+			const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v2',
+				checksum: 'checksum-saved',
+			});
+			const workflow = {
+				name: 'Updated WF',
+				nodes: [
+					{
+						id: 'a',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: 'b',
+						name: 'B',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {},
+					},
+				],
+				connections: { A: { main: [[{ node: 'B', type: 'main', index: 0 }]] } },
+				nodeGroups: [{ id: 'group-1', name: 'Valid group', nodeIds: ['a', 'b'] }],
+			};
+
+			const result = await executeTool<{
+				success: boolean;
+				workflowId?: string;
+				warnings?: string[];
+			}>(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow },
+				{} as never,
+			);
+
+			expect(result).toMatchObject({ success: true, workflowId: 'wf1' });
+			expect(result.warnings).toBeUndefined();
+			expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith('wf1', workflow);
+		});
+
+		it('normalizes duplicate and blank node IDs before node-group validation', async () => {
+			const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
+			(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue({
+				id: 'wf1',
+				versionId: 'v2',
+				checksum: 'checksum-saved',
+			});
+			const workflow = {
+				name: 'Updated WF',
+				nodes: [
+					{
+						id: '',
+						name: 'A',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+					{
+						id: '',
+						name: 'B',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [100, 0],
+						parameters: {},
+					},
+				],
+				connections: { A: { main: [[{ node: 'B', type: 'main', index: 0 }]] } },
+				nodeGroups: [{ id: 'group-1', name: 'Healed group', nodeIds: ['', ''] }],
+			};
+
+			const result = await executeTool<{
+				success: boolean;
+				workflowId?: string;
+				warnings?: string[];
+			}>(
+				createWorkflowsTool(context, 'full'),
+				{ action: 'update', workflowId: 'wf1', workflow },
+				{} as never,
+			);
+
+			const savedWorkflow = (context.workflowService.updateFromWorkflowJSON as Mock).mock
+				.calls[0][1] as typeof workflow;
+			const nodeIds = savedWorkflow.nodes.map((node) => node.id);
+			expect(result).toMatchObject({ success: true, workflowId: 'wf1' });
+			expect(result.warnings).toBeUndefined();
+			expect(nodeIds.every(Boolean)).toBe(true);
+			expect(new Set(nodeIds)).toHaveProperty('size', 2);
+			expect(savedWorkflow.nodeGroups).toEqual([{ id: 'group-1', name: 'Healed group', nodeIds }]);
+		});
+
+		it('returns a tool error when raw update ID normalization cannot read nodes', async () => {
+			const context = createMockContext({ permissions: { updateWorkflow: 'always_allow' } });
+
+			const result = await executeTool(
+				createWorkflowsTool(context, 'full'),
+				{
+					action: 'update',
+					workflowId: 'wf1',
+					workflow: { name: 'Updated WF', nodes: [null], connections: {} },
+				},
+				{} as never,
+			);
+
+			expect(result).toMatchObject({ success: false });
+			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
 		});
 
 		it('tells the agent what to do when a user is editing the workflow in the editor', async () => {

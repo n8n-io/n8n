@@ -49,6 +49,28 @@ describe('Confluence router', () => {
 		]);
 	});
 
+	it('dispatches attachment:getMany and pairs the emitted items', async () => {
+		apiRequest.mockResolvedValue({ results: [{ id: 'a1', title: 'notes.txt' }] });
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'attachment',
+				operation: 'getMany',
+				page: { mode: 'id', value: '9' },
+				returnAll: true,
+				download: false,
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/pages/9/attachments',
+			{},
+			{ limit: 250 },
+		);
+		expect(result).toEqual([[{ json: { id: 'a1', title: 'notes.txt' }, pairedItem: { item: 0 } }]]);
+	});
+
 	it('dispatches page:delete and returns the deletion report', async () => {
 		const result = await router.call(
 			mockExecuteCtx({
@@ -75,6 +97,34 @@ describe('Confluence router', () => {
 			{ 'body-format': 'storage' },
 		);
 		expect(result).toEqual([[{ json: { id: '222', title: 'My Page' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('dispatches page:getManyByLabel and fans pages out into one item each', async () => {
+		apiRequest.mockResolvedValue({ results: [{ id: '1' }, { id: '2' }] });
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'getManyByLabel',
+				label: { mode: 'id', value: '777' },
+				returnAll: false,
+				limit: 50,
+				bodyFormat: 'storage',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/labels/777/pages',
+			{},
+			{ 'body-format': 'storage', limit: 50 },
+		);
+		expect(result).toEqual([
+			[
+				{ json: { id: '1' }, pairedItem: { item: 0 } },
+				{ json: { id: '2' }, pairedItem: { item: 0 } },
+			],
+		]);
 	});
 
 	it('fans an array response out into one item per page', async () => {

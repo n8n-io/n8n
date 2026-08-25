@@ -3261,6 +3261,8 @@ describe('LogStreamingEventRelay', () => {
 				toolName: 'execute_workflow',
 				workflowId: 'wf-789',
 				status: 'success',
+				authType: 'oauth',
+				clientId: 'client-abc',
 				clientName: 'Cursor',
 			};
 
@@ -3278,6 +3280,8 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: 'wf-789',
 					status: 'success',
 					errorMessage: undefined,
+					authType: 'oauth',
+					clientId: 'client-abc',
 					clientName: 'Cursor',
 				},
 			});
@@ -3295,6 +3299,7 @@ describe('LogStreamingEventRelay', () => {
 				toolName: 'get_workflow_details',
 				status: 'error',
 				errorMessage: 'Workflow not found',
+				authType: 'api_key',
 			};
 
 			eventService.emit('mcp-tool-called', event);
@@ -3311,6 +3316,9 @@ describe('LogStreamingEventRelay', () => {
 					workflowId: undefined,
 					status: 'error',
 					errorMessage: 'Workflow not found',
+					// An API-key caller has no OAuth client and reports no name
+					authType: 'api_key',
+					clientId: undefined,
 					clientName: undefined,
 				},
 			});

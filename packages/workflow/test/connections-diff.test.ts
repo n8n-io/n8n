@@ -546,4 +546,76 @@ describe('compareConnections', () => {
 			expect(result.removed).toEqual({});
 		});
 	});
+
+	describe('duplicate connections', () => {
+		// Nothing normalizes connections on the way in, so a bucket can hold the same
+		// connection twice. Comparing by value alone would collapse the duplicates and
+		// hide the change.
+		it('should detect removal of one of two identical connections', () => {
+			const prev: IConnections = {
+				node1: {
+					main: [[createConnection('node0', 'main', 0), createConnection('node0', 'main', 0)]],
+				},
+			};
+			const next: IConnections = {
+				node1: {
+					main: [[createConnection('node0', 'main', 0)]],
+				},
+			};
+
+			const result = compareConnections(prev, next);
+
+			expect(result.added).toEqual({});
+			expect(result.removed).toEqual({
+				node1: {
+					main: [
+						{
+							sourceIndex: 0,
+							value: { index: 1, connection: createConnection('node0', 'main', 0) },
+						},
+					],
+				},
+			});
+		});
+
+		it('should detect addition of a second identical connection', () => {
+			const prev: IConnections = {
+				node1: {
+					main: [[createConnection('node0', 'main', 0)]],
+				},
+			};
+			const next: IConnections = {
+				node1: {
+					main: [[createConnection('node0', 'main', 0), createConnection('node0', 'main', 0)]],
+				},
+			};
+
+			const result = compareConnections(prev, next);
+
+			expect(result.removed).toEqual({});
+			expect(result.added).toEqual({
+				node1: {
+					main: [
+						{
+							sourceIndex: 0,
+							value: { index: 1, connection: createConnection('node0', 'main', 0) },
+						},
+					],
+				},
+			});
+		});
+
+		it('should report no change when the same duplicates are on both sides', () => {
+			const connections: IConnections = {
+				node1: {
+					main: [[createConnection('node0', 'main', 0), createConnection('node0', 'main', 0)]],
+				},
+			};
+
+			const result = compareConnections(connections, connections);
+
+			expect(result.added).toEqual({});
+			expect(result.removed).toEqual({});
+		});
+	});
 });

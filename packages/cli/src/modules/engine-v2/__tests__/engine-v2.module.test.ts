@@ -1,5 +1,5 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { ExecutionsConfig } from '@n8n/config';
+import { EngineConfig, ExecutionsConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -11,6 +11,7 @@ import { EngineV2Runtime } from '../engine-v2.runtime';
 describe('EngineV2Module', () => {
 	let module: EngineV2Module;
 	let executionsConfig: ExecutionsConfig;
+	let engineConfig: EngineConfig;
 	let runtime: EngineV2Runtime;
 	let client: EngineDataPlaneClient;
 
@@ -18,6 +19,7 @@ describe('EngineV2Module', () => {
 		vi.clearAllMocks();
 
 		executionsConfig = mockInstance(ExecutionsConfig, { mode: 'regular' });
+		engineConfig = mockInstance(EngineConfig, { authSecret: '' });
 		runtime = mockInstance(EngineV2Runtime);
 		client = mockInstance(EngineDataPlaneClient);
 		Container.set(EngineDataPlaneProxyService, new EngineDataPlaneProxyService());
@@ -48,6 +50,20 @@ describe('EngineV2Module', () => {
 			await proxy.startExecution(request);
 
 			expect(client.startExecution).toHaveBeenCalledWith(request);
+		});
+
+		it('generates a secret when unset', async () => {
+			await module.init();
+
+			expect(engineConfig.authSecret).toMatch(/^[0-9a-f]{64}$/);
+		});
+
+		it('leaves a configured secret untouched', async () => {
+			engineConfig.authSecret = 'a-configured-secret';
+
+			await module.init();
+
+			expect(engineConfig.authSecret).toBe('a-configured-secret');
 		});
 	});
 
