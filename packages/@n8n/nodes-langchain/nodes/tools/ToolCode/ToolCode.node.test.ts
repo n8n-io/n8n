@@ -5,6 +5,7 @@ import {
 	type INode,
 	type INodeExecutionData,
 	type ISupplyDataFunctions,
+	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -98,6 +99,7 @@ describe('ToolCode', () => {
 				...args: unknown[]
 			) => JsTaskRunnerSandbox);
 
+			const logAiEvent = vi.fn();
 			const ctx = mock<ISupplyDataFunctions>({
 				getNode: vi.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
 				getNodeParameter: vi.fn().mockImplementation((paramName) => {
@@ -114,16 +116,17 @@ describe('ToolCode', () => {
 							return;
 					}
 				}),
-				getMode: vi.fn(() => 'manual'),
+				getMode: vi.fn((): WorkflowExecuteMode => 'manual'),
 				addInputData: vi.fn(() => ({ index: 0 })),
 				addOutputData: vi.fn(),
+				logAiEvent,
 			});
 
 			const supplyDataResult = await node.supplyData.call(ctx, 0);
 			const tool = supplyDataResult.response as DynamicTool;
 
 			await expect(tool.func('hello')).resolves.toBe('ok');
-			expect(ctx.logAiEvent).toHaveBeenCalledWith(
+			expect(logAiEvent).toHaveBeenCalledWith(
 				'ai-tool-called',
 				JSON.stringify({ query: 'hello', response: 'ok' }),
 			);
@@ -265,6 +268,7 @@ describe('ToolCode', () => {
 					}) as unknown as JsTaskRunnerSandbox,
 			);
 
+			const logAiEvent = vi.fn();
 			const mockExecute = mock<IExecuteFunctions>({
 				getInputData: vi.fn(() => inputData),
 				getNode: vi.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
@@ -284,17 +288,16 @@ describe('ToolCode', () => {
 							return;
 					}
 				}),
-				// @ts-expect-error - Mocking
-				getMode: vi.fn(() => 'manual'),
+				getMode: vi.fn((): WorkflowExecuteMode => 'manual'),
+				logAiEvent,
 			});
 
 			DynamicTool.prototype.invoke = vi.fn(async function (this: DynamicTool, args: unknown) {
 				return await this.func(args as string);
 			});
 
-			// @ts-expect-error - Mocking
 			await expect(node.execute.call(mockExecute)).rejects.toThrow(/boom/);
-			expect(mockExecute.logAiEvent).not.toHaveBeenCalled();
+			expect(logAiEvent).not.toHaveBeenCalled();
 		});
 
 		it('should keep returning error string when invoked via supplyData (legacy path)', async () => {
@@ -307,6 +310,7 @@ describe('ToolCode', () => {
 					}) as unknown as JsTaskRunnerSandbox,
 			);
 
+			const logAiEvent = vi.fn();
 			const ctx = mock<ISupplyDataFunctions>({
 				getNode: vi.fn(() => mock<INode>({ typeVersion: 1.2, name: 'test tool' })),
 				getNodeParameter: vi.fn().mockImplementation((paramName, _itemIndex) => {
@@ -327,17 +331,18 @@ describe('ToolCode', () => {
 				}),
 				addInputData: vi.fn(() => ({ index: 0 })),
 				addOutputData: vi.fn(),
+				logAiEvent,
 			});
 
 			const supplyDataResult = await node.supplyData.call(ctx, 0);
 			const tool = supplyDataResult.response as DynamicTool;
 
 			await expect(tool.func('query')).resolves.toMatch(/There was an error/);
-			expect(ctx.logAiEvent).toHaveBeenCalledWith(
+			expect(logAiEvent).toHaveBeenCalledWith(
 				'ai-tool-called',
 				expect.stringContaining('"query":"query"'),
 			);
-			expect(ctx.logAiEvent).toHaveBeenCalledWith(
+			expect(logAiEvent).toHaveBeenCalledWith(
 				'ai-tool-called',
 				expect.stringContaining('There was an error'),
 			);
