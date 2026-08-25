@@ -12,8 +12,8 @@ const CHANNEL_STATUSES = ['connected', 'error'];
  *
  * `credentialId` deliberately has no foreign key. A deleted credential is one of
  * the likeliest reasons a channel is down, and deleting one neither rewrites the
- * agent's channels nor stops them being started currently so the row saying "credential
- * not found" has to be writable even if its credential is gone.
+ * agent's channels nor stops them being started, so the row saying "credential
+ * not found" has to be writable even after its credential is gone.
  */
 export class CreateAgentChannelStatusTable1787213245846 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
