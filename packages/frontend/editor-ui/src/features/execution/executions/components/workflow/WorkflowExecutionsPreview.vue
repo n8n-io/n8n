@@ -23,6 +23,7 @@ import { useExecutionsStore } from '../../executions.store';
 import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/wizardSidepanel.store';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useAddExecutionToDataset } from '@/features/ai/evaluation.ee/composables/useAddExecutionToDataset';
+import { useWorkflowTestsStore } from '@/features/workflow-tests/workflowTests.store';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import { N8nButton, N8nIconButton, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -42,7 +43,7 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const locale = useI18n();
-const { showError } = useToast();
+const { showMessage, showError } = useToast();
 
 const executionHelpers = useExecutionHelpers();
 const message = useMessage();
@@ -79,6 +80,7 @@ const { isFeatureEnabled: isAddToDatasetFeatureEnabled } = useAddExecutionToData
 
 const router = useRouter();
 const evaluationsWizardStore = useEvaluationsWizardSidepanelStore();
+const workflowTestsStore = useWorkflowTestsStore();
 
 const showAddToDataset = computed(
 	() =>
@@ -101,6 +103,23 @@ async function onAddToDatasetClick() {
 		await router.push({ name: VIEWS.WORKFLOW, params: { workflowId: workflowId.value } });
 	} catch (error) {
 		showError(error, locale.baseText('evaluations.tests.seedFromExecution.error'));
+	}
+}
+
+async function onSaveAsTestClick() {
+	if (!props.execution) return;
+	try {
+		const test = await workflowTestsStore.createFromExecution(props.execution.id);
+		showMessage({
+			title: locale.baseText('workflowTests.saveAsTest.success.title'),
+			message: locale.baseText('workflowTests.saveAsTest.success.message', {
+				interpolate: { name: test.name },
+			}),
+			type: 'success',
+		});
+		await router.push({ name: VIEWS.WORKFLOW_TESTS, params: { workflowId: workflowId.value } });
+	} catch (error) {
+		showError(error, locale.baseText('workflowTests.saveAsTest.error'));
 	}
 }
 
@@ -443,6 +462,18 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 						</ElDropdownMenu>
 					</template>
 				</ElDropdown>
+
+				<N8nButton
+					v-if="execution?.status === 'success'"
+					variant="subtle"
+					size="medium"
+					icon="flask-conical"
+					:disabled="!workflowPermissions.update"
+					data-test-id="execution-preview-save-as-test-button"
+					@click="onSaveAsTestClick"
+				>
+					{{ locale.baseText('workflowTests.saveAsTest.button') }}
+				</N8nButton>
 
 				<N8nButton
 					v-if="showAddToDataset"
