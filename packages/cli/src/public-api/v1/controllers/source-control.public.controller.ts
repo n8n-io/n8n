@@ -32,12 +32,6 @@ export class SourceControlPublicController {
 		private readonly sourceControlScopedService: SourceControlScopedService,
 	) {}
 
-	private assertConnected() {
-		if (!this.sourceControlPreferencesService.isSourceControlConnected()) {
-			throw new BadRequestError('Source Control is not connected to a repository');
-		}
-	}
-
 	@Get('/status')
 	@Licensed(LICENSE_FEATURES.SOURCE_CONTROL)
 	@ApiKeyScope('sourceControl:read')
@@ -54,7 +48,10 @@ export class SourceControlPublicController {
 		_res: Response,
 		@Query query: SourceControlStatusQueryPublicDto,
 	): Promise<SourceControlStatusPublicDto> {
-		this.assertConnected();
+		if (!this.sourceControlPreferencesService.isSourceControlConnected()) {
+			throw new BadRequestError('Source Control is not connected to a repository');
+		}
+
 		await this.sourceControlScopedService.ensureIsAllowedToGetStatus(req);
 
 		const { offset, limit } = resolveOffsetPagination({ ...query, validateCursor: true });
