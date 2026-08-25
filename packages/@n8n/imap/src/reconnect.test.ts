@@ -163,6 +163,33 @@ describe('reconnecting', () => {
 		await connecting;
 	});
 
+	it('tears down a transport whose first SELECT failed', async () => {
+		const first = new FakeTransport();
+		first.mailboxOpen.mockRejectedValue(new Error("NO Mailbox doesn't exist"));
+
+		await expect(openWatching(handOut(first))).rejects.toThrow("Mailbox doesn't exist");
+
+		expect(first.close).toHaveBeenCalled();
+		expect(first.listenerCount('close')).toBe(0);
+	});
+
+	it('tears down a transport whose SELECT failed on the way back', async () => {
+		const [first, second] = [new FakeTransport(), new FakeTransport()];
+		second.mailboxOpen.mockRejectedValue(new Error("NO Mailbox doesn't exist"));
+		const onClose = vi.fn();
+
+		const connection = await openWatching(handOut(first, second));
+		connection.onClose(onClose);
+
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(second.close).toHaveBeenCalled();
+		const [reason, cause] = onClose.mock.calls[0] as [string, Error];
+		expect(reason).toBe('dropped');
+		expect(cause.message).toContain("Mailbox doesn't exist");
+	});
+
 	it('does not report the errors it recovers from', async () => {
 		const [first, second] = [new FakeTransport(), new FakeTransport()];
 		const onError = vi.fn();
