@@ -51,6 +51,13 @@ describe('toImapFlowOptions', () => {
 		expect(toImapFlowOptions(CREDENTIALS).tls).toEqual({ servername: 'imap.test.com' });
 	});
 
+	it.each(['127.0.0.1', '::1'])(
+		'does not name %s as the server, since node rejects an IP',
+		(host) => {
+			expect(toImapFlowOptions({ ...CREDENTIALS, host }).tls).toBeUndefined();
+		},
+	);
+
 	it('leaves TLS options off a plain connection', () => {
 		expect(toImapFlowOptions({ ...CREDENTIALS, secure: false }).tls).toBeUndefined();
 	});

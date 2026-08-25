@@ -1,4 +1,5 @@
 import type { ImapFlowOptions } from 'imapflow';
+import { isIP } from 'net';
 import type { ConnectionOptions } from 'tls';
 
 /** Milliseconds allowed to establish the connection and read the greeting. */
@@ -35,7 +36,8 @@ export function toImapFlowOptions(options: ImapConnectionOptions): ImapFlowOptio
 	const tls: ConnectionOptions = {};
 
 	if (options.allowUnauthorizedCerts) tls.rejectUnauthorized = false;
-	if (options.secure) tls.servername = host;
+	// SNI carries a hostname; node rejects an IP outright since 24.18.1.
+	if (options.secure && !isIP(host)) tls.servername = host;
 
 	const authTimeout = options.authTimeout ?? AUTH_TIMEOUT;
 
