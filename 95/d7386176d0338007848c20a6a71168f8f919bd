@@ -1,0 +1,24 @@
+packages/cli/src/workflows/triggers/poll-cursor.service.ts
+  s_5fa111a231c8b4::t_3e1ec7a497d3f2 95-98
+packages/cli/src/scheduling/poll-trigger-node/__tests__/poll-trigger-task-handler.test.ts
+  s_5fa111a231c8b4::t_1191a8028320a5 192,201-214
+  s_5fa111a231c8b4::t_8ec313aa4dc798 215-217
+packages/cli/src/scheduling/poll-trigger-node/poll-trigger-task-handler.ts
+  s_5fa111a231c8b4::t_bc43c4a41f2f1e 114-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "95d7386176d0338007848c20a6a71168f8f919bd",
+  "prompts": {},
+  "sessions": {
+    "s_5fa111a231c8b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "62a020c7-78d9-4f3c-99a9-db13d0a06806",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
