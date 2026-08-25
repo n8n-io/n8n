@@ -46,6 +46,7 @@ function createMockContext(overrides?: Partial<ISupplyDataFunctions>): ISupplyDa
 		executeWorkflow: vi.fn(),
 		addInputData: vi.fn(),
 		addOutputData: vi.fn(),
+		logAiEvent: vi.fn(),
 		getCredentials: vi.fn(),
 		getCredentialsProperties: vi.fn(),
 		getInputData: vi.fn(),
@@ -126,6 +127,13 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toBe(JSON.stringify(TEST_RESPONSE, null, 2));
 			expect(context.addOutputData).toHaveBeenCalled();
+			expect(context.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: JSON.stringify(TEST_RESPONSE, null, 2),
+				}),
+			);
 
 			// Here we validate that the runIndex is correctly updated
 			expect(context.cloneWith).toHaveBeenCalledWith({
@@ -167,6 +175,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			const result = await tool.func('test query');
 
 			expect(result).toEqual([{ json: TEST_RESPONSE }]);
+			expect(context.logAiEvent).not.toHaveBeenCalled();
 		});
 
 		it('should handle errors during tool execution', async () => {
@@ -182,6 +191,10 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			);
 			vi.spyOn(context, 'addInputData').mockReturnValue({ index: 0 });
 			vi.spyOn(context, 'getNodeParameter').mockReturnValue('database');
+			vi.spyOn(context, 'getWorkflowDataProxy').mockReturnValue({
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData);
 			vi.spyOn(context, 'cloneWith').mockReturnValue(context);
 
 			const tool = await service.createTool(toolParams);
@@ -189,6 +202,13 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result).toContain('There was an error');
 			expect(context.addOutputData).toHaveBeenCalled();
+			expect(context.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				JSON.stringify({
+					query: 'test query',
+					response: 'There was an error: "Workflow execution failed"',
+				}),
+			);
 		});
 
 		it('should throw on tool error when manualLogging is false so the engine records the failure', async () => {
@@ -214,6 +234,7 @@ describe('WorkflowTool::WorkflowToolService', () => {
 			const tool = await service.createTool(toolParams);
 
 			await expect(tool.func('test query')).rejects.toThrow(/Workflow execution failed/);
+			expect(context.logAiEvent).not.toHaveBeenCalled();
 		});
 	});
 

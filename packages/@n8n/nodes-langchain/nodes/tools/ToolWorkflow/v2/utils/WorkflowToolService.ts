@@ -26,7 +26,7 @@ import {
 	parseErrorMetadata,
 } from 'n8n-workflow';
 
-import { createZodSchemaFromArgs, extractFromAIParameters } from '@n8n/ai-utilities';
+import { createZodSchemaFromArgs, extractFromAIParameters, logAiEvent } from '@n8n/ai-utilities';
 import { sleep } from '@n8n/utils/sleep';
 
 function isNodeExecutionData(data: unknown): data is INodeExecutionData[] {
@@ -167,7 +167,7 @@ export class WorkflowToolService {
 							[responseData],
 							metadata,
 						);
-
+						logAiEvent(context, 'ai-tool-called', { query, response: processedResponse });
 						return processedResponse;
 					}
 					// If manualLogging is false we've been called by the engine and need
@@ -199,6 +199,7 @@ export class WorkflowToolService {
 							[errorData],
 							metadata,
 						);
+						logAiEvent(context, 'ai-tool-called', { query, response: errorResponse });
 					}
 
 					if (tryIndex === maxTries - 1) {

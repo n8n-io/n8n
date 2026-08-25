@@ -53,6 +53,10 @@ describe('ToolHttpRequest', () => {
 			expect(helpers.httpRequest).toHaveBeenCalled();
 			expect(res).toContain('error');
 			expect(res).toContain('Binary data is not supported');
+			expect(executeFunctions.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				expect.stringContaining('Binary data is not supported'),
+			);
 		});
 
 		it('should return the response text when receiving a text response', async () => {
@@ -83,6 +87,10 @@ describe('ToolHttpRequest', () => {
 			const res = await (response as N8nTool).invoke({});
 			expect(helpers.httpRequest).toHaveBeenCalled();
 			expect(res).toEqual('Hello World');
+			expect(executeFunctions.logAiEvent).toHaveBeenCalledWith(
+				'ai-tool-called',
+				JSON.stringify({ query: '{}', response: 'Hello World' }),
+			);
 		});
 
 		it('should return the response text when receiving a text response with a charset', async () => {

@@ -23,6 +23,8 @@ import {
 } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { logAiEvent } from '@n8n/ai-utilities';
+
 import type {
 	ParameterInputType,
 	ParametersValues,
@@ -922,6 +924,8 @@ export const configureToolFunction = (
 		} else {
 			void ctx.addOutputData(NodeConnectionTypes.AiTool, index, [[{ json: { response } }]]);
 		}
+
+		logAiEvent(ctx, 'ai-tool-called', { query, response });
 
 		return response;
 	};
