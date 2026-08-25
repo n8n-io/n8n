@@ -32,6 +32,7 @@ import type {
 	PackageImportBindings,
 	WorkflowIdPolicy,
 } from '../../n8n-packages.types';
+import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
 
 export interface WorkflowImportResult {
 	outcomes: PersistedWorkflowOutcome[];
@@ -256,16 +257,15 @@ function applyCredentialBindingsInPlace(
 	entity: WorkflowEntity,
 	credentialBindings: ImportBindingMap,
 ): void {
-	for (const node of entity.nodes) {
-		for (const details of Object.values(node.credentials ?? {})) {
-			if (!details.id) continue;
+	visitWorkflowCredentials(entity.nodes, (_credentialType, details) => {
+		if (!details.id) return false;
 
-			const targetId = credentialBindings.get(details.id);
-			if (targetId) {
-				details.id = targetId;
-			}
-		}
-	}
+		const targetId = credentialBindings.get(details.id);
+		if (!targetId || targetId === details.id) return false;
+
+		details.id = targetId;
+		return true;
+	});
 }
 
 function toPlanItem(
