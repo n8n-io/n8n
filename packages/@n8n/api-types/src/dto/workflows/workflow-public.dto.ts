@@ -162,13 +162,12 @@ export const updatedWorkflowActiveVersionPublicSchema = activeWorkflowVersionPub
 	workflowPublishHistory: z.array(workflowPublishHistoryPublicSchema).optional(),
 });
 
-export const updatedWorkflowPublicSchema = workflowPublishPublicSchema.extend({
+export const updatedWorkflowPublicSchema = workflowPublicSchema.omit({ shared: true }).extend({
 	activeVersion: updatedWorkflowActiveVersionPublicSchema.nullable(),
 });
 
 export class UpdatedWorkflowPublicDto extends Z.class(updatedWorkflowPublicSchema.shape) {}
 
-// Delete never loads the active version, and the old handler left the key out rather than null.
 export const deletedWorkflowPublicSchema = workflowPublicSchema.extend({
 	activeVersion: activeWorkflowVersionPublicSchema.nullable().optional(),
 });

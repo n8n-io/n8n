@@ -497,10 +497,7 @@ export class WorkflowsPublicController {
 		);
 	}
 
-	/**
-	 * Every public workflow field except the relations each route loads differently: `shared` and
-	 * `activeVersion`. Reading a relation a route did not load would throw.
-	 */
+	/** Every public workflow field except the relations each route loads differently. */
 	private toWorkflowFieldsPublicDto(
 		workflow: WorkflowEntity,
 		options: { excludePinnedData?: boolean } = {},
