@@ -19,7 +19,7 @@ import { SourceControlPreferencesService } from '@/modules/source-control.ee/sou
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { SourceControlGetStatus } from '@/modules/source-control.ee/types/source-control-get-status';
-import { resolveOffsetPaginationStrict } from '@/public-api/v1/shared/services/pagination.service';
+import { resolveOffsetPagination } from '@/public-api/v1/shared/services/pagination.service';
 import { paginateSourceControlledFiles } from '@/public-api/v1/shared/services/source-controlled-file-pagination.service';
 
 const tags = ['SourceControl'];
@@ -57,7 +57,7 @@ export class SourceControlPublicController {
 		this.assertConnected();
 		await this.sourceControlScopedService.ensureIsAllowedToGetStatus(req);
 
-		const { offset, limit } = resolveOffsetPaginationStrict(query);
+		const { offset, limit } = resolveOffsetPagination(query, true);
 
 		const result = await this.sourceControlService.getStatus(
 			req.user,

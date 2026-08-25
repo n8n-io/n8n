@@ -17,12 +17,20 @@ export const decodeCursor = (cursor: string): PaginationOffsetDecoded | Paginati
 /**
  * Resolves the offset and limit to query with for a list endpoint either from defaults
  * or from a provided cursor.
+ *
+ * A cursor is unsigned base64 a client can forge. Callers whose resolved `offset`/`limit`
+ * go straight into an in-memory slice (no DB-backed bounds check downstream) should pass
+ * `validateCursor: true` to re-validate them against the same bounds already enforced on
+ * the raw query params, rather than trusting the decoded values blindly.
  */
-export function resolveOffsetPagination(query: {
-	cursor?: string;
-	limit: number;
-	offset?: number;
-}): { offset: number; limit: number } {
+export function resolveOffsetPagination(
+	query: {
+		cursor?: string;
+		limit: number;
+		offset?: number;
+	},
+	validateCursor = false,
+): { offset: number; limit: number } {
 	let { limit } = query;
 	let offset = query.offset ?? 0;
 
@@ -37,29 +45,13 @@ export function resolveOffsetPagination(query: {
 		} catch {
 			throw new BadRequestError('An invalid cursor was provided');
 		}
-	}
 
-	return { offset, limit };
-}
-
-/**
- * Like `resolveOffsetPagination`, but re-validates the decoded cursor's `offset`/`limit`
- * against the same bounds already enforced on the raw query params. A cursor is unsigned
- * base64 a client can forge, so a cursor-only endpoint (no DB-backed `offset`/`limit`
- * validation downstream) must not trust it blindly.
- */
-export function resolveOffsetPaginationStrict(query: {
-	cursor?: string;
-	limit: number;
-	offset?: number;
-}): { offset: number; limit: number } {
-	const { offset, limit } = resolveOffsetPagination(query);
-
-	if (query.cursor) {
-		if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1) {
-			throw new BadRequestError('An invalid cursor was provided');
+		if (validateCursor) {
+			if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1) {
+				throw new BadRequestError('An invalid cursor was provided');
+			}
+			limit = Math.min(limit, MAX_ITEMS_PER_PAGE);
 		}
-		return { offset, limit: Math.min(limit, MAX_ITEMS_PER_PAGE) };
 	}
 
 	return { offset, limit };
