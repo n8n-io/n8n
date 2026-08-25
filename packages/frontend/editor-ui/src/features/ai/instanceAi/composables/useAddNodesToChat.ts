@@ -7,7 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { useInstanceAiHandoff, stashPendingDraftAttachment } from './useInstanceAiHandoff';
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
-import { buildNodesAttachment, type BuilderWorkflow } from '../utils/buildNodesAttachment';
+import { buildNodesAttachment, type NodeContextWorkflow } from '../utils/buildNodesAttachment';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import type { IWorkflowDb } from '@/Interface';
 
@@ -30,7 +30,7 @@ export function useAddNodesToChat() {
 	async function addSelectedNodesToChat(params: {
 		workflowId: string;
 		selectedNodeIds: string[];
-		workflow: BuilderWorkflow;
+		workflow: NodeContextWorkflow;
 		isInsideThread: boolean;
 		onStaged?: () => void;
 		workflowName?: string;

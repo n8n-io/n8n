@@ -101,7 +101,7 @@ import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 import { useCanvasAgentNodeGeometry } from '../composables/useCanvasAgentNodeGeometry';
 import { useAddNodesToChat } from '@/features/ai/instanceAi/composables/useAddNodesToChat';
-import type { BuilderWorkflow } from '@/features/ai/instanceAi/utils/buildNodesAttachment';
+import type { NodeContextWorkflow } from '@/features/ai/instanceAi/utils/buildNodesAttachment';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
 
@@ -611,7 +611,7 @@ const selectedNodeIdsWithGroupMembers = computed(() => {
 	return [...ids];
 });
 
-function buildBuilderWorkflow(): BuilderWorkflow {
+function buildNodeContextWorkflow(): NodeContextWorkflow {
 	const s = workflowDocumentStore.value;
 	return {
 		nodes: s.allNodes.map((n) => ({ id: n.id, name: n.name, type: n.type })),
@@ -626,7 +626,7 @@ async function onAddNodesToChat(ids: string[] = selectedNodeIdsWithGroupMembers.
 	await addSelectedNodesToChat({
 		workflowId: doc.workflowId,
 		selectedNodeIds: ids,
-		workflow: buildBuilderWorkflow(),
+		workflow: buildNodeContextWorkflow(),
 		isInsideThread: !instanceAiCapability.openWorkflow,
 		onStaged: () => instanceAiStore.requestComposerFocus(),
 		workflowName: doc.name,

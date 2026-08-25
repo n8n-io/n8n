@@ -29,9 +29,9 @@ vi.mock('vue-router', () => ({
 
 import { useAddNodesToChat } from '../useAddNodesToChat';
 import { INSTANCE_AI_THREAD_VIEW } from '../../constants';
-import type { BuilderWorkflow } from '../../utils/buildNodesAttachment';
+import type { NodeContextWorkflow } from '../../utils/buildNodesAttachment';
 
-const wf: BuilderWorkflow = {
+const wf: NodeContextWorkflow = {
 	nodes: [{ id: 'n1', name: 'A', type: 't' }],
 	connections: {},
 	groupsById: new Map(),

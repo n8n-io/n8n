@@ -6,10 +6,10 @@ import {
 	resolveSetCanvasGroup,
 	buildNodesAttachment,
 } from './buildNodesAttachment';
-import type { BuilderWorkflow } from './buildNodesAttachment';
+import type { NodeContextWorkflow } from './buildNodesAttachment';
 import { instanceAiNodesAttachmentSchema } from '@n8n/api-types';
 
-function wf(over: Partial<BuilderWorkflow> = {}): BuilderWorkflow {
+function wf(over: Partial<NodeContextWorkflow> = {}): NodeContextWorkflow {
 	return {
 		nodes: [
 			{ id: 'n1', name: 'A', type: 't' },

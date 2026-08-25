@@ -2,14 +2,14 @@ import type { IConnections } from 'n8n-workflow';
 import { mapConnectionsByDestination, getChildNodes, getParentNodes } from 'n8n-workflow';
 import type { InstanceAiNodesAttachment } from '@n8n/api-types';
 
-export interface BuilderNode {
+export interface NodeContextNode {
 	id: string;
 	name: string;
 	type: string;
 }
 
-export interface BuilderWorkflow {
-	nodes: BuilderNode[];
+export interface NodeContextWorkflow {
+	nodes: NodeContextNode[];
 	/** `workflow.connections`, keyed by source node NAME. */
 	connections: IConnections;
 	groupsById: Map<string, { id: string; name: string }>;
@@ -104,7 +104,7 @@ export function resolveSetNeighbors(
 /** Return the canvas group a multi-node set belongs to, when all its members share exactly one. */
 export function resolveSetCanvasGroup(
 	set: NodeSet,
-	workflow: BuilderWorkflow,
+	workflow: NodeContextWorkflow,
 ): { canvasGroupId?: string; canvasGroupName?: string } {
 	// A lone node stays its own named chip even when grouped — labeling one member
 	// with the group name reads as a duplicate when several members are added.
@@ -128,7 +128,7 @@ export function resolveSetCanvasGroup(
 export function buildNodesAttachment(
 	workflowId: string,
 	selectedNodeIds: string[],
-	workflow: BuilderWorkflow,
+	workflow: NodeContextWorkflow,
 ): { attachment: InstanceAiNodesAttachment; truncated: boolean } | null {
 	if (selectedNodeIds.length === 0) return null;
 
