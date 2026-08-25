@@ -10,7 +10,7 @@ export const GlobalComponentsPlugin: Plugin = {
 	install(app) {
 		const messageService = useMessage();
 
-		app.use(N8nPlugin, {});
+		app.use(N8nPlugin);
 
 		app.use(ElLoading);
 

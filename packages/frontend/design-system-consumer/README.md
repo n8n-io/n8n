@@ -39,10 +39,9 @@ pnpm --filter design-system-consumer dev
 These are the reasons `typecheck:libcheck` fails. None of them stop the app from building
 or rendering.
 
-1. **`app.use(N8nPlugin)` does not typecheck.** `N8nPlugin` is declared
-   `Plugin<N8nPluginOptions>` in `src/plugin.ts`, and Vue reads that single object as a
-   one-element tuple, so the options argument becomes required. Callers must write
-   `app.use(N8nPlugin, {})`. See the comment in `src/main.ts`.
+1. ~~**`app.use(N8nPlugin)` does not typecheck.**~~ Fixed: `N8nPlugin` is now declared
+   `Plugin<[options?: N8nPluginOptions]>`, so the options argument is optional and
+   `src/main.ts` makes the conventional call.
 2. **`@vue/reactivity` is an undeclared dependency of the shipped types** (18 errors).
    11 emitted `.d.ts` files reference `import('@vue/reactivity').OnCleanup`, but
    `@vue/reactivity` is neither a `dependency` nor a `peerDependency`.
