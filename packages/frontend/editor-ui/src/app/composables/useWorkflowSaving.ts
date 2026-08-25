@@ -45,7 +45,18 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useInvalidNodeGroupCleanup } from '@/app/composables/useInvalidNodeGroupCleanup';
 
 function getErrorMessage(error: unknown): string {
-	return error instanceof Error ? error.message : String(error);
+	if (error instanceof Error) {
+		return error.message;
+	}
+
+	if (error && typeof error === 'object' && 'message' in error) {
+		const { message } = error as { message?: unknown };
+		if (message !== undefined) {
+			return String(message);
+		}
+	}
+
+	return String(error);
 }
 
 function getHttpStatusCode(error: unknown): number | undefined {
@@ -57,13 +68,21 @@ function getHttpStatusCode(error: unknown): number | undefined {
 		return;
 	}
 
-	const { httpStatusCode, errorCode } = error as {
+	const { httpStatusCode, errorCode, response } = error as {
 		httpStatusCode?: unknown;
 		errorCode?: unknown;
+		response?: unknown;
 	};
 
 	if (typeof httpStatusCode === 'number') {
 		return httpStatusCode;
+	}
+
+	if (response && typeof response === 'object') {
+		const { status } = response as { status?: unknown };
+		if (typeof status === 'number') {
+			return status;
+		}
 	}
 
 	if (typeof errorCode === 'number' && errorCode >= 400 && errorCode < 600) {
@@ -290,20 +309,23 @@ export function useWorkflowSaving({
 		}
 
 		const savePromise = (async (): Promise<boolean> => {
-			// Check if workflow needs to be saved as new (doesn't exist in store yet)
-			const existingWorkflow = currentWorkflow
-				? workflowsListStore.getWorkflowById(currentWorkflow)
-				: null;
-			if (!currentWorkflow || !existingWorkflow?.id) {
-				const workflowId = await saveAsNewWorkflow(
-					{ parentFolderId, uiContext, autosaved },
-					redirect,
-				);
-				return !!workflowId;
-			}
+			let isExistingWorkflowSave = false;
 
-			// Workflow exists already so update it
 			try {
+				// Check if workflow needs to be saved as new (doesn't exist in store yet)
+				const existingWorkflow = currentWorkflow
+					? workflowsListStore.getWorkflowById(currentWorkflow)
+					: null;
+				if (!currentWorkflow || !existingWorkflow?.id) {
+					const workflowId = await saveAsNewWorkflow(
+						{ parentFolderId, uiContext, autosaved },
+						redirect,
+					);
+					return !!workflowId;
+				}
+
+				isExistingWorkflowSave = true;
+				// Workflow exists already so update it
 				if (!forceSave && isLoading) {
 					return true;
 				}
@@ -372,7 +394,7 @@ export function useWorkflowSaving({
 				const errorMessage = getErrorMessage(error);
 				console.error(error);
 
-				if (getHttpStatusCode(error) === 409) {
+				if (isExistingWorkflowSave && getHttpStatusCode(error) === 409) {
 					telemetry.track('User attempted to save locked workflow', {
 						workflowId: currentWorkflow,
 						sharing_role: getWorkflowProjectRole(currentWorkflow),
@@ -684,9 +706,13 @@ export function useWorkflowSaving({
 			onSaved?.(true); // First save of new workflow
 			return workflowData.id;
 		} catch (e) {
+			if (autosaved) {
+				throw e;
+			}
+
 			toast.showMessage({
 				title: i18n.baseText('workflowHelpers.showMessage.title'),
-				message: (e as Error).message,
+				message: getErrorMessage(e),
 				type: 'error',
 			});
 

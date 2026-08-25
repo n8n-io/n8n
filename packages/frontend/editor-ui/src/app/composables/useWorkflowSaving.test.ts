@@ -1421,6 +1421,47 @@ describe('useWorkflowSaving', () => {
 			}
 		});
 
+		it('retries autosaved create failures that can recover', async () => {
+			vi.useFakeTimers();
+
+			try {
+				const newWorkflowId = 'w-autosave-create-failure';
+				const errorMessage = 'Network timeout';
+				const workflow = createTestWorkflow({
+					id: newWorkflowId,
+					name: 'Named new workflow',
+					nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				});
+
+				vi.spyOn(workflowsStore, 'createNewWorkflow').mockRejectedValue(new Error(errorMessage));
+
+				workflowsStore.setWorkflowId(newWorkflowId);
+				useWorkflowDocumentStore(createWorkflowDocumentId(newWorkflowId)).hydrate(workflow);
+
+				const saveStore = useWorkflowSaveStore();
+				const { saveCurrentWorkflow } = useWorkflowSaving({
+					router,
+				});
+
+				const result = await saveCurrentWorkflow({}, true, false, true);
+
+				expect(result).toBe(false);
+				expect(saveStore.pendingSave).toBeNull();
+				expect(saveStore.retryCount).toBe(1);
+				expect(saveStore.lastError).toBe(errorMessage);
+				expect(saveStore.isRetrying).toBe(true);
+				expect(showMessageSpy).toHaveBeenCalledTimes(1);
+				expect(showMessageSpy).toHaveBeenCalledWith(
+					expect.objectContaining({
+						message: expect.stringContaining(errorMessage),
+						type: 'error',
+					}),
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('does not retry autosave after a permanent client error', async () => {
 			const workflow = createTestWorkflow({
 				id: 'w-autosave-client-error',
@@ -1447,6 +1488,60 @@ describe('useWorkflowSaving', () => {
 
 			expect(result).toBe(false);
 			expect(saveStore.pendingSave).toBeNull();
+			expect(saveStore.retryCount).toBe(0);
+			expect(saveStore.isRetrying).toBe(false);
+			expect(saveStore.lastError).toBe(errorMessage);
+		});
+
+		it('uses raw object messages for autosave errors that are not Error instances', async () => {
+			const { workflow } = prepareHydratedWorkflow('w-autosave-raw-node-api-error');
+			const errorMessage = 'Node API request failed';
+
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue({
+				name: 'NodeApiError',
+				message: errorMessage,
+				errorCode: 400,
+			});
+
+			const saveStore = useWorkflowSaveStore();
+			const { saveCurrentWorkflow } = useWorkflowSaving({
+				router,
+			});
+
+			const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, true);
+
+			expect(result).toBe(false);
+			expect(saveStore.retryCount).toBe(0);
+			expect(saveStore.isRetrying).toBe(false);
+			expect(saveStore.lastError).toBe(errorMessage);
+			expect(showMessageSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: errorMessage,
+					type: 'error',
+				}),
+			);
+		});
+
+		it('does not retry autosave after a raw axios permanent client error', async () => {
+			const { workflow } = prepareHydratedWorkflow('w-autosave-raw-axios-error');
+			const errorMessage = 'Request failed with status code 413';
+
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(
+				Object.assign(new Error(errorMessage), {
+					response: {
+						status: 413,
+					},
+				}),
+			);
+
+			const saveStore = useWorkflowSaveStore();
+			const { saveCurrentWorkflow } = useWorkflowSaving({
+				router,
+			});
+
+			const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, true);
+
+			expect(result).toBe(false);
 			expect(saveStore.retryCount).toBe(0);
 			expect(saveStore.isRetrying).toBe(false);
 			expect(saveStore.lastError).toBe(errorMessage);
