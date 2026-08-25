@@ -20,6 +20,7 @@ import {
 	calculateNodePositions,
 	calculateNodePositionsDagre,
 	resolveStickyGeometry,
+	type LayoutNodeGroup,
 	type StickyGeometry,
 } from '../../layout-utils';
 import {
@@ -225,6 +226,22 @@ function serializeNodeConnections(
 	return nodeConnections;
 }
 
+function resolveLayoutNodeGroups(ctx: SerializerContext): LayoutNodeGroup[] {
+	if (!ctx.nodeGroups?.length) return [];
+
+	const mapKeyById = new Map<string, string>();
+	for (const [mapKey, graphNode] of ctx.nodes) {
+		mapKeyById.set(graphNode.instance.id, mapKey);
+	}
+
+	return ctx.nodeGroups.map((group) => ({
+		name: group.name,
+		memberKeys: group.memberIds
+			.map((memberId) => mapKeyById.get(memberId))
+			.filter((memberKey): memberKey is string => memberKey !== undefined),
+	}));
+}
+
 /**
  * Serializer for the standard n8n workflow JSON format.
  *
@@ -241,7 +258,7 @@ export const jsonSerializer: SerializerPlugin<WorkflowJSON> = {
 
 		// Calculate positions for nodes without explicit positions
 		const nodePositions = ctx.tidyUp
-			? calculateNodePositionsDagre(ctx.nodes)
+			? calculateNodePositionsDagre(ctx.nodes, resolveLayoutNodeGroups(ctx))
 			: calculateNodePositions(ctx.nodes);
 
 		// Sticky notes are placed last: their box depends on where their anchors landed
