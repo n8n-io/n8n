@@ -303,6 +303,29 @@ describe('calculateNodePositionsDagre', () => {
 			expect(isGridAligned(modelPos)).toBe(true);
 			expect(isGridAligned(calcPos)).toBe(true);
 		});
+
+		it('handles cycles in AI config references', () => {
+			const nodes = new Map<string, GraphNode>();
+
+			nodes.set(
+				'Agent',
+				createGraphNode(
+					'Agent',
+					'@n8n/n8n-nodes-langchain.agent',
+					makeAiConns('Calculator', 'ai_tool'),
+				),
+			);
+			nodes.set(
+				'Calculator',
+				createGraphNode(
+					'Calculator',
+					'@n8n/n8n-nodes-langchain.toolCalculator',
+					makeAiConns('Agent', 'ai_tool'),
+				),
+			);
+
+			expect(() => calculateNodePositionsDagre(nodes)).not.toThrow();
+		});
 	});
 
 	describe('explicit positions', () => {

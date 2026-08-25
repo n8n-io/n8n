@@ -173,11 +173,15 @@ function getAllConnectedAiConfigNodes(
 	graph: dagre.graphlib.Graph,
 	rootId: string,
 	aiConfigNames: Set<string>,
+	visited = new Set<string>(),
 ): string[] {
 	const predecessors = (graph.predecessors(rootId) as unknown as string[]) ?? [];
 	return predecessors
-		.filter((id) => aiConfigNames.has(id))
-		.flatMap((id) => [id, ...getAllConnectedAiConfigNodes(graph, id, aiConfigNames)]);
+		.filter((id) => aiConfigNames.has(id) && !visited.has(id))
+		.flatMap((id) => {
+			visited.add(id);
+			return [id, ...getAllConnectedAiConfigNodes(graph, id, aiConfigNames, visited)];
+		});
 }
 
 // ---------------------------------------------------------------------------
