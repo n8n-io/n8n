@@ -1,51 +1,50 @@
-import { render } from '@testing-library/vue';
+import { render, screen } from '@testing-library/vue';
 
 import N8nBadge from './Badge.vue';
 
-describe('components', () => {
-	describe('N8nBadge', () => {
-		describe('props', () => {
-			it('should render default theme correctly', () => {
+describe('components', function describeComponents() {
+	describe('N8nBadge', function describeN8nBadge() {
+		describe('props', function describeProps() {
+			it('should render with default values correctly', function testDefaultValues() {
 				const wrapper = render(N8nBadge, {
-					props: {
-						theme: 'default',
-						size: 'large',
-						bold: true,
-					},
 					slots: {
-						default: '<n8n-text>Default badge</n8n-text>',
-					},
-					global: {
-						stubs: ['N8nText'],
+						default: 'Default badge',
 					},
 				});
+
+				expect(screen.getByText('Default badge')).toBeVisible();
 				expect(wrapper.html()).toMatchSnapshot();
 			});
-			it('should render secondary theme correctly', () => {
+
+			it('should render the selected variant and size', function testVariantAndSize() {
 				const wrapper = render(N8nBadge, {
 					props: {
-						theme: 'secondary',
+						variant: 'secondary',
 						size: 'medium',
-						bold: false,
 					},
 					slots: {
-						default: '<n8n-text>Secondary badge</n8n-text>',
-					},
-					global: {
-						stubs: ['N8nText'],
+						default: 'Secondary badge',
 					},
 				});
+
+				expect(screen.getByText('Secondary badge')).toBeVisible();
 				expect(wrapper.html()).toMatchSnapshot();
 			});
-			it('should render with default values correctly', () => {
+
+			it('should render a button when clickable', function testClickable() {
 				const wrapper = render(N8nBadge, {
-					slots: {
-						default: '<n8n-text>A Badge</n8n-text>',
+					props: {
+						clickable: true,
 					},
-					global: {
-						stubs: ['N8nText'],
+					slots: {
+						default: 'Clickable badge',
 					},
 				});
+
+				expect(screen.getByRole('button', { name: 'Clickable badge' })).toHaveAttribute(
+					'type',
+					'button',
+				);
 				expect(wrapper.html()).toMatchSnapshot();
 			});
 		});
