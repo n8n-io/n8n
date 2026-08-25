@@ -1,6 +1,9 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { returnAllOrLimit } from '@utils/descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
+
 import { confluenceApiRequest } from '../../transport';
 import type { ConfluenceBodyFormat } from '../common';
 import {
@@ -9,48 +12,33 @@ import {
 	extractNextCursor,
 	labelRLC,
 	optionalSpaceRLC,
+	parsePositiveInt,
 	shapeBody,
 } from '../common';
 import type { ConfluenceOperation } from '../router';
 
-const showOnGetManyByLabel = { resource: ['page'], operation: ['getManyByLabel'] };
-
-export const description: INodeProperties[] = [
+const properties: INodeProperties[] = [
 	{
 		...labelRLC,
 		description: 'The label whose pages to fetch',
-		displayOptions: { show: showOnGetManyByLabel },
 	},
 	{
 		...optionalSpaceRLC,
 		description:
 			'Only returns pages in this space. Leave empty or pick "All Spaces" to return pages from all spaces.',
-		displayOptions: { show: showOnGetManyByLabel },
 	},
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: { show: showOnGetManyByLabel },
-	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		default: 50,
-		typeOptions: {
-			minValue: 1,
-		},
-		description: 'Max number of results to return',
-		displayOptions: { show: { ...showOnGetManyByLabel, returnAll: [false] } },
-	},
-	{
-		...bodyFormatOption,
-		displayOptions: { show: showOnGetManyByLabel },
-	},
+	...returnAllOrLimit,
+	bodyFormatOption,
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['page'],
+		operation: ['getManyByLabel'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export const execute: ConfluenceOperation = async function (
 	this: IExecuteFunctions,
@@ -68,16 +56,14 @@ export const execute: ConfluenceOperation = async function (
 	).trim();
 
 	const returnAll = this.getNodeParameter('returnAll', itemIndex, false);
-	let limit = Infinity;
-	if (!returnAll) {
-		const rawLimit = this.getNodeParameter('limit', itemIndex, 50);
-		if (!Number.isFinite(rawLimit) || rawLimit < 1) {
-			throw new NodeOperationError(this.getNode(), 'Limit must be a number of at least 1', {
+	const limit = returnAll
+		? Infinity
+		: parsePositiveInt.call(
+				this,
+				this.getNodeParameter('limit', itemIndex, 100),
+				'Limit',
 				itemIndex,
-			});
-		}
-		limit = Math.floor(rawLimit);
-	}
+			);
 
 	const bodyFormat = this.getNodeParameter(
 		'bodyFormat',
@@ -88,8 +74,8 @@ export const execute: ConfluenceOperation = async function (
 	const requestedFormat = bodyFormat === 'plainText' ? 'atlas_doc_format' : bodyFormat;
 
 	const pages: IDataObject[] = [];
-	const seenCursors = new Set<string>();
 	let cursor: string | undefined;
+	const seenCursors = new Set<string>();
 	do {
 		const qs: IDataObject = {
 			'body-format': requestedFormat,

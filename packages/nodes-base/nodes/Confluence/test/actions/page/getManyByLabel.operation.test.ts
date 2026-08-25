@@ -65,7 +65,7 @@ describe('Confluence page:getManyByLabel operation', () => {
 			'GET',
 			'/wiki/api/v2/labels/777/pages',
 			{},
-			{ 'body-format': 'storage', limit: 50 },
+			{ 'body-format': 'storage', limit: 100 },
 		);
 		expect(result).toEqual(pages);
 	});
@@ -83,7 +83,7 @@ describe('Confluence page:getManyByLabel operation', () => {
 			'GET',
 			'/wiki/api/v2/labels/777/pages',
 			{},
-			expect.objectContaining({ limit: 50 }),
+			expect.objectContaining({ limit: 100 }),
 		);
 	});
 
