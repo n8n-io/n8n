@@ -19,7 +19,7 @@ export type N8nMarkdownEditorProps = {
 export type N8nMarkdownEditorEmits = {
 	'update:modelValue': [value: string];
 	input: [value: string];
-	focus: [event: FocusEvent];
+	focus: [payload: FocusEvent];
 	blur: [value: string, event: FocusEvent];
 	ready: [editor: Editor];
 };

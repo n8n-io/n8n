@@ -64,8 +64,8 @@ const emit = defineEmits<{
 	'update:modelValue': [value: string];
 	submit: [];
 	stop: [];
-	focus: [event: FocusEvent];
-	blur: [event: FocusEvent];
+	focus: [payload: FocusEvent];
+	blur: [payload: FocusEvent];
 	'upgrade-click': [];
 }>();
 

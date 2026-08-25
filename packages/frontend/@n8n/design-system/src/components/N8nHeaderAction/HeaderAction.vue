@@ -34,7 +34,7 @@ withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	click: [event: MouseEvent];
+	click: [payload: MouseEvent];
 }>();
 </script>
 

@@ -45,7 +45,7 @@ const emit = defineEmits<{
 	select: [value: T];
 	search: [searchTerm: string, itemId: T];
 	'update:subMenuOpen': [open: boolean];
-	pointermove: [event: PointerEvent];
+	pointermove: [payload: PointerEvent];
 }>();
 
 const $style = useCssModule();
