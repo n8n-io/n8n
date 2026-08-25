@@ -315,7 +315,7 @@ export function parsePositiveInt(
 ): number {
 	const value = Number(raw);
 	if (!Number.isFinite(value) || value < 1) {
-		throw new NodeOperationError(this.getNode(), `${label} must be a number of at least 1`, {
+		throw new NodeOperationError(this.getNode(), `${label} must be a finite number of at least 1`, {
 			itemIndex,
 		});
 	}
