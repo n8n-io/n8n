@@ -215,7 +215,9 @@ describe('Confluence page:getLabels operation', () => {
 			const ctx = mockExecuteCtx({ ...baseParams, limit });
 
 			await expect(execute.call(ctx, 0)).rejects.toThrow(NodeOperationError);
-			await expect(execute.call(ctx, 0)).rejects.toThrow('Limit must be a number of at least 1');
+			await expect(execute.call(ctx, 0)).rejects.toThrow(
+				'Limit must be a finite number of at least 1',
+			);
 			expect(apiRequest).not.toHaveBeenCalled();
 		},
 	);
