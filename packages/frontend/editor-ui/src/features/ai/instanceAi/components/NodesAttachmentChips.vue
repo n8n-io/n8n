@@ -15,7 +15,8 @@ import {
 } from '@/app/stores/workflowDocument.store';
 import { isNodeChipRemovalKey } from '../constants';
 
-const SINGLE_SET_NODE_EXPANSION_THRESHOLD = 4;
+// A set of this many nodes or more renders as one bundle chip instead of per-node chips.
+const NODE_BUNDLE_THRESHOLD = 2;
 
 const props = defineProps<{ attachment: InstanceAiNodesAttachment; isRemovable?: boolean }>();
 const emit = defineEmits<{
@@ -71,25 +72,6 @@ interface ChipVM {
 const chips = computed<ChipVM[]>(() => {
 	const sets = props.attachment.sets;
 
-	const only = sets[0];
-	if (
-		sets.length === 1 &&
-		!only.canvasGroupId &&
-		only.nodes.length < SINGLE_SET_NODE_EXPANSION_THRESHOLD
-	) {
-		return only.nodes.map((node, nodeIndex) => {
-			const resolved = resolveAttachedNode(node);
-			return {
-				key: node.id,
-				testid: 'nodes-chip-node',
-				label: resolved.name,
-				nodeType: resolved.nodeType,
-				setIndex: 0,
-				nodeIndex,
-			};
-		});
-	}
-
 	return sets.map((set, setIndex): ChipVM => {
 		if (set.canvasGroupId) {
 			return {
@@ -106,7 +88,7 @@ const chips = computed<ChipVM[]>(() => {
 				setIndex,
 			};
 		}
-		if (set.nodes.length > 1) {
+		if (set.nodes.length >= NODE_BUNDLE_THRESHOLD) {
 			return {
 				key: `set-${setIndex}`,
 				testid: 'nodes-chip-bundle',

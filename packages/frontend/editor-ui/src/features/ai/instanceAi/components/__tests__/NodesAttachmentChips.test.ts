@@ -36,17 +36,9 @@ describe('NodesAttachmentChips', () => {
 		expect(queryAllByTestId('nodes-chip-bundle')).toHaveLength(0);
 	});
 
-	it('one set, size 3 (below threshold) → 3 per-node chips, each removable', () => {
-		const { getAllByTestId } = renderComponent(NodesAttachmentChips, {
-			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C') }]), isRemovable: true },
-		});
-		expect(getAllByTestId('nodes-chip-node')).toHaveLength(3);
-		expect(getAllByTestId('nodes-chip-remove')).toHaveLength(3);
-	});
-
-	it('one set, size 4 (>= threshold) → single bundled chip, no per-node chips', () => {
+	it('one set, size > 1 → single bundled chip, no per-node chips', () => {
 		const { getAllByTestId, queryAllByTestId } = renderComponent(NodesAttachmentChips, {
-			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C', 'D') }]), isRemovable: true },
+			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C') }]), isRemovable: true },
 		});
 		expect(getAllByTestId('nodes-chip-bundle')).toHaveLength(1);
 		expect(queryAllByTestId('nodes-chip-node')).toHaveLength(0);
@@ -75,17 +67,6 @@ describe('NodesAttachmentChips', () => {
 		});
 		expect(getByTestId('nodes-chip-group').textContent).toContain('My Group 1');
 		expect(queryByTestId('nodes-chip-expand')).toBeNull();
-	});
-
-	it('removing one per-node chip emits update:attachment without that node', async () => {
-		const { getAllByTestId, emitted } = renderComponent(NodesAttachmentChips, {
-			props: { attachment: att([{ nodes: nodeRefs('A', 'B', 'C') }]), isRemovable: true },
-		});
-		await fireEvent.click(getAllByTestId('nodes-chip-remove')[1]); // remove 'B'
-		const events = emitted<[InstanceAiNodesAttachment]>()['update:attachment'];
-		expect(events).toBeTruthy();
-		const updated = events[0][0];
-		expect(updated.sets[0].nodes.map((n) => n.name)).toEqual(['A', 'C']);
 	});
 
 	it('caret opens the node-name panel and it stays open until re-click', async () => {
