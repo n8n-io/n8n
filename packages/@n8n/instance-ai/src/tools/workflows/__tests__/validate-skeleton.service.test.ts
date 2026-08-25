@@ -2,12 +2,14 @@ import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { INodeTypeDescription, INodeTypes } from 'n8n-workflow';
 
 import type { InstanceAiContext } from '../../../types';
+import { createPlanWorkflowSkeletonTool } from '../plan-workflow-skeleton.tool';
 import { validateSkeleton } from '../validate-skeleton.service';
-import type {
-	SkeletonConnection,
-	SkeletonNode,
-	ValidateSkeletonResult,
-	WorkflowSkeleton,
+import {
+	planWorkflowSkeletonResultSchema,
+	type SkeletonConnection,
+	type SkeletonNode,
+	type ValidateSkeletonResult,
+	type WorkflowSkeleton,
 } from '../workflow-skeleton.schema';
 
 vi.mock('@n8n/agents/catalog', () => ({
@@ -428,5 +430,32 @@ describe('validateSkeleton', () => {
 			expect(result.valid).toBe(false);
 			expect(diagnostic(result, 'MISSING_REQUIRED_INPUT')).toMatchObject({ node: 'Agent' });
 		});
+	});
+});
+
+describe('createPlanWorkflowSkeletonTool', () => {
+	async function runTool(skeleton: WorkflowSkeleton) {
+		const tool = createPlanWorkflowSkeletonTool(createMockContext());
+		const output = await tool.handler?.(
+			skeleton,
+			{} as Parameters<NonNullable<typeof tool.handler>>[1],
+		);
+		return planWorkflowSkeletonResultSchema.parse(output);
+	}
+
+	it('steers a valid skeleton to fill-workflow-parameters', async () => {
+		const result = await runTool(makeSkeleton());
+
+		expect(result.valid).toBe(true);
+		expect(result.nextStep).toContain('call fill-workflow-parameters');
+	});
+
+	it('steers an invalid skeleton to fixing the diagnostics first', async () => {
+		const result = await runTool(
+			makeSkeleton({ nodes: [node('Set', 'n8n-nodes-base.set')], connections: [] }),
+		);
+
+		expect(result.valid).toBe(false);
+		expect(result.nextStep).toContain('Fix every error diagnostic');
 	});
 });

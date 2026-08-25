@@ -312,12 +312,20 @@ export async function fillWorkflowParameters(
 						'No runtime workspace available — the sandbox must be enabled to write workflow source files.',
 				},
 			],
+			nextStep:
+				'The sandbox workspace is unavailable, so no workflow source can be written. Surface this as a blocking error instead of retrying.',
 		};
 	}
 
 	const validation = await validateSkeleton(context, input.skeleton);
 	if (!validation.valid) {
-		return { success: false, ...emptyReport, skeletonDiagnostics: validation.diagnostics };
+		return {
+			success: false,
+			...emptyReport,
+			skeletonDiagnostics: validation.diagnostics,
+			nextStep:
+				'Fix every error in skeletonDiagnostics, then call fill-workflow-parameters again with the corrected skeleton.',
+		};
 	}
 
 	const outcomes = await mapWithConcurrency(
@@ -347,5 +355,15 @@ export async function fillWorkflowParameters(
 		resourceLabel: 'Assembled workflow source file',
 	});
 
-	return { success: true, filePath: input.filePath, ...report };
+	return {
+		success: true,
+		filePath: input.filePath,
+		...report,
+		// Warnings only here: an error-severity diagnostic returns above.
+		...(validation.diagnostics.length > 0 ? { skeletonDiagnostics: validation.diagnostics } : {}),
+		nextStep:
+			'Review skeletonDiagnostics warnings, parameterIssues, and assumptions; fix what matters with ' +
+			'workspace_str_replace_file (or re-run with better hints) — do not rewrite the file from scratch. ' +
+			`Then run the SDK validate CLI on "${input.filePath}" and call build-workflow with that filePath.`,
+	};
 }

@@ -86,8 +86,13 @@ export const validateSkeletonResultSchema = z.object({
 		.describe('Node name → resolved typeVersion; pin these in the SDK source'),
 });
 
+export const planWorkflowSkeletonResultSchema = validateSkeletonResultSchema.extend({
+	nextStep: z.string().describe('What to do with this result'),
+});
+
 export type WorkflowSkeleton = z.infer<typeof workflowSkeletonSchema>;
 export type SkeletonNode = z.infer<typeof skeletonNodeSchema>;
 export type SkeletonConnection = z.infer<typeof skeletonConnectionSchema>;
 export type SkeletonDiagnostic = z.infer<typeof skeletonDiagnosticSchema>;
 export type ValidateSkeletonResult = z.infer<typeof validateSkeletonResultSchema>;
+export type PlanWorkflowSkeletonResult = z.infer<typeof planWorkflowSkeletonResultSchema>;

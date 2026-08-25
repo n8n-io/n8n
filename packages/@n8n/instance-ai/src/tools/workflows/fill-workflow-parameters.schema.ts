@@ -48,8 +48,10 @@ export const fillWorkflowParametersResultSchema = z.object({
 	parameterIssues: z.record(z.array(z.string())),
 	/** Per-node assumptions the fill made (guessed values, placeholder sentinels inserted). */
 	assumptions: z.record(z.array(z.string())),
-	/** Present when the skeleton failed validation — fix and re-plan first. */
+	/** Errors when the skeleton was rejected (success=false); otherwise warnings to review. */
 	skeletonDiagnostics: z.array(skeletonDiagnosticSchema).optional(),
+	/** What to do with this result. */
+	nextStep: z.string(),
 });
 
 export type FillWorkflowParametersInput = z.infer<typeof fillWorkflowParametersInputSchema>;

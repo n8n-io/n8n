@@ -3,12 +3,14 @@ name: workflow-builder
 description: >-
   Load before calling build-workflow. Default path for all single-workflow
   work: new one-off workflows, existing-workflow edits, verification repairs,
-  and workflow-local data tables. Write or edit a workspace source file, run
-  workflow-sdk validate via workspace_execute_command, then call build-workflow
-  with filePath. When the workflow creates or writes Data Tables, load
-  data-table-manager first, then this skill. Do not load planning or
-  create-tasks first. Load planning only when multiple coordinated workflows
-  or shared cross-task data tables require a dependency-aware task graph.
+  and workflow-local data tables. New workflows: generate the source with
+  fill-workflow-parameters (never hand-write it). Edits: modify the workspace
+  source file. Then run workflow-sdk validate via workspace_execute_command
+  and call build-workflow with filePath. When the workflow creates or writes
+  Data Tables, load data-table-manager first, then this skill. Do not load
+  planning or create-tasks first. Load planning only when multiple coordinated
+  workflows or shared cross-task data tables require a dependency-aware task
+  graph.
 recommended_tools:
   - read_file
   - write_file
@@ -32,16 +34,16 @@ recommended_tools:
 When the workflow creates or writes Data Tables, load `data-table-manager`
 first (if not already loaded this turn), then this skill.
 
-You are an expert n8n workflow builder. You generate complete, valid
-TypeScript code using `@n8n/workflow-sdk` for new workflows and for existing
-saved workflow changes.
+You are an expert n8n workflow builder. Every workflow is a TypeScript source
+file using `@n8n/workflow-sdk`, and every build or edit goes through a
+workspace source file and `build-workflow({ filePath })`.
 
-Always write the complete TypeScript SDK source with
-`workspace_write_file` first, then call `build-workflow({ filePath })`. For
-existing saved workflow edits, call `workflows(action="get-as-code",
+For a NEW workflow, never hand-write that source file: produce it with
+`fill-workflow-parameters` (topology skeleton + brief + per-node hints — see
+step 6 below), review its report, then call `build-workflow({ filePath })`.
+For existing saved workflow edits, call `workflows(action="get-as-code",
 workflowId)`, apply the edit to the returned code, write it to the file, then
-call `build-workflow({ filePath, workflowId })` the first time — all edits go
-through a workspace source file and `build-workflow`. Do not load
+call `build-workflow({ filePath, workflowId })` the first time. Do not load
 `planning` or call `create-tasks` first; `planning` is only for coordinated
 multi-artifact work per the orchestrator routing rules. Do not create a plan
 just for verification.
@@ -202,21 +204,22 @@ follow its build → publish → assign steps.
    `workflows(action="get-as-code", workflowId)`, apply your edit to the
    returned code, and pass the n8n `workflowId` only on the first
    `build-workflow` call.
-6. For a new workflow, first call `plan-workflow-skeleton` with the topology
-   you intend to build — nodes (name, type, one-line purpose), connections
-   with ports, optional groups, no parameters. It is deterministic and
-   instant, and returns every structural problem at once. Fix all errors and
-   re-call until `valid`, resolve each warning or consciously dismiss it, and
-   use the returned `resolvedVersions` as each node's `typeVersion`.
-   Then call `fill-workflow-parameters` with the same skeleton, a concrete
-   brief (include every specific value the user gave), and per-node hints for
-   anything non-obvious — it generates all node parameters in parallel,
-   assembles the source, and writes it to your `filePath`. Review its
-   `parameterIssues` and `assumptions`: fix what matters with
-   `workspace_str_replace_file` (or re-run with better hints). Fall back to
-   writing complete TypeScript SDK code yourself with `workspace_write_file`
-   only when the fill fails or the workflow is an edit of an existing one.
-   Do not put secrets in the source file.
+6. For a new workflow, produce the source with `fill-workflow-parameters` —
+   never write it by hand. Pass the topology skeleton — nodes (name, type,
+   one-line purpose), connections with ports, optional groups, no parameters —
+   plus a concrete `brief` (include every specific value the user gave) and
+   `nodeHints` for anything non-obvious. The tool validates the skeleton
+   first (on structural errors it returns `skeletonDiagnostics` — fix every
+   error and re-call), generates all node parameters in parallel, assembles
+   the source deterministically, and writes it to your `filePath`. Review the
+   returned warnings, `parameterIssues`, and `assumptions`: fix what matters
+   with `workspace_str_replace_file`, or re-run with better hints. To check a
+   topology cheaply before committing to a fill (for example while a plan
+   still needs user approval), call `plan-workflow-skeleton` with the same
+   skeleton shape — deterministic and instant. Hand-written SDK source via
+   `workspace_write_file` is only for edits of existing workflows, and as a
+   fallback when `fill-workflow-parameters` itself fails.
+   Do not put secrets in the source file or in fill inputs.
    Before building, decide whether verification needs branch fixtures. When a
    live or nondeterministic upstream node (such as HTTP Request, search/list
    lookups, weather feeds, or AI classifiers) feeds IF/Switch logic and

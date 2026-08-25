@@ -163,6 +163,10 @@ describe('fillWorkflowParameters', () => {
 		expect(result.filePath).toBe('fill-test.workflow.ts');
 		expect(result.filledNodes).toEqual(expect.arrayContaining(['Trigger', 'Set', 'Slack']));
 		expect(result.failedNodes).toEqual([]);
+		// A clean skeleton reports no diagnostics, and the result steers to build-workflow.
+		expect(result.skeletonDiagnostics).toBeUndefined();
+		expect(result.nextStep).toContain('build-workflow');
+		expect(result.nextStep).toContain('fill-test.workflow.ts');
 		// Two LLM calls: the trigger has no properties, so no call for it.
 		expect(generateValidatedJsonMock).toHaveBeenCalledTimes(2);
 
@@ -187,6 +191,7 @@ describe('fillWorkflowParameters', () => {
 
 		expect(result.success).toBe(false);
 		expect(result.skeletonDiagnostics?.some((d) => d.code === 'NO_TRIGGER')).toBe(true);
+		expect(result.nextStep).toContain('call fill-workflow-parameters again');
 		expect(generateValidatedJsonMock).not.toHaveBeenCalled();
 		expect(writeWorkspaceFileMock).not.toHaveBeenCalled();
 	});
@@ -199,7 +204,31 @@ describe('fillWorkflowParameters', () => {
 
 		expect(result.success).toBe(false);
 		expect(result.failedNodes[0]?.reason).toContain('workspace');
+		expect(result.nextStep).toContain('blocking');
 		expect(generateValidatedJsonMock).not.toHaveBeenCalled();
+	});
+
+	it('surfaces skeleton warnings on a successful fill', async () => {
+		generateValidatedJsonMock.mockResolvedValue(okFill({ fields: 'x' }));
+
+		const result = await fillWorkflowParameters(
+			createMockContext(),
+			makeInput({
+				skeleton: makeSkeleton({
+					nodes: [
+						node('Trigger', 'n8n-nodes-base.manualTrigger'),
+						node('Set', 'n8n-nodes-base.set'),
+						node('Orphan', 'n8n-nodes-base.set'),
+					],
+					connections: [edge('Trigger', 'Set')],
+				}),
+			}),
+		);
+
+		expect(result.success).toBe(true);
+		expect(result.skeletonDiagnostics).toEqual([
+			expect.objectContaining({ severity: 'warning', code: 'ISOLATED_NODE', node: 'Orphan' }),
+		]);
 	});
 
 	it('isolates a failed fill: the node is reported, the others still land in the source', async () => {
