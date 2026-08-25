@@ -133,6 +133,26 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'The AI Assistant requested a direct connection through the Browser Use extension.',
 		properties: z.object({}),
 	},
+	AI_ASSISTANT_RESPONSE_STARTED: {
+		name: 'AI Assistant response started',
+		description:
+			'The AI Assistant started responding to a user turn with a non-empty text chunk, confirmation request, or successfully completed workflow build. Latency starts when the backend accepts the message and includes setup work such as sandbox startup. Fires at most once per turn.',
+		properties: z.object({
+			user_id: z.string(),
+			thread_id: z.string(),
+			run_id: z
+				.string()
+				.describe('Initial run ID for the user turn; the reply may come from a follow-up run'),
+			latency_ms: z
+				.number()
+				.int()
+				.nonnegative()
+				.describe('Milliseconds from backend message acceptance to response start'),
+			is_first_user_message: z
+				.boolean()
+				.describe("Whether this was the thread's first user message"),
+		}),
+	},
 	COMPUTER_USE_MODAL_OPENED: {
 		name: 'User opened computer use connection modal',
 		description: 'The user opened the Computer Use connection interface.',

@@ -69,6 +69,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		// dependencies clearThreadState reaches.
 		type Internals = {
 			threadPushRef: Map<string, string>;
+			firstReplyTrackers: Map<string, { threadId: string; unsubscribe: () => void }>;
 			planRequestsByThread: Map<string, number>;
 			runState: { clearThread: Mock };
 			backgroundTasks: { cancelThread: Mock };
@@ -95,6 +96,7 @@ describe('InstanceAiService — threadPushRef lifetime', () => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 
 		service.threadPushRef = new Map<string, string>([['thread-a', 'push-ref-a']]);
+		service.firstReplyTrackers = new Map();
 		service.planRequestsByThread = new Map<string, number>([['thread-a', 2]]);
 		service.runState = {
 			clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })),

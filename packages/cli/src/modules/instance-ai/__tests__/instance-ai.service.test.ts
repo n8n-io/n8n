@@ -223,6 +223,7 @@ import {
 	type TraceStatus,
 	type WorkflowVerificationObligation,
 } from '@n8n/instance-ai';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { ErrorReporter } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
 import type { Mock, MockedFunction } from 'vitest';
@@ -636,6 +637,7 @@ type ShutdownServiceInternals = {
 	sandboxService: { stopSandboxExpiryTimers: MockedFunction<() => void> };
 	browserSessionService: { shutdown: MockedFunction<() => Promise<void>> };
 	domainAccessTrackersByThread: Map<string, unknown>;
+	firstReplyTrackers: Map<string, { threadId: string; unsubscribe: () => void }>;
 	eventBus: { clear: MockedFunction<() => void> };
 	eventLog: { flushAll: MockedFunction<() => Promise<void>> };
 	_mcpClientManager?: { disconnect: MockedFunction<() => Promise<void>> };
@@ -1224,6 +1226,7 @@ describe('InstanceAiService — shutdown', () => {
 		service.sandboxService = { stopSandboxExpiryTimers: vi.fn() };
 		service.browserSessionService = { shutdown: vi.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
+		service.firstReplyTrackers = new Map();
 		service.eventBus = { clear: vi.fn() };
 		service.eventLog = { flushAll: vi.fn(async () => {}) };
 		service._mcpClientManager = { disconnect: vi.fn(async () => {}) };
@@ -4555,7 +4558,7 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 	});
 });
 
-describe('InstanceAiService — user message persistence on cancel', () => {
+describe('InstanceAiService — executeRun', () => {
 	type ExecuteRunInternals = {
 		executeRun: (
 			user: User,
@@ -4564,13 +4567,20 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 			message: string,
 			abortController: AbortController,
 		) => Promise<void>;
-		agentMemory: { saveMessages: Mock };
-		eventBus: { publish: Mock };
+		agentMemory: { saveMessages: Mock; hasUserMessages: Mock };
+		eventBus: { publish: Mock; subscribe: Mock; unsubscribe: Mock };
 		terminalOutcome: { evaluateTerminalResponse: Mock };
+		telemetry: { track: Mock };
+		firstReplyTrackers: Map<string, { threadId: string; unsubscribe: () => void }>;
 		logger: { warn: Mock; error: Mock };
 		createProxyRunConfig: Mock;
 		isRunDebugEnabled: Mock;
-		runState: { clearActiveRun: Mock; hasSuspendedRun: Mock };
+		runState: {
+			clearActiveRun: Mock;
+			getActiveRun: Mock;
+			getRunIdsForMessageGroup: Mock;
+			hasSuspendedRun: Mock;
+		};
 		domainAccessTrackersByThread: Map<string, unknown>;
 		instanceAiErrorReporter: { beginRun: Mock; endRun: Mock };
 		schedulePlannedTasks: Mock;
@@ -4580,14 +4590,45 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 
 	function createCancelPersistenceService(): ExecuteRunInternals {
 		const service = Object.create(InstanceAiService.prototype) as unknown as ExecuteRunInternals;
-		service.agentMemory = { saveMessages: vi.fn(async () => {}) };
-		service.eventBus = { publish: vi.fn() };
+		service.agentMemory = {
+			saveMessages: vi.fn(async () => {}),
+			hasUserMessages: vi.fn(async () => false),
+		};
+		let subscribedThreadId: string | undefined;
+		let subscriber: ((stored: { event: InstanceAiEvent }) => void) | undefined;
+		const unsubscribe = vi.fn(() => {
+			subscriber = undefined;
+		});
+		service.eventBus = {
+			publish: vi.fn((threadId: string, event: InstanceAiEvent) => {
+				if (threadId === subscribedThreadId) subscriber?.({ event });
+			}),
+			subscribe: vi.fn(
+				(threadId: string, handler: (stored: { event: InstanceAiEvent }) => void) => {
+					subscribedThreadId = threadId;
+					subscriber = handler;
+					return unsubscribe;
+				},
+			),
+			unsubscribe,
+		};
 		service.terminalOutcome = { evaluateTerminalResponse: vi.fn() };
+		service.telemetry = { track: vi.fn() };
+		service.firstReplyTrackers = new Map();
 		service.logger = { warn: vi.fn(), error: vi.fn() };
 		service.createProxyRunConfig = vi.fn(async () => ({ tracingProxyConfig: undefined }));
 		service.isRunDebugEnabled = vi.fn(() => false);
 		// hasSuspendedRun → true short-circuits the finally's post-run scheduling
-		service.runState = { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) };
+		service.runState = {
+			clearActiveRun: vi.fn(),
+			getActiveRun: vi.fn(() => ({
+				runId: 'run-1',
+				startedAt: 1_000,
+				messageGroupId: 'message-group-1',
+			})),
+			getRunIdsForMessageGroup: vi.fn(() => ['run-1', 'run-2']),
+			hasSuspendedRun: vi.fn(() => true),
+		};
 		service.domainAccessTrackersByThread = new Map();
 		service.instanceAiErrorReporter = {
 			beginRun: vi.fn(() => Symbol('error-reporter-execution')),
@@ -4597,6 +4638,16 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 			getExtensionTraceContext: vi.fn(() => ({ connectionState: 'disconnected' })),
 		};
 		return service;
+	}
+
+	function abortWhenRunStarts(
+		service: ExecuteRunInternals,
+		abortController: AbortController,
+	): void {
+		service.instanceAiErrorReporter.beginRun.mockImplementation(() => {
+			abortController.abort();
+			return Symbol('error-reporter-execution');
+		});
 	}
 
 	it('persists the user message when Stop is hit before the stream starts', async () => {
@@ -4617,6 +4668,166 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 					}),
 				],
 			}),
+		);
+		expect(service.eventBus.subscribe).not.toHaveBeenCalled();
+	});
+
+	it('tracks the first non-empty text reply once', async () => {
+		const service = createCancelPersistenceService();
+		service.terminalOutcome.evaluateTerminalResponse.mockImplementation(async () => {
+			service.eventBus.publish('thread-1', {
+				type: 'error',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				ts: 1_025,
+				payload: { content: 'temporary error' },
+			});
+			service.eventBus.publish('thread-1', {
+				type: 'text-delta',
+				runId: 'another-run',
+				agentId: 'agent-1',
+				ts: 1_050,
+				payload: { text: 'ignore me' },
+			});
+			service.eventBus.publish('thread-1', {
+				type: 'text-delta',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				ts: 1_075,
+				payload: { text: '   ' },
+			});
+			service.eventBus.publish('thread-1', {
+				type: 'text-delta',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				ts: 1_125,
+				payload: { text: 'Hello' },
+			});
+			service.eventBus.publish('thread-1', {
+				type: 'text-delta',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				ts: 1_150,
+				payload: { text: ' again' },
+			});
+		});
+		const abortController = new AbortController();
+		abortWhenRunStarts(service, abortController);
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'banana', abortController);
+
+		expect(service.telemetry.track).toHaveBeenCalledOnce();
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_RESPONSE_STARTED,
+			{
+				user_id: 'user-1',
+				thread_id: 'thread-1',
+				run_id: 'run-1',
+				latency_ms: 125,
+				is_first_user_message: true,
+			},
+		);
+		expect(service.eventBus.unsubscribe).toHaveBeenCalledOnce();
+	});
+
+	it('stops tracking when the initial run is cancelled', async () => {
+		const service = createCancelPersistenceService();
+		service.terminalOutcome.evaluateTerminalResponse.mockImplementation(async () => {
+			service.eventBus.publish('thread-1', {
+				type: 'run-finish',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				ts: 1_100,
+				payload: { status: 'cancelled' },
+			});
+			service.eventBus.publish('thread-1', {
+				type: 'text-delta',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				ts: 1_200,
+				payload: { text: 'too late' },
+			});
+		});
+		const abortController = new AbortController();
+		abortWhenRunStarts(service, abortController);
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'banana', abortController);
+
+		expect(service.telemetry.track).not.toHaveBeenCalled();
+		expect(service.eventBus.unsubscribe).toHaveBeenCalledOnce();
+	});
+
+	it('tracks an MCP connection request for a subsequent message', async () => {
+		const service = createCancelPersistenceService();
+		service.agentMemory.hasUserMessages.mockResolvedValue(true);
+		service.terminalOutcome.evaluateTerminalResponse.mockImplementation(async () => {
+			service.eventBus.publish('thread-1', {
+				type: 'confirmation-request',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				ts: 1_200,
+				payload: {
+					requestId: 'request-1',
+					toolCallId: 'tool-call-1',
+					toolName: 'mcp-servers',
+					args: {},
+					severity: 'info',
+					message: 'Connect this tool',
+					mcpConnectRequest: {
+						servers: [
+							{
+								serverSlug: 'example',
+								title: 'Example',
+								credentialType: 'exampleApi',
+							},
+						],
+					},
+				},
+			});
+		});
+		const abortController = new AbortController();
+		abortWhenRunStarts(service, abortController);
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'banana', abortController);
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_RESPONSE_STARTED,
+			expect.objectContaining({
+				latency_ms: 200,
+				is_first_user_message: false,
+			}),
+		);
+	});
+
+	it('tracks a workflow reply from a follow-up run', async () => {
+		const service = createCancelPersistenceService();
+		service.terminalOutcome.evaluateTerminalResponse.mockImplementation(async () => {
+			service.eventBus.publish('thread-1', {
+				type: 'tool-call',
+				runId: 'run-2',
+				agentId: 'agent-1',
+				ts: 1_100,
+				payload: { toolCallId: 'tool-call-1', toolName: 'build-workflow', args: {} },
+			});
+			service.eventBus.publish('thread-1', {
+				type: 'tool-result',
+				runId: 'run-2',
+				agentId: 'agent-1',
+				ts: 1_300,
+				payload: {
+					toolCallId: 'tool-call-1',
+					result: { success: true, workflowId: 'workflow-1' },
+				},
+			});
+		});
+		const abortController = new AbortController();
+		abortWhenRunStarts(service, abortController);
+
+		await service.executeRun(fakeUser, 'thread-1', 'run-1', 'banana', abortController);
+
+		expect(service.telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.AI_ASSISTANT_RESPONSE_STARTED,
+			expect.objectContaining({ latency_ms: 300 }),
 		);
 	});
 
@@ -4711,12 +4922,14 @@ describe('InstanceAiService — planned task settlement', () => {
 		tracing: { finalizeBackgroundTaskTracing: Mock };
 		terminalOutcome: { recordBackgroundTerminalOutcome: Mock };
 		suspendedThreads: { dropPendingConfirmationsForThread: Mock };
+		firstReplyTrackers: Map<string, { threadId: string; unsubscribe: () => void }>;
 	};
 
 	const task = {
 		plannedTaskId: 'task-1',
 		threadId: 'thread-a',
 		runId: 'task-run-1',
+		messageGroupId: 'group-1',
 		agentId: 'agent-1',
 		role: 'builder',
 	};
@@ -4728,6 +4941,7 @@ describe('InstanceAiService — planned task settlement', () => {
 			markCancelled: vi.fn(async () => graph),
 			markFailed: vi.fn(async () => graph),
 		};
+		const unsubscribe = vi.fn();
 		Object.assign(service, {
 			createPlannedTaskState: vi.fn(async () => ({ plannedTaskService })),
 			syncPlannedTasksToUi: vi.fn(async () => {}),
@@ -4746,15 +4960,16 @@ describe('InstanceAiService — planned task settlement', () => {
 			eventBus: { publish: vi.fn() },
 			terminalOutcome: { recordBackgroundTerminalOutcome: vi.fn(async () => {}) },
 			suspendedThreads: { dropPendingConfirmationsForThread: vi.fn(async () => {}) },
+			firstReplyTrackers: new Map([['group-1', { threadId: 'thread-a', unsubscribe }]]),
 		});
-		return { service, plannedTaskService, graph };
+		return { service, plannedTaskService, graph, unsubscribe };
 	}
 
 	/** cancelRun/cancelBackgroundTask fire settlement with `void`, so let it settle. */
 	const flush = async () => await new Promise((resolve) => setTimeout(resolve, 0));
 
 	it('marks the planned task cancelled but does not re-tick when the whole thread is cancelled', async () => {
-		const { service, plannedTaskService, graph } = createSettlementService();
+		const { service, plannedTaskService, graph, unsubscribe } = createSettlementService();
 
 		service.cancelRun('thread-a');
 		await flush();
@@ -4764,6 +4979,7 @@ describe('InstanceAiService — planned task settlement', () => {
 		});
 		expect(service.syncPlannedTasksToUi).toHaveBeenCalledWith('thread-a', graph);
 		expect(service.schedulePlannedTasks).not.toHaveBeenCalled();
+		expect(unsubscribe).toHaveBeenCalledOnce();
 		expect(service.eventBus.publish).toHaveBeenCalledWith(
 			'thread-a',
 			expect.objectContaining({
@@ -5595,6 +5811,7 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 	type Internals = {
 		threadPushRef: Map<string, string>;
+		firstReplyTrackers: Map<string, { threadId: string; unsubscribe: () => void }>;
 		planRequestsByThread: Map<string, number>;
 		runState: { clearThread: Mock };
 		backgroundTasks: { cancelThread: Mock };
@@ -5624,6 +5841,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 
 		service.threadPushRef = new Map();
+		service.firstReplyTrackers = new Map();
 		service.planRequestsByThread = new Map();
 		service.runState = { clearThread: vi.fn(() => ({ active: undefined, suspended: undefined })) };
 		service.backgroundTasks = { cancelThread: vi.fn(() => []) };
@@ -5656,6 +5874,8 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 
 	it('clearThreadState deletes agent-builder sessions when the agents module is active', async () => {
 		const service = buildService();
+		const unsubscribe = vi.fn();
+		service.firstReplyTrackers.set('group-1', { threadId: 'thread-a', unsubscribe });
 		const deleteBuilderSessions = vi.fn().mockResolvedValue(undefined);
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === ModuleRegistry) return { isActive: () => true };
@@ -5667,6 +5887,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 
 		await service.clearThreadState('thread-a');
 
+		expect(unsubscribe).toHaveBeenCalledOnce();
 		expect(deleteBuilderSessions).toHaveBeenCalledWith('thread-a');
 	});
 
