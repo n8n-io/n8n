@@ -1271,10 +1271,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				webhookWaiting: '/webhook-waiting/',
 				webhookTest: '/webhook-test/',
 			});
-			vi.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue({
-				variables: mockVariables,
-				projectId: undefined,
-			});
+			vi.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue(mockVariables);
 		});
 
 		it('should return base additional data with default values', async () => {
@@ -1345,9 +1342,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 				// mockInstance(OwnershipService), which each Container.set a fresh mock.
 				// Re-bind ours so the source resolves it.
 				Container.set(OwnershipService, ownershipService);
-				// This behavior lives inside the real getVariables, not getBase itself —
-				// undo the outer describe's stub so these tests exercise it for real.
-				vi.mocked(WorkflowHelpers.getVariables).mockRestore();
 			});
 
 			it('backfills projectId from the workflow owner when missing', async () => {

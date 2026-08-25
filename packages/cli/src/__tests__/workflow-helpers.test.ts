@@ -73,41 +73,36 @@ describe('workflow-helpers', () => {
 
 	describe('getVariables', () => {
 		it('should return all variables as key-value pairs if no parameters are given', async () => {
-			const { variables, projectId } = await getVariables();
+			const variables = await getVariables();
 			expect(variables).toEqual({ VAR1: 'value1', VAR2: 'value2' });
-			expect(projectId).toBeUndefined();
 		});
 
 		it('should return global and project variables if projectId is given', async () => {
-			const { variables, projectId } = await getVariables(undefined, '1');
+			const variables = await getVariables(undefined, '1');
 			expect(variables).toEqual({ VAR1: 'value1', VAR2: 'value1Project', VAR4: 'value4' });
-			expect(projectId).toBe('1');
 		});
 
 		it('should return global and project variables if workflowId is given', async () => {
-			const { variables, projectId } = await getVariables('1');
+			const variables = await getVariables('1');
 			expect(variables).toEqual({ VAR1: 'value1', VAR2: 'value1Project', VAR4: 'value4' });
-			expect(projectId).toBe('1');
 		});
 
 		it('should prioritize passed of projectId over workflowId', async () => {
-			const { variables, projectId } = await getVariables('1', '2');
+			const variables = await getVariables('1', '2');
 			expect(variables).toEqual({ VAR1: 'value1', VAR2: 'value2', VAR5: 'value5' });
-			expect(projectId).toBe('2');
 		});
 
 		it('should let a project variable override a same-key global regardless of order', async () => {
-			const { variables } = await getVariables(undefined, '1');
+			const variables = await getVariables(undefined, '1');
 			expect(variables.VAR2).toBe('value1Project');
 		});
 
-		it('should resolve global variables and leave projectId unset when the owning project cannot be resolved', async () => {
+		it('should resolve global variables without throwing when the owning project cannot be resolved', async () => {
 			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('not found'));
 
-			const { variables, projectId } = await getVariables('1');
+			const variables = await getVariables('1');
 
 			expect(variables).toEqual({ VAR1: 'value1', VAR2: 'value2' });
-			expect(projectId).toBeUndefined();
 		});
 	});
 });

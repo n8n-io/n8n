@@ -789,13 +789,25 @@ export async function getBase({
 
 	const globalConfig = Container.get(GlobalConfig);
 
-	// `getVariables` resolves and returns the workflow's owning project when the caller
-	// passes `workflowId` but not `projectId` — reuse that so every downstream consumer
-	// (e.g. policy enforcement) sees the executing project too, same as `executeAgent`
-	// already does locally for its own use.
-	const variablesResult = await WorkflowHelpers.getVariables(workflowId, projectId);
-	const variables = variablesResult.variables;
-	projectId = variablesResult.projectId;
+	// Trigger-fired, webhook, and worker-queued executions build additionalData without
+	// a `projectId`. Resolve it from the workflow's owning project so every downstream
+	// consumer (e.g. policy enforcement) sees the executing project, same as
+	// `executeAgent` already does locally for its own use. Run alongside `getVariables`
+	// (which does an equivalent, safe, cache-backed lookup internally) rather than
+	// awaiting first, so this backfill adds no serial latency.
+	const [variables, ownerProjectDetails] = await Promise.all([
+		WorkflowHelpers.getVariables(workflowId, projectId),
+		projectId || !workflowId
+			? null
+			: (async () => {
+					const { OwnershipService } = await import('@/services/ownership.service.js');
+					return await getWorkflowProjectDetailsSafe(Container.get(OwnershipService), workflowId);
+				})(),
+	]);
+
+	if (!projectId && ownerProjectDetails?.projectId) {
+		projectId = ownerProjectDetails.projectId;
+	}
 
 	const eventService = Container.get(EventService);
 

@@ -422,10 +422,7 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 	return workflow;
 }
 
-export async function getVariables(
-	workflowId?: string,
-	projectId?: string,
-): Promise<{ variables: IDataObject; projectId?: string }> {
+export async function getVariables(workflowId?: string, projectId?: string): Promise<IDataObject> {
 	const [variables, ownerProjectDetails] = await Promise.all([
 		Container.get(VariablesService).getAllCached(),
 		// If projectId is not provided, try to get it from workflow. Never throws —
@@ -440,10 +437,7 @@ export async function getVariables(
 	// rather than `??` is needed to fall through to `undefined` in that case.
 	const projectIdToUse = projectId ?? (ownerProjectDetails?.projectId || undefined);
 
-	return {
-		variables: Object.freeze(resolveVariables(variables, projectIdToUse)),
-		projectId: projectIdToUse,
-	};
+	return Object.freeze(resolveVariables(variables, projectIdToUse));
 }
 
 /**
