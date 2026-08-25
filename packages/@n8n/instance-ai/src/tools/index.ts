@@ -89,6 +89,10 @@ const loadPlanWorkflowSkeletonTool = lazyMod(
 	() =>
 		require('./workflows/plan-workflow-skeleton.tool') as typeof import('./workflows/plan-workflow-skeleton.tool'),
 );
+const loadFillWorkflowParametersTool = lazyMod(
+	() =>
+		require('./workflows/fill-workflow-parameters.tool') as typeof import('./workflows/fill-workflow-parameters.tool'),
+);
 const loadWorkflowsTool = lazyMod(
 	() => require('./workflows.tool') as typeof import('./workflows.tool'),
 );
@@ -116,6 +120,10 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[
 			DOMAIN_TOOL_IDS.PLAN_WORKFLOW_SKELETON,
 			loadPlanWorkflowSkeletonTool().createPlanWorkflowSkeletonTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.FILL_WORKFLOW_PARAMETERS,
+			loadFillWorkflowParametersTool().createFillWorkflowParametersTool(context),
 		],
 	];
 
@@ -153,6 +161,10 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[
 			DOMAIN_TOOL_IDS.PLAN_WORKFLOW_SKELETON,
 			loadPlanWorkflowSkeletonTool().createPlanWorkflowSkeletonTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.FILL_WORKFLOW_PARAMETERS,
+			loadFillWorkflowParametersTool().createFillWorkflowParametersTool(context),
 		],
 	];
 

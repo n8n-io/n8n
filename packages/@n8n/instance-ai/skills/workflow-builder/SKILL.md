@@ -15,6 +15,7 @@ recommended_tools:
   - edit_file
   - execute_command
   - plan-workflow-skeleton
+  - fill-workflow-parameters
   - build-workflow
   - workflows
   - nodes
@@ -206,10 +207,16 @@ follow its build → publish → assign steps.
    with ports, optional groups, no parameters. It is deterministic and
    instant, and returns every structural problem at once. Fix all errors and
    re-call until `valid`, resolve each warning or consciously dismiss it, and
-   use the returned `resolvedVersions` as each node's `typeVersion`. Then
-   produce complete TypeScript SDK code and write it with
-   `workspace_write_file` (new/full rewrite) or `workspace_str_replace_file`
-   (targeted edit). Do not put secrets in the source file.
+   use the returned `resolvedVersions` as each node's `typeVersion`.
+   Then call `fill-workflow-parameters` with the same skeleton, a concrete
+   brief (include every specific value the user gave), and per-node hints for
+   anything non-obvious — it generates all node parameters in parallel,
+   assembles the source, and writes it to your `filePath`. Review its
+   `parameterIssues` and `assumptions`: fix what matters with
+   `workspace_str_replace_file` (or re-run with better hints). Fall back to
+   writing complete TypeScript SDK code yourself with `workspace_write_file`
+   only when the fill fails or the workflow is an edit of an existing one.
+   Do not put secrets in the source file.
    Before building, decide whether verification needs branch fixtures. When a
    live or nondeterministic upstream node (such as HTTP Request, search/list
    lookups, weather feeds, or AI classifiers) feeds IF/Switch logic and

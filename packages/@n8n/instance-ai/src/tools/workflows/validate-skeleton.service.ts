@@ -66,7 +66,7 @@ function staticMainOutputCount(description: INodeTypeDescription): number | null
 	return count;
 }
 
-function edgesToConnections(
+export function edgesToConnections(
 	skeleton: WorkflowSkeleton,
 	diagnostics: SkeletonDiagnostic[],
 ): IConnections {
