@@ -22,6 +22,8 @@ export class ListWorkflowReviewRequestsQueryDto extends Z.class({
 export interface WorkflowReviewRequestForWorkflow extends WorkflowReviewRequestSummary {
 	/** The review description, but only for a requester who can act on the review */
 	description: string | null;
+	/** Name given to the pinned version; `null` when unnamed. */
+	workflowVersionName: string | null;
 	/** Who made the current decision; `null` when there is none or the user is gone. */
 	decisionBy: WorkflowReviewEligibleReviewer | null;
 	/**

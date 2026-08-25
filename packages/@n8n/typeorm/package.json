@@ -1,6 +1,6 @@
 {
   "name": "@n8n/typeorm",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Data-Mapper ORM for TypeScript, ES7, ES6, ES5. Supports PostgreSQL and SQLite databases.",
   "license": "MIT",
   "readmeFilename": "README.md",
@@ -75,13 +75,13 @@
     "chai-as-promised": "^7.1.1",
     "eslint": "^8.44.0",
     "mocha": "^10.2.0",
-    "pg": "^8.17.0",
+    "pg": "catalog:",
     "pg-query-stream": "^4.10.3",
     "prettier": "^2.8.3",
     "rimraf": "^4.1.2",
     "sinon": "^15.0.1",
     "sinon-chai": "^3.7.0",
-    "source-map-support": "^0.5.21",
+    "source-map-support": "catalog:",
     "sqlite3": "5.1.7",
     "ts-node": "^10.9.1",
     "typescript": "catalog:typescript"

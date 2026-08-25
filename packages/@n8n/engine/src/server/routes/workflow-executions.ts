@@ -5,6 +5,7 @@ import { AdmittanceRejectedError } from '../../admittance';
 import { UnimplementedError, type JsonValue } from '../../common';
 import type { StartExecutionService } from '../../execution/start-execution.service';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
+import { fail } from '../error-response';
 
 const MAX_TRIGGER_SLOTS = MAX_SLOT_INDEX + 1;
 
@@ -57,10 +58,7 @@ export function createWorkflowExecutionsRouter(startExecution: StartExecutionSer
 	router.post('/', async (req, res) => {
 		const parsed = StartExecutionBody.safeParse(req.body);
 		if (!parsed.success) {
-			res.status(400).json({
-				error: 'invalid_request',
-				details: parsed.error.flatten(),
-			});
+			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
 			return;
 		}
 
@@ -69,15 +67,15 @@ export function createWorkflowExecutionsRouter(startExecution: StartExecutionSer
 			res.status(201).json(result);
 		} catch (error) {
 			if (error instanceof AdmittanceRejectedError) {
-				res.status(429).json({ error: 'admittance_rejected', reason: error.reason });
+				fail(res, 429, { error: 'admittance_rejected', reason: error.reason });
 				return;
 			}
 			if (error instanceof GraphValidationError) {
-				res.status(400).json({ error: 'invalid_graph', reason: error.message });
+				fail(res, 400, { error: 'invalid_graph', reason: error.message });
 				return;
 			}
 			if (error instanceof UnimplementedError) {
-				res.status(501).json({ error: 'unimplemented', reason: error.message });
+				fail(res, 501, { error: 'unimplemented', reason: error.message });
 				return;
 			}
 			throw error;

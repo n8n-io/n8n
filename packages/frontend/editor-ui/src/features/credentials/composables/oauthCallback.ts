@@ -169,7 +169,9 @@ export async function waitForOAuthCallback({
 			clearInterval(popupClosedPoll);
 			if (verifyConnected) {
 				void verify();
-				verifyTimer = setInterval(() => void verify(), VERIFY_CONNECTED_INTERVAL);
+				verifyTimer = setInterval(() => {
+					void verify();
+				}, VERIFY_CONNECTED_INTERVAL);
 			} else if (abortOnPopupClose) {
 				settle('aborted');
 			}

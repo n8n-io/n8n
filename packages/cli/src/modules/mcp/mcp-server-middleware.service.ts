@@ -15,6 +15,7 @@ import { Telemetry } from '@/telemetry';
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { McpProtectedResource } from './mcp-protected-resource';
 import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
+import type { McpAuthenticatedRequest } from './mcp.types';
 import { getClientInfo, getProtocolVersion } from './mcp.utils';
 
 /**
@@ -98,11 +99,8 @@ export class McpServerMiddlewareService {
 			}
 
 			(req as AuthenticatedRequest).user = user;
-			const mcpReq = req as AuthenticatedRequest & {
-				mcpAuthType?: UserWithContext['authType'];
-				mcpScopes?: string[];
-			};
-			mcpReq.mcpAuthType = result.authType;
+			const mcpReq = req as McpAuthenticatedRequest;
+			mcpReq.mcpCaller = result.caller;
 			// undefined for API keys = not scope-bearing → full tool access
 			mcpReq.mcpScopes = result.scopes;
 

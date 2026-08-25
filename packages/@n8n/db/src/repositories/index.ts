@@ -58,6 +58,8 @@ export {
 	PollerStateRepository,
 	type PollerCursor,
 	type PollLeaseFence,
+	type PollerFailureState,
+	type PollerFullState,
 } from './poller-state.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
@@ -83,7 +85,6 @@ export {
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {
 	WorkflowReviewRequestRepository,
-	type ClosedUnreviewableRequest,
 	type InboxCursor,
 	type InboxVisibility,
 	type WorkflowReviewRequestForWorkflowRow,

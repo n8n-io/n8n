@@ -22,7 +22,7 @@ type WorkflowPackageKeyHandling = {
 	settings: 'copy';
 	staticData: 'exclude';
 	meta: 'exclude';
-	nodeGroups: 'exclude';
+	nodeGroups: 'copy';
 	tags: 'transform';
 	tagMappings: 'exclude';
 	shared: 'exclude';
@@ -39,7 +39,7 @@ type WorkflowPackageKeyHandling = {
 
 type WorkflowPackageContent = Pick<
 	WorkflowEntity,
-	'name' | 'nodes' | 'connections' | 'isArchived' | 'settings'
+	'name' | 'nodes' | 'connections' | 'nodeGroups' | 'isArchived' | 'settings'
 >;
 
 const serializePayload = definePackageSerializationPayload<
@@ -68,6 +68,7 @@ export class WorkflowSerializer {
 				parentFolderId: workflow.parentFolder?.id ?? null,
 				isPublished: workflow.activeVersionId === workflow.versionId,
 				isArchived: workflow.isArchived,
+				...(workflow.nodeGroups?.length ? { nodeGroups: workflow.nodeGroups } : {}),
 				...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
 			}),
 		);
@@ -89,6 +90,7 @@ export class WorkflowSerializer {
 			name: parsed.name,
 			nodes: parsed.nodes as INode[],
 			connections: parsed.connections as IConnections,
+			nodeGroups: parsed.nodeGroups ?? [],
 			isArchived: parsed.isArchived,
 			...(parsed.settings !== undefined ? { settings: parsed.settings } : {}),
 		};

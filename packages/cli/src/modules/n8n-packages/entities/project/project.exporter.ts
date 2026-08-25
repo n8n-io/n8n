@@ -75,7 +75,7 @@ export class ProjectExporter {
 		target: string,
 		request: ProjectExportRequest,
 	): Promise<ProjectExportResult> {
-		this.exportProjectShell(project, target, request.writer);
+		await this.exportProjectShell(project, target, request.writer);
 		const folders = await this.exportProjectFolders(project.id, target, request);
 		const rootWorkflows = await this.exportProjectRootWorkflows(project.id, target, request);
 
@@ -88,10 +88,14 @@ export class ProjectExporter {
 		};
 	}
 
-	private exportProjectShell(project: Project, target: string, writer: PackageWriter): void {
+	private async exportProjectShell(
+		project: Project,
+		target: string,
+		writer: PackageWriter,
+	): Promise<void> {
 		const serialized = this.projectSerializer.serialize(project);
-		writer.writeDirectory(target);
-		writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
+		await writer.writeDirectory(target);
+		await writer.writeFile(`${target}/project.json`, JSON.stringify(serialized, null, '\t'));
 	}
 
 	private async exportProjectFolders(

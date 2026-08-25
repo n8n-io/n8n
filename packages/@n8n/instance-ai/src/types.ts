@@ -110,6 +110,12 @@ export interface ExecutionResult {
 	 * nothing" apart from "never reached".
 	 */
 	executedNodeNames?: string[];
+	/**
+	 * Nodes with pinned data saved on the workflow when this run started. A
+	 * reached node in this list output its pinned items instead of executing,
+	 * so the run is not a live test of it.
+	 */
+	workflowPinnedNodeNames?: string[];
 	/** Node-level errors from run data, including continue-on-fail errors. */
 	nodeErrors?: ExecutionNodeError[];
 	/** Name of the last node the execution processed, when available. */
@@ -322,6 +328,16 @@ export interface InstanceAiWorkflowService {
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
 	 *  Pass a versionId to get a past version's graph instead of the current draft. */
 	getAsWorkflowJSON(workflowId: string, versionId?: string): Promise<WorkflowJSON>;
+	/**
+	 * Names and item counts of nodes carrying pinned data on the saved workflow.
+	 * Deliberately a summary next to the WorkflowJSON rather than part of it:
+	 * pin payloads can be huge, and a JSON that round-trips through
+	 * `updateFromWorkflowJSON` must stay pin-free so agent saves keep clearing
+	 * stale pins instead of re-persisting them.
+	 */
+	getPinnedDataSummary?(
+		workflowId: string,
+	): Promise<Array<{ nodeName: string; itemCount: number }>>;
 	/** Cheap version-only lookup. The adapter projects just `versionId` and
 	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
 	 *  Use to validate per-session caches when the body isn't needed. */
@@ -488,6 +504,8 @@ export interface InstanceAiCredentialService {
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	/** Whether a credential type with this exact registered name exists on the instance. */
+	credentialTypeExists?(credentialType: string): Promise<boolean>;
 	/** HTTP-usable credential types with the API host(s) they authenticate against,
 	 *  derived from credential metadata. Powers steering generic HTTP-node auth toward
 	 *  a predefined credential when one already exists for the target service. */
@@ -500,6 +518,8 @@ export interface InstanceAiCredentialService {
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
+	/** Current AI Gateway wallet, or `null` when Connect is off or the fetch failed. */
+	getAiGatewayWallet?(): Promise<{ balance: number } | null>;
 	/** List all credential types supported by n8n Connect on this instance. */
 	listAiGatewayCredentialTypes?(): Promise<string[]>;
 	/** Whether the credential type is an OAuth type whose client the instance
@@ -986,6 +1006,8 @@ export interface BuilderDelegateSession {
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
 	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only our consumption of it. */
 	abortSignal: AbortSignal;
+	/** The parent orchestrator's validated, approval-wrapped MCP tools. */
+	mcpTools?: InstanceAiToolRegistry;
 }
 
 /** A builder turn stream: consumable by normalizeStreamSource, plus final text. */

@@ -273,3 +273,51 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		expect(analysis.remediation?.guidance).not.toContain('n8n credits');
 	});
 });
+
+describe('analyzeVerificationResult — workflow-pinned nodes', () => {
+	const pinnedRunResult = {
+		executionId: 'exec-1',
+		status: 'success',
+		executedNodeNames: ['Trigger', 'Get Job Alert Emails', 'Mark Email Processed'],
+		lastNodeExecuted: 'Mark Email Processed',
+		data: {
+			Trigger: [{}],
+			'Get Job Alert Emails': [{ id: 'msg_1' }],
+			'Mark Email Processed': [{}],
+		},
+		workflowPinnedNodeNames: ['Get Job Alert Emails', 'Unreached Pinned Node'],
+	} as unknown as ExecutionRunResult;
+
+	it('counts reached pinned nodes as simulated so the run is not treated as live', () => {
+		const analysis = analyzeVerificationResult({
+			result: pinnedRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.reachedSimulatedNodes).toEqual([
+			{
+				nodeName: 'Get Job Alert Emails',
+				reason: 'Output came from pinned data saved on the workflow — unpin it for a live test',
+			},
+		]);
+		expect(analysis.simulationNote).toContain('Get Job Alert Emails');
+		expect(analysis.simulationNote).toContain('pinned data saved on the workflow');
+	});
+
+	it('does not duplicate nodes the simulation plan already covers', () => {
+		const analysis = analyzeVerificationResult({
+			result: pinnedRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [{ nodeName: 'Get Job Alert Emails', reason: 'Mocked credentials' }],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.reachedSimulatedNodes).toEqual([
+			{ nodeName: 'Get Job Alert Emails', reason: 'Mocked credentials' },
+		]);
+	});
+});

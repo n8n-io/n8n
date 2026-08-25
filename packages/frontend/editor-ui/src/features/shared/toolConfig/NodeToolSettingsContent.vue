@@ -25,7 +25,13 @@ import { omitOperationOptions } from '@/features/shared/toolConfig/toolConfig.ut
 import type { INodeUpdatePropertiesInformation, ITab, IUpdateInformation } from '@/Interface';
 import { N8nTabs, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { Workflow, NodeHelpers, deepCopy, type INode, type INodeParameters } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	deepCopy,
+	type INode,
+	type INodeParameters,
+	type Workflow,
+} from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue';
 import {
 	ChatHubToolContextKey,
@@ -395,7 +401,7 @@ onMounted(async () => {
 	if (projectId) {
 		await Promise.all([
 			credentialsStore.fetchCredentialTypes(false),
-			credentialsStore.fetchAllCredentialsForWorkflow({ projectId }),
+			credentialsStore.fetchUsableCredentials({ projectId }),
 		]);
 	}
 });
