@@ -789,6 +789,22 @@ export async function getBase({
 
 	const globalConfig = Container.get(GlobalConfig);
 
+	// Trigger-fired, webhook, and worker-queued executions build additionalData without
+	// a `projectId` (see the `getBase` callers in `active-workflow-manager`,
+	// `webhooks/*`, and `scaling/job-processor`). Resolve it from the workflow's owning
+	// project so every downstream consumer (e.g. policy enforcement) sees the executing
+	// project, same as `executeAgent` already does locally for its own use.
+	if (!projectId && workflowId) {
+		try {
+			const { OwnershipService } = await import('@/services/ownership.service.js');
+			const project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowId);
+			projectId = project.id;
+		} catch {
+			// No resolvable owning project (e.g. workflow deleted mid-flight) — leave
+			// `projectId` unset, matching today's behavior for callers that omit it.
+		}
+	}
+
 	const variables = await WorkflowHelpers.getVariables(workflowId, projectId);
 
 	const eventService = Container.get(EventService);
