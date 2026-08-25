@@ -89,6 +89,48 @@ describe('logAiEvent', () => {
 			expect(payload).not.toContain('sk-abc123DEF456ghi789jkl012');
 		});
 
+		it('should sanitize composite credential field names in tool-called events', () => {
+			logAiEvent(mockExecuteFunctions, 'ai-tool-called', {
+				query: { accessKeyId: 'AKIAIOSFODNN7EXAMPLE' },
+				response: { secretAccessKey: 'wJalrXUtnFEMI/K7MDENG', Cookie: 'session=abc123' },
+			});
+
+			const payload = mockExecuteFunctions.logAiEvent.mock.calls[0][1];
+			expect(payload).toContain('[redacted]');
+			expect(payload).not.toContain('AKIAIOSFODNN7EXAMPLE');
+			expect(payload).not.toContain('wJalrXUtnFEMI/K7MDENG');
+			expect(payload).not.toContain('session=abc123');
+		});
+
+		it('should preserve Date serialization in tool-called events', () => {
+			logAiEvent(mockExecuteFunctions, 'ai-tool-called', {
+				query: 'lookup user',
+				response: {
+					createdAt: new Date('2026-08-25T12:00:00.000Z'),
+					message: 'ok',
+				},
+			});
+
+			const payload = mockExecuteFunctions.logAiEvent.mock.calls[0][1];
+			expect(payload).toContain('2026-08-25T12:00:00.000Z');
+			expect(payload).toContain('"message":"ok"');
+		});
+
+		it('should preserve custom toJSON serialization in tool-called events', () => {
+			logAiEvent(mockExecuteFunctions, 'ai-tool-called', {
+				query: 'lookup user',
+				response: {
+					toJSON() {
+						return { status: 'ok', issuedAt: new Date('2020-01-01T00:00:00.000Z') };
+					},
+				},
+			});
+
+			const payload = mockExecuteFunctions.logAiEvent.mock.calls[0][1];
+			expect(payload).toContain('"status":"ok"');
+			expect(payload).toContain('2020-01-01T00:00:00.000Z');
+		});
+
 		it('should leave other events unsanitized', () => {
 			const data: IDataObject = { response: 'api_key: sk-live-abcdef123456' };
 

@@ -1,4 +1,4 @@
-import { jsonStringify } from 'n8n-workflow';
+import { jsonParse, jsonStringify } from 'n8n-workflow';
 
 const SECRET_REDACTION = '[redacted]';
 
@@ -12,6 +12,9 @@ const SECRET_REDACTION = '[redacted]';
  * The leading `[\w-]*` matters: `\b` alone never fires inside a compound key
  * such as `client_secret`. The auth scheme is optional so an `Authorization`
  * header holding a bare key is masked too.
+ *
+ * Composite names (`secretAccessKey`, `accessKeyId`) and cookie fields follow
+ * `@n8n/instance-ai/evaluations/harness/redact.ts`. `token_type` does not match.
  */
 export const redactSecrets = (content: string): string =>
 	content
@@ -20,7 +23,7 @@ export const redactSecrets = (content: string): string =>
 			`$1$2${SECRET_REDACTION}`,
 		)
 		.replace(
-			/([\w-]*(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|passwd|secret|credential|private[_-]?key))(["']?\s*[:=]\s*)(["']?)[^\s"',;}]+\3/gi,
+			/([\w-]*(?:api[_-]?key|access[_-]?key(?:[_-]?id)?|access[_-]?token|refresh[_-]?token|token|password|passwd|secret(?:[_-]?access[_-]?key)?|credential|private[_-]?key|set[_-]?cookie|cookies?))(["']?\s*[:=]\s*)(["']?)[^\s"',;}]+\3/gi,
 			`$1$2$3${SECRET_REDACTION}$3`,
 		)
 		// Unlabeled formats from `@n8n/instance-ai/evaluations/harness/redact.ts`.
@@ -32,7 +35,7 @@ export const redactSecrets = (content: string): string =>
 		.replace(/\bAKIA[0-9A-Z]{16}\b/g, SECRET_REDACTION);
 
 const CREDENTIAL_KEY_PATTERN =
-	/^[\w-]*(?:api[_-]?key|access[_-]?token|refresh[_-]?token|token|password|passwd|secret|credential|private[_-]?key)$/i;
+	/^[\w-]*(?:api[_-]?key|access[_-]?key(?:[_-]?id)?|access[_-]?token|refresh[_-]?token|token|password|passwd|secret(?:[_-]?access[_-]?key)?|credential|private[_-]?key|set[_-]?cookie|cookies?)$/i;
 
 const isCredentialNamedKey = (key: string): boolean =>
 	key.toLowerCase() === 'authorization' || CREDENTIAL_KEY_PATTERN.test(key);
@@ -49,12 +52,7 @@ const parseJsonObject = (value: string): object | undefined => {
 	return undefined;
 };
 
-/**
- * Replaces credential-named properties with a sentinel and masks credential-shaped
- * text in strings. Object and array values are walked rather than regex-replaced in
- * serialized JSON, which can produce invalid JSON and must not restore the original.
- */
-export function sanitizeCredentialShapedValues(value: unknown, key?: string): unknown {
+function redactJsonValue(value: unknown, key?: string): unknown {
 	if (key !== undefined && isCredentialNamedKey(key)) {
 		return SECRET_REDACTION;
 	}
@@ -62,22 +60,44 @@ export function sanitizeCredentialShapedValues(value: unknown, key?: string): un
 	if (typeof value === 'string') {
 		const parsed = parseJsonObject(value);
 		if (parsed !== undefined) {
-			return jsonStringify(sanitizeCredentialShapedValues(parsed));
+			const redacted = redactJsonValue(parsed);
+			return jsonStringify(redacted) === jsonStringify(parsed) ? value : jsonStringify(redacted);
 		}
 		return redactSecrets(value);
 	}
 
 	if (Array.isArray(value)) {
-		return value.map((item) => sanitizeCredentialShapedValues(item));
+		return value.map((item) => redactJsonValue(item));
 	}
 
 	if (value !== null && typeof value === 'object') {
 		const sanitized: Record<string, unknown> = {};
 		for (const [childKey, childValue] of Object.entries(value)) {
-			sanitized[childKey] = sanitizeCredentialShapedValues(childValue, childKey);
+			sanitized[childKey] = redactJsonValue(childValue, childKey);
 		}
 		return sanitized;
 	}
 
 	return value;
+}
+
+/**
+ * Replaces credential-named properties with a sentinel and masks credential-shaped
+ * text in strings. JSON.stringify runs first so Date and custom toJSON values
+ * keep their serialized form, then the JSON-compatible tree is walked.
+ */
+export function sanitizeCredentialShapedValues(value: unknown, key?: string): unknown {
+	if (key !== undefined && isCredentialNamedKey(key)) {
+		return SECRET_REDACTION;
+	}
+
+	if (value !== null && typeof value === 'object') {
+		const parsed: unknown = jsonParse(jsonStringify(value), { fallbackValue: undefined });
+		if (parsed === undefined) {
+			throw new Error('Unable to sanitize tool-called payload');
+		}
+		return redactJsonValue(parsed);
+	}
+
+	return redactJsonValue(value, key);
 }

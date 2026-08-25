@@ -79,6 +79,35 @@ describe('sanitizeCredentialShapedValues', () => {
 		});
 	});
 
+	it('should sanitize composite credential field names', () => {
+		expect(
+			sanitizeCredentialShapedValues({
+				secretAccessKey: 'wJalrXUtnFEMI/K7MDENG',
+				accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
+				Cookie: 'session=abc123',
+				message: 'ok',
+			}),
+		).toEqual({
+			secretAccessKey: '[redacted]',
+			accessKeyId: '[redacted]',
+			Cookie: '[redacted]',
+			message: 'ok',
+		});
+	});
+
+	it('should preserve Date serialization', () => {
+		const createdAt = new Date('2026-08-25T12:00:00.000Z');
+		expect(
+			sanitizeCredentialShapedValues({
+				createdAt,
+				message: 'ok',
+			}),
+		).toEqual({
+			createdAt: '2026-08-25T12:00:00.000Z',
+			message: 'ok',
+		});
+	});
+
 	it('should sanitize credential-shaped values inside stringified JSON', () => {
 		const result = sanitizeCredentialShapedValues({
 			response: JSON.stringify({ api_key: { nested: 'sk-live-abcdef123456' } }, null, 2),
@@ -86,6 +115,13 @@ describe('sanitizeCredentialShapedValues', () => {
 
 		expect(result).toEqual({
 			response: JSON.stringify({ api_key: '[redacted]' }),
+		});
+	});
+
+	it('should keep pretty-printed JSON strings that do not need redaction', () => {
+		const pretty = JSON.stringify({ msg: 'test response' }, null, 2);
+		expect(sanitizeCredentialShapedValues({ response: pretty })).toEqual({
+			response: pretty,
 		});
 	});
 
