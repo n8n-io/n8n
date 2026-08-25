@@ -268,7 +268,10 @@ export class WorkflowReviewAuthorizationService {
 	 */
 	async resolveViewerEligibility(
 		user: User,
-		access: Pick<ReadableWorkflowReviewRequest, 'request' | 'workflowRows' | 'readableWorkflowRows'>,
+		access: Pick<
+			ReadableWorkflowReviewRequest,
+			'request' | 'workflowRows' | 'readableWorkflowRows'
+		>,
 	): Promise<WorkflowReviewViewerEligibility> {
 		const { request, workflowRows, readableWorkflowRows } = access;
 
