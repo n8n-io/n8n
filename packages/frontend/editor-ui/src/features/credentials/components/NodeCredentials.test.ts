@@ -318,6 +318,43 @@ describe('NodeCredentials', () => {
 		expect(screen.getByTestId('node-credentials-select')).toBeInTheDocument();
 	});
 
+	it('passes the workflowId prop through to the new credential modal when standalone', async () => {
+		workflowDocumentStoreRef.value = null;
+		credentialsStore.state.credentials = {
+			c8vqdPpPClh4TgIO: createCredential(),
+		};
+
+		renderComponent(
+			{
+				props: {
+					node: httpNode,
+					overrideCredType: 'openAiApi',
+					standalone: true,
+					workflowId: 'wf-artifact',
+				},
+			},
+			{ merge: true },
+		);
+
+		await userEvent.click(screen.getByTestId('node-credentials-select'));
+		await userEvent.click(screen.getByTestId('node-credentials-select-item-new'));
+
+		expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+			'openAiApi',
+			false,
+			false,
+			undefined,
+			undefined,
+			httpNode.name,
+			httpNode,
+			expect.objectContaining({ workflowId: 'wf-artifact' }),
+		);
+		expect(trackMock).toHaveBeenCalledWith(
+			'User opened Credential modal',
+			expect.objectContaining({ workflow_id: 'wf-artifact' }),
+		);
+	});
+
 	it('should refresh credentials from the server when mounted on an existing node', () => {
 		ndvStore.activeNode = httpNode;
 		credentialsStore.state.credentials = {};
@@ -410,7 +447,7 @@ describe('NodeCredentials', () => {
 			undefined,
 			httpNode.name,
 			httpNode,
-			{ hideAskAssistant: false, closeOnSave: true },
+			{ hideAskAssistant: false, closeOnSave: true, workflowId: '1' },
 		);
 	});
 
@@ -441,7 +478,7 @@ describe('NodeCredentials', () => {
 			undefined,
 			httpNode.name,
 			httpNode,
-			{ hideAskAssistant: true, closeOnSave: true, appendToBody: true },
+			{ hideAskAssistant: true, closeOnSave: true, appendToBody: true, workflowId: '1' },
 		);
 	});
 
@@ -644,6 +681,7 @@ describe('NodeCredentials', () => {
 				credential_type: 'openAiApi',
 				node_type: openAiNodeWithCred.type,
 				workflow_id: expect.any(String),
+				credential_id: 'secondCred',
 				credential_kind: 'own',
 				source: 'user',
 			});
@@ -1175,7 +1213,7 @@ describe('NodeCredentials', () => {
 					name: slackNode.name,
 					type: slackNode.type,
 				}),
-				{ hideAskAssistant: false, closeOnSave: true },
+				{ hideAskAssistant: false, closeOnSave: true, workflowId: '1' },
 			);
 		});
 
@@ -1532,6 +1570,7 @@ describe('NodeCredentials', () => {
 			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('c8vqdPpPClh4TgIO', {
 				hideAskAssistant: true,
 				appendToBody: true,
+				workflowId: '1',
 			});
 		});
 	});
@@ -2733,6 +2772,7 @@ describe('NodeCredentials', () => {
 					credential_type: 'googlePalmApi',
 					node_type: googleAiNode.type,
 					workflow_id: expect.any(String),
+					credential_id: null,
 					credential_kind: 'n8n_connect',
 					source: 'user',
 				});

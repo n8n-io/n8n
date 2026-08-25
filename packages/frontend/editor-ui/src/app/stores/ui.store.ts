@@ -443,6 +443,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			hideAskAssistant?: boolean;
 			appendToBody?: boolean;
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+			workflowId?: string;
 		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
@@ -451,6 +452,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			projectId: undefined,
 			contextNode: undefined,
 			closeOnSave: false,
+			workflowId: options.workflowId,
 			hideAskAssistant: options.hideAskAssistant,
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
@@ -473,6 +475,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
 			usageScope?: NewCredentialsModal['usageScope'];
 			credentialSetupHint?: NewCredentialsModal['credentialSetupHint'];
+			workflowId?: string;
 		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
@@ -482,6 +485,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			closeOnSave: options.closeOnSave ?? false,
 			projectId,
 			suggestedName,
+			workflowId: options.workflowId,
 			nodeName,
 			contextNode,
 			hideAskAssistant: options.hideAskAssistant,

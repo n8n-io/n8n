@@ -284,6 +284,65 @@ describe('UI Store', () => {
 		});
 	});
 
+	describe('openNewCredential / openExistingCredential', () => {
+		beforeEach(() => {
+			modalRegistry.register({
+				key: CREDENTIAL_EDIT_MODAL_KEY,
+				component: {},
+				initialState: { open: false },
+			});
+		});
+
+		it('should store the workflowId option in the modal state', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openNewCredential(
+				'slackApi',
+				false,
+				false,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{
+					workflowId: 'wf-1',
+				},
+			);
+
+			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].workflowId).toBe('wf-1');
+		});
+
+		it('should clear a stale workflowId when reopened without one', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openNewCredential(
+				'slackApi',
+				false,
+				false,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{
+					workflowId: 'wf-1',
+				},
+			);
+			uiStore.openNewCredential('slackApi');
+
+			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].workflowId).toBeUndefined();
+		});
+
+		it('should carry and clear workflowId through openExistingCredential', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openExistingCredential('cred-1', { workflowId: 'wf-1' });
+			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].workflowId).toBe('wf-1');
+
+			uiStore.openExistingCredential('cred-1');
+			expect(uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY].workflowId).toBeUndefined();
+		});
+	});
+
 	describe('isModalActiveById', () => {
 		const MODAL_KEY = 'someFeatureModal';
 
