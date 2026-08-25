@@ -82,10 +82,10 @@ export interface DialogProps {
 }
 
 export interface DialogEmits {
-	escapeKeyDown: [event: KeyboardEvent];
-	interactOutside: [event: Event];
-	openAutoFocus: [event: Event];
-	closeAutoFocus: [event: Event];
+	escapeKeyDown: [payload: KeyboardEvent];
+	interactOutside: [payload: Event];
+	openAutoFocus: [payload: Event];
+	closeAutoFocus: [payload: Event];
 	'update:open': [value: boolean];
 }
 

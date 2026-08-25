@@ -30,7 +30,7 @@ withDefaults(
 );
 
 defineEmits<{
-	click: [event: MouseEvent];
+	click: [payload: MouseEvent];
 }>();
 
 const hovered = ref(false);

@@ -17,7 +17,7 @@ withDefaults(
 
 const emit = defineEmits<{
 	'update:modelValue': [value: string];
-	keydown: [event: KeyboardEvent];
+	keydown: [payload: KeyboardEvent];
 }>();
 
 const slots = defineSlots<{

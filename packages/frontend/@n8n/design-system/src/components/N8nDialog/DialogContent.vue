@@ -54,10 +54,10 @@ export interface DialogContentProps {
 }
 
 export interface DialogContentEmits {
-	escapeKeyDown: [event: KeyboardEvent];
-	interactOutside: [event: Event];
-	openAutoFocus: [event: Event];
-	closeAutoFocus: [event: Event];
+	escapeKeyDown: [payload: KeyboardEvent];
+	interactOutside: [payload: Event];
+	openAutoFocus: [payload: Event];
+	closeAutoFocus: [payload: Event];
 }
 
 const props = withDefaults(defineProps<DialogContentProps>(), {

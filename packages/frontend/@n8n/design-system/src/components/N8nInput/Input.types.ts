@@ -34,10 +34,10 @@ export interface InputProps {
 export interface InputEmits {
 	'update:modelValue': [value: string];
 	input: [value: string];
-	focus: [event: FocusEvent];
-	blur: [event: FocusEvent];
-	keydown: [event: KeyboardEvent];
-	mousedown: [event: MouseEvent];
+	focus: [payload: FocusEvent];
+	blur: [payload: FocusEvent];
+	keydown: [payload: KeyboardEvent];
+	mousedown: [payload: MouseEvent];
 }
 
 export interface InputSlots {
