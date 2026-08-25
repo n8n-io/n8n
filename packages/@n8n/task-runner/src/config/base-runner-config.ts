@@ -75,11 +75,9 @@ export class BaseRunnerConfig {
 	 * How long (in seconds) a task is allowed to take for completion, else the
 	 * task will be aborted. (In internal mode, the runner will also be
 	 * restarted.) Must be greater than 0.
-	 *
-	 * Kept high for backwards compatibility - n8n v2 will reduce this to `60`
 	 */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
-	taskTimeout: number = 300; // 5 minutes
+	taskTimeout: number = 60; // 1 minute
 
 	@Nested
 	healthcheckServer!: HealthcheckServerConfig;
