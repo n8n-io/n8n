@@ -5,6 +5,8 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
+import http from 'node:http';
+import https from 'node:https';
 
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Start } from '../start';
@@ -252,6 +254,26 @@ describe('Start - AuthRolesService initialization', () => {
 			await start.init();
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('init - env proxy agents', () => {
+		it('should install env-proxy global agents when proxy env vars are set', async () => {
+			setupInstanceSettings('main', false, false);
+			const previousHttpAgent = http.globalAgent;
+			const previousHttpsAgent = https.globalAgent;
+			process.env.HTTPS_PROXY = 'http://proxy.host.invalid:3128';
+
+			try {
+				await start.init();
+
+				expect(http.globalAgent.constructor.name).toBe('EnvProxyHttpAgent');
+				expect(https.globalAgent.constructor.name).toBe('EnvProxyHttpsAgent');
+			} finally {
+				delete process.env.HTTPS_PROXY;
+				http.globalAgent = previousHttpAgent;
+				https.globalAgent = previousHttpsAgent;
+			}
 		});
 	});
 
