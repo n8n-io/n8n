@@ -512,6 +512,8 @@ describe('CommunityPackagesService', () => {
 				),
 			).rejects.toThrow('The specified package could not be loaded');
 
+			// Unloaded twice: once before the failed load, once to drop it during the rollback.
+			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledTimes(2);
 			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(2);
 			expect(loadNodesAndCredentials.loadPackage).toHaveBeenNthCalledWith(2, PACKAGE_NAME);
 			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalledTimes(1);
@@ -606,6 +608,42 @@ describe('CommunityPackagesService', () => {
 				JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }, null, 2),
 				'utf-8',
 			);
+		});
+
+		test('should unload the package when a fresh install fails to save to the database', async () => {
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			// No pre-existing directory here, unlike the shared beforeEach's update scenario.
+			vi.mocked(access).mockReset().mockRejectedValue(new Error('ENOENT'));
+
+			installedPackageRepository.saveInstalledPackageWithNodes.mockRejectedValueOnce(
+				new Error('DB unreachable'),
+			);
+
+			await expect(communityPackagesService.installPackage(PACKAGE_NAME)).rejects.toThrow(
+				'Failed to save installed package',
+			);
+
+			// The load succeeded, so the loader has to go: the install is reported as failed,
+			// left no database record, and its directory is gone.
+			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledTimes(2);
+			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenLastCalledWith(PACKAGE_NAME);
+			// Nothing was backed up, so there is no previous version to load again.
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(1);
+			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalledTimes(1);
+		});
+
+		test('should unload the package when a fresh install contains no loadable nodes', async () => {
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			vi.mocked(access).mockReset().mockRejectedValue(new Error('ENOENT'));
+
+			loadNodesAndCredentials.loadPackage.mockResolvedValueOnce(
+				mock<PackageDirectoryLoader>({ loadedNodes: [] }),
+			);
+
+			await expect(communityPackagesService.installPackage(PACKAGE_NAME)).rejects.toThrow();
+
+			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledTimes(2);
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(1);
 		});
 
 		test('should still succeed when removing the backup directory fails after the update', async () => {
@@ -891,38 +929,11 @@ describe('CommunityPackagesService', () => {
 			await (communityPackagesService as any).restoreFailedPackageInstallation(packageName, {
 				backupDirectory,
 				previousVersion: '1.0.0',
-				reloadPackage: true,
 			});
 
 			// The manifest must not keep naming the version that failed to install, even
 			// though the directory it describes could not be restored.
 			expect(updateDependency).toHaveBeenCalledWith(packageName, '1.0.0');
-			// The restore failed, so there is nothing valid on disk to reload: reloading
-			// would only unload a working loader without anything to put back in its place.
-			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
-		});
-
-		test('reloads the restored package when the directory restore succeeds', async () => {
-			const packageName = 'n8n-nodes-test';
-			const backupDirectory = `${nodesDownloadDir}/node_modules/${packageName}.backup-123`;
-
-			vi.mocked(rm).mockResolvedValue(undefined);
-			vi.mocked(rename).mockResolvedValue(undefined);
-			vi.spyOn(communityPackagesService, 'updatePackageJsonDependency').mockResolvedValue(
-				undefined,
-			);
-			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
-			loadNodesAndCredentials.loadPackage.mockResolvedValue(mock<PackageDirectoryLoader>());
-			loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
-
-			await (communityPackagesService as any).restoreFailedPackageInstallation(packageName, {
-				backupDirectory,
-				previousVersion: '1.0.0',
-				reloadPackage: true,
-			});
-
-			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(packageName);
-			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(packageName);
 		});
 
 		test('drops the manifest entry when a fresh install fails and the directory restore fails', async () => {
@@ -939,6 +950,48 @@ describe('CommunityPackagesService', () => {
 				path.join(nodesDownloadDir, 'package.json'),
 				JSON.stringify({ dependencies: {} }, null, 2),
 				'utf-8',
+			);
+		});
+	});
+
+	describe('restoreLoadedPackage', () => {
+		const packageName = 'n8n-nodes-test';
+
+		beforeEach(() => {
+			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
+			loadNodesAndCredentials.loadPackage.mockResolvedValue(mock<PackageDirectoryLoader>());
+			loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
+		});
+
+		test('reloads the package when a backup was put back in place', async () => {
+			const backupDirectory = `${nodesDownloadDir}/node_modules/${packageName}.backup-123`;
+
+			await (communityPackagesService as any).restoreLoadedPackage(packageName, backupDirectory);
+
+			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(packageName);
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(packageName);
+		});
+
+		test('unloads without reloading when there was no backup to put back', async () => {
+			await (communityPackagesService as any).restoreLoadedPackage(packageName, undefined);
+
+			// The loader for the version that failed has to go even with no previous version
+			// to bring back, or its nodes stay usable with nothing on disk behind them.
+			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(packageName);
+			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalledTimes(1);
+		});
+
+		test('warns instead of throwing when the unload fails', async () => {
+			loadNodesAndCredentials.unloadPackage.mockRejectedValueOnce(new Error('unload failed'));
+
+			await expect(
+				(communityPackagesService as any).restoreLoadedPackage(packageName, undefined),
+			).resolves.toBeUndefined();
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to reload community package after failed installation',
+				expect.objectContaining({ packageName }),
 			);
 		});
 	});

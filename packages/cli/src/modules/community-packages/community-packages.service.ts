@@ -486,8 +486,8 @@ export class CommunityPackagesService {
 				await this.restoreFailedPackageInstallation(packageName, {
 					backupDirectory,
 					previousVersion,
-					reloadPackage: true,
 				});
+				await this.restoreLoadedPackage(packageName, backupDirectory);
 				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, {
 					cause: error,
 				});
@@ -507,8 +507,8 @@ export class CommunityPackagesService {
 					await this.restoreFailedPackageInstallation(packageName, {
 						backupDirectory,
 						previousVersion,
-						reloadPackage: true,
 					});
+					await this.restoreLoadedPackage(packageName, backupDirectory);
 
 					throw new UnexpectedError('Failed to save installed package', {
 						extra: { packageName },
@@ -542,8 +542,8 @@ export class CommunityPackagesService {
 				await this.restoreFailedPackageInstallation(packageName, {
 					backupDirectory,
 					previousVersion,
-					reloadPackage: true,
 				});
+				await this.restoreLoadedPackage(packageName, backupDirectory);
 
 				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 			}
@@ -677,33 +677,13 @@ export class CommunityPackagesService {
 	}
 
 	/**
-	 * Puts the backup back in place and, if asked, reloads what was restored. Kept apart
-	 * from the ledger rollback below because a follower must not touch the ledger: its
-	 * entry is justified by the leader's database record, not by this instance's disk.
+	 * Puts the backup back in place. Kept apart from the ledger rollback below because a
+	 * follower must not touch the ledger: its entry is justified by the leader's database
+	 * record, not by this instance's disk.
 	 */
-	private async restorePackageDirectory(
-		packageName: string,
-		backupDirectory?: string,
-		reloadPackage = false,
-	) {
+	private async restorePackageDirectory(packageName: string, backupDirectory?: string) {
 		try {
 			await this.restorePackageDirectoryFromBackup(packageName, backupDirectory);
-
-			// Reload only if the restore above succeeded, otherwise there's nothing
-			// valid on disk to load and we'd just unload a working loader for nothing.
-			if (backupDirectory && reloadPackage) {
-				try {
-					await this.loadNodesAndCredentials.unloadPackage(packageName);
-					await this.loadNodesAndCredentials.loadPackage(packageName);
-					await this.loadNodesAndCredentials.postProcessLoaders();
-					this.loadNodesAndCredentials.releaseTypes();
-				} catch (cleanupError) {
-					this.logger.warn('Failed to reload community package after failed installation', {
-						error: ensureError(cleanupError),
-						packageName,
-					});
-				}
-			}
 		} catch (cleanupError) {
 			// `backupDirectory` is the only pointer to the files if the rename half failed: the
 			// loader skips `.backup-<ts>` directories, so nothing finds them again on its own.
@@ -715,13 +695,35 @@ export class CommunityPackagesService {
 		}
 	}
 
+	/**
+	 * Brings the loader back in line with a rolled-back directory: the version that failed
+	 * is gone from disk, so its loader has to go too, and whatever the restore put back has
+	 * to be loaded again. Only for callers that already unloaded the previous version.
+	 */
+	private async restoreLoadedPackage(packageName: string, backupDirectory?: string) {
+		try {
+			await this.loadNodesAndCredentials.unloadPackage(packageName);
+			// Nothing was restored when there was no backup, so there is nothing to load.
+			if (backupDirectory) {
+				await this.loadNodesAndCredentials.loadPackage(packageName);
+			}
+			await this.loadNodesAndCredentials.postProcessLoaders();
+			this.loadNodesAndCredentials.releaseTypes();
+		} catch (cleanupError) {
+			this.logger.warn('Failed to reload community package after failed installation', {
+				error: ensureError(cleanupError),
+				packageName,
+			});
+		}
+	}
+
 	private async restoreFailedPackageInstallation(
 		packageName: string,
-		options: { backupDirectory?: string; previousVersion?: string; reloadPackage?: boolean },
+		options: { backupDirectory?: string; previousVersion?: string },
 	) {
-		const { backupDirectory, previousVersion, reloadPackage = false } = options;
+		const { backupDirectory, previousVersion } = options;
 
-		await this.restorePackageDirectory(packageName, backupDirectory, reloadPackage);
+		await this.restorePackageDirectory(packageName, backupDirectory);
 
 		// Independent of the restore above: a failed restore must not leave package.json
 		// pointing at the version that failed to install.
