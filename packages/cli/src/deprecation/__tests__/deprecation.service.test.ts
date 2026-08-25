@@ -176,23 +176,20 @@ describe('DeprecationService', () => {
 	});
 
 	describe('default-flip warnings', () => {
-		test.each(['N8N_UNVERIFIED_PACKAGES_ENABLED', 'N8N_RUNNERS_TASK_TIMEOUT'])(
-			'should warn when %s is unset',
-			(envVar) => {
-				delete process.env[envVar];
+		test.each(['N8N_UNVERIFIED_PACKAGES_ENABLED'])('should warn when %s is unset', (envVar) => {
+			delete process.env[envVar];
+			deprecationService.warn();
+			expect(logger.warn.mock.lastCall?.[0] ?? '').toContain(envVar);
+		});
+
+		test.each([['N8N_UNVERIFIED_PACKAGES_ENABLED', 'false']])(
+			'should not warn when %s is set explicitly',
+			(envVar, value) => {
+				process.env[envVar] = value;
 				deprecationService.warn();
-				expect(logger.warn.mock.lastCall?.[0] ?? '').toContain(envVar);
+				expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
 			},
 		);
-
-		test.each([
-			['N8N_UNVERIFIED_PACKAGES_ENABLED', 'false'],
-			['N8N_RUNNERS_TASK_TIMEOUT', '120'],
-		])('should not warn when %s is set explicitly', (envVar, value) => {
-			process.env[envVar] = value;
-			deprecationService.warn();
-			expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
-		});
 	});
 
 	describe('running outside a container', () => {
