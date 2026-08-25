@@ -84,6 +84,7 @@ export interface ImportPackageCounts {
 		};
 	};
 	credentials: { matched: number; stubbed: number };
+	dataTables: { matched: number; created: number };
 	variables: {
 		matched: number;
 		created: number;

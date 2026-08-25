@@ -346,6 +346,7 @@ describe('Git connections in Public API', () => {
 					publishing: { published: 0, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
 				},
 				credentials: { matched: 0, stubbed: 0 },
+				dataTables: { matched: 0, created: 0 },
 				variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
 				tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
 			},

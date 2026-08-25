@@ -166,6 +166,10 @@ export class WorkflowPackageImporter {
 				matched: content.credentialResult.matched,
 				stubbed: content.credentialResult.stubbed,
 			},
+			dataTables: {
+				matched: content.dataTablePlan.matchedCount,
+				created: content.dataTablePlan.creations.length,
+			},
 			variables: toVariableSummary(content.variablePlan, content.variableResult),
 			tags: toTagSummary(content.tagPlan),
 		});

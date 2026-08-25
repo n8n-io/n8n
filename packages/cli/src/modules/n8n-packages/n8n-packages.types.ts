@@ -606,6 +606,11 @@ export interface ImportVariableSummary {
 	updated: string[];
 }
 
+export interface ImportDataTableSummary {
+	matched: number;
+	created: number;
+}
+
 /** Tag names (not ids), grouped by how the import resolved them. */
 export interface ImportTagSummary {
 	matched: string[];
@@ -627,6 +632,7 @@ export interface ImportResult {
 	projects: ImportedProjectSummary[];
 	bindings: SerializedBindings;
 	credentials: ImportCredentialSummary;
+	dataTables: ImportDataTableSummary;
 	variables: ImportVariableSummary;
 	tags: ImportTagSummary;
 }

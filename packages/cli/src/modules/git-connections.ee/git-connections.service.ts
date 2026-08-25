@@ -381,6 +381,10 @@ export class GitConnectionsService {
 				matched: result.credentials.matched.length,
 				stubbed: result.credentials.stubbed.length,
 			},
+			dataTables: {
+				matched: result.dataTables.matched,
+				created: result.dataTables.created,
+			},
 			variables: {
 				matched: result.variables.matched.length,
 				created: result.variables.created.length,

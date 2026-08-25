@@ -483,6 +483,7 @@ function emptyImportResult(manifest: PackageManifest): ImportResult {
 		projects: [],
 		bindings: createBindings(),
 		credentials: { matched: [], stubbed: [] },
+		dataTables: { matched: 0, created: 0 },
 		variables: { matched: [], created: [], stubbed: [], updated: [], missing: [] },
 		tags: { matched: [], created: [], renamed: [], reconciled: [], skipped: [] },
 	});

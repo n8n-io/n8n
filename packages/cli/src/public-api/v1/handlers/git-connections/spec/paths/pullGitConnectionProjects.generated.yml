@@ -66,10 +66,35 @@ responses:
                     skipped:
                       type: integer
                       minimum: 0
+                    publishing:
+                      type: object
+                      properties:
+                        published:
+                          type: integer
+                          minimum: 0
+                        unpublished:
+                          type: integer
+                          minimum: 0
+                        unchanged:
+                          type: integer
+                          minimum: 0
+                        blocked:
+                          type: integer
+                          minimum: 0
+                        failed:
+                          type: integer
+                          minimum: 0
+                      required:
+                        - published
+                        - unpublished
+                        - unchanged
+                        - blocked
+                        - failed
                   required:
                     - created
                     - updated
                     - skipped
+                    - publishing
                 credentials:
                   type: object
                   properties:
@@ -82,6 +107,18 @@ responses:
                   required:
                     - matched
                     - stubbed
+                dataTables:
+                  type: object
+                  properties:
+                    matched:
+                      type: integer
+                      minimum: 0
+                    created:
+                      type: integer
+                      minimum: 0
+                  required:
+                    - matched
+                    - created
                 variables:
                   type: object
                   properties:
@@ -135,6 +172,7 @@ responses:
                 - folders
                 - workflows
                 - credentials
+                - dataTables
                 - variables
                 - tags
           required:
