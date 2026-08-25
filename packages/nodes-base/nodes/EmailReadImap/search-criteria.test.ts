@@ -131,6 +131,15 @@ describe('toSearchObject', () => {
 			expect(() => toSearchObject([['LARGER', 'big']])).toThrow(/LARGER/);
 		});
 
+		it('throws on a size that is only partly a number', () => {
+			expect(() => toSearchObject([['LARGER', '1kb']])).toThrow(/LARGER/);
+			expect(() => toSearchObject([['SMALLER', '1_000']])).toThrow(/SMALLER/);
+		});
+
+		it('throws on a fractional size', () => {
+			expect(() => toSearchObject([['LARGER', 1.5]])).toThrow(/LARGER/);
+		});
+
 		it('throws on a size below one byte', () => {
 			expect(() => toSearchObject([['SMALLER', 0]])).toThrow(/SMALLER/);
 			expect(() => toSearchObject([['LARGER', -1]])).toThrow(/LARGER/);

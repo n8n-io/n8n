@@ -148,9 +148,11 @@ const toObject = (key: string, args: unknown[]): SearchObject => {
 	const buildSize = SIZE_KEYS[upper];
 	if (buildSize) {
 		requireArgs(key, args, 1);
-		const size = parseInt(String(args[0]), 10);
-		if (Number.isNaN(size)) {
-			throw new Error(`IMAP search criterion "${key}" needs a number, got "${String(args[0])}".`);
+		const size = Number(String(args[0]));
+		if (!Number.isSafeInteger(size)) {
+			throw new Error(
+				`IMAP search criterion "${key}" needs a whole number, got "${String(args[0])}".`,
+			);
 		}
 		// imapflow's compiler skips a zero value, and a dropped SMALLER matches every message.
 		if (size < 1) {
