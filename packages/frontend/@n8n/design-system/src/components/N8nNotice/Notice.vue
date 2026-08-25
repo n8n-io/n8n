@@ -3,6 +3,7 @@ import sanitize from 'sanitize-html';
 import { computed, ref, useCssModule } from 'vue';
 
 import N8nText from '../../components/N8nText';
+import { n8nHtml as vN8nHtml } from '../../directives';
 import { uid } from '../../utils';
 
 interface NoticeProps {

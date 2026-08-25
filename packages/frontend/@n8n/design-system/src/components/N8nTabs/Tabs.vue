@@ -2,6 +2,7 @@
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { RouterLink } from 'vue-router';
 
+import { n8nHtml as vN8nHtml } from '../../directives';
 import type { TabOptions } from '../../types';
 import N8nIcon from '../N8nIcon';
 import type { TabsProps } from './Tabs.types';

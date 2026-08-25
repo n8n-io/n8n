@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue';
 import { defaultStickyProps } from './constants';
 import type { StickyProps } from './types';
 import { useI18n } from '../../composables/useI18n';
+import { n8nHtml as vN8nHtml } from '../../directives';
 import {
 	isValidHexColor,
 	adjustColorLightness,
