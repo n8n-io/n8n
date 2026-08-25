@@ -696,15 +696,14 @@ export class CommunityPackagesService {
 	}
 
 	/**
-	 * Brings the loader back in line with whatever the rollback left on disk: the version
-	 * that failed is gone, so its loader has to go too. Only for callers that already
-	 * unloaded the previous version.
+	 * Unloads the version that failed and loads back whatever the rollback left on disk.
+	 * Only for callers that already unloaded the previous version.
 	 */
 	private async restoreLoadedPackage(packageName: string) {
 		try {
 			await this.loadNodesAndCredentials.unloadPackage(packageName);
-			// What the rollback left, not what it meant to leave: a restore that failed
-			// halfway can leave nothing there, and boot loads this directory by scanning it.
+			// Check the disk instead of assuming the rollback restored something: a rename
+			// that failed halfway leaves no directory to load.
 			if (await this.packageDirectoryExists(packageName)) {
 				await this.loadNodesAndCredentials.loadPackage(packageName);
 			}
