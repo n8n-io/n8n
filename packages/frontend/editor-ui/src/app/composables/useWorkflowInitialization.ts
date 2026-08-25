@@ -322,12 +322,13 @@ export function useWorkflowInitialization() {
 		);
 		currentWorkflowDocumentStore.value.setName(workflowData.name);
 		documentTitle.setDocumentTitle(workflowData.name, 'IDLE');
-		const homeProject = projectsStore.currentProject ?? projectsStore.personalProject ?? null;
-		currentWorkflowDocumentStore.value.setHomeProject(homeProject);
 
 		await projectsStore.refreshCurrentProject();
 
 		const { currentProject, personalProject } = projectsStore;
+		// Must read the project after the refresh: a `?projectId=` deep link isn't fetched
+		// into the store until then, so an earlier read stamps personal as the owner.
+		currentWorkflowDocumentStore.value.setHomeProject(currentProject ?? personalProject ?? null);
 		currentWorkflowDocumentStore.value.setScopes(
 			currentProject?.scopes ?? personalProject?.scopes ?? [],
 		);
