@@ -5,9 +5,6 @@
 The n8n component library for Vue 3: components, design tokens, icons, and the directives
 plugin. Run `pnpm dev` to browse the components in Storybook.
 
-The package is ESM-only and builds to `dist`. Consumers resolve it through the
-[`exports` map](#exports) — never through a deep path into `src`.
-
 ## Table of Contents
 
 - [Consume the package](#consume-the-package)
@@ -20,7 +17,7 @@ The package is ESM-only and builds to `dist`. Consumers resolve it through the
 
 Prerequisites: a Vue 3 app built by Vite, and `vue` plus `vue-router` installed. Both are
 peer dependencies, and the barrel imports `vue-router` at load time — without it the build
-fails with `Rollup failed to resolve import "vue-router"`.
+fails.
 
 ### 1. Install
 
@@ -40,17 +37,11 @@ Outside this monorepo, install from npm. **Pin `2.36.0` or later** — the wirin
 not resolve on earlier versions, and `2.35.3` is still the `latest` tag:
 
 ```sh
-npm install @n8n/design-system@^2.36.0 vue vue-router
+npm install @n8n/design-system@latest vue vue-router
 ```
 
-Two entry points arrived in `2.36.0`. On `2.35.3` the `./plugin` subpath does not exist at
-all (`ERR_PACKAGE_PATH_NOT_EXPORTED`), and `IconBodyLoaderKey` is reachable only from the
-barrel, not from `./icons/lucide`. If you cannot move off `2.35.3`, see
-[Pinned below 2.36.0](#pinned-below-2360).
-
 Add `sass` as a dev dependency only if you `@use` the SCSS sources from
-[`./css/*`](#exports). Without it, Vite fails the build with
-`Preprocessor dependency "sass-embedded" not found`.
+[`./css/*`](#exports).
 
 ### 2. Build the package first
 
@@ -136,35 +127,6 @@ can reach the mixins and token maps:
 ```
 
 That compiles to `@media screen and (width<=991px)`.
-
-### Pinned below 2.36.0
-
-`2.35.3` has no `./plugin` subpath, so `import { N8nPlugin } from '@n8n/design-system/plugin'`
-fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`. Register the two directives from the barrel
-instead, and take `IconBodyLoaderKey` from the barrel as well:
-
-```ts
-// src/main.ts — @n8n/design-system 2.35.3
-import '@n8n/design-system/style.css';
-import '@n8n/design-system/theme.css';
-
-import { IconBodyLoaderKey, n8nHtml, n8nTruncate } from '@n8n/design-system';
-import { loadLucideIconBody } from '@n8n/design-system/icons/lucide';
-import { createApp } from 'vue';
-
-import App from './App.vue';
-
-const app = createApp(App);
-app.directive('n8nHtml', n8nHtml);
-app.directive('n8nTruncate', n8nTruncate);
-app.provide(IconBodyLoaderKey, loadLucideIconBody);
-app.mount('#app');
-```
-
-This is equivalent to `app.use(N8nPlugin, {})` — the plugin registers the same two
-directives under the same names, so this wiring also works on `2.36.0` and later.
-`loadLucideIconBody` is on `./icons/lucide` in `2.35.3` too; only `IconBodyLoaderKey` is
-barrel-only there.
 
 ## Exports
 
