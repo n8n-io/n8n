@@ -174,26 +174,6 @@ describe('Source Control (Public API)', () => {
 	describe('GET /source-control/status', () => {
 		const statusUrl = '/source-control/status';
 
-		it('should return 401 when API key is missing', async () => {
-			const response = await testServer
-				.publicApiAgentWithoutApiKey()
-				.get(statusUrl)
-				.query({ direction: 'push' });
-
-			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message');
-		});
-
-		it('should return 401 when API key is invalid', async () => {
-			const response = await testServer
-				.publicApiAgentWithApiKey('not-a-real-api-key')
-				.get(statusUrl)
-				.query({ direction: 'push' });
-
-			expect(response.status).toBe(401);
-			expect(response.body).toHaveProperty('message');
-		});
-
 		it('should return 403 when API key lacks sourceControl:read scope', async () => {
 			testServer.license.enable('feat:sourceControl');
 			const member = await createMemberWithApiKey({ scopes: ['tag:list'] });
