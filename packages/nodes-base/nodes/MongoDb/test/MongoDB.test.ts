@@ -196,12 +196,18 @@ describe('MongoDB CRUD Node', () => {
 				params = {},
 			}: {
 				continueOnFail?: boolean;
-				params?: Record<string, unknown>;
+				params?: Record<
+					string,
+					NodeParameterValueType | ((itemIndex: number) => NodeParameterValueType)
+				>;
 			} = {},
 		) {
 			const executeFunctions = mockExecuteFunctions(1.5, operation);
 			executeFunctions.continueOnFail.mockReturnValue(continueOnFail);
-			const merged = new Map<string, unknown>([
+			const merged = new Map<
+				string,
+				NodeParameterValueType | ((itemIndex: number) => NodeParameterValueType)
+			>([
 				['operation', operation],
 				['collection', 'users'],
 				['fields', 'id,value'],
@@ -215,10 +221,7 @@ describe('MongoDB CRUD Node', () => {
 				(parameterName: string, itemIndex = 0, fallbackValue?: NodeParameterValueType) => {
 					if (!merged.has(parameterName)) return fallbackValue as never;
 					const value = merged.get(parameterName);
-					if (typeof value === 'function') {
-						return (value as (index: number) => NodeParameterValueType)(itemIndex) as never;
-					}
-					return value as never;
+					return (typeof value === 'function' ? value(itemIndex) : value) as never;
 				},
 			);
 			return executeFunctions;
@@ -292,75 +295,44 @@ describe('MongoDB CRUD Node', () => {
 			expect(items.map((item) => item.pairedItem)).toEqual([{ item: 0 }, { item: 1 }, { item: 2 }]);
 		});
 
-		it('sends upsert per operation when enabled', async () => {
-			const bulkWriteSpy = vi
-				.spyOn(Collection.prototype, 'bulkWrite')
-				.mockResolvedValue({} as never);
+		// The string case pins the pre-1.5 truthy coercion for expression-driven values
+		it.each([true, 'true'])(
+			'sends upsert per operation when the parameter is truthy (%j)',
+			async (upsert) => {
+				const bulkWriteSpy = vi
+					.spyOn(Collection.prototype, 'bulkWrite')
+					.mockResolvedValue({} as never);
 
-			await node.execute.call(mockBulkExecuteFunctions('update', { params: { upsert: true } }));
+				await node.execute.call(mockBulkExecuteFunctions('update', { params: { upsert } }));
 
-			expect(bulkWriteSpy).toHaveBeenCalledWith(
-				[
-					{
-						updateOne: {
-							filter: { id: '1' },
-							update: { $set: { id: '1', value: 'first' } },
-							upsert: true,
+				expect(bulkWriteSpy).toHaveBeenCalledWith(
+					[
+						{
+							updateOne: {
+								filter: { id: '1' },
+								update: { $set: { id: '1', value: 'first' } },
+								upsert: true,
+							},
 						},
-					},
-					{
-						updateOne: {
-							filter: { id: '2' },
-							update: { $set: { id: '2', value: 'second' } },
-							upsert: true,
+						{
+							updateOne: {
+								filter: { id: '2' },
+								update: { $set: { id: '2', value: 'second' } },
+								upsert: true,
+							},
 						},
-					},
-					{
-						updateOne: {
-							filter: { id: '3' },
-							update: { $set: { id: '3', value: 'third' } },
-							upsert: true,
+						{
+							updateOne: {
+								filter: { id: '3' },
+								update: { $set: { id: '3', value: 'third' } },
+								upsert: true,
+							},
 						},
-					},
-				],
-				{ ordered: true },
-			);
-		});
-
-		it('honors a truthy non-boolean upsert like earlier versions', async () => {
-			const bulkWriteSpy = vi
-				.spyOn(Collection.prototype, 'bulkWrite')
-				.mockResolvedValue({} as never);
-
-			await node.execute.call(mockBulkExecuteFunctions('update', { params: { upsert: 'true' } }));
-
-			expect(bulkWriteSpy).toHaveBeenCalledWith(
-				[
-					{
-						updateOne: {
-							filter: { id: '1' },
-							update: { $set: { id: '1', value: 'first' } },
-							upsert: true,
-						},
-					},
-					{
-						updateOne: {
-							filter: { id: '2' },
-							update: { $set: { id: '2', value: 'second' } },
-							upsert: true,
-						},
-					},
-					{
-						updateOne: {
-							filter: { id: '3' },
-							update: { $set: { id: '3', value: 'third' } },
-							upsert: true,
-						},
-					},
-				],
-				{ ordered: true },
-			);
-		});
+					],
+					{ ordered: true },
+				);
+			},
+		);
 
 		it('filters by ObjectId and strips _id from the update when the update key is _id', async () => {
 			const bulkWriteSpy = vi

@@ -134,7 +134,7 @@ async function executeBulkUpdate(
 
 			for (const [opIndex, entry] of entries.entries()) {
 				const failure = failedOpIndexes.get(opIndex);
-				// Without per-op verdicts (e.g. a connection failure), the whole group failed
+				// No per-op verdicts (e.g. a connection failure): treat the whole group as failed
 				if (failure !== undefined || failedOpIndexes.size === 0) {
 					returnData.push({
 						json: { error: sanitizeErrorMessage(failure ?? error) },
