@@ -616,7 +616,8 @@ function onOptionMouseEnter(idx: number) {
 	@include questionOptions.active-selected;
 
 	&:hover .arrowIndicator,
-	&.highlighted .arrowIndicator {
+	&.highlighted .arrowIndicator,
+	&.activeSelected .arrowIndicator {
 		visibility: visible;
 	}
 }
