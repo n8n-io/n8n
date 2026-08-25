@@ -5532,7 +5532,6 @@
 	"workflowReviews.sidebar.error": "Couldn't load reviews",
 	"workflowReviews.status.open": "Open",
 	"workflowReviews.status.closed": "Closed",
-	"workflowReviews.status.combinedLabel": "{state} • {decision}",
 	"workflowReviews.decision.pending": "Waiting for review",
 	"workflowReviews.decision.changes_requested": "Changes requested",
 	"workflowReviews.decision.approved": "Approved",
