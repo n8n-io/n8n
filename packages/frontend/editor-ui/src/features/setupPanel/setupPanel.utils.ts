@@ -1,6 +1,7 @@
 import type { INodeUi } from '@/Interface';
 import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import { getNodeTypeDisplayableCredentials } from '@/app/utils/nodes/nodeTransforms';
+import { getInactiveCredentials } from '@/app/utils/nodeTypesUtils';
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { isExpression } from '@/app/utils/expressions';
 
@@ -39,8 +40,16 @@ export function getNodeCredentialTypes(
 	}
 
 	if (node.credentials) {
+		// Types the node's current configuration no longer uses are removed when the
+		// workflow is saved, so don't offer a card for them — a credential connected
+		// there would silently disappear on the next save.
+		const nodeType = nodeTypeProvider.getNodeType(node.type, node.typeVersion);
+		const inactiveTypes = new Set(getInactiveCredentials(node, nodeType));
+
 		for (const credType of Object.keys(node.credentials)) {
-			credentialTypes.add(credType);
+			if (!inactiveTypes.has(credType)) {
+				credentialTypes.add(credType);
+			}
 		}
 	}
 

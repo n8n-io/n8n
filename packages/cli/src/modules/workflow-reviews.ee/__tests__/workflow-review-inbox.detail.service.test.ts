@@ -1,12 +1,9 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type {
 	User,
-	UserRepository,
 	WorkflowHistory,
 	WorkflowReviewRequest,
-	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
-	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestWorkflowDetailRow,
 	WorkflowReviewRequestWorkflowRepository,
@@ -20,6 +17,10 @@ import type { WorkflowHistoryService } from '@/workflows/workflow-history/workfl
 import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
+import type {
+	WorkflowReviewParticipantResolver,
+	WorkflowReviewParticipants,
+} from '../workflow-review-participant.resolver';
 
 const requestId = 'req-1';
 const workflowId = 'wf-1';
@@ -63,9 +64,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
-	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
-	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
-	const userRepository = mock<UserRepository>();
+	const participantResolver = mock<WorkflowReviewParticipantResolver>();
 	const licenseState = mock<LicenseState>();
 
 	const service = new WorkflowReviewInboxService(
@@ -74,10 +73,15 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		workflowHistoryService,
 		requestRepository,
 		workflowRepository,
-		reviewerRepository,
-		authorRepository,
-		userRepository,
+		participantResolver,
 	);
+
+	/** The resolver is exercised in its own test; here it only has to answer. */
+	function mockParticipants(participants: Partial<WorkflowReviewParticipants> = {}) {
+		participantResolver.resolve.mockResolvedValue({
+			for: () => ({ requester: null, authors: [], reviewers: [], ...participants }),
+		});
+	}
 
 	/** The read gate resolved: `readableWorkflowRows` are what the caller may still read. */
 	function mockGate(readableWorkflowRows: WorkflowReviewRequestWorkflowDetailRow[] = []) {
@@ -94,9 +98,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		mockGate();
-		reviewerRepository.findByRequestIds.mockResolvedValue([]);
-		authorRepository.findByRequestIds.mockResolvedValue([]);
-		userRepository.findManyByIds.mockResolvedValue([]);
+		mockParticipants();
 		workflowHistoryService.findVersion.mockResolvedValue(null);
 		authorizationService.resolveViewerEligibility.mockResolvedValue({
 			canDecide: true,
@@ -191,65 +193,21 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	});
 
 	describe('the people on the review', () => {
-		function mockUsers(...ids: string[]) {
-			userRepository.findManyByIds.mockResolvedValue(
-				ids.map((id) =>
-					mock<User>({ id, email: `${id}@example.com`, firstName: id, lastName: id }),
-				),
-			);
-		}
-
-		it('returns the requester, every author, and the reviewers', async () => {
-			authorRepository.findByRequestIds.mockResolvedValue([
-				mock({ workflowReviewRequestId: requestId, userId: requester.id }),
-				mock({ workflowReviewRequestId: requestId, userId: 'author-2' }),
-			]);
-			reviewerRepository.findByRequestIds.mockResolvedValue([
-				mock({ workflowReviewRequestId: requestId, userId: 'reviewer-1' }),
-			]);
-			mockUsers(requester.id, 'author-2', 'reviewer-1');
+		it('carries the resolved participants onto the detail', async () => {
+			mockParticipants({
+				requester: mock({ id: requester.id }),
+				authors: [mock({ id: requester.id }), mock({ id: 'author-2' })],
+				reviewers: [mock({ id: 'reviewer-1' })],
+			});
 
 			const detail = await service.getDetail(requester, requestId);
 
-			expect(authorRepository.findByRequestIds).toHaveBeenCalledWith([requestId]);
+			expect(participantResolver.resolve).toHaveBeenCalledWith([
+				expect.objectContaining({ id: requestId }),
+			]);
 			expect(detail.requester).toMatchObject({ id: requester.id });
-			// The requester stays in `authors`; deduplication is the frontend's job.
 			expect(detail.authors.map((author) => author.id)).toEqual([requester.id, 'author-2']);
 			expect(detail.reviewers.map((reviewer) => reviewer.id)).toEqual(['reviewer-1']);
-		});
-
-		it('resolves a user holding several roles with a single deduplicated lookup', async () => {
-			authorRepository.findByRequestIds.mockResolvedValue([
-				mock({ workflowReviewRequestId: requestId, userId: requester.id }),
-				mock({ workflowReviewRequestId: requestId, userId: 'reviewer-1' }),
-			]);
-			reviewerRepository.findByRequestIds.mockResolvedValue([
-				mock({ workflowReviewRequestId: requestId, userId: 'reviewer-1' }),
-			]);
-			mockUsers(requester.id, 'reviewer-1');
-
-			await service.getDetail(requester, requestId);
-
-			expect(userRepository.findManyByIds).toHaveBeenCalledTimes(1);
-			expect(userRepository.findManyByIds).toHaveBeenCalledWith([requester.id, 'reviewer-1']);
-		});
-
-		it('omits an author whose user no longer resolves, keeping the others', async () => {
-			authorRepository.findByRequestIds.mockResolvedValue([
-				mock({ workflowReviewRequestId: requestId, userId: requester.id }),
-				mock({ workflowReviewRequestId: requestId, userId: 'deleted-author' }),
-			]);
-			mockUsers(requester.id);
-
-			const detail = await service.getDetail(requester, requestId);
-
-			expect(detail.authors.map((author) => author.id)).toEqual([requester.id]);
-		});
-
-		it('returns no authors when the review has no author rows', async () => {
-			const detail = await service.getDetail(requester, requestId);
-
-			expect(detail.authors).toEqual([]);
 		});
 	});
 

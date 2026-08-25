@@ -236,7 +236,7 @@ onMounted(async () => {
 	try {
 		await Promise.all([
 			props.projectId
-				? credentialsStore.fetchAllCredentialsForWorkflow({ projectId: props.projectId })
+				? credentialsStore.fetchUsableCredentials({ projectId: props.projectId })
 				: credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(false),
 		]);
