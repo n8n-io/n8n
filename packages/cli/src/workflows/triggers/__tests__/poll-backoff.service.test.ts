@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { SchedulerConfig, WorkflowsConfig } from '@n8n/config';
-import type { PollerFailureState, PollerStateRepository } from '@n8n/db';
+import type { PollerFailureState, PollerFullState, PollerStateRepository } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -57,36 +57,40 @@ describe('PollBackoffService', () => {
 		});
 	});
 
-	describe('getFailureState', () => {
+	describe('getState', () => {
 		test('does not query when the flag is off', async () => {
 			const service = buildService(false);
 
-			await expect(service.getFailureState('wf-1', 'node-1')).resolves.toBeNull();
+			await expect(service.getState('wf-1', 'node-1')).resolves.toBeNull();
 
-			expect(pollerStateRepository.findFailureState).not.toHaveBeenCalled();
+			expect(pollerStateRepository.findState).not.toHaveBeenCalled();
 		});
 
-		test('returns the stored failure state when the flag is on', async () => {
-			const state: PollerFailureState = { consecutiveErrors: 2, backoffUntil: now };
-			pollerStateRepository.findFailureState.mockResolvedValue(state);
+		test('returns the stored state, cursor included, when the flag is on', async () => {
+			const state: PollerFullState = {
+				cursor: { lastItemId: 'a' },
+				consecutiveErrors: 2,
+				backoffUntil: now,
+			};
+			pollerStateRepository.findState.mockResolvedValue(state);
 			const service = buildService();
 
-			await expect(service.getFailureState('wf-1', 'node-1')).resolves.toEqual(state);
+			await expect(service.getState('wf-1', 'node-1')).resolves.toEqual(state);
 		});
 
 		test('returns null for a node with no stored row', async () => {
-			pollerStateRepository.findFailureState.mockResolvedValue(null);
+			pollerStateRepository.findState.mockResolvedValue(null);
 			const service = buildService();
 
-			await expect(service.getFailureState('wf-1', 'node-1')).resolves.toBeNull();
+			await expect(service.getState('wf-1', 'node-1')).resolves.toBeNull();
 		});
 
 		test('swallows a failing read and reports it, returning null instead of throwing', async () => {
 			const readError = new Error('poller state read failed');
-			pollerStateRepository.findFailureState.mockRejectedValue(readError);
+			pollerStateRepository.findState.mockRejectedValue(readError);
 			const service = buildService();
 
-			await expect(service.getFailureState('wf-1', 'node-1')).resolves.toBeNull();
+			await expect(service.getState('wf-1', 'node-1')).resolves.toBeNull();
 
 			expectErrorReported(readError);
 		});
