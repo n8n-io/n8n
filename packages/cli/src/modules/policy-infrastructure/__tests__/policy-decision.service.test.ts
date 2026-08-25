@@ -217,8 +217,6 @@ describe('PolicyDecisionService', () => {
 			expect(serviceWith(StartOnlyCheck).hasChecksFor('workflowStart')).toBe(true);
 		});
 
-		// A host skips context assembly on `false`, so counting a check registered for another
-		// point would make it do that work — and carry that work's failure modes — for nothing.
 		it('is false for a point no registered check implements', () => {
 			expect(serviceWith(SilentCheck).hasChecksFor('workflowStart')).toBe(false);
 		});

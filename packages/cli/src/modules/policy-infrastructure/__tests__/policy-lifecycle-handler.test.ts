@@ -82,8 +82,6 @@ describe('PolicyLifecycleHandler', () => {
 	});
 
 	it('blocks the run when the owning project cannot be resolved', async () => {
-		// An unevaluated project-scoped rule is not a passed one, so this must not degrade into
-		// enforcing with no project.
 		const error = new Error('no shared row');
 		ownershipService.getWorkflowProjectCached.mockRejectedValue(error);
 
@@ -93,8 +91,6 @@ describe('PolicyLifecycleHandler', () => {
 	});
 
 	it('does nothing at all when no check guards the workflow start point', async () => {
-		// The feature being absent must never fail an execution, so it must not even reach the
-		// project lookup, which can throw.
 		policyEnforcementService.hasChecksFor.mockReturnValue(false);
 
 		await handler.onWorkflowExecuteBefore(beforeContext());
@@ -104,15 +100,13 @@ describe('PolicyLifecycleHandler', () => {
 	});
 
 	it('asks about the workflow start point specifically', async () => {
-		// A check registered only for another point must not drag this one into a lookup.
+		// So a check registered only for another point can't drag this one into a lookup.
 		await handler.onWorkflowExecuteBefore(beforeContext());
 
 		expect(policyEnforcementService.hasChecksFor).toHaveBeenCalledExactlyOnceWith('workflowStart');
 	});
 
 	it('does not enforce when the event carries no workflow instance', async () => {
-		// Queue mode fires this on main once the job is enqueued, and the pre-flight-failure
-		// recorder fires it for a run that already failed.
 		await handler.onWorkflowExecuteBefore(beforeContext({ workflowInstance: undefined }));
 
 		expect(policyEnforcementService.enforceWorkflowStart).not.toHaveBeenCalled();
@@ -157,9 +151,8 @@ describe('workflowExecuteBefore wiring', () => {
 			const ownership = mock<OwnershipService>();
 			ownership.getWorkflowProjectCached.mockResolvedValue(mock({ id: 'proj-1' }));
 
-			// The registry resolves the handler through DI, so the instance it gets has to be
-			// the one wired to the real enforcement service — which is also what answers
-			// `hasChecksFor`, so `ConfigurableCheck` below is what makes the handler act.
+			// The registry resolves the handler through DI, so it has to be this instance —
+			// the one wired to the real service that `ConfigurableCheck` is registered with.
 			Container.set(PolicyLifecycleHandler, new PolicyLifecycleHandler(enforcement, ownership));
 
 			Container.get(ConfigurableCheck).result = { violations: [] };

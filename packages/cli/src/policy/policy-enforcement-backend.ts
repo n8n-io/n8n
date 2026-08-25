@@ -39,9 +39,6 @@ export interface PolicyEnforcementBackend {
 		context: PolicyContext<Point>,
 	): Promise<PolicyDecision>;
 
-	/**
-	 * Whether any check would run at this point. Must agree with what `enforce`/`evaluate`
-	 * would actually run, so it belongs here rather than being worked out by each host.
-	 */
+	/** Whether any check would run at this point. Must agree with `enforce` and `evaluate`. */
 	hasChecksFor(point: EnforcementPoint): boolean;
 }

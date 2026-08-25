@@ -7,6 +7,7 @@ import type {
 	IPairedItemData,
 	INodeExecutionData,
 	INodeType,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import {
 	BaseError,
@@ -130,59 +131,47 @@ describe('processRunExecutionData', () => {
 
 	describe('a handler that throws at workflowExecuteBefore', () => {
 		const blocked = new UnexpectedError('blocked before the first node ran');
+		const node = createNodeData({ name: 'node', type: types.passThrough });
+		const workflow = new DirectedGraph()
+			.addNodes(node)
+			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
-		const rejectBeforeHook = () =>
+		const runBlocked = async (executionData: IRunExecutionData) => {
 			runHook.mockImplementation(async (hookName: string) => {
 				if (hookName === 'workflowExecuteBefore') throw blocked;
 			});
 
-		const hookNames = () => (runHook.mock.calls as Array<[string]>).map(([name]) => name);
+			const result = await new WorkflowExecute(
+				additionalData,
+				executionMode,
+				executionData,
+			).processRunExecutionData(workflow);
+
+			return { result, hooks: (runHook.mock.calls as Array<[string]>).map(([name]) => name) };
+		};
 
 		test('aborts the execution and keeps the error it was given', async () => {
-			// ARRANGE
-			const node = createNodeData({ name: 'node', type: types.passThrough });
-			const workflow = new DirectedGraph()
-				.addNodes(node)
-				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+			const { result, hooks } = await runBlocked(
+				createRunExecutionData({
+					startData: { startNodes: [{ name: node.name, sourceData: null }] },
+					executionData: {
+						nodeExecutionStack: [{ data: { main: [[{ json: { foo: 1 } }]] }, node, source: null }],
+					},
+				}),
+			);
 
-			const executionData = createRunExecutionData({
-				startData: { startNodes: [{ name: node.name, sourceData: null }] },
-				executionData: {
-					nodeExecutionStack: [{ data: { main: [[{ json: { foo: 1 } }]] }, node, source: null }],
-				},
-			});
-
-			rejectBeforeHook();
-			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
-
-			// ACT
-			const result = await workflowExecute.processRunExecutionData(workflow);
-
-			// ASSERT
 			expect(result.data.resultData.error?.message).toBe(blocked.message);
-			expect(hookNames()).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
+			expect(hooks).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
 		});
 
-		// The stack is empty for e.g. a Chat Trigger-only workflow. Fabricating run data for a
-		// start node that isn't there used to throw a TypeError over the top of the real error.
+		// Empty for e.g. a Chat Trigger-only workflow, which used to mask the error with a TypeError.
 		test('keeps the error when there is no node on the execution stack', async () => {
-			// ARRANGE
-			const node = createNodeData({ name: 'node', type: types.passThrough });
-			const workflow = new DirectedGraph()
-				.addNodes(node)
-				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+			const { result, hooks } = await runBlocked(
+				createRunExecutionData({ executionData: { nodeExecutionStack: [] } }),
+			);
 
-			const executionData = createRunExecutionData({ executionData: { nodeExecutionStack: [] } });
-
-			rejectBeforeHook();
-			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
-
-			// ACT
-			const result = await workflowExecute.processRunExecutionData(workflow);
-
-			// ASSERT
 			expect(result.data.resultData.error?.message).toBe(blocked.message);
-			expect(hookNames()).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
+			expect(hooks).toEqual(['workflowExecuteBefore', 'workflowExecuteAfter']);
 		});
 	});
 

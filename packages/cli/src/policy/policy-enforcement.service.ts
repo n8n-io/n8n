@@ -53,13 +53,8 @@ export class PolicyEnforcementService {
 	}
 
 	/**
-	 * Whether any check would run at `point`.
-	 *
-	 * For skipping work needed to *build* a context — a database lookup, say — when nothing
-	 * would read it. Not for deciding whether policy applies: `enforce*` already clears when
-	 * nothing is registered, so a host that has its context to hand should just call it. A host
-	 * that skips on `false` must skip the whole call, since a context it declined to assemble
-	 * cannot be passed.
+	 * Whether any check would run at `point`. Only for skipping expensive work needed to build
+	 * a context — `enforce*` already clears, so a host holding its context should just call it.
 	 */
 	hasChecksFor(point: EnforcementPoint): boolean {
 		return this.implementation?.hasChecksFor(point) ?? false;

@@ -40,11 +40,7 @@ export type WorkflowExecuteBeforeContext = {
 	type: 'workflowExecuteBefore';
 	workflow: IWorkflowBase;
 	mode: WorkflowExecuteMode;
-	/**
-	 * Absent when the event is not a real execution start: queue mode fires it on the main
-	 * process once the job is enqueued, and the pre-flight-failure recorder fires it for an
-	 * execution that already failed. Only the engine's own call carries an instance.
-	 */
+	/** Only the engine's own call carries one — queue-mode main and the failure recorder don't. */
 	workflowInstance: Workflow | undefined;
 	executionData?: IRunExecutionData;
 	executionId: string;

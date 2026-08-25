@@ -1641,9 +1641,8 @@ export class WorkflowExecute {
 					};
 
 					// Set the incoming data of the node that it can be saved correctly.
-					// The stack is empty for an execution containing only a Chat Trigger, and there
-					// is then no node to attribute the failure to — record the error on its own
-					// rather than throwing over the top of it.
+					// A Chat Trigger-only workflow has an empty stack, so there may be no node to
+					// blame — recording the error alone beats throwing over the top of it.
 					const startItem = this.runExecutionData.executionData!.nodeExecutionStack.at(0);
 
 					if (startItem) {
