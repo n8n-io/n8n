@@ -28,19 +28,27 @@ const defaultAgentConfig: AgentJsonConfig = {
 	instructions: 'Help.',
 };
 
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({
-		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
-			const translations: Record<string, string> = {
-				'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
-				'agents.chat.misconfigured.issuesPrefix': 'Check:',
-				'agents.chat.misconfigured.missing.tools': 'Tool configuration',
-				'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
-				'agents.chat.misconfigured.missing.subAgents.agents': 'Sub-agent',
-			};
-			return translations[key] ?? key;
-		},
-	}),
+vi.mock('@n8n/i18n', () => {
+	const baseText = (key: string, options?: { interpolate?: Record<string, string> }) => {
+		const translations: Record<string, string> = {
+			'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
+			'agents.chat.misconfigured.issuesPrefix': 'Check:',
+			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
+			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
+			'agents.chat.misconfigured.missing.subAgents.agents': 'Sub-agent',
+		};
+		return translations[key] ?? key;
+	};
+	const i18n = { baseText };
+	return { useI18n: () => i18n, i18n };
+});
+
+vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
+	default: {
+		name: 'AgentSessionTimelinePanel',
+		props: ['projectId', 'agentId', 'threadId'],
+		template: '<div data-testid="agent-preview-session-timeline" />',
+	},
 }));
 
 vi.mock('@n8n/design-system', () => ({

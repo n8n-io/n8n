@@ -1,4 +1,4 @@
-import { redactTelemetryProperties, redactTelemetryText } from '../telemetry-redaction';
+import { redactTelemetryProperties, redactTelemetryText } from '../redaction';
 
 describe('redactTelemetryText', () => {
 	it('leaves ordinary assistant prose untouched', () => {
@@ -35,6 +35,22 @@ describe('redactTelemetryText', () => {
 
 		expect(redacted).toHaveLength(8_003);
 		expect(redacted.endsWith('...')).toBe(true);
+	});
+
+	it('keeps a size-gated value whole when the cap is lifted', () => {
+		const workflowJson = JSON.stringify({
+			nodes: [
+				{ url: 'https://api.example.com/v1/orders?token=abc123xyz', note: 'x'.repeat(20_000) },
+			],
+		});
+
+		const redacted = redactTelemetryText(workflowJson, { maxLength: Infinity });
+
+		expect(redacted).not.toContain('abc123xyz');
+		expect(redacted.length).toBeGreaterThan(20_000);
+		// The placeholder carries no JSON-breaking characters, so the blob stays parseable.
+		// eslint-disable-next-line n8n-local-rules/no-uncaught-json-parse -- asserting it parses
+		expect(() => JSON.parse(redacted) as unknown).not.toThrow();
 	});
 
 	it('passes through the empty string', () => {
@@ -94,10 +110,13 @@ describe('redactTelemetryProperties', () => {
 	});
 
 	it('catches kebab-case secret keys too', () => {
+		/* eslint-disable @typescript-eslint/naming-convention -- kebab-case keys
+		   are the subject of this test */
 		expect(redactTelemetryProperties({ 'private-key': 'plain', 'api-key': 'plain' })).toEqual({
 			'private-key': '[REDACTED]',
 			'api-key': '[REDACTED]',
 		});
+		/* eslint-enable @typescript-eslint/naming-convention */
 	});
 
 	it('keeps properties that only describe a credential', () => {

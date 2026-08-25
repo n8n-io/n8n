@@ -70,7 +70,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			await service.afterWorkflowArchived('wf-1', 'user-9');
 
 			expect(dbLockService.withLockContext).toHaveBeenCalledWith(
-				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+				DbLock.WORKFLOW_REVIEW_MUTATION,
 				expect.any(Function),
 			);
 			expect(requestRepository.findOpenRequestsForWorkflows).toHaveBeenCalledWith(['wf-1'], ctx);
