@@ -184,7 +184,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 	private async reconcileUnreviewableOpenRequests(workflowIds: string[]): Promise<void> {
 		try {
 			const closedRequestIds = await this.dbLockService.withLockContext(
-				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+				DbLock.WORKFLOW_REVIEW_MUTATION,
 				async (ctx) => {
 					const requestIds =
 						await this.workflowReviewRequestRepository.closeUnreviewableOpenRequests(ctx);
@@ -247,7 +247,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 
 		try {
 			const { affectedWorkflowIds, closedRequestIds } = await this.dbLockService.withLockContext(
-				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+				DbLock.WORKFLOW_REVIEW_MUTATION,
 				async (ctx) => {
 					// Fetched under the lock so the close can't race a concurrent
 					// decide/version sync on the same request.
@@ -326,7 +326,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 	): Promise<void> {
 		try {
 			const { affectedWorkflowIds, closedRequests } = await this.dbLockService.withLockContext(
-				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+				DbLock.WORKFLOW_REVIEW_MUTATION,
 				async (ctx) => {
 					const affected = new Set<string>();
 					const closed: Array<{

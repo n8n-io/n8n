@@ -44,7 +44,7 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 
 	/**
 	 * @param ctx - Pass the active operation context so the read joins an open
-	 * transaction (e.g. while holding `DbLock.WORKFLOW_REVIEW_REQUEST_CREATE`).
+	 * transaction (e.g. while holding `DbLock.WORKFLOW_REVIEW_MUTATION`).
 	 * Defaults to `{}` for non-transactional callers.
 	 */
 	async getPublishedVersionId(

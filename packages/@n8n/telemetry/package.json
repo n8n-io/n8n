@@ -23,6 +23,7 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/utils": "workspace:*",
     "zod": "catalog:"
   },
   "devDependencies": {

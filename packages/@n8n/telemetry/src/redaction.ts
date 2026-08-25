@@ -1,17 +1,15 @@
-import {
-	DEFAULT_PLACEHOLDER,
-	redactText,
-	SUPPORTED_PII_CATEGORIES,
-	type RedactionOptions,
-} from '@n8n/agents';
-import type { GenericValue, ITelemetryTrackProperties } from 'n8n-workflow';
+import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
+import { DEFAULT_PLACEHOLDER, redactText } from '@n8n/utils/redaction/redact-text';
+import type { RedactionOptions } from '@n8n/utils/redaction/redact-text';
 
 /**
  * Egress policy for free-text values leaving the instance as product telemetry
- * (RudderStack/PostHog). Mirrors the LangSmith exporter's policy
- * (`DEFAULT_TELEMETRY_REDACTION_OPTIONS` in the instance-ai package) and is
- * deliberately stricter than the user-facing output policy: secrets plus every
- * PII category.
+ * (RudderStack/PostHog). Deliberately stricter than the user-facing output
+ * policy: secrets plus every PII category.
+ *
+ * Shared by the backend and the editor UI. Frontend events reach RudderStack
+ * *and* PostHog straight from the browser, so redaction has to happen at the
+ * call site — there is no server hop that sees both.
  *
  * `preserveUrlStructure` keeps traced URLs readable; their value-bearing parts
  * are still redacted and secrets are matched first.
@@ -23,9 +21,10 @@ const TELEMETRY_REDACTION_OPTIONS: RedactionOptions = {
 };
 
 /**
- * Length cap for a single free-text telemetry property. `Telemetry.track`
- * silently drops any event whose serialized payload exceeds 32 KB, so an
- * uncapped assistant message loses the whole event; this keeps it well under.
+ * Length cap for a single free-text telemetry property. RudderStack silently
+ * drops any event whose serialized payload exceeds 32 KB, so an uncapped
+ * assistant message or workflow JSON loses the whole event; this keeps it well
+ * under.
  */
 const MAX_TELEMETRY_TEXT_LENGTH = 8_000;
 
@@ -61,25 +60,36 @@ function toSnakeCase(key: string): string {
 
 /**
  * Telemetry payloads are flat in practice. Rather than let an unexpectedly deep
- * value through unscrubbed (INS-685), replace it with a marker.
+ * value through unscrubbed, replace it with a marker.
  */
 const MAX_PROPERTY_DEPTH = 5;
 const OVER_DEPTH_MARKER = '[REDACTED_DEPTH]';
 
-/** Scrub secrets/PII from a free-text telemetry value and cap its length. */
-export function redactTelemetryText(value: string): string {
-	const redacted = redactText(value, TELEMETRY_REDACTION_OPTIONS).text;
+/** JSON-ish value accepted in a telemetry property bag. */
+type TelemetryValue = string | number | boolean | object | null | undefined;
 
-	return redacted.length > MAX_TELEMETRY_TEXT_LENGTH
-		? `${redacted.slice(0, MAX_TELEMETRY_TEXT_LENGTH)}...`
-		: redacted;
+export interface TelemetryTextOptions {
+	/**
+	 * Override the default {@link MAX_TELEMETRY_TEXT_LENGTH} cap. Pass
+	 * `Infinity` for values that are already size-gated by the caller and would
+	 * lose meaning truncated — a serialized workflow or execution payload.
+	 */
+	maxLength?: number;
 }
 
-function isNonNullObject(value: GenericValue): value is object {
+/** Scrub secrets/PII from a free-text telemetry value and cap its length. */
+export function redactTelemetryText(value: string, opts: TelemetryTextOptions = {}): string {
+	const maxLength = opts.maxLength ?? MAX_TELEMETRY_TEXT_LENGTH;
+	const redacted = redactText(value, TELEMETRY_REDACTION_OPTIONS).text;
+
+	return redacted.length > maxLength ? `${redacted.slice(0, maxLength)}...` : redacted;
+}
+
+function isNonNullObject(value: TelemetryValue): value is object {
 	return value !== null && typeof value === 'object';
 }
 
-function redactPropertyValue(key: string, value: GenericValue, depth: number): GenericValue {
+function redactPropertyValue(key: string, value: TelemetryValue, depth: number): TelemetryValue {
 	// Runs before the identifier exemption: a secret-shaped key wins over any
 	// key-based pass-through. Numbers/booleans are left alone — they can't carry
 	// a secret, and flags like `has_token` are worth keeping.
@@ -96,14 +106,18 @@ function redactPropertyValue(key: string, value: GenericValue, depth: number): G
 
 	if (Array.isArray(value)) {
 		if (depth >= MAX_PROPERTY_DEPTH) return OVER_DEPTH_MARKER;
-		return value.map((entry: GenericValue) => redactPropertyValue(key, entry, depth + 1));
+		return value.map((entry: TelemetryValue) => redactPropertyValue(key, entry, depth + 1));
 	}
 
 	if (isNonNullObject(value)) {
 		if (depth >= MAX_PROPERTY_DEPTH) return OVER_DEPTH_MARKER;
-		const redacted: Record<string, GenericValue> = {};
+		const redacted: Record<string, TelemetryValue> = {};
 		for (const [nestedKey, nestedValue] of Object.entries(value)) {
-			redacted[nestedKey] = redactPropertyValue(nestedKey, nestedValue as GenericValue, depth + 1);
+			redacted[nestedKey] = redactPropertyValue(
+				nestedKey,
+				nestedValue as TelemetryValue,
+				depth + 1,
+			);
 		}
 		return redacted;
 	}
@@ -113,15 +127,15 @@ function redactPropertyValue(key: string, value: GenericValue, depth: number): G
 
 /**
  * Scrub every free-text value in a telemetry payload. Used at boundaries where
- * the property bag is open-ended — notably the `trackTelemetry` channel handed
- * to tools, whose payloads (search queries, remediation reasons, node error
- * strings) are model- or user-derived and can't be audited call site by call
- * site. Identifier keys and non-string values pass through untouched.
+ * the property bag is open-ended — a `trackTelemetry` channel handed to tools,
+ * or a frontend event whose payload carries user prose — and the values can't
+ * be audited call site by call site. Identifier keys and non-string values pass
+ * through untouched.
  */
-export function redactTelemetryProperties(
-	properties: ITelemetryTrackProperties,
-): ITelemetryTrackProperties {
-	const redacted: ITelemetryTrackProperties = {};
+export function redactTelemetryProperties<T extends Record<string, TelemetryValue>>(
+	properties: T,
+): Record<string, TelemetryValue> {
+	const redacted: Record<string, TelemetryValue> = {};
 	for (const [key, value] of Object.entries(properties)) {
 		redacted[key] = redactPropertyValue(key, value, 0);
 	}
