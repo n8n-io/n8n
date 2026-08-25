@@ -349,10 +349,16 @@ describe('ImapSimple', () => {
 	});
 
 	describe('part decoding', () => {
-		const fetchBody = async (encoding: MessagePart['encoding'], body = 'encoded-body') => {
+		const fetchBody = async (
+			encoding: MessagePart['encoding'],
+			body = 'encoded-body',
+			charset?: string,
+		) => {
 			const { connection, imap } = await connect();
 			const fetch = drivenFetch(imap);
-			const struct = [{ partID: '1.2', type: 'TEXT', subtype: 'plain', encoding }];
+			const struct = [
+				{ partID: '1.2', type: 'TEXT', subtype: 'plain', encoding, params: { charset } },
+			];
 
 			const downloading = connection.downloadText(
 				mock<Message>({ attributes: { uid: 123, struct } } as never),
@@ -368,13 +374,19 @@ describe('ImapSimple', () => {
 		it('decodes with the part encoding', async () => {
 			await fetchBody('BASE64');
 
-			expect(PartData.fromData).toHaveBeenCalledWith('encoded-body', 'BASE64');
+			expect(PartData.fromData).toHaveBeenCalledWith('encoded-body', 'BASE64', undefined);
 		});
 
 		it('defaults to 7BIT when the part carries no encoding', async () => {
 			await fetchBody(null);
 
-			expect(PartData.fromData).toHaveBeenCalledWith('encoded-body', '7BIT');
+			expect(PartData.fromData).toHaveBeenCalledWith('encoded-body', '7BIT', undefined);
+		});
+
+		it('decodes with the part charset, so a UTF-8 body is not read as latin1', async () => {
+			await fetchBody('QUOTED-PRINTABLE', 'encoded-body', 'UTF-8');
+
+			expect(PartData.fromData).toHaveBeenCalledWith('encoded-body', 'QUOTED-PRINTABLE', 'UTF-8');
 		});
 
 		it('does not throw if the fetch errors after it ended', async () => {
