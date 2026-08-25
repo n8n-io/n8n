@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '../constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
 import { useInstanceAiBrowserCredentialSetupExperiment } from '@/experiments/instanceAiBrowserCredentialSetup';
@@ -27,6 +26,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
+import { useBrowserUseConnection } from '../composables/useBrowserUseConnection';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 type CredentialSetupChoice = 'ai' | 'manual';
@@ -46,6 +46,7 @@ const rootStore = useRootStore();
 const thread = useThread();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
+const { ensureConnected: ensureBrowserConnected } = useBrowserUseConnection();
 const settingsStore = useInstanceAiSettingsStore();
 
 const { isFeatureEnabled: isBrowserCredentialSetupEnabled } =
@@ -127,7 +128,6 @@ const stopCreateListener = credentialsStore.$onAction(({ name, after }) => {
 onBeforeUnmount(() => {
 	stopDeleteListener();
 	stopCreateListener();
-	stopWatchingBrowserConnect();
 });
 
 // ---------------------------------------------------------------------------
@@ -236,7 +236,7 @@ onMounted(async () => {
 	try {
 		await Promise.all([
 			props.projectId
-				? credentialsStore.fetchAllCredentialsForWorkflow({ projectId: props.projectId })
+				? credentialsStore.fetchUsableCredentials({ projectId: props.projectId })
 				: credentialsStore.fetchAllCredentials(),
 			credentialsStore.fetchCredentialTypes(false),
 		]);
@@ -540,22 +540,6 @@ watch(
 	{ immediate: true },
 );
 
-let stopBrowserConnectWatch: (() => void) | undefined;
-
-function stopWatchingBrowserConnect() {
-	stopBrowserConnectWatch?.();
-	stopBrowserConnectWatch = undefined;
-}
-
-watch(
-	() => uiStore.modalsById[INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY]?.open,
-	(isOpen, wasOpen) => {
-		if (wasOpen && !isOpen && !settingsStore.browserConnected) {
-			stopWatchingBrowserConnect();
-		}
-	},
-);
-
 function onSetupChoiceSelected(choice: CredentialSetupChoice) {
 	if (choice === 'ai') {
 		void handleSetupAutomatically();
@@ -590,22 +574,8 @@ async function handleSetupAutomatically() {
 	const attemptId = uuidv4();
 	trackSetupChoiceClicked('ai', attemptId);
 
-	if (settingsStore.browserConnected) {
-		await submitAutoSetup(credentialType, attemptId);
-		return;
-	}
-
-	uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
-	stopWatchingBrowserConnect();
-	stopBrowserConnectWatch = watch(
-		() => settingsStore.browserConnected,
-		async (connected) => {
-			if (!connected) return;
-			stopWatchingBrowserConnect();
-			uiStore.closeModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
-			await submitAutoSetup(credentialType, attemptId);
-		},
-	);
+	if (!(await ensureBrowserConnected('credential_setup'))) return;
+	await submitAutoSetup(credentialType, attemptId);
 }
 </script>
 

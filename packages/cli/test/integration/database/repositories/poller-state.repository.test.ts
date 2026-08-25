@@ -43,6 +43,20 @@ describe('PollerStateRepository', () => {
 	const readRow = async (nodeId: string) =>
 		await repository.findOneOrFail({ where: { workflowId, nodeId } });
 
+	const BACKOFF_MS = 30 * 60_000;
+	const ONE_HOUR_MS = 60 * 60_000;
+	// The deadline is set from the database clock, so assert a window around it
+	// rather than an instant. Wide enough for a container clock, narrow enough to
+	// catch a timezone misparse of the stored value.
+	const CLOCK_TOLERANCE_MS = 5_000;
+
+	const expectDeadlineNear = (backoffUntil: Date | null, sentAtMs: number, delayMs: number) => {
+		expect(backoffUntil).toBeInstanceOf(Date);
+		const untilMs = (backoffUntil as Date).getTime();
+		expect(untilMs).toBeGreaterThanOrEqual(sentAtMs + delayMs - CLOCK_TOLERANCE_MS);
+		expect(untilMs).toBeLessThanOrEqual(Date.now() + delayMs + CLOCK_TOLERANCE_MS);
+	};
+
 	describe('findCursor', () => {
 		it('returns null for a node that has never polled', async () => {
 			expect(await repository.findCursor(workflowId, 'node-1')).toBeNull();
@@ -226,6 +240,191 @@ describe('PollerStateRepository', () => {
 			).rejects.toThrow('execution insert failed');
 
 			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'a' });
+		});
+
+		it('does not touch the stored failure counters', async () => {
+			await seed('node-1', { lastItemId: 'a' });
+			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
+			const before = await repository.findFailureState(workflowId, 'node-1');
+
+			await repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'b' }, {});
+
+			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual(before);
+		});
+	});
+
+	describe('findFailureState', () => {
+		it('returns null for a node that has never polled', async () => {
+			expect(await repository.findFailureState(workflowId, 'node-1')).toBeNull();
+		});
+
+		it('returns the stored counters', async () => {
+			await seed('node-1', {});
+			const sentAt = Date.now();
+			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
+
+			const state = await repository.findFailureState(workflowId, 'node-1');
+
+			expect(state?.consecutiveErrors).toBe(1);
+			expectDeadlineNear(state?.backoffUntil ?? null, sentAt, BACKOFF_MS);
+		});
+	});
+
+	describe('recordFailure', () => {
+		it('increments the failure counter in SQL rather than reading then writing', async () => {
+			await seed('node-1', {});
+
+			await Promise.all([
+				repository.recordFailure(workflowId, 'node-1', BACKOFF_MS),
+				repository.recordFailure(workflowId, 'node-1', BACKOFF_MS),
+			]);
+
+			const state = await repository.findFailureState(workflowId, 'node-1');
+			expect(state?.consecutiveErrors).toBe(2);
+		});
+
+		it('sets the deadline on a row that carries none', async () => {
+			await seed('node-1', {});
+			const sentAt = Date.now();
+
+			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
+
+			const state = await repository.findFailureState(workflowId, 'node-1');
+			expect(state?.consecutiveErrors).toBe(1);
+			expectDeadlineNear(state?.backoffUntil ?? null, sentAt, BACKOFF_MS);
+		});
+
+		it('moves updatedAt forward', async () => {
+			await seed('node-1', {});
+			const backdated = new Date(Date.now() - 60_000);
+			await repository.update({ workflowId, nodeId: 'node-1' }, { updatedAt: backdated });
+
+			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
+
+			const { updatedAt } = await readRow('node-1');
+			expect(updatedAt.getTime()).toBeGreaterThan(backdated.getTime());
+		});
+
+		it('does not touch the stored cursor', async () => {
+			await seed('node-1', { lastItemId: 'a' });
+
+			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
+
+			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'a' });
+		});
+
+		it('accumulates the counter across sequential calls', async () => {
+			await seed('node-1', {});
+
+			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
+			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
+
+			const state = await repository.findFailureState(workflowId, 'node-1');
+			expect(state?.consecutiveErrors).toBe(2);
+		});
+
+		it('keeps a standing deadline that reaches further out than the new one', async () => {
+			await seed('node-1', {});
+			const sentAt = Date.now();
+			await repository.recordFailure(workflowId, 'node-1', ONE_HOUR_MS);
+
+			await repository.recordFailure(workflowId, 'node-1', 5_000);
+
+			const state = await repository.findFailureState(workflowId, 'node-1');
+			expect(state?.consecutiveErrors).toBe(2);
+			expectDeadlineNear(state?.backoffUntil ?? null, sentAt, ONE_HOUR_MS);
+		});
+
+		it('pushes the deadline out when the new one reaches further', async () => {
+			await seed('node-1', {});
+			await repository.recordFailure(workflowId, 'node-1', 5_000);
+
+			const sentAt = Date.now();
+			await repository.recordFailure(workflowId, 'node-1', ONE_HOUR_MS);
+
+			const state = await repository.findFailureState(workflowId, 'node-1');
+			expect(state?.consecutiveErrors).toBe(2);
+			expectDeadlineNear(state?.backoffUntil ?? null, sentAt, ONE_HOUR_MS);
+		});
+
+		it('returns false without throwing for a node with no stored row', async () => {
+			await expect(repository.recordFailure(workflowId, 'node-1', BACKOFF_MS)).resolves.toBe(false);
+		});
+
+		it('commits with the surrounding transaction', async () => {
+			await seed('node-1', {});
+
+			await txRunner.run({}, async (ctx) => {
+				await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS, ctx);
+			});
+
+			const state = await repository.findFailureState(workflowId, 'node-1');
+			expect(state?.consecutiveErrors).toBe(1);
+		});
+
+		it('discards the increment when the surrounding transaction rolls back', async () => {
+			await seed('node-1', {});
+
+			await expect(
+				txRunner.run({}, async (ctx) => {
+					await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS, ctx);
+					throw new Error('execution insert failed');
+				}),
+			).rejects.toThrow('execution insert failed');
+
+			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
+				consecutiveErrors: 0,
+				backoffUntil: null,
+			});
+		});
+	});
+
+	describe('clearFailures', () => {
+		it('zeroes the counter and clears the deadline', async () => {
+			await seed('node-1', {});
+			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
+
+			await repository.clearFailures(workflowId, 'node-1');
+
+			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
+				consecutiveErrors: 0,
+				backoffUntil: null,
+			});
+		});
+
+		it('does not touch the stored cursor', async () => {
+			await seed('node-1', { lastItemId: 'a' });
+			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
+
+			await repository.clearFailures(workflowId, 'node-1');
+
+			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'a' });
+		});
+
+		it('returns false without throwing for a node with no stored row', async () => {
+			await expect(repository.clearFailures(workflowId, 'node-1')).resolves.toBe(false);
+		});
+
+		it('leaves a row that carries no failures untouched', async () => {
+			await seed('node-1', {});
+			const { updatedAt: before } = await readRow('node-1');
+
+			await expect(repository.clearFailures(workflowId, 'node-1')).resolves.toBe(false);
+
+			const { updatedAt: after } = await readRow('node-1');
+			expect(after.getTime()).toBe(before.getTime());
+		});
+
+		it('moves updatedAt forward', async () => {
+			await seed('node-1', {});
+			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
+			const backdated = new Date(Date.now() - 60_000);
+			await repository.update({ workflowId, nodeId: 'node-1' }, { updatedAt: backdated });
+
+			await repository.clearFailures(workflowId, 'node-1');
+
+			const { updatedAt } = await readRow('node-1');
+			expect(updatedAt.getTime()).toBeGreaterThan(backdated.getTime());
 		});
 	});
 });

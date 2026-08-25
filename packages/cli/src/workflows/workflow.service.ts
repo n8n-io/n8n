@@ -54,6 +54,7 @@ import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
@@ -105,6 +106,7 @@ export class WorkflowService {
 		private readonly workflowHookContextService: WorkflowHookContextService,
 		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {}
 
 	async getMany(
@@ -538,6 +540,19 @@ export class WorkflowService {
 			this.workflowHookContextService,
 			toWorkflowLifecycleHookActor(user),
 		]);
+
+		// Gate the save on policy before persisting, so the author learns about a violation
+		// while editing rather than at runtime. Carries the stored workflow alongside the
+		// submitted one so a check can restrict its verdict to what this save adds.
+		await this.policyEnforcementService.enforceWorkflowSave({
+			workflow: {
+				id: workflow.id,
+				name: workflowUpdateData.name ?? workflow.name,
+				nodes: workflowUpdateData.nodes ?? workflow.nodes,
+			},
+			storedWorkflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
+			projectId: ownerProject.id,
+		});
 
 		const fieldsToUpdate = [
 			'name',
