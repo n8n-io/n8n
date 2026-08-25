@@ -35,6 +35,7 @@ import type { InstanceCredentialUseRegistry } from '@/credentials/instance-crede
 import * as validation from '@/credentials/validation';
 import type { CredentialsHelper } from '@/credentials-helper';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
 import type { ExternalHooks } from '@/external-hooks';
@@ -3259,6 +3260,7 @@ describe('CredentialsService', () => {
 
 		it('reuses a supplied id so id-based matching resolves the stub on a later import', async () => {
 			const createEncryptedDataSpy = vi.spyOn(service, 'createEncryptedData');
+			credentialsRepository.existsBy.mockResolvedValue(false);
 			mockTransactionManager({ credentialId: 'cred-source' });
 
 			await service.createStubCredential({ ...stubOpts, id: 'cred-source' }, ownerUser);
@@ -3266,6 +3268,18 @@ describe('CredentialsService', () => {
 			expect(createEncryptedDataSpy).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'cred-source' }),
 			);
+		});
+
+		it('rejects a supplied id that already belongs to another credential (no upsert)', async () => {
+			const createEncryptedDataSpy = vi.spyOn(service, 'createEncryptedData');
+			credentialsRepository.existsBy.mockResolvedValue(true);
+
+			await expect(
+				service.createStubCredential({ ...stubOpts, id: 'cred-existing' }, ownerUser),
+			).rejects.toThrow(BadRequestError);
+
+			expect(credentialsRepository.existsBy).toHaveBeenCalledWith({ id: 'cred-existing' });
+			expect(createEncryptedDataSpy).not.toHaveBeenCalled();
 		});
 
 		it('rejects when user lacks credential:create on the target project', async () => {

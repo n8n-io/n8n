@@ -1749,6 +1749,13 @@ export class CredentialsService {
 		opts: { id?: string; name: string; type: string; projectId: string },
 		user: User,
 	): Promise<CredentialsEntity> {
+		// `save` upserts by id, so reject a taken id rather than overwriting that credential.
+		if (opts.id !== undefined && (await this.credentialsRepository.existsBy({ id: opts.id }))) {
+			throw new BadRequestError(
+				`Cannot create credential stub: a credential with id "${opts.id}" already exists`,
+			);
+		}
+
 		const encryptedCredential = await this.createEncryptedData({
 			id: opts.id ?? null,
 			name: opts.name,
