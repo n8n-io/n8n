@@ -15,6 +15,7 @@ import type {
 } from '@n8n/client-oauth2';
 import { AuthError, ClientOAuth2, resolveClientAuthOptions } from '@n8n/client-oauth2';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { AxiosError } from 'axios';
 import { createHmac } from 'crypto';
 import get from 'lodash/get';
@@ -332,9 +333,6 @@ function resolveTokenExpiredStatusCode(
 ): number {
 	return credentials?.tokenExpiredStatusCode ?? oAuth2Options?.tokenExpiredStatusCode ?? 401;
 }
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-	typeof value === 'object' && value !== null;
 
 function isSingleUseValue(value: unknown): boolean {
 	return isFormDataInstance(value) || value instanceof Stream;
