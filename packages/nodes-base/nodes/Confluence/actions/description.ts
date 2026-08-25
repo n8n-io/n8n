@@ -5,6 +5,7 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import * as attachment from './attachment';
 import * as page from './page';
 import * as search from './search';
+import * as space from './space';
 import { CONFLUENCE_CREDENTIAL_NAME } from '../transport';
 
 export const confluenceNodeDescription: INodeTypeDescription = {
@@ -47,11 +48,16 @@ export const confluenceNodeDescription: INodeTypeDescription = {
 					name: 'Search',
 					value: 'search',
 				},
+				{
+					name: 'Space',
+					value: 'space',
+				},
 			],
 			default: 'page',
 		},
 		...attachment.description,
 		...page.description,
 		...search.description,
+		...space.description,
 	],
 };

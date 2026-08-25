@@ -12,7 +12,7 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { WorkflowReviewAccessService } from '../workflow-review-access.service';
+import { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ProjectService } from '@/services/project.service.ee';
@@ -35,7 +35,7 @@ function reviewRequest(overrides: Partial<WorkflowReviewRequest> = {}) {
 	});
 }
 
-describe('WorkflowReviewAccessService', () => {
+describe('WorkflowReviewAuthorizationService: visibility and the read gate', () => {
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const projectService = mock<ProjectService>();
 	const roleService = mock<RoleService>();
@@ -46,7 +46,7 @@ describe('WorkflowReviewAccessService', () => {
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 
-	const service = new WorkflowReviewAccessService(
+	const service = new WorkflowReviewAuthorizationService(
 		workflowFinderService,
 		projectService,
 		roleService,

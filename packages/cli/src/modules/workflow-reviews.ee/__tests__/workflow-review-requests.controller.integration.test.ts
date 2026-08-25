@@ -390,6 +390,47 @@ describe('POST /workflow-review-requests', () => {
 		}).expect(400);
 	});
 
+	test('trims the review description on create', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+
+		await postReview(ownerAgent, {
+			title: 'Please review my workflow',
+			description: '  It is ready  ',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(201);
+
+		const requests = await requestRepository.find();
+		expect(requests[0].description).toBe('It is ready');
+	});
+
+	test.each([
+		{ name: 'an empty', description: '' },
+		{ name: 'a whitespace-only', description: '   ' },
+	])('stores $name review description as null on create', async ({ description }) => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+
+		await postReview(ownerAgent, {
+			title: 'Please review my workflow',
+			description,
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(201);
+
+		const requests = await requestRepository.find();
+		expect(requests[0].description).toBeNull();
+	});
+
 	test('returns 400 for a description exceeding 512 characters', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 
@@ -1261,7 +1302,10 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 		});
 	});
 
-	test('clears the review description when an empty string is sent', async () => {
+	test.each([
+		{ name: 'an empty string', description: '' },
+		{ name: 'a whitespace-only string', description: '   ' },
+	])('clears the review description when $name is sent', async ({ description }) => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 		const request = await seedOpenRequest(workflow.id, versionId, owner, ownerProject.id, {
 			description: 'Original review description',
@@ -1273,7 +1317,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 				workflowId: workflow.id,
 				workflowVersionId: versionId,
 				workflowVersionName: 'Release candidate',
-				description: '',
+				description,
 			})
 			.expect(200);
 
@@ -1799,10 +1843,13 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 	test('returns 404 for a non-assigned editor', async () => {
 		const { request } = await seedRequest(owner, {}, []);
 
-		await memberAgent
+		const response = await memberAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
 			.send({ decision: 'approved' })
 			.expect(404);
+
+		// Same wording as an unknown id, so the refusal doesn't reveal the review exists.
+		expect(response.body.message).toBe('Could not find review request');
 	});
 
 	test('allows an assigned viewer to decide', async () => {
@@ -1860,10 +1907,12 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 	});
 
 	test('returns 404 for an unknown review request id', async () => {
-		await memberAgent
+		const response = await memberAgent
 			.post('/workflow-review-requests/unknown-request/decision')
 			.send({ decision: 'approved' })
 			.expect(404);
+
+		expect(response.body.message).toBe('Could not find review request');
 	});
 
 	test('returns 409 for a closed review request', async () => {

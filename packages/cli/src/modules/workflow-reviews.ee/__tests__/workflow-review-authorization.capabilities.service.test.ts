@@ -1,35 +1,49 @@
 import type {
 	ProjectRelationRepository,
+	ProjectRepository,
 	User,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
+	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowDetailRow,
+	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
+import { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
+
+import type { ProjectService } from '@/services/project.service.ee';
+import type { RoleService } from '@/services/role.service';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const requestId = 'req-1';
 const projectId = 'proj-1';
-const workflowId = 'wf-1';
 
 const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:member' } });
 
-describe('WorkflowReviewEligibilityService', () => {
+describe('WorkflowReviewAuthorizationService: viewer capabilities', () => {
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 
-	const service = new WorkflowReviewEligibilityService(
+	// Only the participation and admin lookups matter here; the read gate has its
+	// own suite.
+	const service = new WorkflowReviewAuthorizationService(
+		mock<WorkflowFinderService>(),
+		mock<ProjectService>(),
+		mock<RoleService>(),
+		mock<ProjectRepository>(),
+		projectRelationRepository,
+		mock<WorkflowReviewRequestRepository>(),
+		mock<WorkflowReviewRequestWorkflowRepository>(),
 		authorRepository,
 		reviewerRepository,
-		projectRelationRepository,
 	);
 
 	const request = () => mock<WorkflowReviewRequest>({ id: requestId, projectId });
 
-	const row = (id = workflowId) => mock<WorkflowReviewRequestWorkflowDetailRow>({ workflowId: id });
+	const row = (id = 'wf-1') => mock<WorkflowReviewRequestWorkflowDetailRow>({ workflowId: id });
 
 	/** By default the review covers one workflow and the viewer can read it. */
 	const readable = (
@@ -112,9 +126,6 @@ describe('WorkflowReviewEligibilityService', () => {
 					canComment: true,
 				});
 				expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
-				// The override alone settles both answers.
-				expect(authorRepository.isAuthor).not.toHaveBeenCalled();
-				expect(reviewerRepository.isReviewer).not.toHaveBeenCalled();
 			},
 		);
 
@@ -130,7 +141,6 @@ describe('WorkflowReviewEligibilityService', () => {
 				decisionIneligibilityReason: null,
 				canComment: true,
 			});
-			expect(reviewerRepository.isReviewer).not.toHaveBeenCalled();
 		});
 
 		it('still stops an author whose project-admin rights are in another project', async () => {
@@ -169,22 +179,7 @@ describe('WorkflowReviewEligibilityService', () => {
 				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
 			});
-			expect(reviewerRepository.isReviewer).not.toHaveBeenCalled();
-		});
-
-		it('requires read access to every covered workflow, not just one of them', async () => {
-			const rows = [row('wf-1'), row('wf-2')];
-
-			const eligibility = await service.resolveViewerEligibility(
-				memberUser(),
-				readable({ workflowRows: rows, readableWorkflowRows: rows.slice(1) }),
-			);
-
-			expect(eligibility).toEqual({
-				canDecide: false,
-				decisionIneligibilityReason: 'missing_permission',
-				canComment: false,
-			});
+			expect(authorRepository.isAuthor).not.toHaveBeenCalled();
 		});
 
 		// The capability answers "who", not "when": a closed review still reports the
@@ -204,6 +199,21 @@ describe('WorkflowReviewEligibilityService', () => {
 				canDecide: true,
 				decisionIneligibilityReason: null,
 				canComment: true,
+			});
+		});
+
+		it('requires read access to every covered workflow, not just one of them', async () => {
+			const rows = [row('wf-1'), row('wf-2')];
+
+			const eligibility = await service.resolveViewerEligibility(
+				memberUser(),
+				readable({ workflowRows: rows, readableWorkflowRows: rows.slice(1) }),
+			);
+
+			expect(eligibility).toEqual({
+				canDecide: false,
+				decisionIneligibilityReason: 'missing_permission',
+				canComment: false,
 			});
 		});
 	});
@@ -252,7 +262,7 @@ describe('WorkflowReviewEligibilityService', () => {
 		it('refuses both deciding and commenting on a review whose workflow is gone', async () => {
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),
-				readable({ workflowRows: [], readableWorkflowRows: [] }),
+				readable({ readableWorkflowRows: [] }),
 			);
 
 			expect(eligibility).toEqual({
@@ -260,22 +270,34 @@ describe('WorkflowReviewEligibilityService', () => {
 				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
 			});
+			expect(reviewerRepository.isReviewer).not.toHaveBeenCalled();
 		});
 	});
 
-	describe('hasAdminOverride', () => {
-		it('grants the override to a project admin of the review project', async () => {
+	describe('the admin rule', () => {
+		it.each([['global:admin'], ['global:owner']])(
+			'treats a %s as admin of every project',
+			async (slug) => {
+				const user = mock<User>({ id: 'user-1', role: { slug } });
+
+				await expect(service.isAdminForProject(user, projectId)).resolves.toBe(true);
+				expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
+			},
+		);
+
+		it('treats a project admin as admin of that project only', async () => {
 			projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([projectId]);
 
-			await expect(service.hasAdminOverride(memberUser(), projectId)).resolves.toBe(true);
+			await expect(service.isAdminForProject(memberUser(), projectId)).resolves.toBe(true);
+			await expect(service.isAdminForProject(memberUser(), 'other-proj')).resolves.toBe(false);
 			expect(projectRelationRepository.getAccessibleProjectsByRoles).toHaveBeenCalledWith(
 				'user-1',
 				['project:admin'],
 			);
 		});
 
-		it('denies the override to a plain member without project-admin membership', async () => {
-			await expect(service.hasAdminOverride(memberUser(), projectId)).resolves.toBe(false);
+		it('denies a plain member without project-admin membership', async () => {
+			await expect(service.isAdminForProject(memberUser(), projectId)).resolves.toBe(false);
 		});
 	});
 });
