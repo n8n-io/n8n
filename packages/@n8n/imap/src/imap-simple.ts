@@ -499,7 +499,7 @@ export class ImapSimple {
 				// Some providers (e.g. iCloud) omit a part's encoding; 7BIT is the IMAP
 				// default and leaves the body untransformed.
 				const encoding = (part.encoding || '7BIT').toUpperCase();
-				resolve(PartData.fromData(data, encoding));
+				resolve(PartData.fromData(data, encoding, part.params?.charset));
 			};
 
 			const fetchOnError = (error: Error) => {
