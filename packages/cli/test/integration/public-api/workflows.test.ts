@@ -1349,7 +1349,7 @@ describe('DELETE /workflows/:id', () => {
 		}
 	});
 
-	test('should omit activeVersion, which the delete read does not load', async () => {
+	test('should not return activeVersion', async () => {
 		const workflow = await createActiveWorkflow({}, member);
 
 		const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
@@ -1359,7 +1359,7 @@ describe('DELETE /workflows/:id', () => {
 		expect(response.body.activeVersionId).toBe(workflow.versionId);
 	});
 
-	test('should attribute the deletion to the public API', async () => {
+	test('should mark the workflow-deleted event as public API', async () => {
 		const workflow = await createWorkflowWithHistory({}, member);
 		const emit = vi.spyOn(Container.get(EventService), 'emit');
 

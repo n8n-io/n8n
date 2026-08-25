@@ -156,10 +156,7 @@ const staticDataWritePublicSchema = z
  *
  * `CreateWorkflowPublicDto` uses it as-is. `UpdateWorkflowPublicDto` omits `projectId` from its
  * shape, since a project is only chosen when a workflow is created, and adds `description`, which
- * only the update body has ever accepted. Both are full-object bodies: neither is a partial update.
- *
- * Read-only fields stay in the shape so a client that sends one gets the `is read-only`
- * message rather than an unknown-key error.
+ * only the update body has ever accepted.
  */
 export const workflowWritePublicShape = {
 	id: readOnlyPublicSchema(workflowCreateReadOnlyFieldDocs.id),

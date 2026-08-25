@@ -157,9 +157,7 @@ export const workflowPublishPublicSchema = workflowPublicSchema.omit({ shared: t
 
 export class WorkflowPublishPublicDto extends Z.class(workflowPublishPublicSchema.shape) {}
 
-// `WorkflowService.update` re-reads the workflow with a flat `relations: ['tags', 'activeVersion']`,
-// which does not nest, so the publish history is absent — except when the update republished and the
-// active version came back from `activateWorkflow` carrying it. Both shapes have to pass.
+// Update returns the publish history only when it re-published, so both shapes must pass.
 export const updatedWorkflowActiveVersionPublicSchema = activeWorkflowVersionPublicSchema.extend({
 	workflowPublishHistory: z.array(workflowPublishHistoryPublicSchema).optional(),
 });
@@ -170,8 +168,7 @@ export const updatedWorkflowPublicSchema = workflowPublishPublicSchema.extend({
 
 export class UpdatedWorkflowPublicDto extends Z.class(updatedWorkflowPublicSchema.shape) {}
 
-// Delete returns the workflow it read for the permission check, which does not load the active
-// version. The old handler serialised the entity directly, so the key was absent rather than null.
+// Delete never loads the active version, and the old handler left the key out rather than null.
 export const deletedWorkflowPublicSchema = workflowPublicSchema.extend({
 	activeVersion: activeWorkflowVersionPublicSchema.nullable().optional(),
 });
