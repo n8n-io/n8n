@@ -35,9 +35,10 @@
   "scripts": {
     "dev": "pnpm run --dir=../storybook dev",
     "clean": "rimraf dist .turbo",
-    "build": "vite build",
-    "build:unchecked": "pnpm run build",
+    "build": "vite build && pnpm run typecheck:libcheck",
+    "build:unchecked": "vite build",
     "typecheck": "vue-tsc --noEmit",
+    "typecheck:libcheck": "node scripts/check-shipped-types.mjs",
     "typecheck:watch": "vue-tsc --watch --noEmit",
     "test": "vitest run",
     "test:changed": "janitor test-scoped",
