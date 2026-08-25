@@ -78,7 +78,11 @@ export class WorkflowCompilerService {
 		// lookups ran afterward, they'd find no incoming connection left to attach the
 		// newly-injected trigger to, and no name left to rewrite stale expressions from.
 		const entryNodeName = this.resolveEntryNode(workflow, config);
-		const userTriggerEdge = this.findUserTriggerEdgeTo(workflow.connections, entryNodeName);
+		const userTriggerEdge = this.findUserTriggerEdgeTo(
+			workflow.connections,
+			entryNodeName,
+			removedTriggerNames,
+		);
 
 		// The EvaluationTrigger is always added as a NEW node; the user's original
 		// upstream node is left intact so expressions referencing it still read naturally
@@ -280,21 +284,36 @@ export class WorkflowCompilerService {
 		return /trigger|webhook|manual/i.test(node.type);
 	}
 
-	private findUserTriggerEdgeTo(connections: IConnections, entryNodeName: string): UserTriggerEdge {
+	private findUserTriggerEdgeTo(
+		connections: IConnections,
+		entryNodeName: string,
+		removedTriggerNames: Set<string>,
+	): UserTriggerEdge {
+		const matches: UserTriggerEdge[] = [];
 		for (const [fromNode, conn] of Object.entries(connections)) {
 			const buckets = conn.main ?? [];
 			for (let bIdx = 0; bIdx < buckets.length; bIdx++) {
 				const edges = buckets[bIdx] ?? [];
 				for (let eIdx = 0; eIdx < edges.length; eIdx++) {
 					if (edges[eIdx]?.node === entryNodeName) {
-						return { fromNode, fromBucketIndex: bIdx, edgeIndex: eIdx };
+						matches.push({ fromNode, fromBucketIndex: bIdx, edgeIndex: eIdx });
 					}
 				}
 			}
 		}
-		throw new UserError(
-			`No incoming connection to entry node "${entryNodeName}"; cannot inject evaluation trigger`,
-		);
+		if (matches.length === 0) {
+			throw new UserError(
+				`No incoming connection to entry node "${entryNodeName}"; cannot inject evaluation trigger`,
+			);
+		}
+
+		// Prefer the edge from a kept (non-evaluation) node — deterministic regardless
+		// of key order in `connections` — so a pre-existing EvaluationTrigger listed
+		// before the real trigger doesn't have its edge spliced out in its place,
+		// leaving the real trigger's edge dangling. Falls back to the Evaluation
+		// Trigger's own edge when it was the sole feeder (TRUST-407).
+		const nonEvalMatch = matches.find((m) => !removedTriggerNames.has(m.fromNode));
+		return nonEvalMatch ?? matches[0];
 	}
 
 	private positionOf(workflow: IWorkflowBase, nodeName: string): [number, number] | undefined {

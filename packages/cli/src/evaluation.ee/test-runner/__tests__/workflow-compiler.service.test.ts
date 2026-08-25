@@ -804,6 +804,30 @@ describe('WorkflowCompilerService', () => {
 			expect(compiled.connections.__eval_trigger).toEqual({
 				main: [[{ node: 'Agent', type: 'main', index: 0 }]],
 			});
+			// The real trigger's own edge into Agent is severed, not left dangling
+			// alongside __eval_trigger's new one.
+			expect(compiled.connections.UserTrigger).toBeUndefined();
+		});
+
+		it("severs the real trigger's edge regardless of connection key order (TRUST-407)", () => {
+			// Evaluation Trigger listed BEFORE the real trigger in `connections` —
+			// findUserTriggerEdgeTo must not just splice out whichever edge it
+			// encounters first while iterating.
+			const reordered: IWorkflowBase = {
+				...workflowWithExistingEvalNodes(),
+				connections: {
+					'Old Eval Trigger': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					UserTrigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					Agent: { main: [[{ node: 'Old Set Metrics', type: 'main', index: 0 }]] },
+				},
+			};
+
+			const compiled = compiler.compile(reordered, baseConfig());
+
+			expect(compiled.connections.UserTrigger).toBeUndefined();
+			expect(compiled.connections.__eval_trigger).toEqual({
+				main: [[{ node: 'Agent', type: 'main', index: 0 }]],
+			});
 		});
 
 		it('disables Set Metrics nodes instead of removing them (structure preserved)', () => {
