@@ -25,9 +25,7 @@ describe('Confluence Node', () => {
 			expect.objectContaining({ value: 'search' }),
 		]);
 
-		expect(operationOptions('attachment')).toEqual([
-			expect.objectContaining({ value: 'getMany' }),
-		]);
+		expect(operationOptions('attachment')).toEqual([expect.objectContaining({ value: 'getMany' })]);
 		expect(operationOptions('page')).toEqual([
 			expect.objectContaining({ value: 'append' }),
 			expect.objectContaining({ value: 'create' }),
