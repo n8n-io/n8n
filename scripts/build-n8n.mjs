@@ -10,6 +10,7 @@
 
 import { $, echo, fs, chalk } from 'zx';
 import path from 'path';
+import os from 'os';
 
 // Check if running in a CI environment
 const isCI = process.env.CI === 'true';
@@ -123,14 +124,13 @@ const packageJsonFiles = await $`cd ${config.rootDir} && find . -name "package.j
 -not -path "./compiled/*" \
 -type f`.lines();
 
-// Backup all package.json files
-// This is only needed locally, not in CI
-if (process.env.CI !== 'true') {
-	for (const file of packageJsonFiles) {
-		if (file) {
-			const fullPath = path.join(config.rootDir, file);
-			await fs.copy(fullPath, `${fullPath}.bak`);
-		}
+// Backup all package.json files. The FE trim below mutates them, and pnpm verifies
+// the lockfile before running any later script, which fails until they are restored.
+// Backups live outside the workspace: siblings would be packed into the deployment.
+const packageJsonBackupDir = await fs.mkdtemp(path.join(os.tmpdir(), 'n8n-build-pkgjson-'));
+for (const file of packageJsonFiles) {
+	if (file) {
+		await fs.copy(path.join(config.rootDir, file), path.join(packageJsonBackupDir, file));
 	}
 }
 // Run FE trim script
@@ -303,18 +303,15 @@ if (generateLicenses) {
 }
 
 // Restore package.json files
-// This is only needed locally, not in CI
-if (process.env.CI !== 'true') {
-	for (const file of packageJsonFiles) {
-		if (file) {
-			const fullPath = path.join(config.rootDir, file);
-			const backupPath = `${fullPath}.bak`;
-			if (await fs.pathExists(backupPath)) {
-				await fs.move(backupPath, fullPath, { overwrite: true });
-			}
+for (const file of packageJsonFiles) {
+	if (file) {
+		const backupPath = path.join(packageJsonBackupDir, file);
+		if (await fs.pathExists(backupPath)) {
+			await fs.move(backupPath, path.join(config.rootDir, file), { overwrite: true });
 		}
 	}
 }
+await fs.remove(packageJsonBackupDir);
 
 // Calculate output size
 const compiledAppOutputSize = (await $`du -sh ${config.compiledAppDir} | cut -f1`).stdout.trim();
