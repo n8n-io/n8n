@@ -3,6 +3,7 @@ import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { redactTelemetryProperties } from '@n8n/telemetry';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
@@ -75,7 +76,11 @@ function trackInputCompleted(
 		skipped_inputs: skippedInputs,
 		...extra,
 	};
-	telemetry.track('User finished providing input', eventProps);
+	// The inputs carry free text — what the user typed into a question card, and
+	// the agent's own description of the action it wants to take. This event
+	// reaches RudderStack *and* PostHog from the browser, so the backend
+	// redactor never sees it. The `*_id` keys are exempted by the scrubber.
+	telemetry.track('User finished providing input', redactTelemetryProperties(eventProps));
 }
 
 interface StandaloneChunk {

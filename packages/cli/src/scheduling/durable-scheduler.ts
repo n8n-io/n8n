@@ -14,6 +14,7 @@ import { InstanceSettings, Tracing } from 'n8n-core';
 import { PrometheusSchedulerMetricsService } from '@/metrics/prometheus/scheduler-metrics.service';
 
 import { withOwnerKeys } from './owner-key';
+import { isDurablePollerChainEnabled } from './poll-trigger-node/durable-poller-chain';
 import { PollTriggerTaskHandler } from './poll-trigger-node/poll-trigger-task-handler';
 import { ScheduleTriggerTaskHandler } from './schedule-trigger-node/schedule-trigger-task-handler';
 import { createSchedulerTracer } from './scheduler-tracer';
@@ -92,6 +93,7 @@ export class DurableScheduler implements Scheduler {
 		if (enabled) {
 			warnOnMisfireGrace(logger, config);
 			warnOnDrainRate(logger, config);
+			warnOnPollTimeout(logger, globalConfig);
 		}
 		this.registerTaskHandler(scheduleTriggerTaskHandler.taskType, scheduleTriggerTaskHandler);
 		this.registerTaskHandler(pollTriggerTaskHandler.taskType, pollTriggerTaskHandler);
@@ -158,6 +160,25 @@ function warnOnDrainRate(logger: Logger, config: GlobalConfig['scheduler']): voi
 		logger.warn(
 			'Scheduler materialization interval is long enough that a pass may never fully drain the busiest possible schedule; under the coalesce misfire policy such a schedule could stop producing catch-up runs entirely',
 			{ materializationIntervalSeconds, fastestIntervalSeconds },
+		);
+	}
+}
+
+/**
+ * Warn when a poll may still be in flight after the lease on its occurrence has
+ * expired: the reaper can then reclaim the occurrence and another instance can
+ * start the same poll while the first one is still running. Equality counts
+ * too, since the poll deadline only starts after the occurrence's setup reads.
+ */
+function warnOnPollTimeout(logger: Logger, globalConfig: GlobalConfig): void {
+	const { pollTimeoutSeconds, leaseDurationSeconds } = globalConfig.scheduler;
+	if (
+		isDurablePollerChainEnabled(globalConfig.scheduler, globalConfig.workflows) &&
+		pollTimeoutSeconds >= leaseDurationSeconds
+	) {
+		logger.warn(
+			'Scheduler poll timeout reaches the lease duration; a poll can still be running when its lease expires and another instance takes the run over',
+			{ pollTimeoutSeconds, leaseDurationSeconds },
 		);
 	}
 }

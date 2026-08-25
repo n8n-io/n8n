@@ -16,6 +16,7 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Delete,
 	Get,
 	Param,
 	Patch,
@@ -154,6 +155,31 @@ export class RoleMappingRulesPublicController {
 		const rule = await this.roleMappingRuleService.patch({
 			id: roleMappingRuleId,
 			dto: body,
+			userId: req.user.id,
+			userEmail: req.user.email,
+		});
+
+		return toRoleMappingRulePublicDto(rule);
+	}
+
+	@Delete('/:roleMappingRuleId')
+	@ApiKeyScope('roleMappingRule:delete')
+	@ApiSummary('Delete a role-mapping rule')
+	@ApiDescription(
+		'Deletes a role-mapping rule. The remaining rules of the same type close the gap, so their `order` values stay a contiguous sequence starting at 0.',
+	)
+	@ApiTags(['RoleMappingRule'])
+	@ApiResponse(200, RoleMappingRulePublicDto)
+	@ApiErrorResponse(404)
+	async deleteRoleMappingRule(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('roleMappingRuleId') roleMappingRuleId: string,
+	): Promise<RoleMappingRulePublicDto> {
+		this.assertProvisioningLicensed();
+
+		const rule = await this.roleMappingRuleService.delete({
+			id: roleMappingRuleId,
 			userId: req.user.id,
 			userEmail: req.user.email,
 		});

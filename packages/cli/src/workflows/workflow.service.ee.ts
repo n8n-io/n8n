@@ -39,6 +39,7 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -62,6 +63,7 @@ export class EnterpriseWorkflowService {
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {}
 
 	async shareWithProjects(
@@ -469,23 +471,29 @@ export class EnterpriseWorkflowService {
 			}
 		}
 
+		// 6. validate against the destination project's policy
+		await this.policyEnforcementService.enforceWorkflowTransfer({
+			workflow,
+			targetProjectId: destinationProject.id,
+		});
+
 		const wasActive = this.isActiveWorkflow(workflow);
 
-		// 6. deactivate workflow if necessary
+		// 7. deactivate workflow if necessary
 		if (wasActive) {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
 
-		// 7. transfer the workflow
+		// 8. transfer the workflow
 		await this.transferWorkflowOwnership(user, [workflow], destinationProject);
 
-		// 8. share credentials into the destination project
+		// 9. share credentials into the destination project
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
 
-		// 9. Move workflow to the right folder if any
+		// 10. Move workflow to the right folder if any
 		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 
-		// 10. try to activate it again if it was active
+		// 11. try to activate it again if it was active
 		if (wasActive) {
 			return await this.attemptWorkflowReactivation(workflowId, workflow.activeVersionId, user.id);
 		}
