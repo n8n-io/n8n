@@ -65,6 +65,42 @@ describe('CreateWorkflowReviewRequestDto', () => {
 		expect(result.data?.workflows[0].workflowVersionDescription).toBe(workflowVersionDescription);
 	});
 
+	test('should trim the review description', () => {
+		const result = CreateWorkflowReviewRequestDto.safeParse({
+			...base,
+			description: '  Please take a look  ',
+			workflows: pinnedWorkflow,
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.data?.description).toBe('Please take a look');
+	});
+
+	test.each([
+		{ name: 'an empty', description: '' },
+		{ name: 'a whitespace-only', description: '   ' },
+	])('should reduce $name review description to an empty string', ({ description }) => {
+		const result = CreateWorkflowReviewRequestDto.safeParse({
+			...base,
+			description,
+			workflows: pinnedWorkflow,
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.data?.description).toBe('');
+	});
+
+	test('should reject a review description longer than 512 characters', () => {
+		const result = CreateWorkflowReviewRequestDto.safeParse({
+			...base,
+			description: 'a'.repeat(513),
+			workflows: pinnedWorkflow,
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.error?.issues[0].path).toEqual(['description']);
+	});
+
 	test('should reject a version description longer than 2048 characters', () => {
 		const result = CreateWorkflowReviewRequestDto.safeParse({
 			...base,

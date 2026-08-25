@@ -8,5 +8,7 @@ export type {
 	TelemetryEventInput,
 	TelemetryEventRegistry,
 } from './define';
+export { redactTelemetryProperties, redactTelemetryText } from './redaction';
+export type { TelemetryTextOptions } from './redaction';
 export { collectDuplicateNames, validateEntrySchemas } from './registry-checks';
 export { TELEMETRY_EVENT } from './telemetry-events';
