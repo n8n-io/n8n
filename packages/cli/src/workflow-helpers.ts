@@ -32,6 +32,7 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { OwnershipService } from './services/ownership.service';
+import { getWorkflowProjectDetailsSafe } from './workflows/utils';
 
 export { dropInvalidWorkflowGroups, makeGetNodeTypeForGrouping };
 
@@ -421,19 +422,28 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 	return workflow;
 }
 
-export async function getVariables(workflowId?: string, projectId?: string): Promise<IDataObject> {
-	const [variables, project] = await Promise.all([
+export async function getVariables(
+	workflowId?: string,
+	projectId?: string,
+): Promise<{ variables: IDataObject; projectId?: string }> {
+	const [variables, ownerProjectDetails] = await Promise.all([
 		Container.get(VariablesService).getAllCached(),
-		// If projectId is not provided, try to get it from workflow
+		// If projectId is not provided, try to get it from workflow. Never throws —
+		// callers need the owning project for scoping, not as a hard dependency.
 		workflowId && !projectId
-			? Container.get(OwnershipService).getWorkflowProjectCached(workflowId)
+			? getWorkflowProjectDetailsSafe(Container.get(OwnershipService), workflowId)
 			: null,
 	]);
 
-	// Either projectId passed or use project from workflow
-	const projectIdToUse = projectId ?? project?.id;
+	// Either projectId passed or use project resolved from workflow. `projectId` on
+	// the safe result is '' (falsy, not nullish) when resolution failed, so `||`
+	// rather than `??` is needed to fall through to `undefined` in that case.
+	const projectIdToUse = projectId ?? (ownerProjectDetails?.projectId || undefined);
 
-	return Object.freeze(resolveVariables(variables, projectIdToUse));
+	return {
+		variables: Object.freeze(resolveVariables(variables, projectIdToUse)),
+		projectId: projectIdToUse,
+	};
 }
 
 /**

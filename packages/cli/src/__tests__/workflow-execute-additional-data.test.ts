@@ -271,10 +271,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 			);
 
-			// getBase backfills projectId from the workflow owner (mocked to
-			// 'project-id-1' in this describe's beforeEach) when the sub-workflow
-			// call site omits it.
-			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, 'project-id-1');
+			// getBase passes the caller's projectId straight through to getVariables,
+			// which resolves the workflow owner internally when it's missing.
+			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, undefined);
 		});
 
 		describe('credential permission check routing', () => {
@@ -1272,7 +1271,10 @@ describe('WorkflowExecuteAdditionalData', () => {
 				webhookWaiting: '/webhook-waiting/',
 				webhookTest: '/webhook-test/',
 			});
-			vi.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue(mockVariables);
+			vi.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue({
+				variables: mockVariables,
+				projectId: undefined,
+			});
 		});
 
 		it('should return base additional data with default values', async () => {
@@ -1343,6 +1345,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 				// mockInstance(OwnershipService), which each Container.set a fresh mock.
 				// Re-bind ours so the source resolves it.
 				Container.set(OwnershipService, ownershipService);
+				// This behavior lives inside the real getVariables, not getBase itself —
+				// undo the outer describe's stub so these tests exercise it for real.
+				vi.mocked(WorkflowHelpers.getVariables).mockRestore();
 			});
 
 			it('backfills projectId from the workflow owner when missing', async () => {
