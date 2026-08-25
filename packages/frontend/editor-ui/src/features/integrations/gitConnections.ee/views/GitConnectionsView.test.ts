@@ -269,31 +269,60 @@ describe('GitConnectionsView', () => {
 		expect(screen.getByTestId('git-connection-dialog')).toBeInTheDocument();
 	});
 
-	it('shows the second connector when it is edited after the first one was closed', async () => {
-		backend.connections.push(
-			sshConnection({ id: 'conn-a', name: 'Alpha', repositoryUrl: 'git@host:alpha.git' }),
-			sshConnection({ id: 'conn-b', name: 'Beta', repositoryUrl: 'git@host:beta.git' }),
+	it('shows the stored values when the just-created connector is reopened for editing', async () => {
+		renderView();
+		await screen.findByTestId('empty-state');
+
+		const createDialog = await openAddDialog();
+		await userEvent.type(
+			within(createDialog).getByTestId('git-connection-name-input'),
+			'Production',
 		);
+		await userEvent.type(
+			within(createDialog).getByTestId('git-connection-repository-url-input'),
+			'git@host:production.git',
+		);
+		await userEvent.click(within(createDialog).getByTestId('git-connection-save-button'));
+		await userEvent.click(await screen.findByTestId('git-connection-done-button'));
+
+		const editDialog = await openEditDialog(await screen.findByTestId('git-connection-card'));
+		await waitFor(() =>
+			expect(within(editDialog).getByTestId('git-connection-name-input')).toHaveValue('Production'),
+		);
+		expect(within(editDialog).getByTestId('git-connection-repository-url-input')).toHaveValue(
+			'git@host:production.git',
+		);
+	});
+
+	it('returns focus to the connector when its dialog is closed', async () => {
+		backend.connections.push(sshConnection());
 		renderView();
 
-		const cards = await screen.findAllByTestId('git-connection-card');
-		const firstDialog = await openEditDialog(cards[0]);
+		const card = await screen.findByTestId('git-connection-card');
+		const dialog = await openEditDialog(card);
 		await waitFor(() =>
-			expect(within(firstDialog).getByTestId('git-connection-name-input')).toHaveValue('Alpha'),
+			expect(within(dialog).getByTestId('git-connection-name-input')).toHaveValue('Production'),
 		);
-		await userEvent.click(within(firstDialog).getByTestId('git-connection-cancel-button'));
+		await userEvent.click(within(dialog).getByTestId('git-connection-cancel-button'));
+
 		await waitFor(() =>
 			expect(screen.queryByTestId('git-connection-dialog')).not.toBeInTheDocument(),
 		);
-		expect(screen.getByTestId('git-connections-add')).toHaveFocus();
+		expect(card).toHaveFocus();
+	});
 
-		const secondDialog = await openEditDialog(cards[1]);
-		await waitFor(() =>
-			expect(within(secondDialog).getByTestId('git-connection-name-input')).toHaveValue('Beta'),
-		);
-		expect(within(secondDialog).getByTestId('git-connection-repository-url-input')).toHaveValue(
-			'git@host:beta.git',
-		);
+	it('offers the add button only while no connector is configured', async () => {
+		mockConfirm.mockResolvedValue(MODAL_CONFIRM);
+		backend.connections.push(sshConnection());
+		renderView();
+
+		await screen.findByTestId('git-connection-card');
+		expect(screen.queryByTestId('git-connections-add')).not.toBeInTheDocument();
+
+		await userEvent.click(within(screen.getByTestId('git-connection-card')).getByRole('button'));
+		await userEvent.click(await screen.findByTestId('action-delete'));
+
+		expect(await screen.findByTestId('git-connections-add')).toBeInTheDocument();
 	});
 
 	it('keeps the entered values and reports the error when saving fails', async () => {

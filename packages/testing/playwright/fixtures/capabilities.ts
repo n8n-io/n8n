@@ -23,14 +23,6 @@ export const CAPABILITIES = {
 		},
 	},
 	kent: { services: ['kent'] },
-	'git-connections': {
-		env: {
-			// Not a default module, so it has to be enabled explicitly on top of the
-			// `@licensed` tag that grants `feat:gitConnections`.
-			N8N_ENABLED_MODULES: 'git-connections',
-			N8N_ENV_FEAT_PROMOTIONS: 'true',
-		},
-	},
 	'dynamic-credentials': {
 		services: ['keycloak'],
 		env: {

@@ -52,8 +52,8 @@ const loadError = ref(false);
 const dialogOpen = ref(false);
 const editingId = ref<string | undefined>(undefined);
 const addButton = useTemplateRef<{ $el?: HTMLElement }>('addButton');
+const list = useTemplateRef<HTMLElement>('list');
 
-// LIGO-1020: the instance connection is prepended to this list
 const rows = computed<ConnectionRow[]>(() =>
 	connections.value.map((connection) => ({
 		id: connection.id,
@@ -63,6 +63,11 @@ const rows = computed<ConnectionRow[]>(() =>
 		connectionType: connection.connectionType,
 	})),
 );
+
+// The backend allows exactly one connection today and treats it as the instance
+// connection. Project-level connections are a follow-up ticket; the Add button
+// comes back when they land.
+const canAddConnection = computed(() => rows.value.length === 0);
 
 const rowActions = computed(() => [
 	{ label: i18n.baseText('generic.edit'), value: CONNECTION_ACTIONS.EDIT },
@@ -103,13 +108,17 @@ function openEditDialog(id: string) {
 }
 
 async function onDialogOpenChange(open: boolean) {
+	const editedId = editingId.value;
 	dialogOpen.value = open;
 	if (open) return;
 	// Focus has to wait for `v-if` to unmount the dialog: while it is still there
 	// reka's focus trap pulls focus straight back, and the unmount drops it to
 	// `<body>`.
 	await nextTick();
-	addButton.value?.$el?.focus();
+	const card = editedId
+		? list.value?.querySelector<HTMLElement>(`[data-connection-id="${editedId}"]`)
+		: null;
+	(addButton.value?.$el ?? card)?.focus();
 }
 
 async function confirmDelete(row: ConnectionRow) {
@@ -171,7 +180,7 @@ async function onRowAction(action: string, row: ConnectionRow) {
 				</N8nText>
 			</div>
 			<N8nButton
-				v-if="!loadError"
+				v-if="!loadError && canAddConnection"
 				ref="addButton"
 				icon="plus"
 				:label="i18n.baseText('settings.gitConnections.addConnector')"
@@ -194,8 +203,15 @@ async function onRowAction(action: string, row: ConnectionRow) {
 			:heading="i18n.baseText('settings.gitConnections.empty.title')"
 			:description="i18n.baseText('settings.gitConnections.empty.description')"
 		/>
-		<div v-else>
-			<N8nCard v-for="row in rows" :key="row.id" class="mb-2xs" data-test-id="git-connection-card">
+		<div v-else ref="list">
+			<N8nCard
+				v-for="row in rows"
+				:key="row.id"
+				:class="$style.card"
+				tabindex="-1"
+				:data-connection-id="row.id"
+				data-test-id="git-connection-card"
+			>
 				<template #header>
 					<div :class="$style.cardHeader">
 						<N8nText tag="h3" bold>{{ row.name }}</N8nText>
@@ -205,13 +221,17 @@ async function onRowAction(action: string, row: ConnectionRow) {
 								{{ i18n.baseText('settings.gitConnections.connectorType.git') }}
 							</span>
 						</N8nBadge>
+						<N8nBadge theme="tertiary">
+							{{ i18n.baseText('settings.gitConnections.scope.instance') }}
+						</N8nBadge>
 					</div>
 				</template>
 				<div :class="$style.cardDescription">
 					<N8nText color="text-light" size="small">{{ row.repositoryUrl }}</N8nText>
-					<N8nText v-if="row.branchName" color="text-light" size="small">
-						{{ row.branchName }}
-					</N8nText>
+					<template v-if="row.branchName">
+						<N8nText color="text-light" size="small">&middot;</N8nText>
+						<N8nText color="text-light" size="small">{{ row.branchName }}</N8nText>
+					</template>
 				</div>
 				<template #append>
 					<N8nActionToggle :actions="rowActions" @action="onRowAction($event, row)" />
@@ -252,9 +272,15 @@ async function onRowAction(action: string, row: ConnectionRow) {
 .sectionHeader {
 	display: flex;
 	justify-content: space-between;
-	align-items: flex-end;
+	align-items: center;
 	gap: var(--spacing--sm);
-	margin-bottom: var(--spacing--sm);
+	margin-bottom: var(--spacing--md);
+}
+
+.card {
+	--card--padding: var(--spacing--md);
+
+	margin-bottom: var(--spacing--xs);
 }
 
 .cardHeader {
@@ -271,6 +297,7 @@ async function onRowAction(action: string, row: ConnectionRow) {
 
 .cardDescription {
 	display: flex;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--3xs);
+	margin-top: var(--spacing--4xs);
 }
 </style>
