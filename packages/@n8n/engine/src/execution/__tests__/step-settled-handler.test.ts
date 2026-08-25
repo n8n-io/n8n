@@ -103,7 +103,7 @@ function makeStepStore(
 			);
 		}),
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
-		loadLatestStep: vi.fn().mockResolvedValue(null),
+		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
 		// far from settled, so finish tests opt in explicitly
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
@@ -201,7 +201,7 @@ describe('StepSettledHandler', () => {
 		expect(orchestrationQueue.publish).not.toHaveBeenCalled();
 	});
 
-	it('loads the decision rows in one query: the successors and their predecessors', async () => {
+	it('loads the decision rows in one query: the settled row, the successors, and what they read', async () => {
 		const stepStore = makeStepStore({ id: 'step-b', nodeId: 'b' }, {}, [
 			...defaultSummaries,
 			summary('b', 'completed', [true]),
@@ -210,10 +210,10 @@ describe('StepSettledHandler', () => {
 
 		await handler.handle({ ...event, stepId: 'step-b' });
 
-		// b's only successor is m; m reads from both b and c
+		// b's only successor is m, and m reads from both b and c
 		expect(stepStore.loadStepSummariesByKeys).toHaveBeenCalledExactlyOnceWith('exec-1', [
-			{ nodeId: 'm', iteration: 0 },
 			{ nodeId: 'b', iteration: 0 },
+			{ nodeId: 'm', iteration: 0 },
 			{ nodeId: 'c', iteration: 0 },
 		]);
 	});

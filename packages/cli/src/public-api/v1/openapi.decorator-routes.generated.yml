@@ -21,6 +21,17 @@ paths:
   /git-connections/{id}/disconnect:
     post:
       $ref: ./handlers/git-connections/spec/paths/disconnectGitConnection.generated.yml
+  /git-connections/{id}/push:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/pushGitConnectionProjects.generated.yml
+  /git-connections/{id}/projects:
+    get:
+      $ref: ./handlers/git-connections/spec/paths/getGitConnectionProjects.generated.yml
+  /git-connections/{id}/projects/{projectId}:
+    post:
+      $ref: ./handlers/git-connections/spec/paths/addProjectToGitConnection.generated.yml
+    delete:
+      $ref: ./handlers/git-connections/spec/paths/removeProjectFromGitConnection.generated.yml
   /role-mapping-rules:
     get:
       $ref: ./handlers/role-mapping-rules/spec/paths/getRoleMappingRules.generated.yml
@@ -29,6 +40,11 @@ paths:
   /role-mapping-rules/{roleMappingRuleId}/move:
     post:
       $ref: ./handlers/role-mapping-rules/spec/paths/moveRoleMappingRule.generated.yml
+  /role-mapping-rules/{roleMappingRuleId}:
+    patch:
+      $ref: ./handlers/role-mapping-rules/spec/paths/updateRoleMappingRule.generated.yml
+    delete:
+      $ref: ./handlers/role-mapping-rules/spec/paths/deleteRoleMappingRule.generated.yml
   /roles:
     get:
       $ref: ./handlers/roles/spec/paths/getAllRoles.generated.yml
@@ -47,6 +63,8 @@ paths:
   /workflows:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflows.generated.yml
+    post:
+      $ref: ./handlers/workflows/spec/paths/createWorkflow.generated.yml
   /workflows/{workflowId}:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflow.generated.yml
@@ -59,6 +77,12 @@ paths:
   /workflows/{workflowId}/transfer:
     put:
       $ref: ./handlers/workflows/spec/paths/transferWorkflow.generated.yml
+  /workflows/{workflowId}/publish:
+    post:
+      $ref: ./handlers/workflows/spec/paths/publishWorkflow.generated.yml
+  /workflows/{workflowId}/unpublish:
+    post:
+      $ref: ./handlers/workflows/spec/paths/unpublishWorkflow.generated.yml
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml

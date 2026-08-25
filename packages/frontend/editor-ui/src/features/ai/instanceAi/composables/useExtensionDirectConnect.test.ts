@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
 	useExtensionDirectConnect,
+	resetExtensionDirectConnect,
 	DIRECT_CONNECT_CONFIRMATION_TIMEOUT_MS,
 } from './useExtensionDirectConnect';
 
@@ -48,6 +49,7 @@ async function settle(): Promise<void> {
 }
 
 beforeEach(() => {
+	resetExtensionDirectConnect();
 	vi.useFakeTimers();
 	(globalThis as { chrome?: unknown }).chrome = chromeMock;
 	mockExtensionResponses({ connect: { accepted: true }, connectResult: HOLD_RESPONSE });
@@ -108,6 +110,43 @@ describe('useExtensionDirectConnect', () => {
 		);
 	});
 
+	it('clears the previous flow status before waiting on the extension', async () => {
+		mockExtensionResponses({ connect: HOLD_RESPONSE });
+		const { status, attempt } = useExtensionDirectConnect();
+		status.value = 'failed';
+
+		void attempt(CONNECT_URL);
+
+		// A caller watching this state must not read the outcome of a connect that ended.
+		expect(status.value).toBe('idle');
+	});
+
+	it('shares one live flow across independent callers', async () => {
+		const first = useExtensionDirectConnect();
+		const second = useExtensionDirectConnect();
+
+		void first.attempt(CONNECT_URL);
+		await vi.advanceTimersByTimeAsync(0);
+
+		// The modal mounts mid-flight and must render the running attempt, not start a second.
+		expect(second.status.value).toBe('waiting');
+		expect(second.isAttempting.value).toBe(true);
+	});
+
+	it('reports connecting, not waiting, when no confirmation was shown', async () => {
+		mockExtensionResponses({
+			connect: { accepted: true, confirmationRequired: false },
+			connectResult: HOLD_RESPONSE,
+		});
+		const { status, attempt } = useExtensionDirectConnect();
+
+		void attempt(CONNECT_URL);
+		await vi.advanceTimersByTimeAsync(0);
+
+		// A remembered host attaches silently — there is no popup to point the user at.
+		expect(status.value).toBe('connecting');
+	});
+
 	it('fails as soon as the extension reports an unsuccessful connect', async () => {
 		const { status, attempt } = useExtensionDirectConnect();
 		const pending = attempt(CONNECT_URL);
@@ -119,7 +158,7 @@ describe('useExtensionDirectConnect', () => {
 		expect(status.value).toBe('failed');
 	});
 
-	it('stays waiting when the extension reports a successful connect', async () => {
+	it('settles on a terminal state when the extension reports a successful connect', async () => {
 		const { status, attempt } = useExtensionDirectConnect();
 		const pending = attempt(CONNECT_URL);
 		await settle();
@@ -127,7 +166,9 @@ describe('useExtensionDirectConnect', () => {
 		heldCallbacks[0]({ connected: true });
 		await pending;
 
-		expect(status.value).toBe('waiting');
+		// A finished flow left on an in-progress status makes every later reader — the
+		// connections row especially — believe a connect is still running.
+		expect(status.value).toBe('connected');
 	});
 
 	it('fails when no connect result arrives in time', async () => {

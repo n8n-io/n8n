@@ -63,6 +63,7 @@ function iteration1(): WorkflowTestCaseResult {
 	return {
 		testCase,
 		workflowBuildSuccess: true,
+		threadId: '3f0c9a2e-8d41-4b77-9a10-1c2d3e4f5a6b',
 		transcript,
 		workflowChecks: [passingCheck],
 		workflowJson: {
@@ -130,6 +131,7 @@ interface DispatcherView {
 		buildTurnsPerRun?: Array<number | null>;
 		transcriptPerRun: Array<TranscriptTurn[] | null>;
 		buildErrorPerRun: Array<string | null>;
+		threadIds: Array<string | null>;
 		scenarios: Array<{
 			name: string;
 			passCount: number;
@@ -222,6 +224,14 @@ describe('eval-results.json — dispatcher contract', () => {
 
 		// Per-iteration build-failure reason — one `string | null` per run.
 		expect(tc.buildErrorPerRun).toEqual([null, 'agent stopped before producing a workflow']);
+
+		// Build thread ids — one per iteration, null when the iteration never
+		// reached a build. LangTracer persists these (case_run_artifacts.thread_ids)
+		// as the join key from a case run to its LangSmith builder trace
+		// (`metadata.thread_id`) when eval trace capture is enabled on the n8n
+		// container. Dropping the field orphans every captured trace: the trace
+		// itself carries only a bare UUID, with no case, verdict, or version.
+		expect(tc.threadIds).toEqual(['3f0c9a2e-8d41-4b77-9a10-1c2d3e4f5a6b', null]);
 
 		// Scenario blocks serialize under the flat `scenarios` key with a flat
 		// `name` — the shape the dispatcher's fallback reader consumes today.

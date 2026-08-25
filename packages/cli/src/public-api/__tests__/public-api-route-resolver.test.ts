@@ -318,7 +318,7 @@ describe('public-api-route-resolver', () => {
 			expect(route.summary).toBe('Create a widget');
 			expect(route.tags).toEqual(['Widgets']);
 			expect(route.description).toBe('Create a widget.');
-			expect(route.errorResponses).toEqual([409]);
+			expect(route.errorResponses).toEqual([{ status: 409 }]);
 			expect(route.successStatus).toBe(201);
 			expect(route.deprecated).toEqual({ since });
 		});

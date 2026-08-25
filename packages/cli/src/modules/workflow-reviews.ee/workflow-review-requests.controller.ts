@@ -3,8 +3,6 @@ import {
 	CreateWorkflowReviewRequestDto,
 	DecideWorkflowReviewRequestDto,
 	GetWorkflowReviewEligibleReviewersQueryDto,
-	GetWorkflowReviewStatusesDto,
-	type WorkflowReviewStatusesResponse,
 	ListWorkflowReviewActivityQueryDto,
 	ListWorkflowReviewRequestsQueryDto,
 	UpdateWorkflowReviewRequestVersionDto,
@@ -103,20 +101,6 @@ export class WorkflowReviewRequestsController {
 		@Query query: ListWorkflowReviewInboxQueryDto,
 	): Promise<ListWorkflowReviewInboxResponse> {
 		return await this.workflowReviewInboxService.listForInbox(req.user, query);
-	}
-
-	/**
-	 * Batched open-review statuses for a page of workflows. POST for the body
-	 * only — a read that avoids one request per workflow and long query strings.
-	 */
-	@Post('/statuses')
-	@Licensed('feat:workflowReviews')
-	async getStatuses(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Body dto: GetWorkflowReviewStatusesDto,
-	): Promise<WorkflowReviewStatusesResponse> {
-		return await this.workflowReviewInboxService.getStatusesForWorkflows(req.user, dto);
 	}
 
 	@Get('/summary')

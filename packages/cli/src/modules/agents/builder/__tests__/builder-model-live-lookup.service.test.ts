@@ -1,10 +1,11 @@
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
-import type { CredentialsEntity, User } from '@n8n/db';
+import type { User } from '@n8n/db';
+import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsHelper } from '@/credentials-helper';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 import { BuilderModelLiveLookupService } from '../builder-model-live-lookup.service';
@@ -15,12 +16,18 @@ vi.mock('@n8n/ai-utilities/model-discovery', async (importOriginal) => ({
 	listModelsForProvider: (...args: unknown[]) => listModelsForProvider(...args) as unknown,
 }));
 
+const additionalData = mock<IWorkflowExecuteAdditionalData>();
+const getBaseMock = vi.fn<(...args: unknown[]) => Promise<IWorkflowExecuteAdditionalData>>();
+vi.mock('@/workflow-execute-additional-data', () => ({
+	getBase: async (...args: unknown[]) => await getBaseMock(...args),
+}));
+
 const user = mock<User>({ id: 'user-1' });
 const projectId = 'project-1';
 
 function makeService() {
 	const credentialsService = mock<CredentialsService>();
-	const credentialsFinderService = mock<CredentialsFinderService>();
+	const credentialsHelper = mock<CredentialsHelper>();
 	const transport = mock<HttpTransport>();
 	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
@@ -29,11 +36,11 @@ function makeService() {
 
 	const service = new BuilderModelLiveLookupService(
 		credentialsService,
-		credentialsFinderService,
+		credentialsHelper,
 		outboundHttp,
 		aiGatewayService,
 	);
-	return { service, credentialsService, credentialsFinderService, aiGatewayService };
+	return { service, credentialsService, credentialsHelper, aiGatewayService };
 }
 
 function usable(id: string, type: string) {
@@ -45,16 +52,17 @@ function usable(id: string, type: string) {
 describe('BuilderModelLiveLookupService', () => {
 	beforeEach(() => {
 		listModelsForProvider.mockReset();
+		getBaseMock.mockReset();
+		getBaseMock.mockResolvedValue(additionalData);
 	});
 
 	describe('lookup', () => {
 		it('returns endpoint-only models and forwards OpenAI credential request options', async () => {
-			const { service, credentialsService, credentialsFinderService } = makeService();
+			const { service, credentialsService, credentialsHelper } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'openAiApi'),
 			);
-			credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
-			credentialsService.decrypt.mockResolvedValue({
+			credentialsHelper.getDecrypted.mockResolvedValue({
 				apiKey: 'sk-key',
 				url: 'https://openai-compatible.example/v1',
 				organizationId: 'org-123',
@@ -85,12 +93,11 @@ describe('BuilderModelLiveLookupService', () => {
 		});
 
 		it('lets a custom OpenAI organization header override the credential organization', async () => {
-			const { service, credentialsService, credentialsFinderService } = makeService();
+			const { service, credentialsService, credentialsHelper } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'openAiApi'),
 			);
-			credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
-			credentialsService.decrypt.mockResolvedValue({
+			credentialsHelper.getDecrypted.mockResolvedValue({
 				apiKey: 'sk-key',
 				url: 'https://openai-compatible.example/v1',
 				organizationId: 'org-default',
@@ -111,12 +118,11 @@ describe('BuilderModelLiveLookupService', () => {
 		});
 
 		it('returns curated models for the official OpenAI endpoint', async () => {
-			const { service, credentialsService, credentialsFinderService } = makeService();
+			const { service, credentialsService, credentialsHelper } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'openAiApi'),
 			);
-			credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
-			credentialsService.decrypt.mockResolvedValue({
+			credentialsHelper.getDecrypted.mockResolvedValue({
 				apiKey: 'sk-key',
 				url: 'https://api.openai.com/v1',
 			});
@@ -132,12 +138,11 @@ describe('BuilderModelLiveLookupService', () => {
 		});
 
 		it('preserves endpoint-only policy when custom OpenAI discovery fails', async () => {
-			const { service, credentialsService, credentialsFinderService } = makeService();
+			const { service, credentialsService, credentialsHelper } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'openAiApi'),
 			);
-			credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
-			credentialsService.decrypt.mockResolvedValue({
+			credentialsHelper.getDecrypted.mockResolvedValue({
 				apiKey: 'sk-key',
 				url: 'https://openai-compatible.example/v1',
 			});
@@ -150,12 +155,11 @@ describe('BuilderModelLiveLookupService', () => {
 		});
 
 		it('preserves endpoint-only policy when custom OpenAI discovery is empty', async () => {
-			const { service, credentialsService, credentialsFinderService } = makeService();
+			const { service, credentialsService, credentialsHelper } = makeService();
 			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 				usable('cred-1', 'openAiApi'),
 			);
-			credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
-			credentialsService.decrypt.mockResolvedValue({
+			credentialsHelper.getDecrypted.mockResolvedValue({
 				apiKey: 'sk-key',
 				url: 'https://openai-compatible.example/v1',
 			});
@@ -214,12 +218,14 @@ describe('BuilderModelLiveLookupService', () => {
 	});
 
 	it('lists models for a credential the user can use in the project', async () => {
-		const { service, credentialsService, credentialsFinderService } = makeService();
+		const { service, credentialsService, credentialsHelper } = makeService();
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 			usable('cred-1', 'anthropicApi'),
 		);
-		credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
-		credentialsService.decrypt.mockResolvedValue({ apiKey: 'sk-key', url: 'https://proxy.local' });
+		credentialsHelper.getDecrypted.mockResolvedValue({
+			apiKey: 'sk-key',
+			url: 'https://proxy.local',
+		});
 		listModelsForProvider.mockResolvedValue([
 			{ id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
 		]);
@@ -237,13 +243,41 @@ describe('BuilderModelLiveLookupService', () => {
 		);
 	});
 
-	it('treats an empty provider response as a failed lookup', async () => {
-		const { service, credentialsService, credentialsFinderService } = makeService();
+	it('resolves credential defaults and expressions instead of reading raw stored data', async () => {
+		const { service, credentialsService, credentialsHelper } = makeService();
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
 			usable('cred-1', 'anthropicApi'),
 		);
-		credentialsFinderService.findById.mockResolvedValue(mock<CredentialsEntity>());
-		credentialsService.decrypt.mockResolvedValue({ apiKey: 'sk-key' });
+		credentialsHelper.getDecrypted.mockResolvedValue({
+			apiKey: 'sk-key',
+			url: 'https://api.region.example/v1',
+		});
+		listModelsForProvider.mockResolvedValue([
+			{ id: 'claude-sonnet-4-6', name: 'Claude Sonnet 4.6' },
+		]);
+
+		await service.list(user, projectId, 'cred-1', 'anthropicApi', 'anthropic');
+
+		expect(getBaseMock).toHaveBeenCalledWith({ userId: 'user-1', projectId });
+		expect(credentialsHelper.getDecrypted).toHaveBeenCalledWith(
+			additionalData,
+			{ id: 'cred-1', name: 'My Credential' },
+			'anthropicApi',
+			'internal',
+		);
+		expect(credentialsService.decrypt).not.toHaveBeenCalled();
+		expect(listModelsForProvider).toHaveBeenCalledWith(
+			'anthropic',
+			expect.objectContaining({ baseURL: 'https://api.region.example/v1' }),
+		);
+	});
+
+	it('treats an empty provider response as a failed lookup', async () => {
+		const { service, credentialsService, credentialsHelper } = makeService();
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+			usable('cred-1', 'anthropicApi'),
+		);
+		credentialsHelper.getDecrypted.mockResolvedValue({ apiKey: 'sk-key' });
 		// An empty list from a chat provider is far more likely a broken request
 		// or drifted response shape than a real zero-model account — callers must
 		// fall back rather than prune everything.
@@ -279,7 +313,7 @@ describe('BuilderModelLiveLookupService', () => {
 
 	describe('list with the n8n Connect managed tag', () => {
 		it('resolves the synthetic gateway credential and lists its allowlisted models', async () => {
-			const { service, aiGatewayService, credentialsService } = makeService();
+			const { service, aiGatewayService, credentialsService, credentialsHelper } = makeService();
 			aiGatewayService.getCredentialTypeForProvider.mockResolvedValue('openAiApi');
 			aiGatewayService.getSyntheticCredential.mockResolvedValue({
 				apiKey: 'gateway-jwt',
@@ -301,8 +335,9 @@ describe('BuilderModelLiveLookupService', () => {
 				userId: 'user-1',
 				projectId,
 			});
-			// No stored-credential lookup for the managed tag.
+			// No stored-credential lookup or decryption for the managed tag.
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+			expect(credentialsHelper.getDecrypted).not.toHaveBeenCalled();
 			// Discovery hits the gateway baseURL → the gateway returns only allowlisted models.
 			expect(listModelsForProvider).toHaveBeenCalledWith(
 				'openai',
