@@ -116,7 +116,6 @@ describe('project-filter slot, composed', () => {
 
 		const select = await screen.findByTestId('project-sharing-select');
 
-		// `insights.dashboard.search.placeholder`, passed across the slot boundary.
 		// `insights.dashboard.search.placeholder`, carried across the slot as a prop.
 		// The host sets `inheritAttrs: false`, so a misspelled prop cannot reach the
 		// input as a bare attribute and imitate a working contract — it falls back to

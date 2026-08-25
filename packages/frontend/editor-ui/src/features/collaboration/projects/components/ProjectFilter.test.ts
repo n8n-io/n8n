@@ -104,8 +104,15 @@ describe('ProjectFilter', () => {
 	});
 
 	it('resolves an arriving selection that only the member preload can see', async () => {
+		// Nothing is seeded up front, so the `immediate` watcher finds no project at
+		// setup and only the preload can supply it. Seeding it beforehand made this
+		// test pass with the post-preload resolve deleted.
 		projectsStore.globalProjectPermissions = { list: false };
+		projectsStore.myProjects = [];
 		projectsStore.availableProjects = [];
+		projectsStore.getAvailableProjects.mockImplementation(async () => {
+			projectsStore.myProjects = teamProjects;
+		});
 
 		const { getByTestId } = renderComponent({
 			props: { modelValue: { id: teamProjects[1].id } },
