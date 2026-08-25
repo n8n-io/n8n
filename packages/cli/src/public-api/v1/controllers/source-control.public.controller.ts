@@ -62,6 +62,7 @@ export class SourceControlPublicController {
 				direction: query.direction,
 				preferLocalVersion: true,
 				verbose: false,
+				origin: 'publicApi',
 			}),
 		);
 		// `verbose: false` above guarantees a flat file list at runtime; `getStatus`'s return type

@@ -60,13 +60,19 @@ export class SourceControlGetStatus {
 	@IsOptional()
 	verbose: boolean;
 
+	@IsString()
+	@IsOptional()
+	origin?: 'ui' | 'publicApi';
+
 	constructor(values: {
 		direction: 'push' | 'pull';
 		preferLocalVersion: string | boolean;
 		verbose: string | boolean;
+		origin?: 'ui' | 'publicApi';
 	}) {
 		this.direction = values.direction || 'push';
 		this.preferLocalVersion = booleanFromString(values.preferLocalVersion) || true;
 		this.verbose = booleanFromString(values.verbose) || false;
+		this.origin = values.origin ?? 'ui';
 	}
 }

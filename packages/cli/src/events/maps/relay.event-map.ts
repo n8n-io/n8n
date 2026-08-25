@@ -687,6 +687,13 @@ export type RelayEventMap = {
 		credConflicts: number;
 	};
 
+	'source-control-user-started-pull-public-api': {
+		userId?: string;
+		workflowUpdates: number;
+		workflowConflicts: number;
+		credConflicts: number;
+	};
+
 	'source-control-user-finished-pull-ui': {
 		userId?: string;
 		workflowUpdates: number;
@@ -698,6 +705,15 @@ export type RelayEventMap = {
 	};
 
 	'source-control-user-started-push-ui': {
+		userId?: string;
+		workflowsEligible: number;
+		workflowsEligibleWithConflicts: number;
+		credsEligible: number;
+		credsEligibleWithConflicts: number;
+		variablesEligible: number;
+	};
+
+	'source-control-user-started-push-public-api': {
 		userId?: string;
 		workflowsEligible: number;
 		workflowsEligibleWithConflicts: number;

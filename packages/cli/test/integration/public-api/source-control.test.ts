@@ -288,6 +288,7 @@ describe('Source Control (Public API)', () => {
 					direction: 'push',
 					preferLocalVersion: true,
 					verbose: false,
+					origin: 'publicApi',
 				}),
 			);
 		});
@@ -310,7 +311,7 @@ describe('Source Control (Public API)', () => {
 			expect(response.body).toEqual({ data: files, nextCursor: null });
 			expect(getStatusSpy).toHaveBeenCalledWith(
 				expect.objectContaining({ id: owner.id }),
-				expect.objectContaining({ direction: 'pull' }),
+				expect.objectContaining({ direction: 'pull', origin: 'publicApi' }),
 			);
 		});
 

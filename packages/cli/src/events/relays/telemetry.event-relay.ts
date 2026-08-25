@@ -113,10 +113,14 @@ export class TelemetryEventRelay extends EventRelay {
 			'team-project-created': (event) => this.teamProjectCreated(event),
 			'source-control-settings-updated': (event) => this.sourceControlSettingsUpdated(event),
 			'source-control-user-started-pull-ui': (event) => this.sourceControlUserStartedPullUi(event),
+			'source-control-user-started-pull-public-api': (event) =>
+				this.sourceControlUserStartedPullPublicApi(event),
 			'source-control-user-finished-pull-ui': (event) =>
 				this.sourceControlUserFinishedPullUi(event),
 			'source-control-user-pulled-api': (event) => this.sourceControlUserPulledApi(event),
 			'source-control-user-started-push-ui': (event) => this.sourceControlUserStartedPushUi(event),
+			'source-control-user-started-push-public-api': (event) =>
+				this.sourceControlUserStartedPushPublicApi(event),
 			'source-control-user-finished-push-ui': (event) =>
 				this.sourceControlUserFinishedPushUi(event),
 			'license-renewal-attempted': (event) => this.licenseRenewalAttempted(event),
@@ -344,6 +348,20 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	private sourceControlUserStartedPullPublicApi({
+		userId,
+		workflowUpdates,
+		workflowConflicts,
+		credConflicts,
+	}: RelayEventMap['source-control-user-started-pull-public-api']) {
+		this.telemetry.track('User started pull via Public API', {
+			user_id: userId,
+			workflow_updates: workflowUpdates,
+			workflow_conflicts: workflowConflicts,
+			cred_conflicts: credConflicts,
+		});
+	}
+
 	private sourceControlUserFinishedPullUi({
 		userId,
 		workflowUpdates,
@@ -373,6 +391,24 @@ export class TelemetryEventRelay extends EventRelay {
 		variablesEligible,
 	}: RelayEventMap['source-control-user-started-push-ui']) {
 		this.telemetry.track('User started push via UI', {
+			user_id: userId,
+			workflows_eligible: workflowsEligible,
+			workflows_eligible_with_conflicts: workflowsEligibleWithConflicts,
+			creds_eligible: credsEligible,
+			creds_eligible_with_conflicts: credsEligibleWithConflicts,
+			variables_eligible: variablesEligible,
+		});
+	}
+
+	private sourceControlUserStartedPushPublicApi({
+		userId,
+		workflowsEligible,
+		workflowsEligibleWithConflicts,
+		credsEligible,
+		credsEligibleWithConflicts,
+		variablesEligible,
+	}: RelayEventMap['source-control-user-started-push-public-api']) {
+		this.telemetry.track('User started push via Public API', {
 			user_id: userId,
 			workflows_eligible: workflowsEligible,
 			workflows_eligible_with_conflicts: workflowsEligibleWithConflicts,
