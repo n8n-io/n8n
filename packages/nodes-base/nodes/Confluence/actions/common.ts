@@ -9,6 +9,7 @@ import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
 
+/** The v2 list endpoints' documented max page size, and the max IDs per batched `/pages` request */
 export const PAGE_LIMIT = 250;
 
 /**
@@ -216,6 +217,8 @@ export function spaceDescriptionFormatQs(options: IDataObject): IDataObject {
  * "All Spaces" reset entry and By ID accepts an empty value. */
 export const optionalSpaceRLC: INodeProperties = {
 	...spaceRLC,
+	description:
+		'Limits page selection and By Title lookups to one space. Leave empty or pick "All Spaces" to search across all spaces.',
 	modes: (spaceRLC.modes ?? []).map((mode) => {
 		if (mode.name === 'list') {
 			return {
@@ -358,6 +361,37 @@ export function parsePositiveInt(
 		});
 	}
 	return Math.floor(value);
+}
+
+/** Accumulates `results` across v2 cursor pages until `max` records are collected
+ * (pass Infinity for Return All) or the server stops yielding new cursors. It
+ * deliberately keeps going past an empty page that still carries `_links.next`
+ * (observed from Atlassian; see methods/listSearch.ts) and breaks on any repeated
+ * cursor, which would otherwise loop forever when `max` is Infinity. */
+export async function fetchPaginatedResults(
+	this: IExecuteFunctions,
+	endpoint: string,
+	max: number,
+	qs: IDataObject = {},
+): Promise<IDataObject[]> {
+	const records: IDataObject[] = [];
+	const seenCursors = new Set<string>();
+	let cursor: string | undefined;
+	do {
+		const pageQs: IDataObject = { ...qs, limit: Math.min(max - records.length, PAGE_LIMIT) };
+		if (cursor !== undefined) pageQs.cursor = cursor;
+
+		const response = await confluenceApiRequest.call(this, 'GET', endpoint, {}, pageQs);
+		const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
+		records.push.apply(records, results);
+
+		const next = extractNextCursor(response);
+		if (next === undefined || seenCursors.has(next)) break;
+		seenCursors.add(next);
+		cursor = next;
+	} while (records.length < max);
+
+	return records.length > max ? records.slice(0, max) : records;
 }
 
 function asString(value: unknown): string {

@@ -34,6 +34,7 @@ describe('Confluence Node', () => {
 			expect.objectContaining({ value: 'delete' }),
 			expect.objectContaining({ value: 'deleteComment' }),
 			expect.objectContaining({ value: 'get' }),
+			expect.objectContaining({ value: 'getLabels' }),
 			expect.objectContaining({ value: 'getManyByLabel' }),
 			expect.objectContaining({ value: 'update' }),
 		]);
@@ -42,6 +43,19 @@ describe('Confluence Node', () => {
 			expect.objectContaining({ value: 'get' }),
 			expect.objectContaining({ value: 'getMany' }),
 		]);
+	});
+
+	it('exposes the getLabels fields on the node description', () => {
+		const forGetLabels = node.description.properties.filter((p) =>
+			p.displayOptions?.show?.operation?.includes('getLabels'),
+		);
+
+		expect(forGetLabels.map((p) => p.name)).toEqual(
+			expect.arrayContaining(['page', 'returnAll', 'limit', 'options']),
+		);
+
+		const limit = forGetLabels.find((p) => p.name === 'limit');
+		expect(limit?.displayOptions?.show?.returnAll).toEqual([false]);
 	});
 
 	it('should reference the confluenceCloudOAuth2Api credential by name', () => {
