@@ -936,7 +936,7 @@ onMounted(async () => {
 								:active="Boolean(filterCount)"
 								data-test-id="source-control-filter-dropdown"
 							>
-								<N8nBadge v-if="filterCount" theme="primary" class="mr-4xs">
+								<N8nBadge v-if="filterCount" variant="primary" class="mr-4xs">
 									{{ filterCount }}
 								</N8nBadge>
 							</N8nButton>
@@ -1222,7 +1222,7 @@ onMounted(async () => {
 																/>
 															</template>
 															<N8nBadge
-																:theme="getStatusTheme(row.file.status)"
+																:variant="getStatusTheme(row.file.status)"
 																style="height: 25px"
 															>
 																{{ getStatusText(row.file.status) }}

@@ -69,7 +69,7 @@ describe('SessionEventFilter', () => {
 
 	it.each([
 		['approved', 'Approved', 'success'],
-		['declined', 'Declined', 'default'],
+		['declined', 'Declined', 'outline'],
 		['error', 'Error', 'danger'],
 	] as const)('renders the %s status option using its timeline pill', async (key, label, theme) => {
 		const w = mount(SessionEventFilter, {

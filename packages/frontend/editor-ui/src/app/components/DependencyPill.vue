@@ -234,7 +234,7 @@ async function onDropdownToggle(open: boolean) {
 		>
 			<template #trigger>
 				<!-- We use a custom border to align color with the other related badges -->
-				<N8nBadge theme="tertiary" :show-border="false" :class="$style.badge">
+				<N8nBadge variant="outline" :class="$style.badge">
 					<span :class="$style.badgeText">
 						<N8nIcon icon="link" size="small" />
 						{{ effectiveCount }}

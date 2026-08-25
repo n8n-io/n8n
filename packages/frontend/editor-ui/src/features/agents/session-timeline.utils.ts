@@ -144,7 +144,7 @@ export function hitlTimelineName(item: TimelineItem, i18n: TimelineI18n): string
 export type TimelineItemStatus = {
 	kind: 'hitl-response' | 'tool-error';
 	labelKey: BaseTextKey;
-	theme: 'default' | 'success' | 'danger';
+	theme: 'outline' | 'success' | 'danger';
 };
 
 export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | undefined {
@@ -162,7 +162,7 @@ export function timelineItemStatus(item: TimelineItem): TimelineItemStatus | und
 				item.hitlResponseStatus === 'declined'
 					? 'agentSessions.timeline.declined'
 					: 'agentSessions.timeline.responseReceived',
-			theme: 'default',
+			theme: 'outline',
 		};
 	}
 	if (isErroredTimelineItem(item)) {

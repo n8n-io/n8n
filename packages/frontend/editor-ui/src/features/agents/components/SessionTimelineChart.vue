@@ -352,7 +352,7 @@ onBeforeUnmount(() => {
 						<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
 						<N8nBadge
 							v-if="activePopoverStatus"
-							:theme="activePopoverStatus.theme"
+							:variant="activePopoverStatus.theme"
 							size="xsmall"
 							:data-test-id="
 								activePopoverStatus.kind === 'hitl-response'

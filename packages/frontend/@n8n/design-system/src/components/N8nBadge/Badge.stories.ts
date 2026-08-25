@@ -4,7 +4,7 @@ import { BADGE_SIZE } from './Badge.type';
 import N8nBadge from './Badge.vue';
 
 const BADGE_VARIANTS = [
-	'default',
+	'filled',
 	'primary',
 	'secondary',
 	'subtle',
@@ -16,7 +16,7 @@ const BADGE_VARIANTS = [
 ] as const;
 
 const VARIANT_EXAMPLES = [
-	{ variant: 'default', label: 'Draft', icon: 'file' },
+	{ variant: 'filled', label: 'Draft', icon: 'file' },
 	{ variant: 'primary', label: 'New', icon: 'sparkles' },
 	{ variant: 'secondary', label: 'AI generated', icon: 'bot' },
 	{ variant: 'subtle', label: 'Shared', icon: 'users' },
@@ -71,7 +71,7 @@ const Template: StoryFn = function renderBadge(args) {
 
 export const Badge = Template.bind({});
 Badge.args = {
-	variant: 'default',
+	variant: 'filled',
 	size: 'small',
 	clickable: false,
 };

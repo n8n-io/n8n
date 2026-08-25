@@ -162,7 +162,7 @@ onMounted(() => observe(cardRef.value));
 				<div :class="$style.cardHeading">
 					<N8nText size="medium" bold>{{ collection.name }}</N8nText>
 					<RunningIndicator v-if="isRunning" :completed="completedCount" :total="versionCount" />
-					<N8nBadge v-else-if="statusBadge" :theme="statusBadge.theme" size="small">
+					<N8nBadge v-else-if="statusBadge" :variant="statusBadge.theme">
 						{{ statusBadge.label }}
 					</N8nBadge>
 				</div>

@@ -74,5 +74,5 @@ export type FilterOption =
 	| (BaseFilterOption & { presentation: 'swatch'; color: string })
 	| (BaseFilterOption & {
 			presentation: 'badge';
-			badgeTheme: 'default' | 'success' | 'danger';
+			badgeTheme: 'outline' | 'success' | 'danger';
 	  });

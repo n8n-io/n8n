@@ -978,11 +978,8 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 							<span :class="$style.optionTitle">
 								<N8nText bold step="sm">{{ provider.onboardingLabel }}</N8nText>
 								<N8nBadge
-									:theme="provider.id === 'n8n-sandbox' ? 'secondary' : 'default'"
-									size="small"
-									:show-border="provider.id !== 'n8n-sandbox'"
+									:variant="provider.id === 'n8n-sandbox' ? 'secondary' : 'outline'"
 									:class="$style.optionBadge"
-									bold
 								>
 									{{
 										provider.id === 'n8n-sandbox'
@@ -1153,11 +1150,8 @@ const existingCredentialLabel = (credential: InstanceAiProviderConnection) =>
 								<N8nText bold step="sm">{{ provider.label }}</N8nText>
 								<N8nBadge
 									v-if="provider.id === 'searxng'"
-									theme="secondary"
-									size="small"
-									:show-border="false"
+									variant="secondary"
 									:class="$style.optionBadge"
-									bold
 								>
 									{{ i18n.baseText('instanceAi.onboarding.search.free') }}
 								</N8nBadge>
