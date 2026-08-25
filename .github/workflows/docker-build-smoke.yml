@@ -12,7 +12,7 @@ env:
   # The images copy native bindings from the host build, so both have to use the same
   # Node. dockerize-n8n.mjs reads this env for the image builds. Keep in sync with
   # NODE_VERSION in docker-build-push.yml, which is what the published images use.
-  NODE_VERSION: '26.5.1'
+  NODE_VERSION: '26.7.0'
 
 on:
   schedule:

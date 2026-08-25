@@ -250,7 +250,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		const result = await service.updateVersion(user, requestId, dto);
 
 		expect(dbLockService.withLockContext).toHaveBeenCalledWith(
-			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+			DbLock.WORKFLOW_REVIEW_MUTATION,
 			expect.any(Function),
 		);
 		// Re-checked under the lock through the transaction manager.

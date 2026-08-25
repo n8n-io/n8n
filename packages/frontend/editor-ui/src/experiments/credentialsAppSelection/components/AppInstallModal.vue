@@ -10,7 +10,6 @@ import NodeIcon from '@/app/components/NodeIcon.vue';
 import Modal from '@/app/components/Modal.vue';
 import ContactAdministratorToInstall from '@/features/settings/communityNodes/components/ContactAdministratorToInstall.vue';
 import OfficialIcon from 'virtual:icons/mdi/verified';
-import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 import type { AppEntry } from '../composables/useAppCredentials';
 import type { SimplifiedNodeType } from '@/Interface';
 import type { Icon, ThemeIconColor } from 'n8n-workflow';
@@ -226,7 +225,7 @@ watch(
 								: i18n.baseText('communityNodeInfo.approved')
 						}}</template>
 						<div :class="$style.infoItem">
-							<ShieldIcon :class="$style.infoIcon" />
+							<N8nIcon :class="$style.infoIcon" icon="shield-half" />
 							<N8nText color="text-light" size="small">
 								{{ i18n.baseText('communityNodeInfo.approved.label') }}
 							</N8nText>

@@ -49,12 +49,7 @@ import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toEligibleReviewer, toRequestSummary } from './workflow-review.mapper';
 /** Omitted stays omitted (column untouched); an empty/whitespace string clears to null. */
-function normalizeVersionDescription(description: string | undefined): string | null | undefined {
-	if (description === undefined) return undefined;
-	return description.trim() || null;
-}
-
-function normalizeReviewDescription(description: string | undefined): string | null | undefined {
+function normalizeDescription(description: string | undefined): string | null | undefined {
 	if (description === undefined) return undefined;
 	return description.trim() || null;
 }
@@ -303,7 +298,7 @@ export class WorkflowReviewRequestService {
 		const { workflowId, workflowVersionId, workflowVersionName, workflowVersionDescription } =
 			dto.workflows[0];
 		const versionName = workflowVersionName.trim();
-		const versionDescription = normalizeVersionDescription(workflowVersionDescription);
+		const versionDescription = normalizeDescription(workflowVersionDescription);
 
 		await this.featureGate.assertAvailable();
 
@@ -353,7 +348,7 @@ export class WorkflowReviewRequestService {
 		}
 
 		const request = await this.dbLockService.withLockContext(
-			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+			DbLock.WORKFLOW_REVIEW_MUTATION,
 			async (ctx) => {
 				// without this, a create that lost the race opens a review on an archived
 				// or moved workflow.
@@ -488,8 +483,8 @@ export class WorkflowReviewRequestService {
 		}
 
 		const versionName = dto.workflowVersionName.trim();
-		const versionDescription = normalizeVersionDescription(dto.workflowVersionDescription);
-		const reviewDescription = normalizeReviewDescription(dto.description);
+		const versionDescription = normalizeDescription(dto.workflowVersionDescription);
+		const reviewDescription = normalizeDescription(dto.description);
 		const metadataChanged = (current: { name: string | null; description: string | null }) =>
 			versionName !== current.name ||
 			(versionDescription !== undefined && versionDescription !== current.description);
@@ -522,114 +517,111 @@ export class WorkflowReviewRequestService {
 			request: updated,
 			changed,
 			versionUpdated,
-		} = await this.dbLockService.withLockContext(
-			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
-			async (ctx) => {
-				// Re-check under the lock so update can't race a concurrent close/approve.
-				const current = await this.workflowReviewRequestRepository.findById(
-					workflowReviewRequestId,
-					ctx,
-				);
-				if (!current) {
-					throw new NotFoundError('Could not find review request');
-				}
-				this.assertRequestUpdatable(current);
+		} = await this.dbLockService.withLockContext(DbLock.WORKFLOW_REVIEW_MUTATION, async (ctx) => {
+			// Re-check under the lock so update can't race a concurrent close/approve.
+			const current = await this.workflowReviewRequestRepository.findById(
+				workflowReviewRequestId,
+				ctx,
+			);
+			if (!current) {
+				throw new NotFoundError('Could not find review request');
+			}
+			this.assertRequestUpdatable(current);
 
-				// Re-check the pinned version too: a concurrent identical sync that won
-				// the lock already re-pinned — repeating the writes would bump updatedAt,
-				// reset the decision, and broadcast for a no-op.
-				const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
-					workflowReviewRequestId,
-					ctx,
-				);
-				const currentRow = currentRows.find((row) => row.workflowId === dto.workflowId);
-				if (!currentRow) {
-					throw new NotFoundError('Could not find review request');
-				}
+			// Re-check the pinned version too: a concurrent identical sync that won
+			// the lock already re-pinned — repeating the writes would bump updatedAt,
+			// reset the decision, and broadcast for a no-op.
+			const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
+				workflowReviewRequestId,
+				ctx,
+			);
+			const currentRow = currentRows.find((row) => row.workflowId === dto.workflowId);
+			if (!currentRow) {
+				throw new NotFoundError('Could not find review request');
+			}
 
-				// Archive and transfer run in after hooks, so they commit before queueing
-				// on this lock — the pre-lock check can already be stale here.
-				await this.assertWorkflowStillReviewable(
-					currentRow.workflowId,
-					current.projectId,
-					ctx,
-					'update',
-				);
+			// Archive and transfer run in after hooks, so they commit before queueing
+			// on this lock — the pre-lock check can already be stale here.
+			await this.assertWorkflowStillReviewable(
+				currentRow.workflowId,
+				current.projectId,
+				ctx,
+				'update',
+			);
 
-				if (currentRow.workflowVersionId === dto.workflowVersionId) {
-					// A concurrent sync won the lock and already re-pinned this version
-					// but our rename or re-description can still be pending — apply it
-					// rather than dropping it, mirroring the pre-lock branch.
-					if (metadataChanged(version)) {
-						await this.nameVersion(
-							dto.workflowId,
-							dto.workflowVersionId,
-							versionName,
-							versionDescription,
-							ctx,
-						);
-					}
-
-					if (reviewDescription === undefined || reviewDescription === current.description) {
-						return { request: current, changed: false, versionUpdated: false };
-					}
-
-					current.description = reviewDescription;
-					current.updatedById = user.id;
-					const saved = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
-
-					return { request: saved, changed: true, versionUpdated: false };
+			if (currentRow.workflowVersionId === dto.workflowVersionId) {
+				// A concurrent sync won the lock and already re-pinned this version
+				// but our rename or re-description can still be pending — apply it
+				// rather than dropping it, mirroring the pre-lock branch.
+				if (metadataChanged(version)) {
+					await this.nameVersion(
+						dto.workflowId,
+						dto.workflowVersionId,
+						versionName,
+						versionDescription,
+						ctx,
+					);
 				}
 
-				// Captured before the update.
-				const fromWorkflowVersionId = currentRow.workflowVersionId;
-
-				await this.workflowReviewRequestWorkflowRepository.updateWorkflowVersion(
-					{
-						workflowReviewRequestId,
-						workflowId: dto.workflowId,
-						workflowVersionId: dto.workflowVersionId,
-					},
-					ctx,
-				);
-
-				await this.nameVersion(
-					dto.workflowId,
-					dto.workflowVersionId,
-					versionName,
-					versionDescription,
-					ctx,
-				);
-
-				current.decision = 'pending';
-				if (reviewDescription !== undefined) {
-					current.description = reviewDescription;
+				if (reviewDescription === undefined || reviewDescription === current.description) {
+					return { request: current, changed: false, versionUpdated: false };
 				}
+
+				current.description = reviewDescription;
 				current.updatedById = user.id;
 				const saved = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
 
-				await this.workflowReviewRequestAuthorRepository.addAuthorIfMissing(
-					{ workflowReviewRequestId, userId: user.id },
-					ctx,
-				);
+				return { request: saved, changed: true, versionUpdated: false };
+			}
 
-				await this.activityRepository.createActivity(
-					{
-						workflowReviewRequestId,
-						type: 'review.version_updated',
-						data: {
-							workflowId: dto.workflowId,
-							fromWorkflowVersionId,
-							toWorkflowVersionId: dto.workflowVersionId,
-						},
-						createdById: user.id,
+			// Captured before the update.
+			const fromWorkflowVersionId = currentRow.workflowVersionId;
+
+			await this.workflowReviewRequestWorkflowRepository.updateWorkflowVersion(
+				{
+					workflowReviewRequestId,
+					workflowId: dto.workflowId,
+					workflowVersionId: dto.workflowVersionId,
+				},
+				ctx,
+			);
+
+			await this.nameVersion(
+				dto.workflowId,
+				dto.workflowVersionId,
+				versionName,
+				versionDescription,
+				ctx,
+			);
+
+			current.decision = 'pending';
+			if (reviewDescription !== undefined) {
+				current.description = reviewDescription;
+			}
+			current.updatedById = user.id;
+			const saved = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
+
+			await this.workflowReviewRequestAuthorRepository.addAuthorIfMissing(
+				{ workflowReviewRequestId, userId: user.id },
+				ctx,
+			);
+
+			await this.activityRepository.createActivity(
+				{
+					workflowReviewRequestId,
+					type: 'review.version_updated',
+					data: {
+						workflowId: dto.workflowId,
+						fromWorkflowVersionId,
+						toWorkflowVersionId: dto.workflowVersionId,
 					},
-					ctx,
-				);
+					createdById: user.id,
+				},
+				ctx,
+			);
 
-				return { request: saved, changed: true, versionUpdated: true };
-			},
-		);
+			return { request: saved, changed: true, versionUpdated: true };
+		});
 
 		if (changed) {
 			this.broadcastReviewStateChanged(dto.workflowId);
@@ -727,106 +719,103 @@ export class WorkflowReviewRequestService {
 			request: saved,
 			pinnedVersionId,
 			decidedAsAssignedReviewer,
-		} = await this.dbLockService.withLockContext(
-			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
-			async (ctx) => {
-				// Re-check under the lock so a decision can't race a concurrent
-				// version sync (which resets the decision to pending) or another decision.
-				const current = await this.workflowReviewRequestRepository.findById(
-					workflowReviewRequestId,
-					ctx,
-				);
-				if (!current) {
-					throw new NotFoundError('Could not find review request');
-				}
-				this.assertRequestUpdatable(current);
+		} = await this.dbLockService.withLockContext(DbLock.WORKFLOW_REVIEW_MUTATION, async (ctx) => {
+			// Re-check under the lock so a decision can't race a concurrent
+			// version sync (which resets the decision to pending) or another decision.
+			const current = await this.workflowReviewRequestRepository.findById(
+				workflowReviewRequestId,
+				ctx,
+			);
+			if (!current) {
+				throw new NotFoundError('Could not find review request');
+			}
+			this.assertRequestUpdatable(current);
 
-				// Re-check authorship and assignment under the lock. A concurrent
-				// sync may add the caller as an author; assigned reviewers stay
-				// eligible. Assignment can also change.
-				const isAuthorNow = await this.workflowReviewRequestAuthorRepository.isAuthor(
-					{ workflowReviewRequestId, userId: user.id },
-					ctx,
-				);
-				const isAssignedReviewerNow = await this.workflowReviewRequestReviewerRepository.isReviewer(
-					{ workflowReviewRequestId, userId: user.id },
-					ctx,
-				);
-				this.assertDecisionAllowed(isAuthorNow, isAssignedReviewerNow, hasAdminOverride);
+			// Re-check authorship and assignment under the lock. A concurrent
+			// sync may add the caller as an author; assigned reviewers stay
+			// eligible. Assignment can also change.
+			const isAuthorNow = await this.workflowReviewRequestAuthorRepository.isAuthor(
+				{ workflowReviewRequestId, userId: user.id },
+				ctx,
+			);
+			const isAssignedReviewerNow = await this.workflowReviewRequestReviewerRepository.isReviewer(
+				{ workflowReviewRequestId, userId: user.id },
+				ctx,
+			);
+			this.assertDecisionAllowed(isAuthorNow, isAssignedReviewerNow, hasAdminOverride);
 
-				// Re-read the pinned row too: a concurrent sync that won the lock may
-				// have re-pinned, and the summary must reflect the version being decided on.
-				const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
-					workflowReviewRequestId,
-					ctx,
-				);
-				const currentRow = currentRows.find((row) => row.workflowId === workflowRow.workflowId);
-				if (!currentRow) {
-					throw new NotFoundError('Could not find review request');
-				}
+			// Re-read the pinned row too: a concurrent sync that won the lock may
+			// have re-pinned, and the summary must reflect the version being decided on.
+			const currentRows = await this.workflowReviewRequestWorkflowRepository.findByRequestId(
+				workflowReviewRequestId,
+				ctx,
+			);
+			const currentRow = currentRows.find((row) => row.workflowId === workflowRow.workflowId);
+			if (!currentRow) {
+				throw new NotFoundError('Could not find review request');
+			}
 
-				// Archive and transfer run in after hooks, so they commit before queueing
-				// on this lock — the pre-lock check can already be stale here.
-				// 'reviewed' covers both decisions: an approval and a change request
-				// are equally refused here.
-				await this.assertWorkflowStillReviewable(
-					currentRow.workflowId,
-					current.projectId,
-					ctx,
-					'review',
-				);
+			// Archive and transfer run in after hooks, so they commit before queueing
+			// on this lock — the pre-lock check can already be stale here.
+			// 'reviewed' covers both decisions: an approval and a change request
+			// are equally refused here.
+			await this.assertWorkflowStillReviewable(
+				currentRow.workflowId,
+				current.projectId,
+				ctx,
+				'review',
+			);
 
-				if (dto.decision === 'approved') {
-					// Freeze the pre-approval published pointer before auto-publish moves it.
-					// One workflow per review today (2 queries/row); batch if multi-workflow lands.
-					for (const row of currentRows) {
-						await this.workflowReviewRequestWorkflowRepository.captureApprovalBaseline(
-							{
-								workflowReviewRequestId,
-								workflowId: row.workflowId,
-							},
-							ctx,
-						);
-					}
-				}
-
-				current.decision = dto.decision;
-				current.updatedById = user.id;
-				if (dto.decision === 'approved') {
-					current.state = 'closed';
-					// No closer when the requester can't publish — UI treats null as a
-					// system close ("Review got closed by system").
-					current.closedById = requesterPublishability?.canPublish === true ? user.id : null;
-					current.approvedAt = new Date();
-				}
-
-				const savedRequest = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
-
-				await this.activityRepository.createActivity(
-					{
-						workflowReviewRequestId,
-						type: dto.decision === 'approved' ? 'review.approved' : 'review.changes_requested',
-						data: {
-							// A pruned pin drops out rather than landing as a null in the array.
-							workflowVersions: currentRows.flatMap((row) =>
-								row.workflowVersionId === null
-									? []
-									: [{ workflowId: row.workflowId, workflowVersionId: row.workflowVersionId }],
-							),
-							note: dto.note ?? null,
+			if (dto.decision === 'approved') {
+				// Freeze the pre-approval published pointer before auto-publish moves it.
+				// One workflow per review today (2 queries/row); batch if multi-workflow lands.
+				for (const row of currentRows) {
+					await this.workflowReviewRequestWorkflowRepository.captureApprovalBaseline(
+						{
+							workflowReviewRequestId,
+							workflowId: row.workflowId,
 						},
-						createdById: user.id,
-					},
-					ctx,
-				);
+						ctx,
+					);
+				}
+			}
 
-				return {
-					request: savedRequest,
-					pinnedVersionId: currentRow.workflowVersionId,
-					decidedAsAssignedReviewer: isAssignedReviewerNow,
-				};
-			},
-		);
+			current.decision = dto.decision;
+			current.updatedById = user.id;
+			if (dto.decision === 'approved') {
+				current.state = 'closed';
+				// No closer when the requester can't publish — UI treats null as a
+				// system close ("Review got closed by system").
+				current.closedById = requesterPublishability?.canPublish === true ? user.id : null;
+				current.approvedAt = new Date();
+			}
+
+			const savedRequest = await this.workflowReviewRequestRepository.saveRequest(current, ctx);
+
+			await this.activityRepository.createActivity(
+				{
+					workflowReviewRequestId,
+					type: dto.decision === 'approved' ? 'review.approved' : 'review.changes_requested',
+					data: {
+						// A pruned pin drops out rather than landing as a null in the array.
+						workflowVersions: currentRows.flatMap((row) =>
+							row.workflowVersionId === null
+								? []
+								: [{ workflowId: row.workflowId, workflowVersionId: row.workflowVersionId }],
+						),
+						note: dto.note ?? null,
+					},
+					createdById: user.id,
+				},
+				ctx,
+			);
+
+			return {
+				request: savedRequest,
+				pinnedVersionId: currentRow.workflowVersionId,
+				decidedAsAssignedReviewer: isAssignedReviewerNow,
+			};
+		});
 
 		this.broadcastReviewStateChanged(workflowRow.workflowId);
 
