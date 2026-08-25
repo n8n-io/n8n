@@ -23,6 +23,7 @@ import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
 import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import ThinkingBlock from './ThinkingBlock.vue';
+import TimelineActivityIndicator from './TimelineActivityIndicator.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
 
 const i18n = useI18n();
@@ -293,6 +294,11 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 
 			<!-- Answered questions (read-only after resolution) -->
 			<AnsweredQuestions v-else-if="block.type === 'questions'" :tool-call="block.toolCall" />
+
+			<!-- The run is live but a committed answer settled the block behind it -->
+			<TimelineActivityIndicator
+				v-else-if="block.type === 'activity' && !thread.isAwaitingConfirmation"
+			/>
 
 			<!-- Child agent — flat section -->
 			<template v-else-if="block.type === 'child'">

@@ -35,7 +35,8 @@ export type TimelineBlock =
 	| { type: 'plan-review'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'mcp-connect'; key: string; toolCall: InstanceAiToolCallState }
 	| { type: 'questions'; key: string; toolCall: InstanceAiToolCallState }
-	| { type: 'child'; key: string; child: InstanceAiAgentNode };
+	| { type: 'child'; key: string; child: InstanceAiAgentNode }
+	| { type: 'activity'; key: string };
 
 type ToolCallKind =
 	| 'hidden'
@@ -230,14 +231,30 @@ export function buildTimelineBlocks(
 	// that outgrew the narration cap: it is a committed answer, so keeping the
 	// block behind it "thinking" reads as lag.
 	if (agentStatus === 'active') {
+		let activated = false;
+		let settledByNarrationCap = false;
 		for (let i = blocks.length - 1; i >= 0; i--) {
 			const block = blocks[i];
 			if (block.type === 'thinking') {
 				block.active = true;
+				activated = true;
 				break;
 			}
 			if (block.type !== 'text') break;
-			if (block.entry.content.length > TAIL_NARRATION_MAX_LENGTH) break;
+			if (block.entry.content.length > TAIL_NARRATION_MAX_LENGTH) {
+				settledByNarrationCap = true;
+				break;
+			}
+		}
+		// A committed answer settles the block behind it, but the run is still
+		// going — and with a provider that emits nothing while it generates a
+		// tool call, the next trace entry can be a minute away. Without this the
+		// transcript reads as finished while the composer still shows stop
+		// (INS-1224). Only the narration-cap exit gets an indicator: the other
+		// exits are cards, questions and child agents, which carry their own
+		// state or are waiting on the user.
+		if (!activated && settledByNarrationCap) {
+			blocks.push({ type: 'activity', key: 'activity' });
 		}
 	}
 
