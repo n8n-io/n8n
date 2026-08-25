@@ -12,16 +12,31 @@ export type GitConnectionSummary = GitConnectionListPublicDto['data'][number];
 
 const gitConnectionsApiRoot = '/git-connections';
 
+// The server stops handing out cursors once the list is exhausted; this only
+// guards against a browser-hanging loop if it ever does not.
+const MAX_PAGES = 20;
+
 export const fetchGitConnections = async (
 	context: PublicApiContext,
 ): Promise<GitConnectionSummary[]> => {
-	const response = (await request({
-		method: 'GET',
-		baseURL: context.baseUrl,
-		endpoint: gitConnectionsApiRoot,
-	})) as GitConnectionListPublicDto;
+	const connections: GitConnectionSummary[] = [];
+	let cursor: string | null = null;
 
-	return response.data;
+	for (let page = 0; page < MAX_PAGES; page++) {
+		const response = (await request({
+			method: 'GET',
+			baseURL: context.baseUrl,
+			endpoint: gitConnectionsApiRoot,
+			// The cursor carries the page size, so it is the whole query after page one.
+			...(cursor ? { data: { cursor } } : {}),
+		})) as GitConnectionListPublicDto;
+
+		connections.push(...response.data);
+		cursor = response.nextCursor;
+		if (!cursor) break;
+	}
+
+	return connections;
 };
 
 export const fetchGitConnection = async (

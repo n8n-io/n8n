@@ -225,7 +225,7 @@ async function submit() {
 			</N8nText>
 			<N8nCard
 				ref="typeCard"
-				hoverable
+				:class="$style.typeCard"
 				role="button"
 				tabindex="0"
 				data-test-id="git-connections-type-git"
@@ -429,6 +429,23 @@ async function submit() {
 </template>
 
 <style lang="scss" module>
+// Not `hoverable`: that turns the border primary-orange on hover and focus.
+.typeCard {
+	cursor: pointer;
+
+	&:hover {
+		background-color: var(--color--background--light-2);
+	}
+
+	&:focus {
+		outline: none;
+	}
+
+	&:focus-visible {
+		outline: var(--focus--border-width) solid var(--focus--outline-color);
+	}
+}
+
 .form {
 	display: flex;
 	flex-direction: column;

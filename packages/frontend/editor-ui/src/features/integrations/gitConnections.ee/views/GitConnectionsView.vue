@@ -64,13 +64,6 @@ const rows = computed<ConnectionRow[]>(() =>
 	})),
 );
 
-const connectionTypeLabel = (connectionType: GitConnectionType) =>
-	i18n.baseText(
-		connectionType === 'ssh'
-			? 'settings.gitConnections.connectionType.ssh'
-			: 'settings.gitConnections.connectionType.https',
-	);
-
 const rowActions = computed(() => [
 	{ label: i18n.baseText('generic.edit'), value: CONNECTION_ACTIONS.EDIT },
 	{ label: i18n.baseText('generic.delete'), value: CONNECTION_ACTIONS.DELETE },
@@ -206,14 +199,11 @@ async function onRowAction(action: string, row: ConnectionRow) {
 				<template #header>
 					<div :class="$style.cardHeader">
 						<N8nText tag="h3" bold>{{ row.name }}</N8nText>
-						<N8nIcon
-							icon="git-branch"
-							color="text-light"
-							size="small"
-							:title="i18n.baseText('settings.gitConnections.connectorType.git')"
-						/>
 						<N8nBadge theme="tertiary">
-							{{ connectionTypeLabel(row.connectionType) }}
+							<span :class="$style.badgeContent">
+								<N8nIcon icon="git-branch" size="small" />
+								{{ i18n.baseText('settings.gitConnections.connectorType.git') }}
+							</span>
 						</N8nBadge>
 					</div>
 				</template>
@@ -271,6 +261,12 @@ async function onRowAction(action: string, row: ConnectionRow) {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
+}
+
+.badgeContent {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
 }
 
 .cardDescription {
