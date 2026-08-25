@@ -107,11 +107,13 @@ export const execute: ConfluenceOperation = async function (
 		);
 		const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 		pages.push.apply(pages, results);
-		cursor = extractNextCursor(response);
-		// The API can return a next link that does not advance; refetching it would loop forever
-		if (cursor !== undefined && seenCursors.has(cursor)) cursor = undefined;
-		if (cursor !== undefined) seenCursors.add(cursor);
-	} while (cursor !== undefined && pages.length < limit);
+
+		const next = extractNextCursor(response);
+		// A next link revisiting any earlier page would loop forever under Return All
+		if (next === undefined || seenCursors.has(next)) break;
+		seenCursors.add(next);
+		cursor = next;
+	} while (pages.length < limit);
 
 	return pages.slice(0, limit).map((page) => shapeBody(page, bodyFormat));
 };
