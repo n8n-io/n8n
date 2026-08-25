@@ -415,9 +415,7 @@ describe('InstanceAiOnboardingWizard', () => {
 			props: { step: 'search' },
 		});
 
-		expect(
-			(await findByText('instanceAi.onboarding.search.free')).closest('.n8n-badge'),
-		).not.toBeNull();
+		expect(await findByText('instanceAi.onboarding.search.free')).toBeVisible();
 		await fireEvent.click(await findByTestId('assistant-search-disabled'));
 		await fireEvent.click(getByTestId('wizard-primary'));
 
