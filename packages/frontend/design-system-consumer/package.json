@@ -8,8 +8,8 @@
     "build": "vite build",
     "dev": "vite",
     "preview": "vite preview --port 4399",
-    "typecheck": "vue-tsc --noEmit",
-    "typecheck:libcheck": "vue-tsc --noEmit -p tsconfig.libcheck.json"
+    "typecheck": "vue-tsc --noEmit && pnpm run typecheck:libcheck",
+    "typecheck:libcheck": "node scripts/check-shipped-types.mjs"
   },
   "dependencies": {
     "@n8n/design-system": "workspace:*",
