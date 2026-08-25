@@ -1,23 +1,28 @@
 import type { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '@utils/utilities';
+
 import { confluenceApiRequest } from '../../transport';
 import { spaceRLC } from '../common';
 import type { ConfluenceOperation } from '../router';
 
-export const description: INodeProperties[] = [
+const properties: INodeProperties[] = [
 	{
 		...spaceRLC,
 		required: true,
 		description: 'The space to retrieve',
-		displayOptions: {
-			show: {
-				resource: ['space'],
-				operation: ['get'],
-			},
-		},
 	},
 ];
+
+const displayOptions = {
+	show: {
+		resource: ['space'],
+		operation: ['get'],
+	},
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export const execute: ConfluenceOperation = async function (
 	this: IExecuteFunctions,

@@ -1,76 +1,54 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+
+import { returnAllOrLimit } from '@utils/descriptions';
+import { updateDisplayOptions } from '@utils/utilities';
 
 import { confluenceApiRequest } from '../../transport';
-import { PAGE_LIMIT, extractNextCursor } from '../common';
+import { PAGE_LIMIT, extractNextCursor, parsePositiveInt } from '../common';
 import type { ConfluenceOperation } from '../router';
 
-export const description: INodeProperties[] = [
-	{
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-		displayOptions: {
-			show: {
-				resource: ['space'],
-				operation: ['getAll'],
-			},
-		},
+const properties: INodeProperties[] = [...returnAllOrLimit];
+
+const displayOptions = {
+	show: {
+		resource: ['space'],
+		operation: ['getAll'],
 	},
-	{
-		displayName: 'Limit',
-		name: 'limit',
-		type: 'number',
-		typeOptions: {
-			minValue: 1,
-		},
-		default: 50,
-		description: 'Max number of results to return',
-		displayOptions: {
-			show: {
-				resource: ['space'],
-				operation: ['getAll'],
-				returnAll: [false],
-			},
-		},
-	},
-];
+};
+
+export const description = updateDisplayOptions(displayOptions, properties);
 
 export const execute: ConfluenceOperation = async function (
 	this: IExecuteFunctions,
 	itemIndex: number,
 ) {
 	const returnAll = this.getNodeParameter('returnAll', itemIndex, false);
-	let limit = Infinity;
-	if (!returnAll) {
-		const rawLimit = this.getNodeParameter('limit', itemIndex, 50);
-		if (!Number.isFinite(rawLimit) || rawLimit < 1) {
-			throw new NodeOperationError(this.getNode(), 'Limit must be a number of at least 1', {
+	const limit = returnAll
+		? Infinity
+		: parsePositiveInt.call(
+				this,
+				this.getNodeParameter('limit', itemIndex, 100),
+				'Limit',
 				itemIndex,
-			});
-		}
-		limit = Math.floor(rawLimit);
-	}
+			);
 
 	const spaces: IDataObject[] = [];
-	const seenCursors = new Set<string>();
 	let cursor: string | undefined;
+	const seenCursors = new Set<string>();
 	do {
 		const qs: IDataObject = { limit: Math.min(limit - spaces.length, PAGE_LIMIT) };
 		if (cursor !== undefined) qs.cursor = cursor;
 
 		const response = await confluenceApiRequest.call(this, 'GET', '/wiki/api/v2/spaces', {}, qs);
 		const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
-		spaces.push(...results);
+		spaces.push.apply(spaces, results);
 
-		// A repeated cursor would refetch the same page forever; treat it as the end
 		const next = extractNextCursor(response);
-		cursor = next === undefined || seenCursors.has(next) ? undefined : next;
-		if (cursor !== undefined) seenCursors.add(cursor);
-	} while (cursor !== undefined && spaces.length < limit);
+		// A next link revisiting any earlier page would loop forever under Return All
+		if (next === undefined || seenCursors.has(next)) break;
+		seenCursors.add(next);
+		cursor = next;
+	} while (spaces.length < limit);
 
-	// The API treats `limit` as a page size, so an overshooting last page is trimmed
-	return spaces.slice(0, returnAll ? spaces.length : limit);
+	return spaces.slice(0, limit);
 };
