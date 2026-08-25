@@ -174,6 +174,44 @@ export const spaceRLC: INodeProperties = {
 	],
 };
 
+export const spaceOptionsCollection: INodeProperties = {
+	displayName: 'Options',
+	name: 'options',
+	type: 'collection',
+	placeholder: 'Add Option',
+	default: {},
+	options: [
+		{
+			displayName: 'Description Format',
+			name: 'descriptionFormat',
+			type: 'options',
+			options: [
+				{
+					name: 'Plain',
+					value: 'plain',
+					description: 'The space description as plain text',
+				},
+				{
+					name: 'View',
+					value: 'view',
+					description: 'The space description in view (HTML) format',
+				},
+			],
+			default: 'plain',
+			// The API only populates `description` when `description-format` is sent
+			description:
+				'The format in which to return the space description. Without this option the description is not returned.',
+		},
+	],
+};
+
+/** Builds the `description-format` query fragment from an operation's Options collection. */
+export function spaceDescriptionFormatQs(options: IDataObject): IDataObject {
+	return typeof options.descriptionFormat === 'string' && options.descriptionFormat !== ''
+		? { 'description-format': options.descriptionFormat }
+		: {};
+}
+
 /** `spaceRLC` for operations where the space is optional: the list gets an
  * "All Spaces" reset entry and By ID accepts an empty value. */
 export const optionalSpaceRLC: INodeProperties = {
