@@ -81,6 +81,10 @@ export class CredentialImporter {
 
 			const stubCredential = await this.credentialsService.createStubCredential(
 				{
+					// Reuse the source id only when matching is id-based, so a later pull
+					// resolves this stub instead of creating another one. Under name/type
+					// matching the id is not the lookup key, so let a fresh id be minted.
+					id: request.matchingMode === 'id-only' ? sourceId : undefined,
 					name: name ?? sourceId,
 					type,
 					projectId: context.projectId,

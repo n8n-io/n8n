@@ -3248,6 +3248,26 @@ describe('CredentialsService', () => {
 			});
 		});
 
+		it('mints a fresh id when none is supplied', async () => {
+			const createEncryptedDataSpy = vi.spyOn(service, 'createEncryptedData');
+			mockTransactionManager({ credentialId: 'stub-cred-id' });
+
+			await service.createStubCredential(stubOpts, ownerUser);
+
+			expect(createEncryptedDataSpy).toHaveBeenCalledWith(expect.objectContaining({ id: null }));
+		});
+
+		it('reuses a supplied id so id-based matching resolves the stub on a later import', async () => {
+			const createEncryptedDataSpy = vi.spyOn(service, 'createEncryptedData');
+			mockTransactionManager({ credentialId: 'cred-source' });
+
+			await service.createStubCredential({ ...stubOpts, id: 'cred-source' }, ownerUser);
+
+			expect(createEncryptedDataSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'cred-source' }),
+			);
+		});
+
 		it('rejects when user lacks credential:create on the target project', async () => {
 			projectService.getProjectWithScope.mockResolvedValue(null);
 			// @ts-expect-error - Mocking manager for testing
