@@ -6,6 +6,7 @@ import { GROUP_DESCRIPTION_MAX_LENGTH, STICKY_NODE_TYPE } from 'n8n-workflow';
 import type {
 	DynamicCredentialsUsage,
 	ExecutionError,
+	INodeCredentialsDetails,
 	IRun,
 	ITaskData,
 	IWorkflowBase,
@@ -296,7 +297,7 @@ describe('replaceInvalidCredentials', () => {
 	it('should reuse a shared credential cache across workflows', async () => {
 		const credential = { id: 'cred-1', name: 'My Cred' } as CredentialsEntity;
 		credentialsRepository.findOneBy.mockResolvedValue(credential);
-		const cache = { credentialsByName: {}, credentialsById: {} };
+		const cache = new Map<string, INodeCredentialsDetails>();
 		const firstWorkflow = makeWorkflow({
 			httpHeaderAuth: { id: 'cred-1', name: 'My Cred' },
 		});
@@ -313,11 +314,11 @@ describe('replaceInvalidCredentials', () => {
 		);
 	});
 
-	it('should cache a name fallback under the stale credential id', async () => {
+	it('should cache a name fallback for the stale credential id and name', async () => {
 		const credential = { id: 'cred-new', name: 'My Cred' } as CredentialsEntity;
 		credentialsRepository.findOneBy.mockResolvedValue(null);
 		credentialsRepository.findByNameAndTypeInProject.mockResolvedValue([credential]);
-		const cache = { credentialsByName: {}, credentialsById: {} };
+		const cache = new Map<string, INodeCredentialsDetails>();
 
 		for (let index = 0; index < 2; index++) {
 			await replaceInvalidCredentials(
@@ -329,6 +330,32 @@ describe('replaceInvalidCredentials', () => {
 
 		expect(credentialsRepository.findOneBy).toHaveBeenCalledTimes(1);
 		expect(credentialsRepository.findByNameAndTypeInProject).toHaveBeenCalledTimes(1);
+	});
+
+	it('should resolve the same stale credential id independently when names differ', async () => {
+		credentialsRepository.findOneBy.mockResolvedValue(null);
+		credentialsRepository.findByNameAndTypeInProject
+			.mockResolvedValueOnce([{ id: 'resolved-First', name: 'First' } as CredentialsEntity])
+			.mockResolvedValueOnce([{ id: 'resolved-Second', name: 'Second' } as CredentialsEntity]);
+		const cache = new Map<string, INodeCredentialsDetails>();
+		const firstWorkflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-stale', name: 'First' },
+		});
+		const secondWorkflow = makeWorkflow({
+			httpHeaderAuth: { id: 'cred-stale', name: 'Second' },
+		});
+
+		await replaceInvalidCredentials(firstWorkflow, 'project-1', cache);
+		await replaceInvalidCredentials(secondWorkflow, 'project-1', cache);
+
+		expect(firstWorkflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: 'resolved-First',
+			name: 'First',
+		});
+		expect(secondWorkflow.nodes[0].credentials!.httpHeaderAuth).toEqual({
+			id: 'resolved-Second',
+			name: 'Second',
+		});
 	});
 
 	it('should skip credential types that resolve to object internal keys', async () => {

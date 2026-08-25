@@ -130,7 +130,7 @@ export class WorkflowCreationService {
 			project,
 			allowedCredentialIds,
 			checkedCredentialIds: new Set([...validatedCredentialIds, ...referencedCredentialIds]),
-			credentialResolutionCache: { credentialsByName: {}, credentialsById: {} },
+			credentialResolutionCache: new Map(),
 			redactionFloor,
 			autoExposeNewWorkflows,
 		};
