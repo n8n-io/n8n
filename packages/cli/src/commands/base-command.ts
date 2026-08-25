@@ -9,6 +9,7 @@ import {
 	ModuleRegistry,
 	ModulesConfig,
 } from '@n8n/backend-common';
+import { installGlobalProxyAgent } from '@n8n/backend-network';
 import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -98,6 +99,10 @@ export abstract class BaseCommand<F = never> {
 	protected seedsInstanceIdentity = false;
 
 	async init(): Promise<void> {
+		// Every process type (main, worker, webhook, one-off commands) makes outbound
+		// requests, so env-proxy global agents must be installed before any of them.
+		installGlobalProxyAgent();
+
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
 
