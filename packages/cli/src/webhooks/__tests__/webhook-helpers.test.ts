@@ -1620,4 +1620,22 @@ describe('executeWebhook in responseNode mode when the Respond node never runs',
 
 		expect(responseCallback.mock.calls[0]).toEqual([null, { data: undefined, responseCode: 200 }]);
 	});
+
+	it('does not answer twice when the node responded and the execution then succeeded', async () => {
+		const { responsePromise, postExecute, responseCallback } = await startWebhook();
+
+		const successfulRun = mock<IRun>({
+			mode: 'webhook',
+			finished: true,
+			status: 'success',
+			data: { resultData: { error: undefined, runData: {}, lastNodeExecuted: 'Agent' } },
+		});
+
+		responsePromise.resolve({ body: { ok: true }, headers: {}, statusCode: 200 });
+		await new Promise(process.nextTick);
+		postExecute.resolve(successfulRun);
+		await new Promise(process.nextTick);
+
+		expect(responseCallback).toHaveBeenCalledTimes(1);
+	});
 });
