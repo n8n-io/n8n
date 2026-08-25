@@ -1,10 +1,9 @@
 import type {
-	PolicyCheckClass,
 	PolicyCheckResult,
 	RegisteredPolicyCheck,
 	WorkflowExecuteBeforeContext,
 } from '@n8n/decorators';
-import { LifecycleMetadata, PolicyCheck, PolicyCheckMetadata } from '@n8n/decorators';
+import { LifecycleMetadata, PolicyCheck } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { ExecutionLifecycleHooks } from 'n8n-core';
 import type { IWorkflowBase, Workflow } from 'n8n-workflow';
@@ -45,17 +44,12 @@ const beforeContext = (
 describe('PolicyLifecycleHandler', () => {
 	const policyEnforcementService = mock<PolicyEnforcementService>();
 	const ownershipService = mock<OwnershipService>();
-	const checkMetadata = mock<PolicyCheckMetadata>();
 
-	const handler = new PolicyLifecycleHandler(
-		policyEnforcementService,
-		ownershipService,
-		checkMetadata,
-	);
+	const handler = new PolicyLifecycleHandler(policyEnforcementService, ownershipService);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		checkMetadata.getClasses.mockReturnValue([mock<PolicyCheckClass>()]);
+		policyEnforcementService.hasChecksFor.mockReturnValue(true);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(mock({ id: 'proj-1' }));
 		policyEnforcementService.enforceWorkflowStart.mockResolvedValue(mock());
 	});
@@ -98,15 +92,22 @@ describe('PolicyLifecycleHandler', () => {
 		expect(policyEnforcementService.enforceWorkflowStart).not.toHaveBeenCalled();
 	});
 
-	it('does nothing at all when no policy check is registered', async () => {
+	it('does nothing at all when no check guards the workflow start point', async () => {
 		// The feature being absent must never fail an execution, so it must not even reach the
 		// project lookup, which can throw.
-		checkMetadata.getClasses.mockReturnValue([]);
+		policyEnforcementService.hasChecksFor.mockReturnValue(false);
 
 		await handler.onWorkflowExecuteBefore(beforeContext());
 
 		expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
 		expect(policyEnforcementService.enforceWorkflowStart).not.toHaveBeenCalled();
+	});
+
+	it('asks about the workflow start point specifically', async () => {
+		// A check registered only for another point must not drag this one into a lookup.
+		await handler.onWorkflowExecuteBefore(beforeContext());
+
+		expect(policyEnforcementService.hasChecksFor).toHaveBeenCalledExactlyOnceWith('workflowStart');
 	});
 
 	it('does not enforce when the event carries no workflow instance', async () => {
@@ -157,12 +158,9 @@ describe('workflowExecuteBefore wiring', () => {
 			ownership.getWorkflowProjectCached.mockResolvedValue(mock({ id: 'proj-1' }));
 
 			// The registry resolves the handler through DI, so the instance it gets has to be
-			// the one wired to the real enforcement service. The real metadata registry is used
-			// on both sides, so `ConfigurableCheck` below is what makes the handler act.
-			Container.set(
-				PolicyLifecycleHandler,
-				new PolicyLifecycleHandler(enforcement, ownership, Container.get(PolicyCheckMetadata)),
-			);
+			// the one wired to the real enforcement service — which is also what answers
+			// `hasChecksFor`, so `ConfigurableCheck` below is what makes the handler act.
+			Container.set(PolicyLifecycleHandler, new PolicyLifecycleHandler(enforcement, ownership));
 
 			Container.get(ConfigurableCheck).result = { violations: [] };
 		});

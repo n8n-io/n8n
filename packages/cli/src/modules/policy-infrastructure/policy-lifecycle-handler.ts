@@ -1,4 +1,4 @@
-import { OnLifecycleEvent, PolicyCheckMetadata } from '@n8n/decorators';
+import { OnLifecycleEvent } from '@n8n/decorators';
 import type { WorkflowExecuteBeforeContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 
@@ -18,7 +18,6 @@ export class PolicyLifecycleHandler {
 	constructor(
 		private readonly policyEnforcementService: PolicyEnforcementService,
 		private readonly ownershipService: OwnershipService,
-		private readonly checkMetadata: PolicyCheckMetadata,
 	) {}
 
 	@OnLifecycleEvent('workflowExecuteBefore')
@@ -29,10 +28,12 @@ export class PolicyLifecycleHandler {
 		// leave the execution half-written.
 		if (!ctx.workflowInstance) return;
 
-		// Nothing registered means nothing to decide, and resolving the owning project below
-		// can fail — without this, a feature that is merely absent could fail an execution.
-		// Read per invocation, so module load order can't decide whether a check runs.
-		if (this.checkMetadata.getClasses().length === 0) return;
+		// Nothing to decide means nothing worth a database lookup, and that lookup can fail —
+		// without this, a feature that is merely absent could fail an execution. Asked of the
+		// enforcement layer rather than worked out here, so a check registered only for another
+		// point cannot be mistaken for one that guards this one. Asked per invocation, so module
+		// load order can't decide whether a check runs.
+		if (!this.policyEnforcementService.hasChecksFor('workflowStart')) return;
 
 		// Deliberately unguarded. Not knowing which project owns the workflow means
 		// project-scoped rules cannot be evaluated, and an unevaluated rule is not a passed

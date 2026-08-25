@@ -138,6 +138,14 @@ export class PolicyDecisionService implements PolicyEnforcementBackend {
 		return failures.length > 0 ? { ...decision, checkErrors: failures } : decision;
 	}
 
+	/**
+	 * Answered from `runnersFor`, the same thing `enforce` and `evaluate` run, so this can't
+	 * disagree with them — a check registered for another point does not count here.
+	 */
+	hasChecksFor(point: EnforcementPoint): boolean {
+		return this.runnersFor(point).length > 0;
+	}
+
 	private async runChecks<Point extends EnforcementPoint>(
 		point: Point,
 		context: PolicyContext<Point>,
