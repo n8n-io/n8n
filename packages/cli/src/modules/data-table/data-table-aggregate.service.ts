@@ -4,9 +4,9 @@ import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 
-import { ProjectService } from '@/services/project.service.ee';
-
 import { DataTableRepository } from './data-table.repository';
+
+import { ProjectService } from '@/services/project.service.ee';
 
 @Service()
 export class DataTableAggregateService {
@@ -20,7 +20,7 @@ export class DataTableAggregateService {
 	async start() {}
 	async shutdown() {}
 
-	async getManyAndCount(user: User, options: ListDataTableQueryDto) {
+	async getManyAndCount(user: User, options: Partial<ListDataTableQueryDto>) {
 		if (hasGlobalScope(user, 'dataTable:listProject')) {
 			return await this.dataTableRepository.getManyAndCount(options);
 		}
