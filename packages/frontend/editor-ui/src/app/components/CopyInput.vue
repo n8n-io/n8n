@@ -60,12 +60,7 @@ function copy() {
 					'ph-no-capture': redactValue,
 				}"
 				data-test-id="copy-input"
-				:role="disableCopy ? undefined : 'button'"
-				:tabindex="disableCopy ? undefined : 0"
-				:aria-label="disableCopy ? undefined : copyButtonText"
 				@click="copy"
-				@keydown.enter="copy"
-				@keydown.space.prevent="copy"
 			>
 				<span ref="copyInputValue">{{ value }}</span>
 				<div v-if="!disableCopy" :class="$style.copyButton">

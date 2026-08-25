@@ -199,17 +199,20 @@ describe('router', () => {
 		20000,
 	);
 
+	const gitConnectionScopes: Scope[] = [
+		'gitConnection:list',
+		'gitConnection:read',
+		'gitConnection:create',
+		'gitConnection:update',
+		'gitConnection:delete',
+	];
+
 	test.each<[string, RouteRecordName, Scope[], boolean, boolean]>([
 		['/settings/git-connections', VIEWS.WORKFLOWS, [], true, true],
-		[
-			'/settings/git-connections',
-			VIEWS.GIT_CONNECTIONS_SETTINGS,
-			['gitConnection:list'],
-			true,
-			true,
-		],
-		['/settings/git-connections', VIEWS.WORKFLOWS, ['gitConnection:list'], false, true],
-		['/settings/git-connections', VIEWS.WORKFLOWS, ['gitConnection:list'], true, false],
+		['/settings/git-connections', VIEWS.WORKFLOWS, ['gitConnection:list'], true, true],
+		['/settings/git-connections', VIEWS.GIT_CONNECTIONS_SETTINGS, gitConnectionScopes, true, true],
+		['/settings/git-connections', VIEWS.WORKFLOWS, gitConnectionScopes, false, true],
+		['/settings/git-connections', VIEWS.WORKFLOWS, gitConnectionScopes, true, false],
 	])(
 		'should resolve %s to %s with %s permissions, module active %s and flag on %s (git connections)',
 		async (path, name, scopes, isModuleActive, isFlagOn) => {

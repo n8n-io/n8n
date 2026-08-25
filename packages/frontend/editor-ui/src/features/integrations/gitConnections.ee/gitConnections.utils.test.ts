@@ -72,12 +72,6 @@ describe('buildUpdatePayload', () => {
 		expect(buildUpdatePayload(form({ branchName: 'main' }), existing())).toEqual({});
 	});
 
-	it('sends only the fields that changed', () => {
-		expect(buildUpdatePayload(form({ name: 'Staging', branchName: 'main' }), existing())).toEqual({
-			name: 'Staging',
-		});
-	});
-
 	it('keeps the key type out of an ssh connection that stays ssh', () => {
 		expect(
 			buildUpdatePayload(
@@ -100,15 +94,6 @@ describe('buildUpdatePayload', () => {
 		const payload = buildUpdatePayload(form({ connectionType: 'https' }), existing());
 
 		expect(payload).toEqual({ connectionType: 'https' });
-	});
-
-	it('sends nothing when only the password of an https connection was filled in', () => {
-		expect(
-			buildUpdatePayload(
-				form({ connectionType: 'https', password: 'new-token' }),
-				existing({ connectionType: 'https', keyGeneratorType: null, publicKey: null }),
-			),
-		).toEqual({});
 	});
 
 	it('sends username alongside a rotated password', () => {

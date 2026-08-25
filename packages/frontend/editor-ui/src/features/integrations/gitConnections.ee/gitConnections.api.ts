@@ -12,65 +12,52 @@ export type GitConnectionSummary = GitConnectionListPublicDto['data'][number];
 
 const gitConnectionsApiRoot = '/git-connections';
 
-// The server stops handing out cursors once the list is exhausted; this only
-// guards against a browser-hanging loop if it ever does not.
-const MAX_PAGES = 20;
-
+// The backend accepts a single connection, so the first page is the whole list.
+// Revisit when project-level connections land.
 export const fetchGitConnections = async (
 	context: PublicApiContext,
 ): Promise<GitConnectionSummary[]> => {
-	const connections: GitConnectionSummary[] = [];
-	let cursor: string | null = null;
+	const response: GitConnectionListPublicDto = await request({
+		method: 'GET',
+		baseURL: context.baseUrl,
+		endpoint: gitConnectionsApiRoot,
+	});
 
-	for (let page = 0; page < MAX_PAGES; page++) {
-		const response = (await request({
-			method: 'GET',
-			baseURL: context.baseUrl,
-			endpoint: gitConnectionsApiRoot,
-			// The cursor carries the page size, so it is the whole query after page one.
-			...(cursor ? { data: { cursor } } : {}),
-		})) as GitConnectionListPublicDto;
-
-		connections.push(...response.data);
-		cursor = response.nextCursor;
-		if (!cursor) break;
-	}
-
-	return connections;
+	return response.data;
 };
 
 export const fetchGitConnection = async (
 	context: PublicApiContext,
 	id: string,
 ): Promise<GitConnection> =>
-	(await request({
+	await request({
 		method: 'GET',
 		baseURL: context.baseUrl,
 		endpoint: `${gitConnectionsApiRoot}/${id}`,
-	})) as GitConnection;
+	});
 
 export const createGitConnection = async (
 	context: PublicApiContext,
 	payload: CreateGitConnectionDto,
 ): Promise<GitConnection> =>
-	(await request({
+	await request({
 		method: 'POST',
 		baseURL: context.baseUrl,
 		endpoint: gitConnectionsApiRoot,
 		data: payload,
-	})) as GitConnection;
+	});
 
 export const updateGitConnection = async (
 	context: PublicApiContext,
 	id: string,
 	payload: UpdateGitConnectionDto,
 ): Promise<GitConnection> =>
-	(await request({
+	await request({
 		method: 'PUT',
 		baseURL: context.baseUrl,
 		endpoint: `${gitConnectionsApiRoot}/${id}`,
 		data: payload,
-	})) as GitConnection;
+	});
 
 export const deleteGitConnection = async (context: PublicApiContext, id: string): Promise<void> => {
 	await request({

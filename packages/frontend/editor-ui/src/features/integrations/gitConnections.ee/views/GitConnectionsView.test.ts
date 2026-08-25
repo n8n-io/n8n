@@ -10,33 +10,14 @@ import GitConnectionsView from './GitConnectionsView.vue';
 const backend = vi.hoisted(() => {
 	const connections: GitConnection[] = [];
 	let idCounter = 0;
-	let failNextSave: Error | null = null;
-	let failList = false;
 
 	return {
 		connections,
 		reset() {
 			connections.length = 0;
 			idCounter = 0;
-			failNextSave = null;
-			failList = false;
-		},
-		failSaveWith(error: Error) {
-			failNextSave = error;
-		},
-		failListing() {
-			failList = true;
-		},
-		stopFailingList() {
-			failList = false;
 		},
 		nextId: () => `conn-${++idCounter}`,
-		takeSaveFailure() {
-			const error = failNextSave;
-			failNextSave = null;
-			return error;
-		},
-		isListFailing: () => failList,
 	};
 });
 
@@ -54,7 +35,8 @@ const mockConfirm = vi.fn();
 const mockShowError = vi.fn();
 const mockShowMessage = vi.fn();
 
-vi.mock('@/app/composables/useMessage', () => ({
+vi.mock('@n8n/design-system', async () => ({
+	...(await vi.importActual<object>('@n8n/design-system')),
 	useMessage: () => ({ confirm: mockConfirm }),
 }));
 
@@ -80,14 +62,14 @@ const renderView = createComponentRenderer(GitConnectionsView);
 
 const openAddDialog = async () => {
 	await userEvent.click(screen.getByTestId('git-connections-add'));
-	await userEvent.click(await screen.findByTestId('git-connections-type-git'));
-	return await screen.findByTestId('git-connection-dialog');
+	await userEvent.click(await screen.findByTestId('git-connection-type-git'));
+	return await screen.findByTestId('git-connection-form-step');
 };
 
 const openEditDialog = async (card: HTMLElement) => {
 	await userEvent.click(within(card).getByRole('button'));
 	await userEvent.click(await screen.findByTestId('action-edit'));
-	return await screen.findByTestId('git-connection-dialog');
+	return await screen.findByTestId('git-connection-form-step');
 };
 
 const selectOption = async (select: HTMLElement, label: string) => {
@@ -101,16 +83,13 @@ describe('GitConnectionsView', () => {
 		backend.reset();
 		createTestingPinia();
 
-		api.fetchGitConnections.mockImplementation(async () => {
-			if (backend.isListFailing()) throw new Error('Request failed');
-			return backend.connections.map(({ publicKey: _publicKey, ...summary }) => summary);
-		});
+		api.fetchGitConnections.mockImplementation(async () =>
+			backend.connections.map(({ publicKey: _publicKey, ...summary }) => summary),
+		);
 		api.fetchGitConnection.mockImplementation(
 			async (_ctx: unknown, id: string) => backend.connections.find((c) => c.id === id)!,
 		);
 		api.createGitConnection.mockImplementation(async (_ctx: unknown, payload: GitConnection) => {
-			const failure = backend.takeSaveFailure();
-			if (failure) throw failure;
 			const created: GitConnection = {
 				...sshConnection(),
 				...payload,
@@ -123,8 +102,6 @@ describe('GitConnectionsView', () => {
 		});
 		api.updateGitConnection.mockImplementation(
 			async (_ctx: unknown, id: string, payload: Partial<GitConnection>) => {
-				const failure = backend.takeSaveFailure();
-				if (failure) throw failure;
 				const index = backend.connections.findIndex((c) => c.id === id);
 				const updated: GitConnection = { ...backend.connections[index], ...payload };
 				if (payload.connectionType === 'ssh') {
@@ -161,15 +138,17 @@ describe('GitConnectionsView', () => {
 			keyGeneratorType: 'ed25519',
 		});
 
-		expect(await screen.findByTestId('git-connection-key-step')).toHaveTextContent(
-			'ssh-ed25519 NEW-KEY',
-		);
+		expect(
+			within(await screen.findByTestId('git-connection-key-step')).getByRole('textbox'),
+		).toHaveValue('ssh-ed25519 NEW-KEY');
 
 		await userEvent.click(screen.getByTestId('git-connection-done-button'));
 
 		const card = await screen.findByTestId('git-connection-card');
 		expect(card).toHaveTextContent('Production');
 		expect(card).toHaveTextContent('git@github.com:acme/workflows.git');
+		expect(card).toHaveTextContent('Git');
+		expect(card).toHaveTextContent('Instance');
 	});
 
 	it('lets the user rename an ssh connector without generating a new deploy key', async () => {
@@ -179,6 +158,9 @@ describe('GitConnectionsView', () => {
 		const dialog = await openEditDialog(await screen.findByTestId('git-connection-card'));
 		await waitFor(() =>
 			expect(within(dialog).getByTestId('git-connection-name-input')).toHaveValue('Production'),
+		);
+		expect(within(dialog).getByTestId('git-connection-repository-url-input')).toHaveValue(
+			'git@github.com:acme/workflows.git',
 		);
 		expect(
 			within(within(dialog).getByTestId('git-connection-key-type-select')).getByRole('combobox'),
@@ -192,7 +174,7 @@ describe('GitConnectionsView', () => {
 			name: 'Staging',
 		});
 		await waitFor(() =>
-			expect(screen.queryByTestId('git-connection-dialog')).not.toBeInTheDocument(),
+			expect(screen.queryByTestId('git-connection-form-step')).not.toBeInTheDocument(),
 		);
 		expect(screen.queryByTestId('git-connection-key-step')).not.toBeInTheDocument();
 		expect(await screen.findByTestId('git-connection-card')).toHaveTextContent('Staging');
@@ -217,9 +199,9 @@ describe('GitConnectionsView', () => {
 		await selectOption(within(dialog).getByTestId('git-connection-type-select'), 'SSH');
 		await userEvent.click(within(dialog).getByTestId('git-connection-save-button'));
 
-		expect(await screen.findByTestId('git-connection-key-step')).toHaveTextContent(
-			'ssh-ed25519 GENERATED-KEY',
-		);
+		expect(
+			within(await screen.findByTestId('git-connection-key-step')).getByRole('textbox'),
+		).toHaveValue('ssh-ed25519 GENERATED-KEY');
 	});
 
 	it('will not save a switch to https until both credentials are given', async () => {
@@ -266,32 +248,37 @@ describe('GitConnectionsView', () => {
 		await userEvent.click(within(dialog).getByTestId('git-connection-save-button'));
 
 		expect(api.updateGitConnection).not.toHaveBeenCalled();
-		expect(screen.getByTestId('git-connection-dialog')).toBeInTheDocument();
+		expect(screen.getByTestId('git-connection-form-step')).toBeInTheDocument();
 	});
 
-	it('shows the stored values when the just-created connector is reopened for editing', async () => {
+	it('closes without saving when nothing was changed', async () => {
+		backend.connections.push(sshConnection());
 		renderView();
-		await screen.findByTestId('empty-state');
 
-		const createDialog = await openAddDialog();
-		await userEvent.type(
-			within(createDialog).getByTestId('git-connection-name-input'),
-			'Production',
-		);
-		await userEvent.type(
-			within(createDialog).getByTestId('git-connection-repository-url-input'),
-			'git@host:production.git',
-		);
-		await userEvent.click(within(createDialog).getByTestId('git-connection-save-button'));
-		await userEvent.click(await screen.findByTestId('git-connection-done-button'));
-
-		const editDialog = await openEditDialog(await screen.findByTestId('git-connection-card'));
+		const dialog = await openEditDialog(await screen.findByTestId('git-connection-card'));
 		await waitFor(() =>
-			expect(within(editDialog).getByTestId('git-connection-name-input')).toHaveValue('Production'),
+			expect(within(dialog).getByTestId('git-connection-name-input')).toHaveValue('Production'),
 		);
-		expect(within(editDialog).getByTestId('git-connection-repository-url-input')).toHaveValue(
-			'git@host:production.git',
+		await userEvent.click(within(dialog).getByTestId('git-connection-save-button'));
+
+		expect(api.updateGitConnection).not.toHaveBeenCalled();
+		await waitFor(() =>
+			expect(screen.queryByTestId('git-connection-form-step')).not.toBeInTheDocument(),
 		);
+	});
+
+	it('reports the problem and closes when the connector cannot be opened', async () => {
+		backend.connections.push(sshConnection());
+		api.fetchGitConnection.mockRejectedValueOnce(new Error('Connection not found'));
+		renderView();
+
+		await userEvent.click(
+			within(await screen.findByTestId('git-connection-card')).getByRole('button'),
+		);
+		await userEvent.click(await screen.findByTestId('action-edit'));
+
+		await waitFor(() => expect(mockShowError).toHaveBeenCalled());
+		expect(screen.queryByTestId('git-connection-form-step')).not.toBeInTheDocument();
 	});
 
 	it('returns focus to the connector when its dialog is closed', async () => {
@@ -306,28 +293,28 @@ describe('GitConnectionsView', () => {
 		await userEvent.click(within(dialog).getByTestId('git-connection-cancel-button'));
 
 		await waitFor(() =>
-			expect(screen.queryByTestId('git-connection-dialog')).not.toBeInTheDocument(),
+			expect(screen.queryByTestId('git-connection-form-step')).not.toBeInTheDocument(),
 		);
 		expect(card).toHaveFocus();
 	});
 
-	it('offers the add button only while no connector is configured', async () => {
+	it('will not let a second connector be added until the first one is deleted', async () => {
 		mockConfirm.mockResolvedValue(MODAL_CONFIRM);
 		backend.connections.push(sshConnection());
 		renderView();
 
 		await screen.findByTestId('git-connection-card');
-		expect(screen.queryByTestId('git-connections-add')).not.toBeInTheDocument();
+		expect(screen.getByTestId('git-connections-add')).toBeDisabled();
 
 		await userEvent.click(within(screen.getByTestId('git-connection-card')).getByRole('button'));
 		await userEvent.click(await screen.findByTestId('action-delete'));
 
-		expect(await screen.findByTestId('git-connections-add')).toBeInTheDocument();
+		await waitFor(() => expect(screen.getByTestId('git-connections-add')).toBeEnabled());
 	});
 
 	it('keeps the entered values and reports the error when saving fails', async () => {
 		const serverError = new Error('Repository URL is invalid');
-		backend.failSaveWith(serverError);
+		api.createGitConnection.mockRejectedValueOnce(serverError);
 		renderView();
 		await screen.findByTestId('empty-state');
 
@@ -342,7 +329,7 @@ describe('GitConnectionsView', () => {
 		await waitFor(() =>
 			expect(mockShowError).toHaveBeenCalledWith(serverError, expect.any(String)),
 		);
-		expect(screen.getByTestId('git-connection-dialog')).toBeInTheDocument();
+		expect(screen.getByTestId('git-connection-form-step')).toBeInTheDocument();
 		expect(within(dialog).getByTestId('git-connection-name-input')).toHaveValue('Production');
 		expect(screen.queryByTestId('git-connection-card')).not.toBeInTheDocument();
 	});
@@ -378,19 +365,16 @@ describe('GitConnectionsView', () => {
 	});
 
 	it('offers a retry instead of the empty state when the list cannot be loaded', async () => {
-		backend.failListing();
+		api.fetchGitConnections.mockRejectedValueOnce(new Error('Request failed'));
 		renderView();
 
 		const errorState = await screen.findByTestId('git-connections-load-error');
-		expect(errorState).toHaveTextContent("Couldn't load git connections");
+		expect(errorState).toHaveTextContent("Couldn't load connectors");
 		expect(screen.queryByTestId('git-connections-add')).not.toBeInTheDocument();
 
 		backend.connections.push(sshConnection());
-		backend.stopFailingList();
 		await userEvent.click(within(errorState).getByRole('button'));
 
-		expect(
-			await screen.findByTestId('git-connection-card', {}, { timeout: 3000 }),
-		).toHaveTextContent('Production');
+		expect(await screen.findByTestId('git-connection-card')).toHaveTextContent('Production');
 	});
 });

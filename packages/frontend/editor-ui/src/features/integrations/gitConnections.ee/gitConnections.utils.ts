@@ -67,8 +67,7 @@ export function buildUpdatePayload(
 	}
 
 	if (form.connectionType === 'ssh') {
-		// Sending a key type for an existing ssh connection is rejected; only a
-		// switch to ssh generates a new key.
+		// ssh -> ssh rejects a changed key type; only a switch to ssh mints a key.
 		if (current.connectionType !== 'ssh') {
 			payload.keyGeneratorType = form.keyGeneratorType;
 		}

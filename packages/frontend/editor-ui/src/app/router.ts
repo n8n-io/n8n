@@ -993,11 +993,15 @@ export const routes: RouteRecordRaw[] = [
 				meta: {
 					middleware: ['authenticated', 'rbac', 'custom'],
 					middlewareOptions: {
-						// `gitConnection:list` implies create/update/delete: owner/admin-only scopes that
-						// are not offered to custom global roles (no `gitConnection` group in
-						// GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS). Re-check if that ever changes.
 						rbac: {
-							scope: 'gitConnection:list',
+							scope: [
+								'gitConnection:list',
+								'gitConnection:read',
+								'gitConnection:create',
+								'gitConnection:update',
+								'gitConnection:delete',
+							],
+							options: { mode: 'allOf' },
 						},
 						custom: () => {
 							const { isEnabled } = usePromotionsEnabled();

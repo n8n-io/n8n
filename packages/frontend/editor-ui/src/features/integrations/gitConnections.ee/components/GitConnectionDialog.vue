@@ -3,6 +3,7 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nCard,
+	N8nCopyInput,
 	N8nDialog,
 	N8nDialogFooter,
 	N8nDialogHeader,
@@ -18,7 +19,6 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onMounted, reactive, ref, useTemplateRef } from 'vue';
 
-import CopyInput from '@/app/components/CopyInput.vue';
 import {
 	createGitConnection,
 	fetchGitConnection,
@@ -31,6 +31,8 @@ import {
 	type GitConnectionFormState,
 } from '../gitConnections.utils';
 
+const CREDENTIALS_HINT_ID = 'git-connection-credentials-hint';
+
 const props = defineProps<{
 	open: boolean;
 	connectionId?: string;
@@ -38,7 +40,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
-	saved: [];
+	saved: [id: string];
 }>();
 
 const i18n = useI18n();
@@ -55,42 +57,42 @@ const form = reactive<GitConnectionFormState>({
 	password: '',
 });
 
-// Creating starts on the connector type list and advances into the git form in
-// place, so the whole "add connector" flow stays in one dialog.
-const step = ref<'type' | 'form'>(props.connectionId === undefined ? 'type' : 'form');
+const step = ref<'type' | 'form' | 'key'>(props.connectionId === undefined ? 'type' : 'form');
 const current = ref<GitConnection | null>(null);
 const isLoading = ref(false);
 const isSubmitting = ref(false);
 const newPublicKey = ref<string | null>(null);
 const nameInput = useTemplateRef<InstanceType<typeof N8nInput>>('nameInput');
 const typeCard = useTemplateRef<{ $el?: HTMLElement }>('typeCard');
+const doneButton = useTemplateRef<{ $el?: HTMLElement }>('doneButton');
 
 const isEdit = computed(() => props.connectionId !== undefined);
 
-const title = computed(() =>
-	i18n.baseText(
-		step.value === 'type'
-			? 'settings.gitConnections.dialog.title.selectType'
-			: isEdit.value
-				? 'settings.gitConnections.dialog.title.edit'
-				: 'settings.gitConnections.dialog.title.create',
-	),
-);
+const title = computed(() => {
+	if (step.value === 'type')
+		return i18n.baseText('settings.gitConnections.dialog.title.selectType');
+	if (step.value === 'key') return i18n.baseText('settings.gitConnections.dialog.title.deployKey');
+	return i18n.baseText(
+		isEdit.value
+			? 'settings.gitConnections.dialog.title.edit'
+			: 'settings.gitConnections.dialog.title.create',
+	);
+});
 
-const ariaDescription = computed(() =>
-	i18n.baseText(
-		step.value === 'type'
-			? 'settings.gitConnections.dialog.selectType.ariaDescription'
-			: 'settings.gitConnections.dialog.ariaDescription',
-	),
-);
+const ariaDescription = computed(() => {
+	if (step.value === 'type')
+		return i18n.baseText('settings.gitConnections.dialog.selectType.ariaDescription');
+	if (step.value === 'key')
+		return i18n.baseText('settings.gitConnections.dialog.deployKey.ariaDescription');
+	return i18n.baseText('settings.gitConnections.dialog.ariaDescription');
+});
 
 const credentialsRequired = computed(
 	() => form.connectionType === 'https' && current.value?.connectionType !== 'https',
 );
 
-// Touching either half of the pair commits the user to both: the builder sends
-// them together or not at all, so a password-only edit would be a silent no-op.
+// `buildUpdatePayload` sends username and password together or not at all, so a
+// password-only edit would silently do nothing.
 const areCredentialsIncomplete = computed(
 	() =>
 		form.connectionType === 'https' &&
@@ -132,6 +134,7 @@ onMounted(async () => {
 		close();
 	} finally {
 		isLoading.value = false;
+		focusStep();
 	}
 });
 
@@ -147,6 +150,7 @@ function onOpenChange(value: boolean) {
 function focusStep() {
 	void nextTick(() => {
 		if (step.value === 'type') typeCard.value?.$el?.focus();
+		else if (step.value === 'key') doneButton.value?.$el?.focus();
 		else nameInput.value?.focus();
 	});
 }
@@ -154,6 +158,12 @@ function focusStep() {
 function onOpenAutoFocus(event: Event) {
 	event.preventDefault();
 	focusStep();
+}
+
+// The parent restores focus once the refreshed list has rendered; reka's own
+// restore runs in a later macrotask and would overwrite it.
+function onCloseAutoFocus(event: Event) {
+	event.preventDefault();
 }
 
 function selectGit() {
@@ -167,37 +177,34 @@ async function submit() {
 	const existing = current.value;
 	isSubmitting.value = true;
 	try {
+		let saved: GitConnection;
 		if (existing) {
 			const payload = buildUpdatePayload(form, existing);
 			if (Object.keys(payload).length === 0) {
 				close();
 				return;
 			}
-			const saved = await updateGitConnection(rootStore.publicApiContext, existing.id, payload);
-			toast.showMessage({
-				title: i18n.baseText('settings.gitConnections.toast.updated'),
-				type: 'success',
-			});
-			emit('saved');
-			// An ssh connection that stays ssh keeps its key, so the response echoing a
-			// key does not mean there is a new one to deploy.
-			if (saved.publicKey && saved.publicKey !== existing.publicKey) {
-				newPublicKey.value = saved.publicKey;
-			} else {
-				close();
-			}
+			saved = await updateGitConnection(rootStore.publicApiContext, existing.id, payload);
 		} else {
-			const saved = await createGitConnection(rootStore.publicApiContext, buildCreatePayload(form));
-			toast.showMessage({
-				title: i18n.baseText('settings.gitConnections.toast.created'),
-				type: 'success',
-			});
-			emit('saved');
-			if (saved.publicKey) {
-				newPublicKey.value = saved.publicKey;
-			} else {
-				close();
-			}
+			saved = await createGitConnection(rootStore.publicApiContext, buildCreatePayload(form));
+		}
+
+		toast.showMessage({
+			title: i18n.baseText(
+				existing
+					? 'settings.gitConnections.toast.updated'
+					: 'settings.gitConnections.toast.created',
+			),
+			type: 'success',
+		});
+		emit('saved', saved.id);
+
+		if (saved.publicKey && saved.publicKey !== existing?.publicKey) {
+			newPublicKey.value = saved.publicKey;
+			step.value = 'key';
+			focusStep();
+		} else {
+			close();
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.gitConnections.toast.error.save'));
@@ -213,13 +220,14 @@ async function submit() {
 		size="medium"
 		:aria-description="ariaDescription"
 		@open-auto-focus="onOpenAutoFocus"
+		@close-auto-focus="onCloseAutoFocus"
 		@update:open="onOpenChange"
 	>
 		<N8nDialogHeader>
 			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 		</N8nDialogHeader>
 
-		<div v-if="step === 'type'" :class="$style.form" data-test-id="git-connections-type-step">
+		<div v-if="step === 'type'" :class="$style.form" data-test-id="git-connection-type-step">
 			<N8nText color="text-base" size="medium">
 				{{ i18n.baseText('settings.gitConnections.dialog.selectType.description') }}
 			</N8nText>
@@ -228,7 +236,7 @@ async function submit() {
 				:class="$style.typeCard"
 				role="button"
 				tabindex="0"
-				data-test-id="git-connections-type-git"
+				data-test-id="git-connection-type-git"
 				@click="selectGit"
 				@keydown.enter="selectGit"
 				@keydown.space.prevent="selectGit"
@@ -250,7 +258,7 @@ async function submit() {
 				<N8nButton
 					type="button"
 					variant="outline"
-					data-test-id="git-connections-type-cancel-button"
+					data-test-id="git-connection-type-cancel-button"
 					@click="close"
 				>
 					{{ i18n.baseText('generic.cancel') }}
@@ -258,21 +266,34 @@ async function submit() {
 			</N8nDialogFooter>
 		</div>
 
-		<div v-else-if="newPublicKey" :class="$style.form" data-test-id="git-connection-key-step">
-			<CopyInput
-				:label="i18n.baseText('settings.gitConnections.form.publicKey.label')"
-				:hint="i18n.baseText('settings.gitConnections.form.publicKey.hint')"
-				:value="newPublicKey"
-				:copy-button-text="i18n.baseText('generic.clickToCopy')"
-			/>
+		<div
+			v-else-if="step === 'key' && newPublicKey"
+			:class="$style.form"
+			data-test-id="git-connection-key-step"
+		>
+			<N8nInputLabel :label="i18n.baseText('settings.gitConnections.publicKey.label')">
+				<N8nCopyInput
+					:value="newPublicKey"
+					:copy-label="i18n.baseText('settings.gitConnections.publicKey.copy')"
+					:copied-label="i18n.baseText('generic.copiedToClipboard')"
+				/>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('settings.gitConnections.publicKey.hint') }}
+				</N8nText>
+			</N8nInputLabel>
 			<N8nDialogFooter>
-				<N8nButton data-test-id="git-connection-done-button" @click="close">
-					{{ i18n.baseText('settings.gitConnections.form.publicKey.done') }}
+				<N8nButton ref="doneButton" data-test-id="git-connection-done-button" @click="close">
+					{{ i18n.baseText('settings.gitConnections.publicKey.done') }}
 				</N8nButton>
 			</N8nDialogFooter>
 		</div>
 
-		<form v-else :class="$style.form" data-test-id="git-connection-dialog" @submit.prevent="submit">
+		<form
+			v-else
+			:class="$style.form"
+			data-test-id="git-connection-form-step"
+			@submit.prevent="submit"
+		>
 			<N8nInputLabel
 				input-name="git-connection-name"
 				:label="i18n.baseText('settings.gitConnections.form.name')"
@@ -282,7 +303,7 @@ async function submit() {
 					id="git-connection-name"
 					ref="nameInput"
 					v-model="form.name"
-					:readonly="isLoading"
+					:disabled="isLoading"
 					data-test-id="git-connection-name-input"
 				/>
 			</N8nInputLabel>
@@ -353,13 +374,16 @@ async function submit() {
 						<N8nOption value="rsa" label="RSA" />
 					</N8nSelect>
 				</N8nInputLabel>
-				<CopyInput
+				<N8nInputLabel
 					v-if="existingPublicKey"
-					:label="i18n.baseText('settings.gitConnections.form.publicKey.label')"
-					:value="existingPublicKey"
-					collapse
-					:copy-button-text="i18n.baseText('generic.clickToCopy')"
-				/>
+					:label="i18n.baseText('settings.gitConnections.publicKey.label')"
+				>
+					<N8nCopyInput
+						:value="existingPublicKey"
+						:copy-label="i18n.baseText('settings.gitConnections.publicKey.copy')"
+						:copied-label="i18n.baseText('generic.copiedToClipboard')"
+					/>
+				</N8nInputLabel>
 			</template>
 
 			<template v-else>
@@ -373,6 +397,9 @@ async function submit() {
 						v-model="form.username"
 						autocomplete="off"
 						:disabled="isLoading"
+						:aria-required="credentialsRequired"
+						:aria-invalid="areCredentialsIncomplete"
+						:aria-describedby="areCredentialsIncomplete ? CREDENTIALS_HINT_ID : undefined"
 						:placeholder="
 							areCredentialsIncomplete
 								? ''
@@ -392,6 +419,9 @@ async function submit() {
 						type="password"
 						autocomplete="new-password"
 						:disabled="isLoading"
+						:aria-required="credentialsRequired"
+						:aria-invalid="areCredentialsIncomplete"
+						:aria-describedby="areCredentialsIncomplete ? CREDENTIALS_HINT_ID : undefined"
 						:placeholder="
 							areCredentialsIncomplete
 								? ''
@@ -400,7 +430,12 @@ async function submit() {
 						data-test-id="git-connection-password-input"
 					/>
 				</N8nInputLabel>
-				<N8nText v-if="areCredentialsIncomplete" size="small" color="text-light">
+				<N8nText
+					v-if="areCredentialsIncomplete"
+					:id="CREDENTIALS_HINT_ID"
+					size="small"
+					color="text-light"
+				>
 					{{ i18n.baseText('settings.gitConnections.form.credentials.required') }}
 				</N8nText>
 			</template>
@@ -434,7 +469,7 @@ async function submit() {
 	cursor: pointer;
 
 	&:hover {
-		background-color: var(--color--background--light-2);
+		background-color: var(--background--hover);
 	}
 
 	&:focus {
