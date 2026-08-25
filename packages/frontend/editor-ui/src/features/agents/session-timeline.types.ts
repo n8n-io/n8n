@@ -9,7 +9,11 @@ export type EventKind =
 	| 'hitl-response';
 
 export type ToolCallOutcome = 'success' | 'error';
-export type HitlRequestType = 'approval' | 'interaction';
+/**
+ * What a suspension is waiting for. `wait` is a workflow tool parked on a Wait
+ * node: nobody is being asked anything, the resume arrives from the workflow.
+ */
+export type HitlRequestType = 'approval' | 'interaction' | 'wait';
 export type HitlResponseStatus = 'approved' | 'declined' | 'responded';
 export type TimelineStatusFilterKey = 'approved' | 'declined' | 'error';
 

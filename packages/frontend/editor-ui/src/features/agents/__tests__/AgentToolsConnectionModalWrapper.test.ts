@@ -601,12 +601,12 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([
 				WORKFLOW,
 				{
-					id: 'wf-wait',
-					name: 'Has Wait',
+					id: 'wf-form',
+					name: 'Has Form',
 					isArchived: false,
 					nodes: [
 						{ type: 'n8n-nodes-base.executeWorkflowTrigger', name: 'When called' },
-						{ type: 'n8n-nodes-base.wait', name: 'Wait' },
+						{ type: 'n8n-nodes-base.form', name: 'Form' },
 					],
 				},
 				{
@@ -621,16 +621,16 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			const items = getItems();
 			const compatible = items.find((i) => i.id === 'workflow:wf-1');
-			const waitDisabled = items.find((i) => i.id === 'workflow-disabled:wf-wait');
+			const formDisabled = items.find((i) => i.id === 'workflow-disabled:wf-form');
 			const noTriggerDisabled = items.find((i) => i.id === 'workflow-disabled:wf-no-trigger');
 
 			// Compatible workflow remains selectable.
 			expect(compatible?.disabled).toBeFalsy();
 
 			// Incompatible workflows are visible but disabled, with a reason.
-			expect(waitDisabled).toBeTruthy();
-			expect(waitDisabled?.disabled).toBe(true);
-			expect(waitDisabled?.disabledReason).toContain("aren't supported as agent tools");
+			expect(formDisabled).toBeTruthy();
+			expect(formDisabled?.disabled).toBe(true);
+			expect(formDisabled?.disabledReason).toContain("aren't supported as agent tools");
 
 			expect(noTriggerDisabled).toBeTruthy();
 			expect(noTriggerDisabled?.disabled).toBe(true);
@@ -639,11 +639,11 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			// Disabled items appear after compatible ones within the category.
 			const workflowItems = items.filter((i) => i.kind === 'workflow');
 			const compatibleIdx = workflowItems.findIndex((i) => i.id === 'workflow:wf-1');
-			const waitIdx = workflowItems.findIndex((i) => i.id === 'workflow-disabled:wf-wait');
+			const formIdx = workflowItems.findIndex((i) => i.id === 'workflow-disabled:wf-form');
 			const noTriggerIdx = workflowItems.findIndex(
 				(i) => i.id === 'workflow-disabled:wf-no-trigger',
 			);
-			expect(compatibleIdx).toBeLessThan(waitIdx);
+			expect(compatibleIdx).toBeLessThan(formIdx);
 			expect(compatibleIdx).toBeLessThan(noTriggerIdx);
 		});
 
@@ -736,7 +736,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				...WORKFLOW,
 				nodes: [
 					{ type: 'n8n-nodes-base.executeWorkflowTrigger', name: 'When called' },
-					{ type: 'n8n-nodes-base.wait', name: 'Wait a bit' },
+					{ type: 'n8n-nodes-base.form', name: 'Ask the user' },
 				],
 			} as unknown as IWorkflowDb);
 
