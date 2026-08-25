@@ -111,7 +111,7 @@ export class DataTableService {
 		const project = await this.projectService.getProjectWithScope(user, projectId, [
 			'dataTable:create',
 		]);
-		if (!project) throw new DataTableAccessDeniedError();
+		if (!project) throw new DataTableAccessDeniedError('create');
 
 		return project.id;
 	}
