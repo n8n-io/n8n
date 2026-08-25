@@ -518,6 +518,8 @@ export interface InstanceAiCredentialService {
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
+	/** Current AI Gateway wallet, or `null` when Connect is off or the fetch failed. */
+	getAiGatewayWallet?(): Promise<{ balance: number } | null>;
 	/** List all credential types supported by n8n Connect on this instance. */
 	listAiGatewayCredentialTypes?(): Promise<string[]>;
 	/** Whether the credential type is an OAuth type whose client the instance

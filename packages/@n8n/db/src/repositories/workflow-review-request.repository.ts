@@ -314,14 +314,14 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			qb.take(options.take);
 		}
 
-		const [{ entities, raw }, count] = await Promise.all([
-			qb.getRawAndEntities<{
-				request_id: string;
-				pinnedWorkflowVersionId: string | null;
-				pinnedWorkflowVersionName: string | null;
-			}>(),
-			qb.getCount(),
-		]);
+		// Sequential, not concurrent: both calls run off the same builder, and each
+		// mutates its shared state while executing.
+		const { entities, raw } = await qb.getRawAndEntities<{
+			request_id: string;
+			pinnedWorkflowVersionId: string | null;
+			pinnedWorkflowVersionName: string | null;
+		}>();
+		const count = await qb.getCount();
 
 		// Raw rows are 1:1 with entities — the (requestId, workflowId) pair is unique —
 		// but key by id instead of index to stay independent of entity deduplication.

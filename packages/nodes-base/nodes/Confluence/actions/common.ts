@@ -5,10 +5,11 @@ import type {
 	INodeParameterResourceLocator,
 	INodeProperties,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
 import { CONFLUENCE_CREDENTIAL_NAME, confluenceApiRequest } from '../transport';
 
+/** The v2 list endpoints' documented max page size, and the max IDs per batched `/pages` request */
 export const PAGE_LIMIT = 250;
 
 /**
@@ -79,6 +80,41 @@ export const pageRLC: INodeProperties = {
 	],
 };
 
+export const labelRLC: INodeProperties = {
+	displayName: 'Label',
+	name: 'label',
+	type: 'resourceLocator',
+	default: { mode: 'list', value: '' },
+	required: true,
+	description: 'The label to operate on',
+	modes: [
+		{
+			displayName: 'From List',
+			name: 'list',
+			type: 'list',
+			typeOptions: {
+				searchListMethod: 'getLabels',
+				searchable: true,
+			},
+		},
+		{
+			displayName: 'By ID',
+			name: 'id',
+			type: 'string',
+			placeholder: 'e.g. 123456',
+			validation: [
+				{
+					type: 'regex',
+					properties: {
+						regex: '^[0-9]+$',
+						errorMessage: 'The label ID must be numeric',
+					},
+				},
+			],
+		},
+	],
+};
+
 export type ConfluenceBodyFormat = 'storage' | 'atlas_doc_format' | 'plainText';
 
 export const bodyFormatOption: INodeProperties = {
@@ -139,10 +175,50 @@ export const spaceRLC: INodeProperties = {
 	],
 };
 
+export const spaceOptionsCollection: INodeProperties = {
+	displayName: 'Options',
+	name: 'options',
+	type: 'collection',
+	placeholder: 'Add Option',
+	default: {},
+	options: [
+		{
+			displayName: 'Description Format',
+			name: 'descriptionFormat',
+			type: 'options',
+			options: [
+				{
+					name: 'Plain',
+					value: 'plain',
+					description: 'The space description as plain text',
+				},
+				{
+					name: 'View',
+					value: 'view',
+					description: 'The space description in view (HTML) format',
+				},
+			],
+			default: 'plain',
+			// The API only populates `description` when `description-format` is sent
+			description:
+				'The format in which to return the space description. Without this option the description is not returned.',
+		},
+	],
+};
+
+/** Builds the `description-format` query fragment from an operation's Options collection. */
+export function spaceDescriptionFormatQs(options: IDataObject): IDataObject {
+	return typeof options.descriptionFormat === 'string' && options.descriptionFormat !== ''
+		? { 'description-format': options.descriptionFormat }
+		: {};
+}
+
 /** `spaceRLC` for operations where the space is optional: the list gets an
  * "All Spaces" reset entry and By ID accepts an empty value. */
 export const optionalSpaceRLC: INodeProperties = {
 	...spaceRLC,
+	description:
+		'Limits page selection and By Title lookups to one space. Leave empty or pick "All Spaces" to search across all spaces.',
 	modes: (spaceRLC.modes ?? []).map((mode) => {
 		if (mode.name === 'list') {
 			return {
@@ -196,6 +272,57 @@ export async function resolveSpaceKey(
 	return space.key;
 }
 
+// Text extraction, not rendering: concatenate ADF text nodes, newline at block boundaries
+const ADF_BLOCK_TYPES = new Set([
+	'blockquote',
+	'bulletList',
+	'codeBlock',
+	'heading',
+	'listItem',
+	'orderedList',
+	'panel',
+	'paragraph',
+	'rule',
+	'table',
+	'tableRow',
+	'taskItem',
+	'taskList',
+]);
+
+function adfToPlainText(node: IDataObject): string {
+	if (node.type === 'text') return typeof node.text === 'string' ? node.text : '';
+	if (node.type === 'hardBreak') return '\n';
+	const content = Array.isArray(node.content) ? (node.content as IDataObject[]) : [];
+	let inner = '';
+	for (const child of content) {
+		inner += adfToPlainText(child);
+		if (node.type === 'tableRow') inner += ' ';
+	}
+	return ADF_BLOCK_TYPES.has(node.type as string) ? `${inner}\n` : inner;
+}
+
+/** Replaces a page's ADF body with plain text extracted from it. No server-side
+ * plain-text format exists, so callers request `atlas_doc_format` and shape here. */
+export function shapeBody(page: IDataObject, bodyFormat: ConfluenceBodyFormat): IDataObject {
+	if (bodyFormat !== 'plainText') return page;
+	const adf = (page.body as IDataObject | undefined)?.atlas_doc_format as IDataObject | undefined;
+	let value = '';
+	if (typeof adf?.value === 'string' && adf.value !== '') {
+		const doc = jsonParse<IDataObject | null>(adf.value, { fallbackValue: null }) ?? {};
+		// The walk can still throw on valid-JSON shapes it can't take (e.g. null nodes);
+		// a page with an unreadable body should yield an empty value, not fail the item
+		try {
+			value = adfToPlainText(doc)
+				.replace(/[ \t]+\n/g, '\n')
+				.replace(/\n{3,}/g, '\n\n')
+				.trim();
+		} catch {
+			value = '';
+		}
+	}
+	return { ...page, body: { plainText: { representation: 'plain_text', value } } };
+}
+
 export type NextPageParam = { key: 'cursor' | 'start'; value: string };
 
 export function extractNextPageParam(response: IDataObject): NextPageParam | undefined {
@@ -229,11 +356,42 @@ export function parsePositiveInt(
 ): number {
 	const value = Number(raw);
 	if (!Number.isFinite(value) || value < 1) {
-		throw new NodeOperationError(this.getNode(), `${label} must be a number of at least 1`, {
+		throw new NodeOperationError(this.getNode(), `${label} must be a finite number of at least 1`, {
 			itemIndex,
 		});
 	}
 	return Math.floor(value);
+}
+
+/** Accumulates `results` across v2 cursor pages until `max` records are collected
+ * (pass Infinity for Return All) or the server stops yielding new cursors. It
+ * deliberately keeps going past an empty page that still carries `_links.next`
+ * (observed from Atlassian; see methods/listSearch.ts) and breaks on any repeated
+ * cursor, which would otherwise loop forever when `max` is Infinity. */
+export async function fetchPaginatedResults(
+	this: IExecuteFunctions,
+	endpoint: string,
+	max: number,
+	qs: IDataObject = {},
+): Promise<IDataObject[]> {
+	const records: IDataObject[] = [];
+	const seenCursors = new Set<string>();
+	let cursor: string | undefined;
+	do {
+		const pageQs: IDataObject = { ...qs, limit: Math.min(max - records.length, PAGE_LIMIT) };
+		if (cursor !== undefined) pageQs.cursor = cursor;
+
+		const response = await confluenceApiRequest.call(this, 'GET', endpoint, {}, pageQs);
+		const results = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
+		records.push.apply(records, results);
+
+		const next = extractNextCursor(response);
+		if (next === undefined || seenCursors.has(next)) break;
+		seenCursors.add(next);
+		cursor = next;
+	} while (records.length < max);
+
+	return records.length > max ? records.slice(0, max) : records;
 }
 
 function asString(value: unknown): string {

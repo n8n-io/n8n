@@ -3,6 +3,8 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import * as attachment from './attachment';
 import * as page from './page';
+import * as search from './search';
+import * as space from './space';
 
 /**
  * Compile-checked contract for operation modules. The router calls
@@ -32,8 +34,14 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 			let responseItems: INodeExecutionData[] | undefined;
 
 			switch (`${resource}:${operation}`) {
+				case 'attachment:delete':
+					responseData = await attachment.delete.execute.call(this, i);
+					break;
 				case 'attachment:getMany':
 					responseItems = await attachment.getMany.execute.call(this, i);
+					break;
+				case 'attachment:upload':
+					responseData = await attachment.upload.execute.call(this, i);
 					break;
 				case 'page:append':
 					responseData = await page.append.execute.call(this, i);
@@ -47,8 +55,23 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'page:get':
 					responseData = await page.get.execute.call(this, i);
 					break;
+				case 'page:getLabels':
+					responseData = await page.getLabels.execute.call(this, i);
+					break;
+				case 'page:getManyByLabel':
+					responseData = await page.getManyByLabel.execute.call(this, i);
+					break;
 				case 'page:update':
 					responseData = await page.update.execute.call(this, i);
+					break;
+				case 'search:query':
+					responseData = await search.query.execute.call(this, i);
+					break;
+				case 'space:get':
+					responseData = await space.get.execute.call(this, i);
+					break;
+				case 'space:getMany':
+					responseData = await space.getMany.execute.call(this, i);
 					break;
 				default:
 					throw new NodeOperationError(

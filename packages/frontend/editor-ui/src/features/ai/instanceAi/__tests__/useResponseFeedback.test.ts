@@ -325,6 +325,20 @@ describe('useResponseFeedback - submitFeedback', () => {
 		);
 	});
 
+	test('scrubs secrets and PII from the feedback text', () => {
+		const { submitFeedback, mockTrack } = setup();
+		submitFeedback('resp-1', {
+			feedback: 'broke for jane.doe@example.com with key sk-ant-api03-' + 'A'.repeat(24),
+		});
+		expect(mockTrack).toHaveBeenCalledWith(
+			'User submitted workflow generation feedback',
+			expect.objectContaining({
+				response_id: 'resp-1',
+				feedback: 'broke for [REDACTED] with key [REDACTED]',
+			}),
+		);
+	});
+
 	test('includes thread_id in telemetry', () => {
 		const { submitFeedback, mockTrack } = setup();
 		submitFeedback('resp-1', { rating: 'up' });
