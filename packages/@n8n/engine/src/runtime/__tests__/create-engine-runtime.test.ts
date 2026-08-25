@@ -69,6 +69,37 @@ describe('createEngineRuntime', () => {
 		expect(stores?.stepStore).toBeDefined();
 	});
 
+	it('builds the external dependencies exactly once', () => {
+		// Three handlers share the result; building twice would give them different
+		// executors and different callbacks.
+		const build = vi.fn().mockReturnValue({});
+
+		createEngineRuntime({
+			dataSource: fakeDataSource(),
+			admittance: new AllowAllAdmittance(),
+			identityVerifier,
+			externalDependencies: build,
+		});
+
+		expect(build).toHaveBeenCalledOnce();
+	});
+
+	it('flushes buffered status updates on stop', async () => {
+		// Nothing has run, so this only proves the publisher is wired to `stop()`
+		// and that a host without a callback still stops cleanly.
+		const statusCallback = vi.fn().mockResolvedValue(undefined);
+		const engine = createEngineRuntime({
+			dataSource: fakeDataSource(),
+			admittance: new AllowAllAdmittance(),
+			identityVerifier,
+			externalDependencies: () => ({ statusCallback }),
+		});
+		engine.start();
+
+		await expect(engine.stop()).resolves.toBeUndefined();
+		expect(statusCallback).not.toHaveBeenCalled();
+	});
+
 	it('starts and stops both workers', async () => {
 		const engine = runtime();
 		engine.start();

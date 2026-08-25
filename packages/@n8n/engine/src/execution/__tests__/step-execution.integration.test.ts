@@ -16,6 +16,8 @@ import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
 import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
 import { createEngineRuntime } from '../../runtime';
+import { noopStatusPublisher } from '../../status';
+import type { StatusCallback, StatusUpdate } from '../../status';
 import type { TriggerOutputs } from '../execution.types';
 import type { StartExecutionResult } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
@@ -58,10 +60,21 @@ describe('step execution (integration)', () => {
 	async function runWorkflow(
 		executor: IStepExecutor,
 		triggerOutputs: TriggerOutputs,
-		{ workflowId = 'wf-1', graph: workflowGraph = graph } = {},
+		{
+			workflowId = 'wf-1',
+			graph: workflowGraph = graph,
+			statusCallback,
+		}: {
+			workflowId?: string;
+			graph?: WorkflowGraph;
+			statusCallback?: StatusCallback;
+		} = {},
 	) {
 		let done!: () => void;
 		const finished = new Promise<void>((resolve) => (done = resolve));
+		// `runtime.stop()` flushes the publisher, so by the time this returns every
+		// update the run produced has been delivered — no polling, no timers.
+		const updates: StatusUpdate[] = [];
 
 		const runtime = createEngineRuntime({
 			dataSource,
@@ -75,7 +88,13 @@ describe('step execution (integration)', () => {
 					done();
 					return recorded;
 				});
-				return { v1StepExecutor: executor };
+				return {
+					v1StepExecutor: executor,
+					statusCallback: async (batch) => {
+						updates.push(...batch);
+						await statusCallback?.(batch);
+					},
+				};
 			},
 		});
 		runtime.start();
@@ -96,7 +115,7 @@ describe('step execution (integration)', () => {
 		const steps = await dataSource
 			.getRepository(WorkflowStepExecution)
 			.find({ where: { executionId } });
-		return { executionId, execution, steps };
+		return { executionId, execution, steps, updates };
 	}
 
 	it('runs a queued step and persists its outputs', async () => {
@@ -109,10 +128,37 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { executionId, execution, steps } = await runWorkflow(executor, [
+		const { executionId, execution, steps, updates } = await runWorkflow(executor, [
 			{ body: { name: 'ada' } },
 		]);
 		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
+
+		// One line for the whole status path: both emit points, causal ordering
+		// across the two workers, batched delivery, and the flush on stop.
+		expect(updates.map(({ type }) => type)).toEqual([
+			'execution:started',
+			'step:started',
+			'step:completed',
+			'execution:completed',
+		]);
+		expect(updates[0]).toEqual({
+			type: 'execution:started',
+			executionId,
+			workflowId: 'wf-1',
+			mode: 'production',
+			at: expect.any(String) as string,
+		});
+		// The ids are the ones a consumer would re-query the data plane with.
+		expect(updates[2]).toEqual({
+			type: 'step:completed',
+			executionId,
+			stepId: step?.id,
+			nodeId: 'node-a',
+			nodeName: 'A',
+			iteration: 0,
+			outputs: [[{ json: { greeting: 'hi' } }]],
+			at: expect.any(String) as string,
+		});
 
 		expect(execution.status).toBe('completed');
 		expect(execution.finishedAt).toBeInstanceOf(Date);
@@ -141,8 +187,15 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { execution, steps } = await runWorkflow(executor, [{}]);
+		const { execution, steps, updates } = await runWorkflow(executor, [{}]);
 		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
+
+		expect(updates.map(({ type }) => type)).toEqual([
+			'execution:started',
+			'step:started',
+			'step:failed',
+			'execution:failed',
+		]);
 
 		// the failure is terminal for the execution too
 		expect(execution.status).toBe('failed');
@@ -155,6 +208,31 @@ describe('step execution (integration)', () => {
 			stack: expect.stringContaining('TypeError: credentials missing') as string,
 		});
 		expect(step?.outputs).toBeNull();
+	});
+
+	it('runs the execution to completion even when every status batch is refused', async () => {
+		// The data plane is the source of truth, so a host that cannot be reached
+		// costs it freshness, never correctness.
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const executor: IStepExecutor = {
+			execute: async () => {
+				await Promise.resolve();
+				return { outputs: [[{ json: { greeting: 'hi' } }]] };
+			},
+		};
+
+		const { execution, steps } = await runWorkflow(executor, [{}], {
+			workflowId: 'wf-refused',
+			statusCallback: async () => {
+				await Promise.reject(new Error('control plane down'));
+			},
+		});
+
+		expect(execution.status).toBe('completed');
+		expect(execution.finishedAt).toBeInstanceOf(Date);
+		expect(steps.find(({ nodeId }) => nodeId === 'node-a')?.outputs).toEqual([
+			[{ json: { greeting: 'hi' } }],
+		]);
 	});
 
 	it('runs a chain of steps, feeding each output forward, and finishes the execution', async () => {
@@ -298,9 +376,13 @@ describe('step execution (integration)', () => {
 		const { executionStore, stepStore } = createStores(dataSource);
 		const execute = vi.fn().mockResolvedValue({ outputs: [[{ json: { n: 1 } }]] });
 		const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
-		const handler = new StepReadyHandler(executionStore, stepStore, orchestrationQueue, {
-			v1StepExecutor: { execute },
-		});
+		const handler = new StepReadyHandler(
+			executionStore,
+			stepStore,
+			orchestrationQueue,
+			{ v1StepExecutor: { execute } },
+			noopStatusPublisher,
+		);
 
 		const { id: executionId } = await executionStore.createExecution({
 			workflowId: 'wf-2',

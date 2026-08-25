@@ -2,11 +2,16 @@ export { createEngineRuntime } from './runtime';
 export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 
 export {
+	ACTION_TOKEN,
+	IDENTITY_TOKEN,
+	InvalidActionTokenError,
 	InvalidIdentityTokenError,
+	mintActionToken,
 	mintIdentityToken,
 	SharedSecretIdentityVerifier,
+	verifyActionToken,
 } from './auth';
-export type { AuthenticatedCaller, IdentityVerifier } from './auth';
+export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
 
 export type {
 	EngineErrorResponse,
@@ -14,6 +19,15 @@ export type {
 	ExecutionStepsResponse,
 	StepDetail,
 } from './server';
+
+// The status publisher and its implementations stay internal: the runtime
+// factory owns the engine's topology, so no host constructs or swaps one.
+export {
+	MAX_STATUS_UPDATES_PER_BATCH,
+	statusUpdateBatchSchema,
+	statusUpdateSchema,
+} from './status';
+export type { StatusCallback, StatusUpdate, StatusUpdateBatch } from './status';
 
 export type { JsonObject, JsonValue } from './common';
 

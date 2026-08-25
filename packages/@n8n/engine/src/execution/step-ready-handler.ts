@@ -9,6 +9,7 @@ import {
 } from '../graph';
 import { runBatchStep } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
+import type { StatusPublisher } from '../status';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
@@ -39,6 +40,7 @@ export class StepReadyHandler {
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly dependencies: ExternalDependencies,
+		private readonly statusPublisher: StatusPublisher,
 	) {}
 
 	async handle(event: StepReadyEvent): Promise<void> {
@@ -53,6 +55,15 @@ export class StepReadyHandler {
 		// this in the future (CAT-2938, CAT-3930).
 		const execution = await this.executionStore.loadExecution(event.executionId);
 		const node = validateStepContext(step, execution);
+
+		// `claimStep` is a CAS on `queued`, so this worker won the `queued ->
+		// running` transition and is the only one that can announce it. Announced
+		// ahead of the guards below on purpose: one rule — announce the transition
+		// you won — and the row genuinely is `running`. A step the execution-status
+		// guard then declines to run announces no outcome, and the consumer
+		// resolves it on the execution's terminal event.
+		this.statusPublisher.publish({ type: 'step:started', ...stepUpdateFields(step, node) });
+
 		// The engine runs a batch step itself, so it has no executor to look up.
 		const executor = node.type === 'batch' ? undefined : this.executorFor(step, node);
 
@@ -92,6 +103,18 @@ export class StepReadyHandler {
 		// whoever holds it now announce theirs. TODO(CAT-2938): reconciliation is the
 		// only thing that can take a step over, and it doesn't exist yet.
 		if (!recorded) return;
+
+		// Announced before the settled event, not after: publishing starts the
+		// orchestration worker's dispatch loop synchronously, so that worker can
+		// reach `execution:completed` before this line would otherwise run, which
+		// would invert causal order within the execution.
+		// Outputs ride along on the one event that has them, so a consumer needs no
+		// read to render what the step produced.
+		this.statusPublisher.publish(
+			run.ok
+				? { type: 'step:completed', ...stepUpdateFields(step, node), outputs: run.outputs }
+				: { type: 'step:failed', ...stepUpdateFields(step, node) },
+		);
 
 		await this.orchestrationQueue.publish({
 			type: 'step:settled',
@@ -293,6 +316,18 @@ function readEdgeValue(
 	}
 	if (row.status !== 'completed') return null;
 	return row.outputs?.[edge.outputIndex] ?? null;
+}
+
+/** The identifiers every step status update carries. */
+function stepUpdateFields(step: StepRecord, node: GraphNode) {
+	return {
+		executionId: step.executionId,
+		stepId: step.id,
+		nodeId: step.nodeId,
+		nodeName: node.name,
+		iteration: step.iteration,
+		at: new Date().toISOString(),
+	};
 }
 
 function toStepError(error: unknown): StepError {

@@ -1,5 +1,6 @@
 import type { ExecutionMode, StepSlots } from '../execution';
 import type { GraphNode } from '../graph';
+import type { StatusCallback } from '../status';
 
 /**
  * Host integration seam — how the engine reaches capabilities it does not own.
@@ -62,8 +63,7 @@ export interface IStepExecutor {
 /**
  * Capabilities the host injects at engine construction time. Standalone mode
  * omits them and falls back to default behaviour; concrete shapes for other
- * hooks (pre-fetch, status callbacks) are introduced with the tickets that
- * first need them.
+ * hooks (pre-fetch) are introduced with the tickets that first need them.
  *
  * Step types that are native to the engine (`wait`, `subworkflow`, `batch`)
  * do not go through this interface.
@@ -71,4 +71,9 @@ export interface IStepExecutor {
 export interface ExternalDependencies {
 	/** Executes `v1-node` steps — supplied by the host in integrated mode. */
 	v1StepExecutor?: IStepExecutor;
+	/**
+	 * Ships batches of lifecycle events to the host. Rejecting reports a failed
+	 * delivery and costs the host freshness only — it never fails a step.
+	 */
+	statusCallback?: StatusCallback;
 }

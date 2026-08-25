@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ExternalDependencies, IStepExecutor } from '../../dependencies';
 import { deriveLoops, type WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
+import type { StatusPublisher, StatusUpdate } from '../../status';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import { stepKeyId, type StepSlots, type StepStatus } from '../execution.types';
 import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
@@ -35,6 +36,22 @@ const graph: WorkflowGraph = {
 		{ from: 'a', to: 'b', outputIndex: 0, inputIndex: 0 },
 	],
 };
+
+/** A publisher fake. Handlers announce into it; tests that care assert on `publish`. */
+function makeStatusPublisher(): StatusPublisher {
+	return { publish: vi.fn(), stop: vi.fn() };
+}
+
+/** `StepReadyHandler` with a throwaway publisher, for the tests that ignore it. */
+function makeHandler(
+	executionStore: ExecutionStore,
+	stepStore: StepStore,
+	queue: WorkQueue<OrchestrationMessage>,
+	dependencies: ExternalDependencies,
+	statusPublisher: StatusPublisher = makeStatusPublisher(),
+): StepReadyHandler {
+	return new StepReadyHandler(executionStore, stepStore, queue, dependencies, statusPublisher);
+}
 
 function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): ExecutionStore {
 	const execution: ExecutionRecord = {
@@ -108,7 +125,7 @@ describe('StepReadyHandler', () => {
 		// a stale payload on the execution record must not be consulted: the
 		// trigger's step row is the one source of its output
 		const executionStore = makeExecutionStore({ triggerOutputs: [{ body: { stale: true } }] });
-		const handler = new StepReadyHandler(executionStore, stepStore, queue, {
+		const handler = makeHandler(executionStore, stepStore, queue, {
 			v1StepExecutor: executor,
 		});
 
@@ -150,7 +167,7 @@ describe('StepReadyHandler', () => {
 					.mockResolvedValue({ [at('a')]: stepRow('a', 'completed', [[{ json: { from: 'a' } }]]) }),
 			},
 		);
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, makeQueue(), {
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
 			v1StepExecutor: executor,
 		});
 
@@ -185,12 +202,9 @@ describe('StepReadyHandler', () => {
 			},
 		);
 		const executor = makeExecutor();
-		const handler = new StepReadyHandler(
-			makeExecutionStore({ graph: diamond }),
-			stepStore,
-			makeQueue(),
-			{ v1StepExecutor: executor },
-		);
+		const handler = makeHandler(makeExecutionStore({ graph: diamond }), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
@@ -225,12 +239,9 @@ describe('StepReadyHandler', () => {
 			},
 		);
 		const executor = makeExecutor();
-		const handler = new StepReadyHandler(
-			makeExecutionStore({ graph: gapped }),
-			stepStore,
-			makeQueue(),
-			{ v1StepExecutor: executor },
-		);
+		const handler = makeHandler(makeExecutionStore({ graph: gapped }), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
@@ -259,12 +270,9 @@ describe('StepReadyHandler', () => {
 			},
 		);
 		const executor = makeExecutor();
-		const handler = new StepReadyHandler(
-			makeExecutionStore({ graph: doubled }),
-			stepStore,
-			makeQueue(),
-			{ v1StepExecutor: executor },
-		);
+		const handler = makeHandler(makeExecutionStore({ graph: doubled }), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
@@ -285,7 +293,7 @@ describe('StepReadyHandler', () => {
 		const stepStore = makeStepStore();
 		const queue = makeQueue();
 		const executor = makeExecutor({ outputs: [[{ json: { taken: true } }], null] });
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
 			v1StepExecutor: executor,
 		});
 
@@ -308,7 +316,7 @@ describe('StepReadyHandler', () => {
 		// successors instead of this step failing
 		const stepStore = makeStepStore();
 		const executor = makeExecutor({ outputs: [] });
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, makeQueue(), {
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
 			v1StepExecutor: executor,
 		});
 
@@ -329,7 +337,7 @@ describe('StepReadyHandler', () => {
 			},
 		);
 		const executor = makeExecutor({ outputs: [null] });
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, makeQueue(), {
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
 			v1StepExecutor: executor,
 		});
 
@@ -354,14 +362,9 @@ describe('StepReadyHandler', () => {
 			},
 		);
 		const executor = makeExecutor();
-		const handler = new StepReadyHandler(
-			makeExecutionStore({ graph: routed }),
-			stepStore,
-			makeQueue(),
-			{
-				v1StepExecutor: executor,
-			},
-		);
+		const handler = makeHandler(makeExecutionStore({ graph: routed }), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
 
 		await handler.handle({ ...event, stepId: 'step-b' });
 
@@ -395,14 +398,9 @@ describe('StepReadyHandler', () => {
 			},
 		);
 		const executor = makeExecutor();
-		const handler = new StepReadyHandler(
-			makeExecutionStore({ graph: merged }),
-			stepStore,
-			makeQueue(),
-			{
-				v1StepExecutor: executor,
-			},
-		);
+		const handler = makeHandler(makeExecutionStore({ graph: merged }), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
@@ -426,7 +424,7 @@ describe('StepReadyHandler', () => {
 		// empty input would mask that
 		const stepStore = makeStepStore({}, { loadStepsByKeys: vi.fn().mockResolvedValue(rows()) });
 		const executor = makeExecutor();
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, makeQueue(), {
+		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
 			v1StepExecutor: executor,
 		});
 
@@ -445,7 +443,7 @@ describe('StepReadyHandler', () => {
 		const queue = makeQueue();
 		const executor = makeExecutor();
 		const executionStore = makeExecutionStore();
-		const handler = new StepReadyHandler(executionStore, stepStore, queue, {
+		const handler = makeHandler(executionStore, stepStore, queue, {
 			v1StepExecutor: executor,
 		});
 
@@ -466,12 +464,9 @@ describe('StepReadyHandler', () => {
 		const stepStore = makeStepStore();
 		const queue = makeQueue();
 		const executor = makeExecutor();
-		const handler = new StepReadyHandler(
-			makeExecutionStore({ status: 'cancelled' }),
-			stepStore,
-			queue,
-			{ v1StepExecutor: executor },
-		);
+		const handler = makeHandler(makeExecutionStore({ status: 'cancelled' }), stepStore, queue, {
+			v1StepExecutor: executor,
+		});
 
 		await handler.handle(event);
 
@@ -485,7 +480,7 @@ describe('StepReadyHandler', () => {
 	it('does not report completion when the status update is not recorded', async () => {
 		const stepStore = makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) });
 		const queue = makeQueue();
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
 			v1StepExecutor: makeExecutor(),
 		});
 
@@ -499,7 +494,7 @@ describe('StepReadyHandler', () => {
 		const stepStore = makeStepStore({ executionId: 'exec-other' });
 		const queue = makeQueue();
 		const executor = makeExecutor();
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
 			v1StepExecutor: executor,
 		});
 
@@ -521,7 +516,7 @@ describe('StepReadyHandler', () => {
 			{ completeStep: vi.fn().mockRejectedValue(new Error('connection reset')) },
 		);
 		const queue = makeQueue();
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
 			v1StepExecutor: makeExecutor(),
 		});
 
@@ -537,7 +532,7 @@ describe('StepReadyHandler', () => {
 		const executor: IStepExecutor = {
 			execute: vi.fn().mockRejectedValue(new TypeError('node blew up')),
 		};
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
 			v1StepExecutor: executor,
 		});
 
@@ -564,7 +559,7 @@ describe('StepReadyHandler', () => {
 		const stepStore = makeStepStore();
 		const queue = makeQueue();
 		const executor: IStepExecutor = { execute: vi.fn().mockRejectedValue('just a string') };
-		const handler = new StepReadyHandler(makeExecutionStore(), stepStore, queue, {
+		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
 			v1StepExecutor: executor,
 		});
 
@@ -611,7 +606,7 @@ describe('StepReadyHandler', () => {
 			const stepStore = steps();
 			const queue = makeQueue();
 			const executor = makeExecutor();
-			const handler = new StepReadyHandler(execution(), stepStore, queue, deps(executor));
+			const handler = makeHandler(execution(), stepStore, queue, deps(executor));
 
 			await expect(handler.handle({ ...event, stepId })).rejects.toMatchObject({
 				name: expected.name,
@@ -669,7 +664,7 @@ describe('StepReadyHandler', () => {
 			const stepStore = steps();
 			const queue = makeQueue();
 			const executor = makeExecutor();
-			const handler = new StepReadyHandler(execution(), stepStore, queue, deps(executor));
+			const handler = makeHandler(execution(), stepStore, queue, deps(executor));
 
 			await expect(handler.handle({ ...event, stepId })).rejects.toMatchObject({
 				name: expected.name,
@@ -683,6 +678,145 @@ describe('StepReadyHandler', () => {
 			expect(queue.publish).not.toHaveBeenCalled();
 		},
 	);
+});
+
+describe('StepReadyHandler status updates', () => {
+	const stepFields = {
+		executionId: 'exec-1',
+		stepId: 'step-a',
+		nodeId: 'a',
+		nodeName: 'A',
+		iteration: 0,
+		at: expect.any(String) as string,
+	};
+
+	it('announces the start and the outcome of a step it ran', async () => {
+		const statusPublisher = makeStatusPublisher();
+		const outputs = [[{ json: { ok: true } }]];
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor({ outputs }) },
+			statusPublisher,
+		);
+
+		await handler.handle(event);
+
+		expect(statusPublisher.publish).toHaveBeenCalledTimes(2);
+		expect(statusPublisher.publish).toHaveBeenNthCalledWith(1, {
+			type: 'step:started',
+			...stepFields,
+		});
+		// outputs ride along, so a consumer needs no read to render them
+		expect(statusPublisher.publish).toHaveBeenNthCalledWith(2, {
+			type: 'step:completed',
+			...stepFields,
+			outputs,
+		});
+	});
+
+	it('announces step:failed when the executor throws', async () => {
+		const statusPublisher = makeStatusPublisher();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: { execute: vi.fn().mockRejectedValue(new Error('boom')) } },
+			statusPublisher,
+		);
+
+		await handler.handle(event);
+
+		expect(statusPublisher.publish).toHaveBeenNthCalledWith(2, {
+			type: 'step:failed',
+			...stepFields,
+		});
+	});
+
+	it('announces the outcome before the settled event', async () => {
+		// The settled event starts the orchestration worker's dispatch loop
+		// synchronously, so announcing after it could invert causal order.
+		const order: string[] = [];
+		const statusPublisher: StatusPublisher = {
+			publish: vi.fn((update: StatusUpdate) => {
+				order.push(update.type);
+			}),
+			stop: vi.fn(),
+		};
+		const queue: WorkQueue<OrchestrationMessage> = {
+			publish: vi.fn(async (message: OrchestrationMessage) => {
+				order.push(`queue:${message.type}`);
+				await Promise.resolve();
+			}),
+			start: vi.fn(),
+			stop: vi.fn(),
+		};
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore(),
+			queue,
+			{ v1StepExecutor: makeExecutor() },
+			statusPublisher,
+		);
+
+		await handler.handle(event);
+
+		expect(order).toEqual(['step:started', 'step:completed', 'queue:step:settled']);
+	});
+
+	it('announces nothing when the step cannot be claimed', async () => {
+		const statusPublisher = makeStatusPublisher();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore({}, { claimStep: vi.fn().mockResolvedValue(null) }),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor() },
+			statusPublisher,
+		);
+
+		await handler.handle(event);
+
+		expect(statusPublisher.publish).not.toHaveBeenCalled();
+	});
+
+	it('announces no outcome it did not record', async () => {
+		const statusPublisher = makeStatusPublisher();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) }),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor() },
+			statusPublisher,
+		);
+
+		await handler.handle(event);
+
+		expect(statusPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'step:started',
+			...stepFields,
+		});
+	});
+
+	it('announces the start but no outcome for a step its execution no longer wants', async () => {
+		// The row genuinely is `running`, so the start is the honest report. The
+		// consumer resolves the step on the execution's terminal event.
+		const statusPublisher = makeStatusPublisher();
+		const handler = makeHandler(
+			makeExecutionStore({ status: 'cancelled' }),
+			makeStepStore(),
+			makeQueue(),
+			{ v1StepExecutor: makeExecutor() },
+			statusPublisher,
+		);
+
+		await handler.handle(event);
+
+		expect(statusPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+			type: 'step:started',
+			...stepFields,
+		});
+	});
 });
 
 describe('StepReadyHandler over loop iterations', () => {
@@ -742,12 +876,9 @@ describe('StepReadyHandler over loop iterations', () => {
 				}),
 			},
 		);
-		const handler = new StepReadyHandler(
-			makeExecutionStore({ graph: loopGraph }),
-			stepStore,
-			makeQueue(),
-			{ v1StepExecutor: executor },
-		);
+		const handler = makeHandler(makeExecutionStore({ graph: loopGraph }), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
 
 		await handler.handle({ ...event, stepId: 'step-x-2' });
 
@@ -789,12 +920,9 @@ describe('StepReadyHandler over loop iterations', () => {
 				}),
 			},
 		);
-		const handler = new StepReadyHandler(
-			makeExecutionStore({ graph: loopGraph }),
-			stepStore,
-			makeQueue(),
-			{ v1StepExecutor: executor },
-		);
+		const handler = makeHandler(makeExecutionStore({ graph: loopGraph }), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
 
 		await handler.handle({ ...event, stepId: 'step-d-0' });
 
@@ -812,12 +940,9 @@ describe('StepReadyHandler over loop iterations', () => {
 			{ id: 'step-d-0', nodeId: 'd', iteration: 0 },
 			{ loadLatestStepSummaries: vi.fn().mockResolvedValue({ B: tipAt(4, [false, true]) }) },
 		);
-		const handler = new StepReadyHandler(
-			makeExecutionStore({ graph: loopGraph }),
-			stepStore,
-			makeQueue(),
-			{ v1StepExecutor: executor },
-		);
+		const handler = makeHandler(makeExecutionStore({ graph: loopGraph }), stepStore, makeQueue(), {
+			v1StepExecutor: executor,
+		});
 
 		await expect(handler.handle({ ...event, stepId: 'step-d-0' })).rejects.toThrow(
 			/across a loop that has not ended/,

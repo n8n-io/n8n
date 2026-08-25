@@ -18,6 +18,7 @@ import {
 	type StepMessage,
 	type WorkQueue,
 } from '../../queue';
+import { noopStatusPublisher } from '../../status';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
@@ -60,8 +61,14 @@ describe('execution start (integration)', () => {
 		const stepQueue = new InMemoryWorkQueue<StepMessage>();
 		const worker = new OrchestrationWorker(
 			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-			new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
+			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue, noopStatusPublisher),
+			new StepSettledHandler(
+				executionStore,
+				stepStore,
+				stepQueue,
+				orchestrationQueue,
+				noopStatusPublisher,
+			),
 		);
 		worker.start();
 		const startExecution = new StartExecutionService(
@@ -115,7 +122,12 @@ describe('execution start (integration)', () => {
 		const { executionStore, stepStore } = stores();
 		const publish = vi.fn();
 		const queue: WorkQueue<OrchestrationMessage> = { publish, start: vi.fn(), stop: vi.fn() };
-		const handler = new ExecutionStartHandler(executionStore, stepStore, queue);
+		const handler = new ExecutionStartHandler(
+			executionStore,
+			stepStore,
+			queue,
+			noopStatusPublisher,
+		);
 
 		const { id: executionId } = await executionStore.createExecution({
 			workflowId: 'wf-2',

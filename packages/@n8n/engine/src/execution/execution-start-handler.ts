@@ -1,6 +1,7 @@
 import { UnexpectedError } from '../common';
 import { findTriggerNode } from '../graph';
 import type { ExecutionEnqueuedEvent, OrchestrationMessage, WorkQueue } from '../queue';
+import type { StatusPublisher } from '../status';
 import type { ExecutionStore } from './execution-store';
 import { DEFAULT_TRIGGER_OUTPUTS } from './execution.types';
 import type { StepStore } from './step-store';
@@ -18,6 +19,7 @@ export class ExecutionStartHandler {
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
+		private readonly statusPublisher: StatusPublisher,
 	) {}
 
 	async handle(event: ExecutionEnqueuedEvent): Promise<void> {
@@ -30,6 +32,20 @@ export class ExecutionStartHandler {
 		if (!claimed) return;
 
 		const execution = await this.executionStore.loadExecution(event.executionId);
+
+		// The claim above is the `queued -> running` transition, so this worker is
+		// the only one that can announce it. Announced after the load rather than
+		// straight after the claim because `workflowId` and `mode` save every
+		// consumer a round trip, and the load only reads. A load that throws leaves
+		// the execution running and unannounced, which reconciliation (CAT-2938)
+		// owns — the stream trades completeness for freshness by design.
+		this.statusPublisher.publish({
+			type: 'execution:started',
+			executionId: execution.id,
+			workflowId: execution.workflowId,
+			mode: execution.mode,
+			at: new Date().toISOString(),
+		});
 
 		const trigger = findTriggerNode(execution.graph);
 		if (!trigger) {

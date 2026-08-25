@@ -18,6 +18,8 @@ import {
 import { InMemoryWorkQueue } from '../queue';
 import type { OrchestrationMessage, StepMessage } from '../queue';
 import { createEngineServer } from '../server';
+import { BatchingStatusPublisher, noopStatusPublisher } from '../status';
+import type { StatusPublisher } from '../status';
 
 export interface EngineRuntimeOptions {
 	/** The data plane database, already initialized and migrated. */
@@ -64,11 +66,24 @@ export function createEngineRuntime({
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 	const stepQueue = new InMemoryWorkQueue<StepMessage>();
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
+	// Hoisted out of the handler arguments: the factory must run exactly once, and
+	// every worker announces its own transitions.
+	const dependencies =
+		externalDependencies?.({ executionStore, stepStore, executionViewStore }) ?? {};
+	const statusPublisher: StatusPublisher = dependencies.statusCallback
+		? new BatchingStatusPublisher(dependencies.statusCallback)
+		: noopStatusPublisher;
 
 	const orchestrationWorker = new OrchestrationWorker(
 		orchestrationQueue,
-		new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-		new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
+		new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue, statusPublisher),
+		new StepSettledHandler(
+			executionStore,
+			stepStore,
+			stepQueue,
+			orchestrationQueue,
+			statusPublisher,
+		),
 	);
 	const stepWorker = new StepWorker(
 		stepQueue,
@@ -76,7 +91,8 @@ export function createEngineRuntime({
 			executionStore,
 			stepStore,
 			orchestrationQueue,
-			externalDependencies?.({ executionStore, stepStore, executionViewStore }) ?? {},
+			dependencies,
+			statusPublisher,
 		),
 	);
 
@@ -99,6 +115,10 @@ export function createEngineRuntime({
 			// only for whatever it is mid-handling; anything queued behind it is
 			// dropped, since the in-memory queues die with the process.
 			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
+			// After the workers are quiet, so every update they emitted is buffered.
+			// Flushed rather than dropped: an execution's last events are the ones a
+			// host is waiting for.
+			await statusPublisher.stop();
 		},
 	};
 }
