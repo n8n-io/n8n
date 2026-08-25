@@ -598,8 +598,37 @@ export class ChatIntegrationService {
 				this.connectionKey(agentId, integration.type, integration.credentialId),
 			)?.chat;
 		}
-		for (const [k, conn] of this.connections) {
-			if (k.startsWith(`${agentId}:`)) return conn.chat;
+		return this.findConnection(agentId)?.chat;
+	}
+
+	/**
+	 * Every main builds its own bridge, so whichever one handles a resume can drive
+	 * the reply. Only ingress connections carry one, hence the predicate.
+	 */
+	getBridge(
+		agentId: string,
+		integrationType: string,
+		credentialId?: string,
+	): AgentChatBridge | undefined {
+		// Pin to the originating credential when the caller knows it: an agent with two
+		// connections on one platform would otherwise reply into the wrong workspace.
+		// No fallback in that case, for the same reason.
+		if (credentialId !== undefined) {
+			return this.connections.get(this.connectionKey(agentId, integrationType, credentialId))
+				?.bridge;
+		}
+		return this.findConnection(agentId, integrationType, (c) => c.bridge !== undefined)?.bridge;
+	}
+
+	/** First live connection for an agent, optionally pinned to one platform. */
+	private findConnection(
+		agentId: string,
+		integrationType?: string,
+		predicate?: (connection: ChatAgentConnection) => boolean,
+	): ChatAgentConnection | undefined {
+		const prefix = integrationType ? `${agentId}:${integrationType}:` : `${agentId}:`;
+		for (const [key, connection] of this.connections) {
+			if (key.startsWith(prefix) && (predicate?.(connection) ?? true)) return connection;
 		}
 		return undefined;
 	}
