@@ -66,6 +66,29 @@ describe('logAiEvent', () => {
 			expect(payload).not.toContain('sk-live-abcdef123456');
 		});
 
+		it('should replace object-valued credential properties instead of restoring them', () => {
+			logAiEvent(mockExecuteFunctions, 'ai-tool-called', {
+				query: { api_key: { nested: 'sk-live-abcdef123456' } },
+				response: { client_secret: ['cs-live-abcdef'] },
+			});
+
+			const payload = mockExecuteFunctions.logAiEvent.mock.calls[0][1];
+			expect(payload).toContain('[redacted]');
+			expect(payload).not.toContain('sk-live-abcdef123456');
+			expect(payload).not.toContain('cs-live-abcdef');
+		});
+
+		it('should sanitize unlabeled credential formats in tool-called events', () => {
+			logAiEvent(mockExecuteFunctions, 'ai-tool-called', {
+				query: 'lookup user',
+				response: 'the run used sk-abc123DEF456ghi789jkl012',
+			});
+
+			const payload = mockExecuteFunctions.logAiEvent.mock.calls[0][1];
+			expect(payload).toContain('[redacted]');
+			expect(payload).not.toContain('sk-abc123DEF456ghi789jkl012');
+		});
+
 		it('should leave other events unsanitized', () => {
 			const data: IDataObject = { response: 'api_key: sk-live-abcdef123456' };
 
