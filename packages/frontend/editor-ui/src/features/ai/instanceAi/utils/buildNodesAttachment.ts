@@ -28,6 +28,7 @@ const setSignature = (set: NodesAttachmentSet) =>
 		.sort()
 		.join('\n');
 
+/** Append incoming sets to existing ones, skipping any whose exact node membership is already attached. */
 export function mergeNodeSets(
 	existing: InstanceAiNodesAttachment['sets'],
 	incoming: InstanceAiNodesAttachment['sets'],
@@ -84,6 +85,7 @@ export function orderSelectionIntoSet(
 	return { nodeNames: order };
 }
 
+/** Find the set's immediate upstream/downstream nodes that sit just outside it, for send-time context. */
 export function resolveSetNeighbors(
 	set: NodeSet,
 	connections: IConnections,
@@ -99,6 +101,7 @@ export function resolveSetNeighbors(
 	return { inputName, outputName };
 }
 
+/** Return the canvas group a multi-node set belongs to, when all its members share exactly one. */
 export function resolveSetCanvasGroup(
 	set: NodeSet,
 	workflow: BuilderWorkflow,
@@ -117,6 +120,11 @@ export function resolveSetCanvasGroup(
 	return group ? { canvasGroupId: group.id, canvasGroupName: group.name } : {};
 }
 
+/**
+ * Turn a raw node selection into one attachment set: resolve ids to names, order
+ * them, cap at the schema limit, and attach neighbor/group context. Returns null
+ * when nothing resolves; `truncated` flags that the cap was hit.
+ */
 export function buildNodesAttachment(
 	workflowId: string,
 	selectedNodeIds: string[],
