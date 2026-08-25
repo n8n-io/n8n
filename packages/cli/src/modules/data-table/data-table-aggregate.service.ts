@@ -20,7 +20,7 @@ export class DataTableAggregateService {
 	async start() {}
 	async shutdown() {}
 
-	async getManyAndCount(user: User, options: Partial<ListDataTableQueryDto>) {
+	async getManyAndCount(user: User, options: ListDataTableQueryDto) {
 		if (hasGlobalScope(user, 'dataTable:listProject')) {
 			return await this.dataTableRepository.getManyAndCount(options);
 		}
