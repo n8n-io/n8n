@@ -14,8 +14,7 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
-import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
+import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 import type {
@@ -61,22 +60,20 @@ function historyVersion(versionId: string) {
 
 describe('WorkflowReviewInboxService.getDetail', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
-	const accessService = mock<WorkflowReviewAccessService>();
+	const authorizationService = mock<WorkflowReviewAuthorizationService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const participantResolver = mock<WorkflowReviewParticipantResolver>();
-	const eligibilityService = mock<WorkflowReviewEligibilityService>();
 	const licenseState = mock<LicenseState>();
 
 	const service = new WorkflowReviewInboxService(
 		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
-		accessService,
+		authorizationService,
 		workflowHistoryService,
 		requestRepository,
 		workflowRepository,
 		participantResolver,
-		eligibilityService,
 	);
 
 	/** The resolver is exercised in its own test; here it only has to answer. */
@@ -88,7 +85,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 	/** The read gate resolved: `readableWorkflowRows` are what the caller may still read. */
 	function mockGate(readableWorkflowRows: WorkflowReviewRequestWorkflowDetailRow[] = []) {
-		accessService.findReadableRequestOrFail.mockResolvedValue({
+		authorizationService.findReadableRequestOrFail.mockResolvedValue({
 			request: reviewRequest(),
 			readableWorkflowRows,
 			pinnedWorkflowId: readableWorkflowRows.at(0)?.workflowId ?? null,
@@ -103,7 +100,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		mockGate();
 		mockParticipants();
 		workflowHistoryService.findVersion.mockResolvedValue(null);
-		eligibilityService.resolveViewerEligibility.mockResolvedValue({
+		authorizationService.resolveViewerEligibility.mockResolvedValue({
 			canDecide: true,
 			decisionIneligibilityReason: null,
 			canComment: true,
@@ -135,14 +132,14 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			licenseState.isWorkflowReviewsLicensed.mockReturnValue(false);
 
 			await expect(service.getDetail(requester, requestId)).rejects.toThrow(ForbiddenError);
-			expect(accessService.findReadableRequestOrFail).not.toHaveBeenCalled();
+			expect(authorizationService.findReadableRequestOrFail).not.toHaveBeenCalled();
 		});
 
 		it('refuses to open a review when an admin has turned reviews off', async () => {
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
 
 			await expect(service.getDetail(requester, requestId)).rejects.toThrow(ForbiddenError);
-			expect(accessService.findReadableRequestOrFail).not.toHaveBeenCalled();
+			expect(authorizationService.findReadableRequestOrFail).not.toHaveBeenCalled();
 		});
 	});
 
@@ -224,7 +221,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		});
 
 		it('tells an author why they cannot decide while still letting them comment', async () => {
-			eligibilityService.resolveViewerEligibility.mockResolvedValue({
+			authorizationService.resolveViewerEligibility.mockResolvedValue({
 				canDecide: false,
 				decisionIneligibilityReason: 'author',
 				canComment: true,
@@ -240,13 +237,13 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		it('checks what the viewer may do against the workflow under review, even one they cannot open', async () => {
 			// The requester keeps their record after losing view access to the covered
 			// workflow — eligibility must still be checked against that pinned row.
-			accessService.findReadableRequestOrFail.mockResolvedValue({
+			authorizationService.findReadableRequestOrFail.mockResolvedValue({
 				request: reviewRequest(),
 				readableWorkflowRows: [],
 				pinnedWorkflowId: workflowId,
 				canReadPinnedWorkflow: false,
 			});
-			eligibilityService.resolveViewerEligibility.mockResolvedValue({
+			authorizationService.resolveViewerEligibility.mockResolvedValue({
 				canDecide: false,
 				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
@@ -254,7 +251,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 			const detail = await service.getDetail(requester, requestId);
 
-			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(requester, {
+			expect(authorizationService.resolveViewerEligibility).toHaveBeenCalledWith(requester, {
 				request: expect.objectContaining({ id: requestId }),
 				readableWorkflowRows: [],
 				pinnedWorkflowId: workflowId,
@@ -272,7 +269,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 			await service.getDetail(requester, requestId);
 
-			expect(eligibilityService.resolveViewerEligibility).toHaveBeenCalledWith(
+			expect(authorizationService.resolveViewerEligibility).toHaveBeenCalledWith(
 				requester,
 				expect.objectContaining({ pinnedWorkflowId: null, canReadPinnedWorkflow: false }),
 			);
@@ -352,7 +349,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		});
 
 		it('uses the frozen baseline on a closed review, not the live published pointer', async () => {
-			accessService.findReadableRequestOrFail.mockResolvedValue({
+			authorizationService.findReadableRequestOrFail.mockResolvedValue({
 				request: reviewRequest({ state: 'closed', decision: 'approved' }),
 				readableWorkflowRows: [
 					{
@@ -379,7 +376,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 
 		it('uses a frozen baseline whatever state accompanies it', async () => {
 			// Only an approval ever writes a baseline, so a frozen one can be trusted alone.
-			accessService.findReadableRequestOrFail.mockResolvedValue({
+			authorizationService.findReadableRequestOrFail.mockResolvedValue({
 				request: reviewRequest({ state: 'open', decision: 'pending' }),
 				readableWorkflowRows: [
 					{
@@ -404,7 +401,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		});
 
 		it('returns no baseline for a closed review when none was captured', async () => {
-			accessService.findReadableRequestOrFail.mockResolvedValue({
+			authorizationService.findReadableRequestOrFail.mockResolvedValue({
 				request: reviewRequest({ state: 'closed', decision: 'approved' }),
 				readableWorkflowRows: [
 					{
@@ -432,7 +429,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			// The request is fetched before its rows, so an approval landing in between
 			// leaves the request looking open. The row's own state has to win: a frozen null
 			// baseline would otherwise read as "still open" and resolve the live version.
-			accessService.findReadableRequestOrFail.mockResolvedValue({
+			authorizationService.findReadableRequestOrFail.mockResolvedValue({
 				request: reviewRequest({ state: 'open', decision: 'pending' }),
 				readableWorkflowRows: [
 					{
@@ -457,7 +454,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		});
 
 		it('returns no baseline for a closed review that was never approved', async () => {
-			accessService.findReadableRequestOrFail.mockResolvedValue({
+			authorizationService.findReadableRequestOrFail.mockResolvedValue({
 				request: reviewRequest({ state: 'closed', decision: 'pending' }),
 				readableWorkflowRows: [
 					{

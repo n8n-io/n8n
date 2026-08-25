@@ -1,3 +1,4 @@
+import type { WorkflowReviewDecisionIneligibilityReason } from '@n8n/api-types';
 import {
 	ProjectRelationRepository,
 	ProjectRepository,
@@ -23,6 +24,8 @@ import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { resolveDecisionCapability } from './workflow-review-decision-policy';
+
 export interface ReadableWorkflowReviewRequest {
 	request: WorkflowReviewRequest;
 	readableWorkflowRows: WorkflowReviewRequestWorkflowDetailRow[];
@@ -30,13 +33,20 @@ export interface ReadableWorkflowReviewRequest {
 	canReadPinnedWorkflow: boolean;
 }
 
+export interface WorkflowReviewViewerEligibility {
+	canDecide: boolean;
+	decisionIneligibilityReason: WorkflowReviewDecisionIneligibilityReason | null;
+	canComment: boolean;
+}
+
 /**
- * The read gate for a single review: whether the caller may see it at all, and which of its
- * covered workflows they may currently read. Every feature hanging off a review passes
- * through here before doing anything else.
+ * Who may do what with a review: who is its admin, who may see it, and what a
+ * viewer may then do. One service because the three answers have to move together
+ * — splitting them is what let them drift apart before. The decision rule itself
+ * is a pure function in `workflow-review-decision-policy`.
  */
 @Service()
-export class WorkflowReviewAccessService {
+export class WorkflowReviewAuthorizationService {
 	constructor(
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly projectService: ProjectService,
@@ -49,24 +59,46 @@ export class WorkflowReviewAccessService {
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 	) {}
 
+	// #region Admin rule
+
 	/**
-	 * Who may see which reviews. Global admins and owners see everything. Project
-	 * admins see everything in their projects, so the decide override never applies
-	 * to a review its holder cannot see. Everyone else sees only reviews they take
-	 * part in, as author or assigned reviewer. Either way they must still be able to
-	 * read one of the workflows the review covers.
-	 *
-	 * Built-in role slugs only, matching the eligibility service's admin override.
+	 * Admins may decide reviews they authored, and see every review in their scope.
+	 * Built-in global and project admin roles only — custom roles never qualify.
+	 */
+	async isAdminForProject(user: User, projectId: string): Promise<boolean> {
+		if (this.isGlobalAdmin(user)) {
+			return true;
+		}
+
+		return (await this.findAdminProjectIds(user)).includes(projectId);
+	}
+
+	private isGlobalAdmin(user: User): boolean {
+		return user.role.slug === GLOBAL_ADMIN_ROLE_SLUG || user.role.slug === GLOBAL_OWNER_ROLE_SLUG;
+	}
+
+	private async findAdminProjectIds(user: User): Promise<string[]> {
+		return await this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, [
+			PROJECT_ADMIN_ROLE_SLUG,
+		]);
+	}
+
+	// #endregion
+
+	// #region Visibility
+
+	/**
+	 * Admins see every review in their scope, so the decide override never applies to
+	 * a review its holder cannot see. Everyone else sees only reviews they take part
+	 * in. Both still need read on one of the workflows the review covers.
 	 */
 	async resolveInboxVisibility(user: User): Promise<InboxVisibility> {
-		if (user.role.slug === GLOBAL_ADMIN_ROLE_SLUG || user.role.slug === GLOBAL_OWNER_ROLE_SLUG) {
+		if (this.isGlobalAdmin(user)) {
 			return { scope: 'all' };
 		}
 
 		const [adminProjectIds, readableProjectIds, readableWorkflowRoles] = await Promise.all([
-			this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, [
-				PROJECT_ADMIN_ROLE_SLUG,
-			]),
+			this.findAdminProjectIds(user),
 			this.resolveReadableProjectIds(user),
 			this.roleService.rolesWithScope('workflow', ['workflow:read']),
 		]);
@@ -81,11 +113,11 @@ export class WorkflowReviewAccessService {
 	}
 
 	/**
-	 * `workflow:read` is the bar for the inbox, and every role granting
-	 * `workflow:publish` grants read too, so publishers are covered.
+	 * `workflow:read` is the bar. Every built-in role with `workflow:publish` grants
+	 * read too; a custom project role could grant publish alone — nothing validates
+	 * that pairing — and its holder would see nothing here, as on the other gates.
 	 *
-	 * A custom global role with read sees every project, so return `null` for those
-	 * callers instead of binding one parameter per project on every inbox query.
+	 * `null` means every project, sparing global-read callers a per-project bind.
 	 */
 	private async resolveReadableProjectIds(user: User): Promise<string[] | null> {
 		if (hasGlobalScope(user, ['workflow:read'], { mode: 'allOf' })) {
@@ -94,19 +126,21 @@ export class WorkflowReviewAccessService {
 
 		const [teamProjectIds, personalProject] = await Promise.all([
 			this.projectService.getProjectIdsWithScope(user, ['workflow:read']),
-			// `getProjectIdsWithScope` covers team projects only, but workflows shared
-			// directly to the caller hang off their personal project.
+			// Team projects only above; directly shared workflows hang off the personal one.
 			this.projectRepository.getPersonalProjectForUser(user.id),
 		]);
 
 		return personalProject ? [...teamProjectIds, personalProject.id] : teamProjectIds;
 	}
 
+	// #endregion
+
+	// #region Read gate
+
 	/**
-	 * Visibility starts from the inbox rule (see {@link resolveInboxVisibility}),
-	 * then narrows per workflow to what the caller can currently read — see
-	 * {@link filterReadableWorkflowRows}. Throws `NotFoundError` rather than a 403
-	 * so a review's existence never leaks.
+	 * The read gate every review feature passes through: may the caller see this
+	 * review, and which of its workflows can they read right now. The inbox rule
+	 * narrowed per workflow. 404 rather than 403, so a review's existence never leaks.
 	 */
 	async findReadableRequestOrFail(
 		user: User,
@@ -125,8 +159,7 @@ export class WorkflowReviewAccessService {
 				request.id,
 			);
 		const readableWorkflowRows = await this.filterReadableWorkflowRows(user, workflowRows);
-		// Nothing left to show once the caller can read none of the covered workflows.
-		// This applies to requesters too: seeing a review means reading what it covers.
+		// Seeing a review means reading what it covers — requesters included.
 		if (workflowRows.length > 0 && readableWorkflowRows.length === 0) {
 			throw new NotFoundError('Could not find review request');
 		}
@@ -145,10 +178,9 @@ export class WorkflowReviewAccessService {
 	}
 
 	/**
-	 * Mirrors the repository's inbox visibility for one review: project admin, or
-	 * takes part in it. The other half of that rule, reading a covered workflow, is
-	 * checked by {@link filterReadableWorkflowRows} in the caller. Keeping both
-	 * halves is what stops a listed row from 404ing when opened.
+	 * The repository's inbox visibility for one review: project admin, or takes part
+	 * in it. Its other half — reading a covered workflow — is the caller's job, and
+	 * keeping both is what stops a listed row from 404ing when opened.
 	 */
 	private async canAccessRequest(user: User, request: WorkflowReviewRequest): Promise<boolean> {
 		const visibility = await this.resolveInboxVisibility(user);
@@ -160,8 +192,7 @@ export class WorkflowReviewAccessService {
 			return true;
 		}
 
-		// No separate requester check: `create` writes the requester's author row in the
-		// same transaction as the review, and nothing ever removes one.
+		// No separate requester check: `create` always writes their author row.
 		const participant = { workflowReviewRequestId: request.id, userId: user.id };
 		const [isAuthor, isReviewer] = await Promise.all([
 			this.workflowReviewRequestAuthorRepository.isAuthor(participant, {}),
@@ -172,10 +203,8 @@ export class WorkflowReviewAccessService {
 	}
 
 	/**
-	 * {@link canAccessRequest} for a batch: which of the given reviews the user may
-	 * open. Same rule — project admin or participant — resolved with one visibility
-	 * lookup and one batched probe per junction table instead of per-request queries.
-	 * The other half of the rule, reading a covered workflow, is the caller's job.
+	 * {@link canAccessRequest} for a batch, resolved with one visibility lookup and
+	 * one probe per junction table instead of per-request queries.
 	 */
 	async resolveOpenableRequestIds(
 		user: User,
@@ -212,13 +241,10 @@ export class WorkflowReviewAccessService {
 	}
 
 	/**
-	 * A review's `projectId` is set once at creation and transferring a workflow does
-	 * not close the review, so the stored project proves nothing about current access.
-	 * Check every row against the workflow's owner today before returning its content.
-	 *
-	 * Requesters are checked too. They could publish when they opened the review but
-	 * may have lost that since, and exempting them would let them read versions
-	 * published after they lost access.
+	 * A transfer does not close the review, so the stored `projectId` proves nothing
+	 * about access today — check each row against the workflow's current owner.
+	 * Requesters included: exempting them would let someone who lost access keep
+	 * reading versions published after they did.
 	 */
 	private async filterReadableWorkflowRows(
 		user: User,
@@ -236,4 +262,56 @@ export class WorkflowReviewAccessService {
 
 		return readable.filter((row): row is WorkflowReviewRequestWorkflowDetailRow => row !== null);
 	}
+
+	// #endregion
+
+	// #region Viewer capabilities
+
+	/**
+	 * What a viewer may do with a review they can see — decide it, comment on it —
+	 * in one pass so the two answers cannot disagree. Reuses the snapshot from
+	 * {@link findReadableRequestOrFail}, whose read probe is the one `decide()` runs.
+	 *
+	 * `canDecide` is advisory: `decide()` re-checks the same rule under its lock.
+	 * It answers who, not when — the lifecycle guard is deliberately not mirrored
+	 * here, so callers gate on `state`/`decision` themselves.
+	 */
+	async resolveViewerEligibility(
+		user: User,
+		access: Pick<ReadableWorkflowReviewRequest, 'request' | 'canReadPinnedWorkflow'>,
+	): Promise<WorkflowReviewViewerEligibility> {
+		const { request, canReadPinnedWorkflow } = access;
+
+		// No participation lookup is worth running without read on the pinned version.
+		if (!canReadPinnedWorkflow) {
+			return {
+				canDecide: false,
+				decisionIneligibilityReason: 'missing_permission',
+				canComment: false,
+			};
+		}
+
+		const participant = { workflowReviewRequestId: request.id, userId: user.id };
+		const [isAuthor, isAssignedReviewer, hasAdminOverride] = await Promise.all([
+			this.workflowReviewRequestAuthorRepository.isAuthor(participant, {}),
+			this.workflowReviewRequestReviewerRepository.isReviewer(participant, {}),
+			this.isAdminForProject(user, request.projectId),
+		]);
+
+		const capability = resolveDecisionCapability({
+			canReadPinnedWorkflow,
+			isAuthor,
+			isAssignedReviewer,
+			hasAdminOverride,
+		});
+
+		return {
+			canDecide: capability.allowed,
+			decisionIneligibilityReason: capability.allowed ? null : capability.reason,
+			// Authors keep commenting on a review they may not decide.
+			canComment: capability.allowed || isAuthor,
+		};
+	}
+
+	// #endregion
 }

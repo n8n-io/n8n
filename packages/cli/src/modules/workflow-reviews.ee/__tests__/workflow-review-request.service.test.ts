@@ -38,9 +38,8 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
+import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 
-import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 const user = mock<User>({ id: 'user-1' });
@@ -75,13 +74,12 @@ describe('WorkflowReviewRequestService', () => {
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const activityRepository = mock<WorkflowReviewActivityRepository>();
 	const userRepository = mock<UserRepository>();
-	const eligibilityService = mock<WorkflowReviewEligibilityService>();
 	const roleService = mock<RoleService>();
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
 	const workflowService = mock<WorkflowService>();
-	const accessService = mock<WorkflowReviewAccessService>();
+	const authorizationService = mock<WorkflowReviewAuthorizationService>();
 	const logger = mock<Logger>();
 	const eventService = mock<EventService>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
@@ -101,18 +99,17 @@ describe('WorkflowReviewRequestService', () => {
 		reviewerRepository,
 		activityRepository,
 		userRepository,
-		eligibilityService,
 		roleService,
 		dbLockService,
 		collaborationService,
 		workflowService,
-		accessService,
+		authorizationService,
 		eventService,
 	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		accessService.resolveOpenableRequestIds.mockResolvedValue(new Set());
+		authorizationService.resolveOpenableRequestIds.mockResolvedValue(new Set());
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		// Feature enabled by default; the disabled path is exercised explicitly.
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
@@ -700,11 +697,11 @@ describe('WorkflowReviewRequestService', () => {
 
 		it('marks rows the caller may open, resolved in one batched access check', async () => {
 			mockLatestReview();
-			accessService.resolveOpenableRequestIds.mockResolvedValue(new Set(['req-1']));
+			authorizationService.resolveOpenableRequestIds.mockResolvedValue(new Set(['req-1']));
 
 			const { data } = await service.list(user, query);
 
-			expect(accessService.resolveOpenableRequestIds).toHaveBeenCalledWith(user, [
+			expect(authorizationService.resolveOpenableRequestIds).toHaveBeenCalledWith(user, [
 				expect.objectContaining({ id: 'req-1', projectId: 'proj-1' }),
 			]);
 			expect(data[0]?.viewerCanOpen).toBe(true);
