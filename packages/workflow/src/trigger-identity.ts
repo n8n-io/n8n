@@ -37,6 +37,13 @@ export interface TriggerIdentityOptions {
 	 * which authenticates the submitter but establishes no identity.
 	 */
 	isFormOAuth2Enabled?: boolean;
+
+	/**
+	 * Whether `N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2` is on for the instance. A
+	 * `n8nUserAuth` chat trigger establishes no identity at runtime, so this option
+	 * is not currently classified on regardless of its value.
+	 */
+	isChatOAuth2Enabled?: boolean;
 }
 
 /** Whether a trigger's parameters declare at least one context establishment hook. */

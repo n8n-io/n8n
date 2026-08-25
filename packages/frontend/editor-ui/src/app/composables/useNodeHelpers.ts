@@ -440,12 +440,15 @@ export function useNodeHelpers() {
 		const resolverId = workflowDocumentStore.value.settings?.credentialResolverId;
 		const isSystemResolver = !resolverId || resolverId === SYSTEM_RESOLVER_ID;
 		const formOAuth2Enabled = isEnvFeatureEnabled.value('FORM_TRIGGER_OAUTH2');
+		// A chat trigger establishes no identity at runtime through `n8nUserAuth`, so
+		// this can't change `hasBlockingTrigger` below regardless of its value.
+		const chatOAuth2Enabled = isEnvFeatureEnabled.value('CHAT_TRIGGER_OAUTH2');
 
 		const hasBlockingTrigger = triggers.some((trigger) => {
 			const { providesN8nIdentity, providesExternalIdentity } = classifyTriggerIdentity(
 				trigger.type,
 				trigger.parameters,
-				{ isFormOAuth2Enabled: formOAuth2Enabled },
+				{ isFormOAuth2Enabled: formOAuth2Enabled, isChatOAuth2Enabled: chatOAuth2Enabled },
 			);
 			return isSystemResolver ? !providesN8nIdentity : !providesExternalIdentity;
 		});
