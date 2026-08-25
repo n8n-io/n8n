@@ -13,6 +13,12 @@
  * unprefixed `user_id` in a sourceContext would replace the real one.
  * `sourceContext` is size-capped at the API boundary, so nothing more is
  * bounded here.
+ *
+ * Values are forwarded as given. Scalars (and homogeneous arrays) stay
+ * filterable; an object arrives JSON-stringified by `toTelemetryAttributeValue`
+ * and can then only be matched whole. Forwarding it beats dropping it — a
+ * provenance field that silently disappears is worse than one you have to read
+ * instead of filter — and every caller today sends plain ids.
  */
 export function threadProvenanceMetadata(threadMetadata: unknown): Record<string, unknown> {
 	if (typeof threadMetadata !== 'object' || threadMetadata === null) return {};
