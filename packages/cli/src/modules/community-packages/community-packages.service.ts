@@ -242,6 +242,15 @@ export class CommunityPackagesService {
 		return null;
 	}
 
+	/** Reads the version a package actually has on disk, or `null` if absent or unreadable. */
+	private async readInstalledPackageVersion(packageName: string): Promise<string | null> {
+		const packageJsonPath = `${this.resolvePackageDirectory(packageName)}/package.json`;
+		const content = await readFile(packageJsonPath, 'utf-8').catch(() => null);
+		if (content === null) return null;
+
+		return jsonParse<{ version: string } | null>(content, { fallbackValue: null })?.version ?? null;
+	}
+
 	/**
 	 * Rebuilds the ledger from the database, the source of truth for what is installed.
 	 * Writing an empty `dependencies` instead would leave `npm outdated` with nothing
@@ -516,16 +525,19 @@ export class CommunityPackagesService {
 						});
 					}
 				}
+				// Publish the resolved version, not the requested specifier (e.g. `latest`),
+				// so peers install the exact version this instance just persisted.
+				const { installedVersion } = installedPackage;
 				void this.publisher
 					.publishCommand({
 						command: isUpdate ? 'community-package-update' : 'community-package-install',
-						payload: { packageName, packageVersion },
+						payload: { packageName, packageVersion: installedVersion },
 					})
 					.catch((error) => {
 						this.logger.warn('Failed to publish community package install/update event', {
 							error: ensureError(error),
 							packageName,
-							packageVersion,
+							packageVersion: installedVersion,
 						});
 					});
 				await this.loadNodesAndCredentials.postProcessLoaders();
@@ -575,6 +587,14 @@ export class CommunityPackagesService {
 
 	private async installOrUpdateNpmPackage(packageName: string, packageVersion: string) {
 		return await this.packageMutex(async () => {
+			const onDiskVersion = await this.readInstalledPackageVersion(packageName);
+			if (onDiskVersion === packageVersion && this.loadNodesAndCredentials.loaders[packageName]) {
+				this.logger.debug(
+					`Community package ${packageName} already at ${packageVersion}, skipping`,
+				);
+				return;
+			}
+
 			const authToken = this.getNpmAuthToken();
 			await this.downloadPackage(packageName, packageVersion, authToken);
 			await this.loadNodesAndCredentials.unloadPackage(packageName);

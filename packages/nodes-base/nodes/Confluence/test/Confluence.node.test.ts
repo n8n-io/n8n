@@ -17,13 +17,17 @@ describe('Confluence Node', () => {
 		expect(node.description.usableAsTool).toBeUndefined();
 	});
 
-	it('should expose the page and search resources with their operations', () => {
+	it('should expose the attachment, page and search resources with their operations', () => {
 		const resource = node.description.properties.find((p) => p.name === 'resource');
 		expect(resource?.options).toEqual([
+			expect.objectContaining({ value: 'attachment' }),
 			expect.objectContaining({ value: 'page' }),
 			expect.objectContaining({ value: 'search' }),
 		]);
 
+		expect(operationOptions('attachment')).toEqual([
+			expect.objectContaining({ value: 'getMany' }),
+		]);
 		expect(operationOptions('page')).toEqual([
 			expect.objectContaining({ value: 'append' }),
 			expect.objectContaining({ value: 'create' }),

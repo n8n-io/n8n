@@ -58,6 +58,7 @@ export {
 	PollerStateRepository,
 	type PollerCursor,
 	type PollLeaseFence,
+	type PollerFailureState,
 } from './poller-state.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';

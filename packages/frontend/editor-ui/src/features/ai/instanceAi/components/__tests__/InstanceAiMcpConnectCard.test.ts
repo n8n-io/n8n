@@ -277,7 +277,7 @@ describe('InstanceAiMcpConnectCard', () => {
 
 		await fireEvent.click(getByTestId('instance-ai-mcp-connect-browse-all'));
 
-		expect(telemetryMock.trackToolsListOpened).toHaveBeenCalled();
+		expect(telemetryMock.trackToolsListOpened).toHaveBeenCalledWith('mcp_connect_card');
 		expect(uiStoreMock.openModal).toHaveBeenCalledWith(INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY);
 	});
 
@@ -472,7 +472,7 @@ describe('InstanceAiMcpConnectCard', () => {
 
 			await fireEvent.click(getByText('Brave Search'));
 
-			expect(telemetryMock.trackSettingsOpened).toHaveBeenCalledWith('brave');
+			expect(telemetryMock.trackSettingsOpened).toHaveBeenCalledWith('brave', 'mcp_connect_card');
 			expect(uiStoreMock.openModalWithData).toHaveBeenCalledWith({
 				name: INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 				data: { connectionId: 'conn-1' },

@@ -211,7 +211,7 @@ jobs:
 
       - name: Build and push n8n -pc Docker image
         id: build-n8n-pc
-        if: needs.determine-build-context.outputs.push_enabled == 'true'
+        if: needs.determine-build-context.outputs.push_enabled == 'true' && steps.determine-tags.outputs.n8n_pc_tags != ''
         uses: useblacksmith/build-push-action@30c71162f16ea2c27c3e21523255d209b8b538c1 # v2
         with:
           context: .
@@ -368,6 +368,7 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DATE_TAG: ${{ inputs.date_tag }}
           SHORT_SHA: ${{ needs.determine-build-context.outputs.short_sha }}
+          N8N_PC_MANIFEST_TAG: ${{ needs.build-and-push-docker.outputs.n8n_pc_primary_ghcr_manifest_tag }}
         run: |
           VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
           DOCKER_BASE="$DOCKER_USERNAME"
@@ -375,10 +376,12 @@ jobs:
           # Create manifests for each image type
           declare -A images=(
             ["n8n"]="${VERSION}"
-            ["n8n-pc"]="${VERSION}-pc"
             ["runners"]="${VERSION}"
             ["runners-distroless"]="${VERSION}-distroless"
           )
+          if [[ -n "$N8N_PC_MANIFEST_TAG" ]]; then
+            images["n8n-pc"]="${VERSION}-pc"
+          fi
 
           for image in "${!images[@]}"; do
             TAG_SUFFIX="${images[$image]}"
@@ -674,6 +677,7 @@ jobs:
     needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
     if: |
       success() &&
+      needs.build-and-push-docker.outputs.n8n_pc_primary_ghcr_manifest_tag != '' &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
        needs.determine-build-context.outputs.release_type == 'nightly' ||
        needs.determine-build-context.outputs.release_type == 'rc')

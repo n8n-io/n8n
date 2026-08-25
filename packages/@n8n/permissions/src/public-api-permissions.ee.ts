@@ -19,6 +19,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'gitConnection:delete',
 	'gitConnection:list',
 	'gitConnection:clone',
+	'gitConnection:push',
 	'gitConnection:manageProjects',
 	'securityAudit:generate',
 	'securitySettings:manage',
@@ -100,6 +101,7 @@ export const OWNER_API_KEY_SCOPES: ApiKeyScope[] = [
 	'role:list',
 	'role:read',
 	'roleMappingRule:create',
+	'roleMappingRule:delete',
 	'roleMappingRule:list',
 	'roleMappingRule:update',
 ];

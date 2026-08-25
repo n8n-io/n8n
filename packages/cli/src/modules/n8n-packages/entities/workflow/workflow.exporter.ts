@@ -88,8 +88,11 @@ export class WorkflowExporter {
 				includeTags: request.includeTags,
 			});
 
-			request.writer.writeDirectory(target);
-			request.writer.writeFile(`${target}/workflow.json`, JSON.stringify(serialized, null, '\t'));
+			await request.writer.writeDirectory(target);
+			await request.writer.writeFile(
+				`${target}/workflow.json`,
+				JSON.stringify(serialized, null, '\t'),
+			);
 
 			entries.push({
 				id: workflow.id,
