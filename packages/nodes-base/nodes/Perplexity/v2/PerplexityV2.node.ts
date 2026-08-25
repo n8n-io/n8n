@@ -58,13 +58,13 @@ export class PerplexityV2 implements INodeType {
 							name: 'Agent',
 							value: 'agent',
 							description:
-								'Recommended. Create responses using the Agent API with third-party models, presets, tools, and structured outputs',
+								'Recommended. Create responses using the Agent API with third-party models, presets, tools, and structured outputs.',
 						},
 						{
 							name: 'Chat',
 							value: 'chat',
 							description:
-								'Send messages using Sonar models with built-in web search. Sonar service ends 2026-09-27; switch to the Agent resource',
+								'Send messages using Sonar models with built-in web search. Sonar service ends 2026-09-27; switch to the Agent resource.',
 						},
 						{
 							name: 'Embedding',
