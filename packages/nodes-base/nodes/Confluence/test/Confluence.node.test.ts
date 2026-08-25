@@ -17,12 +17,13 @@ describe('Confluence Node', () => {
 		expect(node.description.usableAsTool).toBeUndefined();
 	});
 
-	it('should expose the attachment, page and search resources with their operations', () => {
+	it('should expose the attachment, page, search and space resources with their operations', () => {
 		const resource = node.description.properties.find((p) => p.name === 'resource');
 		expect(resource?.options).toEqual([
 			expect.objectContaining({ value: 'attachment' }),
 			expect.objectContaining({ value: 'page' }),
 			expect.objectContaining({ value: 'search' }),
+			expect.objectContaining({ value: 'space' }),
 		]);
 
 		expect(operationOptions('attachment')).toEqual([expect.objectContaining({ value: 'getMany' })]);
@@ -37,6 +38,10 @@ describe('Confluence Node', () => {
 			expect.objectContaining({ value: 'update' }),
 		]);
 		expect(operationOptions('search')).toEqual([expect.objectContaining({ value: 'query' })]);
+		expect(operationOptions('space')).toEqual([
+			expect.objectContaining({ value: 'get' }),
+			expect.objectContaining({ value: 'getMany' }),
+		]);
 	});
 
 	it('should reference the confluenceCloudOAuth2Api credential by name', () => {

@@ -191,6 +191,55 @@ describe('Confluence router', () => {
 		]);
 	});
 
+	it('dispatches space:get and returns the fetched space', async () => {
+		apiRequest.mockResolvedValue({ id: '98432', key: 'NQK', name: 'Docs' });
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'space',
+				operation: 'get',
+				space: { mode: 'id', value: '98432' },
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces/98432', {}, {});
+		expect(result).toEqual([
+			[{ json: { id: '98432', key: 'NQK', name: 'Docs' }, pairedItem: { item: 0 } }],
+		]);
+	});
+
+	it('dispatches space:getMany and fans the spaces out into one item each', async () => {
+		apiRequest.mockResolvedValue({ results: [{ id: '1' }, { id: '2' }] });
+
+		const result = await router.call(
+			mockExecuteCtx({ resource: 'space', operation: 'getMany', returnAll: false, limit: 50 }),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces', {}, { limit: 50 });
+		expect(result).toEqual([
+			[
+				{ json: { id: '1' }, pairedItem: { item: 0 } },
+				{ json: { id: '2' }, pairedItem: { item: 0 } },
+			],
+		]);
+	});
+
+	it('emits an error item for a failing space operation when continue-on-fail is on', async () => {
+		const ctx = mockExecuteCtx(
+			{ resource: 'space', operation: 'get', space: { mode: 'id', value: '1' } },
+			2,
+		);
+		ctx.continueOnFail.mockReturnValue(true);
+		apiRequest.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce({ id: '1' });
+
+		expect(await router.call(ctx)).toEqual([
+			[
+				{ json: { error: 'boom' }, pairedItem: { item: 0 } },
+				{ json: { id: '1' }, pairedItem: { item: 1 } },
+			],
+		]);
+	});
+
 	it.each(['update', 'append'])('dispatches page:%s', async (operation) => {
 		apiRequest
 			.mockResolvedValueOnce({
