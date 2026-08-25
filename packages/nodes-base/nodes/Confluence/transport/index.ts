@@ -177,9 +177,12 @@ export async function confluenceApiRequestBinary(
 }
 
 /**
- * Posts a multipart body (e.g. a file upload) through the gateway. No `json: true`
- * and no explicit Content-Type: `form-data` sets its own multipart boundary, and an
- * explicit header would clobber it.
+ * Uploads a multipart body (e.g. a file) through the gateway. PUT, not POST:
+ * the same endpoint's POST is create-only and 400s on a filename that already
+ * exists on the page, while PUT upserts (creates if new, new version if the
+ * filename matches) so the delete+upload replace-a-file story becomes a single
+ * call. No `json: true` and no explicit Content-Type: `form-data` sets its own
+ * multipart boundary, and an explicit header would clobber it.
  */
 export async function confluenceApiRequestUpload(
 	this: IExecuteFunctions,
@@ -202,7 +205,7 @@ export async function confluenceApiRequestUpload(
 	);
 
 	const options: IHttpRequestOptions = {
-		method: 'POST',
+		method: 'PUT',
 		url: `${getAtlassianApiBaseUrl('confluence', cloudId)}${endpoint}`,
 		body: formData,
 		// Bypasses XSRF checks on this v1 endpoint; without it the gateway answers

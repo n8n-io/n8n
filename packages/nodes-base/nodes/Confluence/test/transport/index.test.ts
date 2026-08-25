@@ -374,7 +374,7 @@ describe('confluenceApiRequestUpload', () => {
 		ctx.getCredentials.mockResolvedValue({ domain: 'https://example.atlassian.net/wiki' });
 	});
 
-	it('posts the multipart body with the XSRF-bypass header, no json flag', async () => {
+	it('PUTs the multipart body with the XSRF-bypass header, no json flag', async () => {
 		const formData = new FormData();
 		formData.append('file', Buffer.from('bytes'), { filename: 'a.txt' });
 		mockHttpRequestWithAuthentication
@@ -391,7 +391,9 @@ describe('confluenceApiRequestUpload', () => {
 			2,
 			'confluenceCloudOAuth2Api',
 			expect.objectContaining({
-				method: 'POST',
+				// PUT, not POST: the same endpoint's POST is create-only and 400s on
+				// a filename that already exists on the page, PUT upserts
+				method: 'PUT',
 				url: 'https://api.atlassian.com/ex/confluence/cloud-1/wiki/rest/api/content/9/child/attachment',
 				body: formData,
 				headers: { 'X-Atlassian-Token': 'nocheck' },
