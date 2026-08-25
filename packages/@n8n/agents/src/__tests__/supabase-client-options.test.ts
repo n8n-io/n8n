@@ -1,34 +1,32 @@
-vi.mock('@supabase/supabase-js', () => ({
-	createClient: vi.fn(() => ({
-		from: vi.fn(() => ({
-			upsert: vi.fn().mockResolvedValue({ error: null }),
-		})),
-	})),
-}));
-
-import { createClient } from '@supabase/supabase-js';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { SupabaseVectorStore } from '../vector-stores/supabase';
 
-const serverSideAuthOptions = {
-	auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+type AuthInternals = {
+	autoRefreshTicker: NodeJS.Timeout | null;
+	initialize: () => Promise<unknown>;
 };
 
+function getAuthInternals(client: { auth: object }): AuthInternals {
+	return client.auth as AuthInternals;
+}
+
 describe('SupabaseVectorStore client options', () => {
-	it('creates the client with server-side auth options', async () => {
+	it('does not arm a 30s token-refresh ticker', async () => {
 		const store = new SupabaseVectorStore('test-store', {
 			url: 'https://example.supabase.co',
 			apiKey: 'service-role-key',
 			tableName: 'docs',
 		});
 
-		await store.upsert([{ id: '1', vector: [1], content: 'x', metadata: {} }]);
+		const client = await (
+			store as unknown as {
+				getClient(): Promise<{ auth: object }>;
+			}
+		).getClient();
 
-		expect(createClient).toHaveBeenCalledWith(
-			'https://example.supabase.co',
-			'service-role-key',
-			serverSideAuthOptions,
-		);
+		await getAuthInternals(client).initialize();
+
+		expect(getAuthInternals(client).autoRefreshTicker).toBeNull();
 	});
 });
