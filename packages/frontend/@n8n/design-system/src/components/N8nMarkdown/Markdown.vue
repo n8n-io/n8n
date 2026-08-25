@@ -8,6 +8,7 @@ import { computed, ref } from 'vue';
 import type { IWhiteList } from 'xss';
 import xss from 'xss';
 
+import type { TaskListsConfig } from './taskLists';
 import { markdownYoutubeEmbed, YOUTUBE_EMBED_SRC_REGEX, type YoutubeEmbedConfig } from './youtube';
 import { toggleCheckbox, serializeAttr } from '../../utils/markdown';
 import N8nLoading from '../N8nLoading';
@@ -20,7 +21,7 @@ interface IImage {
 interface Options {
 	markdown: MarkdownOptions;
 	linkAttributes: markdownLink.Config;
-	tasklists: markdownTaskLists.Config;
+	tasklists: TaskListsConfig;
 	youtube: YoutubeEmbedConfig;
 }
 
