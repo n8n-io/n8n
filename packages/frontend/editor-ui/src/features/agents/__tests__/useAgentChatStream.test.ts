@@ -1,6 +1,7 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { ref, nextTick } from 'vue';
+import { ref, nextTick, effectScope } from 'vue';
+import { flushPromises } from '@vue/test-utils';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, type AgentSseEvent } from '@n8n/api-types';
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -18,6 +19,22 @@ vi.mock('@n8n/composables/useToast', () => ({
 const getChatMessagesMock = vi.fn();
 const getTestChatMessagesMock = vi.fn();
 const cancelAgentChatRunMock = vi.fn();
+
+const pushListeners: Array<(event: unknown) => void> = [];
+const pushConnectMock = vi.fn();
+
+vi.mock('@/app/stores/pushConnection.store', () => ({
+	usePushConnectionStore: () => ({
+		pushConnect: pushConnectMock,
+		addEventListener: (handler: (event: unknown) => void) => {
+			pushListeners.push(handler);
+			return () => {
+				const index = pushListeners.indexOf(handler);
+				if (index >= 0) pushListeners.splice(index, 1);
+			};
+		},
+	}),
+}));
 
 vi.mock('../composables/useAgentApi', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('../composables/useAgentApi')>();
@@ -360,6 +377,116 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 				}),
 			}),
 		);
+	});
+
+	// An abandoned waiting card from an earlier turn must not become the steering
+	// target: cancelling it would answer the wrong tool call and leave the
+	// question the user is actually looking at open.
+	it('steers the current turn question, not a waiting card left open earlier', async () => {
+		const waitTurn = makeSseResponse([
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-wait',
+				toolName: 'long_wait_workflow',
+				input: {},
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-wait',
+					runId: 'run-wait',
+					toolName: 'long_wait_workflow',
+					input: {
+						type: 'workflow_wait',
+						title: 'Waiting on "Long wait"',
+						components: [{ type: 'button', label: 'Check for the result', value: 'continue' }],
+					},
+				},
+			},
+		]);
+		const questionTurn = makeSseResponse([
+			{
+				type: 'tool-call',
+				toolCallId: 'tc-question',
+				toolName: N8N_CHAT_ACTION_TOOL_NAME,
+				input: {
+					action: 'respond',
+					input: {
+						message: {
+							card: { components: [{ type: 'button', label: 'Continue', value: 'continue' }] },
+						},
+					},
+				},
+			},
+			{
+				type: 'tool-call-suspended',
+				payload: {
+					toolCallId: 'tc-question',
+					runId: 'run-question',
+					toolName: N8N_CHAT_ACTION_TOOL_NAME,
+					input: { type: 'integration_action' },
+				},
+			},
+		]);
+		const fetchMock = vi
+			.fn()
+			.mockResolvedValueOnce(waitTurn)
+			.mockResolvedValueOnce(questionTurn)
+			.mockResolvedValueOnce(makeSseResponse([{ type: 'done' }]));
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('start a long wait');
+		await hook.sendMessage('ask me a question');
+		await hook.cancelAndSteer('take another approach');
+
+		expect(fetchMock).toHaveBeenNthCalledWith(
+			3,
+			'http://localhost:5678/projects/p1/agents/v2/a1/chat/resume',
+			expect.objectContaining({
+				body: expect.stringContaining('"toolCallId":"tc-question"'),
+			}),
+		);
+		expect(fetchMock.mock.calls[2][1].body).not.toContain('tc-wait');
+	});
+
+	// Only the workflow, the card's own button, or Stop may end a wait. Steering it
+	// would abandon the run and leave the sub-workflow finishing into nothing.
+	it('refuses to steer a waiting card even when it is the current turn', async () => {
+		const fetchMock = vi.fn().mockResolvedValueOnce(
+			makeSseResponse([
+				{
+					type: 'tool-call',
+					toolCallId: 'tc-wait',
+					toolName: 'long_wait_workflow',
+					input: {},
+				},
+				{
+					type: 'tool-call-suspended',
+					payload: {
+						toolCallId: 'tc-wait',
+						runId: 'run-wait',
+						toolName: 'long_wait_workflow',
+						input: {
+							type: 'workflow_wait',
+							title: 'Waiting on "Long wait"',
+							components: [{ type: 'button', label: 'Check for the result', value: 'continue' }],
+						},
+					},
+				},
+			]),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('start a long wait');
+		await hook.cancelAndSteer('never mind, do something else');
+
+		// Only the original turn was sent — no resume, so the wait stays parked.
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		const assistant = hook.messages.value[hook.messages.value.length - 1];
+		expect(assistant.interactive?.resolvedAt).toBeUndefined();
+		expect(assistant.interactive?.cancelled).toBeUndefined();
 	});
 
 	it('cancels an idle suspended interaction and settles its UI state', async () => {
@@ -2266,5 +2393,138 @@ describe('useAgentChatStream — stuck/desync recovery', () => {
 		expect(hook.messages.value[1].toolCalls?.[0].state).toBe('cancelled');
 		// No backend cancel call — there is no runId/suspension to cancel.
 		expect(cancelAgentChatRunMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('useAgentChatStream — transcript push', () => {
+	/** The subscription is eager, so an effect scope is enough — no mount needed. */
+	function scopedHook(continueSessionId?: string) {
+		const scope = effectScope();
+		const hook = scope.run(() => buildHook(continueSessionId))!;
+		return { hook, dispose: () => scope.stop() };
+	}
+
+	const update = (overrides: Record<string, unknown> = {}) => ({
+		type: 'agentExecutionUpdated',
+		data: {
+			projectId: 'p1',
+			agentId: 'a1',
+			threadId: 'thread-1',
+			executionId: 'exec-1',
+			...overrides,
+		},
+	});
+
+	const emitPush = (event: unknown) => {
+		for (const listener of [...pushListeners]) listener(event);
+	};
+
+	beforeEach(() => {
+		pushListeners.length = 0;
+		pushConnectMock.mockClear();
+		getTestChatMessagesMock.mockReset();
+		getChatMessagesMock.mockReset();
+		getTestChatMessagesMock.mockResolvedValue({ messages: [], openSuspensions: [] });
+		getChatMessagesMock.mockResolvedValue({ messages: [], openSuspensions: [] });
+	});
+
+	// The turn was recorded server-side with no stream attached — re-reading the
+	// transcript is the only way the answer reaches the open chat.
+	it('re-reads the transcript when this agent’s thread is updated', async () => {
+		const { dispose } = scopedHook();
+
+		emitPush(update());
+		await flushPromises();
+
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(1);
+		dispose();
+	});
+
+	it.each([
+		['another agent', { agentId: 'other-agent' }],
+		['another project', { projectId: 'other-project' }],
+	])('ignores an update for %s', async (_label, overrides) => {
+		const { dispose } = scopedHook();
+
+		emitPush(update(overrides));
+		await flushPromises();
+
+		expect(getTestChatMessagesMock).not.toHaveBeenCalled();
+		dispose();
+	});
+
+	it('ignores unrelated push messages', async () => {
+		const { dispose } = scopedHook();
+
+		emitPush({ type: 'executionFinished', data: { projectId: 'p1', agentId: 'a1' } });
+		await flushPromises();
+
+		expect(getTestChatMessagesMock).not.toHaveBeenCalled();
+		dispose();
+	});
+
+	// A continued session shows one thread, so an update to a sibling is not it.
+	it('ignores an update for a different thread of a continued session', async () => {
+		const { dispose } = scopedHook('thread-1');
+		getChatMessagesMock.mockClear();
+
+		emitPush(update({ threadId: 'thread-2' }));
+		await flushPromises();
+
+		expect(getChatMessagesMock).not.toHaveBeenCalled();
+
+		emitPush(update({ threadId: 'thread-1' }));
+		await flushPromises();
+
+		expect(getChatMessagesMock).toHaveBeenCalledTimes(1);
+		dispose();
+	});
+
+	// Updates are broadcast per record and again on finalize, for every surface of
+	// the agent, so bursts are the norm rather than the exception.
+	it('coalesces a burst of updates into one trailing refetch', async () => {
+		const { dispose } = scopedHook();
+
+		emitPush(update());
+		emitPush(update());
+		emitPush(update());
+		await flushPromises();
+
+		expect(getTestChatMessagesMock).toHaveBeenCalledTimes(2);
+		dispose();
+	});
+
+	// The send may start while the refetch is in flight, so the guard has to hold
+	// after the fetch too — otherwise stale history overwrites the live transcript.
+	it('drops a background refetch that lands after a send has started', async () => {
+		const { hook, dispose } = scopedHook();
+		let release!: () => void;
+		getTestChatMessagesMock.mockReturnValueOnce(
+			new Promise((resolve) => {
+				release = () =>
+					resolve({ messages: [{ role: 'user', content: 'stale' }], openSuspensions: [] });
+			}),
+		);
+
+		emitPush(update());
+		await flushPromises();
+
+		// A send begins before the refetch resolves.
+		hook.messages.value = [{ role: 'user', content: 'live' }] as never;
+		(hook.isStreaming as { value: boolean }).value = true;
+		release();
+		await flushPromises();
+
+		expect(hook.messages.value).toEqual([{ role: 'user', content: 'live' }]);
+		dispose();
+	});
+
+	it('stops listening once the chat is torn down', () => {
+		const { dispose } = scopedHook();
+		expect(pushListeners).toHaveLength(1);
+
+		dispose();
+
+		expect(pushListeners).toHaveLength(0);
 	});
 });

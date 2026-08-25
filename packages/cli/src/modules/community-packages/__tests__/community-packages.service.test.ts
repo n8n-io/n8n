@@ -379,7 +379,7 @@ describe('CommunityPackagesService', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
 
-			// First check exists (pre-download backup); later checks don't (already backed up).
+			// The one existence check is the pre-download backup, and it finds a directory.
 			vi.mocked(access).mockResolvedValueOnce(undefined).mockRejectedValue(new Error('ENOENT'));
 
 			vi.mocked(execFile).mockImplementation(execMockForThisBlock);
@@ -444,6 +444,14 @@ describe('CommunityPackagesService', () => {
 
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
 			vi.mocked(readFile)
+				// The ledger as it stands before the update, which is what the rollback restores.
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: 'installed-nodes',
+						private: true,
+						dependencies: { [PACKAGE_NAME]: COMMUNITY_PACKAGE_VERSION.CURRENT },
+					}),
+				)
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,
@@ -557,6 +565,10 @@ describe('CommunityPackagesService', () => {
 
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
 			vi.mocked(readFile)
+				// Nothing on disk and nothing in the ledger, so there is no entry to restore.
+				.mockResolvedValueOnce(
+					JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }),
+				)
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,
@@ -1544,9 +1556,8 @@ describe('CommunityPackagesService', () => {
 				packageVersion: '1.0.0',
 			});
 
-			await Promise.resolve();
-			await Promise.resolve();
-			expect(callOrder).toEqual(['start:pkg-http']);
+			// Only pkg-http's download should have been reached; pkg-pubsub is still waiting.
+			await vi.waitFor(() => expect(callOrder).toEqual(['start:pkg-http']));
 
 			releaseFirst();
 			await Promise.all([installCall, pubsubCall]);

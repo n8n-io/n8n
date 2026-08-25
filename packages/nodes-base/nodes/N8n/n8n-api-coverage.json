@@ -53,6 +53,9 @@
 		"PATCH /role-mapping-rules/{roleMappingRuleId}": {
 			"status": "gap"
 		},
+		"DELETE /role-mapping-rules/{roleMappingRuleId}": {
+			"status": "gap"
+		},
 		"GET /settings/security-policy": {
 			"status": "gap"
 		},

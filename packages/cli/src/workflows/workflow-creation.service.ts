@@ -28,6 +28,7 @@ import { InstanceRedactionEnforcementService } from '@/modules/redaction/instanc
 import { policyForFloor, policyMeetsFloor } from '@/modules/redaction/redaction-policy';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
@@ -63,6 +64,7 @@ export class WorkflowCreationService {
 		private readonly instanceRedactionEnforcementService: InstanceRedactionEnforcementService,
 		private readonly workflowHookContextService: WorkflowHookContextService,
 		private readonly mcpSettingsService: McpSettingsService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {}
 
 	async createWorkflow(
@@ -181,6 +183,14 @@ export class WorkflowCreationService {
 			this.workflowHookContextService,
 			toWorkflowLifecycleHookActor(user),
 		]);
+
+		// Gate the save on policy before persisting, so the author learns about a violation
+		// while editing rather than at runtime. No stored workflow: this one is new.
+		await this.policyEnforcementService.enforceWorkflowSave({
+			workflow: { id: newWorkflow.id ?? null, name: newWorkflow.name, nodes: newWorkflow.nodes },
+			storedWorkflow: null,
+			projectId: effectiveProjectId,
+		});
 
 		const floor = await this.readActiveRedactionFloor();
 

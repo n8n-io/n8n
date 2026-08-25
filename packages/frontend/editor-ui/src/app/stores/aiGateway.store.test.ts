@@ -184,6 +184,116 @@ describe('aiGateway.store', () => {
 			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
 			expect(store.balance).toBe(1);
 		});
+
+		it('serves a cached balance within the TTL', async () => {
+			mockGetGatewayWallet.mockResolvedValue({ balance: 4, budget: 10, hasEverToppedUp: false });
+			const store = useAiGatewayStore();
+
+			await store.fetchWallet();
+			await store.fetchWallet();
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
+			expect(store.balance).toBe(4);
+		});
+
+		it('bypasses the cache when force is set', async () => {
+			mockGetGatewayWallet.mockResolvedValue({ balance: 4, budget: 10, hasEverToppedUp: false });
+			const store = useAiGatewayStore();
+
+			await store.fetchWallet();
+			await store.fetchWallet({ force: true });
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not let a forced fetch reuse an in-flight unforced request', async () => {
+			let resolveFirst!: (value: {
+				balance: number;
+				budget: number;
+				hasEverToppedUp: boolean;
+			}) => void;
+			mockGetGatewayWallet
+				.mockReturnValueOnce(
+					new Promise((resolve) => {
+						resolveFirst = resolve;
+					}),
+				)
+				.mockResolvedValueOnce({ balance: 9, budget: 10, hasEverToppedUp: true });
+			const store = useAiGatewayStore();
+
+			// A passive request is already in flight (e.g. started before a run);
+			// the forced post-run refresh must wait it out and fetch fresh data.
+			const passive = store.fetchWallet();
+			const forced = store.fetchWallet({ force: true });
+			resolveFirst({ balance: 1, budget: 10, hasEverToppedUp: false });
+			await Promise.all([passive, forced]);
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(2);
+			expect(store.balance).toBe(9);
+		});
+
+		it('coalesces concurrent forced fetches', async () => {
+			let resolveWallet!: (value: {
+				balance: number;
+				budget: number;
+				hasEverToppedUp: boolean;
+			}) => void;
+			mockGetGatewayWallet.mockReturnValue(
+				new Promise((resolve) => {
+					resolveWallet = resolve;
+				}),
+			);
+			const store = useAiGatewayStore();
+
+			const first = store.fetchWallet({ force: true });
+			const second = store.fetchWallet({ force: true });
+			resolveWallet({ balance: 2, budget: 3, hasEverToppedUp: false });
+			await Promise.all([first, second]);
+
+			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
+		});
+
+		it('retries within the TTL window after a failed fetch', async () => {
+			mockGetGatewayWallet.mockResolvedValueOnce({
+				balance: 5,
+				budget: 10,
+				hasEverToppedUp: false,
+			});
+			const store = useAiGatewayStore();
+			await store.fetchWallet();
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(1);
+
+			mockGetGatewayWallet.mockRejectedValueOnce(new Error('down'));
+			await store.fetchWallet({ force: true });
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(2);
+
+			// A passive read that would normally be cache-served must retry, because the
+			// last (forced) fetch failed.
+			mockGetGatewayWallet.mockResolvedValueOnce({
+				balance: 6,
+				budget: 10,
+				hasEverToppedUp: false,
+			});
+			await store.fetchWallet();
+			expect(mockGetGatewayWallet).toHaveBeenCalledTimes(3);
+			expect(store.balance).toBe(6);
+		});
+
+		it('re-fetches once the TTL has elapsed', async () => {
+			vi.useFakeTimers();
+			try {
+				mockGetGatewayWallet.mockResolvedValue({ balance: 4, budget: 10, hasEverToppedUp: false });
+				const store = useAiGatewayStore();
+
+				await store.fetchWallet();
+				vi.advanceTimersByTime(61_000);
+				await store.fetchWallet();
+
+				expect(mockGetGatewayWallet).toHaveBeenCalledTimes(2);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 
 	describe('usesFreeCreditsLabel()', () => {

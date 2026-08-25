@@ -4057,10 +4057,13 @@ function createAdapterWithGatewayMock(
 		telemetry?: unknown;
 		enabled?: boolean;
 		settingsService?: unknown;
+		getWallet?: Mock;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
 		getGatewayConfig,
+		isEnabled: vi.fn().mockReturnValue(overrides?.enabled !== false),
+		getWallet: overrides?.getWallet ?? vi.fn(),
 		assertEnabled: vi.fn().mockImplementation(() => {
 			if (overrides?.enabled === false) throw new Error('n8n Connect is disabled');
 		}),
@@ -4791,6 +4794,40 @@ describe('createCredentialAdapter', () => {
 			});
 
 			await expect(credentialService.isTestable!('kafka')).resolves.toBe(false);
+		});
+	});
+
+	describe('getAiGatewayWallet', () => {
+		const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+		function credentialServiceForWallet(overrides?: { enabled?: boolean; getWallet?: Mock }) {
+			const adapter = createAdapterWithGatewayMock(vi.fn(), overrides);
+			return adapter.createContext(mockUser).credentialService;
+		}
+
+		it('returns null when Connect is off', async () => {
+			const getWallet = vi.fn();
+			const credentialService = credentialServiceForWallet({ enabled: false, getWallet });
+
+			await expect(credentialService.getAiGatewayWallet!()).resolves.toBeNull();
+			expect(getWallet).not.toHaveBeenCalled();
+		});
+
+		it('returns null when getWallet throws', async () => {
+			const credentialService = credentialServiceForWallet({
+				getWallet: vi.fn().mockRejectedValue(new Error('network')),
+			});
+
+			await expect(credentialService.getAiGatewayWallet!()).resolves.toBeNull();
+		});
+
+		it('returns balance: 0 as-is', async () => {
+			const wallet = { balance: 0, budget: 10, hasEverToppedUp: false };
+			const getWallet = vi.fn().mockResolvedValue(wallet);
+			const credentialService = credentialServiceForWallet({ getWallet });
+
+			await expect(credentialService.getAiGatewayWallet!()).resolves.toEqual(wallet);
+			expect(getWallet).toHaveBeenCalledWith('user-1');
 		});
 	});
 

@@ -6,7 +6,7 @@
  */
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { DisplayOptions, NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
-import { matchesDisplayOptions } from '@n8n/workflow-sdk';
+import { matchesDisplayOptions, toEngineConnections } from '@n8n/workflow-sdk';
 import type {
 	IConnections,
 	INodeInputConfiguration,
@@ -669,7 +669,7 @@ export async function validateWorkflowConfig(
 	// Invert connections once — every per-node input-issue check needs the
 	// destination-keyed view, and mapConnectionsByDestination is O(n).
 	const connectionsByDestination = mapConnectionsByDestination(
-		(workflowJson.connections ?? {}) as IConnections,
+		toEngineConnections(workflowJson.connections),
 	);
 
 	// Fetch the latest run data once for the workflow. Skip when we have no
