@@ -33,9 +33,9 @@ export function toEligibleReviewer(user: User): WorkflowReviewEligibleReviewer {
 }
 
 /**
- * The minimal review summary every status-bearing response is built from — the
- * lifecycle mutations and the status batch share it so id, state, decision,
- * pin, and timestamp serialization cannot drift apart.
+ * The minimal review summary every mutation response is built from — create,
+ * update-version, and decide share it so id, state, decision, pin, and
+ * timestamp serialization cannot drift apart.
  */
 export function toRequestSummary(
 	request: WorkflowReviewRequest,

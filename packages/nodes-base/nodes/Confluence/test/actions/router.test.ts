@@ -31,6 +31,15 @@ const getParams: Record<string, unknown> = {
 	includeDescendants: false,
 };
 
+const searchParams: Record<string, unknown> = {
+	resource: 'search',
+	operation: 'query',
+	cql: 'type = page',
+	returnAll: false,
+	limit: 100,
+	options: {},
+};
+
 describe('Confluence router', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -99,6 +108,34 @@ describe('Confluence router', () => {
 		expect(result).toEqual([[{ json: { id: '222', title: 'My Page' }, pairedItem: { item: 0 } }]]);
 	});
 
+	it('dispatches page:getManyByLabel and fans pages out into one item each', async () => {
+		apiRequest.mockResolvedValue({ results: [{ id: '1' }, { id: '2' }] });
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'getManyByLabel',
+				label: { mode: 'id', value: '777' },
+				returnAll: false,
+				limit: 50,
+				bodyFormat: 'storage',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/labels/777/pages',
+			{},
+			{ 'body-format': 'storage', limit: 50 },
+		);
+		expect(result).toEqual([
+			[
+				{ json: { id: '1' }, pairedItem: { item: 0 } },
+				{ json: { id: '2' }, pairedItem: { item: 0 } },
+			],
+		]);
+	});
+
 	it('fans an array response out into one item per page', async () => {
 		apiRequest.mockImplementation(async (_method: string, url: string) =>
 			url.endsWith('/descendants')
@@ -136,6 +173,25 @@ describe('Confluence router', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(2);
 		expect(apiRequest.mock.calls[1][0]).toBe('PUT');
 		expect(result).toEqual([[{ json: { id: '222' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('dispatches search:query and fans the results out into items', async () => {
+		apiRequest.mockResolvedValue({ results: [{ title: 'A' }, { title: 'B' }] });
+
+		const result = await router.call(mockExecuteCtx(searchParams));
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/rest/api/search',
+			{},
+			{ cql: 'type = page', limit: 50 },
+		);
+		expect(result).toEqual([
+			[
+				{ json: { title: 'A' }, pairedItem: { item: 0 } },
+				{ json: { title: 'B' }, pairedItem: { item: 0 } },
+			],
+		]);
 	});
 
 	it('emits an error item and continues with later items when continue-on-fail is on', async () => {

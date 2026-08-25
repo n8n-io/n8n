@@ -245,26 +245,48 @@ describe('PollerStateRepository', () => {
 		it('does not touch the stored failure counters', async () => {
 			await seed('node-1', { lastItemId: 'a' });
 			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
-			const before = await repository.findFailureState(workflowId, 'node-1');
+			const before = await repository.findState(workflowId, 'node-1');
 
 			await repository.advanceCursor(workflowId, 'node-1', { lastItemId: 'b' }, {});
 
-			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual(before);
+			const after = await repository.findState(workflowId, 'node-1');
+			expect(after?.backoffUntil).toEqual(before?.backoffUntil);
+			expect(after?.consecutiveErrors).toEqual(before?.consecutiveErrors);
 		});
 	});
 
-	describe('findFailureState', () => {
+	describe('findState', () => {
 		it('returns null for a node that has never polled', async () => {
-			expect(await repository.findFailureState(workflowId, 'node-1')).toBeNull();
+			expect(await repository.findState(workflowId, 'node-1')).toBeNull();
 		});
 
-		it('returns the stored counters', async () => {
+		it('returns the cursor and clean failure fields for a healthy row', async () => {
+			await seed('node-1', { lastItemId: 'a' });
+
+			expect(await repository.findState(workflowId, 'node-1')).toEqual({
+				cursor: { lastItemId: 'a' },
+				consecutiveErrors: 0,
+				backoffUntil: null,
+			});
+		});
+
+		it('distinguishes an empty cursor from a missing row', async () => {
 			await seed('node-1', {});
+
+			const state = await repository.findState(workflowId, 'node-1');
+
+			expect(state).not.toBeNull();
+			expect(state?.cursor).toEqual({});
+		});
+
+		it('returns the stored failure counters alongside the cursor', async () => {
+			await seed('node-1', { lastItemId: 'a' });
 			const sentAt = Date.now();
 			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 
+			expect(state?.cursor).toEqual({ lastItemId: 'a' });
 			expect(state?.consecutiveErrors).toBe(1);
 			expectDeadlineNear(state?.backoffUntil ?? null, sentAt, BACKOFF_MS);
 		});
@@ -279,7 +301,7 @@ describe('PollerStateRepository', () => {
 				repository.recordFailure(workflowId, 'node-1', BACKOFF_MS),
 			]);
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 			expect(state?.consecutiveErrors).toBe(2);
 		});
 
@@ -289,7 +311,7 @@ describe('PollerStateRepository', () => {
 
 			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 			expect(state?.consecutiveErrors).toBe(1);
 			expectDeadlineNear(state?.backoffUntil ?? null, sentAt, BACKOFF_MS);
 		});
@@ -319,7 +341,7 @@ describe('PollerStateRepository', () => {
 			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
 			await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS);
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 			expect(state?.consecutiveErrors).toBe(2);
 		});
 
@@ -330,7 +352,7 @@ describe('PollerStateRepository', () => {
 
 			await repository.recordFailure(workflowId, 'node-1', 5_000);
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 			expect(state?.consecutiveErrors).toBe(2);
 			expectDeadlineNear(state?.backoffUntil ?? null, sentAt, ONE_HOUR_MS);
 		});
@@ -342,7 +364,7 @@ describe('PollerStateRepository', () => {
 			const sentAt = Date.now();
 			await repository.recordFailure(workflowId, 'node-1', ONE_HOUR_MS);
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 			expect(state?.consecutiveErrors).toBe(2);
 			expectDeadlineNear(state?.backoffUntil ?? null, sentAt, ONE_HOUR_MS);
 		});
@@ -358,7 +380,7 @@ describe('PollerStateRepository', () => {
 				await repository.recordFailure(workflowId, 'node-1', BACKOFF_MS, ctx);
 			});
 
-			const state = await repository.findFailureState(workflowId, 'node-1');
+			const state = await repository.findState(workflowId, 'node-1');
 			expect(state?.consecutiveErrors).toBe(1);
 		});
 
@@ -372,9 +394,10 @@ describe('PollerStateRepository', () => {
 				}),
 			).rejects.toThrow('execution insert failed');
 
-			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
+			expect(await repository.findState(workflowId, 'node-1')).toEqual({
 				consecutiveErrors: 0,
 				backoffUntil: null,
+				cursor: {},
 			});
 		});
 	});
@@ -386,9 +409,10 @@ describe('PollerStateRepository', () => {
 
 			await repository.clearFailures(workflowId, 'node-1');
 
-			expect(await repository.findFailureState(workflowId, 'node-1')).toEqual({
+			expect(await repository.findState(workflowId, 'node-1')).toEqual({
 				consecutiveErrors: 0,
 				backoffUntil: null,
+				cursor: {},
 			});
 		});
 
