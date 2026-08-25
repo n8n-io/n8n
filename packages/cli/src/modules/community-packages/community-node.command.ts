@@ -95,9 +95,9 @@ export class CommunityNode extends BaseCommand<z.infer<typeof flagsSchema>> {
 			return;
 		}
 
-		credentials.forEach(async (credential) => {
-			await this.deleteCredential(user, credential.id);
-		});
+		await Promise.all(
+			credentials.map(async (credential) => await this.deleteCredential(user, credential.id)),
+		);
 
 		this.logger.info(`All credentials with type ${credentialType} successfully uninstalled`);
 	}
