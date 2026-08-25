@@ -528,7 +528,7 @@ describe('Confluence page:get operation', () => {
 			});
 
 			await expect(execute.call(ctx, 0)).rejects.toThrow(
-				'Max Pages must be a number of at least 1',
+				'Max Pages must be a finite number of at least 1',
 			);
 		});
 

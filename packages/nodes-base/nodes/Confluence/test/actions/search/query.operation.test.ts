@@ -74,7 +74,14 @@ describe('search:query', () => {
 	it('rejects a non-positive limit from an expression', async () => {
 		const promise = runSearch({ limit: 0 });
 
-		await expect(promise).rejects.toThrow('Limit must be a number of at least 1');
+		await expect(promise).rejects.toThrow('Limit must be a finite number of at least 1');
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
+	it('rejects a non-finite limit from an expression', async () => {
+		const promise = runSearch({ limit: Infinity });
+
+		await expect(promise).rejects.toThrow('Limit must be a finite number of at least 1');
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 

@@ -61,7 +61,7 @@ const properties: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				description:
-					'Whether each result carries its full storage-format body (content.body.storage), fetched on the same request',
+					'Whether each result carries its full storage-format body (content.body.storage), fetched on the same request. Only applies to content results such as pages; space and user results have no body.',
 			},
 		],
 	},
@@ -95,6 +95,10 @@ export const execute: ConfluenceOperation = async function (
 	this: IExecuteFunctions,
 	itemIndex: number,
 ) {
+	// Deliberately passed through untouched: in a raw CQL string the node cannot tell
+	// values from syntax, so escaping here would corrupt valid queries. Where this node
+	// composes CQL itself it backslash-escapes quotes and backslashes as Confluence's
+	// CQL reference prescribes (see methods/listSearch.ts).
 	const cql = String(this.getNodeParameter('cql', itemIndex, '')).trim();
 	if (cql === '') {
 		throw new NodeOperationError(this.getNode(), 'The CQL query must not be empty', { itemIndex });
