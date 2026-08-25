@@ -4,32 +4,13 @@ import { computed } from 'vue';
 
 import type { IconSize } from '../../types';
 import N8nIcon from '../N8nIcon';
-import type { IconName } from '../N8nIcon';
 import N8nText from '../N8nText';
-import type { BadgeSize } from './Badge.type';
-
-interface BadgeProps {
-	variant?:
-		| 'default'
-		| 'primary'
-		| 'secondary'
-		| 'subtle'
-		| 'outline'
-		| 'ghost'
-		| 'warning'
-		| 'danger'
-		| 'success';
-	size?: BadgeSize;
-	clickable?: boolean;
-	disabled?: boolean;
-	leadingIcon?: IconName;
-	trailingIcon?: IconName;
-}
+import type { BadgeProps } from './Badge.type';
 
 defineOptions({ name: 'N8nBadge' });
 
 const props = withDefaults(defineProps<BadgeProps>(), {
-	variant: 'default',
+	variant: 'outline',
 	size: 'xsmall',
 	clickable: false,
 });
