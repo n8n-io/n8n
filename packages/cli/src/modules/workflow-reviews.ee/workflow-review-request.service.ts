@@ -372,7 +372,7 @@ export class WorkflowReviewRequestService {
 					{
 						projectId: project.id,
 						title: dto.title,
-						description: dto.description ?? null,
+						description: normalizeDescription(dto.description) ?? null,
 						createdById: user.id,
 					},
 					ctx,

@@ -539,6 +539,25 @@ describe('Confluence page:get operation', () => {
 			expect(result.map((page) => page.id)).toEqual(['100', '101']);
 		});
 
+		// An expression can deliver a numeric string, e.g. from HTTP or form data
+		it('accepts a numeric-string Max Pages', async () => {
+			mockTree({
+				'100': [
+					{ id: '101', type: 'page', depth: 1 },
+					{ id: '102', type: 'page', depth: 1 },
+				],
+			});
+			const ctx = createContext({
+				page: { mode: 'id', value: '100' },
+				includeDescendants: true,
+				maxPages: '2',
+			});
+
+			const result = (await execute.call(ctx, 0)) as IDataObject[];
+
+			expect(result.map((page) => page.id)).toEqual(['100', '101']);
+		});
+
 		it('rejects a Max Pages below 1', async () => {
 			const ctx = createContext({
 				page: { mode: 'id', value: '100' },
@@ -547,7 +566,7 @@ describe('Confluence page:get operation', () => {
 			});
 
 			await expect(execute.call(ctx, 0)).rejects.toThrow(
-				'Max Pages must be a number of at least 1',
+				'Max Pages must be a finite number of at least 1',
 			);
 		});
 
