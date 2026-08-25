@@ -1,3 +1,5 @@
+import { installGlobalProxyAgent } from '@n8n/backend-network';
+import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
 import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { setGlobalState } from 'n8n-workflow';
@@ -69,6 +71,12 @@ function createSignalHandler(
 
 void (async function start() {
 	const config = Container.get(MainConfig);
+
+	// Env-proxy global agents must be installed before any outbound traffic
+	// (Sentry, user task code). The task broker connection must stay direct,
+	// so its host is exempted from proxying for the process lifetime.
+	ensureHostsBypassProxy([new URL(config.baseRunnerConfig.taskBrokerUri).hostname]);
+	installGlobalProxyAgent();
 
 	setGlobalState({
 		defaultTimezone: config.baseRunnerConfig.timezone,

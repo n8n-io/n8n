@@ -49,6 +49,16 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 				N8N_RUNNERS_TASK_TIMEOUT: this.runnerConfig.taskTimeout.toString(),
 				N8N_RUNNERS_HEARTBEAT_INTERVAL: this.runnerConfig.heartbeatInterval.toString(),
 
+				// proxy
+				HTTP_PROXY: process.env.HTTP_PROXY,
+				http_proxy: process.env.http_proxy,
+				HTTPS_PROXY: process.env.HTTPS_PROXY,
+				https_proxy: process.env.https_proxy,
+				ALL_PROXY: process.env.ALL_PROXY,
+				all_proxy: process.env.all_proxy,
+				NO_PROXY: process.env.NO_PROXY,
+				no_proxy: process.env.no_proxy,
+
 				// n8n
 				N8N_RUNNERS_STDLIB_ALLOW: process.env.N8N_RUNNERS_STDLIB_ALLOW,
 				N8N_RUNNERS_EXTERNAL_ALLOW: process.env.N8N_RUNNERS_EXTERNAL_ALLOW,

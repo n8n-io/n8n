@@ -126,6 +126,9 @@ class TaskRunner:
                     self.websocket_url,
                     additional_headers=headers,
                     max_size=self.config.max_payload_size,
+                    # The broker connection must stay direct, never routed
+                    # through a proxy configured via environment variables.
+                    proxy=None,
                 )
                 self.logger.info("Connected to broker")
                 await self._listen_for_messages()

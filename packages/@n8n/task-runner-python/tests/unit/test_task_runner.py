@@ -94,6 +94,25 @@ class TestTaskRunnerConnectionRetry:
 
             assert mock_connect.call_count == 1
 
+    @pytest.mark.asyncio
+    async def test_broker_connection_is_never_proxied(self, config):
+        runner = TaskRunner(config)
+
+        def connection_side_effect(*args, **kwargs):
+            runner.is_shutting_down = True
+            raise ConnectionRefusedError("Connection refused")
+
+        with (
+            patch("src.task_runner.websockets.connect") as mock_connect,
+            patch.object(runner, "logger"),
+            patch("src.task_runner.asyncio.sleep"),
+        ):
+            mock_connect.side_effect = connection_side_effect
+
+            await runner.start()
+
+            assert mock_connect.call_args.kwargs["proxy"] is None
+
 
 class TestTaskRunnerDrain:
     @pytest.fixture

@@ -50,6 +50,14 @@ describe('PyTaskRunnerProcess', () => {
 			'N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS',
 			'N8N_RUNNERS_BUILTINS_DENY',
 			'N8N_BLOCK_RUNNER_ENV_ACCESS',
+			'HTTP_PROXY',
+			'http_proxy',
+			'HTTPS_PROXY',
+			'https_proxy',
+			'ALL_PROXY',
+			'all_proxy',
+			'NO_PROXY',
+			'no_proxy',
 		])('should propagate %s from env as is', async (envVar) => {
 			process.env[envVar] = 'custom value';
 

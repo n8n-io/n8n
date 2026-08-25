@@ -114,6 +114,14 @@ describe('TaskRunnerProcess', () => {
 			'NODE_PATH',
 			'GENERIC_TIMEZONE',
 			'N8N_RUNNERS_INSECURE_MODE',
+			'HTTP_PROXY',
+			'http_proxy',
+			'HTTPS_PROXY',
+			'https_proxy',
+			'ALL_PROXY',
+			'all_proxy',
+			'NO_PROXY',
+			'no_proxy',
 		])('should propagate %s from env as is', async (envVar) => {
 			authService.createGrantToken.mockResolvedValue('grantToken');
 			process.env[envVar] = 'custom value';

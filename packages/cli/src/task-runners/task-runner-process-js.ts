@@ -62,6 +62,16 @@ export class JsTaskRunnerProcess extends TaskRunnerProcessBase {
 			NODE_FUNCTION_ALLOW_BUILTIN: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
 			NODE_FUNCTION_ALLOW_EXTERNAL: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
 
+			// proxy
+			HTTP_PROXY: process.env.HTTP_PROXY,
+			http_proxy: process.env.http_proxy,
+			HTTPS_PROXY: process.env.HTTPS_PROXY,
+			https_proxy: process.env.https_proxy,
+			ALL_PROXY: process.env.ALL_PROXY,
+			all_proxy: process.env.all_proxy,
+			NO_PROXY: process.env.NO_PROXY,
+			no_proxy: process.env.no_proxy,
+
 			// sentry
 			N8N_SENTRY_DSN: process.env.N8N_SENTRY_DSN,
 			N8N_VERSION: process.env.N8N_VERSION,
