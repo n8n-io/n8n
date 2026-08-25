@@ -250,7 +250,12 @@ export class ImapSimple {
 
 		const mailbox = this.reconnectOptions?.mailbox;
 		if (mailbox !== undefined) {
-			this.assertRan(await client.mailboxOpen(mailbox), 'SELECT', client);
+			try {
+				this.assertRan(await client.mailboxOpen(mailbox), 'SELECT', client);
+			} catch (error) {
+				this.discard(client);
+				throw error;
+			}
 		}
 
 		return client;
@@ -411,21 +416,22 @@ export class ImapSimple {
 		/** Fetch at most this many of the oldest matches. */
 		limit?: number,
 	): Promise<FetchMessageObject[]> {
-		const found = await this.client.search(criteria, { uid: true });
-		const uids = this.assertRan(Array.isArray(found) ? found : undefined, 'SEARCH');
+		const client = this.client;
+		const found = await client.search(criteria, { uid: true });
+		const uids = this.assertRan(Array.isArray(found) ? found : undefined, 'SEARCH', client);
 		if (uids.length === 0) return [];
 
 		// oldest first, because imapflow returns SEARCH results in ascending UID order
 		const wanted = limit && limit > 0 ? uids.slice(0, limit) : uids;
 		const messages: FetchMessageObject[] = [];
 
-		for await (const fetched of this.client.fetch(wanted, query, { uid: true })) {
+		for await (const fetched of client.fetch(wanted, query, { uid: true })) {
 			messages.push(fetched);
 		}
 
 		// `fetch` yields nothing at all when the mailbox went away under it, which
 		// would otherwise read as "no new mail" and lose the batch silently.
-		if (messages.length === 0 && !this.client.usable) throw new ConnectionLostError();
+		if (messages.length === 0 && !client.usable) throw new ConnectionLostError();
 
 		return messages;
 	}
@@ -435,11 +441,12 @@ export class ImapSimple {
 		const partID = message.bodyStructure && bodyPartID(message.bodyStructure, subtype);
 		if (!partID) return '';
 
+		const client = this.client;
 		try {
 			return (await this.downloadPart(message.uid, partID)).content.toString('utf8');
 		} catch (error) {
 			if (error instanceof ConnectionLostError) throw error;
-			if (!this.client.usable) throw new ConnectionLostError();
+			if (!client.usable) throw new ConnectionLostError();
 			return '';
 		}
 	}
@@ -478,17 +485,20 @@ export class ImapSimple {
 		uid: number,
 		partID: string,
 	): Promise<{ content: Buffer; filename?: string; contentType?: string }> {
-		const downloaded = await this.client.download(String(uid), partID, {
+		const client = this.client;
+		const downloaded = await client.download(String(uid), partID, {
 			uid: true,
 			chunkSize: DOWNLOAD_CHUNK_SIZE,
 		});
 
-		const content = this.assertRan(downloaded?.content, 'FETCH');
+		const content = this.assertRan(downloaded?.content, 'FETCH', client);
 
 		const chunks: Buffer[] = [];
 		for await (const chunk of content) {
 			chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as string));
 		}
+
+		if (!client.usable) throw new ConnectionLostError();
 
 		return {
 			content: Buffer.concat(chunks),
