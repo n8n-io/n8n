@@ -982,6 +982,21 @@ describe('CommunityPackagesService', () => {
 			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalledTimes(1);
 		});
 
+		test('rebuilds the node type registry even when the reload fails', async () => {
+			const backupDirectory = `${nodesDownloadDir}/node_modules/${packageName}.backup-123`;
+			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('ENOENT'));
+
+			await (communityPackagesService as any).restoreLoadedPackage(packageName, backupDirectory);
+
+			// Without this the registry keeps advertising the package's node types with no
+			// loader behind them, and `withLoadStatus` reports it as loaded.
+			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to reload community package after failed installation',
+				expect.objectContaining({ packageName }),
+			);
+		});
+
 		test('warns instead of throwing when the unload fails', async () => {
 			loadNodesAndCredentials.unloadPackage.mockRejectedValueOnce(new Error('unload failed'));
 

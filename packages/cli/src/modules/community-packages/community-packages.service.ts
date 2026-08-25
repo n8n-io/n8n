@@ -707,10 +707,21 @@ export class CommunityPackagesService {
 			if (backupDirectory) {
 				await this.loadNodesAndCredentials.loadPackage(packageName);
 			}
+		} catch (cleanupError) {
+			this.logger.warn('Failed to reload community package after failed installation', {
+				error: ensureError(cleanupError),
+				packageName,
+			});
+		}
+
+		// Runs even when the load above failed: `known` is only ever rebuilt here, so
+		// skipping it leaves node types advertised with no loader behind them, which
+		// `withLoadStatus` then reports as a healthy package.
+		try {
 			await this.loadNodesAndCredentials.postProcessLoaders();
 			this.loadNodesAndCredentials.releaseTypes();
 		} catch (cleanupError) {
-			this.logger.warn('Failed to reload community package after failed installation', {
+			this.logger.warn('Failed to refresh node types after failed community package install', {
 				error: ensureError(cleanupError),
 				packageName,
 			});
