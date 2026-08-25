@@ -2,16 +2,15 @@
 import type { GitConnectionType } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
-	N8nActionDropdown,
 	N8nActionToggle,
 	N8nBadge,
 	N8nButton,
 	N8nCard,
 	N8nEmptyState,
 	N8nHeading,
+	N8nIcon,
 	N8nLoading2,
 	N8nText,
-	type ActionDropdownItem,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -64,14 +63,6 @@ const rows = computed<ConnectionRow[]>(() =>
 		connectionType: connection.connectionType,
 	})),
 );
-
-const connectorTypes = computed<Array<ActionDropdownItem<'git'>>>(() => [
-	{
-		id: 'git',
-		label: i18n.baseText('settings.gitConnections.connectorType.git'),
-		icon: 'git-branch',
-	},
-]);
 
 const connectionTypeLabel = (connectionType: GitConnectionType) =>
 	i18n.baseText(
@@ -177,17 +168,23 @@ async function onRowAction(action: string, row: ConnectionRow) {
 			</div>
 		</div>
 
-		<div v-if="!loadError" :class="$style.actionBar">
-			<N8nActionDropdown :items="connectorTypes" @select="openCreateDialog">
-				<template #activator>
-					<N8nButton
-						ref="addButton"
-						icon="plus"
-						:label="i18n.baseText('settings.gitConnections.addConnector')"
-						data-test-id="git-connections-add"
-					/>
-				</template>
-			</N8nActionDropdown>
+		<div :class="$style.sectionHeader">
+			<div :class="$style.headerText">
+				<N8nHeading tag="h2" size="large">
+					{{ i18n.baseText('settings.gitConnections.connectors.title') }}
+				</N8nHeading>
+				<N8nText color="text-base" size="small">
+					{{ i18n.baseText('settings.gitConnections.connectors.description') }}
+				</N8nText>
+			</div>
+			<N8nButton
+				v-if="!loadError"
+				ref="addButton"
+				icon="plus"
+				:label="i18n.baseText('settings.gitConnections.addConnector')"
+				data-test-id="git-connections-add"
+				@click="openCreateDialog"
+			/>
 		</div>
 
 		<N8nLoading2 v-if="isLoading" :rows="3" :shrink-last="false" />
@@ -208,7 +205,13 @@ async function onRowAction(action: string, row: ConnectionRow) {
 			<N8nCard v-for="row in rows" :key="row.id" class="mb-2xs" data-test-id="git-connection-card">
 				<template #header>
 					<div :class="$style.cardHeader">
-						<N8nText tag="h2" bold>{{ row.name }}</N8nText>
+						<N8nText tag="h3" bold>{{ row.name }}</N8nText>
+						<N8nIcon
+							icon="git-branch"
+							color="text-light"
+							size="small"
+							:title="i18n.baseText('settings.gitConnections.connectorType.git')"
+						/>
 						<N8nBadge theme="tertiary">
 							{{ connectionTypeLabel(row.connectionType) }}
 						</N8nBadge>
@@ -256,9 +259,11 @@ async function onRowAction(action: string, row: ConnectionRow) {
 	gap: var(--spacing--2xs);
 }
 
-.actionBar {
+.sectionHeader {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: space-between;
+	align-items: flex-end;
+	gap: var(--spacing--sm);
 	margin-bottom: var(--spacing--sm);
 }
 

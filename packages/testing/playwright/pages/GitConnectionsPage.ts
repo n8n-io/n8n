@@ -26,7 +26,7 @@ export class GitConnectionsPage extends BasePage {
 
 	async addGitConnector(): Promise<void> {
 		await this.getAddButton().click();
-		await this.page.getByTestId('action-git').click();
+		await this.page.getByTestId('git-connections-type-git').click();
 	}
 
 	async fillConnection(name: string, repositoryUrl: string): Promise<void> {

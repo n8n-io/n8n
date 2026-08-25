@@ -2,10 +2,12 @@
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
+	N8nCard,
 	N8nDialog,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
 	N8nOption,
@@ -53,13 +55,35 @@ const form = reactive<GitConnectionFormState>({
 	password: '',
 });
 
+// Creating starts on the connector type list and advances into the git form in
+// place, so the whole "add connector" flow stays in one dialog.
+const step = ref<'type' | 'form'>(props.connectionId === undefined ? 'type' : 'form');
 const current = ref<GitConnection | null>(null);
 const isLoading = ref(false);
 const isSubmitting = ref(false);
 const newPublicKey = ref<string | null>(null);
 const nameInput = useTemplateRef<InstanceType<typeof N8nInput>>('nameInput');
+const typeCard = useTemplateRef<{ $el?: HTMLElement }>('typeCard');
 
 const isEdit = computed(() => props.connectionId !== undefined);
+
+const title = computed(() =>
+	i18n.baseText(
+		step.value === 'type'
+			? 'settings.gitConnections.dialog.title.selectType'
+			: isEdit.value
+				? 'settings.gitConnections.dialog.title.edit'
+				: 'settings.gitConnections.dialog.title.create',
+	),
+);
+
+const ariaDescription = computed(() =>
+	i18n.baseText(
+		step.value === 'type'
+			? 'settings.gitConnections.dialog.selectType.ariaDescription'
+			: 'settings.gitConnections.dialog.ariaDescription',
+	),
+);
 
 const credentialsRequired = computed(
 	() => form.connectionType === 'https' && current.value?.connectionType !== 'https',
@@ -120,9 +144,21 @@ function onOpenChange(value: boolean) {
 	close();
 }
 
+function focusStep() {
+	void nextTick(() => {
+		if (step.value === 'type') typeCard.value?.$el?.focus();
+		else nameInput.value?.focus();
+	});
+}
+
 function onOpenAutoFocus(event: Event) {
 	event.preventDefault();
-	void nextTick(() => nameInput.value?.focus());
+	focusStep();
+}
+
+function selectGit() {
+	step.value = 'form';
+	focusStep();
 }
 
 async function submit() {
@@ -175,23 +211,54 @@ async function submit() {
 	<N8nDialog
 		:open="open"
 		size="medium"
-		:aria-description="i18n.baseText('settings.gitConnections.dialog.ariaDescription')"
+		:aria-description="ariaDescription"
 		@open-auto-focus="onOpenAutoFocus"
 		@update:open="onOpenChange"
 	>
 		<N8nDialogHeader>
-			<N8nDialogTitle>
-				{{
-					i18n.baseText(
-						isEdit
-							? 'settings.gitConnections.dialog.title.edit'
-							: 'settings.gitConnections.dialog.title.create',
-					)
-				}}
-			</N8nDialogTitle>
+			<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 		</N8nDialogHeader>
 
-		<div v-if="newPublicKey" :class="$style.form" data-test-id="git-connection-key-step">
+		<div v-if="step === 'type'" :class="$style.form" data-test-id="git-connections-type-step">
+			<N8nText color="text-base" size="medium">
+				{{ i18n.baseText('settings.gitConnections.dialog.selectType.description') }}
+			</N8nText>
+			<N8nCard
+				ref="typeCard"
+				hoverable
+				role="button"
+				tabindex="0"
+				data-test-id="git-connections-type-git"
+				@click="selectGit"
+				@keydown.enter="selectGit"
+				@keydown.space.prevent="selectGit"
+			>
+				<template #prepend>
+					<N8nIcon icon="git-branch" color="text-dark" :size="20" />
+				</template>
+				<template #header>
+					<N8nText bold>{{ i18n.baseText('settings.gitConnections.connectorType.git') }}</N8nText>
+				</template>
+				<N8nText color="text-light" size="small">
+					{{ i18n.baseText('settings.gitConnections.connectorType.git.description') }}
+				</N8nText>
+				<template #append>
+					<N8nIcon icon="chevron-right" color="text-light" />
+				</template>
+			</N8nCard>
+			<N8nDialogFooter>
+				<N8nButton
+					type="button"
+					variant="outline"
+					data-test-id="git-connections-type-cancel-button"
+					@click="close"
+				>
+					{{ i18n.baseText('generic.cancel') }}
+				</N8nButton>
+			</N8nDialogFooter>
+		</div>
+
+		<div v-else-if="newPublicKey" :class="$style.form" data-test-id="git-connection-key-step">
 			<CopyInput
 				:label="i18n.baseText('settings.gitConnections.form.publicKey.label')"
 				:hint="i18n.baseText('settings.gitConnections.form.publicKey.hint')"

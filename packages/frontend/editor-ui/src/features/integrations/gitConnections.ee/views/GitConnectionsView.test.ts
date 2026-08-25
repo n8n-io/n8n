@@ -80,7 +80,7 @@ const renderView = createComponentRenderer(GitConnectionsView);
 
 const openAddDialog = async () => {
 	await userEvent.click(screen.getByTestId('git-connections-add'));
-	await userEvent.click(await screen.findByTestId('action-git'));
+	await userEvent.click(await screen.findByTestId('git-connections-type-git'));
 	return await screen.findByTestId('git-connection-dialog');
 };
 
