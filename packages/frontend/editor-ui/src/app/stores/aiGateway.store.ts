@@ -90,7 +90,7 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	// first response lands. Share the promise rather than firing one request each.
 	let configFetch: Promise<void> | null = null;
 	const fetchWalletData = createCachedFetch(
-		() => getGatewayWallet(rootStore.restApiContext),
+		async () => await getGatewayWallet(rootStore.restApiContext),
 		WALLET_CACHE_TTL_MS,
 	);
 
