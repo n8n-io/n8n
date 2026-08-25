@@ -13,6 +13,7 @@ The package is ESM-only and builds to `dist`. Consumers resolve it through the
 - [Consume the package](#consume-the-package)
 - [Exports](#exports)
 - [Develop the package](#develop-the-package)
+- [Pack and publish](#pack-and-publish)
 - [License](#license)
 
 ## Consume the package
@@ -35,11 +36,17 @@ Inside this monorepo, declare it as a workspace dependency in your own `package.
 }
 ```
 
-Outside this monorepo, install from npm. The `./plugin` subpath is available from `2.36.0`:
+Outside this monorepo, install from npm. **Pin `2.36.0` or later** — the wiring below does
+not resolve on earlier versions, and `2.35.3` is still the `latest` tag:
 
 ```sh
-npm install @n8n/design-system vue vue-router
+npm install @n8n/design-system@^2.36.0 vue vue-router
 ```
+
+Two entry points arrived in `2.36.0`. On `2.35.3` the `./plugin` subpath does not exist at
+all (`ERR_PACKAGE_PATH_NOT_EXPORTED`), and `IconBodyLoaderKey` is reachable only from the
+barrel, not from `./icons/lucide`. If you cannot move off `2.35.3`, see
+[Pinned below 2.36.0](#pinned-below-2360).
 
 Add `sass` as a dev dependency only if you `@use` the SCSS sources from
 [`./css/*`](#exports). Without it, Vite fails the build with
@@ -81,7 +88,10 @@ app.mount('#app');
 ```
 
 `N8nPlugin` registers the `v-n8n-truncate` and `v-n8n-html` directives. Pass `{}` as the
-options argument.
+options argument. Do not skip this call: ten components render their text through
+`v-n8n-html` — `N8nNotice`, `N8nTooltip`, `N8nTabs`, `N8nSticky`, `N8nInputLabel`,
+`N8nInfoAccordion`, `N8nEmptyState`, `CommandBarItem`, and the two `AskAssistantChat`
+message components — and without the directive they render empty, with no error.
 
 The `IconBodyLoaderKey` provide is what makes the full Lucide set available. Without it,
 `N8nIcon` renders the bundled icon set only (`triangle`, `status-error`, the custom n8n
@@ -127,6 +137,35 @@ can reach the mixins and token maps:
 
 That compiles to `@media screen and (width<=991px)`.
 
+### Pinned below 2.36.0
+
+`2.35.3` has no `./plugin` subpath, so `import { N8nPlugin } from '@n8n/design-system/plugin'`
+fails with `ERR_PACKAGE_PATH_NOT_EXPORTED`. Register the two directives from the barrel
+instead, and take `IconBodyLoaderKey` from the barrel as well:
+
+```ts
+// src/main.ts — @n8n/design-system 2.35.3
+import '@n8n/design-system/style.css';
+import '@n8n/design-system/theme.css';
+
+import { IconBodyLoaderKey, n8nHtml, n8nTruncate } from '@n8n/design-system';
+import { loadLucideIconBody } from '@n8n/design-system/icons/lucide';
+import { createApp } from 'vue';
+
+import App from './App.vue';
+
+const app = createApp(App);
+app.directive('n8nHtml', n8nHtml);
+app.directive('n8nTruncate', n8nTruncate);
+app.provide(IconBodyLoaderKey, loadLucideIconBody);
+app.mount('#app');
+```
+
+This is equivalent to `app.use(N8nPlugin, {})` — the plugin registers the same two
+directives under the same names, so this wiring also works on `2.36.0` and later.
+`loadLucideIconBody` is on `./icons/lucide` in `2.35.3` too; only `IconBodyLoaderKey` is
+barrel-only there.
+
 ## Exports
 
 Every subpath resolves from `dist`. There is no CommonJS build and no `require` condition.
@@ -153,6 +192,28 @@ Run these from this directory.
 | `pnpm test`      | Runs the unit tests once.                                           |
 | `pnpm lint`      | Lints `src`. `pnpm lint:fix` applies the fixes.                     |
 | `pnpm clean`     | Removes `dist` and `.turbo`.                                        |
+
+## Pack and publish
+
+**Pack with `pnpm pack`. Never `npm pack`.**
+
+`pnpm` rewrites the workspace protocol and the catalog references to fixed versions when it
+packs — `"@n8n/composables": "workspace:*"` becomes `"1.27.0"`, `"vue": "catalog:frontend"`
+becomes `"^3.5.13"`. `npm` copies both verbatim, and neither is a protocol the npm registry
+client understands, so installing an `npm`-packed tarball fails:
+
+```text
+npm error code EUNSUPPORTEDPROTOCOL
+npm error Unsupported URL Type "catalog:": catalog:frontend
+```
+
+Build first — `dist` is gitignored, and `files` ships `dist`, `assets/fonts`, and this
+README:
+
+```sh
+pnpm turbo run build --filter=@n8n/design-system
+pnpm pack --pack-destination /tmp/ds-pack
+```
 
 ## License
 
