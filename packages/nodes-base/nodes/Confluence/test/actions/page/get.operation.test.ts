@@ -219,6 +219,25 @@ describe('Confluence page:get operation', () => {
 			expect(body.plainText.value).toBe('A\n B');
 		});
 
+		it('falls back to an empty value when valid-JSON ADF has nodes the walk cannot take', async () => {
+			apiRequest.mockResolvedValueOnce({
+				id: '123',
+				body: {
+					atlas_doc_format: { value: JSON.stringify({ type: 'doc', content: [null] }) },
+				},
+			});
+			const ctx = createContext({
+				page: { mode: 'id', value: '123' },
+				bodyFormat: 'plainText',
+			});
+
+			const result = (await execute.call(ctx, 0)) as IDataObject;
+
+			expect(result.body).toEqual({
+				plainText: { representation: 'plain_text', value: '' },
+			});
+		});
+
 		it('falls back to an empty value when the ADF body is malformed', async () => {
 			apiRequest.mockResolvedValueOnce({
 				id: '123',

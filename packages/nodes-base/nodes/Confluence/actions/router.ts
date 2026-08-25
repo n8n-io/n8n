@@ -50,6 +50,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'page:getLabels':
 					responseData = await page.getLabels.execute.call(this, i);
 					break;
+				case 'page:getManyByLabel':
+					responseData = await page.getManyByLabel.execute.call(this, i);
+					break;
 				case 'page:update':
 					responseData = await page.update.execute.call(this, i);
 					break;
