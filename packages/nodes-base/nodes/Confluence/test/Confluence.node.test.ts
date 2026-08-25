@@ -6,10 +6,11 @@ import { mockExecuteCtx } from './shared';
 describe('Confluence Node', () => {
 	const node = new Confluence();
 
-	const operationOptions = (resource: string) =>
+	const operationProperty = (resource: string) =>
 		node.description.properties.find(
 			(p) => p.name === 'operation' && p.displayOptions?.show?.resource?.includes(resource),
-		)?.options;
+		);
+	const operationOptions = (resource: string) => operationProperty(resource)?.options;
 
 	it('should stay hidden and off the AI-tool surface while operations land', () => {
 		expect(node.description.hidden).toBe(true);
@@ -26,7 +27,12 @@ describe('Confluence Node', () => {
 			expect.objectContaining({ value: 'space' }),
 		]);
 
-		expect(operationOptions('attachment')).toEqual([expect.objectContaining({ value: 'getMany' })]);
+		expect(operationOptions('attachment')).toEqual([
+			expect.objectContaining({ value: 'delete' }),
+			expect.objectContaining({ value: 'getMany' }),
+		]);
+		// Delete sorts first alphabetically; the default must stay non-destructive
+		expect(operationProperty('attachment')?.default).toBe('getMany');
 		expect(operationOptions('page')).toEqual([
 			expect.objectContaining({ value: 'append' }),
 			expect.objectContaining({ value: 'create' }),
