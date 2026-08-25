@@ -6,11 +6,12 @@ import { mock } from 'vitest-mock-extended';
 
 import { ChatTrigger } from '../ChatTrigger.node';
 import { ChatTriggerAuthorizationError } from '../error';
-import { validateAuth } from '../GenericFunctions';
+import { establishChatWidgetIdentity, validateAuth } from '../GenericFunctions';
 import type { LoadPreviousSessionChatOption } from '../types';
 
 vi.mock('../GenericFunctions', () => ({
 	validateAuth: vi.fn(),
+	establishChatWidgetIdentity: vi.fn(),
 }));
 
 const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
@@ -418,15 +419,9 @@ describe('ChatTrigger Node', () => {
 		const renderedPage = () => vi.mocked(mockResponse.send).mock.calls.at(-1)?.[0] as string;
 
 		beforeEach(() => {
-			// `generateChatUserAuthToken` needs the instance's hmac secret; everything
-			// else in the node still wants the chat config.
-			vi.mocked(Container.get).mockImplementation(((token: unknown) =>
-				token === ChatTriggerConfig
-					? chatTriggerConfig
-					: { hmacSignatureSecret: 'test-secret' }) as never);
-
 			mockContext.getWebhookName.mockReturnValue('setup');
 			mockContext.getNodeWebhookUrl.mockReturnValue('http://localhost:5678/webhook/abc/chat');
+			mockContext.getWebhookResourceUrl.mockReturnValue('http://localhost:5678/webhook/abc/chat');
 			mockContext.getInstanceId.mockReturnValue('instance-1');
 			mockContext.validateCookieAuth.mockResolvedValue(visitor);
 			mockContext.getNode.mockReturnValue({
@@ -436,6 +431,10 @@ describe('ChatTrigger Node', () => {
 				typeVersion: 1.4,
 				webhookId: 'webhook-1',
 			} as never);
+			vi.mocked(establishChatWidgetIdentity).mockResolvedValue({
+				visitor,
+				authToken: 'as-token',
+			});
 
 			mockRequest.headers = {
 				'x-forwarded-proto': 'http',

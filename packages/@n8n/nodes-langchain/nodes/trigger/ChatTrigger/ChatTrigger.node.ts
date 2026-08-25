@@ -27,9 +27,8 @@ import * as a from 'node:assert';
 import { ChatTriggerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { generateChatUserAuthToken } from './auth-token';
 import { cssVariables } from './constants';
-import { validateAuth } from './GenericFunctions';
+import { establishChatWidgetIdentity, validateAuth } from './GenericFunctions';
 import {
 	buildAbsoluteChatUrl,
 	buildInnerFrameSrc,
@@ -923,27 +922,34 @@ export class ChatTrigger extends Node {
 				let visitor: IUser | undefined;
 
 				if (isChatOAuth2Enabled() && authentication === 'n8nUserAuth') {
-					shellInner = isShellInnerRequest(req);
-
-					// The frame can't fetch `/rest/login` for itself, so resolve the visitor here.
-					// Same-site either way: the frame's first GET is issued by the shell, before
-					// any opaque document exists.
-					const authCookie = readAuthCookie(req);
-					if (authCookie) {
-						try {
-							visitor = await ctx.validateCookieAuth(authCookie);
-						} catch {}
-					}
-
-					if (!visitor) {
-						res.writeHead(302, {
-							Location: `/signin?redirect=${encodeURIComponent(buildAbsoluteChatUrl(req))}`,
-						});
-						res.end();
-						return { noWebhookResponse: true };
-					}
+					// The AS callback lands on this same GET; its `code`/`state` never carry the
+					// `n8nShellInner` flag (the AS's redirect_uri doesn't echo it back), so a
+					// callback still bound to the frame's navigation (Sec-Fetch-Dest: iframe) is
+					// recognised as inner even without the flag.
+					const isOAuthCallback =
+						typeof req.query.code === 'string' && typeof req.query.state === 'string';
+					shellInner =
+						isShellInnerRequest(req) ||
+						(isOAuthCallback && req.headers['sec-fetch-dest'] === 'iframe');
 
 					if (!shellInner) {
+						// Outer shell: gates page access on the live session, same as before. The
+						// AS-backed token below is only ever needed inside the frame.
+						const authCookie = readAuthCookie(req);
+						if (authCookie) {
+							try {
+								visitor = await ctx.validateCookieAuth(authCookie);
+							} catch {}
+						}
+
+						if (!visitor) {
+							res.writeHead(302, {
+								Location: `/signin?redirect=${encodeURIComponent(buildAbsoluteChatUrl(req))}`,
+							});
+							res.end();
+							return { noWebhookResponse: true };
+						}
+
 						res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
 						res
 							.status(200)
@@ -952,11 +958,24 @@ export class ChatTrigger extends Node {
 						return { noWebhookResponse: true };
 					}
 
+					// Inner frame: hand the widget a real AS token instead of proving the visitor
+					// via the session cookie, so the token that seeds the run on the POST leg is
+					// one `validateN8nOAuth2Token` actually recognises.
+					const resourceUrl = ctx.getWebhookResourceUrl('default');
+					if (!resourceUrl) {
+						throw new NodeOperationError(ctx.getNode(), 'Default webhook url not set');
+					}
+
+					const identity = await establishChatWidgetIdentity(ctx, resourceUrl);
+					if (!identity) {
+						return { noWebhookResponse: true };
+					}
+					visitor = identity.visitor;
+					authToken = identity.authToken;
+
 					// By header as well as by the iframe's attribute, so the document has no
 					// origin even if the attribute is ever stripped.
 					res.setHeader('Content-Security-Policy', `sandbox ${CHAT_FRAME_SANDBOX}`);
-					// Cookies aren't sent from an opaque origin; messages carry this instead.
-					authToken = generateChatUserAuthToken(ctx.getNode(), visitor);
 				}
 
 				const page = createPage({
