@@ -138,7 +138,7 @@ export function buildCredentialResolutionNote(
 	if (gatewayParts.length > 0) {
 		sentences.push(
 			options?.n8nCreditsDepleted
-				? 'Remaining n8n credits are 0. Tell the user they must top up n8n credits or add their own key on the node before the workflow can run. Do not offer a live test. Do not say it works out of the box.'
+				? 'n8n credits are depleted. Tell the user they must top up n8n credits or add their own key on the node before the workflow can run. Do not offer a live test. Do not say it works out of the box.'
 				: 'Briefly let the user know these run on n8n credits and work out of the box, and that they can switch to their own key anytime by editing the credential on the node.',
 		);
 	}
@@ -153,7 +153,7 @@ export async function isN8nCreditsWalletDepleted(
 		credentials.some((credential) => credential.id === null),
 	);
 	if (!hasN8nCreditsAttached) return false;
-	const wallet = await context.credentialService.getN8nCreditsWallet?.();
+	const wallet = await context.credentialService.getAiGatewayWallet?.();
 	return wallet !== null && wallet !== undefined && wallet.balance <= 0;
 }
 

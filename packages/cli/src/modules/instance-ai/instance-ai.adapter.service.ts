@@ -2016,7 +2016,7 @@ export class InstanceAiAdapterService {
 				return config?.credentialTypes.includes(credType) ?? false;
 			},
 
-			async getN8nCreditsWallet(): Promise<{ balance: number } | null> {
+			async getAiGatewayWallet(): Promise<{ balance: number } | null> {
 				if (!aiGatewayService.isEnabled()) return null;
 				try {
 					return await aiGatewayService.getWallet(user.id);

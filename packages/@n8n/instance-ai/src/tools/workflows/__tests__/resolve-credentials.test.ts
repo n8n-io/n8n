@@ -1808,7 +1808,7 @@ describe('buildCredentialResolutionNote', () => {
 			{ n8nCreditsDepleted: true },
 		);
 
-		expect(note).toContain('Remaining n8n credits are 0');
+		expect(note).toContain('n8n credits are depleted');
 		expect(note).toContain('top up n8n credits');
 		expect(note).toContain('own key');
 		expect(note).toContain('Do not offer a live test');
@@ -1825,19 +1825,19 @@ describe('isN8nCreditsWalletDepleted', () => {
 	};
 
 	it('is false when no n8n credits were attached', async () => {
-		const getN8nCreditsWallet = vi.fn();
+		const getAiGatewayWallet = vi.fn();
 		const context = createMockContext();
-		context.credentialService.getN8nCreditsWallet = getN8nCreditsWallet;
+		context.credentialService.getAiGatewayWallet = getAiGatewayWallet;
 
 		await expect(
 			isN8nCreditsWalletDepleted(context, {
 				Slack: [{ type: 'slackApi', id: 'cred-1', name: 'My Slack' }],
 			}),
 		).resolves.toBe(false);
-		expect(getN8nCreditsWallet).not.toHaveBeenCalled();
+		expect(getAiGatewayWallet).not.toHaveBeenCalled();
 	});
 
-	it('is false when getN8nCreditsWallet is missing', async () => {
+	it('is false when getAiGatewayWallet is missing', async () => {
 		await expect(isN8nCreditsWalletDepleted(createMockContext(), n8nCreditsByNode)).resolves.toBe(
 			false,
 		);
@@ -1845,21 +1845,28 @@ describe('isN8nCreditsWalletDepleted', () => {
 
 	it('is false when the wallet fetch returns null', async () => {
 		const context = createMockContext();
-		context.credentialService.getN8nCreditsWallet = vi.fn().mockResolvedValue(null);
+		context.credentialService.getAiGatewayWallet = vi.fn().mockResolvedValue(null);
 
 		await expect(isN8nCreditsWalletDepleted(context, n8nCreditsByNode)).resolves.toBe(false);
 	});
 
 	it('is true when remaining credits are 0', async () => {
 		const context = createMockContext();
-		context.credentialService.getN8nCreditsWallet = vi.fn().mockResolvedValue({ balance: 0 });
+		context.credentialService.getAiGatewayWallet = vi.fn().mockResolvedValue({ balance: 0 });
+
+		await expect(isN8nCreditsWalletDepleted(context, n8nCreditsByNode)).resolves.toBe(true);
+	});
+
+	it('is true when remaining credits are negative', async () => {
+		const context = createMockContext();
+		context.credentialService.getAiGatewayWallet = vi.fn().mockResolvedValue({ balance: -1 });
 
 		await expect(isN8nCreditsWalletDepleted(context, n8nCreditsByNode)).resolves.toBe(true);
 	});
 
 	it('is false when remaining credits are positive', async () => {
 		const context = createMockContext();
-		context.credentialService.getN8nCreditsWallet = vi.fn().mockResolvedValue({ balance: 1 });
+		context.credentialService.getAiGatewayWallet = vi.fn().mockResolvedValue({ balance: 1 });
 
 		await expect(isN8nCreditsWalletDepleted(context, n8nCreditsByNode)).resolves.toBe(false);
 	});

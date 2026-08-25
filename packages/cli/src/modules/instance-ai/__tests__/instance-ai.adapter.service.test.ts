@@ -4797,7 +4797,7 @@ describe('createCredentialAdapter', () => {
 		});
 	});
 
-	describe('getN8nCreditsWallet', () => {
+	describe('getAiGatewayWallet', () => {
 		const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
 		function credentialServiceForWallet(overrides?: { enabled?: boolean; getWallet?: Mock }) {
@@ -4809,7 +4809,7 @@ describe('createCredentialAdapter', () => {
 			const getWallet = vi.fn();
 			const credentialService = credentialServiceForWallet({ enabled: false, getWallet });
 
-			await expect(credentialService.getN8nCreditsWallet!()).resolves.toBeNull();
+			await expect(credentialService.getAiGatewayWallet!()).resolves.toBeNull();
 			expect(getWallet).not.toHaveBeenCalled();
 		});
 
@@ -4818,7 +4818,7 @@ describe('createCredentialAdapter', () => {
 				getWallet: vi.fn().mockRejectedValue(new Error('network')),
 			});
 
-			await expect(credentialService.getN8nCreditsWallet!()).resolves.toBeNull();
+			await expect(credentialService.getAiGatewayWallet!()).resolves.toBeNull();
 		});
 
 		it('returns balance: 0 as-is', async () => {
@@ -4826,7 +4826,7 @@ describe('createCredentialAdapter', () => {
 			const getWallet = vi.fn().mockResolvedValue(wallet);
 			const credentialService = credentialServiceForWallet({ getWallet });
 
-			await expect(credentialService.getN8nCreditsWallet!()).resolves.toEqual(wallet);
+			await expect(credentialService.getAiGatewayWallet!()).resolves.toEqual(wallet);
 			expect(getWallet).toHaveBeenCalledWith('user-1');
 		});
 	});

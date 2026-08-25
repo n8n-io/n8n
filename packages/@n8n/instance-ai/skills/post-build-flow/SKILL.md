@@ -319,7 +319,7 @@ For a workflow with more than one trigger (`triggerNodes` has multiple entries):
    when the latest verification evidence used mocks or simulations. If this
    follow-up is due, ask only whether the user wants the live test. Do not
    mention publishing or ask about the error workflow in the same response.
-   If `credentialResolutionNote` says remaining n8n credits are 0 / empty,
+   If `credentialResolutionNote` says n8n credits are depleted,
    that note wins: do not offer a live test.
 7. Before your final summary, scan the **whole conversation** for live runs that
    already wrote test data into an external system — earlier turns included, not
@@ -404,7 +404,7 @@ test without mocks. Ask only about the live test. Do not run it automatically.
 Do not offer publishing as an alternative or describe the workflow as ready to
 use or publish.
 
-If `credentialResolutionNote` says remaining n8n credits are 0 / empty, that
+If `credentialResolutionNote` says n8n credits are depleted, that
 note wins over this live-test offer: do not offer a live test. Tell the user
 they must top up n8n credits or add their own key on the node first.
 
