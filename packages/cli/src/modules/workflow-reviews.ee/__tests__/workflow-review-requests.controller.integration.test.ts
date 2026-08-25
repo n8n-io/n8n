@@ -3090,7 +3090,8 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 	/**
 	 * Seed a review in `teamProject` pinned to a workflow that has moved out of
 	 * `author`'s reach, covering a second workflow that is still readable. Row ids
-	 * are explicit — id ASC decides which row counts as pinned.
+	 * are set explicitly because generated nanoids would leave it to chance which
+	 * row the query's id ordering puts first, i.e. which one counts as pinned.
 	 */
 	async function seedTwoWorkflowRequest(author: User) {
 		const destinationProject = await createTeamProject('Moved Away', owner);
