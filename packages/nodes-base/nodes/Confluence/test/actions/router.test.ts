@@ -2,15 +2,17 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { router } from '../../actions/router';
-import { confluenceApiRequest } from '../../transport';
+import { confluenceApiRequest, confluenceApiRequestUpload } from '../../transport';
 import { mockExecuteCtx } from '../shared';
 
 vi.mock('../../transport', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	confluenceApiRequest: vi.fn(),
+	confluenceApiRequestUpload: vi.fn(),
 }));
 
 const apiRequest = confluenceApiRequest as unknown as Mock;
+const apiRequestUpload = confluenceApiRequestUpload as unknown as Mock;
 
 const createParams: Record<string, unknown> = {
 	resource: 'page',
@@ -95,6 +97,34 @@ describe('Confluence router', () => {
 			{ limit: 250 },
 		);
 		expect(result).toEqual([[{ json: { id: 'a1', title: 'notes.txt' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('dispatches attachment:upload and returns the created attachment', async () => {
+		apiRequestUpload.mockResolvedValue({ results: [{ id: 'att1', title: 'notes.txt' }] });
+		const ctx = mockExecuteCtx({
+			resource: 'attachment',
+			operation: 'upload',
+			page: { mode: 'id', value: '9' },
+			binaryPropertyName: 'data',
+			minorEdit: false,
+			comment: '',
+		});
+		ctx.helpers.assertBinaryData.mockReturnValue({
+			data: '',
+			mimeType: 'text/plain',
+			fileName: 'notes.txt',
+		});
+		ctx.helpers.getBinaryDataBuffer.mockResolvedValue(Buffer.from('file-bytes'));
+
+		const result = await router.call(ctx);
+
+		expect(apiRequestUpload).toHaveBeenCalledWith(
+			'/wiki/rest/api/content/9/child/attachment',
+			expect.anything(),
+		);
+		expect(result).toEqual([
+			[{ json: { id: 'att1', title: 'notes.txt' }, pairedItem: { item: 0 } }],
+		]);
 	});
 
 	it('dispatches page:delete and returns the deletion report', async () => {
