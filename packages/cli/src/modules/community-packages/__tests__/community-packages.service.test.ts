@@ -379,8 +379,9 @@ describe('CommunityPackagesService', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
 
-			// The one existence check is the pre-download backup, and it finds a directory.
-			vi.mocked(access).mockResolvedValueOnce(undefined).mockRejectedValue(new Error('ENOENT'));
+			// A directory is there for the pre-download backup, and again after a rollback
+			// puts it back, which is what decides whether the rollback reloads it.
+			vi.mocked(access).mockResolvedValue(undefined);
 
 			vi.mocked(execFile).mockImplementation(execMockForThisBlock);
 			vi.mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
@@ -608,6 +609,41 @@ describe('CommunityPackagesService', () => {
 				JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }, null, 2),
 				'utf-8',
 			);
+		});
+
+		test('should not attempt a reload when the directory restore left nothing behind', async () => {
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+			vi.spyOn(Date, 'now').mockReturnValue(1_717_171_717_171);
+			const backupDirectory = `${testBlockPackageDir}.backup-1717171717171`;
+
+			// A directory to back up, but none once the restore below fails to put it back.
+			vi.mocked(access)
+				.mockReset()
+				.mockResolvedValueOnce(undefined)
+				.mockRejectedValue(new Error('ENOENT'));
+			vi.mocked(rename).mockImplementation(async (from) => {
+				if (from === backupDirectory) throw new Error('EPERM');
+			});
+			installedPackageRepository.replaceInstalledPackageWithNodes.mockRejectedValueOnce(
+				new Error('DB unreachable'),
+			);
+
+			await expect(
+				communityPackagesService.updatePackage(
+					installedPackageForUpdateTest.packageName,
+					installedPackageForUpdateTest,
+				),
+			).rejects.toThrow('Failed to save installed package');
+
+			// Loading a directory the restore failed to put back can only fail, and its
+			// warning would point at the reload instead of the restore that actually broke.
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(1);
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				'Failed to reload community package after failed installation',
+				expect.anything(),
+			);
+			// The registry still has to be rebuilt: the unload already happened.
+			expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalledTimes(1);
 		});
 
 		test('should unload the package when a fresh install fails to save to the database', async () => {
@@ -963,17 +999,19 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
 		});
 
-		test('reloads the package when a backup was put back in place', async () => {
-			const backupDirectory = `${nodesDownloadDir}/node_modules/${packageName}.backup-123`;
+		test('reloads the package when the rollback left a directory on disk', async () => {
+			vi.mocked(access).mockResolvedValue(undefined);
 
-			await (communityPackagesService as any).restoreLoadedPackage(packageName, backupDirectory);
+			await (communityPackagesService as any).restoreLoadedPackage(packageName);
 
 			expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(packageName);
 			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(packageName);
 		});
 
-		test('unloads without reloading when there was no backup to put back', async () => {
-			await (communityPackagesService as any).restoreLoadedPackage(packageName, undefined);
+		test('unloads without reloading when the rollback left nothing on disk', async () => {
+			vi.mocked(access).mockRejectedValue(new Error('ENOENT'));
+
+			await (communityPackagesService as any).restoreLoadedPackage(packageName);
 
 			// The loader for the version that failed has to go even with no previous version
 			// to bring back, or its nodes stay usable with nothing on disk behind them.
@@ -983,10 +1021,10 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('rebuilds the node type registry even when the reload fails', async () => {
-			const backupDirectory = `${nodesDownloadDir}/node_modules/${packageName}.backup-123`;
+			vi.mocked(access).mockResolvedValue(undefined);
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('ENOENT'));
 
-			await (communityPackagesService as any).restoreLoadedPackage(packageName, backupDirectory);
+			await (communityPackagesService as any).restoreLoadedPackage(packageName);
 
 			// Without this the registry keeps advertising the package's node types with no
 			// loader behind them, and `withLoadStatus` reports it as loaded.
@@ -1001,7 +1039,7 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.unloadPackage.mockRejectedValueOnce(new Error('unload failed'));
 
 			await expect(
-				(communityPackagesService as any).restoreLoadedPackage(packageName, undefined),
+				(communityPackagesService as any).restoreLoadedPackage(packageName),
 			).resolves.toBeUndefined();
 
 			expect(logger.warn).toHaveBeenCalledWith(

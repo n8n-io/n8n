@@ -487,7 +487,7 @@ export class CommunityPackagesService {
 					backupDirectory,
 					previousVersion,
 				});
-				await this.restoreLoadedPackage(packageName, backupDirectory);
+				await this.restoreLoadedPackage(packageName);
 				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, {
 					cause: error,
 				});
@@ -508,7 +508,7 @@ export class CommunityPackagesService {
 						backupDirectory,
 						previousVersion,
 					});
-					await this.restoreLoadedPackage(packageName, backupDirectory);
+					await this.restoreLoadedPackage(packageName);
 
 					throw new UnexpectedError('Failed to save installed package', {
 						extra: { packageName },
@@ -543,7 +543,7 @@ export class CommunityPackagesService {
 					backupDirectory,
 					previousVersion,
 				});
-				await this.restoreLoadedPackage(packageName, backupDirectory);
+				await this.restoreLoadedPackage(packageName);
 
 				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 			}
@@ -696,15 +696,16 @@ export class CommunityPackagesService {
 	}
 
 	/**
-	 * Brings the loader back in line with a rolled-back directory: the version that failed
-	 * is gone from disk, so its loader has to go too, and whatever the restore put back has
-	 * to be loaded again. Only for callers that already unloaded the previous version.
+	 * Brings the loader back in line with whatever the rollback left on disk: the version
+	 * that failed is gone, so its loader has to go too. Only for callers that already
+	 * unloaded the previous version.
 	 */
-	private async restoreLoadedPackage(packageName: string, backupDirectory?: string) {
+	private async restoreLoadedPackage(packageName: string) {
 		try {
 			await this.loadNodesAndCredentials.unloadPackage(packageName);
-			// Nothing was restored when there was no backup, so there is nothing to load.
-			if (backupDirectory) {
+			// What the rollback left, not what it meant to leave: a restore that failed
+			// halfway can leave nothing there, and boot loads this directory by scanning it.
+			if (await this.packageDirectoryExists(packageName)) {
 				await this.loadNodesAndCredentials.loadPackage(packageName);
 			}
 		} catch (cleanupError) {
