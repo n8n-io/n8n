@@ -928,7 +928,7 @@ describe('CommunityPackagesService', () => {
 		});
 	});
 
-	describe('restoreFailedPackageInstallation', () => {
+	describe('restorePackageFiles', () => {
 		test('restores the package directory before updating the package.json manifest, so a crash mid-restore leaves the directory intact', async () => {
 			const packageName = 'n8n-nodes-test';
 			const backupDirectory = `${nodesDownloadDir}/node_modules/${packageName}.backup-123`;
@@ -944,7 +944,7 @@ describe('CommunityPackagesService', () => {
 				},
 			);
 
-			await (communityPackagesService as any).restoreFailedPackageInstallation(packageName, {
+			await (communityPackagesService as any).restorePackageFiles(packageName, {
 				backupDirectory,
 				previousVersion: '1.0.0',
 			});
@@ -962,7 +962,7 @@ describe('CommunityPackagesService', () => {
 				.spyOn(communityPackagesService, 'updatePackageJsonDependency')
 				.mockResolvedValue(undefined);
 
-			await (communityPackagesService as any).restoreFailedPackageInstallation(packageName, {
+			await (communityPackagesService as any).restorePackageFiles(packageName, {
 				backupDirectory,
 				previousVersion: '1.0.0',
 			});
@@ -980,7 +980,7 @@ describe('CommunityPackagesService', () => {
 				JSON.stringify({ dependencies: { [packageName]: '1.0.0' } }),
 			);
 
-			await (communityPackagesService as any).restoreFailedPackageInstallation(packageName, {});
+			await (communityPackagesService as any).restorePackageFiles(packageName, {});
 
 			expect(writeFile).toHaveBeenCalledWith(
 				path.join(nodesDownloadDir, 'package.json'),

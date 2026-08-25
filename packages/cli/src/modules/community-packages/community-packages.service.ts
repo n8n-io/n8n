@@ -467,7 +467,7 @@ export class CommunityPackagesService {
 				await this.downloadPackage(packageName, packageVersion, authToken);
 			} catch (error) {
 				// No reload here: the previous package was not unloaded before the download
-				await this.restoreFailedPackageInstallation(packageName, {
+				await this.restorePackageFiles(packageName, {
 					backupDirectory,
 					previousVersion,
 				});
@@ -487,7 +487,6 @@ export class CommunityPackagesService {
 					backupDirectory,
 					previousVersion,
 				});
-				await this.restoreLoadedPackage(packageName);
 				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, {
 					cause: error,
 				});
@@ -508,7 +507,6 @@ export class CommunityPackagesService {
 						backupDirectory,
 						previousVersion,
 					});
-					await this.restoreLoadedPackage(packageName);
 
 					throw new UnexpectedError('Failed to save installed package', {
 						extra: { packageName },
@@ -543,7 +541,6 @@ export class CommunityPackagesService {
 					backupDirectory,
 					previousVersion,
 				});
-				await this.restoreLoadedPackage(packageName);
 
 				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
 			}
@@ -728,7 +725,7 @@ export class CommunityPackagesService {
 		}
 	}
 
-	private async restoreFailedPackageInstallation(
+	private async restorePackageFiles(
 		packageName: string,
 		options: { backupDirectory?: string; previousVersion?: string },
 	) {
@@ -750,6 +747,15 @@ export class CommunityPackagesService {
 				packageName,
 			});
 		}
+	}
+
+	/** Full rollback, for callers that already unloaded the package before failing. */
+	private async restoreFailedPackageInstallation(
+		packageName: string,
+		options: { backupDirectory?: string; previousVersion?: string },
+	) {
+		await this.restorePackageFiles(packageName, options);
+		await this.restoreLoadedPackage(packageName);
 	}
 
 	/**
