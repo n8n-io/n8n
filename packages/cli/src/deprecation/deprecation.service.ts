@@ -78,36 +78,6 @@ export class DeprecationService {
 			checkValue: (value?: string) => value === undefined,
 		},
 		{
-			envVar: 'N8N_RUNNERS_MODE',
-			message:
-				'Internal task runner mode is deprecated and will be removed in a future version. For isolation and scaling, run the task runner launcher as a separate process, set this variable to `external` and share `N8N_RUNNERS_AUTH_TOKEN` with the launcher. See https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-task-runners',
-			// Unset means the default, which is still `internal`, so most instances are affected without knowing it.
-			checkValue: (value?: string) => (value ?? this.globalConfig.taskRunners.mode) === 'internal',
-		},
-		{
-			envVar: 'N8N_SSRF_PROTECTION_ENABLED',
-			message:
-				"The built-in blocked IP ranges will expand in a future version to include the shared address space (100.64.0.0/10) and IPv6 transition ranges. To keep the current list, set N8N_SSRF_BLOCKED_IP_RANGES to the literal ranges instead of the `default` keyword, which always expands to the running version's built-in list.",
-			checkValue: (value?: string) => ['true', '1'].includes(value?.toLowerCase() ?? ''),
-			// Literal block lists without the `default` keyword do not pick up the expanded built-in list.
-			disableIf: () => {
-				const ranges = process.env.N8N_SSRF_BLOCKED_IP_RANGES;
-				return (
-					ranges !== undefined &&
-					!ranges
-						.toLowerCase()
-						.split(',')
-						.some((r) => r.trim() === 'default')
-				);
-			},
-		},
-		{
-			envVar: 'N8N_RUNNERS_TASK_TIMEOUT',
-			message:
-				'The default for this variable will be reduced from 300 (5 minutes) to 60 (1 minute) in a future version. Set it explicitly to keep your current task timeout.',
-			checkValue: (value?: string) => value === undefined,
-		},
-		{
 			envVar: 'N8N_EXPRESSION_ENGINE',
 			message:
 				'The `legacy` expression engine runs expressions without isolation, is no longer considered secure, and will be removed in a future version. Remove this environment variable to use the default `vm` engine.',
