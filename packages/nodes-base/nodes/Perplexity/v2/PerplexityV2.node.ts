@@ -64,7 +64,7 @@ export class PerplexityV2 implements INodeType {
 							name: 'Chat',
 							value: 'chat',
 							description:
-								'Send messages using Sonar models with built-in web search. Sonar service ends 2026-09-27; switch to the Agent resource.',
+								'Send messages using Sonar models with built-in web search. Perplexity ends Sonar support on September 27, 2026; switch to the Agent resource.',
 						},
 						{
 							name: 'Embedding',
@@ -77,23 +77,23 @@ export class PerplexityV2 implements INodeType {
 							description: 'Get raw, ranked web search results',
 						},
 					],
-					default: 'agent',
+					default: 'chat',
 					displayOptions: {
 						show: {
 							'@version': [2],
 						},
 					},
 				},
-				// V2: deprecation notice shown when Chat resource is selected
+				// Deprecation notice shown when the Chat resource is in use
 				{
 					displayName:
-						'Sonar Chat Completions is now <a href="https://docs.perplexity.ai/docs/agent-api/quickstart" target="_blank">Agent API</a>. Sonar service ends September 27, 2026. Please migrate by then. See the <a href="https://docs.perplexity.ai/docs/agent-api/migrate-from-sonar/overview" target="_blank">Migration Guide</a>.',
+						'Sonar Chat Completions is now the <a href="https://docs.perplexity.ai/docs/agent-api/quickstart" target="_blank">Agent API</a>. Perplexity ends Sonar support on September 27, 2026, after which this resource stops working. Switch to the Agent resource before then, following the <a href="https://docs.perplexity.ai/docs/agent-api/migrate-from-sonar/overview" target="_blank">migration guide</a>.',
 					name: 'chatDeprecationNotice',
 					type: 'notice',
 					default: '',
 					displayOptions: {
 						show: {
-							'@version': [2],
+							'@version': [1, 2],
 							resource: ['chat'],
 						},
 					},

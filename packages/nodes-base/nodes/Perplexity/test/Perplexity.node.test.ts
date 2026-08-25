@@ -40,7 +40,9 @@ describe('Perplexity Node', () => {
 			expect(v2.description.properties).toEqual(expect.arrayContaining(description));
 		});
 
-		it('should default the v2 Resource selector to agent', () => {
+		// Flipping this default would reroute saved workflows that omit the
+		// parameter because it matched the default at save time
+		it('should keep the v2 Resource selector defaulted to chat', () => {
 			const v2Resource = v2.description.properties.find(
 				(p) =>
 					p.name === 'resource' &&
@@ -49,7 +51,7 @@ describe('Perplexity Node', () => {
 			);
 
 			expect(v2Resource).toBeDefined();
-			expect(v2Resource?.default).toBe('agent');
+			expect(v2Resource?.default).toBe('chat');
 		});
 
 		it('should keep the v1 Resource selector defaulted to chat', () => {
@@ -64,14 +66,14 @@ describe('Perplexity Node', () => {
 			expect(v1Resource?.default).toBe('chat');
 		});
 
-		it('should include a Chat deprecation notice on v2', () => {
+		it('should include a Chat deprecation notice on v1 and v2', () => {
 			const chatDeprecationNotice = v2.description.properties.find(
 				(p) => p.name === 'chatDeprecationNotice' && p.type === 'notice',
 			);
 
 			expect(chatDeprecationNotice).toBeDefined();
 			expect(chatDeprecationNotice?.displayOptions?.show?.resource).toEqual(['chat']);
-			expect(chatDeprecationNotice?.displayOptions?.show?.['@version']).toEqual([2]);
+			expect(chatDeprecationNotice?.displayOptions?.show?.['@version']).toEqual([1, 2]);
 			expect(chatDeprecationNotice?.displayName).toMatch(/September 27, 2026/);
 			expect(chatDeprecationNotice?.displayName).toMatch(
 				/docs\.perplexity\.ai\/docs\/agent-api\/migrate-from-sonar/,
@@ -111,6 +113,14 @@ describe('Perplexity Node', () => {
 			);
 
 			expect(chatDeprecationNotice).toBeUndefined();
+		});
+
+		it('should not carry over any Chat properties', () => {
+			const chatProperties = v3.description.properties.filter((p) =>
+				p.displayOptions?.show?.resource?.includes('chat'),
+			);
+
+			expect(chatProperties).toEqual([]);
 		});
 	});
 });
