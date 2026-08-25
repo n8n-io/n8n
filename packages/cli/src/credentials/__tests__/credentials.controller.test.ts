@@ -65,6 +65,7 @@ describe('CredentialsController', () => {
 		mock(), // instanceCredentialAssignmentRepository
 		mock(), // instanceCredentialUseRegistry
 		mock(), // dbLockService
+		mock(), // eventService
 	);
 
 	// Spy on methods that need to be mocked in tests
@@ -1034,14 +1035,14 @@ describe('CredentialsController', () => {
 	describe('deleteCredentials', () => {
 		const credentialId = 'cred-del-1';
 
-		it('should emit "private-credential-deleted" when deleting a resolvable credential', async () => {
+		it('should delete an accessible credential via CredentialsService', async () => {
 			const privateCredential = mock<CredentialsEntity>({
 				id: credentialId,
 				type: 'gmailOAuth2',
 				isResolvable: true,
 			});
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
-			vi.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
+			const deleteSpy = vi.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
 
 			const deleteReq = {
 				user: { id: 'u1' },
@@ -1050,31 +1051,9 @@ describe('CredentialsController', () => {
 
 			await credentialsController.deleteCredentials(deleteReq);
 
-			expect(emitSpy).toHaveBeenCalledWith('private-credential-deleted', {
-				user: deleteReq.user,
-				credentialType: privateCredential.type,
-				credentialId: privateCredential.id,
+			expect(deleteSpy).toHaveBeenCalledWith(deleteReq.user, credentialId, {
+				includeInstanceCredentials: true,
 			});
-		});
-
-		it('should not emit "private-credential-deleted" when deleting a static credential', async () => {
-			const staticCredential = mock<CredentialsEntity>({
-				id: credentialId,
-				type: 'gmailOAuth2',
-				isResolvable: false,
-			});
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(staticCredential);
-			vi.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
-
-			const deleteReq = {
-				user: { id: 'u1' },
-				params: { credentialId },
-			} as unknown as CredentialRequest.Delete;
-
-			await credentialsController.deleteCredentials(deleteReq);
-
-			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
-			expect(emittedEventNames).not.toContain('private-credential-deleted');
 		});
 	});
 

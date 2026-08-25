@@ -3,6 +3,7 @@ import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { redactTelemetryProperties } from '@n8n/telemetry';
 import { computed, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
@@ -74,7 +75,11 @@ function trackInputCompleted(
 		skipped_inputs: skippedInputs,
 		...extra,
 	};
-	telemetry.track('User finished providing input', eventProps);
+	// The inputs carry free text — what the user typed into a question card, and
+	// the agent's own description of the action it wants to take. This event
+	// reaches RudderStack *and* PostHog from the browser, so the backend
+	// redactor never sees it. The `*_id` keys are exempted by the scrubber.
+	telemetry.track('User finished providing input', redactTelemetryProperties(eventProps));
 }
 
 interface StandaloneChunk {
@@ -442,12 +447,14 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 			<!-- ============ Standalone items (no approval wrapper) ============ -->
 			<template v-else-if="chunk.type === 'standalone'">
 				<!-- Workflow setup -->
+				<!-- Threads are project-bound: fall back to the thread's project so a
+				     payload without projectId never degrades to the personal project. -->
 				<InstanceAiWorkflowSetup
 					v-if="chunk.item.toolCall.confirmation.setupRequests?.length"
 					:key="'setup-' + chunk.item.toolCall.confirmation.requestId"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
 					:workflow-id="chunk.item.toolCall.confirmation.workflowId"
 				/>
@@ -459,8 +466,9 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:credential-requests="chunk.item.toolCall.confirmation.credentialRequests!"
 					:message="chunk.item.toolCall.confirmation.message"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
+					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
 				/>
 
 				<!-- Plan review -->

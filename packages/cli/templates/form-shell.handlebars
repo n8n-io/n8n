@@ -29,136 +29,171 @@
 			--color-icon-text: #6a5bdd;
 			--border-radius-card: 8px;
 			--border-radius-input: 6px;
-			--container-width: 480px;
+			/* Matches the form card's own --container-width so the panel and the card
+			   line up edge to edge; the narrow-viewport rule below mirrors the form's. */
+			--container-width: 448px;
 			--box-shadow-card: 0px 4px 16px 0px var(--color-card-shadow);
 			--box-shadow-dialog: 0px 12px 48px rgba(0, 0, 0, 0.18);
 		}
 		*, ::before, ::after { box-sizing: border-box; margin: 0; padding: 0; }
 		body { font-family: var(--font-family); background: var(--color-background); min-height: 100vh; }
 		.shell { width: 100%; padding-top: 24px; }
-		/* Aligned to the form card's width, which centers itself in the iframe below. */
-		.req-card, .req-strip { width: var(--container-width); max-width: calc(100vw - 32px); margin: 0 auto 16px; }
+		.req-card, .req-summary { width: var(--container-width); margin: 0 auto 16px; }
 
-		/* --- Required-credentials card (1–2 credentials, inline) --- */
+		/* --- Single-account panel: the credential row connects directly --- */
 		.req-card {
 			background: var(--color-card-bg);
 			border: 1px solid var(--color-card-border);
 			border-radius: var(--border-radius-card);
 			box-shadow: var(--box-shadow-card);
-			padding: 20px;
+			padding: 8px 20px;
 		}
-		.req-title { font-size: 15px; font-weight: 600; color: var(--color-header); }
-		.req-sub { font-size: 13px; color: var(--color-muted); margin-top: 4px; margin-bottom: 14px; }
 
-		/* --- Compact strip (3+ credentials) --- */
-		.req-strip {
+		/* --- Summary line (two or more accounts, details behind the dialog) --- */
+		.req-summary {
 			display: flex;
 			align-items: center;
-			gap: 14px;
+			gap: 12px;
 			background: var(--color-card-bg);
 			border: 1px solid var(--color-card-border);
 			border-radius: var(--border-radius-card);
 			box-shadow: var(--box-shadow-card);
-			padding: 16px 18px;
+			padding: 14px 18px;
 		}
-		.stack { display: flex; align-items: center; }
-		.stack .cred-icon { margin-right: -8px; border: 2px solid var(--color-card-bg); }
-		.stack .more {
-			width: 28px; height: 28px; border-radius: 6px; border: 2px solid var(--color-card-bg);
-			background: #eceafd; color: var(--color-icon-text);
-			font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center;
-		}
-		.strip-meta { flex: 1; min-width: 0; }
-		.strip-title { font-size: 14px; font-weight: 600; color: var(--color-header); }
-		.strip-count { font-size: 13px; color: var(--color-muted); margin-top: 2px; }
+		.summary-info { position: relative; display: flex; flex-shrink: 0; }
+		.summary-icon { display: flex; background: none; border: 0; padding: 0; cursor: pointer; color: var(--color-muted); }
+		.summary-icon svg { display: block; }
+		.summary-icon .icon-ok, .req-summary.all-connected .summary-icon .icon-pending { display: none; }
+		.req-summary.all-connected .summary-icon { color: var(--color-ok); }
+		.req-summary.all-connected .summary-icon .icon-ok { display: block; }
+		/* Hover/focus for pointer + keyboard; `.open` is the tap toggle (iOS Safari
+		   doesn't focus buttons on tap, so :focus-within alone won't show it there). */
+		.summary-tooltip { display: none; position: absolute; top: 100%; left: -12px; padding-top: 8px; width: min(300px, calc(100vw - 32px)); z-index: 20; }
+		.summary-info:hover .summary-tooltip, .summary-info:focus-within .summary-tooltip, .summary-info.open .summary-tooltip { display: block; }
+		.summary-tooltip-body { display: block; background: var(--color-card-bg); border: 1px solid var(--color-card-border); border-radius: var(--border-radius-card); box-shadow: var(--box-shadow-dialog); padding: 10px 12px; font-size: 12px; line-height: 1.5; color: var(--color-label); }
+		.summary-tooltip-body a { color: var(--color-primary); font-weight: 600; text-decoration: none; white-space: nowrap; }
+		.summary-tooltip-body a:hover { text-decoration: underline; }
+		.summary-text { flex: 1; min-width: 0; font-size: 13px; color: var(--color-header); }
 
-		/* --- Credential row (shared by card + dialog) --- */
+		/* --- Credential row (shared by the single-account panel + dialog) --- */
 		.cred-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; }
-		.req-card .cred-row + .cred-row,
-		.dialog .cred-row + .cred-row { border-top: 1px solid #f0f1f4; }
 		.cred-icon {
 			width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0;
 			background: var(--color-icon-bg); color: var(--color-icon-text);
 			font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center;
 		}
+		/* Provider icon, served unauthenticated from /icons/** on this same origin. */
+		img.cred-icon { background: none; object-fit: contain; }
 		.cred-meta { flex: 1; min-width: 0; }
 		.cred-name { display: block; font-size: 14px; font-weight: 600; color: var(--color-label); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+		/* Stays muted when connected — the green lives on the row's control, not the copy. */
 		.cred-sub { display: block; font-size: 12px; color: var(--color-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-		.cred-sub.connected { color: var(--color-ok); }
 
 		/* --- Buttons --- */
 		.btn {
 			font-family: var(--font-family); font-size: 13px; font-weight: 600;
 			padding: 8px 16px; border-radius: var(--border-radius-input); border: 1px solid transparent; cursor: pointer;
+			flex-shrink: 0;
 		}
 		.btn-primary { background: var(--color-primary); color: var(--color-primary-text); }
 		.btn-primary:hover { opacity: 0.88; }
 		.btn-secondary { background: var(--color-card-bg); color: var(--color-label); border-color: var(--color-card-border); }
 		.btn-secondary:hover { border-color: var(--color-muted); }
+		/* Connect (primary) while accounts are outstanding; Manage (quiet) once they're all in. */
+		#open-dialog { display: inline-flex; align-items: center; gap: 6px; }
+		#open-dialog .dot { display: none; width: 7px; height: 7px; border-radius: 50%; background: var(--color-ok); }
+		.req-summary.all-connected #open-dialog { background: var(--color-card-bg); color: var(--color-label); border-color: var(--color-card-border); }
+		.req-summary.all-connected #open-dialog:hover { opacity: 1; border-color: var(--color-muted); }
+		.req-summary.all-connected #open-dialog .dot { display: block; }
 		.cred-connected { position: relative; }
-		.btn-connected { display: inline-flex; align-items: center; gap: 6px; background: none; border: 0; color: var(--color-ok); font-family: var(--font-family); font-size: 13px; font-weight: 600; cursor: pointer; padding: 6px 4px; }
+		/* Bordered like the Connect button it replaces, so the row's control keeps its shape. */
+		.btn-connected {
+			display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+			background: var(--color-card-bg); border: 1px solid var(--color-card-border); border-radius: var(--border-radius-input);
+			color: var(--color-label); font-family: var(--font-family); font-size: 13px; font-weight: 600; padding: 8px 12px;
+		}
+		.btn-connected:hover { border-color: var(--color-muted); }
+		.btn-connected .caret { color: var(--color-muted); }
 		.btn-connected .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-ok); }
 		/* Fixed so the menu escapes the dialog's overflow clipping; positioned by JS. */
 		.cred-menu { display: none; position: fixed; min-width: 150px; background: var(--color-card-bg); border: 1px solid var(--color-card-border); border-radius: 6px; box-shadow: var(--box-shadow-dialog); z-index: 30; }
 		.cred-menu.open { display: block; }
 		.btn-disconnect { display: block; width: 100%; text-align: left; white-space: nowrap; background: none; border: 0; padding: 8px 14px; font-family: var(--font-family); font-size: 13px; color: #a02f28; cursor: pointer; }
 		.btn-disconnect:hover { background: #fdeceb; }
-		.cred-status-ok { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--color-ok); white-space: nowrap; }
-		.cred-status-ok .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-ok); }
 		.cred-blocked { font-size: 13px; color: var(--color-muted); }
 
 		/* --- Dialog --- */
 		.overlay { display: none; position: fixed; inset: 0; background: rgba(20, 20, 30, 0.28); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 10; padding: 16px; }
 		.overlay.open { display: flex; }
-		.dialog { width: 480px; max-width: 100%; max-height: calc(100vh - 48px); display: flex; flex-direction: column; background: var(--color-card-bg); border-radius: 12px; box-shadow: var(--box-shadow-dialog); overflow: hidden; }
+		.dialog { width: 448px; max-width: 100%; max-height: calc(100vh - 48px); display: flex; flex-direction: column; background: var(--color-card-bg); border-radius: 12px; box-shadow: var(--box-shadow-dialog); overflow: hidden; }
 		.dialog-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 8px; }
 		.dialog-title { font-size: 16px; font-weight: 600; color: var(--color-header); }
 		.dialog-close { background: none; border: 0; font-size: 20px; line-height: 1; color: var(--color-muted); cursor: pointer; }
-		.dialog-sub { padding: 0 20px 8px; font-size: 13px; color: var(--color-muted); }
+		.dialog-sub { padding: 0 20px 16px; font-size: 13px; color: var(--color-muted); }
 		.dialog-list { padding: 0 20px; overflow-y: auto; }
 		.dialog-foot { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-top: 1px solid #f0f1f4; }
 		.dialog-count { font-size: 13px; color: var(--color-muted); }
 
 		/* --- The form itself, unchanged, in a null-origin sandboxed iframe --- */
 		#form-frame { display: block; width: 100%; height: calc(100vh - 40px); border: 0; background: transparent; }
+
+		/* Mirrors the form card's own narrow-viewport width so the edges stay aligned. */
+		@media only screen and (max-width: 500px) {
+			.req-card, .req-summary { width: 95%; }
+		}
 	</style>
 </head>
 
 <body>
+	{{#*inline "credRow"}}
+		<div
+			class='cred-row'
+			data-cred-id='{{id}}'
+			data-status='{{status}}'
+			data-resolver-id='{{resolverId}}'
+			data-not-connected-text='{{notConnectedText}}'
+			{{#if connected}} data-connected='true'{{/if}}
+			{{#if revokeUrl}} data-revoke-url='{{revokeUrl}}'{{/if}}
+		>
+			{{!-- The provider icon when it resolved server-side, else the letter tile. --}}
+			{{#if iconUrl}}
+				<img class='cred-icon cred-icon-img' src='{{iconUrl}}' alt='' data-initial='{{initial}}' />
+			{{else}}
+				<span class='cred-icon'>{{initial}}</span>
+			{{/if}}
+			<span class='cred-meta'>
+				<span class='cred-name'>{{name}}</span>
+				<span class='cred-sub'>{{#if connected}}{{#if account}}Connected as {{account}}{{else}}Connected{{/if}}{{else}}{{notConnectedText}}{{/if}}{{#if usedBy}} · used by {{usedBy}}{{/if}}</span>
+			</span>
+			{{#if connected}}
+				<span class='cred-connected'><button type='button' class='btn-connected'><span class='dot'></span> Connected <span class='caret'>&#9662;</span></button><div class='cred-menu'><button type='button' class='btn-disconnect'>Disconnect</button></div></span>
+			{{else if authorizationUrl}}
+				<button class='btn btn-secondary connect' data-url='{{authorizationUrl}}'>{{#if (eq status 'expired')}}Reconnect{{else}}Connect{{/if}}</button>
+			{{else}}
+				<span class='cred-blocked'>Ask the form owner</span>
+			{{/if}}
+		</div>
+	{{/inline}}
+
 	<div class='shell' data-submitter-email='{{submitterEmail}}'>
 		{{#if useDialog}}
-			<div class='req-strip'>
-				<div class='stack'>
-					{{#each iconStack}}
-						<span class='cred-icon'>{{this}}</span>
-					{{/each}}
-					{{#if moreCount}}<span class='more'>+{{moreCount}}</span>{{/if}}
-				</div>
-				<div class='strip-meta'>
-					<div class='strip-title'>Required credentials</div>
-					<div class='strip-count'>{{connectedCount}} of {{total}} credentials connected</div>
-				</div>
-				<button class='btn btn-primary' id='open-dialog'>Connect</button>
+			<div class='req-summary{{#if allConnected}} all-connected{{/if}}' id='req-summary'>
+				<span class='summary-info' id='summary-info'>
+					<button type='button' class='summary-icon' aria-describedby='summary-tooltip' aria-label='About the accounts this form uses'>
+						<svg class='icon-pending' width='17' height='17' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.3' aria-hidden='true'><circle cx='8' cy='8' r='6.7' /><path d='M8 7.3v3.5' stroke-linecap='round' /><circle cx='8' cy='5.1' r='.8' fill='currentColor' stroke='none' /></svg>
+						<svg class='icon-ok' width='17' height='17' viewBox='0 0 16 16' fill='none' stroke='currentColor' stroke-width='1.3' aria-hidden='true'><circle cx='8' cy='8' r='6.7' /><path d='m5.2 8.2 1.9 1.9 3.7-4' stroke-linecap='round' stroke-linejoin='round' /></svg>
+					</button>
+					<span class='summary-tooltip' role='tooltip' id='summary-tooltip'>
+						<span class='summary-tooltip-body'>Submitting this form runs actions on your behalf, using accounts you connect. You can disconnect them at any time. <a href='https://docs.n8n.io/administer/manage-credentials/end-user-credentials' target='_blank' rel='noopener noreferrer'>Learn more</a></span>
+					</span>
+				</span>
+				<span class='summary-text' id='summary-text'>{{summaryText}}</span>
+				<button class='btn btn-primary' id='open-dialog'><span class='dot'></span><span class='label'>{{#if allConnected}}Manage{{else}}Connect{{/if}}</span></button>
 			</div>
 		{{else}}
 			<div class='req-card'>
-				<div class='req-title'>Required credentials</div>
-				<div class='req-sub'>Connect required credentials to run this form using your data.</div>
 				{{#each credentials}}
-					<div class='cred-row' data-cred-id='{{id}}' data-status='{{status}}' data-resolver-id='{{resolverId}}'{{#if connected}} data-connected='true'{{/if}}{{#if revokeUrl}} data-revoke-url='{{revokeUrl}}'{{/if}}>
-						<span class='cred-icon'>{{initial}}</span>
-						<span class='cred-meta'>
-							<span class='cred-name'>{{name}}</span>
-							<span class='cred-sub {{#if connected}}connected{{/if}}'>{{#if connected}}{{#if account}}Connected as {{account}}{{else}}Connected{{/if}}{{else}}Not connected{{/if}}{{#if usedBy}} · used by {{usedBy}}{{/if}}</span>
-						</span>
-						{{#if connected}}
-							<span class='cred-connected'><button type='button' class='btn-connected'><span class='dot'></span> Connected <span class='caret'>&#9662;</span></button><div class='cred-menu'><button type='button' class='btn-disconnect'>Disconnect</button></div></span>
-						{{else if authorizationUrl}}
-							<button class='btn btn-secondary connect' data-url='{{authorizationUrl}}'>{{#if (eq status 'expired')}}Reconnect{{else}}Connect{{/if}}</button>
-						{{else}}
-							<span class='cred-blocked'>Ask the form owner</span>
-						{{/if}}
-					</div>
+					{{> credRow notConnectedText='Not connected · needed to submit this form'}}
 				{{/each}}
 			</div>
 		{{/if}}
@@ -174,30 +209,17 @@
 		<div class='overlay' id='overlay'>
 			<div class='dialog' role='dialog' aria-modal='true' aria-labelledby='dialog-title'>
 				<div class='dialog-head'>
-					<span class='dialog-title' id='dialog-title'>Required credentials</span>
+					<span class='dialog-title' id='dialog-title'>Connect your accounts</span>
 					<button class='dialog-close' id='close-dialog' aria-label='Close'>&times;</button>
 				</div>
-				<div class='dialog-sub'>Connect required credentials to run this form using your data.</div>
+				<div class='dialog-sub'>Submitting this form uses these accounts on your behalf.</div>
 				<div class='dialog-list'>
 					{{#each credentials}}
-						<div class='cred-row' data-cred-id='{{id}}' data-status='{{status}}' data-resolver-id='{{resolverId}}'{{#if connected}} data-connected='true'{{/if}}{{#if revokeUrl}} data-revoke-url='{{revokeUrl}}'{{/if}}>
-							<span class='cred-icon'>{{initial}}</span>
-							<span class='cred-meta'>
-								<span class='cred-name'>{{name}}</span>
-								<span class='cred-sub {{#if connected}}connected{{/if}}'>{{#if connected}}{{#if account}}Connected as {{account}}{{else}}Connected{{/if}}{{else}}Not connected{{/if}}{{#if usedBy}} · used by {{usedBy}}{{/if}}</span>
-							</span>
-							{{#if connected}}
-								<span class='cred-connected'><button type='button' class='btn-connected'><span class='dot'></span> Connected <span class='caret'>&#9662;</span></button><div class='cred-menu'><button type='button' class='btn-disconnect'>Disconnect</button></div></span>
-							{{else if authorizationUrl}}
-								<button class='btn btn-secondary connect' data-url='{{authorizationUrl}}'>{{#if (eq status 'expired')}}Reconnect{{else}}Connect{{/if}}</button>
-							{{else}}
-								<span class='cred-blocked'>Ask the form owner</span>
-							{{/if}}
-						</div>
+						{{> credRow notConnectedText='Not connected'}}
 					{{/each}}
 				</div>
 				<div class='dialog-foot'>
-					<span class='dialog-count'>{{connectedCount}} of {{total}} credentials connected</span>
+					<span class='dialog-count' id='dialog-count'>{{footerText}}</span>
 					<button class='btn btn-primary' id='done-dialog'>Done</button>
 				</div>
 			</div>
@@ -217,20 +239,39 @@
 			});
 			var total = Object.keys(ids).length;
 
+			function accountsLabel(count) { return count === 1 ? 'account' : 'accounts'; }
+
+			// Mirrors `formShellSummaryText` in nodes-base/nodes/Form/utils/utils.ts,
+			// which renders the same line server-side and is what the unit tests cover.
+			function summaryText(count) {
+				var remaining = total - count;
+				if (remaining <= 0) return 'All ' + total + ' accounts connected · ready to submit';
+				if (count === 0) return total + ' accounts needed to submit this form';
+				return remaining + ' more ' + accountsLabel(remaining) + ' needed to submit this form';
+			}
+
+			var summaryEl = document.getElementById('summary-text');
+			var summaryRow = document.getElementById('req-summary');
+			var countEl = document.getElementById('dialog-count');
+			var openBtnLabel = document.querySelector('#open-dialog .label');
+
 			function refresh() {
 				var count = Object.keys(connected).length;
-				var txt = count + ' of ' + total + ' credentials connected';
-				document.querySelectorAll('.strip-count, .dialog-count').forEach(function (el) {
-					el.textContent = txt;
-				});
+				var allConnected = count >= total;
+				if (summaryEl) summaryEl.textContent = summaryText(count);
+				if (summaryRow) summaryRow.classList.toggle('all-connected', allConnected);
+				if (openBtnLabel) openBtnLabel.textContent = allConnected ? 'Manage' : 'Connect';
+				if (countEl) countEl.textContent = count + ' of ' + total + ' ' + accountsLabel(total) + ' connected';
 				// UX-only signal to the form iframe; the server-side POST gate is the guarantee.
 				if (frame && frame.contentWindow) {
 					frame.contentWindow.postMessage(
-						{ type: count >= total ? 'n8n-shell-credentials-ready' : 'n8n-shell-credentials-not-ready' },
+						{ type: allConnected ? 'n8n-shell-credentials-ready' : 'n8n-shell-credentials-not-ready' },
 						'*',
 					);
 				}
 			}
+
+			if (frame) frame.addEventListener('load', refresh);
 
 			var shellEl = document.querySelector('.shell');
 			var SUBMITTER_EMAIL = shellEl ? shellEl.getAttribute('data-submitter-email') || '' : '';
@@ -238,16 +279,32 @@
 				'<button type="button" class="btn-connected"><span class="dot"></span> Connected <span class="caret">&#9662;</span></button>' +
 				'<div class="cred-menu"><button type="button" class="btn-disconnect">Disconnect</button></div>';
 
+			// A provider icon that 404s (renamed node package, stale path) falls back to
+			// the letter tile the row also carries.
+			function fallBackToLetterTile(img) {
+				if (!img || !img.classList || !img.classList.contains('cred-icon-img')) return;
+				var tile = document.createElement('span');
+				tile.className = 'cred-icon';
+				tile.textContent = img.getAttribute('data-initial') || '?';
+				img.replaceWith(tile);
+			}
+			// Capture phase because `error` doesn't bubble.
+			document.addEventListener('error', function (e) { fallBackToLetterTile(e.target); }, true);
+			// Images load in parallel with this script, so some may have already failed
+			// by the time the listener above attaches — sweep those up.
+			document.querySelectorAll('.cred-icon-img').forEach(function (img) {
+				if (img.complete && img.naturalWidth === 0) fallBackToLetterTile(img);
+			});
+
 			function markConnected(id) {
 				if (!id || connected[id]) return;
 				connected[id] = true;
-				// Card and dialog share the same data-cred-id; update both.
+				// The single-account panel and the dialog share the same data-cred-id.
 				document.querySelectorAll('.cred-row[data-cred-id="' + id + '"]').forEach(function (row) {
 					row.setAttribute('data-connected', 'true');
 					var sub = row.querySelector('.cred-sub');
 					if (sub) {
 						sub.textContent = SUBMITTER_EMAIL ? 'Connected as ' + SUBMITTER_EMAIL : 'Connected';
-						sub.classList.add('connected');
 					}
 					var btn = row.querySelector('.connect');
 					if (btn) {
@@ -274,6 +331,51 @@
 
 			var pendingId = null;
 
+			// The frame is sandboxed to an opaque origin, so its own navigations are
+			// treated as cross-site and lose the form's auth cookie. It asks the shell to
+			// move it instead, and the shell — on the real origin — sets `src`, which is a
+			// same-origin navigation that keeps the cookie. Narrowed to this form's own
+			// follow-up pages: the frame is author-scriptable, so this must not become a
+			// way to point it at arbitrary n8n pages. Returns null when the target isn't
+			// one of them.
+			//
+			// The flag tells the page it is rendering inside this shell, which is what
+			// makes it hand its own next navigation back here instead of doing it itself.
+			var FORM_WAITING_PATH = '{{formWaitingPath}}';
+			function resolveFrameNavigation(target) {
+				if (typeof target !== 'string' || !target || !FORM_WAITING_PATH) return null;
+				try {
+					var here = new URL(window.location.href);
+					var resolved = new URL(target, here);
+					if (resolved.origin !== here.origin) return null;
+					if (
+						resolved.pathname !== FORM_WAITING_PATH &&
+						resolved.pathname.indexOf(FORM_WAITING_PATH + '/') !== 0
+					) {
+						return null;
+					}
+					resolved.searchParams.set('n8nShellHosted', '1');
+					return resolved.toString();
+				} catch (e) {
+					return null;
+				}
+			}
+
+			// The author's own redirect target, once the form is done. Any http(s) URL is
+			// allowed — this is where the author said to send the submitter, and a form
+			// outside the shell goes there too — but the scheme has to be one of those two.
+			// Returns null otherwise.
+			function resolveExternalRedirect(target) {
+				if (typeof target !== 'string' || !target) return null;
+				try {
+					var resolved = new URL(target, window.location.href);
+					if (resolved.protocol !== 'http:' && resolved.protocol !== 'https:') return null;
+					return resolved.toString();
+				} catch (e) {
+					return null;
+				}
+			}
+
 			// Connected only on the oauth-callback success signal — never on popup close,
 			// which also happens on provider-side failures.
 			function onSuccessSignal() { if (pendingId) markConnected(pendingId); }
@@ -284,10 +386,25 @@
 				});
 			} catch (e) {}
 			window.addEventListener('message', function (event) {
-				// The sandboxed form iframe can't spoof a connect: its only accepted message is
-				// the POST gate's rejection, which carries ids and moves rows one way only, so
-				// the worst author script can do is degrade its own form's UX.
+				// The sandboxed form iframe can't spoof a connect: it is only ever answered
+				// with a page move inside this form, the author's own end-of-form redirect,
+				// or the POST gate's rejection, which carries ids and moves rows one way only
+				// — so the worst author script can do is degrade its own form's UX.
+				// `event.origin` is the string 'null' for an opaque-origin frame and cannot be
+				// checked; `event.source` identifies it.
 				if (frame && event.source === frame.contentWindow) {
+					if (event.data && event.data.type === 'n8n-form-navigate') {
+						var next = resolveFrameNavigation(event.data.url);
+						if (next) frame.src = next;
+						return;
+					}
+					if (event.data && event.data.type === 'n8n-form-redirect') {
+						// The form is finished, so the author's redirect takes the whole tab —
+						// the same place a form rendered without this shell would end up.
+						var away = resolveExternalRedirect(event.data.url);
+						if (away) window.location.replace(away);
+						return;
+					}
 					handleGateRejection(event.data);
 					return;
 				}
@@ -307,7 +424,11 @@
 				document.querySelectorAll('.cred-row[data-cred-id="' + id + '"]').forEach(function (row) {
 					row.removeAttribute('data-connected');
 					var sub = row.querySelector('.cred-sub');
-					if (sub) { sub.textContent = 'Not connected'; sub.classList.remove('connected'); }
+					if (sub) {
+						// The single-account row spells out why the account is needed; the
+						// dialog's rows sit under copy that already says it.
+						sub.textContent = row.getAttribute('data-not-connected-text') || 'Not connected';
+					}
 					var wrap = row.querySelector('.cred-connected');
 					if (wrap) {
 						var btn = document.createElement('button');
@@ -407,7 +528,19 @@
 				document.querySelectorAll('.cred-menu.open').forEach(function (m) { m.classList.remove('open'); });
 			});
 
-			// Dialog (3+ credentials)
+			// Tap fallback for the info tooltip: hover/focus don't fire on touch
+			// (iOS Safari doesn't focus buttons on tap), so the button toggles it.
+			var summaryInfo = document.getElementById('summary-info');
+			if (summaryInfo) {
+				summaryInfo.querySelector('.summary-icon').addEventListener('click', function () {
+					summaryInfo.classList.toggle('open');
+				});
+				document.addEventListener('click', function (e) {
+					if (!summaryInfo.contains(e.target)) summaryInfo.classList.remove('open');
+				});
+			}
+
+			// Dialog (two or more accounts)
 			var overlay = document.getElementById('overlay');
 			var open = document.getElementById('open-dialog');
 			if (open && overlay) {
@@ -419,9 +552,10 @@
 
 			// The form's POST was refused by the server-side gate. Rows rendered at page load
 			// can be stale (revoked since, or disconnected in another tab), so flip the ones
-			// the server no longer considers connected and surface the panel — the 3+ layout
-			// otherwise keeps every row behind the strip. Declared after the dialog wiring so
-			// `overlay` is assigned; hoisting keeps it callable from the listener above.
+			// the server no longer considers connected and surface the panel — the 2+ layout
+			// otherwise keeps every row behind the summary line. Declared after the dialog
+			// wiring so `overlay` is assigned; hoisting keeps it callable from the listener
+			// above.
 			function handleGateRejection(data) {
 				if (!data || data.type !== 'n8n-form-credentials-rejected' || !Array.isArray(data.ids)) return;
 				data.ids.forEach(function (id) {

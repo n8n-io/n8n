@@ -6,9 +6,13 @@ vi.mock('@n8n/instance-ai', async () => {
 	const { WorkflowNotFoundError } = await import(
 		'../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error.js'
 	);
+	const { WorkflowEditorLockedError } = await import(
+		'../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error.js'
+	);
 	return {
 		WorkflowSaveConflictError,
 		WorkflowNotFoundError,
+		WorkflowEditorLockedError,
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s
@@ -41,6 +45,7 @@ vi.mock('@n8n/ai-utilities', () => ({
 }));
 
 import { Container } from '@n8n/di';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import { mock } from 'vitest-mock-extended';
 import { Expression } from 'n8n-workflow';
 import type {
@@ -83,6 +88,14 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Collaboration stub that reports no editor write lock and records broadcasts. */
+function createMockCollaborationService() {
+	return {
+		ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
+		broadcastWorkflowUpdate: vi.fn().mockResolvedValue(undefined),
+	};
+}
 
 function createMockExecutionRepository(
 	execution?: ReturnType<typeof makeExecution>,
@@ -1237,10 +1250,12 @@ import type { DataTableRepository } from '@/modules/data-table/data-table.reposi
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { WorkflowEditorLockedError } from '../../../../../@n8n/instance-ai/src/errors/workflow-editor-locked.error';
 import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error';
 import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { LockedError } from '@/errors/response-errors/locked.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
@@ -1323,6 +1338,9 @@ function createNodeAdapterServiceForTests(
 			typeof InstanceAiAdapterService
 		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		createMockCollaborationService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 		nodeCatalogService,
 	);
 
@@ -1686,6 +1704,9 @@ function createDataTableAdapterForTests(overrides?: {
 			typeof InstanceAiAdapterService
 		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		createMockCollaborationService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const adapter = service.createContext(mockUser, {
@@ -1932,10 +1953,11 @@ function createWorkflowAdapterForTests(overrides?: {
 	};
 
 	const mockWorkflowService = {
-		getMany: vi.fn().mockResolvedValue({ workflows: [savedWorkflow] }),
+		getMany: vi.fn().mockResolvedValue({ workflows: [savedWorkflow], count: 1 }),
 		archive: vi.fn().mockResolvedValue(savedWorkflow),
 		unarchive: vi.fn().mockResolvedValue(savedWorkflow),
 		activateWorkflow: vi.fn().mockResolvedValue({ activeVersionId: 'version-1' }),
+		deactivateWorkflow: vi.fn().mockResolvedValue(savedWorkflow),
 		update: vi.fn().mockResolvedValue(savedWorkflow),
 	};
 	const mockWorkflowHistoryService = {
@@ -1951,6 +1973,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		scoped: vi.fn(),
 	};
 	mockLogger.scoped.mockReturnValue(mockLogger);
+	const mockCollaborationService = createMockCollaborationService();
 
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
 
@@ -2012,6 +2035,9 @@ function createWorkflowAdapterForTests(overrides?: {
 			typeof InstanceAiAdapterService
 		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		mockCollaborationService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const boundProjectId =
@@ -2025,6 +2051,7 @@ function createWorkflowAdapterForTests(overrides?: {
 	return {
 		adapter,
 		context,
+		savedWorkflow,
 		mockProjectRepository,
 		mockWorkflowRepository,
 		mockWorkflowFinderService,
@@ -2033,6 +2060,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockWorkflowService,
 		mockWorkflowHistoryService,
 		mockEnterpriseWorkflowService,
+		mockCollaborationService,
 		mockTelemetry,
 		mockLogger,
 		mockUser,
@@ -2049,6 +2077,29 @@ describe('createWorkflowAdapter', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockedUserHasScopes.mockResolvedValue(true);
+	});
+
+	it('summarizes pinned data as node names and item counts, without payloads', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-pins',
+			pinData: {
+				'Get Job Alert Emails': [{ json: { id: 'msg_1' } }, { json: { id: 'msg_2' } }],
+				'Empty Pin': [],
+			},
+		});
+
+		await expect(adapter.getPinnedDataSummary?.('wf-pins')).resolves.toEqual([
+			{ nodeName: 'Get Job Alert Emails', itemCount: 2 },
+			{ nodeName: 'Empty Pin', itemCount: 0 },
+		]);
+	});
+
+	it('returns an empty pinned-data summary when the workflow has no pins', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({ id: 'wf-clean' });
+
+		await expect(adapter.getPinnedDataSummary?.('wf-clean')).resolves.toEqual([]);
 	});
 
 	it('preserves node-level execution options when returning WorkflowJSON', async () => {
@@ -2096,6 +2147,64 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('returns AI Gateway-managed credentials in a shape accepted by workflow codegen', async () => {
+		const { adapter, mockWorkflowFinderService } = createWorkflowAdapterForTests();
+		mockWorkflowFinderService.findWorkflowForUser.mockResolvedValue({
+			id: 'wf-managed',
+			name: 'Managed model workflow',
+			active: false,
+			versionId: 'version-id',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date('2026-01-01'),
+			updatedAt: new Date('2026-01-01'),
+			nodes: [
+				{
+					id: 'agent-id',
+					name: 'AI Agent',
+					type: '@n8n/n8n-nodes-langchain.agent',
+					typeVersion: 3.1,
+					position: [0, 0],
+					parameters: { promptType: 'define', text: 'Summarize the input.' },
+				},
+				{
+					id: 'model-id',
+					name: 'Google Gemini Chat Model',
+					type: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
+					typeVersion: 1.1,
+					position: [0, 200],
+					parameters: { modelName: 'models/gemini-3-flash-preview' },
+					credentials: {
+						googlePalmApi: {
+							id: null,
+							name: 'n8n credits',
+							__aiGatewayManaged: true,
+						},
+					},
+				},
+			],
+			connections: {
+				'Google Gemini Chat Model': {
+					ai_languageModel: [[{ node: 'AI Agent', type: 'ai_languageModel', index: 0 }]],
+				},
+			},
+			settings: {},
+		});
+
+		const workflow = await adapter.getAsWorkflowJSON('wf-managed');
+
+		expect(workflow.nodes[1].credentials).toEqual({
+			googlePalmApi: {
+				id: null,
+				name: 'n8n credits',
+				__aiGatewayManaged: true,
+			},
+		});
+		const code = generateWorkflowCode(workflow);
+		expect(code).toContain("newCredential('n8n credits')");
+		expect(code).not.toContain("newCredential('n8n credits', 'null')");
+	});
+
 	it('returns the version graph with current workflow metadata when a versionId is passed', async () => {
 		const { adapter, mockWorkflowHistoryService, mockUser } = createWorkflowAdapterForTests();
 		mockWorkflowHistoryService.getVersion.mockResolvedValue({
@@ -2135,12 +2244,77 @@ describe('createWorkflowAdapter', () => {
 				projectId: 'team-project-id',
 			},
 		});
-		expect(result).toEqual([
+		expect(result.workflows).toEqual([
 			expect.objectContaining({
 				id: 'wf-new',
 				isArchived: false,
 			}),
 		]);
+	});
+
+	it('reports how many workflows the name filter left out', async () => {
+		const { adapter, mockWorkflowService, mockUser, savedWorkflow } =
+			createWorkflowAdapterForTests();
+		mockWorkflowService.getMany
+			.mockResolvedValueOnce({ workflows: [savedWorkflow], count: 1 })
+			.mockResolvedValueOnce({ workflows: [savedWorkflow], count: 3 });
+
+		const result = await adapter.list({ query: 'PRD' });
+
+		// Second call re-counts the same scope without the name filter.
+		expect(mockWorkflowService.getMany).toHaveBeenNthCalledWith(2, mockUser, {
+			take: 1,
+			filter: { isArchived: false, projectId: 'team-project-id' },
+		});
+		expect(result.total).toBe(1);
+		expect(result.totalInScope).toBe(3);
+	});
+
+	it('lists a caller-named project as a filter, leaving access resolution to getMany', async () => {
+		const { adapter, mockWorkflowService, mockUser } = createWorkflowAdapterForTests();
+
+		await adapter.list({ projectId: 'other-project-id' });
+
+		// The user is still the one the query resolves readability from — the project
+		// id only narrows it, so it can never widen what the caller may read.
+		expect(mockWorkflowService.getMany).toHaveBeenCalledWith(mockUser, {
+			take: 50,
+			filter: { isArchived: false, projectId: 'other-project-id' },
+		});
+	});
+
+	it('attributes the owning project only when the listing can span projects', async () => {
+		const { adapter, mockWorkflowService, savedWorkflow } = createWorkflowAdapterForTests();
+		mockWorkflowService.getMany.mockResolvedValue({
+			workflows: [{ ...savedWorkflow, homeProject: { id: 'p2', name: 'Primary', type: 'team' } }],
+			count: 1,
+		});
+
+		const instanceWide = await adapter.list({ scope: 'instance' });
+		expect(instanceWide.workflows[0].project).toEqual({ id: 'p2', name: 'Primary' });
+
+		// Narrowed to one project — repeating it on every row carries no information.
+		const singleProject = await adapter.list({ projectId: 'p2' });
+		expect(singleProject.workflows[0].project).toBeUndefined();
+	});
+
+	it('omits attribution when the listed row carries no home project', async () => {
+		const { adapter, mockWorkflowService, savedWorkflow } = createWorkflowAdapterForTests();
+		mockWorkflowService.getMany.mockResolvedValue({ workflows: [savedWorkflow], count: 1 });
+
+		const result = await adapter.list({ scope: 'instance' });
+
+		expect(result.workflows[0].project).toBeUndefined();
+	});
+
+	it('skips the extra count query when no name filter is given', async () => {
+		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
+
+		const result = await adapter.list();
+
+		expect(mockWorkflowService.getMany).toHaveBeenCalledTimes(1);
+		expect(result.total).toBe(1);
+		expect(result.totalInScope).toBe(1);
 	});
 
 	it('lists archived workflows when requested', async () => {
@@ -2400,6 +2574,30 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
+	it('notifies open editors after a successful update so stale canvases reload', async () => {
+		// Without this an open editor keeps state the save replaced (e.g. cleared
+		// pinned data) and resurrects it via the overwrite-conflict dialog.
+		const { adapter, mockCollaborationService, mockUser } = createWorkflowAdapterForTests();
+
+		await adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON);
+
+		expect(mockCollaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+			'wf-existing',
+			mockUser.id,
+		);
+	});
+
+	it('does not notify editors when the update fails', async () => {
+		const { adapter, mockCollaborationService, mockWorkflowService } =
+			createWorkflowAdapterForTests();
+		mockWorkflowService.update.mockRejectedValueOnce(new Error('save failed'));
+
+		await expect(
+			adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON),
+		).rejects.toThrow('save failed');
+		expect(mockCollaborationService.broadcastWorkflowUpdate).not.toHaveBeenCalled();
+	});
+
 	it('clears existing node groups when the SDK workflow declares none (update is authoritative)', async () => {
 		// Regression: the SDK omits `nodeGroups` when no `.group(...)` is declared. The
 		// update path must treat that as "no groups" and send [] so a removed group is
@@ -2455,7 +2653,7 @@ describe('createWorkflowAdapter', () => {
 					parameters: {},
 					credentials: {
 						slackApi: { name: 'Slack' },
-						gmailOAuth2Api: { id: '', name: 'Gmail' },
+						gmailOAuth2: { id: '', name: 'Gmail' },
 						openAiApi: { id: null, name: 'OpenAI' },
 						httpHeaderAuth: { id: 'cred-1', name: 'HTTP Header' },
 					},
@@ -2516,7 +2714,7 @@ describe('createWorkflowAdapter', () => {
 					parameters: {},
 					credentials: {
 						slackApi: { name: 'Slack' },
-						gmailOAuth2Api: { id: '  ', name: 'Gmail' },
+						gmailOAuth2: { id: '  ', name: 'Gmail' },
 					},
 				},
 			],
@@ -2677,6 +2875,126 @@ describe('createWorkflowAdapter', () => {
 			);
 		});
 	});
+
+	describe('editor write lock', () => {
+		const lockWorkflow = (
+			mockCollaborationService: ReturnType<typeof createMockCollaborationService>,
+		) => {
+			mockCollaborationService.ensureWorkflowEditable.mockRejectedValue(
+				new LockedError('Cannot modify workflow while it is being edited by a user in the editor.'),
+			);
+		};
+
+		it('reports a locked workflow as a WorkflowEditorLockedError instead of a response error', async () => {
+			const { adapter, mockCollaborationService, mockWorkflowService } =
+				createWorkflowAdapterForTests();
+			lockWorkflow(mockCollaborationService);
+
+			await expect(
+				adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON),
+			).rejects.toThrow(WorkflowEditorLockedError);
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		});
+
+		it('refuses to write when the lock cannot be checked, without claiming a lock', async () => {
+			// Fail closed: an unreadable lock is no proof that nobody is editing.
+			const { adapter, mockCollaborationService, mockWorkflowService } =
+				createWorkflowAdapterForTests();
+			const lookupFailure = new Error('collaboration cache is unreachable');
+			mockCollaborationService.ensureWorkflowEditable.mockRejectedValue(lookupFailure);
+
+			await expect(adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON)).rejects.toBe(
+				lookupFailure,
+			);
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		});
+
+		it('refuses to unpublish a locked workflow', async () => {
+			const { adapter, mockCollaborationService, mockWorkflowService } =
+				createWorkflowAdapterForTests();
+			lockWorkflow(mockCollaborationService);
+
+			await expect(adapter.unpublish('wf-1')).rejects.toThrow(WorkflowEditorLockedError);
+			expect(mockWorkflowService.deactivateWorkflow).not.toHaveBeenCalled();
+		});
+
+		it('refuses to restore a version of a locked workflow', async () => {
+			const { adapter, mockCollaborationService, mockWorkflowService } =
+				createWorkflowAdapterForTests();
+			lockWorkflow(mockCollaborationService);
+
+			await expect(adapter.restoreVersion?.('wf-1', 'v-1')).rejects.toThrow(
+				WorkflowEditorLockedError,
+			);
+			expect(mockWorkflowService.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('notifying open editors', () => {
+		it('notifies after publishing', async () => {
+			const { adapter, mockCollaborationService } = createWorkflowAdapterForTests();
+
+			await adapter.publish('wf-1');
+
+			expect(mockCollaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+				'wf-1',
+				'user-1',
+			);
+		});
+
+		it('notifies after unpublishing', async () => {
+			const { adapter, mockCollaborationService } = createWorkflowAdapterForTests();
+
+			await adapter.unpublish('wf-1');
+
+			expect(mockCollaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+				'wf-1',
+				'user-1',
+			);
+		});
+
+		it('notifies after archiving', async () => {
+			const { adapter, mockCollaborationService } = createWorkflowAdapterForTests();
+
+			await adapter.archive('wf-1');
+
+			expect(mockCollaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+				'wf-1',
+				'user-1',
+			);
+		});
+
+		it('notifies after restoring a version', async () => {
+			const { adapter, mockCollaborationService, mockWorkflowHistoryService } =
+				createWorkflowAdapterForTests();
+			mockWorkflowHistoryService.getVersion.mockResolvedValue({
+				versionId: 'v-1',
+				nodes: [],
+				connections: {},
+				nodeGroups: [],
+			});
+
+			await adapter.restoreVersion?.('wf-1', 'v-1');
+
+			expect(mockCollaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith(
+				'wf-1',
+				'user-1',
+			);
+		});
+
+		it('keeps a committed update when notifying open editors fails', async () => {
+			const { adapter, mockCollaborationService, mockLogger } = createWorkflowAdapterForTests();
+			mockCollaborationService.broadcastWorkflowUpdate.mockRejectedValue(new Error('push is down'));
+
+			await expect(
+				adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON),
+			).resolves.toMatchObject({ id: 'wf-new' });
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Failed to notify open editors of an AI workflow update',
+				expect.objectContaining({ workflowId: 'wf-existing', error: 'push is down' }),
+			);
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -2833,6 +3151,9 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 			typeof InstanceAiAdapterService
 		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		createMockCollaborationService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -3019,6 +3340,7 @@ function createRunAdapterForTests(
 		postExecutePromise?: Promise<unknown>;
 		threadId?: string;
 		queueMode?: boolean;
+		allowSendingParameterValues?: boolean;
 	},
 ) {
 	const mockWorkflowFinderService = {
@@ -3052,7 +3374,7 @@ function createRunAdapterForTests(
 			typeof InstanceAiAdapterService
 		>[0],
 		{
-			ai: { allowSendingParameterValues: false },
+			ai: { allowSendingParameterValues: options?.allowSendingParameterValues ?? false },
 			executions: { mode: options?.queueMode ? 'queue' : 'regular' },
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
@@ -3097,6 +3419,9 @@ function createRunAdapterForTests(
 			typeof InstanceAiAdapterService
 		>[33],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		createMockCollaborationService() as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[35],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -3113,6 +3438,32 @@ function createRunAdapterForTests(
 describe('createExecutionAdapter run()', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('reports workflow-pinned nodes on the run result', async () => {
+		const { adapter } = createRunAdapterForTests(
+			{
+				id: 'wf-1',
+				nodes: [],
+				pinData: { 'Get Job Alert Emails': [{ json: { id: 'msg_1' } }] },
+			},
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		const result = await adapter.run('wf-1');
+
+		expect(result.workflowPinnedNodeNames).toEqual(['Get Job Alert Emails']);
+	});
+
+	it('omits workflow-pinned nodes from the run result when the workflow has none', async () => {
+		const { adapter } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [] },
+			{ execution: makeExecution({ status: 'success' }) },
+		);
+
+		const result = await adapter.run('wf-1');
+
+		expect(result).not.toHaveProperty('workflowPinnedNodeNames');
 	});
 
 	it('forces save settings so the agent can read the result back', async () => {
@@ -3331,6 +3682,59 @@ describe('createExecutionAdapter run()', () => {
 		);
 	});
 
+	it('scrubs secrets and PII from the tracked execution error', async () => {
+		const { adapter, mockTelemetry } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [], connections: {}, settings: {} },
+			{
+				execution: makeExecution({
+					status: 'error',
+					error: {
+						message:
+							'Auth failed for jane.doe@example.com using sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+					},
+				}),
+				threadId: 'thread-1',
+			},
+		);
+
+		await adapter.run('wf-1');
+
+		const tracked = mockTelemetry.track.mock.calls.find(
+			([event]) => event === 'Builder executed workflow',
+		);
+		expect(tracked?.[1].error).not.toContain('jane.doe@example.com');
+		expect(tracked?.[1].error).not.toContain('sk-ant-api03');
+		expect(tracked?.[1].error).toContain('[REDACTED]');
+	});
+
+	it('keeps upstream error details out of telemetry even when the privacy setting allows them', async () => {
+		const { adapter, mockTelemetry } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [], connections: {}, settings: {} },
+			{
+				execution: makeExecution({
+					status: 'error',
+					error: {
+						message: 'Request failed with status code 403',
+						description: 'Account 12 Ridge Road is suspended',
+					},
+				}),
+				threadId: 'thread-1',
+				allowSendingParameterValues: true,
+			},
+		);
+
+		const result = await adapter.run('wf-1');
+
+		// The agent still sees the upstream detail the operator opted into...
+		expect(result.error).toContain('Account 12 Ridge Road is suspended');
+		// ...but analytics only gets the sanitized message.
+		const tracked = mockTelemetry.track.mock.calls.find(
+			([event]) => event === 'Builder executed workflow',
+		);
+		expect(tracked?.[1].error).toContain('Request failed with status code 403');
+		expect(tracked?.[1].error).not.toContain('Ridge Road');
+	});
+
 	it('tracks timeout cancellation as an error status', async () => {
 		const { adapter, mockActiveExecutions, mockTelemetry } = createRunAdapterForTests(
 			{
@@ -3452,6 +3856,107 @@ describe('createExecutionAdapter run()', () => {
 		const firstStackItem = runData.executionData?.executionData?.nodeExecutionStack[0];
 		expect(firstStackItem?.node.name).toBe('Schedule Trigger');
 		expect(firstStackItem?.data.main[0]?.[0]?.json).toEqual({});
+	});
+
+	describe('trigger selection', () => {
+		const triggerNode = (
+			name: string,
+			overrides?: { type?: string; disabled?: boolean },
+		): INode => ({
+			...makeNode(name, overrides?.type ?? 'n8n-nodes-base.scheduleTrigger'),
+			...(overrides?.disabled ? { disabled: true } : {}),
+		});
+
+		const startedFrom = (mockWorkflowRunner: { run: Mock }) =>
+			mockWorkflowRunner.run.mock.calls[0][0].triggerToStartFrom?.name;
+
+		it('starts from the named trigger instead of the first one', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await adapter.run('wf-1', undefined, { triggerNodeName: 'Weekly 5pm' });
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Weekly 5pm');
+		});
+
+		it('auto-detects the first trigger when none is named', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Daily 8am');
+		});
+
+		it('skips a disabled trigger when auto-detecting', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am', { disabled: true }), triggerNode('Weekly 5pm')],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Weekly 5pm');
+		});
+
+		it('falls back to a disabled trigger when every trigger is disabled', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('Daily 8am', { disabled: true }),
+					triggerNode('Weekly 5pm', { disabled: true }),
+				],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('Daily 8am');
+		});
+
+		it('prefers a known trigger type over an unknown one earlier in the node list', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('On Interval', { type: 'n8n-nodes-base.cron' }),
+					triggerNode('On Chat Message', { type: '@n8n/n8n-nodes-langchain.chatTrigger' }),
+				],
+			});
+
+			await adapter.run('wf-1');
+
+			expect(startedFrom(mockWorkflowRunner)).toBe('On Chat Message');
+		});
+
+		it('rejects an unknown trigger name instead of running a different branch', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await expect(
+				adapter.run('wf-1', undefined, { triggerNodeName: 'Weekly 5PM' }),
+			).rejects.toThrow(/Weekly 5PM.*Daily 8am.*Weekly 5pm/s);
+			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('rejects a named node that is not a trigger', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [
+					triggerNode('Daily 8am'),
+					triggerNode('Compute Daily', { type: 'n8n-nodes-base.code' }),
+				],
+			});
+
+			await expect(
+				adapter.run('wf-1', undefined, { triggerNodeName: 'Compute Daily' }),
+			).rejects.toThrow(/Compute Daily/);
+			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
 	});
 
 	it('opts a verification run out of the error workflow, on the main process and on a worker', async () => {
@@ -4286,6 +4791,44 @@ describe('createCredentialAdapter', () => {
 			});
 
 			await expect(credentialService.isTestable!('kafka')).resolves.toBe(false);
+		});
+	});
+
+	describe('credentialTypeExists', () => {
+		const loader = {
+			knownCredentials: { gmailOAuth2: {} },
+			getCredential: (type: string) => {
+				// Runtime-registered types resolve through a loader without being in
+				// knownCredentials (e.g. MCP registry).
+				if (type === 'linearMcpOAuth2Api') return { type: { name: type } };
+				throw new Error(`Unrecognized credential type: ${type}`);
+			},
+		};
+
+		it('is true for a known credential type', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loader,
+			});
+
+			await expect(credentialService.credentialTypeExists!('gmailOAuth2')).resolves.toBe(true);
+		});
+
+		it('is true for a runtime-registered type resolvable only via getCredential', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loader,
+			});
+
+			await expect(credentialService.credentialTypeExists!('linearMcpOAuth2Api')).resolves.toBe(
+				true,
+			);
+		});
+
+		it('is false for an unregistered type', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loader,
+			});
+
+			await expect(credentialService.credentialTypeExists!('gmailOAuth2Api')).resolves.toBe(false);
 		});
 	});
 });

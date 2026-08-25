@@ -127,16 +127,26 @@ and repo investigation. Login registers it from the repo-level
 it. Tell the agent to call `get_flaky_context` first — it returns the rules
 the tools assume.
 
-## Quality skills (Claude plugin)
+## Quality and security skills (Claude plugins)
 
-Claude sessions can also load the private quality skills from the
-`n8n-io/n8n-claude-skills` plugin marketplace (bug insights, defect attribution,
-mutation testing, and more). `post-start.mjs` installs the `quality` plugin on
-each container start, so every session gets the skills with no per-session step.
+Claude sessions can also load the private skills from the
+`n8n-io/n8n-agent-skills` repository. `post-start.mjs` installs both plugins on
+each container start, so every session gets the skills with no per-session step:
+
+- `quality` — bug insights, defect attribution, flaky test investigation,
+  mutation and property testing, PR council, and more.
+- `security` — security code review, adversarial review of security-fix PRs,
+  regression test generation, and Security Hub report triage.
+
+Together they add roughly 5k always-on tokens to every session. Drop a plugin
+from `PLUGINS` in `plugins.mjs` if that budget matters more than the skills.
+`post-start.mjs` and the `pnpm session` prelude in `scripts/cloud-session.mjs`
+both read that list, so a session that races the container start still gets
+every plugin.
 
 The private marketplace uses the codespace's own GitHub auth — no extra token.
 `devcontainer.json` grants the codespace read access to
-`n8n-io/n8n-claude-skills` via `customizations.codespaces.repositories`, and
+`n8n-io/n8n-agent-skills` via `customizations.codespaces.repositories`, and
 **each user authorizes that access once when they create the codespace** (GitHub
 prompts for it, then remembers). Both repos are in the same org, which is what
 lets this work.
@@ -147,9 +157,34 @@ clones `owner/repo` shorthand over SSH and the private clone fails.
 
 If a user does not authorize the grant, the clone fails and the skills step is
 skipped (the worker still starts). Existing codespaces created before this change
-need a recreate to get the prompt. The log is at `/tmp/post-start.log`: a failed
-`skills repo reachable` line means the grant was not authorized; a failed
-`marketplace add` after a reachable repo means a loader-auth problem.
+need a recreate to get the prompt.
+
+### When the skills are missing
+
+`/tmp/post-start-status.json` lists what installed and what did not, and
+`/tmp/post-start.log` has the detail. Reading the log:
+
+- A failed `skills repo reachable` line means the grant was not authorized.
+- A `marketplace add` failure mentioning `File exists` is a clone that died
+  partway through `~/.claude/plugins/marketplaces/n8n-io-n8n-agent-skills`, the
+  path the loader stages into before renaming it to the cache. This has been
+  seen once as a transient failure, so the script removes that path and retries
+  the add once.
+- Any other `marketplace add` failure after a reachable repo means a
+  loader-auth problem.
+
+A failure that survives the retry needs a human — the container still starts and
+the worker still runs, only the skills are missing.
+
+Both `marketplace add` and `plugin install` are idempotent, so re-running the
+script by hand is safe:
+
+```bash
+node /workspaces/n8n/.devcontainer/codespaces/post-start.mjs
+```
+
+Verify with `claude plugin list`, then restart the session (or `/reload-plugins`)
+to pull the skills into context.
 
 ## Viewing the dev UI locally
 

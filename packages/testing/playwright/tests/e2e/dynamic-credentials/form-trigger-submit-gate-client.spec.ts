@@ -13,9 +13,11 @@ import type { ApiHelpers } from '../../../services/api-helper';
  *
  * Unlike the other specs in this directory this one carries **no
  * `@capability:dynamic-credentials` / `@licensed` tag** and runs locally without
- * Keycloak or a container: it exercises the client branch only, injecting the
- * gate response with `context.route` instead of provisioning a private
- * credential. The server side that produces these bodies is covered by
+ * Keycloak: it exercises the client branch only, injecting the gate response
+ * with `context.route` instead of provisioning a private credential. Opening
+ * the form still goes through first-party n8n OAuth (the GET for `n8nUserAuth`
+ * always does) — that hop does not need Keycloak or a license. The server side
+ * that produces these bodies is covered by
  * `packages/nodes-base/nodes/Form/test/utils.test.ts` and
  * `packages/cli/test/integration/dynamic-credentials.ee/form-trigger-submit-gate.api.test.ts`.
  */
@@ -24,7 +26,7 @@ const FIELD_LABEL = 'What is your first name?';
 
 /** The banner a plain form (no hosting shell above it) shows on a rejection. */
 const BANNER =
-	'Not all required credentials are connected. Open this form in a new tab to connect them, then come back here and submit again.';
+	'Not all required accounts are connected. Open this form in a new tab to connect them, then come back here and submit again.';
 
 const GATE_BODY = {
 	status: 'credential_connections_required',
@@ -60,7 +62,7 @@ function formWorkflow(options: { withNextPage: boolean }): Partial<IWorkflowBase
 				formFields: { values: [{ fieldLabel: FIELD_LABEL }] },
 				// Only a form that authenticates the submitter can ever be gated, so the
 				// client handling is rendered only for this option (added in 2.6). The GET
-				// authenticates off the editor session cookie this browser context holds.
+				// runs first-party n8n OAuth; PublicFormPage approves the consent screen.
 				authentication: 'n8nUserAuth',
 				options: {},
 			},

@@ -16,9 +16,12 @@ import {
 } from '../../v2/TriggerSettings';
 import {
 	confluentKafkaModuleMock,
+	failNextTopicMetadata,
+	getFakeAdmins,
 	getFakeConsumers,
 	resetConfluentKafkaRecordings,
 	setFakeConsumerAssignment,
+	unknownTopicError,
 	type FakeConsumer,
 } from '../mocks/confluent-kafka';
 
@@ -506,6 +509,66 @@ describe('KafkaTriggerV2 Node', () => {
 
 		await close();
 		expect(consumer.disconnect).toHaveBeenCalled();
+	});
+
+	describe('a topic that does not exist', () => {
+		it('fails activation instead of publishing a workflow that consumes nothing', async () => {
+			failNextTopicMetadata(unknownTopicError());
+			failNextTopicMetadata(unknownTopicError());
+
+			await expect(startTrigger('v2-missing-topic')).rejects.toThrow(
+				'Kafka topic "test-topic" does not exist',
+			);
+		});
+
+		it('never starts a consumer, so nothing is left connected', async () => {
+			failNextTopicMetadata(unknownTopicError());
+			failNextTopicMetadata(unknownTopicError());
+
+			await expect(startTrigger('v2-missing-topic-no-consumer')).rejects.toThrow();
+
+			expect(getFakeConsumers()).toHaveLength(0);
+			expect(consumeTopicSpy).not.toHaveBeenCalled();
+		});
+
+		it('fails a manual test run too, rather than listening forever', async () => {
+			// A manual run starts the consumer from `manualTriggerFunction`, so the
+			// check runs there rather than during trigger() itself.
+			const { manualTriggerFunction } = await testTriggerNode(new KafkaTriggerV2(baseDescription), {
+				mode: 'manual',
+				node: {
+					parameters: {
+						topic: 'test-topic',
+						groupId: 'v2-missing-topic-manual',
+						useSchemaRegistry: false,
+					},
+				},
+				credential,
+			});
+
+			failNextTopicMetadata(unknownTopicError());
+			failNextTopicMetadata(unknownTopicError());
+
+			await expect(manualTriggerFunction?.()).rejects.toThrow(
+				'Kafka topic "test-topic" does not exist',
+			);
+			expect(getFakeConsumers()).toHaveLength(0);
+		});
+
+		it('starts normally when the broker confirms the topic', async () => {
+			const { close } = await startTrigger('v2-topic-exists');
+
+			const admin = getFakeAdmins().at(-1);
+			expect(admin?.fetchTopicMetadata).toHaveBeenCalledWith({
+				topics: ['test-topic'],
+				timeout: 3_000,
+			});
+			// Checked with a throwaway client that does not outlive the check.
+			expect(admin?.disconnect).toHaveBeenCalledTimes(1);
+			expect(getFakeConsumers()).toHaveLength(1);
+
+			await close();
+		});
 	});
 
 	describe('Batch Size', () => {

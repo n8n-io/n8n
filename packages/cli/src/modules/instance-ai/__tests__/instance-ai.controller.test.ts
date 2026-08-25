@@ -237,7 +237,7 @@ describe('InstanceAiController', () => {
 				context: {
 					source: 'credential-modal',
 					credential: {
-						credentialType: 'gmailOAuth2Api',
+						credentialType: 'gmailOAuth2',
 						displayName: 'Gmail OAuth2 API',
 						documentationUrl:
 							'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
@@ -310,6 +310,44 @@ describe('InstanceAiController', () => {
 				runId: 'run-3',
 			});
 			expect(instanceAiService.startRun).toHaveBeenCalled();
+		});
+
+		it('should accept a nodes attachment with multiple sets and forward it intact', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.hasActiveRun.mockReturnValue(false);
+			instanceAiService.startRun.mockReturnValue('run-4');
+			const sets = [
+				{ nodes: [{ id: 'n1', name: 'HTTP Request' }] },
+				{
+					nodes: [
+						{ id: 'n2', name: 'Set' },
+						{ id: 'n3', name: 'IF' },
+					],
+					inputNode: { id: 'n1', name: 'HTTP Request' },
+					canvasGroupId: 'g1',
+				},
+			];
+			const nodesPayload = mock<InstanceAiSendMessageRequest>({
+				message: 'what do these nodes do?',
+				timeZone: 'UTC',
+			});
+			// Assigned post-construction — vitest-mock-extended's deep merge loses
+			// values inside doubly-nested arrays (sets[].nodes[]) when passed through
+			// the constructor.
+			nodesPayload.attachments = [{ type: 'nodes', workflowId: 'wf1', sets }];
+
+			await expect(controller.chat(req, res, THREAD_ID, nodesPayload)).resolves.toEqual({
+				runId: 'run-4',
+			});
+			expect(instanceAiService.startRun).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+				nodesPayload.message,
+				[{ type: 'nodes', workflowId: 'wf1', sets }],
+				nodesPayload.context,
+				nodesPayload.timeZone,
+				nodesPayload.pushRef,
+			);
 		});
 
 		it('should reject an oversized attachment before starting a run', async () => {

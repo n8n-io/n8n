@@ -21,6 +21,7 @@ const props = withDefaults(
 		disabled?: boolean;
 		showVoice?: boolean;
 		showAttach?: boolean;
+		showAttachButton?: boolean;
 		acceptedMimeTypes?: string;
 		/**
 		 * Base64-encoded size of the files already staged in the composer. Needed
@@ -46,6 +47,7 @@ const props = withDefaults(
 		buttonLabel: undefined,
 		activeRequiresFocus: false,
 		maxLength: undefined,
+		showAttachButton: true,
 	},
 );
 
@@ -106,8 +108,8 @@ function handleAttach() {
 	fileInputRef.value?.click();
 }
 
-function focusInput() {
-	inputRef.value?.focusInput();
+function focusInput(options?: FocusOptions) {
+	inputRef.value?.focusInput(options);
 }
 
 /**
@@ -204,6 +206,7 @@ function handleSubmit() {
 
 defineExpose({
 	focus: focusInput,
+	openFilePicker: handleAttach,
 });
 </script>
 
@@ -253,7 +256,7 @@ defineExpose({
 			</template>
 			<template #right-actions>
 				<N8nTooltip
-					v-if="showAttach"
+					v-if="showAttach && showAttachButton"
 					:content="i18n.baseText('chatInputBase.button.attach')"
 					placement="top"
 				>

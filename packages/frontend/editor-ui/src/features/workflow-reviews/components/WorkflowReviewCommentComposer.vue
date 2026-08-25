@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { WORKFLOW_REVIEW_COMMENT_MAX_LENGTH } from '@n8n/api-types';
+import { WORKFLOW_REVIEW_TEXT_MAX_LENGTH } from '@n8n/api-types';
 import { N8nChatInput } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -21,7 +21,7 @@ const submitDisabled = computed(
 	() =>
 		posting.value ||
 		draft.value.trim().length === 0 ||
-		draft.value.length > WORKFLOW_REVIEW_COMMENT_MAX_LENGTH ||
+		draft.value.length > WORKFLOW_REVIEW_TEXT_MAX_LENGTH ||
 		!props.canComment,
 );
 
@@ -31,9 +31,11 @@ async function onSubmit() {
 	if (!body) return;
 
 	try {
-		await store.postComment(body);
+		// A stale post belongs to the review the viewer left, so its completion must not
+		// touch the draft they are typing now, even if the two strings happen to match.
+		const posted = await store.postComment(body);
 		// Don't clear text typed while the post was in flight.
-		if (draft.value === submitted) draft.value = '';
+		if (posted && draft.value === submitted) draft.value = '';
 	} catch (error) {
 		showError(error, i18n.baseText('workflowReviews.detail.activity.error.post'));
 	}
@@ -49,7 +51,7 @@ async function onSubmit() {
 		</span>
 		<N8nChatInput
 			v-model="draft"
-			:max-length="WORKFLOW_REVIEW_COMMENT_MAX_LENGTH"
+			:max-length="WORKFLOW_REVIEW_TEXT_MAX_LENGTH"
 			:placeholder="i18n.baseText('workflowReviews.detail.activity.composer.placeholder')"
 			refocus-after-send
 			:disabled="!canComment"
@@ -65,10 +67,8 @@ async function onSubmit() {
 .composer {
 	display: block;
 	flex-shrink: 0;
-	border-top: var(--border);
-	/* The panel around this clips overflow, and the input draws its focus ring outside its own
-	   box, so without clearance on these three sides the ring is cut off. */
-	padding: var(--spacing--sm) var(--spacing--3xs) var(--spacing--3xs);
+	/* Prevent focus-ring clipping and vertically align with feed comments */
+	padding: var(--spacing--lg) var(--spacing--2xs) var(--spacing--5xs) var(--spacing--5xs);
 }
 
 .srOnly {

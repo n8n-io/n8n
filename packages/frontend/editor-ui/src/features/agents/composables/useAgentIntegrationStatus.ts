@@ -1,5 +1,6 @@
 import { ref, type Ref } from 'vue';
 import type {
+	AgentDisconnectIntegrationResponse,
 	AgentIntegrationStatusEntry,
 	AgentIntegrationStatusResponse,
 	AgentIntegrationSettings,
@@ -158,13 +159,25 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		}
 	}
 
-	async function disconnect(type: string, credId: string): Promise<void> {
+	async function disconnect(
+		type: string,
+		credId: string,
+		options: { deleteExternalResource?: boolean } = {},
+	): Promise<AgentDisconnectIntegrationResponse> {
 		state.loadingMap.value[type] = true;
 		try {
-			await disconnectIntegration(rootStore.restApiContext, projectId, agentId, type, credId);
+			const result = await disconnectIntegration(
+				rootStore.restApiContext,
+				projectId,
+				agentId,
+				type,
+				credId,
+				options.deleteExternalResource,
+			);
 			state.statuses.value[type] = 'disconnected';
 			state.connectedCredentials.value[type] = '';
 			state.integrationSettings.value[type] = undefined;
+			return result;
 		} finally {
 			state.loadingMap.value[type] = false;
 		}
@@ -178,6 +191,11 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		return ['configured', 'connected'].includes(state.statuses.value[type]);
 	}
 
+	function clearError(type: string): void {
+		state.errorMessages.value[type] = '';
+		state.errorIsConflict.value[type] = false;
+	}
+
 	return {
 		statuses: state.statuses,
 		connectedCredentials: state.connectedCredentials,
@@ -188,6 +206,7 @@ export function useAgentIntegrationStatus(projectId: string, agentId: string) {
 		fetchStatus,
 		connect,
 		disconnect,
+		clearError,
 		isConnected,
 		isConfigured,
 	};

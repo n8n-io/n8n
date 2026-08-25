@@ -39,12 +39,29 @@ describe('classifyTriggerIdentity', () => {
 			});
 		});
 
-		it('provides the n8n identity only when availableInChat is not set', () => {
-			expect(classifyTriggerIdentity(CHAT_TRIGGER_NODE_TYPE, {})).toEqual({
-				providesN8nIdentity: true,
-				providesExternalIdentity: false,
-			});
-		});
+		// Only Chat Hub injects an identity at runtime; the canvas chat test and the
+		// public chat URL establish none, so publish must reject these configs (IAM-1238).
+		it.each([{}, { availableInChat: false }])(
+			'provides no identity when not available in Chat Hub (%o)',
+			(parameters) => {
+				expect(classifyTriggerIdentity(CHAT_TRIGGER_NODE_TYPE, parameters)).toEqual({
+					providesN8nIdentity: false,
+					providesExternalIdentity: false,
+				});
+			},
+		);
+
+		// A chat trigger establishes no identity at runtime through `n8nUserAuth`,
+		// regardless of the chat OAuth2 flag (which classification ignores).
+		it.each(['n8nUserAuth', 'none', 'basicAuth'])(
+			'provides no identity for authentication %s',
+			(authentication) => {
+				expect(classifyTriggerIdentity(CHAT_TRIGGER_NODE_TYPE, { authentication })).toEqual({
+					providesN8nIdentity: false,
+					providesExternalIdentity: false,
+				});
+			},
+		);
 	});
 
 	describe('MCP Trigger', () => {
@@ -54,64 +71,44 @@ describe('classifyTriggerIdentity', () => {
 			).toEqual({ providesN8nIdentity: true, providesExternalIdentity: true });
 		});
 
-		it('provides the n8n identity only for other authentication modes', () => {
-			expect(
-				classifyTriggerIdentity(MCP_TRIGGER_NODE_TYPE, { authentication: 'bearerAuth' }),
-			).toEqual({ providesN8nIdentity: true, providesExternalIdentity: false });
-		});
+		// The node only establishes an identity on the n8nOAuth2 branch; every other
+		// auth mode runs identity-less and must not pass publish (IAM-1238).
+		it.each(['bearerAuth', 'headerAuth', 'none'])(
+			'provides no identity for authentication %s',
+			(authentication) => {
+				expect(classifyTriggerIdentity(MCP_TRIGGER_NODE_TYPE, { authentication })).toEqual({
+					providesN8nIdentity: false,
+					providesExternalIdentity: false,
+				});
+			},
+		);
 	});
 
 	describe('Form Trigger', () => {
-		it('provides both identities when n8nUserAuth is used and form OAuth2 is enabled', () => {
+		it('provides both identities when n8nUserAuth is used', () => {
+			// `n8nUserAuth` always runs the OAuth2 flow, which establishes the submitter's
+			// identity.
 			expect(
-				classifyTriggerIdentity(
-					FORM_TRIGGER_NODE_TYPE,
-					{ authentication: 'n8nUserAuth' },
-					{ isFormOAuth2Enabled: true },
-				),
+				classifyTriggerIdentity(FORM_TRIGGER_NODE_TYPE, { authentication: 'n8nUserAuth' }),
 			).toEqual({ providesN8nIdentity: true, providesExternalIdentity: true });
 		});
 
-		it('provides no identity when n8nUserAuth is used but form OAuth2 is disabled', () => {
-			// Without OAuth2 the form falls back to the cookie/HMAC flow, which gates page
-			// access without establishing an identity to resolve credentials with.
-			expect(
-				classifyTriggerIdentity(
-					FORM_TRIGGER_NODE_TYPE,
-					{ authentication: 'n8nUserAuth' },
-					{ isFormOAuth2Enabled: false },
-				),
-			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
-		});
-
-		it('provides no identity when the options bag is omitted', () => {
-			// Fails closed: a caller that has not read the flag must not let the
-			// combination through.
-			expect(
-				classifyTriggerIdentity(FORM_TRIGGER_NODE_TYPE, { authentication: 'n8nUserAuth' }),
-			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
-		});
-
 		it.each(['none', 'basicAuth'])(
-			'provides no identity for authentication %s even when form OAuth2 is enabled',
+			'provides no identity for authentication %s',
 			(authentication) => {
-				expect(
-					classifyTriggerIdentity(
-						FORM_TRIGGER_NODE_TYPE,
-						{ authentication },
-						{ isFormOAuth2Enabled: true },
-					),
-				).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
+				expect(classifyTriggerIdentity(FORM_TRIGGER_NODE_TYPE, { authentication })).toEqual({
+					providesN8nIdentity: false,
+					providesExternalIdentity: false,
+				});
 			},
 		);
 
 		it('provides the external identity when an extractor hook is configured without n8nUserAuth', () => {
 			expect(
-				classifyTriggerIdentity(
-					FORM_TRIGGER_NODE_TYPE,
-					{ authentication: 'none', ...hooksParameters },
-					{ isFormOAuth2Enabled: true },
-				),
+				classifyTriggerIdentity(FORM_TRIGGER_NODE_TYPE, {
+					authentication: 'none',
+					...hooksParameters,
+				}),
 			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: true });
 		});
 	});
@@ -161,5 +158,15 @@ describe('classifyTriggerIdentity', () => {
 				providesExternalIdentity: false,
 			});
 		});
+
+		it.each([CHAT_TRIGGER_NODE_TYPE, MCP_TRIGGER_NODE_TYPE])(
+			'provides the external identity for %s with a context establishment hook',
+			(type) => {
+				expect(classifyTriggerIdentity(type, hooksParameters)).toEqual({
+					providesN8nIdentity: false,
+					providesExternalIdentity: true,
+				});
+			},
+		);
 	});
 });

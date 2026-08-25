@@ -42,6 +42,9 @@ const mockVerifySandbox = vi.fn();
 const mockVerifySearch = vi.fn();
 const mockCreateGatewayLink = vi.fn();
 const mockDisconnectGatewaySession = vi.fn();
+const mockCreateBrowserLink = vi.fn();
+const mockDisconnectBrowserSession = vi.fn();
+const mockGetBrowserStatus = vi.fn();
 
 vi.mock('../instanceAi.settings.api', () => ({
 	fetchSettings: (...args: unknown[]) => mockFetchSettings(...args),
@@ -61,6 +64,9 @@ vi.mock('../instanceAi.api', () => ({
 	createGatewayLink: (...args: unknown[]) => mockCreateGatewayLink(...args),
 	disconnectGatewaySession: (...args: unknown[]) => mockDisconnectGatewaySession(...args),
 	getGatewayStatus: (...args: unknown[]) => mockGetGatewayStatus(...args),
+	createBrowserLink: (...args: unknown[]) => mockCreateBrowserLink(...args),
+	disconnectBrowserSession: (...args: unknown[]) => mockDisconnectBrowserSession(...args),
+	getBrowserStatus: (...args: unknown[]) => mockGetBrowserStatus(...args),
 }));
 
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -523,89 +529,49 @@ describe('useInstanceAiSettingsStore', () => {
 		});
 	});
 
-	describe('connections', () => {
-		it('shows only a disconnected Browser Use row when the gateway is disabled for the user', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: true,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-
-			expect(store.connections).toHaveLength(1);
-			expect(store.connections[0]).toMatchObject({
-				type: 'browser-use',
-				status: 'disconnected',
-			});
-		});
-
-		it('shows disconnected Computer Use and Browser Use rows when enabled but not paired', () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
+	describe('unexpected disconnects', () => {
+		it('distinguishes an unavailable gateway from a user-disconnected gateway', async () => {
+			setModuleSettings(settingsStore, { localGatewayDisabled: false });
 			setUserPreference(store, { localGatewayDisabled: false });
+			mockGetGatewayStatus
+				.mockResolvedValueOnce({
+					connected: true,
+					directory: '/tmp',
+					hostIdentifier: 'host-1',
+					toolCategories: [],
+				})
+				.mockResolvedValueOnce({
+					connected: false,
+					directory: null,
+					hostIdentifier: null,
+					toolCategories: [],
+				});
 
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({
-				type: 'computer-use',
-				status: 'disconnected',
-			});
-			expect(store.connections[1]).toMatchObject({
-				type: 'browser-use',
-				status: 'disconnected',
-			});
-		});
-
-		it('shows Computer Use as connected and adds Browser Use row when browser category is present', async () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			mockGetGatewayStatus.mockResolvedValue({
-				connected: true,
-				directory: '/Users/test/project',
-				hostIdentifier: 'host-1',
-				toolCategories: [{ name: 'browser', enabled: true }],
-			});
-			setUserPreference(store, { localGatewayDisabled: false });
 			await store.fetchGatewayStatus();
+			expect(store.computerUseConnectionStatus).toBe('connected');
+			await store.fetchGatewayStatus();
+			expect(store.computerUseConnectionStatus).toBe('disconnected');
+			expect(store.gatewayHostIdentifier).toBe('host-1');
 
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({
-				type: 'computer-use',
-				name: '/Users/test/project',
-				status: 'connected',
-			});
-			expect(store.connections[1]).toMatchObject({
-				type: 'browser-use',
-				status: 'connected',
-			});
+			mockDisconnectGatewaySession.mockResolvedValue(undefined);
+			await store.disconnectComputerUse();
+			expect(store.computerUseConnectionStatus).toBe('none');
+			expect(store.gatewayHostIdentifier).toBeNull();
 		});
 
-		it('shows a disconnected Browser Use row when connected without a browser tool category', async () => {
-			setModuleSettings(settingsStore, {
-				enabled: true,
-				localGatewayDisabled: false,
-				proxyEnabled: false,
-				cloudManaged: false,
-			});
-			mockGetGatewayStatus.mockResolvedValue({
-				connected: true,
-				directory: '/Users/test/project',
-				hostIdentifier: 'host-1',
-				toolCategories: [{ name: 'filesystem', enabled: true }],
-			});
-			setUserPreference(store, { localGatewayDisabled: false });
-			await store.fetchGatewayStatus();
+		it('tracks Browser Use disconnects observed in the current session', async () => {
+			mockGetBrowserStatus
+				.mockResolvedValueOnce({ connected: true, connectedAt: '2026-01-01', toolCategories: [] })
+				.mockResolvedValueOnce({ connected: false, connectedAt: null, toolCategories: [] });
 
-			expect(store.connections).toHaveLength(2);
-			expect(store.connections[0]).toMatchObject({ type: 'computer-use', status: 'connected' });
-			expect(store.connections[1]).toMatchObject({ type: 'browser-use', status: 'disconnected' });
+			await store.fetchBrowserStatus();
+			expect(store.browserUseConnectionStatus).toBe('connected');
+			await store.fetchBrowserStatus();
+			expect(store.browserUseConnectionStatus).toBe('disconnected');
+
+			mockDisconnectBrowserSession.mockResolvedValue(undefined);
+			await store.disconnectBrowserUse();
+			expect(store.browserUseConnectionStatus).toBe('none');
 		});
 	});
 

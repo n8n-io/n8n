@@ -1,8 +1,12 @@
-import type { AgentIntegrationSettings, ChatIntegrationDescriptor } from '@n8n/api-types';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type {
+	AgentIntegrationDisconnectWarning,
+	AgentIntegrationSettings,
+	ChatIntegrationDescriptor,
+} from '@n8n/api-types';
+import type { IconName } from '@n8n/design-system';
 import type { BaseTextKey } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
-import type { Component, Ref } from 'vue';
+import type { Component, Ref, VNode } from 'vue';
 
 import type { AgentCredentialOption } from '../components/AgentCredentialSelect.vue';
 
@@ -64,7 +68,21 @@ export interface AgentChannelPresentationContext {
 	text: (key: BaseTextKey) => string;
 }
 
-export interface ChannelPlatformDefinition {
+export interface AgentChannelWarningPresentation {
+	title: string;
+	message: string | VNode;
+}
+
+export interface AgentChannelDisconnectContext {
+	isPublished: boolean;
+}
+
+export interface AgentChannelHeaderContentProps {
+	runtime: AgentChannelRuntime;
+	disabled?: boolean;
+}
+
+export interface AgentChannelPlatform {
 	type: string;
 	setupComponent: Component;
 	editComponent: Component;
@@ -74,4 +92,18 @@ export interface ChannelPlatformDefinition {
 		runtime: AgentChannelRuntime,
 	) => AgentChannelConnectAction;
 	getConnectedDescription?: (context: AgentChannelPresentationContext) => string;
+	headerContent?: {
+		setupModal?: Component;
+		editModal?: Component;
+	};
+	disconnectConfirmationComponent?: Component;
+	shouldConfirmDisconnect?: (
+		runtime: AgentChannelRuntime,
+		credentialId: string,
+		context: AgentChannelDisconnectContext,
+	) => boolean;
+	presentDisconnectWarning?: (
+		warning: AgentIntegrationDisconnectWarning,
+		context: AgentChannelPresentationContext,
+	) => AgentChannelWarningPresentation | null;
 }

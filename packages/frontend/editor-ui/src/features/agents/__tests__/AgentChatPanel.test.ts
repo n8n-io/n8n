@@ -28,29 +28,40 @@ const defaultAgentConfig: AgentJsonConfig = {
 	instructions: 'Help.',
 };
 
-vi.mock('@n8n/i18n', () => ({
-	useI18n: () => ({
-		baseText: (key: string, options?: { interpolate?: Record<string, string> }) => {
-			const translations: Record<string, string> = {
-				'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
-				'agents.chat.misconfigured.issuesPrefix': 'Check:',
-				'agents.chat.misconfigured.missing.tools': 'Tool configuration',
-				'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
-				'agents.chat.misconfigured.missing.subAgents.agents': 'Sub-agent',
-			};
-			return translations[key] ?? key;
-		},
-	}),
+vi.mock('@n8n/i18n', () => {
+	const baseText = (key: string, options?: { interpolate?: Record<string, string> }) => {
+		const translations: Record<string, string> = {
+			'agents.chat.input.placeholder.withAgent': `Message ${options?.interpolate?.agentName}…`,
+			'agents.chat.misconfigured.issuesPrefix': 'Check:',
+			'agents.chat.misconfigured.missing.tools': 'Tool configuration',
+			'agents.chat.misconfigured.missing.mcpServers': 'MCP server',
+			'agents.chat.misconfigured.missing.subAgents.agents': 'Sub-agent',
+		};
+		return translations[key] ?? key;
+	};
+	const i18n = { baseText };
+	return { useI18n: () => i18n, i18n };
+});
+
+vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
+	default: {
+		name: 'AgentSessionTimelinePanel',
+		props: ['projectId', 'agentId', 'threadId'],
+		template: '<div data-testid="agent-preview-session-timeline" />',
+	},
 }));
 
 vi.mock('@n8n/design-system', () => ({
 	N8nButton: { template: '<button><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
+	N8nDropdownMenu: { template: '<div><slot name="trigger" /></div>' },
 	N8nHeading: { template: '<div><slot /></div>' },
+	N8nIcon: { template: '<i />' },
 	N8nIconButton: {
 		emits: ['click'],
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')" />',
 	},
+	N8nText: { template: '<span><slot /></span>' },
 	N8nSendStopButton: {
 		name: 'N8nSendStopButton',
 		props: ['streaming', 'stopButtonTestId'],
@@ -69,6 +80,14 @@ vi.mock('@/app/composables/useKeybindings', () => ({
 	useKeybindings: vi.fn(),
 }));
 
+vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
+	useAgentSessionLangSmithExport: () => ({
+		isEnabled: false,
+		isExporting: false,
+		sendSession: vi.fn(),
+	}),
+}));
+
 // Reads a Pinia store for notifications — irrelevant to panel behavior.
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: vi.fn() }),
@@ -81,6 +100,7 @@ vi.mock('@/features/ai/shared/components/ChatInputBase.vue', () => ({
 			'<form data-testid="chat-input-stub" @submit.prevent="$emit(\'submit\')"><slot name="footer-start" /></form>',
 		props: ['modelValue', 'placeholder', 'isStreaming', 'canSubmit', 'disabled', 'maxLength'],
 		emits: ['submit', 'stop', 'update:modelValue'],
+		methods: { focus: vi.fn() },
 	},
 }));
 
@@ -493,6 +513,7 @@ describe('AgentChatPanel', () => {
 describe('AgentPreviewDock stream lifecycle', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'floating');
 		messagesMock.value = [];
 		isStreamingMock.value = true;
 		isCancellingMock.value = false;
@@ -508,7 +529,9 @@ describe('AgentPreviewDock stream lifecycle', () => {
 					return () =>
 						open.value
 							? h(AgentPreviewDock, {
+									isOpen: true,
 									sessionTitle: 'Session',
+									sessionOptions: [],
 									hasSession: true,
 									initialized: true,
 									projectId: 'p1',
@@ -526,17 +549,23 @@ describe('AgentPreviewDock stream lifecycle', () => {
 		);
 	}
 
-	it.each([
-		['closes', 'agent-preview-close-btn'],
-		['starts a new session', 'agent-preview-new-chat-btn'],
-	])('stops an in-flight stream when the preview %s', async (_action, testId) => {
+	it('stops an in-flight stream when the preview starts a new session', async () => {
 		const wrapper = mountPreviewDock();
 
-		await wrapper.get(`[data-testid="${testId}"]`).trigger('click');
+		await wrapper.get('[data-testid="agent-preview-new-chat-btn"]').trigger('click');
 		await flushPromises();
 
 		expect(stopGeneratingMock).toHaveBeenCalledOnce();
 		isStreamingMock.value = false;
 		wrapper.unmount();
+	});
+
+	it('stops an in-flight stream when the preview unmounts', async () => {
+		const wrapper = mountPreviewDock();
+
+		wrapper.unmount();
+		await flushPromises();
+
+		expect(stopGeneratingMock).toHaveBeenCalledOnce();
 	});
 });

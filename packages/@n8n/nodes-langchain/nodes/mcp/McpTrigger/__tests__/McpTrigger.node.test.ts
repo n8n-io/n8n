@@ -1,4 +1,6 @@
+import type { Tool } from '@langchain/core/tools';
 import type {
+	CredentialCheckResult,
 	INode,
 	INodePropertyOptions,
 	IWebhookFunctions,
@@ -10,7 +12,14 @@ import { mock } from 'vitest-mock-extended';
 
 import { getConnectedTools } from '@utils/helpers';
 
-import { createMockLogger, createMockRequest, createMockResponse } from './helpers';
+import {
+	createMockLogger,
+	createMockRequest,
+	createMockResponse,
+	createListToolsMessage,
+	createValidToolCallMessage,
+} from './helpers';
+import { CONNECT_CREDENTIALS_TOOL_NAME } from '../CredentialGateTool';
 import { McpServer } from '../McpServer';
 import { McpTrigger } from '../McpTrigger.node';
 
@@ -72,7 +81,10 @@ describe('McpTrigger', () => {
 			getNode: vi.fn(),
 			logger: mockLogger,
 			getCredentials: vi.fn().mockResolvedValue({} as ICredentialDataDecryptedObject),
+			checkTriggerCredentialStatus: vi.fn().mockResolvedValue(undefined),
 		});
+
+		(getConnectedTools as Mock).mockResolvedValue([]);
 	});
 
 	afterEach(() => {
@@ -741,6 +753,144 @@ describe('McpTrigger', () => {
 			await mcpTrigger.webhook(mockContext);
 
 			expect(toolInputPassedToSubNodes()).toBeUndefined();
+		});
+	});
+
+	describe('credential gate during session setup and tool listing', () => {
+		const notReadyGate: CredentialCheckResult = {
+			readyToExecute: false,
+			credentials: [
+				{
+					credentialId: 'cred-1',
+					credentialName: 'Downstream MCP OAuth',
+					credentialType: 'mcpOAuth2Api',
+					status: 'missing',
+					authorizationUrl: 'https://n8n.example.com/connect/cred-1',
+				},
+			],
+		};
+		const readyGate: CredentialCheckResult = { readyToExecute: true, credentials: [] };
+		const toolBuildError = new Error(
+			'Error in sub-node MCP Client: Could not connect to your MCP server. Authentication failed.',
+		);
+
+		function setupWebhookContext(opts: { webhookName: 'setup' | 'default'; rawBody?: string }) {
+			// Earlier auth tests leave the shared mock rejecting; make auth pass here.
+			validateWebhookAuthenticationMock.mockResolvedValue(undefined);
+			const req = createMockRequest({
+				path: '/mcp/test',
+				method: opts.webhookName === 'setup' ? 'GET' : 'POST',
+				rawBody: opts.rawBody,
+			});
+			const resp = createMockResponse();
+			const node = mock<INode>({ typeVersion: 2, name: 'MCP Server Trigger' });
+
+			mockContext.getWebhookName.mockReturnValue(opts.webhookName);
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+			return { req, resp, node };
+		}
+
+		it('exposes the connect-credentials placeholder on SSE setup when tool building fails and the gate is not ready', async () => {
+			setupWebhookContext({ webhookName: 'setup' });
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReadyGate);
+			(getConnectedTools as Mock).mockRejectedValue(toolBuildError);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handleSetupRequest).toHaveBeenCalled();
+			const tools = mockMcpServer.handleSetupRequest.mock.calls[0][4];
+			expect(tools).toHaveLength(1);
+			expect(tools[0].name).toBe(CONNECT_CREDENTIALS_TOOL_NAME);
+			expect(tools[0].description).toContain('Downstream MCP OAuth');
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('exposes the connect-credentials placeholder on Streamable HTTP setup when tool building fails and the gate is not ready', async () => {
+			setupWebhookContext({ webhookName: 'default' });
+			mockMcpServer.getSessionId.mockReturnValue(undefined);
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReadyGate);
+			(getConnectedTools as Mock).mockRejectedValue(toolBuildError);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handleStreamableHttpSetup).toHaveBeenCalled();
+			const tools = mockMcpServer.handleStreamableHttpSetup.mock.calls[0][3];
+			expect(tools).toHaveLength(1);
+			expect(tools[0].name).toBe(CONNECT_CREDENTIALS_TOOL_NAME);
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('exposes the connect-credentials placeholder on tools/list when tool building fails and the gate is not ready', async () => {
+			setupWebhookContext({ webhookName: 'default', rawBody: createListToolsMessage() });
+			mockMcpServer.getSessionId.mockReturnValue('test-session');
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReadyGate);
+			(getConnectedTools as Mock).mockRejectedValue(toolBuildError);
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handlePostMessage).toHaveBeenCalled();
+			const tools = mockMcpServer.handlePostMessage.mock.calls[0][2] as Tool[];
+			expect(tools).toHaveLength(1);
+			expect(tools[0].name).toBe(CONNECT_CREDENTIALS_TOOL_NAME);
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('passes the gate result to handlePostMessage for tool calls without re-checking', async () => {
+			setupWebhookContext({
+				webhookName: 'default',
+				rawBody: createValidToolCallMessage('some_tool', {}),
+			});
+			mockMcpServer.getSessionId.mockReturnValue('test-session');
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReadyGate);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(mockContext.checkTriggerCredentialStatus).toHaveBeenCalledTimes(1);
+			expect(mockMcpServer.handlePostMessage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.any(Array),
+				expect.any(String),
+				notReadyGate,
+				undefined,
+			);
+		});
+
+		it('does not pass the gate result to handlePostMessage for non-tool-call messages', async () => {
+			setupWebhookContext({ webhookName: 'default', rawBody: createListToolsMessage() });
+			mockMcpServer.getSessionId.mockReturnValue('test-session');
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(notReadyGate);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handlePostMessage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.anything(),
+				expect.any(Array),
+				expect.any(String),
+				undefined,
+				undefined,
+			);
+		});
+
+		it('rethrows tool-building errors when the gate is ready', async () => {
+			setupWebhookContext({ webhookName: 'setup' });
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(readyGate);
+			(getConnectedTools as Mock).mockRejectedValue(toolBuildError);
+
+			await expect(mcpTrigger.webhook(mockContext)).rejects.toThrow(toolBuildError.message);
+			expect(mockMcpServer.handleSetupRequest).not.toHaveBeenCalled();
+		});
+
+		it('rethrows tool-building errors when there is no gate (no identity or module disabled)', async () => {
+			setupWebhookContext({ webhookName: 'setup' });
+			mockContext.checkTriggerCredentialStatus.mockResolvedValue(undefined);
+			(getConnectedTools as Mock).mockRejectedValue(toolBuildError);
+
+			await expect(mcpTrigger.webhook(mockContext)).rejects.toThrow(toolBuildError.message);
+			expect(mockMcpServer.handleSetupRequest).not.toHaveBeenCalled();
 		});
 	});
 

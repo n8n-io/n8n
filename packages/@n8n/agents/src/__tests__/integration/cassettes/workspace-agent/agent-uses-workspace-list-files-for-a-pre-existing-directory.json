@@ -89,31 +89,7 @@
 				},
 				{
 					"name": "workspace_str_replace_file",
-					"description": "Replace one exact, unique text match in a workspace file without rewriting the whole file.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"path": {
-								"type": "string",
-								"description": "Path to the file to edit"
-							},
-							"old_str": {
-								"type": "string",
-								"description": "Exact text to replace. Must match exactly and be unique."
-							},
-							"new_str": {
-								"type": "string",
-								"description": "Replacement text to write in place of old_str."
-							}
-						},
-						"required": ["path", "old_str", "new_str"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "workspace_batch_str_replace_file",
-					"description": "Apply multiple exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
+					"description": "Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -138,6 +114,7 @@
 									"required": ["old_str", "new_str"],
 									"additionalProperties": false
 								},
+								"minItems": 1,
 								"description": "Ordered exact string replacements applied atomically."
 							}
 						},
@@ -398,31 +375,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011Cdvpr5xNfJCdri8TnwgaW\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01EqvFgp1qoNJaJ8i6LS9r8Q\",\"name\":\"workspace_list_files\",\"input\":{\"path\":\"/project\",\"recursive\":false},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3001,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":74,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCvEgvSfA86JPTWs9Qs\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_016jNj9zxttJcRe6RETcp396\",\"name\":\"workspace_list_files\",\"input\":{\"path\":\"/project\",\"recursive\":false},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2834,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":74,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-08-11T10:45:26Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:40Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-08-11T10:45:26Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:40Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-08-11T10:45:25Z",
+			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:39Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-08-11T10:45:26Z",
+			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:40Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a296a6946bee25c0-VIE",
+			"cf-ray": "a2a55d049dd65ac3-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 11 Aug 2026 10:45:26 GMT",
-			"request-id": "req_011Cdvpr5SNDL6qin8xEbvZz",
+			"date": "Thu, 13 Aug 2026 05:36:40 GMT",
+			"request-id": "req_011CdzCvEH7is4my5KozpmdZ",
 			"server": "cloudflare",
-			"server-timing": "x-originResponse;dur=785",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-2cab80b88020ad5d644db648376f4b01-1cb7da94faf3f85e-01",
+			"traceresponse": "00-f3fc94fb69a368363b08bf99b5507c0c-fb39af05c2496923-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -456,7 +432,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01EqvFgp1qoNJaJ8i6LS9r8Q",
+							"id": "toolu_016jNj9zxttJcRe6RETcp396",
 							"name": "workspace_list_files",
 							"input": {
 								"path": "/project",
@@ -473,7 +449,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01EqvFgp1qoNJaJ8i6LS9r8Q",
+							"tool_use_id": "toolu_016jNj9zxttJcRe6RETcp396",
 							"content": "{\"entries\":[{\"name\":\"index.ts\",\"type\":\"file\"},{\"name\":\"README.md\",\"type\":\"file\"}]}"
 						}
 					]
@@ -545,31 +521,7 @@
 				},
 				{
 					"name": "workspace_str_replace_file",
-					"description": "Replace one exact, unique text match in a workspace file without rewriting the whole file.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"path": {
-								"type": "string",
-								"description": "Path to the file to edit"
-							},
-							"old_str": {
-								"type": "string",
-								"description": "Exact text to replace. Must match exactly and be unique."
-							},
-							"new_str": {
-								"type": "string",
-								"description": "Replacement text to write in place of old_str."
-							}
-						},
-						"required": ["path", "old_str", "new_str"],
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "workspace_batch_str_replace_file",
-					"description": "Apply multiple exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
+					"description": "Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -594,6 +546,7 @@
 									"required": ["old_str", "new_str"],
 									"additionalProperties": false
 								},
+								"minItems": 1,
 								"description": "Ordered exact string replacements applied atomically."
 							}
 						},
@@ -854,30 +807,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdvprATF9r7MvJWQVHLkH\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"index.ts\\nREADME.md\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3114,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":10,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCvMgMnqtdVVhRNnCJf\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"The filenames are:\\n- index.ts\\n- README.md\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2947,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":18,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-08-11T10:45:27Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:43Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-08-11T10:45:27Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:43Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-08-11T10:45:27Z",
+			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:40Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-08-11T10:45:27Z",
+			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:43Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a296a69ada9525c0-VIE",
+			"cf-ray": "a2a55d0d0ab25ac3-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 11 Aug 2026 10:45:27 GMT",
-			"request-id": "req_011CdvprA2CM8CZGBaTei2Dj",
+			"date": "Thu, 13 Aug 2026 05:36:44 GMT",
+			"request-id": "req_011CdzCvLBKPfP6EtC4KWsQZ",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-2c1a778bceedf9c4b2bbaed5eb212fba-8fb9396ab5538a3d-01",
+			"traceresponse": "00-5f5baf061f5e98be87eed65c4c950b54-ab6d338b00e55e45-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

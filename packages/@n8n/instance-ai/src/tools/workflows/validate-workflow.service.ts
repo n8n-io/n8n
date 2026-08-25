@@ -6,7 +6,7 @@
  */
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { DisplayOptions, NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
-import { matchesDisplayOptions } from '@n8n/workflow-sdk';
+import { matchesDisplayOptions, toEngineConnections } from '@n8n/workflow-sdk';
 import type {
 	IConnections,
 	INodeInputConfiguration,
@@ -17,6 +17,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 
+import { computeChatModelValidationIssues } from './chat-model-validation';
 import { isAiGatewayManagedCredential } from './credential-utils';
 import type { InstanceAiContext, NodeDescription } from '../../types';
 
@@ -562,6 +563,14 @@ async function computeNodeIssues(
 		}
 	}
 
+	if (!ignoreIssues.has('chatModel')) {
+		const chatModelIssues = await computeChatModelValidationIssues(context, node);
+		if (Object.keys(chatModelIssues).length > 0) {
+			issues = issues ?? {};
+			issues.chatModel = chatModelIssues;
+		}
+	}
+
 	if (!ignoreIssues.has('input')) {
 		const inputIssues = await computeInputIssues(
 			context,
@@ -600,7 +609,13 @@ function formatSummaryLines(
 	if (issues.typeUnknown) {
 		pushTo.push(`${nodeName}: typeUnknown: Unknown node type`);
 	}
-	for (const category of ['parameters', 'credentials', 'input', 'aiGateway'] as const) {
+	for (const category of [
+		'parameters',
+		'credentials',
+		'input',
+		'aiGateway',
+		'chatModel',
+	] as const) {
 		const slice = issues[category];
 		if (!slice || typeof slice !== 'object') continue;
 		for (const [key, messages] of Object.entries(slice)) {
@@ -654,7 +669,7 @@ export async function validateWorkflowConfig(
 	// Invert connections once — every per-node input-issue check needs the
 	// destination-keyed view, and mapConnectionsByDestination is O(n).
 	const connectionsByDestination = mapConnectionsByDestination(
-		(workflowJson.connections ?? {}) as IConnections,
+		toEngineConnections(workflowJson.connections),
 	);
 
 	// Fetch the latest run data once for the workflow. Skip when we have no

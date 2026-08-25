@@ -131,7 +131,8 @@ export class WorkflowReviewAccessService {
 			throw new NotFoundError('Could not find review request');
 		}
 
-		// Rows come back id ASC, so the first is the pinned one.
+		// One workflow per review for now, so the only row is the pinned one. Ids are
+		// nanoids, so the query's id ordering just makes the pick deterministic.
 		const pinnedWorkflowId = workflowRows.at(0)?.workflowId ?? null;
 		return {
 			request,
@@ -168,6 +169,46 @@ export class WorkflowReviewAccessService {
 		]);
 
 		return isAuthor || isReviewer;
+	}
+
+	/**
+	 * {@link canAccessRequest} for a batch: which of the given reviews the user may
+	 * open. Same rule — project admin or participant — resolved with one visibility
+	 * lookup and one batched probe per junction table instead of per-request queries.
+	 * The other half of the rule, reading a covered workflow, is the caller's job.
+	 */
+	async resolveOpenableRequestIds(
+		user: User,
+		requests: Array<{ id: string; projectId: string }>,
+	): Promise<Set<string>> {
+		if (requests.length === 0) {
+			return new Set();
+		}
+
+		const visibility = await this.resolveInboxVisibility(user);
+		if (visibility.scope === 'all') {
+			return new Set(requests.map((request) => request.id));
+		}
+
+		// Set membership, not `includes`: this runs once per request in the batch.
+		const adminProjectIds = new Set(visibility.adminProjectIds);
+		const openable = new Set(
+			requests
+				.filter((request) => adminProjectIds.has(request.projectId))
+				.map((request) => request.id),
+		);
+
+		const remainingIds = requests.map((request) => request.id).filter((id) => !openable.has(id));
+		if (remainingIds.length > 0) {
+			const [authoredIds, reviewingIds] = await Promise.all([
+				this.workflowReviewRequestAuthorRepository.findRequestIdsForUser(remainingIds, user.id),
+				this.workflowReviewRequestReviewerRepository.findRequestIdsForUser(remainingIds, user.id),
+			]);
+			for (const id of authoredIds) openable.add(id);
+			for (const id of reviewingIds) openable.add(id);
+		}
+
+		return openable;
 	}
 
 	/**

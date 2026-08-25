@@ -2,7 +2,6 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { isContainedWithin, Logger, safeJoinPath } from '@n8n/backend-common';
 import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { generateKeyPairSync } from 'crypto';
 import { accessSync, constants as fsConstants, mkdirSync } from 'fs';
 import chunk from 'lodash/chunk';
 import isEqual from 'lodash/isEqual';
@@ -19,6 +18,7 @@ import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
 import { License } from '@/license';
+import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/git-connections.ee/git-connections-git.utils';
 import { containsExpression } from '@/utils';
 
 import {
@@ -286,47 +286,8 @@ export function isSourceControlLicensed() {
 	return license.isSourceControlLicensed();
 }
 
-export async function generateSshKeyPair(keyType: KeyPairType) {
-	// sshpk is CommonJS (`export =`): under nodenext, a native dynamic import only
-	// hoists some named exports onto the namespace (parsePrivateKey is missed), so
-	// read the real module.exports off `.default`.
-	const { default: sshpk } = await import('sshpk');
-	const keyPair: KeyPair = {
-		publicKey: '',
-		privateKey: '',
-	};
-	let generatedKeyPair: KeyPair;
-	switch (keyType) {
-		case 'ed25519':
-			generatedKeyPair = generateKeyPairSync('ed25519', {
-				privateKeyEncoding: { format: 'pem', type: 'pkcs8' },
-				publicKeyEncoding: { format: 'pem', type: 'spki' },
-			});
-			break;
-		case 'rsa':
-			generatedKeyPair = generateKeyPairSync('rsa', {
-				modulusLength: 4096,
-				publicKeyEncoding: {
-					type: 'spki',
-					format: 'pem',
-				},
-				privateKeyEncoding: {
-					type: 'pkcs8',
-					format: 'pem',
-				},
-			});
-			break;
-	}
-	const keyPublic = sshpk.parseKey(generatedKeyPair.publicKey, 'pem');
-	keyPublic.comment = SOURCE_CONTROL_GIT_KEY_COMMENT;
-	keyPair.publicKey = keyPublic.toString('ssh');
-	const keyPrivate = sshpk.parsePrivateKey(generatedKeyPair.privateKey, 'pem');
-	keyPrivate.comment = SOURCE_CONTROL_GIT_KEY_COMMENT;
-	keyPair.privateKey = keyPrivate.toString('ssh-private');
-	return {
-		privateKey: keyPair.privateKey,
-		publicKey: keyPair.publicKey,
-	};
+export async function generateSshKeyPair(keyType: KeyPairType): Promise<KeyPair> {
+	return await generateGitSshKeyPair(keyType, SOURCE_CONTROL_GIT_KEY_COMMENT);
 }
 
 export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
@@ -457,19 +418,30 @@ export function hasOwnerChanged(
 }
 
 /**
- * Checks if a workflow has been modified by comparing version IDs and parent folder IDs
- * between local and remote versions
+ * Checks if a workflow has been modified by comparing version IDs, parent folder IDs,
+ * descriptions and owners between local and remote versions
  */
+function normalizeDescription(description: string | null | undefined): string | null {
+	return description ? description : null;
+}
+
 export function isWorkflowModified(
 	local: SourceControlWorkflowVersionId,
 	remote: SourceControlWorkflowVersionId,
+	direction: 'push' | 'pull',
 ): boolean {
 	const hasVersionIdChanged = remote.versionId !== local.versionId;
 	const hasParentFolderIdChanged =
 		remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId;
+	// Description edits don't bump the versionId. On pull, skip legacy remote files
+	// without a `description` key: importing them can't change the local description.
+	const hasDescriptionChanged =
+		direction === 'pull' && remote.description === undefined
+			? false
+			: normalizeDescription(remote.description) !== normalizeDescription(local.description);
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
-	return hasVersionIdChanged || hasParentFolderIdChanged || ownerChanged;
+	return hasVersionIdChanged || hasParentFolderIdChanged || hasDescriptionChanged || ownerChanged;
 }
 
 /**

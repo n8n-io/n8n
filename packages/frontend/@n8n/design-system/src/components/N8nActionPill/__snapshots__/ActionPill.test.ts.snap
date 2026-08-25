@@ -61,6 +61,18 @@ exports[`N8nActionPill > snapshots > renders default type correctly 1`] = `
 </div>
 `;
 
+exports[`N8nActionPill > snapshots > renders info type correctly 1`] = `
+<div>
+  <span
+    class="root info"
+  >
+    
+    n8n credits
+    
+  </span>
+</div>
+`;
+
 exports[`N8nActionPill > snapshots > renders small size correctly 1`] = `
 <div>
   <span

@@ -286,7 +286,8 @@ When this turn is responsible for verification, do not stop after a successful
 save. The job is done when one of these is true:
 
 - The workflow is verified by structured tool evidence.
-- Setup is required and `workflows(action="setup")` has been routed or deferred.
+- Setup is required and `workflows(action="setup")` has been routed or deferred,
+  or the only setup left is for credentials the user skipped earlier.
 - A remediation guard says `shouldEdit: false`.
 - You are blocked after one repair attempt per unique failure signature.
 
@@ -324,6 +325,16 @@ decision after testing.
   workflow already had it. Otherwise use `newCredential('Suggested Credential
   Name')` — build tools mock unresolved credentials for verification and setup
   collects real ones later.
+- When the user explicitly asks for a **new** credential ("create a new Slack
+  credential"), the unresolved `newCredential('Name')` is not enough on its own —
+  the build would still attach their sole existing credential of that type, and
+  setup would preselect their most recent one. Pass the credential type in
+  `preferNewCredentials` on `build-workflow` **and** on
+  `workflows(action="setup")` (or `preferNew: true` on the entry of
+  `credentials(action="setup")`). The slot then stays unresolved through the build
+  and the card opens on credential creation, with existing credentials still
+  listed in case the user changes their mind. Pass it only on an explicit request,
+  never by default — reuse is the right behavior everywhere else.
 - When `build-workflow` returns `resolvedCredentialsByNode`, the build already
   attached a credential to those nodes — either an existing stored credential or
   an n8n credits–managed one (entries with `id: null` and `__aiGatewayManaged:
@@ -500,6 +511,15 @@ every reported error and warning before calling `build-workflow`.
   configs and from `sticky()` options alike. Positions are auto-calculated, and
   the saved workflow's own layout is restored on save, so nothing you drop here
   is lost. Leaving some in place is worse than dropping all of them.
+- When editing a pre-loaded workflow, keep every `config.id` value **exactly** as
+  `get-as-code` produced it, on the node it came with. `id` is the node's
+  permanent identity in n8n — execution logs, poll cursors, deduplication state
+  and the version diff are all keyed on it. Rename a node freely; the `id` stays.
+  Move it, rewire it, change its parameters — the `id` stays. Never invent, edit,
+  renumber or reuse an `id`, and never copy one from a template, another workflow
+  or another node. **Omit `id` entirely for any node you are adding** — one is
+  assigned on save. Deleting a node means deleting its `id` line with it. This is
+  the opposite of `position`: drop every `position`, keep every `id`.
 - Use `placeholder('hint')` directly as the parameter value. Do not wrap
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one
@@ -583,8 +603,9 @@ first.
 
 `.group(name, members, { description })` on the workflow builder; members are the node handles.
 Read `knowledge-base/reference/node-groups.md` for the exact rules (trigger nodes excluded,
-one connected section, AI sub-nodes stay with their Agent) before creating groups — an invalid
-group is rejected on save. When editing an existing workflow, keep existing `.group(...)` calls
+one connected section, AI sub-nodes stay with their Agent) before creating groups. Agent save
+tools drop an invalid group from the saved workflow and report a warning, so fix the source
+instead of re-emitting it. When editing an existing workflow, keep existing `.group(...)` calls
 and their descriptions intact unless the change is about grouping.
 
 ## Workflow Rules

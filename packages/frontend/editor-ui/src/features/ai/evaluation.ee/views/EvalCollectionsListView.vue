@@ -187,11 +187,11 @@ onBeforeUnmount(() => {
 				<N8nPagination
 					v-if="showCollectionsPagination"
 					:class="$style.pagination"
-					layout="prev, pager, next"
-					:current-page="collectionsPage"
-					:page-size="pageSize"
+					v-model:page="collectionsPage"
+					:items-per-page="pageSize"
 					:total="collections.length"
-					@update:current-page="collectionsPage = $event"
+					:show-total="false"
+					:show-sizes="false"
 				/>
 			</section>
 

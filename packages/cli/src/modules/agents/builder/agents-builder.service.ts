@@ -18,6 +18,7 @@ import {
 	resolveAIAPromptCaching,
 	resolveAIAReasoning,
 	tokenUsageToBuilderUsageItems,
+	type InstanceAiToolRegistry,
 } from '@n8n/instance-ai';
 import { jsonParse } from 'n8n-workflow';
 
@@ -74,6 +75,8 @@ export interface InstanceAiBuilderSessionOptions {
 	memoryTaskObserver?: (event: ScopedMemoryTaskEvent) => void;
 	/** Host run's abort signal, so a user stop ends the builder's own loop rather than only the host's consumption of it. */
 	abortSignal: AbortSignal;
+	/** The parent orchestrator's validated, approval-wrapped MCP tools. */
+	mcpTools?: InstanceAiToolRegistry;
 }
 
 @Service()
@@ -287,16 +290,28 @@ export class AgentsBuilderService {
 		if (session.telemetry) builder.telemetry(session.telemetry);
 		if (session.memoryTaskObserver) builder.memoryTaskObserver(session.memoryTaskObserver);
 
-		for (const tool of [...tools.json, ...tools.shared]) {
+		const plannerTodosTool = createPlannerTodosTool({
+			description: BUILDER_PLANNER_TODOS_DESCRIPTION,
+			systemInstruction: BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
+		});
+		const builderTools = [...tools.json, ...tools.shared, plannerTodosTool];
+		const claimedToolNames = new Set(builderTools.map((tool) => tool.name));
+
+		for (const tool of builderTools) {
 			builder.tool(tool);
 		}
 
-		builder.tool(
-			createPlannerTodosTool({
-				description: BUILDER_PLANNER_TODOS_DESCRIPTION,
-				systemInstruction: BUILDER_PLANNER_TODOS_SYSTEM_INSTRUCTION,
-			}),
-		);
+		for (const [toolName, tool] of session.mcpTools ?? []) {
+			if (claimedToolNames.has(toolName)) {
+				this.logger.warn('Skipped MCP tool that conflicts with an agent builder tool', {
+					toolName,
+					agentId,
+				});
+				continue;
+			}
+			claimedToolNames.add(toolName);
+			builder.tool(tool);
+		}
 
 		builder.reasoning(resolveAIAReasoning(modelConfig));
 

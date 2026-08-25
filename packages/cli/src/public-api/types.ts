@@ -49,6 +49,8 @@ export declare namespace ExecutionRequest {
 			workflowId?: string;
 			lastId?: string;
 			projectId?: string;
+			startedAfter?: string;
+			startedBefore?: string;
 		}
 	>;
 
@@ -118,12 +120,6 @@ export declare namespace CredentialTypeRequest {
 }
 
 export declare namespace WorkflowRequest {
-	type Create = AuthenticatedRequest<
-		{},
-		{},
-		WorkflowEntity & { projectId?: string; parentFolderId?: string | null },
-		{}
-	>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
 	type Update = AuthenticatedRequest<
@@ -138,7 +134,6 @@ export declare namespace WorkflowRequest {
 		{ versionId?: string; name?: string; description?: string },
 		{}
 	>;
-	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
 }
 

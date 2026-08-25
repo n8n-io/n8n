@@ -1,7 +1,12 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ChatAnthropic } from '@langchain/anthropic';
-import { N8nLlmTracing, makeN8nLlmFailedAttemptHandler, getProxyAgent } from '@n8n/ai-utilities';
+import {
+	N8nLlmTracing,
+	makeN8nLlmFailedAttemptHandler,
+	getProxyAgent,
+	proxyFetch,
+} from '@n8n/ai-utilities';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { ILoadOptionsFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
@@ -67,7 +72,7 @@ describe('LmChatAnthropic', () => {
 				displayName: 'Anthropic Chat Model',
 				name: 'lmChatAnthropic',
 				group: ['transform'],
-				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
+				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
 				description: 'Language Model Anthropic',
 			});
 		});
@@ -425,7 +430,9 @@ describe('LmChatAnthropic', () => {
 			beforeEach(() => {
 				mockGetCredentials = vi.fn();
 				fetchSpy = vi.fn();
-				vi.stubGlobal('fetch', fetchSpy);
+				vi.mocked(proxyFetch).mockImplementation(
+					fetchSpy as unknown as typeof import('@n8n/ai-utilities')['proxyFetch'],
+				);
 
 				mockLoadContext = {
 					getCredentials: mockGetCredentials,
