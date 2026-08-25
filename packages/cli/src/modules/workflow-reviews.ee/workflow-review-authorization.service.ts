@@ -28,9 +28,9 @@ import { resolveDecisionCapability } from './workflow-review-decision-policy';
 
 export interface ReadableWorkflowReviewRequest {
 	request: WorkflowReviewRequest;
+	workflowRows: WorkflowReviewRequestWorkflowDetailRow[];
+	/** The subset of {@link workflowRows} the caller may currently read. */
 	readableWorkflowRows: WorkflowReviewRequestWorkflowDetailRow[];
-	pinnedWorkflowId: string | null;
-	canReadPinnedWorkflow: boolean;
 }
 
 export interface WorkflowReviewViewerEligibility {
@@ -164,17 +164,7 @@ export class WorkflowReviewAuthorizationService {
 			throw new NotFoundError('Could not find review request');
 		}
 
-		// One workflow per review for now, so the only row is the pinned one. Ids are
-		// nanoids, so the query's id ordering just makes the pick deterministic.
-		const pinnedWorkflowId = workflowRows.at(0)?.workflowId ?? null;
-		return {
-			request,
-			readableWorkflowRows,
-			pinnedWorkflowId,
-			canReadPinnedWorkflow: readableWorkflowRows.some(
-				(row) => row.workflowId === pinnedWorkflowId,
-			),
-		};
+		return { request, workflowRows, readableWorkflowRows };
 	}
 
 	/**
@@ -278,12 +268,20 @@ export class WorkflowReviewAuthorizationService {
 	 */
 	async resolveViewerEligibility(
 		user: User,
-		access: Pick<ReadableWorkflowReviewRequest, 'request' | 'canReadPinnedWorkflow'>,
+		access: Pick<
+			ReadableWorkflowReviewRequest,
+			'request' | 'workflowRows' | 'readableWorkflowRows'
+		>,
 	): Promise<WorkflowReviewViewerEligibility> {
-		const { request, canReadPinnedWorkflow } = access;
+		const { request, workflowRows, readableWorkflowRows } = access;
 
-		// No participation lookup is worth running without read on the pinned version.
-		if (!canReadPinnedWorkflow) {
+		// A decision or comment covers the whole review, so both need read access to
+		// every covered workflow.
+		const canReadEveryWorkflow =
+			workflowRows.length > 0 && readableWorkflowRows.length === workflowRows.length;
+
+		// No participation lookup is worth running without read on every workflow.
+		if (!canReadEveryWorkflow) {
 			return {
 				canDecide: false,
 				decisionIneligibilityReason: 'missing_permission',
@@ -299,7 +297,7 @@ export class WorkflowReviewAuthorizationService {
 		]);
 
 		const capability = resolveDecisionCapability({
-			canReadPinnedWorkflow,
+			canReadEveryWorkflow,
 			isAuthor,
 			isAssignedReviewer,
 			hasAdminOverride,

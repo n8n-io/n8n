@@ -666,20 +666,29 @@ export class WorkflowReviewRequestService {
 			workflowReviewRequestId,
 			{},
 		);
-		const workflowRow = workflowRows[0];
+		// Reviews hold exactly one workflow today (create caps the list at one).
+		// Baseline capture and activity data below already cover every row, but
+		// publishing, broadcasts, and events still assume this single row.
+		const [workflowRow] = workflowRows;
 		if (!workflowRow) {
 			throw new NotFoundError('Could not find review request');
 		}
 
-		const canReadPinnedWorkflow = Boolean(
-			await this.workflowFinderService.findWorkflowForUser(workflowRow.workflowId, user, [
-				'workflow:read',
-			]),
+		// A decision covers every workflow the review holds, so all of them must be
+		// readable — no workflow on a review outranks another.
+		const readableWorkflows = await Promise.all(
+			workflowRows.map(
+				async (row) =>
+					await this.workflowFinderService.findWorkflowForUser(row.workflowId, user, [
+						'workflow:read',
+					]),
+			),
 		);
+		const canReadEveryWorkflow = readableWorkflows.every((workflow) => workflow !== null);
 		// The policy's `missing_permission` verdict, applied here rather than below:
 		// 404 (not 403) so callers without access can't probe which requests exist, and
 		// ahead of the lifecycle check so a closed review does not leak one either.
-		if (!canReadPinnedWorkflow) {
+		if (!canReadEveryWorkflow) {
 			throw new NotFoundError('Could not find review request');
 		}
 
@@ -703,7 +712,7 @@ export class WorkflowReviewRequestService {
 			{},
 		);
 		this.assertDecisionAllowed({
-			canReadPinnedWorkflow,
+			canReadEveryWorkflow,
 			isAuthor,
 			isAssignedReviewer,
 			hasAdminOverride,
@@ -752,7 +761,7 @@ export class WorkflowReviewRequestService {
 				ctx,
 			);
 			this.assertDecisionAllowed({
-				canReadPinnedWorkflow,
+				canReadEveryWorkflow,
 				isAuthor: isAuthorNow,
 				isAssignedReviewer: isAssignedReviewerNow,
 				hasAdminOverride,
