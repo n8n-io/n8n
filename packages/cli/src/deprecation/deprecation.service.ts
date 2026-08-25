@@ -74,12 +74,6 @@ export class DeprecationService {
 			checkValue: (value?: string) => value === undefined,
 		},
 		{
-			envVar: 'N8N_RUNNERS_TASK_TIMEOUT',
-			message:
-				'The default for this variable will be reduced from 300 (5 minutes) to 60 (1 minute) in a future version. Set it explicitly to keep your current task timeout.',
-			checkValue: (value?: string) => value === undefined,
-		},
-		{
 			envVar: 'N8N_EXPRESSION_ENGINE',
 			message:
 				'The `legacy` expression engine runs expressions without isolation, is no longer considered secure, and will be removed in a future version. Remove this environment variable to use the default `vm` engine.',
