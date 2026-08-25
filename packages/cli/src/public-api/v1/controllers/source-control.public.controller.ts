@@ -57,7 +57,7 @@ export class SourceControlPublicController {
 		this.assertConnected();
 		await this.sourceControlScopedService.ensureIsAllowedToGetStatus(req);
 
-		const { offset, limit } = resolveOffsetPagination(query, true);
+		const { offset, limit } = resolveOffsetPagination({ ...query, validateCursor: true });
 
 		const result = await this.sourceControlService.getStatus(
 			req.user,

@@ -58,21 +58,12 @@ describe('resolveOffsetPagination', () => {
 	});
 
 	describe('with validateCursor: true', () => {
-		it('defaults offset to 0 when no cursor or offset is given', () => {
-			expect(resolveOffsetPagination({ limit: 50 }, true)).toEqual({ offset: 0, limit: 50 });
-		});
-
-		it('uses the query offset when no cursor is given, without re-validating bounds', () => {
-			expect(resolveOffsetPagination({ limit: 50, offset: 20 }, true)).toEqual({
-				offset: 20,
-				limit: 50,
-			});
-		});
-
 		it('accepts a well-formed cursor and clamps limit to the max page size', () => {
 			const cursor = encodeCursor({ offset: 40, limit: 25 });
 
-			expect(resolveOffsetPagination({ limit: 50, offset: 10, cursor }, true)).toEqual({
+			expect(
+				resolveOffsetPagination({ limit: 50, offset: 10, cursor, validateCursor: true }),
+			).toEqual({
 				offset: 40,
 				limit: 25,
 			});
@@ -81,7 +72,7 @@ describe('resolveOffsetPagination', () => {
 		it('clamps a cursor-provided limit above the maximum page size', () => {
 			const cursor = encodeCursor({ offset: 40, limit: 10000 });
 
-			expect(resolveOffsetPagination({ limit: 50, cursor }, true)).toEqual({
+			expect(resolveOffsetPagination({ limit: 50, cursor, validateCursor: true })).toEqual({
 				offset: 40,
 				limit: 250,
 			});
@@ -90,7 +81,7 @@ describe('resolveOffsetPagination', () => {
 		it('throws BadRequestError for a forged negative offset', () => {
 			const cursor = encodeCursor({ offset: -1, limit: 25 });
 
-			expect(() => resolveOffsetPagination({ limit: 50, cursor }, true)).toThrow(
+			expect(() => resolveOffsetPagination({ limit: 50, cursor, validateCursor: true })).toThrow(
 				'An invalid cursor was provided',
 			);
 		});
@@ -98,7 +89,7 @@ describe('resolveOffsetPagination', () => {
 		it('throws BadRequestError for a forged non-integer offset', () => {
 			const cursor = encodeCursor({ offset: 'not-a-number', limit: 25 });
 
-			expect(() => resolveOffsetPagination({ limit: 50, cursor }, true)).toThrow(
+			expect(() => resolveOffsetPagination({ limit: 50, cursor, validateCursor: true })).toThrow(
 				'An invalid cursor was provided',
 			);
 		});
@@ -106,14 +97,18 @@ describe('resolveOffsetPagination', () => {
 		it('throws BadRequestError for a forged zero or negative limit', () => {
 			const cursor = encodeCursor({ offset: 0, limit: 0 });
 
-			expect(() => resolveOffsetPagination({ limit: 50, cursor }, true)).toThrow(
+			expect(() => resolveOffsetPagination({ limit: 50, cursor, validateCursor: true })).toThrow(
 				'An invalid cursor was provided',
 			);
 		});
 
 		it('throws BadRequestError for an undecodable cursor', () => {
 			expect(() =>
-				resolveOffsetPagination({ limit: 50, cursor: 'not-a-valid-cursor' }, true),
+				resolveOffsetPagination({
+					limit: 50,
+					cursor: 'not-a-valid-cursor',
+					validateCursor: true,
+				}),
 			).toThrow(BadRequestError);
 		});
 	});

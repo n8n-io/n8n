@@ -18,25 +18,25 @@ export const decodeCursor = (cursor: string): PaginationOffsetDecoded | Paginati
  * Resolves the offset and limit to query with for a list endpoint either from defaults
  * or from a provided cursor.
  *
- * A cursor is unsigned base64 a client can forge. Callers whose resolved `offset`/`limit`
- * go straight into an in-memory slice (no DB-backed bounds check downstream) should pass
- * `validateCursor: true` to re-validate them against the same bounds already enforced on
- * the raw query params, rather than trusting the decoded values blindly.
+ * `validateCursor` is used to validate the contents of the cursor and limit the number of items per page to `MAX_ITEMS_PER_PAGE`.
  */
-export function resolveOffsetPagination(
-	query: {
-		cursor?: string;
-		limit: number;
-		offset?: number;
-	},
+export function resolveOffsetPagination({
+	cursor,
+	limit: queryLimit,
+	offset: queryOffset,
 	validateCursor = false,
-): { offset: number; limit: number } {
-	let { limit } = query;
-	let offset = query.offset ?? 0;
+}: {
+	cursor?: string;
+	limit: number;
+	offset?: number;
+	validateCursor?: boolean;
+}): { offset: number; limit: number } {
+	let limit = queryLimit;
+	let offset = queryOffset ?? 0;
 
-	if (query.cursor) {
+	if (cursor) {
 		try {
-			const decoded = decodeCursor(query.cursor);
+			const decoded = decodeCursor(cursor);
 			if (!('offset' in decoded)) {
 				throw new BadRequestError('An invalid cursor was provided');
 			}
