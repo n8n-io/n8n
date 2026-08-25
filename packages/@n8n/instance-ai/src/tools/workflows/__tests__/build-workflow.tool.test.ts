@@ -60,6 +60,7 @@ vi.mock('../workflow-source-compiler', () => ({
 vi.mock('../resolve-credentials', () => ({
 	buildCredentialMap: vi.fn(async () => await Promise.resolve(new Map())),
 	buildCredentialResolutionNote: vi.fn(() => undefined),
+	isN8nCreditsWalletDepleted: vi.fn(async () => await Promise.resolve(false)),
 	resolveCredentials: vi.fn(
 		async () =>
 			await Promise.resolve({
