@@ -1,3 +1,4 @@
+import { WORKFLOW_WAIT_SUSPEND_TYPE } from '@n8n/api-types';
 import type { BaseTextKey, useI18n } from '@n8n/i18n';
 import { isRecord } from '@n8n/utils/is-record';
 import type {
@@ -98,6 +99,24 @@ export function timelineItemErrorMessage(item: TimelineItem): string {
 	const output = item.toolOutput;
 	if (!isRecord(output)) return '';
 	return errorTextFromValue(output.error) || mcpErrorMessage(output);
+}
+
+const HITL_REQUEST_LABEL_KEYS: Record<HitlRequestType, BaseTextKey> = {
+	approval: 'agentSessions.timeline.approvalRequested',
+	interaction: 'agentSessions.timeline.hitlRequested',
+	wait: 'agentSessions.timeline.waitRequested',
+};
+
+/** Search/filter keys resolved by the label maps in the timeline panel and table. */
+const HITL_REQUEST_FILTER_KEYS: Record<HitlRequestType, string> = {
+	approval: 'approval-requested',
+	interaction: 'hitl-requested',
+	wait: 'wait-requested',
+};
+
+/** Label for a suspension row. Legacy items with no request type read as an interaction. */
+export function hitlRequestLabelKey(requestType: HitlRequestType | undefined): BaseTextKey {
+	return HITL_REQUEST_LABEL_KEYS[requestType ?? 'interaction'];
 }
 
 export function hitlTimelineNameKey(item: TimelineItem): BaseTextKey | undefined {
@@ -238,9 +257,7 @@ export function timelineItemSearchText(
 		parts.push(labelForKey('execution-interrupted'));
 	}
 	if (item.kind === 'suspension') {
-		parts.push(
-			labelForKey(item.hitlRequestType === 'approval' ? 'approval-requested' : 'hitl-requested'),
-		);
+		parts.push(labelForKey(HITL_REQUEST_FILTER_KEYS[item.hitlRequestType ?? 'interaction']));
 	}
 	if (item.kind === 'hitl-response') {
 		parts.push(labelForKey('hitl-response'));
@@ -428,6 +445,10 @@ function isIntegrationActionRequest(value: unknown): boolean {
 	return isRecord(value) && value.type === 'integration_action';
 }
 
+function isWaitRequest(value: unknown): boolean {
+	return isRecord(value) && value.type === WORKFLOW_WAIT_SUSPEND_TYPE;
+}
+
 function toolCallOutcome(event: RawToolCallEvent): ToolCallOutcome | undefined {
 	if (event.endTime === 0) return undefined;
 	return event.success ? 'success' : 'error';
@@ -450,9 +471,14 @@ function inferHitlRequestType(
 ): HitlRequestType {
 	if (isApprovalRequest(event.suspendPayload)) return 'approval';
 	if (legacyApprovalToolCallIds.has(event.toolCallId)) return 'approval';
-	// Older timeline records did not persist the suspension payload. Node and
-	// workflow tools are the legacy approval-gated cases; generic action tools
-	// use their suspension as an interaction request.
+	// A workflow tool parked on a Wait node: no one is being asked anything, so it
+	// must not read as a request for user input.
+	if (isWaitRequest(event.suspendPayload)) return 'wait';
+	// Any other payload that is present but not an approval is an interaction,
+	// whatever the tool kind.
+	if (event.suspendPayload !== undefined) return 'interaction';
+	// Older records persisted no payload at all. There, node and workflow tools are
+	// the legacy approval-gated cases; generic action tools were interactions.
 	return toolCall?.kind === 'node' || toolCall?.kind === 'workflow' ? 'approval' : 'interaction';
 }
 

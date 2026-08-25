@@ -3,6 +3,8 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import * as attachment from './attachment';
 import * as page from './page';
+import * as search from './search';
+import * as space from './space';
 
 /**
  * Compile-checked contract for operation modules. The router calls
@@ -47,8 +49,20 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'page:get':
 					responseData = await page.get.execute.call(this, i);
 					break;
+				case 'page:getManyByLabel':
+					responseData = await page.getManyByLabel.execute.call(this, i);
+					break;
 				case 'page:update':
 					responseData = await page.update.execute.call(this, i);
+					break;
+				case 'search:query':
+					responseData = await search.query.execute.call(this, i);
+					break;
+				case 'space:get':
+					responseData = await space.get.execute.call(this, i);
+					break;
+				case 'space:getMany':
+					responseData = await space.getMany.execute.call(this, i);
 					break;
 				default:
 					throw new NodeOperationError(

@@ -4,7 +4,12 @@ import {
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
-import { SDK_IMPORTABLE_FUNCTIONS, type WorkflowJSON } from '@n8n/workflow-sdk';
+import {
+	dropInvalidWorkflowJsonGroups,
+	SDK_IMPORTABLE_FUNCTIONS,
+	type WorkflowJSON,
+} from '@n8n/workflow-sdk';
+import { makeGetNodeTypeForGrouping } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -71,7 +76,11 @@ import {
 } from './workflow-json-utils';
 import { computeChangedNodeNames, downgradeUnchangedNodeBlockers } from './workflow-node-diff';
 import { compileWorkflowSource } from './workflow-source-compiler';
-import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
+import {
+	nodeGroupDroppedWarnings,
+	partitionWarnings,
+	type ValidationWarning,
+} from './workflow-validation-warnings';
 import { WorkflowSaveConflictError } from '../../errors/workflow-save-conflict.error';
 import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
 import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
@@ -1012,6 +1021,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			await stripStaleCredentialsFromWorkflow(context, json);
 
 			try {
+				let droppedGroupCount = 0;
 				// Runs first: the passes below key off node ids, so they must be unique.
 				ensureUniqueNodeIds(json);
 				// Recovers the saved id of a surviving node whose source declared none — layered
@@ -1021,6 +1031,17 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 				await preserveExistingNodePositions(json, targetWorkflowId, context);
+				const groupCountBeforeDrop = json.nodeGroups?.length ?? 0;
+				const droppedGroupWarnings = nodeGroupDroppedWarnings(
+					dropInvalidWorkflowJsonGroups(
+						json,
+						context.nodeTypesProvider
+							? makeGetNodeTypeForGrouping(context.nodeTypesProvider)
+							: null,
+					),
+				);
+				droppedGroupCount = groupCountBeforeDrop - (json.nodeGroups?.length ?? 0);
+				informational.push(...droppedGroupWarnings);
 
 				if (await hasLostAllSavedNodeIds(json, targetWorkflowId, context)) {
 					context.logger.debug('Build kept none of the saved node ids', {
@@ -1202,6 +1223,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						isSupportingWorkflow,
 						isAuxiliarySupportingWorkflow,
 						warningCount: informational.length,
+						droppedGroupCount,
 					});
 
 					return {

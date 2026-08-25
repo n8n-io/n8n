@@ -190,6 +190,11 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			findManyOptions.select = { ...findManyOptions.select, id: true }; // pagination requires id
 		}
 
+		// the credential:connect scope check needs isResolvable whenever isGlobal is selected
+		if (select?.isGlobal && !select?.isResolvable) {
+			findManyOptions.select = { ...findManyOptions.select, isResolvable: true };
+		}
+
 		if (!findManyOptions.select) {
 			findManyOptions.select = defaultSelect;
 			findManyOptions.relations = defaultRelations;

@@ -458,6 +458,18 @@ inputs:
   login-dhi:        # default: 'false'
 ```
 
+### External actions
+
+Actions consumed from other n8n-io repositories, SHA-pinned like any third-party
+action:
+
+| Action                            | Purpose                                                                       | Used By            |
+|-----------------------------------|-------------------------------------------------------------------------------|--------------------|
+| `n8n-io/github-actions/cla-check` | CLA signature check: `CLA Check` commit status, in-place PR comment, `cla-signed` label | `ci-cla-check.yml` |
+
+Behaviour changes belong in that repo; bumping the pin here is what picks them up.
+A `/cla-check` comment on a PR re-runs the check without a push.
+
 ---
 
 ## Reusable Workflows
