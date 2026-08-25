@@ -164,6 +164,7 @@
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vitest/coverage-v8": "catalog:",
     "@vue/test-utils": "catalog:frontend",
+    "autoprefixer": "catalog:frontend",
     "browserslist": "4.28.1",
     "browserslist-to-esbuild": "^2.1.1",
     "eslint-plugin-oxlint": "catalog:",
