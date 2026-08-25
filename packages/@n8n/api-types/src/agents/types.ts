@@ -19,10 +19,12 @@ export const SUPPORTED_WORKFLOW_TOOL_TRIGGERS = [
 	WEBHOOK_NODE_TYPE,
 ] as const;
 
-export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = [
-	'n8n-nodes-base.wait',
-	'n8n-nodes-base.form',
-] as const;
+/**
+ * Body nodes a workflow tool cannot run. The Wait node is absent by design — the
+ * tool hands its suspension off to HITL. The Form node has no such path, needing
+ * an interactive browser session mid-execution.
+ */
+export const INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES = ['n8n-nodes-base.form'] as const;
 
 export const AGENT_WORKFLOW_TRIGGER_TYPE = 'workflow';
 

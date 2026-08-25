@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-07-22T13:28:07.821Z",
-	"totalViolations": 188,
+	"generated": "2026-08-24T09:15:32.266Z",
+	"totalViolations": 184,
 	"violations": {
 		"packages/@n8n/ai-workflow-builder.ee/package.json": [
 			{
@@ -549,12 +549,6 @@
 				"line": 30,
 				"message": "stylelint appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
 				"hash": "955f3fe044c7"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 46,
-				"message": "stylelint appears in 2 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "955f3fe044c7"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1690000000030-RemoveResetPasswordColumns.ts": [
@@ -1053,98 +1047,6 @@
 				"hash": "ac2493848228"
 			}
 		],
-		"package.json": [
-			{
-				"rule": "stale-overrides",
-				"line": 107,
-				"message": "Override \"@azure/identity\" duplicates a catalog entry for @azure/identity — set the override to \"catalog:\" or remove it",
-				"hash": "ef24d04a4347"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 108,
-				"message": "Override \"@lezer/common\" duplicates a catalog entry for @lezer/common — set the override to \"catalog:\" or remove it",
-				"hash": "1e5d2fb72ef8"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 111,
-				"message": "Override \"@types/node\" duplicates a catalog entry for @types/node — set the override to \"catalog:\" or remove it",
-				"hash": "d3577ed2e92d"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 112,
-				"message": "Override \"chokidar\" duplicates a catalog entry for chokidar — set the override to \"catalog:\" or remove it",
-				"hash": "8496c5755ef0"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 122,
-				"message": "Override \"vue-tsc\" duplicates a catalog entry for vue-tsc — set the override to \"catalog:frontend\" or remove it",
-				"hash": "5414a6c2842f"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 128,
-				"message": "Override \"form-data\" duplicates a catalog entry for form-data — set the override to \"catalog:\" or remove it",
-				"hash": "ec13014b18ab"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 131,
-				"message": "Override \"nodemailer\" duplicates a catalog entry for nodemailer — set the override to \"catalog:\" or remove it",
-				"hash": "1a696378ebfc"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 133,
-				"message": "Override \"zod\" duplicates a catalog entry for zod — set the override to \"catalog:\" or remove it",
-				"hash": "6224a1e7997d"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 142,
-				"message": "Override \"@rudderstack/rudder-sdk-node@<=3.0.0\" duplicates a catalog entry for @rudderstack/rudder-sdk-node — set the override to \"catalog:\" or remove it",
-				"hash": "71f703e2c449"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 153,
-				"message": "Override \"lodash\" duplicates a catalog entry for lodash — set the override to \"catalog:\" or remove it",
-				"hash": "3cbb69cc0ff8"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 161,
-				"message": "Override \"flatted\" duplicates a catalog entry for flatted — set the override to \"catalog:\" or remove it",
-				"hash": "7fe03ed5fec2"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 170,
-				"message": "Override \"yaml@<=2.8.3\" duplicates a catalog entry for yaml — set the override to \"catalog:\" or remove it",
-				"hash": "a5ab421c217c"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 171,
-				"message": "Override \"axios\" duplicates a catalog entry for axios — set the override to \"catalog:\" or remove it",
-				"hash": "3bd62181cb8d"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 175,
-				"message": "Override \"uuid@<=13.0.1\" duplicates a catalog entry for uuid — set the override to \"catalog:\" or remove it",
-				"hash": "abd23b6d69fe"
-			},
-			{
-				"rule": "stale-overrides",
-				"line": 184,
-				"message": "Override \"langsmith\" duplicates a catalog entry for langsmith — set the override to \"catalog:\" or remove it",
-				"hash": "170e854b445c"
-			}
-		],
 		"packages/@n8n/typeorm/package.json": [
 			{
 				"rule": "catalog-violations",
@@ -1205,12 +1107,6 @@
 				"line": 87,
 				"message": "typescript@^5.3.3 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
 				"hash": "050d5b2d74e1"
-			},
-			{
-				"rule": "catalog-violations",
-				"line": 90,
-				"message": "pg@^8.17.0 should use \"catalog:\" (exists in pnpm-workspace.yaml)",
-				"hash": "6cac348bdcc8"
 			}
 		],
 		"packages/core/package.json": [
@@ -1327,6 +1223,86 @@
 				"line": 26,
 				"message": "\"zod\" is a runtime dependency of \"@n8n/telemetry\"; it must be a peerDependency.",
 				"hash": "d61edcda4afe"
+			}
+		],
+		"pnpm-workspace.yaml": [
+			{
+				"rule": "stale-overrides",
+				"line": 327,
+				"message": "Override \"@azure/identity\" duplicates a catalog entry for @azure/identity — set the override to \"catalog:\" or remove it",
+				"hash": "5183952df723"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 328,
+				"message": "Override \"@lezer/common\" duplicates a catalog entry for @lezer/common — set the override to \"catalog:\" or remove it",
+				"hash": "6aa79f7cd1ba"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 334,
+				"message": "Override \"@types/node\" duplicates a catalog entry for @types/node — set the override to \"catalog:\" or remove it",
+				"hash": "e25412bfd766"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 335,
+				"message": "Override \"chokidar\" duplicates a catalog entry for chokidar — set the override to \"catalog:\" or remove it",
+				"hash": "b6002f782205"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 350,
+				"message": "Override \"form-data\" duplicates a catalog entry for form-data — set the override to \"catalog:\" or remove it",
+				"hash": "76d57eeb42b2"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 354,
+				"message": "Override \"nodemailer\" duplicates a catalog entry for nodemailer — set the override to \"catalog:\" or remove it",
+				"hash": "9ce0ecb14ba5"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 356,
+				"message": "Override \"zod\" duplicates a catalog entry for zod — set the override to \"catalog:\" or remove it",
+				"hash": "6dad5def0c97"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 366,
+				"message": "Override \"@rudderstack/rudder-sdk-node@<=3.0.0\" duplicates a catalog entry for @rudderstack/rudder-sdk-node — set the override to \"catalog:\" or remove it",
+				"hash": "413eaaefa630"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 374,
+				"message": "Override \"lodash\" duplicates a catalog entry for lodash — set the override to \"catalog:\" or remove it",
+				"hash": "58cfd2a6213b"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 381,
+				"message": "Override \"flatted\" duplicates a catalog entry for flatted — set the override to \"catalog:\" or remove it",
+				"hash": "bc9ce009bac8"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 390,
+				"message": "Override \"yaml@<=2.8.3\" duplicates a catalog entry for yaml — set the override to \"catalog:\" or remove it",
+				"hash": "9434ddd428c5"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 396,
+				"message": "Override \"uuid@<=13.0.1\" duplicates a catalog entry for uuid — set the override to \"catalog:\" or remove it",
+				"hash": "1a45449bfde3"
+			},
+			{
+				"rule": "stale-overrides",
+				"line": 409,
+				"message": "Override \"langsmith\" duplicates a catalog entry for langsmith — set the override to \"catalog:\" or remove it",
+				"hash": "9ac3dbae3d22"
 			}
 		]
 	}

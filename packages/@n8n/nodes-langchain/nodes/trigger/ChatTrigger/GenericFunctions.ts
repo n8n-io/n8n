@@ -1,7 +1,9 @@
 import basicAuth from 'basic-auth';
 import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-workflow';
 
+import { verifyChatUserAuthToken } from './auth-token';
 import { ChatTriggerAuthorizationError } from './error';
+import { isChatOAuth2Enabled } from './shell';
 import type { AuthenticationChatOption } from './types';
 
 export async function validateAuth(context: IWebhookFunctions) {
@@ -46,6 +48,16 @@ export async function validateAuth(context: IWebhookFunctions) {
 					return parts.pop()?.split(';').shift();
 				}
 				return '';
+			}
+
+			// The sandboxed frame carries this instead of the session cookie, which an opaque
+			// origin never sends. Checked first so the frame doesn't depend on that cookie.
+			if (isChatOAuth2Enabled()) {
+				const chatToken = headers['x-auth-token'];
+				if (typeof chatToken === 'string' && chatToken) {
+					if (verifyChatUserAuthToken(chatToken, context.getNode())) return;
+					throw new ChatTriggerAuthorizationError(401, 'Invalid authentication token');
+				}
 			}
 
 			const authCookie = getCookie('n8n-auth');

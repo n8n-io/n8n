@@ -11,8 +11,11 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { assertJsonContentType } from '@/public-api/public-api-media-type';
 import {
 	apiKeyScopesSatisfy,
+	isDtoArg,
+	isRequestBodyRequired,
 	resolveRouteArgs,
 	resolveSuccessStatus,
 } from '@/public-api/public-api-route-resolver';
@@ -59,7 +62,12 @@ export class PublicApiControllerRegistry {
 				route.successStatus,
 			);
 
+			const bodyDto = resolvedArgs.find((arg) => isDtoArg(arg, 'body'))?.dto;
+			const bodyRequired = bodyDto ? isRequestBodyRequired(bodyDto) : false;
+
 			const handler = async (req: Request, res: Response) => {
+				if (bodyDto) assertJsonContentType(req.headers['content-type'], bodyRequired);
+
 				const args: unknown[] = [req, res];
 				for (const arg of resolvedArgs) {
 					if (arg.type === 'param') {
