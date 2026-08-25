@@ -46,6 +46,7 @@ import type { TraceStatus } from './runtime/resumable-stream-executor';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { BuilderUsageItem } from './stream/usage-accumulator';
+import type { BuilderRequiredArtifact } from './tools/orchestration/builder-required-artifact';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
 	VerificationResult,
@@ -1014,6 +1015,8 @@ export interface BuilderDelegateSession {
 export interface BuilderTurnStream {
 	fullStream: AsyncIterable<unknown>;
 	text: Promise<string>;
+	/** Structured host artifacts the embedded builder reported during this turn. */
+	requiredArtifacts?: Promise<BuilderRequiredArtifact[]>;
 }
 
 /** Reference to a suspended builder tool call awaiting user input. */

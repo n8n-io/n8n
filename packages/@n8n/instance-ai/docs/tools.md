@@ -1026,8 +1026,9 @@ appears in the agents-module builder UI.
 | `workflowContext` | array | no | `{ id, name, description? }` refs to session-built workflows the builder may attach as tools |
 
 **Returns**: `{ ok: true, builderReply, configUpdated, agentId,
-agentName? }` on success, or `{ ok: false, error, configUpdated?, agentId?,
-agentName? }` on failure (`agentId`/`agentName` identify the targeted agent
+agentName?, requiredArtifacts? }` on success, or `{ ok: false, error,
+configUpdated?, agentId?, agentName?, requiredArtifacts? }` on failure
+(`agentId`/`agentName` identify the targeted agent
 once a builder turn was dispatched; precondition failures before any turn
 omit them). `configUpdated` is optional: it's included (reporting mutations
 from passes that already ran) once a builder turn has actually been
@@ -1036,6 +1037,13 @@ checkpoint ref — but omitted for precondition failures before any turn
 starts (agents module not configured, missing `name`/`agentId`, no project
 context to bind `agentId`, or a resume whose suspend payload has no
 checkpoint ref to carry).
+
+`requiredArtifacts` contains structured workflows or data tables that the
+embedded builder cannot create. Build an `agent-tool` workflow and pass it back
+through `workflowContext`. Build an `agent-entrypoint` workflow around the
+returned Agent ID and never attach it to the Agent; this is used for unsupported
+chat channels whose trigger and reply nodes live in a workflow. Requirements
+reported before an interactive suspension are carried across its checkpoint.
 
 **Interactive requests:** when the builder suspends on one of its interactive
 tools (batched questions, a credential picker, channel setup, or a standard SDK
