@@ -264,5 +264,6 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		isActionSupported,
 		isActionOptionVisible,
 		isNodePropertyHidden,
+		hasGatewayManagedCredential,
 	};
 });
