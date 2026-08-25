@@ -1,14 +1,26 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+import * as addLabels from './addLabels.operation';
 import * as append from './append.operation';
 import * as create from './create.operation';
 import * as del from './delete.operation';
 import * as get from './get.operation';
 import * as getLabels from './getLabels.operation';
 import * as getManyByLabel from './getManyByLabel.operation';
+import * as removeLabel from './removeLabel.operation';
 import * as update from './update.operation';
 
-export { append, create, del as delete, get, getLabels, getManyByLabel, update };
+export {
+	addLabels,
+	append,
+	create,
+	del as delete,
+	get,
+	getLabels,
+	getManyByLabel,
+	removeLabel,
+	update,
+};
 
 export const description: INodeProperties[] = [
 	{
@@ -22,6 +34,12 @@ export const description: INodeProperties[] = [
 			},
 		},
 		options: [
+			{
+				name: 'Add Labels',
+				value: 'addLabels',
+				description: 'Add one or more labels to a page',
+				action: 'Add labels to a page',
+			},
 			{
 				name: 'Append',
 				value: 'append',
@@ -59,6 +77,12 @@ export const description: INodeProperties[] = [
 				action: 'Get many pages by label',
 			},
 			{
+				name: 'Remove Label',
+				value: 'removeLabel',
+				description: 'Remove a label from a page by name',
+				action: 'Remove a label from a page',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Replace the title and body of an existing page',
@@ -67,11 +91,13 @@ export const description: INodeProperties[] = [
 		],
 		default: 'create',
 	},
+	...addLabels.description,
 	...append.description,
 	...create.description,
 	...del.description,
 	...get.description,
 	...getLabels.description,
 	...getManyByLabel.description,
+	...removeLabel.description,
 	...update.description,
 ];

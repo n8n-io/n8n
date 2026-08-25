@@ -43,6 +43,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'attachment:upload':
 					responseData = await attachment.upload.execute.call(this, i);
 					break;
+				case 'page:addLabels':
+					responseData = await page.addLabels.execute.call(this, i);
+					break;
 				case 'page:append':
 					responseData = await page.append.execute.call(this, i);
 					break;
@@ -60,6 +63,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					break;
 				case 'page:getManyByLabel':
 					responseData = await page.getManyByLabel.execute.call(this, i);
+					break;
+				case 'page:removeLabel':
+					responseData = await page.removeLabel.execute.call(this, i);
 					break;
 				case 'page:update':
 					responseData = await page.update.execute.call(this, i);
