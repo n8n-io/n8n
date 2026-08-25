@@ -1,8 +1,16 @@
-import type { INodeProperties, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
-import { apiRequest } from '../../transport';
+import type {
+	IDataObject,
+	INodeProperties,
+	IExecuteFunctions,
+	INodeExecutionData,
+} from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { apiRequest, pollTaskResult } from '../../transport';
 import type { IImageOptions, IModelStudioRequestBody } from '../../helpers/interfaces';
 import { modelRLC } from '../descriptions';
+
+const WAN_IMAGE_DEFAULT_SIZE = '1280*1280';
+const WAN_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 const properties: INodeProperties[] = [
 	{
@@ -24,6 +32,11 @@ const properties: INodeProperties[] = [
 				name: 'Qwen Image Plus',
 				value: 'qwen-image-plus',
 				description: 'Enhanced Qwen image generation model',
+			},
+			{
+				name: 'Wan 2.6 Image',
+				value: 'wan2.6-image',
+				description: 'Wan image editing model. Requires 1 to 4 reference images.',
 			},
 			{
 				name: 'Wan 2.6 T2I',
@@ -60,6 +73,95 @@ const properties: INodeProperties[] = [
 		required: true,
 	},
 	{
+		displayName:
+			'Wan 2.6 Image is an editing model. Attach 1 to 4 reference images, or use Wan 2.6 T2I for text-only generate.',
+		name: 'wanImageEditNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				'/modelId': [{ _cnd: { includes: 'wan' } }],
+			},
+			hide: {
+				'/modelId': [{ _cnd: { includes: '-t2i' } }],
+			},
+		},
+	},
+	{
+		displayName: 'Reference Images',
+		name: 'referenceImages',
+		type: 'fixedCollection',
+		placeholder: 'Add Image',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add Image',
+		},
+		default: {
+			values: [{ inputType: 'url', imageUrl: '', binaryPropertyName: 'data' }],
+		},
+		description: '1 to 4 reference images for Wan image editing',
+		displayOptions: {
+			show: {
+				'/modelId': [{ _cnd: { includes: 'wan' } }],
+			},
+			hide: {
+				'/modelId': [{ _cnd: { includes: '-t2i' } }],
+			},
+		},
+		options: [
+			{
+				displayName: 'Image',
+				name: 'values',
+				values: [
+					{
+						displayName: 'Input Type',
+						name: 'inputType',
+						type: 'options',
+						options: [
+							{
+								name: 'URL',
+								value: 'url',
+							},
+							{
+								name: 'Binary Data',
+								value: 'binary',
+							},
+						],
+						default: 'url',
+					},
+					{
+						displayName: 'Image URL',
+						name: 'imageUrl',
+						type: 'string',
+						default: '',
+						placeholder: 'https://example.com/image.png',
+						displayOptions: {
+							show: {
+								inputType: ['url'],
+							},
+						},
+					},
+					{
+						displayName: 'Input Data Field Name',
+						name: 'binaryPropertyName',
+						type: 'string',
+						default: 'data',
+						placeholder: 'e.g. data',
+						hint: 'The name of the input field containing the binary image data',
+						typeOptions: {
+							binaryDataProperty: true,
+						},
+						displayOptions: {
+							show: {
+								inputType: ['binary'],
+							},
+						},
+					},
+				],
+			},
+		],
+	},
+	{
 		displayName: 'Download Image',
 		name: 'downloadImage',
 		type: 'boolean',
@@ -80,7 +182,7 @@ const properties: INodeProperties[] = [
 				type: 'options',
 				displayOptions: {
 					show: {
-						'/modelId': ['z-image-turbo', 'wan2.6-t2i'],
+						'/modelId': ['z-image-turbo'],
 					},
 				},
 				options: [
@@ -98,6 +200,40 @@ const properties: INodeProperties[] = [
 					},
 				],
 				default: '1024*1024',
+				description: 'The size of the generated image',
+			},
+			{
+				displayName: 'Size',
+				name: 'size',
+				type: 'options',
+				displayOptions: {
+					show: {
+						'/modelId': ['wan2.6-t2i', 'wan2.6-image'],
+					},
+				},
+				options: [
+					{
+						name: '1104x1472 (3:4)',
+						value: '1104*1472',
+					},
+					{
+						name: '1280x1280 (1:1)',
+						value: '1280*1280',
+					},
+					{
+						name: '1472x1104 (4:3)',
+						value: '1472*1104',
+					},
+					{
+						name: '1696x960 (16:9)',
+						value: '1696*960',
+					},
+					{
+						name: '960x1696 (9:16)',
+						value: '960*1696',
+					},
+				],
+				default: '1280*1280',
 				description: 'The size of the generated image',
 			},
 			{
@@ -154,6 +290,94 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
+function isAsyncWanImageModel(model: string): boolean {
+	return model.startsWith('wan') && (model.includes('-t2i') || model.includes('-image'));
+}
+
+function isWanImageEditModel(model: string): boolean {
+	return model.startsWith('wan') && model.includes('-image') && !model.includes('-t2i');
+}
+
+function toImageDataUri(
+	buffer: Buffer,
+	mimeType: string,
+	imageUrl: string,
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+): string {
+	if (buffer.length > WAN_IMAGE_MAX_BYTES) {
+		throw new NodeOperationError(ctx.getNode(), `Reference image exceeds 10 MB: ${imageUrl}`, {
+			itemIndex,
+		});
+	}
+
+	return `data:${mimeType};base64,${buffer.toString('base64')}`;
+}
+
+async function downloadImageAsDataUri(
+	ctx: IExecuteFunctions,
+	imageUrl: string,
+	itemIndex: number,
+): Promise<string> {
+	if (imageUrl.startsWith('data:')) {
+		return imageUrl;
+	}
+
+	const imageResponse = await ctx.helpers.httpRequest({
+		method: 'GET',
+		url: imageUrl,
+		encoding: 'arraybuffer',
+		returnFullResponse: true,
+		headers: {
+			'User-Agent': 'n8n (https://n8n.io)',
+		},
+	});
+	const contentType =
+		(imageResponse.headers?.['content-type'] as string | undefined) ?? 'image/png';
+	const mimeType = contentType.split(';')[0]?.trim() || 'image/png';
+	const buffer = Buffer.from(imageResponse.body as ArrayBuffer);
+	return toImageDataUri(buffer, mimeType, imageUrl, ctx, itemIndex);
+}
+
+async function resolveReferenceImages(
+	ctx: IExecuteFunctions,
+	itemIndex: number,
+): Promise<string[]> {
+	const collection = ctx.getNodeParameter('referenceImages', itemIndex, {}) as {
+		values?: Array<{ inputType?: string; imageUrl?: string; binaryPropertyName?: string }>;
+	};
+	const uris: string[] = [];
+
+	for (const entry of collection.values ?? []) {
+		if (entry.inputType === 'binary') {
+			const propertyName = entry.binaryPropertyName ?? 'data';
+			const binaryData = ctx.helpers.assertBinaryData(itemIndex, propertyName);
+			const buffer = await ctx.helpers.getBinaryDataBuffer(itemIndex, propertyName);
+			const mimeType = binaryData.mimeType ?? 'image/png';
+			uris.push(toImageDataUri(buffer, mimeType, propertyName, ctx, itemIndex));
+		} else if (entry.imageUrl) {
+			uris.push(await downloadImageAsDataUri(ctx, entry.imageUrl, itemIndex));
+		}
+	}
+
+	return uris;
+}
+
+function extractGeneratedImageUrl(response: IDataObject): string {
+	const output = response.output as IDataObject | undefined;
+	const choices = output?.choices as Array<{ message?: { content?: Array<{ image?: string }> } }>;
+	const content = choices?.[0]?.message?.content;
+	if (Array.isArray(content)) {
+		const imagePart = content.find((part) => part?.image);
+		if (imagePart?.image) {
+			return imagePart.image;
+		}
+	}
+
+	const results = output?.results as Array<{ url?: string }>;
+	return results?.[0]?.url ?? '';
+}
+
 export async function execute(
 	this: IExecuteFunctions,
 	itemIndex: number,
@@ -166,6 +390,30 @@ export async function execute(
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const imageOptions = this.getNodeParameter('imageOptions', itemIndex, {}) as IImageOptions;
 	const downloadImage = this.getNodeParameter('downloadImage', itemIndex, true) as boolean;
+	const useAsyncWan = isAsyncWanImageModel(model);
+	const useWanEdit = isWanImageEditModel(model);
+
+	const content: Array<{ text?: string; image?: string }> = [{ text: prompt }];
+	if (useWanEdit) {
+		const referenceImages = await resolveReferenceImages(this, itemIndex);
+		if (referenceImages.length === 0) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Wan 2.6 Image is an editing model and needs 1 to 4 reference images. Use Wan 2.6 T2I for text-only generate.',
+				{ itemIndex },
+			);
+		}
+		if (referenceImages.length > 4) {
+			throw new NodeOperationError(
+				this.getNode(),
+				'Wan 2.6 Image accepts at most 4 reference images.',
+				{ itemIndex },
+			);
+		}
+		for (const image of referenceImages) {
+			content.push({ image });
+		}
+	}
 
 	const body: IModelStudioRequestBody = {
 		model,
@@ -173,11 +421,7 @@ export async function execute(
 			messages: [
 				{
 					role: 'user',
-					content: [
-						{
-							text: prompt,
-						},
-					],
+					content,
 				},
 			],
 		},
@@ -186,20 +430,48 @@ export async function execute(
 		},
 	};
 
-	if (imageOptions.size) {
+	if (useAsyncWan) {
+		body.parameters.n = 1;
+		body.parameters.size = imageOptions.size ?? WAN_IMAGE_DEFAULT_SIZE;
+	} else if (imageOptions.size) {
 		body.parameters.size = imageOptions.size;
 	}
 
-	const response = await apiRequest.call(
-		this,
-		'POST',
-		'/api/v1/services/aigc/multimodal-generation/generation',
-		{
-			body,
-		},
-	);
+	let response: IDataObject;
+	if (useAsyncWan) {
+		const createResponse = await apiRequest.call(
+			this,
+			'POST',
+			'/api/v1/services/aigc/image-generation/generation',
+			{
+				headers: {
+					'X-DashScope-Async': 'enable',
+				},
+				body,
+			},
+		);
 
-	const imageUrl = (response.output?.choices?.[0]?.message?.content?.[0]?.image as string) || '';
+		const taskId = createResponse?.output?.task_id as string;
+		if (!taskId) {
+			throw new NodeOperationError(
+				this.getNode(),
+				`Failed to create image generation task: ${createResponse?.message || 'No task_id returned'}`,
+			);
+		}
+
+		response = await pollTaskResult.call(this, taskId);
+	} else {
+		response = await apiRequest.call(
+			this,
+			'POST',
+			'/api/v1/services/aigc/multimodal-generation/generation',
+			{
+				body,
+			},
+		);
+	}
+
+	const imageUrl = extractGeneratedImageUrl(response);
 
 	if (downloadImage && imageUrl) {
 		const imageResponse = await this.helpers.httpRequest({

@@ -35,6 +35,7 @@ export interface IModelStudioRequestBody {
 		enable_search?: boolean;
 		seed?: number;
 		prompt_extend?: boolean;
+		n?: number;
 		size?: string;
 		duration?: string | number;
 		resolution?: string;
