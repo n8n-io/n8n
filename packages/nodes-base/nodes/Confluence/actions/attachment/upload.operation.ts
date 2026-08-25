@@ -57,9 +57,11 @@ export const execute: ConfluenceOperation = async function (
 	const binaryData = this.helpers.assertBinaryData(itemIndex, binaryPropertyName);
 	const buffer = await this.helpers.getBinaryDataBuffer(itemIndex, binaryPropertyName);
 
-	// Strict compare, not a cast: an expression can hand back the string "false",
-	// which is truthy under a plain cast
-	const minorEdit = this.getNodeParameter('minorEdit', itemIndex, false) === true;
+	// Neither a plain cast nor a strict `=== true` compare is safe here: a plain
+	// cast reads the string "false" as truthy, and a strict compare reads the
+	// string "true" (also possible from an expression) as false. Check both.
+	const rawMinorEdit = this.getNodeParameter('minorEdit', itemIndex, false);
+	const minorEdit = rawMinorEdit === true || rawMinorEdit === 'true';
 	const comment = String(this.getNodeParameter('comment', itemIndex, '')).trim();
 
 	const formData = new FormData();

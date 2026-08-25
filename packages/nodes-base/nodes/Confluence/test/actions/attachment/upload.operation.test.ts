@@ -80,8 +80,11 @@ describe('attachment:upload', () => {
 	it.each([
 		[true, 'true'],
 		[false, 'false'],
+		// An expression can hand back the string form of either value
+		['true', 'true'],
+		['false', 'false'],
 	])(
-		'sends minorEdit=%s as the string %j under its own form field',
+		'sends minorEdit=%j as the string %j under its own form field',
 		async (minorEdit, expected) => {
 			await runUpload({ minorEdit });
 
