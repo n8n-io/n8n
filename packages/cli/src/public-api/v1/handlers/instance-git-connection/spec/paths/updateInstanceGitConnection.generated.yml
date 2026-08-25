@@ -51,3 +51,7 @@ responses:
     $ref: ../../../../shared/spec/responses/unauthorized.yml
   '403':
     $ref: ../../../../shared/spec/responses/forbidden.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '503':
+    $ref: ../../../../shared/spec/responses/serviceUnavailable.yml
