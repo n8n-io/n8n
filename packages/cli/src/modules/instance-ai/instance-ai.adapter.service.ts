@@ -21,6 +21,7 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
+import { redactTelemetryText } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
 	InstanceAiContext,
@@ -166,7 +167,6 @@ import {
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
-import { redactTelemetryText } from './telemetry-redaction';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 
@@ -1621,7 +1621,12 @@ export class InstanceAiAdapterService {
 		credentialIdAllowlist?: string[],
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiCredentialService {
-		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
+		const {
+			credentialsService,
+			credentialsFinderService,
+			loadNodesAndCredentials,
+			aiGatewayService,
+		} = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 
 		const adapter: InstanceAiCredentialService = {
@@ -2009,6 +2014,15 @@ export class InstanceAiAdapterService {
 				// type check is a best-effort validation, not a security gate.
 				const config = await getGatewayConfig();
 				return config?.credentialTypes.includes(credType) ?? false;
+			},
+
+			async getAiGatewayWallet(): Promise<{ balance: number } | null> {
+				if (!aiGatewayService.isEnabled()) return null;
+				try {
+					return await aiGatewayService.getWallet(user.id);
+				} catch {
+					return null;
+				}
 			},
 
 			async listAiGatewayCredentialTypes(): Promise<string[]> {

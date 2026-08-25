@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import type { PollerFailureState, WorkflowRepository } from '@n8n/db';
+import type { GlobalConfig } from '@n8n/config';
+import type { PollerFullState, WorkflowRepository } from '@n8n/db';
 import { createDispatchReporter, type ClaimedTask } from '@n8n/scheduler';
 import type { ErrorReporter, TriggersAndPollers } from 'n8n-core';
 import type { INode, INodeExecutionData, IPollFunctions, IWorkflowBase } from 'n8n-workflow';
@@ -9,6 +10,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import type { Mock, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { EventService } from '@/events/event.service';
 import { createNodeTypes } from '@/workflows/triggers/__tests__/trigger-test-utils';
 import type { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 import type { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
@@ -27,6 +29,10 @@ describe('PollTriggerTaskHandler', () => {
 	const scopedLogger = mock<Logger>();
 	const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
+	const eventService = mock<EventService>();
+	const pollTimeoutSeconds = 60;
+	const globalConfig = mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds } });
+
 	const handler = new PollTriggerTaskHandler(
 		rootLogger,
 		triggerExecutionContextFactory,
@@ -34,6 +40,8 @@ describe('PollTriggerTaskHandler', () => {
 		workflowRepository,
 		errorReporter,
 		pollBackoffService,
+		eventService,
+		globalConfig,
 	);
 
 	const onDispatch = vi.fn();
@@ -125,7 +133,7 @@ describe('PollTriggerTaskHandler', () => {
 		triggersAndPollers.runPollFunction.mockResolvedValue(pollData);
 		workflowRepository.isActive.mockResolvedValue(true);
 
-		pollBackoffService.getFailureState.mockResolvedValue(null);
+		pollBackoffService.getState.mockResolvedValue(null);
 		pollBackoffService.isBackingOff.mockReturnValue(false);
 
 		acquireIsolate = vi
@@ -181,11 +189,29 @@ describe('PollTriggerTaskHandler', () => {
 				buildWorkflowData(),
 				triggerNode,
 				{ taskId: 'task-1', leaseEpoch: 1 },
+				undefined,
 			);
 			expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
 				workflow,
 				triggerNode,
 				pollFunctions,
+			);
+		});
+
+		test('threads the cursor from the top-of-tick state read into the poll context', async () => {
+			pollBackoffService.getState.mockResolvedValue({
+				cursor: { lastItemId: 'prefetched' },
+				consecutiveErrors: 0,
+				backoffUntil: null,
+			});
+
+			await handler.execute(buildTask(), report);
+
+			expect(triggerExecutionContextFactory.createPollExecutionContext).toHaveBeenCalledWith(
+				buildWorkflowData(),
+				triggerNode,
+				{ taskId: 'task-1', leaseEpoch: 1 },
+				{ lastItemId: 'prefetched' },
 			);
 		});
 
@@ -358,6 +384,118 @@ describe('PollTriggerTaskHandler', () => {
 		});
 	});
 
+	describe('poll timeout', () => {
+		const pollTimeoutMs = pollTimeoutSeconds * 1000;
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		test('abandons a poll that outlives the timeout and reports no dispatch', async () => {
+			triggersAndPollers.runPollFunction.mockReturnValue(new Promise(() => {}));
+
+			const executing = handler.execute(buildTask(), report);
+			await vi.advanceTimersByTimeAsync(pollTimeoutMs);
+
+			await expect(executing).resolves.toBeDefined();
+			// Writes nothing: no cursor advance via __emit, and no error workflow run
+			// either, so the next occurrence covers the same poll window.
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('poll-tick-timed-out', {
+				nodeType: triggerNode.type,
+			});
+			// The timeout counts as a transient poll failure, so a source that keeps
+			// hanging backs off like any failing source.
+			expect(pollBackoffService.recordFailure).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowId: 'wf-1',
+					nodeId: 'node-1',
+					error: expect.objectContaining({ failure: { cause: 'temporarily-unavailable' } }),
+				}),
+			);
+			expect(pollBackoffService.recordSuccess).not.toHaveBeenCalled();
+		});
+
+		test('records no failure for a workflow deactivated during a timed-out poll', async () => {
+			workflowRepository.isActive.mockResolvedValue(false);
+			triggersAndPollers.runPollFunction.mockReturnValue(new Promise(() => {}));
+
+			const executing = handler.execute(buildTask(), report);
+			await vi.advanceTimersByTimeAsync(pollTimeoutMs);
+			await executing;
+
+			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
+		});
+
+		test('keeps a poll that finishes just inside the timeout', async () => {
+			let resolvePoll: (data: INodeExecutionData[][]) => void = () => {};
+			triggersAndPollers.runPollFunction.mockReturnValue(
+				new Promise((resolve) => {
+					resolvePoll = resolve;
+				}),
+			);
+
+			const executing = handler.execute(buildTask(), report);
+			await vi.advanceTimersByTimeAsync(pollTimeoutMs - 1);
+			resolvePoll(pollData);
+			await executing;
+
+			expect(pollFunctions.__emit).toHaveBeenCalledWith(pollData);
+			expect(onDispatch).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).not.toHaveBeenCalledWith('poll-tick-timed-out', expect.anything());
+			expect(pollBackoffService.recordFailure).not.toHaveBeenCalled();
+			// The deadline is cleared once the poll wins, so it can't outlive the tick.
+			expect(vi.getTimerCount()).toBe(0);
+		});
+
+		test('discards the data of an abandoned poll that resolves after the timeout', async () => {
+			let resolvePoll: (data: INodeExecutionData[][]) => void = () => {};
+			triggersAndPollers.runPollFunction.mockReturnValue(
+				new Promise((resolve) => {
+					resolvePoll = resolve;
+				}),
+			);
+
+			const executing = handler.execute(buildTask(), report);
+			await vi.advanceTimersByTimeAsync(pollTimeoutMs);
+			await executing;
+			resolvePoll(pollData);
+			await vi.advanceTimersByTimeAsync(0);
+
+			// The tick was already reported as abandoned, so the late data is dropped:
+			// no hand-off, no cursor advance, no dispatch.
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+		});
+
+		test('discards an abandoned poll that fails after the timeout', async () => {
+			let rejectPoll: (error: Error) => void = () => {};
+			triggersAndPollers.runPollFunction.mockReturnValue(
+				new Promise((_resolve, reject) => {
+					rejectPoll = reject;
+				}),
+			);
+
+			const executing = handler.execute(buildTask(), report);
+			await vi.advanceTimersByTimeAsync(pollTimeoutMs);
+			await executing;
+			rejectPoll(new Error('poll source unreachable'));
+			await vi.advanceTimersByTimeAsync(0);
+
+			// The tick was already reported as abandoned, so the late failure is dropped
+			// rather than routed to the error workflow.
+			expect(pollFunctions.__emitError).not.toHaveBeenCalled();
+			expect(onDispatch).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('failures', () => {
 		test('rejects a task whose payload is missing workflowId or nodeId', async () => {
 			const task = buildTask({ payload: { nodeId: 'node-1' } });
@@ -421,11 +559,12 @@ describe('PollTriggerTaskHandler', () => {
 		});
 
 		test('skips the tick while backing off, without loading the workflow or polling', async () => {
-			const state: PollerFailureState = {
+			const state: PollerFullState = {
+				cursor: {},
 				consecutiveErrors: 3,
 				backoffUntil: new Date(fixedNow.getTime() + 60_000),
 			};
-			pollBackoffService.getFailureState.mockResolvedValue(state);
+			pollBackoffService.getState.mockResolvedValue(state);
 			pollBackoffService.isBackingOff.mockReturnValue(true);
 
 			const decision = await handler.execute(buildTask(), report);
@@ -438,8 +577,8 @@ describe('PollTriggerTaskHandler', () => {
 		});
 
 		test('records a failure and no success when poll() throws', async () => {
-			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
-			pollBackoffService.getFailureState.mockResolvedValue(state);
+			const state: PollerFullState = { cursor: {}, consecutiveErrors: 1, backoffUntil: null };
+			pollBackoffService.getState.mockResolvedValue(state);
 			const error = new Error('poll source unreachable');
 			triggersAndPollers.runPollFunction.mockRejectedValue(error);
 
@@ -468,8 +607,8 @@ describe('PollTriggerTaskHandler', () => {
 		});
 
 		test('records no failure when the poll returned and a later step throws', async () => {
-			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
-			pollBackoffService.getFailureState.mockResolvedValue(state);
+			const state: PollerFullState = { cursor: {}, consecutiveErrors: 1, backoffUntil: null };
+			pollBackoffService.getState.mockResolvedValue(state);
 			const error = new Error('database unavailable');
 			workflowRepository.isActive.mockRejectedValue(error);
 
@@ -482,8 +621,8 @@ describe('PollTriggerTaskHandler', () => {
 		});
 
 		test('still clears the failure state when the poll succeeds but committing its cursor fails', async () => {
-			const state: PollerFailureState = { consecutiveErrors: 2, backoffUntil: null };
-			pollBackoffService.getFailureState.mockResolvedValue(state);
+			const state: PollerFullState = { cursor: {}, consecutiveErrors: 2, backoffUntil: null };
+			pollBackoffService.getState.mockResolvedValue(state);
 			triggersAndPollers.runPollFunction.mockResolvedValue(null);
 			pollFunctions.__commitCursor.mockRejectedValue(new Error('poller state write failed'));
 
@@ -500,8 +639,8 @@ describe('PollTriggerTaskHandler', () => {
 			['a poll returning items', pollData],
 			['a poll returning no items', null],
 		])('clears the failure state after %s', async (_name, pollResult) => {
-			const state: PollerFailureState = { consecutiveErrors: 2, backoffUntil: null };
-			pollBackoffService.getFailureState.mockResolvedValue(state);
+			const state: PollerFullState = { cursor: {}, consecutiveErrors: 2, backoffUntil: null };
+			pollBackoffService.getState.mockResolvedValue(state);
 			triggersAndPollers.runPollFunction.mockResolvedValue(pollResult);
 
 			await handler.execute(buildTask(), report);
@@ -515,8 +654,8 @@ describe('PollTriggerTaskHandler', () => {
 		});
 
 		test('clears the failure state even when the workflow was deactivated during the poll', async () => {
-			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
-			pollBackoffService.getFailureState.mockResolvedValue(state);
+			const state: PollerFullState = { cursor: {}, consecutiveErrors: 1, backoffUntil: null };
+			pollBackoffService.getState.mockResolvedValue(state);
 			workflowRepository.isActive.mockResolvedValue(false);
 
 			await handler.execute(buildTask(), report);
@@ -529,8 +668,8 @@ describe('PollTriggerTaskHandler', () => {
 		});
 
 		test('does not record a failure for a workflow deactivated during a failing poll, but still hands off the error', async () => {
-			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
-			pollBackoffService.getFailureState.mockResolvedValue(state);
+			const state: PollerFullState = { cursor: {}, consecutiveErrors: 1, backoffUntil: null };
+			pollBackoffService.getState.mockResolvedValue(state);
 			const error = new Error('poll source unreachable');
 			triggersAndPollers.runPollFunction.mockRejectedValue(error);
 			workflowRepository.isActive.mockResolvedValue(false);
@@ -543,8 +682,8 @@ describe('PollTriggerTaskHandler', () => {
 		});
 
 		test('records a failure when the active-state read itself fails, rather than let a real failure go unbacked-off', async () => {
-			const state: PollerFailureState = { consecutiveErrors: 1, backoffUntil: null };
-			pollBackoffService.getFailureState.mockResolvedValue(state);
+			const state: PollerFullState = { cursor: {}, consecutiveErrors: 1, backoffUntil: null };
+			pollBackoffService.getState.mockResolvedValue(state);
 			const error = new Error('poll source unreachable');
 			triggersAndPollers.runPollFunction.mockRejectedValue(error);
 			workflowRepository.isActive.mockRejectedValue(new Error('database unavailable'));
@@ -577,12 +716,12 @@ describe('PollTriggerTaskHandler', () => {
 
 			await expect(handler.execute(task, report)).rejects.toThrow();
 
-			expect(pollBackoffService.getFailureState).not.toHaveBeenCalled();
+			expect(pollBackoffService.getState).not.toHaveBeenCalled();
 		});
 
 		test('still runs the poll when reading the failure state throws', async () => {
 			const error = new Error('poller state read failed');
-			pollBackoffService.getFailureState.mockRejectedValue(error);
+			pollBackoffService.getState.mockRejectedValue(error);
 
 			await handler.execute(buildTask(), report);
 

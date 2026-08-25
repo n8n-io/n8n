@@ -10,8 +10,48 @@ import {
 	getGatewayWallet,
 	getGatewayUsage,
 } from '@/features/ai/assistant/assistant.api';
+import { TIME } from '@/app/constants';
 
 const OPERATION_ONLY = '__operation_only__';
+
+// The balance is shown in passive spots (sidebar pill, model selectors, node
+// creator) that each fetch on mount, so it gets re-requested constantly during a
+// building session. Serve a recently fetched balance from cache; callers that need
+// an up-to-date figure (e.g. after a run consumes credits) pass `{ force: true }`.
+const WALLET_CACHE_TTL_MS = TIME.MINUTE;
+
+/**
+ * Wraps a fetcher so concurrent callers share one request (single-flight) and
+ * results are reused within `ttlMs`. `force` bypasses the cache; a forced call
+ * won't reuse an in-flight *unforced* request (which may predate the event it
+ * cares about), but forced calls coalesce with each other. A failed fetch clears
+ * the cache so the next call retries instead of serving a stale value.
+ */
+function createCachedFetch<T>(fetcher: () => Promise<T>, ttlMs: number) {
+	let inFlight: { promise: Promise<T>; forced: boolean } | null = null;
+	let cached: { value: T; at: number } | null = null;
+
+	return async function fetch({ force = false } = {}): Promise<T> {
+		if (!force && cached && Date.now() - cached.at < ttlMs) return cached.value;
+		if (force && inFlight && !inFlight.forced) await inFlight.promise.catch(() => {});
+		if (!inFlight) {
+			const promise = (async () => {
+				try {
+					const value = await fetcher();
+					cached = { value, at: Date.now() };
+					return value;
+				} catch (error) {
+					cached = null;
+					throw error;
+				} finally {
+					inFlight = null;
+				}
+			})();
+			inFlight = { promise, forced: force };
+		}
+		return await inFlight.promise;
+	};
+}
 
 function toError(e: unknown): Error {
 	return e instanceof Error ? e : new Error(String(e));
@@ -49,7 +89,10 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	// Every model selector fetches on mount, so several can be in flight before the
 	// first response lands. Share the promise rather than firing one request each.
 	let configFetch: Promise<void> | null = null;
-	let walletFetch: Promise<void> | null = null;
+	const fetchWalletData = createCachedFetch(
+		async () => await getGatewayWallet(rootStore.restApiContext),
+		WALLET_CACHE_TTL_MS,
+	);
 
 	async function fetchConfig(): Promise<void> {
 		if (config.value !== null) return;
@@ -66,21 +109,16 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		await configFetch;
 	}
 
-	async function fetchWallet(): Promise<void> {
-		walletFetch ??= (async () => {
-			try {
-				const data = await getGatewayWallet(rootStore.restApiContext);
-				balance.value = data.balance;
-				budget.value = data.budget;
-				hasEverToppedUp.value = data.hasEverToppedUp;
-				fetchError.value = null;
-			} catch (error) {
-				fetchError.value = toError(error);
-			} finally {
-				walletFetch = null;
-			}
-		})();
-		await walletFetch;
+	async function fetchWallet(options?: { force?: boolean }): Promise<void> {
+		try {
+			const data = await fetchWalletData(options);
+			balance.value = data.balance;
+			budget.value = data.budget;
+			hasEverToppedUp.value = data.hasEverToppedUp;
+			fetchError.value = null;
+		} catch (error) {
+			fetchError.value = toError(error);
+		}
 	}
 
 	async function fetchUsage(offset = 0, limit = 50): Promise<void> {
@@ -226,5 +264,6 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		isActionSupported,
 		isActionOptionVisible,
 		isNodePropertyHidden,
+		hasGatewayManagedCredential,
 	};
 });

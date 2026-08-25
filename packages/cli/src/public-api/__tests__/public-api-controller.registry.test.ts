@@ -15,7 +15,11 @@ import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import type { EventService } from '@/events/event.service';
-import { markPublicApiController } from '@/public-api/__tests__/public-api-controller-test-utils';
+import {
+	markPublicApiController,
+	OptionalWidgetBodyDto,
+	WidgetBodyDto,
+} from '@/public-api/__tests__/public-api-controller-test-utils';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
 import type { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
@@ -28,6 +32,11 @@ describe('PublicApiControllerRegistry', () => {
 	function activate(): express.Express {
 		const app = express();
 		app.use(express.json());
+		// mirrors the app-wide bodyParser, which defaults an absent body to `{}`
+		app.use((req, _res, next) => {
+			req.body ??= {};
+			next();
+		});
 		const router = express.Router({ mergeParams: true });
 		new PublicApiControllerRegistry(
 			Container.get(ControllerRegistryMetadata),
@@ -101,7 +110,7 @@ describe('PublicApiControllerRegistry', () => {
 	});
 
 	describe('validation failures', () => {
-		class WidgetBodyDto extends Z.class({
+		class WidgetValidationDto extends Z.class({
 			name: z.string(),
 			active: z.undefined({ invalid_type_error: 'is read-only' }),
 		}) {}
@@ -111,7 +120,7 @@ describe('PublicApiControllerRegistry', () => {
 			class WidgetsPublicController {
 				@Post('/')
 				@ApiResponse(200)
-				create(_req: express.Request, _res: express.Response, @Body _body: WidgetBodyDto) {
+				create(_req: express.Request, _res: express.Response, @Body _body: WidgetValidationDto) {
 					return { ok: true };
 				}
 			}
@@ -123,6 +132,123 @@ describe('PublicApiControllerRegistry', () => {
 				.expect(400);
 
 			expect(response.body.message).toBe('request/body/active is read-only');
+		});
+	});
+
+	describe('request media type', () => {
+		function registerOptionalBodyRoute() {
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method(_req: unknown, _res: unknown, @Body body: OptionalWidgetBodyDto) {
+					return body;
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		}
+
+		function registerBodyRoute() {
+			@Service()
+			class WidgetsPublicController {
+				@Post('/')
+				@ApiResponse(200)
+				method(_req: unknown, _res: unknown, @Body body: WidgetBodyDto) {
+					return body;
+				}
+			}
+			markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+		}
+
+		it('accepts application/json', async () => {
+			registerBodyRoute();
+
+			await request(activate())
+				.post('/widgets')
+				.set('Content-Type', 'application/json')
+				.send({ name: 'a' })
+				.expect(200);
+		});
+
+		it('accepts application/json with parameters', async () => {
+			registerBodyRoute();
+
+			await request(activate())
+				.post('/widgets')
+				.set('Content-Type', 'application/json; charset=utf-8')
+				.send({ name: 'a' })
+				.expect(200);
+		});
+
+		it.each([
+			['application/x-www-form-urlencoded', 'application/x-www-form-urlencoded'],
+			['application/xml', 'application/xml'],
+			['text/plain', 'text/plain'],
+			['application/octet-stream', 'application/octet-stream'],
+			['text/PlAiN; charset=UTF-8', 'text/plain; charset=utf-8'],
+			['multipart/form-data; boundary=XYZ', 'multipart/form-data'],
+		])('rejects %s with 415', async (sent, reported) => {
+			registerBodyRoute();
+
+			const response = await request(activate())
+				.post('/widgets')
+				.set('Content-Type', sent)
+				.send('a')
+				.expect(415);
+
+			expect(response.body.message).toBe(`unsupported media type ${reported}`);
+		});
+
+		it('rejects a non-JSON media type when no body follows', async () => {
+			registerBodyRoute();
+
+			const response = await request(activate())
+				.post('/widgets')
+				.set('Content-Type', 'application/x-www-form-urlencoded')
+				.expect(415);
+
+			expect(response.body.message).toBe(
+				'unsupported media type application/x-www-form-urlencoded',
+			);
+		});
+
+		const namesNoMediaType: Array<[string, string | undefined]> = [
+			['a request with no Content-Type', undefined],
+			['a request with an empty Content-Type', ''],
+			['a request with a whitespace Content-Type', ' '],
+		];
+
+		function postWithContentType(header: string | undefined) {
+			const pending = request(activate()).post('/widgets');
+
+			return header === undefined ? pending : pending.set('Content-Type', header);
+		}
+
+		it.each(namesNoMediaType)(
+			'accepts %s when every body field is optional',
+			async (_label, header) => {
+				registerOptionalBodyRoute();
+
+				await postWithContentType(header).expect(200);
+			},
+		);
+
+		it.each(namesNoMediaType)('rejects %s when the body is required', async (_label, header) => {
+			registerBodyRoute();
+
+			const response = await postWithContentType(header).expect(415);
+
+			expect(response.body.message).toBe('unsupported media type undefined');
+		});
+
+		it('accepts application/json carrying an unrelated parameter', async () => {
+			registerBodyRoute();
+
+			await request(activate())
+				.post('/widgets')
+				.set('Content-Type', 'application/json; Foo=BAR')
+				.send({ name: 'a' })
+				.expect(200);
 		});
 	});
 });

@@ -3,9 +3,11 @@ import { CredentialsRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
+	dropInvalidWorkflowGroups,
 	formatWorkflowStructureIssuePath,
 	GROUP_DESCRIPTION_MAX_LENGTH,
 	isSafeObjectProperty,
+	makeGetNodeTypeForGrouping,
 	normalizeGroupDescription,
 	resolveNodeWebhookId,
 	resolveVariables,
@@ -13,16 +15,14 @@ import {
 	summarizeDynamicCredentialsUsage,
 	validateWorkflowGroups,
 	type IDataObject,
-	type INode,
 	type INodeCredentialsDetails,
-	type INodeTypeDescription,
 	type INodeTypes,
 	type IRun,
 	type ITaskData,
 	type IWorkflowBase,
 	type IWorkflowSettings,
 	type RelatedExecution,
-	type WorkflowGroupViolation,
+	type GetNodeTypeForGrouping,
 	type WorkflowStructureIssue,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -32,6 +32,8 @@ import { VariablesService } from '@/environments.ee/variables/variables.service.
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { OwnershipService } from './services/ownership.service';
+
+export { dropInvalidWorkflowGroups, makeGetNodeTypeForGrouping };
 
 /**
  * Validates that pinned data does not exceed size limits.
@@ -147,27 +149,6 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 }
 
 /**
- * Resolves a node to its type description, or `null` for unknown node types.
- * Used by the grouping validator to detect trigger nodes.
- */
-type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
-
-/**
- * Builds the `getNodeType` callback that the grouping validator needs to resolve
- * a node to its type description (used to detect trigger nodes). Returns `null`
- * for unknown node types so validation degrades gracefully rather than throwing.
- */
-export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeForGrouping {
-	return (node: INode) => {
-		try {
-			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
-		} catch {
-			return null;
-		}
-	};
-}
-
-/**
  * Validates nodeGroups on the save path, rejecting with a `BadRequestError`.
  *
  * The rules and messages live in `validateWorkflowGroups` (n8n-workflow), the
@@ -195,48 +176,6 @@ export function validateWorkflowNodeGroups(
 	if (!result.valid) {
 		throw new BadRequestError(result.violations[0].message);
 	}
-}
-
-/**
- * Non-fatal counterpart of `validateWorkflowNodeGroups`: drops every offending
- * group instead of throwing, returning the violations of those it dropped.
- * Mutates `nodeGroups`. Groups are cosmetic, so the MCP builder tools drop them
- * to keep the rest of the change; the save path still throws.
- *
- * `shouldDrop` filters which violating groups are removed, letting a caller
- * drop the groups it can blame first and re-check the rest afterwards.
- */
-export function dropInvalidNodeGroups(
-	workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'> & {
-		connections?: IWorkflowBase['connections'];
-	},
-	getNodeType: GetNodeTypeForGrouping | null,
-	shouldDrop: (violation: WorkflowGroupViolation) => boolean = () => true,
-): WorkflowGroupViolation[] {
-	if (!workflow.nodeGroups?.length) {
-		return [];
-	}
-
-	const result = validateWorkflowGroups({
-		nodes: workflow.nodes,
-		connectionsBySourceNode: workflow.connections,
-		nodeGroups: workflow.nodeGroups,
-		getNodeType,
-	});
-
-	if (result.valid) {
-		return [];
-	}
-
-	const dropped = result.violations.filter(shouldDrop);
-	if (dropped.length === 0) {
-		return [];
-	}
-
-	const droppedGroupIds = new Set(dropped.map((violation) => violation.groupId));
-	workflow.nodeGroups = workflow.nodeGroups.filter((group) => !droppedGroupIds.has(group.id));
-
-	return dropped;
 }
 
 /**

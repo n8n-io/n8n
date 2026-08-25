@@ -377,7 +377,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		const result = await service.decide(memberUser(), requestId, approveDto);
 
 		expect(dbLockService.withLockContext).toHaveBeenCalledWith(
-			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+			DbLock.WORKFLOW_REVIEW_MUTATION,
 			expect.any(Function),
 		);
 		// Re-checked under the lock through the transaction manager.
