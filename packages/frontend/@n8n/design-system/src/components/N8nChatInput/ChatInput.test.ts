@@ -279,6 +279,94 @@ describe('N8nChatInput', () => {
 			wrapper.unmount();
 		});
 
+		it('remeasures the height when a slot flips the effective layout', async () => {
+			// Adaptive and multiline use different textarea padding, so identical content
+			// measures differently; stand in for that with a mutable measurement.
+			let measured = 32;
+			const originalDescriptor = Object.getOwnPropertyDescriptor(
+				HTMLTextAreaElement.prototype,
+				'scrollHeight',
+			);
+			Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
+				configurable: true,
+				get: () => measured,
+			});
+
+			try {
+				const showAction = ref(false);
+				const Host = defineComponent({
+					setup() {
+						return () =>
+							h(
+								N8nChatInput,
+								{ layout: 'adaptive', modelValue: 'hello' },
+								showAction.value ? { 'right-actions': () => h('button', 'Action') } : {},
+							);
+					},
+				});
+
+				const wrapper = mount(Host, {
+					attachTo: document.body,
+					global: { stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'] },
+				});
+				await vi.waitFor(() =>
+					expect(wrapper.find('textarea').attributes('style')).toContain('height: 32px'),
+				);
+
+				measured = 36;
+				showAction.value = true;
+				await nextTick();
+
+				await vi.waitFor(() =>
+					expect(wrapper.find('textarea').attributes('style')).toContain('height: 36px'),
+				);
+				wrapper.unmount();
+			} finally {
+				if (originalDescriptor) {
+					Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', originalDescriptor);
+				} else {
+					Reflect.deleteProperty(HTMLTextAreaElement.prototype, 'scrollHeight');
+				}
+			}
+		});
+
+		it('remeasures the height when the layout prop changes', async () => {
+			let measured = 32;
+			const originalDescriptor = Object.getOwnPropertyDescriptor(
+				HTMLTextAreaElement.prototype,
+				'scrollHeight',
+			);
+			Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', {
+				configurable: true,
+				get: () => measured,
+			});
+
+			try {
+				const wrapper = mount(N8nChatInput, {
+					attachTo: document.body,
+					props: { layout: 'adaptive', modelValue: 'hello' },
+					global: { stubs: ['N8nCallout', 'N8nScrollArea', 'N8nSendStopButton'] },
+				});
+				await vi.waitFor(() =>
+					expect(wrapper.find('textarea').attributes('style')).toContain('height: 32px'),
+				);
+
+				measured = 36;
+				await wrapper.setProps({ layout: 'multiline' });
+
+				await vi.waitFor(() =>
+					expect(wrapper.find('textarea').attributes('style')).toContain('height: 36px'),
+				);
+				wrapper.unmount();
+			} finally {
+				if (originalDescriptor) {
+					Object.defineProperty(HTMLTextAreaElement.prototype, 'scrollHeight', originalDescriptor);
+				} else {
+					Reflect.deleteProperty(HTMLTextAreaElement.prototype, 'scrollHeight');
+				}
+			}
+		});
+
 		it('autosizes the textarea like multiline', async () => {
 			const originalDescriptor = Object.getOwnPropertyDescriptor(
 				HTMLTextAreaElement.prototype,

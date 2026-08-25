@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, toRef, useSlots, watch, watchEffect } from 'vue';
+import {
+	computed,
+	nextTick,
+	onMounted,
+	onUpdated,
+	ref,
+	toRef,
+	useSlots,
+	watch,
+	watchEffect,
+} from 'vue';
 
 import { useAutosizeTextarea } from '../../composables/useAutosizeTextarea';
 import { useCharacterLimit } from '../../composables/useCharacterLimit';
@@ -281,6 +291,17 @@ function handleFocusableRegionClick(event: MouseEvent) {
 function focusInput(options?: FocusOptions) {
 	textareaRef.value?.focus(options);
 }
+
+// Each layout measures to a different height, so switching leaves a stale one.
+// Slot-driven switches aren't reactive, so re-check on render, not in a watcher.
+let renderedLayout = effectiveLayout();
+onUpdated(() => {
+	const currentLayout = effectiveLayout();
+	if (currentLayout === renderedLayout) return;
+
+	renderedLayout = currentLayout;
+	adjustHeight();
+});
 
 onMounted(() => {
 	// Adjust height on mount to respect initial content
