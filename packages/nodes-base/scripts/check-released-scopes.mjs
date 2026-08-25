@@ -4,16 +4,17 @@
  *
  * Narrowing a scope cannot be undone: existing credentials keep the token they
  * were issued, so the node starts failing for them and restoring the scope later
- * does not repair it. Added scopes are only reported, never failed.
+ * does not repair it.
  *
  * The baseline is the released package, not master, because tokens only exist
- * for scopes that shipped. A scope added to master and removed again before
- * release breaks nobody. The cost is attribution, so the workflow also runs on
- * master to name the merge that introduced a removal.
+ * for scopes that shipped: a scope added to master and removed again before
+ * release breaks nobody. Running it as a required check on the PR is what makes
+ * that safe, since a removal then cannot merge in the first place.
  *
  * Needs the local packages built (it reads their generated dist/types). Network
  * failures warn and exit 0: a CDN outage should not block a merge for a guard
- * against a rare mistake.
+ * against a rare mistake. Every outcome, including a skip, is written to the job
+ * summary, so a dead check does not read as a passing one.
  *
  * Full rationale: https://linear.app/n8n/issue/ENT-370
  */
@@ -21,7 +22,7 @@ import { readFileSync, existsSync, appendFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { scopesByCredential } from './credential-scopes.mjs';
+import { scopesByCredential, diffScopes } from './credential-scopes.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -33,38 +34,64 @@ const PACKAGES = [
 const ALLOWED_REMOVALS = path.resolve(here, '../credentials/scope-removals.json');
 const TYPES_FILE = 'dist/types/credentials.json';
 const TIMEOUT_MS = 20_000;
+const ATTEMPTS = 3;
 
-const warn = (message) => console.warn(`[check-released-scopes] ${message}`);
+const report = (lines) => {
+	console.log(lines.join('\n'));
+	if (process.env.GITHUB_STEP_SUMMARY) {
+		appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
+	}
+};
+
+/** A skip leaves the check unenforced, so it has to be as visible as a finding. */
+const skip = (message) => {
+	console.log(`::warning::[check-released-scopes] ${message}`);
+	report([`### OAuth scope check skipped`, '', message]);
+};
 
 const fetchJson = async (url) => {
-	const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
-	if (!response.ok) throw new Error(`${response.status} ${response.statusText} for ${url}`);
-	return await response.json();
+	for (let attempt = 1; ; attempt++) {
+		try {
+			const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+			if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+			return await response.json();
+		} catch (error) {
+			if (attempt === ATTEMPTS) throw new Error(`${error.message} for ${url}`);
+			// A transient 5xx or a rate limit needs a moment, not an instant retry.
+			await new Promise((resolve) => setTimeout(resolve, attempt * 2_000));
+		}
+	}
 };
 
-const releasedVersions = async () => {
-	const released = await fetchJson('https://registry.npmjs.org/n8n/latest');
-	return { version: released.version, dependencies: released.dependencies ?? {} };
-};
-
-const allowed = existsSync(ALLOWED_REMOVALS)
+const allowances = existsSync(ALLOWED_REMOVALS)
 	? JSON.parse(readFileSync(ALLOWED_REMOVALS, 'utf8'))
 	: [];
-const isAllowed = (credential, scope) =>
-	allowed.some((entry) => entry.credential === credential && entry.scope === scope);
+const used = new Set();
+const isAllowed = (credential, { scope }) => {
+	const entry = allowances.find(
+		(candidate) => candidate.credential === credential && candidate.scope === scope,
+	);
+	if (!entry) return false;
+	used.add(entry);
+	return true;
+};
 
 let release;
 try {
-	release = await releasedVersions();
+	release = await fetchJson('https://registry.npmjs.org/n8n/latest');
 } catch (error) {
-	warn(`could not resolve the released version (${error.message}), skipping`);
+	skip(`could not resolve the released n8n version (${error.message}).`);
 	process.exit(0);
 }
+const dependencies = release.dependencies ?? {};
 
-const removals = [];
-const additions = [];
-const unreadable = [];
-const usedAllowances = new Set();
+// Both sides are resolved as one set of credentials per side, because `extends`
+// crosses packages: langchain credentials inherit from nodes-base's `oAuth2Api`.
+// Per-package resolution would silently miss an inherited scope default.
+const baseline = [];
+const local = [];
+const checkedCredentials = new Set();
+const compared = [];
 
 for (const { name, dir } of PACKAGES) {
 	const localFile = path.join(dir, TYPES_FILE);
@@ -77,87 +104,50 @@ for (const { name, dir } of PACKAGES) {
 		process.exit(1);
 	}
 
-	const version = release.dependencies[name];
+	const version = dependencies[name];
 	if (!version) {
-		warn(`n8n@${release.version} does not depend on ${name}, skipping it`);
+		skip(`n8n@${release.version} does not depend on ${name}, so its scopes were not checked.`);
 		continue;
 	}
 
-	let baseline;
+	let released;
 	try {
-		baseline = await fetchJson(`https://cdn.jsdelivr.net/npm/${name}@${version}/${TYPES_FILE}`);
+		released = await fetchJson(
+			`https://cdn.jsdelivr.net/npm/${name}@${encodeURIComponent(version)}/${TYPES_FILE}`,
+		);
+		if (!Array.isArray(released)) throw new Error('metadata is not an array of credentials');
 	} catch (error) {
-		warn(`could not fetch ${name}@${version} (${error.message}), skipping it`);
+		skip(`could not read ${name}@${version} (${error.message}), so its scopes were not checked.`);
 		continue;
 	}
 
-	const released = scopesByCredential(baseline);
-	const current = scopesByCredential(JSON.parse(readFileSync(localFile, 'utf8')));
-
-	for (const [credential, releasedScopes] of released) {
-		const currentScopes = current.get(credential);
-		// A credential that is gone entirely is a node removal, which has its own
-		// deprecation path and is not what this guards.
-		if (!currentScopes) continue;
-
-		// Neither side can be diffed as a set of scopes if either is computed.
-		// Report the change instead of inventing scopes that were never there.
-		if (releasedScopes.kind === 'opaque' || currentScopes.kind === 'opaque') {
-			if (releasedScopes.source !== currentScopes.source) {
-				unreadable.push({
-					credential,
-					from: releasedScopes.source,
-					to: currentScopes.source,
-				});
-			}
-			continue;
-		}
-
-		for (const scope of releasedScopes.scopes) {
-			if (currentScopes.scopes.has(scope)) continue;
-			if (isAllowed(credential, scope)) {
-				usedAllowances.add(`${credential}|${scope}`);
-				continue;
-			}
-			removals.push({ package: name, version, credential, scope });
-		}
-	}
-
-	// Additions are walked over the current side so a brand new credential is
-	// included. That is the case most likely to need a managed OAuth app to
-	// consent, so it is the last one worth missing.
-	for (const [credential, currentScopes] of current) {
-		if (currentScopes.kind === 'opaque') continue;
-
-		const releasedScopes = released.get(credential);
-		if (releasedScopes?.kind === 'opaque') continue;
-
-		for (const scope of currentScopes.scopes) {
-			if (!releasedScopes?.scopes.has(scope)) additions.push({ credential, scope });
-		}
-	}
+	baseline.push(...released);
+	local.push(...JSON.parse(readFileSync(localFile, 'utf8')));
+	for (const credential of released) checkedCredentials.add(credential.name);
+	compared.push(`${name}@${version}`);
 }
 
-const summary = (lines) => {
-	console.log(lines.join('\n'));
-	if (process.env.GITHUB_STEP_SUMMARY) {
-		appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
-	}
-};
+if (compared.length === 0) process.exit(0);
 
-for (const entry of allowed) {
-	if (!usedAllowances.has(`${entry.credential}|${entry.scope}`)) {
-		warn(
-			`scope-removals.json entry for ${entry.credential} / ${entry.scope} no longer matches anything, it can be deleted`,
+const { removals, advisories } = diffScopes(
+	scopesByCredential(baseline),
+	scopesByCredential(local),
+	isAllowed,
+);
+
+for (const entry of allowances) {
+	if (!used.has(entry) && checkedCredentials.has(entry.credential)) {
+		console.log(
+			`::warning::[check-released-scopes] the scope-removals.json entry for ${entry.credential} / ${entry.scope} no longer matches anything, it can be deleted`,
 		);
 	}
 }
 
-if (unreadable.length > 0) {
-	summary([
+if (advisories.length > 0) {
+	report([
 		`### OAuth scope expressions changed (vs n8n@${release.version})`,
 		'',
-		...unreadable.flatMap((entry) => [
+		...advisories.flatMap((entry) => [
 			`- \`${entry.credential}\``,
 			`  - was: \`${entry.from}\``,
 			`  - now: \`${entry.to}\``,
@@ -167,29 +157,25 @@ if (unreadable.length > 0) {
 	]);
 }
 
-if (additions.length > 0) {
-	summary([
-		`### OAuth scopes added (vs n8n@${release.version})`,
-		'',
-		...additions.map((entry) => `- \`${entry.credential}\`: \`${entry.scope}\``),
-		'',
-		'Managed OAuth apps have to consent to a new scope before it works for users on Cloud.',
+if (removals.length === 0) {
+	report([
+		`OAuth scopes checked against ${compared.join(', ')} (n8n@${release.version}): no scope removed.`,
 	]);
+	process.exit(0);
 }
 
-if (removals.length === 0) process.exit(0);
-
-summary([
-	`### OAuth scopes removed (vs n8n@${release.version})`,
+report([
+	`### OAuth scopes removed (vs ${compared.join(', ')} from n8n@${release.version})`,
 	'',
-	...removals.map(
-		(entry) =>
-			`- \`${entry.credential}\`: \`${entry.scope}\` (in ${entry.package}@${entry.version})`,
-	),
+	...removals.map((entry) => `- \`${entry.credential}\`: \`${entry.scope}\``),
 	'',
-	'Every credential connected with this scope keeps failing after the change, and putting the scope back later does not repair them: those users have to reconnect.',
+	'Every credential connected with a removed scope keeps failing after the change, and putting the scope back later does not repair them: those users have to reconnect.',
 	'',
-	'If the removal is intended, ship it behind a new node version or with a migration note, and record it in `packages/nodes-base/credentials/scope-removals.json`.',
+	'If the change is intended, ship it behind a new node version or with a migration note, and record it in `packages/nodes-base/credentials/scope-removals.json`:',
+	'',
+	'```json',
+	'{ "credential": "…", "scope": "…", "pr": 0, "reason": "…" }',
+	'```',
 ]);
 
 process.exit(1);

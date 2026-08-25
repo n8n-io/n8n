@@ -11,6 +11,7 @@
     }
   },
   "scripts": {
+    "check-released-scopes": "node scripts/check-released-scopes.mjs",
     "clean": "rimraf dist .turbo",
     "copy-nodes-json": "node scripts/copy-nodes-json.js .",
     "dev": "pnpm watch",
