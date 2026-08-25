@@ -672,18 +672,26 @@ export class WorkflowReviewRequestService {
 			workflowReviewRequestId,
 			{},
 		);
-		const workflowRow = workflowRows[0];
+		// Reviews hold exactly one workflow today (create caps the list at one).
+		// Baseline capture and activity data below already cover every row, but
+		// publishing, broadcasts, and events still assume this single row.
+		const [workflowRow] = workflowRows;
 		if (!workflowRow) {
 			throw new NotFoundError('Could not find review request');
 		}
 
-		// 404 (not 403) so callers without access can't probe which requests exist
-		const workflow = await this.workflowFinderService.findWorkflowForUser(
-			workflowRow.workflowId,
-			user,
-			['workflow:read'],
+		// A decision covers every workflow on the review, so all of them must be
+		// readable. 404 (not 403) so callers without access can't probe which
+		// requests exist.
+		const workflows = await Promise.all(
+			workflowRows.map(
+				async (row) =>
+					await this.workflowFinderService.findWorkflowForUser(row.workflowId, user, [
+						'workflow:read',
+					]),
+			),
 		);
-		if (!workflow) {
+		if (workflows.some((workflow) => workflow === null)) {
 			throw new NotFoundError('Could not find workflow');
 		}
 

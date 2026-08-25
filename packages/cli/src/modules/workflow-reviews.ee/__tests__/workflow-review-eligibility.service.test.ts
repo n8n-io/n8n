@@ -1,14 +1,12 @@
 import type {
 	ProjectRelationRepository,
 	User,
-	WorkflowEntity,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestReviewerRepository,
+	WorkflowReviewRequestWorkflowDetailRow,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 
@@ -19,13 +17,11 @@ const workflowId = 'wf-1';
 const memberUser = (id = 'user-1') => mock<User>({ id, role: { slug: 'global:member' } });
 
 describe('WorkflowReviewEligibilityService', () => {
-	const workflowFinderService = mock<WorkflowFinderService>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 
 	const service = new WorkflowReviewEligibilityService(
-		workflowFinderService,
 		authorRepository,
 		reviewerRepository,
 		projectRelationRepository,
@@ -33,18 +29,20 @@ describe('WorkflowReviewEligibilityService', () => {
 
 	const request = () => mock<WorkflowReviewRequest>({ id: requestId, projectId });
 
+	const row = (id = workflowId) => mock<WorkflowReviewRequestWorkflowDetailRow>({ workflowId: id });
+
+	/** By default the review covers one workflow and the viewer can read it. */
 	const readable = (
 		overrides: Partial<Parameters<typeof service.resolveViewerEligibility>[1]> = {},
 	) => ({
 		request: request(),
-		pinnedWorkflowId: workflowId,
-		canReadPinnedWorkflow: true,
+		workflowRows: [row()],
+		readableWorkflowRows: [row()],
 		...overrides,
 	});
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 		authorRepository.isAuthor.mockResolvedValue(false);
 		reviewerRepository.isReviewer.mockResolvedValue(true);
 		projectRelationRepository.getAccessibleProjectsByRoles.mockResolvedValue([]);
@@ -59,11 +57,6 @@ describe('WorkflowReviewEligibilityService', () => {
 				decisionIneligibilityReason: null,
 				canComment: true,
 			});
-			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith(
-				workflowId,
-				expect.anything(),
-				['workflow:read'],
-			);
 		});
 
 		it('reports a non-assigned viewer as ineligible', async () => {
@@ -119,8 +112,8 @@ describe('WorkflowReviewEligibilityService', () => {
 					canComment: true,
 				});
 				expect(projectRelationRepository.getAccessibleProjectsByRoles).not.toHaveBeenCalled();
-				// Authorship still resolves — it feeds canComment.
-				expect(authorRepository.isAuthor).toHaveBeenCalled();
+				// The override alone settles both answers.
+				expect(authorRepository.isAuthor).not.toHaveBeenCalled();
 				expect(reviewerRepository.isReviewer).not.toHaveBeenCalled();
 			},
 		);
@@ -164,19 +157,34 @@ describe('WorkflowReviewEligibilityService', () => {
 		it('tells an author without view access about the permission, not about their authorship', async () => {
 			// An author who cannot view the workflow would hit the endpoint's 404 first,
 			// so the surfaced reason must be the permission one, not 'author'.
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 			authorRepository.isAuthor.mockResolvedValue(true);
 
-			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
+			const eligibility = await service.resolveViewerEligibility(
+				memberUser(),
+				readable({ readableWorkflowRows: [] }),
+			);
 
-			// Authorship still resolves — it feeds `canComment`, which survives the missing
-			// finder result as long as the author can read the pinned workflow.
 			expect(eligibility).toEqual({
 				canDecide: false,
 				decisionIneligibilityReason: 'missing_permission',
-				canComment: true,
+				canComment: false,
 			});
 			expect(reviewerRepository.isReviewer).not.toHaveBeenCalled();
+		});
+
+		it('requires read access to every covered workflow, not just one of them', async () => {
+			const rows = [row('wf-1'), row('wf-2')];
+
+			const eligibility = await service.resolveViewerEligibility(
+				memberUser(),
+				readable({ workflowRows: rows, readableWorkflowRows: rows.slice(1) }),
+			);
+
+			expect(eligibility).toEqual({
+				canDecide: false,
+				decisionIneligibilityReason: 'missing_permission',
+				canComment: false,
+			});
 		});
 
 		// The capability answers "who", not "when": a closed review still reports the
@@ -202,9 +210,10 @@ describe('WorkflowReviewEligibilityService', () => {
 
 	describe('who may comment', () => {
 		it('refuses commenting to a viewer who cannot open the workflow under review', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
-
-			const eligibility = await service.resolveViewerEligibility(memberUser(), readable());
+			const eligibility = await service.resolveViewerEligibility(
+				memberUser(),
+				readable({ readableWorkflowRows: [] }),
+			);
 
 			expect(eligibility).toEqual({
 				canDecide: false,
@@ -226,12 +235,11 @@ describe('WorkflowReviewEligibilityService', () => {
 		});
 
 		it('refuses commenting to an author who can no longer open the workflow under review', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 			authorRepository.isAuthor.mockResolvedValue(true);
 
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),
-				readable({ canReadPinnedWorkflow: false }),
+				readable({ readableWorkflowRows: [] }),
 			);
 
 			expect(eligibility).toEqual({
@@ -244,7 +252,7 @@ describe('WorkflowReviewEligibilityService', () => {
 		it('refuses both deciding and commenting on a review whose workflow is gone', async () => {
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),
-				readable({ pinnedWorkflowId: null, canReadPinnedWorkflow: false }),
+				readable({ workflowRows: [], readableWorkflowRows: [] }),
 			);
 
 			expect(eligibility).toEqual({
@@ -252,7 +260,6 @@ describe('WorkflowReviewEligibilityService', () => {
 				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
 			});
-			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
 		});
 	});
 

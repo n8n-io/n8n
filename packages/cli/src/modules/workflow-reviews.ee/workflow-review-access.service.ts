@@ -25,9 +25,9 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 export interface ReadableWorkflowReviewRequest {
 	request: WorkflowReviewRequest;
+	workflowRows: WorkflowReviewRequestWorkflowDetailRow[];
+	/** The subset of {@link workflowRows} the caller may currently read. */
 	readableWorkflowRows: WorkflowReviewRequestWorkflowDetailRow[];
-	pinnedWorkflowId: string | null;
-	canReadPinnedWorkflow: boolean;
 }
 
 /**
@@ -131,16 +131,7 @@ export class WorkflowReviewAccessService {
 			throw new NotFoundError('Could not find review request');
 		}
 
-		// Rows come back id ASC, so the first is the pinned one.
-		const pinnedWorkflowId = workflowRows.at(0)?.workflowId ?? null;
-		return {
-			request,
-			readableWorkflowRows,
-			pinnedWorkflowId,
-			canReadPinnedWorkflow: readableWorkflowRows.some(
-				(row) => row.workflowId === pinnedWorkflowId,
-			),
-		};
+		return { request, workflowRows, readableWorkflowRows };
 	}
 
 	/**

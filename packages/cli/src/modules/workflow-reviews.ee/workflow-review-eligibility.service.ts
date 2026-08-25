@@ -12,8 +12,6 @@ import {
 	PROJECT_ADMIN_ROLE_SLUG,
 } from '@n8n/permissions';
 
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-
 import type { ReadableWorkflowReviewRequest } from './workflow-review-access.service';
 
 export interface WorkflowReviewViewerEligibility {
@@ -29,7 +27,6 @@ export interface WorkflowReviewViewerEligibility {
 @Service()
 export class WorkflowReviewEligibilityService {
 	constructor(
-		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
@@ -53,8 +50,8 @@ export class WorkflowReviewEligibilityService {
 
 	/**
 	 * `canDecide` is an advisory read-time snapshot of whether the viewer could decide
-	 * the request, mirroring `decide()`'s authorization checks in order (read on the
-	 * pinned workflow, then admin / assignee / author) so the surfaced reason matches
+	 * the request, mirroring `decide()`'s authorization checks in order (read on every
+	 * covered workflow, then admin / assignee / author) so the surfaced reason matches
 	 * the error the endpoint would return. Assigned reviewers stay eligible even if
 	 * they later submitted a version. The endpoint remains the source of truth
 	 * and re-checks under its lock.
@@ -68,34 +65,20 @@ export class WorkflowReviewEligibilityService {
 		user: User,
 		access: Pick<
 			ReadableWorkflowReviewRequest,
-			'request' | 'pinnedWorkflowId' | 'canReadPinnedWorkflow'
+			'request' | 'workflowRows' | 'readableWorkflowRows'
 		>,
 	): Promise<WorkflowReviewViewerEligibility> {
-		const { request, pinnedWorkflowId, canReadPinnedWorkflow } = access;
+		const { request, workflowRows, readableWorkflowRows } = access;
 
-		if (!pinnedWorkflowId) {
+		// A decision or comment covers the whole review, so both require read access
+		// to every covered workflow — no workflow on a review outranks another.
+		const canReadEveryWorkflow =
+			workflowRows.length > 0 && readableWorkflowRows.length === workflowRows.length;
+		if (!canReadEveryWorkflow) {
 			return {
 				canDecide: false,
 				decisionIneligibilityReason: 'missing_permission',
 				canComment: false,
-			};
-		}
-
-		const [workflow, isAuthor] = await Promise.all([
-			this.workflowFinderService.findWorkflowForUser(pinnedWorkflowId, user, ['workflow:read']),
-			this.workflowReviewRequestAuthorRepository.isAuthor(
-				{ workflowReviewRequestId: request.id, userId: user.id },
-				{},
-			),
-		]);
-
-		if (!workflow) {
-			return {
-				canDecide: false,
-				decisionIneligibilityReason: 'missing_permission',
-				// Authorship still resolves — an author keeps commenting only while they
-				// can still read the pinned workflow.
-				canComment: isAuthor ? canReadPinnedWorkflow : false,
 			};
 		}
 
@@ -111,12 +94,12 @@ export class WorkflowReviewEligibilityService {
 			return { canDecide: true, decisionIneligibilityReason: null, canComment: true };
 		}
 
+		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor(
+			{ workflowReviewRequestId: request.id, userId: user.id },
+			{},
+		);
 		if (isAuthor) {
-			return {
-				canDecide: false,
-				decisionIneligibilityReason: 'author',
-				canComment: canReadPinnedWorkflow,
-			};
+			return { canDecide: false, decisionIneligibilityReason: 'author', canComment: true };
 		}
 
 		return {

@@ -125,7 +125,7 @@ export class WorkflowReviewInboxService {
 		const [workflows, participantsByRequestId, eligibility] = await Promise.all([
 			Promise.all(readableWorkflowRows.map(async (row) => await this.toWorkflowDetail(row))),
 			this.resolveParticipants(request),
-			// Resolved against the pinned (pre-read-filter) row, matching the row
+			// Resolved against every covered row (pre-read-filter), matching what
 			// decide() authorizes against — not against what the caller can read.
 			this.eligibilityService.resolveViewerEligibility(user, access),
 		]);
@@ -136,8 +136,7 @@ export class WorkflowReviewInboxService {
 			reviewers: [],
 		};
 		return {
-			// One workflow per review for now, so the summary fields mirror the first row
-			...this.toInboxItem(request, workflows.at(0) ?? null, requester, authors, reviewers),
+			...this.toReviewSummary(request, requester, authors, reviewers),
 			description: request.description,
 			workflows,
 			viewerCanDecide: eligibility.canDecide,
@@ -299,6 +298,27 @@ export class WorkflowReviewInboxService {
 		return { createdAt, id };
 	}
 
+	/** The review fields shared by the inbox card and the detail response. */
+	private toReviewSummary(
+		entity: WorkflowReviewRequest,
+		requester: WorkflowReviewEligibleReviewer | null,
+		authors: WorkflowReviewEligibleReviewer[],
+		reviewers: WorkflowReviewEligibleReviewer[],
+	): Omit<WorkflowReviewInboxItem, 'workflowName' | 'workflowVersionId'> {
+		return {
+			id: entity.id,
+			projectId: entity.projectId,
+			title: entity.title,
+			decision: entity.decision,
+			state: entity.state,
+			createdAt: entity.createdAt.toISOString(),
+			updatedAt: entity.updatedAt.toISOString(),
+			requester,
+			authors,
+			reviewers,
+		};
+	}
+
 	private toInboxItem(
 		entity: WorkflowReviewRequest,
 		linkedWorkflow: WorkflowReviewRequestLinkedWorkflow | null,
@@ -307,18 +327,9 @@ export class WorkflowReviewInboxService {
 		reviewers: WorkflowReviewEligibleReviewer[],
 	): WorkflowReviewInboxItem {
 		return {
-			id: entity.id,
-			projectId: entity.projectId,
-			title: entity.title,
+			...this.toReviewSummary(entity, requester, authors, reviewers),
 			workflowName: linkedWorkflow?.workflowName ?? null,
 			workflowVersionId: linkedWorkflow?.workflowVersionId ?? null,
-			decision: entity.decision,
-			state: entity.state,
-			createdAt: entity.createdAt.toISOString(),
-			updatedAt: entity.updatedAt.toISOString(),
-			requester,
-			authors,
-			reviewers,
 		};
 	}
 }

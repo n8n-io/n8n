@@ -97,7 +97,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 		// Real service over the same mocks, so the override assertions below
 		// exercise the actual eligibility logic decide() shares with the read side.
 		new WorkflowReviewEligibilityService(
-			workflowFinderService,
 			authorRepository,
 			reviewerRepository,
 			projectRelationRepository,
@@ -208,6 +207,23 @@ describe('WorkflowReviewRequestService.decide', () => {
 			expect.anything(),
 			['workflow:read'],
 		);
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+	});
+
+	it('throws NotFoundError when the user cannot view every workflow the request covers', async () => {
+		mockSuccessfulDecidePath();
+		workflowRepository.findByRequestId.mockResolvedValue([
+			pinnedRow('ver-1', 'wf-1'),
+			pinnedRow('ver-2', 'wf-2'),
+		]);
+		workflowFinderService.findWorkflowForUser.mockImplementation(async (workflowId) =>
+			workflowId === 'wf-1' ? mock<WorkflowEntity>({ isArchived: false }) : null,
+		);
+
+		await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
+			NotFoundError,
+		);
+
 		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
