@@ -126,9 +126,9 @@ export class WorkflowReviewAuthorizationService {
 
 	/**
 	 * `workflow:read` is the bar for the inbox, and every built-in role granting
-	 * `workflow:publish` grants read too, so publishers are covered. A custom role
-	 * could grant publish alone — nothing validates that pairing — and its holder
-	 * would see nothing here, matching the detail and decide gates.
+	 * `workflow:publish` grants read too, so publishers are covered. A custom project
+	 * role could grant publish alone — nothing validates that pairing — and its
+	 * holder would see nothing here, matching the detail and decide gates.
 	 *
 	 * A custom global role with read sees every project, so return `null` for those
 	 * callers instead of binding one parameter per project on every inbox query.
