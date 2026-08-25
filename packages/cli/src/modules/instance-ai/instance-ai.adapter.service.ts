@@ -166,6 +166,7 @@ import {
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
+import { redactTelemetryText } from './telemetry-redaction';
 import { fetchAndExtract, maybeSummarize, LRUCache } from './web-research';
 import { WorkflowTemplatesService } from './workflow-templates.service';
 
@@ -1407,7 +1408,7 @@ export class InstanceAiAdapterService {
 						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
 						exec_type: runData.executionMode,
 						status,
-						...(error ? { error } : {}),
+						...(error ? { error: redactTelemetryText(error) } : {}),
 					});
 				};
 
@@ -1503,9 +1504,12 @@ export class InstanceAiAdapterService {
 						}
 					}
 
-					const result = await extractExecutionResult(executionId, allowSendingParameterValues);
+					const { result, telemetryError } = await extractExecutionOutcome(
+						executionId,
+						allowSendingParameterValues,
+					);
 					await pruneVerificationPins(result.executedNodeNames);
-					trackBuilderExecutedWorkflow(result.status, result.error);
+					trackBuilderExecutedWorkflow(result.status, telemetryError);
 					// Saved workflow pins fed this run (they ride every instance-ai run) —
 					// report them so callers don't mistake pin-fed nodes for live ones.
 					const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
@@ -3480,13 +3484,28 @@ export async function extractExecutionResult(
 	executionId: string,
 	includeOutputData = true,
 ): Promise<ExecutionResult> {
+	return (await extractExecutionOutcome(executionId, includeOutputData)).result;
+}
+
+/**
+ * The execution result the agent sees, plus the error string telemetry may use.
+ * They differ when `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` is on: that setting
+ * opts the operator into sending upstream response content (`error.description`
+ * / `.messages`, which routinely echo API keys and record-level PII) *to the
+ * model*, not into n8n's product analytics. So the telemetry copy is always
+ * formatted with upstream details suppressed.
+ */
+export async function extractExecutionOutcome(
+	executionId: string,
+	includeOutputData = true,
+): Promise<{ result: ExecutionResult; telemetryError?: string }> {
 	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
 
 	if (!execution) {
-		return { executionId, status: 'unknown' };
+		return { result: { executionId, status: 'unknown' } };
 	}
 
 	const status =
@@ -3530,18 +3549,21 @@ export async function extractExecutionResult(
 	const nodeErrors = extractNodeErrors(runData, includeOutputData, execution.workflowData?.nodes);
 
 	return {
-		executionId,
-		status,
-		data:
-			Object.keys(resultData).length > 0
-				? wrapResultDataEntries(truncateResultData(resultData))
-				: undefined,
-		executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
-		nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
-		lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
-		error: errorMessage,
-		startedAt: execution.startedAt?.toISOString(),
-		finishedAt: execution.stoppedAt?.toISOString(),
+		result: {
+			executionId,
+			status,
+			data:
+				Object.keys(resultData).length > 0
+					? wrapResultDataEntries(truncateResultData(resultData))
+					: undefined,
+			executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
+			nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
+			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
+			error: errorMessage,
+			startedAt: execution.startedAt?.toISOString(),
+			finishedAt: execution.stoppedAt?.toISOString(),
+		},
+		telemetryError: error ? formatExecutionError(error, false) : undefined,
 	};
 }
 

@@ -28,9 +28,15 @@ vi.mock('../../../tracing/langsmith-tracing', async () => {
 	};
 });
 
-vi.mock('../workflow-validation-warnings', () => ({
-	partitionWarnings: vi.fn((warnings: unknown[]) => ({ blocking: [], informational: warnings })),
-}));
+vi.mock('../workflow-validation-warnings', async () => {
+	const actual = await vi.importActual<typeof import('../workflow-validation-warnings')>(
+		'../workflow-validation-warnings',
+	);
+	return {
+		...actual,
+		partitionWarnings: vi.fn((warnings: unknown[]) => ({ blocking: [], informational: warnings })),
+	};
+});
 
 const generatedWorkflow = {
 	name: 'Generated workflow',
@@ -318,6 +324,59 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
 		// The verify-biased post-build-flow body must NOT ride along on a one-off build.
 		expect(result.postBuildFlow?.instructions).not.toContain('# Post-Build Flow');
+	});
+
+	it('drops invalid node groups before saving and reports the drop', async () => {
+		const source = 'workflow source from workspace';
+		const { context, filePath, trackTelemetry } = makeContext({ source });
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: {
+				name: 'Grouped workflow',
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [
+					{
+						id: 'group-1',
+						name: 'Broken group',
+						nodeIds: ['missing-node', 'another-missing-node'],
+					},
+				],
+			},
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+		});
+
+		expect(result.success).toBe(true);
+		expect(result.warnings).toHaveLength(1);
+		expect(result.warnings?.join('\n')).toContain('[NODE_GROUP_DROPPED]');
+		expect(result.warnings?.join('\n')).toContain('Broken group');
+		expect(result.warnings?.join('\n')).toContain('missing-node');
+		expect(result.warnings?.join('\n')).toContain('another-missing-node');
+
+		const savedWorkflow = vi.mocked(context.workflowService.createFromWorkflowJSON).mock
+			.calls[0]?.[0];
+		expect(savedWorkflow?.nodeGroups).toEqual([]);
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'instance_ai_workflow_source_build',
+			expect.objectContaining({
+				dropped_group_count: 1,
+				warning_count: 1,
+			}),
+		);
 	});
 
 	it('falls back to the post-build-flow handoff for a triggerless one-off build', async () => {

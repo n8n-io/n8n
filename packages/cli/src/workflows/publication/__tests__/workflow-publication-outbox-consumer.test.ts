@@ -3,6 +3,7 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings, Span, Tracing } from 'n8n-core';
+import { UserError } from 'n8n-workflow';
 
 import type { EventService } from '@/events/event.service';
 import type { PublicationResult } from '@/workflows/publication/publication-result';
@@ -451,6 +452,18 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 					type: 'failed',
 					error: expect.objectContaining({ message: 'Unexpected: teardown failed' }),
 				}),
+			);
+		});
+
+		test('reports a UserError from the applier as-is, without the Unexpected wrapper', async () => {
+			const userError = new UserError('Credential with ID "c-1" does not exist');
+			applier.apply.mockRejectedValue(userError);
+
+			await consumer.processRecord(makeRecord(), abortSignal);
+
+			expect(reporter.report).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ type: 'failed', error: userError }),
 			);
 		});
 
