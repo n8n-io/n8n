@@ -7,11 +7,10 @@ import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Thread } from 'chat';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-
 import { AgentRepository } from '../../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
+	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type AgentIntegrationRemovalContext,
 	type BridgeExecutionContext,
@@ -22,6 +21,7 @@ import {
 	type UnauthenticatedWebhookResponse,
 } from '../../agent-chat-integration';
 import type { ChatInstance } from '../../chat-integration.service';
+import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadSlackAdapter } from '../../esm-loader';
 import { connectionUnavailable } from '../../integration-helpers';
 import {
@@ -105,16 +105,12 @@ export class SlackIntegration extends AgentChatIntegration {
 		'do_not_respond',
 	]);
 
+	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
+		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
+	}
+
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		const others = await this.agentRepository.findByIntegrationCredential(
-			this.type,
-			ctx.credentialId,
-			ctx.projectId,
-			ctx.agentId,
-		);
-		if (others.length > 0) {
-			throw new ConflictError(`Slack credential is already connected to agent "${others[0].name}"`);
-		}
+		await this.assertStartupPreconditions(ctx);
 	}
 
 	async onRemove(

@@ -11,12 +11,12 @@ import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
 
 import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
+	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
 	type BridgeExecutionContext,
@@ -24,6 +24,7 @@ import {
 	type BridgeResumeExecutionContext,
 } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
+import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadTelegramAdapter } from '../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
 import {
@@ -175,23 +176,18 @@ export class TelegramIntegration extends AgentChatIntegration {
 	}
 
 	/**
-	 * Block the connect flow if this Telegram credential is already claimed by
-	 * another agent in our DB. We deliberately don't probe Telegram for an
-	 * existing webhook here — `onAfterConnect` overwrites whatever URL Telegram
-	 * has on file, so a stale webhook from elsewhere isn't a connect blocker.
+	 * We deliberately don't probe Telegram for an existing webhook here —
+	 * `onAfterConnect` overwrites whatever URL Telegram has on file, so a stale
+	 * webhook from elsewhere isn't a connect blocker. That leaves the claim
+	 * check, which reads only our own DB, so publishing can run it as a
+	 * preflight.
 	 */
+	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
+		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
+	}
+
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		const others = await this.agentRepository.findByIntegrationCredential(
-			this.type,
-			ctx.credentialId,
-			ctx.projectId,
-			ctx.agentId,
-		);
-		if (others.length > 0) {
-			throw new ConflictError(
-				`Telegram credential is already connected to agent "${others[0].name}"`,
-			);
-		}
+		await this.assertStartupPreconditions(ctx);
 	}
 
 	async onAfterConnect(ctx: AgentChatIntegrationContext): Promise<void> {
