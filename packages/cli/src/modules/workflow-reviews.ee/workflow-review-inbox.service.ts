@@ -28,8 +28,7 @@ import { Service } from '@n8n/di';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
-import { WorkflowReviewAccessService } from './workflow-review-access.service';
-import { WorkflowReviewEligibilityService } from './workflow-review-eligibility.service';
+import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from './workflow-review-feature-gate.service';
 import { toEligibleReviewer } from './workflow-review.mapper';
 
@@ -43,14 +42,13 @@ import { toEligibleReviewer } from './workflow-review.mapper';
 export class WorkflowReviewInboxService {
 	constructor(
 		private readonly featureGate: WorkflowReviewFeatureGate,
-		private readonly accessService: WorkflowReviewAccessService,
+		private readonly authorizationService: WorkflowReviewAuthorizationService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowReviewRequestRepository: WorkflowReviewRequestRepository,
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly userRepository: UserRepository,
-		private readonly eligibilityService: WorkflowReviewEligibilityService,
 	) {}
 
 	async listForInbox(
@@ -59,7 +57,7 @@ export class WorkflowReviewInboxService {
 	): Promise<ListWorkflowReviewInboxResponse> {
 		await this.featureGate.assertAvailable();
 
-		const visibility = await this.accessService.resolveInboxVisibility(user);
+		const visibility = await this.authorizationService.resolveInboxVisibility(user);
 		const { limit } = query;
 		const rows = await this.workflowReviewRequestRepository.findManyForInbox({
 			visibility,
@@ -106,7 +104,7 @@ export class WorkflowReviewInboxService {
 	async getInboxSummaryForUser(user: User): Promise<GetWorkflowReviewInboxSummaryResponse> {
 		await this.featureGate.assertAvailable();
 
-		const visibility = await this.accessService.resolveInboxVisibility(user);
+		const visibility = await this.authorizationService.resolveInboxVisibility(user);
 		return await this.workflowReviewRequestRepository.countByStateForInbox({ visibility });
 	}
 
@@ -116,7 +114,7 @@ export class WorkflowReviewInboxService {
 	): Promise<WorkflowReviewRequestDetail> {
 		await this.featureGate.assertAvailable();
 
-		const access = await this.accessService.findReadableRequestOrFail(
+		const access = await this.authorizationService.findReadableRequestOrFail(
 			user,
 			workflowReviewRequestId,
 		);
@@ -125,9 +123,9 @@ export class WorkflowReviewInboxService {
 		const [workflows, participantsByRequestId, eligibility] = await Promise.all([
 			Promise.all(readableWorkflowRows.map(async (row) => await this.toWorkflowDetail(row))),
 			this.resolveParticipants(request),
-			// Resolved against the pinned (pre-read-filter) row, matching the row
-			// decide() authorizes against — not against what the caller can read.
-			this.eligibilityService.resolveViewerEligibility(user, access),
+			// Reuses the snapshot above: capabilities are resolved against the pinned
+			// row decide() authorizes against, not against every readable row.
+			this.authorizationService.resolveViewerEligibility(user, access),
 		]);
 
 		const { requester, authors, reviewers } = participantsByRequestId.get(request.id) ?? {

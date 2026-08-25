@@ -11,8 +11,7 @@ import type {
 import { WorkflowReviewRequestRepository, WorkflowReviewRequestWorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
-import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
+import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
 
@@ -21,7 +20,7 @@ import type { WorkflowHistoryService } from '@/workflows/workflow-history/workfl
 
 describe('WorkflowReviewInboxService', () => {
 	const workflowReviewPolicyService = mockInstance(WorkflowReviewPolicyService);
-	const accessService = mock<WorkflowReviewAccessService>();
+	const authorizationService = mock<WorkflowReviewAuthorizationService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const workflowReviewRequestRepository = mockInstance(WorkflowReviewRequestRepository);
 	const workflowReviewRequestWorkflowRepository = mockInstance(
@@ -46,14 +45,13 @@ describe('WorkflowReviewInboxService', () => {
 
 		service = new WorkflowReviewInboxService(
 			new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
-			accessService,
+			authorizationService,
 			workflowHistoryService,
 			workflowReviewRequestRepository,
 			workflowReviewRequestWorkflowRepository,
 			reviewerRepository,
 			authorRepository,
 			userRepository,
-			mock<WorkflowReviewEligibilityService>(),
 		);
 	});
 
@@ -67,7 +65,7 @@ describe('WorkflowReviewInboxService', () => {
 
 	describe('listForInbox', () => {
 		function mockVisibility(visibility: InboxVisibility = involvedVisibility) {
-			accessService.resolveInboxVisibility.mockResolvedValueOnce(visibility);
+			authorizationService.resolveInboxVisibility.mockResolvedValueOnce(visibility);
 		}
 
 		it('returns paginated data with hasMore and nextCursor', async () => {
@@ -209,7 +207,7 @@ describe('WorkflowReviewInboxService', () => {
 		}
 
 		beforeEach(() => {
-			accessService.resolveInboxVisibility.mockResolvedValue(involvedVisibility);
+			authorizationService.resolveInboxVisibility.mockResolvedValue(involvedVisibility);
 			workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([inboxRow]);
 			workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
 				new Map(),

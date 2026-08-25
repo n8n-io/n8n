@@ -44,8 +44,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { WorkflowReviewAccessService } from './workflow-review-access.service';
-import { WorkflowReviewAdminService } from './workflow-review-admin.service';
+import { WorkflowReviewAuthorizationService } from './workflow-review-authorization.service';
 import {
 	resolveDecisionCapability,
 	type WorkflowReviewDecisionFacts,
@@ -94,12 +93,11 @@ export class WorkflowReviewRequestService {
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly activityRepository: WorkflowReviewActivityRepository,
 		private readonly userRepository: UserRepository,
-		private readonly adminService: WorkflowReviewAdminService,
 		private readonly roleService: RoleService,
 		private readonly dbLockService: DbLockService,
 		private readonly collaborationService: CollaborationService,
 		private readonly workflowService: WorkflowService,
-		private readonly accessService: WorkflowReviewAccessService,
+		private readonly authorizationService: WorkflowReviewAuthorizationService,
 		private readonly eventService: EventService,
 	) {}
 
@@ -158,7 +156,7 @@ export class WorkflowReviewRequestService {
 	): Promise<WorkflowReviewRequestForWorkflow[]> {
 		const [decisionActors, openableIds] = await Promise.all([
 			this.resolveDecisionActors(requests),
-			this.accessService.resolveOpenableRequestIds(user, requests),
+			this.authorizationService.resolveOpenableRequestIds(user, requests),
 		]);
 
 		return requests.map((request) => ({
@@ -698,7 +696,10 @@ export class WorkflowReviewRequestService {
 		// Resolved before the lock: this query must not run inside the lock
 		// transaction, where it would need a second pooled connection while the
 		// transaction holds one — a deadlock on a single-connection pool.
-		const hasAdminOverride = await this.adminService.isAdminForProject(user, request.projectId);
+		const hasAdminOverride = await this.authorizationService.isAdminForProject(
+			user,
+			request.projectId,
+		);
 
 		// Fast path: reject ineligible callers before queueing on the lock.
 		const isAuthor = await this.workflowReviewRequestAuthorRepository.isAuthor(
