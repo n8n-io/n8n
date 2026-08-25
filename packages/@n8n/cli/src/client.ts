@@ -70,7 +70,19 @@ export type PushGitConnectionResult = {
 export interface ImportPackageCounts {
 	projects: { created: number; updated: number; skipped: number };
 	folders: { created: number; skipped: number };
-	workflows: { created: number; updated: number; skipped: number };
+	workflows: {
+		created: number;
+		updated: number;
+		skipped: number;
+		/** The post-write publish sweep's outcome per workflow; reported, never fails the pull. */
+		publishing: {
+			published: number;
+			unpublished: number;
+			unchanged: number;
+			blocked: number;
+			failed: number;
+		};
+	};
 	credentials: { matched: number; stubbed: number };
 	variables: {
 		matched: number;
