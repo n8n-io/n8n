@@ -3,9 +3,6 @@ import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
 import { AuthenticationMethod } from '@n8n/api-types';
 import { defaultSettings } from './defaults';
-import type { Mock } from 'vitest';
-import type { Store, StoreDefinition } from 'pinia';
-import type { ComputedRef } from 'vue';
 
 /**
  * Retries the given assertion until it passes or the timeout is reached
@@ -95,39 +92,7 @@ export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
 	return selectedItem?.querySelector('p')?.textContent?.trim();
 };
 
-type Mutable<T> = { -readonly [P in keyof T]: T[P] };
-
-/**
- * Typescript helper for mocking pinia store actions return value
- *
- * @see https://pinia.vuejs.org/cookbook/testing.html#Mocking-the-returned-value-of-an-action
- */
-export const mockedStore = <TStoreDef extends (...args: never[]) => unknown>(
-	useStore: TStoreDef,
-	...args: Parameters<TStoreDef>
-): TStoreDef extends StoreDefinition<infer Id, infer State, infer Getters, infer Actions>
-	? Mutable<
-			Store<
-				Id,
-				State,
-				Record<string, never>,
-				{
-					[K in keyof Actions]: Actions[K] extends (...args: infer Args) => infer ReturnT
-						? Mock<(...args: Args) => ReturnT>
-						: Actions[K];
-				}
-			> & {
-				[K in keyof Getters]: Getters[K] extends ComputedRef<infer T> ? T : never;
-			}
-		>
-	: ReturnType<TStoreDef> => {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return useStore(...args) as any;
-};
-
-export type MockedStore<T extends (...args: never[]) => unknown> = ReturnType<
-	typeof mockedStore<T>
->;
+export { mockedStore, type MockedStore } from '@n8n/stores/__tests__/mockedStore';
 
 export type Emitter = (event: string, ...args: unknown[]) => void;
 export type Emitters<T extends string> = Record<

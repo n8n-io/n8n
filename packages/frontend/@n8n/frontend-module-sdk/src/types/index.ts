@@ -1,3 +1,4 @@
+export type * from './component';
 export type * from './descriptor';
 export type * from './modal';
 export type * from './resource';

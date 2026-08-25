@@ -35,7 +35,7 @@ export const DataTableModule: FrontendModuleDescription = {
 				// Refresh the weekly summary when entering the datatables route. The import is
 				// lazy and unawaited: this descriptor is in the boot graph through the shell
 				// manifest, and a chunk that fails to load must not hold up navigation.
-				void import('@/features/execution/insights')
+				void import('@n8n/frontend-module-insights')
 					.then(({ useInsightsStore }) => {
 						const insightsStore = useInsightsStore();
 						if (insightsStore.isSummaryEnabled) {

@@ -339,5 +339,25 @@ export default defineConfig(
 			'n8n-local-rules/no-dynamic-regexp': 'off',
 		},
 	},
+	{
+		// Extraction ratchet. A feature that left the shell for a module package must
+		// not reappear under `features/`; the package entry is the only way in. One
+		// entry per extracted module, error level from the day it graduates.
+		files: ['src/**/*.ts', 'src/**/*.vue'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: ['@/features/execution/insights', '@/features/execution/insights/**'],
+							message:
+								'insights is now the @n8n/frontend-module-insights package. Import its entry.',
+						},
+					],
+				},
+			],
+		},
+	},
 	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 );

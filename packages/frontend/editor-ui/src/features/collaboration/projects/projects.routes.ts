@@ -15,7 +15,7 @@ const ExecutionsView = async () =>
 const ProjectVariables = async () => await import('./views/ProjectVariables.vue');
 
 function refreshInsightsSummary() {
-	void import('@/features/execution/insights')
+	void import('@n8n/frontend-module-insights')
 		.then(({ useInsightsStore }) => {
 			const insightsStore = useInsightsStore();
 			if (insightsStore.isSummaryEnabled) {

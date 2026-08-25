@@ -10,7 +10,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
 import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
-import { InsightsSummary, useInsightsStore } from '@/features/execution/insights';
+import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import {
