@@ -271,9 +271,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
 			);
 
-			// getBase passes the caller's projectId straight through to getVariables,
-			// which resolves the workflow owner internally when it's missing.
-			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, undefined);
+			// getBase backfills projectId from the workflow owner (mocked to
+			// 'project-id-1' in this describe's beforeEach) before calling getVariables.
+			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, 'project-id-1');
 		});
 
 		describe('credential permission check routing', () => {
@@ -1372,12 +1372,10 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(additionalData.projectId).toBeUndefined();
 			});
 
-			it('leaves projectId unset when the workflow has no resolvable owning project', async () => {
+			it('rejects when the workflow has no resolvable owning project', async () => {
 				ownershipService.getWorkflowProjectCached.mockRejectedValue(new Error('not found'));
 
-				const additionalData = await getBase({ workflowId: 'workflow-1' });
-
-				expect(additionalData.projectId).toBeUndefined();
+				await expect(getBase({ workflowId: 'workflow-1' })).rejects.toThrow('not found');
 			});
 		});
 	});

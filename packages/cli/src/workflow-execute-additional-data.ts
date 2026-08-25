@@ -792,22 +792,16 @@ export async function getBase({
 	// Trigger-fired, webhook, and worker-queued executions build additionalData without
 	// a `projectId`. Resolve it from the workflow's owning project so every downstream
 	// consumer (e.g. policy enforcement) sees the executing project, same as
-	// `executeAgent` already does locally for its own use. Run alongside `getVariables`
-	// (which does an equivalent, safe, cache-backed lookup internally) rather than
-	// awaiting first, so this backfill adds no serial latency.
-	const [variables, ownerProjectDetails] = await Promise.all([
-		WorkflowHelpers.getVariables(workflowId, projectId),
-		projectId || !workflowId
-			? null
-			: (async () => {
-					const { OwnershipService } = await import('@/services/ownership.service.js');
-					return await getWorkflowProjectDetailsSafe(Container.get(OwnershipService), workflowId);
-				})(),
-	]);
-
-	if (!projectId && ownerProjectDetails?.projectId) {
-		projectId = ownerProjectDetails.projectId;
+	// `executeAgent` already does locally for its own use. Left unguarded on purpose,
+	// matching `getVariables`'s own pre-existing lookup below: an unresolvable owner
+	// project fails execution setup, it isn't silently tolerated.
+	if (!projectId && workflowId) {
+		const { OwnershipService } = await import('@/services/ownership.service.js');
+		const project = await Container.get(OwnershipService).getWorkflowProjectCached(workflowId);
+		projectId = project?.id;
 	}
+
+	const variables = await WorkflowHelpers.getVariables(workflowId, projectId);
 
 	const eventService = Container.get(EventService);
 

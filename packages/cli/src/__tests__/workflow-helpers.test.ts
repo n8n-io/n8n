@@ -97,12 +97,10 @@ describe('workflow-helpers', () => {
 			expect(variables.VAR2).toBe('value1Project');
 		});
 
-		it('should resolve global variables without throwing when the owning project cannot be resolved', async () => {
+		it('should reject when the owning project cannot be resolved', async () => {
 			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('not found'));
 
-			const variables = await getVariables('1');
-
-			expect(variables).toEqual({ VAR1: 'value1', VAR2: 'value2' });
+			await expect(getVariables('1')).rejects.toThrow('not found');
 		});
 	});
 });
