@@ -38,8 +38,6 @@ function isRedactableExecution(
 }
 
 type ExecutionHandlers = {
-	deleteExecution: PublicAPIEndpoint<ExecutionRequest.Delete>;
-	getExecution: PublicAPIEndpoint<ExecutionRequest.Get>;
 	getExecutions: PublicAPIEndpoint<ExecutionRequest.GetAll>;
 	retryExecution: PublicAPIEndpoint<ExecutionRequest.Retry>;
 	getExecutionTags: PublicAPIEndpoint<ExecutionRequest.GetTags>;
@@ -49,80 +47,6 @@ type ExecutionHandlers = {
 };
 
 const executionHandlers: ExecutionHandlers = {
-	deleteExecution: [
-		publicApiScope('execution:delete'),
-		async (req, res) => {
-			const sharedWorkflowsIds = await Container.get(
-				WorkflowSharingService,
-			).getSharedWorkflowIdsForScopes(req.user, ['workflow:delete']);
-
-			if (!sharedWorkflowsIds.length) {
-				throw new NotFoundError('Not Found');
-			}
-
-			const { id } = req.params;
-
-			const execution = await Container.get(ExecutionService).deleteOne(id, sharedWorkflowsIds);
-
-			return res.json(replaceCircularReferences({ ...execution, id }));
-		},
-	],
-	getExecution: [
-		publicApiScope('execution:read'),
-		async (req, res) => {
-			const sharedWorkflowsIds = await Container.get(
-				WorkflowSharingService,
-			).getSharedWorkflowIdsForScopes(req.user, ['workflow:read']);
-
-			if (!sharedWorkflowsIds.length) {
-				throw new NotFoundError('Not Found');
-			}
-
-			const { id } = req.params;
-			const { includeData = false, ignoreDataSizeLimit = false } = req.query;
-
-			// `ignoreDataSizeLimit` opts out of the display-size guard (0 = no limit) to return
-			// full data even when oversized, at the caller's own memory risk.
-			const maxDataSizeBytes = ignoreDataSizeLimit
-				? 0
-				: Container.get(ExecutionsConfig).maxDisplaySize;
-
-			const execution = await Container.get(ExecutionService).findOneInWorkflows(
-				id,
-				sharedWorkflowsIds,
-				{
-					includeData,
-					includeAnnotation: false,
-					maxDataSizeBytes,
-				},
-			);
-
-			if (!execution) {
-				throw new NotFoundError('Not Found');
-			}
-
-			if (includeData && isRedactableExecution(execution)) {
-				const redactQuery = ExecutionRedactionQueryDtoSchema.safeParse(req.query);
-				const redactExecutionData = redactQuery.success
-					? redactQuery.data.redactExecutionData
-					: undefined;
-
-				await Container.get(ExecutionRedactionServiceProxy).processExecution(execution, {
-					user: req.user,
-					redactExecutionData,
-					ipAddress: req.ip ?? '',
-					userAgent: req.headers['user-agent'] ?? '',
-				});
-			}
-
-			Container.get(EventService).emit('user-retrieved-execution', {
-				userId: req.user.id,
-				publicApi: true,
-			});
-
-			return res.json(replaceCircularReferences(execution));
-		},
-	],
 	getExecutions: [
 		publicApiScope('execution:list'),
 		validCursor,

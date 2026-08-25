@@ -111,11 +111,11 @@
 			"status": "covered",
 			"nodeOperation": "execution:getAll"
 		},
-		"GET /executions/{id}": {
+		"GET /executions/{executionId}": {
 			"status": "covered",
 			"nodeOperation": "execution:get"
 		},
-		"DELETE /executions/{id}": {
+		"DELETE /executions/{executionId}": {
 			"status": "covered",
 			"nodeOperation": "execution:delete"
 		},
