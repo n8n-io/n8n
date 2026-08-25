@@ -20,6 +20,7 @@ import { z } from 'zod';
 
 import {
 	markPublicApiController,
+	OptionalWidgetBodyDto,
 	WidgetArrayResponseDto,
 	WidgetBodyDto,
 	WidgetPaginationQueryDto,
@@ -132,6 +133,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(params?.shape).toHaveProperty('id');
 		expect(operation.config.request?.query).toBeDefined();
 		expect(operation.config.request?.body).toEqual({
+			required: true,
 			content: { 'application/json': { schema: WidgetBodyDto.schema } },
 		});
 	});
@@ -153,6 +155,7 @@ describe('getDecoratorGeneratedOperations', () => {
 		expect(operation.config.parameters).toBeUndefined();
 		expect(operation.config.request).toBeUndefined();
 		expect(operation.config.deprecated).toBeUndefined();
+		expect(operation.config.responses[415]).toBeUndefined();
 		expect(operation.config.responses[200]).toEqual({ description: 'Operation successful.' });
 		expect(operation.config.responses[401]).toEqual({
 			$ref: '../../../../shared/spec/responses/unauthorized.yml',
@@ -193,5 +196,33 @@ describe('getDecoratorGeneratedOperations', () => {
 
 		expect(() => getDecoratorGeneratedOperations()).toThrow(UnexpectedError);
 		expect(() => getDecoratorGeneratedOperations()).toThrow(/ApiErrorResponse\(418\)/);
+	});
+
+	it('leaves the request body optional when every field is optional', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(200)
+			method(_req: unknown, _res: unknown, @Body _body: OptionalWidgetBodyDto) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.request?.body?.required).toBeUndefined();
+	});
+
+	it('documents a 415 for a route that takes a request body', () => {
+		class WidgetsPublicController {
+			@Post('/')
+			@ApiResponse(200)
+			method(_req: unknown, _res: unknown, @Body _body: WidgetBodyDto) {}
+		}
+		markPublicApiController(WidgetsPublicController as Controller, '/widgets');
+
+		const [operation] = getDecoratorGeneratedOperations();
+
+		expect(operation.config.responses[415]).toEqual({
+			$ref: '../../../../shared/spec/responses/unsupportedMediaType.yml',
+		});
 	});
 });
