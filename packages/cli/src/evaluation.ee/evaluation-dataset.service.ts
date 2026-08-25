@@ -248,11 +248,12 @@ export class EvaluationDatasetService {
 		// output when it's the only parent (a workflow built entirely around
 		// evaluation, TRUST-407); otherwise (no parent, or genuine ambiguity
 		// between two real parents) fall back to the start node's own output.
-		const sourceNode =
-			nonEvalParents.length === 1
-				? nonEvalParents[0]
-				: ((nonEvalParents.length === 0 && parents.length === 1 ? parents[0] : undefined) ??
-					startNodeName);
+		let sourceNode = startNodeName;
+		if (nonEvalParents.length === 1) {
+			sourceNode = nonEvalParents[0];
+		} else if (nonEvalParents.length === 0 && parents.length === 1) {
+			sourceNode = parents[0];
+		}
 		return getNodeOutputJson(runData, sourceNode);
 	}
 
