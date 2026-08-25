@@ -1,0 +1,11 @@
+docs/generated/sqlite-schema/README.md
+  ai_agent 66-67,235-236,902-920
+docs/generated/postgres-schema/README.md
+  ai_agent 66-67,252-253,915-933
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ee7584255f19f8035dabb90ba17c46e55307cb58",
+  "prompts": {}
+}

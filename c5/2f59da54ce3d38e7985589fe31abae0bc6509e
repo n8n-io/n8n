@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/vite/aliases.mts
+  s_d4f6367700cfc9::t_61be2d9cd81587 4-5
+packages/frontend/editor-ui/vite/aliases.test.ts
+  s_d4f6367700cfc9::t_61be2d9cd81587 10,17,26,43-47,60,69-70,85-86,93-94,103-105,127-129,136
+packages/frontend/editor-ui/vite.config.mts
+  s_d4f6367700cfc9::t_61be2d9cd81587 1-2
+packages/frontend/@n8n/frontend-vite-config/index.ts
+  s_d4f6367700cfc9::t_61be2d9cd81587 7-8,10-13,15-16,18-19,39-43,54-59,77,82-83,85-90,97-102,110,115-116,124-125
+packages/frontend/editor-ui/vitest.config.mts
+  s_d4f6367700cfc9::t_61be2d9cd81587 6-7
+packages/frontend/@n8n/frontend-vite-config/tsconfig.json
+  s_d4f6367700cfc9::t_61be2d9cd81587 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c52f59da54ce3d38e7985589fe31abae0bc6509e",
+  "prompts": {},
+  "sessions": {
+    "s_d4f6367700cfc9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c8a86a88-cc9d-4ffe-8b49-44759bb661a2",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

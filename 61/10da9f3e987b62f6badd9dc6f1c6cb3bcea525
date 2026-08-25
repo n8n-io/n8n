@@ -1,0 +1,58 @@
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_7f8fd5937c349e::t_e13533915d3fd4 10
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.test.ts
+  s_7f8fd5937c349e::t_e13533915d3fd4 244,259,262
+packages/cli/test/migration/1786526297066-add-project-manage-members-scope-to-custom-roles.test.ts
+  s_7f8fd5937c349e::t_a53a40f74cd326 11,13,28,131,133,140,144,162,232,236,243,252
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.projectId.users.yml
+  s_7f8fd5937c349e::t_e13533915d3fd4 33
+packages/cli/src/public-api/v1/handlers/projects/projects.handler.ts
+  s_7f8fd5937c349e::t_e13533915d3fd4 181,200,218
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.projectId.users.userId.yml
+  s_7f8fd5937c349e::t_e13533915d3fd4 3,33
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_7f8fd5937c349e::t_e13533915d3fd4 68-69,142,569,578,663,682,717
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_7f8fd5937c349e::t_e13533915d3fd4 34
+packages/@n8n/db/src/migrations/common/1786526297066-AddProjectManageMembersScopeToCustomRoles.ts
+  s_7f8fd5937c349e::t_33a162bfece8cc 29-31
+  s_7f8fd5937c349e::t_a53a40f74cd326 4,10,23-24,45,61,96,100
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_7f8fd5937c349e::t_e13533915d3fd4 109
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.routes.ts
+  s_7f8fd5937c349e::t_e13533915d3fd4 155
+packages/cli/test/migration/1786526297066-add-project-manage-members-scope-to-api-keys.test.ts
+  s_7f8fd5937c349e::t_a53a40f74cd326 13,15,18,86,103,130,138,146
+packages/cli/src/controllers/project.controller.ts
+  s_7f8fd5937c349e::t_e13533915d3fd4 289,334,363
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_7f8fd5937c349e::t_e13533915d3fd4 128
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_7f8fd5937c349e::t_e13533915d3fd4 2762-2763
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.test.ts
+  s_7f8fd5937c349e::t_e13533915d3fd4 237,369,385,388,400,403
+packages/@n8n/permissions/src/scope-information.ts
+  s_7f8fd5937c349e::t_e13533915d3fd4 93
+packages/@n8n/permissions/src/constants.ee.ts
+  s_7f8fd5937c349e::t_e13533915d3fd4 28,32,103
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_7f8fd5937c349e::t_e13533915d3fd4 48
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_7f8fd5937c349e::t_8850a3719d24e5 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "6110da9f3e987b62f6badd9dc6f1c6cb3bcea525",
+  "prompts": {},
+  "sessions": {
+    "s_7f8fd5937c349e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c6bd39d-a50d-4e59-a681-29638027677a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

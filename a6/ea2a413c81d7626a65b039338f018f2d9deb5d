@@ -1,0 +1,66 @@
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_03a0908a4e52a5::t_8e61f0d16b1719 735,746,748-750
+  s_03a0908a4e52a5::t_c50ef09c15e7ae 780
+packages/@n8n/instance-ai/skills/post-build-flow/SKILL.md
+  s_03a0908a4e52a5::t_c125d2acbe4cda 176-182
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-skip-state.test.ts
+  s_03a0908a4e52a5::t_95e6829fe3aeda 36-38,117-121,194
+  s_03a0908a4e52a5::t_58a3c01a19d3c7 3-4,9,14-15,26-35,39-41,59-69,72-75,82,84-85,87-88,99-101,106-107,114-116,122-144,149,154-193,195-220
+packages/@n8n/instance-ai/src/tools/workflows/build-workflow.tool.ts
+  s_03a0908a4e52a5::t_3f5fe28974a6bd 851-855
+packages/@n8n/instance-ai/src/tools/orchestration/__tests__/complete-checkpoint.tool.test.ts
+  s_03a0908a4e52a5::t_177d4db558a2e4 186
+  s_03a0908a4e52a5::t_ac296f0e4456e3 165-185,187-202
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_03a0908a4e52a5::t_5f73974f3292ba 1564,1570-1577
+  s_03a0908a4e52a5::t_c36c9c05d55d7a 1598,1612,1630,1644,1700,1703,1726,1741,1753
+  s_03a0908a4e52a5::t_ac9febbc9b7d78 1649-1689
+packages/@n8n/instance-ai/src/tools/workflows/setup-skip-state.ts
+  s_03a0908a4e52a5::t_7d5fbec97c8d82 138-140,143-150
+  s_03a0908a4e52a5::t_6824f4e53caf3e 19-21,26-49,67,74,77,84,86,105-137,142,156,162,168,177,181,189
+  s_03a0908a4e52a5::t_95e6829fe3aeda 23-25
+  s_03a0908a4e52a5::t_3528855898cc62 52-66
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_03a0908a4e52a5::t_76f94e1987f706 81-84,86-88,94
+  s_03a0908a4e52a5::t_60835c3f15067c 517-524
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_03a0908a4e52a5::t_d9a5d397309336 485-506
+packages/@n8n/instance-ai/src/tools/orchestration/complete-checkpoint.tool.ts
+  s_03a0908a4e52a5::t_bd638f60a5e752 133-142
+  s_03a0908a4e52a5::t_ae66580ee25d85 189-191
+  s_03a0908a4e52a5::t_316f670f28460c 161,165
+  s_03a0908a4e52a5::t_f3dfc8b6bccc1f 57
+  s_03a0908a4e52a5::t_ef59415f222520 83-84,90,92,96-108
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_03a0908a4e52a5::t_1005b2056bdddf 863,865-868,870-871,876
+  s_03a0908a4e52a5::t_95e6829fe3aeda 705
+  s_03a0908a4e52a5::t_e48efad6c52f1c 22
+  s_03a0908a4e52a5::t_be1c30b33df87e 687,694-695,697-700,703-704,706-707,711
+  s_03a0908a4e52a5::t_549bfcc34061f1 972
+  s_03a0908a4e52a5::t_1134cd8076718c 156
+  s_03a0908a4e52a5::t_1f8a2690f3d76b 767,772-774
+  s_03a0908a4e52a5::t_4a60247497c614 776
+  s_03a0908a4e52a5::t_174e3c9b95d622 923-935
+  s_03a0908a4e52a5::t_3379f0404452e9 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a6ea2a413c81d7626a65b039338f018f2d9deb5d",
+  "prompts": {},
+  "humans": {
+    "h_2f80f0e06f710c": {
+      "author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_03a0908a4e52a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae5a718f-9227-4093-bfce-05c59596700d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

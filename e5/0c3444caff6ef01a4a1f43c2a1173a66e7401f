@@ -1,0 +1,41 @@
+packages/cli/src/modules/agents/integrations/agent-channel-status-reporter.ts
+  s_79abf5d6ec4a19::t_dec5a8b892eb81 74
+packages/frontend/editor-ui/src/features/agents/composables/useAgentIntegrationStatus.ts
+  s_79abf5d6ec4a19::t_ff30373dd3e4c1 181-183,219
+packages/cli/src/modules/agents/integrations/__tests__/agent-channel-reconciler.service.test.ts
+  s_79abf5d6ec4a19::t_1ae0ef749cb37e 558-560
+  s_79abf5d6ec4a19::t_3f10ada28627d6 530-557,561-636
+packages/@n8n/utils/src/scrub-secrets.test.ts
+  s_79abf5d6ec4a19::t_0083fadef4b6ac 179-180
+  s_79abf5d6ec4a19::t_3b87057361daf3 170-178,181-183
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentIntegrationStatus.test.ts
+  s_79abf5d6ec4a19::t_4ef3b70608c042 167-187
+packages/cli/src/modules/agents/__tests__/agent-publish.service.test.ts
+  s_79abf5d6ec4a19::t_d829b99ba47995 274-277,285-289
+  s_79abf5d6ec4a19::t_dec5a8b892eb81 283
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_79abf5d6ec4a19::t_d829b99ba47995 1412-1434,1440-1469
+  s_79abf5d6ec4a19::t_9add7b740356bb 1435-1439
+packages/cli/src/modules/agents/integrations/channel-status-report.ts
+  s_79abf5d6ec4a19::t_dec5a8b892eb81 98
+packages/cli/src/modules/agents/integrations/agent-channel-reconciler.service.ts
+  s_79abf5d6ec4a19::t_644e41a06bc821 26-32,125-129,134-149,169-182,184,186,252-262
+packages/@n8n/utils/src/scrub-secrets.ts
+  s_79abf5d6ec4a19::t_3b87057361daf3 42-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e50c3444caff6ef01a4a1f43c2a1173a66e7401f",
+  "prompts": {},
+  "sessions": {
+    "s_79abf5d6ec4a19": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ef04762-7888-4175-9534-81ae59b9237b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

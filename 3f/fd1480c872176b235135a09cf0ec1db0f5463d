@@ -1,0 +1,11 @@
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  ai_agent 208,218,223,239,245,252,259,265,271,276,281,289,300
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  ai_agent 122,124,131,138,154,158
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3ffd1480c872176b235135a09cf0ec1db0f5463d",
+  "prompts": {}
+}

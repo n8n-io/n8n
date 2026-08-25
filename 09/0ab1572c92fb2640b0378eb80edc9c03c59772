@@ -1,0 +1,19 @@
+packages/testing/playwright/workflows/Workflow_ai_agent.json
+  s_8a11345a349517::t_585ff8e496f9cf 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "090ab1572c92fb2640b0378eb80edc9c03c59772",
+  "prompts": {},
+  "sessions": {
+    "s_8a11345a349517": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2ae12e7b-0477-4fcd-aaa2-2fe715f68a8d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

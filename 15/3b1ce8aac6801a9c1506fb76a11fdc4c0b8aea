@@ -1,0 +1,9 @@
+packages/cli/src/public-api/v1/openapi-gen/decorator-routes.ts
+  ai_agent 32,40-59,189,221-222,229-242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "153b1ce8aac6801a9c1506fb76a11fdc4c0b8aea",
+  "prompts": {}
+}

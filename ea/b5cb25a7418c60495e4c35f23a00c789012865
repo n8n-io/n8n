@@ -1,0 +1,21 @@
+packages/cli/src/modules/n8n-packages/io/directory/directory-package-writer.ts
+  s_95fc14a059ff3b::t_b8c5063ea07897 23
+packages/cli/src/modules/n8n-packages/io/package-writer.ts
+  s_95fc14a059ff3b::t_3921e3ce2d31c1 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eab5cb25a7418c60495e4c35f23a00c789012865",
+  "prompts": {},
+  "sessions": {
+    "s_95fc14a059ff3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c3153ff-cc6c-4158-b275-0661e3c1f575",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

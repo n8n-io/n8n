@@ -1,0 +1,21 @@
+packages/cli/src/services/engine-v2-dispatcher.service.ts
+  s_3705615b2f3b96::t_2f3f7d9b51ea98 3-8,66,78-101
+packages/cli/src/services/__tests__/engine-v2-dispatcher.service.test.ts
+  s_3705615b2f3b96::t_2f3f7d9b51ea98 135-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "933202e270035bddb6ef3ca413a0809b57d60f9e",
+  "prompts": {},
+  "sessions": {
+    "s_3705615b2f3b96": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0242b-44ae-7b03-ac48-eb4e74e6b80a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

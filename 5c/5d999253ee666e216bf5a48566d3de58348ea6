@@ -1,0 +1,35 @@
+packages/nodes-base/nodes/Google/Drive/GoogleDriveTrigger.node.ts
+  s_3170ec9eca2475::t_78df6afaaafcf5 501,574,578
+  s_3170ec9eca2475::t_6642cb74e11608 11,587,593,596,604
+packages/workflow/src/errors/index.ts
+  s_3170ec9eca2475::t_5c7c96e2b11ff3 18-24
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/__tests__/oauth.test.ts
+  s_3170ec9eca2475::t_6642cb74e11608 396
+packages/workflow/test/errors/declared-failure.error.test.ts
+  s_3170ec9eca2475::t_33e7b34e96b28c 6
+  s_3170ec9eca2475::t_d7fca1c9dabb43 1-5,7,104,123,141-192
+  s_3170ec9eca2475::t_6642cb74e11608 8-103,105-122,124-140,193
+packages/workflow/src/errors/declared-failure.error.ts
+  s_3170ec9eca2475::t_b2745a14f25a6d 1-121
+packages/nodes-base/nodes/Google/Drive/test/GoogleDriveTrigger.node.test.ts
+  s_3170ec9eca2475::t_6642cb74e11608 4,501,506,524,532,547,581,589,597
+  s_3170ec9eca2475::t_0588370b064fe1 466
+packages/core/src/execution-engine/node-execution-context/utils/request-helpers/oauth.ts
+  s_3170ec9eca2475::t_6642cb74e11608 37,145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5c5d999253ee666e216bf5a48566d3de58348ea6",
+  "prompts": {},
+  "sessions": {
+    "s_3170ec9eca2475": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ecafac38-def7-40e2-8506-9784e00ca5e4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+packages/cli/src/metrics/prometheus/__tests__/instance-ai-metrics.service.test.ts
+  ai_agent 9-10,24-25,37-43
+packages/cli/src/metrics/prometheus/instance-ai-metrics.service.ts
+  ai_agent 6-7,23-24,81-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "438e5940765d794ea71dfb9945471601b9ed6dc3",
+  "prompts": {}
+}
