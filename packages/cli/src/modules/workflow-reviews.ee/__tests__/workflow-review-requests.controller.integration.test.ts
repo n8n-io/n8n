@@ -3347,11 +3347,13 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			decision: 'pending',
 			title: 'Please review',
 			description: 'Some context',
-			workflowName: 'Reviewed workflow',
-			workflowVersionId: 'version-pinned',
 			requester: { id: owner.id, email: owner.email },
 			reviewers: [{ id: reviewer.id, email: reviewer.email }],
 		});
+		// The covered workflows live only in `workflows` — the inbox card's flat
+		// summary fields are not part of the detail response.
+		expect(response.body.data).not.toHaveProperty('workflowName');
+		expect(response.body.data).not.toHaveProperty('workflowVersionId');
 
 		expect(response.body.data.workflows).toHaveLength(1);
 		const [child] = response.body.data.workflows;
@@ -3517,7 +3519,6 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		expect(response.body.data.id).toBe(request.id);
 		expect(response.body.data.state).toBe('open');
 		expect(response.body.data.workflows).toEqual([]);
-		expect(response.body.data.workflowName).toBeNull();
 	});
 
 	test('still opens a closed review after its workflow was deleted', async () => {
@@ -3549,8 +3550,6 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 
 		expect(response.body.data.id).toBe(request.id);
 		expect(response.body.data.workflows).toEqual([]);
-		expect(response.body.data.workflowName).toBeNull();
-		expect(response.body.data.workflowVersionId).toBeNull();
 	});
 
 	test('lets an assigned reviewer in the review project open it', async () => {
