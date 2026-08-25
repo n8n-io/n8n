@@ -1,92 +1,221 @@
 <script lang="ts" setup>
-import type { TextSize, BadgeTheme } from '../../types';
+import { Primitive } from 'reka-ui';
+import { computed } from 'vue';
+
+import type { IconSize } from '../../types';
+import N8nIcon from '../N8nIcon';
+import type { IconName } from '../N8nIcon';
 import N8nText from '../N8nText';
+import type { BadgeSize } from './Badge.type';
 
 interface BadgeProps {
-	theme?: BadgeTheme;
-	size?: TextSize;
-	bold?: boolean;
-	showBorder?: boolean;
+	variant?:
+		| 'default'
+		| 'primary'
+		| 'secondary'
+		| 'subtle'
+		| 'outline'
+		| 'ghost'
+		| 'warning'
+		| 'danger'
+		| 'success';
+	size?: BadgeSize;
+	clickable?: boolean;
+	disabled?: boolean;
+	leadingIcon?: IconName;
+	trailingIcon?: IconName;
 }
 
 defineOptions({ name: 'N8nBadge' });
-withDefaults(defineProps<BadgeProps>(), {
-	theme: 'default',
-	size: 'small',
-	bold: false,
-	showBorder: true,
+
+const props = withDefaults(defineProps<BadgeProps>(), {
+	variant: 'default',
+	size: 'xsmall',
+	clickable: false,
+});
+
+const effectiveIconSize = computed(function getEffectiveIconSize(): IconSize {
+	switch (props.size) {
+		case 'large':
+		case 'xlarge':
+			return 'xlarge';
+		default:
+			return 'medium';
+	}
+});
+const effectiveTextSize = computed(function getEffectiveTextSize() {
+	switch (props.size) {
+		case 'large':
+		case 'xlarge':
+			return 'sm';
+		case 'xsmall':
+			return '2xs';
+		default:
+			return 'xs';
+	}
 });
 </script>
 
 <template>
-	<span :class="['n8n-badge', { [$style[theme]]: true, [$style.border]: showBorder }]">
-		<N8nText :size="size" :bold="bold" :compact="true">
+	<Primitive
+		:as="props.clickable ? 'button' : 'span'"
+		:type="props.clickable ? 'button' : undefined"
+		:disabled="props.disabled"
+		:class="[$style.badge, $style[variant], $style[size], { [$style.clickable]: props.clickable }]"
+	>
+		<N8nIcon
+			v-if="props.leadingIcon"
+			:class="$style.leadingIcon"
+			:icon="props.leadingIcon"
+			:size="effectiveIconSize"
+		/>
+		<N8nText as="span" :class="$style.label" :step="effectiveTextSize" bold>
 			<slot></slot>
 		</N8nText>
-	</span>
+		<N8nIcon
+			v-if="props.trailingIcon"
+			:class="$style.trailingIcon"
+			:icon="props.trailingIcon"
+			:size="effectiveIconSize"
+		/>
+	</Primitive>
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/focus';
+
 .badge {
 	display: inline-flex;
 	align-items: center;
-	padding: var(--spacing--5xs) var(--spacing--4xs);
+	gap: var(--spacing--4xs);
+	white-space: nowrap;
+	border-radius: var(--radius--full);
+	user-select: none;
+	appearance: none;
+	width: fit-content;
+
+	--n8n-badge--background: light-dark(var(--color--neutral-200), var(--color--neutral-700));
+	--n8n-badge--border-color: var(--n8n-badge--background);
+	--n8n-badge--text-color: var(--text-color--subtle);
+	--n8n-badge--height: var(--height--sm);
+	--n8n-badge--padding: 0 var(--spacing--2xs);
+
+	background-color: var(--n8n-badge--background);
+	border: 1px solid var(--n8n-badge--border-color);
+	height: var(--n8n-badge--height);
+	padding: var(--n8n-badge--padding);
+	color: var(--n8n-badge--text-color);
+}
+
+.label {
+	overflow: hidden;
+	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.border {
-	border: var(--border);
+.clickable {
+	outline: none;
+	cursor: pointer;
+
+	&:hover {
+		background-color: color-mix(in srgb, var(--n8n-badge--background), black 5%);
+		border-color: color-mix(in srgb, var(--n8n-badge--background), black 5%);
+	}
+
+	&:active {
+		background-color: color-mix(in srgb, var(--n8n-badge--background), black 10%);
+		border-color: color-mix(in srgb, var(--n8n-badge--background), black 10%);
+	}
+
+	&:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	&:focus-visible {
+		@include focus.focus-ring-with-border;
+	}
 }
 
-.default {
-	composes: badge;
-	border-radius: var(--radius);
-	color: var(--color--text--tint-1);
-	border-color: var(--color--text--tint-1);
+.xsmall {
+	--n8n-badge--height: var(--height--xs);
+	--n8n-badge--padding: 0 var(--spacing--3xs);
 }
 
-.success {
-	composes: badge;
-	border-radius: var(--radius);
-	color: var(--color--success);
-	border-color: var(--color--success);
+.small {
+	--n8n-badge--height: var(--height--sm);
+	--n8n-badge--padding: 0 var(--spacing--2xs);
 }
 
-.warning {
-	composes: badge;
-	border-radius: var(--radius);
-	color: var(--color--warning);
-	border-color: var(--color--warning);
+.medium {
+	--n8n-badge--height: var(--height--md);
+	--n8n-badge--padding: 0 var(--spacing--xs);
 }
 
-.danger {
-	composes: badge;
-	border-radius: var(--radius);
-	color: var(--color--danger);
-	border-color: var(--color--danger);
+.large {
+	--n8n-badge--height: var(--height--lg);
+	--n8n-badge--padding: 0 var(--spacing--sm);
+}
+
+.xlarge {
+	--n8n-badge--height: var(--height--xl);
+	--n8n-badge--padding: 0 var(--spacing--sm);
 }
 
 .primary {
-	composes: badge;
-	padding: var(--spacing--5xs) var(--spacing--3xs);
-	border-radius: var(--radius--xl);
-	color: var(--color--foreground--tint-2);
-	background-color: var(--color--primary);
-	border-color: var(--color--primary);
+	--n8n-badge--background: var(--background--brand);
+	--n8n-badge--text-color: var(--color--neutral-white);
 }
 
 .secondary {
-	composes: badge;
-	border-radius: var(--radius--xl);
-	color: var(--color--secondary);
-	background-color: var(--color--secondary--tint-1);
+	--n8n-badge--background: var(--color--purple-200);
+	--n8n-badge--text-color: var(--color--purple-900);
 }
 
-.tertiary {
-	composes: badge;
-	border-radius: var(--radius);
-	color: var(--color--text--tint-1);
-	border-color: var(--color--text--tint-1);
-	padding: 1px var(--spacing--5xs);
+.subtle {
+	--n8n-badge--background: var(--background--surface);
+	--n8n-badge--border-color: var(--border-color);
+	--n8n-badge--text-color: var(--text-color--subtle);
+	box-shadow: var(--shadow--xs);
+}
+
+.outline {
+	--n8n-badge--background: transparent;
+	--n8n-badge--border-color: var(--border-color);
+	--n8n-badge--text-color: var(--text-color);
+}
+
+.ghost {
+	--n8n-badge--background: transparent;
+	--n8n-badge--border-color: transparent;
+	--n8n-badge--text-color: var(--text-color);
+}
+
+.warning {
+	--n8n-badge--background: var(--color--yellow-200);
+	--n8n-badge--text-color: var(--color--yellow-900);
+}
+
+.danger {
+	--n8n-badge--background: var(--color--red-200);
+	--n8n-badge--text-color: var(--color--red-900);
+}
+
+.success {
+	--n8n-badge--background: var(--color--green-200);
+	--n8n-badge--text-color: var(--color--green-900);
+}
+
+.leadingIcon,
+.trailingIcon {
+	flex-shrink: 0;
+	opacity: 0.9;
+}
+.leadingIcon + .label {
+	margin-inline-end: var(--spacing--5xs);
+}
+
+.label + .trailingIcon {
+	margin-inline-start: var(--spacing--5xs);
 }
 </style>
