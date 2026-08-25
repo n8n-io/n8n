@@ -31,6 +31,14 @@ export class InstanceAiModule implements ModuleInterface {
 		await import('./instance-ai.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 
+		// Supply credit accounting to the agent builder through the agents-module
+		// seam, so the agents module never imports instance-ai.
+		const { BuilderCreditProviderRegistry } = await import(
+			'../agents/builder/builder-credit-provider.js'
+		);
+		const { InstanceAiCreditService } = await import('./instance-ai-credit.service.js');
+		Container.get(BuilderCreditProviderRegistry).register(Container.get(InstanceAiCreditService));
+
 		// Instantiating the relay registers its `user-deleted` listener, which
 		// cleans up Instance AI data owned by the deleted user.
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service.js');

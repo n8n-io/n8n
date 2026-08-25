@@ -5,7 +5,6 @@ import { mock } from 'vitest-mock-extended';
 
 import type { NodeCatalogService } from '@/node-catalog';
 
-import type { InstanceAiCreditService } from '../../../instance-ai/instance-ai-credit.service';
 import type { AgentsService } from '../../agents.service';
 import type { Agent as AgentEntity } from '../../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
@@ -13,6 +12,7 @@ import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
 import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository';
 import type { AgentsBuilderToolsService } from '../agents-builder-tools.service';
 import { AgentsBuilderService } from '../agents-builder.service';
+import type { BuilderCreditProviderRegistry } from '../builder-credit-provider';
 
 // The `Agent`/`Memory` SDK classes and observational-memory factories are
 // imported inside `agents-builder.service.ts` from `@n8n/agents`. Stubbing
@@ -173,7 +173,7 @@ function setup(
 	const nodeCatalogService = mock<NodeCatalogService>();
 	const agentsBuilderToolsService = mock<AgentsBuilderToolsService>();
 	const n8nMemory = mock<N8nMemory>();
-	const instanceAiCreditService = mock<InstanceAiCreditService>();
+	const builderCreditProvider = mock<BuilderCreditProviderRegistry>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
 	const agentCheckpointRepository = mock<AgentCheckpointRepository>();
 
@@ -199,7 +199,7 @@ function setup(
 		nodeCatalogService,
 		agentsBuilderToolsService,
 		n8nMemory,
-		instanceAiCreditService,
+		builderCreditProvider,
 		n8nCheckpointStorage,
 		agentCheckpointRepository,
 	);
@@ -214,7 +214,7 @@ function setup(
 		user,
 		credentialProvider,
 		agentsBuilderToolsService,
-		instanceAiCreditService,
+		builderCreditProvider,
 		n8nCheckpointStorage,
 	};
 }
@@ -485,7 +485,7 @@ describe('AgentsBuilderService session isolation', () => {
 	});
 
 	it('constructs observer/reflector callbacks on the builder model and claims usage under the host thread/run/target-agent dedupe key', async () => {
-		const { service, user, credentialProvider, instanceAiCreditService } = setup();
+		const { service, user, credentialProvider, builderCreditProvider } = setup();
 
 		await drain(
 			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
@@ -503,7 +503,7 @@ describe('AgentsBuilderService session isolation', () => {
 			reportId: 'report-1',
 		});
 
-		expect(instanceAiCreditService.claimRunUsage).toHaveBeenCalledWith(
+		expect(builderCreditProvider.claimRunUsage).toHaveBeenCalledWith(
 			user,
 			'instance-thread-1',
 			'run-1:agent-builder:agent-1:memory:observer:report-1',
