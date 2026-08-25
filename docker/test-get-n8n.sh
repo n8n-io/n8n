@@ -17,6 +17,8 @@ SCRIPT="$(cd "$(dirname "$0")" && pwd)/get-n8n.sh"
 # on master — the harness must test this branch's compose file.
 COMPOSE_SRC="$(cd "$(dirname "$0")" && pwd)/get-n8n-compose.yml"
 export N8N_COMPOSE_URL="$COMPOSE_SRC"
+# Failure-path tests must not prompt for (or send) a failure report.
+export DO_NOT_TRACK=1
 E2E=0
 [ "${1:-}" = "--e2e" ] && E2E=1
 
@@ -61,6 +63,8 @@ sh "$SCRIPT" --version | grep -q '^get-n8n.sh v' && pass "--version prints scrip
 	fail "--version prints script version"
 sh "$SCRIPT" --help | grep -q 'Usage:' && pass "--help prints usage" ||
 	fail "--help prints usage"
+sh "$SCRIPT" --help | grep -q 'DO_NOT_TRACK' && pass "--help documents DO_NOT_TRACK" ||
+	fail "--help documents DO_NOT_TRACK"
 check_not "unknown flag fails" sh "$SCRIPT" --bogus
 
 # fresh --no-start install
