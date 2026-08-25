@@ -365,7 +365,8 @@ function createSubGraph(nodeIds: string[], parent: dagre.graphlib.Graph): dagre.
 	parent
 		.nodes()
 		.filter((id) => nodeIdSet.has(id))
-		.forEach((id) => subGraph.setNode(id, parent.node(id)));
+		// Copy node labels — dagre.layout mutates them, and the parent graph may be laid out again.
+		.forEach((id) => subGraph.setNode(id, { ...parent.node(id) }));
 
 	parent
 		.edges()
@@ -413,7 +414,8 @@ function createAiSubGraph(parent: dagre.graphlib.Graph, nodeIds: string[]): dagr
 	parent
 		.nodes()
 		.filter((id) => nodeIdSet.has(id))
-		.forEach((id) => graph.setNode(id, parent.node(id)));
+		// Copy node labels — dagre.layout mutates them, and the parent graph may be laid out again.
+		.forEach((id) => graph.setNode(id, { ...parent.node(id) }));
 
 	// Reverse edges: in the parent graph, edges go config -> parent.
 	// For TB layout we want parent at top, so reverse to parent -> config.
