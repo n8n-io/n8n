@@ -9,12 +9,12 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
 import ToolIcon from './ToolIcon.vue';
 import {
 	hasToolConnection,
 	TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY,
+	TOOL_CONNECTION_CREDITS_LABEL_KEY,
 	type ToolConnectionItem,
 } from './types';
 import { resolveToolItemIcon } from './toolItemIcon';
@@ -33,16 +33,17 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const aiGatewayStore = useAiGatewayStore();
 const credentialAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
+const creditsLabelKey = inject(TOOL_CONNECTION_CREDITS_LABEL_KEY, null);
 
 /**
  * Gateway-backed rows share the credits pill copy with the node creator and
  * model selector: "Free credits" until a top-up or a depleted allowance flips
- * it to a blue "n8n credits" pill.
+ * it to a blue "n8n credits" pill. Defaults to "Free credits" when no consumer
+ * injects the store-backed key.
  */
 const creditsPill = computed(() => {
-	const key = aiGatewayStore.creditsLabelKey;
+	const key = creditsLabelKey?.value ?? 'generic.freeCredits';
 	return {
 		text: i18n.baseText(key),
 		type: key === 'generic.freeCredits' ? ('default' as const) : ('info' as const),

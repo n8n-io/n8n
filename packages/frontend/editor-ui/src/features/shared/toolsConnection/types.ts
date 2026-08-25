@@ -1,4 +1,4 @@
-import type { InjectionKey } from 'vue';
+import type { InjectionKey, Ref } from 'vue';
 
 export type ConnectionItemKind =
 	| 'node'
@@ -181,3 +181,15 @@ export interface ToolConnectionCredentialAdapter {
 export const TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY = Symbol(
 	'tool-connection-credential-adapter',
 ) as InjectionKey<ToolConnectionCredentialAdapter | null>;
+
+/**
+ * i18n key for the credits pill on gateway-backed rows: "Free credits" until an
+ * allowance is used up, then "n8n credits". Injected by the consumer (from
+ * `aiGateway.store`) so the shared module stays free of editor-ui stores; rows
+ * without `freeCredits` never read it.
+ */
+export type CreditsLabelKey = 'generic.freeCredits' | 'generic.n8nCredits';
+
+export const TOOL_CONNECTION_CREDITS_LABEL_KEY = Symbol(
+	'tool-connection-credits-label',
+) as InjectionKey<Ref<CreditsLabelKey> | null>;

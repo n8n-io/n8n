@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, provide, ref, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -41,6 +41,7 @@ import type { IWorkflowDb } from '@/Interface';
 import ToolsConnectionModal from '@/features/shared/toolsConnection/ToolsConnectionModal.vue';
 import {
 	hasToolConnection,
+	TOOL_CONNECTION_CREDITS_LABEL_KEY,
 	type NodeConnectionItem,
 	type ToolCategoryKey,
 	type ToolConnectionItem,
@@ -104,6 +105,12 @@ const uiStore = useUIStore();
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const aiGatewayStore = useAiGatewayStore();
+// The shared modal/rows read the credits pill copy through injection so they
+// stay free of editor-ui stores (see toolsConnection/types.ts).
+provide(
+	TOOL_CONNECTION_CREDITS_LABEL_KEY,
+	computed(() => aiGatewayStore.creditsLabelKey),
+);
 const router = useRouter();
 const toast = useToast();
 const workflowsStore = useWorkflowsStore();
