@@ -1,7 +1,18 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`components > N8nBadge > props > should render default theme correctly 1`] = `"<span class="n8n-badge default border"><n8n-text-stub bold="true" size="large" compact="true" tag="span"></n8n-text-stub></span>"`;
+exports[`components > N8nBadge > props > should render a button when clickable 1`] = `
+"<button type="button" class="badge default small clickable">
+  <div class="leadingIcon"></div><span class="n8n-text compact step-md bold label label" as="span">Clickable badge</span>
+  <div class="trailingIcon"></div>
+</button>"
+`;
 
-exports[`components > N8nBadge > props > should render secondary theme correctly 1`] = `"<span class="n8n-badge secondary border"><n8n-text-stub bold="false" size="medium" compact="true" tag="span"></n8n-text-stub></span>"`;
+exports[`components > N8nBadge > props > should render the selected variant and size 1`] = `
+"<span class="badge secondary medium"><div class="leadingIcon"></div><span class="n8n-text compact step-md bold label label" as="span">Secondary badge</span>
+<div class="trailingIcon"></div></span>"
+`;
 
-exports[`components > N8nBadge > props > should render with default values correctly 1`] = `"<span class="n8n-badge default border"><n8n-text-stub bold="false" size="small" compact="true" tag="span"></n8n-text-stub></span>"`;
+exports[`components > N8nBadge > props > should render with default values correctly 1`] = `
+"<span class="badge default small"><div class="leadingIcon"></div><span class="n8n-text compact step-md bold label label" as="span">Default badge</span>
+<div class="trailingIcon"></div></span>"
+`;
