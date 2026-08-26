@@ -10,26 +10,22 @@ import type { EngineV2PushSession } from '@/services/engine-v2-push-registry.ser
 import { EngineV2PushRegistry, EngineV2StepRun } from '@/services/engine-v2-push-registry.service';
 import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
 
-/** One step's identity on the push wire; the editor keys on the node name. */
+/** A lifecycle event scoped to one step. */
 type StepUpdate = Extract<LifecycleEvent, { stepId: string }>;
 
 /**
- * The engine reports that a step failed but not why: error detail stays off the
- * lifecycle event wire and is re-queried from the data plane instead, which the control
- * plane has no path for yet. Without an `error` the editor renders a failed node
- * as if it had succeeded, so stand one in.
+ * Placeholder error: no failure detail is available yet, and without an
+ * `error` the editor would show a failed step as successful.
  *
  * TODO(CAT-2878 follow-up): carry the real failure through and drop this.
  */
 const STEP_FAILURE_DESCRIPTION = 'Engine 2.0 does not report error detail yet.';
 
 /**
- * Relays the data plane's lifecycle events to the editor as push messages.
+ * Relays engine lifecycle events to the editor as push messages.
  *
- * A translation layer and nothing more: it maps `LifecycleEvent`s onto the push
- * messages the editor already handles for v1 runs, so no frontend code has to
- * know which engine produced an execution. Mirrors `hookFunctionsPush`, which is
- * where the v1 path does the same job from execution lifecycle hooks.
+ * Reuses the push messages v1 runs already send, so the frontend needs no
+ * engine-specific code.
  */
 @Service()
 export class EngineLifecycleEventPushRelay {
@@ -44,16 +40,13 @@ export class EngineLifecycleEventPushRelay {
 	relay(events: LifecycleEvent[]): void {
 		for (const update of events) {
 			const session = this.registry.get(update.executionId);
-			// No session: a production run, a run started before this process, or one
-			// already finished. Dropping is correct — the stream is a freshness
-			// signal, and the data plane stays the source of truth.
+			// No session means nothing is watching this run — safe to drop.
 			if (!session) continue;
 
 			try {
 				this.relayOne(update, session);
 			} catch (error) {
-				// One bad update must not cost the rest of the batch: the data plane
-				// does not retry, so whatever we drop here is gone for good.
+				// Isolate failures so one bad event doesn't drop the rest of the batch.
 				this.logger.error('Failed to relay engine lifecycle event to the editor', {
 					executionId: update.executionId,
 					type: update.type,
@@ -81,25 +74,20 @@ export class EngineLifecycleEventPushRelay {
 	}
 
 	/**
-	 * Emits the trigger's run.
+	 * Reports the trigger's run, since the engine never announces it as a step.
 	 *
-	 * No `executionStarted` message: the editor already built its execution
-	 * scaffold from the run response, and `executionStarted` would overwrite that
-	 * scaffold's run data — including reused and pinned data — with the empty set
-	 * this path has. The trigger is the one thing missing, because the engine
-	 * records it as already completed and so never announces it as a step.
+	 * Sends no `executionStarted`: it would overwrite the editor's existing
+	 * run data with an empty scaffold.
 	 */
 	private onExecutionStarted(executionId: string, at: string, session: EngineV2PushSession): void {
 		const { trigger } = session;
-		// Cleared before use, so a redelivered `execution:started` cannot emit the
-		// run twice and the (potentially large) pinned payload does not linger.
+		// Clear before use so a redelivery can't re-emit the run or hold onto
+		// the (possibly large) pinned data.
 		session.trigger = undefined;
-		// Without a trigger to start from we cannot name the node the outputs
-		// belong to, so there is nothing to report.
+		// No trigger, no node to report outputs for.
 		if (!trigger) return;
 
-		// Not tracked in `steps`: the trigger has no step id, and the cleared
-		// `session.trigger` above is already what stops a second report.
+		// The trigger has no step id, so it isn't tracked in `steps`.
 		const run = new EngineV2StepRun(session.nextExecutionIndex++, Date.parse(at));
 
 		this.sendNodeExecuteBefore(executionId, trigger.nodeName, run, session);
@@ -129,14 +117,13 @@ export class EngineLifecycleEventPushRelay {
 		const started = session.steps.get(update.stepId);
 		if (started?.settled) return;
 
-		// A lost `step:started` must not lose the outcome too. Allocating here still
-		// appends a run, which is what the editor needs.
+		// A missing `step:started` must not lose the outcome too.
 		const run = started ?? new EngineV2StepRun(session.nextExecutionIndex++, Date.parse(update.at));
 		run.settled = true;
 		session.steps.set(update.stepId, run);
 
 		this.sendNodeExecuteAfter(update.executionId, update.nodeName, run, session, {
-			// Both timestamps come off the same clock in the same process.
+			// Same clock, same process — the difference is safe to trust.
 			executionTime: Math.max(0, Date.parse(update.at) - run.startTime),
 			outputs,
 		});
@@ -153,8 +140,7 @@ export class EngineLifecycleEventPushRelay {
 			session.pushRef,
 		);
 
-		// Also what makes a redelivered terminal update a no-op: the next lookup
-		// finds no session.
+		// Releasing here makes a redelivered terminal event a no-op.
 		this.registry.release(executionId);
 	}
 
@@ -171,7 +157,7 @@ export class EngineLifecycleEventPushRelay {
 					executionId,
 					nodeName,
 					sequenceNumber: session.sequenceNumber++,
-					// The engine does not report v1 input lineage, so `source` is empty.
+					// No input lineage to report, so `source` is empty.
 					data: { startTime: run.startTime, executionIndex: run.executionIndex, source: [] },
 				},
 			},
@@ -187,8 +173,7 @@ export class EngineLifecycleEventPushRelay {
 		result: { executionTime: number; outputs: INodeExecutionData[][] | undefined },
 	): void {
 		const { executionTime, outputs } = result;
-		// Every engine output slot is a `main` slot: the graph's edges carry an
-		// output index and no connection type, so nothing else is representable.
+		// Every output slot is `main`: no other connection type exists here.
 		const data = outputs ? { main: outputs } : undefined;
 
 		const taskData: ITaskData = {
@@ -226,16 +211,13 @@ export class EngineLifecycleEventPushRelay {
 			session.pushRef,
 		);
 
-		// A failed step produced nothing, so there is no second message to send and
-		// the editor keeps the empty placeholder the message above implies.
+		// A failed step has no data, so there's no second message to send.
 		if (!data) return;
 
-		// TODO(CAT-2878 follow-up): the v1 path runs this through
-		// `ExecutionRedactionServiceProxy` before it leaves the server. Wiring that
-		// here needs a resolved user, which the v2 path does not carry yet.
+		// TODO(CAT-2878 follow-up): redact this before sending; needs a resolved
+		// user, which isn't available here yet.
 
-		// Sent as a binary frame for the same reason the v1 path does: the editor
-		// receives it as an ArrayBuffer and hands it to a worker without a copy.
+		// Binary avoids a copy: the editor hands it straight to a worker.
 		const asBinary = true;
 		this.push.send(
 			{

@@ -54,7 +54,7 @@ describe('EngineLifecycleEventPushRelay', () => {
 	let registry: EngineV2PushRegistry;
 	let relay: EngineLifecycleEventPushRelay;
 
-	/** The push messages sent, in order, ignoring the ref and binary flag. */
+	/** Sent push messages, in order. */
 	const sent = () => vi.mocked(push.send).mock.calls.map(([message]) => message);
 
 	const sentOfType = <T extends PushMessage['type']>(type: T) =>
@@ -95,9 +95,7 @@ describe('EngineLifecycleEventPushRelay', () => {
 	});
 
 	it('never sends executionStarted', () => {
-		// The editor already built its execution scaffold from the run response,
-		// and this path has no run data to put in the message — sending it would
-		// overwrite that scaffold's reused and pinned data with an empty set.
+		// Would overwrite the editor's existing run data with an empty scaffold.
 		register();
 
 		relay.relay([executionStarted, stepStarted, stepCompleted]);
@@ -284,14 +282,14 @@ describe('EngineLifecycleEventPushRelay', () => {
 
 			const [after] = sentOfType('nodeExecuteAfter');
 			expect(after.data.data.executionStatus).toBe('error');
-			// The editor renders a node red off `error`, not off the status alone.
+			// The editor keys failure display on `error`, not the status.
 			expect(after.data.data.error).toBeDefined();
 			expect(after.data.itemCountByConnectionType).toEqual({});
 			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(0);
 		});
 
 		it('sends an error that survives the wire', () => {
-			// A bare `Error` would serialize to `{}` — `message` is not enumerable.
+			// A plain `Error` would serialize to `{}`.
 			register();
 
 			relay.relay([stepStarted, stepFailed]);

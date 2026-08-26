@@ -91,7 +91,7 @@ describe('EngineControlPlaneServer', () => {
 		const response = await post({ events }, mintActionToken(authSecret, 'lifecycle-events:write'));
 
 		expect(response.status).toBe(204);
-		// Proves the batch survived auth, body parsing, and routing intact.
+		// Confirms the request reached the relay.
 		expect(pushRelay.relay).toHaveBeenCalledExactlyOnceWith(events);
 	});
 

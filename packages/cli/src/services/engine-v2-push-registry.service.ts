@@ -3,9 +3,8 @@ import { Service } from '@n8n/di';
 import type { INodeExecutionData } from 'n8n-workflow';
 
 /**
- * A step run the editor has been told about. Kept after the step settles rather
- * than deleted, so a redelivered update is ignored instead of appending a second
- * run under a fresh index.
+ * A step run reported to the editor. Kept after it settles so a redelivered
+ * event is ignored instead of appending a duplicate.
  */
 export class EngineV2StepRun {
 	/** Whether the step's outcome has been reported. */
@@ -18,7 +17,7 @@ export class EngineV2StepRun {
 	) {}
 }
 
-/** What relaying one execution's lifecycle events to the editor needs. */
+/** State needed to relay one execution's lifecycle events to the editor. */
 export class EngineV2PushSession {
 	/** Ordering counter for `nodeExecuteBefore`/`nodeExecuteAfter`; starts at 0. */
 	sequenceNumber = 0;
@@ -33,10 +32,8 @@ export class EngineV2PushSession {
 		readonly pushRef: string,
 		readonly workflowId: string,
 		/**
-		 * The trigger the run started from, and the outputs the dispatcher handed the
-		 * engine. The engine records the trigger as an already-completed step and so
-		 * never announces it, which would leave the editor showing an un-run trigger.
-		 * Cleared once emitted — pinned trigger data can be large.
+		 * The trigger's outputs, since the engine never announces it as a step.
+		 * Cleared once emitted — pinned data can be large.
 		 */
 		public trigger?: { nodeName: string; outputs: INodeExecutionData[][] },
 	) {}
@@ -48,10 +45,8 @@ const SESSION_TTL_MS = 60 * Time.minutes.toMilliseconds;
 /**
  * Correlates a data-plane execution id with the editor session that started it.
  *
- * The lifecycle event stream carries no way to name a session, so the push ref
- * is recorded here when the run is dispatched and read back when its events
- * arrive. Lives in the control plane rather than on the wire: which editor tab
- * is watching is not the engine's concern.
+ * Lifecycle events carry no session id, so the push ref is recorded here at
+ * dispatch and read back as events arrive.
  */
 @Service()
 export class EngineV2PushRegistry {
@@ -77,11 +72,9 @@ export class EngineV2PushRegistry {
 	}
 
 	/**
-	 * Lifecycle event delivery is at-most-once and there is no `cancelled` event, so a
-	 * session whose terminal event never arrives would live forever. Swept on
-	 * write rather than on a timer: nothing enters the map without a `register`,
-	 * so the map is bounded by the runs started inside one TTL window, and there
-	 * is no interval to unref or shut down.
+	 * No `cancelled` event exists, so a session whose terminal event never
+	 * arrives would live forever. Swept on write instead of on a timer, so
+	 * there's no interval to manage.
 	 */
 	private evictStale(): void {
 		const cutoff = Date.now() - SESSION_TTL_MS;

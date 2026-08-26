@@ -81,10 +81,8 @@ export class EngineV2Dispatcher {
 	}
 
 	/**
-	 * The lifecycle event stream has no way to name an editor session, so the
-	 * run's push ref is recorded against the id the data plane just assigned. In
-	 * place well before the first lifecycle event batch, which waits on a flush
-	 * timer and a second HTTP round trip.
+	 * Lifecycle events carry no session id, so the push ref is recorded here,
+	 * keyed by execution id, before any events can arrive.
 	 */
 	private registerPushSession(
 		executionId: string,
@@ -98,8 +96,7 @@ export class EngineV2Dispatcher {
 		this.pushRegistry.register(executionId, {
 			pushRef,
 			workflowId: workflowData.id,
-			// The engine never announces the trigger, so its outputs are kept here
-			// for the relay to report.
+			// The engine never announces the trigger, so save its outputs for the relay.
 			trigger: triggerToStartFrom && {
 				nodeName: triggerToStartFrom.name,
 				outputs: triggerMain,

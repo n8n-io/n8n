@@ -77,7 +77,7 @@ describe('EngineLifecycleEventController', () => {
 				BadRequestError,
 			);
 			expect(res.status).not.toHaveBeenCalled();
-			// The relay trusts what it is handed, so nothing unvalidated reaches it.
+			// Unvalidated input must never reach the relay.
 			expect(pushRelay.relay).not.toHaveBeenCalled();
 		});
 	});

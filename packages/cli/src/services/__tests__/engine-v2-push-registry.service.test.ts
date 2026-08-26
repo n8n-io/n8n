@@ -67,8 +67,7 @@ describe('EngineV2PushRegistry', () => {
 		});
 
 		it('drops a session whose terminal update never arrived', () => {
-			// Delivery is at-most-once and there is no `cancelled` update, so a
-			// session that is never released must not live forever.
+			// No `cancelled` event exists, so an unreleased session must expire.
 			vi.setSystemTime(new Date('2026-08-25T10:00:00.000Z'));
 			registry.register('stale', { pushRef: 'push-1', workflowId: 'wf-1' });
 
