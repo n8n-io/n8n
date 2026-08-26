@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.vue
+  s_d913985423bc94::t_495be7d89666cd 359
+  s_d913985423bc94::t_704999a4a8e5a2 360-364
+packages/cli/src/modules/source-control.ee/source-control-status.service.ee.ts
+  s_d913985423bc94::t_4941fe163edcb2 436-437
+  s_d913985423bc94::t_f37197b81deb85 438-441
+  s_d913985423bc94::t_6fee972c1e0b91 471
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.utils.ts
+  s_d913985423bc94::t_85218372c420ad 219-220,222-225
+  s_d913985423bc94::t_eb3b7842970f6c 218
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/sourceControl.utils.test.ts
+  s_d913985423bc94::t_b5716ca63b654b 172-193
+packages/@n8n/api-types/src/schemas/source-controlled-file.schema.ts
+  s_d913985423bc94::t_05525e7161ae86 59
+packages/frontend/editor-ui/src/features/integrations/sourceControl.ee/components/SourceControlPushModal.test.ts
+  s_d913985423bc94::t_5df657447cd9d6 1501,1503-1554
+  s_d913985423bc94::t_2386ef8b5e6090 1502
+packages/cli/src/modules/source-control.ee/__tests__/source-control-status.service.test.ts
+  s_d913985423bc94::t_e77ee1048364ac 1096
+  s_d913985423bc94::t_2b71656a67c66d 1044-1095,1097-1100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "494f50023a0c06a3d970835a803a5f8f4d67c571",
+  "prompts": {},
+  "sessions": {
+    "s_d913985423bc94": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2773033-996c-495b-90af-8db4adac66d5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
