@@ -13,6 +13,7 @@ import { DEFAULT_LIFECYCLE_OPTIONS, PASS_TIMED_OUT, pollLookaheadSeconds } from 
 import { DEFAULT_MATERIALIZER_OPTIONS } from '../materializer';
 import type { MaterializerTransaction, RunInTransaction } from '../materializer';
 import type { ExpiredLeaseRow } from '../reaper';
+import { ScheduledJobOwnerRegistry, type ReconciliationJobStore } from '../reconciliation';
 import { DEFAULT_RETENTION_OPTIONS } from '../retention';
 import type { ClaimedTask, ScheduledJob } from '../types';
 
@@ -1435,6 +1436,27 @@ describe('createScheduler metrics', () => {
 		await scheduler.prune();
 
 		expect(metrics.recordPruned).toHaveBeenCalledWith(5);
+	});
+
+	it('records the reconciliation outcome from the pass summary', async () => {
+		const metrics = mock<SchedulerMetrics>();
+		const jobStore = mock<ReconciliationJobStore>();
+		const owners = new ScheduledJobOwnerRegistry();
+		owners.register('workflow', { findExisting: async () => await Promise.resolve(new Set()) });
+		jobStore.findOwnerTypes.mockResolvedValue(['workflow']);
+		jobStore.findOwnerIds.mockResolvedValueOnce(['wf-gone']).mockResolvedValue([]);
+		jobStore.quarantineByOwnerIds.mockResolvedValue(2);
+		jobStore.deleteQuarantinedByOwnerIds.mockResolvedValue(1);
+		jobStore.findQuarantinedByOwnerIds.mockResolvedValue([]);
+		const { scheduler } = makeScheduler({
+			metrics,
+			reconciliation: { jobStore, owners },
+			now: async () => await Promise.resolve(new Date('2026-03-01T12:00:00.000Z')),
+		});
+
+		await scheduler.reconcile();
+
+		expect(metrics.recordReconciled).toHaveBeenCalledWith(2, 1, 0);
 	});
 
 	it('defaults to a safe no-op when no metrics port is supplied', async () => {

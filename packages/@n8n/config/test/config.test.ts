@@ -483,6 +483,12 @@ describe('GlobalConfig', () => {
 			maxAttempts: 5,
 			misfireGraceSeconds: 60,
 			durableCursorsEnabled: false,
+			ownerReconciliationEnabled: true,
+			ownerReconciliationIntervalSeconds: 900,
+			ownerReconciliationTimeoutSeconds: 300,
+			ownerReconciliationBatchSize: 500,
+			ownerQuarantineGraceSeconds: 86400,
+			ownerSettleSeconds: 300,
 		},
 		evaluation: {
 			collectionsEnabled: false,

@@ -67,6 +67,24 @@ export interface RecurringCronSchedule {
 
 export type Schedule = CronSchedule | IntervalSchedule | OneOffSchedule | RecurringCronSchedule;
 
+/**
+ * The stored form of a {@link Schedule}: the flat fields it is assembled from,
+ * plus the id used to name the job in a corruption error (see
+ * `resolveSchedule`). Any shape carrying these fields qualifies;
+ * `ScheduledJob` is one of them.
+ */
+export type StoredSchedule = Pick<
+	ScheduledJob,
+	| 'id'
+	| 'kind'
+	| 'cronExpression'
+	| 'timezone'
+	| 'intervalSeconds'
+	| 'fireAt'
+	| 'recurrenceUnit'
+	| 'recurrenceSize'
+>;
+
 export interface ScheduledJob {
 	id: number;
 	taskType: string;
