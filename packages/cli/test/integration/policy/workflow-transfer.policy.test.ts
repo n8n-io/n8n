@@ -206,9 +206,10 @@ describe('PUT /api/v1/workflows/:id/transfer', () => {
 
 		expect(response.statusCode).toBe(403);
 
-		// `serializePublicApiError` only whitelists `meta.issues`, so the violation list stays
-		// internal on this surface — the public API sees the summary message only.
-		expect(response.body).toEqual({ message: deniedMessage(targetProject.id) });
+		// Status and message only: on master `serializePublicApiError` whitelists `meta.issues`,
+		// so the violation list stays internal on this surface. IAM-1129 adds `violations` to
+		// that whitelist — tighten this to assert the list once that lands.
+		expect(response.body).toMatchObject({ message: deniedMessage(targetProject.id) });
 
 		await expectOwnedBy(workflow, sourceProject);
 	});
