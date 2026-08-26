@@ -366,5 +366,27 @@ describe('scheduled job owner reconciliation', () => {
 			expect(summary).toMatchObject({ ownersChecked: 0, quarantined: 0 });
 			expect(await reload(job.id)).toMatchObject({ enabled: true, orphanedAt: null });
 		});
+
+		it('leaves the queued runs of a job younger than the settle period alone, while quarantining its settled sibling', async () => {
+			registerTestResolver({
+				findExisting: async () => await Promise.resolve(new Set<string>()),
+			});
+			const owned = testOwned('subject-6');
+			const settled = await createJob(owned);
+			await settle(settled.id);
+			const settledRun = await seedDueTask(taskRepo, TASK_TYPE, settled.id);
+			// Written moments ago and already materialized: the job survives the
+			// settle bound, so withdrawing its occurrence would drop a run its clock
+			// has already moved past, and nothing would queue it again.
+			const fresh = await createJob(owned);
+			const freshRun = await seedDueTask(taskRepo, TASK_TYPE, fresh.id);
+
+			const summary = await runReconciliation();
+
+			expect(summary).toMatchObject({ quarantined: 1 });
+			expect(await taskRepo.findOneBy({ id: settledRun.id })).toBeNull();
+			expect(await reload(fresh.id)).toMatchObject({ enabled: true, orphanedAt: null });
+			expect(await taskRepo.findOneBy({ id: freshRun.id })).not.toBeNull();
+		});
 	});
 });

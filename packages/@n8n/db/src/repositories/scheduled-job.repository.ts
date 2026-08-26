@@ -349,20 +349,25 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 				.andWhere('"createdAt" <= :settledBefore', { settledBefore })
 				.execute();
 
-			await this.withdrawQueuedOccurrences(manager, ownerType, ownerIds);
+			await this.withdrawQueuedOccurrences(manager, ownerType, ownerIds, settledBefore);
 
 			return quarantined.affected ?? 0;
 		});
 	}
 
 	/**
-	 * Delete the pending occurrences of every job these owners hold, selected by
-	 * owner in one statement so no job id round-trip is needed.
+	 * Delete the pending occurrences of the settled jobs these owners hold,
+	 * selected by owner in one statement so no job id round-trip is needed.
+	 *
+	 * `settledBefore` bounds this exactly as it bounds the quarantine itself:
+	 * withdrawing the occurrences of a job the bound spared would drop a run it
+	 * has already materialized past, and nothing would queue it again.
 	 */
 	private async withdrawQueuedOccurrences(
 		manager: EntityManager,
 		ownerType: string,
 		ownerIds: string[],
+		settledBefore: Date,
 	): Promise<void> {
 		// A correlated subquery rather than a job-id round-trip, so the two writes
 		// see the same set of jobs. `tablePath` comes from the entity metadata, never
@@ -374,8 +379,8 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			.from(ScheduledTask)
 			.where('"status" = :status', { status: ScheduledTaskStatus.Pending })
 			.andWhere(
-				`"jobId" IN (SELECT "id" FROM ${jobTable} WHERE "ownerType" = :ownerType AND "ownerId" IN (:...ownerIds))`,
-				{ ownerType, ownerIds },
+				`"jobId" IN (SELECT "id" FROM ${jobTable} WHERE "ownerType" = :ownerType AND "ownerId" IN (:...ownerIds) AND "createdAt" <= :settledBefore)`,
+				{ ownerType, ownerIds, settledBefore },
 			)
 			.execute();
 	}
