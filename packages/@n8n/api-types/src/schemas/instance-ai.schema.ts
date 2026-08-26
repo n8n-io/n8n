@@ -1291,6 +1291,8 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `evals` — Instance AI evaluation harness / offline eval runners
  * - `playwright` — Playwright E2E helpers that create threads via the REST API
+ * - `workflow_list_auto` — treatment redirect: a workflow list card opened in the assistant by default
+ * - `workflow_list_button` — deliberate "Edit with AI Assistant" button on a workflow list card
  */
 export const INSTANCE_AI_THREAD_SOURCES = [
 	'website-template',
@@ -1303,6 +1305,8 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_builder_page',
 	'agent_preview',
 	'assistant_page',
+	'workflow_list_auto',
+	'workflow_list_button',
 	'evals',
 	'playwright',
 ] as const;
