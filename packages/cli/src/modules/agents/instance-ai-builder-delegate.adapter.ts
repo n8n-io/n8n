@@ -1,11 +1,13 @@
 import type { CredentialProvider, StreamChunk } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { instanceAiBuilderThreadPrefix } from '@n8n/instance-ai';
-import type {
-	BuilderDelegateSession,
-	BuilderTurnStream,
-	InstanceAiBuilderDelegate,
+import {
+	instanceAiBuilderThreadPrefix,
+	type BuilderDelegateSession,
+	type BuilderRequiredArtifact,
+	type BuilderTurnStream,
+	type InstanceAiBuilderDelegate,
+	type InstanceAiCredentialService,
 } from '@n8n/instance-ai';
 import { type Scope } from '@n8n/permissions';
 import { Like } from '@n8n/typeorm';
@@ -32,7 +34,9 @@ Preview links work in this chat. Include a markdown Preview link after a success
 
 You can publish and unpublish the target agent with \`publish_agent\` and \`unpublish_agent\`. Never tell the user to open the agent editor and click Publish.
 
-The Instance AI orchestrator can create workflows and data tables — never ask the user to create them manually. State missing prerequisites in your reply; the orchestrator will provision them and call you again.`;
+The Instance AI orchestrator can create workflows and data tables — never ask the user to create them manually. For each missing artifact, call \`report_required_artifact\` with its concrete requirements before your final reply; the orchestrator will provision them and call you again when the Agent needs the result.
+
+Some requested chat platforms do not have a native Agent integration. In that case, finish the Agent without adding same-platform messaging nodes as Agent tools, then report an \`agent-entrypoint\` workflow. It must use the platform trigger, pass the incoming message and a stable conversation identifier into Message an Agent with a custom session key, then send the Agent's text response back through the platform. This workflow invokes the Agent and must never be attached to the Agent as a workflow tool.`;
 
 function isTextDeltaChunk(
 	chunk: StreamChunk,
@@ -43,10 +47,17 @@ function isTextDeltaChunk(
 /** Wrap a builder stream generator as a `BuilderTurnStream`: forwards every chunk
  *  as-is, while resolving `text` to the concatenated text-delta content once the
  *  stream ends (mirrors the SDK's own `fullStream` + `text` shape). */
-function toBuilderTurnStream(chunks: AsyncGenerator<StreamChunk>): BuilderTurnStream {
+function toBuilderTurnStream(
+	chunks: AsyncGenerator<StreamChunk>,
+	requiredArtifacts: BuilderRequiredArtifact[],
+): BuilderTurnStream {
 	let resolveText: (text: string) => void;
 	const text = new Promise<string>((resolve) => {
 		resolveText = resolve;
+	});
+	let resolveRequiredArtifacts: (artifacts: BuilderRequiredArtifact[]) => void;
+	const requiredArtifactsPromise = new Promise<BuilderRequiredArtifact[]>((resolve) => {
+		resolveRequiredArtifacts = resolve;
 	});
 	let acc = '';
 
@@ -58,10 +69,11 @@ function toBuilderTurnStream(chunks: AsyncGenerator<StreamChunk>): BuilderTurnSt
 			}
 		} finally {
 			resolveText(acc);
+			resolveRequiredArtifacts([...requiredArtifacts]);
 		}
 	}
 
-	return { fullStream: pump(), text };
+	return { fullStream: pump(), text, requiredArtifacts: requiredArtifactsPromise };
 }
 
 /**
@@ -87,7 +99,10 @@ export class InstanceAiBuilderDelegateAdapterService {
 	) {}
 
 	/** Builder session options for the sub-agent surface: appends the sub-agent prompt rules. */
-	private buildSubAgentSession(session: BuilderDelegateSession): InstanceAiBuilderSessionOptions {
+	private buildSubAgentSession(
+		session: BuilderDelegateSession,
+		onRequiredArtifact: (artifact: BuilderRequiredArtifact) => void,
+	): InstanceAiBuilderSessionOptions {
 		return {
 			threadId: session.threadId,
 			hostThreadId: session.hostThreadId,
@@ -98,6 +113,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 			...(session.memoryTaskObserver ? { memoryTaskObserver: session.memoryTaskObserver } : {}),
 			abortSignal: session.abortSignal,
 			...(session.mcpTools ? { mcpTools: session.mcpTools } : {}),
+			onRequiredArtifact,
 		};
 	}
 
@@ -105,6 +121,7 @@ export class InstanceAiBuilderDelegateAdapterService {
 		user: User,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 	): InstanceAiBuilderDelegate {
 		// Mirrors the `@ProjectScope('agent:*')` guards on the agent-builder REST
 		// routes. The delegate calls the builder service directly, bypassing the
@@ -128,20 +145,24 @@ export class InstanceAiBuilderDelegateAdapterService {
 
 			streamBuild: async (agentId, message, session) => {
 				await assertProjectScope('agent:update');
+				const requiredArtifacts: BuilderRequiredArtifact[] = [];
 				return toBuilderTurnStream(
 					this.agentsBuilderService.buildAgent(
 						agentId,
 						projectId,
 						message,
 						credentialProvider,
+						credentialService,
 						user,
-						this.buildSubAgentSession(session),
+						this.buildSubAgentSession(session, (artifact) => requiredArtifacts.push(artifact)),
 					),
+					requiredArtifacts,
 				);
 			},
 
 			resumeBuild: async (agentId, resume, session) => {
 				await assertProjectScope('agent:update');
+				const requiredArtifacts: BuilderRequiredArtifact[] = [];
 				return toBuilderTurnStream(
 					this.agentsBuilderService.resumeBuild(
 						agentId,
@@ -150,9 +171,11 @@ export class InstanceAiBuilderDelegateAdapterService {
 						resume.toolCallId,
 						resume.resumeData,
 						credentialProvider,
+						credentialService,
 						user,
-						this.buildSubAgentSession(session),
+						this.buildSubAgentSession(session, (artifact) => requiredArtifacts.push(artifact)),
 					),
+					requiredArtifacts,
 				);
 			},
 

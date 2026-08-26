@@ -8,8 +8,8 @@ export function getAll(): CommandBarEntry[] {
 }
 
 function notifyListeners(): void {
-	const snapshot = getAll();
-	listeners.forEach((listener) => listener(snapshot));
+	// One array per listener: `sort`, `reverse` and `splice` mutate in place.
+	listeners.forEach((listener) => listener(getAll()));
 }
 
 export function register(command: CommandBarEntry): void {

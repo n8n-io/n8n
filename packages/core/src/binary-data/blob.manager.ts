@@ -10,7 +10,14 @@ import type { BinaryData } from './types';
 import { FileLocation } from './utils';
 import { FileNotFoundError } from '../errors/file-not-found.error';
 
+/** Captures `workflowId` (group 1) and `executionId` (group 2) from an execution fileId. */
 const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\/binary_data\//;
+
+/** Execution id encoded in a path-format fileId, or null for non-execution paths. */
+export function getExecutionIdFromFileId(fileId: string): string | null {
+	const match = fileId.match(EXECUTION_PATH_MATCHER);
+	return match ? match[2] : null;
+}
 
 /**
  * Stores binary data as blobs via a {@link ByteStore}.

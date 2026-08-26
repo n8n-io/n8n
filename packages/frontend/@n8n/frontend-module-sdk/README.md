@@ -14,3 +14,12 @@ only public entry point.
 ```ts
 import { modalRegistry, registerResource, type FrontendModuleDescription } from '@n8n/frontend-module-sdk';
 ```
+
+## Push handlers
+
+A module owns a push message type when it declares it in `pushHandlers`. The
+shell dispatches these at app scope, so a handler runs in every layout. The shell
+skips its own built-in handler for a type a module owns.
+
+**Contract:** a handler must not depend on the built-in handling of the same
+event. The two run on separate listeners, so their order is not defined.

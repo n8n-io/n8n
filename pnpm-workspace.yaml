@@ -12,6 +12,10 @@ hoistPattern:
   - '*'
   - '!typescript'
 allowUnusedPatches: true
+# The docker build trims frontend manifests and deploys with --prod before later
+# scripts run; pnpm 11's pre-run install would reinstall production-only and prune
+# the devDependencies those scripts import.
+verifyDepsBeforeRun: false
 
 pmOnFail: warn
 fund: false
@@ -30,6 +34,8 @@ minimumReleaseAgeExclude:
   - '@ai-sdk/anthropic'
   # Security patch (Aikido) newer than the minimumReleaseAge window; allow it in.
   - '@xmldom/xmldom'
+  - '@ai-sdk/provider-utils@5.0.30'
+  - '@ai-sdk/provider@4.0.8'
 
 packages:
   - packages/*
@@ -42,6 +48,7 @@ packages:
   - packages/testing/**
 
 catalog:
+  '@ai-sdk/alibaba': ^2.0.32
   '@ai-sdk/amazon-bedrock': ^5.0.31
   '@ai-sdk/anthropic': ^4.0.32
   '@ai-sdk/azure': ^4.0.21
@@ -51,7 +58,9 @@ catalog:
   '@ai-sdk/google': ^4.0.24
   '@ai-sdk/google-vertex': ^5.0.47
   '@ai-sdk/groq': ^4.0.13
+  '@ai-sdk/minimax': ^3.0.15
   '@ai-sdk/mistral': ^4.0.14
+  '@ai-sdk/moonshotai': ^3.0.35
   '@ai-sdk/openai': ^4.0.20
   '@ai-sdk/openai-compatible': ^3.0.14
   '@ai-sdk/otel': ^1.0.66
@@ -80,7 +89,7 @@ catalog:
   '@codemirror/state': 6.5.3
   '@codemirror/view': 6.39.8
   '@confluentinc/kafka-javascript': 1.9.1
-  '@daytona/sdk': 0.194.0
+  '@daytona/sdk': 0.205.1
   '@e965/xlsx': 0.20.3
   '@iconify-json/lucide': ^1.2.112
   '@iconify-json/mdi': ^1.1.63
@@ -419,9 +428,9 @@ overrides:
   '@vue/shared@3.5.26': 3.5.40
   '@opentelemetry/exporter-prometheus@<=0.217.0': 0.217.0
   '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
-  '@daytona/sdk@0.194.0>@aws-sdk/client-s3': 3.808.0
-  '@daytona/sdk@0.194.0>@aws-sdk/lib-storage': 3.808.0
-  '@daytona/sdk@0.194.0>@opentelemetry/sdk-trace-base': 2.7.1
+  '@daytona/sdk@0.205.1>@aws-sdk/client-s3': 3.808.0
+  '@daytona/sdk@0.205.1>@aws-sdk/lib-storage': 3.808.0
+  '@daytona/sdk@0.205.1>@opentelemetry/sdk-trace-base': 2.7.1
   langsmith: 0.6.0
   hono: 4.12.34
   '@tiptap/core': 'catalog:'
@@ -459,7 +468,6 @@ patchedDependencies:
   minifaker: patches/minifaker.patch
   z-vue-scan: patches/z-vue-scan.patch
   '@lezer/highlight': patches/@lezer__highlight.patch
-  v-code-diff: patches/v-code-diff.patch
   vuedraggable@4.1.0: patches/vuedraggable@4.1.0.patch
   assert@2.1.0: patches/assert@2.1.0.patch
   reka-ui@2.5.0: patches/reka-ui@2.5.0.patch
@@ -473,6 +481,7 @@ allowBuilds:
   '@confluentinc/kafka-javascript': true
   '@jitsi/robotjs': false
   '@parcel/watcher': false
+  '@scarf/scarf': false
   '@sentry-internal/node-cpu-profiler': false
   '@sentry-internal/node-native-stacktrace': false
   '@sentry/cli': false
