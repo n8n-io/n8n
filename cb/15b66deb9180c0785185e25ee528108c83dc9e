@@ -1,0 +1,19 @@
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  ai_agent 113
+packages/cli/test/integration/scheduling/scheduled-job-owner-teardown.test.ts
+  ai_agent 1-189
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  ai_agent 112,384,1143,1682,1804,2025,2191,2350,2450
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  ai_agent 18,72,279-288
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  ai_agent 20,36,48,167,224-234
+packages/cli/src/workflows/workflow.service.ts
+  ai_agent 62,106,1339-1344
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cb15b66deb9180c0785185e25ee528108c83dc9e",
+  "prompts": {}
+}
