@@ -1,5 +1,5 @@
 import type { Folder, User } from '@n8n/db';
-import { FolderRepository, idChunks } from '@n8n/db';
+import { chunkIds, FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import type { FindOptionsWhere } from '@n8n/typeorm';
@@ -72,7 +72,7 @@ export class FolderFinderService {
 		const accessWhere = await this.buildFolderReadWhere(user, scopes);
 
 		const folders = new Map<string, Folder>();
-		for (const chunk of idChunks(folderIds)) {
+		for (const chunk of chunkIds(folderIds)) {
 			const found = await this.folderRepository.find({
 				where: { id: In(chunk), ...accessWhere },
 			});

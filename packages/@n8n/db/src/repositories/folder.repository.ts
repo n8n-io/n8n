@@ -5,7 +5,7 @@ import { PROJECT_ROOT } from 'n8n-workflow';
 
 import { Folder, FolderTagMapping, TagEntity } from '../entities';
 import type { FolderWithWorkflowAndSubFolderCountAndPath, ListQuery } from '../entities/types-db';
-import { idChunks } from '../utils/bind-parameter-chunks';
+import { chunkIds } from '../utils/chunk-ids';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 
 @Service()
@@ -17,7 +17,7 @@ export class FolderRepository extends Repository<Folder> {
 	async findExistingIds(folderIds: string[]): Promise<Set<string>> {
 		const ids = new Set<string>();
 
-		for (const chunk of idChunks(folderIds)) {
+		for (const chunk of chunkIds(folderIds)) {
 			const found = await this.find({ select: { id: true }, where: { id: In(chunk) } });
 			for (const { id } of found) ids.add(id);
 		}
@@ -28,7 +28,7 @@ export class FolderRepository extends Repository<Folder> {
 	async findManyByIds(folderIds: string[]): Promise<Folder[]> {
 		const folders = new Map<string, Folder>();
 
-		for (const chunk of idChunks(folderIds)) {
+		for (const chunk of chunkIds(folderIds)) {
 			const found = await this.find({
 				where: { id: In(chunk) },
 				relations: { homeProject: true },
@@ -421,7 +421,7 @@ export class FolderRepository extends Repository<Folder> {
 		// query and the ids are merged — a folder reachable from two chunks lands once.
 		const ids = new Set<string>();
 
-		for (const chunk of idChunks(parentFolderIds)) {
+		for (const chunk of chunkIds(parentFolderIds)) {
 			// Base case: the direct children of any requested parent.
 			const baseQuery = this.createQueryBuilder('f')
 				.select('f.id', 'id')
