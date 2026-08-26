@@ -90,8 +90,6 @@ describe('baseline', () => {
 		it('round-trips baseline to disk', () => {
 			const baseline: BaselineFile = {
 				version: 1,
-				generated: '2024-01-01T00:00:00Z',
-				totalViolations: 2,
 				violations: {
 					'pages/TestPage.ts': [
 						{ rule: 'dead-code', line: 10, message: 'Unused method', hash: 'abc123' },
@@ -117,8 +115,6 @@ describe('baseline', () => {
 	describe('filterNewViolations', () => {
 		const baseline: BaselineFile = {
 			version: 1,
-			generated: '2024-01-01T00:00:00Z',
-			totalViolations: 1,
 			violations: {
 				'pages/TestPage.ts': [
 					{

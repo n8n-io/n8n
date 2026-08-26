@@ -349,8 +349,6 @@ describe('TcrExecutor', () => {
 			// Create and commit a baseline file first
 			const baseline: BaselineFile = {
 				version: 1,
-				generated: new Date().toISOString(),
-				totalViolations: 0,
 				violations: {},
 			};
 			saveBaseline(baseline, tempDir);
@@ -376,8 +374,6 @@ describe('TcrExecutor', () => {
 			// Create and commit a baseline file
 			const baseline: BaselineFile = {
 				version: 1,
-				generated: new Date().toISOString(),
-				totalViolations: 0,
 				violations: {},
 			};
 			saveBaseline(baseline, tempDir);
@@ -407,8 +403,6 @@ describe('TcrExecutor', () => {
 			// Create baseline with this violation
 			const baseline: BaselineFile = {
 				version: 1,
-				generated: new Date().toISOString(),
-				totalViolations: 1,
 				violations: {
 					'pages/PageA.ts': [
 						{

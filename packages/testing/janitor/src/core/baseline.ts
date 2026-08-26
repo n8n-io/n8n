@@ -53,5 +53,5 @@ export function filterReportByBaseline(
 
 export function formatBaselineInfo(baseline: BaselineFile): string {
 	const fileCount = Object.keys(baseline.violations).length;
-	return `Baseline loaded (${baseline.totalViolations} known violations from ${baseline.generated})\n  Files with violations: ${fileCount}`;
+	return `Baseline loaded (${baseline.totalViolations} known violations)\n  Files with violations: ${fileCount}`;
 }
