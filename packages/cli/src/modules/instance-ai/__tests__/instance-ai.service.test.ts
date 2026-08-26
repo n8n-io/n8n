@@ -916,6 +916,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				abortSignal: AbortSignal,
 			) => Promise<{
 				orchestrationContext: {
+					outputRedaction?: unknown;
 					workspace?: unknown;
 					runtimeSkills?: {
 						registry: { skillsHash: string; skills: Array<{ id: string }> };
@@ -1058,6 +1059,10 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			new AbortController().signal,
 		);
 
+		// OutputRedactor treats an OMITTED policy as ENABLED (`options !== false`),
+		// so this must stay an explicit false or every stream is scanned and the
+		// durable log stores redacted text instead of raw (INS-837).
+		expect(environment.orchestrationContext.outputRedaction).toBe(false);
 		expect(createLazyRuntimeWorkspace).toHaveBeenCalledTimes(2);
 		expect(createLazyRuntimeWorkspace).toHaveBeenNthCalledWith(
 			2,
