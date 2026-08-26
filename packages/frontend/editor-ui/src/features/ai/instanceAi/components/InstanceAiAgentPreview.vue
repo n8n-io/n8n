@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import AgentBuilderView from '@/features/agents/views/AgentBuilderView.vue';
 import type { AgentResource } from '@/features/agents/types';
@@ -39,6 +39,17 @@ const emit = defineEmits<{
 const thread = useThread();
 const instanceAiStore = useInstanceAiStore();
 const rootStore = useRootStore();
+
+/**
+ * Props of an unmounted instance keep their last values, so a target comparison
+ * alone cannot tell "still showing this artifact" from "torn down while the
+ * request was in flight". Both must be false before a response touches shared
+ * thread state.
+ */
+let mounted = true;
+onBeforeUnmount(() => {
+	mounted = false;
+});
 
 const isAgentBuilding = computed(() => {
 	for (const message of thread.messages) {
@@ -85,10 +96,10 @@ async function persistAgent(name: string): Promise<AgentResource> {
 		{ ...target, name },
 	);
 	// Authoritative: the server dropped the pending key, which a merge would keep.
-	// Skipped once the preview has moved on, so a slow response for the previous
-	// artifact cannot restore its binding over the current one — the server write
-	// already landed, and the next thread load picks it up.
-	if (props.projectId === target.projectId && props.agentId === target.agentId) {
+	// Skipped once this preview has been torn down or moved on, so a slow response
+	// for the previous artifact cannot restore its binding over the current one —
+	// the server write already landed, and the next thread load picks it up.
+	if (mounted && props.projectId === target.projectId && props.agentId === target.agentId) {
 		instanceAiStore.setThreadMetadata(thread.id, updatedThread.metadata);
 	}
 	return agent;

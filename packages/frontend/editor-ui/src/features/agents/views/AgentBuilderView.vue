@@ -799,13 +799,16 @@ const unboundExistingAgent = ref<AgentResource | null>(null);
  */
 async function adoptExistingPendingRow(existing: AgentResource): Promise<void> {
 	if (!props.artifactPersistAgent) return;
+	// `unboundExistingAgent` tracks one target, so a bind that settles after the
+	// user moved on must not clear (or claim) the current target's retry state.
+	const ownsRetryState = () => existing.id === agentId.value;
 	try {
 		await props.artifactPersistAgent(existing.name);
-		unboundExistingAgent.value = null;
+		if (ownsRetryState()) unboundExistingAgent.value = null;
 	} catch (error) {
 		// Queued rather than surfaced: the artifact already shows the persisted
 		// agent, so the only casualty is the thread binding.
-		unboundExistingAgent.value = existing;
+		if (ownsRetryState()) unboundExistingAgent.value = existing;
 		console.warn('Failed to bind an existing agent to its artifact', error);
 	}
 }
@@ -818,6 +821,10 @@ async function retryPendingBind(): Promise<void> {
 }
 
 async function ensureAgentPersisted(): Promise<void> {
+	// Every mutating path funnels through here, so this is where a binding that
+	// failed after the hydration probe gets its retry — a skill- or MCP-only edit
+	// must not leave the artifact unbound.
+	await retryPendingBind();
 	if (!isUnsaved.value) return;
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;
@@ -860,7 +867,6 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 	// the lock engaged must not persist its now-stale full config over it.
 	if (props.artifactEditingLocked) return 'skipped';
 	await ensureAgentPersisted();
-	await retryPendingBind();
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
 	// The write landed regardless of staleness below — tell other surfaces
 	// (e.g. canvas agent cards invalidate their capability-summary cache).

@@ -2675,6 +2675,32 @@ describe('AgentBuilderView — three-column shell', () => {
 			expect(artifactPersistAgent).toHaveBeenCalledTimes(2);
 		});
 
+		// The retry lives in `ensureAgentPersisted` — the funnel every mutating path
+		// awaits — so a skill-only or MCP-only edit retries it too, not just a config
+		// save.
+		it('retries a failed binding from the shared persistence funnel', async () => {
+			const persisted = makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP', name: 'Support Triage' });
+			getAgentMock.mockReset();
+			getAgentMock.mockResolvedValue(persisted);
+			const artifactPersistAgent = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('binding failed'))
+				.mockResolvedValue(persisted);
+			const wrapper = await renderView({
+				props: { ...pendingProps, artifactPersistAgent },
+			});
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+			await vi.waitFor(() => expect(artifactPersistAgent).toHaveBeenCalledTimes(1));
+
+			const ensureAgentPersisted = editor.props('ensureAgentPersisted') as () => Promise<void>;
+			await ensureAgentPersisted();
+
+			expect(artifactPersistAgent).toHaveBeenCalledTimes(2);
+			// A satisfied binding is not retried again.
+			await ensureAgentPersisted();
+			expect(artifactPersistAgent).toHaveBeenCalledTimes(2);
+		});
+
 		it('creates the pending agent once and refreshes validation after the first save', async () => {
 			let configTarget: string | undefined;
 			repointConfigMock.mockImplementation((projectId: string, agentId: string) => {
