@@ -18,6 +18,14 @@ export function createStoreLoopReader(
 	loop: WorkflowLoop,
 	terminalIterations: Map<string, number>,
 ): LoopReader {
+	// TODO(CAT-3982): same-slot convergence gets a defined meaning. We should
+	// have rejected this graph at validation time.
+	if (loop.entryEdges.length > 1 || loop.backEdges.length > 1) {
+		throw new UnexpectedError(
+			`batch node ${loop.batchNodeId} has ${loop.entryEdges.length} entry edges and ${loop.backEdges.length} back-edges; validated loops have at most one of each`,
+		);
+	}
+
 	const [entryEdge] = loop.entryEdges;
 	const [backEdge] = loop.backEdges;
 
