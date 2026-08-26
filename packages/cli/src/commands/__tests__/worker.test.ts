@@ -1,12 +1,15 @@
 import type { Logger } from '@n8n/backend-common';
+import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
 import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'vitest-mock-extended';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import http from 'node:http';
+import https from 'node:https';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
@@ -71,6 +74,41 @@ describe('Worker', () => {
 			await new Worker().initOrchestration();
 
 			expect(initSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('installOutboundProxyAgents', () => {
+		const workerWithOutboundProxyMode = (mode: 'all' | 'main-only') => {
+			const worker = new Worker();
+			// @ts-expect-error - Accessing protected property for testing
+			worker.globalConfig = { outboundProxy: { mode } };
+			return worker;
+		};
+
+		afterEach(() => {
+			uninstallGlobalProxyAgent();
+			vi.unstubAllEnvs();
+		});
+
+		it('should install env-proxy global agents in `all` mode', () => {
+			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
+
+			// @ts-expect-error - Accessing protected method for testing
+			workerWithOutboundProxyMode('all').installOutboundProxyAgents();
+
+			expect(http.globalAgent.constructor.name).toBe('EnvProxyHttpAgent');
+			expect(https.globalAgent.constructor.name).toBe('EnvProxyHttpsAgent');
+		});
+
+		it('should keep plain global agents in `main-only` mode, as workers are not the main server', () => {
+			uninstallGlobalProxyAgent();
+			vi.stubEnv('HTTPS_PROXY', 'http://proxy.host.invalid:3128');
+
+			// @ts-expect-error - Accessing protected method for testing
+			workerWithOutboundProxyMode('main-only').installOutboundProxyAgents();
+
+			expect(http.globalAgent.constructor.name).toBe('Agent');
+			expect(https.globalAgent.constructor.name).toBe('Agent');
 		});
 	});
 
