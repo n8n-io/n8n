@@ -167,6 +167,7 @@ const evalTestCaseObjectSchema = z
 						}),
 					name: z.string().min(1).optional(),
 					valid: z.boolean().optional(),
+					blank: z.boolean().optional(),
 				}),
 			)
 			.optional(),

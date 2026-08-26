@@ -216,6 +216,11 @@ export interface TestCaseCredential {
 	 *  a credential set up on a card mid-conversation (UserProxyLlm), which always
 	 *  passes. */
 	valid?: boolean;
+	/** Defaults to false. true models a credential the user saved without filling
+	 *  anything in — seeded with no field values, and kept off the connection-test
+	 *  bypass so nothing resolves it as working. The shape behind a re-offered
+	 *  empty generic-auth credential. */
+	blank?: boolean;
 }
 
 export interface WorkflowTestCase {

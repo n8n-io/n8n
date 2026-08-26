@@ -3,6 +3,7 @@
 // network call so the disk→API key-renaming contract is unit-testable without a server.
 
 import type { CaseSeed, EvalTestCaseInput } from '../harness/schema';
+import type { TestCaseCredential } from '../types';
 
 /** One scenario in the create-case payload (`executionScenarios` renamed to `scenarios`). */
 export interface LangTracerScenario {
@@ -37,7 +38,9 @@ export interface LangTracerCreateCaseBody {
 	outcomeExpectations?: string[];
 	datasets?: string[];
 	messageBudget?: number;
-	credentials?: Array<{ type: string; name?: string }>;
+	/** Forwarded verbatim, so the declared shape has to carry every authored
+	 *  field — an understated type silently drops `valid`/`blank` from review. */
+	credentials?: TestCaseCredential[];
 	/** Inline seed, forwarded verbatim — lang-tracer stores it at `metadata.seed`.
 	 *  Only the authored arm: a replay seed is derived from a source thread by
 	 *  promote/scrub over there, so pushing one would fabricate provenance. */
