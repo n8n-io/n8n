@@ -91,6 +91,7 @@ describe('createFrontend', () => {
 				'tsconfig.json',
 				'vite.config.ts',
 				'eslint.config.mjs',
+				'stylelint.config.mjs',
 				'biome.jsonc',
 				'README.md',
 				'src/index.ts',
@@ -98,6 +99,7 @@ describe('createFrontend', () => {
 				`src/${NAME}.store.ts`,
 				`src/${NAME}.store.test.ts`,
 				'src/__tests__/setup.ts',
+				'src/__tests__/design-system-icons.test.ts',
 			];
 
 			for (const file of written) {
@@ -113,6 +115,48 @@ describe('createFrontend', () => {
 			expect(readFileSync(join(packageDir, 'src/index.ts'), 'utf8')).toContain('MyFeatureModule');
 			expect(readFileSync(join(packageDir, `src/${NAME}.store.ts`), 'utf8')).toContain(
 				"defineStore('myFeature'",
+			);
+		});
+
+		it('wires the plugins a design-system consumer needs, and declares them', () => {
+			// design-system is consumed from source, so its `~icons/lucide/*` virtual modules and its
+			// `custom/*.svg` components are this package's problem. Without `svgLoader` an `.svg`
+			// import is a data-URI string, which Vue renders as a tag name. The generated icon test
+			// catches a missing plugin, and only if the config and the manifest agree.
+			scaffold(root);
+			const packageDir = join(root, 'packages', 'modules', NAME, 'frontend');
+			const viteConfig = readFileSync(join(packageDir, 'vite.config.ts'), 'utf8');
+			const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8'));
+
+			for (const plugin of ['unplugin-icons/vite', 'vite-svg-loader']) {
+				expect({ plugin, wired: viteConfig.includes(plugin) }).toEqual({ plugin, wired: true });
+			}
+
+			// `autoInstall: false` keeps a test run off the network, so the collection has to be a
+			// declared dependency instead.
+			expect(viteConfig).toContain('autoInstall: false');
+			for (const dependency of ['unplugin-icons', 'vite-svg-loader', '@iconify/json']) {
+				expect(Object.keys(manifest.devDependencies)).toContain(dependency);
+			}
+
+			expect(
+				readFileSync(join(packageDir, 'src/__tests__/design-system-icons.test.ts'), 'utf8'),
+			).toContain('N8nIcon');
+		});
+
+		it('lints SCSS from the first run, before any SCSS exists', () => {
+			// A generated package has no `.scss` and no `<style>` block yet, and stylelint exits 1 on
+			// an empty match. Without `--allow-empty-input` the module is red on the day it is made.
+			scaffold(root);
+			const packageDir = join(root, 'packages', 'modules', NAME, 'frontend');
+			const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8'));
+
+			expect(manifest.scripts['lint:styles']).toContain('--allow-empty-input');
+			expect(manifest.scripts['lint:styles:fix']).toContain('--allow-empty-input');
+			expect(Object.keys(manifest.devDependencies)).toContain('@n8n/stylelint-config');
+			expect(Object.keys(manifest.devDependencies)).toContain('stylelint');
+			expect(readFileSync(join(packageDir, 'stylelint.config.mjs'), 'utf8')).toContain(
+				'@n8n/stylelint-config/base',
 			);
 		});
 
