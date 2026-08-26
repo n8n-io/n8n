@@ -16,10 +16,15 @@ import browserslist from 'browserslist';
 import { isLocaleFile, sendLocaleUpdate } from './vite/i18n-locales-hmr-helpers';
 import { nodePopularityPlugin } from './vite/vite-plugin-node-popularity.mjs';
 import { editorUiAliases } from './vite/aliases.mjs';
+import { DEFAULT_BACKEND_PORT, devServerPlugin, readDevPort } from './vite/dev-ports.mjs';
 
 const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 
 const { NODE_ENV } = process.env;
+
+// Only reachable through the dev server (see the `ctx.server` guard below),
+// which `devServerPlugin` has already validated by the time it runs.
+const devBackendPort = readDevPort(process.env, 'N8N_PORT', DEFAULT_BACKEND_PORT);
 
 const browsers = browserslist.loadConfig({ path: process.cwd() });
 
@@ -34,6 +39,7 @@ const alias = editorUiAliases(__dirname, packagesDir);
 const { RELEASE: release } = process.env;
 
 const plugins: UserConfig['plugins'] = [
+	devServerPlugin(process.env),
 	nodePopularityPlugin(),
 	lucideIconsPlugin(),
 	icons({
@@ -96,7 +102,7 @@ const plugins: UserConfig['plugins'] = [
 			return ctx.server
 				? html
 						.replace('%CONFIG_TAGS%', '')
-						.replaceAll('/{{BASE_PATH}}', `//localhost:${process.env.N8N_PORT ?? '5678'}`)
+						.replaceAll('/{{BASE_PATH}}', `//localhost:${devBackendPort}`)
 						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
 				: html;
 		},

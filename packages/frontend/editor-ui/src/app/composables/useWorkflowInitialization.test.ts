@@ -110,6 +110,7 @@ const mockWorkflowDocumentStore = vi.hoisted(() => ({
 	setHomeProject: vi.fn(),
 	setScopes: vi.fn(),
 	setParentFolder: vi.fn(),
+	setHydrated: vi.fn(),
 	onNameChange: vi.fn(),
 }));
 vi.mock('@/app/stores/workflowDocument.store', () => ({
@@ -202,6 +203,17 @@ describe('useWorkflowInitialization', () => {
 			await initializeWorkspaceForNewWorkflow();
 
 			expect(mockSetDocumentTitle).toHaveBeenCalledWith('New Workflow', 'IDLE');
+		});
+
+		it('marks a fresh workflow document hydrated after initialization', async () => {
+			let initializeWorkspaceForNewWorkflow!: () => Promise<void>;
+			renderWithComposable((init) => {
+				initializeWorkspaceForNewWorkflow = init.initializeWorkspaceForNewWorkflow;
+			});
+
+			await initializeWorkspaceForNewWorkflow();
+
+			expect(mockWorkflowDocumentStore.setHydrated).toHaveBeenCalledWith(true);
 		});
 	});
 
