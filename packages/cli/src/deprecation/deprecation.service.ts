@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
@@ -14,15 +13,6 @@ type Deprecation = {
 
 	/** Function to identify the specific value in the env var that is deprecated. */
 	checkValue?: (value?: string) => boolean;
-
-	/** Whether to show a deprecation warning if the env var is missing. */
-	warnIfMissing?: boolean;
-
-	/** Whether a config value is required to trigger a deprecation warning. */
-	matchConfig?: boolean;
-
-	/** Function to run to check whether to disable this deprecation warning. */
-	disableIf?: () => boolean;
 };
 
 const SAFE_TO_REMOVE = 'Remove this environment variable; it is no longer needed.';
@@ -47,12 +37,7 @@ export class DeprecationService {
 		},
 		{
 			envVar: 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS',
-			message:
-				'Running manual executions in the main instance in scaling mode is deprecated. Manual executions will be routed to workers in a future version. Please set `OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true` to offload manual executions to workers and avoid potential issues in the future. Consider increasing memory available to workers and reducing memory available to main.',
-			checkValue: (value?: string) => value?.toLowerCase() !== 'true' && value !== '1',
-			warnIfMissing: true,
-			matchConfig: this.globalConfig.executions.mode === 'queue',
-			disableIf: () => this.instanceSettings.instanceType !== 'main',
+			message: `In queue mode, manual executions are always routed to workers. ${SAFE_TO_REMOVE}`,
 		},
 		{
 			envVar: 'N8N_EXPRESSION_EVALUATOR',
@@ -110,25 +95,15 @@ export class DeprecationService {
 
 	constructor(
 		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
 		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	warn() {
 		this.deprecations.forEach((d) => {
-			if (d.disableIf?.()) {
-				this.state.set(d, { mustWarn: false });
-				return;
-			}
-
 			const envValue = process.env[d.envVar];
 
-			const matchConfig = d.matchConfig === true || d.matchConfig === undefined;
-			const warnIfMissing = d.warnIfMissing !== undefined && envValue === undefined;
-			const checkValue = d.checkValue ? d.checkValue(envValue) : envValue !== undefined;
-
 			this.state.set(d, {
-				mustWarn: matchConfig && (warnIfMissing || checkValue),
+				mustWarn: d.checkValue ? d.checkValue(envValue) : envValue !== undefined,
 			});
 		});
 
