@@ -193,14 +193,7 @@ describe('InProcessEventBus', () => {
 		});
 	});
 
-	describe('cursors and teardown', () => {
-		it('answers the next event id from the durable log', async () => {
-			eventLog.getNextEventId.mockResolvedValue(42);
-
-			await expect(bus.getNextEventId('thread-1')).resolves.toBe(42);
-			expect(eventLog.getNextEventId).toHaveBeenCalledWith('thread-1');
-		});
-
+	describe('teardown', () => {
 		it('clearThread drops the thread subscription and the log drain state', () => {
 			const received: unknown[] = [];
 			bus.subscribe('thread-1', (stored) => received.push(stored));

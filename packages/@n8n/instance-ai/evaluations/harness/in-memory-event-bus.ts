@@ -28,9 +28,6 @@ export function createInMemoryEventBus(): InstanceAiEventBus {
 				);
 			};
 		},
-		async getNextEventId(threadId) {
-			return await Promise.resolve((storeByThread.get(threadId) ?? []).length + 1);
-		},
 	};
 }
 

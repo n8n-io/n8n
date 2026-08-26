@@ -25,7 +25,6 @@ function createMockContext(overrides: Partial<OrchestrationContext> = {}): Orche
 		eventBus: {
 			publish: vi.fn(),
 			subscribe: vi.fn(),
-			getNextEventId: vi.fn(),
 		},
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 		domainTools: createToolRegistry(),

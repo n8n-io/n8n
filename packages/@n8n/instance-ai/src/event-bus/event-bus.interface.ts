@@ -14,9 +14,9 @@ export interface StoredEvent {
 type Unsubscribe = () => void;
 
 /**
- * Domain-level interface -- no transport details leak through. Reads are not
- * part of it: events are persisted to `instance_ai_events`, and replay and
- * run-scoped reads go through the durable event log, not the bus.
+ * Domain-level interface -- no transport details leak through. Publish and
+ * subscribe only: events are persisted to `instance_ai_events`, and every read
+ * (replay, run-scoped, cursor seeding) goes through the durable event log.
  */
 export interface InstanceAiEventBus {
 	/**
@@ -30,11 +30,4 @@ export interface InstanceAiEventBus {
 	 * Returns an unsubscribe function.
 	 */
 	subscribe(threadId: string, handler: (storedEvent: StoredEvent) => void): Unsubscribe;
-
-	/**
-	 * Get the next event ID that will be assigned for a thread.
-	 * Used to seed the frontend's SSE replay cursor after message hydration.
-	 * Async because the id comes from the durable log.
-	 */
-	getNextEventId(threadId: string): Promise<number>;
 }

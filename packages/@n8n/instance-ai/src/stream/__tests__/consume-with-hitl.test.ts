@@ -16,7 +16,6 @@ function createEventBus(): InstanceAiEventBus {
 	return {
 		publish: vi.fn(),
 		subscribe: vi.fn().mockReturnValue(() => {}),
-		getNextEventId: vi.fn(),
 	};
 }
 

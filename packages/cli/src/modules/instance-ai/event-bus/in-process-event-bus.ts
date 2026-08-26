@@ -118,10 +118,6 @@ export class InProcessEventBus implements InstanceAiEventBus {
 		return this.emitter.listenerCount(threadId) > 0;
 	}
 
-	async getNextEventId(threadId: string): Promise<number> {
-		return await this.eventLog.getNextEventId(threadId);
-	}
-
 	/** Drop a thread's live state (e.g. on thread deletion or expiration). */
 	clearThread(threadId: string): void {
 		this.eventLog.clearThread(threadId);
