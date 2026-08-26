@@ -66,7 +66,7 @@ describe('custom role scope whitelists', () => {
 		expect(manage).toContain('instanceAi:gateway');
 	});
 
-	it('"AiAssistant use" matches GLOBAL_MEMBER_SCOPES\' instanceAi:* grants exactly (IAM-1216)', () => {
+	it('"AiAssistant use" matches GLOBAL_MEMBER_SCOPES\' instanceAi:* grants exactly', () => {
 		// Member's baseline AI Assistant access is `instanceAi:message` +
 		// `instanceAi:gateway` (computer-use gateway pairing). A custom role built
 		// to mirror Member must get both, or it ends up strictly weaker than Member.
@@ -104,11 +104,11 @@ describe('custom role scope whitelists', () => {
 		}
 	});
 
-	it('exposes "Users: View" as exactly user:list, matching GLOBAL_MEMBER_SCOPES (IAM-1216)', () => {
+	it('exposes "Users: View" as exactly user:list, matching GLOBAL_MEMBER_SCOPES', () => {
 		// "Users: View" is granted to every instance role by default (see
 		// instanceRoleScopes.ts). It must never exceed what the built-in Member
 		// role already has, or a custom role mirroring Member ends up more
-		// privileged than Member itself — the exact bug IAM-1216 reported.
+		// privileged than Member itself
 		expect(GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View).toEqual(['user:list']);
 		for (const scope of GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS.user.View) {
 			expect(GLOBAL_MEMBER_SCOPES).toContain(scope);
