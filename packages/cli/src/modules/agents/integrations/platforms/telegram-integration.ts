@@ -1,8 +1,7 @@
 import { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import { SsrfProtectionConfig } from '@n8n/config';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Thread, Author } from 'chat';
@@ -145,8 +144,6 @@ export class TelegramIntegration extends AgentChatIntegration {
 		private readonly agentRepository: AgentRepository,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly ssrfConfig: SsrfProtectionConfig,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		super();
 	}
@@ -338,10 +335,8 @@ export class TelegramIntegration extends AgentChatIntegration {
 		body?: Record<string, unknown>,
 	) {
 		return await this.outboundHttp
-			.requests({
-				// protection is applied because the Bot API host is user-configurable
-				ssrf: this.ssrfConfig.enabled ? this.ssrfProtectionService : 'disabled',
-			})
+			// the Bot API host is user-configurable, so the default safe mode applies
+			.requests()
 			.request({
 				method: 'POST',
 				url: this.botApiUrl(credential, method),
