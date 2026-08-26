@@ -8,7 +8,7 @@ import type {
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { BINARY_MODE_COMBINED } from 'n8n-workflow';
+import { BINARY_ENCODING, BINARY_MODE_COMBINED } from 'n8n-workflow';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
@@ -100,6 +100,31 @@ describe('test binary data helper methods', () => {
 		]);
 
 		// Now, lets fetch our data! The item will be item index 0.
+		const getBinaryDataBufferResponse: Buffer = await getBinaryDataBuffer(
+			taskDataConnectionsInput,
+			0,
+			'data',
+			0,
+		);
+
+		expect(getBinaryDataBufferResponse).toEqual(inputData);
+	});
+
+	test('getBinaryDataBuffer(...) should read inline base64 data when binary data has no id', async () => {
+		await binaryDataService.init();
+
+		// Pinned data and executions stored under the removed in-memory mode
+		// carry inline base64 in `data` with no id - they must stay readable.
+		const inputData: Buffer = Buffer.from('This is some binary data', 'utf8');
+		const inlineBinaryData: IBinaryData = {
+			mimeType: 'txt',
+			data: inputData.toString(BINARY_ENCODING),
+		};
+
+		const taskDataConnectionsInput: ITaskDataConnections = {
+			main: [[{ json: {}, binary: { data: inlineBinaryData } }]],
+		};
+
 		const getBinaryDataBufferResponse: Buffer = await getBinaryDataBuffer(
 			taskDataConnectionsInput,
 			0,
