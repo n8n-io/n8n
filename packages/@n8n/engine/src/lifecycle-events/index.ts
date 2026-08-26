@@ -1,6 +1,6 @@
 export {
 	BatchingLifecycleEventPublisher,
-	DEFAULT_MAX_PENDING_BATCHES,
+	DEFAULT_MAX_PENDING_EVENTS,
 	DEFAULT_LIFECYCLE_EVENT_FLUSH_INTERVAL_MS,
 	DEFAULT_LIFECYCLE_EVENT_SEND_TIMEOUT_MS,
 } from './batching-lifecycle-event-publisher';

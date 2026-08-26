@@ -16,6 +16,7 @@ const event = (executionId: string): LifecycleEvent => ({
 const a = event('exec-a');
 const b = event('exec-b');
 const c = event('exec-c');
+const d = event('exec-d');
 
 /** Every send is handed the batch plus the signal that abandons it. */
 const signal = expect.any(AbortSignal) as AbortSignal;
@@ -110,6 +111,36 @@ describe('BatchingLifecycleEventPublisher', () => {
 		]);
 	});
 
+	it('coalesces the backlog into one batch while the host is slow', async () => {
+		let release: () => void = () => {};
+		const send = vi
+			.fn()
+			.mockReturnValueOnce(
+				new Promise<void>((resolve) => {
+					release = resolve;
+				}),
+			)
+			.mockResolvedValue(undefined);
+		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS);
+
+		publisher.publish(a);
+		await vi.advanceTimersByTimeAsync(FLUSH_MS);
+		publisher.publish(b);
+		await vi.advanceTimersByTimeAsync(FLUSH_MS);
+		publisher.publish(c);
+		await vi.advanceTimersByTimeAsync(FLUSH_MS);
+
+		release();
+		await vi.advanceTimersByTimeAsync(FLUSH_MS);
+
+		// Batches are cut when a send starts, so the two that waited out `a` go
+		// to the host together.
+		expect(send.mock.calls).toEqual([
+			[[a], signal],
+			[[b, c], signal],
+		]);
+	});
+
 	it('keeps flushing after the callback rejects', async () => {
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const send = vi
@@ -139,7 +170,7 @@ describe('BatchingLifecycleEventPublisher', () => {
 			.fn()
 			.mockReturnValueOnce(new Promise<void>(() => {}))
 			.mockResolvedValue(undefined);
-		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS, 500, 20, TIMEOUT_MS);
+		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS, 500, 5_000, TIMEOUT_MS);
 
 		publisher.publish(a);
 		await vi.advanceTimersByTimeAsync(FLUSH_MS);
@@ -166,7 +197,7 @@ describe('BatchingLifecycleEventPublisher', () => {
 	it('aborts the callback signal once the batch outlives its deadline', async () => {
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const { send, signal } = capture();
-		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS, 500, 20, TIMEOUT_MS);
+		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS, 500, 5_000, TIMEOUT_MS);
 
 		publisher.publish(a);
 		await vi.advanceTimersByTimeAsync(FLUSH_MS);
@@ -177,38 +208,39 @@ describe('BatchingLifecycleEventPublisher', () => {
 		expect(signal()?.aborted).toBe(true);
 	});
 
-	it('drops new batches instead of growing the backlog past the cap', async () => {
+	it('drops new events instead of growing the backlog past the cap', async () => {
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 		let release: () => void = () => {};
-		const send = vi.fn().mockReturnValueOnce(
-			new Promise<void>((resolve) => {
-				release = resolve;
-			}),
-		);
-		// One batch on the wire, one waiting behind it; a third has nowhere to go.
-		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS, 500, 2, TIMEOUT_MS);
+		const send = vi
+			.fn()
+			.mockReturnValueOnce(
+				new Promise<void>((resolve) => {
+					release = resolve;
+				}),
+			)
+			.mockResolvedValue(undefined);
+		// One event on the wire, two waiting behind it; a fourth has nowhere to go.
+		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS, 1, 2, TIMEOUT_MS);
 
-		for (const event of [a, b, c]) {
-			publisher.publish(event);
-			await vi.advanceTimersByTimeAsync(FLUSH_MS);
-		}
+		for (const published of [a, b, c, d]) publisher.publish(published);
 
 		release();
-		await vi.advanceTimersByTimeAsync(0);
+		await vi.advanceTimersByTimeAsync(FLUSH_MS);
 
 		expect(send.mock.calls).toEqual([
 			[[a], signal],
 			[[b], signal],
+			[[c], signal],
 		]);
 		expect(console.warn).toHaveBeenCalledWith(
-			'engine: lifecycle event backlog full at 2 batches, dropped 1 event(s)',
+			'engine: lifecycle event backlog full, dropped 1 event(s)',
 		);
 	});
 
 	it('stops within the deadline when the callback never settles', async () => {
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const send = vi.fn().mockReturnValue(new Promise<void>(() => {}));
-		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS, 500, 20, TIMEOUT_MS);
+		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS, 500, 5_000, TIMEOUT_MS);
 
 		publisher.publish(a);
 		let stopped = false;
@@ -224,28 +256,22 @@ describe('BatchingLifecycleEventPublisher', () => {
 		expect(stopped).toBe(true);
 	});
 
-	it('drops the batches still queued once stopping gives up', async () => {
+	it('drops what is still buffered once stopping gives up', async () => {
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
-		// Every send hangs, so the chain outlives the deadline stop() waits on.
+		// Every send hangs, so the drain outlives the deadline stop() waits on.
 		const { send } = capture();
-		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS, 500, 20, TIMEOUT_MS);
+		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS, 1, 500, TIMEOUT_MS);
 
-		for (const event of [a, b, c]) {
-			publisher.publish(event);
-			await vi.advanceTimersByTimeAsync(FLUSH_MS);
-		}
+		for (const published of [a, b, c]) publisher.publish(published);
 
 		const stopping = publisher.stop();
 		await vi.advanceTimersByTimeAsync(TIMEOUT_MS * 4);
 		await stopping;
 
-		// The third batch never reaches the host: stop() gave up while it queued.
+		// `c` never reaches the host: stop() gave up while it waited its turn.
 		expect(send.mock.calls.map(([batch]) => batch)).toEqual([[a], [b]]);
 		expect(console.warn).toHaveBeenCalledWith(
-			'engine: lifecycle event callback failed, dropped 1 event(s)',
-			expect.objectContaining({
-				message: 'lifecycle event publisher stopped before the batch was sent',
-			}),
+			'engine: lifecycle event publisher stopped, dropped 1 unsent event(s)',
 		);
 	});
 
