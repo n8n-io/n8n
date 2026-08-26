@@ -1,7 +1,6 @@
 import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { STORES } from '@n8n/stores';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -122,7 +121,10 @@ export const useOpenWorkflowInAssistantStore = defineStore(
 				TELEMETRY_EVENT.INSTANCE_AI.OPEN_BY_DEFAULT_NOTIFICATION_ACTION,
 				experimentPayload({ method: 'never_show_again' }),
 			);
-			await updateCurrentUserSettings(rootStore.restApiContext, {
+			// updateUserSettings mirrors the response back into currentUser.settings,
+			// which also covers fresh users whose settings are still null (where
+			// setCalloutDismissed above no-ops).
+			await usersStore.updateUserSettings({
 				dismissedCallouts: {
 					...usersStore.currentUser?.settings?.dismissedCallouts,
 					[OPEN_IN_ASSISTANT_CALLOUT_KEY]: true,
@@ -134,10 +136,15 @@ export const useOpenWorkflowInAssistantStore = defineStore(
 		async function saveDefaultEditor(value: DefaultEditor) {
 			await updatePreferences(rootStore.restApiContext, { defaultEditor: value });
 			// Mirror into the local user settings copy — the card reads from there.
-			if (usersStore.currentUser?.settings) {
-				usersStore.currentUser.settings.instanceAi = {
-					...(usersStore.currentUser.settings.instanceAi ?? {}),
-					defaultEditor: value,
+			// Fresh users have settings: null, so build the object rather than
+			// requiring it to exist.
+			if (usersStore.currentUser) {
+				usersStore.currentUser.settings = {
+					...(usersStore.currentUser.settings ?? {}),
+					instanceAi: {
+						...(usersStore.currentUser.settings?.instanceAi ?? {}),
+						defaultEditor: value,
+					},
 				};
 			}
 			telemetry.track(

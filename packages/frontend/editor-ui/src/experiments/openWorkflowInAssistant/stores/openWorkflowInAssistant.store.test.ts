@@ -2,6 +2,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { ref } from 'vue';
 
+import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 
 import { mockedStore } from '@/__tests__/utils';
@@ -119,6 +120,39 @@ describe('openWorkflowInAssistant.store', () => {
 			store.handleRedirectLanding('thread-1');
 
 			expect(store.isNotificationVisibleFor('thread-1')).toBe(false);
+		});
+
+		// Fresh users have settings: null — both writes must still take effect locally.
+		it('mirrors a saved preference locally even when user settings are null', async () => {
+			setVariant('variant');
+			usersStore.currentUser = { id: 'u1', settings: null } as never;
+			const store = useOpenWorkflowInAssistantStore();
+
+			await store.saveDefaultEditor('manual');
+
+			expect(store.storedPreference).toBe('manual');
+			expect(store.opensInAssistant).toBe(false);
+		});
+
+		it('syncs never-show-again into local state even when user settings are null', async () => {
+			setVariant('variant');
+			usersStore.currentUser = {
+				id: 'u1',
+				settings: null,
+			} as unknown as typeof usersStore.currentUser;
+			vi.mocked(updateCurrentUserSettings).mockResolvedValue({
+				dismissedCallouts: { [OPEN_IN_ASSISTANT_CALLOUT_KEY]: true },
+			} as never);
+			const store = useOpenWorkflowInAssistantStore();
+
+			await store.neverShowAgain();
+
+			expect(updateCurrentUserSettings).toHaveBeenCalledWith(expect.anything(), {
+				dismissedCallouts: { [OPEN_IN_ASSISTANT_CALLOUT_KEY]: true },
+			});
+			expect(
+				usersStore.currentUser?.settings?.dismissedCallouts?.[OPEN_IN_ASSISTANT_CALLOUT_KEY],
+			).toBe(true);
 		});
 
 		it('collapses the sidebar but keeps the notification hidden after never-show-again', () => {
