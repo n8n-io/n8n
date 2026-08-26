@@ -13,9 +13,15 @@ import {
 	type SerializableAgentState,
 	type StreamChunk,
 	type StreamResult,
+	type SubAgentTaskDifficulty,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
-import type { ResolvedSubAgentSource, SubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
+import type {
+	ResolvedSubAgentSource,
+	RunnableAgentJsonConfig,
+	SubAgentSource,
+	SubAgentSpawnRequest,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -75,6 +81,8 @@ export interface SubAgentForegroundRunContext {
 	instrumentation?: AgentRuntimeInstrumentation;
 	/** Optional callback to forward child stream chunks to the parent chat. */
 	onChunk?: (chunk: StreamChunk) => void;
+	/** Difficulty-selected model override for parent self-delegation only. */
+	selfDelegationDifficulty?: SubAgentTaskDifficulty;
 }
 
 export interface SubAgentForegroundResult {
@@ -130,12 +138,13 @@ export class SubAgentForegroundRunner {
 	async resumeForeground(
 		request: DelegateSubAgentResumeRequest,
 		context: SubAgentForegroundRunContext,
+		expectedSourceAgentId = request.subAgentId,
 	): Promise<SubAgentForegroundResult> {
 		assertSubAgentTaskPath(request.taskPath);
 		if (request.childThreadId === undefined || request.resumeContext === undefined) {
 			throw new UserError('Configured sub-agent checkpoint metadata is missing or invalid');
 		}
-		const pinnedSource = parseResumeContext(request.resumeContext, request.subAgentId);
+		const pinnedSource = parseResumeContext(request.resumeContext, expectedSourceAgentId);
 		return await this.executeForeground(
 			{
 				type: 'resume',
@@ -148,12 +157,15 @@ export class SubAgentForegroundRunner {
 		);
 	}
 
-	async cancelForeground(request: DelegateSubAgentCancelRequest): Promise<void> {
+	async cancelForeground(
+		request: DelegateSubAgentCancelRequest,
+		expectedSourceAgentId = request.subAgentId,
+	): Promise<void> {
 		assertSubAgentTaskPath(request.taskPath);
 		if (request.resumeContext === undefined) {
 			throw new UserError('Configured sub-agent checkpoint metadata is missing or invalid');
 		}
-		const pinnedSource = parseResumeContext(request.resumeContext, request.subAgentId);
+		const pinnedSource = parseResumeContext(request.resumeContext, expectedSourceAgentId);
 		await this.checkpointStorage.delete(request.childRunId, pinnedSource.agentId);
 	}
 
@@ -176,10 +188,14 @@ export class SubAgentForegroundRunner {
 			context.projectId,
 		);
 		const reconstructionService = await getReconstructionService();
+		const resolvedConfig = applyDifficultyModelOverride(
+			runtimeSource.source.config,
+			context.selfDelegationDifficulty,
+		);
 		const childConfig =
-			context.instrumentation?.transformDelegatedAgentConfig?.(runtimeSource.source.config, {
+			context.instrumentation?.transformDelegatedAgentConfig?.(resolvedConfig, {
 				subAgentId: runtimeSource.source.sourceId,
-			}) ?? runtimeSource.source.config;
+			}) ?? resolvedConfig;
 		const { agent } = await reconstructionService.reconstructFromResolvedSource({
 			config: childConfig,
 			memoryOwnerAgentId: runtimeSource.source.sourceId,
@@ -488,12 +504,25 @@ function createResumeContext(runtimeSource: ResolvedSubAgentSource): JSONValue {
 	};
 }
 
-function parseResumeContext(resumeContext: JSONValue, subAgentId: string): SubAgentSource {
+function applyDifficultyModelOverride(
+	config: RunnableAgentJsonConfig,
+	difficulty?: SubAgentTaskDifficulty,
+): RunnableAgentJsonConfig {
+	const modelConfig = difficulty ? config.subAgents?.modelsByDifficulty?.[difficulty] : undefined;
+	return modelConfig
+		? { ...config, model: modelConfig.model, credential: modelConfig.credential }
+		: config;
+}
+
+function parseResumeContext(
+	resumeContext: JSONValue,
+	expectedSourceAgentId: string,
+): SubAgentSource {
 	if (
 		!isRecord(resumeContext) ||
 		typeof resumeContext.agentId !== 'string' ||
 		resumeContext.agentId.length === 0 ||
-		resumeContext.agentId !== subAgentId
+		resumeContext.agentId !== expectedSourceAgentId
 	) {
 		throw new UserError('Configured sub-agent resume context is missing or invalid');
 	}

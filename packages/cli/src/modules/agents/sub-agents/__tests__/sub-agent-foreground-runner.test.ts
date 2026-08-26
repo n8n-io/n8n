@@ -1,4 +1,5 @@
 import {
+	INLINE_SUB_AGENT_ID,
 	type BuiltAgent,
 	type BuiltTelemetry,
 	type CredentialProvider,
@@ -476,6 +477,54 @@ describe('SubAgentForegroundRunner', () => {
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
+	it('applies the self-delegation model while preserving the parent draft', async () => {
+		const parentConfig: RunnableAgentJsonConfig = {
+			...runnableConfig,
+			model: 'openai/gpt-4o-mini',
+			credential: 'parent-credential',
+			instructions: 'Parent instructions.',
+			memory: { enabled: true, storage: 'n8n' },
+			tools: [{ type: 'custom', id: 'tool_1' }],
+			skills: [{ type: 'skill', id: 'skill_1' }],
+			subAgents: {
+				modelsByDifficulty: {
+					high: {
+						model: 'anthropic/claude-sonnet-4-5',
+						credential: 'high-credential',
+					},
+				},
+			},
+		};
+		sourceResolver.resolveForRuntime.mockResolvedValue({
+			...runtimeSource,
+			source: { sourceId: parentAgentId, config: parentConfig },
+		});
+
+		await runner.runForeground(
+			{ ...spawnRequest, source: { agentId: parentAgentId } },
+			{
+				projectId,
+				parentAgentId,
+				credentialProvider,
+				runType: 'production',
+				selfDelegationDifficulty: 'high',
+			},
+		);
+
+		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledWith(
+			expect.objectContaining({
+				config: {
+					...parentConfig,
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'high-credential',
+				},
+				toolDescriptors: runtimeSource.toolDescriptors,
+				toolCodeByName: runtimeSource.toolCodeByName,
+				skills: runtimeSource.skills,
+			}),
+		);
+	});
+
 	it('resumes a draft child in the same thread', async () => {
 		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
 
@@ -531,6 +580,41 @@ describe('SubAgentForegroundRunner', () => {
 			}),
 		);
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
+	});
+
+	it('resumes and cancels self-delegation from the parent-owned checkpoint', async () => {
+		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
+		const request = {
+			...delegatedRequest,
+			subAgentId: INLINE_SUB_AGENT_ID,
+			difficulty: 'high' as const,
+			childRunId: 'child-run-1',
+			childToolCallId: 'tool-call-1',
+			childThreadId: 'child-thread-1',
+			resumeData: { approved: true },
+			resumeContext: { agentId: parentAgentId },
+			parentThreadId,
+		};
+
+		const result = await runner.resumeForeground(
+			request,
+			{
+				projectId,
+				parentAgentId,
+				credentialProvider,
+				runType: 'production',
+				selfDelegationDifficulty: 'high',
+			},
+			parentAgentId,
+		);
+		await runner.cancelForeground({ ...request, reason: 'Parent run aborted' }, parentAgentId);
+
+		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
+			{ agentId: parentAgentId },
+			{ projectId },
+		);
+		expect(result.threadId).toBe('child-thread-1');
+		expect(checkpointStorage.delete).toHaveBeenCalledWith('child-run-1', parentAgentId);
 	});
 
 	it('accepts a legacy pinned resume context', async () => {

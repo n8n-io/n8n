@@ -522,6 +522,7 @@ function openExistingSubAgentModal(subAgent: {
 				id: subAgent.id,
 				name: subAgent.name,
 			},
+			agentHref: `/projects/${encodeURIComponent(props.projectId)}/agents/${encodeURIComponent(subAgent.id)}`,
 			useWhen: subAgent.useWhen,
 			invalidReasons: subAgent.invalidReasons,
 			onConfirm: ({ agentId, useWhen }: { agentId: string; useWhen?: string }) => {
