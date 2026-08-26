@@ -56,10 +56,6 @@ export class StepReadyHandler {
 		const execution = await this.executionStore.loadExecution(event.executionId);
 		const node = validateStepContext(step, execution);
 
-		// This worker won the claim, so it announces the start — ahead of the guards
-		// below, because the step really is running whether or not they let it run.
-		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
-
 		// The engine runs a batch step itself, so it has no executor to look up.
 		const executor = node.type === 'batch' ? undefined : this.executorFor(step, node);
 
@@ -69,6 +65,9 @@ export class StepReadyHandler {
 			// internal consistency checks (CAT-3930) to resolve.
 			return;
 		}
+
+		// This worker won the claim, so it is the one that announces the start.
+		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
 		// NOTE: an unexpected error in gathering inputs will leave the step
 		// running. In the future, this will be handled by either:

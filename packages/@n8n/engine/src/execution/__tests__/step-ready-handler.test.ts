@@ -803,8 +803,8 @@ describe('StepReadyHandler lifecycle events', () => {
 		});
 	});
 
-	it('announces the start but no outcome for a step its execution no longer wants', async () => {
-		// The row really is running, so the start is the honest report.
+	it('announces nothing for a step its execution no longer wants', async () => {
+		// The step never runs, so it never started as far as a consumer is concerned.
 		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const handler = makeHandler(
 			makeExecutionStore({ status: 'cancelled' }),
@@ -816,10 +816,7 @@ describe('StepReadyHandler lifecycle events', () => {
 
 		await handler.handle(event);
 
-		expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
-			type: 'step:started',
-			...stepFields,
-		});
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 });
 
