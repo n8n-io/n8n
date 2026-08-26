@@ -39,7 +39,7 @@ const errorTooltipMap: Record<string, BaseTextKey> = {
 // FIXME: move status logic to a parent component
 const statusThemeMap: Record<
 	string,
-	'default' | 'primary' | 'secondary' | 'outline' | 'warning' | 'danger' | 'success'
+	'primary' | 'secondary' | 'outline' | 'warning' | 'danger' | 'success'
 > = {
 	new: 'outline',
 	running: 'warning',
