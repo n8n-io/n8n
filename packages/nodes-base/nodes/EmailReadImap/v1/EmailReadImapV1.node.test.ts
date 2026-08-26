@@ -55,7 +55,7 @@ const credentials: ICredentialsDataImap = {
 	allowUnauthorizedCerts: false,
 };
 
-const run = async (
+const start = async (
 	mailbox: Fixture[],
 	params: { format: string; downloadAttachments?: boolean; postProcessAction?: string },
 ) => {
@@ -68,9 +68,10 @@ const run = async (
 		);
 
 	const trigger = mockDeep<ITriggerFunctions>();
+	const staticData: IDataObject = {};
 	trigger.getCredentials.mockResolvedValue(credentials as unknown as IDataObject);
 	trigger.getNode.mockReturnValue({ typeVersion: 1 } as INode);
-	trigger.getWorkflowStaticData.mockReturnValue({});
+	trigger.getWorkflowStaticData.mockReturnValue(staticData);
 	trigger.getNodeParameter.mockImplementation((name: string) => {
 		if (name === 'format') return params.format;
 		if (name === 'mailbox') return 'INBOX';
@@ -101,10 +102,23 @@ const run = async (
 	const node = new EmailReadImapV1(baseDescription);
 	const response = await node.trigger.call(trigger);
 
+	const stop = async () => {
+		await response?.closeFunction?.();
+		connect.mockRestore();
+	};
+
+	return { client, trigger, staticData, stop };
+};
+
+const run = async (
+	mailbox: Fixture[],
+	params: { format: string; downloadAttachments?: boolean; postProcessAction?: string },
+) => {
+	const { client, trigger, stop } = await start(mailbox, params);
+
 	client.emit('exists', { path: 'INBOX', count: mailbox.length, prevCount: 0 });
 	await vi.waitFor(() => expect(trigger.emit).toHaveBeenCalled());
-	await response?.closeFunction?.();
-	connect.mockRestore();
+	await stop();
 
 	const emitted = trigger.emit.mock.calls.flatMap((call) => call[0][0]);
 
@@ -168,6 +182,41 @@ describe('EmailReadImapV1 output', () => {
 				attachment_1: { data: 'png', fileName: 'résumé.png', mimeType: 'image/png' },
 				attachment_2: { data: 'notes', fileName: 'notes-café.txt', mimeType: 'text/plain' },
 			});
+		});
+	});
+
+	describe('watermark', () => {
+		it('skips a message that cannot be built instead of refetching it on every arrival', async () => {
+			const broken: Fixture = { ...PLAIN_ONLY, uid: 90 };
+			const { client, trigger, staticData, stop } = await start([broken, PLAIN_ONLY], {
+				format: 'raw',
+			});
+
+			// The server answers the broken message's fetch without the requested body.
+			const fetchDirectly = client.fetch.getMockImplementation()!;
+			client.fetch.mockImplementation((uids, query) => {
+				const messages = fetchDirectly(uids, query);
+				return (function* () {
+					for (const message of messages) {
+						if (message.uid === broken.uid) message.bodyParts = new Map();
+						yield message;
+					}
+				})();
+			});
+
+			client.emit('exists', { path: 'INBOX', count: 2, prevCount: 0 });
+			await vi.waitFor(() => expect(trigger.emitError).toHaveBeenCalled());
+			expect(trigger.emit).not.toHaveBeenCalled();
+
+			client.emit('exists', { path: 'INBOX', count: 3, prevCount: 2 });
+			await vi.waitFor(() => expect(trigger.emit).toHaveBeenCalled());
+			await stop();
+
+			expect(trigger.emit).toHaveBeenCalledExactlyOnceWith([
+				[{ json: { raw: bodyOf(PLAIN_ONLY) } }],
+			]);
+			expect(trigger.emitError).toHaveBeenCalledOnce();
+			expect(staticData.lastMessageUid).toBe(PLAIN_ONLY.uid);
 		});
 	});
 
