@@ -265,7 +265,7 @@ export class EmailReadImapV2 implements INodeType {
 			}
 		}
 
-		const fetchNewEmails = async (conn: ImapSimple, numEmails: number) => {
+		const fetchNewEmails = async (conn: ImapSimple, numEmails: number | 'unknown') => {
 			this.logger.debug('New emails received in node "EmailReadImap"', {
 				numEmails,
 			});

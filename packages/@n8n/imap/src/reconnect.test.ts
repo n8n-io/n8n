@@ -62,7 +62,7 @@ describe('reconnect', () => {
 			expect(events.arrival).toHaveBeenCalledWith({ count: 1 });
 		});
 
-		it('picks up mail that landed while it was down', async () => {
+		it('asks for a look at mail that landed while it was down', async () => {
 			const { connection, events, imap } = await connect(WATCHING, (transport, attempt) => {
 				if (attempt > 0) transport.mailbox = box(5);
 			});
@@ -71,7 +71,9 @@ describe('reconnect', () => {
 			imap().drop();
 			await settle();
 
-			expect(events.arrival).toHaveBeenCalledWith({ count: 5 });
+			// What the mailbox holds is not what arrived, so the count says nothing and the
+			// caller searches for itself.
+			expect(events.arrival).toHaveBeenCalledWith({ count: 'unknown' });
 		});
 
 		it('does not treat what the mailbox already held on activation as new mail', async () => {
@@ -176,7 +178,7 @@ describe('reconnect', () => {
 			expect(events.error).not.toHaveBeenCalled();
 			expect(events.close).not.toHaveBeenCalled();
 			expect(events.reconnect).toHaveBeenCalledTimes(1);
-			expect(events.arrival).toHaveBeenNthCalledWith(2, { count: 4 });
+			expect(events.arrival).toHaveBeenNthCalledWith(2, { count: 'unknown' });
 		});
 
 		it('keeps a failure to itself when the error reaches the handler before the close', async () => {
@@ -202,7 +204,7 @@ describe('reconnect', () => {
 		});
 
 		it('rescans even with an arrival queued behind the run that was cut short', async () => {
-			const arrivals: number[] = [];
+			const arrivals: Array<number | 'unknown'> = [];
 			const { connection, imap } = await connect(WATCHING, (transport, attempt) => {
 				if (attempt > 0) transport.mailbox = box(4);
 			});
@@ -218,11 +220,11 @@ describe('reconnect', () => {
 			imap().drop();
 			await settle();
 
-			expect(arrivals).toEqual([1, 4]);
+			expect(arrivals).toEqual([1, 'unknown']);
 		});
 
 		it('carries on serving arrivals after one was cut short', async () => {
-			const arrivals: number[] = [];
+			const arrivals: Array<number | 'unknown'> = [];
 			const { connection, imap } = await connect(WATCHING, (transport, attempt) => {
 				if (attempt > 0) transport.mailbox = box(4);
 			});
@@ -237,12 +239,12 @@ describe('reconnect', () => {
 			imap().drop();
 			await settle();
 
-			expect(arrivals).toEqual([1, 4]);
+			expect(arrivals).toEqual([1, 'unknown']);
 		});
 
 		it('carries on serving arrivals after a scheduled replacement cut one short', async () => {
 			useTimers();
-			const arrivals: number[] = [];
+			const arrivals: Array<number | 'unknown'> = [];
 			const { connection, imap } = await connect(
 				{ ...WATCHING, interval: 60_000 },
 				(transport, attempt) => {
@@ -260,7 +262,7 @@ describe('reconnect', () => {
 			await vi.advanceTimersByTimeAsync(60_000);
 			await settle();
 
-			expect(arrivals).toEqual([1, 4]);
+			expect(arrivals).toEqual([1, 'unknown']);
 		});
 	});
 

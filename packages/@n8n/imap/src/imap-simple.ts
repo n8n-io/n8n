@@ -24,9 +24,10 @@ const DEFAULT_RECONNECT_TIMEOUT = 45_000;
 /** `ended`: the caller asked. `error`: a failure preceded it. `dropped`: neither, and unrecoverable. */
 export type CloseReason = 'ended' | 'error' | 'dropped';
 
-/** New mail worth looking at: what the server reported, or what a reconnect found waiting. */
+/** New mail worth looking at. The mailbox itself is the source of truth; this is the doorbell. */
 export interface Arrival {
-	count: number;
+	/** New messages the server reported, or 'unknown' when a reconnect asks for a rescan. */
+	count: number | 'unknown';
 }
 
 export interface FlagsEvent {
@@ -260,7 +261,7 @@ export class ImapSimple {
 	/** The first transport. What the mailbox already holds is not an arrival; see `reopen`. */
 	private async open(): Promise<void> {
 		const attempt = this.attempt;
-		const { client } = await this.dial();
+		const client = await this.dial();
 
 		// A drop during the first SELECT starts a restore, which has either put its own transport in
 		// place or given up; either way this one is stale.
@@ -273,7 +274,7 @@ export class ImapSimple {
 		this.install(client);
 	}
 
-	private async dial(): Promise<{ client: ImapTransport; total: number }> {
+	private async dial(): Promise<ImapTransport> {
 		const client = this.createTransport();
 		await connectTransport(client);
 
@@ -282,11 +283,11 @@ export class ImapSimple {
 		client.on('close', () => this.onTransportClose());
 
 		const mailbox = this.reconnectOptions?.mailbox;
-		if (mailbox === undefined) return { client, total: 0 };
+		if (mailbox === undefined) return client;
 
 		try {
-			const box = await selectMailbox(client, mailbox);
-			return { client, total: box.messages.total };
+			await selectMailbox(client, mailbox);
+			return client;
 		} catch (error) {
 			// Left connected it keeps the handlers wired above, and its later close would start a
 			// restore of a connection that never came up.
@@ -359,7 +360,7 @@ export class ImapSimple {
 		// A scheduled replacement tears the transport down itself, so no `close` reaches us.
 		this.lose();
 		this.discard(this.client);
-		const { client, total } = await this.dial();
+		const client = await this.dial();
 
 		// A timed-out attempt keeps running, so it discards the transport it built itself: reading
 		// `this.client` would tear down whichever transport won the race instead.
@@ -370,10 +371,16 @@ export class ImapSimple {
 
 		this.install(client);
 		this.report('reconnect', (handler) => handler());
+		this.catchUp();
+	}
 
-		// Mail that landed while the connection was down is already in the mailbox by the time it
-		// is reopened, so the server never reports it as an arrival.
-		if (total > 0) this.enqueue({ count: total });
+	/**
+	 * Mail that landed while the connection was down is already in the mailbox by the time it is
+	 * reopened, so the server never reports it as an arrival — and how much there is, nothing can
+	 * say. The caller is asked to go looking.
+	 */
+	private catchUp(): void {
+		this.enqueue({ count: 'unknown' });
 	}
 
 	/** Silences a transport being thrown away and tears it down; failing to close is immaterial. */
