@@ -298,6 +298,20 @@ describe('workflow review request services', () => {
 			expect(workflowRepository.createWorkflowRow).not.toHaveBeenCalled();
 		});
 
+		it('rejects a workflow whose owner disappears between the pre-lock check and the lock', async () => {
+			mockSuccessfulCreatePath();
+			sharedWorkflowRepository.getWorkflowOwningProject
+				.mockResolvedValueOnce(mock<Project>({ id: 'project-1' }))
+				.mockResolvedValueOnce(undefined);
+
+			const creation = submissionService.create(user, dto);
+			await expect(creation).rejects.toThrow(NotFoundError);
+			await expect(creation).rejects.toThrow('Could not find workflow');
+
+			expect(dbLockService.withLockContext).toHaveBeenCalled();
+			expect(requestRepository.createRequest).not.toHaveBeenCalled();
+		});
+
 		// Both reads must use the lock transaction.
 		it('runs both in-lock re-check reads on the lock transaction', async () => {
 			mockSuccessfulCreatePath();

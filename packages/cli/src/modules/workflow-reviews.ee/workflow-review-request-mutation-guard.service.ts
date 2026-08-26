@@ -51,7 +51,11 @@ export class WorkflowReviewRequestMutationGuard {
 		}
 
 		const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId, ctx);
-		if (project?.id !== expectedProjectId) {
+		if (!project) {
+			throw new NotFoundError('Could not find workflow');
+		}
+
+		if (project.id !== expectedProjectId) {
 			throw new ConflictError(
 				`The workflow '${workflowId}' moved to another project and cannot be ${blockedAction} here`,
 				'Retry from the project that now owns the workflow',
