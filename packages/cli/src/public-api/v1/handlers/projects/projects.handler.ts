@@ -23,7 +23,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { PaginatedRequest } from '@/public-api/types';
-import { ProjectService, TeamProjectOverQuotaError } from '@/services/project.service.ee';
+import { ProjectService } from '@/services/project.service.ee';
 
 type GetAll = PaginatedRequest;
 type GetProjectUsersRequest = AuthenticatedRequest<{ projectId: string }> & GetAll;
@@ -64,12 +64,9 @@ const projectHandlers: ProjectHandlers = {
 
 			const projectService = Container.get(ProjectService);
 
-			const project = await projectService.createTeamProject(req.user, payload.data).catch((e) => {
-				if (e instanceof TeamProjectOverQuotaError) {
-					throw new BadRequestError(e.message);
-				}
-				throw e;
-			});
+			// TeamProjectOverQuotaError is a UserError, which the public API error
+			// serializer already maps to a 400 — no catch/rethrow needed here.
+			const project = await projectService.createTeamProject(req.user, payload.data);
 
 			Container.get(EventService).emit('team-project-created', {
 				userId: req.user.id,
