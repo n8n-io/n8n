@@ -33,6 +33,7 @@ import type {
 } from '../entities/types-db';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
+import { chunkIds } from '../utils/chunk-ids';
 import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
@@ -239,13 +240,20 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			return [];
 		}
 
-		const options: FindManyOptions<WorkflowEntity> = {
-			where: { id: In(workflowIds) },
-		};
+		const workflows = new Map<string, WorkflowEntity>();
+		for (const chunk of chunkIds(workflowIds)) {
+			const options: FindManyOptions<WorkflowEntity> = {
+				where: { id: In(chunk) },
+			};
 
-		if (fields?.length) options.select = fields as FindOptionsSelect<WorkflowEntity>;
+			if (fields?.length) {
+				options.select = [...new Set(['id', ...fields])] as FindOptionsSelect<WorkflowEntity>;
+			}
 
-		return await this.find(options);
+			for (const workflow of await this.find(options)) workflows.set(workflow.id, workflow);
+		}
+
+		return [...workflows.values()];
 	}
 
 	async findManyByAgentToolReferences(
@@ -292,12 +300,21 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 			return [];
 		}
 
-		return await this.createQueryBuilder('workflow')
-			.select(['workflow.id', 'workflow.name', 'workflow.isArchived'])
-			.leftJoin('workflow.shared', 'shared', 'shared.role = :role', { role: 'workflow:owner' })
-			.addSelect(['shared.workflowId', 'shared.projectId', 'shared.role'])
-			.where('workflow.id IN (:...workflowIds)', { workflowIds })
-			.getMany();
+		const found = new Map<string, WorkflowEntity>();
+
+		for (const chunk of chunkIds(workflowIds)) {
+			const workflows = await this.createQueryBuilder('workflow')
+				.select(['workflow.id', 'workflow.name', 'workflow.isArchived'])
+				.leftJoin('workflow.shared', 'shared', 'shared.role = :role', {
+					role: 'workflow:owner',
+				})
+				.addSelect(['shared.workflowId', 'shared.projectId', 'shared.role'])
+				.where('workflow.id IN (:...workflowIds)', { workflowIds: chunk })
+				.getMany();
+			for (const workflow of workflows) found.set(workflow.id, workflow);
+		}
+
+		return [...found.values()];
 	}
 
 	async getActiveTriggerCount() {

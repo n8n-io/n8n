@@ -73,8 +73,12 @@ type InstanceScopeGroups = {
 
 export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 	settings: {
-		// Grants access to every instance Settings page. Each scope below gates a
-		// specific page; granting all of them lets the role see and manage all of them.
+		// Grants access to every instance Settings page, including MCP and AI
+		// Assistant management. MCP and AI Assistant also have their own narrower
+		// use/manage options below so a role can be given just those without the
+		// rest of instance Settings — Manage's bundle is a strict superset of all
+		// four, so checking Manage checks them too, and unchecking any one of them
+		// drops Manage out of the fully-checked state.
 		Manage: [
 			'securitySettings:manage', // Security & Policies
 			'credentialResolver:read', // Resolvers (requires the full CRUD set)
@@ -103,13 +107,31 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 			'aiAssistant:manage', // AI Assistant
 			'instanceAi:manage',
 			'instanceAi:message',
+			'instanceAi:gateway', // computer-use gateway pairing
 			'mcp:manage', // Instance-level MCP
 			'mcp:oauth', // MCP OAuth clients
 			'mcpApiKey:create', // MCP personal API key
 			'mcpApiKey:rotate',
 		],
+		'Mcp use': ['mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'],
+		'Mcp manage': ['mcp:manage', 'mcp:oauth', 'mcpApiKey:create', 'mcpApiKey:rotate'],
+		'AiAssistant use': ['instanceAi:message', 'instanceAi:gateway'],
+		'AiAssistant manage': [
+			'aiAssistant:manage',
+			'instanceAi:manage',
+			'instanceAi:message',
+			'instanceAi:gateway',
+		],
 	},
 	user: {
+		// Lets a role look up other users (e.g. the member-search box a Project Admin
+		// uses to add users to a project) without granting the Settings > Users page
+		// or the ability to change anyone's role. Only `user:list` — the scope the
+		// search endpoint actually checks — matches GLOBAL_MEMBER_SCOPES exactly, so
+		// a custom role built to mirror Member never ends up with more than Member.
+		// `user:read` only gates the Public API's single-user lookup, which Member
+		// doesn't have either, so it stays out of this bundle.
+		View: ['user:list'],
 		Manage: [
 			'user:create',
 			'user:update',
