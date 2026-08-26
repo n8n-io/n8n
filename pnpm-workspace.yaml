@@ -24,6 +24,7 @@ loglevel: warn
 packageImportMethod: clone-or-copy
 
 minimumReleaseAge: 2880
+#fetchTimeout: 300000
 
 minimumReleaseAgeExclude:
   - '@n8n/*'
