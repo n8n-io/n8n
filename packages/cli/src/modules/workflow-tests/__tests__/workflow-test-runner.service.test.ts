@@ -1,10 +1,10 @@
 import type { ExecutionsConfig } from '@n8n/config';
 import type { WorkflowRepository } from '@n8n/db';
-import { UnexpectedError } from 'n8n-workflow';
 import type { IRun, IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { WorkflowTest } from '../database/entities/workflow-test.entity';
@@ -51,7 +51,10 @@ describe('WorkflowTestRunnerService', () => {
 		const workflow = {
 			id: 'workflow-1',
 			name: 'Test workflow',
-			nodes: [],
+			nodes: [
+				{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
+				{ name: 'Set', type: 'n8n-nodes-base.set' },
+			],
 			connections: {},
 			settings: { existing: 'setting' },
 		};
@@ -127,16 +130,73 @@ describe('WorkflowTestRunnerService', () => {
 			caughtError = error;
 		});
 
-		expect(caughtError).toBeInstanceOf(UnexpectedError);
+		expect(caughtError).toBeInstanceOf(NotFoundError);
 		expect(caughtError).toHaveProperty('message', 'Workflow workflow-1 not found');
 		expect(workflowRunner.run).not.toHaveBeenCalled();
+	});
+
+	it('returns a stale error result without running when the trigger node no longer exists', async () => {
+		const workflow = {
+			id: 'workflow-1',
+			name: 'Test workflow',
+			// No node named 'Trigger' -- the workflow was edited since the test was captured.
+			nodes: [{ name: 'Set', type: 'n8n-nodes-base.set' }],
+			connections: {},
+			settings: {},
+		};
+		workflowRepository.get.mockResolvedValue(workflow as never);
+
+		const test = buildTest();
+		const result = await service.runTest(test, 'user-1');
+
+		expect(result).toEqual({
+			testId: 'test-1',
+			testName: 'My Test',
+			executionId: null,
+			status: 'error',
+			nodeResults: [],
+			errorMessage: expect.stringContaining('node "Trigger" no longer exists in the workflow'),
+			completedAt: expect.any(String),
+		});
+		expect(workflowRunner.run).not.toHaveBeenCalled();
+		expect(testDiffService.diff).not.toHaveBeenCalled();
+	});
+
+	it('returns a stale error result without running when a fixture node no longer exists', async () => {
+		const workflow = {
+			id: 'workflow-1',
+			name: 'Test workflow',
+			// Trigger still exists, but the mocked node referenced by the fixtures was removed.
+			nodes: [{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' }],
+			connections: {},
+			settings: {},
+		};
+		workflowRepository.get.mockResolvedValue(workflow as never);
+
+		const test = buildTest({ fixtures: { RemovedNode: [{ json: { a: 1 } }] } });
+		const result = await service.runTest(test, 'user-1');
+
+		expect(result).toEqual({
+			testId: 'test-1',
+			testName: 'My Test',
+			executionId: null,
+			status: 'error',
+			nodeResults: [],
+			errorMessage: expect.stringContaining('node "RemovedNode" no longer exists in the workflow'),
+			completedAt: expect.any(String),
+		});
+		expect(workflowRunner.run).not.toHaveBeenCalled();
+		expect(testDiffService.diff).not.toHaveBeenCalled();
 	});
 
 	it('populates executionData via createRunExecutionData when executionsConfig.mode is queue', async () => {
 		const workflow = {
 			id: 'workflow-1',
 			name: 'Test workflow',
-			nodes: [],
+			nodes: [
+				{ name: 'Trigger', type: 'n8n-nodes-base.manualTrigger' },
+				{ name: 'Set', type: 'n8n-nodes-base.set' },
+			],
 			connections: {},
 			settings: {},
 		};

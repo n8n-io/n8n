@@ -4,6 +4,8 @@ import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 import type { INodeExecutionData, IPinData } from 'n8n-workflow';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import type { NodeExpectation, WorkflowTestCapture } from './workflow-tests.types';
 
 const EXTERNAL_NODE_TYPES = new Set([
@@ -20,7 +22,7 @@ export class CaptureService {
 			includeData: true,
 			unflattenData: true,
 		});
-		if (!execution) throw new UnexpectedError(`Execution ${executionId} not found`);
+		if (!execution) throw new NotFoundError(`Execution ${executionId} not found`);
 		return { capture: this.buildCapture(execution), workflowId: execution.workflowId };
 	}
 

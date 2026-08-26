@@ -90,6 +90,14 @@ const showAddToDataset = computed(
 		props.execution?.mode !== 'evaluation',
 );
 
+const showSaveAsTest = computed(
+	() =>
+		settingsStore.isModuleActive('workflow-tests') &&
+		props.execution?.status === 'success' &&
+		// Don't offer to save an evaluation run as a test.
+		props.execution?.mode !== 'evaluation',
+);
+
 // Seed a new test case from this execution and navigate to the editor. The
 // Tests panel is opened editor-side (NodeView) off the pending seed, so the
 // handoff survives the route change instead of relying on focus-panel state set
@@ -464,7 +472,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				</ElDropdown>
 
 				<N8nButton
-					v-if="execution?.status === 'success'"
+					v-if="showSaveAsTest"
 					variant="subtle"
 					size="medium"
 					icon="flask-conical"

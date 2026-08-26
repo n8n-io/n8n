@@ -210,6 +210,50 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		expect(queryByTestId('execution-preview-add-to-dataset-button')).toBeNull();
 	});
 
+	it('shows the save-as-test button when the workflow-tests module is active for a successful non-evaluation execution', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-save-as-test-button')).toBeInTheDocument();
+	});
+
+	it('hides the save-as-test button when the workflow-tests module is not active', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(false);
+
+		const { queryByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(queryByTestId('execution-preview-save-as-test-button')).toBeNull();
+	});
+
+	it('hides the save-as-test button for evaluation-mode executions even when the module is active', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+		const { queryByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'evaluation' } },
+		});
+
+		expect(queryByTestId('execution-preview-save-as-test-button')).toBeNull();
+	});
+
+	it('hides the save-as-test button for non-successful executions even when the module is active', () => {
+		const settingsStore = mockedStore(useSettingsStore);
+		vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+
+		const { queryByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'error', mode: 'manual' } },
+		});
+
+		expect(queryByTestId('execution-preview-save-as-test-button')).toBeNull();
+	});
+
 	it('should display vote buttons when annotation is enabled', async () => {
 		// Set up the test with annotation enabled
 		const pinia = createTestingPinia({

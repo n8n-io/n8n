@@ -5,6 +5,8 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionRepository } from '@n8n/db';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import { CaptureService } from '../capture.service';
 
 /** Build a minimal execution fixture. Only the fields the service reads are populated. */
@@ -295,7 +297,7 @@ describe('CaptureService', () => {
 			executionRepository.findSingleExecution.mockResolvedValue(undefined);
 
 			await expect(captureService.captureFromExecution('missing-execution')).rejects.toThrow(
-				UnexpectedError,
+				NotFoundError,
 			);
 			await expect(captureService.captureFromExecution('missing-execution')).rejects.toThrow(
 				'Execution missing-execution not found',

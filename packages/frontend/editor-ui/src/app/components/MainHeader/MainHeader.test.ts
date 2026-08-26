@@ -162,4 +162,46 @@ describe('MainHeader', () => {
 			}),
 		).not.toThrow();
 	});
+
+	describe('Tests tab', () => {
+		// Render with a TabBar stub that exposes the passed-in `items` prop, so the
+		// tabBarItems gating (on settingsStore.isModuleActive('workflow-tests')) is
+		// observable without relying on TabBar's own internal rendering.
+		const renderWithTabBarItemsVisible = () =>
+			renderComponent({
+				global: {
+					stubs: {
+						WorkflowDetails: {
+							props: ['id', 'tags', 'name', 'currentFolder', 'isArchived', 'description'],
+							template: '<div data-test-id="workflow-details-stub"></div>',
+						},
+						TabBar: {
+							props: ['items'],
+							template:
+								'<div><span v-for="item in items" :key="item.value" data-test-id="tab-bar-item">{{ item.value }}</span></div>',
+						},
+					},
+				},
+			});
+
+		it('includes the Tests tab when the workflow-tests module is active', () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
+				(moduleName: string) => moduleName === 'workflow-tests',
+			);
+
+			const { getAllByTestId } = renderWithTabBarItemsVisible();
+
+			const tabValues = getAllByTestId('tab-bar-item').map((el) => el.textContent);
+			expect(tabValues).toContain('workflow-tests');
+		});
+
+		it('excludes the Tests tab when the workflow-tests module is not active', () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(false);
+
+			const { getAllByTestId } = renderWithTabBarItemsVisible();
+
+			const tabValues = getAllByTestId('tab-bar-item').map((el) => el.textContent);
+			expect(tabValues).not.toContain('workflow-tests');
+		});
+	});
 });
