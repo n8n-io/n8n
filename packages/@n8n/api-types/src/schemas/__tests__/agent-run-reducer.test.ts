@@ -877,6 +877,15 @@ describe('agent-run-reducer', () => {
 			);
 		});
 
+		it('is preserved across a follow-up run-start when it is the only content', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
+
+			reduceEvent(state, makeRunStart('run-2', 'root'));
+
+			expect(state.agentsById['root'].setupItemsByWorkflowId?.['wf-1']).toHaveLength(1);
+		});
+
 		it('ignores an unsafe workflowId key', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeSetupItems('run-1', 'root', '__proto__', 'slackApi'));

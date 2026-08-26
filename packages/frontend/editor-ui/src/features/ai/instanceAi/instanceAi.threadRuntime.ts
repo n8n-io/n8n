@@ -240,7 +240,8 @@ function findLatestSetupItemsFromMessages(
 		const byWorkflowId = messages[i].agentTree?.setupItemsByWorkflowId;
 		if (!byWorkflowId) continue;
 		for (const [workflowId, items] of Object.entries(byWorkflowId)) {
-			if (!(workflowId in result)) result[workflowId] = items;
+			if (!isSafeObjectKey(workflowId)) continue;
+			if (!Object.hasOwn(result, workflowId)) result[workflowId] = items;
 		}
 	}
 	return result;

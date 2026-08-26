@@ -187,7 +187,8 @@ function nodeHasContent(node: InstanceAiAgentNode | undefined): boolean {
 		!!node.statusMessage ||
 		!!node.result ||
 		!!node.error ||
-		!!node.tasks
+		!!node.tasks ||
+		!!node.setupItemsByWorkflowId
 	);
 }
 

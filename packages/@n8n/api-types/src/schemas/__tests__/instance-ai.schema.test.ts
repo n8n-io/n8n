@@ -103,6 +103,20 @@ describe('instanceAiEventSchema', () => {
 	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
 	});
+
+	it('rejects a credential setup item without a credentialType', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [{ id: 'wf-1:credential:slackApi', workflowId: 'wf-1', kind: 'credential' }],
+			},
+		};
+
+		expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
+	});
 });
 
 describe('errorPayloadSchema', () => {

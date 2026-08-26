@@ -953,25 +953,33 @@ export const tasksUpdatePayloadSchema = z.object({
  * credential exists / slot bound / parameter filled), never stored, so
  * replay, refresh, and out-of-band completion stay consistent.
  */
-export const setupItemSchema = z.object({
+const setupItemBase = {
 	/** Stable identity: `${workflowId}:${kind}:${key}` — key = credentialType
 	 *  for credential items, nodeName for parameter items. */
 	id: z.string(),
 	workflowId: z.string(),
-	kind: z.enum(['credential', 'parameters']),
+};
 
-	// kind: 'credential'
-	credentialType: z.string().optional(),
-	appDisplayName: z.string().optional(),
-	nodeBindings: z.array(z.object({ nodeName: z.string() })).optional(),
-	setupHint: credentialSetupHintSchema.optional(),
-	/** Why the app is needed, e.g. "for the docs search". */
-	reason: z.string().optional(),
-
-	// kind: 'parameters' — parameter names only; values derive from the workflow
-	nodeName: z.string().optional(),
-	parameterNames: z.array(z.string()).optional(),
-});
+/** No 'question' kind in v1 (agent questions stay in chat); arms are additive. */
+export const setupItemSchema = z.discriminatedUnion('kind', [
+	z.object({
+		...setupItemBase,
+		kind: z.literal('credential'),
+		credentialType: z.string(),
+		appDisplayName: z.string().optional(),
+		nodeBindings: z.array(z.object({ nodeName: z.string() })).optional(),
+		setupHint: credentialSetupHintSchema.optional(),
+		/** Why the app is needed, e.g. "for the docs search". */
+		reason: z.string().optional(),
+	}),
+	// Parameter names only — values always derive from the workflow.
+	z.object({
+		...setupItemBase,
+		kind: z.literal('parameters'),
+		nodeName: z.string(),
+		parameterNames: z.array(z.string()),
+	}),
+]);
 export type InstanceAiSetupItem = z.infer<typeof setupItemSchema>;
 
 export const setupItemsPayloadSchema = z.object({
