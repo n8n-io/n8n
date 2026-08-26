@@ -271,7 +271,7 @@ describe('InstanceAiInput', () => {
 
 		expect(getByRole('textbox')).toHaveAttribute(
 			'placeholder',
-			'Tell me what to build or ask a question – add context with +',
+			'Tell me what to build or ask a question',
 		);
 	});
 
