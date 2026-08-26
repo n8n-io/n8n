@@ -7,8 +7,15 @@ import type { BridgeConfig, RuntimeBridge } from '../types';
  * The `quickjs-engine` project sets N8N_EXPRESSION_ENGINE=quickjs so every
  * suite using this factory runs against both bridges.
  */
-export const isQuickJS = process.env.N8N_EXPRESSION_ENGINE === 'quickjs';
-export const engineName = process.env.N8N_EXPRESSION_ENGINE || 'isolated-vm';
+const engine = process.env.N8N_EXPRESSION_ENGINE;
+if (!engine) {
+	throw new Error(
+		'test-bridge imported outside an engine project — add this test file to ENGINE_AWARE in vitest.config.ts',
+	);
+}
+
+export const isQuickJS = engine === 'quickjs';
+export const engineName = engine;
 
 /** Build the active engine's bridge with the given config. */
 export function newBridge(config: BridgeConfig = {}): RuntimeBridge {
