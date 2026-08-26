@@ -21,15 +21,34 @@ type ResolvedBlocksUi =
 	| { kind: 'unparseable'; error: string }
 	| { kind: 'value'; value: unknown };
 
+/** `{{ ... }}` interpolation segments inside an expression body. */
+const INTERPOLATION = /\{\{[\s\S]*?\}\}/g;
+const INTERPOLATION_PLACEHOLDER = 'n8n-expression';
+
+/**
+ * The builder usually writes the payload as an `=` expression whose body is the
+ * literal JSON with `{{ }}` holes, so the wrapper mistake shows up there too.
+ * Blanking the holes keeps such a body parseable; a wholly dynamic expression
+ * stops parsing and is left alone, since its value is unknowable here.
+ */
+function resolveExpressionBody(raw: string): ResolvedBlocksUi {
+	const body = raw.slice(1).replace(INTERPOLATION, INTERPOLATION_PLACEHOLDER);
+	try {
+		return { kind: 'value', value: JSON.parse(body) };
+	} catch {
+		return { kind: 'skip' };
+	}
+}
+
 /**
  * Mirrors the node's `ensureType: 'object'` read of `blocksUi`: a JSON string is
  * parsed, anything else is passed through as-is.
  */
 function resolveBlocksUi(raw: unknown): ResolvedBlocksUi {
 	if (raw === undefined || raw === null) return { kind: 'skip' };
-	if (isExpression(raw)) return { kind: 'skip' };
 	if (typeof raw === 'string') {
 		if (raw.trim().length === 0) return { kind: 'skip' };
+		if (isExpression(raw)) return resolveExpressionBody(raw);
 		try {
 			return { kind: 'value', value: JSON.parse(raw) };
 		} catch (error) {
