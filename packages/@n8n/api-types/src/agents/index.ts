@@ -20,6 +20,7 @@ export * from './reasoning';
 export * from './rich-card.schema';
 export * from './sub-agent.schema';
 export * from './types';
+export * from './workflow-wait';
 export type {
 	AgentSseEvent,
 	AgentSseMessage,

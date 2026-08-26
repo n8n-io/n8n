@@ -167,6 +167,8 @@ export {
 	workflowParentFolderPublicSchema,
 } from './workflows/workflow-public.dto';
 export {
+	ActivateWorkflowPublicDto,
+	activateWorkflowPublicSchema,
 	PublishWorkflowPublicDto,
 	publishWorkflowPublicSchema,
 } from './workflows/publish-workflow-public.dto';

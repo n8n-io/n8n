@@ -27,6 +27,7 @@ import {
 	type AgentBuilderTarget,
 } from '../agent-target-binding';
 import { createBuildAgentTool } from '../build-agent.tool';
+import type { BuilderRequiredArtifact } from '../builder-required-artifact';
 
 vi.mock('../agent-target-binding', async () => {
 	const actual = await vi.importActual<typeof AgentTargetBindingModule>('../agent-target-binding');
@@ -50,6 +51,7 @@ interface BuildAgentOutput {
 	agentRef?: string;
 	agentName?: string;
 	answers?: QuestionAnswer[];
+	requiredArtifacts?: BuilderRequiredArtifact[];
 }
 
 function fakeStream(chunks: unknown[], text: string): BuilderTurnStream {
@@ -1542,9 +1544,23 @@ describe('build-agent tool', () => {
 		class FakeBuilderCheckpointUnavailableError extends UserError {
 			readonly code = BUILDER_CHECKPOINT_UNAVAILABLE_CODE;
 		}
+		const requiredArtifacts: BuilderRequiredArtifact[] = [
+			{
+				type: 'workflow',
+				name: 'WhatsApp Agent entrypoint',
+				purpose: 'Connect incoming WhatsApp messages to the Agent',
+				relationship: 'agent-entrypoint',
+				requirements: ['Trigger on incoming WhatsApp messages and invoke the Agent'],
+			},
+		];
 
 		function suspendPayloadWithCheckpoint(
-			overrides: Partial<{ runId: string; toolCallId: string; configUpdated: boolean }> = {},
+			overrides: Partial<{
+				runId: string;
+				toolCallId: string;
+				configUpdated: boolean;
+				requiredArtifacts: BuilderRequiredArtifact[];
+			}> = {},
 		) {
 			return {
 				...askQuestionsSuspendPayload(),
@@ -1753,11 +1769,15 @@ describe('build-agent tool', () => {
 			const result = await runToolWithCtx(
 				context,
 				{ message: 'Build it', name: 'New Agent' },
-				{ resumeData: { approved: true }, suspendPayload: suspendPayloadWithCheckpoint() },
+				{
+					resumeData: { approved: true },
+					suspendPayload: suspendPayloadWithCheckpoint({ requiredArtifacts }),
+				},
 			);
 
 			expect(result.ok).toBe(false);
 			expect(result.error).toContain('does not match');
+			expect(result.requiredArtifacts).toEqual(requiredArtifacts);
 			expect(delegate.resumeBuild).not.toHaveBeenCalled();
 		});
 
@@ -1769,11 +1789,15 @@ describe('build-agent tool', () => {
 			const result = await runToolWithCtx(
 				context,
 				{ message: 'Build it', name: 'New Agent' },
-				{ resumeData: { approved: true }, suspendPayload: suspendPayloadWithCheckpoint() },
+				{
+					resumeData: { approved: true },
+					suspendPayload: suspendPayloadWithCheckpoint({ requiredArtifacts }),
+				},
 			);
 
 			expect(result.ok).toBe(false);
 			expect(result.error).toContain('no longer open');
+			expect(result.requiredArtifacts).toEqual(requiredArtifacts);
 			expect(delegate.resumeBuild).not.toHaveBeenCalled();
 		});
 

@@ -84,7 +84,7 @@ catalog:
   '@codemirror/state': 6.5.3
   '@codemirror/view': 6.39.8
   '@confluentinc/kafka-javascript': 1.9.1
-  '@daytona/sdk': 0.194.0
+  '@daytona/sdk': 0.205.1
   '@e965/xlsx': 0.20.3
   '@iconify-json/lucide': ^1.2.112
   '@iconify-json/mdi': ^1.1.63
@@ -423,9 +423,9 @@ overrides:
   '@vue/shared@3.5.26': 3.5.40
   '@opentelemetry/exporter-prometheus@<=0.217.0': 0.217.0
   '@opentelemetry/sdk-node@<=0.217.0': 0.217.0
-  '@daytona/sdk@0.194.0>@aws-sdk/client-s3': 3.808.0
-  '@daytona/sdk@0.194.0>@aws-sdk/lib-storage': 3.808.0
-  '@daytona/sdk@0.194.0>@opentelemetry/sdk-trace-base': 2.7.1
+  '@daytona/sdk@0.205.1>@aws-sdk/client-s3': 3.808.0
+  '@daytona/sdk@0.205.1>@aws-sdk/lib-storage': 3.808.0
+  '@daytona/sdk@0.205.1>@opentelemetry/sdk-trace-base': 2.7.1
   langsmith: 0.6.0
   hono: 4.12.34
   '@tiptap/core': 'catalog:'
