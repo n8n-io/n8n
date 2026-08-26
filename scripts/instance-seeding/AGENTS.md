@@ -179,3 +179,51 @@ fan-out".
 - No protection against running against a non-local instance. **Don't point
   it at a shared/production n8n** — the clear step will delete everything
   prefixed `[seed]` regardless of who created it.
+
+---
+
+# Seed: Anthropic + Linear workflow estate
+
+`seed-anthropic-linear-workflows.sql` is a second, much smaller seed that goes
+straight at the database rather than the public API. Where `seedInstance.mjs`
+builds a ~500-workflow org to stress the dependency graph, this one builds
+**eight readable workflows** so a fresh account has a plausible recent history to
+look at — and, on builds that have the activity-log migrations, seeds
+`activity_event` to match.
+
+```sh
+sqlite3 ~/.n8n/database.sqlite < scripts/instance-seeding/seed-anthropic-linear-workflows.sql
+```
+
+## Why SQL and not the API
+
+Two reasons the public API cannot cover:
+
+- **`activity_event` has no API.** It is written from the event bus, so the only
+  way to seed a history is to insert it.
+- **Timestamps.** The API stamps `createdAt`/`updatedAt` at request time, so
+  every workflow looks like it was made in the same second. SQL can spread them
+  over a fortnight, which is what makes an activity feed worth reading.
+
+The trade-off is that credentials are out of reach: their secrets are encrypted
+with the instance key. The file therefore seeds no credentials and leaves nodes
+unattached, with an optional section at the end that links whichever Anthropic
+and Linear credentials it finds.
+
+## The bias is the point
+
+Every workflow uses the Anthropic chat model and touches Linear, and where n8n
+offers more than one node for a job exactly one was chosen and used everywhere
+(If over Switch, Filter over If-plus-NoOp, Loop Over Items over a Code loop, and
+no Code node at all). The full table of choices — and of the alternatives passed
+over — is in the file header. **Adding a workflow means following that table
+rather than picking again**; the consistency is what makes the estate usable as a
+fixture for anything that reasons about what a user tends to reach for.
+
+## Interaction with `seedInstance.mjs`
+
+They do not collide. `seedInstance.mjs` clears on the prefix `[seed] ` (with a
+trailing space); this file names its workflows `[seed-al] …` and matches its own
+rows on the id prefix `seedAlWf`. Running either does not disturb the other.
+
+Both are safe to re-run: the SQL file deletes its own rows first.
