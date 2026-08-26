@@ -11,7 +11,10 @@ import glob from 'fast-glob';
 import { fileURLToPath } from 'url';
 import { defineConfig } from 'eslint/config';
 
+import { configureAxiosEnvProxy } from './env-proxy.mjs';
 import { checkPackageProvenance, NPM_PROVENANCE_PREDICATE_TYPE } from './provenance.mjs';
+
+configureAxiosEnvProxy();
 
 const { stdout } = process;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
