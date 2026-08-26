@@ -11,6 +11,10 @@ $.verbose = false;
 process.env.FORCE_COLOR = '1';
 
 const IMAGE = process.env.SMOKE_IMAGE || 'n8nio/n8n:local';
+// Runners images to exec-check; empty string skips (e.g. when only the n8n image was built).
+const RUNNERS_IMAGES = (process.env.SMOKE_RUNNERS_IMAGES ?? 'n8nio/runners:local')
+	.split(',')
+	.filter(Boolean);
 const TIMEOUT = '45s';
 // Matches an n8n runtime image ref (e.g. `n8nio/n8n:2.4.4`, `ghcr.io/n8n-io/n8n@sha256:…`)
 // but not sidecars like `n8nio/runners:…` or controller images that happen to contain "n8n".
@@ -120,6 +124,27 @@ async function runWorkspaceDedupCheck() {
 	}
 }
 
+// Interpreter paths as launched by docker/images/runners/n8n-task-runners.json.
+// The runners images assemble node/python by copying binaries across images, so a
+// missing shared library only surfaces at exec time.
+const RUNNER_INTERPRETERS = [
+	['/usr/local/bin/node', '--version'],
+	['/opt/runners/task-runner-python/.venv/bin/python', '--version'],
+];
+
+async function runRunnersInterpreterCheck(image) {
+	const name = `runner interpreters exec in ${image}`;
+	try {
+		for (const [entrypoint, arg] of RUNNER_INTERPRETERS) {
+			await $({ timeout: TIMEOUT })`docker run --rm --entrypoint ${entrypoint} ${image} ${arg}`;
+		}
+		echo(chalk.green(`✓ ${name}`));
+		return true;
+	} catch (err) {
+		return reportFailure(name, err);
+	}
+}
+
 async function run({ name, user, entrypoint, args }) {
 	const dockerArgs = ['run', '--rm', '--user', `${user}:${user}`];
 	if (entrypoint) dockerArgs.push('--entrypoint', entrypoint);
@@ -152,5 +177,11 @@ const invocations = [
 ];
 
 echo(chalk.bold(`Verifying ${IMAGE} against ${invocations.length} deployment pattern(s)`));
-const ok = (await Promise.all([...invocations.map(run), runWorkspaceDedupCheck()])).every(Boolean);
+const ok = (
+	await Promise.all([
+		...invocations.map(run),
+		runWorkspaceDedupCheck(),
+		...RUNNERS_IMAGES.map(runRunnersInterpreterCheck),
+	])
+).every(Boolean);
 if (!ok) process.exit(1);
