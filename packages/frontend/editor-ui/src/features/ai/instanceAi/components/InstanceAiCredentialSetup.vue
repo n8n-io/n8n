@@ -11,6 +11,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
+	AI_GATEWAY_MANAGED_TAG,
 	GENERIC_AUTH_CREDENTIAL_TYPES,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiCredentialFlow,
@@ -355,10 +356,6 @@ function openCreateCredential() {
 /** Build a minimal synthetic INodeUi so NodeCredentials can render in standalone mode. */
 function syntheticNodeUi(req: InstanceAiCredentialRequest): INodeUi {
 	const selectedId = selections.value[req.credentialType];
-	const selectedCred = selectedId
-		? (req.existingCredentials?.find((c) => c.id === selectedId) ??
-			credentialsStore.getCredentialById(selectedId))
-		: undefined;
 
 	return {
 		id: req.credentialType,
@@ -367,10 +364,25 @@ function syntheticNodeUi(req: InstanceAiCredentialRequest): INodeUi {
 		typeVersion: 1,
 		position: [0, 0],
 		parameters: {},
-		credentials: selectedCred
-			? { [req.credentialType]: { id: selectedCred.id, name: selectedCred.name } }
-			: {},
+		credentials: selectedCredentialsForNode(req, selectedId),
 	} as INodeUi;
+}
+
+/** The node.credentials NodeCredentials should render for the current selection. */
+function selectedCredentialsForNode(
+	req: InstanceAiCredentialRequest,
+	selectedId: string | null,
+): INodeUi['credentials'] {
+	// n8n credits (AI Gateway managed) has no stored record — rebuild its slot so
+	// the picker reflects it as selected, mirroring WorkflowSetupSectionBody.
+	if (selectedId === AI_GATEWAY_MANAGED_TAG) {
+		return { [req.credentialType]: { id: null, name: '', __aiGatewayManaged: true } };
+	}
+	const cred = selectedId
+		? (req.existingCredentials?.find((c) => c.id === selectedId) ??
+			credentialsStore.getCredentialById(selectedId))
+		: undefined;
+	return cred ? { [req.credentialType]: { id: cred.id, name: cred.name } } : {};
 }
 
 // ---------------------------------------------------------------------------
@@ -382,9 +394,17 @@ function onCredentialSelected(
 	updateInfo: INodeUpdatePropertiesInformation,
 ) {
 	const credentialData = updateInfo.properties.credentials?.[credentialType];
-	const credentialId = typeof credentialData === 'string' ? undefined : credentialData?.id;
-	if (credentialId) {
-		selections.value[credentialType] = credentialId;
+	let selection: string | null = null;
+	if (credentialData && typeof credentialData !== 'string') {
+		// The n8n credits (AI Gateway managed) option emits `{ id: null, __aiGatewayManaged: true }`
+		// rather than a real id — map it to the sentinel tag so it registers as a selection.
+		selection =
+			credentialData.__aiGatewayManaged === true
+				? AI_GATEWAY_MANAGED_TAG
+				: (credentialData.id ?? null);
+	}
+	if (selection) {
+		selections.value[credentialType] = selection;
 		skippedTypes.value.delete(credentialType);
 	} else {
 		selections.value[credentialType] = null;

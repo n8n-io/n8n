@@ -1246,13 +1246,23 @@ class NewCredentialImpl implements NewCredentialValue {
 	readonly __newCredential = true as const;
 	readonly name: string;
 	readonly id?: string;
+	readonly managed: boolean;
 
-	constructor(name: string, id?: string) {
+	constructor(name: string, id?: string, managed = false) {
 		this.name = name;
 		this.id = id;
+		this.managed = managed;
 	}
 
-	toJSON(): { id: string; name: string } | undefined {
+	toJSON():
+		| { id: string; name: string }
+		| { id: null; name: string; __aiGatewayManaged: true }
+		| undefined {
+		// n8n credits: a null-id managed slot the setup/apply path resolves against
+		// the AI Gateway, never a stored credential id.
+		if (this.managed) {
+			return { id: null, name: this.name, __aiGatewayManaged: true };
+		}
 		if (this.id !== undefined) {
 			return { id: this.id, name: this.name };
 		}
@@ -1282,10 +1292,20 @@ class NewCredentialImpl implements NewCredentialValue {
  * // Placeholder (credential to be created)
  * credentials: { slackApi: newCredential('My Slack Bot') }
  * // → {} (omitted from JSON)
+ *
+ * // n8n credits (AI Gateway managed — no API key, resolved by setup)
+ * credentials: { openAiApi: newCredential('n8n credits', { managed: true }) }
+ * // → { id: null, name: 'n8n credits', __aiGatewayManaged: true }
  * ```
  */
-export function newCredential(name: string, id?: string): NewCredentialValue {
-	return new NewCredentialImpl(name, id);
+export function newCredential(
+	name: string,
+	idOrOptions?: string | { managed?: boolean },
+): NewCredentialValue {
+	if (typeof idOrOptions === 'object') {
+		return new NewCredentialImpl(name, undefined, idOrOptions.managed === true);
+	}
+	return new NewCredentialImpl(name, idOrOptions);
 }
 
 /**

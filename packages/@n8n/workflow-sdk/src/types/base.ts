@@ -76,6 +76,8 @@ export interface NewCredentialValue {
 	readonly __newCredential: true;
 	readonly name: string;
 	readonly id?: string;
+	/** n8n credits (AI Gateway managed): serializes to a null-id managed slot. */
+	readonly managed?: boolean;
 }
 
 // =============================================================================
