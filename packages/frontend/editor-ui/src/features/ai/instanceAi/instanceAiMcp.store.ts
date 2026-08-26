@@ -163,12 +163,6 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 	}
 
 	async function fetchConnectionTools(id: string): Promise<void> {
-		const inFlight = inFlightConnectionToolsById.get(id);
-		if (inFlight) {
-			await inFlight.catch(() => undefined);
-			return;
-		}
-
 		setConnectionStatus(id, 'connecting');
 		const promise = fetchMcpConnectionTools(rootStore.restApiContext, id);
 		const isCurrent = () => inFlightConnectionToolsById.get(id) === promise;
@@ -283,6 +277,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		fetchConnections,
 		fetchConnectionsLazy,
 		fetchCatalogLazy,
+		fetchConnectionTools,
 		fetchConnectionToolsLazy,
 		connect,
 		updateConnection,

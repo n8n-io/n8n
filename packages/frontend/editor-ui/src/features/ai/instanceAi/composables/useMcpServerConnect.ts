@@ -139,6 +139,37 @@ export function useMcpServerConnect() {
 	 * The adapter `ToolCredentialPicker` injects. Only the "create a new
 	 * credential" leg differs per surface, so callers pass just that.
 	 */
+	function openExistingCredential(credentialId: string): void {
+		const connectionIds = mcpStore.connections
+			.filter((connection) => connection.credentialId === credentialId)
+			.map((connection) => connection.id);
+		if (connectionIds.length === 0) {
+			uiStore.openExistingCredential(credentialId);
+			return;
+		}
+
+		const listeners = effectScope(true);
+		listeners.run(() => {
+			listenForModalChanges({
+				store: uiStore,
+				onModalClosed: (modalName) => {
+					if (modalName !== CREDENTIAL_EDIT_MODAL_KEY) return;
+					listeners.stop();
+					for (const connectionId of connectionIds) {
+						void mcpStore.fetchConnectionTools(connectionId);
+					}
+				},
+			});
+		});
+
+		try {
+			uiStore.openExistingCredential(credentialId);
+		} catch (error) {
+			listeners.stop();
+			throw error;
+		}
+	}
+
 	function createCredentialAdapter(
 		openNewCredential: ToolConnectionCredentialAdapter['openNewCredential'],
 	): ToolConnectionCredentialAdapter {
@@ -150,7 +181,7 @@ export function useMcpServerConnect() {
 					type: credential.type,
 				})),
 			openNewCredential,
-			openExistingCredential: (credentialId) => uiStore.openExistingCredential(credentialId),
+			openExistingCredential,
 		};
 	}
 

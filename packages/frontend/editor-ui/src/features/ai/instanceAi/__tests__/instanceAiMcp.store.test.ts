@@ -389,6 +389,40 @@ describe('useInstanceAiMcpStore', () => {
 		});
 	});
 
+	describe('fetchConnectionTools', () => {
+		it('starts a fresh request and ignores an earlier response', async () => {
+			mockFetchMcpConnections.mockResolvedValue([makeConnection()]);
+			await store.fetchConnections();
+
+			const firstRequest = createDeferred<InstanceAiMcpConnectionToolsResponse>();
+			const secondRequest = createDeferred<InstanceAiMcpConnectionToolsResponse>();
+			mockFetchMcpConnectionTools
+				.mockReturnValueOnce(firstRequest.promise)
+				.mockReturnValueOnce(secondRequest.promise);
+
+			const firstFetch = store.fetchConnectionTools('conn-1');
+			const secondFetch = store.fetchConnectionTools('conn-1');
+
+			expect(mockFetchMcpConnectionTools).toHaveBeenCalledTimes(2);
+			firstRequest.resolve({
+				id: 'conn-1',
+				status: 'connected',
+				tools: [{ name: 'old_tool' }],
+			});
+			await firstFetch;
+			expect(store.connectionToolsById.get('conn-1')).toBeUndefined();
+
+			secondRequest.resolve({
+				id: 'conn-1',
+				status: 'connected',
+				tools: [{ name: 'fresh_tool' }],
+			});
+			await secondFetch;
+
+			expect(store.connectionToolsById.get('conn-1')).toEqual([{ name: 'fresh_tool' }]);
+		});
+	});
+
 	describe('connect', () => {
 		it('appends the new connection on success', async () => {
 			const created = makeConnection({ id: 'conn-new' });
