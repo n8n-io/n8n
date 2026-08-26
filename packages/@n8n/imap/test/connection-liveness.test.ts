@@ -82,7 +82,7 @@ describe('unresponsive IMAP connection', () => {
 		fake.server.exists = 3;
 
 		const connection = await fake.open();
-		const arrivals: number[] = [];
+		const arrivals: Array<number | 'unknown'> = [];
 		connection.onArrival(({ count }) => {
 			arrivals.push(count);
 		});

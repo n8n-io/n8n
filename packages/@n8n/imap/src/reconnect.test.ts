@@ -84,7 +84,7 @@ describe('reconnecting', () => {
 		second.emit('exists', { path: 'INBOX', count: 2, prevCount: 1 });
 		await vi.advanceTimersByTimeAsync(1);
 
-		expect(onArrival).toHaveBeenCalledWith({ count: 2, prevCount: 1 });
+		expect(onArrival).toHaveBeenCalledWith({ count: 1 });
 	});
 
 	it('has the caller look at the mailbox again after a reconnect', async () => {
@@ -137,7 +137,7 @@ describe('reconnecting', () => {
 		await vi.advanceTimersByTimeAsync(1);
 
 		expect(third.close).not.toHaveBeenCalled();
-		expect(onArrival).toHaveBeenCalledWith({ count: 2, prevCount: 1 });
+		expect(onArrival).toHaveBeenCalledWith({ count: 1 });
 	});
 
 	it('fails to connect when the first transport drops before it is in place', async () => {

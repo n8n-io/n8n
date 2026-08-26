@@ -340,9 +340,7 @@ export class EmailReadImapV2 implements INodeType {
 					: (options.forceReconnect as number) * 1000 * 60,
 		});
 
-		connection.onArrival(
-			async ({ count, prevCount }) => await fetchNewEmails(connection, count - prevCount),
-		);
+		connection.onArrival(async ({ count }) => await fetchNewEmails(connection, count));
 
 		if (staticData.lastMessageUid !== undefined) connection.catchUp();
 
