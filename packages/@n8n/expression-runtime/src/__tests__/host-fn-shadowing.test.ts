@@ -90,29 +90,7 @@ describe('Host-fn shadowing: data.extend / data.extendOptional must not be invok
 		expect(hostExtendOptionalCalls).toBe(0);
 	});
 
-	it('does NOT invoke host-side data.extend when expression uses an extension method directly', () => {
-		// This test runs after extendSyntax-style expansion would have happened
-		// in the workflow package. We mimic that here by calling extend() directly,
-		// which is what Tournament's transformations end up producing.
-		let hostExtendCalls = 0;
-		const data: Record<string, unknown> = {
-			$json: { items: [{ a: 1 }, { a: 2 }, { a: 3 }] },
-			extend: (...args: unknown[]) => {
-				hostExtendCalls++;
-				throw new Error(`host-side data.extend was invoked with: ${JSON.stringify(args)}`);
-			},
-			extendOptional: (...args: unknown[]) => {
-				throw new Error('host-side data.extendOptional was invoked');
-			},
-		};
-
-		const result = evaluator.evaluate('{{ extend($json.items, "pluck", ["a"]) }}', data, caller);
-
-		expect(result).toEqual([1, 2, 3]);
-		expect(hostExtendCalls).toBe(0);
-	});
-
-	it('does NOT invoke host-side data.$jmespath when expression calls $jmespath(...)', () => {
+	it('does NOT invoke host-side data.$jmespath / data.$jmesPath for either casing', () => {
 		let hostJmespathCalls = 0;
 		const data: Record<string, unknown> = {
 			$json: { users: [{ name: 'a' }, { name: 'b' }] },
@@ -126,33 +104,14 @@ describe('Host-fn shadowing: data.extend / data.extendOptional must not be invok
 			},
 		};
 
-		const result = evaluator.evaluate(
-			'{{ $jmespath({users: [{name: "a"}, {name: "b"}]}, "users[*].name") }}',
-			data,
-			caller,
-		);
-
-		expect(result).toEqual(['a', 'b']);
-		expect(hostJmespathCalls).toBe(0);
-	});
-
-	it('does NOT invoke host-side data.$jmesPath when expression calls $jmesPath (capital P)', () => {
-		let hostJmespathCalls = 0;
-		const data: Record<string, unknown> = {
-			$json: {},
-			$jmespath: (...args: unknown[]) => {
-				hostJmespathCalls++;
-				throw new Error(`host-side data.$jmespath was invoked with: ${JSON.stringify(args)}`);
-			},
-			$jmesPath: (...args: unknown[]) => {
-				hostJmespathCalls++;
-				throw new Error(`host-side data.$jmesPath was invoked with: ${JSON.stringify(args)}`);
-			},
-		};
-
-		const result = evaluator.evaluate('{{ $jmesPath({a: 1, b: 2}, "a") }}', data, caller);
-
-		expect(result).toBe(1);
+		expect(
+			evaluator.evaluate(
+				'{{ $jmespath({users: [{name: "a"}, {name: "b"}]}, "users[*].name") }}',
+				data,
+				caller,
+			),
+		).toEqual(['a', 'b']);
+		expect(evaluator.evaluate('{{ $jmesPath({a: 1, b: 2}, "a") }}', data, caller)).toBe(1);
 		expect(hostJmespathCalls).toBe(0);
 	});
 

@@ -3,7 +3,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
 import { TimeoutError, MemoryLimitError } from '../types';
-import { createBridge, engineName } from './test-bridge';
+import { createBridge, engineName, isQuickJS, newBridge } from './test-bridge';
 
 describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 	let evaluator: ExpressionEvaluator;
@@ -102,74 +102,33 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(result).toBe('items-result');
 	});
 
-	it('should evaluate zero values', async () => {
+	it('should marshal falsy and primitive values', () => {
 		const data = {
-			$json: { zero: 0 },
+			$json: {
+				zero: 0,
+				empty: '',
+				field: null,
+				active: true,
+				items: ['first', 'second'],
+				numbers: [42, 99],
+			},
 		};
 
-		const result = evaluator.evaluate('{{ $json.zero }}', data, caller);
-
-		expect(result).toBe(0);
+		expect(evaluator.evaluate('{{ $json.zero }}', data, caller)).toBe(0);
+		expect(evaluator.evaluate('{{ $json.empty }}', data, caller)).toBe('');
+		expect(evaluator.evaluate('{{ $json.field }}', data, caller)).toBeNull();
+		expect(evaluator.evaluate('{{ $json.active }}', data, caller)).toBe(true);
+		// getArrayElement: falsy index 0 and primitive element
+		expect(evaluator.evaluate('{{ $json.items[0] }}', data, caller)).toBe('first');
+		expect(evaluator.evaluate('{{ $json.numbers[0] }}', data, caller)).toBe(42);
 	});
 
-	it('should evaluate empty string values', async () => {
-		const data = {
-			$json: { empty: '' },
-		};
-
-		const result = evaluator.evaluate('{{ $json.empty }}', data, caller);
-
-		expect(result).toBe('');
-	});
-
-	it('should evaluate array index 0 (falsy index)', async () => {
-		const data = {
-			$json: { items: ['first', 'second'] },
-		};
-
-		const result = evaluator.evaluate('{{ $json.items[0] }}', data, caller);
-
-		expect(result).toBe('first');
-	});
-
-	it('should evaluate primitive array elements', async () => {
-		const data = {
-			$json: { numbers: [42, 99] },
-		};
-
-		const result = evaluator.evaluate('{{ $json.numbers[0] }}', data, caller);
-
-		expect(result).toBe(42);
-	});
-
-	it('should evaluate array .length', async () => {
+	it('should evaluate array .length', () => {
 		const data = {
 			$json: { items: [1, 2, 3] },
 		};
 
-		const result = evaluator.evaluate('{{ $json.items.length }}', data, caller);
-
-		expect(result).toBe(3);
-	});
-
-	it('should evaluate null values', async () => {
-		const data = {
-			$json: { field: null },
-		};
-
-		const result = evaluator.evaluate('{{ $json.field }}', data, caller);
-
-		expect(result).toBeNull();
-	});
-
-	it('should evaluate boolean values', async () => {
-		const data = {
-			$json: { active: true },
-		};
-
-		const result = evaluator.evaluate('{{ $json.active }}', data, caller);
-
-		expect(result).toBe(true);
+		expect(evaluator.evaluate('{{ $json.items.length }}', data, caller)).toBe(3);
 	});
 
 	it('should handle large arrays with lazy loading', async () => {
@@ -286,22 +245,17 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 	});
 
 	describe('Date marshaling from workflow data', () => {
-		it('should read a top-level Date in $json as a Date, not {}', () => {
-			const data = { $json: { d: new Date('2026-06-30T20:34:04.498Z') } };
+		it('should read a top-level or nested Date in $json as a Date, not {}', () => {
+			const iso = '2026-06-30T20:34:04.498Z';
+			const data = { $json: { d: new Date(iso), row: { createdAt: new Date(iso) } } };
 
-			const result = evaluator.evaluate('{{ $json.d }}', data, caller);
+			const top = evaluator.evaluate('{{ $json.d }}', data, caller);
+			expect(top).not.toEqual({});
+			expect(top).toBeInstanceOf(Date);
+			expect((top as Date).toISOString()).toBe(iso);
 
-			expect(result).not.toEqual({});
-			expect(result).toBeInstanceOf(Date);
-			expect((result as Date).toISOString()).toBe('2026-06-30T20:34:04.498Z');
-		});
-
-		it('should read a nested Date in $json (e.g. Data Table createdAt)', () => {
-			const data = { $json: { row: { createdAt: new Date('2026-06-30T20:34:04.498Z') } } };
-
-			const result = evaluator.evaluate('{{ $json.row.createdAt }}', data, caller);
-
-			expect(result).toBeInstanceOf(Date);
+			// nested (e.g. Data Table createdAt) travels the same getValueAtPath branch
+			expect(evaluator.evaluate('{{ $json.row.createdAt }}', data, caller)).toBeInstanceOf(Date);
 		});
 
 		it('should read a Date array element in $json', () => {
@@ -319,6 +273,21 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(evaluator.evaluate('{{ Object.keys($json).sort().join(",") }}', data, caller)).toBe(
 			'__NaN__,other',
 		);
+	});
+
+	it('should resolve a function array element as undefined', () => {
+		const data = { $json: { items: [1, () => 2, 3] } };
+
+		expect(evaluator.evaluate('{{ typeof $json.items[1] }}', data, caller)).toBe('undefined');
+		expect(evaluator.evaluate('{{ $json.items[2] }}', data, caller)).toBe(3);
+	});
+
+	it('should round-trip Map, Set and NaN return values', () => {
+		const data = { $json: {} };
+
+		expect(evaluator.evaluate('{{ new Map([["a", 1]]) }}', data, caller)).toBeInstanceOf(Map);
+		expect(evaluator.evaluate('{{ new Set([1, 2]) }}', data, caller)).toBeInstanceOf(Set);
+		expect(evaluator.evaluate('{{ 0/0 }}', data, caller)).toBeNaN();
 	});
 
 	it('should throw on invalid timezone', async () => {
@@ -616,21 +585,6 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		).toBeUndefined();
 	});
 
-	it('should handle re-entrant execute() calls via closure-scoped contexts', () => {
-		const data = {
-			$json: {
-				get nested() {
-					// Trigger a nested evaluate() through the same bridge.
-					// With closure-scoped contexts, this should succeed —
-					// each evaluation gets its own closure with independent callbacks.
-					return evaluator.evaluate('{{ "inner" }}', { $json: { val: 1 } }, caller);
-				},
-			},
-		};
-
-		expect(evaluator.evaluate('{{ $json.nested }}', data, caller)).toBe('inner');
-	});
-
 	it('should preserve the outer data bindings after a re-entrant execute() call', () => {
 		const data = {
 			$json: {
@@ -650,9 +604,9 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 	});
 });
 
-describe('Integration: IsolatedVmBridge error handling', () => {
+describe(`Integration: ${engineName} error handling`, () => {
 	it('should throw TimeoutError when expression exceeds timeout', async () => {
-		const bridge = new IsolatedVmBridge({ timeout: 100 });
+		const bridge = newBridge({ timeout: 100 });
 		await bridge.initialize();
 		try {
 			expect(() => bridge.execute('while(true){}', {})).toThrow(TimeoutError);
@@ -661,8 +615,38 @@ describe('Integration: IsolatedVmBridge error handling', () => {
 		}
 	});
 
+	// QuickJS-only: its interrupt deadline is wall-clock and was previously reset
+	// on every nested execute(), so a loop re-entering faster than the timeout
+	// never interrupted. isolated-vm uses a CPU-time budget per call and is not
+	// affected. The outer loop below burns CPU in the vm (so the interrupt fires
+	// in the outer context) while periodically re-entering via $evaluateExpression.
+	it.runIf(isQuickJS)(
+		'should enforce the timeout even when the expression re-enters execute()',
+		async () => {
+			const bridge = newBridge({ timeout: 150 });
+			await bridge.initialize();
+			try {
+				const data: Record<string, unknown> = {
+					$evaluateExpression: () => bridge.execute('1', data),
+				};
+				const code = `
+					var end = Date.now() + 5000;
+					var i = 0;
+					while (Date.now() < end) {
+						i++;
+						if (i % 100000 === 0) { this.$evaluateExpression("1"); }
+					}
+					return i;
+				`;
+				expect(() => bridge.execute(code, data)).toThrow(TimeoutError);
+			} finally {
+				await bridge.dispose();
+			}
+		},
+	);
+
 	it('should throw MemoryLimitError when expression exceeds memory limit', async () => {
-		const bridge = new IsolatedVmBridge({ memoryLimit: 8 });
+		const bridge = newBridge({ memoryLimit: 8 });
 		await bridge.initialize();
 		try {
 			expect(() =>
