@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { WorkflowGraph } from '../../graph';
+import type { LifecycleEventPublisher } from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
-import type { StatusPublisher } from '../../status';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import { stepKeyId, type StepKey, type StepStatus } from '../execution.types';
 import { StepSettledHandler } from '../step-settled-handler';
@@ -121,7 +121,7 @@ function makeOrchestrationQueue(): WorkQueue<OrchestrationMessage> {
 }
 
 /** A publisher fake. Handlers announce into it; tests that care assert on `publish`. */
-function makeStatusPublisher(): StatusPublisher {
+function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 	return { publish: vi.fn(), stop: vi.fn() };
 }
 
@@ -131,7 +131,7 @@ function makeHandler(
 		executionStore = makeExecutionStore(),
 		stepQueue = makeStepQueue(),
 		orchestrationQueue = makeOrchestrationQueue(),
-		statusPublisher = makeStatusPublisher(),
+		lifecycleEventPublisher = makeLifecycleEventPublisher(),
 	} = {},
 ) {
 	return {
@@ -140,12 +140,12 @@ function makeHandler(
 			stepStore,
 			stepQueue,
 			orchestrationQueue,
-			statusPublisher,
+			lifecycleEventPublisher,
 		),
 		executionStore,
 		stepQueue,
 		orchestrationQueue,
-		statusPublisher,
+		lifecycleEventPublisher,
 	};
 }
 
@@ -469,7 +469,7 @@ describe('StepSettledHandler', () => {
 	});
 });
 
-describe('StepSettledHandler status updates', () => {
+describe('StepSettledHandler lifecycle events', () => {
 	const finished = { executionId: 'exec-1', workflowId: 'wf-1', at: expect.any(String) as string };
 
 	it('announces execution:completed when it records the completion', async () => {
@@ -477,22 +477,22 @@ describe('StepSettledHandler status updates', () => {
 			{ id: 'step-m', nodeId: 'm' },
 			{ countSettledSteps: vi.fn().mockResolvedValue(5) },
 		);
-		const { handler, statusPublisher } = makeHandler(stepStore);
+		const { handler, lifecycleEventPublisher } = makeHandler(stepStore);
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
-		expect(statusPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'execution:completed',
 			...finished,
 		});
 	});
 
 	it('announces execution:failed when a step failed', async () => {
-		const { handler, statusPublisher } = makeHandler(makeStepStore({ status: 'failed' }));
+		const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status: 'failed' }));
 
 		await handler.handle(event);
 
-		expect(statusPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'execution:failed',
 			...finished,
 		});
@@ -504,13 +504,13 @@ describe('StepSettledHandler status updates', () => {
 			{},
 			{ finishExecution: vi.fn().mockResolvedValue(false) },
 		);
-		const { handler, statusPublisher } = makeHandler(makeStepStore({ status: 'failed' }), {
+		const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status: 'failed' }), {
 			executionStore,
 		});
 
 		await handler.handle(event);
 
-		expect(statusPublisher.publish).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 
 	it('announces nothing while any reachable node is unsettled', async () => {
@@ -518,20 +518,20 @@ describe('StepSettledHandler status updates', () => {
 			{ id: 'step-m', nodeId: 'm' },
 			{ countSettledSteps: vi.fn().mockResolvedValue(4) },
 		);
-		const { handler, statusPublisher } = makeHandler(stepStore);
+		const { handler, lifecycleEventPublisher } = makeHandler(stepStore);
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
-		expect(statusPublisher.publish).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 
 	it('announces nothing for the steps it cancels or skips', async () => {
 		// TODO(CAT-3990): the cancel sweep names no rows, and a skip settles at
 		// birth. A consumer cannot tell either from "not reached yet".
-		const { handler, statusPublisher } = makeHandler(makeStepStore({ status: 'skipped' }));
+		const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status: 'skipped' }));
 
 		await handler.handle(event);
 
-		expect(statusPublisher.publish).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 });

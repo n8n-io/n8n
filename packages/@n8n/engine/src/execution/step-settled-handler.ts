@@ -1,7 +1,7 @@
 import { UnexpectedError } from '../common';
 import { deriveLoops, findTriggerNode, getDescendantNodeIds, getSuccessorNodeIds } from '../graph';
+import type { LifecycleEventPublisher } from '../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
-import type { StatusPublisher } from '../status';
 import { countExpectedSettledSteps } from './completion';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import { stepKeyId, type StepKey, type StepKeyId } from './execution.types';
@@ -28,7 +28,7 @@ export class StepSettledHandler {
 		private readonly stepStore: StepStore,
 		private readonly stepQueue: WorkQueue<StepMessage>,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
-		private readonly statusPublisher: StatusPublisher,
+		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 	) {}
 
 	async handle(event: StepSettledEvent): Promise<void> {
@@ -83,7 +83,7 @@ export class StepSettledHandler {
 		execution: ExecutionRecord,
 		type: 'execution:completed' | 'execution:failed',
 	): void {
-		this.statusPublisher.publish({
+		this.lifecycleEventPublisher.publish({
 			type,
 			executionId: execution.id,
 			workflowId: execution.workflowId,

@@ -1,6 +1,6 @@
 import type { z } from 'zod';
 
-import type { statusUpdateSchema } from './status-update.schema';
+import type { lifecycleEventSchema } from './lifecycle-event.schema';
 
 /**
  * Lifecycle events the data plane announces to its host as they happen.
@@ -10,10 +10,10 @@ import type { statusUpdateSchema } from './status-update.schema';
  * that needs certainty re-queries it. Skipped and cancelled steps announce
  * nothing, so silence is not evidence that a step did not run.
  */
-export type StatusUpdate = z.infer<typeof statusUpdateSchema>;
+export type LifecycleEvent = z.infer<typeof lifecycleEventSchema>;
 
 /**
- * Ships a batch of updates to the host. Rejecting reports a failed delivery;
+ * Ships a batch of events to the host. Rejecting reports a failed delivery;
  * the engine logs and drops the batch rather than failing anything, so this
  * cannot be used to apply back pressure.
  *
@@ -21,4 +21,7 @@ export type StatusUpdate = z.infer<typeof statusUpdateSchema>;
  * waiting for it. Pass it to the request the callback makes, so an abandoned
  * batch cancels that request instead of leaving it running.
  */
-export type StatusCallback = (updates: StatusUpdate[], signal: AbortSignal) => Promise<void>;
+export type LifecycleEventCallback = (
+	events: LifecycleEvent[],
+	signal: AbortSignal,
+) => Promise<void>;

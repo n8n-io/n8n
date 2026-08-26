@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import type { ExternalDependencies, IStepExecutor } from '../../dependencies';
 import { deriveLoops, type WorkflowGraph } from '../../graph';
+import type { LifecycleEventPublisher, LifecycleEvent } from '../../lifecycle-events';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
-import type { StatusPublisher, StatusUpdate } from '../../status';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import { stepKeyId, type StepSlots, type StepStatus } from '../execution.types';
 import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
@@ -38,7 +38,7 @@ const graph: WorkflowGraph = {
 };
 
 /** A publisher fake. Handlers announce into it; tests that care assert on `publish`. */
-function makeStatusPublisher(): StatusPublisher {
+function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 	return { publish: vi.fn(), stop: vi.fn() };
 }
 
@@ -48,9 +48,15 @@ function makeHandler(
 	stepStore: StepStore,
 	queue: WorkQueue<OrchestrationMessage>,
 	dependencies: ExternalDependencies,
-	statusPublisher: StatusPublisher = makeStatusPublisher(),
+	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
 ): StepReadyHandler {
-	return new StepReadyHandler(executionStore, stepStore, queue, dependencies, statusPublisher);
+	return new StepReadyHandler(
+		executionStore,
+		stepStore,
+		queue,
+		dependencies,
+		lifecycleEventPublisher,
+	);
 }
 
 function makeExecutionStore(overrides: Partial<ExecutionRecord> = {}): ExecutionStore {
@@ -477,7 +483,7 @@ describe('StepReadyHandler', () => {
 		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
-	it('does not report completion when the status update is not recorded', async () => {
+	it('does not report completion when the lifecycle event is not recorded', async () => {
 		const stepStore = makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) });
 		const queue = makeQueue();
 		const handler = makeHandler(makeExecutionStore(), stepStore, queue, {
@@ -680,7 +686,7 @@ describe('StepReadyHandler', () => {
 	);
 });
 
-describe('StepReadyHandler status updates', () => {
+describe('StepReadyHandler lifecycle events', () => {
 	const stepFields = {
 		executionId: 'exec-1',
 		stepId: 'step-a',
@@ -691,25 +697,25 @@ describe('StepReadyHandler status updates', () => {
 	};
 
 	it('announces the start and the outcome of a step it ran', async () => {
-		const statusPublisher = makeStatusPublisher();
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const outputs = [[{ json: { ok: true } }]];
 		const handler = makeHandler(
 			makeExecutionStore(),
 			makeStepStore(),
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor({ outputs }) },
-			statusPublisher,
+			lifecycleEventPublisher,
 		);
 
 		await handler.handle(event);
 
-		expect(statusPublisher.publish).toHaveBeenCalledTimes(2);
-		expect(statusPublisher.publish).toHaveBeenNthCalledWith(1, {
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledTimes(2);
+		expect(lifecycleEventPublisher.publish).toHaveBeenNthCalledWith(1, {
 			type: 'step:started',
 			...stepFields,
 		});
 		// outputs ride along, so a consumer needs no read to render them
-		expect(statusPublisher.publish).toHaveBeenNthCalledWith(2, {
+		expect(lifecycleEventPublisher.publish).toHaveBeenNthCalledWith(2, {
 			type: 'step:completed',
 			...stepFields,
 			outputs,
@@ -717,18 +723,18 @@ describe('StepReadyHandler status updates', () => {
 	});
 
 	it('announces step:failed when the executor throws', async () => {
-		const statusPublisher = makeStatusPublisher();
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const handler = makeHandler(
 			makeExecutionStore(),
 			makeStepStore(),
 			makeQueue(),
 			{ v1StepExecutor: { execute: vi.fn().mockRejectedValue(new Error('boom')) } },
-			statusPublisher,
+			lifecycleEventPublisher,
 		);
 
 		await handler.handle(event);
 
-		expect(statusPublisher.publish).toHaveBeenNthCalledWith(2, {
+		expect(lifecycleEventPublisher.publish).toHaveBeenNthCalledWith(2, {
 			type: 'step:failed',
 			...stepFields,
 		});
@@ -738,9 +744,9 @@ describe('StepReadyHandler status updates', () => {
 		// The settled event starts the orchestration worker's dispatch loop
 		// synchronously, so announcing after it could invert causal order.
 		const order: string[] = [];
-		const statusPublisher: StatusPublisher = {
-			publish: vi.fn((update: StatusUpdate) => {
-				order.push(update.type);
+		const lifecycleEventPublisher: LifecycleEventPublisher = {
+			publish: vi.fn((event: LifecycleEvent) => {
+				order.push(event.type);
 			}),
 			stop: vi.fn(),
 		};
@@ -757,7 +763,7 @@ describe('StepReadyHandler status updates', () => {
 			makeStepStore(),
 			queue,
 			{ v1StepExecutor: makeExecutor() },
-			statusPublisher,
+			lifecycleEventPublisher,
 		);
 
 		await handler.handle(event);
@@ -766,33 +772,33 @@ describe('StepReadyHandler status updates', () => {
 	});
 
 	it('announces nothing when the step cannot be claimed', async () => {
-		const statusPublisher = makeStatusPublisher();
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const handler = makeHandler(
 			makeExecutionStore(),
 			makeStepStore({}, { claimStep: vi.fn().mockResolvedValue(null) }),
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor() },
-			statusPublisher,
+			lifecycleEventPublisher,
 		);
 
 		await handler.handle(event);
 
-		expect(statusPublisher.publish).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 
 	it('announces no outcome it did not record', async () => {
-		const statusPublisher = makeStatusPublisher();
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const handler = makeHandler(
 			makeExecutionStore(),
 			makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) }),
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor() },
-			statusPublisher,
+			lifecycleEventPublisher,
 		);
 
 		await handler.handle(event);
 
-		expect(statusPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:started',
 			...stepFields,
 		});
@@ -801,18 +807,18 @@ describe('StepReadyHandler status updates', () => {
 	it('announces the start but no outcome for a step its execution no longer wants', async () => {
 		// The row genuinely is `running`, so the start is the honest report. The
 		// consumer resolves the step on the execution's terminal event.
-		const statusPublisher = makeStatusPublisher();
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const handler = makeHandler(
 			makeExecutionStore({ status: 'cancelled' }),
 			makeStepStore(),
 			makeQueue(),
 			{ v1StepExecutor: makeExecutor() },
-			statusPublisher,
+			lifecycleEventPublisher,
 		);
 
 		await handler.handle(event);
 
-		expect(statusPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'step:started',
 			...stepFields,
 		});

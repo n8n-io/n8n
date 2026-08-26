@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import type { EngineStores } from '../../database';
-import { BatchingStatusPublisher } from '../../status';
+import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
 import { createEngineRuntime } from '../create-engine-runtime';
 
 /** Enough of a `DataSource` for the stores: they only hold on to a repository. */
@@ -89,16 +89,18 @@ describe('createEngineRuntime', () => {
 		expect(build).toHaveBeenCalledOnce();
 	});
 
-	it('stops the batching publisher it builds for a host status callback', async () => {
-		// The flush itself belongs to `BatchingStatusPublisher.stop()` and is covered
+	it('stops the batching publisher it builds for a host lifecycle event callback', async () => {
+		// The flush itself belongs to `BatchingLifecycleEventPublisher.stop()` and is covered
 		// by its own tests; what only the runtime can get wrong is building the
 		// batching publisher for a host callback and awaiting its `stop()`.
-		const flushOnStop = vi.spyOn(BatchingStatusPublisher.prototype, 'stop');
+		const flushOnStop = vi.spyOn(BatchingLifecycleEventPublisher.prototype, 'stop');
 		const engine = createEngineRuntime({
 			dataSource: fakeDataSource(),
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
-			externalDependencies: () => ({ statusCallback: vi.fn().mockResolvedValue(undefined) }),
+			externalDependencies: () => ({
+				lifecycleEventCallback: vi.fn().mockResolvedValue(undefined),
+			}),
 		});
 		engine.start();
 

@@ -16,8 +16,8 @@ const MAX_TRIGGER_SLOTS = MAX_SLOT_INDEX + 1;
 const StepTypeSchema = z.enum(['trigger', 'v1-node', 'wait', 'subworkflow', 'batch']);
 
 // `id` and `name` are non-empty because the engine reships them as identifiers:
-// a status update carries both, and the status schema requires a non-empty value,
-// so an empty one admitted here would cost the host a whole batch.
+// a lifecycle event carries both, and its schema requires a non-empty value, so
+// an empty one admitted here would cost the host a whole batch.
 const GraphNodeSchema = z.object({
 	id: z.string().min(1),
 	name: z.string().min(1),

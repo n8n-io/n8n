@@ -1,22 +1,22 @@
-import type { StatusPublisher } from './status-publisher';
-import { MAX_STATUS_UPDATES_PER_BATCH } from './status-update.schema';
-import type { StatusCallback, StatusUpdate } from './status-update.types';
+import type { LifecycleEventPublisher } from './lifecycle-event-publisher';
+import { MAX_LIFECYCLE_EVENTS_PER_BATCH } from './lifecycle-event.schema';
+import type { LifecycleEventCallback, LifecycleEvent } from './lifecycle-event.types';
 
 /** Short enough that a host's view feels live, long enough to coalesce a fan-out. */
-export const DEFAULT_STATUS_FLUSH_INTERVAL_MS = 50;
+export const DEFAULT_LIFECYCLE_EVENT_FLUSH_INTERVAL_MS = 50;
 
 /**
  * Deadline on one callback invocation, and on the final flush in `stop()`. A
  * callback that hangs instead of rejecting must not wedge the chain or hold
  * shutdown open.
  */
-export const DEFAULT_STATUS_SEND_TIMEOUT_MS = 10_000;
+export const DEFAULT_LIFECYCLE_EVENT_SEND_TIMEOUT_MS = 10_000;
 
 /** Batches allowed on the chain before new ones are dropped. */
 export const DEFAULT_MAX_PENDING_BATCHES = 20;
 
 /**
- * Buffers updates and hands them to the host's callback in batches.
+ * Buffers events and hands them to the host's callback in batches.
  *
  * One flush is in flight at a time: each is chained onto its predecessor, so
  * batches reach the host in the order they were produced. A callback that
@@ -29,8 +29,8 @@ export const DEFAULT_MAX_PENDING_BATCHES = 20;
  * `maxPendingBatches` batches wait on the chain, and a flush past that cap
  * drops its own batch instead of growing the backlog.
  */
-export class BatchingStatusPublisher implements StatusPublisher {
-	private buffer: StatusUpdate[] = [];
+export class BatchingLifecycleEventPublisher implements LifecycleEventPublisher {
+	private buffer: LifecycleEvent[] = [];
 
 	private flushTimer: NodeJS.Timeout | undefined;
 
@@ -46,17 +46,17 @@ export class BatchingStatusPublisher implements StatusPublisher {
 	private abandoned = false;
 
 	constructor(
-		private readonly send: StatusCallback,
-		private readonly flushIntervalMs: number = DEFAULT_STATUS_FLUSH_INTERVAL_MS,
-		private readonly maxBuffered: number = MAX_STATUS_UPDATES_PER_BATCH,
+		private readonly send: LifecycleEventCallback,
+		private readonly flushIntervalMs: number = DEFAULT_LIFECYCLE_EVENT_FLUSH_INTERVAL_MS,
+		private readonly maxBuffered: number = MAX_LIFECYCLE_EVENTS_PER_BATCH,
 		private readonly maxPendingBatches: number = DEFAULT_MAX_PENDING_BATCHES,
-		private readonly sendTimeoutMs: number = DEFAULT_STATUS_SEND_TIMEOUT_MS,
+		private readonly sendTimeoutMs: number = DEFAULT_LIFECYCLE_EVENT_SEND_TIMEOUT_MS,
 	) {}
 
-	publish(update: StatusUpdate): void {
+	publish(event: LifecycleEvent): void {
 		if (this.stopped) return;
 
-		this.buffer.push(update);
+		this.buffer.push(event);
 
 		// Flushed rather than dropped on reaching the cap: a `step:completed`
 		// carries data the host cannot reconstruct from a later event. The backlog
@@ -87,7 +87,7 @@ export class BatchingStatusPublisher implements StatusPublisher {
 		// has not taken yet, so a sustained slowdown would grow engine memory.
 		if (this.pendingBatches >= this.maxPendingBatches) {
 			console.warn(
-				`engine: status backlog full at ${this.pendingBatches} batches, dropped ${batch.length} update(s)`,
+				`engine: lifecycle event backlog full at ${this.pendingBatches} batches, dropped ${batch.length} event(s)`,
 			);
 			return await this.inFlight;
 		}
@@ -97,12 +97,16 @@ export class BatchingStatusPublisher implements StatusPublisher {
 			try {
 				// Shutdown has stopped waiting, so the chain behind it is abandoned
 				// rather than worked through one deadline at a time.
-				if (this.abandoned) throw new Error('status publisher stopped before the batch was sent');
+				if (this.abandoned)
+					throw new Error('lifecycle event publisher stopped before the batch was sent');
 				await this.sendWithinDeadline(batch);
 			} catch (error) {
 				// Caught inside the chain: a rejected `inFlight` would silently stop
 				// every later flush.
-				console.warn(`engine: status callback failed, dropped ${batch.length} update(s)`, error);
+				console.warn(
+					`engine: lifecycle event callback failed, dropped ${batch.length} event(s)`,
+					error,
+				);
 			} finally {
 				this.pendingBatches--;
 			}
@@ -112,7 +116,7 @@ export class BatchingStatusPublisher implements StatusPublisher {
 	}
 
 	async stop(): Promise<void> {
-		// Set first, so an update from a straggling handler cannot land behind the
+		// Set first, so an event from a straggling handler cannot land behind the
 		// final flush and be stranded in the buffer.
 		this.stopped = true;
 
@@ -133,7 +137,7 @@ export class BatchingStatusPublisher implements StatusPublisher {
 	}
 
 	/** Awaits the callback, abandoning it once it outlives its deadline. */
-	private async sendWithinDeadline(batch: StatusUpdate[]): Promise<void> {
+	private async sendWithinDeadline(batch: LifecycleEvent[]): Promise<void> {
 		const overdue = new AbortController();
 		const deadline = delay(this.sendTimeoutMs);
 		try {
@@ -142,7 +146,9 @@ export class BatchingStatusPublisher implements StatusPublisher {
 			await Promise.race([
 				this.send(batch, overdue.signal),
 				deadline.promise.then(() => {
-					const error = new Error(`status callback did not settle within ${this.sendTimeoutMs}ms`);
+					const error = new Error(
+						`lifecycle event callback did not settle within ${this.sendTimeoutMs}ms`,
+					);
 					// The engine stops waiting either way. The signal is what lets the
 					// host cancel the request behind the callback.
 					overdue.abort(error);

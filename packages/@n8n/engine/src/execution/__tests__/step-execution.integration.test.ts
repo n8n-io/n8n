@@ -14,10 +14,10 @@ import {
 } from '../../database';
 import type { IStepExecutor, StepExecutionRequest } from '../../dependencies';
 import type { WorkflowGraph } from '../../graph';
+import { noopLifecycleEventPublisher } from '../../lifecycle-events';
+import type { LifecycleEventCallback, LifecycleEvent } from '../../lifecycle-events';
 import { InMemoryWorkQueue, type OrchestrationMessage } from '../../queue';
 import { createEngineRuntime } from '../../runtime';
-import { noopStatusPublisher } from '../../status';
-import type { StatusCallback, StatusUpdate } from '../../status';
 import type { TriggerOutputs } from '../execution.types';
 import type { StartExecutionResult } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
@@ -63,18 +63,18 @@ describe('step execution (integration)', () => {
 		{
 			workflowId = 'wf-1',
 			graph: workflowGraph = graph,
-			statusCallback,
+			lifecycleEventCallback,
 		}: {
 			workflowId?: string;
 			graph?: WorkflowGraph;
-			statusCallback?: StatusCallback;
+			lifecycleEventCallback?: LifecycleEventCallback;
 		} = {},
 	) {
 		let done!: () => void;
 		const finished = new Promise<void>((resolve) => (done = resolve));
 		// `runtime.stop()` flushes the publisher, so by the time this returns every
-		// update the run produced has been delivered — no polling, no timers.
-		const updates: StatusUpdate[] = [];
+		// event the run produced has been delivered — no polling, no timers.
+		const events: LifecycleEvent[] = [];
 
 		const runtime = createEngineRuntime({
 			dataSource,
@@ -90,9 +90,9 @@ describe('step execution (integration)', () => {
 				});
 				return {
 					v1StepExecutor: executor,
-					statusCallback: async (batch, signal) => {
-						updates.push(...batch);
-						await statusCallback?.(batch, signal);
+					lifecycleEventCallback: async (batch, signal) => {
+						events.push(...batch);
+						await lifecycleEventCallback?.(batch, signal);
 					},
 				};
 			},
@@ -115,7 +115,7 @@ describe('step execution (integration)', () => {
 		const steps = await dataSource
 			.getRepository(WorkflowStepExecution)
 			.find({ where: { executionId } });
-		return { executionId, execution, steps, updates };
+		return { executionId, execution, steps, events };
 	}
 
 	it('runs a queued step and persists its outputs', async () => {
@@ -128,20 +128,20 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { executionId, execution, steps, updates } = await runWorkflow(executor, [
+		const { executionId, execution, steps, events } = await runWorkflow(executor, [
 			{ body: { name: 'ada' } },
 		]);
 		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
 
 		// One line for the whole status path: both emit points, causal ordering
 		// across the two workers, batched delivery, and the flush on stop.
-		expect(updates.map(({ type }) => type)).toEqual([
+		expect(events.map(({ type }) => type)).toEqual([
 			'execution:started',
 			'step:started',
 			'step:completed',
 			'execution:completed',
 		]);
-		expect(updates[0]).toEqual({
+		expect(events[0]).toEqual({
 			type: 'execution:started',
 			executionId,
 			workflowId: 'wf-1',
@@ -149,7 +149,7 @@ describe('step execution (integration)', () => {
 			at: expect.any(String) as string,
 		});
 		// The ids are the ones a consumer would re-query the data plane with.
-		expect(updates[2]).toEqual({
+		expect(events[2]).toEqual({
 			type: 'step:completed',
 			executionId,
 			stepId: step?.id,
@@ -187,10 +187,10 @@ describe('step execution (integration)', () => {
 			},
 		};
 
-		const { execution, steps, updates } = await runWorkflow(executor, [{}]);
+		const { execution, steps, events } = await runWorkflow(executor, [{}]);
 		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
 
-		expect(updates.map(({ type }) => type)).toEqual([
+		expect(events.map(({ type }) => type)).toEqual([
 			'execution:started',
 			'step:started',
 			'step:failed',
@@ -223,7 +223,7 @@ describe('step execution (integration)', () => {
 
 		const { execution, steps } = await runWorkflow(executor, [{}], {
 			workflowId: 'wf-refused',
-			statusCallback: async () => {
+			lifecycleEventCallback: async () => {
 				await Promise.reject(new Error('control plane down'));
 			},
 		});
@@ -381,7 +381,7 @@ describe('step execution (integration)', () => {
 			stepStore,
 			orchestrationQueue,
 			{ v1StepExecutor: { execute } },
-			noopStatusPublisher,
+			noopLifecycleEventPublisher,
 		);
 
 		const { id: executionId } = await executionStore.createExecution({

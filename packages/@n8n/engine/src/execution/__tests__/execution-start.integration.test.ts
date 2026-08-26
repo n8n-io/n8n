@@ -12,13 +12,13 @@ import {
 	WorkflowStepExecution,
 } from '../../database';
 import type { WorkflowGraph } from '../../graph';
+import { noopLifecycleEventPublisher } from '../../lifecycle-events';
 import {
 	InMemoryWorkQueue,
 	type OrchestrationMessage,
 	type StepMessage,
 	type WorkQueue,
 } from '../../queue';
-import { noopStatusPublisher } from '../../status';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
@@ -61,13 +61,18 @@ describe('execution start (integration)', () => {
 		const stepQueue = new InMemoryWorkQueue<StepMessage>();
 		const worker = new OrchestrationWorker(
 			orchestrationQueue,
-			new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue, noopStatusPublisher),
+			new ExecutionStartHandler(
+				executionStore,
+				stepStore,
+				orchestrationQueue,
+				noopLifecycleEventPublisher,
+			),
 			new StepSettledHandler(
 				executionStore,
 				stepStore,
 				stepQueue,
 				orchestrationQueue,
-				noopStatusPublisher,
+				noopLifecycleEventPublisher,
 			),
 		);
 		worker.start();
@@ -126,7 +131,7 @@ describe('execution start (integration)', () => {
 			executionStore,
 			stepStore,
 			queue,
-			noopStatusPublisher,
+			noopLifecycleEventPublisher,
 		);
 
 		const { id: executionId } = await executionStore.createExecution({

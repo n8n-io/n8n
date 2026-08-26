@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { WorkflowGraph } from '../../graph';
+import type { LifecycleEventPublisher } from '../../lifecycle-events';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
-import type { StatusPublisher } from '../../status';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import type { StepStore } from '../step-store';
 
 /** A publisher fake. The handler announces into it; tests that care assert on `publish`. */
-function makeStatusPublisher(): StatusPublisher {
+function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 	return { publish: vi.fn(), stop: vi.fn() };
 }
 
@@ -17,9 +17,9 @@ function makeHandler(
 	executionStore: ExecutionStore,
 	stepStore: StepStore,
 	queue: WorkQueue<OrchestrationMessage>,
-	statusPublisher: StatusPublisher = makeStatusPublisher(),
+	lifecycleEventPublisher: LifecycleEventPublisher = makeLifecycleEventPublisher(),
 ): ExecutionStartHandler {
-	return new ExecutionStartHandler(executionStore, stepStore, queue, statusPublisher);
+	return new ExecutionStartHandler(executionStore, stepStore, queue, lifecycleEventPublisher);
 }
 
 function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionStore {
@@ -212,14 +212,14 @@ describe('ExecutionStartHandler', () => {
 	});
 });
 
-describe('ExecutionStartHandler status updates', () => {
+describe('ExecutionStartHandler lifecycle events', () => {
 	const graph: WorkflowGraph = {
 		nodes: [{ id: 'trigger', name: 'T', type: 'trigger' }],
 		edges: [],
 	};
 
 	it('announces execution:started once it wins the claim', async () => {
-		const statusPublisher = makeStatusPublisher();
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const executionStore = makeExecutionStore({
 			loadExecution: vi.fn().mockResolvedValue(record(graph, { mode: 'manual' })),
 		});
@@ -227,12 +227,12 @@ describe('ExecutionStartHandler status updates', () => {
 			executionStore,
 			makeStepStore(vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }])),
 			makeOrchestrationQueue(),
-			statusPublisher,
+			lifecycleEventPublisher,
 		);
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
-		expect(statusPublisher.publish).toHaveBeenCalledExactlyOnceWith({
+		expect(lifecycleEventPublisher.publish).toHaveBeenCalledExactlyOnceWith({
 			type: 'execution:started',
 			executionId: 'exec-1',
 			workflowId: 'wf-1',
@@ -242,7 +242,7 @@ describe('ExecutionStartHandler status updates', () => {
 	});
 
 	it('announces nothing when it loses the claim', async () => {
-		const statusPublisher = makeStatusPublisher();
+		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const executionStore = makeExecutionStore({
 			transitionStatus: vi.fn().mockResolvedValue(false),
 		});
@@ -250,11 +250,11 @@ describe('ExecutionStartHandler status updates', () => {
 			executionStore,
 			makeStepStore(vi.fn().mockResolvedValue([{ id: 'step-trigger', nodeId: 'trigger' }])),
 			makeOrchestrationQueue(),
-			statusPublisher,
+			lifecycleEventPublisher,
 		);
 
 		await handler.handle({ type: 'execution:enqueued', executionId: 'exec-1' });
 
-		expect(statusPublisher.publish).not.toHaveBeenCalled();
+		expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
 	});
 });

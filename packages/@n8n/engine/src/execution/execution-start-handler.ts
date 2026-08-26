@@ -1,7 +1,7 @@
 import { UnexpectedError } from '../common';
 import { findTriggerNode } from '../graph';
+import type { LifecycleEventPublisher } from '../lifecycle-events';
 import type { ExecutionEnqueuedEvent, OrchestrationMessage, WorkQueue } from '../queue';
-import type { StatusPublisher } from '../status';
 import type { ExecutionStore } from './execution-store';
 import { DEFAULT_TRIGGER_OUTPUTS } from './execution.types';
 import type { StepStore } from './step-store';
@@ -19,7 +19,7 @@ export class ExecutionStartHandler {
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
-		private readonly statusPublisher: StatusPublisher,
+		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 	) {}
 
 	async handle(event: ExecutionEnqueuedEvent): Promise<void> {
@@ -39,7 +39,7 @@ export class ExecutionStartHandler {
 		// consumer a round trip, and the load only reads. A load that throws leaves
 		// the execution running and unannounced, which reconciliation (CAT-2938)
 		// owns — the stream trades completeness for freshness by design.
-		this.statusPublisher.publish({
+		this.lifecycleEventPublisher.publish({
 			type: 'execution:started',
 			executionId: execution.id,
 			workflowId: execution.workflowId,

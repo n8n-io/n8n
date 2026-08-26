@@ -20,14 +20,18 @@ export type {
 	StepDetail,
 } from './server';
 
-// The status publisher and its implementations stay internal: the runtime
-// factory owns the engine's topology, so no host constructs or swaps one.
+// The lifecycle event publisher and its implementations stay internal: the
+// runtime factory owns the engine's topology, so no host constructs or swaps one.
 export {
-	MAX_STATUS_UPDATES_PER_BATCH,
-	statusUpdateBatchSchema,
-	statusUpdateSchema,
-} from './status';
-export type { StatusCallback, StatusUpdate, StatusUpdateBatch } from './status';
+	MAX_LIFECYCLE_EVENTS_PER_BATCH,
+	lifecycleEventBatchSchema,
+	lifecycleEventSchema,
+} from './lifecycle-events';
+export type {
+	LifecycleEventCallback,
+	LifecycleEvent,
+	LifecycleEventBatch,
+} from './lifecycle-events';
 
 export type { JsonObject, JsonValue } from './common';
 

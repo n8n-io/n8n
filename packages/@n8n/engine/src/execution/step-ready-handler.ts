@@ -7,9 +7,9 @@ import {
 	type GraphNode,
 	type WorkflowLoop,
 } from '../graph';
+import type { LifecycleEventPublisher } from '../lifecycle-events';
 import { runBatchStep } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
-import type { StatusPublisher } from '../status';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
@@ -40,7 +40,7 @@ export class StepReadyHandler {
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly dependencies: ExternalDependencies,
-		private readonly statusPublisher: StatusPublisher,
+		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 	) {}
 
 	async handle(event: StepReadyEvent): Promise<void> {
@@ -62,7 +62,7 @@ export class StepReadyHandler {
 		// you won — and the row genuinely is `running`. A step the execution-status
 		// guard then declines to run announces no outcome, and the consumer
 		// resolves it on the execution's terminal event.
-		this.statusPublisher.publish({ type: 'step:started', ...stepUpdateFields(step, node) });
+		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
 		// The engine runs a batch step itself, so it has no executor to look up.
 		const executor = node.type === 'batch' ? undefined : this.executorFor(step, node);
@@ -110,10 +110,10 @@ export class StepReadyHandler {
 		// would invert causal order within the execution.
 		// Outputs ride along on the one event that has them, so a consumer needs no
 		// read to render what the step produced.
-		this.statusPublisher.publish(
+		this.lifecycleEventPublisher.publish(
 			run.ok
-				? { type: 'step:completed', ...stepUpdateFields(step, node), outputs: run.outputs }
-				: { type: 'step:failed', ...stepUpdateFields(step, node) },
+				? { type: 'step:completed', ...stepEventFields(step, node), outputs: run.outputs }
+				: { type: 'step:failed', ...stepEventFields(step, node) },
 		);
 
 		await this.orchestrationQueue.publish({
@@ -318,8 +318,8 @@ function readEdgeValue(
 	return row.outputs?.[edge.outputIndex] ?? null;
 }
 
-/** The identifiers every step status update carries. */
-function stepUpdateFields(step: StepRecord, node: GraphNode) {
+/** The identifiers every step lifecycle event carries. */
+function stepEventFields(step: StepRecord, node: GraphNode) {
 	return {
 		executionId: step.executionId,
 		stepId: step.id,

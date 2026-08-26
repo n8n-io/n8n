@@ -1,6 +1,6 @@
 import type { ExecutionMode, StepSlots } from '../execution';
 import type { GraphNode } from '../graph';
-import type { StatusCallback } from '../status';
+import type { LifecycleEventCallback } from '../lifecycle-events';
 
 /**
  * Host integration seam — how the engine reaches capabilities it does not own.
@@ -75,5 +75,5 @@ export interface ExternalDependencies {
 	 * Ships batches of lifecycle events to the host. Rejecting reports a failed
 	 * delivery and costs the host freshness only — it never fails a step.
 	 */
-	statusCallback?: StatusCallback;
+	lifecycleEventCallback?: LifecycleEventCallback;
 }
