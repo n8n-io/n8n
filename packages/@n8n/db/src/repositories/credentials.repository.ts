@@ -1,6 +1,6 @@
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import type { FindManyOptions, SelectQueryBuilder } from '@n8n/typeorm';
+import type { FindManyOptions, FindOptionsRelations, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, Like, Not, QueryFailedError } from '@n8n/typeorm';
 
 import { CredentialsEntity, type User } from '../entities';
@@ -18,9 +18,14 @@ import { parseListQuerySortBy } from '../utils/list-query-sort';
 
 const SORTABLE_COLUMNS = new Set(['id', 'name', 'createdAt', 'updatedAt']);
 
+const DEFAULT_CREDENTIAL_RELATIONS: FindOptionsRelations<CredentialsEntity> = {
+	shared: { project: { projectRelations: true } },
+};
+
 type CredentialsListQueryOptions = ListQuery.Options & {
 	includeData?: boolean;
 	user?: User;
+	relations?: FindOptionsRelations<CredentialsEntity>;
 };
 
 @Service()
@@ -149,7 +154,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 
 		type Select = Array<keyof CredentialsEntity>;
 
-		const defaultRelations = ['shared', 'shared.project', 'shared.project.projectRelations'];
+		const relations = listQueryOptions?.relations ?? DEFAULT_CREDENTIAL_RELATIONS;
 		const defaultSelect: Select = [
 			'id',
 			'name',
@@ -165,7 +170,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		if (!listQueryOptions) {
 			return {
 				select: defaultSelect,
-				relations: defaultRelations,
+				relations,
 			} as FindManyOptions<CredentialsEntity>;
 		}
 
@@ -197,7 +202,7 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 
 		if (!findManyOptions.select) {
 			findManyOptions.select = defaultSelect;
-			findManyOptions.relations = defaultRelations;
+			findManyOptions.relations = relations;
 		}
 
 		if (sortBy) {
@@ -523,12 +528,22 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			qb.addSelect('credential.data');
 		}
 
-		// Apply relations
+		// Apply relations. Walk the typed `relations` tree by hand
+		// and decide which joins to add. We need to discern boolean 'true' from objects.
 		if (!options.select) {
-			// Only add relations if using default select
-			qb.leftJoinAndSelect('credential.shared', 'shared')
-				.leftJoinAndSelect('shared.project', 'project')
-				.leftJoinAndSelect('project.projectRelations', 'projectRelations');
+			const relationsTree = options.relations ?? DEFAULT_CREDENTIAL_RELATIONS;
+			const sharedRel = relationsTree.shared;
+			if (sharedRel) {
+				qb.leftJoinAndSelect('credential.shared', 'shared');
+				const projectRel = sharedRel === true ? undefined : sharedRel.project;
+				if (projectRel) {
+					qb.leftJoinAndSelect('shared.project', 'project');
+					const projectRelationsRel = projectRel === true ? undefined : projectRel.projectRelations;
+					if (projectRelationsRel) {
+						qb.leftJoinAndSelect('project.projectRelations', 'projectRelations');
+					}
+				}
+			}
 		}
 
 		if (options.sortBy) {

@@ -3,11 +3,13 @@ import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { In, Not, QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
+import type { User } from '../../entities';
 import { CredentialsEntity } from '../../entities';
 import { TypeOrmTransaction } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { CredentialsRepository } from '../credentials.repository';
 import { InstanceCredentialAssignmentRepository } from '../instance-credential-assignment.repository';
+import { SharedCredentialsRepository } from '../shared-credentials.repository';
 
 describe('CredentialsRepository', () => {
 	const entityManager = mockEntityManager(CredentialsEntity);
@@ -138,12 +140,23 @@ describe('CredentialsRepository', () => {
 			expect(callArg).toBeDefined();
 			expect(callArg!.take).toBe(10);
 			expect(callArg!.select).toBeDefined();
-			expect(callArg!.relations).toEqual([
-				'shared',
-				'shared.project',
-				'shared.project.projectRelations',
-			]);
+			expect(callArg!.relations).toEqual({
+				shared: { project: { projectRelations: true } },
+			});
 			expect(callArg!.order).toBeUndefined();
+		});
+
+		it('should honor a caller-provided relations tree', async () => {
+			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
+
+			await credentialsRepository.findManyAndCount({
+				take: 10,
+				skip: 0,
+				relations: { shared: { project: true } },
+			});
+
+			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
+			expect(callArg?.relations).toEqual({ shared: { project: true } });
 		});
 
 		it('should apply credentialIds filter when provided', async () => {
@@ -186,6 +199,63 @@ describe('CredentialsRepository', () => {
 
 			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
 			expect(callArg?.order).toBeUndefined();
+		});
+	});
+
+	describe('getManyAndCountWithSharingSubquery', () => {
+		function mockQueryBuilder() {
+			const qb = mock<SelectQueryBuilder<CredentialsEntity>>();
+			qb.andWhere.mockReturnValue(qb);
+			qb.setParameters.mockReturnValue(qb);
+			qb.select.mockReturnValue(qb);
+			qb.addSelect.mockReturnValue(qb);
+			qb.leftJoinAndSelect.mockReturnValue(qb);
+			qb.addOrderBy.mockReturnValue(qb);
+			qb.take.mockReturnValue(qb);
+			qb.skip.mockReturnValue(qb);
+			qb.getMany.mockResolvedValue([]);
+			qb.getCount.mockResolvedValue(0);
+			return qb;
+		}
+
+		beforeEach(() => {
+			const subquery = mock<SelectQueryBuilder<CredentialsEntity>>();
+			subquery.getQuery.mockReturnValue('SELECT sc.credentialsId FROM shared_credentials sc');
+			subquery.getParameters.mockReturnValue({});
+			vi.spyOn(
+				Container.get(SharedCredentialsRepository),
+				'buildSharedCredentialIdsSubquery',
+			).mockReturnValue(subquery);
+		});
+
+		it('eager-loads projectRelations by default', async () => {
+			const qb = mockQueryBuilder();
+			vi.spyOn(credentialsRepository, 'createQueryBuilder').mockReturnValue(qb);
+
+			await credentialsRepository.getManyAndCountWithSharingSubquery(mock<User>(), {}, {});
+
+			expect(qb.leftJoinAndSelect).toHaveBeenCalledWith(
+				'project.projectRelations',
+				'projectRelations',
+			);
+		});
+
+		it('skips projectRelations when the caller passes a narrower relations tree', async () => {
+			const qb = mockQueryBuilder();
+			vi.spyOn(credentialsRepository, 'createQueryBuilder').mockReturnValue(qb);
+
+			await credentialsRepository.getManyAndCountWithSharingSubquery(
+				mock<User>(),
+				{},
+				{ relations: { shared: { project: true } } },
+			);
+
+			expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('credential.shared', 'shared');
+			expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('shared.project', 'project');
+			expect(qb.leftJoinAndSelect).not.toHaveBeenCalledWith(
+				'project.projectRelations',
+				expect.anything(),
+			);
 		});
 	});
 

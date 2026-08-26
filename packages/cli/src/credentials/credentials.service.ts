@@ -108,7 +108,9 @@ type PrepareUpdateDataOptions = {
 };
 
 type GetManyOptions = {
-	listQueryOptions?: ListQuery.Options;
+	listQueryOptions?: ListQuery.Options & {
+		relations?: FindOptionsRelations<CredentialsEntity>;
+	};
 	includeScopes?: boolean;
 	includeData?: boolean;
 	onlySharedWithMe?: boolean;
