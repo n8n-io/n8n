@@ -136,9 +136,48 @@ describe('lintPythonCode — native runner constraints', () => {
 		]);
 	});
 
-	it('does not flag _items or _item', () => {
+	it('does not flag _items or _item when the mode is unknown', () => {
 		expect(lintPythonCode('return _items').map((i) => i.code)).toEqual([]);
 		expect(lintPythonCode('return _item').map((i) => i.code)).toEqual([]);
+	});
+
+	it('flags _item in runOnceForAllItems mode', () => {
+		const issues = lintPythonCode('return [_item]', { mode: 'runOnceForAllItems' });
+		expect(issues.map((i) => i.code)).toEqual(['CODE_MODE_API_MISUSE']);
+		expect(issues[0].message).toContain('_items');
+	});
+
+	it('flags _items in runOnceForEachItem mode', () => {
+		const issues = lintPythonCode('return _items[0]', { mode: 'runOnceForEachItem' });
+		expect(issues.map((i) => i.code)).toEqual(['CODE_MODE_API_MISUSE']);
+		expect(issues[0].message).toContain('_item');
+	});
+
+	it('does not flag the accessor that matches the mode', () => {
+		expect(
+			lintPythonCode('return _items', { mode: 'runOnceForAllItems' }).map((i) => i.code),
+		).toEqual([]);
+		expect(
+			lintPythonCode('return _item', { mode: 'runOnceForEachItem' }).map((i) => i.code),
+		).toEqual([]);
+	});
+
+	it('flags a relative import, which the runner rejects outright', () => {
+		const issues = lintPythonCode('from .helpers import parse\nreturn []');
+		expect(issues.map((i) => i.code)).toEqual(['CODE_NODE_PYTHON_IMPORT']);
+		expect(issues[0].message).toContain('.helpers');
+	});
+
+	it('flags a bare relative import', () => {
+		expect(lintPythonCode('from . import helpers\nreturn []').map((i) => i.code)).toEqual([
+			'CODE_NODE_PYTHON_IMPORT',
+		]);
+	});
+
+	it('names both allowlists rather than assuming the module is stdlib', () => {
+		const issues = lintPythonCode('import pandas\nreturn []');
+		expect(issues[0].message).toContain('N8N_RUNNERS_STDLIB_ALLOW');
+		expect(issues[0].message).toContain('N8N_RUNNERS_EXTERNAL_ALLOW');
 	});
 
 	it('does not flag an unsupported global named only in a comment', () => {
