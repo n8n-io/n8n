@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import type { IExecuteFunctions, INode, JsonObject } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
@@ -5,7 +6,11 @@ import { mockDeep } from 'vitest-mock-extended';
 
 import { clearAtlassianCloudIdCache } from '@utils/atlassian';
 
-import { confluenceApiRequest, confluenceApiRequestBinary } from '../../transport';
+import {
+	confluenceApiRequest,
+	confluenceApiRequestBinary,
+	confluenceApiRequestUpload,
+} from '../../transport';
 
 const accessibleResources = [
 	{ id: 'cloud-1', url: 'https://example.atlassian.net', name: 'example' },
@@ -345,5 +350,102 @@ describe('confluenceApiRequestBinary', () => {
 		expect(error?.message).toBe('Attachment not found');
 		expect(error?.description).toBe('No attachment with this ID exists');
 		expect(error?.httpCode).toBe('404');
+	});
+});
+
+describe('confluenceApiRequestUpload', () => {
+	let ctx: Mocked<IExecuteFunctions>;
+	let mockHttpRequestWithAuthentication: Mock;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		clearAtlassianCloudIdCache();
+		ctx = mockDeep<IExecuteFunctions>();
+		mockHttpRequestWithAuthentication = vi.fn().mockResolvedValue(accessibleResources);
+		ctx.helpers.httpRequestWithAuthentication = mockHttpRequestWithAuthentication;
+		ctx.getNode.mockReturnValue({
+			id: 'test-node',
+			name: 'Test Confluence Node',
+			type: 'n8n-nodes-base.confluence',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		});
+		ctx.getCredentials.mockResolvedValue({ domain: 'https://example.atlassian.net/wiki' });
+	});
+
+	it('PUTs the multipart body with the XSRF-bypass header, no json flag', async () => {
+		const formData = new FormData();
+		formData.append('file', Buffer.from('bytes'), { filename: 'a.txt' });
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockResolvedValueOnce({ results: [{ id: 'att1' }] });
+
+		const data = await confluenceApiRequestUpload.call(
+			ctx,
+			'/wiki/rest/api/content/9/child/attachment',
+			formData,
+		);
+
+		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
+			2,
+			'confluenceCloudOAuth2Api',
+			expect.objectContaining({
+				// PUT, not POST: the same endpoint's POST is create-only and 400s on
+				// a filename that already exists on the page, PUT upserts
+				method: 'PUT',
+				url: 'https://api.atlassian.com/ex/confluence/cloud-1/wiki/rest/api/content/9/child/attachment',
+				body: formData,
+				headers: { 'X-Atlassian-Token': 'nocheck' },
+			}),
+		);
+		expect(mockHttpRequestWithAuthentication.mock.calls[1][1]).not.toHaveProperty('json');
+		expect(data).toEqual({ results: [{ id: 'att1' }] });
+	});
+
+	it('wraps request failures in NodeApiError, keeping the status', async () => {
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockRejectedValueOnce({ message: 'boom', response: { status: 403 } });
+
+		const error = await confluenceApiRequestUpload
+			.call(ctx, '/wiki/rest/api/content/9/child/attachment', new FormData())
+			.then(() => null)
+			.catch((thrown: NodeApiError) => thrown);
+
+		expect(error).toBeInstanceOf(NodeApiError);
+		expect(error?.httpCode).toBe('403');
+	});
+
+	it('surfaces the v1 scope-trap message instead of the generic status text', async () => {
+		mockHttpRequestWithAuthentication
+			.mockResolvedValueOnce(accessibleResources)
+			.mockRejectedValueOnce({
+				message: 'Request failed with status code 401',
+				response: { status: 401, data: { message: 'scope does not match' } },
+			});
+
+		const error = await confluenceApiRequestUpload
+			.call(ctx, '/wiki/rest/api/content/9/child/attachment', new FormData())
+			.then(() => null)
+			.catch((thrown: NodeApiError) => thrown);
+
+		expect(error).toBeInstanceOf(NodeApiError);
+		expect(error?.message).toBe('scope does not match');
+		expect(error?.httpCode).toBe('401');
+	});
+
+	it('throws a NodeOperationError naming the Site URL field when the credential lacks it', async () => {
+		ctx.getCredentials.mockResolvedValue({});
+
+		const promise = confluenceApiRequestUpload.call(
+			ctx,
+			'/wiki/rest/api/content/9/child/attachment',
+			new FormData(),
+		);
+
+		await expect(promise).rejects.toThrow(NodeOperationError);
+		await expect(promise).rejects.toThrow('Site URL');
+		expect(mockHttpRequestWithAuthentication).not.toHaveBeenCalled();
 	});
 });
