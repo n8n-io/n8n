@@ -36,7 +36,6 @@ import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
@@ -47,11 +46,9 @@ import type { Invitation } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
 import type { UserRequest } from '@/requests';
-import { OwnershipTransferService } from '@/services/ownership-transfer/ownership-transfer.service';
 import { UrlService } from '@/services/url.service';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
-import { WorkflowService } from '@/workflows/workflow.service';
 
 @Service()
 export class UserService {
@@ -81,9 +78,6 @@ export class UserService {
 		private readonly externalHooks: ExternalHooks,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly workflowService: WorkflowService,
-		private readonly credentialsService: CredentialsService,
-		private readonly ownershipTransferService: OwnershipTransferService,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -607,7 +601,8 @@ export class UserService {
 
 			transfereeId = transferee.id;
 
-			await this.ownershipTransferService.transferAllResources(
+			const ownershipTransferService = await this.getOwnershipTransferService();
+			await ownershipTransferService.transferAllResources(
 				[personalProjectToDelete.id],
 				transfereeProject.id,
 			);
@@ -626,19 +621,22 @@ export class UserService {
 
 		const ownedCredentials = ownedSharedCredentials.map(({ credentials }) => credentials);
 
+		const workflowService = await this.getWorkflowService();
 		for (const { workflowId } of ownedSharedWorkflows) {
-			await this.workflowService.delete(userToDelete, workflowId, true);
+			await workflowService.delete(userToDelete, workflowId, true);
 		}
 
+		const credentialsService = await this.getCredentialsService();
 		for (const credential of ownedCredentials) {
-			await this.credentialsService.delete(userToDelete, credential.id);
+			await credentialsService.delete(userToDelete, credential.id);
 		}
 
 		// Clean up module-owned resources (e.g. data tables with their physical
 		// user tables) before the project is removed, so they are not orphaned by
 		// the FK cascade. The transfer case is handled by the transfer above.
 		if (!transfereeProject) {
-			await this.ownershipTransferService.deleteModuleOwnedResources([personalProjectToDelete.id]);
+			const ownershipTransferService = await this.getOwnershipTransferService();
+			await ownershipTransferService.deleteModuleOwnedResources([personalProjectToDelete.id]);
 		}
 
 		await this.getManager().transaction(async (trx) => {
@@ -708,11 +706,29 @@ export class UserService {
 		return { success: true };
 	}
 
+	/** Lazy: these services import `UserService`, so a static import would be a value-import cycle. */
 	private async getProvisioningService() {
 		const { ProvisioningService } = await import(
 			'@/modules/provisioning.ee/provisioning.service.ee.js'
 		);
 
 		return Container.get(ProvisioningService);
+	}
+
+	private async getWorkflowService() {
+		const { WorkflowService } = await import('@/workflows/workflow.service');
+		return Container.get(WorkflowService);
+	}
+
+	private async getCredentialsService() {
+		const { CredentialsService } = await import('@/credentials/credentials.service');
+		return Container.get(CredentialsService);
+	}
+
+	private async getOwnershipTransferService() {
+		const { OwnershipTransferService } = await import(
+			'@/services/ownership-transfer/ownership-transfer.service'
+		);
+		return Container.get(OwnershipTransferService);
 	}
 }

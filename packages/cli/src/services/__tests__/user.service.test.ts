@@ -83,9 +83,6 @@ describe('UserService', () => {
 		externalHooks,
 		mock(),
 		mock(),
-		mock(),
-		mock(),
-		mock(),
 	);
 
 	const commonMockUser = Object.assign(new User(), {
