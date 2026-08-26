@@ -108,3 +108,28 @@ export const TerminalTaskStatusList = [
 ] as const;
 
 export type TerminalTaskStatus = (typeof TerminalTaskStatusList)[number];
+
+/**
+ * Well-known owners of scheduled jobs. Every job names its owner
+ * (`ownerType` + `ownerId`), so the scheduler can tear a job down without
+ * knowing what the owner is.
+ *
+ * Deliberately not an exhaustive union: `ownerType` is a plain string column
+ * so a new part of the product can own jobs without a schema change or an edit
+ * here. These are the ones that exist today.
+ */
+export const ScheduledJobOwnerType = {
+	/** A published workflow; `ownerId` is its id, `ownerMemberId` the trigger node's. */
+	Workflow: 'workflow',
+	/** An instance-level maintenance job, self-owned: `ownerId` is the job's own name. */
+	SystemTask: 'system-task',
+} as const;
+
+/** Longest `ownerType` the `scheduled_job` column accepts. */
+export const SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH = 32;
+
+/** Longest `ownerId` the `scheduled_job` column accepts. */
+export const SCHEDULED_JOB_OWNER_ID_MAX_LENGTH = 255;
+
+/** Longest `ownerMemberId` the `scheduled_job` column accepts. */
+export const SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH = 36;

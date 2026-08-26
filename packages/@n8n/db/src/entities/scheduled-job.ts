@@ -5,7 +5,7 @@ import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { DateTimeColumn, JsonColumn, WithTimestamps } from './abstract-entity';
 
 export { ScheduledJobKind, ScheduledJobKindList } from '@n8n/constants';
-export { ScheduledJobMisfirePolicy } from '@n8n/constants';
+export { ScheduledJobMisfirePolicy, ScheduledJobOwnerType } from '@n8n/constants';
 
 /**
  * A scheduled job: the rule for when something should run,
@@ -28,36 +28,50 @@ export { ScheduledJobMisfirePolicy } from '@n8n/constants';
 @Index(['nextRunAt'], {
 	where: '"enabled" = true AND "nextRunAt" IS NOT NULL',
 })
-@Index(['workflowId'], { where: '"workflowId" IS NOT NULL' })
+// Not unique: one member can own several jobs (a trigger node with N rules).
+// Owner-level queries are served by the leftmost prefix; the third column makes
+// the per-member provisioning diff fully indexed.
+@Index(['ownerType', 'ownerId', 'ownerMemberId'])
 @Index(['name'], { unique: true })
 export class ScheduledJob extends WithTimestamps {
 	@PrimaryGeneratedColumn()
 	id: number;
 
 	/**
-	 * Human-readable job name, unique across all jobs.
-	 * A well-known scheduler key for system jobs (e.g. a maintenance job);
-	 * generated for jobs owned by a workflow trigger.
+	 * Human-readable job name, unique across all jobs, and the dedup key
+	 * provisioning matches on. A well-known scheduler key for system jobs
+	 * (e.g. a maintenance job); generated for jobs owned by a workflow trigger.
 	 */
 	@Column({ type: 'varchar', length: 255 })
 	name: string;
 
 	/**
-	 * Workflow this job belongs to,
-	 * referenced via its published version
-	 * (only published trigger nodes get scheduled).
-	 * `null` for well-known system jobs that aren't tied to a workflow.
-	 * Unpublishing the workflow cascades its jobs away.
+	 * What kind of thing owns this job, e.g. `'workflow'` or `'system-task'`
+	 * (see `ScheduledJobOwnerType` for the ones that exist today).
+	 *
+	 * A plain string, not an enum: the scheduler never interprets it, it only
+	 * compares it, so a new part of the product can own jobs without a schema
+	 * change. Every job has an owner, so there is no ownerless code path.
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	workflowId: string | null;
+	@Column({ type: 'varchar', length: 32 })
+	ownerType: string;
 
 	/**
-	 * Trigger node within the workflow that owns this job.
-	 * `null` for non-trigger jobs.
+	 * Which owner of that kind: a workflow id, a system task name, an agent id.
+	 *
+	 * Deleting the owner does not delete this row on its own; the owning module
+	 * must deprovision explicitly, and the reconciliation sweep is the backstop
+	 * (see the scheduler README's "Owning scheduled jobs").
+	 */
+	@Column({ type: 'varchar', length: 255 })
+	ownerId: string;
+
+	/**
+	 * Optional sub-identity within the owner, e.g. the trigger node id for a
+	 * workflow. `null` when the owner has no parts.
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
-	nodeId: string | null;
+	ownerMemberId: string | null;
 
 	/**
 	 * What kind of work this job runs.
@@ -162,4 +176,29 @@ export class ScheduledJob extends WithTimestamps {
 	 */
 	@Column({ type: 'int', default: 60 })
 	misfireGraceSeconds: number;
+
+	/**
+	 * When the reconciliation sweep last confirmed this job's owner was gone.
+	 * `null` while the owner is alive.
+	 *
+	 * A quarantine marker, not a delete: the sweep disables the job first and
+	 * only deletes it once this timestamp is older than the quarantine grace, so
+	 * a resolver that wrongly reports an owner dead can be corrected inside that
+	 * window (the sweep then clears this and re-enables the job).
+	 */
+	@DateTimeColumn({ nullable: true })
+	orphanedAt: Date | null;
 }
+
+/** Who a scheduled job belongs to: an owner kind, an owner, and an optional part of it. */
+export interface ScheduledJobOwner {
+	ownerType: string;
+	ownerId: string;
+	ownerMemberId: string | null;
+}
+
+/**
+ * An owner without a member, addressing every job that owner holds regardless
+ * of which of its parts provisioned them.
+ */
+export type ScheduledJobOwnerRef = Pick<ScheduledJobOwner, 'ownerType' | 'ownerId'>;
