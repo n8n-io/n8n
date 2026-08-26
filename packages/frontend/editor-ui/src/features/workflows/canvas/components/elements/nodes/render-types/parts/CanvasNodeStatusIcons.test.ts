@@ -6,6 +6,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { VIEWS } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { CanvasNodeData } from '../../../../../canvas.types';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { createTestingPinia } from '@pinia/testing';
 import type { IPinData } from 'n8n-workflow';
@@ -250,6 +251,100 @@ describe('CanvasNodeStatusIcons', () => {
 		});
 
 		expect(getByTestId('canvas-node-status-warning')).toBeInTheDocument();
+	});
+
+	describe('sub-workflow progress', () => {
+		type Progress = NonNullable<CanvasNodeData['execution']['subworkflowProgress']>;
+
+		function renderWithProgress(subworkflowProgress?: Progress) {
+			return renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({
+							data: { execution: { status: 'running', running: true, subworkflowProgress } },
+						}),
+					},
+				},
+			});
+		}
+
+		it('should render a bare step count while the sub-workflow runs', () => {
+			const { getByTestId } = renderWithProgress({
+				currentNodeName: 'Child Node',
+				currentNodeIndex: 2,
+				totalNodes: 3,
+			});
+
+			// No denominator: the total is an estimate, the count isn't.
+			expect(getByTestId('canvas-node-status-subworkflow-progress')).toHaveTextContent('Step 2');
+		});
+
+		it('should still count when the total is unknown', () => {
+			const { getByTestId } = renderWithProgress({ currentNodeIndex: 2, totalNodes: 0 });
+
+			expect(getByTestId('canvas-node-status-subworkflow-progress')).toHaveTextContent('Step 2');
+		});
+
+		it('should keep counting past the estimated total', () => {
+			const { getByTestId } = renderWithProgress({ currentNodeIndex: 5, totalNodes: 3 });
+
+			expect(getByTestId('canvas-node-status-subworkflow-progress')).toHaveTextContent('Step 5');
+		});
+
+		it('should not render a step count without progress', () => {
+			const { queryByTestId } = renderWithProgress();
+
+			expect(queryByTestId('canvas-node-status-subworkflow-progress')).not.toBeInTheDocument();
+		});
+
+		it('should not render a step count before the first node reports', () => {
+			const { queryByTestId } = renderWithProgress({ currentNodeIndex: 0, totalNodes: 3 });
+
+			expect(queryByTestId('canvas-node-status-subworkflow-progress')).not.toBeInTheDocument();
+		});
+
+		it('should give way to the success checkmark once progress is cleared', () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({
+							data: {
+								execution: { status: 'success', running: false },
+								runData: { outputMap: {}, iterations: 1, visible: true },
+							},
+						}),
+					},
+				},
+			});
+
+			expect(queryByTestId('canvas-node-status-subworkflow-progress')).not.toBeInTheDocument();
+			expect(getByTestId('canvas-node-status-success')).toBeInTheDocument();
+		});
+
+		it('should keep node issues ahead of the step count', () => {
+			const { getByTestId, queryByTestId } = renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({
+							data: {
+								issues: { validation: ['Parameter "Workflow" is required.'], visible: true },
+								execution: {
+									status: 'running',
+									running: true,
+									subworkflowProgress: { currentNodeIndex: 1, totalNodes: 3 },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			expect(getByTestId('node-issues')).toBeInTheDocument();
+			expect(queryByTestId('canvas-node-status-subworkflow-progress')).not.toBeInTheDocument();
+		});
 	});
 
 	it('should render warning icon when node is not installed', () => {
