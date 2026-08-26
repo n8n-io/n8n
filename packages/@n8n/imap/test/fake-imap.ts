@@ -28,8 +28,8 @@ export class FakeImap extends EventEmitter {
 
 	connectError: Error & { source?: string } = new Error('connect failed');
 
-	/** What every `openBox` answers with, or the error it fails with. */
-	mailbox: Box | Error = box();
+	/** What every `openBox` answers with: a box, the error it fails with, or nothing ever. */
+	mailbox: Box | Error | 'never' = box();
 
 	readonly connect = vi.fn(() => {
 		if (this.connectResult === 'never') return;
@@ -49,9 +49,10 @@ export class FakeImap extends EventEmitter {
 	readonly destroy = vi.fn(() => setImmediate(() => this.emit('close', true)));
 
 	readonly openBox = vi.fn((_name: string, onOpen: (e: Error | null, b?: Box) => void) => {
-		setImmediate(() =>
-			this.mailbox instanceof Error ? onOpen(this.mailbox) : onOpen(null, this.mailbox),
-		);
+		// node-imap leaves a request unanswered when the connection goes; only `destroy` clears it.
+		if (this.mailbox === 'never') return;
+		const answer = this.mailbox;
+		setImmediate(() => (answer instanceof Error ? onOpen(answer) : onOpen(null, answer)));
 	});
 
 	readonly search = vi.fn<Imap['search']>();

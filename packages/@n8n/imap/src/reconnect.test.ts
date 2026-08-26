@@ -1,4 +1,4 @@
-import { ConnectionClosedError, ReconnectTimeoutError } from './errors';
+import { ConnectionClosedError, ConnectionLostError, ConnectionTimeoutError } from './errors';
 import { ImapSimple, type CloseReason } from './imap-simple';
 import { box, NOWHERE, transportFactory, settle, type FakeImap } from '../test/fake-imap';
 
@@ -108,7 +108,7 @@ describe('reconnect', () => {
 			await vi.advanceTimersByTimeAsync(1000);
 			await settle();
 
-			expect(events.close).toHaveBeenCalledWith('dropped', expect.any(ReconnectTimeoutError));
+			expect(events.close).toHaveBeenCalledWith('dropped', expect.any(ConnectionTimeoutError));
 		});
 
 		it('still closes as dropped when a handler failed earlier on its own', async () => {
@@ -277,6 +277,34 @@ describe('reconnect', () => {
 
 			expect(factory.latest().end).toHaveBeenCalled();
 			expect(factory.built).toHaveLength(1);
+		});
+	});
+
+	describe('when the first connection drops under the SELECT', () => {
+		/** node-imap never answers the pending SELECT, so only the close says the transport is gone. */
+		const dropUnderSelect = async () => {
+			const factory = transportFactory((t) => (t.mailbox = 'never'));
+			const connecting = ImapSimple.connect(NOWHERE, WATCHING, factory.create);
+			await settle();
+			factory.latest().drop();
+
+			return { factory, connecting };
+		};
+
+		it('rejects instead of leaving the caller waiting on activation', async () => {
+			const { connecting } = await dropUnderSelect();
+
+			await expect(connecting).rejects.toThrow(ConnectionLostError);
+		});
+
+		it('restores nothing, because no caller is holding the connection', async () => {
+			const { factory, connecting } = await dropUnderSelect();
+
+			await expect(connecting).rejects.toThrow(ConnectionLostError);
+			await settle();
+
+			expect(factory.built).toHaveLength(1);
+			expect(factory.latest().end).toHaveBeenCalled();
 		});
 	});
 
