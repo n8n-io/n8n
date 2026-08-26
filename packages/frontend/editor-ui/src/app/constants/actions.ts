@@ -1,7 +1,6 @@
 export const enum WORKFLOW_MENU_ACTIONS {
 	DUPLICATE = 'duplicate',
 	DOWNLOAD = 'download',
-	IMPORT = 'import',
 	IMPORT_FROM_FILE = 'import-from-file',
 	PUSH = 'push',
 	EDIT_DESCRIPTION = 'edit-description',
