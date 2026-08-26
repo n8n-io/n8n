@@ -87,6 +87,34 @@ runs:
             mkdir -p "$PNPM_STORE_PATH"
         fi
 
+    # pnpm 11 re-applies minimumReleaseAge/trustPolicy to every lockfile entry
+    # on each install — frozen installs included — by fetching registry
+    # metadata for the full tree (pnpm/pnpm#12114). setup-node's `cache: pnpm`
+    # only persists the content-addressable store, not the metadata cache, so
+    # every job paid that sweep over the network and one slow fetch could
+    # stall past the install timeout. `pnpm cache path` (pnpm >= 11.21) is the
+    # metadata cache incl. the lockfile-verification log, which lets a job
+    # skip the re-check for an unchanged lockfile. Keyed on the lockfile;
+    # restore-keys let a changed lockfile start from the nearest cache and
+    # revalidate only the delta (304s renew cached entries).
+    - name: Locate pnpm Metadata Cache
+      if: ${{ inputs.install-command != '' }}
+      id: pnpm-metadata
+      shell: bash
+      run: |
+        dir="$(pnpm cache path)"
+        mkdir -p "$dir"
+        echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+    - name: Restore pnpm Metadata Cache
+      if: ${{ inputs.install-command != '' }}
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ${{ steps.pnpm-metadata.outputs.dir }}
+        key: pnpm-metadata-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(inputs.cache-dependency-path) }}
+        restore-keys: |
+          pnpm-metadata-v1-${{ runner.os }}-${{ runner.arch }}-
+
     - name: Configure SafeChain
       shell: bash
       run: |
@@ -170,6 +198,12 @@ runs:
     #
     # `SAFE_CHAIN_LOGGING=verbose` surfaces safe-chain's proxy decisions, which
     # are otherwise buffered (and lost on failure) while pnpm is in flight.
+    #
+    # `--safe-chain-skip-minimum-package-age` is consumed by the SafeChain shim
+    # (never reaches pnpm) and turns off only its version-age filtering: pnpm
+    # natively enforces a stricter `minimumReleaseAge`, while SafeChain's
+    # filter forces full packuments (tens of MB for e.g. Storybook) by
+    # rewriting the Accept header. Malware blocking is unaffected.
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
       id: install-deps
@@ -188,6 +222,7 @@ runs:
 
         set +o pipefail
         timeout --kill-after=30s 600s $INSTALL_COMMAND \
+          --safe-chain-skip-minimum-package-age \
           --config.logs-dir="$PNPM_DIAG_DIR/pnpm-logs" \
           --reporter=append-only --config.loglevel=info 2>&1 | tee "$INSTALL_LOG"
         rc=${PIPESTATUS[0]}
