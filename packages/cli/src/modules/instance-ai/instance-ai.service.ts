@@ -134,6 +134,11 @@ import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { assertNever } from '@/utils';
 
+import {
+	ActivityFeedService,
+	LAST_INJECTED_ACTIVITY_ID,
+	readLastInjectedActivityId,
+} from './activity-feed.service';
 import { resolveAgentPreviewHandoff } from './agent-preview-handoff';
 import { composeLocalMcpServers } from './browser/composite-local-mcp-server';
 import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
@@ -831,6 +836,7 @@ export class InstanceAiService {
 		private readonly publisher: Publisher,
 		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		private readonly canvasNodeContextFlagGate: CanvasNodeContextFlagGate,
+		private readonly activityFeed: ActivityFeedService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -3912,6 +3918,22 @@ export class InstanceAiService {
 				});
 			}
 
+			// Sent once per thread and then only when something new has happened: the block stays in
+			// the conversation, so re-sending an unchanged feed pays for the same context twice.
+			const activityFeed = await this.activityFeed.buildBlock({
+				userId: user.id,
+				...(context.projectId !== undefined ? { projectId: context.projectId } : {}),
+				sinceId: readLastInjectedActivityId(thread?.metadata),
+			});
+			if (activityFeed) {
+				await patchThread(memory, {
+					threadId,
+					update: ({ metadata }) => ({
+						metadata: { ...metadata, [LAST_INJECTED_ACTIVITY_ID]: activityFeed.newestId },
+					}),
+				});
+			}
+
 			const existingTasks = await taskStorage.get(threadId);
 			if (existingTasks) {
 				this.eventBus.publish(threadId, {
@@ -3948,7 +3970,14 @@ export class InstanceAiService {
 			// The context block (an editor hand-off) leads the message so the agent
 			// knows what the user is looking at. On an empty-text hand-off it is the
 			// entire prompt, and the agent greets rather than investigating.
-			const messageWithContext = [contextResourcesBlock, handoffContextBlock, messageBody]
+			// Recent activity sits last of the context blocks, nearest the user's own words: it is
+			// background for reading their intent, not a statement of what they are looking at now.
+			const messageWithContext = [
+				contextResourcesBlock,
+				handoffContextBlock,
+				activityFeed?.block ?? '',
+				messageBody,
+			]
 				.filter(Boolean)
 				.join('\n\n');
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.

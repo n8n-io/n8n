@@ -34,13 +34,21 @@ export const AGENT_PREVIEW_CONTEXT_OPEN_TAG = '<agent-preview-context>';
 export const AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '</agent-preview-context>';
 
 /**
+ * Wraps the recent-activity feed — what happened on the instance lately, so the agent can read
+ * the user's intent from it. LLM-facing only, and carries no structured payload to rebuild: the
+ * entries are re-derivable from the activity log, so on reload the block is simply dropped.
+ */
+export const RECENT_ACTIVITY_OPEN_TAG = '<recent-activity>';
+export const RECENT_ACTIVITY_CLOSE_TAG = '</recent-activity>';
+
+/**
  * Matches internal task-context prefix blocks injected by the service. The
  * block is followed by `\n\n` and the user's text, or ends the message when
  * the user sent no text of their own (e.g. an editor hand-off whose only
  * content is the workflow context).
  */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>)(?:\n\n|$)/;
+	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<recent-activity>\n[\s\S]*?\n<\/recent-activity>)(?:\n\n|$)/;
 
 /** Captures the leading JSON line inside an editor-context block. */
 const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
