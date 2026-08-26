@@ -1,5 +1,5 @@
 import type { SharedWorkflow, User, WorkflowEntity, ListQuery } from '@n8n/db';
-import { SharedWorkflowRepository, FolderRepository, WorkflowRepository } from '@n8n/db';
+import { SharedWorkflowRepository, FolderRepository, WorkflowRepository, chunkIds } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
@@ -161,19 +161,22 @@ export class WorkflowFinderService {
 	): Promise<Set<string>> {
 		if (workflowIds.length === 0) return new Set();
 		const where = await this.findAllWhere(user, scopes);
-		const sharedWorkflows = await this.sharedWorkflowRepository.find({
-			select: { workflowId: true },
-			where: { ...where, workflowId: In(workflowIds) },
-		});
-		return new Set(sharedWorkflows.map((sw) => sw.workflowId));
+
+		const found = new Set<string>();
+		for (const chunk of chunkIds(workflowIds)) {
+			const sharedWorkflows = await this.sharedWorkflowRepository.find({
+				select: { workflowId: true },
+				where: { ...where, workflowId: In(chunk) },
+			});
+			for (const sw of sharedWorkflows) found.add(sw.workflowId);
+		}
+		return found;
 	}
 
 	async findExistingWorkflowIds(workflowIds: string[]): Promise<Set<string>> {
 		if (workflowIds.length === 0) return new Set();
-		const workflows = await this.workflowRepository.find({
-			select: { id: true },
-			where: { id: In(workflowIds) },
-		});
+
+		const workflows = await this.workflowRepository.findByIds(workflowIds, { fields: ['id'] });
 		return new Set(workflows.map(({ id }) => id));
 	}
 
@@ -190,48 +193,56 @@ export class WorkflowFinderService {
 		if (workflowIds.length === 0) return [];
 
 		const where = await this.findAllWhere(user, scopes);
-		const sharedWorkflows = await this.sharedWorkflowRepository.find({
-			where: { ...where, workflowId: In(workflowIds) },
-			relations: {
-				workflow: {
-					parentFolder: options.includeParentFolder,
-					tags: options.includeTags,
-					activeVersion: options.includeActiveVersion,
-				},
-			},
-		});
 
 		// A workflow may appear via several share paths (project membership +
 		// direct share); dedupe so callers see one entity per id.
 		const seen = new Set<string>();
 		const workflows: WorkflowEntity[] = [];
-		for (const { workflow } of sharedWorkflows) {
-			if (seen.has(workflow.id)) continue;
-			seen.add(workflow.id);
-			workflows.push(workflow);
+
+		for (const chunk of chunkIds(workflowIds)) {
+			const sharedWorkflows = await this.sharedWorkflowRepository.find({
+				where: { ...where, workflowId: In(chunk) },
+				relations: {
+					workflow: {
+						parentFolder: options.includeParentFolder,
+						tags: options.includeTags,
+						activeVersion: options.includeActiveVersion,
+					},
+				},
+			});
+
+			for (const { workflow } of sharedWorkflows) {
+				if (seen.has(workflow.id)) continue;
+				seen.add(workflow.id);
+				workflows.push(workflow);
+			}
 		}
+
 		return workflows;
 	}
 
 	async findWorkflowIdsByFolder(folderIds: string[]): Promise<Map<string, string[]>> {
 		if (folderIds.length === 0) return new Map();
 
-		const rows = await this.sharedWorkflowRepository.find({
-			where: { workflow: { parentFolder: In(folderIds) } },
-			relations: { workflow: { parentFolder: true } },
-			select: { workflowId: true, workflow: { id: true, parentFolder: { id: true } } },
-		});
-
 		const byFolder = new Map<string, string[]>();
 		const seen = new Set<string>();
-		for (const { workflow } of rows) {
-			const folderId = workflow.parentFolder?.id;
-			// A workflow may appear via several share rows; dedupe so it lands once.
-			if (!folderId || seen.has(workflow.id)) continue;
-			seen.add(workflow.id);
-			const list = byFolder.get(folderId) ?? [];
-			list.push(workflow.id);
-			byFolder.set(folderId, list);
+
+		for (const chunk of chunkIds(folderIds)) {
+			const rows = await this.sharedWorkflowRepository.find({
+				where: { workflow: { parentFolder: In(chunk) } },
+				relations: { workflow: { parentFolder: true } },
+				select: { workflowId: true, workflow: { id: true, parentFolder: { id: true } } },
+			});
+
+			for (const { workflow } of rows) {
+				const folderId = workflow.parentFolder?.id;
+				// A workflow may appear via several share rows; dedupe so it lands once.
+				if (!folderId || seen.has(workflow.id)) continue;
+				seen.add(workflow.id);
+				const list = byFolder.get(folderId) ?? [];
+				list.push(workflow.id);
+				byFolder.set(folderId, list);
+			}
 		}
 
 		return byFolder;
@@ -307,27 +318,37 @@ export class WorkflowFinderService {
 			activeVersion: options.includeActiveVersion,
 			parentFolder: options.includeParentFolder,
 		};
-		const sharedWorkflows = await this.sharedWorkflowRepository.find({
-			where: [
-				{
-					projectId,
-					role: 'workflow:owner',
-					workflow: { sourceWorkflowId: In(sourceWorkflowIds), isArchived: false },
-				},
-				{
-					projectId,
-					role: 'workflow:owner',
-					workflow: {
-						id: In(sourceWorkflowIds),
-						sourceWorkflowId: IsNull(),
-						isArchived: false,
-					},
-				},
-			],
-			relations: { workflow: workflowRelations },
-		});
 
-		return sharedWorkflows.map(({ workflow }) => workflow);
+		const workflows = new Map<string, WorkflowEntity>();
+
+		// The two branches below each expand the id list, so this costs two bind
+		// parameters per id — half the ids fit in one statement compared with a
+		// single-branch lookup.
+		for (const chunk of chunkIds(sourceWorkflowIds)) {
+			const sharedWorkflows = await this.sharedWorkflowRepository.find({
+				where: [
+					{
+						projectId,
+						role: 'workflow:owner',
+						workflow: { sourceWorkflowId: In(chunk), isArchived: false },
+					},
+					{
+						projectId,
+						role: 'workflow:owner',
+						workflow: {
+							id: In(chunk),
+							sourceWorkflowId: IsNull(),
+							isArchived: false,
+						},
+					},
+				],
+				relations: { workflow: workflowRelations },
+			});
+
+			for (const { workflow } of sharedWorkflows) workflows.set(workflow.id, workflow);
+		}
+
+		return [...workflows.values()];
 	}
 
 	async hasProjectScopeForUser(user: User, scopes: Scope[], projectId: string) {

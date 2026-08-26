@@ -34,6 +34,8 @@ minimumReleaseAgeExclude:
   - '@ai-sdk/anthropic'
   # Security patch (Aikido) newer than the minimumReleaseAge window; allow it in.
   - '@xmldom/xmldom'
+  - '@ai-sdk/provider-utils@5.0.30'
+  - '@ai-sdk/provider@4.0.8'
 
 packages:
   - packages/*
@@ -46,6 +48,7 @@ packages:
   - packages/testing/**
 
 catalog:
+  '@ai-sdk/alibaba': ^2.0.32
   '@ai-sdk/amazon-bedrock': ^5.0.31
   '@ai-sdk/anthropic': ^4.0.32
   '@ai-sdk/azure': ^4.0.21
@@ -55,7 +58,9 @@ catalog:
   '@ai-sdk/google': ^4.0.24
   '@ai-sdk/google-vertex': ^5.0.47
   '@ai-sdk/groq': ^4.0.13
+  '@ai-sdk/minimax': ^3.0.15
   '@ai-sdk/mistral': ^4.0.14
+  '@ai-sdk/moonshotai': ^3.0.35
   '@ai-sdk/openai': ^4.0.20
   '@ai-sdk/openai-compatible': ^3.0.14
   '@ai-sdk/otel': ^1.0.66
@@ -463,7 +468,6 @@ patchedDependencies:
   minifaker: patches/minifaker.patch
   z-vue-scan: patches/z-vue-scan.patch
   '@lezer/highlight': patches/@lezer__highlight.patch
-  v-code-diff: patches/v-code-diff.patch
   vuedraggable@4.1.0: patches/vuedraggable@4.1.0.patch
   assert@2.1.0: patches/assert@2.1.0.patch
   reka-ui@2.5.0: patches/reka-ui@2.5.0.patch
@@ -477,6 +481,7 @@ allowBuilds:
   '@confluentinc/kafka-javascript': true
   '@jitsi/robotjs': false
   '@parcel/watcher': false
+  '@scarf/scarf': false
   '@sentry-internal/node-cpu-profiler': false
   '@sentry-internal/node-native-stacktrace': false
   '@sentry/cli': false
