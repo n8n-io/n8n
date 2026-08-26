@@ -1,17 +1,12 @@
 import type { Server } from 'node:http';
 
-import type { IdentityVerifier } from '../auth/identity.types';
-import type { StartExecutionService } from '../execution';
-import { createEngineServer } from '../server';
+import { createEngineServer, type EngineServerDeps } from '../server';
 
-export async function startEngineServer(
-	startExecution: StartExecutionService,
-	identityVerifier: IdentityVerifier,
-): Promise<{
+export async function startEngineServer(deps: EngineServerDeps): Promise<{
 	url: string;
 	stop: () => Promise<void>;
 }> {
-	const { app } = createEngineServer(startExecution, identityVerifier);
+	const { app } = createEngineServer(deps);
 
 	const server = await new Promise<Server>((resolve, reject) => {
 		const s = app.listen(0, '127.0.0.1', () => resolve(s));
