@@ -87,6 +87,13 @@ export function buildTimelineBlocks(
 	// kept working after writing it. Trailing text of a response (and text
 	// without a responseId, from old snapshots) is user-facing.
 	const lastTraceIdxByResponse = new Map<string, number>();
+	// Index of the first trace entry anywhere in the run — tells the tail guard
+	// below that the model is already in a tool loop, whatever response it is on.
+	let firstTraceIdx: number | undefined;
+	const markTrace = (responseId: string, idx: number) => {
+		lastTraceIdxByResponse.set(responseId, idx);
+		firstTraceIdx ??= idx;
+	};
 	const builderChildResponseIds = new Set(
 		entries
 			.filter(
@@ -103,7 +110,7 @@ export function buildTimelineBlocks(
 	entries.forEach((entry, idx) => {
 		if (entry.responseId === undefined) return;
 		if (entry.type === 'reasoning') {
-			lastTraceIdxByResponse.set(entry.responseId, idx);
+			markTrace(entry.responseId, idx);
 		} else if (entry.type === 'tool-call') {
 			const tc = toolCallsById[entry.toolCallId];
 			if (
@@ -114,7 +121,7 @@ export function buildTimelineBlocks(
 					hasBuilderChildInResponse(entry.responseId, builderChildResponseIds)
 				)
 			) {
-				lastTraceIdxByResponse.set(entry.responseId, idx);
+				markTrace(entry.responseId, idx);
 			}
 		}
 	});
@@ -126,14 +133,22 @@ export function buildTimelineBlocks(
 		// Streaming tail text is ambiguous — narration before the next tool call
 		// and the final answer look identical until either a tool call follows
 		// or the run ends. Rendering it outside and folding it back in reads as
-		// an answer flashing and vanishing, so short tail text following this
-		// response's trace content is optimistically kept INSIDE the block (its
-		// first sentence feeds the status line). It promotes out — an additive,
-		// non-jarring motion — once it grows answer-length or the run settles.
+		// an answer flashing and vanishing, so short tail text is optimistically
+		// kept INSIDE the block (its first sentence feeds the status line). It
+		// promotes out — an additive, non-jarring motion — once it grows
+		// answer-length or the run settles.
+		//
+		// The condition is run-scoped, not response-scoped: a step that emits no
+		// reasoning leads with its narration text, so keying on the current
+		// response would render it outside for the few hundred ms until that
+		// step's tool call lands. Trace content earlier in the run is enough to
+		// know the model is mid-tool-loop; a first answer with no trace at all
+		// still renders as text immediately.
 		return (
 			agentStatus === 'active' &&
 			idx === entries.length - 1 &&
-			lastTraceIdx !== undefined &&
+			firstTraceIdx !== undefined &&
+			firstTraceIdx < idx &&
 			entry.content.length <= TAIL_NARRATION_MAX_LENGTH
 		);
 	};

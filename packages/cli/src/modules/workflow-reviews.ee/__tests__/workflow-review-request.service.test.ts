@@ -31,15 +31,15 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
+import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 
-import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 const user = mock<User>({ id: 'user-1' });
@@ -74,14 +74,14 @@ describe('WorkflowReviewRequestService', () => {
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const activityRepository = mock<WorkflowReviewActivityRepository>();
 	const userRepository = mock<UserRepository>();
-	const eligibilityService = mock<WorkflowReviewEligibilityService>();
 	const roleService = mock<RoleService>();
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
 	const workflowService = mock<WorkflowService>();
-	const accessService = mock<WorkflowReviewAccessService>();
+	const authorizationService = mock<WorkflowReviewAuthorizationService>();
 	const logger = mock<Logger>();
+	const eventService = mock<EventService>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
 
@@ -99,18 +99,17 @@ describe('WorkflowReviewRequestService', () => {
 		reviewerRepository,
 		activityRepository,
 		userRepository,
-		eligibilityService,
 		roleService,
 		dbLockService,
 		collaborationService,
 		workflowService,
-		accessService,
+		authorizationService,
+		eventService,
 	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		accessService.resolveOpenableRequestIds.mockResolvedValue(new Set());
-		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+		authorizationService.resolveOpenableRequestIds.mockResolvedValue(new Set());
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		// Feature enabled by default; the disabled path is exercised explicitly.
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
@@ -180,7 +179,7 @@ describe('WorkflowReviewRequestService', () => {
 
 			expect(result.id).toBe('req-1');
 			expect(dbLockService.withLockContext).toHaveBeenCalledWith(
-				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+				DbLock.WORKFLOW_REVIEW_MUTATION,
 				expect.any(Function),
 			);
 			expect(requestRepository.createRequest).toHaveBeenCalledWith(
@@ -481,6 +480,14 @@ describe('WorkflowReviewRequestService', () => {
 				expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith(
 					'wf-1',
 				);
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-requested', {
+					user: expect.objectContaining({ id: 'user-1' }),
+					workflowReviewRequestId: 'req-1',
+					projectId: 'project-1',
+					workflowId: 'wf-1',
+					workflowVersionId: 'ver-1',
+					reviewerCount: 1,
+				});
 			});
 
 			it('does not broadcast on conflict', async () => {
@@ -492,6 +499,7 @@ describe('WorkflowReviewRequestService', () => {
 				await expect(service.create(user, dto)).rejects.toThrow(ConflictError);
 
 				expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
 			});
 
 			it('resolves and logs a warning when the broadcast rejects', async () => {
@@ -582,6 +590,7 @@ describe('WorkflowReviewRequestService', () => {
 			description: null,
 			updatedById: 'user-2',
 			workflowVersionId: 'ver-1',
+			workflowVersionName: null,
 			createdAt: new Date('2024-01-01T00:00:00.000Z'),
 			updatedAt: new Date('2024-01-02T00:00:00.000Z'),
 			...overrides,
@@ -637,6 +646,7 @@ describe('WorkflowReviewRequestService', () => {
 					decision: 'changes_requested',
 					description: null,
 					workflowVersionId: 'ver-1',
+					workflowVersionName: null,
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 					decisionBy: {
@@ -648,6 +658,14 @@ describe('WorkflowReviewRequestService', () => {
 					viewerCanOpen: false,
 				},
 			]);
+		});
+
+		it('carries the pinned version name through to the response', async () => {
+			mockLatestReview({ workflowVersionName: 'Release candidate' });
+
+			const { data } = await service.list(user, query);
+
+			expect(data[0]).toMatchObject({ workflowVersionName: 'Release candidate' });
 		});
 
 		it('falls back to no actor when the deciding user was deleted', async () => {
@@ -679,11 +697,11 @@ describe('WorkflowReviewRequestService', () => {
 
 		it('marks rows the caller may open, resolved in one batched access check', async () => {
 			mockLatestReview();
-			accessService.resolveOpenableRequestIds.mockResolvedValue(new Set(['req-1']));
+			authorizationService.resolveOpenableRequestIds.mockResolvedValue(new Set(['req-1']));
 
 			const { data } = await service.list(user, query);
 
-			expect(accessService.resolveOpenableRequestIds).toHaveBeenCalledWith(user, [
+			expect(authorizationService.resolveOpenableRequestIds).toHaveBeenCalledWith(user, [
 				expect.objectContaining({ id: 'req-1', projectId: 'proj-1' }),
 			]);
 			expect(data[0]?.viewerCanOpen).toBe(true);

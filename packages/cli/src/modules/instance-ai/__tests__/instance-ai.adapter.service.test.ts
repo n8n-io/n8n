@@ -2653,7 +2653,7 @@ describe('createWorkflowAdapter', () => {
 					parameters: {},
 					credentials: {
 						slackApi: { name: 'Slack' },
-						gmailOAuth2Api: { id: '', name: 'Gmail' },
+						gmailOAuth2: { id: '', name: 'Gmail' },
 						openAiApi: { id: null, name: 'OpenAI' },
 						httpHeaderAuth: { id: 'cred-1', name: 'HTTP Header' },
 					},
@@ -2714,7 +2714,7 @@ describe('createWorkflowAdapter', () => {
 					parameters: {},
 					credentials: {
 						slackApi: { name: 'Slack' },
-						gmailOAuth2Api: { id: '  ', name: 'Gmail' },
+						gmailOAuth2: { id: '  ', name: 'Gmail' },
 					},
 				},
 			],
@@ -3340,6 +3340,7 @@ function createRunAdapterForTests(
 		postExecutePromise?: Promise<unknown>;
 		threadId?: string;
 		queueMode?: boolean;
+		allowSendingParameterValues?: boolean;
 	},
 ) {
 	const mockWorkflowFinderService = {
@@ -3373,7 +3374,7 @@ function createRunAdapterForTests(
 			typeof InstanceAiAdapterService
 		>[0],
 		{
-			ai: { allowSendingParameterValues: false },
+			ai: { allowSendingParameterValues: options?.allowSendingParameterValues ?? false },
 			executions: { mode: options?.queueMode ? 'queue' : 'regular' },
 		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
@@ -3679,6 +3680,59 @@ describe('createExecutionAdapter run()', () => {
 				error: 'boom',
 			}),
 		);
+	});
+
+	it('scrubs secrets and PII from the tracked execution error', async () => {
+		const { adapter, mockTelemetry } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [], connections: {}, settings: {} },
+			{
+				execution: makeExecution({
+					status: 'error',
+					error: {
+						message:
+							'Auth failed for jane.doe@example.com using sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+					},
+				}),
+				threadId: 'thread-1',
+			},
+		);
+
+		await adapter.run('wf-1');
+
+		const tracked = mockTelemetry.track.mock.calls.find(
+			([event]) => event === 'Builder executed workflow',
+		);
+		expect(tracked?.[1].error).not.toContain('jane.doe@example.com');
+		expect(tracked?.[1].error).not.toContain('sk-ant-api03');
+		expect(tracked?.[1].error).toContain('[REDACTED]');
+	});
+
+	it('keeps upstream error details out of telemetry even when the privacy setting allows them', async () => {
+		const { adapter, mockTelemetry } = createRunAdapterForTests(
+			{ id: 'wf-1', nodes: [], connections: {}, settings: {} },
+			{
+				execution: makeExecution({
+					status: 'error',
+					error: {
+						message: 'Request failed with status code 403',
+						description: 'Account 12 Ridge Road is suspended',
+					},
+				}),
+				threadId: 'thread-1',
+				allowSendingParameterValues: true,
+			},
+		);
+
+		const result = await adapter.run('wf-1');
+
+		// The agent still sees the upstream detail the operator opted into...
+		expect(result.error).toContain('Account 12 Ridge Road is suspended');
+		// ...but analytics only gets the sanitized message.
+		const tracked = mockTelemetry.track.mock.calls.find(
+			([event]) => event === 'Builder executed workflow',
+		);
+		expect(tracked?.[1].error).toContain('Request failed with status code 403');
+		expect(tracked?.[1].error).not.toContain('Ridge Road');
 	});
 
 	it('tracks timeout cancellation as an error status', async () => {
@@ -4003,10 +4057,13 @@ function createAdapterWithGatewayMock(
 		telemetry?: unknown;
 		enabled?: boolean;
 		settingsService?: unknown;
+		getWallet?: Mock;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = {
 		getGatewayConfig,
+		isEnabled: vi.fn().mockReturnValue(overrides?.enabled !== false),
+		getWallet: overrides?.getWallet ?? vi.fn(),
 		assertEnabled: vi.fn().mockImplementation(() => {
 			if (overrides?.enabled === false) throw new Error('n8n Connect is disabled');
 		}),
@@ -4737,6 +4794,78 @@ describe('createCredentialAdapter', () => {
 			});
 
 			await expect(credentialService.isTestable!('kafka')).resolves.toBe(false);
+		});
+	});
+
+	describe('getAiGatewayWallet', () => {
+		const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+
+		function credentialServiceForWallet(overrides?: { enabled?: boolean; getWallet?: Mock }) {
+			const adapter = createAdapterWithGatewayMock(vi.fn(), overrides);
+			return adapter.createContext(mockUser).credentialService;
+		}
+
+		it('returns null when Connect is off', async () => {
+			const getWallet = vi.fn();
+			const credentialService = credentialServiceForWallet({ enabled: false, getWallet });
+
+			await expect(credentialService.getAiGatewayWallet!()).resolves.toBeNull();
+			expect(getWallet).not.toHaveBeenCalled();
+		});
+
+		it('returns null when getWallet throws', async () => {
+			const credentialService = credentialServiceForWallet({
+				getWallet: vi.fn().mockRejectedValue(new Error('network')),
+			});
+
+			await expect(credentialService.getAiGatewayWallet!()).resolves.toBeNull();
+		});
+
+		it('returns balance: 0 as-is', async () => {
+			const wallet = { balance: 0, budget: 10, hasEverToppedUp: false };
+			const getWallet = vi.fn().mockResolvedValue(wallet);
+			const credentialService = credentialServiceForWallet({ getWallet });
+
+			await expect(credentialService.getAiGatewayWallet!()).resolves.toEqual(wallet);
+			expect(getWallet).toHaveBeenCalledWith('user-1');
+		});
+	});
+
+	describe('credentialTypeExists', () => {
+		const loader = {
+			knownCredentials: { gmailOAuth2: {} },
+			getCredential: (type: string) => {
+				// Runtime-registered types resolve through a loader without being in
+				// knownCredentials (e.g. MCP registry).
+				if (type === 'linearMcpOAuth2Api') return { type: { name: type } };
+				throw new Error(`Unrecognized credential type: ${type}`);
+			},
+		};
+
+		it('is true for a known credential type', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loader,
+			});
+
+			await expect(credentialService.credentialTypeExists!('gmailOAuth2')).resolves.toBe(true);
+		});
+
+		it('is true for a runtime-registered type resolvable only via getCredential', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loader,
+			});
+
+			await expect(credentialService.credentialTypeExists!('linearMcpOAuth2Api')).resolves.toBe(
+				true,
+			);
+		});
+
+		it('is false for an unregistered type', async () => {
+			const { credentialService } = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: loader,
+			});
+
+			await expect(credentialService.credentialTypeExists!('gmailOAuth2Api')).resolves.toBe(false);
 		});
 	});
 });

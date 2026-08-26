@@ -66,6 +66,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		staticData: ICredentialDataDecryptedObject,
 		executionContext?: IExecutionContext,
 		workflowSettings?: IWorkflowSettings,
+		executionId?: string,
 	): Promise<CredentialResolutionResult> {
 		// Determine which resolver ID to use: credential's own resolver or workflow's fallback
 		// (explicit workflow override, or the seeded system resolver looked up via the proxy).
@@ -144,6 +145,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				credentialsResolveMetadata.id,
 				credentialContext,
 				handle,
+				executionId,
 			);
 
 			this.logger.debug('Successfully resolved dynamic credentials', {
@@ -166,7 +168,11 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			// execution simply stays unattributed (redacted for everyone).
 			let resolvedUserId: string | undefined;
 			try {
-				resolvedUserId = await resolver.resolveOwningUserId?.(credentialContext, handle);
+				resolvedUserId = await resolver.resolveOwningUserId?.(
+					credentialContext,
+					handle,
+					executionId,
+				);
 			} catch (error) {
 				this.logger.debug('Could not resolve owning user for dynamic credentials', {
 					credentialId: credentialsResolveMetadata.id,

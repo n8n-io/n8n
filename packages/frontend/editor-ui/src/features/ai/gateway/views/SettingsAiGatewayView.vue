@@ -142,7 +142,7 @@ async function load(): Promise<void> {
 }
 
 async function refresh(): Promise<void> {
-	await Promise.all([aiGatewayStore.fetchWallet(), load()]);
+	await Promise.all([aiGatewayStore.fetchWallet({ force: true }), load()]);
 }
 
 async function loadMore(): Promise<void> {

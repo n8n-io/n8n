@@ -5,6 +5,7 @@ import type { InstanceAiContext } from '../../../types';
 import {
 	buildCredentialMap,
 	buildCredentialResolutionNote,
+	isN8nCreditsWalletDepleted,
 	resolveCredentials,
 	type CredentialEntry,
 	type CredentialMap,
@@ -875,7 +876,7 @@ describe('resolveCredentials', () => {
 						type: 'n8n-nodes-base.gmail',
 						typeVersion: 2,
 						position: [0, 0],
-						credentials: { gmailOAuth2Api: undefined as unknown as { id: string; name: string } },
+						credentials: { gmailOAuth2: undefined as unknown as { id: string; name: string } },
 					},
 				],
 			});
@@ -883,8 +884,8 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, createMockContext());
 
 			expect(result.mockedNodeNames).toEqual(['Gmail']);
-			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2Api']);
-			expect(result.mockedCredentialsByNode).toEqual({ Gmail: ['gmailOAuth2Api'] });
+			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2']);
+			expect(result.mockedCredentialsByNode).toEqual({ Gmail: ['gmailOAuth2'] });
 			expect(json.nodes[0].credentials).toEqual({});
 			// json.pinData must NOT be mutated
 			expect(json.pinData).toBeUndefined();
@@ -953,7 +954,7 @@ describe('resolveCredentials', () => {
 		const availableCredentials = makeCredentialMap([
 			{ id: 'slack-1', name: 'Team Slack', type: 'slackApi' },
 			{ id: 'slack-2', name: 'Backup Slack', type: 'slackApi' },
-			{ id: 'gmail-1', name: 'Gmail', type: 'gmailOAuth2Api' },
+			{ id: 'gmail-1', name: 'Gmail', type: 'gmailOAuth2' },
 		]);
 
 		it('keeps a raw credential id that exists in the snapshot for the same type', async () => {
@@ -1047,7 +1048,7 @@ describe('resolveCredentials', () => {
 						type: 'n8n-nodes-base.gmail',
 						typeVersion: 2,
 						position: [0, 0],
-						credentials: { gmailOAuth2Api: { id: 'mock-gmail-oauth2', name: 'Gmail' } },
+						credentials: { gmailOAuth2: { id: 'mock-gmail-oauth2', name: 'Gmail' } },
 					},
 				],
 			});
@@ -1060,7 +1061,7 @@ describe('resolveCredentials', () => {
 			);
 
 			expect(result.mockedNodeNames).toEqual(['Gmail']);
-			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2Api']);
+			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2']);
 			expect(json.nodes[0].credentials).toEqual({});
 		});
 
@@ -1274,7 +1275,7 @@ describe('resolveCredentials', () => {
 						type: 'n8n-nodes-base.gmail',
 						typeVersion: 2,
 						position: [200, 0],
-						credentials: { gmailOAuth2Api: undefined as unknown as { id: string; name: string } },
+						credentials: { gmailOAuth2: undefined as unknown as { id: string; name: string } },
 					},
 				],
 				pinData: {
@@ -1285,7 +1286,7 @@ describe('resolveCredentials', () => {
 			const result = await resolveCredentials(json, undefined, createMockContext());
 
 			expect(result.mockedNodeNames).toEqual(['Gmail']);
-			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2Api']);
+			expect(result.mockedCredentialTypes).toEqual(['gmailOAuth2']);
 			// Slack should be untouched
 			expect(json.nodes[0].credentials).toEqual({
 				slackApi: { id: 'real-id', name: 'Real Slack' },
@@ -1793,5 +1794,80 @@ describe('buildCredentialResolutionNote', () => {
 		expect(note).toContain('n8n credits');
 		expect(note).not.toContain('n8n Connect');
 		expect(note).toContain('switch to their own key');
+		expect(note).toContain('work out of the box');
+	});
+
+	it('replaces the out-of-the-box sentence when n8n credits are depleted', () => {
+		const note = buildCredentialResolutionNote(
+			{
+				Firecrawl: [
+					{ type: 'firecrawlApi', id: null, name: 'n8n credits', __aiGatewayManaged: true },
+				],
+			},
+			[],
+			{ n8nCreditsDepleted: true },
+		);
+
+		expect(note).toContain('n8n credits are depleted');
+		expect(note).toContain('top up n8n credits');
+		expect(note).toContain('own key');
+		expect(note).toContain('Do not offer a live test');
+		expect(note).not.toContain('work out of the box');
+		expect(note).not.toContain('n8n Connect');
+	});
+});
+
+describe('isN8nCreditsWalletDepleted', () => {
+	const n8nCreditsByNode = {
+		Firecrawl: [
+			{ type: 'firecrawlApi', id: null, name: 'n8n credits', __aiGatewayManaged: true as const },
+		],
+	};
+
+	it('is false when no n8n credits were attached', async () => {
+		const getAiGatewayWallet = vi.fn();
+		const context = createMockContext();
+		context.credentialService.getAiGatewayWallet = getAiGatewayWallet;
+
+		await expect(
+			isN8nCreditsWalletDepleted(context, {
+				Slack: [{ type: 'slackApi', id: 'cred-1', name: 'My Slack' }],
+			}),
+		).resolves.toBe(false);
+		expect(getAiGatewayWallet).not.toHaveBeenCalled();
+	});
+
+	it('is false when getAiGatewayWallet is missing', async () => {
+		await expect(isN8nCreditsWalletDepleted(createMockContext(), n8nCreditsByNode)).resolves.toBe(
+			false,
+		);
+	});
+
+	it('is false when the wallet fetch returns null', async () => {
+		const context = createMockContext();
+		context.credentialService.getAiGatewayWallet = vi.fn().mockResolvedValue(null);
+
+		await expect(isN8nCreditsWalletDepleted(context, n8nCreditsByNode)).resolves.toBe(false);
+	});
+
+	it('is true when remaining credits are 0', async () => {
+		const context = createMockContext();
+		context.credentialService.getAiGatewayWallet = vi.fn().mockResolvedValue({ balance: 0 });
+
+		await expect(isN8nCreditsWalletDepleted(context, n8nCreditsByNode)).resolves.toBe(true);
+	});
+
+	it('is true when remaining credits are negative', async () => {
+		const context = createMockContext();
+		context.credentialService.getAiGatewayWallet = vi.fn().mockResolvedValue({ balance: -1 });
+
+		await expect(isN8nCreditsWalletDepleted(context, n8nCreditsByNode)).resolves.toBe(true);
+	});
+
+	it('is false when remaining credits are positive', async () => {
+		const context = createMockContext();
+		context.credentialService.getAiGatewayWallet = vi.fn().mockResolvedValue({ balance: 1 });
+
+		await expect(isN8nCreditsWalletDepleted(context, n8nCreditsByNode)).resolves.toBe(false);
 	});
 });
