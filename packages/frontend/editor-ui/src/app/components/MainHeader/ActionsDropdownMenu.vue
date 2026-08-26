@@ -10,7 +10,6 @@ import {
 	WORKFLOW_MENU_ACTIONS,
 	VIEWS,
 	DUPLICATE_MODAL_KEY,
-	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EnterpriseEditionFeature,
@@ -191,11 +190,6 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			disabled: onExecutionsTab.value,
 			children: [
 				{
-					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
-					label: locale.baseText('menuActions.importFromUrl'),
-					disabled: onExecutionsTab.value,
-				},
-				{
 					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
 					label: locale.baseText('menuActions.importFromFile'),
 					disabled: onExecutionsTab.value,
@@ -358,10 +352,6 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 
 			telemetry.track('User exported workflow', { workflow_id: workflowData.id });
 			saveAs(blob, name + '.json');
-			break;
-		}
-		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL: {
-			uiStore.openModal(IMPORT_WORKFLOW_URL_MODAL_KEY);
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
