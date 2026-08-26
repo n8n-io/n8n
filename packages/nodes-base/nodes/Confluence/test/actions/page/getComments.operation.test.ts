@@ -251,6 +251,37 @@ describe('Confluence page:getComments operation', () => {
 				});
 			}
 		});
+
+		it('keeps mention, emoji, and status text in plain-text bodies', async () => {
+			const adf = JSON.stringify({
+				type: 'doc',
+				content: [
+					{
+						type: 'paragraph',
+						content: [
+							{ type: 'mention', attrs: { id: 'abc', text: '@Jane Doe' } },
+							{ type: 'text', text: ' please review ' },
+							{ type: 'status', attrs: { text: 'BLOCKED', color: 'red' } },
+							{ type: 'text', text: ' ' },
+							{ type: 'emoji', attrs: { shortName: ':tada:', text: '🎉' } },
+						],
+					},
+				],
+			});
+			apiRequest.mockResolvedValueOnce({
+				results: [{ id: '1', body: { atlas_doc_format: { value: adf } } }],
+			});
+			const ctx = createContext({
+				page: { mode: 'id', value: '123' },
+				bodyFormat: 'plainText',
+			});
+
+			const result = (await execute.call(ctx, 0)) as IDataObject[];
+
+			expect(result[0].body).toEqual({
+				plainText: { representation: 'plain_text', value: '@Jane Doe please review BLOCKED 🎉' },
+			});
+		});
 	});
 
 	it('returns an empty array for a page without comments', async () => {

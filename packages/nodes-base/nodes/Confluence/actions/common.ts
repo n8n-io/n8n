@@ -309,9 +309,16 @@ const ADF_BLOCK_TYPES = new Set([
 	'taskList',
 ]);
 
+// Inline leaves whose rendered text lives in `attrs.text` instead of a text node
+const ADF_ATTRS_TEXT_TYPES = new Set(['mention', 'emoji', 'status']);
+
 function adfToPlainText(node: IDataObject): string {
 	if (node.type === 'text') return typeof node.text === 'string' ? node.text : '';
 	if (node.type === 'hardBreak') return '\n';
+	if (ADF_ATTRS_TEXT_TYPES.has(node.type as string)) {
+		const text = (node.attrs as IDataObject | undefined)?.text;
+		return typeof text === 'string' ? text : '';
+	}
 	const content = Array.isArray(node.content) ? (node.content as IDataObject[]) : [];
 	let inner = '';
 	for (const child of content) {
