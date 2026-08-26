@@ -16,7 +16,7 @@ export function pillColors(
 		case 'tool':
 			return { backgroundColor: 'var(--color--green-200)', color: 'var(--color--green-950)' };
 		case 'workflow':
-			return { backgroundColor: 'var(--color--orange-200)', color: 'var(--color--orange-950)' };
+			return { backgroundColor: 'var(--color--pink-200)', color: 'var(--color--pink-950)' };
 		case 'node':
 			return { backgroundColor: 'var(--color--neutral-200)', color: 'var(--color--neutral-950)' };
 		case 'execution-error':

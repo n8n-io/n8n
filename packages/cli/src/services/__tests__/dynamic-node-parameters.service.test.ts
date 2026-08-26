@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp } from '@n8n/backend-network';
-import type { HttpRequestClient, SsrfBridge } from '@n8n/backend-network';
+import type { HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { CredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
 import type { CredentialsEntity } from '@n8n/db';
@@ -229,8 +229,8 @@ describe('DynamicNodeParametersService', () => {
 	// protection is enabled, they honour the same restrictions as node execution.
 	// Many such methods use the legacy `this.helpers.request` helper (e.g. nodes
 	// that build the request and set auth by hand), which routes through
-	// `OutboundHttp.requests({ ssrf })` — asserting that argument proves the
-	// bridge is forwarded end to end.
+	// `OutboundHttp.requests()` — asserting the no-argument call proves they get
+	// the default safe client, so the instance's egress policy applies.
 	describe('egress policy for method-name requests', () => {
 		const requestLegacy = vi.fn();
 		const requests = vi.fn();
@@ -313,31 +313,16 @@ describe('DynamicNodeParametersService', () => {
 		];
 
 		it.each(scenarios)(
-			'forwards the SSRF bridge to requests made from the $name method',
+			'routes requests made from the $name method through the default safe client',
 			async ({ register, invoke }) => {
 				const method = requestingMethod();
 				register(method);
-				const ssrfBridge = mock<SsrfBridge>();
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
 
 				await invoke(additionalData);
 
 				expect(method).toHaveBeenCalled();
-				expect(requests).toHaveBeenCalledWith({ ssrf: ssrfBridge });
-			},
-		);
-
-		it.each(scenarios)(
-			'disables SSRF for requests from the $name method when no bridge is attached',
-			async ({ register, invoke }) => {
-				const method = requestingMethod();
-				register(method);
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({ ssrfBridge: undefined });
-
-				await invoke(additionalData);
-
-				expect(method).toHaveBeenCalled();
-				expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+				expect(requests).toHaveBeenCalledWith();
 			},
 		);
 	});
