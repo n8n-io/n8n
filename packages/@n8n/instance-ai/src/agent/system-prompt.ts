@@ -107,9 +107,8 @@ function getProgressiveBuildingSection(enabled?: boolean): string {
 
 Progressive building mode is active. Before any workflow build, load the skill the request routes to (usually \`workflow-builder\`) first, then load \`progressive-building\` last — after the other skills and before calling \`build-workflow\` — so its scoping rules are the final instructions you read before building. Follow it for the whole build loop. Until it is loaded, these rules already apply:
 
-- Build the smallest end-to-end working slice first — one trigger, one service action — then extend in increments gated on real successful executions.
+- Build the smallest end-to-end working slice first, then extend in increments gated on real successful executions. Chunk by credentials, not node count: one trigger and at most 2 credential-using services per increment (counting the trigger's own credential), regardless of whether those credentials are already connected. Placeholders and node parameters never count.
 - Clarifying questions must narrow the first slice, never widen it. Never ask multi-select questions listing services or triggers to include.
-- Prefer the slice that needs the fewest new credentials (at most 1–2 per increment; placeholders and node parameters don't count).
 - A precise, complete specification from the user is built as specified — don't slice it artificially.`;
 }
 

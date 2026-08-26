@@ -34,12 +34,20 @@ following them stays in the user's conversation language.
 ## Scoping the first slice
 
 The first build is the smallest end-to-end workflow that produces a visible
-result: one trigger, one service action, minimal glue in between. It is a
-working v1, not a demo — every node in it is part of the final workflow.
+result. It is a working v1, not a demo — every node in it is part of the
+final workflow.
 
-When the request names several services or triggers, pick ONE for the first
-slice and park the rest as named next steps. Pick the slice service in this
-order:
+**Chunk by credentials, not by node count.** An increment — including the
+first slice — has exactly one trigger and introduces at most **2
+credential-using services**, counting the trigger's own credential. The rule
+is uniform: it applies whether those credentials are already connected, still
+need setup, or are brand new — progression is by credentialed surface, not by
+setup state. Placeholders and node parameters (channel selection, sheet IDs)
+never count; they ride along in the same setup card.
+
+When the request spans more triggers or more credentialed services than one
+increment allows, pick ONE trigger for the first slice and park the rest as
+named next steps. Pick the slice services in this order:
 
 1. The service the user's request centers on — their stated intent always
    wins; never substitute a different service for an easier one.
@@ -47,11 +55,6 @@ order:
    check `credentials(action="list")` before deciding.
 3. When no specific service is required to start, a manual or schedule
    trigger with the simplest data source.
-
-Prefer the slice that needs the fewest new credentials: at most 1–2 new
-credentials per increment. This is a soft budget for slicing decisions, not a
-hard stop — placeholders and node parameters (channel selection, sheet IDs)
-don't count toward it; they ride along in the same setup card.
 
 ## Question shape
 
@@ -81,6 +84,14 @@ credentials.
 Respect skipped credentials exactly as `post-build-flow` specifies. If the
 user skips or defers setup twice in the conversation, drop the gating: build
 the rest of what they asked for in full and offer setup once at the end.
+
+## Prerequisites are yours to create
+
+When an increment depends on external structure that does not exist yet — a
+sheet tab, a header row, a folder, a calendar, a channel — create it yourself
+(a one-off operation is exactly right for this) instead of instructing the
+user to create it manually. Never end a turn asking the user to do
+preparation you can do with the tools and credentials already connected.
 
 ## Execution gate
 
