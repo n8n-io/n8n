@@ -1,0 +1,9 @@
+packages/cli/src/public-api/v1/handlers/git-connections/spec/paths/pushGitConnectionProjects.generated.yml
+  ai_agent 17,84-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2611e860b23e40b7b6b6dbc71133a3db6fdd6597",
+  "prompts": {}
+}
