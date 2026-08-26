@@ -14,7 +14,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
  * API.
  */
 @Service()
-export class EngineStatusController {
+export class EngineLifecycleEventController {
 	constructor(private readonly logger: Logger) {
 		this.logger = this.logger.scoped('engine-v2');
 	}

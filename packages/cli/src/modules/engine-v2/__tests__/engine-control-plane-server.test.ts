@@ -5,7 +5,7 @@ import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
-import { EngineStatusController } from '../engine-status.controller';
+import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';
 
 const authSecret = 'a'.repeat(32);
 
@@ -35,7 +35,7 @@ describe('EngineControlPlaneServer', () => {
 
 	beforeEach(async () => {
 		logger = mock<Logger>();
-		const controller = new EngineStatusController(
+		const controller = new EngineLifecycleEventController(
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
 		);
 		server = new EngineControlPlaneServer(

@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import { EngineStatusController } from '../engine-status.controller';
+import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';
 
 const events: LifecycleEvent[] = [
 	{
@@ -28,10 +28,10 @@ const events: LifecycleEvent[] = [
 	},
 ];
 
-describe('EngineStatusController', () => {
+describe('EngineLifecycleEventController', () => {
 	// The controller scopes its logger, so assertions go to the scoped one.
 	let logger: Logger;
-	let controller: EngineStatusController;
+	let controller: EngineLifecycleEventController;
 
 	const newResponse = () => {
 		const res = {
@@ -48,7 +48,7 @@ describe('EngineStatusController', () => {
 
 	beforeEach(() => {
 		logger = mock<Logger>();
-		controller = new EngineStatusController(
+		controller = new EngineLifecycleEventController(
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
 		);
 	});

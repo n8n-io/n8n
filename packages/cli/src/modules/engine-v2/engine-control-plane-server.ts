@@ -9,7 +9,7 @@ import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
 
 import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-auth.middleware';
-import { EngineStatusController } from './engine-status.controller';
+import { EngineLifecycleEventController } from './engine-lifecycle-event.controller';
 
 /**
  * The control plane's server: where the engine 2.0 data plane reports back.
@@ -30,7 +30,7 @@ export class EngineControlPlaneServer {
 
 	constructor(
 		private readonly engineConfig: EngineConfig,
-		private readonly statusController: EngineStatusController,
+		private readonly lifecycleEventController: EngineLifecycleEventController,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
@@ -94,7 +94,9 @@ export class EngineControlPlaneServer {
 
 		app.post(
 			'/internal/status-callback',
-			send(async (req, res) => await this.statusController.receiveLifecycleEvents(req, res)),
+			send(
+				async (req, res) => await this.lifecycleEventController.receiveLifecycleEvents(req, res),
+			),
 		);
 	}
 }
