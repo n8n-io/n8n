@@ -117,13 +117,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 	}
 
-	async function getWorkflowFromUrl(url: string, projectId: string): Promise<IWorkflowDb> {
-		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/workflows/from-url', {
-			url,
-			projectId,
-		});
-	}
-
 	async function fetchLastSuccessfulExecution() {
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowId.value),
@@ -523,7 +516,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		isNewWorkflow,
 		isWorkflowSaved,
 		convertTemplateNodeToNodeUi,
-		getWorkflowFromUrl,
 		getActivationError,
 		setWorkflowId,
 		resetWorkflow,
