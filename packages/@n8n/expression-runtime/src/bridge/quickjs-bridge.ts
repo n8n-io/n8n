@@ -155,6 +155,56 @@ function unwrapSentinels(value: unknown): unknown {
 	return result;
 }
 
+/** Keys the transfer encoding reserves — keep in sync with the guest-side wrappers in injectTransferWrapper(). */
+const TRANSFER_MARKER_KEYS = new Set([
+	'__isDate',
+	'__isNaN',
+	'__isErrorValue',
+	'__isMap',
+	'__isSet',
+	'__isEscaped',
+]);
+
+/**
+ * Recursively wrap host values that JSON.stringify would flatten (Date, NaN,
+ * Map, Set) into the same sentinel format the guest transfer wrapper uses,
+ * escaping user objects whose keys collide with the markers. The guest
+ * rebuilds real instances via __unwrapFromHost (see injectTransferWrapper),
+ * so host-callback results match what isolated-vm's structured clone delivers.
+ */
+function wrapSpecialValuesForGuest(value: unknown): unknown {
+	if (value === null || value === undefined) return value;
+	if (value instanceof Date) {
+		// Invalid Dates have no ISO string; '' rebuilds an Invalid Date in the guest.
+		return { __isDate: true, __isoString: isNaN(value.getTime()) ? '' : value.toISOString() };
+	}
+	if (typeof value === 'number' && Number.isNaN(value)) return { __isNaN: true };
+	if (typeof value !== 'object') return value;
+	if (value instanceof Map) {
+		return {
+			__isMap: true,
+			__entries: [...value.entries()].map(([k, v]) => [
+				wrapSpecialValuesForGuest(k),
+				wrapSpecialValuesForGuest(v),
+			]),
+		};
+	}
+	if (value instanceof Set) {
+		return { __isSet: true, __values: [...value.values()].map(wrapSpecialValuesForGuest) };
+	}
+	if (Array.isArray(value)) return value.map(wrapSpecialValuesForGuest);
+	// Error sentinels are already in transfer shape — leave them intact.
+	if (isErrorSentinel(value)) return value;
+	const record = value as Record<string, unknown>;
+	const result: Record<string, unknown> = {};
+	let collides = false;
+	for (const key of Object.keys(record)) {
+		if (TRANSFER_MARKER_KEYS.has(key)) collides = true;
+		result[key] = wrapSpecialValuesForGuest(record[key]);
+	}
+	return collides ? { __isEscaped: true, __value: result } : result;
+}
+
 /**
  * Serialize an error into a transferable metadata object.
  *
@@ -207,15 +257,15 @@ async function readRuntimeBundle(): Promise<string> {
  * Only objects/arrays reach this — primitives (including top-level NaN via
  * newNumber) and Date are handled directly by the caller. Everything else
  * (lazy-proxy metadata, Intl outputs, typed-RPC results, error-sentinel
- * extras) goes through JSON.stringify, so a nested NaN marshals as null and a
- * nested Date as an ISO string. isolated-vm keeps both via structured clone;
- * this is a known divergence for nested values inside RPC results.
+ * extras) is sentinel-wrapped first so nested Date/NaN/Map/Set survive the
+ * JSON round-trip and rebuild in the guest via __unwrapFromHost — matching
+ * what isolated-vm's structured clone delivers.
  */
 function hostValueToJson(value: unknown): string {
 	if (value === undefined) return 'undefined';
 	if (value === null) return 'null';
 	try {
-		return JSON.stringify(value);
+		return JSON.stringify(wrapSpecialValuesForGuest(value));
 	} catch {
 		return 'undefined';
 	}
@@ -751,7 +801,9 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * Wrap __prepareForTransfer so values that don't survive vm.dump()
 	 * (Date, NaN, Map, Set, Error) are converted to sentinel objects.
 	 * The host post-processes vm.dump() output to reconstruct real instances
-	 * via unwrapSentinels().
+	 * via unwrapSentinels(). Also injects __unwrapFromHost, the guest-side
+	 * reverse: it rebuilds instances from the sentinels the host's
+	 * wrapSpecialValuesForGuest() emits for callback results.
 	 */
 	private injectTransferWrapper(): void {
 		if (!this.vm) throw new Error('Context not initialized');
@@ -818,6 +870,40 @@ export class QuickJsBridge implements RuntimeBridge {
 		// misreading them as sentinels.
 		return collides ? { __isEscaped: true, __value: result } : result;
 	}
+
+	// Reverse direction: rebuild real instances from the sentinels the host's
+	// wrapSpecialValuesForGuest() produces for callback results.
+	globalThis.__unwrapFromHost = function unwrapFromHost(v) {
+		if (v === null || typeof v !== 'object') return v;
+		// Error sentinels stay as-is — the in-context proxy detects and throws them.
+		if (v.__isError === true) return v;
+		if (v.__isDate === true) return new Date(v.__isoString);
+		if (v.__isNaN === true) return NaN;
+		if (v.__isMap === true) {
+			var m = new Map();
+			for (var i = 0; i < v.__entries.length; i++) {
+				m.set(unwrapFromHost(v.__entries[i][0]), unwrapFromHost(v.__entries[i][1]));
+			}
+			return m;
+		}
+		if (v.__isSet === true) {
+			var s = new Set();
+			for (var j = 0; j < v.__values.length; j++) s.add(unwrapFromHost(v.__values[j]));
+			return s;
+		}
+		if (v.__isEscaped === true) {
+			var inner = v.__value;
+			var out = {};
+			var ekeys = Object.keys(inner);
+			for (var e = 0; e < ekeys.length; e++) out[ekeys[e]] = unwrapFromHost(inner[ekeys[e]]);
+			return out;
+		}
+		if (Array.isArray(v)) return v.map(unwrapFromHost);
+		var result = {};
+		var keys = Object.keys(v);
+		for (var n = 0; n < keys.length; n++) result[keys[n]] = unwrapFromHost(v[keys[n]]);
+		return result;
+	};
 })();
 `;
 
@@ -979,7 +1065,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		const json = hostValueToJson(value);
 		if (json === 'undefined') return this.vm.undefined;
 
-		const result = this.vm.evalCode(`(${json})`);
+		const result = this.vm.evalCode(`__unwrapFromHost(${json})`);
 		if (result.error) {
 			result.error.dispose();
 			return this.vm.undefined;
