@@ -44,7 +44,7 @@ import {
 	getResolvableState,
 } from '@/app/utils/expressions';
 import { isCredentialsModalOpen } from '../plugins/codemirror/completions/utils';
-import { usesDeprecatedExpressionFunction } from '../plugins/codemirror/expressionDeprecations';
+import { usesRemovedExpressionFunction } from '../plugins/codemirror/expressionDeprecations';
 import { closeCompletion, completionStatus } from '@codemirror/autocomplete';
 import {
 	Compartment,
@@ -405,10 +405,10 @@ export const useExpressionEditor = ({
 		const isCredentialModal = !expressionLocalResolveContext.value && isCredentialsModalOpen();
 
 		try {
-			// Deprecated functions still resolve on the backend, but we surface them
-			// as an error in the editor preview to steer users off them.
-			if (usesDeprecatedExpressionFunction(resolvable)) {
-				throw new Error(i18n.baseText('expressionEditor.deprecated.getPairedItem'));
+			// Removed functions no longer resolve anywhere. Report them here so the
+			// preview names the replacement instead of an undefined-call error.
+			if (usesRemovedExpressionFunction(resolvable)) {
+				throw new Error(i18n.baseText('expressionEditor.removed.getPairedItem'));
 			}
 
 			if (expressionLocalResolveContext.value) {

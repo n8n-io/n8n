@@ -1,21 +1,21 @@
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 
-// Expression functions deprecated in the frontend editor. Still resolve on the
-// backend at execution time — we only surface them as errors in the editor.
-export const DEPRECATED_EXPRESSION_FUNCTION = '$getPairedItem';
+// Expression function removed in v3. The editor reports it before evaluation so
+// the message names a replacement instead of failing on an undefined call.
+export const REMOVED_EXPRESSION_FUNCTION = '$getPairedItem';
 
 /**
- * Whether an expression body references a deprecated function. Matches
+ * Whether an expression body references a removed function. Matches
  * `VariableName` nodes so occurrences in string literals aren't flagged.
  */
-export function usesDeprecatedExpressionFunction(expression: string): boolean {
+export function usesRemovedExpressionFunction(expression: string): boolean {
 	let found = false;
 
 	javascriptLanguage.parser.parse(expression).iterate({
 		enter: (node) => {
 			if (
 				node.name === 'VariableName' &&
-				expression.slice(node.from, node.to) === DEPRECATED_EXPRESSION_FUNCTION
+				expression.slice(node.from, node.to) === REMOVED_EXPRESSION_FUNCTION
 			) {
 				found = true;
 			}

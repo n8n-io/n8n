@@ -142,7 +142,7 @@ describe('useExpressionEditor', () => {
 		});
 	});
 
-	test('surfaces deprecated $getPairedItem as an error segment', async () => {
+	test('reports the removed $getPairedItem as an error segment', async () => {
 		mockResolveExpression();
 
 		const {
@@ -159,7 +159,7 @@ describe('useExpressionEditor', () => {
 					from: 0,
 					kind: 'resolvable',
 					resolvable: '{{ $getPairedItem }}',
-					resolved: '[$getPairedItem is deprecated and will be removed]',
+					resolved: "[$getPairedItem was removed. Use $('Node').item instead]",
 					state: 'invalid',
 					to: 20,
 				},

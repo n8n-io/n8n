@@ -1,19 +1,19 @@
-import { usesDeprecatedExpressionFunction } from './expressionDeprecations';
+import { usesRemovedExpressionFunction } from './expressionDeprecations';
 
-describe('usesDeprecatedExpressionFunction', () => {
+describe('usesRemovedExpressionFunction', () => {
 	it('detects $getPairedItem used as a bare reference', () => {
-		expect(usesDeprecatedExpressionFunction('{{ $getPairedItem }}')).toBe(true);
+		expect(usesRemovedExpressionFunction('{{ $getPairedItem }}')).toBe(true);
 	});
 
 	it('detects $getPairedItem used as a call', () => {
-		expect(usesDeprecatedExpressionFunction('{{ $getPairedItem("Node", null, {}) }}')).toBe(true);
+		expect(usesRemovedExpressionFunction('{{ $getPairedItem("Node", null, {}) }}')).toBe(true);
 	});
 
 	it('does not flag benign expressions', () => {
-		expect(usesDeprecatedExpressionFunction('{{ $json.foo }}')).toBe(false);
+		expect(usesRemovedExpressionFunction('{{ $json.foo }}')).toBe(false);
 	});
 
 	it('does not flag $getPairedItem inside a string literal', () => {
-		expect(usesDeprecatedExpressionFunction('{{ "$getPairedItem" }}')).toBe(false);
+		expect(usesRemovedExpressionFunction('{{ "$getPairedItem" }}')).toBe(false);
 	});
 });
