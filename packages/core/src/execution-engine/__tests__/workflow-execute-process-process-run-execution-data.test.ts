@@ -97,6 +97,70 @@ describe('processRunExecutionData', () => {
 		expect(result.data.resultData.runData).toMatchObject({ node: [{ data: taskDataConnection }] });
 	});
 
+	describe('alwaysOutputData', () => {
+		const multiOutputNode: INodeType = {
+			...passThroughNode,
+			description: { ...passThroughNode.description, outputs: ['main', 'main'] },
+		};
+
+		const runWorkflowWithNodeOutput = async (nodeType: INodeType) => {
+			const trigger = createNodeData({ name: 'trigger', type: types.passThrough });
+			const node = {
+				...createNodeData({ name: 'node', type: 'multiOutput' }),
+				alwaysOutputData: true,
+			};
+			const nodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				multiOutput: { type: nodeType, sourcePath: '' },
+			});
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node)
+				.addConnections({ from: trigger, to: node })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
+
+			const executionData = createRunExecutionData({
+				startData: { startNodes: [{ name: trigger.name, sourceData: null }] },
+				executionData: {
+					nodeExecutionStack: [
+						{ data: { main: [[{ json: { foo: 1 } }]] }, node: trigger, source: null },
+					],
+				},
+			});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
+			const result = await workflowExecute.processRunExecutionData(workflow);
+			return result.data.resultData.runData.node[0].data?.main;
+		};
+
+		test('does not add an empty item to the first output when another output has data', async () => {
+			const nodeType = modifyNode(multiOutputNode)
+				.return([[], [{ json: { routed: true } }]])
+				.done();
+
+			const main = await runWorkflowWithNodeOutput(nodeType);
+
+			expect(main?.[0]).toEqual([]);
+			expect(main?.[1]).toMatchObject([{ json: { routed: true } }]);
+		});
+
+		test('adds an empty item to the first output when every output is empty', async () => {
+			const nodeType = modifyNode(multiOutputNode).return([[], []]).done();
+
+			const main = await runWorkflowWithNodeOutput(nodeType);
+
+			expect(main?.[0]).toMatchObject([{ json: {} }]);
+			expect(main?.[1]).toEqual([]);
+		});
+
+		test('adds an empty item when a single-output node returns no data', async () => {
+			const nodeType = modifyNode(passThroughNode).return([[]]).done();
+
+			const main = await runWorkflowWithNodeOutput(nodeType);
+
+			expect(main?.[0]).toMatchObject([{ json: {} }]);
+		});
+	});
+
 	test('calls the right hooks in the right order', async () => {
 		// ARRANGE
 		const node1 = createNodeData({ name: 'node1', type: types.passThrough });
