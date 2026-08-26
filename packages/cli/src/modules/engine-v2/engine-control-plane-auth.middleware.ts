@@ -7,17 +7,12 @@ import { UnauthenticatedError } from '@/errors/response-errors/unauthenticated.e
 
 const BEARER_PREFIX = /^bearer /i;
 
-/**
- * Narrower than express's `RequestHandler`, which may also return a promise.
- * Verifying a token is pure computation, so this one never does.
- */
+/** Express's `RequestHandler` may return a promise; verifying a token never does. */
 type SyncRequestHandler = (req: Request, res: Response, next: NextFunction) => void;
 
 /**
- * Rejects a caller the shared secret does not vouch for.
- *
- * Reads the secret per request rather than capturing it: the module generates
- * one at init, which happens after the server that mounts this is constructed.
+ * Rejects a caller the shared secret does not vouch for. Reads the secret per
+ * request, because it is generated after this is constructed.
  */
 export function createEngineControlPlaneAuthMiddleware(
 	engineConfig: EngineConfig,

@@ -12,12 +12,8 @@ import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-a
 import { EngineLifecycleEventController } from './engine-lifecycle-event.controller';
 
 /**
- * The control plane's server: where the engine 2.0 data plane reports back.
- *
- * Its own HTTP server rather than a route on n8n's main one, so the surface the
- * data plane reaches can be isolated at the network layer. The main server is
- * the editor and public API and is often internet-facing; this one only ever
- * answers a data plane, so it binds its own port and, by default, loopback only.
+ * Receives lifecycle events from the data plane. Its own server, not a route on
+ * n8n's main one, so this surface can be isolated from the editor API.
  */
 @Service()
 export class EngineControlPlaneServer {
@@ -52,8 +48,7 @@ export class EngineControlPlaneServer {
 		});
 
 		await new Promise<void>((resolve, reject) => {
-			// Detached once listening, so a later runtime error is not mistaken for a
-			// failure to bind.
+			// Detached once listening: a later error is not a failed bind.
 			const onBindError = (error: Error) => reject(error);
 			this.server!.once('error', onBindError);
 			this.server!.listen(port, host, () => {
@@ -74,22 +69,19 @@ export class EngineControlPlaneServer {
 			this.server!.close((error) => (error ? reject(error) : resolve()));
 		});
 
-		// The handle is dropped only after the close succeeds, so a server that
-		// failed to close is tried again on the next `stop()`.
+		// Dropped only on success, so a failed close is retried next time.
 		this.server = undefined;
 	}
 
 	private configureRoutes(app: Application): void {
-		// Stays open: a liveness probe, and it reveals nothing.
+		// Open: a liveness probe reveals nothing.
 		app.get('/healthz', (_req, res) => {
 			res.status(200).json({ status: 'ok' });
 		});
 
-		// Both mounted on the prefix, not on the route, so a route added here later
-		// authenticates by default and cannot outgrow the body limit.
+		// On the prefix, not the route, so a later route cannot forget either.
 		app.use('/internal', createEngineControlPlaneAuthMiddleware(this.engineConfig, this.logger));
-		// n8n's own parser rather than `express.json()`, so a status batch is
-		// bounded by `N8N_PAYLOAD_SIZE_MAX` like every other body n8n accepts.
+		// n8n's parser bounds the body by `N8N_PAYLOAD_SIZE_MAX`.
 		app.use('/internal', rawBodyReader, bodyParser);
 
 		app.post(

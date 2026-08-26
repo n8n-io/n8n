@@ -58,7 +58,7 @@ describe('createEngineControlPlaneAuthMiddleware', () => {
 	});
 
 	it('reads the secret per request, so one generated after startup still works', () => {
-		// The module fills the secret in at init, after the server is constructed.
+		// The secret is set after construction.
 		const engineConfig = mock<EngineConfig>({ authSecret: '' });
 		const middleware = createEngineControlPlaneAuthMiddleware(engineConfig, logger);
 		engineConfig.authSecret = authSecret;
@@ -81,7 +81,7 @@ describe('createEngineControlPlaneAuthMiddleware', () => {
 	});
 
 	it('rejects an identity token minted for the control plane to data plane direction', () => {
-		// Signed with the same secret; only the issuer and audience stop the replay.
+		// Same secret; only the issuer and audience stop the replay.
 		const token = mintIdentityToken(authSecret, { cpId: 'cp-1', tenantId: 'tenant-1' });
 
 		expectRejected(authenticate(`Bearer ${token}`));

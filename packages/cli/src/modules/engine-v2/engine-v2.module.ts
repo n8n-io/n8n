@@ -29,8 +29,7 @@ export class EngineV2Module implements ModuleInterface {
 			engineConfig.authSecret = randomBytes(32).toString('hex');
 		}
 
-		// Listening before the engine starts, so no status batch can be reported
-		// before there is a server to receive it.
+		// Before the engine, so nothing is reported with no server to receive it.
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).start();
 
@@ -51,8 +50,7 @@ export class EngineV2Module implements ModuleInterface {
 		const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
 		await Container.get(EngineV2Runtime).shutdown();
 
-		// Stopped after the engine, so a batch flushed during its shutdown still
-		// has somewhere to land.
+		// After the engine, so its final flush still has somewhere to land.
 		const { EngineControlPlaneServer } = await import('./engine-control-plane-server.js');
 		await Container.get(EngineControlPlaneServer).stop();
 	}

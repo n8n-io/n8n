@@ -99,8 +99,7 @@ describe('EngineControlPlaneClient', () => {
 		});
 
 		it('leaves the send deadline to the engine, which owns it', () => {
-			// A shorter client timeout would fire first and make the engine's
-			// deadline, and the abort that goes with it, unreachable.
+			// A client timeout would fire first and hide the engine's deadline.
 			expect(clientOptions?.timeout).toBeUndefined();
 		});
 

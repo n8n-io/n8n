@@ -51,38 +51,15 @@ export class EngineConfig {
 	@Env('N8N_ENGINE_AUTH_SECRET', z.string().min(AUTH_SECRET_MIN_LENGTH))
 	authSecret: string = '';
 
-	/**
-	 * Port the control plane server listens on.
-	 *
-	 * Deliberately not n8n's own port: this surface serves the data plane and
-	 * nothing else, so it is a separate server on a separate port that can be
-	 * firewalled off from the editor API.
-	 */
+	/** Port the control plane server listens on. Its own, so it can be firewalled off from the editor API. */
 	@Env('N8N_ENGINE_CONTROL_PLANE_PORT')
 	controlPlanePort: number = 3001;
 
-	/**
-	 * Host interface the control plane server binds to.
-	 *
-	 * Loopback by default, unlike {@link host}: when both planes share a process
-	 * there is nothing to reach across the network, and an internal surface that
-	 * is unreachable off-box by default is the safer starting point. A deployment
-	 * whose data plane runs elsewhere must widen this deliberately.
-	 */
+	/** Bind address for the control plane server. Loopback by default: only a data plane calls it. */
 	@Env('N8N_ENGINE_CONTROL_PLANE_HOST')
 	controlPlaneHost: string = '127.0.0.1';
 
-	/**
-	 * Base URL the engine dials to reach the control plane server.
-	 *
-	 * The mirror image of {@link baseUrl}: that one is how the control plane
-	 * reaches the engine, this one is how the engine reaches back. Both
-	 * directions are HTTP from day one, including while the engine runs inside
-	 * the n8n process, so the engine can move out of it without changing a caller.
-	 *
-	 * Defaults to loopback on {@link controlPlanePort}. Set it whenever that is not
-	 * dialable, for example once the engine runs out of process.
-	 */
+	/** Where the engine dials the control plane server. Defaults to loopback; set it when that is not reachable. */
 	@Env('N8N_ENGINE_CONTROL_PLANE_BASE_URL')
 	controlPlaneBaseUrl: string = '';
 }

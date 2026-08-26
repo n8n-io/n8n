@@ -29,7 +29,7 @@ const events: LifecycleEvent[] = [
 ];
 
 describe('EngineLifecycleEventController', () => {
-	// The controller scopes its logger, so assertions go to the scoped one.
+	// The controller scopes its logger, so assert on the scoped one.
 	let logger: Logger;
 	let controller: EngineLifecycleEventController;
 
@@ -75,8 +75,7 @@ describe('EngineLifecycleEventController', () => {
 		});
 
 		it('logs a completed step by its output slot count, never its contents', async () => {
-			// Outputs are whatever the workflow processed, so a debug log must not
-			// become a copy of a user's execution data.
+			// A log must not become a copy of a user's execution data.
 			await controller.receiveLifecycleEvents(newRequest(), newResponse());
 
 			const [message, metadata] = vi.mocked(logger.debug).mock.calls[1];

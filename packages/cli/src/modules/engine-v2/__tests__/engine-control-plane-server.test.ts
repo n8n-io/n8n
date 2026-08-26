@@ -18,7 +18,7 @@ const events: LifecycleEvent[] = [
 	},
 ];
 
-/** The server binds for real, so tests exercise the wiring rather than a mock app. */
+/** Binds for real, so these exercise the wiring rather than a mock app. */
 describe('EngineControlPlaneServer', () => {
 	let server: EngineControlPlaneServer;
 	let logger: Logger;
@@ -28,7 +28,7 @@ describe('EngineControlPlaneServer', () => {
 		mock<EngineConfig>({
 			authSecret,
 			controlPlaneHost: '127.0.0.1',
-			// Port 0 lets the OS pick a free one, so parallel test files cannot clash.
+			// Port 0: the OS picks a free one, so parallel files cannot clash.
 			controlPlanePort: 0,
 			...overrides,
 		});
