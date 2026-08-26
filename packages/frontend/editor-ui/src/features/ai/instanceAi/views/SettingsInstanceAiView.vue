@@ -30,6 +30,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
+import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
@@ -822,6 +823,8 @@ function openAiUsageSettings() {
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 		</template>
+
+		<DefaultEditorSetting v-if="!store.isLoading && !neverConfigured" />
 
 		<ConnectionDialog
 			v-if="showCredentialsRows && !isModelReadOnly"
