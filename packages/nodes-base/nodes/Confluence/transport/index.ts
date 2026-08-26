@@ -1,3 +1,4 @@
+import type FormData from 'form-data';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -173,4 +174,52 @@ export async function confluenceApiRequestBinary(
 	if (data instanceof ArrayBuffer) return Buffer.from(data);
 	if (typeof data === 'string') return Buffer.from(data);
 	throw new NodeOperationError(this.getNode(), 'Confluence returned an unexpected binary response');
+}
+
+/**
+ * Uploads a multipart body (e.g. a file) through the gateway. PUT, not POST:
+ * the same endpoint's POST is create-only and 400s on a filename that already
+ * exists on the page, while PUT upserts (creates if new, new version if the
+ * filename matches) so the delete+upload replace-a-file story becomes a single
+ * call. No `json: true` and no explicit Content-Type: `form-data` sets its own
+ * multipart boundary, and an explicit header would clobber it.
+ */
+export async function confluenceApiRequestUpload(
+	this: IExecuteFunctions,
+	endpoint: string,
+	formData: FormData,
+): Promise<IDataObject> {
+	const credentials = await this.getCredentials(CONFLUENCE_CREDENTIAL_NAME);
+	const siteUrl = credentials.domain;
+	if (typeof siteUrl !== 'string' || siteUrl === '') {
+		throw new NodeOperationError(
+			this.getNode(),
+			'The Confluence credential is missing the Site URL field',
+		);
+	}
+	const cloudId = await getAtlassianCloudId.call(
+		this,
+		CONFLUENCE_CREDENTIAL_NAME,
+		siteUrl,
+		'confluence',
+	);
+
+	const options: IHttpRequestOptions = {
+		method: 'PUT',
+		url: `${getAtlassianApiBaseUrl('confluence', cloudId)}${endpoint}`,
+		body: formData,
+		// Bypasses XSRF checks on this v1 endpoint; without it the gateway answers
+		// 403 "XSRF check failed" before the request ever reaches Confluence.
+		headers: { 'X-Atlassian-Token': 'nocheck' },
+	};
+
+	try {
+		return await this.helpers.httpRequestWithAuthentication.call(
+			this,
+			CONFLUENCE_CREDENTIAL_NAME,
+			options,
+		);
+	} catch (error) {
+		throw toConfluenceApiError.call(this, error);
+	}
 }

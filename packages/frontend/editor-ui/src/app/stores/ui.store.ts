@@ -451,6 +451,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			projectId: undefined,
 			contextNode: undefined,
 			closeOnSave: false,
+			onCredentialCreated: undefined,
 			hideAskAssistant: options.hideAskAssistant,
 			appendToBody: options.appendToBody,
 			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
@@ -470,6 +471,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			hideAskAssistant?: boolean;
 			appendToBody?: boolean;
 			closeOnSave?: boolean;
+			onCredentialCreated?: NewCredentialsModal['onCredentialCreated'];
 			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
 			usageScope?: NewCredentialsModal['usageScope'];
 			credentialSetupHint?: NewCredentialsModal['credentialSetupHint'];
@@ -480,6 +482,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		patchModalState(CREDENTIAL_EDIT_MODAL_KEY, {
 			forceManualMode,
 			closeOnSave: options.closeOnSave ?? false,
+			onCredentialCreated: options.onCredentialCreated,
 			projectId,
 			suggestedName,
 			nodeName,

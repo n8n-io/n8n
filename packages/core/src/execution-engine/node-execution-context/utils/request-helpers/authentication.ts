@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
-import { httpRequest, removeEmptyBody } from '@n8n/backend-network';
+import { OutboundHttp, removeEmptyBody } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import type {
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
@@ -102,7 +103,7 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
-		return await httpRequest(requestOptions, additionalData.ssrfBridge);
+		return await Container.get(OutboundHttp).requests().request(requestOptions);
 	} catch (error) {
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
@@ -136,7 +137,7 @@ export async function httpRequestWithAuthentication(
 						node,
 					);
 				}
-				return await httpRequest(requestOptions, additionalData.ssrfBridge);
+				return await Container.get(OutboundHttp).requests().request(requestOptions);
 			} catch (error) {
 				throw new NodeApiError(this.getNode(), error);
 			}

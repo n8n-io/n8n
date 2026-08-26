@@ -52,6 +52,14 @@ export class PolicyEnforcementService {
 		this.implementation = implementation;
 	}
 
+	/**
+	 * Whether any check would run at `point`. Only for skipping expensive work needed to build
+	 * a context — `enforce*` already clears, so a host holding its context should just call it.
+	 */
+	hasChecksFor(point: EnforcementPoint): boolean {
+		return this.implementation?.hasChecksFor(point) ?? false;
+	}
+
 	async enforceWorkflowSave(context: WorkflowSaveContext): Promise<PolicyCleared<'workflowSave'>> {
 		return await this.enforce('workflowSave', context, workflowSubject(context.workflow));
 	}
