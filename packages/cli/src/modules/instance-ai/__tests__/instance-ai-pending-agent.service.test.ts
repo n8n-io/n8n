@@ -46,6 +46,7 @@ function setup() {
 	runnableState.addRunnableState.mockImplementation(
 		async (agent) => ({ ...agent, isRunnable: true }) as never,
 	);
+	memoryService.getThreadProjectId.mockResolvedValue(PROJECT_ID);
 	memoryService.bindAgentBuilderTarget.mockResolvedValue({
 		id: THREAD_ID,
 		resourceId: user.id,
@@ -235,6 +236,27 @@ describe('InstanceAiPendingAgentService', () => {
 		await expect(service.persistAndBind(user, THREAD_ID, payload)).rejects.toThrow(
 			'thread write failed',
 		);
+	});
+
+	// A thread belongs to one project, and instance-ai ignores a pending marker
+	// from another — binding across projects leaves an unusable target.
+	it('refuses a payload project that is not the thread project', async () => {
+		const { service, memoryService, agentsService } = setup();
+		memoryService.getThreadProjectId.mockResolvedValue('other-project');
+		memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
+
+		await expect(service.persistAndBind(user, THREAD_ID, payload)).rejects.toThrow(ForbiddenError);
+		expect(agentsService.create).not.toHaveBeenCalled();
+		expect(agentsService.findById).not.toHaveBeenCalled();
+	});
+
+	it('allows a thread persisted before threads carried a project', async () => {
+		const { service, memoryService, agentsService } = setup();
+		memoryService.getThreadProjectId.mockResolvedValue(undefined);
+		memoryService.getThreadMetadata.mockResolvedValue(pendingMetadata);
+		agentsService.create.mockResolvedValue(mock<Agent>({ id: AGENT_ID, name: 'New Agent' }));
+
+		await expect(service.persistAndBind(user, THREAD_ID, payload)).resolves.toBeDefined();
 	});
 
 	it('reports agents being unavailable before touching the thread', async () => {

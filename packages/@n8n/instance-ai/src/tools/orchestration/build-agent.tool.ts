@@ -41,6 +41,7 @@ import {
 	getSessionAgentByRef,
 	normalizeAgentRef,
 	readPendingAgentTarget,
+	rereadAgentBuilderTarget,
 	resolveAgentBuilderTarget,
 	saveAgentBuilderTarget,
 	type AgentBuilderTarget,
@@ -936,6 +937,23 @@ async function resolveTargetForCall(
 			// already configured the row. A backend-minted id can't collide, so the
 			// flag is meaningless there.
 			const pendingId = await pendingAgentIdFor(domainContext);
+			// `createNew` asks for a second agent explicitly, so it keeps creating.
+			if (!pendingId && !input.createNew) {
+				// No marker can also mean the editor persisted the artifact and bound it
+				// since this turn read its target — which deleted the marker. Creating
+				// now would mint a second agent beside that one and then overwrite its
+				// binding, so continue it instead (same policy as a target bound before
+				// the turn started).
+				const rebound = await rereadAgentBuilderTarget(domainContext);
+				if (rebound) {
+					return {
+						ok: true,
+						target: { ...rebound, ref: key },
+						bindAfterTurn: true,
+						mode: 'continued',
+					};
+				}
+			}
 			const created = await delegate.createAgent(
 				input.name,
 				pendingId ? { id: pendingId, adoptOnCollision: true } : undefined,

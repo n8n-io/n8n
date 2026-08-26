@@ -2650,6 +2650,31 @@ describe('AgentBuilderView — three-column shell', () => {
 			expect(artifactPersistAgent).toHaveBeenCalledTimes(1);
 		});
 
+		// The row is real and hydrated, so re-showing a blank draft would undo the
+		// probe — but the binding must not be silently abandoned either.
+		it('retries a failed binding on the next edit without reverting to a draft', async () => {
+			const persisted = makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP', name: 'Support Triage' });
+			getAgentMock.mockReset();
+			getAgentMock.mockResolvedValue(persisted);
+			const artifactPersistAgent = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('binding failed'))
+				.mockResolvedValue(persisted);
+			const wrapper = await renderView({
+				props: { ...pendingProps, artifactPersistAgent },
+			});
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+			await vi.waitFor(() => expect(artifactPersistAgent).toHaveBeenCalledTimes(1));
+			// Hydrated, not drafting — the failed bind must not undo that.
+			expect(editor.props('agentUnsaved')).toBe(false);
+
+			editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+
+			expect(artifactPersistAgent).toHaveBeenCalledTimes(2);
+		});
+
 		it('creates the pending agent once and refreshes validation after the first save', async () => {
 			let configTarget: string | undefined;
 			repointConfigMock.mockImplementation((projectId: string, agentId: string) => {

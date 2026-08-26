@@ -62,6 +62,13 @@ export class InstanceAiPendingAgentService {
 		{ projectId, agentId, name }: { projectId: string; agentId: string; name: string },
 	) {
 		const { agents, runnableState } = this.agentsModule();
+		// A thread belongs to one project, and instance-ai already ignores a pending
+		// marker from another one. Binding a thread to an agent outside its project
+		// would leave a target the builder refuses to act on.
+		const threadProjectId = await this.memoryService.getThreadProjectId(threadId);
+		if (threadProjectId !== undefined && threadProjectId !== projectId) {
+			throw new ForbiddenError('This agent belongs to a different project than the thread');
+		}
 		// Attestation authorizes taking over a row this caller did not create — not
 		// creating one. Gating the create on it too would strand a still-unsaved
 		// artifact whose thread has since bound a different agent (any bind drops the

@@ -785,17 +785,36 @@ async function probePendingAgentRow(
 }
 
 /**
+ * Agent whose row exists but whose host binding has not landed yet, so the next
+ * mutation retries it. Not a reason to keep drafting: the row is real and
+ * hydrated, and re-showing a blank draft over it is what the probe exists to
+ * prevent.
+ */
+const unboundExistingAgent = ref<AgentResource | null>(null);
+
+/**
  * Retire a stale pending marker whose agent row turned out to exist. Takes the
  * probed row rather than reading `agent.value`, which a stale target switch can
  * leave pointing at a different agent.
  */
 async function adoptExistingPendingRow(existing: AgentResource): Promise<void> {
 	if (!props.artifactPersistAgent) return;
-	// Nothing to recover on failure: the artifact already shows the persisted
-	// agent, and the next open probes again.
-	await props.artifactPersistAgent(existing.name).catch((error: unknown) => {
+	try {
+		await props.artifactPersistAgent(existing.name);
+		unboundExistingAgent.value = null;
+	} catch (error) {
+		// Queued rather than surfaced: the artifact already shows the persisted
+		// agent, so the only casualty is the thread binding.
+		unboundExistingAgent.value = existing;
 		console.warn('Failed to bind an existing agent to its artifact', error);
-	});
+	}
+}
+
+/** Retry a binding that failed after the probe, before the write it precedes. */
+async function retryPendingBind(): Promise<void> {
+	const existing = unboundExistingAgent.value;
+	if (!existing || existing.id !== agentId.value) return;
+	await adoptExistingPendingRow(existing);
 }
 
 async function ensureAgentPersisted(): Promise<void> {
@@ -841,6 +860,7 @@ async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<'skipped' |
 	// the lock engaged must not persist its now-stale full config over it.
 	if (props.artifactEditingLocked) return 'skipped';
 	await ensureAgentPersisted();
+	await retryPendingBind();
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
 	// The write landed regardless of staleness below — tell other surfaces
 	// (e.g. canvas agent cards invalidate their capability-summary cache).
@@ -1529,6 +1549,7 @@ async function initialize({ preserveState = false }: { preserveState?: boolean }
 		// blank config the backend would have written, and let the first edit
 		// create it (see `ensureAgentPersisted`). The personalisation backfill is
 		// skipped too — it schedules a save, which would persist on mount alone.
+		unboundExistingAgent.value = null;
 		isUnsaved.value = targetAgentPending && !probedAgent;
 		if (isUnsaved.value) {
 			const draftConfig: AgentJsonConfig = {

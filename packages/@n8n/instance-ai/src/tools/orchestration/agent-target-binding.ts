@@ -108,6 +108,20 @@ async function readThreadTarget(
 }
 
 /**
+ * Re-read the thread's active binding, bypassing the run's cached target. A
+ * concurrent writer (the editor persisting the artifact this thread has open)
+ * can bind between the cached read and a create decision; creating anyway would
+ * mint a second agent beside the one it just bound.
+ */
+export async function rereadAgentBuilderTarget(
+	context: InstanceAiContext,
+): Promise<AgentBuilderTarget | undefined> {
+	const target = await readThreadTarget(context);
+	if (target) context.agentBuilderTarget = target;
+	return target;
+}
+
+/**
  * Resolve the active build target: in-memory context first (current run),
  * then the thread-persisted binding (previous turns). Hydrates the context so
  * subsequent calls in the same run skip the metadata read.

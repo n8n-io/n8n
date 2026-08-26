@@ -78,13 +78,19 @@ async function syncAgentTarget(name: string) {
  * acknowledgement, so the binding is durable before it stops drafting.
  */
 async function persistAgent(name: string): Promise<AgentResource> {
+	const target = { projectId: props.projectId, agentId: props.agentId };
 	const { agent, thread: updatedThread } = await persistPendingAgent(
 		rootStore.restApiContext,
 		thread.id,
-		{ projectId: props.projectId, agentId: props.agentId, name },
+		{ ...target, name },
 	);
 	// Authoritative: the server dropped the pending key, which a merge would keep.
-	instanceAiStore.setThreadMetadata(thread.id, updatedThread.metadata);
+	// Skipped once the preview has moved on, so a slow response for the previous
+	// artifact cannot restore its binding over the current one — the server write
+	// already landed, and the next thread load picks it up.
+	if (props.projectId === target.projectId && props.agentId === target.agentId) {
+		instanceAiStore.setThreadMetadata(thread.id, updatedThread.metadata);
+	}
 	return agent;
 }
 </script>
