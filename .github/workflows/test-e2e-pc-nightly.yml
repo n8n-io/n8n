@@ -93,6 +93,7 @@ jobs:
       pre-generated-matrix: ${{ needs.generate-matrix.outputs.matrix }}
       artifact-prefix: pc
       build-variant: pc
+      currents-project-id: 'LRxcNt'
     secrets: inherit
 
   notify-on-failure:
