@@ -531,6 +531,18 @@ function renderUpdatedAt(file: SourceControlledFile) {
 	return formatSourceControlUpdatedAt(file.updatedAt);
 }
 
+// Non-empty only when the workflow's folder changed vs. the remote, i.e. it was moved.
+function renderMovedTooltip(file: SourceControlledFile) {
+	const to = (file.folderPath ?? []).join('/');
+	const from = (file.remoteFolderPath ?? []).join('/');
+	if (file.remoteFolderPath === undefined || from === to) {
+		return '';
+	}
+	return i18n.baseText('settings.sourceControl.modals.push.movedWorkflow', {
+		interpolate: { from: from || '/', to: to || '/' },
+	});
+}
+
 async function onCommitKeyDownEnter() {
 	if (!isSubmitDisabled.value) {
 		await commitAndPush();
@@ -1225,12 +1237,18 @@ onMounted(async () => {
 																	:show-badge-border="false"
 																/>
 															</template>
-															<N8nBadge
-																:theme="getStatusTheme(row.file.status)"
-																style="height: 25px"
+															<N8nTooltip
+																:content="renderMovedTooltip(row.file)"
+																:disabled="!renderMovedTooltip(row.file)"
+																placement="top"
 															>
-																{{ getStatusText(row.file.status) }}
-															</N8nBadge>
+																<N8nBadge
+																	:theme="getStatusTheme(row.file.status)"
+																	style="height: 25px"
+																>
+																	{{ getStatusText(row.file.status) }}
+																</N8nBadge>
+															</N8nTooltip>
 															<template v-if="isWorkflowDiffsEnabled">
 																<N8nTooltip
 																	v-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
