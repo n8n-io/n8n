@@ -398,6 +398,13 @@ export class EmailReadImapV1 implements INodeType {
 			} catch (error) {
 				throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
 			}
+			try {
+				// Compiled once here purely for the immediate feedback: a criterion that cannot
+				// compile fails the activation instead of the first arrival, hours later.
+				toSearchObject(searchCriteria);
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error as Error);
+			}
 		}
 
 		const fetchNewEmails = async (conn: ImapSimple) => {
