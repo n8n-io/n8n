@@ -64,8 +64,6 @@ const projectHandlers: ProjectHandlers = {
 
 			const projectService = Container.get(ProjectService);
 
-			// TeamProjectOverQuotaError is a UserError, which the public API error
-			// serializer already maps to a 400 — no catch/rethrow needed here.
 			const project = await projectService.createTeamProject(req.user, payload.data);
 
 			Container.get(EventService).emit('team-project-created', {
