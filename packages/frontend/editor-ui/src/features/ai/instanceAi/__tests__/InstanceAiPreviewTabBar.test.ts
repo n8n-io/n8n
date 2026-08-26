@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { fireEvent } from '@testing-library/vue';
+import { createTestingPinia } from '@pinia/testing';
 import { TabsRoot } from 'reka-ui';
 import { readFileSync } from 'node:fs';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -58,7 +59,8 @@ const Wrapper = defineComponent({
 	},
 });
 
-const renderComponent = createComponentRenderer(Wrapper);
+// The tab bar reads the open-in-assistant experiment store at setup.
+const renderComponent = createComponentRenderer(Wrapper, { pinia: createTestingPinia() });
 
 describe('InstanceAiPreviewTabBar', () => {
 	it('renders a trigger with data-tab-id for each tab', () => {

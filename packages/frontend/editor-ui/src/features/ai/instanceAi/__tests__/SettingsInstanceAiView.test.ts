@@ -75,7 +75,8 @@ const {
 
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
-	useRouter: () => ({ push: routerPushMock }),
+	useRouter: () => ({ push: routerPushMock, replace: vi.fn() }),
+	useRoute: () => ({ query: {}, params: {} }),
 }));
 
 vi.mock('@/experiments/instanceAiMcpConnections', () => ({
