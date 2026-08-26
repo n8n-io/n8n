@@ -277,6 +277,22 @@ jobs:
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
 
+      - name: Runners interpreters smoke check
+        # The runtime stages assemble node/python by copying binaries across images,
+        # so a missing shared library only surfaces at exec time. Runs the exact
+        # interpreter paths the launcher config (n8n-task-runners.json) uses.
+        if: needs.determine-build-context.outputs.push_enabled == 'true'
+        env:
+          RUNNERS_TAGS: ${{ steps.determine-tags.outputs.runners_tags }}
+          RUNNERS_DISTROLESS_TAGS: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
+        run: |
+          for TAGS in "$RUNNERS_TAGS" "$RUNNERS_DISTROLESS_TAGS"; do
+            IMAGE_TAG=$(echo "$TAGS" | cut -d',' -f1)
+            docker pull "$IMAGE_TAG"
+            docker run --rm --entrypoint /usr/local/bin/node "$IMAGE_TAG" --version
+            docker run --rm --entrypoint /opt/runners/task-runner-python/.venv/bin/python "$IMAGE_TAG" --version
+          done
+
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest
     needs: [determine-build-context, build-and-push-docker]
