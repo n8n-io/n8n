@@ -1,0 +1,34 @@
+packages/@n8n/instance-ai/evaluations/data/discovery/automation-mining-not-loaded-for-direct-build.json
+  s_a95b802c63e827::t_ca7653061c2b69 1-12,14
+  s_a95b802c63e827::t_51ece1051d33c7 13
+packages/@n8n/instance-ai/src/skills/__tests__/runtime-skills.test.ts
+  s_a95b802c63e827::t_d6309e61f78543 50-72
+packages/@n8n/instance-ai/evaluations/data/discovery/automation-mining-connects-then-mines.json
+  s_a95b802c63e827::t_51ece1051d33c7 16-17
+  s_a95b802c63e827::t_ca7653061c2b69 1-15,18
+packages/@n8n/instance-ai/skills/automation-mining/SKILL.md
+  s_a95b802c63e827::t_c470bd1929ec74 1-46,48,65-72,74,77,82,94-122,126-145,148-160,166-181,184-190,192-195
+  s_a95b802c63e827::t_7523e273831be7 146-147,182-183,191
+  s_a95b802c63e827::t_3dae0ae0d7d492 57-61
+  s_a95b802c63e827::t_d9a8ed0b25f462 123-125,161-165
+  s_a95b802c63e827::t_013bd709a1bd05 73,75-76,78-81,83-93
+  s_a95b802c63e827::t_2d3622d6f951c8 47,49-56,62-64
+packages/@n8n/instance-ai/evaluations/data/discovery/automation-mining-reads-without-writing.json
+  s_a95b802c63e827::t_ca7653061c2b69 1-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bd68e47fec164b6c9367e67665fbee51dffb0b33",
+  "prompts": {},
+  "sessions": {
+    "s_a95b802c63e827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "024b92fa-6679-4dc3-94ec-5e701541da59",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
