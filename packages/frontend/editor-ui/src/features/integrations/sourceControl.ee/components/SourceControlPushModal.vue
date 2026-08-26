@@ -356,8 +356,12 @@ const sortedWorkflows = useSourceControlFileList({
 			return true;
 		}
 
-		const workflowPath = (workflow.folderPath ?? []).join('/');
-		return workflowPath === folderFilter || workflowPath.startsWith(`${folderFilter}/`);
+		// Match both the current and prior folder so a moved-out workflow stays visible.
+		const matchesFolder = (path: string[] | undefined) => {
+			const workflowPath = (path ?? []).join('/');
+			return workflowPath === folderFilter || workflowPath.startsWith(`${folderFilter}/`);
+		};
+		return matchesFolder(workflow.folderPath) || matchesFolder(workflow.remoteFolderPath);
 	},
 });
 
