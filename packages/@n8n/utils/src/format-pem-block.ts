@@ -1,5 +1,26 @@
 const PEM_BODY_LINE_LENGTH = 64;
 
+/** A single `Proc-Type:`/`DEK-Info:` header of a legacy encrypted PEM key; its value never contains whitespace. */
+const ENCRYPTION_HEADER = /^(Proc-Type|DEK-Info):[^\S\n]*(\S+)\s*/;
+
+/**
+ * Split the leading `Proc-Type:`/`DEK-Info:` headers of a legacy encrypted key off
+ * the body, so the mandatory blank line between them can be restored. Collapsing
+ * whitespace across both at once would drop that separator and leave a PEM that
+ * OpenSSL 3 has no decoder for.
+ */
+function splitEncryptionHeaders(body: string) {
+	const headers: string[] = [];
+	let rest = body;
+
+	for (let match = ENCRYPTION_HEADER.exec(rest); match; match = ENCRYPTION_HEADER.exec(rest)) {
+		headers.push(`${match[1]}: ${match[2]}`);
+		rest = rest.slice(match[0].length);
+	}
+
+	return { headers, rest };
+}
+
 function formatCompactPem(pem: string, isPublic: boolean): string | undefined {
 	const trimmed = pem.trim();
 	if ((trimmed.match(/-----BEGIN /g) ?? []).length !== 1) return undefined;
@@ -13,11 +34,14 @@ function formatCompactPem(pem: string, isPublic: boolean): string | undefined {
 
 	const [, label, body] = pemMatch;
 	const normalizedBody = body.replace(/\\n/g, '\n').trim();
-	const formattedBody = /\s/.test(normalizedBody)
-		? normalizedBody.replace(/:\s+/g, ':').replace(/\s+/g, '\n')
-		: (normalizedBody.match(new RegExp(`.{1,${PEM_BODY_LINE_LENGTH}}`, 'g')) ?? []).join('\n');
+	const { headers, rest } = splitEncryptionHeaders(normalizedBody);
+	const formattedBody = /\s/.test(rest)
+		? rest.replace(/\s+/g, '\n')
+		: (rest.match(new RegExp(`.{1,${PEM_BODY_LINE_LENGTH}}`, 'g')) ?? []).join('\n');
+	// Headers and body are separated by a blank line, as RFC 1421 requires.
+	const sections = [headers.join('\n'), formattedBody].filter((section) => section !== '');
 
-	return `-----BEGIN ${label}-----\n${formattedBody}\n-----END ${label}-----`;
+	return `-----BEGIN ${label}-----\n${sections.join('\n\n')}\n-----END ${label}-----`;
 }
 
 /**

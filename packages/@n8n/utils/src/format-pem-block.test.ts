@@ -1,3 +1,4 @@
+import { createPrivateKey, generateKeyPairSync } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 
 import { formatPemBlock } from './format-pem-block';
@@ -130,6 +131,18 @@ ${'X'.repeat(64)}
 		// base64 body; without it OpenSSL 3 finds no matching decoder and fails with
 		// "DECODER routines::unsupported" before the passphrase is ever used.
 		expect(output).toMatch(/DEK-Info:[^\n]*\n\n[A-Za-z0-9+/=]/);
+	});
+
+	it('should keep a flattened legacy encrypted RSA key loadable by OpenSSL', () => {
+		const passphrase = 'passphrase';
+		const { privateKey } = generateKeyPairSync('rsa', {
+			modulusLength: 2048,
+			publicKeyEncoding: { type: 'pkcs1', format: 'pem' },
+			privateKeyEncoding: { type: 'pkcs1', format: 'pem', cipher: 'aes-256-cbc', passphrase },
+		});
+		const flattened = privateKey.trim().replace(/\n/g, ' ');
+
+		expect(() => createPrivateKey({ key: formatPemBlock(flattened), passphrase })).not.toThrow();
 	});
 
 	it('should collapse Proc-Type/DEK-Info headers on the fallback path', () => {
