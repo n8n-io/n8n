@@ -270,5 +270,19 @@ test.describe(
 			await n8n.canvas.hitUndo();
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
 		});
+
+		test('should not undo/redo when a text input in the NDV is focused', async ({ n8n }) => {
+			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME);
+
+			// A focused text input swallows the shortcut on its own, separately from
+			// the check that blocks it for any open dialog.
+			await n8n.ndv.focusNodeNameInput();
+			await n8n.canvas.hitUndo();
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
+
+			await n8n.ndv.clickBackToCanvasButton();
+			await n8n.canvas.hitUndo();
+			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
+		});
 	},
 );
