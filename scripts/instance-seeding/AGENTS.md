@@ -191,17 +191,29 @@ data tables they read, working credentials, a fortnight of runs, four Instance A
 conversations about that estate, and a matching activity log.
 
 ```sh
-export ANTHROPIC_API_KEY=...          # or put both in packages/cli/.env
+pnpm seed:account                     # tokens optional
+export ANTHROPIC_API_KEY=...          # or put both in packages/cli/.env, for workflows that run
 export LINEAR_API_KEY=...
-pnpm seed:account
 ```
 
 `pnpm seed:account` builds `n8n-core` first, because the script reuses n8n's own
 cipher rather than reimplementing the key derivation. Tokens are read from the
 environment, else from `packages/cli/.env`, `packages/@n8n/instance-ai/.env` or a
-root `.env`, in that order — the shell always wins. A missing token is named
-alongside every place it can be set, and the run report says which source each
-token came from, never its value.
+root `.env`, in that order — the shell always wins. The run report says which
+source each token came from, never its value.
+
+**Both tokens are optional.** Without one, the credential is still created and
+still attached to every node that needs it, holding a labelled placeholder — the
+name becomes `Anthropic (seed, fake key)` and the stored key is
+`SEEDED-FAKE-KEY-not-a-real-credential`, so a 401 in a log explains itself. The
+workflows open without a missing-credential warning; they just cannot run until a
+real token is supplied. Re-running with the token set replaces the credential in
+place, keeping its id, so every node keeps pointing at it and the label drops
+away.
+
+`SEED_PLACEHOLDER_CREDENTIALS=1` forces placeholders even where a real token is
+available — for handing the resulting database to someone else, or for seeing
+what the estate looks like before anything is configured.
 
 Fixtures live in `seed-anthropic-linear.data.mjs`; the runner holds the phases and the
 choice table. SQLite only, via `node:sqlite`, so it needs no dependency of its own.

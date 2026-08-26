@@ -32,9 +32,14 @@
  * The pnpm script builds n8n-core first, because this reuses n8n's own cipher rather than
  * reimplementing the key derivation.
  *
- * The two API tokens can come from the environment or from a dotenv file this repo already uses
- * for local secrets — packages/cli/.env, packages/@n8n/instance-ai/.env, or a root .env. The
- * environment wins over a file, and a missing token is named alongside every place it can be set.
+ * Both API tokens are optional. Supply them and the workflows run for real; leave them out and the
+ * credentials are still created with a labelled placeholder, so nothing is half-wired and the
+ * report says which token to set. They come from the environment or from a dotenv file this repo
+ * already uses for local secrets — packages/cli/.env, packages/@n8n/instance-ai/.env, or a root
+ * .env — with the environment winning over a file.
+ *
+ * SEED_PLACEHOLDER_CREDENTIALS=1 forces placeholders even where a real token is available, for
+ * producing a database with no real keys in it.
  *
  * Stop n8n first, or reload the UI afterwards. Re-running is safe: every phase replaces its own
  * rows, matched on the `seedAl` id prefix.
@@ -98,10 +103,20 @@ const CHOICES = [
 	['Code', 'none at all', 'JavaScript or Python in a Code node'],
 ];
 
+/**
+ * The tokens are optional. Without one, the credential is still created so the workflows are
+ * fully wired and open without a red credential warning — it just holds a placeholder that cannot
+ * work. That is labelled in both places someone will look: the credential name in the UI list and
+ * on every node, and the stored key itself, so a 401 in a log is self-explaining rather than a
+ * mystery about which key was used.
+ */
+const PLACEHOLDER_KEY = 'SEEDED-FAKE-KEY-not-a-real-credential';
+
 const CREDENTIALS = [
 	{
 		id: 'seedAlCred00001',
 		name: 'Anthropic (seed)',
+		placeholderName: 'Anthropic (seed, fake key)',
 		type: 'anthropicApi',
 		envVar: 'ANTHROPIC_API_KEY',
 		tokenSource: 'create one at console.anthropic.com under API Keys',
@@ -112,6 +127,7 @@ const CREDENTIALS = [
 	{
 		id: 'seedAlCred00002',
 		name: 'Linear (seed)',
+		placeholderName: 'Linear (seed, fake key)',
 		type: 'linearApi',
 		envVar: 'LINEAR_API_KEY',
 		tokenSource: 'create a personal API key in Linear under Settings > Security & access',
@@ -120,6 +136,32 @@ const CREDENTIALS = [
 		nodeTypes: ['n8n-nodes-base.linear', 'n8n-nodes-base.linearTool'],
 	},
 ];
+
+/**
+ * What each credential will hold: a real token from the environment or a dotenv file, or a labelled
+ * placeholder. Resolved once so the name, the stored data and the report all agree.
+ */
+function resolveCredentials(tokensFromFiles) {
+	// Forces placeholders even where a real token is available. For handing the resulting database
+	// to someone else, or for seeing what the estate looks like before anything is configured —
+	// without having to move your own dotenv files out of the way.
+	const forced =
+		process.env.SEED_PLACEHOLDER_CREDENTIALS === 'true' ||
+		process.env.SEED_PLACEHOLDER_CREDENTIALS === '1';
+
+	return CREDENTIALS.map((credential) => {
+		const token = forced ? undefined : process.env[credential.envVar];
+		return {
+			...credential,
+			token: token ?? PLACEHOLDER_KEY,
+			isPlaceholder: !token,
+			resolvedName: token ? credential.name : credential.placeholderName,
+			origin: token
+				? (tokensFromFiles.get(credential.envVar)?.file ?? 'environment')
+				: 'placeholder',
+		};
+	});
+}
 
 /**
  * SQLite storage type per data-table column type. These are the types n8n's own DSL emits —
@@ -268,28 +310,8 @@ const { key, source } = resolveEncryptionKey(folder);
 
 const tokensFromFiles = loadTokensFromEnvFiles();
 
-const missing = CREDENTIALS.filter((c) => !process.env[c.envVar]);
-if (missing.length > 0) {
-	const plural = missing.length > 1;
-	console.error(`\n  Cannot seed credentials: the API token${plural ? 's are' : ' is'} missing.\n`);
-	for (const credential of missing) {
-		console.error(`    ${credential.envVar}`);
-		console.error(`      needed for the ${credential.type} credential`);
-		console.error(`      ${credential.tokenSource}`);
-	}
-	console.error(
-		'\n  Set them in any of these — the shell wins over a file, earlier files win over later:\n',
-	);
-	console.error('    the shell             export ANTHROPIC_API_KEY=... LINEAR_API_KEY=...');
-	for (const relative of ENV_FILES) {
-		const state = existsSync(path.join(repoRoot, relative)) ? 'exists' : 'create it';
-		console.error(`    ${relative.padEnd(21)} (${state})`);
-	}
-	console.error(
-		'\n  Tokens are read into this process only. Nothing is written outside the local database.\n',
-	);
-	process.exit(1);
-}
+const credentials = resolveCredentials(tokensFromFiles);
+const placeholders = credentials.filter((c) => c.isPlaceholder);
 
 const dbFile = path.join(folder, process.env.DB_SQLITE_DATABASE ?? 'database.sqlite');
 if (!existsSync(dbFile)) {
@@ -400,25 +422,27 @@ const shareCredential = db.prepare(
 );
 const credentialStamp = at(13 * 24 * 60);
 
-for (const credential of CREDENTIALS) {
-	const token = process.env[credential.envVar];
-	const encrypted = cipher.encrypt(JSON.stringify(credential.buildData(token)), key);
+for (const credential of credentials) {
+	const encrypted = cipher.encrypt(JSON.stringify(credential.buildData(credential.token)), key);
 	insertCredential.run(
 		credential.id,
-		credential.name,
+		credential.resolvedName,
 		encrypted,
 		credential.type,
 		credentialStamp,
 		credentialStamp,
 	);
 	shareCredential.run(credential.id, project.id, credentialStamp, credentialStamp);
-	console.log(
-		`  credential      ${credential.type.padEnd(24)} ${credential.envVar} via ${tokensFromFiles.get(credential.envVar)?.file ?? 'environment'} (${token.length} chars)`,
-	);
+	// A placeholder reports no length: there is nothing there worth measuring, and the word
+	// placeholder is the useful part.
+	const detail = credential.isPlaceholder
+		? 'placeholder, not a working key'
+		: `${credential.envVar} via ${credential.origin} (${credential.token.length} chars)`;
+	console.log(`  credential      ${credential.type.padEnd(24)} ${detail}`);
 }
 
 const credentialByNodeType = new Map();
-for (const credential of CREDENTIALS) {
+for (const credential of credentials) {
 	for (const nodeType of credential.nodeTypes) credentialByNodeType.set(nodeType, credential);
 }
 
@@ -445,7 +469,7 @@ for (const workflow of WORKFLOWS) {
 	for (const node of nodes) {
 		const credential = credentialByNodeType.get(node.type);
 		if (!credential) continue;
-		node.credentials = { [credential.type]: { id: credential.id, name: credential.name } };
+		node.credentials = { [credential.type]: { id: credential.id, name: credential.resolvedName } };
 		attachedNodes += 1;
 	}
 
@@ -671,7 +695,7 @@ if (!hasTable('activity_event')) {
 		activityCount += 1;
 	};
 
-	for (const credential of CREDENTIALS) {
+	for (const credential of credentials) {
 		record(
 			'credential',
 			'created',
@@ -737,6 +761,26 @@ if (!hasTable('activity_event')) {
 }
 
 db.close();
+
+if (placeholders.length > 0) {
+	const plural = placeholders.length > 1;
+	console.log(
+		`\n  ${placeholders.length} credential${plural ? 's hold' : ' holds'} a placeholder, so the workflows are wired but will not run:\n`,
+	);
+	for (const credential of placeholders) {
+		console.log(`    ${credential.resolvedName.padEnd(28)} set ${credential.envVar} to fix`);
+		console.log(`    ${''.padEnd(28)} ${credential.tokenSource}`);
+	}
+	console.log('\n  Set the token in any of these, then re-run — the shell wins over a file:\n');
+	console.log('    the shell             export ANTHROPIC_API_KEY=... LINEAR_API_KEY=...');
+	for (const relative of ENV_FILES) {
+		const state = existsSync(path.join(repoRoot, relative)) ? 'exists' : 'create it';
+		console.log(`    ${relative.padEnd(21)} (${state})`);
+	}
+	console.log(
+		'\n  Re-running replaces the credential in place, so the workflows keep pointing at it.',
+	);
+}
 
 console.log('\n  Choices this estate is consistent about:');
 for (const [job, chosen] of CHOICES.slice(0, 5)) {

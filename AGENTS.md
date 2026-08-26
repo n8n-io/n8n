@@ -103,9 +103,11 @@ consistent estate — ten workflows that all use the Anthropic chat model and al
 touch Linear, the two data tables they read, **working credentials built from
 your own API tokens**, a fortnight of execution history, Instance AI
 conversations about those workflows, and (on builds that have the migration) a
-matching activity log. It needs `ANTHROPIC_API_KEY` and `LINEAR_API_KEY`, from
-the shell or from `packages/cli/.env`; it names them and every place they can be
-set if either is missing. Re-running is safe.
+matching activity log. `ANTHROPIC_API_KEY` and `LINEAR_API_KEY` are
+optional — supply them (shell or `packages/cli/.env`) and the workflows run for
+real; leave them out and the credentials are still created and attached, holding
+a placeholder labelled `(seed, fake key)`, so nothing is half-wired. Re-running
+with a token set upgrades the credential in place.
 
 Reach for it whenever you need an instance that looks used: manual UI checks,
 demos, anything reading execution history, data tables, AI threads, or the
