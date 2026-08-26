@@ -23,7 +23,7 @@ updateNotifier: false
 loglevel: warn
 packageImportMethod: clone-or-copy
 
-minimumReleaseAge: 4320
+minimumReleaseAge: 2880
 
 minimumReleaseAgeExclude:
   - '@n8n/*'
