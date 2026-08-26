@@ -31,6 +31,12 @@ export type ParameterInputProps = {
 	expressionComputedValue: unknown;
 	/** `undefined` until the async resolution of `loadOptionsDependsOn` settles. */
 	dependentParametersValues?: string | null;
+	/**
+	 * The parameter's validation issues, for an input that wants to place them
+	 * itself. The shell also draws `ParameterIssues` below the input for every
+	 * type outside the resource-locator family, so an input that renders these
+	 * shows them twice.
+	 */
 	parameterIssues: string[];
 	droppable: boolean;
 	eventBus?: EventBus;
@@ -69,13 +75,25 @@ export type ParameterInputChrome = {
 	disableDrop?: boolean;
 };
 
+/**
+ * A component the shell can drive with `ParameterInputProps`. Typing the
+ * contribution against it makes the prop contract a compiler check rather than
+ * a comment: a component declaring an incompatible prop is rejected at the
+ * registry boundary.
+ */
+export type ParameterInputComponent = Component<ParameterInputProps>;
+
 export type ParameterInputContribution = {
 	/** The `parameter.type` this entry renders. Also the registry key. */
 	type: ParameterInputType;
 	/**
 	 * Lazy on purpose: a `() => import()` keeps the module's `*.module.ts`
 	 * import-light (design §5.2) and keeps the component out of the shell chunk.
+	 *
+	 * A bare function here is read as the loader, following `ModalDefinition`. So a
+	 * functional component must be wrapped (`defineComponent(fn)`) or it is called
+	 * as a loader and never renders.
 	 */
-	component: Component | (() => Promise<Component>);
+	component: ParameterInputComponent | (() => Promise<ParameterInputComponent>);
 	chrome?: ParameterInputChrome;
 };

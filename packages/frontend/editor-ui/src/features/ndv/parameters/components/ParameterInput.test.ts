@@ -1,4 +1,4 @@
-import { computed, defineComponent, nextTick, reactive, shallowRef } from 'vue';
+import { computed, defineComponent, h, nextTick, reactive, shallowRef } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import {
 	ToolConfigCredentialSelectedKey,
@@ -23,7 +23,13 @@ import {
 	createTestNodeProperties,
 } from '@/__tests__/mocks';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { type INodeParameterResourceLocator, type INodePropertyOptions } from 'n8n-workflow';
+import {
+	type INode,
+	type INodeParameterResourceLocator,
+	type INodeProperties,
+	type INodePropertyOptions,
+	type NodeParameterValueType,
+} from 'n8n-workflow';
 import type {
 	INodeUpdatePropertiesInformation,
 	IWorkflowDb,
@@ -32,6 +38,8 @@ import type {
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { parameterInputRegistry } from '@n8n/frontend-module-sdk';
+import type { PropType } from 'vue';
+import type { EventBus } from '@n8n/utils/event-bus';
 
 function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 	return {
@@ -1807,16 +1815,48 @@ describe('ParameterInput.vue', () => {
 	});
 
 	describe('module-contributed parameter inputs', () => {
-		const ContributedInput = defineComponent({
-			props: {
-				parameter: { type: Object, required: true },
-				modelValue: { type: [String, Number, Boolean, Object, Array], default: '' },
-				isReadOnly: { type: Boolean, default: false },
-				droppable: { type: Boolean, default: false },
+		// The whole contract, spelled out because a `.ts` file has no SFC compiler.
+		// A module writes `defineProps<ParameterInputProps>()` in `<script setup>`
+		// and gets the same runtime props generated for it.
+		const contractProps = {
+			parameter: { type: Object as PropType<INodeProperties>, required: true as const },
+			modelValue: {
+				type: null as unknown as PropType<NodeParameterValueType>,
+				required: true as const,
 			},
+			path: { type: String, required: true as const },
+			node: { type: Object as PropType<INode>, required: false as const },
+			displayTitle: { type: String, required: true as const },
+			isReadOnly: { type: Boolean, required: true as const },
+			isValueExpression: { type: Boolean, required: true as const },
+			expressionDisplayValue: { type: String, required: true as const },
+			expressionComputedValue: {
+				type: null as unknown as PropType<unknown>,
+				required: true as const,
+			},
+			dependentParametersValues: {
+				type: String as unknown as PropType<string | null>,
+				required: false as const,
+			},
+			parameterIssues: { type: Array as PropType<string[]>, required: true as const },
+			droppable: { type: Boolean, required: true as const },
+			eventBus: { type: Object as PropType<EventBus>, required: false as const },
+		};
+
+		const ContributedInput = defineComponent({
+			props: contractProps,
 			emits: ['update:modelValue'],
-			template:
-				'<button data-test-id="contributed-input" @click="$emit(\'update:modelValue\', \'from-module\')">{{ modelValue }}</button>',
+			setup:
+				(props, { emit }) =>
+				() =>
+					h(
+						'button',
+						{
+							'data-test-id': 'contributed-input',
+							onClick: () => emit('update:modelValue', 'from-module'),
+						},
+						String(props.modelValue),
+					),
 		});
 
 		const stringParameter = {
