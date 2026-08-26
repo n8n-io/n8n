@@ -268,7 +268,8 @@ ci-pull-requests.yml
 
 ci-master.yml
     ├──────────────────────────▶  test-unit-reusable.yml
-    └──────────────────────────▶  test-linting-reusable.yml
+    ├──────────────────────────▶  test-linting-reusable.yml
+    └──────────────────────────▶  test-single-instance-npm.yml
 
 release-publish.yml
     ├──────────────────────────▶  docker-build-push.yml
@@ -373,6 +374,7 @@ Push to master/1.x
 ├─ unit-test (matrix: Node 22.23.2, 24.18.1)
 │   └─ Coverage only on 24.18.1
 ├─ lint
+├─ verify-single-instance-npm (advisory; packages changed by this push)
 └─ notify-on-failure (Slack #alerts-build)
 ```
 
@@ -383,7 +385,7 @@ Push to master/1.x
 | Schedule (UTC)            | Workflow                          | Purpose                  |
 |---------------------------|-----------------------------------|--------------------------|
 | Hourly :00                | `sec-sync-public-to-private.yml`  | Mirror public → private  |
-| Every 6h :00              | `sec-rebase-bundle-branches.yml`  | Replay `bundle/*` onto their base |
+| Daily 03:00               | `sec-sync-bundle-branches.yml`    | Merge the base into `bundle/*` |
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
@@ -392,6 +394,7 @@ Push to master/1.x
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
+| Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
@@ -412,9 +415,11 @@ to mechanical, tool-generated files (the pnpm lockfile, bot-maintained data file
 `MECHANICAL_PATHS` in `sync-master-to-3x.mjs`) are auto-resolved during the replay; the tree
 check then applies to every path except those files. On a real code conflict `3.x` is left
 untouched and a draft PR carrying the conflict markers (labeled `automation:v3-sync`, with
-mechanical files pre-resolved) is opened on `sync/master-to-3x`, requesting the
-breaking-commit authors as reviewers via `sync-conflict-owners.mjs`, posting to
-`#alerts-v3-sync` and pausing further syncs until it is resolved and merged normally.
+mechanical files pre-resolved) is opened on `sync/master-to-3x`, naming both ends of the
+conflict — the breaking-commit authors and the `master` commits that touched the same files
+— via `sync-conflict-owners.mjs`, posting to `#alerts-v3-sync` and pausing further syncs
+until it is resolved and merged normally. Delete/modify conflicts have no markers to carry,
+so they are resolved toward `3.x` and listed as an explicit decision in the PR body.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
 by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`. On Mondays it also
 retags that run's n8n + runners manifests as a release candidate (by digest on GHCR, so
@@ -455,6 +460,18 @@ inputs:
   login-dhi:        # default: 'false'
 ```
 
+### External actions
+
+Actions consumed from other n8n-io repositories, SHA-pinned like any third-party
+action:
+
+| Action                            | Purpose                                                                       | Used By            |
+|-----------------------------------|-------------------------------------------------------------------------------|--------------------|
+| `n8n-io/github-actions/cla-check` | CLA signature check: `CLA Check` commit status, in-place PR comment, `cla-signed` label | `ci-cla-check.yml` |
+
+Behaviour changes belong in that repo; bumping the pin here is what picks them up.
+A `/cla-check` comment on a PR re-runs the check without a push.
+
 ---
 
 ## Reusable Workflows
@@ -472,6 +489,7 @@ Workflows with `workflow_call` trigger:
 | `sec-poutine-reusable.yml`         | `ref`                                         | Poutine scanner       |
 | `security-trivy-scan-callable.yml` | `image_ref`                                   | Trivy scan            |
 | `sbom-generation-callable.yml`     | `n8n_version`, `release_tag_ref`              | SBOM generation       |
+| `test-single-instance-npm.yml`     | `scope`, `base-ref`, `base-branch`, `blocking`, `timeout-minutes` | Dependency duplication |
 
 ---
 
@@ -513,8 +531,8 @@ rewrite safe.
 | Script                     | Purpose                                                              | Called By                          |
 |----------------------------|----------------------------------------------------------------------|------------------------------------|
 | `branch-replay.mjs`        | Shared primitives: merge-tree, tree guard, marker scan               | the two scripts below              |
-| `sync-master-to-3x.mjs`    | master → `3.x`; auto-resolves mechanical files, opens a conflict PR   | `util-sync-master-to-3x.yml`       |
-| `rebase-bundle-branch.mjs` | base → `bundle/*` in n8n-private; fail-loud, never resolves conflicts | `sec-rebase-bundle-branches.yml`   |
+| `sync-master-to-3x.mjs`    | master → `3.x`, rebased; auto-resolves mechanical files, opens a conflict PR | `util-sync-master-to-3x.yml`       |
+| `sync-bundle-branch.mjs`   | base → `bundle/*` in n8n-private, merged; fail-loud, never resolves conflicts | `sec-sync-bundle-branches.yml`   |
 
 ### Slack Scripts
 
@@ -717,23 +735,37 @@ into private `master`/`1.x` as a `chore: Bundle/*` PR, `sec-publish-fix.yml` /
 open the PR there. That PR **must stay a single-parent squash** — the publish step is a bare
 `git cherry-pick` of `HEAD`, which aborts on a merge commit.
 
-`sec-rebase-bundle-branches.yml` keeps those branches current, every 6 hours plus whenever a
-PR is merged into one (and on `workflow_dispatch`). It **replays** the bundle-only commits
-onto the base with `git rebase` and force-pushes, via
-[`scripts/rebase-bundle-branch.mjs`](scripts/rebase-bundle-branch.mjs) — so a clean run
-adds **no commit at all** and `base..bundle` stays a readable list of the fixes not yet
-published. Rebasing is safe here precisely because a bundle ships as one squashed,
-deliberately obfuscated commit: SHAs and dates on these branches carry no meaning downstream,
-and the `n8n-assistant` app is a bypass actor on the `bundle/*` ruleset's `non_fast_forward`
-rule. Every push is verified to carry exactly the tree a merge of the two sides would produce
-(`git merge-tree`); a mismatch, or a conflict marker, fails the run instead of pushing. Fixes
-already published come back through the base and are dropped by `--empty=drop`.
+`sec-sync-bundle-branches.yml` keeps those branches current, daily plus whenever a PR is
+merged into one (and on `workflow_dispatch`). It **merges the base into** the bundle branch
+via [`scripts/sync-bundle-branch.mjs`](scripts/sync-bundle-branch.mjs) and pushes without
+forcing. Every push is verified to carry exactly the tree a merge of the two sides would
+produce (`git merge-tree`); a mismatch, or a conflict marker, fails the run instead of pushing.
+
+**`bundle/*` is append-only — never rebase it, never force-push it.** These branches receive
+PRs, and rewriting a branch that receives PRs orphans the copies of its commits that the open
+PR branches already contain: every such PR's merge base regresses to an old base commit, so
+GitHub shows it carrying everyone else's fixes, in the commit list *and* in the diff (which
+can then trip required checks like *PR Size Limit*). It compounds — each refresh between
+rewrites picks up another duplicate generation of the same fixes and starts conflicting with
+itself. To refresh a fix branch, use GitHub's **Update branch** button or
+`git merge origin/bundle/2.x`; squash-merging a fix *into* the bundle branch leaves every
+sibling PR's merge base untouched, which is why only a rewrite breaks this.
+
+The costs of merging are deliberate and paid for: a merge commit per run, and fixes that have
+already been published staying in the branch's log (the old rebase dropped them as empty
+commits). Neither reaches anything downstream, because a bundle publishes as one squashed
+commit taken from the tree rather than the history — the `chore: Bundle/*` PR's **diff** stays
+exactly the pending fixes even when its commit list does not. For a list of what a bundle
+actually carries, read the fix PRs merged into the branch since the last cut, not
+`base..bundle`. A lower cadence than the base's is fine too: a base push never re-triggered
+CI on the fix PRs, so syncing more often bought them nothing.
 
 There is **one job per bundle branch**. A conflict is detected from the merge tree before the
-working tree is touched, so the branch is left exactly as it was, that job **fails** (no more
+working tree is touched, so the branch is left exactly as it was, that job **fails** (no
 green runs hiding a stalled branch) and `#alerts-security` gets a run link — while the other
-branch still syncs. Recovery is deliberate: rebase the branch onto its base locally, resolve,
-force-push, then re-run the workflow. The replay never resolves a conflict itself, unlike
+branch still syncs. Recovery is deliberate: merge the base into the branch locally, resolve,
+push, then re-run the workflow — and that resolution then lives in the merge commit instead of
+being re-litigated on every later run. The sync never resolves a conflict itself, unlike
 `util-sync-master-to-3x.yml`.
 
 See **[`../AGENTS.md`](../AGENTS.md)** ("Security Fix Hygiene") for the naming rules that

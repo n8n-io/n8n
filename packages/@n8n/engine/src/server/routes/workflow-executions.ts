@@ -1,10 +1,17 @@
 import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod';
 
+import {
+	createGetExecutionHandler,
+	createGetExecutionStepsHandler,
+} from './workflow-executions.handlers';
 import { AdmittanceRejectedError } from '../../admittance';
 import { UnimplementedError, type JsonValue } from '../../common';
-import type { StartExecutionService } from '../../execution/start-execution.service';
-import { GraphValidationError } from '../../graph';
+import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
+import type { EngineServerDeps } from '../create-engine-server';
+import { fail } from '../error-response';
+
+const MAX_TRIGGER_SLOTS = MAX_SLOT_INDEX + 1;
 
 const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 	z.union([
@@ -16,8 +23,6 @@ const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() =>
 		z.record(jsonValueSchema),
 	]),
 );
-
-const jsonObjectSchema = z.record(jsonValueSchema);
 
 const StepTypeSchema = z.enum(['trigger', 'v1-node', 'wait', 'subworkflow', 'batch']);
 
@@ -46,42 +51,44 @@ const WorkflowGraphSchema = z.object({
 const StartExecutionBody = z.object({
 	workflowId: z.string().min(1),
 	graph: WorkflowGraphSchema,
-	triggerPayload: jsonObjectSchema.nullable().optional(),
+	/** Trigger output slots. Empty means "no payload" — send `null` or omit instead. */
+	triggerOutputs: z.array(jsonValueSchema).min(1).max(MAX_TRIGGER_SLOTS).nullable().optional(),
 	mode: z.enum(['production', 'manual']).optional(),
 });
 
-export function createWorkflowExecutionsRouter(startExecution: StartExecutionService): RouterType {
+export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterType {
 	const router = Router();
 
 	router.post('/', async (req, res) => {
 		const parsed = StartExecutionBody.safeParse(req.body);
 		if (!parsed.success) {
-			res.status(400).json({
-				error: 'invalid_request',
-				details: parsed.error.flatten(),
-			});
+			fail(res, 400, { error: 'invalid_request', details: parsed.error.flatten() });
 			return;
 		}
 
 		try {
-			const result = await startExecution.start(parsed.data);
+			const result = await deps.startExecution.start(parsed.data);
 			res.status(201).json(result);
 		} catch (error) {
 			if (error instanceof AdmittanceRejectedError) {
-				res.status(429).json({ error: 'admittance_rejected', reason: error.reason });
+				fail(res, 429, { error: 'admittance_rejected', reason: error.reason });
 				return;
 			}
 			if (error instanceof GraphValidationError) {
-				res.status(400).json({ error: 'invalid_graph', reason: error.message });
+				fail(res, 400, { error: 'invalid_graph', reason: error.message });
 				return;
 			}
 			if (error instanceof UnimplementedError) {
-				res.status(501).json({ error: 'unimplemented', reason: error.message });
+				fail(res, 501, { error: 'unimplemented', reason: error.message });
 				return;
 			}
 			throw error;
 		}
 	});
+
+	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
+
+	router.get('/:id/steps', createGetExecutionStepsHandler(deps.executionQuery));
 
 	return router;
 }

@@ -92,7 +92,7 @@ function makeContext(foundWorkflow: WorkflowEntity | null): WorkflowToolContext 
 	const activeExecutions = mock<ActiveExecutions>();
 	const workflowLoader = mock<WorkflowToolWorkflowLoader>();
 
-	workflowLoader.loadPublishedWorkflow.mockResolvedValue(foundWorkflow);
+	workflowLoader.loadWorkflow.mockResolvedValue(foundWorkflow);
 
 	return {
 		workflowLoader,
@@ -181,7 +181,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 
 		await resolveWorkflowTool({ type: 'workflow', workflow: 'Scoped Workflow' }, context);
 
-		expect(context.workflowLoader.loadPublishedWorkflow).toHaveBeenCalledWith('project-1', {
+		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith('project-1', {
 			workflowName: 'Scoped Workflow',
 		});
 	});
@@ -196,7 +196,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 			),
 		).rejects.toThrow('Workflow "Existing Workflow" not found');
 
-		expect(context.workflowLoader.loadPublishedWorkflow).toHaveBeenCalledWith('project-1', {
+		expect(context.workflowLoader.loadWorkflow).toHaveBeenCalledWith('project-1', {
 			workflowId: 'missing-id',
 			workflowName: 'Existing Workflow',
 		});
@@ -210,7 +210,7 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		).rejects.toThrow('Workflow "Missing Workflow" not found');
 	});
 
-	it('loads the current published workflow for every invocation', async () => {
+	it('loads the current workflow for every invocation', async () => {
 		const initial = makeWorkflow({ id: 'wf-current', name: 'Current Workflow' });
 		const secondVersion = makeWorkflow({
 			id: 'wf-current',
@@ -225,13 +225,13 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 			nodes: [makeManualTriggerNode(), { ...makeRespondToWebhookNode(), name: 'Version 3' }],
 		});
 		const context = makeContext(initial);
-		const loadPublishedWorkflow = vi
+		const loadWorkflow = vi
 			.fn()
 			.mockResolvedValueOnce(initial)
 			.mockResolvedValueOnce(secondVersion)
 			.mockResolvedValueOnce(thirdVersion);
 		Object.assign(context, {
-			workflowLoader: { loadPublishedWorkflow },
+			workflowLoader: { loadWorkflow },
 			executionMode: 'integrated',
 		});
 		context.workflowRunner.run = vi
@@ -252,15 +252,15 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		await tool.handler?.({}, {});
 		await tool.handler?.({}, {});
 
-		expect(loadPublishedWorkflow).toHaveBeenNthCalledWith(1, 'project-1', {
+		expect(loadWorkflow).toHaveBeenNthCalledWith(1, 'project-1', {
 			workflowId: 'wf-current',
 			workflowName: 'Current Workflow',
 		});
-		expect(loadPublishedWorkflow).toHaveBeenNthCalledWith(2, 'project-1', {
+		expect(loadWorkflow).toHaveBeenNthCalledWith(2, 'project-1', {
 			workflowId: 'wf-current',
 			workflowName: 'Current Workflow',
 		});
-		expect(loadPublishedWorkflow).toHaveBeenNthCalledWith(3, 'project-1', {
+		expect(loadWorkflow).toHaveBeenNthCalledWith(3, 'project-1', {
 			workflowId: 'wf-current',
 			workflowName: 'Current Workflow',
 		});
@@ -303,6 +303,47 @@ describe('workflow tool compatibility', () => {
 		});
 
 		expect(() => validateCompatibility(workflow)).not.toThrow();
+	});
+
+	// A Wait node parks the sub-execution, which the tool hands off to HITL.
+	it('allows a reachable Wait node in workflow tools', () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				makeManualTriggerNode(),
+				{
+					id: 'wait-node-id',
+					name: 'Wait',
+					type: 'n8n-nodes-base.wait',
+					typeVersion: 1.1,
+					position: [0, 0],
+					parameters: { resume: 'webhook' },
+				},
+			],
+			connections: { 'Manual Trigger': { main: [[{ node: 'Wait', type: 'main', index: 0 }]] } },
+		});
+
+		expect(() => validateCompatibility(workflow)).not.toThrow();
+	});
+
+	// The Form node has no equivalent path — it needs an interactive browser
+	// session part-way through the execution.
+	it('rejects a reachable Form node in workflow tools', () => {
+		const workflow = makeWorkflow({
+			nodes: [
+				makeManualTriggerNode(),
+				{
+					id: 'form-node-id',
+					name: 'Form',
+					type: 'n8n-nodes-base.form',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: { 'Manual Trigger': { main: [[{ node: 'Form', type: 'main', index: 0 }]] } },
+		});
+
+		expect(() => validateCompatibility(workflow)).toThrow("aren't supported as agent tools");
 	});
 
 	it('attaches metadata with triggerType "webhook" for a webhook trigger workflow', async () => {

@@ -10,7 +10,6 @@ import type { AgentsService } from '../../agents.service';
 import type { Agent as AgentEntity } from '../../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
-import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository';
 import type { AgentsBuilderToolsService } from '../agents-builder-tools.service';
 import { AgentsBuilderService } from '../agents-builder.service';
 
@@ -29,7 +28,6 @@ const agentsSdkMocks = vi.hoisted(() => {
 	const modelCalls: unknown[] = [];
 	const promptCachingCalls: unknown[] = [];
 	const reasoningCalls: string[] = [];
-	const skillsCalls: unknown[] = [];
 	const telemetryCalls: unknown[] = [];
 	const memoryTaskObserverCalls: unknown[] = [];
 	const observationalMemoryCalls: Array<{
@@ -63,8 +61,7 @@ const agentsSdkMocks = vi.hoisted(() => {
 			instructionsCalls.push(text);
 			return this;
 		}
-		skills(skills: unknown) {
-			skillsCalls.push(skills);
+		skills(_skills: unknown) {
 			return this;
 		}
 		memory() {
@@ -130,7 +127,6 @@ const agentsSdkMocks = vi.hoisted(() => {
 		modelCalls,
 		promptCachingCalls,
 		reasoningCalls,
-		skillsCalls,
 		telemetryCalls,
 		memoryTaskObserverCalls,
 		observationalMemoryCalls,
@@ -178,7 +174,6 @@ function setup(
 	const n8nMemory = mock<N8nMemory>();
 	const instanceAiCreditService = mock<InstanceAiCreditService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
-	const agentCheckpointRepository = mock<AgentCheckpointRepository>();
 
 	nodeCatalogService.initialize.mockResolvedValue(undefined);
 	agentsBuilderToolsService.getTools.mockReturnValue(standardTools);
@@ -204,7 +199,6 @@ function setup(
 		n8nMemory,
 		instanceAiCreditService,
 		n8nCheckpointStorage,
-		agentCheckpointRepository,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -239,7 +233,6 @@ describe('AgentsBuilderService session isolation', () => {
 		agentsSdkMocks.modelCalls.length = 0;
 		agentsSdkMocks.promptCachingCalls.length = 0;
 		agentsSdkMocks.reasoningCalls.length = 0;
-		agentsSdkMocks.skillsCalls.length = 0;
 		agentsSdkMocks.telemetryCalls.length = 0;
 		agentsSdkMocks.memoryTaskObserverCalls.length = 0;
 		agentsSdkMocks.observationalMemoryCalls.length = 0;
@@ -327,23 +320,74 @@ describe('AgentsBuilderService session isolation', () => {
 		);
 	});
 
+	it('registers the parent MCP tools for an initial builder turn', async () => {
+		const { service, user, credentialProvider } = setup();
+		const notionSearch = fakeTool('notion_search');
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				mcpTools: new Map([[notionSearch.name, notionSearch]]),
+			}),
+		);
+
+		expect(agentsSdkMocks.registeredToolNames).toContain('notion_search');
+	});
+
+	it('registers the parent MCP tools for a resumed builder turn', async () => {
+		const { service, user, credentialProvider, n8nCheckpointStorage } = setup();
+		const notionSearch = fakeTool('notion_search');
+		n8nCheckpointStorage.getStatus.mockResolvedValue({ status: 'active', checkpoint: {} as never });
+
+		await drain(
+			service.resumeBuild(
+				'agent-1',
+				'project-1',
+				'builder-run-1',
+				'tool-call-1',
+				{},
+				credentialProvider,
+				user,
+				{
+					...baseSession,
+					mcpTools: new Map([[notionSearch.name, notionSearch]]),
+				},
+			),
+		);
+
+		expect(agentsSdkMocks.registeredToolNames).toContain('notion_search');
+	});
+
+	it('does not let an MCP tool replace a native builder tool', async () => {
+		const nativeReadConfig = fakeTool('read_config');
+		const mcpReadConfig = fakeTool('read_config');
+		const { service, logger, user, credentialProvider } = setup({
+			json: [nativeReadConfig],
+			shared: [],
+		});
+
+		await drain(
+			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, {
+				...baseSession,
+				mcpTools: new Map([[mcpReadConfig.name, mcpReadConfig]]),
+			}),
+		);
+
+		expect(agentsSdkMocks.registeredToolNames.filter((name) => name === 'read_config')).toEqual([
+			'read_config',
+		]);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped MCP tool that conflicts with an agent builder tool',
+			{ toolName: 'read_config', agentId: 'agent-1' },
+		);
+	});
+
 	it('cancelCheckpoint expires the checkpoint scoped to the agent', async () => {
 		const { service, n8nCheckpointStorage } = setup();
 
 		await service.cancelCheckpoint('agent-1', 'run-1');
 
 		expect(n8nCheckpointStorage.delete).toHaveBeenCalledWith('run-1', 'agent-1');
-	});
-
-	it('includes the external services skill', async () => {
-		const { service, user, credentialProvider } = setup();
-
-		await drain(
-			service.buildAgent('agent-1', 'project-1', 'hi', credentialProvider, user, baseSession),
-		);
-
-		const skills = agentsSdkMocks.skillsCalls[0] as Array<{ id: string }>;
-		expect(skills.some((skill) => skill.id === 'agent-builder-external-services')).toBe(true);
 	});
 
 	it('uses session.modelConfig directly for the builder model', async () => {

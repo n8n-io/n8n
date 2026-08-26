@@ -19,6 +19,7 @@ import type {
 import { Tracing } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { withOwnerKeys } from './owner-key';
 import { createSchedulerTracer } from './scheduler-tracer';
 
 /**
@@ -308,7 +309,7 @@ export class DurableJobProvisioner {
 
 		// DB time, not this instance's clock, so the seed sizes its window the way a
 		// poll would and every instance agrees on it (see `DueJobs.now`).
-		const now = await this.tasks.readDbTime();
+		const now = await this.tasks.readDbTime(manager);
 
 		const seedTransaction: RunInTransaction = async (work) =>
 			await work({
@@ -319,7 +320,9 @@ export class DurableJobProvisioner {
 					const claimed = (await this.jobs.findManyByIds(manager, [...jobIds])).filter(
 						(job) => job.enabled && job.nextRunAt !== null,
 					);
-					return claimed.length > 0 ? { now, jobs: claimed } : undefined;
+					// Grouping never triggers here: every seeded job starts from a freshly
+					// computed `nextRunAt`, so none of them has missed anything yet.
+					return claimed.length > 0 ? withOwnerKeys({ now, jobs: claimed }) : undefined;
 				},
 				recordOccurrences: async (occurrences) =>
 					await this.tasks.insertIgnoringDuplicates(manager, occurrences),

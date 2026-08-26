@@ -34,6 +34,7 @@ import { Push } from '@/push';
 import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
+import { TaskBroker } from '@/task-runners/task-broker/task-broker.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 if (!inE2ETests) {
@@ -104,6 +105,7 @@ export class E2EController {
 		[LICENSE_FEATURES.LOG_STREAMING]: false,
 		[LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS]: false,
 		[LICENSE_FEATURES.SOURCE_CONTROL]: false,
+		[LICENSE_FEATURES.GIT_CONNECTIONS]: false,
 		[LICENSE_FEATURES.VARIABLES]: false,
 		[LICENSE_FEATURES.API_DISABLED]: false,
 		[LICENSE_FEATURES.EXTERNAL_SECRETS]: false,
@@ -202,6 +204,7 @@ export class E2EController {
 		private readonly scheduledJobRepository: ScheduledJobRepository,
 		private readonly pollerStateRepository: PollerStateRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
+		private readonly taskBroker: TaskBroker,
 	) {
 		license.isLicensed = (feature: BooleanLicenseFeature) => this.enabledFeatures[feature] ?? false;
 
@@ -268,14 +271,18 @@ export class E2EController {
 	}
 
 	/**
-	 * A poll node's stored cursor, so a test can assert on it directly instead of
-	 * inferring it from execution behaviour.
+	 * A poll node's stored cursor and failure counters, so a test can assert on them
+	 * directly instead of inferring them from execution behaviour.
 	 */
 	@Get('/poller-state', { skipAuth: true })
 	async getPollerState(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.query;
-		const cursor = await this.pollerStateRepository.findCursor(workflowId, nodeId);
-		return { cursor };
+		const state = await this.pollerStateRepository.findState(workflowId, nodeId);
+		return {
+			cursor: state?.cursor ?? null,
+			consecutiveErrors: state?.consecutiveErrors ?? 0,
+			backoffUntil: state?.backoffUntil ?? null,
+		};
 	}
 
 	/**
@@ -308,6 +315,16 @@ export class E2EController {
 		const { workflowId, nodeId, secondsAgo } = req.body;
 		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, secondsAgo);
 		return { success: true };
+	}
+
+	/**
+	 * Number of task runners currently registered with the broker, so a test can
+	 * wait for a runner to be ready instead of racing its startup.
+	 */
+	@Get('/task-runners/count', { skipAuth: true })
+	countTaskRunners() {
+		const count = this.taskBroker.getKnownRunners().size;
+		return { count };
 	}
 
 	@Get('/env-feature-flags', { skipAuth: true })
@@ -457,7 +474,7 @@ export class E2EController {
 	}
 
 	private static coverageKey(url: string, fn: Profiler.FunctionCoverage): string {
-		return `${url} ${fn.functionName} ${fn.ranges[0]?.startOffset ?? 0}`;
+		return `${url} ${fn.functionName} ${fn.ranges[0]?.startOffset ?? 0}`;
 	}
 
 	private static coverageCount(fn: Profiler.FunctionCoverage): number {

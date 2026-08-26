@@ -38,12 +38,28 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
+		case 'execution-error':
+			return i18n.baseText('agentSessions.timeline.executionFailed');
+		case 'execution-interrupted':
+			return i18n.baseText('agentSessions.timeline.executionInterrupted');
 		case 'suspension':
-			return i18n.baseText('agentSessions.timeline.suspended');
-		case 'suspension-waiting':
-			return i18n.baseText('agentSessions.timeline.waitingForUser');
-		case 'user-feedback':
-			return i18n.baseText('agentSessions.timeline.userFeedback');
+			return i18n.baseText('agentSessions.timeline.hitlRequest');
+		case 'hitl-response':
+			return i18n.baseText('agentSessions.timeline.hitlResponse');
+		case 'approval-requested':
+			return i18n.baseText('agentSessions.timeline.approvalRequested');
+		case 'hitl-requested':
+			return i18n.baseText('agentSessions.timeline.hitlRequested');
+		case 'wait-requested':
+			return i18n.baseText('agentSessions.timeline.waitRequested');
+		case 'approved':
+			return i18n.baseText('agentSessions.timeline.approved');
+		case 'responded':
+			return i18n.baseText('agentSessions.timeline.responseReceived');
+		case 'declined':
+			return i18n.baseText('agentSessions.timeline.declined');
+		case 'error':
+			return i18n.baseText('agentSessions.timeline.error');
 		default:
 			return key;
 	}

@@ -151,8 +151,27 @@ describe('InstanceAiModelService', () => {
 				feature: 'instance-ai',
 				n8nVersion: expect.any(String),
 				outboundHttp,
+				runId: undefined,
+				threadId: undefined,
 			});
 			expect(settingsService.resolveModelName).not.toHaveBeenCalled();
+		});
+
+		it('forwards the caller-provided run and thread ids to the proxy factory', async () => {
+			settingsService.getConfiguredModelId.mockReturnValue(MOONSHOTAI_KIMI_K3_MODEL_ID);
+			createProxyLanguageModel.mockResolvedValue({
+				provider: 'moonshotai',
+				modelId: 'kimi-k3',
+			});
+
+			await service.resolveProxyModel(fakeUser, 'https://proxy.base/', tokenManager, {
+				runId: 'run-42',
+				threadId: 'thread-7',
+			});
+
+			expect(createProxyLanguageModel).toHaveBeenCalledWith(
+				expect.objectContaining({ runId: 'run-42', threadId: 'thread-7' }),
+			);
 		});
 
 		it('keeps Anthropic routing for other configured models', async () => {

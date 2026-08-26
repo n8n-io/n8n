@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import type { IUpdateInformation, NewCredentialsModal } from '@/Interface';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
@@ -276,6 +276,11 @@ const closeOnSave = computed<boolean>(() => {
 	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
 });
 
+const onCredentialCreated = computed<NewCredentialsModal['onCredentialCreated']>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) ? modalState.onCredentialCreated : undefined;
+});
+
 const presetUsageScope = computed<NewCredentialsModal['usageScope']>(() => {
 	if (props.mode !== 'new') return undefined;
 	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
@@ -436,6 +441,15 @@ onMounted(async () => {
 		console.error('[CredentialEdit] Initialization error', error);
 	} finally {
 		loading.value = false;
+	}
+});
+
+// The missing-required-fields warning latches on open/save/close attempts;
+// release it as soon as the form satisfies the requirements so the OAuth
+// connect banner reappears without needing a save first.
+watch(requiredPropertiesFilled, (filled) => {
+	if (filled) {
+		showValidationWarning.value = false;
 	}
 });
 
@@ -699,6 +713,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			credentialDetails.usageScope = presetUsageScope.value;
 		}
 		credential = await createCredential(credentialDetails, homeProject.value);
+		if (credential) onCredentialCreated.value?.(credential);
 	} else {
 		if (settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			credentialDetails.sharedWithProjects = credentialData.value
@@ -1448,6 +1463,7 @@ const { width } = useElementSize(credNameRef);
 							:connected-by-me="connectedByMe"
 							:connected-account-identifier="connectedAccountIdentifier"
 							:is-new-credential="isNewCredential"
+							:new-credential-project-type="homeProject?.type"
 							:managed-oauth-available="managedOAuthAvailable"
 							:use-custom-oauth="useCustomOAuth"
 							:is-quick-connect-mode="isQuickConnectMode"

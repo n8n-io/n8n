@@ -49,8 +49,8 @@ and interactive tools.
 
 ## Prerequisites
 
-Before the first `build-agent` call, create every prerequisite the builder
-cannot create:
+Before the first `build-agent` call, create prerequisites the builder cannot
+create when they must be attached to or used by the Agent:
 
 - Create a workflow tool only when one Agent tool call must run an ordered
   multi-node procedure, or when the user explicitly needs that workflow to be
@@ -64,8 +64,27 @@ List prerequisite names and schemas in `message`. Let the builder gather the
 remaining Agent-specific requirements, including model, credentials,
 integrations, and direct tools.
 
-If a `builderReply` lists missing workflows or tables, create them and call
-`build-agent` again. Never ask the user to create them manually.
+`build-agent` can return structured `requiredArtifacts` when the embedded
+builder discovers something Instance AI must create:
+
+- For a workflow with `relationship: "agent-tool"`, build it, pass it in
+  `workflowContext`, and call `build-agent` again so the builder can attach it.
+- For a workflow with `relationship: "agent-entrypoint"`, build it after the
+  Agent exists, using the returned `agentId`. This workflow invokes the Agent;
+  never pass it in `workflowContext`, never attach it to the Agent as a tool,
+  and do not call `build-agent` again solely to attach it.
+- For a data table, create it and call `build-agent` again with its name and
+  schema in `message`.
+
+For an unsupported chat channel, an `agent-entrypoint` workflow should connect
+the platform trigger to Message an Agent, map the incoming message, use a
+stable platform conversation/sender identifier as the custom session key, and
+send the Agent's `text` response through the platform. Native Agent channels do
+not need this wrapper.
+
+If an older builder only lists missing workflows or tables in `builderReply`,
+handle them the same way based on whether the workflow calls the Agent or is
+called by the Agent. Never ask the user to create prerequisites manually.
 
 ## Targeting across turns
 
@@ -81,6 +100,26 @@ to a workflow `filePath`.
   optionally with an `agentRef`, then prefer the returned `agentRef`.
 
 Naming or renaming the current Agent never silently creates another one.
+
+## Saved sub-agent dependencies
+
+When the user asks for an Agent that uses other newly built Agents as saved
+sub-agents, treat publication as a dependency:
+
+1. Build each child Agent under its own `agentRef` before attaching it to the
+   parent.
+2. A saved sub-agent must be published before the parent can attach it. Building
+   the child does not imply publication. Never attach a draft child or pass its
+   raw `agentId` to the parent builder as a user requirement.
+3. If the user already asked to publish, activate, or make the Agents usable,
+   call `build-agent` for the child and faithfully forward that publication
+   intent. Otherwise, ask whether to publish the child before continuing with
+   the parent attachment.
+4. Wait for the child publication to succeed. Then call `build-agent` for the
+   parent and identify the child by its display name. The parent builder must
+   discover the published child and map its name to the valid stored ID.
+5. If publication is declined or fails, leave the child unattached and explain
+   that saved sub-agents must be published first.
 
 ## Builder-owned interactions
 

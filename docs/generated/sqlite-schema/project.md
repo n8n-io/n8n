@@ -20,7 +20,7 @@ CREATE TABLE "project" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" varchar(25
 | customTelemetryTags | TEXT | '[]' | false |  |  |  |
 | description | varchar(512) |  | true |  |  |  |
 | icon | TEXT |  | true |  |  |  |
-| id | varchar(36) |  | false | [agent_chat_attachments](agent_chat_attachments.md) [agent_execution_threads](agent_execution_threads.md) [agents](agents.md) [data_table](data_table.md) [folder](folder.md) [insights_metadata](insights_metadata.md) [instance_ai_threads](instance_ai_threads.md) [project_relation](project_relation.md) [project_secrets_provider_access](project_secrets_provider_access.md) [role_mapping_rule_project](role_mapping_rule_project.md) [shared_credentials](shared_credentials.md) [shared_workflow](shared_workflow.md) [variables](variables.md) [workflow_review_request](workflow_review_request.md) |  |  |
+| id | varchar(36) |  | false | [agent_chat_attachments](agent_chat_attachments.md) [agent_execution_threads](agent_execution_threads.md) [agents](agents.md) [data_table](data_table.md) [folder](folder.md) [git_connection_project](git_connection_project.md) [insights_metadata](insights_metadata.md) [instance_ai_threads](instance_ai_threads.md) [project_relation](project_relation.md) [project_secrets_provider_access](project_secrets_provider_access.md) [role_mapping_rule_project](role_mapping_rule_project.md) [shared_credentials](shared_credentials.md) [shared_workflow](shared_workflow.md) [variables](variables.md) [workflow_review_request](workflow_review_request.md) |  |  |
 | name | varchar(255) |  | false |  |  |  |
 | type | varchar(36) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -50,6 +50,7 @@ erDiagram
 "agents" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "data_table" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "folder" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"git_connection_project" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "insights_metadata" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "instance_ai_threads" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "project_relation" |o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -129,6 +130,7 @@ erDiagram
   TEXT integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  INTEGER revision
   TEXT schema
   datetime_3_ setupCompletedAt
   TEXT skills
@@ -149,6 +151,12 @@ erDiagram
   varchar_128_ name
   varchar_36_ parentFolderId FK
   varchar_36_ projectId FK
+  datetime_3_ updatedAt
+}
+"git_connection_project" {
+  datetime_3_ createdAt
+  varchar_36_ gitConnectionId FK
+  varchar_36_ projectId PK
   datetime_3_ updatedAt
 }
 "insights_metadata" {

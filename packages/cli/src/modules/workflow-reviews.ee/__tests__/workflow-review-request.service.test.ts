@@ -13,11 +13,11 @@ import type {
 	UserRepository,
 	WorkflowEntity,
 	WorkflowHistoryRepository,
-	WorkflowPublishHistoryRepository,
 	WorkflowReviewRequest,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestForWorkflowRow,
+	WorkflowReviewActivityRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
 	WorkflowRepository,
@@ -31,13 +31,15 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
+import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
+
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 const user = mock<User>({ id: 'user-1' });
@@ -66,19 +68,20 @@ describe('WorkflowReviewRequestService', () => {
 	/** The `workflow_entity` repository. `workflowRepository` below is the review's link table. */
 	const workflowEntityRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
-	const publishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
+	const activityRepository = mock<WorkflowReviewActivityRepository>();
 	const userRepository = mock<UserRepository>();
-	const eligibilityService = mock<WorkflowReviewEligibilityService>();
 	const roleService = mock<RoleService>();
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
 	const workflowService = mock<WorkflowService>();
+	const authorizationService = mock<WorkflowReviewAuthorizationService>();
 	const logger = mock<Logger>();
+	const eventService = mock<EventService>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
 
@@ -90,22 +93,23 @@ describe('WorkflowReviewRequestService', () => {
 		workflowHistoryRepository,
 		workflowEntityRepository,
 		sharedWorkflowRepository,
-		publishHistoryRepository,
 		requestRepository,
 		workflowRepository,
 		authorRepository,
 		reviewerRepository,
+		activityRepository,
 		userRepository,
-		eligibilityService,
 		roleService,
 		dbLockService,
 		collaborationService,
 		workflowService,
+		authorizationService,
+		eventService,
 	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
+		authorizationService.resolveOpenableRequestIds.mockResolvedValue(new Set());
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		// Feature enabled by default; the disabled path is exercised explicitly.
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
@@ -175,7 +179,7 @@ describe('WorkflowReviewRequestService', () => {
 
 			expect(result.id).toBe('req-1');
 			expect(dbLockService.withLockContext).toHaveBeenCalledWith(
-				DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+				DbLock.WORKFLOW_REVIEW_MUTATION,
 				expect.any(Function),
 			);
 			expect(requestRepository.createRequest).toHaveBeenCalledWith(
@@ -264,7 +268,11 @@ describe('WorkflowReviewRequestService', () => {
 			mockSuccessfulCreatePath();
 			workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: true });
 
-			await expect(service.create(user, dto)).rejects.toThrow(BadRequestError);
+			const creation = service.create(user, dto);
+			await expect(creation).rejects.toThrow(BadRequestError);
+			await expect(creation).rejects.toThrow(
+				"The workflow 'wf-1' is archived and cannot be submitted for review",
+			);
 
 			expect(dbLockService.withLockContext).toHaveBeenCalled();
 			expect(requestRepository.createRequest).not.toHaveBeenCalled();
@@ -472,6 +480,14 @@ describe('WorkflowReviewRequestService', () => {
 				expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith(
 					'wf-1',
 				);
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith('workflow-review-requested', {
+					user: expect.objectContaining({ id: 'user-1' }),
+					workflowReviewRequestId: 'req-1',
+					projectId: 'project-1',
+					workflowId: 'wf-1',
+					workflowVersionId: 'ver-1',
+					reviewerCount: 1,
+				});
 			});
 
 			it('does not broadcast on conflict', async () => {
@@ -483,6 +499,7 @@ describe('WorkflowReviewRequestService', () => {
 				await expect(service.create(user, dto)).rejects.toThrow(ConflictError);
 
 				expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
+				expect(eventService.emit).not.toHaveBeenCalled();
 			});
 
 			it('resolves and logs a warning when the broadcast rejects', async () => {
@@ -567,11 +584,13 @@ describe('WorkflowReviewRequestService', () => {
 			overrides: Partial<WorkflowReviewRequestForWorkflowRow> = {},
 		): WorkflowReviewRequestForWorkflowRow => ({
 			id: 'req-1',
+			projectId: 'proj-1',
 			state: 'open',
 			decision: 'pending',
 			description: null,
 			updatedById: 'user-2',
 			workflowVersionId: 'ver-1',
+			workflowVersionName: null,
 			createdAt: new Date('2024-01-01T00:00:00.000Z'),
 			updatedAt: new Date('2024-01-02T00:00:00.000Z'),
 			...overrides,
@@ -627,6 +646,7 @@ describe('WorkflowReviewRequestService', () => {
 					decision: 'changes_requested',
 					description: null,
 					workflowVersionId: 'ver-1',
+					workflowVersionName: null,
 					createdAt: '2024-01-01T00:00:00.000Z',
 					updatedAt: '2024-01-02T00:00:00.000Z',
 					decisionBy: {
@@ -635,10 +655,17 @@ describe('WorkflowReviewRequestService', () => {
 						firstName: 'Rey',
 						lastName: 'Viewer',
 					},
-					approvedVersionPublicationState: null,
+					viewerCanOpen: false,
 				},
 			]);
-			expect(publishHistoryRepository.getVersionPublicationStates).not.toHaveBeenCalled();
+		});
+
+		it('carries the pinned version name through to the response', async () => {
+			mockLatestReview({ workflowVersionName: 'Release candidate' });
+
+			const { data } = await service.list(user, query);
+
+			expect(data[0]).toMatchObject({ workflowVersionName: 'Release candidate' });
 		});
 
 		it('falls back to no actor when the deciding user was deleted', async () => {
@@ -659,49 +686,37 @@ describe('WorkflowReviewRequestService', () => {
 			expect(data[0]?.decisionBy).toBeNull();
 		});
 
-		it('derives the publication state of an approved review only', async () => {
+		it('names no actor for an approved review', async () => {
 			mockLatestReview({ state: 'closed', decision: 'approved' });
-			publishHistoryRepository.getVersionPublicationStates.mockResolvedValue(
-				new Map([['ver-1', 'not_published']]),
-			);
 
 			const { data } = await service.list(user, query);
 
-			// Batched across rows so the list cannot become an N+1
-			expect(publishHistoryRepository.getVersionPublicationStates).toHaveBeenCalledWith('wf-1', [
-				'ver-1',
-			]);
-			expect(data[0]).toMatchObject({
-				decisionBy: null,
-				approvedVersionPublicationState: 'not_published',
-			});
+			expect(data[0]).toMatchObject({ decisionBy: null });
 			expect(userRepository.findManyByIds).not.toHaveBeenCalled();
 		});
 
-		it('reports unknown for an approved review whose pinned version was pruned', async () => {
-			mockLatestReview({ state: 'closed', decision: 'approved', workflowVersionId: null });
+		it('marks rows the caller may open, resolved in one batched access check', async () => {
+			mockLatestReview();
+			authorizationService.resolveOpenableRequestIds.mockResolvedValue(new Set(['req-1']));
 
 			const { data } = await service.list(user, query);
 
-			// No version to reason about, so the state is settled without a lookup
-			expect(publishHistoryRepository.getVersionPublicationStates).not.toHaveBeenCalled();
-			expect(data[0]).toMatchObject({ approvedVersionPublicationState: 'unknown' });
+			expect(authorizationService.resolveOpenableRequestIds).toHaveBeenCalledWith(user, [
+				expect.objectContaining({ id: 'req-1', projectId: 'proj-1' }),
+			]);
+			expect(data[0]?.viewerCanOpen).toBe(true);
 		});
 
-		it('derives neither field for a pending review', async () => {
+		it('derives no decision actor for a pending review', async () => {
 			mockLatestReview();
 
 			const { data } = await service.list(user, query);
 
 			expect(userRepository.findManyByIds).not.toHaveBeenCalled();
-			expect(publishHistoryRepository.getVersionPublicationStates).not.toHaveBeenCalled();
-			expect(data[0]).toMatchObject({
-				decisionBy: null,
-				approvedVersionPublicationState: null,
-			});
+			expect(data[0]).toMatchObject({ decisionBy: null });
 		});
 
-		it('enriches many rows with one lookup per derived field', async () => {
+		it('enriches many rows with one decision-actor lookup', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 			requestRepository.findRequestsForWorkflow.mockResolvedValue([
 				[
@@ -726,33 +741,15 @@ describe('WorkflowReviewRequestService', () => {
 				reviewer,
 				loadedUser({ id: 'user-3', email: 'other@example.com' }),
 			]);
-			publishHistoryRepository.getVersionPublicationStates.mockResolvedValue(
-				new Map([
-					['ver-3', 'not_published'],
-					['ver-4', 'superseded'],
-				]),
-			);
-
 			const { data } = await service.list(user, query);
 
 			expect(userRepository.findManyByIds).toHaveBeenCalledTimes(1);
 			expect(userRepository.findManyByIds).toHaveBeenCalledWith(['user-2', 'user-3']);
-			expect(publishHistoryRepository.getVersionPublicationStates).toHaveBeenCalledTimes(1);
-			expect(publishHistoryRepository.getVersionPublicationStates).toHaveBeenCalledWith('wf-1', [
-				'ver-3',
-				'ver-4',
-			]);
 			expect(data.map((item) => item.decisionBy?.email ?? null)).toEqual([
 				'reviewer@example.com',
 				'other@example.com',
 				null,
 				null,
-			]);
-			expect(data.map((item) => item.approvedVersionPublicationState)).toEqual([
-				null,
-				null,
-				'not_published',
-				'superseded',
 			]);
 		});
 	});

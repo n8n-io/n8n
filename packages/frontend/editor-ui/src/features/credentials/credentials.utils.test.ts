@@ -73,7 +73,7 @@ describe('getAutoSelectedCredential', () => {
 	});
 
 	it('picks the most recently updated usable credential of the node type', () => {
-		credentialsStore.state.credentials = {
+		credentialsStore.usableCredentials = {
 			older: createCredential({
 				id: 'older',
 				name: 'Older',
@@ -93,7 +93,7 @@ describe('getAutoSelectedCredential', () => {
 	});
 
 	it('returns undefined when the node already has a credential set', () => {
-		credentialsStore.state.credentials = { older: createCredential({ id: 'older' }) };
+		credentialsStore.usableCredentials = { older: createCredential({ id: 'older' }) };
 
 		const node = createNode({
 			credentials: { openAiApi: { id: 'older', name: 'Older' } },
@@ -103,7 +103,16 @@ describe('getAutoSelectedCredential', () => {
 	});
 
 	it('returns undefined when no usable credentials of the required type exist', () => {
-		credentialsStore.state.credentials = {};
+		credentialsStore.usableCredentials = {};
+
+		expect(getAutoSelectedCredential(createNode())).toBeUndefined();
+	});
+
+	it('ignores credentials the scoped fetch left out of the usable slice', () => {
+		// Paste/duplicate into a project must not auto-assign a credential that
+		// project cannot use, which the backend would then reject on save.
+		credentialsStore.state.credentials = { personal: createCredential({ id: 'personal' }) };
+		credentialsStore.usableCredentials = {};
 
 		expect(getAutoSelectedCredential(createNode())).toBeUndefined();
 	});
@@ -112,7 +121,7 @@ describe('getAutoSelectedCredential', () => {
 		nodeTypesStore.setNodeTypes([
 			{ ...openAiNodeType, name: 'n8n-nodes-base.noOp', credentials: undefined },
 		]);
-		credentialsStore.state.credentials = { older: createCredential() };
+		credentialsStore.usableCredentials = { older: createCredential() };
 
 		const node = createNode({ type: 'n8n-nodes-base.noOp' });
 
@@ -124,7 +133,7 @@ describe('getAutoSelectedCredential', () => {
 			openAiApi: openAiApiCredentialType,
 			slackApi: { ...openAiApiCredentialType, name: 'slackApi', displayName: 'Slack' },
 		};
-		credentialsStore.state.credentials = {
+		credentialsStore.usableCredentials = {
 			openai: createCredential({
 				id: 'openai',
 				name: 'OpenAI',

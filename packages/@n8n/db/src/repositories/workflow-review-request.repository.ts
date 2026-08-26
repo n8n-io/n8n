@@ -1,9 +1,12 @@
 import { Service } from '@n8n/di';
+import type { WorkflowSharingRole } from '@n8n/permissions';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource } from '@n8n/typeorm';
 
 import { BaseRepository } from './base-repository';
 import { SharedWorkflow } from '../entities/shared-workflow';
+import { WorkflowEntity } from '../entities/workflow-entity';
+import { WorkflowHistory } from '../entities/workflow-history';
 import { WorkflowReviewRequestAuthor } from '../entities/workflow-review-request-author.ee';
 import { WorkflowReviewRequestReviewer } from '../entities/workflow-review-request-reviewer.ee';
 import { WorkflowReviewRequestWorkflow } from '../entities/workflow-review-request-workflow.ee';
@@ -74,13 +77,22 @@ export type FindManyForInboxOptions = {
 
 /**
  * Projection for the workflow-scoped list: the request fields the use case
- * needs plus the version pinned for the workflow the query was scoped to.
+ * needs plus the version pinned for the workflow the query was scoped to, and
+ * the name that version was given.
  */
 export type WorkflowReviewRequestForWorkflowRow = Pick<
 	WorkflowReviewRequest,
-	'id' | 'state' | 'decision' | 'description' | 'updatedById' | 'createdAt' | 'updatedAt'
+	| 'id'
+	| 'projectId'
+	| 'state'
+	| 'decision'
+	| 'description'
+	| 'updatedById'
+	| 'createdAt'
+	| 'updatedAt'
 > & {
 	workflowVersionId: string | null;
+	workflowVersionName: string | null;
 };
 
 export type CountByStateForInboxOptions = {
@@ -91,6 +103,28 @@ export type InboxStateCounts = {
 	open: number;
 	closed: number;
 };
+
+/** One row per (open request, linked workflow); a request with no link left yields one empty row. */
+type OpenRequestWorkflowRow = {
+	requestId: string;
+	requestProjectId: string;
+	linkedWorkflowId: string | null;
+	/** Raw, so the driver's own boolean: `1` on sqlite and mysql, `true` on postgres. */
+	isArchived: boolean | number | null;
+	owningProjectId: string | null;
+};
+
+/** Reviewable: the linked workflow exists, is not archived, and still belongs to the request's project. */
+function isReviewable(row: OpenRequestWorkflowRow): boolean {
+	// Nothing behind the link: either the request has no link row left, or it points at a
+	// workflow that is gone. Both mean the delete cascade got there first.
+	if (row.linkedWorkflowId === null) return false;
+
+	if (row.isArchived) return false;
+
+	// A workflow with no owning project at all is a broken row, not a move — leave it alone.
+	return row.owningProjectId === null || row.owningProjectId === row.requestProjectId;
+}
 
 @Service()
 export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowReviewRequest> {
@@ -139,44 +173,87 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 	}
 
 	/**
-	 * Closes every open request left with no linked workflow, returning the ids closed.
+	 * Ids of the open requests with no reviewable workflow left — every linked workflow deleted,
+	 * archived, or moved out of the request's project. `candidateRequestIds` narrows the scan to
+	 * those requests (the targeted lifecycle paths); omitting it evaluates every open request (the
+	 * reconciliation sweep).
 	 *
-	 * A workflow hard delete cascades the link rows away, so an open request that has
-	 * lost its last one covers nothing and can never be acted on again. `create` writes
-	 * the request and its link row in one transaction, so a request is only ever visible
-	 * without links once the workflow behind it is gone — the two steps here cannot see
-	 * a half-written create and so need no lock.
+	 * Matches on the workflows' current state rather than on the mutation that changed it, so it
+	 * catches what the per-mutation hooks cannot: reviews a delete cascade unlinked before a hook
+	 * could find them by workflow id, mutations that skip the hooks entirely, and hooks whose
+	 * close rolled back after their mutation had already committed.
+	 *
+	 * Read-only; the caller closes the returned ids with {@link closeRequests} under the
+	 * review-request lock, so selecting and closing cannot race a concurrent decision.
 	 */
-	async closeOrphanedOpenRequests(ctx: OperationContext): Promise<string[]> {
+	async findUnreviewableOpenRequestIds(
+		ctx: OperationContext,
+		candidateRequestIds?: string[],
+	): Promise<string[]> {
+		if (candidateRequestIds?.length === 0) return [];
+
 		const openState: WorkflowReviewRequestState = 'open';
-		const closedState: WorkflowReviewRequestState = 'closed';
-		const manager = this.managerFor(ctx);
+		const ownerRole: WorkflowSharingRole = 'workflow:owner';
 
-		const orphans = await manager
+		const qb = this.managerFor(ctx)
 			.createQueryBuilder(WorkflowReviewRequest, 'review')
-			.select('review.id', 'id')
-			.where('review.state = :openState', { openState })
-			.andWhere((qb) => {
-				const linkedWorkflowExists = qb
-					.subQuery()
-					.select('1')
-					.from(WorkflowReviewRequestWorkflow, 'requestWorkflow')
-					.where('requestWorkflow.workflowReviewRequestId = review.id')
-					.getQuery();
-				return `NOT EXISTS ${linkedWorkflowExists}`;
-			})
-			.getRawMany<{ id: string }>();
+			.select('review.id', 'requestId')
+			.addSelect('review.projectId', 'requestProjectId')
+			.addSelect('workflow.id', 'linkedWorkflowId')
+			.addSelect('workflow.isArchived', 'isArchived')
+			.addSelect('shared.projectId', 'owningProjectId')
+			// Left joins throughout: a request with no link, or a link with no workflow, is
+			// precisely the orphan case, and dropping those rows would hide it.
+			.leftJoin(WorkflowReviewRequestWorkflow, 'link', 'link.workflowReviewRequestId = review.id')
+			.leftJoin(WorkflowEntity, 'workflow', 'workflow.id = link.workflowId')
+			.leftJoin(
+				SharedWorkflow,
+				'shared',
+				'shared.workflowId = link.workflowId AND shared.role = :ownerRole',
+				{ ownerRole },
+			)
+			.where('review.state = :openState', { openState });
 
-		if (orphans.length === 0) return [];
+		if (candidateRequestIds !== undefined) {
+			qb.andWhere('review.id IN (:...candidateRequestIds)', { candidateRequestIds });
+		}
 
-		const ids = orphans.map(({ id }) => id);
-		// A system close has no closing user; the decision stays as-is.
-		await manager.update(WorkflowReviewRequest, ids, {
+		const rows = await qb.getRawMany<OpenRequestWorkflowRow>();
+
+		// One reviewable workflow keeps the request open, however many of its siblings are gone.
+		const closableRequestIds = new Set<string>();
+		const requestIdsWithReviewableWorkflow = new Set<string>();
+		for (const row of rows) {
+			if (isReviewable(row)) {
+				requestIdsWithReviewableWorkflow.add(row.requestId);
+			} else {
+				closableRequestIds.add(row.requestId);
+			}
+		}
+		for (const requestId of requestIdsWithReviewableWorkflow) {
+			closableRequestIds.delete(requestId);
+		}
+
+		return [...closableRequestIds];
+	}
+
+	/**
+	 * Bulk-closes the given requests. A system close has no closing user, and the decision stays
+	 * as-is. `updatedAt` is set explicitly because `manager.update` skips `@BeforeUpdate`.
+	 *
+	 * Keys off the given ids rather than a state predicate, so the caller must hold the
+	 * review-request lock across selecting them ({@link findUnreviewableOpenRequestIds}) and
+	 * closing them here.
+	 */
+	async closeRequests(requestIds: string[], ctx: OperationContext): Promise<void> {
+		if (requestIds.length === 0) return;
+
+		const closedState: WorkflowReviewRequestState = 'closed';
+		await this.managerFor(ctx).update(WorkflowReviewRequest, requestIds, {
 			state: closedState,
 			closedById: null,
+			updatedAt: new Date(),
 		});
-
-		return ids;
 	}
 
 	async findById(id: string, ctx: OperationContext): Promise<WorkflowReviewRequest | null> {
@@ -195,6 +272,12 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 				'requestWorkflow.workflowReviewRequestId = request.id',
 			)
 			.addSelect('requestWorkflow.workflowVersionId', 'pinnedWorkflowVersionId')
+			.leftJoin(
+				WorkflowHistory,
+				'pinnedVersion',
+				'pinnedVersion.workflowId = requestWorkflow.workflowId AND pinnedVersion.versionId = requestWorkflow.workflowVersionId',
+			)
+			.addSelect('pinnedVersion.name', 'pinnedWorkflowVersionName')
 			.where('requestWorkflow.workflowId = :workflowId', { workflowId })
 			.orderBy('request.createdAt', 'DESC')
 			// Ids are random, so this only breaks ties deterministically: callers ask
@@ -212,25 +295,38 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			qb.take(options.take);
 		}
 
-		const [{ entities, raw }, count] = await Promise.all([
-			qb.getRawAndEntities<{ request_id: string; pinnedWorkflowVersionId: string | null }>(),
-			qb.getCount(),
-		]);
+		// Sequential, not concurrent: both calls run off the same builder, and each
+		// mutates its shared state while executing.
+		const { entities, raw } = await qb.getRawAndEntities<{
+			request_id: string;
+			pinnedWorkflowVersionId: string | null;
+			pinnedWorkflowVersionName: string | null;
+		}>();
+		const count = await qb.getCount();
 
 		// Raw rows are 1:1 with entities — the (requestId, workflowId) pair is unique —
 		// but key by id instead of index to stay independent of entity deduplication.
-		const versionIdByRequestId = new Map(
-			raw.map((row) => [row.request_id, row.pinnedWorkflowVersionId ?? null]),
-		);
+		const pinnedByRequestId = new Map<
+			string,
+			{ workflowVersionId: string | null; workflowVersionName: string | null }
+		>();
+		for (const row of raw) {
+			pinnedByRequestId.set(row.request_id, {
+				workflowVersionId: row.pinnedWorkflowVersionId ?? null,
+				workflowVersionName: row.pinnedWorkflowVersionName ?? null,
+			});
+		}
+
 		const requests = entities.map((entity) => ({
 			id: entity.id,
+			projectId: entity.projectId,
 			state: entity.state,
 			decision: entity.decision,
 			description: entity.description,
 			updatedById: entity.updatedById,
 			createdAt: entity.createdAt,
 			updatedAt: entity.updatedAt,
-			workflowVersionId: versionIdByRequestId.get(entity.id) ?? null,
+			...pinnedByRequestId.get(entity.id)!,
 		}));
 
 		return [requests, count];
@@ -257,13 +353,19 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 
 	/**
 	 * All open requests linked to any of the given workflows, each with the
-	 * subset of those workflows it is linked to — so a lifecycle cleanup can
-	 * close a request once while still knowing which workflows were affected.
+	 * subset of those workflows it is linked to and the version pinned per link —
+	 * so a lifecycle cleanup can close a request once while knowing which
+	 * workflows were affected, and a status read can report the pin.
 	 */
 	async findOpenRequestsForWorkflows(
 		workflowIds: string[],
 		ctx: OperationContext,
-	): Promise<Array<{ request: WorkflowReviewRequest; workflowIds: string[] }>> {
+	): Promise<
+		Array<{
+			request: WorkflowReviewRequest;
+			links: Array<{ workflowId: string; workflowVersionId: string | null }>;
+		}>
+	> {
 		if (workflowIds.length === 0) return [];
 
 		const state: WorkflowReviewRequestState = 'open';
@@ -276,21 +378,32 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 				'requestWorkflow.workflowReviewRequestId = request.id',
 			)
 			.addSelect('requestWorkflow.workflowId', 'linkedWorkflowId')
+			.addSelect('requestWorkflow.workflowVersionId', 'linkedWorkflowVersionId')
 			.where('requestWorkflow.workflowId IN (:...workflowIds)', { workflowIds })
 			.andWhere('request.state = :state', { state })
-			.getRawAndEntities<{ request_id: string; linkedWorkflowId: string }>();
+			.getRawAndEntities<{
+				request_id: string;
+				linkedWorkflowId: string;
+				linkedWorkflowVersionId: string | null;
+			}>();
 
 		// Raw rows are per (request, workflow) pair; entities are deduplicated.
-		const workflowIdsByRequestId = new Map<string, string[]>();
+		const linksByRequestId = new Map<
+			string,
+			Array<{ workflowId: string; workflowVersionId: string | null }>
+		>();
 		for (const row of raw) {
-			const linked = workflowIdsByRequestId.get(row.request_id) ?? [];
-			linked.push(row.linkedWorkflowId);
-			workflowIdsByRequestId.set(row.request_id, linked);
+			const links = linksByRequestId.get(row.request_id) ?? [];
+			links.push({
+				workflowId: row.linkedWorkflowId,
+				workflowVersionId: row.linkedWorkflowVersionId ?? null,
+			});
+			linksByRequestId.set(row.request_id, links);
 		}
 
 		return entities.map((request) => ({
 			request,
-			workflowIds: workflowIdsByRequestId.get(request.id) ?? [],
+			links: linksByRequestId.get(request.id) ?? [],
 		}));
 	}
 

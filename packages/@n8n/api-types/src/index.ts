@@ -14,7 +14,7 @@ export * from './instance-registry-types';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
-export type * from './workflow-review-activity';
+export * from './workflow-review-activity';
 export type * from './workflow-review-eligible-reviewer';
 export * from './workflow-review-request-summary';
 export * from './workflow-publish-blocked-details';
@@ -125,6 +125,7 @@ export type { BannerName } from './schemas/banner-name.schema';
 export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema, createPasswordSchema } from './schemas/password.schema';
 export { n8nIdSchema } from './schemas/id.schema';
+export { folderNameSchema, folderIdSchema } from './schemas/folder.schema';
 export {
 	SYSTEM_RESOLVER_ID,
 	credentialResolverSchema,
@@ -214,9 +215,11 @@ export {
 	dataTableNameSchema,
 } from './schemas/data-table.schema';
 
-export type {
-	DataTableFilter,
-	DataTableFilterConditionType,
+export {
+	type DataTableFilter,
+	type DataTableFilterConditionType,
+	FilterConditionSchema,
+	dataTableFilterTypeSchema,
 } from './schemas/data-table-filter.schema';
 
 export type {
@@ -290,6 +293,8 @@ export {
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildSetupSkipGrantKey,
+	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
 	FETCH_URL_ALLOW_ALL_GRANT_KEY,
 	WEB_SEARCH_GRANT_KEY,
@@ -376,9 +381,20 @@ export {
 	instanceAiAgentAttachmentSchema,
 	instanceAiAttachmentSchema,
 	instanceAiFileAttachmentSchema,
+	base64EncodedSize,
+	exceedsAttachmentSizeLimit,
+	formatAttachmentSizeLimit,
+	formatTotalAttachmentSizeLimit,
+	MAX_ATTACHMENT_DECODED_BYTES,
+	MAX_TOTAL_ATTACHMENT_DECODED_BYTES,
+	MAX_ATTACHMENT_BASE64_BYTES,
+	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 	instanceAiResourceAttachmentSchema,
 	instanceAiWorkflowAttachmentSchema,
 	InstanceAiThreadMessagesQuery,
+	INSTANCE_AI_THREAD_MESSAGES_DEFAULT_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_LIMIT,
+	INSTANCE_AI_THREAD_MESSAGES_MAX_PAGE,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
@@ -391,6 +407,7 @@ export {
 	instanceAiEvalSeedAgentSchema,
 	findUnbackedSeedWorkflowTools,
 	applyBranchReadOnlyOverrides,
+	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 } from './schemas/instance-ai.schema';
@@ -403,6 +420,10 @@ export type {
 	InstanceAiCatalogModel,
 	InstanceAiModelCatalogResponse,
 	InstanceAiCredits,
+	InstanceAiComponentSource,
+	InstanceAiWebSearchSource,
+	InstanceAiSetupState,
+	InstanceAiSetupStateInput,
 } from './schemas/instance-ai.schema';
 
 export type {
@@ -482,12 +503,15 @@ export type {
 	InstanceAiSandboxProvider,
 	InstanceAiConnectionUpdate,
 	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionFailureReason,
 	InstanceAiMcpConnectionToolFilterResponse,
 	InstanceAiMcpConnectionToolResponse,
+	InstanceAiMcpConnectionToolsResponse,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,
 	InstanceAiFileAttachment,
+	InstanceAiNodesAttachment,
 	InstanceAiResourceAttachment,
 	InstanceAiWorkflowAttachment,
 	DomainAccessAction,
@@ -574,6 +598,7 @@ export {
 	MCP_CLIENT_TYPE_FILTER_BUCKETS,
 	MCP_CLIENT_CONNECTED_PERIODS,
 	getMcpClientType,
+	getMcpClientBrand,
 	type McpScope,
 	type McpClientType,
 	type McpClientBrandName,
@@ -677,9 +702,12 @@ export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.s
 export {
 	X_N8N_FEATURE_HEADER,
 	X_N8N_VERSION_HEADER,
+	X_N8N_RUN_ID_HEADER,
+	X_N8N_THREAD_ID_HEADER,
 	N8N_PROXY_FEATURES,
 	buildProxyHeaders,
 	type N8nProxyFeature,
+	type ProxyContext,
 	type ProxyHeaderInput,
 } from './constants/proxy-feature';
 export {
@@ -688,4 +716,8 @@ export {
 	MOONSHOTAI_KIMI_K3_PROVIDER,
 	isMoonshotaiKimiK3ModelId,
 } from './constants/instance-ai-models';
-export { BLOCK_ACCESS_ASSIGNMENT } from './constants/role-mapping';
+export {
+	BLOCK_ACCESS_ASSIGNMENT,
+	SSO_ERROR_ACCESS_DENIED,
+	SSO_ERROR_QUERY_PARAM,
+} from './constants/role-mapping';

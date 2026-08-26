@@ -118,9 +118,9 @@ function getSectionNodeType(section: WorkflowSetupSection) {
 .card {
 	display: flex;
 	flex-direction: column;
-	border: 2px solid var(--color--primary);
 	border-radius: var(--radius--lg);
 	background-color: var(--color--background--light-3);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .header {

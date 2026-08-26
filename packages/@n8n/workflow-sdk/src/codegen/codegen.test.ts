@@ -3,6 +3,36 @@ import { parseWorkflowCode } from './parse-workflow-code';
 import type { WorkflowJSON } from '../types/base';
 
 describe('generateWorkflowCode', () => {
+	it('never emits pinData from the source workflow', () => {
+		// Intentional (INS-1216): pinned data must not round-trip through
+		// generated code. get-as-code → edit → rebuild is how the AI Assistant
+		// clears stale pins (fabricated verification fixtures a user adopted);
+		// if codegen represented pins, every rebuild would re-persist them.
+		const json: WorkflowJSON = {
+			id: 'wf-pins',
+			name: 'Pinned Workflow',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Get Job Alert Emails',
+					type: 'n8n-nodes-base.gmail',
+					typeVersion: 2.1,
+					position: [0, 0],
+					parameters: { resource: 'message', operation: 'getAll' },
+				},
+			],
+			connections: {},
+			pinData: {
+				'Get Job Alert Emails': [{ id: 'msg_1', threadId: 'th_1' }],
+			},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).not.toContain('pinData');
+		expect(code).not.toContain('msg_1');
+	});
+
 	it('should generate valid TypeScript for a simple workflow', () => {
 		const json: WorkflowJSON = {
 			id: 'test-123',
@@ -136,6 +166,37 @@ describe('generateWorkflowCode', () => {
 
 		expect(code).toContain('credentials:');
 		expect(code).toContain("slackApi: newCredential('My Slack', 'cred-123')");
+	});
+
+	it('should generate a placeholder for an AI Gateway managed credential', () => {
+		const json: WorkflowJSON = {
+			id: 'managed-credential-test',
+			name: 'Managed Credentials Test',
+			nodes: [
+				{
+					id: 'node-1',
+					name: 'Slack',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 2.2,
+					position: [0, 0],
+					parameters: {},
+					credentials: {
+						slackApi: {
+							id: null,
+							name: 'n8n Connect',
+							__aiGatewayManaged: true,
+						},
+					},
+				},
+			],
+			connections: {},
+		};
+
+		const code = generateWorkflowCode(json);
+
+		expect(code).toContain("slackApi: newCredential('n8n Connect')");
+		expect(code).not.toContain('id: null');
+		expect(code).not.toContain('__aiGatewayManaged');
 	});
 
 	it('should generate code for sticky notes', () => {
@@ -427,6 +488,13 @@ describe('generateWorkflowCode with AI subnodes', () => {
 					parameters: {
 						model: 'gpt-4',
 					},
+					credentials: {
+						openAiApi: {
+							id: null,
+							name: 'n8n Connect',
+							__aiGatewayManaged: true,
+						},
+					},
 				},
 			],
 			connections: {
@@ -450,6 +518,9 @@ describe('generateWorkflowCode with AI subnodes', () => {
 		// Should reference the variable in subnodes config
 		expect(code).toContain('subnodes:');
 		expect(code).toMatch(/model: \w+/); // Variable reference, not inline call
+		expect(code).toContain("openAiApi: newCredential('n8n Connect')");
+		expect(code).not.toContain('id: null');
+		expect(code).not.toContain('__aiGatewayManaged');
 	});
 
 	it('should generate subnode config for AI agent with multiple subnodes', () => {

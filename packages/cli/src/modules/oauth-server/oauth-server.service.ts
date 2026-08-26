@@ -23,6 +23,7 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { Response } from 'express';
 
+import { AuthService } from '@/auth/auth.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
@@ -33,7 +34,8 @@ import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { OAuthAuthorizationCodeService } from './oauth-authorization-code.service';
-import { OAuthSessionService } from './oauth-session.service';
+import { OAuthConsentService } from './oauth-consent.service';
+import { OAuthSessionPayload, OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
 
@@ -107,6 +109,8 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
+		private readonly authService: AuthService,
+		private readonly oauthConsentService: OAuthConsentService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -200,19 +204,19 @@ export class OAuthServerService implements OAuthServerProvider {
 
 	/**
 	 * On-demand per-trigger virtual client for a first-party protected resource
-	 * (form trigger). Public + PKCE, single redirect_uri = the trigger URL (which
-	 * equals the client_id and the resource URL). The row is persisted lazily only
-	 * to satisfy the FKs from auth codes / tokens; it is never a DCR client and is
-	 * excluded from the registered-client cap.
+	 * (form or chat trigger). Public + PKCE, single redirect_uri = the trigger URL
+	 * (which equals the client_id and the resource URL). The row is persisted lazily
+	 * only to satisfy the FKs from auth codes / tokens; it is never a DCR client and
+	 * is excluded from the registered-client cap.
 	 */
 	private async resolveVirtualClient(
 		clientId: string,
 	): Promise<OAuthClientInformationFull | undefined> {
-		// First-party resources are form triggers served under the (test) webhook base
-		// URL, so a client_id that isn't can never resolve to one. Skip the resolver
+		// First-party resources are form and chat triggers served under the (test) webhook
+		// base URL, so a client_id that isn't can never resolve to one. Skip the resolver
 		// sweep + lazy upsert for anything else, so the unauthenticated /authorize path
 		// can't be used to fan out DB lookups on arbitrary client_ids.
-		if (!this.isFormTriggerClientId(clientId)) {
+		if (!this.isTriggerResourceClientId(clientId)) {
 			return undefined;
 		}
 
@@ -247,8 +251,8 @@ export class OAuthServerService implements OAuthServerProvider {
 		};
 	}
 
-	/** Whether a client_id could be a form-trigger resource URL (served under a webhook base URL). */
-	private isFormTriggerClientId(clientId: string): boolean {
+	/** Whether a client_id could be a trigger resource URL (served under a webhook base URL). */
+	private isTriggerResourceClientId(clientId: string): boolean {
 		return [this.urlService.getWebhookBaseUrl(), this.urlService.getTestWebhookBaseUrl()]
 			.map((base) => (base.endsWith('/') ? base : `${base}/`))
 			.some((base) => clientId.startsWith(base));
@@ -360,14 +364,23 @@ export class OAuthServerService implements OAuthServerProvider {
 			const supportedScopes = targetResource?.scopes ?? [];
 			const requestedScopes = params.scopes?.filter((scope) => supportedScopes.includes(scope));
 
-			this.oauthSessionService.createSession(res, {
+			const sessionPayload: OAuthSessionPayload = {
 				clientId: client.client_id,
 				redirectUri: params.redirectUri,
 				codeChallenge: params.codeChallenge,
 				state: params.state ?? null,
 				resource,
 				...(requestedScopes && requestedScopes.length > 0 && { requestedScopes }),
-			});
+			};
+
+			const autoApproval = await this.tryAutoApproveConsent(res, sessionPayload, client);
+
+			if (autoApproval) {
+				res.redirect(autoApproval.redirectUrl);
+				return;
+			}
+
+			this.oauthSessionService.createSession(res, sessionPayload);
 
 			res.redirect('/oauth/consent');
 		} catch (error) {
@@ -500,6 +513,35 @@ export class OAuthServerService implements OAuthServerProvider {
 
 	async verifyAccessToken(token: string): Promise<AuthInfo> {
 		return await this.tokenService.verifyAccessToken(token);
+	}
+
+	private async tryAutoApproveConsent(
+		res: Response,
+		sessionPayload: OAuthSessionPayload,
+		client: OAuthClientInformationFull,
+	): Promise<{ redirectUrl: string } | null> {
+		const req = res.req;
+		const cookie = this.authService.getCookieToken(req);
+		if (cookie) {
+			let user: User | undefined;
+
+			try {
+				user = await this.authService.authenticateUserByCookie(cookie);
+			} catch (error) {
+				this.logger.debug('Auto-approval failed: user not authenticated', {
+					clientId: client.client_id,
+				});
+			}
+
+			if (user) {
+				const reuseResult = await this.oauthConsentService.tryReuseConsent(user, sessionPayload);
+				if (reuseResult) {
+					return { redirectUrl: reuseResult.redirectUrl };
+				}
+			}
+		}
+
+		return null;
 	}
 
 	// Exact-match against a registered resource, as required by RFC 8707 §2.1.

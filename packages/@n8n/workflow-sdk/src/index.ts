@@ -143,6 +143,11 @@ export {
 
 // Code helpers
 export { runOnceForAllItems, runOnceForEachItem } from './utils/code-helpers';
+export {
+	dropInvalidWorkflowJsonGroups,
+	toEngineConnections,
+	toGroupValidationNodes,
+} from './utils/workflow-json-engine-helpers';
 
 // Utility functions
 export { isPlainObject, getProperty, hasProperty } from './utils/safe-access';

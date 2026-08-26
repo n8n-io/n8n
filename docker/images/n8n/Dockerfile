@@ -1,9 +1,12 @@
-ARG NODE_VERSION=24.18.1
+ARG NODE_VERSION=26.7.0
 ARG N8N_VERSION=snapshot
 
+# The digest pins node:26.7.0-alpine3.24 for amd64 and arm64. Change the tag and the digest together.
+ARG BUILDER_IMAGE=node:26.7.0-alpine3.24@sha256:aadf416b2cdce311a8811ba3f0608a61b77dbf997500e2eafe781b51f6a0b019
+ARG RUNTIME_IMAGE=n8nio/base:26.7.0@sha256:33687300c4e94dc00f42ec79ae15082ae07330ecd82ae1167125905b65908ff8
+
 # The runtime base has no compiler, so this stage supplies one.
-# The digest pins node:24.18.1-alpine3.24 for amd64 and arm64. Change the tag and the digest together.
-FROM node:24.18.1-alpine3.24@sha256:f70403e87646dc51b45295f4b8b70cdad0b63d2297c4c9899119b03f7af7a6b3 AS toolchain
+FROM ${BUILDER_IMAGE} AS toolchain
 RUN apk add --no-cache python3 make g++
 
 # Build isolated-vm in a separate stage. The only cache input is the module source.
@@ -29,17 +32,24 @@ COPY ./compiled /usr/local/lib/node_modules/n8n
 # version to the pinned image digest instead of fetching it at build time.
 RUN cd /usr/local/lib/node_modules/n8n/node_modules/sqlite3 && \
     node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release
+# The workspace install cannot build this binding, because CI installs on a Node version
+# Confluent ships no prebuild for, so `./compiled` arrives without one. Compile it here
+# and link against the runtime base's librdkafka. See: https://github.com/confluentinc/confluent-kafka-javascript/issues/397
+RUN apk add --no-cache librdkafka-dev && \
+    cd /usr/local/lib/node_modules/n8n/node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript && \
+    BUILD_LIBRDKAFKA=0 node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release
 COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
      /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/build/Release/isolated_vm.node
 # node-gyp-build finds build/Release first. Delete the prebuilds to remove the glibc fallback.
 RUN rm -rf /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/prebuilds
 
-# The digest pins n8nio/base:24.18.1 for amd64 and arm64. A separate workflow builds that
-# image, so a new base reaches this image only when you change the digest here.
-FROM n8nio/base:24.18.1@sha256:f7a23e449f093b8b203467919e969ca35d12ba959442aadc1f69bb174b160ad2
+# A separate workflow builds the base image, so a new base reaches this image only
+# when you change the reference here (see BUILDER_IMAGE/RUNTIME_IMAGE above).
+FROM ${RUNTIME_IMAGE}
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
+ARG IMAGE_DESCRIPTION="Workflow Automation Tool"
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
@@ -61,7 +71,7 @@ USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
 
 LABEL org.opencontainers.image.title="n8n" \
-      org.opencontainers.image.description="Workflow Automation Tool" \
+      org.opencontainers.image.description="${IMAGE_DESCRIPTION}" \
       org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
       org.opencontainers.image.url="https://n8n.io" \
       org.opencontainers.image.version=${N8N_VERSION}

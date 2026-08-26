@@ -7,7 +7,7 @@ import AgentVectorStoresModal from '../components/AgentVectorStoresModal.vue';
 
 const closeModalMock = vi.fn();
 const openNewCredentialMock = vi.fn();
-const fetchAllCredentialsForWorkflowMock = vi.fn();
+const fetchUsableCredentialsMock = vi.fn();
 const testAgentVectorStoreMock = vi.fn();
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
@@ -45,7 +45,7 @@ vi.mock('@/features/credentials/credentials.constants', () => ({
 
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
-		fetchAllCredentialsForWorkflow: fetchAllCredentialsForWorkflowMock,
+		fetchUsableCredentials: fetchUsableCredentialsMock,
 		getCredentialTypeByName: () => undefined,
 	}),
 }));
@@ -163,7 +163,7 @@ const expectedVectorStore = {
 describe('AgentVectorStoresModal', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		fetchAllCredentialsForWorkflowMock.mockResolvedValue([qdrantCredential, openAiCredential]);
+		fetchUsableCredentialsMock.mockResolvedValue([qdrantCredential, openAiCredential]);
 	});
 
 	it('lists all four vector store providers with a Connect button each', async () => {
@@ -353,7 +353,7 @@ describe('AgentVectorStoresModal', () => {
 
 	it('clears provider-specific fields when going back to the provider picker', async () => {
 		const pineconeCredential = { id: 'pinecone-cred-1', name: 'My Pinecone', type: 'pineconeApi' };
-		fetchAllCredentialsForWorkflowMock.mockResolvedValue([
+		fetchUsableCredentialsMock.mockResolvedValue([
 			pineconeCredential,
 			qdrantCredential,
 			openAiCredential,

@@ -139,8 +139,12 @@ describe('WorkflowSubmitForReviewDialog', () => {
 
 			const versionDescriptionInput = getByTestId('workflow-review-version-description-input');
 			await userEvent.type(versionDescriptionInput, 'What changed');
+			expect(getByTestId('workflow-version-description-character-count')).toHaveTextContent(
+				'12/2048',
+			);
 			await goToStep2();
 			await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
+			expect(getByTestId('workflow-review-title-character-count')).toHaveTextContent('15/128');
 
 			await userEvent.click(getByTestId('workflow-review-back-button'));
 
@@ -187,7 +191,7 @@ describe('WorkflowSubmitForReviewDialog', () => {
 	});
 
 	it('requires a non-empty title and cancel creates nothing', async () => {
-		const { getByTestId, emitted, goToStep2 } = await renderDialog();
+		const { getByTestId, queryByTestId, emitted, goToStep2 } = await renderDialog();
 		await goToStep2();
 
 		const titleInput = getByTestId('workflow-review-title-input');
@@ -195,6 +199,9 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		expect(titleInput).toHaveAttribute('maxlength', '128');
 		expect(getByTestId('workflow-review-description-input')).toHaveAttribute('maxlength', '512');
 		expect(submitButton).toBeDisabled();
+		// counters only appear once there is something to count
+		expect(queryByTestId('workflow-review-title-character-count')).not.toBeInTheDocument();
+		expect(queryByTestId('workflow-review-description-character-count')).not.toBeInTheDocument();
 		await userEvent.type(titleInput, '   ');
 		expect(submitButton).toBeDisabled();
 
@@ -219,6 +226,7 @@ describe('WorkflowSubmitForReviewDialog', () => {
 
 		await userEvent.type(getByTestId('workflow-review-title-input'), '  Review payments  ');
 		await userEvent.type(getByTestId('workflow-review-description-input'), '  Check retries  ');
+		expect(getByTestId('workflow-review-description-character-count')).toHaveTextContent('17/512');
 		await selectReviewer();
 		await userEvent.click(getByTestId('workflow-review-submit-button'));
 
@@ -231,7 +239,6 @@ describe('WorkflowSubmitForReviewDialog', () => {
 						workflowId: 'workflow-1',
 						workflowVersionId: SAVED_VERSION_ID,
 						workflowVersionName: GENERATED_VERSION_NAME,
-						// R3 (P3): omitted while untouched — see LIGO-939_review.md.
 						workflowVersionDescription: undefined,
 					},
 				],

@@ -5,9 +5,16 @@ import type { AgentsConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
+import {
+	encodeAgentSandboxHostMetadata,
+	hashAgentSandboxPrincipal,
+} from '../../agent-sandbox-principal';
 import type { AgentCheckpoint } from '../../entities/agent-checkpoint.entity';
 import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository';
-import { N8NCheckpointStorage } from '../n8n-checkpoint-storage';
+import {
+	CHECKPOINT_RECONCILIATION_OVERFLOW,
+	N8NCheckpointStorage,
+} from '../n8n-checkpoint-storage';
 
 const suspendedState: SerializableAgentState = {
 	status: 'suspended',
@@ -22,6 +29,7 @@ const suspendedState: SerializableAgentState = {
 		},
 	},
 };
+const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 
 function makeService() {
 	const repository = mock<AgentCheckpointRepository>();
@@ -176,5 +184,125 @@ describe('N8NCheckpointStorage', () => {
 		await service.getStorage('agent-1').delete('run-1');
 
 		expect(repository.expireByRunIdAndAgentId).toHaveBeenCalledWith('run-1', 'agent-1');
+	});
+
+	it('returns every persisted active run for the principal workspace', async () => {
+		const { service, repository } = makeService();
+		const otherPrincipalHash = hashAgentSandboxPrincipal({
+			type: 'n8n-user',
+			userId: 'user-2',
+		});
+		const stateFor = (
+			status: SerializableAgentState['status'],
+			hash = principalHash,
+		): SerializableAgentState => ({
+			...suspendedState,
+			status,
+			persistence: {
+				...suspendedState.persistence!,
+				hostMetadata: encodeAgentSandboxHostMetadata({
+					projectId: 'project-1',
+					principalHash: hash,
+				}),
+			},
+		});
+		const checkpoint = (
+			runId: string,
+			state: string | null,
+			overrides: Partial<AgentCheckpoint> = {},
+		) =>
+			({
+				runId,
+				agentId: 'agent-1',
+				expired: false,
+				state,
+				updatedAt: new Date(),
+				...overrides,
+			}) as AgentCheckpoint;
+		repository.findForSandboxReconciliation.mockResolvedValue([
+			checkpoint('run-running', JSON.stringify(stateFor('running'))),
+			checkpoint('run-suspended', JSON.stringify(stateFor('suspended'))),
+			checkpoint('run-cancelled', JSON.stringify(stateFor('cancelled'))),
+			checkpoint('run-other-principal', JSON.stringify(stateFor('running', otherPrincipalHash))),
+			checkpoint('run-old', JSON.stringify(stateFor('suspended')), { updatedAt: new Date(0) }),
+			checkpoint('run-expired', JSON.stringify(stateFor('running')), { expired: true }),
+			checkpoint('run-malformed', '{'),
+			checkpoint('run-empty', null),
+		]);
+
+		await expect(service.getActiveRunIdsForSandbox('agent-1', principalHash)).resolves.toEqual(
+			new Set(['run-running', 'run-suspended', 'run-old']),
+		);
+	});
+
+	it('reports overflow instead of returning a partial set of protected runs', async () => {
+		const { service, repository } = makeService();
+		repository.findForSandboxReconciliation.mockResolvedValue(
+			Array.from({ length: 101 }, (_, index) => ({ runId: `run-${index}` }) as AgentCheckpoint),
+		);
+
+		await expect(service.getActiveRunIdsForSandbox('agent-1', principalHash)).resolves.toBe(
+			CHECKPOINT_RECONCILIATION_OVERFLOW,
+		);
+	});
+
+	describe('findSuspendedForThread', () => {
+		const row = (runId: string, state: SerializableAgentState) =>
+			({
+				runId,
+				agentId: 'agent-1',
+				expired: false,
+				state: JSON.stringify(state),
+			}) as AgentCheckpoint;
+
+		const suspendedFor = (threadId: string, overrides: Record<string, unknown> = {}) =>
+			({
+				...suspendedState,
+				persistence: { threadId, resourceId: 'resource-1', ...overrides },
+			}) as SerializableAgentState;
+
+		// Every active checkpoint is scanned, not just the newest few — a busy
+		// agent's other threads must not hide this thread's suspension.
+		it('returns the checkpoint parked on the requested thread', async () => {
+			const { service, repository } = makeService();
+			repository.findActiveForAgent.mockResolvedValue([
+				row('run-1', suspendedFor('thread-other-1')),
+				row('run-2', suspendedFor('thread-other-2')),
+				row('run-3', suspendedFor('thread-other-3')),
+				row('run-4', suspendedFor('thread-other-4')),
+				row('run-5', suspendedFor('thread-other-5')),
+				row('run-target', suspendedFor('thread-target')),
+			]);
+
+			const result = await service.findSuspendedForThread('agent-1', 'thread-target');
+
+			expect(result?.persistence?.threadId).toBe('thread-target');
+		});
+
+		// A delegated child suspends under its parent's thread; the parent run
+		// owns the conversation, so the child must not surface as its suspension.
+		it('ignores delegated child checkpoints', async () => {
+			const { service, repository } = makeService();
+			repository.findActiveForAgent.mockResolvedValue([
+				row('child-run', suspendedFor('thread-target', { delegated: true })),
+			]);
+
+			await expect(service.findSuspendedForThread('agent-1', 'thread-target')).resolves.toBeNull();
+		});
+
+		it('ignores checkpoints that are no longer suspended, and malformed state', async () => {
+			const { service, repository } = makeService();
+			repository.findActiveForAgent.mockResolvedValue([
+				row('run-running', { ...suspendedFor('thread-target'), status: 'running' }),
+				{
+					runId: 'run-malformed',
+					agentId: 'agent-1',
+					expired: false,
+					state: '{',
+				} as AgentCheckpoint,
+			]);
+
+			await expect(service.findSuspendedForThread('agent-1', 'thread-target')).resolves.toBeNull();
+		});
 	});
 });

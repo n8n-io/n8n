@@ -1,9 +1,10 @@
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import type { WorkflowPublishBlockedReason } from '@n8n/api-types';
+import type { AuthenticatedRequest } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
-import type { Mcpauth_type } from '@/services/oauth-token-verifier-proxy.service';
+import type { Mcpauth_type, McpCallerAuth } from '@/services/oauth-token-verifier-proxy.service';
 
 import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
@@ -92,6 +93,8 @@ export type SearchWorkflowsParams = {
 	projectId?: string;
 	tags?: string[];
 	sortBy?: SearchWorkflowsSortBy;
+	folderId?: string;
+	includeSubfolders?: boolean;
 };
 
 export type SearchWorkflowsItem = {
@@ -103,12 +106,14 @@ export type SearchWorkflowsItem = {
 	updatedAt: string | null;
 	triggerCount: number | null;
 	availableInMCP: boolean;
+	parentFolderId: string | null;
 	tags: Array<{ id: string; name: string }>;
 };
 
 export type SearchWorkflowsResult = {
 	data: SearchWorkflowsItem[];
 	count: number;
+	error?: string;
 };
 
 export type WorkflowDetailsResult = z.infer<WorkflowDetailsOutputSchema>;
@@ -134,6 +139,33 @@ export type McpClientInfo = {
 	version?: string;
 };
 
+/**
+ * What the MCP auth middleware resolved from the bearer token, carried on the
+ * request for the handlers downstream of it. Both fields are absent until the
+ * middleware runs.
+ */
+export type McpAuthenticatedRequest = AuthenticatedRequest & {
+	mcpCaller?: McpCallerAuth;
+	/** `undefined` = not scope-bearing (API key) → full tool access. */
+	mcpScopes?: string[];
+};
+
+/**
+ * The same resolution, in the shape the MCP server is built from. Read off the
+ * request by the controller so nothing below it touches Express, and passed as
+ * one object because scopes gate which tools register while the caller only
+ * labels the tool-call events.
+ */
+export type McpAuthContext = {
+	/**
+	 * Required, because this is the field that gates which tools register: a
+	 * partial context must not be able to silently expose every tool. `undefined`
+	 * = not scope-bearing (API key, legacy token) → all tools register.
+	 */
+	grantedScopes: string[] | undefined;
+	caller?: McpCallerAuth;
+};
+
 export type McpAppsTelemetryVariant = 'env_override' | 'variant' | 'control' | 'unassigned';
 
 // Telemetry payloads
@@ -152,8 +184,9 @@ export type UserConnectedToMCPEventPayload = {
 };
 
 export type ExecuteWorkflowsInputMeta = {
-	type: 'webhook' | 'chat' | 'schedule' | 'form';
-	parameter_count: number;
+	type?: 'webhook' | 'chat' | 'form';
+	parameter_count?: number;
+	triggerNodeName?: string;
 };
 
 export type WorkflowNotFoundReason =
@@ -164,7 +197,8 @@ export type WorkflowNotFoundReason =
 	| 'workflow_not_active'
 	| 'unsupported_trigger'
 	| 'execution_not_found'
-	| 'invalid_pin_data';
+	| 'invalid_pin_data'
+	| 'invalid_inputs';
 
 export type UserCalledMCPToolEventPayload = {
 	user_id?: string;

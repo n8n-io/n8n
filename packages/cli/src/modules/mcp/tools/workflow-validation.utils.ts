@@ -44,27 +44,14 @@ export type GetMcpWorkflowOptions = {
 };
 
 /**
- * Validates and retrieves a workflow for MCP operations.
- * Performs permission, archive, and MCP availability checks.
+ * Validates an already-fetched workflow for MCP operations: permission
+ * (present at all), archive, and MCP availability checks.
  *
  * @throws WorkflowAccessError with appropriate reason if validation fails
  */
-export async function getMcpWorkflow(
-	workflowId: string,
-	user: User,
-	scopes: Scope[],
-	workflowFinderService: WorkflowFinderService,
-	options?: GetMcpWorkflowOptions,
-): Promise<FoundWorkflow> {
-	// Forwarded whole: hand-copying each flag is what let `includeParentFolder`
-	// go missing here while the finder already supported it.
-	const workflow = await workflowFinderService.findWorkflowForUser(
-		workflowId,
-		user,
-		scopes,
-		options ?? {},
-	);
-
+export function validateMcpWorkflow<
+	T extends Pick<FoundWorkflow, 'id' | 'isArchived' | 'settings'>,
+>(workflow: T | null | undefined): T {
 	if (!workflow) {
 		throw new WorkflowAccessError(
 			"Workflow not found or you don't have permission to access it.",
@@ -74,7 +61,7 @@ export async function getMcpWorkflow(
 
 	if (workflow.isArchived) {
 		throw new WorkflowAccessError(
-			`Workflow '${workflowId}' is archived and cannot be accessed.`,
+			`Workflow '${workflow.id}' is archived and cannot be accessed.`,
 			'workflow_archived',
 		);
 	}
@@ -87,4 +74,27 @@ export async function getMcpWorkflow(
 	}
 
 	return workflow;
+}
+
+/**
+ * Validates and retrieves a workflow for MCP operations.
+ * Performs permission, archive, and MCP availability checks.
+ *
+ * @throws WorkflowAccessError with appropriate reason if validation fails
+ */
+export async function getMcpWorkflow(
+	workflowId: string,
+	user: User,
+	scopes: Scope[],
+	workflowFinderService: WorkflowFinderService,
+	options?: GetMcpWorkflowOptions,
+): Promise<FoundWorkflow> {
+	const workflow = await workflowFinderService.findWorkflowForUser(
+		workflowId,
+		user,
+		scopes,
+		options ?? {},
+	);
+
+	return validateMcpWorkflow(workflow);
 }

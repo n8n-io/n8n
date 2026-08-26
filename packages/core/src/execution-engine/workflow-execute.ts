@@ -27,7 +27,6 @@ import type {
 	ITaskData,
 	ITaskDataConnections,
 	ITaskMetadata,
-	NodeApiError,
 	NodeOperationError,
 	Workflow,
 	IRunExecutionData,
@@ -39,6 +38,7 @@ import type {
 	INodeIssues,
 	INodeType,
 	ITaskStartedData,
+	JsonObject,
 	AiAgentRequest,
 	IWorkflowExecutionDataProcess,
 	EngineRequest,
@@ -55,6 +55,7 @@ import {
 	UnexpectedError,
 	UserError,
 	OperationalError,
+	NodeApiError,
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
@@ -103,6 +104,14 @@ interface RunWorkflowOptions {
 	 * By default run() executes only destinationNode and its parents, others are not allowed to run
 	 */
 	additionalRunFilterNodes?: string[];
+}
+
+function normalizeUnhandledAxiosError(error: unknown, node: INode): ExecutionBaseError {
+	if (isAxiosError(error)) {
+		return new NodeApiError(node, error as JsonObject);
+	}
+
+	return error as ExecutionBaseError;
 }
 
 export class WorkflowExecute {
@@ -1631,27 +1640,34 @@ export class WorkflowExecute {
 						stack: e.stack,
 					};
 
-					// Set the incoming data of the node that it can be saved correctly
+					// Set the incoming data of the node that it can be saved correctly.
+					// A Chat Trigger-only workflow has an empty stack, so there may be no node to
+					// blame — recording the error alone beats throwing over the top of it.
+					const startItem = this.runExecutionData.executionData!.nodeExecutionStack.at(0);
 
-					executionData = this.runExecutionData.executionData!.nodeExecutionStack[0];
-					const taskData: ITaskData = {
-						startTime: Date.now(),
-						executionIndex: 0,
-						executionTime: 0,
-						data: {
-							main: executionData.data.main,
-						},
-						source: [],
-						executionStatus: 'error',
-						hints: [],
-					};
-					this.runExecutionData.resultData = {
-						runData: {
-							[executionData.node.name]: [taskData],
-						},
-						lastNodeExecuted: executionData.node.name,
-						error: executionError,
-					};
+					if (startItem) {
+						executionData = startItem;
+						const taskData: ITaskData = {
+							startTime: Date.now(),
+							executionIndex: 0,
+							executionTime: 0,
+							data: {
+								main: executionData.data.main,
+							},
+							source: [],
+							executionStatus: 'error',
+							hints: [],
+						};
+						this.runExecutionData.resultData = {
+							runData: {
+								[executionData.node.name]: [taskData],
+							},
+							lastNodeExecuted: executionData.node.name,
+							error: executionError,
+						};
+					} else {
+						this.runExecutionData.resultData.error = executionError;
+					}
 
 					throw error;
 				}
@@ -2010,7 +2026,7 @@ export class WorkflowExecute {
 								});
 							}
 
-							const e = error as unknown as ExecutionBaseError;
+							const e = normalizeUnhandledAxiosError(error, executionNode);
 
 							executionError = { ...e, message: e.message, stack: e.stack };
 

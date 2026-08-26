@@ -61,7 +61,11 @@ describe('useAiGateway', () => {
 
 		it('should fetch and update balance and budget when enabled', async () => {
 			mockIsAiGatewayEnabled.value = true;
-			mockGetGatewayWallet.mockResolvedValue({ balance: 7, budget: 10 });
+			mockGetGatewayWallet.mockResolvedValue({
+				balance: 7,
+				budget: 10,
+				hasEverToppedUp: false,
+			});
 
 			const { fetchWallet, balance, budget } = useAiGateway();
 
@@ -81,9 +85,9 @@ describe('useAiGateway', () => {
 			await fetchWallet();
 			expect(balance.value).toBe(5);
 
-			// Second call fails
+			// Second call fails (force past the TTL cache so it actually hits the API)
 			mockGetGatewayWallet.mockRejectedValueOnce(new Error('Network error'));
-			await fetchWallet();
+			await fetchWallet({ force: true });
 
 			// Values should remain from first successful call
 			expect(balance.value).toBe(5);

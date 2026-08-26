@@ -97,7 +97,7 @@ export class EnterpriseCredentialsService {
 	}
 
 	async getOne(credentialId: string) {
-		return await this.credentialsFinderService.findCredentialById(credentialId);
+		return await this.credentialsFinderService.findById(credentialId);
 	}
 
 	async getOneForUser(user: User, credentialId: string, includeDecryptedData: boolean) {
@@ -228,9 +228,10 @@ export class EnterpriseCredentialsService {
 			);
 		}
 
-		// Transferring an end-user credential into a project is equivalent to creating
-		// one there, so it must clear the same createEndUser gate.
+		// Transferring an end-user credential into a project is equivalent to
+		// creating one there: same createEndUser gate, no personal projects.
 		if (credential.isResolvable) {
+			this.credentialsService.ensureEndUserCredentialAllowedInProject(destinationProject);
 			await this.credentialsService.ensureCanManageEndUserCredential(user, destinationProject.id);
 		}
 

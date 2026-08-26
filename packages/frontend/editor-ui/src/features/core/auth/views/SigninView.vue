@@ -17,6 +17,7 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 import type { IFormBoxConfig } from '@/Interface';
 import { MFA_AUTHENTICATION_REQUIRED_ERROR_CODE, VIEWS, MFA_FORM } from '@/app/constants';
 import type { LoginRequestDto } from '@n8n/api-types';
+import { SSO_ERROR_ACCESS_DENIED, SSO_ERROR_QUERY_PARAM } from '@n8n/api-types';
 
 export type EmailOrLdapLoginIdAndPassword = Pick<
 	LoginRequestDto,
@@ -44,18 +45,36 @@ const reportError = ref(false);
 
 const notificationsStore = useNotificationsStore();
 
+// Notifications are suppressed on the auth views, so lift the suppression just
+// for this message.
+const showAuthViewMessage = (messageData: Parameters<typeof toast.showMessage>[0]) => {
+	notificationsStore.setNotificationsSuppressed(false);
+	toast.showMessage(messageData);
+	notificationsStore.setNotificationsSuppressed(true);
+};
+
 onMounted(() => {
+	// An SSO login denied by role mapping ("Block access"): the user authenticated
+	// fine at the IdP, they are simply not allowed in, so say exactly that.
+	if (route.query[SSO_ERROR_QUERY_PARAM] === SSO_ERROR_ACCESS_DENIED) {
+		showAuthViewMessage({
+			title: locale.baseText('auth.signin.accessDenied.title'),
+			message: locale.baseText('auth.signin.accessDenied'),
+			type: 'error',
+			duration: 0,
+		});
+		return;
+	}
+
 	if (route.query.sessionExpired !== 'true') {
 		return;
 	}
 
-	notificationsStore.setNotificationsSuppressed(false);
-	toast.showMessage({
+	showAuthViewMessage({
 		title: locale.baseText('auth.signin.sessionExpired.title'),
 		message: locale.baseText('auth.signin.sessionExpired'),
 		type: 'info',
 	});
-	notificationsStore.setNotificationsSuppressed(true);
 });
 
 // Covers leaving via e.g. "Forgot password", which login() below never sees.

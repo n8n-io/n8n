@@ -393,6 +393,7 @@ export interface ICredentialType {
 	documentationUrl?: string;
 	__overwrittenProperties?: string[];
 	__skipManagedCreation?: boolean;
+	__showManagedOAuthScopes?: boolean;
 	authenticate?: IAuthenticate;
 	preAuthentication?: (
 		this: IHttpRequestHelper,
@@ -412,6 +413,16 @@ export interface ICredentialType {
 	 * Opt-in. Existing credentials without this flag are unaffected.
 	 */
 	restrictToSupportedNodes?: true;
+
+	/**
+	 * If `true`, the domain restriction fields will not be shown in the credential type properties.
+	 */
+	hideDomainRestrictionFields?: boolean;
+
+	/**
+	 * If `true`, the credential type will not be shown in the credentials add modal
+	 */
+	hidden?: boolean;
 }
 
 export interface ICredentialTypes {
@@ -1160,6 +1171,12 @@ export type CredentialCheckStatus = {
 	status: 'missing' | 'configured' | 'resolver_missing';
 	authorizationUrl?: string;
 	revokeUrl?: string;
+	/**
+	 * Absolute URL of the credential type's provider icon. Resolved server-side
+	 * because consumers (e.g. the form hosting shell, rendered from nodes-base)
+	 * have no access to the credential registry.
+	 */
+	iconUrl?: string;
 };
 
 export type CredentialCheckResult = {
@@ -1526,7 +1543,7 @@ export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMod
 	 * Call only after the token is validated. The identity persists for the whole
 	 * execution (including across a Wait), within the token's validity window.
 	 */
-	establishTriggerIdentity(token: string, resource: string): Promise<void>;
+	establishTriggerIdentity(token: string, resource: string, subject?: string): Promise<void>;
 	/**
 	 * Checks the status of the triggering identity's resolvable (end-user) credentials
 	 * for this workflow, using the execution context established by
@@ -2272,6 +2289,11 @@ export type ExecuteAgentInfo = ExecuteAgentSource & {
 	 */
 	outputSchema?: JSONSchema7;
 	/**
+	 * Whether to forward generated text to a streaming workflow response. Defaults
+	 * to true when omitted. This does not affect execution progress events.
+	 */
+	enableStreaming?: boolean;
+	/**
 	 * Which slice of the calling node's input the agent's `fetch_input_data`
 	 * tool should expose: the single current item (`'item'`, default) or all
 	 * input items (`'all'`, used when the node invokes the agent once for the
@@ -2315,6 +2337,14 @@ export interface ExecuteAgentWorkflowContext {
 	nodes: Array<{ name: string; type: string }>;
 	/** The calling execution's run data (read-only by convention). */
 	runExecutionData: IRunExecutionData;
+}
+
+export interface ExecuteAgentInvocationContext {
+	nodeId: string;
+	nodeName: string;
+	runIndex: number;
+	itemIndex: number;
+	sendResponseChunk?: (type: ChunkType, content?: string) => Promise<void>;
 }
 
 export interface ExecuteAgentOptions {
@@ -2992,12 +3022,29 @@ export type TriggerPanelDefinition = {
 	activationHint?: string | { active: string; inactive: string };
 };
 
+/**
+ * Collapses hints that report the same kind of problem, so a node reporting it
+ * for 20 fields shows one summary line instead of 20 near-identical callouts.
+ */
+export type NodeHintGroup = {
+	/** Hints sharing this key are collapsed together */
+	key: string;
+	/** Text shown while collapsed. `{count}` is replaced with the number of hints in the group. */
+	summary: string;
+	/**
+	 * Short form listed when the group is expanded, e.g. just the field name.
+	 * Falls back to `message` when not set.
+	 */
+	label?: string;
+};
+
 export type NodeHint = {
 	message: string;
 	type?: 'info' | 'warning' | 'danger';
 	location?: 'outputPane' | 'inputPane' | 'ndv';
 	displayCondition?: string;
 	whenToDisplay?: 'always' | 'beforeExecution' | 'afterExecution';
+	group?: NodeHintGroup;
 };
 
 export type NodeExecutionHint = Omit<NodeHint, 'whenToDisplay' | 'displayCondition'>;
@@ -3271,6 +3318,27 @@ export interface RelatedExecution {
 	// In the case of a parent execution, whether the parent should be resumed when the sub execution finishes.
 	shouldResume?: boolean;
 	executionContext?: IExecutionContext;
+}
+
+/**
+ * The suspended agent tool call an execution should wake when it finishes — the
+ * agent-run counterpart to `RelatedExecution`, which wakes a parent workflow.
+ * Stamped by the agent workflow tool onto the sub-executions it starts.
+ */
+export interface RelatedAgentRun {
+	agentId: string;
+	projectId: string;
+	/** Agent memory thread the run belongs to; addresses the chat thread to reply in. */
+	threadId: string;
+	runId: string;
+	toolCallId: string;
+	/** Chat platform the run came from, or `n8n_chat` for the in-app preview. */
+	integrationType?: string;
+	/**
+	 * The interactive n8n user, when there is one. The preview chat resumes the draft
+	 * agent version, which gates node and workflow tools by this user's access.
+	 */
+	userId?: string;
 }
 
 type SubNodeExecutionDataAction = {
@@ -3658,6 +3726,7 @@ export interface IWorkflowExecuteAdditionalData {
 		executionMode: WorkflowExecuteMode,
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
+		invocationContext?: ExecuteAgentInvocationContext,
 	) => Promise<ExecuteAgentData>;
 	listAgents?: (userId: string) => Promise<Array<{ id: string; name: string }>>;
 	getRunExecutionData: (executionId: string) => Promise<IRunExecutionData | undefined>;
@@ -3679,7 +3748,7 @@ export interface IWorkflowExecuteAdditionalData {
 		token: string,
 		resourceUrl: string,
 	) => Promise<N8nOAuth2ValidationResult>;
-	establishTriggerIdentity?(token: string, resource: string): Promise<void>;
+	establishTriggerIdentity?(token: string, resource: string, subject?: string): Promise<void>;
 	checkTriggerCredentialStatus?(): Promise<CredentialCheckResult | undefined>;
 	currentNodeExecutionIndex: number;
 	httpResponse?: express.Response;
@@ -3791,6 +3860,7 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
+	engineType?: 'v1' | 'v2';
 	binaryMode?: WorkflowSettingsBinaryMode;
 	timeSavedPerExecution?: number;
 	timeSavedMode?: 'fixed' | 'dynamic';

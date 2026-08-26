@@ -86,23 +86,41 @@ export const getToolArguments = (body: unknown): Record<string, unknown> => {
 	return {};
 };
 
+export type TriggerEligibility = (node: INode) => boolean;
+
 /**
- * Finds the first supported trigger node in the provided nodes array.
- * Supported MCP triggers for production mode:
- * - Schedule trigger
- * - Webhook trigger
- * - Form trigger
- * - Chat trigger
- *
- * In manual mode, Manual Trigger is also supported.
+ * Enabled nodes that pass the caller-supplied eligibility check.
+ * Shared by execute_workflow (MCP-supported set) and test_workflow (any trigger).
  */
-export const findMcpSupportedTrigger = (
+export const findEnabledEligibleTriggers = (
 	nodes: INode[],
-	mode: McpExecutionMode = 'production',
+	isEligible: TriggerEligibility,
+): INode[] => nodes.filter((node) => !node.disabled && isEligible(node));
+
+/**
+ * Resolve a named enabled eligible trigger, or the first match if no name is given.
+ * test_workflow uses the first-match fallback. execute_workflow must not — it
+ * applies fail-closed rules on the list from findEnabledEligibleTriggers.
+ */
+export const findEnabledEligibleTrigger = (
+	nodes: INode[],
+	isEligible: TriggerEligibility,
+	triggerNodeName?: string,
 ): INode | undefined => {
+	const eligible = findEnabledEligibleTriggers(nodes, isEligible);
+	if (triggerNodeName) {
+		return eligible.find((node) => node.name === triggerNodeName);
+	}
+	return eligible[0];
+};
+
+export const isMcpSupportedTriggerType = (
+	nodeType: string,
+	mode: McpExecutionMode = 'production',
+): boolean => {
 	const triggerNodeTypes =
 		mode === 'production'
 			? Object.keys(SUPPORTED_PRODUCTION_MCP_TRIGGERS)
 			: Object.keys(SUPPORTED_MCP_TRIGGERS);
-	return nodes.find((node) => triggerNodeTypes.includes(node.type) && !node.disabled);
+	return triggerNodeTypes.includes(nodeType);
 };

@@ -11,6 +11,8 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
+import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
+import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { ToolRegistry } from '../tool-registry';
@@ -41,11 +43,17 @@ function makeRuntime() {
 	};
 }
 
-function makeService({ multiMain = false }: { multiMain?: boolean } = {}) {
+function makeService({
+	multiMain = false,
+	sandboxEnabled = false,
+}: { multiMain?: boolean; sandboxEnabled?: boolean } = {}) {
 	const agentRepository = mock<AgentRepository>();
 	const publisher = mock<Publisher>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
 	const credentialsService = mock<CredentialsService>();
+	const sandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+		isEnabled: () => sandboxEnabled,
+	});
 	const globalConfig = { multiMainSetup: { enabled: multiMain } } as GlobalConfig;
 
 	publisher.publishCommand.mockResolvedValue();
@@ -57,6 +65,7 @@ function makeService({ multiMain = false }: { multiMain?: boolean } = {}) {
 		globalConfig,
 		reconstructionService,
 		credentialsService,
+		sandboxRuntimeService,
 	);
 
 	return { service, agentRepository, publisher, reconstructionService };
@@ -94,7 +103,35 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			undefined,
 			'manual',
+			undefined,
 		);
+	});
+
+	it('defers closing an expired runtime until its active lease is released', async () => {
+		vi.useFakeTimers();
+		try {
+			vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+			const { service, agentRepository, reconstructionService } = makeService();
+			const expiredRuntime = makeRuntime();
+			const freshRuntime = makeRuntime();
+
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity
+				.mockResolvedValueOnce(expiredRuntime)
+				.mockResolvedValueOnce(freshRuntime);
+
+			const leasedRuntime = await service.getRuntime({ agentId, projectId });
+			vi.setSystemTime(Date.now() + 30 * 60 * 1000 + 1);
+			const result = await service.getRuntime({ agentId, projectId });
+
+			expect(expiredRuntime.agent.close).not.toHaveBeenCalled();
+			expect(result.agent).toBe(freshRuntime.agent);
+
+			service.releaseRuntimeLease(leasedRuntime.agent);
+			expect(expiredRuntime.agent.close).toHaveBeenCalledOnce();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('keeps draft runtimes separate by integration type', async () => {
@@ -127,6 +164,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			undefined,
 			'manual',
+			undefined,
 		);
 	});
 
@@ -160,6 +198,7 @@ describe('AgentRuntimeCacheService', () => {
 			userA,
 			undefined,
 			'manual',
+			undefined,
 		);
 		expect(reconstructionService.reconstructFromAgentEntity).toHaveBeenNthCalledWith(
 			2,
@@ -170,6 +209,52 @@ describe('AgentRuntimeCacheService', () => {
 			userB,
 			undefined,
 			'manual',
+			undefined,
+		);
+	});
+
+	it('reuses an attached runtime for the same principal and isolates different principals', async () => {
+		const { service, agentRepository, reconstructionService } = makeService({
+			sandboxEnabled: true,
+		});
+		const agent = makeAgent();
+		const firstRuntime = makeRuntime();
+		const secondRuntime = makeRuntime();
+		const firstPrincipal = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-a' });
+		const secondPrincipal = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-b' });
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+		reconstructionService.reconstructFromAgentEntity
+			.mockResolvedValueOnce(firstRuntime)
+			.mockResolvedValueOnce(secondRuntime);
+
+		const first = await service.getRuntime({
+			agentId,
+			projectId,
+			sandboxPrincipalHash: firstPrincipal,
+		});
+		const repeated = await service.getRuntime({
+			agentId,
+			projectId,
+			sandboxPrincipalHash: firstPrincipal,
+		});
+		const second = await service.getRuntime({
+			agentId,
+			projectId,
+			sandboxPrincipalHash: secondPrincipal,
+		});
+
+		expect(repeated).toBe(first);
+		expect(second).not.toBe(first);
+		expect(
+			reconstructionService.reconstructFromAgentEntity.mock.calls.map((call) => call[7]),
+		).toEqual([firstPrincipal, secondPrincipal]);
+	});
+
+	it('requires a principal when sandbox workspaces are enabled', async () => {
+		const enabled = makeService({ sandboxEnabled: true });
+		await expect(enabled.service.getRuntime({ agentId, projectId })).rejects.toThrow(
+			'workspace scope is missing',
 		);
 	});
 
@@ -296,6 +381,7 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			undefined,
 			'integrated',
+			undefined,
 		);
 	});
 
@@ -322,6 +408,7 @@ describe('AgentRuntimeCacheService', () => {
 		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
 		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
 		await service.getRuntime({ agentId, projectId });
+		service.releaseRuntimeLease(runtime.agent);
 
 		service.clearRuntimes(agentId);
 
