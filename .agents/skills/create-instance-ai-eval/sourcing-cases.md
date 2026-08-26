@@ -36,6 +36,12 @@ claude mcp add --scope local --transport http langtracer-hosted \
 session start, so reconnect to pick it up. (The LangSmith MCP is usually already
 connected.)
 
+The MCP returns ids; the driver needs pages. Every thread, cluster, and case you
+cite while sourcing has a web URL off the same base — `<base>/conversations/<threadId>`,
+`<base>/clusters/<id>`, `<base>/test-cases/<id>` — so cite them as links, not bare
+ids. Full table in
+[Share links, never bare ids](SKILL.md#share-links-never-bare-ids).
+
 ## Discover → verify → encode
 
 1. **Scan cluster themes** — `list_cluster_runs` / `get_latest_cluster_run`
