@@ -117,10 +117,11 @@ describe('SettingsUsageAndPlan', () => {
 	it('should show community registered badge', async () => {
 		usageStore.isLoading = false;
 		usageStore.planName = 'Registered Community';
-		const { getByRole, container } = renderComponent();
-		expect(getByRole('heading', { level: 3 })).toHaveTextContent('Community Edition');
-		expect(getByRole('heading', { level: 3 })).toContain(container.querySelector('.n8n-badge'));
-		expect(container.querySelector('.n8n-badge')).toHaveTextContent('Registered');
+		const { getByRole, getByText } = renderComponent();
+		const heading = getByRole('heading', { level: 3 });
+		const badgeLabel = getByText('Registered');
+		expect(heading).toHaveTextContent('Community Edition');
+		expect(heading).toContainElement(badgeLabel);
 	});
 
 	it('should show correct success message for non-EULA activation (edition)', async () => {

@@ -243,7 +243,7 @@ const workflowFormOutput = computed((): { formUrl: string; message: string } | n
 					<N8nText bold>{{ headerTitle }}</N8nText>
 					<N8nBadge
 						v-if="status"
-						:theme="status.theme"
+						:variant="status.theme"
 						size="xsmall"
 						:data-test-id="
 							status.kind === 'hitl-response'

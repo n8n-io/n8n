@@ -128,7 +128,7 @@ const label = computed((): string => {
 			<N8nBadge
 				v-if="status"
 				:class="$style.statusBadge"
-				:theme="status.theme"
+				:variant="status.theme"
 				size="xsmall"
 				:data-test-id="
 					status.kind === 'hitl-response'

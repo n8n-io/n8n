@@ -13,8 +13,8 @@ vi.mock('@n8n/design-system', () => ({
 			'<div><div @click="$emit(\'update:open\', true)"><slot name="trigger" /></div><div v-if="open"><slot name="content" /></div></div>',
 	},
 	N8nBadge: {
-		props: ['theme'],
-		template: '<span :data-theme="theme"><slot /></span>',
+		props: ['variant'],
+		template: '<span :data-variant="variant"><slot /></span>',
 	},
 	N8nIcon: { template: '<span />' },
 }));
@@ -69,7 +69,7 @@ describe('SessionEventFilter', () => {
 
 	it.each([
 		['approved', 'Approved', 'success'],
-		['declined', 'Declined', 'default'],
+		['declined', 'Declined', 'outline'],
 		['error', 'Error', 'danger'],
 	] as const)('renders the %s status option using its timeline pill', async (key, label, theme) => {
 		const w = mount(SessionEventFilter, {
@@ -90,7 +90,7 @@ describe('SessionEventFilter', () => {
 
 		const pill = w.get(`[data-test-id="filter-status-pill-${key}"]`);
 		expect(pill.text()).toBe(label);
-		expect(pill.attributes('data-theme')).toBe(theme);
+		expect(pill.attributes('data-variant')).toBe(theme);
 	});
 
 	it('emits update with the toggled key added to the selection', async () => {

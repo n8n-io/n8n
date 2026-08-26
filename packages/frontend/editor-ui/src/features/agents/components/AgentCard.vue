@@ -187,8 +187,7 @@ async function toggleMCPAccess(enabled: boolean) {
 				<N8nBadge
 					v-if="!canUpdate"
 					:class="$style.readonlyBadge"
-					theme="tertiary"
-					bold
+					variant="outline"
 					data-test-id="agent-card-readonly-badge"
 				>
 					{{ locale.baseText('agents.list.readonly') }}

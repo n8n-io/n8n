@@ -130,11 +130,11 @@ function labelForKey(key: string): string {
 
 const STATUS_FILTER_OPTIONS = [
 	{ key: 'approved', badgeTheme: 'success' },
-	{ key: 'declined', badgeTheme: 'default' },
+	{ key: 'declined', badgeTheme: 'outline' },
 	{ key: 'error', badgeTheme: 'danger' },
 ] satisfies Array<{
 	key: TimelineStatusFilterKey;
-	badgeTheme: 'default' | 'success' | 'danger';
+	badgeTheme: 'outline' | 'success' | 'danger';
 }>;
 
 const filterOptions = computed<FilterOption[]>(() => {

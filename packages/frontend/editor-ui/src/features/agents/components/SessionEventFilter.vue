@@ -50,7 +50,7 @@ function clearAll(): void {
 				/>
 				<span v-if="opt.presentation === 'badge'" :class="$style.label">
 					<N8nBadge
-						:theme="opt.badgeTheme"
+						:variant="opt.badgeTheme"
 						size="xsmall"
 						:data-test-id="`filter-status-pill-${opt.key}`"
 					>
