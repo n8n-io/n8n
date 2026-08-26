@@ -20,7 +20,6 @@ function stepRow(nodeId: string, status: StepStatus, outputs: StepSlots | null =
 		iteration: 0,
 		status,
 		outputs,
-		error: null,
 	};
 }
 
@@ -63,7 +62,6 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		iteration: 0,
 		status: 'running',
 		outputs: null,
-		error: null,
 		...step,
 	};
 	return {
@@ -729,7 +727,6 @@ describe('StepReadyHandler over loop iterations', () => {
 			iteration,
 			status: 'completed',
 			outputs,
-			error: null,
 		};
 	}
 

@@ -1067,6 +1067,21 @@ export class AgentRuntime {
 		const executionOptions: PersistedExecutionOptions | undefined =
 			resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : undefined;
 
+		// Record what confirmation each suspended call showed the user, so an
+		// abandoned suspension can be settled with that context on a later
+		// history load instead of vanishing from the transcript.
+		for (const pending of Object.values(pendingToolCalls)) {
+			if (!pending.suspended) continue;
+			const payload =
+				typeof pending.suspendPayload === 'object' && pending.suspendPayload !== null
+					? (pending.suspendPayload as { message?: unknown; requestId?: unknown })
+					: undefined;
+			list.markToolCallSuspended(pending.toolCallId, {
+				...(typeof payload?.message === 'string' ? { message: payload.message } : {}),
+				...(typeof payload?.requestId === 'string' ? { requestId: payload.requestId } : {}),
+			});
+		}
+
 		const state: SerializableAgentState = {
 			persistence: options?.persistence,
 			status: 'suspended',
