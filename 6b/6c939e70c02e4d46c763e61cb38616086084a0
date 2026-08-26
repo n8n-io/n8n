@@ -1,0 +1,53 @@
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/views/GitConnectionsView.vue
+  s_8eaa7371fd4b6c::t_acda8fc9929d5e 77-83
+  s_8eaa7371fd4b6c::t_e640a8fc5dbaaf 218
+  s_8eaa7371fd4b6c::t_4d91ca70ae14ad 1-76,84-212,214-217,219-280
+  ai_agent 213
+packages/frontend/editor-ui/src/app/composables/useSettingsItems.ts
+  s_8eaa7371fd4b6c::t_3400df7bdba8fa 123-129
+packages/frontend/editor-ui/src/app/router.ts
+  s_8eaa7371fd4b6c::t_f3a5a8fcd3d02e 29,62-63,989-1011
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/views/GitConnectionsView.test.ts
+  s_8eaa7371fd4b6c::t_8abeaebc2eb436 1-160,164-193,195-216,218-234,236-285,289-302,306-332
+  ai_agent 235,286-288,303-305
+  s_8eaa7371fd4b6c::t_90e04da6eebc49 161-163,194,217
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8eaa7371fd4b6c::t_adae46840b6871 3642-3675
+packages/frontend/editor-ui/src/app/utils/handleSessionExpired.test.ts
+  s_8eaa7371fd4b6c::t_2a226cbc3881ab 71-85
+packages/frontend/editor-ui/src/app/components/CopyInput.test.ts
+  s_8eaa7371fd4b6c::t_0c45e70df8f9bb 2,44-68
+  s_8eaa7371fd4b6c::t_7fb1c4907a9b9a 11-16
+packages/frontend/editor-ui/src/app/router.test.ts
+  s_8eaa7371fd4b6c::t_a038bc560b8963 202-203,211-230
+  ai_agent 204-210
+packages/frontend/@n8n/frontend-constants/src/views.ts
+  s_8eaa7371fd4b6c::t_5538e45c292419 98
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/components/GitConnectionDialog.vue
+  s_8eaa7371fd4b6c::t_0366a9687c96cc 1-146,148-185,187-199,201-363
+  ai_agent 147,200
+  s_8eaa7371fd4b6c::t_70939b7c63bb6f 186
+packages/frontend/editor-ui/src/features/integrations/gitConnections.ee/composables/usePromotionsEnabled.ts
+  s_8eaa7371fd4b6c::t_5259513d9b955b 1-19
+packages/frontend/editor-ui/src/app/utils/handleSessionExpired.ts
+  ai_agent 20
+  s_8eaa7371fd4b6c::t_ffeef612895afd 15
+packages/frontend/editor-ui/src/app/components/CopyInput.vue
+  s_8eaa7371fd4b6c::t_7e424fbba77b0b 63-64,66-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6b6c939e70c02e4d46c763e61cb38616086084a0",
+  "prompts": {},
+  "sessions": {
+    "s_8eaa7371fd4b6c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82d42d15-2ef5-4e0b-ab2f-ad07bd4aad3d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

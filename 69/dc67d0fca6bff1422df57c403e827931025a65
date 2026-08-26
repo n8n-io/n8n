@@ -1,0 +1,19 @@
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_ae93d0f1bb3441::t_6b97800fd25c32 147-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "69dc67d0fca6bff1422df57c403e827931025a65",
+  "prompts": {},
+  "sessions": {
+    "s_ae93d0f1bb3441": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e99223e9-ae53-41b4-a199-a83b6c795e8c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
