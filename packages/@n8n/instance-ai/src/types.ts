@@ -304,6 +304,22 @@ export interface WorkflowListResult {
 	totalInScope: number;
 }
 
+/**
+ * What this project reaches for, and where to look for an example. The cheap rungs of preference
+ * discovery: `nodeTypes` answers "what do they use" without opening a workflow, and `workflows`
+ * names the ones using a given type, newest first, so one read gets the current house style.
+ */
+export interface NodeUsageResult {
+	/** Non-archived workflows the caller can see in scope — the denominator for every count. */
+	workflowsInScope: number;
+	/** Set when no `nodeType` was asked for: every node type in scope, most-used first. */
+	nodeTypes?: Array<{ nodeType: string; workflowCount: number }>;
+	/** Set when a `nodeType` was asked for: which workflows use it, most recently updated first. */
+	workflows?: Array<{ workflowId: string; name: string; updatedAt: string }>;
+	/** True when the limit cut the list short, so a partial answer is never read as the whole. */
+	truncated?: boolean;
+}
+
 export interface InstanceAiWorkflowService {
 	list(options?: {
 		query?: string;
@@ -319,6 +335,16 @@ export interface InstanceAiWorkflowService {
 		projectId?: string;
 	}): Promise<WorkflowListResult>;
 	get(workflowId: string): Promise<WorkflowDetail>;
+	/**
+	 * Node-type usage across the workflows in scope, read from the dependency index rather than by
+	 * fetching workflows. Without `nodeType` it returns the histogram; with one, the workflows using
+	 * it. Counts of node types only — parameter-level convention still needs a `get`.
+	 */
+	nodeUsage(options?: {
+		nodeType?: string;
+		limit?: number;
+		scope?: 'project' | 'instance';
+	}): Promise<NodeUsageResult>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
 	 *  Pass a versionId to get a past version's graph instead of the current draft. */
 	getAsWorkflowJSON(workflowId: string, versionId?: string): Promise<WorkflowJSON>;

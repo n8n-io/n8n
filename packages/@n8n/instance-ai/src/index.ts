@@ -616,6 +616,7 @@ export type {
 	InstanceAiEvaluationConfigService,
 	InstanceAiMcpService,
 	InstanceAiActivityService,
+	NodeUsageResult,
 	InstanceAiActivityEntry,
 	InstanceAiActivityExpansion,
 	McpRegistryServerSummary,

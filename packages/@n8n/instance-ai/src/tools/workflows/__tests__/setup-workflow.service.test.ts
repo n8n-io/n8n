@@ -41,6 +41,7 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 			unpublish: vi.fn(),
 			clearAiTemporary: vi.fn(),
 			archiveIfAiTemporary: vi.fn(),
+			nodeUsage: vi.fn(),
 		},
 		executionService: {
 			list: vi.fn(),

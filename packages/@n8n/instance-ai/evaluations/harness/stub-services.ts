@@ -125,6 +125,11 @@ export async function createStubServices(
 			return { activeVersionId: 'eval-version' };
 		},
 		async unpublish() {},
+		// The eval harness has no dependency index behind it, so preference discovery reports an
+		// empty estate rather than pretending to one.
+		async nodeUsage() {
+			return { workflowsInScope: 0, nodeTypes: [] };
+		},
 	};
 
 	const credentialService: InstanceAiCredentialService = {

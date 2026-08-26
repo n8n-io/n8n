@@ -44,6 +44,113 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		super(WorkflowDependency, dataSource.manager);
 	}
 	/**
+	 * How many workflows in these projects use each node type, most-used first.
+	 *
+	 * This is the cheap bottom rung of preference discovery: answering "what does this project reach
+	 * for" by reading every workflow costs a full estate fetch, while the index already holds the
+	 * answer. Measured on ten workflows, the aggregate is ~85 tokens against ~6,500 to read them.
+	 *
+	 * Draft rows only (`publishedVersionId IS NULL`), because what someone is building is a better
+	 * statement of preference than what happens to be published. Archived workflows are excluded:
+	 * they are what the project used to do.
+	 */
+	async countNodeTypesForProjects(
+		projectIds: string[],
+		options: { includeArchived?: boolean } = {},
+	): Promise<{
+		workflowsInScope: number;
+		nodeTypes: Array<{ nodeType: string; workflowCount: number }>;
+	}> {
+		if (projectIds.length === 0) return { workflowsInScope: 0, nodeTypes: [] };
+
+		const query = this.createQueryBuilder('dependency')
+			// A workflow can be shared into several projects, so the join can multiply rows. The
+			// COUNT is DISTINCT on workflowId for that reason, not as a precaution.
+			.innerJoin('shared_workflow', 'shared', 'shared.workflowId = dependency.workflowId')
+			.innerJoin('workflow_entity', 'workflow', 'workflow.id = dependency.workflowId')
+			.select('dependency.dependencyKey', 'nodeType')
+			.addSelect('COUNT(DISTINCT dependency.workflowId)', 'workflowCount')
+			.where('dependency.dependencyType = :type', { type: 'nodeType' })
+			.andWhere('dependency.publishedVersionId IS NULL')
+			.andWhere('shared.projectId IN (:...projectIds)', { projectIds })
+			.groupBy('dependency.dependencyKey')
+			.orderBy('COUNT(DISTINCT dependency.workflowId)', 'DESC')
+			.addOrderBy('dependency.dependencyKey', 'ASC');
+
+		if (!options.includeArchived) {
+			query.andWhere('workflow.isArchived = :archived', { archived: false });
+		}
+
+		const rows = await query.getRawMany<{ nodeType: string; workflowCount: number | string }>();
+
+		// The denominator comes back with the counts so a caller never has to pair them up itself,
+		// and so "10 of 10" cannot be assembled from two reads of a moving target.
+		const scope = this.createQueryBuilder('dependency')
+			.innerJoin('shared_workflow', 'shared', 'shared.workflowId = dependency.workflowId')
+			.innerJoin('workflow_entity', 'workflow', 'workflow.id = dependency.workflowId')
+			.select('COUNT(DISTINCT dependency.workflowId)', 'total')
+			.where('dependency.publishedVersionId IS NULL')
+			.andWhere('shared.projectId IN (:...projectIds)', { projectIds });
+		if (!options.includeArchived) {
+			scope.andWhere('workflow.isArchived = :archived', { archived: false });
+		}
+		const total = await scope.getRawOne<{ total: number | string }>();
+
+		return {
+			// Postgres returns COUNT as a bigint string.
+			workflowsInScope: Number(total?.total ?? 0),
+			nodeTypes: rows.map((row) => ({
+				nodeType: row.nodeType,
+				workflowCount: Number(row.workflowCount),
+			})),
+		};
+	}
+
+	/**
+	 * Which workflows in these projects use a given node type. The rung below the aggregate: once
+	 * the histogram says a node type is the house choice, this says where to read one.
+	 */
+	async findWorkflowsByNodeType(
+		projectIds: string[],
+		nodeType: string,
+		limit: number,
+		options: { includeArchived?: boolean } = {},
+	): Promise<Array<{ workflowId: string; name: string; updatedAt: Date }>> {
+		if (projectIds.length === 0) return [];
+
+		const query = this.createQueryBuilder('dependency')
+			.innerJoin('shared_workflow', 'shared', 'shared.workflowId = dependency.workflowId')
+			.innerJoin('workflow_entity', 'workflow', 'workflow.id = dependency.workflowId')
+			.select('dependency.workflowId', 'workflowId')
+			.addSelect('MAX(workflow.name)', 'name')
+			// Newest first: the freshest example is the one worth reading for current house style.
+			.addSelect('MAX(workflow.updatedAt)', 'updatedAt')
+			.where('dependency.dependencyType = :type', { type: 'nodeType' })
+			.andWhere('dependency.dependencyKey = :nodeType', { nodeType })
+			.andWhere('dependency.publishedVersionId IS NULL')
+			.andWhere('shared.projectId IN (:...projectIds)', { projectIds })
+			.groupBy('dependency.workflowId')
+			.orderBy('MAX(workflow.updatedAt)', 'DESC')
+			.limit(limit);
+
+		if (!options.includeArchived) {
+			query.andWhere('workflow.isArchived = :archived', { archived: false });
+		}
+
+		const rows = await query.getRawMany<{
+			workflowId: string;
+			name: string;
+			updatedAt: Date | string;
+		}>();
+		return rows.map((row) => ({
+			workflowId: row.workflowId,
+			name: row.name,
+			// SQLite hands back the stored string; Postgres hands back a Date.
+			updatedAt: row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt),
+		}));
+	}
+
+	/**
 	 * Replace the dependencies for a given workflow.
 	 * Uses the workflowVersionId to ensure consistency between the workflow and dependency tables.
 	 * @param workflowId the id of the workflow

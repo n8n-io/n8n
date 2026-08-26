@@ -60,6 +60,14 @@ import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
 // `list` and `setup` share this field, and the schema sanitizer requires one
 // description per shared field, so it has to cover both uses.
+// The schema sanitizer requires one description per field name across the whole discriminated
+// union, so every action sharing a field shares its wording. Extracted rather than duplicated so
+// the next action to reuse one does not have to rediscover the constraint.
+const LIMIT_FIELD_DESCRIPTION = 'Max results to return';
+
+const SCOPE_FIELD_DESCRIPTION =
+	"Which project(s) to search. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.";
+
 const PROJECT_ID_FIELD_DESCRIPTION =
 	'Project ID, obtainable from `workspace(action="list-projects")`. For `list`: read that one project instead of the default scope — use it for "what is in project X" rather than listing the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write. For `setup`: scope credential creation to that project.';
 
@@ -75,20 +83,42 @@ const listAction = z.object({
 		.describe(
 			'Substring filter on the workflow NAME only — it does not match node types, descriptions, or what a workflow does. Omit it whenever you need the actual inventory (what exists here, project status, what to do next): a name-filtered list is not the set of workflows in scope. Use it only when the user named a workflow, or to locate one you already know exists.',
 		),
-	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
+	limit: z.number().int().positive().max(100).optional().describe(LIMIT_FIELD_DESCRIPTION),
 	status: z
 		.enum(['active', 'archived', 'all'])
 		.optional()
 		.describe(
 			'Which workflows to list. Defaults to active; use archived to find workflows that can be restored.',
 		),
-	scope: z
-		.enum(['project', 'instance'])
+	scope: z.enum(['project', 'instance']).optional().describe(SCOPE_FIELD_DESCRIPTION),
+	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
+});
+
+/**
+ * The cheap rung of preference discovery. `list` filters on the workflow name only, so learning
+ * what a project reaches for otherwise means fetching every workflow and reading its nodes. This
+ * reads the dependency index instead: on a ten-workflow project the aggregate is ~85 tokens
+ * against ~6,500 to read them all.
+ */
+const nodeUsageAction = z.object({
+	action: z
+		.literal('node-usage')
+		.describe(
+			'Find out which node types this project actually uses, and how often, without opening a ' +
+				'workflow. Call it with no `nodeType` to see everything in use, most-used first, with ' +
+				'the number of workflows in scope — that is how you learn what the user reaches for, ' +
+				'and what they never use. Call it with a `nodeType` to get the workflows using it, ' +
+				'most recently updated first, when you want to read one as an example.',
+		),
+	nodeType: z
+		.string()
 		.optional()
 		.describe(
-			"Which project(s) to search. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.",
+			'Full node type, e.g. "@n8n/n8n-nodes-langchain.lmChatAnthropic". Omit it for the ' +
+				'overview of every type in use.',
 		),
-	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
+	limit: z.number().int().positive().max(50).optional().describe(LIMIT_FIELD_DESCRIPTION),
+	scope: z.enum(['project', 'instance']).optional().describe(SCOPE_FIELD_DESCRIPTION),
 });
 
 const getAction = z.object({
@@ -249,7 +279,7 @@ const unpublishAction = z.object({
 const listVersionsAction = z.object({
 	action: z.literal('list-versions').describe('List version history for a workflow'),
 	workflowId: z.string().describe('ID of the workflow'),
-	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
+	limit: z.number().int().positive().max(100).optional().describe(LIMIT_FIELD_DESCRIPTION),
 	skip: z.number().int().min(0).optional().describe('Number of results to skip (default 0)'),
 });
 
@@ -299,6 +329,7 @@ interface WorkflowToolContext {
 // regardless of which dynamic subset the schema actually includes.
 type Input =
 	| z.infer<typeof listAction>
+	| z.infer<typeof nodeUsageAction>
 	| z.infer<typeof getAction>
 	| z.infer<typeof getJsonAction>
 	| z.infer<typeof getAsCodeAction>
@@ -320,6 +351,7 @@ type PublishRollbackResult = {
 };
 export type WorkflowAction =
 	| 'list'
+	| 'node-usage'
 	| 'get'
 	| 'get-json'
 	| 'get-as-code'
@@ -347,6 +379,7 @@ type WorkflowsToolOptionsInput = WorkflowsToolOptions | 'full' | 'orchestrator';
 
 const WORKFLOW_ACTION_ORDER = [
 	'list',
+	'node-usage',
 	'get',
 	'get-json',
 	'get-as-code',
@@ -364,6 +397,7 @@ const WORKFLOW_ACTION_ORDER = [
 
 const WORKFLOW_ACTION_LABELS = {
 	list: 'list',
+	'node-usage': 'see which node types this project uses',
 	get: 'inspect',
 	'get-json': 'inspect full WorkflowJSON',
 	'get-as-code': 'convert existing workflows to TypeScript SDK code',
@@ -392,6 +426,7 @@ function getSupportedWorkflowActionSchemas(
 
 	return {
 		list: listAction,
+		'node-usage': nodeUsageAction,
 		get: getAction,
 		...(surface !== 'orchestrator' ? { 'get-json': getJsonAction } : {}),
 		'get-as-code': getAsCodeAction,
@@ -460,6 +495,41 @@ async function resolveWorkflowName(
 		.get(workflowId)
 		.then((wf) => wf.name)
 		.catch(() => workflowId);
+}
+
+/**
+ * Renders the aggregate as counts against the scope total, because "10 of 10" is the statement a
+ * preference is made of — a bare count says nothing without the denominator.
+ */
+async function handleNodeUsage(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'node-usage' }>,
+) {
+	const result = await context.workflowService.nodeUsage({
+		...(input.nodeType ? { nodeType: input.nodeType } : {}),
+		...(input.limit !== undefined ? { limit: input.limit } : {}),
+		...(input.scope ? { scope: input.scope } : {}),
+	});
+
+	if (input.nodeType) {
+		return {
+			nodeType: input.nodeType,
+			workflowsInScope: result.workflowsInScope,
+			workflows: result.workflows ?? [],
+			...(result.truncated ? { truncated: true } : {}),
+		};
+	}
+
+	return {
+		workflowsInScope: result.workflowsInScope,
+		nodeTypes: result.nodeTypes ?? [],
+		// Said explicitly so the absence of a node type is read as evidence rather than as a gap in
+		// the answer: what a project never uses is as much a preference as what it always uses.
+		note:
+			'Counts are workflows using each type, out of workflowsInScope. A type absent from this ' +
+			'list is used by no workflow in scope. Node types only — for parameter-level house style ' +
+			'(retry settings, naming, model options), read one workflow with get.',
+	};
 }
 
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
@@ -1662,6 +1732,8 @@ export function createWorkflowsTool(
 			switch (workflowInput.action) {
 				case 'list':
 					return await handleList(context, workflowInput);
+				case 'node-usage':
+					return await handleNodeUsage(context, workflowInput);
 				case 'get':
 					return await handleGet(context, workflowInput);
 				case 'get-json':

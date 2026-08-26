@@ -226,6 +226,9 @@ const initialPreamble = [
 	'Call `activity(action="expand", id=N)` on a bracketed id to see that entry in full along with',
 	'everything else that happened to the same resource, or `activity(action="list")` to look',
 	'further back than this window. An entry may name a resource that no longer exists.',
+	'This is what happened, not what the user tends to build. For that — which node types they',
+	'reach for and which they never use — call `workflows(action="node-usage")`, which answers it',
+	'without opening a workflow.',
 ];
 
 /**

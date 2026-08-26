@@ -19,6 +19,7 @@ import {
 	ProjectRepository,
 	SharedWorkflowRepository,
 	WorkflowEntity,
+	WorkflowDependencyRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
@@ -290,6 +291,7 @@ export class InstanceAiAdapterService {
 		private readonly evaluationConfigService?: EvaluationConfigService,
 		private readonly llmJudgeProviderRegistry?: LlmJudgeProviderRegistry,
 		private readonly activityFeed?: ActivityFeedService,
+		private readonly workflowDependencyRepository?: WorkflowDependencyRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -651,6 +653,18 @@ export class InstanceAiAdapterService {
 		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
 		const { resolveBoundProjectId } = this.createProjectScopeHelpers(user, boundProjectId);
+		const { workflowDependencyRepository, projectRepository } = this;
+
+		/**
+		 * Which projects an aggregate may span. The bound project when there is one, otherwise every
+		 * project the user belongs to — never the whole instance, which would leak which node types
+		 * other people's projects use. The same rule the activity feed applies, for the same reason.
+		 */
+		const visibleProjectIds = async (scope?: 'project' | 'instance'): Promise<string[]> => {
+			if (boundProjectId && scope !== 'instance') return [boundProjectId];
+			const projects = await projectRepository.getAccessibleProjects(user.id);
+			return projects.map((project) => project.id);
+		};
 		const redactParameters = !allowSendingParameterValues;
 
 		/**
@@ -682,6 +696,44 @@ export class InstanceAiAdapterService {
 		};
 
 		return {
+			/**
+			 * Reads the dependency index instead of the workflows themselves. `WorkflowIndexService`
+			 * keeps that index current from the same workflow events the activity relay listens to,
+			 * so this is as fresh as reading them would be, at a fraction of the payload.
+			 */
+			async nodeUsage(options) {
+				if (!workflowDependencyRepository) {
+					throw new UnexpectedError('The workflow dependency index is not available');
+				}
+
+				const projectIds = await visibleProjectIds(options?.scope);
+				if (projectIds.length === 0) return { workflowsInScope: 0 };
+
+				if (!options?.nodeType) {
+					return await workflowDependencyRepository.countNodeTypesForProjects(projectIds);
+				}
+
+				const limit = options.limit ?? 10;
+				// One over the limit, so `truncated` reports the cut rather than guessing at it.
+				const rows = await workflowDependencyRepository.findWorkflowsByNodeType(
+					projectIds,
+					options.nodeType,
+					limit + 1,
+				);
+				const { workflowsInScope } =
+					await workflowDependencyRepository.countNodeTypesForProjects(projectIds);
+
+				return {
+					workflowsInScope,
+					workflows: rows.slice(0, limit).map((row) => ({
+						workflowId: row.workflowId,
+						name: row.name,
+						updatedAt: row.updatedAt.toISOString(),
+					})),
+					...(rows.length > limit ? { truncated: true } : {}),
+				};
+			},
+
 			async list(options) {
 				// An explicit projectId targets one project; otherwise the thread's own
 				// project unless the caller widened to the whole instance. Either way it
