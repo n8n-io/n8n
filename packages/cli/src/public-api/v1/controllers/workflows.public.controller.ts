@@ -148,7 +148,6 @@ function toPublicListActiveVersion(activeVersion: WorkflowHistory) {
 	};
 }
 
-/** A single version fetched on its own: no publish history, and `autosaved` is internal. */
 function toPublicWorkflowVersion(version: WorkflowHistory) {
 	return {
 		versionId: version.versionId,

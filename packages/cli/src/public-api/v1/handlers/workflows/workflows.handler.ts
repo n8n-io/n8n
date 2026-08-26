@@ -18,7 +18,6 @@ import {
 	deprecated,
 } from '../../shared/middlewares/global.middleware';
 
-// Fixed, never derived from `Date.now()`, so the header stays the same across requests.
 const VERSION_PATH_DEPRECATED_SINCE = new Date('2026-08-26T00:00:00Z');
 
 const handleError = (error: unknown) => {
