@@ -5407,6 +5407,7 @@
 	"settings.n8nAgent.permissions.runWorkflow": "Run workflows",
 	"settings.n8nAgent.permissions.publishWorkflow": "Activate workflows",
 	"settings.n8nAgent.permissions.deleteWorkflow": "Delete workflows",
+	"settings.n8nAgent.permissions.createCredential": "Create credentials from a browser session",
 	"settings.n8nAgent.permissions.deleteCredential": "Delete credentials",
 	"settings.n8nAgent.permissions.createFolder": "Create folders",
 	"settings.n8nAgent.permissions.deleteFolder": "Delete folders",
