@@ -282,44 +282,40 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 		capturesByRequestId: Map<string, { workflowIds: string[]; userId: string | null }>,
 		batchWorkflowIds: string[],
 	): Promise<void> {
-		await this.recordCauseEventsAndClose(
-			'workflow.deleted',
-			batchWorkflowIds,
-			async (ctx) => {
-				const affected = new Set<string>();
-				const candidateRequestIds: string[] = [];
-				const actorByRequestId = new Map<string, ClosedRequest>();
-				for (const [requestId, capture] of capturesByRequestId) {
-					const request = await this.workflowReviewRequestRepository.findById(requestId, ctx);
-					if (!request || request.state !== 'open') continue;
+		await this.recordCauseEventsAndClose('workflow.deleted', batchWorkflowIds, async (ctx) => {
+			const affected = new Set<string>();
+			const candidateRequestIds: string[] = [];
+			const actorByRequestId = new Map<string, ClosedRequest>();
+			for (const [requestId, capture] of capturesByRequestId) {
+				const request = await this.workflowReviewRequestRepository.findById(requestId, ctx);
+				if (!request || request.state !== 'open') continue;
 
-					const actorKind = capture.userId === null ? 'system' : 'user';
+				const actorKind = capture.userId === null ? 'system' : 'user';
 
-					for (const workflowId of capture.workflowIds) {
-						await this.activityRepository.createActivity(
-							{
-								workflowReviewRequestId: requestId,
-								type: 'workflow.deleted',
-								data: { workflowId, actorKind },
-								createdById: capture.userId,
-							},
-							ctx,
-						);
-						affected.add(workflowId);
-					}
-
-					candidateRequestIds.push(requestId);
-					actorByRequestId.set(requestId, { requestId, actorKind, userId: capture.userId });
+				for (const workflowId of capture.workflowIds) {
+					await this.activityRepository.createActivity(
+						{
+							workflowReviewRequestId: requestId,
+							type: 'workflow.deleted',
+							data: { workflowId, actorKind },
+							createdById: capture.userId,
+						},
+						ctx,
+					);
+					affected.add(workflowId);
 				}
 
-				const closedRequestIds = await this.closeUnreviewable(ctx, candidateRequestIds);
+				candidateRequestIds.push(requestId);
+				actorByRequestId.set(requestId, { requestId, actorKind, userId: capture.userId });
+			}
 
-				return {
-					affectedWorkflowIds: [...affected],
-					closedRequests: closedRequestIds.map((requestId) => actorByRequestId.get(requestId)!),
-				};
-			},
-		);
+			const closedRequestIds = await this.closeUnreviewable(ctx, candidateRequestIds);
+
+			return {
+				affectedWorkflowIds: [...affected],
+				closedRequests: closedRequestIds.map((requestId) => actorByRequestId.get(requestId)!),
+			};
+		});
 	}
 
 	private async recordCauseEventsAndClose(
