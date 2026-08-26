@@ -10,11 +10,11 @@ const commonDescription: INodeProperties = {
 	},
 	default: '',
 	description:
-		'Python code to execute.<br><br>Tip: You can use built-in methods and variables like <code>_today</code> for dates and <code>_jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/code/builtin/">Learn more</a>.',
+		'Python code to execute. Runs in a sandbox with no imports and no network access: read the input items from <code>_items</code> (all-items mode) or <code>_item</code> (per-item mode). <a href="https://docs.n8n.io/code/builtin/">Learn more</a>.',
 	noDataExpression: true,
 	builderHint: {
 		propertyHint:
-			'The sandbox has NO network access: requests, urllib, httpx and other HTTP libraries are unavailable and fail at runtime. NEVER make HTTP requests here — use the HTTP Request node and process its output in this node instead.',
+			'Runs in a locked-down native Python sandbox. NO imports: the stdlib allowlist (N8N_RUNNERS_STDLIB_ALLOW) is empty by default, so `import re`, `import json`, `import math`, `import datetime` and every third-party package FAIL at runtime with "Import of standard library module \'…\' is disallowed". Write import-free Python using builtins and str/list/dict methods, or set language to javaScript when the task genuinely needs a library. NO network access either: requests, urllib, httpx and other HTTP libraries are unavailable — use the HTTP Request node and process its output in this node instead. The ONLY globals are _items (runOnceForAllItems mode), _item (runOnceForEachItem mode) and print(); there are no cross-node helpers — _("Node Name"), _input, _json, _today and _jmespath are all undefined and raise NameError, so read data from the connected upstream node only.',
 	},
 };
 
@@ -41,7 +41,7 @@ export const pythonCodeDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: `${PRINT_INSTRUCTION}<br><br>The Python option does not support <code>_</code> syntax and helpers, except for <code>_items</code> in all-items mode and <code>_item</code> in per-item mode.`,
+		displayName: `${PRINT_INSTRUCTION}<br><br>The Python option does not support <code>_</code> syntax and helpers, except for <code>_items</code> in all-items mode and <code>_item</code> in per-item mode.<br><br>Imports are disabled unless your instance sets <code>N8N_RUNNERS_STDLIB_ALLOW</code>.`,
 		name: 'notice',
 		type: 'notice',
 		displayOptions: {
