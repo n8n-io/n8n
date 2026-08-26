@@ -25,6 +25,8 @@ import { determineFinalExecutionStatus } from '@/execution-lifecycle/shared/shar
  */
 @Service()
 export class ActivityLogEventRelay extends EventRelay {
+	private hasWarnedAboutFailure = false;
+
 	constructor(
 		eventService: EventService,
 		private readonly activityEventRepository: ActivityEventRepository,
@@ -253,7 +255,13 @@ export class ActivityLogEventRelay extends EventRelay {
 		try {
 			await this.activityEventRepository.record(input);
 		} catch (error) {
-			this.logger.debug('Failed to record activity entry', {
+			// Loud once, quiet after. A misconfiguration that stops every write — an unregistered
+			// entity, a missing table — is indistinguishable from "nothing happened yet" if it only
+			// ever logs at debug, and that is exactly how one went unnoticed through a whole eval
+			// arm. One warn names it; the rest stay at debug so a broken instance is not drowned.
+			const level = this.hasWarnedAboutFailure ? 'debug' : 'warn';
+			this.hasWarnedAboutFailure = true;
+			this.logger[level]('Failed to record activity entry', {
 				category: input.category,
 				action: input.action,
 				error,

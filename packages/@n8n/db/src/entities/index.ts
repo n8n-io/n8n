@@ -190,6 +190,7 @@ export {
 };
 
 export const entities = {
+	ActivityEvent,
 	AgentEvalDataset,
 	AgentEvalRun,
 	AgentEvalResult,
