@@ -274,18 +274,9 @@ const workflowMenuItems = computed<WorkflowMenuItem[]>(() => {
 
 	if (canEdit) {
 		importExport.push({
-			id: WORKFLOW_MENU_ACTIONS.IMPORT,
-			label: locale.baseText('menuActions.import'),
-			icon: { type: 'icon', value: 'arrow-block-down' },
+			id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
+			label: locale.baseText('menuActions.importJson'),
 			disabled: onExecutionsTab.value,
-			children: [
-				{
-					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
-					label: locale.baseText('menuActions.importFromFile'),
-					icon: { type: 'icon', value: 'file' },
-					disabled: onExecutionsTab.value,
-				},
-			],
 		});
 	}
 
