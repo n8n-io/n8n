@@ -3673,6 +3673,7 @@
 	"settings.gitConnections.form.credentials.keepPlaceholder": "Leave blank to keep the current credentials",
 	"settings.gitConnections.form.incomplete": "Enter a name and a repository URL.",
 	"settings.gitConnections.form.noChanges": "Nothing to save yet.",
+	"settings.gitConnections.form.credentials.pairOnly": "Username and password can only be changed together. Enter both to update either one.",
 	"settings.gitConnections.form.credentials.required": "Enter both a username and a password to connect over HTTPS.",
 	"settings.gitConnections.publicKey.label": "Deploy key",
 	"settings.gitConnections.publicKey.copy": "Copy deploy key",

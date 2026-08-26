@@ -116,13 +116,22 @@ const hasChanges = computed(
 	() => !current.value || Object.keys(buildUpdatePayload(form, current.value)).length > 0,
 );
 
+// Setting credentials for the first time and rotating existing ones fail for
+// different reasons, and the rotation rule is the one that is not obvious.
+const credentialsMessage = computed(() =>
+	i18n.baseText(
+		credentialsRequired.value
+			? 'settings.gitConnections.form.credentials.required'
+			: 'settings.gitConnections.form.credentials.pairOnly',
+	),
+);
+
 // A half-filled credential pair blocks the whole form, which is otherwise
 // invisible when the user is editing an unrelated field.
 const saveDisabledReason = computed(() => {
 	if (!form.name.trim() || !form.repositoryUrl.trim())
 		return i18n.baseText('settings.gitConnections.form.incomplete');
-	if (areCredentialsIncomplete.value)
-		return i18n.baseText('settings.gitConnections.form.credentials.required');
+	if (areCredentialsIncomplete.value) return credentialsMessage.value;
 	if (!hasChanges.value) return i18n.baseText('settings.gitConnections.form.noChanges');
 	return undefined;
 });
@@ -446,9 +455,9 @@ async function submit() {
 					v-if="areCredentialsIncomplete"
 					:id="CREDENTIALS_HINT_ID"
 					size="small"
-					color="text-light"
+					color="danger"
 				>
-					{{ i18n.baseText('settings.gitConnections.form.credentials.required') }}
+					{{ credentialsMessage }}
 				</N8nText>
 			</template>
 

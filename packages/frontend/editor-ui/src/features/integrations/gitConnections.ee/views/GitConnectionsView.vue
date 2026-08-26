@@ -43,6 +43,7 @@ const editingId = ref<string | undefined>(undefined);
 const connectionToFocus = ref<string | undefined>(undefined);
 const addRow = useTemplateRef<{ $el?: HTMLElement }>('addRow');
 const list = useTemplateRef<HTMLElement>('list');
+const page = useTemplateRef<{ $el?: HTMLElement }>('page');
 
 // The backend accepts a single connection and treats it as the instance
 // connection. This relaxes once project-level connections land.
@@ -104,7 +105,9 @@ async function focusConnection(id: string | undefined) {
 	const row = id
 		? list.value?.querySelector<HTMLElement>(`[data-connection-id="${id}"]`)
 		: undefined;
-	(row ?? addRow.value?.$el)?.focus();
+	// The page itself is the last resort: a failed refetch replaces both the rows
+	// and the add row with the error state, and reka's own restore is suppressed.
+	(row ?? addRow.value?.$el ?? page.value?.$el)?.focus();
 }
 
 async function onDialogOpenChange(open: boolean) {
@@ -145,7 +148,7 @@ async function onDelete(id: string) {
 </script>
 
 <template>
-	<N8nSettingsLayout :class="$style.layout">
+	<N8nSettingsLayout ref="page" :class="$style.layout" tabindex="-1">
 		<N8nSettingsPageHeader
 			:title="i18n.baseText('settings.gitConnections.title')"
 			:description="i18n.baseText('settings.gitConnections.description')"
@@ -229,6 +232,10 @@ async function onDelete(id: string) {
 // The settings shell already pads the top of the page.
 .layout {
 	padding-top: 0;
+
+	&:focus {
+		outline: none;
+	}
 }
 
 .list {
