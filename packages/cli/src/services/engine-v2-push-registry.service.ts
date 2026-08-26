@@ -19,25 +19,28 @@ export class EngineV2StepRun {
 }
 
 /** What relaying one execution's status updates to the editor needs. */
-export type EngineV2PushSession = {
-	/** The only routing key {@link Push.send} accepts. */
-	pushRef: string;
-	workflowId: string;
-	/**
-	 * The trigger the run started from, and the outputs the dispatcher handed the
-	 * engine. The engine records the trigger as an already-completed step and so
-	 * never announces it, which would leave the editor showing an un-run trigger.
-	 * Cleared once emitted — pinned trigger data can be large.
-	 */
-	trigger?: { nodeName: string; outputs: INodeExecutionData[][] };
+export class EngineV2PushSession {
 	/** Ordering counter for `nodeExecuteBefore`/`nodeExecuteAfter`; starts at 0. */
-	sequenceNumber: number;
+	sequenceNumber = 0;
 	/** Next `ITaskData.executionIndex` to hand out. */
-	nextExecutionIndex: number;
+	nextExecutionIndex = 0;
 	/** Step runs keyed by the engine's step id. */
-	steps: Map<string, EngineV2StepRun>;
-	registeredAt: number;
-};
+	readonly steps = new Map<string, EngineV2StepRun>();
+	readonly registeredAt = Date.now();
+
+	constructor(
+		/** The only routing key {@link Push.send} accepts. */
+		readonly pushRef: string,
+		readonly workflowId: string,
+		/**
+		 * The trigger the run started from, and the outputs the dispatcher handed the
+		 * engine. The engine records the trigger as an already-completed step and so
+		 * never announces it, which would leave the editor showing an un-run trigger.
+		 * Cleared once emitted — pinned trigger data can be large.
+		 */
+		public trigger?: { nodeName: string; outputs: INodeExecutionData[][] },
+	) {}
+}
 
 /** Long enough to outlive any manual run, short enough to bound the map. */
 const SESSION_TTL_MS = 60 * Time.minutes.toMilliseconds;
@@ -59,13 +62,10 @@ export class EngineV2PushRegistry {
 		init: Pick<EngineV2PushSession, 'pushRef' | 'workflowId' | 'trigger'>,
 	): void {
 		this.evictStale();
-		this.sessions.set(executionId, {
-			...init,
-			sequenceNumber: 0,
-			nextExecutionIndex: 0,
-			steps: new Map(),
-			registeredAt: Date.now(),
-		});
+		this.sessions.set(
+			executionId,
+			new EngineV2PushSession(init.pushRef, init.workflowId, init.trigger),
+		);
 	}
 
 	get(executionId: string): EngineV2PushSession | undefined {
