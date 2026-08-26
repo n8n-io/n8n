@@ -2332,6 +2332,38 @@ describe('InstanceAiSettingsService', () => {
 				instanceAi: { credentialId: 'cred-old', modelName: 'gpt-3.5', localGatewayDisabled: true },
 			});
 		});
+
+		it('should persist defaultEditor and merge it with existing instanceAi settings', async () => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			const existingUser = mock<User>({
+				id: 'user-3',
+				settings: { instanceAi: { localGatewayDisabled: true } },
+			});
+
+			await service.updateUserPreferences(existingUser, { defaultEditor: 'manual' });
+
+			expect(userService.updateSettings).toHaveBeenCalledWith('user-3', {
+				instanceAi: { localGatewayDisabled: true, defaultEditor: 'manual' },
+			});
+		});
+
+		it('should return defaultEditor from getUserPreferences, null when unset', async () => {
+			// Plain settings object: the deep mock proxies nested objects, turning
+			// unset keys into function mocks instead of undefined.
+			const unsetUser = mock<User>({ id: 'user-4' });
+			unsetUser.settings = { instanceAi: {} };
+			await expect(service.getUserPreferences(unsetUser)).resolves.toMatchObject({
+				defaultEditor: null,
+			});
+
+			const setUser = mock<User>({
+				id: 'user-5',
+				settings: { instanceAi: { defaultEditor: 'assistant' } },
+			});
+			await expect(service.getUserPreferences(setUser)).resolves.toMatchObject({
+				defaultEditor: 'assistant',
+			});
+		});
 	});
 
 	describe('cloud-managed fields', () => {

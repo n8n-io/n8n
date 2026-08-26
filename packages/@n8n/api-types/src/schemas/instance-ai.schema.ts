@@ -1976,12 +1976,14 @@ export interface InstanceAiUserPreferencesResponse {
 	credentialName: string | null;
 	modelName: string;
 	localGatewayDisabled: boolean;
+	defaultEditor: 'assistant' | 'manual' | null;
 }
 
 export class InstanceAiUserPreferencesUpdateRequest extends Z.class({
 	credentialId: z.string().nullable().optional(),
 	modelName: z.string().optional(),
 	localGatewayDisabled: z.boolean().optional(),
+	defaultEditor: z.enum(['assistant', 'manual']).optional(),
 }) {}
 
 export interface InstanceAiProviderConnection {

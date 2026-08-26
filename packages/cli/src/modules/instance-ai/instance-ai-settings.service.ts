@@ -1055,6 +1055,7 @@ export class InstanceAiSettingsService {
 			credentialName,
 			modelName: prefs.modelName || this.extractModelName(this.config.model),
 			localGatewayDisabled: prefs.localGatewayDisabled ?? false,
+			defaultEditor: prefs.defaultEditor ?? null,
 		};
 	}
 
@@ -1072,6 +1073,7 @@ export class InstanceAiSettingsService {
 		if (update.modelName !== undefined) prefs.modelName = update.modelName;
 		if (update.localGatewayDisabled !== undefined)
 			prefs.localGatewayDisabled = update.localGatewayDisabled;
+		if (update.defaultEditor !== undefined) prefs.defaultEditor = update.defaultEditor;
 		await this.userService.updateSettings(user.id, { instanceAi: prefs });
 		user.settings = { ...(user.settings ?? {}), instanceAi: prefs };
 		return await this.getUserPreferences(user);
