@@ -87,6 +87,7 @@ import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavai
 import AgentSection from './components/AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
+import OpenWorkflowInAssistantNotification from '@/experiments/openWorkflowInAssistant/components/OpenWorkflowInAssistantNotification.vue';
 import InstanceAiWorkflowPreview, {
 	type WorkflowFailuresReport,
 } from './components/InstanceAiWorkflowPreview.vue';
@@ -1385,6 +1386,7 @@ async function dismissComposerContextChip() {
 				</N8nResizeWrapper>
 			</div>
 		</Transition>
+		<OpenWorkflowInAssistantNotification :thread-id="threadId" />
 	</div>
 </template>
 
