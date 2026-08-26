@@ -177,6 +177,14 @@ If the PR says the lockfile was **deferred** (a `package.json` / `pnpm-workspace
 conflicted too), resolve the manifests first, then regenerate it with
 `pnpm install --lockfile-only` and include the result in your fix commit.
 
+Watch for the **"Deleted on one side, changed on the other"** section. Git leaves no markers
+for a delete/modify, so the branch looks clean where it is not: the merge keeps `3.x`'s side
+(its deletion, or its file when `master` deleted it). Confirm that is right, and check
+whether `master`'s change has to be carried over by hand — when a breaking commit re-recorded
+or renamed a file, `master`'s edit to the old one usually belongs on the replacement, and no
+automation can find that for you. The PR names the `master` commit behind each conflicted
+path so you can see what the change was.
+
 Then **merge the PR with the normal merge button.** `master`'s commits arrive as-is and your
 fix stays its own commit. **Never close a conflict PR unmerged** — closing resolves nothing,
 the same conflict reopens on the next sync, and the new PR will call out the abandoned one.
@@ -194,9 +202,10 @@ is squashed, and the tree guard proves the result is exactly the merge of `3.x` 
 `master`.
 
 **Who gets pinged.** The conflict is attributed to the authors of the `3.x` commits behind the
-conflicted files (`.github/scripts/sync-conflict-owners.mjs`, mapped to GitHub accounts).
-Those authors are **requested as reviewers** on the conflict PR and listed in the
-`#alerts-v3-sync` message.
+conflicted files, plus the `master` commits that touched the same files
+(`.github/scripts/sync-conflict-owners.mjs`, mapped to GitHub accounts). Both sides are named
+in the PR body and the `#alerts-v3-sync` message. **Nobody is requested as a reviewer** — the
+resolver picks the PR up themselves.
 
 ## Trialing v3
 

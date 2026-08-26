@@ -203,7 +203,7 @@ export class OtelService {
 			// HTTP response means the server is reachable. We only catch network errors.
 			// SSRF is disabled: the OTLP endpoint is admin-configured observability
 			// infrastructure and is commonly an internal/localhost collector.
-			await this.outboundHttp.transport({ ssrf: 'disabled' }).asCustomFetch()(url, {
+			await this.outboundHttp.transport({ useDefaultSsrfPolicy: 'unsafe' }).asCustomFetch()(url, {
 				method: 'HEAD',
 				signal: AbortSignal.timeout(timeoutMs),
 			});
