@@ -113,7 +113,7 @@ export function useWorkflowInitialization() {
 			options = { projectId };
 		}
 
-		await credentialsStore.fetchAllCredentialsForWorkflow(options);
+		await credentialsStore.fetchUsableCredentials(options);
 	}
 
 	/**
@@ -334,6 +334,7 @@ export function useWorkflowInitialization() {
 
 		const parentFolder = await fetchParentFolder(parentFolderId);
 		currentWorkflowDocumentStore.value?.setParentFolder(parentFolder);
+		currentWorkflowDocumentStore.value.setHydrated(true);
 
 		uiStore.nodeViewInitialized = true;
 		initializedWorkflowId.value = workflowId.value;

@@ -245,9 +245,10 @@ parallelism). See the `--build-via-mcp` section in
 
 ### Other Manual Workflows
 
-| Workflow                  | Purpose                                                 |
-|---------------------------|---------------------------------------------------------|
-| `util-data-tooling.yml`   | SQLite/PostgreSQL export/import validation (manual)     |
+| Workflow                    | Purpose                                                 |
+|-----------------------------|---------------------------------------------------------|
+| `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
+| `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 
 ---
 
@@ -394,6 +395,7 @@ Push to master/1.x
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
 | Daily 02:00               | `test-get-n8n.yml`                | get.n8n.io installer health |
+| Daily 02:00               | `test-e2e-pc-nightly.yml`         | E2E on the `-pc` image   |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Daily 06:00               | `util-sync-master-to-3x.yml`      | Replay 3.x onto master (v3) |
 | Daily 08:00               | `build-v3-nightly.yml`            | Nightly v3 Docker images |
@@ -414,9 +416,11 @@ to mechanical, tool-generated files (the pnpm lockfile, bot-maintained data file
 `MECHANICAL_PATHS` in `sync-master-to-3x.mjs`) are auto-resolved during the replay; the tree
 check then applies to every path except those files. On a real code conflict `3.x` is left
 untouched and a draft PR carrying the conflict markers (labeled `automation:v3-sync`, with
-mechanical files pre-resolved) is opened on `sync/master-to-3x`, requesting the
-breaking-commit authors as reviewers via `sync-conflict-owners.mjs`, posting to
-`#alerts-v3-sync` and pausing further syncs until it is resolved and merged normally.
+mechanical files pre-resolved) is opened on `sync/master-to-3x`, naming both ends of the
+conflict — the breaking-commit authors and the `master` commits that touched the same files
+— via `sync-conflict-owners.mjs`, posting to `#alerts-v3-sync` and pausing further syncs
+until it is resolved and merged normally. Delete/modify conflicts have no markers to carry,
+so they are resolved toward `3.x` and listed as an explicit decision in the PR body.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
 by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`. On Mondays it also
 retags that run's n8n + runners manifests as a release candidate (by digest on GHCR, so
@@ -456,6 +460,18 @@ inputs:
   login-dockerhub:  # default: 'false'
   login-dhi:        # default: 'false'
 ```
+
+### External actions
+
+Actions consumed from other n8n-io repositories, SHA-pinned like any third-party
+action:
+
+| Action                            | Purpose                                                                       | Used By            |
+|-----------------------------------|-------------------------------------------------------------------------------|--------------------|
+| `n8n-io/github-actions/cla-check` | CLA signature check: `CLA Check` commit status, in-place PR comment, `cla-signed` label | `ci-cla-check.yml` |
+
+Behaviour changes belong in that repo; bumping the pin here is what picks them up.
+A `/cla-check` comment on a PR re-runs the check without a push.
 
 ---
 
@@ -506,6 +522,7 @@ Scripts in `.github/scripts/`:
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
+| `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
 
 ### Branch Replay Scripts
 

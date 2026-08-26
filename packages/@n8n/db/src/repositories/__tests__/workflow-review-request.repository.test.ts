@@ -157,6 +157,7 @@ describe('WorkflowReviewRequestRepository', () => {
 		beforeEach(() => {
 			queryBuilder = mock<SelectQueryBuilder<WorkflowReviewRequest>>();
 			queryBuilder.innerJoin.mockReturnThis();
+			queryBuilder.leftJoin.mockReturnThis();
 			queryBuilder.addSelect.mockReturnThis();
 			queryBuilder.where.mockReturnThis();
 			queryBuilder.andWhere.mockReturnThis();
@@ -222,7 +223,13 @@ describe('WorkflowReviewRequestRepository', () => {
 						updatedAt: new Date('2026-07-21T10:00:00.000Z'),
 					}),
 				],
-				raw: [{ request_id: 'req-1', pinnedWorkflowVersionId: 'ver-1' }],
+				raw: [
+					{
+						request_id: 'req-1',
+						pinnedWorkflowVersionId: 'ver-1',
+						pinnedWorkflowVersionName: 'Release candidate',
+					},
+				],
 			});
 
 			const [data] = await repo.findRequestsForWorkflow('workflow-1');
@@ -233,6 +240,7 @@ describe('WorkflowReviewRequestRepository', () => {
 				decision: 'changes_requested',
 				updatedById: 'user-2',
 				workflowVersionId: 'ver-1',
+				workflowVersionName: 'Release candidate',
 				createdAt: new Date('2026-07-20T10:00:00.000Z'),
 				updatedAt: new Date('2026-07-21T10:00:00.000Z'),
 			});
@@ -245,15 +253,19 @@ describe('WorkflowReviewRequestRepository', () => {
 			expect(queryBuilder.take).toHaveBeenCalledWith(0);
 		});
 
-		it('enriches each request with the pinned version, keyed by request id', async () => {
+		it('enriches each request with the pinned version and its name, keyed by request id', async () => {
 			queryBuilder.getRawAndEntities.mockResolvedValue({
 				entities: [
 					mock<WorkflowReviewRequest>({ id: 'req-1' }),
 					mock<WorkflowReviewRequest>({ id: 'req-2' }),
 				],
 				raw: [
-					{ request_id: 'req-1', pinnedWorkflowVersionId: 'ver-1' },
-					{ request_id: 'req-2', pinnedWorkflowVersionId: null },
+					{
+						request_id: 'req-1',
+						pinnedWorkflowVersionId: 'ver-1',
+						pinnedWorkflowVersionName: 'Release candidate',
+					},
+					{ request_id: 'req-2', pinnedWorkflowVersionId: null, pinnedWorkflowVersionName: null },
 				],
 			});
 			queryBuilder.getCount.mockResolvedValue(2);
@@ -264,8 +276,20 @@ describe('WorkflowReviewRequestRepository', () => {
 				'requestWorkflow.workflowVersionId',
 				'pinnedWorkflowVersionId',
 			);
-			expect(data[0]).toMatchObject({ id: 'req-1', workflowVersionId: 'ver-1' });
-			expect(data[1]).toMatchObject({ id: 'req-2', workflowVersionId: null });
+			expect(queryBuilder.addSelect).toHaveBeenCalledWith(
+				'pinnedVersion.name',
+				'pinnedWorkflowVersionName',
+			);
+			expect(data[0]).toMatchObject({
+				id: 'req-1',
+				workflowVersionId: 'ver-1',
+				workflowVersionName: 'Release candidate',
+			});
+			expect(data[1]).toMatchObject({
+				id: 'req-2',
+				workflowVersionId: null,
+				workflowVersionName: null,
+			});
 		});
 	});
 
@@ -344,6 +368,83 @@ describe('WorkflowReviewRequestRepository', () => {
 
 			expect(transactionManager.createQueryBuilder).toHaveBeenCalled();
 			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findUnreviewableOpenRequestIds', () => {
+		let queryBuilder: Mocked<SelectQueryBuilder<WorkflowReviewRequest>>;
+
+		beforeEach(() => {
+			queryBuilder = mock<SelectQueryBuilder<WorkflowReviewRequest>>();
+			queryBuilder.select.mockReturnThis();
+			queryBuilder.addSelect.mockReturnThis();
+			queryBuilder.leftJoin.mockReturnThis();
+			queryBuilder.where.mockReturnThis();
+			queryBuilder.andWhere.mockReturnThis();
+			queryBuilder.getRawMany.mockResolvedValue([]);
+			(entityManager.createQueryBuilder as Mock).mockReturnValue(queryBuilder);
+		});
+
+		it('returns a request only when none of its linked workflows is reviewable', async () => {
+			queryBuilder.getRawMany.mockResolvedValue([
+				// A missing owner row is broken data, not evidence that the workflow moved.
+				{
+					requestId: 'req-no-owner',
+					requestProjectId: 'proj-1',
+					linkedWorkflowId: 'wf-1',
+					isArchived: false,
+					owningProjectId: null,
+				},
+				{
+					requestId: 'req-orphan',
+					requestProjectId: 'proj-1',
+					linkedWorkflowId: null,
+					isArchived: null,
+					owningProjectId: null,
+				},
+				{
+					requestId: 'req-mixed',
+					requestProjectId: 'proj-1',
+					linkedWorkflowId: 'wf-2',
+					isArchived: true,
+					owningProjectId: 'proj-1',
+				},
+				{
+					requestId: 'req-mixed',
+					requestProjectId: 'proj-1',
+					linkedWorkflowId: 'wf-3',
+					isArchived: false,
+					owningProjectId: 'proj-1',
+				},
+			]);
+
+			expect(await repo.findUnreviewableOpenRequestIds({})).toEqual(['req-orphan']);
+			expect(queryBuilder.andWhere).not.toHaveBeenCalled();
+
+			await repo.findUnreviewableOpenRequestIds({}, ['req-1', 'req-2']);
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.id IN (:...candidateRequestIds)', {
+				candidateRequestIds: ['req-1', 'req-2'],
+			});
+
+			(entityManager.createQueryBuilder as Mock).mockClear();
+			expect(await repo.findUnreviewableOpenRequestIds({}, [])).toEqual([]);
+			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('closeRequests', () => {
+		it('bulk-closes the given requests, clearing the closing user and bumping updatedAt', async () => {
+			await repo.closeRequests(['req-1', 'req-2'], {});
+
+			expect(entityManager.update).toHaveBeenCalledWith(WorkflowReviewRequest, ['req-1', 'req-2'], {
+				state: 'closed',
+				closedById: null,
+				updatedAt: expect.any(Date),
+			});
+
+			entityManager.update.mockClear();
+			await repo.closeRequests([], {});
+			expect(entityManager.update).not.toHaveBeenCalled();
 		});
 	});
 

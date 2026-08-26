@@ -14,7 +14,6 @@ import type {
 	WorkflowReviewRequestList,
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestSummary,
-	WorkflowReviewStatusesResponse,
 } from '@n8n/api-types';
 import { makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
@@ -39,19 +38,6 @@ export async function fetchWorkflowReviewRequests(
 		'GET',
 		'/workflow-review-requests',
 		{ ...query },
-	);
-}
-
-/** Batched open-review statuses for a page of workflows. POST for the body only — a read. */
-export async function fetchWorkflowReviewStatuses(
-	context: IRestApiContext,
-	workflowIds: string[],
-): Promise<WorkflowReviewStatusesResponse> {
-	return await makeRestApiRequest<WorkflowReviewStatusesResponse>(
-		context,
-		'POST',
-		'/workflow-review-requests/statuses',
-		{ workflowIds },
 	);
 }
 

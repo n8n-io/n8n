@@ -208,7 +208,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'credentials',
 		labelKey: 'settings.n8nAgent.permissions.group.credentials',
-		keys: ['deleteCredential'],
+		keys: ['createCredential', 'deleteCredential'],
 	},
 	{
 		id: 'system',

@@ -156,7 +156,7 @@ case "$1 ${2:-}" in
 "compose version") echo "2.99.0" ;;
 "compose -f")
 	case "$*" in
-	*" up "* | *" pull "*)
+	*" up "* | *" pull"*)
 		echo "Error response from daemon: toomanyrequests: You have reached your pull rate limit." >&2
 		exit 1
 		;;

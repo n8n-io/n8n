@@ -154,6 +154,86 @@ export function planRelayConnection(
 /** Hosts the extension already treats as local, so no DNS redirect is needed. */
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
 
+/**
+ * Origins the BROWSER can reach n8n on — not necessarily the harness's own
+ * `baseUrl`.
+ *
+ * `planRelayConnection` rewrites the relay's host to `localhost` whenever it
+ * does not already match, so the browser can know n8n by a different spelling
+ * than the harness does: `http://n8n:5678` in the split-container topology, and
+ * `http://127.0.0.1:5678` on a laptop — cookies are host-scoped, and an IP host
+ * is never sent to `localhost`. The `localhost` spelling is therefore always
+ * included, keeping the protocol (a `secure` cookie is not sent over http).
+ * A cookie on an origin the browser never visits is inert; missing the one it
+ * does visit costs the session.
+ */
+export function browserN8nOrigins(baseUrl: string): string[] {
+	let url: URL;
+	try {
+		url = new URL(baseUrl);
+	} catch {
+		return [];
+	}
+	const localhost = `${url.protocol}//localhost${url.port ? `:${url.port}` : ''}`;
+	return url.hostname === 'localhost' ? [url.origin] : [url.origin, localhost];
+}
+
+/** The client's `n8n-auth` header as a cookie for one origin. Undefined when the
+ *  header is not a `name=value` pair. */
+export function browserSessionCookie(
+	cookieHeader: string,
+	url: string,
+): { name: string; value: string; url: string } | undefined {
+	const eq = cookieHeader.indexOf('=');
+	// First `=` only: the value is base64/JWT and carries its own padding.
+	if (eq <= 0) return undefined;
+	const value = cookieHeader.slice(eq + 1);
+	return value ? { name: cookieHeader.slice(0, eq), value, url } : undefined;
+}
+
+/**
+ * Give the launched browser the n8n session the harness already holds.
+ *
+ * A launched browser has never seen n8n, but the credential-setup skill opens
+ * n8n's OWN credential page first — for OAuth providers that is where the
+ * redirect URL lives. Without a session it lands on /signin and stops, and
+ * every expectation about the PROVIDER console then fails as though the agent
+ * had misbehaved (NODE-5549). `attachToRunningBrowser` needs none of this: the
+ * developer's browser is already signed in.
+ */
+async function signInBrowserToN8n(
+	context: BrowserContext,
+	client: N8nClient,
+	logger: EvalLogger,
+): Promise<void> {
+	let cookieHeader: string;
+	try {
+		cookieHeader = client.cookie;
+	} catch {
+		logger.warn('  Browser not signed in to n8n: the harness holds no session cookie');
+		return;
+	}
+	const cookies = browserN8nOrigins(client.baseUrl)
+		.map((origin) => browserSessionCookie(cookieHeader, origin))
+		.filter((c): c is { name: string; value: string; url: string } => c !== undefined);
+	if (!cookies.length) {
+		logger.warn('  Browser not signed in to n8n: session cookie is not a name=value pair');
+		return;
+	}
+	try {
+		await context.addCookies(cookies);
+	} catch (error: unknown) {
+		// Warn-and-continue, per this helper's contract: the run still works, it
+		// just starts on n8n's sign-in page. Throwing here would leak the browser
+		// and its profile — `cleanup` is not armed until after this call.
+		logger.warn(
+			`  Browser not signed in to n8n: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return;
+	}
+	logger.verbose(`  Browser signed in to n8n (${cookies.map((c) => c.url).join(', ')})`);
+}
+
 /** Loopback spellings the extension's own relay allowlist accepts. All of them
  *  must escape the fixture's catch-all, not just the literal "localhost". */
 const LOOPBACK_EXCLUDES = ['localhost', '127.0.0.1', '[::1]'];
@@ -274,6 +354,10 @@ export async function startBrowserRuntime(
 			headless: !headed,
 			args,
 		});
+
+		// Before the connect page loads, so the very first navigation is already
+		// authenticated. Inside this try, so a throw releases the relay session.
+		await signInBrowserToN8n(context, client, logger);
 
 		const cleanup = async () => {
 			await context.close().catch(() => {});

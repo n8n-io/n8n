@@ -9,7 +9,7 @@ import {
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig } from '@n8n/db';
@@ -21,6 +21,7 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
+import { redactTelemetryText } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
 	InstanceAiContext,
@@ -277,7 +278,6 @@ export class InstanceAiAdapterService {
 		private readonly roleService: RoleService,
 		private readonly telemetry: Telemetry,
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
-		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
 		private readonly workflowTemplatesService: WorkflowTemplatesService,
@@ -339,20 +339,20 @@ export class InstanceAiAdapterService {
 		// underlying config is cached process-wide (1h TTL) so this rarely hits
 		// the network, and telemetry must never block context creation.
 		void this.trackGatewayAvailability();
-
 		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
+		const credentialService = this.createCredentialAdapter(
+			user,
+			projectId,
+			credentialIdAllowlist,
+			shouldBypassCredentialTest,
+		);
 		return {
 			userId: user.id,
 			projectId,
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
-			credentialService: this.createCredentialAdapter(
-				user,
-				projectId,
-				credentialIdAllowlist,
-				shouldBypassCredentialTest,
-			),
+			credentialService,
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			...(configEvalsEnabled && this.evaluationConfigService
@@ -384,6 +384,7 @@ export class InstanceAiAdapterService {
 							user,
 							projectId,
 							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+							credentialService,
 						),
 					}
 				: {}),
@@ -1407,7 +1408,7 @@ export class InstanceAiAdapterService {
 						pinned_node_count: Object.keys(runData.pinData ?? {}).length,
 						exec_type: runData.executionMode,
 						status,
-						...(error ? { error } : {}),
+						...(error ? { error: redactTelemetryText(error) } : {}),
 					});
 				};
 
@@ -1503,9 +1504,12 @@ export class InstanceAiAdapterService {
 						}
 					}
 
-					const result = await extractExecutionResult(executionId, allowSendingParameterValues);
+					const { result, telemetryError } = await extractExecutionOutcome(
+						executionId,
+						allowSendingParameterValues,
+					);
 					await pruneVerificationPins(result.executedNodeNames);
-					trackBuilderExecutedWorkflow(result.status, result.error);
+					trackBuilderExecutedWorkflow(result.status, telemetryError);
 					// Saved workflow pins fed this run (they ride every instance-ai run) —
 					// report them so callers don't mistake pin-fed nodes for live ones.
 					const workflowPinnedNodeNames = Object.keys(workflow.pinData ?? {});
@@ -1617,7 +1621,12 @@ export class InstanceAiAdapterService {
 		credentialIdAllowlist?: string[],
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiCredentialService {
-		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
+		const {
+			credentialsService,
+			credentialsFinderService,
+			loadNodesAndCredentials,
+			aiGatewayService,
+		} = this;
 		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 
 		const adapter: InstanceAiCredentialService = {
@@ -1858,6 +1867,18 @@ export class InstanceAiAdapterService {
 				}
 			},
 
+			async credentialTypeExists(credentialType: string): Promise<boolean> {
+				if (credentialType in loadNodesAndCredentials.knownCredentials) return true;
+				// Runtime-registered types (e.g. MCP registry loaders) may not appear
+				// in knownCredentials — fall back to resolving the credential class.
+				try {
+					loadNodesAndCredentials.getCredential(credentialType);
+					return true;
+				} catch {
+					return false;
+				}
+			},
+
 			async searchCredentialTypes(query: string): Promise<CredentialTypeSearchResult[]> {
 				const q = query.toLowerCase().trim();
 				if (!q) return [];
@@ -1993,6 +2014,15 @@ export class InstanceAiAdapterService {
 				// type check is a best-effort validation, not a security gate.
 				const config = await getGatewayConfig();
 				return config?.credentialTypes.includes(credType) ?? false;
+			},
+
+			async getAiGatewayWallet(): Promise<{ balance: number } | null> {
+				if (!aiGatewayService.isEnabled()) return null;
+				try {
+					return await aiGatewayService.getWallet(user.id);
+				} catch {
+					return null;
+				}
 			},
 
 			async listAiGatewayCredentialTypes(): Promise<string[]> {
@@ -2388,10 +2418,9 @@ export class InstanceAiAdapterService {
 		const searchCacheRef = this.searchCache;
 		const settingsService = this.settingsService;
 
-		const { outboundHttp, ssrfProtectionService } = this;
-		const sharedTransport = outboundHttp.transport({
-			ssrf: this.ssrfProtectionService, // LLM/user-chosen URLs
-		});
+		const { outboundHttp } = this;
+		// LLM/user-chosen URLs, guarded even when the instance leaves protection off
+		const sharedTransport = outboundHttp.transport({ useDefaultSsrfPolicy: 'enforced' });
 		const userId = user.id;
 
 		// Lazy search method that resolves credentials on first call
@@ -2448,7 +2477,7 @@ export class InstanceAiAdapterService {
 				const authorizeUrl = options?.authorizeUrl;
 				const transport = authorizeUrl
 					? outboundHttp.transport({
-							ssrf: ssrfProtectionService,
+							useDefaultSsrfPolicy: 'enforced',
 							authorize: async (target: URL) => await authorizeUrl(target.href),
 						})
 					: sharedTransport;
@@ -3468,13 +3497,28 @@ export async function extractExecutionResult(
 	executionId: string,
 	includeOutputData = true,
 ): Promise<ExecutionResult> {
+	return (await extractExecutionOutcome(executionId, includeOutputData)).result;
+}
+
+/**
+ * The execution result the agent sees, plus the error string telemetry may use.
+ * They differ when `N8N_AI_ALLOW_SENDING_PARAMETER_VALUES` is on: that setting
+ * opts the operator into sending upstream response content (`error.description`
+ * / `.messages`, which routinely echo API keys and record-level PII) *to the
+ * model*, not into n8n's product analytics. So the telemetry copy is always
+ * formatted with upstream details suppressed.
+ */
+export async function extractExecutionOutcome(
+	executionId: string,
+	includeOutputData = true,
+): Promise<{ result: ExecutionResult; telemetryError?: string }> {
 	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
 
 	if (!execution) {
-		return { executionId, status: 'unknown' };
+		return { result: { executionId, status: 'unknown' } };
 	}
 
 	const status =
@@ -3518,18 +3562,21 @@ export async function extractExecutionResult(
 	const nodeErrors = extractNodeErrors(runData, includeOutputData, execution.workflowData?.nodes);
 
 	return {
-		executionId,
-		status,
-		data:
-			Object.keys(resultData).length > 0
-				? wrapResultDataEntries(truncateResultData(resultData))
-				: undefined,
-		executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
-		nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
-		lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
-		error: errorMessage,
-		startedAt: execution.startedAt?.toISOString(),
-		finishedAt: execution.stoppedAt?.toISOString(),
+		result: {
+			executionId,
+			status,
+			data:
+				Object.keys(resultData).length > 0
+					? wrapResultDataEntries(truncateResultData(resultData))
+					: undefined,
+			executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
+			nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
+			lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
+			error: errorMessage,
+			startedAt: execution.startedAt?.toISOString(),
+			finishedAt: execution.stoppedAt?.toISOString(),
+		},
+		telemetryError: error ? formatExecutionError(error, false) : undefined,
 	};
 }
 

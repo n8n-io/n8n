@@ -1,4 +1,12 @@
+import { z } from 'zod';
+
 import { Config, Env } from '../decorators';
+
+/**
+ * Floor for the CP → DP shared secret. Kept in step with the engine's identity
+ * verifier, which rejects anything shorter.
+ */
+const AUTH_SECRET_MIN_LENGTH = 32;
 
 @Config
 export class EngineConfig {
@@ -33,4 +41,13 @@ export class EngineConfig {
 	 */
 	@Env('N8N_ENGINE_DATABASE_URL')
 	databaseUrl: string = '';
+
+	/**
+	 * Shared secret the control plane signs its identity token with and the engine
+	 * verifies against. Both planes must hold the same value.
+	 *
+	 * This is in development and not ready for use.
+	 */
+	@Env('N8N_ENGINE_AUTH_SECRET', z.string().min(AUTH_SECRET_MIN_LENGTH))
+	authSecret: string = '';
 }

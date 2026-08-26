@@ -24,7 +24,7 @@ export interface EventPayloadAudit extends AbstractEventPayload {
 	projectName?: string;
 	activeVersionId?: string | null;
 	deactivatedVersionId?: string | null;
-	versionId?: string;
+	versionId?: string | null;
 	versionName?: string | null;
 	versionDescription?: string | null;
 	settingsChanged?: Record<string, { from: JsonValue; to: JsonValue }>;

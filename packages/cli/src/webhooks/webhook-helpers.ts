@@ -623,7 +623,11 @@ export async function executeWebhook(
 		};
 	};
 
-	additionalData.establishTriggerIdentity = async (token: string, resource: string) => {
+	additionalData.establishTriggerIdentity = async (
+		token: string,
+		resource: string,
+		subject?: string,
+	) => {
 		// The run re-verifies this token after the trigger stops listening, so it carries
 		// the gate with it. Fall back to a lookup for callers that establish an identity
 		// without going through `validateN8nOAuth2Token`.
@@ -642,7 +646,7 @@ export async function executeWebhook(
 
 		additionalData.encryptedRunnerIdentity = await Container.get(
 			ExecutionContextService,
-		).buildTriggerIdentityCredentials(token, resource, grant);
+		).buildTriggerIdentityCredentials(token, resource, grant, subject);
 		if (runExecutionData) {
 			await establishExecutionContext(workflow, runExecutionData, additionalData, executionMode);
 		}
