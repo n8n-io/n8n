@@ -136,6 +136,19 @@ describe('Community packages (Public API)', () => {
 			);
 		});
 
+		it('should not run npm outdated when unverified packages are disabled', async () => {
+			Container.get(CommunityPackagesConfig).unverifiedEnabled = false;
+			const pkg = mockPackage();
+			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
+			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([pkg]);
+
+			const response = await testServer.publicApiAgentFor(owner).get('/community-packages');
+
+			expect(response.status).toBe(200);
+			expect(response.body).toHaveLength(1);
+			expect(mockedExecuteNpmCommand).not.toHaveBeenCalled();
+		});
+
 		it('should return packages with updateAvailable when outdated', async () => {
 			const pkg = mockPackage();
 			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
