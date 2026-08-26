@@ -46,6 +46,7 @@ packages:
   - packages/testing/**
 
 catalog:
+  '@ai-sdk/alibaba': ^2.0.32
   '@ai-sdk/amazon-bedrock': ^5.0.31
   '@ai-sdk/anthropic': ^4.0.32
   '@ai-sdk/azure': ^4.0.21
@@ -55,7 +56,9 @@ catalog:
   '@ai-sdk/google': ^4.0.24
   '@ai-sdk/google-vertex': ^5.0.47
   '@ai-sdk/groq': ^4.0.13
+  '@ai-sdk/minimax': ^3.0.15
   '@ai-sdk/mistral': ^4.0.14
+  '@ai-sdk/moonshotai': ^3.0.35
   '@ai-sdk/openai': ^4.0.20
   '@ai-sdk/openai-compatible': ^3.0.14
   '@ai-sdk/otel': ^1.0.66

@@ -91,6 +91,8 @@ runs:
       shell: bash
       run: |
         # SafeChain only reads configs from this directory https://github.com/AikidoSec/safe-chain#configuration-options-1
+        # The age exclusions still apply to pnpm/npm runs in later job steps,
+        # which go through the shim without the install step's skip flag.
         mkdir -p "$HOME/.safe-chain"
         cp "${{ github.action_path }}/safe-chain.config.json" "$HOME/.safe-chain/config.json"
 
@@ -170,6 +172,19 @@ runs:
     #
     # `SAFE_CHAIN_LOGGING=verbose` surfaces safe-chain's proxy decisions, which
     # are otherwise buffered (and lost on failure) while pnpm is in flight.
+    #
+    # `--safe-chain-skip-minimum-package-age` disables SafeChain's own 48h
+    # version filtering, which re-parses and rewrites every packument response
+    # (tens of MB for Storybook packages). pnpm natively enforces the stricter
+    # `minimumReleaseAge` from pnpm-workspace.yaml, so the filter is pure
+    # overhead here. Malware blocking stays active. This must be a CLI flag:
+    # SafeChain has no config-file equivalent (verified in 1.5.7 and 1.5.15
+    # sources), and the shim strips all `--safe-chain-*` args before it runs
+    # the real pnpm.
+    #
+    # Not passed on Windows: SafeChain's shims there are `.cmd`/`.ps1`, which
+    # bash does not resolve for a bare `pnpm` — this step runs the real pnpm
+    # unwrapped, and the flag would fail as an unknown pnpm option.
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
       id: install-deps
@@ -178,6 +193,7 @@ runs:
         INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
         PNPM_DIAG_DIR: ${{ runner.temp }}/pnpm-diagnostics
         SAFE_CHAIN_LOGGING: verbose
+        SAFE_CHAIN_SKIP_ARGS: ${{ runner.os != 'Windows' && '--safe-chain-skip-minimum-package-age' || '' }}
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         # Stable, artifact-name-safe id for the upload step (written first so it
@@ -188,6 +204,7 @@ runs:
 
         set +o pipefail
         timeout --kill-after=30s 600s $INSTALL_COMMAND \
+          $SAFE_CHAIN_SKIP_ARGS \
           --config.logs-dir="$PNPM_DIAG_DIR/pnpm-logs" \
           --reporter=append-only --config.loglevel=info 2>&1 | tee "$INSTALL_LOG"
         rc=${PIPESTATUS[0]}
