@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { fireEvent } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
@@ -158,5 +158,34 @@ describe('ToolCredentialPicker', () => {
 			{ authType: 'gmailOAuth2' },
 		]);
 		expect(getAllByTestId('tool-credential-picker-trigger-connect')).toHaveLength(1);
+	});
+
+	it('lets the user choose which credential type to create', async () => {
+		const openNewCredential = vi.fn();
+		const credentials = [
+			{ authType: 'githubOAuth2Api', displayName: 'OAuth2' },
+			{ authType: 'githubApi', displayName: 'Access Token' },
+		];
+		const { getByTestId, findAllByTestId } = renderPicker({
+			props: { item: baseMcpItem, credentials },
+			pinia: createTestingPinia(),
+			global: {
+				provide: {
+					[TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY as symbol]: {
+						...makeAdapter([]),
+						openNewCredential,
+					},
+				},
+			},
+		});
+
+		await fireEvent.click(getByTestId('tool-credential-picker-trigger-connect'));
+		const createActions = await findAllByTestId('tool-credential-picker-create');
+		expect(createActions).toHaveLength(2);
+		expect(createActions[0]).toHaveTextContent('OAuth2');
+		expect(createActions[1]).toHaveTextContent('Access Token');
+
+		await fireEvent.click(createActions[1]);
+		expect(openNewCredential).toHaveBeenCalledWith('githubApi', baseMcpItem);
 	});
 });

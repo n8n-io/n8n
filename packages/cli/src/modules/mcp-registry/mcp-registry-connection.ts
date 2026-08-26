@@ -1,13 +1,15 @@
 import { camelCase } from 'change-case';
 import {
 	getMcpAuthHeaders,
+	type ICredentialTypes,
+	isMcpOAuth2Authentication,
 	type McpOAuth2CredentialType,
 	type McpRegistryConnection,
 	type PrepareMcpRegistryConnectionInput,
 	type PrepareMcpRegistryConnectionResult,
 } from 'n8n-workflow';
 
-import type { McpRegistryServer } from './registry/mcp-registry.types';
+import type { McpRegistryServer, McpRegistryUsesCredential } from './registry/mcp-registry.types';
 
 export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
 export const LANGCHAIN_PACKAGE_NAME = '@n8n/n8n-nodes-langchain';
@@ -18,6 +20,36 @@ export function getMcpRegistryCredentialTypeName(
 	server: McpRegistryServer,
 ): McpOAuth2CredentialType {
 	return `${camelCase(server.slug)}McpOAuth2Api`;
+}
+
+export function getMcpRegistryCredentialOptions(
+	server: McpRegistryServer,
+): McpRegistryUsesCredential[] {
+	if (server.authType === 'usesCredentials') return server.usesCredentials ?? [];
+	return [
+		{
+			credentialType: getMcpRegistryCredentialTypeName(server),
+			name: 'OAuth2',
+			value: 'oAuth2',
+		},
+	];
+}
+
+export function isSupportedMcpRegistryCredentialType(
+	credentialTypes: ICredentialTypes,
+	name: string,
+): name is McpOAuth2CredentialType {
+	if (!credentialTypes.recognizes(name) || !isMcpOAuth2Authentication(name)) return false;
+	try {
+		const credentialType = credentialTypes.getByName(name);
+		return (
+			credentialType.authenticate === undefined &&
+			credentialType.preAuthentication === undefined &&
+			(name === 'oAuth2Api' || credentialTypes.getParentTypes(name).includes('oAuth2Api'))
+		);
+	} catch {
+		return false;
+	}
 }
 
 export function resolveMcpRegistryConnection(
@@ -41,10 +73,13 @@ export function resolveMcpRegistryConnection(
 
 		return {
 			nodeTypeName: `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}`,
-			credentialType: getMcpRegistryCredentialTypeName(server),
 			endpointUrl: endpoint.toString(),
 			endpointHostname: endpoint.hostname,
 			transport: remote.type === 'streamable-http' ? 'httpStreamable' : 'sse',
+			credentialBindings: getMcpRegistryCredentialOptions(server).flatMap(
+				({ credentialType, value }) =>
+					isMcpOAuth2Authentication(credentialType) ? [{ credentialType, selector: value }] : [],
+			),
 		};
 	} catch {
 		return null;
@@ -53,15 +88,25 @@ export function resolveMcpRegistryConnection(
 
 export function prepareMcpRegistryConnection({
 	connection,
+	credentialType,
 	credentialData,
 }: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult {
-	const headers = getMcpAuthHeaders(connection.credentialType, credentialData);
+	if (!connection.credentialBindings.some((binding) => binding.credentialType === credentialType)) {
+		return {
+			ok: false,
+			error: {
+				code: 'unsupported_credential',
+				message: `Credential type "${credentialType}" is not supported by this MCP registry server`,
+			},
+		};
+	}
+	const headers = getMcpAuthHeaders(credentialType, credentialData);
 	if (!headers.authorization) {
 		return {
 			ok: false,
 			error: {
 				code: 'missing_access_token',
-				message: `Credential type "${connection.credentialType}" does not contain an OAuth2 access token`,
+				message: `Credential type "${credentialType}" does not contain an OAuth2 access token`,
 			},
 		};
 	}
@@ -70,6 +115,7 @@ export function prepareMcpRegistryConnection({
 		ok: true,
 		value: {
 			...connection,
+			credentialType,
 			headers,
 			allowedDomains: connection.endpointHostname,
 		},

@@ -627,6 +627,7 @@ export type {
 	DataTableFilterInput,
 	InstanceAiEvaluationConfigService,
 	InstanceAiMcpService,
+	McpRegistryConnectServerSummary,
 	McpRegistryServerSummary,
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,

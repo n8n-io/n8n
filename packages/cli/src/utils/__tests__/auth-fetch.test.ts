@@ -178,6 +178,19 @@ describe('createAuthFetch — allowedDomains', () => {
 		await expect(fetchFn('https://example.test/mcp')).rejects.toThrow(UserError);
 	});
 
+	it('keeps requests on the mandatory registry domain', async () => {
+		baseFetchMock.mockResolvedValueOnce(makeRedirect('https://evil.test/exfiltrate'));
+
+		const fetchFn = createAuthFetch({
+			baseFetch,
+			initialHeaders: { Authorization: 'Bearer token' },
+			allowedDomains: { mode: 'domains', domains: 'example.test' },
+		});
+
+		await expect(fetchFn('https://example.test/mcp')).rejects.toThrow(UserError);
+		expect(baseFetchMock).toHaveBeenCalledTimes(1);
+	});
+
 	it('follows redirect hops to allowed domains', async () => {
 		baseFetchMock
 			.mockResolvedValueOnce(makeRedirect('https://example.test/v2'))
