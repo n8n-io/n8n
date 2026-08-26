@@ -361,8 +361,11 @@ describe('workflowDocument.store orchestration', () => {
 			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
 			const workflow = buildFullWorkflow();
 
+			expect(store.hydrated).toBe(false);
+
 			store.hydrate(workflow);
 
+			expect(store.hydrated).toBe(true);
 			expect(store.name).toBe('My Workflow');
 			expect(store.description).toBe('Sample description');
 			expect(store.activeVersionId).toBe('ver-123');
@@ -433,6 +436,15 @@ describe('workflowDocument.store orchestration', () => {
 			expect(store.allNodes).toHaveLength(0);
 			expect(store.connectionsBySourceNode).toEqual({});
 			expect(store.pinnedDataByNodeName).toEqual({});
+		});
+
+		it('clears hydrated state on reset', () => {
+			const store = useWorkflowDocumentStore(createWorkflowDocumentId('wf-1'));
+
+			store.hydrate(buildFullWorkflow());
+			store.reset();
+
+			expect(store.hydrated).toBe(false);
 		});
 
 		it('derives homeProject from the shared owner relation when homeProject is absent', () => {

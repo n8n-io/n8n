@@ -424,6 +424,11 @@ Credential Rules) is your signal that a type is covered. Do not change
 credentials on nodes that already have one assigned (editing an existing
 workflow, or after the user has made a credential choice).
 
+If `credentialResolutionNote` on the build result says n8n credits are
+depleted, follow that note: tell the user they must top up n8n credits
+or add their own key on the node. Do not say the workflow works out of the
+box, and do not offer a live test.
+
 - If the user explicitly specified their own credential (by name or by
   choosing one from a list), use that credential and do not substitute
   n8n credits.
