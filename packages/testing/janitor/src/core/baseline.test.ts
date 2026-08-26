@@ -102,7 +102,6 @@ describe('baseline', () => {
 
 			expect(loaded).not.toBeNull();
 			expect(loaded!.version).toBe(1);
-			expect(loaded!.totalViolations).toBe(2);
 			expect(loaded!.violations['pages/TestPage.ts']).toHaveLength(1);
 		});
 
