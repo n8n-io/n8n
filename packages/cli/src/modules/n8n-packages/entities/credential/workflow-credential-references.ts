@@ -38,6 +38,8 @@ export function visitWorkflowCredentials(
 		if (!inlineWorkflow || !Array.isArray(inlineWorkflow.nodes)) continue;
 
 		if (visitWorkflowCredentials(inlineWorkflow.nodes, visitor)) {
+			// Sub-workflow nodes are a parsed copy of a JSON string, not live refs,
+			// so visitor mutations are lost unless we serialize them back.
 			node.parameters.workflowJson = JSON.stringify(inlineWorkflow);
 			changed = true;
 		}
