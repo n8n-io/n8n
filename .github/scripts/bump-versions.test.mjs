@@ -72,6 +72,26 @@ describe('getOverrides', () => {
 			{ lodash: '^4.0.0', underscore: '^1.0.0' },
 		);
 	});
+
+	it('returns workspace overrides when package.json has none', () => {
+		assert.deepEqual(getOverrides({}, { overrides: { lodash: '^4.0.0' } }), { lodash: '^4.0.0' });
+	});
+
+	it('lets workspace overrides win over package.json for the same key', () => {
+		assert.deepEqual(
+			getOverrides(
+				{ pnpm: { overrides: { lodash: '^3.0.0', underscore: '^1.0.0' } } },
+				{ overrides: { lodash: '^4.0.0' } },
+			),
+			{ lodash: '^4.0.0', underscore: '^1.0.0' },
+		);
+	});
+
+	it('sees no change when an override only moves from package.json to the workspace file', () => {
+		const atTag = getOverrides({ pnpm: { overrides: { lodash: '^4.0.0' } } }, {});
+		const current = getOverrides({}, { overrides: { lodash: '^4.0.0' } });
+		assert.deepEqual(computeChangedOverrides(current, atTag), new Set());
+	});
 });
 
 describe('parseWorkspaceYaml', () => {

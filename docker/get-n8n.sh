@@ -25,15 +25,36 @@ SOURCE_URL="https://github.com/n8n-io/n8n/blob/master/docker/get-n8n.sh"
 COMPOSE_SOURCE="${N8N_COMPOSE_URL:-https://raw.githubusercontent.com/n8n-io/n8n/master/docker/get-n8n-compose.yml}"
 COMPOSE_HISTORY_URL="https://github.com/n8n-io/n8n/commits/master/docker/get-n8n-compose.yml"
 DOCS_HOSTING_URL="https://docs.n8n.io/hosting/"
+DOCS_EVERYDAY_URL="https://docs.n8n.io/deploy/host-n8n/install-options/one-line-setup#everyday-commands"
 
 UPGRADE=0
 NO_START=0
 REQUESTED_VERSION=""
 
+# Apply ANSI styling only when stdout is a terminal that supports it and the
+# user hasn't opted out (https://no-color.org).
+if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != "dumb" ]; then
+	BOLD=$(printf '\033[1m')
+	DIM=$(printf '\033[2m')
+	CYAN=$(printf '\033[36m')
+	GREEN=$(printf '\033[32m')
+	YELLOW=$(printf '\033[33m')
+	RESET=$(printf '\033[0m')
+else
+	BOLD='' DIM='' CYAN='' GREEN='' YELLOW='' RESET=''
+fi
+# stderr can be a terminal when stdout isn't, so red gets its own check and reset.
+if [ -t 2 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != "dumb" ]; then
+	RED=$(printf '\033[1;31m')
+	RED_RESET=$(printf '\033[0m')
+else
+	RED='' RED_RESET=''
+fi
+
 say() { printf '%s\n' "$*"; }
-ok() { printf '\342\234\223 %s\n' "$*"; }
+ok() { printf '%s\342\234\224%s %s\n' "$GREEN" "$RESET" "$*"; }
 fail() {
-	printf 'Error: %s\n' "$*" >&2
+	printf '%sError:%s %s\n' "$RED" "$RED_RESET" "$*" >&2
 	exit 1
 }
 
@@ -359,14 +380,13 @@ do_upgrade() {
 }
 
 wait_for_n8n() {
-	printf 'Waiting for n8n to become ready (first boot pulls images and runs migrations) '
+	printf 'Waiting for n8n to become ready (first boot pulls images and runs migrations) ...'
 	waited=0
 	while [ "$waited" -lt 180 ]; do
 		if http_get "http://127.0.0.1:${N8N_PORT}/healthz"; then
-			printf '\n'
+			printf ' %s\342\234\223%s\n' "$GREEN" "$RESET"
 			return 0
 		fi
-		printf '.'
 		sleep 3
 		waited=$((waited + 3))
 	done
@@ -377,24 +397,24 @@ wait_for_n8n() {
 print_summary() {
 	cat <<EOF
 
-n8n is running at: http://localhost:${N8N_PORT}
-Data stored in:    ${N8N_DIR} (Docker volume: n8n-data)
-Config files:      ${N8N_DIR}/compose.yml, ${N8N_DIR}/.env
+${BOLD}n8n is running at:${RESET} ${CYAN}http://localhost:${N8N_PORT}${RESET}
+${BOLD}Data stored in:${RESET}    ${N8N_DIR} ${DIM}(Docker volume: n8n-data)${RESET}
+${BOLD}Config files:${RESET}      ${N8N_DIR}/compose.yml, ${N8N_DIR}/.env
 
-To stop:      docker compose -f ${N8N_DIR}/compose.yml down
-To upgrade:   curl -fsSL https://get.n8n.io | sh -s -- --upgrade
-To uninstall: docker compose -f ${N8N_DIR}/compose.yml down -v && rm -rf ${N8N_DIR}   # DELETES all n8n data
+${BOLD}To stop:${RESET}  docker compose -f ${N8N_DIR}/compose.yml down
+${BOLD}To start:${RESET} docker compose -f ${N8N_DIR}/compose.yml up -d
+${DIM}More everyday commands: ${DOCS_EVERYDAY_URL}${RESET}
 
-Security notes:
+${YELLOW}${BOLD}Security notes:${RESET}
   - Only port ${N8N_PORT} (n8n) should ever be reachable from the internet.
   - The sandbox runner is privileged Docker-in-Docker — never publish its ports.
 
 This setup is meant to try n8n locally. For production (TLS, Postgres, queue
 mode) see ${DOCS_HOSTING_URL}
 
-get-n8n.sh v${SCRIPT_VERSION} — source: ${SOURCE_URL}
+${DIM}get-n8n.sh v${SCRIPT_VERSION} — source: ${SOURCE_URL}${RESET}
 
-Open http://localhost:${N8N_PORT} in your browser to get started.
+${GREEN}➜${RESET}  ${BOLD}All set! Open ${CYAN}http://localhost:${N8N_PORT}${RESET}${BOLD} in your browser to get started.${RESET}
 EOF
 }
 

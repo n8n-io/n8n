@@ -196,6 +196,7 @@ describe('Start - AuthRolesService initialization', () => {
 			start.globalConfig = {
 				executions: { mode: 'queue' },
 				multiMainSetup: { enabled: true },
+				license: { autoRenewalEnabled: true },
 				endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 				database: { type: 'sqlite' },
 				sentry: {
@@ -231,6 +232,7 @@ describe('Start - AuthRolesService initialization', () => {
 			start.globalConfig = {
 				executions: { mode: 'queue' },
 				multiMainSetup: { enabled: true },
+				license: { autoRenewalEnabled: true },
 				endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 				database: { type: 'sqlite' },
 				sentry: {
@@ -250,6 +252,72 @@ describe('Start - AuthRolesService initialization', () => {
 			await start.init();
 
 			expect(authRolesService.init).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('init - license auto-renewal reconciliation', () => {
+		const queueGlobalConfig = () => ({
+			executions: { mode: 'queue' as const },
+			multiMainSetup: { enabled: true },
+			license: { autoRenewalEnabled: true },
+			endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
+			database: { type: 'sqlite' as const },
+			sentry: {
+				backendDsn: '',
+				environment: 'test',
+				deploymentName: 'test',
+				profilesSampleRate: 0,
+				tracesSampleRate: 0,
+				eventLoopBlockThreshold: 0,
+			},
+			cache: { backend: 'memory' as const },
+			taskRunners: {},
+			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
+			workflows: { useWorkflowPublicationService: false },
+		});
+
+		it('reconciles license auto-renewal when leadership was already taken over before handlers were registered', async () => {
+			setupInstanceSettings('main', true, true);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = queueGlobalConfig();
+
+			await start.init();
+
+			expect(multiMainSetup.registerEventHandlers).toHaveBeenCalledTimes(1);
+			expect(license.enableAutoRenewals).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not reconcile license auto-renewal when this instance is not leader', async () => {
+			setupInstanceSettings('main', true, false);
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = queueGlobalConfig();
+
+			await start.init();
+
+			expect(multiMainSetup.registerEventHandlers).toHaveBeenCalledTimes(1);
+			expect(license.enableAutoRenewals).not.toHaveBeenCalled();
+		});
+
+		it('does not reconcile license auto-renewal when auto-renewal is disabled', async () => {
+			setupInstanceSettings('main', true, true);
+			const config = queueGlobalConfig();
+			config.license.autoRenewalEnabled = false;
+			// @ts-expect-error - Accessing protected property for testing
+			start.globalConfig = config;
+
+			await start.init();
+
+			expect(multiMainSetup.registerEventHandlers).toHaveBeenCalledTimes(1);
+			expect(license.enableAutoRenewals).not.toHaveBeenCalled();
+		});
+
+		it('does not reconcile license auto-renewal when multi-main is disabled', async () => {
+			setupInstanceSettings('main', false, false);
+
+			await start.init();
+
+			expect(multiMainSetup.registerEventHandlers).not.toHaveBeenCalled();
+			expect(license.enableAutoRenewals).not.toHaveBeenCalled();
 		});
 	});
 
@@ -277,6 +345,7 @@ describe('Start - AuthRolesService initialization', () => {
 		const multiMainConfig = {
 			executions: { mode: 'queue' as const },
 			multiMainSetup: { enabled: true },
+			license: { autoRenewalEnabled: true },
 			endpoints: { disableUi: true, metrics: { enable: false }, health: '/health' },
 			database: { type: 'sqlite' },
 			sentry: {

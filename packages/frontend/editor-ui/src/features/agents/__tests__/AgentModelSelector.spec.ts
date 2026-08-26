@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 
-import type { AgentModelsByProvider } from '../model-providers';
+import type { AgentModelOption, AgentModelsByProvider } from '../model-providers';
 
-type Credential = { id: string; name: string; type: string };
+type Credential = { id: string; name: string; type: string; isManaged?: boolean };
 type TestMenuItem = {
 	id: string;
 	label: string;
@@ -159,6 +159,28 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openNewCredential, openModalWithData }),
 }));
 
+vi.mock('../composables/useModelCatalog', () => ({
+	useModelCatalog: () => ({
+		ensureLoaded: vi.fn(),
+		getDefaultModelForPicker: (
+			_credentials: Record<string, string | null> | null,
+			provider: string,
+		) =>
+			provider === 'openai'
+				? {
+						provider: 'openai',
+						model: 'gpt-5-mini',
+						name: 'GPT-5 mini',
+						description: null,
+						createdAt: null,
+						metadata: { functionCalling: true, available: true },
+					}
+				: null,
+		getVerificationStatus: (_projectId: string, _provider: string, credentialId: string) =>
+			credentialId === 'free-openai-credential' ? 'resolved' : 'loading',
+	}),
+}));
+
 const modelsByProvider: AgentModelsByProvider = {
 	anthropic: {
 		models: [
@@ -179,6 +201,7 @@ async function mountSelector(
 	extraProps: {
 		credentialModalAppendToBody?: boolean;
 		boundCredentialId?: string | null;
+		selectedModel?: AgentModelOption | null;
 	} = {},
 ) {
 	const { default: AgentModelSelector } = await import('../components/AgentModelSelector.vue');
@@ -457,6 +480,27 @@ describe('AgentModelSelector', () => {
 
 		getDropdown(wrapper).vm.$emit('select', 'anthropic::select::anthropic-cred');
 		expect(wrapper.emitted('selectCredential')).toEqual([['anthropic', 'anthropic-cred']]);
+		expect(wrapper.emitted('change')).toBeUndefined();
+	});
+
+	it('selects gpt-5-mini when an existing free OpenAI credits credential is selected', async () => {
+		credentialsByType.value = {
+			openAiApi: [
+				{
+					id: 'free-openai-credential',
+					name: 'n8n free OpenAI API credits',
+					type: 'openAiApi',
+					isManaged: true,
+				},
+			],
+		};
+		const wrapper = await mountSelector({ openai: null });
+
+		getDropdown(wrapper).vm.$emit('select', 'openai::select::free-openai-credential');
+		await wrapper.vm.$nextTick();
+
+		expect(wrapper.emitted('selectCredential')).toEqual([['openai', 'free-openai-credential']]);
+		expect(wrapper.emitted('change')).toEqual([[{ provider: 'openai', model: 'gpt-5-mini' }]]);
 	});
 
 	it('groups the submenu with "Connect to <provider>" and "Models" section headers', async () => {
@@ -499,8 +543,38 @@ describe('AgentModelSelector', () => {
 			undefined,
 			undefined,
 			undefined,
-			{ hideAskAssistant: true },
+			{ hideAskAssistant: true, onCredentialCreated: expect.any(Function) },
 		);
+	});
+
+	it('lets the parent resolve the verified default after creating a credential', async () => {
+		credentialsByType.value = {};
+		const wrapper = await mountSelector({ anthropic: null }, { selectedModel: null });
+
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
+		const onCredentialCreated = openNewCredential.mock.calls[0]?.[7]?.onCredentialCreated;
+		expect(onCredentialCreated).toBeTypeOf('function');
+
+		onCredentialCreated?.({ id: 'new-anthropic-credential' });
+
+		expect(wrapper.emitted('selectCredential')).toEqual([
+			['anthropic', 'new-anthropic-credential'],
+		]);
+		expect(wrapper.emitted('change')).toBeUndefined();
+	});
+
+	it('does not replace the selected model after creating a credential', async () => {
+		credentialsByType.value = {};
+		const wrapper = await mountSelector({ anthropic: null });
+
+		getDropdown(wrapper).vm.$emit('select', 'anthropic::configure::anthropicApi');
+		const onCredentialCreated = openNewCredential.mock.calls[0]?.[7]?.onCredentialCreated;
+		onCredentialCreated?.({ id: 'new-anthropic-credential' });
+
+		expect(wrapper.emitted('selectCredential')).toEqual([
+			['anthropic', 'new-anthropic-credential'],
+		]);
+		expect(wrapper.emitted('change')).toBeUndefined();
 	});
 
 	it('opens a new model credential at the body level when requested', async () => {
@@ -517,7 +591,11 @@ describe('AgentModelSelector', () => {
 			undefined,
 			undefined,
 			undefined,
-			{ hideAskAssistant: true, appendToBody: true },
+			{
+				hideAskAssistant: true,
+				appendToBody: true,
+				onCredentialCreated: expect.any(Function),
+			},
 		);
 	});
 

@@ -4,6 +4,7 @@ import type {
 	DbLockService,
 	Project,
 	ProjectRelationRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
 	User,
 	UserRepository,
@@ -23,8 +24,7 @@ import type {
 import { DbLock } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
-import { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
+import { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
@@ -34,6 +34,7 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { EventService } from '@/events/event.service';
+import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -74,11 +75,22 @@ describe('WorkflowReviewRequestService.decide', () => {
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
 	const workflowService = mock<WorkflowService>();
-	const accessService = mock<WorkflowReviewAccessService>();
 	const logger = mock<Logger>();
 	const eventService = mock<EventService>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
+
+	const authorizationService = new WorkflowReviewAuthorizationService(
+		workflowFinderService,
+		mock<ProjectService>(),
+		roleService,
+		mock<ProjectRepository>(),
+		projectRelationRepository,
+		requestRepository,
+		workflowRepository,
+		authorRepository,
+		reviewerRepository,
+	);
 
 	const service = new WorkflowReviewRequestService(
 		logger,
@@ -94,19 +106,13 @@ describe('WorkflowReviewRequestService.decide', () => {
 		reviewerRepository,
 		activityRepository,
 		userRepository,
-		// Real service over the same mocks, so the override assertions below
-		// exercise the actual eligibility logic decide() shares with the read side.
-		new WorkflowReviewEligibilityService(
-			workflowFinderService,
-			authorRepository,
-			reviewerRepository,
-			projectRelationRepository,
-		),
 		roleService,
 		dbLockService,
 		collaborationService,
 		workflowService,
-		accessService,
+		// Real service over the same mocks, so the override assertions below exercise
+		// the actual admin rule decide() shares with the read side.
+		authorizationService,
 		eventService,
 	);
 
@@ -153,7 +159,6 @@ describe('WorkflowReviewRequestService.decide', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		accessService.resolveOpenableRequestIds.mockResolvedValue(new Set());
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.
@@ -208,6 +213,23 @@ describe('WorkflowReviewRequestService.decide', () => {
 			expect.anything(),
 			['workflow:read'],
 		);
+		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
+	});
+
+	it('throws NotFoundError when the user cannot view every workflow the request covers', async () => {
+		mockSuccessfulDecidePath();
+		workflowRepository.findByRequestId.mockResolvedValue([
+			pinnedRow('ver-1', 'wf-1'),
+			pinnedRow('ver-2', 'wf-2'),
+		]);
+		workflowFinderService.findWorkflowForUser.mockImplementation(async (workflowId) =>
+			workflowId === 'wf-1' ? mock<WorkflowEntity>({ isArchived: false }) : null,
+		);
+
+		await expect(service.decide(memberUser(), requestId, approveDto)).rejects.toThrow(
+			NotFoundError,
+		);
+
 		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
@@ -377,7 +399,7 @@ describe('WorkflowReviewRequestService.decide', () => {
 		const result = await service.decide(memberUser(), requestId, approveDto);
 
 		expect(dbLockService.withLockContext).toHaveBeenCalledWith(
-			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+			DbLock.WORKFLOW_REVIEW_MUTATION,
 			expect.any(Function),
 		);
 		// Re-checked under the lock through the transaction manager.

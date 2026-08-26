@@ -2,7 +2,12 @@ import { Logger } from '@n8n/backend-common';
 import { EngineConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { EngineRuntime } from '@n8n/engine';
-import { AllowAllAdmittance, createDataSource, createEngineRuntime } from '@n8n/engine';
+import {
+	AllowAllAdmittance,
+	createDataSource,
+	createEngineRuntime,
+	SharedSecretIdentityVerifier,
+} from '@n8n/engine';
 import { createEngineStepDataLoader, V1StepExecutor } from '@n8n/node-engine-compatibility';
 import { UserError } from 'n8n-workflow';
 import assert from 'node:assert';
@@ -76,6 +81,7 @@ export class EngineV2Runtime {
 			// TODO(CAT-2909): placeholder policy — every execution is admitted and no
 			// limits are applied.
 			admittance: new AllowAllAdmittance(),
+			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				v1StepExecutor: new V1StepExecutor({
 					nodeTypes: this.nodeTypes,

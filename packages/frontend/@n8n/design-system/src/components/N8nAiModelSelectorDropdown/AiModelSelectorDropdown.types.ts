@@ -12,6 +12,8 @@ export interface AiModelSelectorMenuItemData {
 	credentialType?: string;
 	/** Icon name shown instead of the credential icon (e.g. for "Configure credentials" actions). */
 	leadingIcon?: string;
+	/** Whether the item label represents content that is being resolved. */
+	loading?: boolean;
 }
 
 export type AiModelSelectorMenuItem<
