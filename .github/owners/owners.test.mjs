@@ -14,7 +14,7 @@ import {
 /**
  * Run these tests by running
  *
- * node --test ./.github/scripts/owners.test.mjs
+ * node --test ./.github/owners/owners.test.mjs
  * */
 
 /** @param {Partial<import('./owners.mjs').OwnersEntry>} entry */
@@ -269,7 +269,7 @@ describe('resolveRequiredTeams', () => {
 	});
 
 	it('ignores files whose winning entry is not required', () => {
-		const result = resolveRequiredTeams(new Set(['.github/OWNERS', 'src/a.ts']), owners);
+		const result = resolveRequiredTeams(new Set(['.github/owners/OWNERS', 'src/a.ts']), owners);
 
 		assert.equal(result.size, 0);
 	});

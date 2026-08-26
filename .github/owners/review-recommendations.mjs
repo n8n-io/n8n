@@ -8,18 +8,17 @@
  *     prompt to request review from those teams
  *
  * Advisory only — does not gate merging. Enforcement of required reviews
- * lives in owners-required-reviews.mjs.
+ * lives in required-reviews.mjs.
  */
 
-import { minimatch } from 'minimatch';
-import { ensureEnvVar, getPrFiles, postOrUpdateComment } from './github-helpers.mjs';
+import { ensureEnvVar, getPrFiles, postOrUpdateComment } from '../scripts/github-helpers.mjs';
+import { categorizeFile, SIZE_LIMIT } from '../scripts/quality/check-pr-size.mjs';
 import {
 	assignOwnership,
 	ownershipsToAllocations,
 	parseOwnersFile,
 	resolveRequiredTeams,
 } from './owners.mjs';
-import { MISC_PATTERNS, SIZE_LIMIT, TEST_PATTERNS } from './quality/check-pr-size.mjs';
 
 /** @typedef {import('./owners.mjs').Allocation} Allocation */
 
@@ -49,19 +48,9 @@ function createEmptyLineStats() {
  * @param {{ filename: string, additions: number, deletions: number }} file
  */
 function addFileToLineStats(stats, file) {
-	const isTest = TEST_PATTERNS.some((p) => minimatch(file.filename, p));
-	const isMisc = !isTest && MISC_PATTERNS.some((p) => minimatch(file.filename, p));
-
-	if (isTest) {
-		stats.testFilesAdded += file.additions;
-		stats.testFilesRemoved += file.deletions;
-	} else if (isMisc) {
-		stats.miscAdded += file.additions;
-		stats.miscRemoved += file.deletions;
-	} else {
-		stats.sourceCodeAdded += file.additions;
-		stats.sourceCodeRemoved += file.deletions;
-	}
+	const category = categorizeFile(file.filename);
+	stats[`${category}Added`] += file.additions;
+	stats[`${category}Removed`] += file.deletions;
 }
 
 /**
@@ -219,7 +208,7 @@ export function buildRequiredReviewsSection(requiredTeamFiles) {
 	return [
 		'### Required reviews',
 		'',
-		'Some changed files have a `required` owner in `.github/OWNERS`. A member of each of these teams must approve this PR before it can merge:',
+		'Some changed files have a `required` owner in `.github/owners/OWNERS`. A member of each of these teams must approve this PR before it can merge:',
 		'',
 		'| Team | Files |',
 		'| --- | ---: |',

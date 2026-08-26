@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 /**
  * Run these tests by running
  *
- * node --test --experimental-test-module-mocks ./.github/scripts/owners-required-reviews.test.mjs
+ * node --test --experimental-test-module-mocks ./.github/owners/required-reviews.test.mjs
  * */
 
 /** @type {() => any} */
@@ -20,7 +20,7 @@ let listTeamMembersImpl = async () => [];
 /** @type {(sha: string, status: any) => Promise<void>} */
 let setCommitStatusImpl = async () => {};
 
-mock.module('./github-helpers.mjs', {
+mock.module('../scripts/github-helpers.mjs', {
 	namedExports: {
 		getEventFromGithubEventPath: () => eventImpl(),
 		getPullRequestById: (n) => getPullRequestByIdImpl(n),
@@ -52,7 +52,7 @@ const {
 	latestReviewStates,
 	resolvePullRequestNumber,
 	run,
-} = await import('./owners-required-reviews.mjs');
+} = await import('./required-reviews.mjs');
 
 describe('resolvePullRequestNumber', () => {
 	it('reads the PR number from pull_request payloads', () => {

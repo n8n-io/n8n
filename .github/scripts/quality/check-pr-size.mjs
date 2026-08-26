@@ -49,6 +49,18 @@ export const MISC_PATTERNS = [
 
 export const EXCLUDE_PATTERNS = [...TEST_PATTERNS, ...MISC_PATTERNS];
 
+/**
+ * Categorize a changed file for line statistics.
+ *
+ * @param { string } filename
+ * @returns { 'testFiles' | 'misc' | 'sourceCode' }
+ */
+export function categorizeFile(filename) {
+	if (TEST_PATTERNS.some((pattern) => minimatch(filename, pattern))) return 'testFiles';
+	if (MISC_PATTERNS.some((pattern) => minimatch(filename, pattern))) return 'misc';
+	return 'sourceCode';
+}
+
 const BOT_MARKER = '<!-- pr-size-check -->';
 
 /**

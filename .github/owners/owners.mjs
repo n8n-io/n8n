@@ -21,7 +21,7 @@ import { join } from "node:path";
 
 // Resolve relative to this file so the path works regardless of cwd
 // (workflow runs from repo root; `npm test` runs from .github/scripts).
-export const OWNERS_FILE = join(import.meta.dirname, "..", "OWNERS");
+export const OWNERS_FILE = join(import.meta.dirname, "OWNERS");
 
 const REPO_ROOT = join(import.meta.dirname, "..", "..");
 
@@ -89,7 +89,7 @@ export function parseOwnersContent(content) {
 }
 
 /**
- * Read and parse the .github/OWNERS file.
+ * Read and parse the .github/owners/OWNERS file.
  *
  * @param { string } [path] Optional override; defaults to OWNERS_FILE.
  * @returns { OwnersEntry[] }

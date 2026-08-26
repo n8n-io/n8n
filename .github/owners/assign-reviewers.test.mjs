@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 /**
  * Run these tests by running
  *
- * node --test --experimental-test-module-mocks ./.github/scripts/owners-assign-reviewers.test.mjs
+ * node --test --experimental-test-module-mocks ./.github/owners/assign-reviewers.test.mjs
  * */
 
 /** @type {() => string[]} */
@@ -18,7 +18,7 @@ let addLabelImpl = async () => {};
 /** @type {(pullRequestNumber: number, label: string) => Promise<void>} */
 let removeLabelImpl = async () => {};
 
-mock.module('./github-helpers.mjs', {
+mock.module('../scripts/github-helpers.mjs', {
 	namedExports: {
 		ensureEnvVar: () => {}, // no-op in tests
 		readPrLabels: () => readPrLabelsImpl(),
@@ -54,7 +54,7 @@ const {
 	hasAutoAssignLabel,
 	resolveOwnerTeamSlugs,
 	run,
-} = await import('./owners-assign-reviewers.mjs');
+} = await import('./assign-reviewers.mjs');
 
 describe('teamHandleToSlug', () => {
 	it('strips the org prefix from an OWNERS team handle', () => {

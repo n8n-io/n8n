@@ -10,7 +10,7 @@ Complete reference for n8n's `.github/` folder.
 .github/
 ├── WORKFLOWS.md                          # This document
 ├── CI-TELEMETRY.md                       # Telemetry & metrics guide
-├── OWNERS                                # Team ownership for PR reviews
+├── owners/                               # Team ownership (OWNERS file + owners scripts)
 ├── pull_request_template.md              # PR description template
 ├── pull_request_title_conventions.md     # Title format rules (Angular)
 ├── actionlint.yml                        # Workflow linter config
@@ -559,8 +559,9 @@ See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
 
 ## OWNERS
 
-Team ownership lives in `.github/OWNERS` (this replaced the GitHub-native
-`CODEOWNERS` file). Line format:
+Team ownership lives in `.github/owners/OWNERS` (this replaced the
+GitHub-native `CODEOWNERS` file), next to the scripts that consume it. Line
+format:
 
 ```
 <pattern> <@org/team>... [required]

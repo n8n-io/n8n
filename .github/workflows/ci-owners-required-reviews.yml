@@ -1,7 +1,7 @@
 name: 'CI: Owners Required Reviews'
 run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Required Reviews (PR #{0})', inputs.pr_number) || '' }}"
 
-# Enforces the `required` entries in .github/OWNERS: when a PR changes a file
+# Enforces the `required` entries in .github/owners/OWNERS: when a PR changes a file
 # whose winning OWNERS entry carries `required`, a member of each listed team
 # must approve the PR before merge.
 #
@@ -89,4 +89,4 @@ jobs:
           # App token: reading org team membership is beyond GITHUB_TOKEN.
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PULL_REQUEST_NUMBER: ${{ inputs.pr_number || '' }}
-        run: node .github/scripts/owners-required-reviews.mjs
+        run: node .github/owners/required-reviews.mjs
