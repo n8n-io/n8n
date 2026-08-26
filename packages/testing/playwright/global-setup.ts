@@ -1,6 +1,5 @@
 import { request } from '@playwright/test';
 
-import { INSTANCE_OWNER_CREDENTIALS } from './config/test-users';
 import { ApiHelpers } from './services/api-helper';
 import { getBackendUrl } from './utils/url-helper';
 
@@ -21,9 +20,7 @@ async function globalSetup() {
 	}
 
 	console.log(`🔄 Resetting database for ${n8nBaseUrl}...`);
-	// n8n serves /healthz before REST controllers mount, and a cold isolated boot
-	// (fresh DB, all migrations) keeps that gap open for minutes — a fixed sleep
-	// races it. Retry until the e2e controller answers.
+	// Quick hack till we find out a better health check for the database reset command!
 	await new Promise((resolve) => setTimeout(resolve, 3000));
 	// Create standalone API request context
 	const requestContext = await request.newContext({
@@ -32,34 +29,7 @@ async function globalSetup() {
 
 	try {
 		const api = new ApiHelpers(requestContext);
-		const deadline = Date.now() + 180_000;
-		for (;;) {
-			try {
-				await api.resetDatabase();
-				break;
-			} catch (error) {
-				if (Date.now() > deadline) throw error;
-				await new Promise((resolve) => setTimeout(resolve, 3000));
-			}
-		}
-		// The e2e controller AND /rest/settings mount in an early boot wave;
-		// /rest/login mounts later, so gating on any early-wave route still races
-		// the first test's signin. Gate on the thing tests actually need: a real
-		// owner login with the same credentials the fixtures use.
-		const loginDeadline = Date.now() + 180_000;
-		for (;;) {
-			const response = await requestContext.post('/rest/login', {
-				data: {
-					emailOrLdapLoginId: INSTANCE_OWNER_CREDENTIALS.email,
-					password: INSTANCE_OWNER_CREDENTIALS.password,
-				},
-			});
-			if (response.ok()) break;
-			if (Date.now() > loginDeadline) {
-				throw new Error(`n8n core REST not ready: /rest/login -> ${response.status()}`);
-			}
-			await new Promise((resolve) => setTimeout(resolve, 3000));
-		}
+		await api.resetDatabase();
 		console.log('✅ Database reset completed successfully');
 	} catch (error) {
 		console.error('❌ Failed to reset database', error);
