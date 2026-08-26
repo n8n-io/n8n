@@ -266,6 +266,7 @@ export class WorkflowToolService {
 				parentExecution: {
 					executionId: workflowProxy.$execution.id,
 					workflowId: workflowProxy.$workflow.id,
+					shouldResume: true,
 				},
 				returnLastRunOnly: true, // The tool's answer is the sub-workflow's final-run output, not its internal multi-run computation.
 			});
@@ -274,6 +275,7 @@ export class WorkflowToolService {
 		} catch (error) {
 			throw new NodeOperationError(context.getNode(), error as Error);
 		}
+		const waiting = Boolean(receivedData.waitTill);
 
 		let response: IDataObject | INodeExecutionData[] | undefined;
 		if (this.returnAllItems) {
@@ -282,10 +284,15 @@ export class WorkflowToolService {
 			response = receivedData?.data?.[0]?.[0]?.json;
 		}
 		if (response === undefined) {
-			throw new NodeOperationError(
-				context.getNode(),
-				'There was an error: "The workflow did not return a response"',
-			);
+			if (waiting) {
+				// Parent is already waiting via BaseExecuteContext.executeWorkflow.
+				response = this.returnAllItems ? [] : {};
+			} else {
+				throw new NodeOperationError(
+					context.getNode(),
+					'There was an error: "The workflow did not return a response"',
+				);
+			}
 		}
 
 		return { response, subExecutionId: receivedData.executionId };

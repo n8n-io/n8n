@@ -1,15 +1,24 @@
 import { DynamicTool } from '@langchain/classic/tools';
 import {
+	type ExecuteWorkflowData,
 	type INode,
 	type ISupplyDataFunctions,
 	type IExecuteFunctions,
 	type INodeExecutionData,
+	type IWorkflowDataProxyData,
 } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
+import * as manual from 'n8n-nodes-base/dist/nodes/Set/v2/manual.mode';
+
 import { ToolWorkflow } from './ToolWorkflow.node';
+import type { ToolWorkflowV1 } from './v1/ToolWorkflowV1.node';
 import type { ToolWorkflowV2 } from './v2/ToolWorkflowV2.node';
 import { WorkflowToolService } from './v2/utils/WorkflowToolService';
+
+vi.mock('n8n-nodes-base/dist/nodes/Set/v2/manual.mode', () => ({
+	execute: vi.fn().mockResolvedValue({ json: { query: 'test query' } }),
+}));
 
 describe('ToolWorkflowV2', () => {
 	describe('supplyData', () => {
@@ -213,5 +222,100 @@ describe('ToolWorkflowV2', () => {
 				pairedItem: { item: 0 },
 			});
 		});
+	});
+});
+
+describe('ToolWorkflowV1', () => {
+	beforeEach(() => {
+		vi.mocked(manual.execute).mockResolvedValue({ json: { query: 'test query' } } as never);
+	});
+
+	function createV1Context(executeWorkflowMock: ExecuteWorkflowData): ISupplyDataFunctions {
+		return mock<ISupplyDataFunctions>({
+			getNode: vi.fn(() => mock<INode>({ typeVersion: 1, name: 'Sub Workflow' })),
+			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'name':
+						return 'test_tool';
+					case 'description':
+						return 'description text';
+					case 'specifyInputSchema':
+						return false;
+					case 'source':
+						return 'database';
+					case 'workflowId':
+						return 'workflow-id';
+					case 'fields.values':
+						return [];
+					default:
+						return;
+				}
+			}),
+			getWorkflowDataProxy: vi.fn().mockReturnValue({
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData),
+			executeWorkflow: vi.fn().mockResolvedValue(executeWorkflowMock),
+			addInputData: vi.fn().mockReturnValue({ index: 0 }),
+			addOutputData: vi.fn(),
+		});
+	}
+
+	it('should return a placeholder when the sub-workflow is waiting with no items', async () => {
+		const toolWorkflowNode = new ToolWorkflow();
+		const node = toolWorkflowNode.nodeVersions[1] as ToolWorkflowV1;
+		const context = createV1Context({
+			data: [],
+			executionId: 'test-execution',
+			waitTill: new Date('3000-01-01'),
+		});
+
+		const supplyDataResult = await node.supplyData.call(context, 0);
+		const tool = supplyDataResult.response as DynamicTool;
+		const result = await tool.func('test query');
+
+		expect(result).toBe('{}');
+		expect(result).not.toContain('The workflow did not return a response');
+		expect(context.executeWorkflow).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'workflow-id' }),
+			expect.any(Array),
+			undefined,
+			expect.objectContaining({
+				parentExecution: expect.objectContaining({ shouldResume: true }),
+				returnLastRunOnly: true,
+			}),
+		);
+	});
+
+	it('should return the payload when the sub-workflow is waiting with items', async () => {
+		const toolWorkflowNode = new ToolWorkflow();
+		const node = toolWorkflowNode.nodeVersions[1] as ToolWorkflowV1;
+		const context = createV1Context({
+			data: [[{ json: { msg: 'approved' } }]],
+			executionId: 'test-execution',
+			waitTill: new Date('3000-01-01'),
+		});
+
+		const supplyDataResult = await node.supplyData.call(context, 0);
+		const tool = supplyDataResult.response as DynamicTool;
+		const result = await tool.func('test query');
+
+		expect(result).toBe(JSON.stringify({ msg: 'approved' }, null, 2));
+		expect(result).not.toContain('The workflow did not return a response');
+	});
+
+	it('should return the missing-response error when the sub-workflow is not waiting', async () => {
+		const toolWorkflowNode = new ToolWorkflow();
+		const node = toolWorkflowNode.nodeVersions[1] as ToolWorkflowV1;
+		const context = createV1Context({
+			data: [],
+			executionId: 'test-execution',
+		});
+
+		const supplyDataResult = await node.supplyData.call(context, 0);
+		const tool = supplyDataResult.response as DynamicTool;
+		const result = await tool.func('test query');
+
+		expect(result).toContain('The workflow did not return a response');
 	});
 });

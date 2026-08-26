@@ -270,6 +270,19 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			expect(result.response).toBe(TEST_RESPONSE);
 			expect(result.subExecutionId).toBe('test-execution');
+			expect(context.executeWorkflow).toHaveBeenCalledWith(
+				workflowInfo,
+				items,
+				undefined,
+				expect.objectContaining({
+					parentExecution: expect.objectContaining({
+						executionId: 'exec-id',
+						workflowId: 'workflow-id',
+						shouldResume: true,
+					}),
+					returnLastRunOnly: true,
+				}),
+			);
 		});
 
 		it('should successfully execute workflow and return first item of many', async () => {
@@ -341,6 +354,11 @@ describe('WorkflowTool::WorkflowToolService', () => {
 		});
 
 		it('should throw error when workflow returns no response', async () => {
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
 			const mockResponse: ExecuteWorkflowData = {
 				data: [],
 				executionId: 'test-execution',
@@ -348,7 +366,93 @@ describe('WorkflowTool::WorkflowToolService', () => {
 
 			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
 
-			await expect(service['executeSubWorkflow'](context, {}, [], {} as never)).rejects.toThrow();
+			await expect(
+				service['executeSubWorkflow'](context, {}, [], workflowProxyMock),
+			).rejects.toThrow('There was an error: "The workflow did not return a response"');
+		});
+
+		it('should return an empty object when the sub-workflow is waiting with no items', async () => {
+			const workflowInfo = { id: 'test-workflow' };
+			const items: INodeExecutionData[] = [];
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
+			const mockResponse: ExecuteWorkflowData = {
+				data: [],
+				executionId: 'test-execution',
+				waitTill: new Date('3000-01-01'),
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+
+			const result = await service['executeSubWorkflow'](
+				context,
+				workflowInfo,
+				items,
+				workflowProxyMock,
+			);
+
+			expect(result.response).toEqual({});
+			expect(result.subExecutionId).toBe('test-execution');
+		});
+
+		it('should return an empty array when waiting with returnAllItems and no items', async () => {
+			const serviceWithReturnAllItems = new WorkflowToolService(context, { returnAllItems: true });
+			const workflowInfo = { id: 'test-workflow' };
+			const items: INodeExecutionData[] = [];
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
+			const mockResponse: ExecuteWorkflowData = {
+				data: [],
+				executionId: 'test-execution',
+				waitTill: new Date('3000-01-01'),
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+
+			const result = await serviceWithReturnAllItems['executeSubWorkflow'](
+				context,
+				workflowInfo,
+				items,
+				workflowProxyMock,
+			);
+
+			expect(result.response).toEqual([]);
+			expect(result.subExecutionId).toBe('test-execution');
+		});
+
+		it('should return existing items when the sub-workflow is waiting with a payload', async () => {
+			const workflowInfo = { id: 'test-workflow' };
+			const items: INodeExecutionData[] = [];
+			const workflowProxyMock = {
+				$execution: { id: 'exec-id' },
+				$workflow: { id: 'workflow-id' },
+			} as unknown as IWorkflowDataProxyData;
+
+			const TEST_RESPONSE = { msg: 'test response' };
+
+			const mockResponse: ExecuteWorkflowData = {
+				data: [[{ json: TEST_RESPONSE }]],
+				executionId: 'test-execution',
+				waitTill: new Date('3000-01-01'),
+			};
+
+			vi.spyOn(context, 'executeWorkflow').mockResolvedValueOnce(mockResponse);
+
+			const result = await service['executeSubWorkflow'](
+				context,
+				workflowInfo,
+				items,
+				workflowProxyMock,
+			);
+
+			expect(result.response).toBe(TEST_RESPONSE);
+			expect(result.subExecutionId).toBe('test-execution');
 		});
 	});
 

@@ -122,6 +122,7 @@ export class ToolWorkflowV1 implements INodeType {
 					parentExecution: {
 						executionId: workflowProxy.$execution.id,
 						workflowId: workflowProxy.$workflow.id,
+						shouldResume: true,
 					},
 					returnLastRunOnly: true, // The tool's answer is the sub-workflow's final-run output, not its internal multi-run computation.
 				});
@@ -131,11 +132,15 @@ export class ToolWorkflowV1 implements INodeType {
 				// not show up in the frontend
 				throw new NodeOperationError(this.getNode(), error as Error);
 			}
-
+			const waiting = Boolean(receivedData.waitTill);
 			const response: string | undefined = get(receivedData, 'data[0][0].json') as
 				| string
 				| undefined;
 			if (response === undefined) {
+				if (waiting) {
+					// Parent is already waiting via BaseExecuteContext.executeWorkflow.
+					return '{}';
+				}
 				throw new NodeOperationError(
 					this.getNode(),
 					'There was an error: "The workflow did not return a response"',
