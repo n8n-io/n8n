@@ -15,12 +15,12 @@ import {
 	type StreamResult,
 	type SubAgentTaskPath,
 } from '@n8n/agents';
-import type { ResolvedSubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
+import type { ResolvedSubAgentSource, SubAgentSource, SubAgentSpawnRequest } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import type { AgentRunTelemetryType } from '@/interfaces';
@@ -47,10 +47,7 @@ export interface SubAgentForegroundRunContext {
 	parentAgentId?: string;
 	credentialProvider: CredentialProvider;
 	/**
-	 * Telemetry classification inherited from the delegating parent run. A
-	 * sub-agent always runs its own published snapshot, so classifying by that
-	 * alone would report `production` for every delegation — including ones made
-	 * while the parent is being tested in the builder preview.
+	 * Telemetry classification inherited from the delegating parent run.
 	 */
 	runType: AgentRunTelemetryType;
 	/** Workflow execution classification inherited from the parent runtime. */
@@ -97,7 +94,7 @@ type ForegroundOperation = {
 	| {
 			type: 'resume';
 			request: DelegateSubAgentResumeRequest;
-			source: { agentId: string; versionId: string };
+			source: SubAgentSource;
 			threadId: string;
 	  }
 );
@@ -485,27 +482,29 @@ async function consumeAgentStream(
 }
 
 function createResumeContext(runtimeSource: ResolvedSubAgentSource): JSONValue {
-	if (runtimeSource.versionId === undefined) {
-		throw new UnexpectedError('Resolved sub-agent source is missing its published version');
-	}
-	return { agentId: runtimeSource.sourceId, versionId: runtimeSource.versionId };
+	return {
+		agentId: runtimeSource.sourceId,
+		...(runtimeSource.versionId !== undefined ? { versionId: runtimeSource.versionId } : {}),
+	};
 }
 
-function parseResumeContext(
-	resumeContext: JSONValue,
-	subAgentId: string,
-): { agentId: string; versionId: string } {
+function parseResumeContext(resumeContext: JSONValue, subAgentId: string): SubAgentSource {
 	if (
 		!isRecord(resumeContext) ||
 		typeof resumeContext.agentId !== 'string' ||
 		resumeContext.agentId.length === 0 ||
-		resumeContext.agentId !== subAgentId ||
-		typeof resumeContext.versionId !== 'string' ||
-		resumeContext.versionId.length === 0
+		resumeContext.agentId !== subAgentId
 	) {
 		throw new UserError('Configured sub-agent resume context is missing or invalid');
 	}
-	return { agentId: resumeContext.agentId, versionId: resumeContext.versionId };
+	const versionId = resumeContext.versionId;
+	if (versionId !== undefined && (typeof versionId !== 'string' || versionId.length === 0)) {
+		throw new UserError('Configured sub-agent resume context is missing or invalid');
+	}
+	return {
+		agentId: resumeContext.agentId,
+		...(versionId !== undefined ? { versionId } : {}),
+	};
 }
 
 function buildGenerateResultFromRecord(

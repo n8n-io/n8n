@@ -307,7 +307,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			agentTaskRepository,
 			agentCustomToolsService,
 			runtimeCacheService,
-			mock<SubAgentCleanupService>(),
 			agentValidationService,
 			credentialsService,
 			telemetry,

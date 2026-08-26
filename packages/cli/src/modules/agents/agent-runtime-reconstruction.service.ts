@@ -496,13 +496,13 @@ export class AgentRuntimeReconstructionService {
 			projectId,
 			agentRepository: this.agentRepository,
 		})) {
-			if (!agent?.activeVersionId) continue;
+			if (!agent) continue;
 
 			// No versionId pin here: the delegate closure lives inside the
 			// cached parent runtime, so pinning would freeze the child at
-			// whatever was published when the parent was last built. Leaving
-			// it out means SubAgentSourceResolver re-resolves the child's
-			// current activeVersion on every delegation.
+			// whatever draft existed when the parent was last built. Leaving it
+			// out means SubAgentSourceResolver re-resolves the child's current
+			// draft on every delegation.
 			sourcesById[agentId] = { agentId };
 			availableSubAgents.push({
 				id: agentId,

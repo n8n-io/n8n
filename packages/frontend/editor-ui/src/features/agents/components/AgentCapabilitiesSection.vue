@@ -98,10 +98,7 @@ const selectedSubAgentIds = computed(() =>
 const selectedSubAgentIdSet = computed(() => new Set(selectedSubAgentIds.value));
 const availableSubAgents = computed(() =>
 	(projectAgents.value ?? []).filter(
-		(agent) =>
-			agent.id !== props.agentId &&
-			Boolean(agent.activeVersionId) &&
-			!selectedSubAgentIdSet.value.has(agent.id),
+		(agent) => agent.id !== props.agentId && !selectedSubAgentIdSet.value.has(agent.id),
 	),
 );
 const selectedSubAgents = computed(() =>

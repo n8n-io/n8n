@@ -5,8 +5,8 @@ export const SUB_AGENT_MAX_CHILDREN_MAX = 20;
 export const SUB_AGENT_MAX_CHILDREN_DEFAULT = 10;
 
 /**
- * A sub-agent is always a saved n8n agent — optionally pinned to a published
- * version.
+ * A saved n8n agent source. Unpinned sources resolve the current draft;
+ * `versionId` preserves historical resolution for existing resumable runs.
  */
 export type SubAgentSource = {
 	agentId: string;

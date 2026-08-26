@@ -34,7 +34,7 @@ type AddSubAgentModalData = {
 type EditSubAgentModalData = {
 	selectedAgent: AgentSubAgentOption;
 	useWhen?: string;
-	/** Reasons this sub-agent is flagged invalid (e.g. unpublished, deleted) — same strings as the capability chip's tooltip. */
+	/** Reasons this sub-agent is flagged invalid — same strings as the capability chip's tooltip. */
 	invalidReasons?: string[];
 	onConfirm: (payload: AgentSubAgentsModalConfirmPayload) => void;
 	onRemove?: (agentId: string) => void;

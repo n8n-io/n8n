@@ -422,11 +422,7 @@ describe('SubAgentForegroundRunner', () => {
 		);
 	});
 
-	it('returns a child suspension with pinned resume context', async () => {
-		sourceResolver.resolveForRuntime.mockResolvedValue({
-			...runtimeSource,
-			source: { ...runtimeSource.source, versionId: 'version-7' },
-		});
+	it('returns a child suspension with draft resume context', async () => {
 		childAgent.stream.mockResolvedValue(
 			makeStreamResult([
 				{ type: 'text-delta', id: 'text-1', delta: 'Choose an option' },
@@ -454,7 +450,7 @@ describe('SubAgentForegroundRunner', () => {
 			}),
 		).resolves.toMatchObject({
 			status: 'suspended',
-			resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+			resumeContext: { agentId: 'agent-1' },
 			result: {
 				runId: 'child-run-1',
 				finishReason: 'tool-calls',
@@ -480,7 +476,7 @@ describe('SubAgentForegroundRunner', () => {
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
-	it('resumes the exact pinned child checkpoint in the same thread', async () => {
+	it('resumes a draft child in the same thread', async () => {
 		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
 
 		const result = await runner.resumeForeground(
@@ -490,7 +486,7 @@ describe('SubAgentForegroundRunner', () => {
 				childToolCallId: 'tool-call-1',
 				childThreadId: 'child-thread-1',
 				resumeData: { approved: true },
-				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+				resumeContext: { agentId: 'agent-1' },
 				parentThreadId,
 			},
 			{
@@ -502,7 +498,7 @@ describe('SubAgentForegroundRunner', () => {
 		);
 
 		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
-			{ agentId: 'agent-1', versionId: 'version-7' },
+			{ agentId: 'agent-1' },
 			{ projectId },
 		);
 		expect(childAgent.resume).toHaveBeenCalledWith(
@@ -537,19 +533,64 @@ describe('SubAgentForegroundRunner', () => {
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
-	it('cancels the exact pinned child checkpoint without reconstructing the child', async () => {
-		await runner.cancelForeground({
-			...delegatedRequest,
-			childRunId: 'child-run-1',
-			childToolCallId: 'tool-call-1',
-			resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
-			reason: 'Parent run aborted',
-		});
+	it('accepts a legacy pinned resume context', async () => {
+		childAgent.resume.mockResolvedValue(makeStreamResult(defaultStreamChunks));
 
-		expect(checkpointStorage.delete).toHaveBeenCalledWith('child-run-1', 'agent-1');
-		expect(sourceResolver.resolveForRuntime).not.toHaveBeenCalled();
-		expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
-		expect(childAgent.resume).not.toHaveBeenCalled();
+		await runner.resumeForeground(
+			{
+				...delegatedRequest,
+				childRunId: 'child-run-1',
+				childToolCallId: 'tool-call-1',
+				childThreadId: 'child-thread-1',
+				resumeData: { approved: true },
+				resumeContext: { agentId: 'agent-1', versionId: 'version-7' },
+			},
+			{
+				projectId,
+				credentialProvider,
+				runType: 'production',
+			},
+		);
+
+		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
+			{ agentId: 'agent-1', versionId: 'version-7' },
+			{ projectId },
+		);
+	});
+
+	it.each([{ agentId: 'agent-1' }, { agentId: 'agent-1', versionId: 'version-7' }])(
+		'cancels a child checkpoint from resume context %#',
+		async (resumeContext) => {
+			await runner.cancelForeground({
+				...delegatedRequest,
+				childRunId: 'child-run-1',
+				childToolCallId: 'tool-call-1',
+				resumeContext,
+				reason: 'Parent run aborted',
+			});
+
+			expect(checkpointStorage.delete).toHaveBeenCalledWith('child-run-1', 'agent-1');
+			expect(sourceResolver.resolveForRuntime).not.toHaveBeenCalled();
+			expect(reconstructionService.reconstructFromResolvedSource).not.toHaveBeenCalled();
+			expect(childAgent.resume).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([
+		{ agentId: 'other-agent' },
+		{ agentId: 'agent-1', versionId: '' },
+		{ versionId: 'version-7' },
+	])('rejects invalid resume context %#', async (resumeContext) => {
+		await expect(
+			runner.cancelForeground({
+				...delegatedRequest,
+				childRunId: 'child-run-1',
+				childToolCallId: 'tool-call-1',
+				resumeContext,
+				reason: 'Parent run aborted',
+			}),
+		).rejects.toThrow('Configured sub-agent resume context is missing or invalid');
+		expect(checkpointStorage.delete).not.toHaveBeenCalled();
 	});
 
 	it('marks the run as failed when the child result contains an error', async () => {
