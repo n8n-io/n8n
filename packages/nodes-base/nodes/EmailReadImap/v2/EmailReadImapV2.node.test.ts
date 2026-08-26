@@ -207,6 +207,28 @@ describe('EmailReadImapV2', () => {
 		});
 	});
 
+	describe('custom email config', () => {
+		it('rejects config that is not JSON on activation', async () => {
+			await expect(startTrigger({ customEmailConfig: 'not json' })).rejects.toThrow(
+				'Custom email config is not valid JSON.',
+			);
+		});
+
+		it('rejects a criterion that cannot compile on activation, not on the first arrival', async () => {
+			await expect(startTrigger({ customEmailConfig: '[["SMALLER", "abc"]]' })).rejects.toThrow(
+				'IMAP search criterion "SMALLER" needs a whole number, got "abc".',
+			);
+		});
+
+		it('activates with criteria that compile', async () => {
+			connectMock.mockResolvedValue(createConnection());
+
+			await expect(
+				startTrigger({ customEmailConfig: '["UNSEEN", ["FROM", "a@b.co"]]' }),
+			).resolves.toBeDefined();
+		});
+	});
+
 	describe('a connection that fails', () => {
 		it('reports the error to the error workflow', async () => {
 			const connection = createConnection();

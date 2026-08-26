@@ -18,7 +18,7 @@ import { isCredentialsDataImap } from '@credentials/Imap.credentials';
 
 import { closeHandler } from '../connection-events';
 import { toImapCredentials } from '../credentials';
-import { type SearchCriteria } from '../search-criteria';
+import { toSearchObject, type SearchCriteria } from '../search-criteria';
 import { getNewEmails } from './utils';
 
 const versionDescription: INodeTypeDescription = {
@@ -263,6 +263,13 @@ export class EmailReadImapV2 implements INodeType {
 				searchCriteria = JSON.parse(options.customEmailConfig as string) as SearchCriteria[];
 			} catch (error) {
 				throw new NodeOperationError(this.getNode(), 'Custom email config is not valid JSON.');
+			}
+			try {
+				// Compiled once here purely for the immediate feedback: a criterion that cannot
+				// compile fails the activation instead of the first arrival, hours later.
+				toSearchObject(searchCriteria);
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error as Error);
 			}
 		}
 
