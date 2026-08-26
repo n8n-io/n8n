@@ -267,7 +267,6 @@ export class CanvasPage extends BasePage {
 	 */
 	async importWorkflow(fixtureKey: string, workflowName: string) {
 		await this.clickByTestId('workflow-menu');
-		await this.clickByTestId('workflow-menu-item-import');
 
 		const [fileChooser] = await Promise.all([
 			this.page.waitForEvent('filechooser'),
