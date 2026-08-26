@@ -1,4 +1,5 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
+import type { PolicyViolation } from '@n8n/decorators';
 import type { TagEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	Project,
@@ -29,6 +30,7 @@ import {
 	toTableName,
 } from '@/modules/data-table/utils/sql-utils';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { decompressFolder } from '@/utils/compression.util';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 import {
@@ -39,6 +41,13 @@ import {
 import { WorkflowService } from '@/workflows/workflow.service';
 
 const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
+
+/** Advisory policy violations found for one imported workflow, never blocking the import. */
+export interface WorkflowImportViolations {
+	workflowId: string | null;
+	name: string;
+	violations: PolicyViolation[];
+}
 
 @Service()
 export class ImportService {
@@ -73,6 +82,7 @@ export class ImportService {
 		private readonly dataTableDDLService: DataTableDDLService,
 		private readonly userRepository: UserRepository,
 		private readonly workflowService: WorkflowService,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {}
 
 	async initRecords() {
@@ -87,7 +97,7 @@ export class ImportService {
 		projectId: string,
 		userId: string,
 		{ activeState = 'false' }: { activeState?: 'false' | 'fromJson' },
-	) {
+	): Promise<{ violations: WorkflowImportViolations[] }> {
 		await this.initRecords();
 
 		const user = await this.userRepository.findOneOrFail({
@@ -116,6 +126,8 @@ export class ImportService {
 			}
 		}
 
+		const violations: WorkflowImportViolations[] = [];
+
 		for (const workflow of workflows) {
 			workflow.nodes.forEach((node) => {
 				this.toNewCredentialFormat(node);
@@ -130,6 +142,16 @@ export class ImportService {
 
 			for (const warning of sanitizeNodeGroupDescriptions(workflow)) {
 				this.logger.warn(`Workflow "${workflow.name}": ${warning}`);
+			}
+
+			// Advisory only — never blocks the import, per contentImport being `evaluate`, not `enforce`.
+			const decision = await this.evaluateContentImportSafely(workflow, projectId);
+			if (decision.violations.length) {
+				violations.push({
+					workflowId: workflow.id ?? null,
+					name: workflow.name,
+					violations: decision.violations,
+				});
 			}
 
 			// Deactivate BEFORE the transaction to prevent orphaned trigger listeners.
@@ -225,6 +247,30 @@ export class ImportService {
 		// workflow-update events during import.
 		for (const workflow of insertedWorkflows) {
 			await this.workflowIndexService.updateIndexForDraft(workflow);
+		}
+
+		return { violations };
+	}
+
+	/**
+	 * `evaluateContentImport` is advisory and documented to never throw, but a batch import
+	 * must never fail because of policy regardless — so an unexpected error here is swallowed
+	 * and treated as no violations rather than aborting the import.
+	 */
+	private async evaluateContentImportSafely(
+		workflow: IWorkflowWithVersionMetadata,
+		projectId: string,
+	) {
+		try {
+			return await this.policyEnforcementService.evaluateContentImport({
+				workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
+				projectId,
+			});
+		} catch (error) {
+			this.logger.warn(`Failed to evaluate content-import policy for "${workflow.name}"`, {
+				error: ensureError(error),
+			});
+			return { violations: [] };
 		}
 	}
 

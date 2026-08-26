@@ -151,9 +151,19 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, project.id, userId, {
-			activeState: flags.activeState,
-		});
+		const { violations } = await Container.get(ImportService).importWorkflows(
+			workflows,
+			project.id,
+			userId,
+			{ activeState: flags.activeState },
+		);
+
+		for (const { name, violations: workflowViolations } of violations) {
+			this.logger.warn(
+				`Workflow "${name}" has ${workflowViolations.length} content-import policy violation(s)`,
+				{ violations: workflowViolations },
+			);
+		}
 
 		this.reportSuccess(workflows.length);
 

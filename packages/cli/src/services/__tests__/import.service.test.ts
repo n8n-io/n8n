@@ -8,6 +8,7 @@ import type { Cipher } from 'n8n-core';
 
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 import { ImportService } from '../import.service';
@@ -47,6 +48,7 @@ describe('ImportService', () => {
 	let mockDataTableDDLService: DataTableDDLService;
 	let mockUserRepository: UserRepository;
 	let mockWorkflowService: WorkflowService;
+	let mockPolicyEnforcementService: PolicyEnforcementService;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -61,6 +63,10 @@ describe('ImportService', () => {
 		mockDataTableDDLService = mock<DataTableDDLService>();
 		mockUserRepository = mock<UserRepository>();
 		mockWorkflowService = mock<WorkflowService>();
+		mockPolicyEnforcementService = mock<PolicyEnforcementService>();
+		mockPolicyEnforcementService.evaluateContentImport = vi
+			.fn()
+			.mockResolvedValue({ violations: [] });
 
 		// Set up cipher mock
 		mockCipher.decryptV2 = vi.fn(async (data: string) =>
@@ -114,6 +120,7 @@ describe('ImportService', () => {
 			mockDataTableDDLService,
 			mockUserRepository,
 			mockWorkflowService,
+			mockPolicyEnforcementService,
 		);
 	});
 

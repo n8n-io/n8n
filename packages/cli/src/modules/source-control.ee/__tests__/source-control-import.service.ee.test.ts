@@ -41,6 +41,7 @@ import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.se
 import type { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
@@ -82,6 +83,8 @@ describe('SourceControlImportService', () => {
 	const dataTableColumnRepository = mock<DataTableColumnRepository>();
 	const dataTableDDLService = mock<DataTableDDLService>();
 	const redactionEnforcementService = mock<RedactionEnforcementService>();
+	const policyEnforcementService = mock<PolicyEnforcementService>();
+	policyEnforcementService.evaluateContentImport.mockResolvedValue({ violations: [] });
 	const dataTableSizeValidator = mock<DataTableSizeValidator>();
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();
 	const executionPersistence = mock<ExecutionPersistence>();
@@ -125,6 +128,7 @@ describe('SourceControlImportService', () => {
 		dataTableColumnRepository,
 		dataTableDDLService,
 		redactionEnforcementService,
+		policyEnforcementService,
 		dataTableSizeValidator,
 		activeWorkflowManager,
 		executionPersistence,

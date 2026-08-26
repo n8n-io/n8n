@@ -626,6 +626,7 @@ describe('auto-close on source-control pull', () => {
 			mock(), // dataTableColumnRepository
 			mock(), // dataTableDDLService
 			mock(), // redactionEnforcementService
+			mock(), // policyEnforcementService
 			mock(), // dataTableSizeValidator
 			mock(), // activeWorkflowManager
 			mock(), // executionPersistence
