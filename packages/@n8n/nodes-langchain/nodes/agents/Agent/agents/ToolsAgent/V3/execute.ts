@@ -8,7 +8,10 @@ import type {
 } from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
 import { getHighlightedResponseKey } from 'n8n-workflow';
-import { getFailureType, wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
+import {
+	getFailureType,
+	wrapLangChainParserError,
+} from '@utils/output_parsers/langchainParserError';
 
 import { buildExecutionContext, executeBatch, resolveSubAgentRequest } from './helpers';
 import { isExecuteFunctions } from '../../utils';
