@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
-import { LoggerProxy } from 'n8n-workflow/src/index.js';
 
 type McpRegistryServerUpsertRow = Pick<
 	McpRegistryServerEntity,
@@ -130,9 +129,6 @@ export type McpRegistryToolAnnotations = NonNullable<McpRegistryTool['annotation
 
 export function parseMcpRegistryServer(value: unknown): McpRegistryServer | null {
 	const result = mcpRegistryServerSchema.safeParse(value);
-	if (!result.success) {
-		LoggerProxy.warn('Failed to parse MCP registry server', { error: result.error });
-	}
 	return result.success ? result.data : null;
 }
 
