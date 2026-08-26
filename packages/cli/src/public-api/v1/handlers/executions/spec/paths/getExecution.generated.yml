@@ -66,6 +66,7 @@ responses:
                 - webhook
                 - evaluation
                 - chat
+                - agent
               example: manual
             retryOf:
               type: string

@@ -1,4 +1,5 @@
 import type { ZodOpenAPIMetadata } from '@asteasolutions/zod-to-openapi';
+import { ExecutionStatusList, WorkflowExecuteModeList } from 'n8n-workflow';
 
 import { alsoNullable } from '../openapi-nullable';
 
@@ -8,19 +9,9 @@ import { alsoNullable } from '../openapi-nullable';
 export const executionFieldDocs = {
 	id: { example: '1000' },
 	finished: { example: true },
+	// Derived, not copied. The hand-written YAML listed ten modes and missed `agent`.
 	mode: {
-		enum: [
-			'cli',
-			'error',
-			'integrated',
-			'internal',
-			'manual',
-			'retry',
-			'trigger',
-			'webhook',
-			'evaluation',
-			'chat',
-		],
+		enum: [...WorkflowExecuteModeList],
 		example: 'manual',
 	},
 	retryOf: alsoNullable({
@@ -31,7 +22,7 @@ export const executionFieldDocs = {
 		example: '2',
 	}),
 	status: {
-		enum: ['canceled', 'crashed', 'error', 'new', 'running', 'success', 'unknown', 'waiting'],
+		enum: [...ExecutionStatusList],
 	},
 	createdAt: { format: 'date-time' },
 	startedAt: alsoNullable({

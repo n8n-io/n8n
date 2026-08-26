@@ -292,6 +292,18 @@ describe('DELETE /executions/:id', () => {
 
 		await authOwnerAgent.get(`/executions/${execution.id}`).expect(404);
 	});
+
+	test('member should not delete an execution of another user', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const execution = await createSuccessfulExecution(workflow);
+
+		const response = await authUser1Agent.delete(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(404);
+
+		await authOwnerAgent.get(`/executions/${execution.id}`).expect(200);
+	});
 });
 
 describe('POST /executions/:id/retry', () => {
