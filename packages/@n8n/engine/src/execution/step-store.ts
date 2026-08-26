@@ -17,10 +17,7 @@ export type NewStepRecord = { nodeId: string; iteration: number } & (
 );
 
 /**
- * What running and settling a step needs of its row: identity, status, and the
- * payload a successor reads. No timing and no `error` — the execution path
- * writes an error, and decides on `status` alone. The read path has its own
- * view (`StepView`).
+ * Type of what running and settling a step needs of its row
  */
 export interface StepRecord {
 	id: string;
