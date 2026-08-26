@@ -82,6 +82,14 @@ findings) by fanning out the same autodev reviewer agents listed above.
 Invoke: `/n8n:change-story 12345 --review` (or a branch name, or nothing for
 the current branch).
 
+## Isolated browser testing
+
+The `/n8n:browse` command boots an isolated dev instance from the current
+checkout (own free ports via `N8N_PORT`/`N8N_EDITOR_PORT`, own sqlite DB via
+`N8N_USER_FOLDER`, throwaway owner account) and drives a browser MCP against
+it to verify changes — without touching long-running dev servers on the
+default ports. Multiple instances can run side by side, one per worktree.
+
 ## Design Decisions
 
 ### Why a plugin instead of standalone skills?
