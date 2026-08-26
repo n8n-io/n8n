@@ -91,10 +91,40 @@ describe('page:addComment', () => {
 		});
 	});
 
+	it('posts an ADF comment whose only content is a non-text node', async () => {
+		const bodyAdf = JSON.stringify({
+			type: 'doc',
+			version: 1,
+			content: [{ type: 'paragraph', content: [{ type: 'emoji', attrs: { shortName: ':+1:' } }] }],
+		});
+
+		await execute.call(
+			mockExecuteCtx({ ...baseParams, bodyFormat: 'atlas_doc_format', bodyAdf }),
+			0,
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/api/v2/footer-comments', {
+			pageId: '123',
+			body: { representation: 'atlas_doc_format', value: bodyAdf },
+		});
+	});
+
 	it.each([
 		['an empty plain-text body', { bodyPlainText: '' }],
 		['a whitespace-only plain-text body', { bodyPlainText: '  \n  ' }],
 		['an empty storage body', { bodyFormat: 'storage', bodyStorage: '' }],
+		[
+			// Serializes to non-blank JSON, so a string check alone would let it through
+			'an empty ADF document',
+			{ bodyFormat: 'atlas_doc_format', bodyAdf: '{"type":"doc","version":1,"content":[]}' },
+		],
+		[
+			'an ADF document with only empty paragraphs',
+			{
+				bodyFormat: 'atlas_doc_format',
+				bodyAdf: '{"type":"doc","version":1,"content":[{"type":"paragraph","content":[]}]}',
+			},
+		],
 	])('rejects %s before calling the API', async (_name, overrides) => {
 		const promise = execute.call(mockExecuteCtx({ ...baseParams, ...overrides }), 0);
 

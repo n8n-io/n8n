@@ -137,6 +137,63 @@ export function buildBodyEnvelope(
 	}
 }
 
+// ADF node types that carry no meaning by themselves: only whitespace or children.
+// Unknown types (emoji, mention, media, cards, …) count as content, so an exotic
+// but real comment is never rejected as empty.
+const STRUCTURAL_ADF_TYPES = new Set([
+	'doc',
+	'paragraph',
+	'text',
+	'hardBreak',
+	'heading',
+	'blockquote',
+	'bulletList',
+	'orderedList',
+	'listItem',
+	'codeBlock',
+	'panel',
+	'table',
+	'tableRow',
+	'tableCell',
+	'tableHeader',
+	'expand',
+	'nestedExpand',
+	'taskList',
+	'taskItem',
+	'decisionList',
+	'decisionItem',
+	'layoutSection',
+	'layoutColumn',
+]);
+
+function adfNodeHasContent(node: unknown): boolean {
+	if (node === null || typeof node !== 'object' || Array.isArray(node)) return false;
+	const { type, text, content, attrs } = node as {
+		type?: unknown;
+		text?: unknown;
+		content?: unknown;
+		attrs?: unknown;
+	};
+	if (typeof text === 'string' && text.trim() !== '') return true;
+	if (typeof type === 'string' && !STRUCTURAL_ADF_TYPES.has(type)) return true;
+	// Among structural types, expand/nestedExpand render their attrs.title as visible text
+	const title =
+		attrs !== null && typeof attrs === 'object' ? (attrs as IDataObject).title : undefined;
+	if (typeof title === 'string' && title.trim() !== '') return true;
+	return Array.isArray(content) && content.some(adfNodeHasContent);
+}
+
+/** True when the body renders to something a reader can see. An empty ADF document
+ * still serializes to non-blank JSON, so the ADF check walks the parsed document. */
+export function envelopeHasContent(envelope: ConfluenceBodyEnvelope): boolean {
+	if (envelope.representation !== 'atlas_doc_format') return envelope.value.trim() !== '';
+	try {
+		return adfNodeHasContent(JSON.parse(envelope.value));
+	} catch {
+		return false;
+	}
+}
+
 const fieldByFormat: Record<ConfluenceBodyFormat, string> = {
 	plainText: 'bodyPlainText',
 	storage: 'bodyStorage',

@@ -6,7 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import { bodyProperties, readBodyEnvelope } from './bodyEnvelope';
+import { bodyProperties, envelopeHasContent, readBodyEnvelope } from './bodyEnvelope';
 import { confluenceApiRequest } from '../../transport';
 import { optionalSpaceRLC, pageRLC, resolvePageId } from '../common';
 import type { ConfluenceOperation } from '../router';
@@ -45,7 +45,7 @@ export const execute: ConfluenceOperation = async function (
 ) {
 	const body = readBodyEnvelope(this, itemIndex);
 	// An empty body is valid for a page, but a comment without content is never intended
-	if (body.value.trim() === '') {
+	if (!envelopeHasContent(body)) {
 		throw new NodeOperationError(this.getNode(), 'The comment body is empty', {
 			itemIndex,
 			description: 'Provide the comment content in the Body field.',

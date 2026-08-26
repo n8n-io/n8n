@@ -1,6 +1,10 @@
 import { NodeOperationError } from 'n8n-workflow';
 
-import { buildBodyEnvelope, readBodyEnvelope } from '../../../actions/page/bodyEnvelope';
+import {
+	buildBodyEnvelope,
+	envelopeHasContent,
+	readBodyEnvelope,
+} from '../../../actions/page/bodyEnvelope';
 import { mockExecuteCtx } from '../../shared';
 
 describe('buildBodyEnvelope', () => {
@@ -69,6 +73,72 @@ describe('buildBodyEnvelope', () => {
 		])('rejects %s', (_name, input, message) => {
 			expect(() => buildBodyEnvelope('atlas_doc_format', input)).toThrow(message);
 		});
+	});
+});
+
+describe('envelopeHasContent', () => {
+	const adf = (content: unknown[]) =>
+		buildBodyEnvelope('atlas_doc_format', { type: 'doc', version: 1, content });
+
+	it.each([
+		['storage markup', buildBodyEnvelope('storage', '<p>x</p>'), true],
+		['a whitespace-only storage body', buildBodyEnvelope('storage', '  \n '), false],
+		['a plain-text body', buildBodyEnvelope('plainText', 'Hello'), true],
+		['an empty ADF document', adf([]), false],
+		[
+			'an ADF document with only empty paragraphs',
+			adf([{ type: 'paragraph', content: [] }]),
+			false,
+		],
+		[
+			'an ADF document with only whitespace text',
+			adf([{ type: 'paragraph', content: [{ type: 'text', text: '   ' }] }]),
+			false,
+		],
+		[
+			'an ADF document with text',
+			adf([{ type: 'paragraph', content: [{ type: 'text', text: 'Hi' }] }]),
+			true,
+		],
+		[
+			'text nested in list structure',
+			adf([
+				{
+					type: 'bulletList',
+					content: [
+						{
+							type: 'listItem',
+							content: [{ type: 'paragraph', content: [{ type: 'text', text: 'item' }] }],
+						},
+					],
+				},
+			]),
+			true,
+		],
+		[
+			'a non-text node as the only content',
+			adf([{ type: 'paragraph', content: [{ type: 'emoji', attrs: { shortName: ':+1:' } }] }]),
+			true,
+		],
+		[
+			'an expand whose only text is its title',
+			adf([
+				{
+					type: 'expand',
+					attrs: { title: 'Read me' },
+					content: [{ type: 'paragraph', content: [] }],
+				},
+			]),
+			true,
+		],
+		[
+			'an expand with a blank title and no body text',
+			adf([{ type: 'expand', attrs: { title: '  ' }, content: [{ type: 'paragraph' }] }]),
+			false,
+		],
+		['malformed entries in the content array', adf([null, 'text', 42]), false],
+	])('%s → %s', (_name, envelope, expected) => {
+		expect(envelopeHasContent(envelope)).toBe(expected);
 	});
 });
 
