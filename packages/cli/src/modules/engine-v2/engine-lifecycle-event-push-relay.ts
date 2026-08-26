@@ -15,7 +15,7 @@ type StepUpdate = Extract<LifecycleEvent, { stepId: string }>;
 
 /**
  * The engine reports that a step failed but not why: error detail stays off the
- * status wire and is re-queried from the data plane instead, which the control
+ * lifecycle event wire and is re-queried from the data plane instead, which the control
  * plane has no path for yet. Without an `error` the editor renders a failed node
  * as if it had succeeded, so stand one in.
  *
@@ -32,7 +32,7 @@ const STEP_FAILURE_DESCRIPTION = 'Engine 2.0 does not report error detail yet.';
  * where the v1 path does the same job from execution lifecycle hooks.
  */
 @Service()
-export class EngineStatusPushRelay {
+export class EngineLifecycleEventPushRelay {
 	constructor(
 		private readonly registry: EngineV2PushRegistry,
 		private readonly push: Push,
@@ -54,7 +54,7 @@ export class EngineStatusPushRelay {
 			} catch (error) {
 				// One bad update must not cost the rest of the batch: the data plane
 				// does not retry, so whatever we drop here is gone for good.
-				this.logger.error('Failed to relay engine status update to the editor', {
+				this.logger.error('Failed to relay engine lifecycle event to the editor', {
 					executionId: update.executionId,
 					type: update.type,
 					error,

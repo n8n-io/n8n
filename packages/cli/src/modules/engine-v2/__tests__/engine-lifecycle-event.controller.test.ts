@@ -5,7 +5,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
-import type { EngineStatusPushRelay } from '../engine-status-push-relay';
+import type { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
 import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';
 
 const events: LifecycleEvent[] = [
@@ -29,7 +29,7 @@ const events: LifecycleEvent[] = [
 ];
 
 describe('EngineLifecycleEventController', () => {
-	let pushRelay: EngineStatusPushRelay;
+	let pushRelay: EngineLifecycleEventPushRelay;
 	let controller: EngineLifecycleEventController;
 
 	const newResponse = () => {
@@ -46,7 +46,7 @@ describe('EngineLifecycleEventController', () => {
 	const newRequest = (body: unknown = { events }) => ({ body }) as unknown as Request;
 
 	beforeEach(() => {
-		pushRelay = mock<EngineStatusPushRelay>();
+		pushRelay = mock<EngineLifecycleEventPushRelay>();
 		controller = new EngineLifecycleEventController(pushRelay);
 	});
 

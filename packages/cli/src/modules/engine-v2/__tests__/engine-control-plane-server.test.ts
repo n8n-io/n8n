@@ -5,8 +5,8 @@ import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
+import type { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
 import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';
-import type { EngineStatusPushRelay } from '../engine-status-push-relay';
 
 const authSecret = 'a'.repeat(32);
 
@@ -23,7 +23,7 @@ const events: LifecycleEvent[] = [
 describe('EngineControlPlaneServer', () => {
 	let server: EngineControlPlaneServer;
 	let serverLogger: Logger;
-	let pushRelay: EngineStatusPushRelay;
+	let pushRelay: EngineLifecycleEventPushRelay;
 	let baseUrl: string;
 
 	const engineConfig = (overrides: Partial<EngineConfig> = {}) =>
@@ -37,7 +37,7 @@ describe('EngineControlPlaneServer', () => {
 
 	beforeEach(async () => {
 		serverLogger = mock<Logger>();
-		pushRelay = mock<EngineStatusPushRelay>();
+		pushRelay = mock<EngineLifecycleEventPushRelay>();
 		const controller = new EngineLifecycleEventController(pushRelay);
 		server = new EngineControlPlaneServer(
 			engineConfig(),

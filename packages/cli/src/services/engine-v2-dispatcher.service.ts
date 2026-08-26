@@ -81,10 +81,10 @@ export class EngineV2Dispatcher {
 	}
 
 	/**
-	 * The status stream has no way to name an editor session, so the run's push
-	 * ref is recorded against the id the data plane just assigned. In place well
-	 * before the first status batch, which waits on a flush timer and a second
-	 * HTTP round trip.
+	 * The lifecycle event stream has no way to name an editor session, so the
+	 * run's push ref is recorded against the id the data plane just assigned. In
+	 * place well before the first lifecycle event batch, which waits on a flush
+	 * timer and a second HTTP round trip.
 	 */
 	private registerPushSession(
 		executionId: string,

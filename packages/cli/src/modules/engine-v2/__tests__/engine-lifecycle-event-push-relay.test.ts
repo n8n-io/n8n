@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { Push } from '@/push';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 
-import { EngineStatusPushRelay } from '../engine-status-push-relay';
+import { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
 
 const EXECUTION_ID = 'exec-1';
 const PUSH_REF = 'push-1';
@@ -48,11 +48,11 @@ const stepFailed: LifecycleEvent = {
 	at: '2026-08-25T10:00:01.500Z',
 };
 
-describe('EngineStatusPushRelay', () => {
+describe('EngineLifecycleEventPushRelay', () => {
 	let push: Push;
 	let logger: Logger;
 	let registry: EngineV2PushRegistry;
-	let relay: EngineStatusPushRelay;
+	let relay: EngineLifecycleEventPushRelay;
 
 	/** The push messages sent, in order, ignoring the ref and binary flag. */
 	const sent = () => vi.mocked(push.send).mock.calls.map(([message]) => message);
@@ -71,7 +71,7 @@ describe('EngineStatusPushRelay', () => {
 		push = mock<Push>();
 		logger = mock<Logger>();
 		registry = new EngineV2PushRegistry();
-		relay = new EngineStatusPushRelay(
+		relay = new EngineLifecycleEventPushRelay(
 			registry,
 			push,
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),

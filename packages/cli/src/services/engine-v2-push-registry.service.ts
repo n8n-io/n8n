@@ -18,7 +18,7 @@ export class EngineV2StepRun {
 	) {}
 }
 
-/** What relaying one execution's status updates to the editor needs. */
+/** What relaying one execution's lifecycle events to the editor needs. */
 export class EngineV2PushSession {
 	/** Ordering counter for `nodeExecuteBefore`/`nodeExecuteAfter`; starts at 0. */
 	sequenceNumber = 0;
@@ -48,8 +48,8 @@ const SESSION_TTL_MS = 60 * Time.minutes.toMilliseconds;
 /**
  * Correlates a data-plane execution id with the editor session that started it.
  *
- * The status stream carries no way to name a session, so the push ref is
- * recorded here when the run is dispatched and read back when its updates
+ * The lifecycle event stream carries no way to name a session, so the push ref
+ * is recorded here when the run is dispatched and read back when its events
  * arrive. Lives in the control plane rather than on the wire: which editor tab
  * is watching is not the engine's concern.
  */
@@ -77,7 +77,7 @@ export class EngineV2PushRegistry {
 	}
 
 	/**
-	 * Status delivery is at-most-once and there is no `cancelled` update, so a
+	 * Lifecycle event delivery is at-most-once and there is no `cancelled` event, so a
 	 * session whose terminal event never arrives would live forever. Swept on
 	 * write rather than on a timer: nothing enters the map without a `register`,
 	 * so the map is bounded by the runs started inside one TTL window, and there
