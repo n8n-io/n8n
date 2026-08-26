@@ -1,3 +1,11 @@
+## [2.37.2](https://github.com/n8n-io/n8n/compare/n8n@2.37.1...n8n@2.37.2) (2026-08-26)
+
+
+### Bug Fixes
+
+* **core:** Stage libatomic into the distroless runners image ([#37125](https://github.com/n8n-io/n8n/issues/37125)) ([89c8edb](https://github.com/n8n-io/n8n/commit/89c8edbda6f7b0b6456b0a0ecd36ec7241e4ca57))
+
+
 ## [2.37.1](https://github.com/n8n-io/n8n/compare/n8n@2.37.0...n8n@2.37.1) (2026-08-25)
 
 
