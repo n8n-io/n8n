@@ -293,6 +293,18 @@ describe('DELETE /executions/:id', () => {
 		await authOwnerAgent.get(`/executions/${execution.id}`).expect(404);
 	});
 
+	test('should return 400 when deleting a running execution', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const execution = await createdExecutionWithStatus(workflow, 'running');
+
+		const response = await authOwnerAgent.delete(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(400);
+
+		await authOwnerAgent.get(`/executions/${execution.id}`).expect(200);
+	});
+
 	test('member should not delete an execution of another user', async () => {
 		const workflow = await createWorkflow({}, owner);
 

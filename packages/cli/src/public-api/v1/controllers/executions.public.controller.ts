@@ -4,7 +4,7 @@ import {
 	GetExecutionQueryDto,
 } from '@n8n/api-types';
 import { ExecutionsConfig } from '@n8n/config';
-import type { AuthenticatedRequest, IExecutionBase } from '@n8n/db';
+import type { AuthenticatedRequest, IExecutionBase, IExecutionResponse } from '@n8n/db';
 import {
 	ApiDescription,
 	ApiErrorResponse,
@@ -28,14 +28,11 @@ import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
-/** `deletedAt` is on the entity but not on `IExecutionBase`, and the response carries it. */
-type PublicExecution = IExecutionBase & {
-	deletedAt?: Date | null;
-	data?: unknown;
-	customData?: Record<string, string>;
-	workflowData?: unknown;
-	dataTooLargeToDisplay?: boolean;
-};
+/**
+ * What the service hands back. `Partial<IExecutionResponse>` covers the fields that appear only
+ * with `includeData`; `deletedAt` is on the entity but missing from `IExecutionBase`.
+ */
+type PublicExecution = IExecutionBase & Partial<IExecutionResponse> & { deletedAt?: Date | null };
 
 function isRedactableExecution(
 	execution: IExecutionBase,
@@ -116,6 +113,8 @@ export class ExecutionsPublicController {
 	@ApiDescription('Deletes an execution from your instance.')
 	@ApiTags(['Execution'])
 	@ApiResponse(200, DeletedExecutionPublicDto)
+	// `deleteOne` refuses a running execution with a 400. The hand-written YAML never documented it.
+	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async deleteExecution(
 		req: AuthenticatedRequest,
