@@ -60,7 +60,6 @@ import {
 	MODAL_CONFIRM,
 	NODE_CREATOR_OPEN_SOURCES,
 	STICKY_NODE_TYPE,
-	VALID_WORKFLOW_IMPORT_URL_REGEX,
 	VIEWS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
@@ -257,7 +256,6 @@ const {
 	clearNodeActive,
 	tryToOpenSubworkflowInNewTab,
 	importWorkflowData,
-	fetchWorkflowDataFromUrl,
 	resetWorkspace,
 	initializeWorkspace,
 	lastClickPosition,
@@ -627,35 +625,8 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		return;
 	}
 
-	let workflowData: WorkflowDataUpdate | null | undefined = null;
-
-	// Check if it is an URL which could contain workflow data
-	if (plainTextData.match(VALID_WORKFLOW_IMPORT_URL_REGEX)) {
-		const importConfirm = await message.confirm(
-			i18n.baseText('nodeView.confirmMessage.onClipboardPasteEvent.message', {
-				interpolate: { plainTextData },
-			}),
-			i18n.baseText('nodeView.confirmMessage.onClipboardPasteEvent.headline'),
-			{
-				type: 'warning',
-				confirmButtonText: i18n.baseText(
-					'nodeView.confirmMessage.onClipboardPasteEvent.confirmButtonText',
-				),
-				cancelButtonText: i18n.baseText(
-					'nodeView.confirmMessage.onClipboardPasteEvent.cancelButtonText',
-				),
-			},
-		);
-
-		if (importConfirm !== MODAL_CONFIRM) {
-			return;
-		}
-
-		workflowData = await fetchWorkflowDataFromUrl(plainTextData);
-	} else {
-		// Pasted data is possible workflow data
-		workflowData = jsonParse<WorkflowDataUpdate | null>(plainTextData, { fallbackValue: null });
-	}
+	// Pasted data is possible workflow data
+	const workflowData = jsonParse<WorkflowDataUpdate | null>(plainTextData, { fallbackValue: null });
 
 	if (!workflowData) {
 		return;
@@ -945,37 +916,13 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 	}
 }
 
-async function onImportWorkflowUrlEvent(data: IDataObject) {
-	const workflowData = await fetchWorkflowDataFromUrl(data.url as string);
-	if (!workflowData) {
-		return;
-	}
-
-	const originWorkflowId = workflowId.value;
-	const importUrl = async () => {
-		if (!isStillOnWorkflow(originWorkflowId)) {
-			return;
-		}
-
-		await importWorkflowData(workflowData, 'url', {
-			viewport: viewportBoundaries.value,
-		});
-
-		canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
-	};
-
-	await mcpJsonNudgeTrigger.gate('import_url', importUrl);
-}
-
 function addImportEventBindings() {
 	nodeViewEventBus.on('importWorkflowData', onImportWorkflowDataEvent);
-	nodeViewEventBus.on('importWorkflowUrl', onImportWorkflowUrlEvent);
 	nodeViewEventBus.on('openChat', onOpenChat);
 }
 
 function removeImportEventBindings() {
 	nodeViewEventBus.off('importWorkflowData', onImportWorkflowDataEvent);
-	nodeViewEventBus.off('importWorkflowUrl', onImportWorkflowUrlEvent);
 	nodeViewEventBus.off('openChat', onOpenChat);
 }
 
