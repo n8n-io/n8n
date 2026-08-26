@@ -129,6 +129,15 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		return await manager.findBy(ScheduledJob, { workflowId, nodeId });
 	}
 
+	/**
+	 * The job with the given well-known name, as a list so it slots into the same
+	 * provisioning port as {@link findManyByWorkflowNode}. `name` is unique, so the
+	 * result holds at most one row. For system jobs, which have no owning node.
+	 */
+	async findManyByName(manager: EntityManager, name: string): Promise<ScheduledJob[]> {
+		return await manager.findBy(ScheduledJob, { name });
+	}
+
 	/** The jobs with the given ids, read back within a transaction. */
 	async findManyByIds(manager: EntityManager, ids: number[]): Promise<ScheduledJob[]> {
 		if (ids.length === 0) return [];
@@ -255,6 +264,15 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		taskType: string,
 	): Promise<number> {
 		const result = await manager.delete(ScheduledJob, { workflowId, taskType });
+		return result.affected ?? 0;
+	}
+
+	/**
+	 * Delete the job with the given well-known name; its tasks cascade away.
+	 * @returns how many jobs were deleted (0 when the driver can't report it).
+	 */
+	async deleteByName(manager: EntityManager, name: string): Promise<number> {
+		const result = await manager.delete(ScheduledJob, { name });
 		return result.affected ?? 0;
 	}
 

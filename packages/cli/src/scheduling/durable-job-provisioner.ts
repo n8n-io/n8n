@@ -4,7 +4,12 @@ import { type ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
 import type { EntityManager, NewScheduledJob, ScheduledJob } from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { createJobProvisioner, DEFAULT_MATERIALIZER_OPTIONS, materialize } from '@n8n/scheduler';
+import {
+	computeFirstRunAt,
+	createJobProvisioner,
+	DEFAULT_MATERIALIZER_OPTIONS,
+	materialize,
+} from '@n8n/scheduler';
 import type {
 	DesiredJob,
 	ExistingJob,
@@ -14,6 +19,7 @@ import type {
 	RunInDeprovisionTransaction,
 	RunInProvisionTransaction,
 	RunInTransaction,
+	Schedule,
 	ScheduleDefinition,
 } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
@@ -28,20 +34,42 @@ import { createSchedulerTracer } from './scheduler-tracer';
  */
 const MAX_MISFIRE_GRACE_SECONDS = 30 * Time.days.toSeconds;
 
-/** Identifies one workflow node's jobs, and stamps the rows provisioning inserts. */
-interface ProvisionScope {
-	workflowId: string;
-	nodeId: string;
+/** What every provision scope carries, whoever owns the jobs. */
+interface ProvisionStamp {
 	taskType: string;
 	payload: Record<string, unknown>;
 	misfirePolicy: ScheduledJobMisfirePolicy;
 	misfireGraceSeconds?: number;
 }
 
-/** Identifies jobs for deletion: one node's jobs, or one workflow's jobs of a task type. */
+/** Identifies one workflow node's jobs, and stamps the rows provisioning inserts. */
+interface NodeProvisionScope extends ProvisionStamp {
+	workflowId: string;
+	nodeId: string;
+}
+
+/**
+ * Identifies one well-known system job by name, for jobs that belong to the
+ * instance rather than to a workflow (see `ScheduledJob.workflowId`).
+ */
+interface SystemProvisionScope extends ProvisionStamp {
+	systemName: string;
+}
+
+type ProvisionScope = NodeProvisionScope | SystemProvisionScope;
+
+/**
+ * Identifies jobs for deletion: one node's jobs, one workflow's jobs of a task
+ * type, or one system job by name.
+ */
 type DeprovisionScope =
-	| Pick<ProvisionScope, 'workflowId' | 'nodeId'>
-	| Pick<ProvisionScope, 'workflowId' | 'taskType'>;
+	| Pick<NodeProvisionScope, 'workflowId' | 'nodeId'>
+	| Pick<NodeProvisionScope, 'workflowId' | 'taskType'>
+	| Pick<SystemProvisionScope, 'systemName'>;
+
+function isSystemScope(scope: ProvisionScope): scope is SystemProvisionScope {
+	return 'systemName' in scope;
+}
 
 /** A job row's schedule columns: one `ScheduleDefinition` flattened for storage. */
 type ScheduleColumns = Pick<
@@ -123,9 +151,40 @@ export class DurableJobProvisioner {
 		);
 	}
 
+	/**
+	 * Provision a well-known system job: one owned by the instance rather than by a
+	 * workflow node, identified by its unique name. Same diffing, task withdrawal
+	 * and first-window seeding as {@link provision}, so re-provisioning an
+	 * unchanged schedule on every boot is a no-op.
+	 */
+	async provisionSystemJob(
+		name: string,
+		taskType: string,
+		payload: Record<string, unknown>,
+		schedule: Schedule,
+		misfirePolicy: ScheduledJobMisfirePolicy,
+		misfireGraceSeconds?: number,
+	): Promise<ProvisionSummary> {
+		// Validates the schedule and returns the first instant, as the trigger
+		// registrars do before handing a rule over.
+		const firstRunAt = computeFirstRunAt(schedule, new Date());
+
+		return await this.provisioner.provision(
+			{ systemName: name, taskType, payload, misfirePolicy, misfireGraceSeconds },
+			// A system job is a single rule, so its name is also the provisioning key
+			// the diff matches on.
+			[{ name, schedule, firstRunAt }],
+		);
+	}
+
 	/** Delete all of a node's jobs; their queued tasks cascade away. */
 	async deprovision(workflowId: string, nodeId: string): Promise<{ removed: number }> {
 		return await this.provisioner.deprovision({ workflowId, nodeId });
+	}
+
+	/** Delete a well-known system job; its queued tasks cascade away. */
+	async deprovisionSystemJob(name: string): Promise<{ removed: number }> {
+		return await this.provisioner.deprovision({ systemName: name });
 	}
 
 	/**
@@ -152,18 +211,25 @@ export class DurableJobProvisioner {
 		await this.jobs.deleteByWorkflowTaskType(manager, workflowId, taskType);
 	}
 
-	private provisionTransaction({
-		workflowId,
-		nodeId,
-		taskType,
-		payload,
-		misfirePolicy,
-		misfireGraceSeconds: requestedMisfireGraceSeconds,
-	}: ProvisionScope): RunInProvisionTransaction {
+	private provisionTransaction(scope: ProvisionScope): RunInProvisionTransaction {
+		const {
+			taskType,
+			payload,
+			misfirePolicy,
+			misfireGraceSeconds: requestedMisfireGraceSeconds,
+		} = scope;
+		// A system job has no owning node, so its rows carry null there and its diff
+		// matches on the job's unique name instead.
+		const owner = isSystemScope(scope)
+			? { workflowId: null, nodeId: null }
+			: { workflowId: scope.workflowId, nodeId: scope.nodeId };
+		const findExistingRows = async (manager: EntityManager) =>
+			isSystemScope(scope)
+				? await this.jobs.findManyByName(manager, scope.systemName)
+				: await this.jobs.findManyByWorkflowNode(manager, scope.workflowId, scope.nodeId);
 		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
 			requestedMisfireGraceSeconds,
-			workflowId,
-			nodeId,
+			owner,
 		);
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
@@ -174,7 +240,7 @@ export class DurableJobProvisioner {
 				const outdatedGraceJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
-						const rows = await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId);
+						const rows = await findExistingRows(manager);
 						for (const row of rows) {
 							const graceChanged = row.misfireGraceSeconds !== misfireGraceSeconds;
 							if (graceChanged) {
@@ -197,8 +263,7 @@ export class DurableJobProvisioner {
 						const rows = desired.map(
 							(job): NewScheduledJob => ({
 								name: job.name,
-								workflowId,
-								nodeId,
+								...owner,
 								taskType,
 								payload,
 								...scheduleColumns(job.schedule),
@@ -246,8 +311,7 @@ export class DurableJobProvisioner {
 
 	private resolveMisfireGraceSeconds(
 		requested: unknown,
-		workflowId: string,
-		nodeId: string,
+		owner: { workflowId: string | null; nodeId: string | null },
 	): number {
 		const { misfireGraceSeconds, executorIntervalSeconds, materializationWindowSeconds } =
 			this.globalConfig.scheduler;
@@ -279,8 +343,7 @@ export class DurableJobProvisioner {
 					? "Raised a node's misfire grace to the scheduler's minimum"
 					: "Lowered a node's misfire grace to the scheduler's maximum",
 				{
-					workflowId,
-					nodeId,
+					...owner,
 					requestedMisfireGraceSeconds: numeric,
 					misfireGraceSeconds: effective,
 				},
@@ -360,14 +423,18 @@ export class DurableJobProvisioner {
 			await this.dataSource.transaction(
 				async (manager) =>
 					await work({
-						deleteAll: async () =>
-							'nodeId' in scope
+						deleteAll: async () => {
+							if ('systemName' in scope) {
+								return await this.jobs.deleteByName(manager, scope.systemName);
+							}
+							return 'nodeId' in scope
 								? await this.jobs.deleteByWorkflowNode(manager, scope.workflowId, scope.nodeId)
 								: await this.jobs.deleteByWorkflowTaskType(
 										manager,
 										scope.workflowId,
 										scope.taskType,
-									),
+									);
+						},
 					}),
 			);
 	}

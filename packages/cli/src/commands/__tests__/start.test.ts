@@ -5,7 +5,6 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { AuthRolesService, DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings, BinaryDataConfig, ErrorReporter } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import { Start } from '../start';
@@ -25,8 +24,6 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
-import { InstanceReportingService } from '@/modules/insights/instance-monitoring/instance-reporting.service';
-import { InstanceMonitoringConfig } from '@/modules/insights/instance-monitoring/instance-monitoring.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
@@ -158,6 +155,7 @@ describe('Start - AuthRolesService initialization', () => {
 			taskRunners: {},
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },
+			scheduler: { enabled: false },
 		};
 		// @ts-expect-error - Accessing protected method for testing
 		start.initCrashJournal = vi.fn().mockResolvedValue(undefined);
@@ -213,6 +211,7 @@ describe('Start - AuthRolesService initialization', () => {
 				taskRunners: {},
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
+				scheduler: { enabled: false },
 			};
 
 			await start.init();
@@ -248,6 +247,7 @@ describe('Start - AuthRolesService initialization', () => {
 				taskRunners: {},
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
+				scheduler: { enabled: false },
 			};
 
 			await start.init();
@@ -276,43 +276,6 @@ describe('Start - AuthRolesService initialization', () => {
 		});
 	});
 
-	describe('init - instance reporting', () => {
-		const setupReporting = (enabled: boolean, disabledModules: string[] = []) => {
-			setupInstanceSettings('main', false, false);
-			Container.set(InstanceMonitoringConfig, mock<InstanceMonitoringConfig>({ enabled }));
-			// @ts-expect-error - Accessing protected property for testing
-			start.modulesConfig = { disabledModules };
-
-			const reportingService = mock<InstanceReportingService>();
-			Container.set(InstanceReportingService, reportingService);
-
-			return reportingService;
-		};
-
-		it('should not start reporting when INSTANCE_REPORTING_ENABLED is off', async () => {
-			const reportingService = setupReporting(false, ['insights']);
-
-			await start.init();
-
-			expect(reportingService.startReporting).not.toHaveBeenCalled();
-		});
-
-		it('should start reporting when INSTANCE_REPORTING_ENABLED is on', async () => {
-			const reportingService = setupReporting(true);
-
-			await start.init();
-
-			expect(reportingService.startReporting).toHaveBeenCalledTimes(1);
-		});
-
-		it('should fail startup when reporting is on but the insights module is disabled', async () => {
-			const reportingService = setupReporting(true, ['insights']);
-
-			await expect(start.init()).rejects.toThrow(UserError);
-			expect(reportingService.startReporting).not.toHaveBeenCalled();
-		});
-	});
-
 	describe('init - multi-main follower license retry', () => {
 		const multiMainConfig = {
 			executions: { mode: 'queue' as const },
@@ -331,6 +294,7 @@ describe('Start - AuthRolesService initialization', () => {
 			taskRunners: {},
 			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },
+			scheduler: { enabled: false },
 		};
 
 		beforeEach(() => {

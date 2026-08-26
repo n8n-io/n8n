@@ -997,6 +997,99 @@ describe('DurableJobProvisioner', () => {
 		});
 	});
 
+	describe('provisionSystemJob', () => {
+		const systemSchedule = {
+			kind: 'cron',
+			cronExpression: '0 42 7 * * *',
+			timezone: 'UTC',
+		} as const;
+
+		beforeEach(() => {
+			jobs.findManyByName.mockResolvedValue([]);
+		});
+
+		it('inserts a job with no owning workflow or node, matched on its name', async () => {
+			jobs.insertMany.mockResolvedValue([200]);
+
+			const summary = await provisioner.provisionSystemJob(
+				'instance-reporting:daily',
+				'instance-reporting:daily-report',
+				{},
+				systemSchedule,
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(jobs.findManyByName).toHaveBeenCalledWith(manager, 'instance-reporting:daily');
+			expect(jobs.findManyByWorkflowNode).not.toHaveBeenCalled();
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, [
+				expect.objectContaining({
+					name: 'instance-reporting:daily',
+					workflowId: null,
+					nodeId: null,
+					taskType: 'instance-reporting:daily-report',
+					kind: 'cron',
+					cronExpression: '0 42 7 * * *',
+					timezone: 'UTC',
+					// Computed from the schedule, so only its presence matters here.
+					nextRunAt: expect.any(Date),
+				}),
+			]);
+			expect(summary.inserted).toEqual([{ id: 200, name: 'instance-reporting:daily' }]);
+		});
+
+		it('leaves an unchanged job untouched, so re-provisioning on every boot is a no-op', async () => {
+			jobs.findManyByName.mockResolvedValue([
+				jobRow({ id: 200, name: 'instance-reporting:daily', cronExpression: '0 42 7 * * *' }),
+			]);
+
+			const summary = await provisioner.provisionSystemJob(
+				'instance-reporting:daily',
+				'instance-reporting:daily-report',
+				{},
+				systemSchedule,
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(jobs.insertMany).toHaveBeenCalledWith(manager, []);
+			expect(jobs.updateDefinition).not.toHaveBeenCalled();
+			expect(summary.inserted).toEqual([]);
+		});
+
+		it('redefines the job when the report time changed', async () => {
+			jobs.findManyByName.mockResolvedValue([
+				jobRow({ id: 200, name: 'instance-reporting:daily', cronExpression: '0 5 23 * * *' }),
+			]);
+
+			await provisioner.provisionSystemJob(
+				'instance-reporting:daily',
+				'instance-reporting:daily-report',
+				{},
+				systemSchedule,
+				ScheduledJobMisfirePolicy.Coalesce,
+			);
+
+			expect(jobs.updateDefinition).toHaveBeenCalledWith(
+				manager,
+				200,
+				expect.objectContaining({ cronExpression: '0 42 7 * * *' }),
+			);
+			// The occurrences queued under the old time must not still fire.
+			expect(tasks.deletePendingByJobIds).toHaveBeenCalledWith(manager, [200]);
+		});
+	});
+
+	describe('deprovisionSystemJob', () => {
+		it('deletes the job by name inside a transaction and reports the count', async () => {
+			jobs.deleteByName.mockResolvedValue(1);
+
+			const result = await provisioner.deprovisionSystemJob('instance-reporting:daily');
+
+			expect(jobs.deleteByName).toHaveBeenCalledWith(manager, 'instance-reporting:daily');
+			expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+			expect(result).toEqual({ removed: 1 });
+		});
+	});
+
 	describe('deprovisionWorkflowInTransaction', () => {
 		it("deletes the whole workflow scope through the caller's manager, without opening a transaction of its own", async () => {
 			const callerManager = mock<EntityManager>();

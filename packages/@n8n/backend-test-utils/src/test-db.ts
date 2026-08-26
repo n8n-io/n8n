@@ -156,6 +156,7 @@ type EntityName =
 	| 'InsightsRaw'
 	| 'InsightsByPeriod'
 	| 'InsightsMetadata'
+	| 'CentralInstanceMonitoringReport'
 	| 'DataTable'
 	| 'DataTableColumn'
 	| 'ChatHubSession'
