@@ -169,10 +169,9 @@ export const buildWorkflowInputSchema = z
 					'Never pass the first argument of workflow(slug, name). Once bound, omit this on retries. ' +
 					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
 			),
-		projectId: z
-			.string()
-			.optional()
-			.describe('Project ID to create the workflow in. Defaults to personal project.'),
+		// No `projectId`: a build always writes to the project this conversation is
+		// bound to. The field used to exist and was IGNORED by the adapter, which is
+		// how a build claimed to land in another project while writing to this one.
 		name: z.string().optional().describe('Workflow name (required for new workflows)'),
 		workItemId: z
 			.string()
@@ -738,7 +737,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				binding = await saveWorkflowSourceFileBinding(context, { ...binding, sourceHash });
 			}
 
-			const { projectId, name } = input;
+			const { name } = input;
 			const isSupportingWorkflow = input.isSupportingWorkflow === true;
 			const buildContext = context.workflowBuildContext;
 			const {
@@ -1273,14 +1272,9 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 
 				if (targetWorkflowId) {
-					const updateOptions = projectId
-						? {
-								projectId,
-								...(binding.workflowChecksum ? { expectedChecksum: binding.workflowChecksum } : {}),
-							}
-						: binding.workflowChecksum
-							? { expectedChecksum: binding.workflowChecksum }
-							: undefined;
+					const updateOptions = binding.workflowChecksum
+						? { expectedChecksum: binding.workflowChecksum }
+						: undefined;
 					const updated = await context.workflowService.updateFromWorkflowJSON(
 						targetWorkflowId,
 						json,
@@ -1290,7 +1284,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				}
 
 				const created = await context.workflowService.createFromWorkflowJSON(json, {
-					...(projectId ? { projectId } : {}),
 					markAsAiTemporary: true,
 				});
 				await recordSessionOwnedWorkflow(context, created.id);

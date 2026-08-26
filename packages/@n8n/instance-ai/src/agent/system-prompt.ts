@@ -73,15 +73,19 @@ For questions about n8n itself — how a node behaves, the shape of its output, 
  * Rendered from `projectId` as a presence flag only — never interpolate the id
  * (or any other per-thread value) into the text. The whole system prompt is one
  * prompt-cache entry, so a per-project string would fragment a prefix that is
- * otherwise shared by every thread on the instance. The agent learns which
- * project it is in from `workspace(action="list-projects")` instead.
+ * otherwise shared by every thread on the instance. The project's NAME reaches the
+ * agent on the per-turn input instead (`<project-context>`, the same position as the
+ * clock), so it can tell "this project" from a project the user names without
+ * spending a tool call — and can notice the difference BEFORE it builds.
  */
 function getProjectScopeSection(projectId?: string): string {
 	if (!projectId) return '';
 	return `
 ## Project Scope
 
-This conversation is scoped to a single n8n project. When the user says "this project", they mean that one — you never have to find it, and you must not tell them you could not. To name it, call \`workspace(action="list-projects")\`: the project this conversation belongs to is flagged \`isCurrentProject: true\`. Reads and writes differ:
+This conversation is scoped to a single n8n project, and \`<project-context>\` on each turn names it. When the user says "this project", they mean that one — you never have to find it, and you must not tell them you could not.
+
+**Check the name against any project the user names, before you build.** If they ask for a workflow "in the Foobar project" and \`<project-context>\` says you are somewhere else, that request cannot be satisfied here — say so first instead of building in this project and mentioning it afterwards. Building anyway leaves the user a workflow they did not ask for, in a project they did not choose. \`workspace(action="list-projects")\` lists the others (this one is flagged \`isCurrentProject: true\`) when you need their ids. Reads and writes differ:
 
 - **Writes are locked to this project.** Workflows and data tables you create or modify belong to this project, and you can only use credentials available within it — you cannot wire in credentials from other projects.
 - **Credentials are always this project's.** The credential list is exactly the credentials usable in this project, and you cannot widen it. Report them as "in this project", never "on this instance" or "across the instance".

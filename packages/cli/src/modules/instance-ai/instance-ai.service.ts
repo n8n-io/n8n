@@ -165,6 +165,8 @@ import {
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	cleanStoredUserMessage,
 	withCurrentDateTime,
+	withProjectContext,
+	getProjectContextSection,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -707,6 +709,10 @@ export class InstanceAiService {
 
 	/** Domain-access trackers per thread — persists approvals across runs within a conversation. */
 	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
+	/** Rendered project-context line per project id — a project's name and type don't
+	 *  change over a thread's life, so this saves a read per turn. Keyed by project, not
+	 *  thread, so threads in the same project share one entry. */
+	private readonly projectContextByProjectId = new Map<string, string>();
 
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
@@ -3959,10 +3965,22 @@ export class InstanceAiService {
 			const messageWithContext = [contextResourcesBlock, handoffContextBlock, messageBody]
 				.filter(Boolean)
 				.join('\n\n');
+			// The bound project's NAME rides the turn for the same reason as the clock: it is
+			// per-thread, so putting it in the cached system prefix would fragment a prefix
+			// shared by every thread on the instance. Without it the agent cannot name its
+			// own project without spending a `list-projects` call, so a request naming a
+			// DIFFERENT project read as ordinary work — it built in the bound project and
+			// could only hedge afterwards. Resolved best-effort: a missing name is worth a
+			// less-informed turn, never a failed one.
+			const projectSection = await this.resolveProjectContextSection(context);
+			const messageWithProject = projectSection
+				? withProjectContext(messageWithContext, projectSection)
+				: messageWithContext;
+
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(
-				messageWithContext,
+				messageWithProject,
 				getDateTimeSection(timeZone ?? this.defaultTimeZone),
 			);
 
@@ -5049,6 +5067,37 @@ export class InstanceAiService {
 				error: getErrorMessage(error),
 			});
 			return null;
+		}
+	}
+
+	/**
+	 * The one-line "you are in project X" fact for the per-turn block, or undefined
+	 * when there is nothing useful to say (no bound project, no workspace adapter, a
+	 * project we can't read).
+	 *
+	 * Best-effort by design: this is a guardrail, not a precondition. A run that cannot
+	 * name its project should be a less-informed run, not a failed one — the write is
+	 * locked to the bound project either way.
+	 */
+	private async resolveProjectContextSection(
+		context: InstanceAiContext,
+	): Promise<string | undefined> {
+		const projectId = context.projectId;
+		if (!projectId) return undefined;
+
+		const cached = this.projectContextByProjectId.get(projectId);
+		if (cached) return cached;
+
+		try {
+			const project = await context.workspaceService?.getProject?.(projectId);
+			if (!project) return undefined;
+			const section = getProjectContextSection({ name: project.name, type: project.type });
+			// A project's name and type are effectively static for a thread's lifetime, so
+			// this is cached rather than re-read on every turn of every conversation.
+			this.projectContextByProjectId.set(projectId, section);
+			return section;
+		} catch {
+			return undefined;
 		}
 	}
 

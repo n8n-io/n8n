@@ -32,6 +32,8 @@ export const CREDENTIAL_CONTEXT_OPEN_TAG = '<credential-context>';
 export const CREDENTIAL_CONTEXT_CLOSE_TAG = '</credential-context>';
 export const AGENT_PREVIEW_CONTEXT_OPEN_TAG = '<agent-preview-context>';
 export const AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '</agent-preview-context>';
+export const PROJECT_CONTEXT_OPEN_TAG = '<project-context>';
+export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
 
 /**
  * Matches internal task-context prefix blocks injected by the service. The
@@ -52,9 +54,65 @@ const AGENT_PREVIEW_CONTEXT_JSON = /^<agent-preview-context>\n(\{[\s\S]*?\})\n/;
 const CURRENT_DATE_TIME_BLOCK =
 	/\n*<current-date-time>(?:(?!<current-date-time>)[\s\S])*?<\/current-date-time>\s*$/;
 
+/** Same shape as the clock block, for the same reason — see `withProjectContext`. */
+const PROJECT_CONTEXT_BLOCK =
+	/\n*<project-context>(?:(?!<project-context>)[\s\S])*?<\/project-context>\s*$/;
+
+/** Every trailing block the service appends. Each is stripped AT MOST ONCE, sweeping
+ *  until no unstripped pattern matches: the patterns anchor to end-of-string, so an
+ *  inner block only becomes strippable once the outer one is gone, and a fixed order
+ *  would break the day the composition order changes.
+ *
+ *  At-most-once is the load-bearing part. Stripping repeatedly would also eat a
+ *  user-authored lookalike that ends the message — someone pasting a
+ *  `<current-date-time>` block into a bug report keeps their text. */
+const TRAILING_CONTEXT_BLOCKS = [CURRENT_DATE_TIME_BLOCK, PROJECT_CONTEXT_BLOCK];
+
+/** Strip each trailing block once, in whatever order they were composed. */
+function stripTrailingContextBlocks(message: string): string {
+	let text = message;
+	const unstripped = new Set(TRAILING_CONTEXT_BLOCKS);
+	let stripped: boolean;
+	do {
+		stripped = false;
+		for (const block of unstripped) {
+			const next = text.replace(block, '');
+			if (next === text) continue;
+			text = next;
+			unstripped.delete(block);
+			stripped = true;
+			break;
+		}
+	} while (stripped);
+	return text;
+}
+
 /** Append the per-turn clock as a tagged suffix the parser strips before display. */
 export function withCurrentDateTime(message: string, dateTimeSection: string): string {
 	return `${message}\n\n<current-date-time>${dateTimeSection}\n</current-date-time>`;
+}
+
+/**
+ * Name the project this conversation is scoped to, on the turn rather than in the
+ * system prompt — exactly why the clock lives here: the whole system prompt is ONE
+ * prompt-cache entry shared by every thread on the instance, so a per-project string
+ * in it would fragment that prefix and cold-start each project.
+ *
+ * Without this the agent cannot name its own project without spending a
+ * `list-projects` round trip, so asked to build "in the Foobar project" it had no way
+ * to notice that Foobar is not where it is — it built in the bound project and could
+ * only hedge afterwards ("if Foobar is a different project…"). The fact has to be
+ * present BEFORE the build, which means on the turn.
+ */
+export function withProjectContext(message: string, projectSection: string): string {
+	return `${message}\n\n<project-context>\n${projectSection}\n</project-context>`;
+}
+
+/** The one-line fact itself. States the write rule too, briefly: the cached prompt
+ *  carries the full rule, but this is the point of decision, and a bare name did not
+ *  need to be connected to anything to be ignored. */
+export function getProjectContextSection(project: { name: string; type: string }): string {
+	return `This conversation is scoped to the project "${project.name}" (${project.type}). Everything you create or modify belongs to this project — you cannot create anything in a different project, whatever the user names.`;
 }
 
 /**
@@ -66,7 +124,7 @@ export function cleanStoredUserMessage(stored: string): string | null {
 	// The service can stack several internal blocks (e.g. an editor-context block
 	// ahead of a running-tasks-enriched message), so strip every leading block —
 	// not just the first — or the trailing ones leak into the visible message.
-	let text = stored.replace(CURRENT_DATE_TIME_BLOCK, '');
+	let text = stripTrailingContextBlocks(stored);
 	let previous: string;
 	do {
 		previous = text;

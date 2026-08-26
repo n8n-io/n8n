@@ -349,16 +349,23 @@ export interface InstanceAiWorkflowService {
 	getWorkflowSnapshot(
 		workflowId: string,
 	): Promise<{ json: WorkflowJSON; versionId: string; updatedAt: number }>;
-	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
+	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.).
+	 *
+	 *  Takes NO `projectId`: a write always lands in the project the conversation is
+	 *  bound to, and the adapter resolves that itself. The option used to exist and was
+	 *  silently ignored, which let a caller believe it had chosen a project — the
+	 *  workflow went to the bound one and the agent reported the requested one. There
+	 *  is nothing to ignore now. */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
-		options?: { projectId?: string; markAsAiTemporary?: boolean },
+		options?: { markAsAiTemporary?: boolean },
 	): Promise<WorkflowDetail>;
-	/** Update a workflow from SDK-produced WorkflowJSON. */
+	/** Update a workflow from SDK-produced WorkflowJSON. No `projectId`, for the same
+	 *  reason as `createFromWorkflowJSON`. */
 	updateFromWorkflowJSON(
 		workflowId: string,
 		json: WorkflowJSON,
-		options?: { projectId?: string; expectedChecksum?: string },
+		options?: { expectedChecksum?: string },
 	): Promise<WorkflowDetail>;
 	archive(workflowId: string): Promise<void>;
 	unarchive(workflowId: string): Promise<void>;
