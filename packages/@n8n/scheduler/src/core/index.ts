@@ -30,6 +30,7 @@ export { provision, deprovision, createJobProvisioner, scheduleFingerprint } fro
 export type {
 	JobProvisioner,
 	JobProvisionerDeps,
+	OwnedScope,
 	ProvisionTransaction,
 	RunInProvisionTransaction,
 	DeprovisionTransaction,
@@ -86,6 +87,9 @@ export type {
 export {
 	DuplicateOwnerResolverError,
 	InvalidOwnerTypeError,
+	UnregisteredOwnerTypeError,
+	InvalidOwnerIdError,
+	InvalidOwnerMemberIdError,
 } from './errors';
 export type { RetentionOptions, RetentionSummary } from './retention';
 
