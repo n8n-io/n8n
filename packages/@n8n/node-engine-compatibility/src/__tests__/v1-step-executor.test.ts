@@ -16,8 +16,7 @@ import { items, stepRequest, testStepExecutor, v1Workflow } from './fixtures';
 
 const converter = new V1WorkflowConverter();
 
-// The converter roots the graph at the trigger, so the node under test has to
-// hang off it.
+// The converter drops nodes the trigger cannot reach.
 const manualTriggerTo = (name: string): IConnections => ({
 	Manual: { main: [[{ node: name, type: 'main', index: 0 }]] },
 });

@@ -8,10 +8,7 @@ const quote = (names: string[]) => names.map((name) => `"${name}"`).join(', ');
  */
 export class UnsupportedWorkflowError extends UserError {}
 
-/**
- * A workflow with several triggers has no single graph to run, so the caller
- * has to say which one fired. Multi-trigger semantics land in CAT-2930.
- */
+/** Only the caller knows which of several triggers fired. */
 export class AmbiguousTriggerError extends UserError {
 	constructor(nodeNames: string[]) {
 		super(

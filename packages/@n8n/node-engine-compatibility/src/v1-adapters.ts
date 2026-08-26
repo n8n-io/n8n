@@ -163,11 +163,7 @@ export function toV1Workflow(
 	});
 }
 
-/**
- * A graph converted before the trigger config existed carries none, so it falls
- * back to the Manual Trigger stub it was built with. Execution graphs are
- * immutable, so such graphs outlive the change.
- */
+/** An older graph carries no config, and graphs are immutable, so a stub stands in. */
 function toV1TriggerNode(graphNode: GraphNode): INode {
 	const config = isTriggerStepConfig(graphNode.config) ? graphNode.config : undefined;
 

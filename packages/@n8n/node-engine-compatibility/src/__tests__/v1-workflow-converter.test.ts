@@ -106,9 +106,8 @@ describe('V1WorkflowConverter', () => {
 
 		it('makes the named node the trigger, over the one it would have guessed', () => {
 			// ┌────────┐    ┌─┐
-			// │Webhook ├───►│A│
+			// │Webhook ├───►│A│    "A" is named, so A is the trigger
 			// └────────┘    └─┘
-			// name "A" instead, and A becomes the trigger
 			const graph = converter.convert(
 				workflow({
 					nodes: [trigger('t-uuid', 'Webhook', 'n8n-nodes-base.webhook'), node('a-uuid', 'A')],
@@ -184,8 +183,7 @@ describe('V1WorkflowConverter', () => {
 		});
 
 		it('converts a workflow whose dropped branch holds a non-main connection', () => {
-			// the ai_tool connection sits outside the fired trigger's reach, so it
-			// must not fail a conversion it has no part in
+			// the ai_tool connection is out of reach, so it must not fail the conversion
 			const graph = converter.convert(
 				workflow({
 					nodes: [
@@ -612,7 +610,7 @@ describe('V1WorkflowConverter', () => {
 		it('does not take a disabled trigger as the one that fired', () => {
 			//    XX
 			// ┌───────┐    ┌─┐
-			// │Webhook├───►│A│    a trigger, but disabled, so it cannot fire
+			// │Webhook├───►│A│    a trigger, but disabled
 			// └───────┘    └─┘
 			const graph = converter.convert(
 				workflow({
@@ -740,11 +738,11 @@ describe('V1WorkflowConverter', () => {
 		});
 
 		it('rejects a loop entered mid-body, regardless of node order', () => {
-			//         ┌────┐ o1    ┌────┐
-			// ┌──┐ o0 │Loop├──────►│Body│
-			// │T ├───►└─▲──┘       └──┬─┘
-			// └┬─┘ o1   └─────────────┘
-			//  └──────────────────────▲
+			// ┌─┐ o0    ┌────┐ o1    ┌────┐
+			// │T├──────►│Loop├──────►│Body│◄─┐
+			// └┬┘       └──▲─┘       └──┬─┘  │
+			//  │           └────────────┘    │
+			//  └──────────────── o1 ─────────┘
 			// two ways into the loop: through Loop and mid-body
 			const trigger = node('t-uuid', 'T', { type: 'n8n-nodes-base.manualTrigger' });
 			const loop = node('loop-uuid', 'Loop', {
@@ -769,13 +767,13 @@ describe('V1WorkflowConverter', () => {
 		});
 
 		it('converts a loop fed by two paths that both arrive at its batch node', () => {
-			//    ┌──┐    ┌────┐ o1    ┌────┐
-			// ┌─►│P1├───►│    ├──────►│Body│
-			// │  └──┘    │Loop│       └──┬─┘
-			// ├─►┌──┐    │    │          │
-			// │  │P2├───►│    │◄─(back)──┘
-			// │  └──┘    └────┘    one way in, used by both paths
-			// trigger
+			// ┌───────┐    ┌──┐    ┌────┐ o1    ┌────┐
+			// │trigger├───►│P1├───►│    ├──────►│Body│
+			// └───┬───┘    └──┘    │Loop│       └──┬─┘
+			//     │        ┌──┐    │    │          │
+			//     └───────►│P2├───►│    │◄─(back)──┘
+			//              └──┘    └────┘
+			// one way in, used by both paths
 			const graph = converter.convert(
 				workflow({
 					nodes: [

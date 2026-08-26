@@ -29,18 +29,10 @@ import type { TriggerStepConfig, V1NodeStepConfig } from './types';
  * deliberately small (see the converter tests); unsupported constructs are
  * rejected with a clear error rather than silently mistranslated.
  *
- * One v1 trigger node becomes the `trigger` step, which carries the payload the
- * caller supplies. The trigger node itself never runs on the engine; its config
- * records the v1 identity only so expressions can read it back. The caller names
- * the trigger that fired, because only it knows. With no name we fall back to
- * the workflow's sole trigger, and reject a workflow with several — the engine
- * runs one trigger per graph, and picking for the caller would run the wrong
- * branch.
- *
- * The graph is always rooted at that trigger: nodes it cannot reach are left
- * out, which drops the other triggers, their branches, and anything
- * disconnected. A node reachable from both the fired trigger and another one
- * stays, minus the other trigger's edges into it.
+ * One trigger node becomes the `trigger` step, and the caller names which
+ * trigger fired. With no name we take the sole trigger, and reject a workflow
+ * with several, because guessing would run the wrong branch. The graph is
+ * rooted at that trigger, so nodes it cannot reach are left out.
  *
  * Branching is purely structural, so an edge records which output slot feeds
  * which input slot, nothing more. Branches leaving the same node are
@@ -67,8 +59,7 @@ import type { TriggerStepConfig, V1NodeStepConfig } from './types';
 export class V1WorkflowConverter {
 	convert(workflow: IWorkflowBase, firedTriggerName?: string): WorkflowGraph {
 		const trigger = this.resolveFiredTrigger(workflow, firedTriggerName);
-		// Rooted before the disabled split, so a disabled node on the way does not
-		// cut the reachable set short.
+		// Rooted first: a disabled node must not cut the reachable set short.
 		const rooted = trigger === undefined ? workflow : rootAt(workflow, trigger);
 
 		const liveNodes = rooted.nodes.filter((node) => node.disabled !== true);
@@ -86,12 +77,7 @@ export class V1WorkflowConverter {
 		return { nodes, edges };
 	}
 
-	/**
-	 * A named node is taken as given: the caller knows what fired, and a name we
-	 * cannot resolve must not silently convert the whole workflow instead. Only
-	 * without a name do we guess, and then a type heuristic is all we have — the
-	 * converter has no `INodeTypes` to ask.
-	 */
+	/** A name is taken as given. Guessing is a heuristic: there is no `INodeTypes` here. */
 	private resolveFiredTrigger(
 		workflow: IWorkflowBase,
 		firedTriggerName?: string,
@@ -109,8 +95,7 @@ export class V1WorkflowConverter {
 			throw new AmbiguousTriggerError(triggers.map((node) => node.name));
 		}
 
-		// A trigger-less workflow converts to a graph the engine rejects, which is
-		// a clearer place to say so than here.
+		// A trigger-less workflow is the engine's to reject.
 		return triggers[0];
 	}
 
@@ -401,11 +386,10 @@ export class V1WorkflowConverter {
 }
 
 /**
- * Keeps the trigger and everything it reaches over main connections.
+ * Keeps the trigger and everything it reaches.
  *
- * Connections are filtered too, not just nodes: an excluded branch's
- * connections would still be read for their type, so an `ai_tool` connection
- * out there would fail a conversion it has no part in.
+ * Connections go too, not just nodes: a dropped branch's connection type is
+ * still checked, and would fail a conversion it has no part in.
  */
 function rootAt(workflow: IWorkflowBase, trigger: INode): IWorkflowBase {
 	const reachable = new Set([
