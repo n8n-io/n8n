@@ -1297,6 +1297,22 @@ describe('credentials tool', () => {
 			});
 		});
 
+		it('should tell the agent no authorization is needed once every selection passed', async () => {
+			const context = createMockContext();
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi' }],
+				},
+				resumeCtx({ approved: true, credentials: { slackApi: 'cred-123' } }),
+			);
+
+			expect(result).toHaveProperty('message', expect.stringContaining('OAuth authorization'));
+		});
+
 		it('should not claim setup is complete when a selection fails its connection test', async () => {
 			const context = createMockContext();
 			(context.credentialService.test as Mock).mockResolvedValue({
@@ -1331,6 +1347,9 @@ describe('credentials tool', () => {
 				'message',
 				expect.not.stringContaining('Credential setup is complete'),
 			);
+			// The user very likely has to act on a credential that failed, so the message
+			// must not repeat the verified path's "no user action is needed" note.
+			expect(result).toHaveProperty('message', expect.not.stringContaining('OAuth authorization'));
 		});
 
 		it('should flag a selected credential that has no values filled in', async () => {
@@ -1393,6 +1412,81 @@ describe('credentials tool', () => {
 			expect(result).toHaveProperty('message', expect.stringContaining('could not be verified'));
 			expect(result).toHaveProperty('message', expect.stringContaining('preferNew'));
 			expect(result).toHaveProperty('message', expect.not.stringContaining('ready to use'));
+		});
+
+		it('should still connection-test when the testability lookup fails', async () => {
+			const context = createMockContext();
+			(context.credentialService.isTestable as Mock).mockRejectedValue(new Error('lookup failed'));
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'slackApi' }],
+				},
+				resumeCtx({ approved: true, credentials: { slackApi: 'cred-1' } }),
+			);
+
+			expect(context.credentialService.test).toHaveBeenCalledWith('cred-1');
+			expect(result).toMatchObject({
+				verified: true,
+				selections: [{ credentialType: 'slackApi', credentialId: 'cred-1', connection: 'passed' }],
+			});
+		});
+
+		it('should report an untested selection without a verdict when the fill-state lookup fails', async () => {
+			const context = createMockContext();
+			(context.credentialService.isTestable as Mock).mockResolvedValue(false);
+			(context.credentialService.getCredentialFillState as Mock).mockRejectedValue(
+				new Error('decrypt failed'),
+			);
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'httpHeaderAuth' }],
+				},
+				resumeCtx({ approved: true, credentials: { httpHeaderAuth: 'cred-1' } }),
+			);
+
+			expect(result).toMatchObject({
+				verified: false,
+				selections: [
+					{ credentialType: 'httpHeaderAuth', credentialId: 'cred-1', connection: 'untested' },
+				],
+			});
+			expect(result).toHaveProperty(
+				'selections',
+				expect.not.arrayContaining([expect.objectContaining({ hasNoValues: true })]),
+			);
+		});
+
+		it('should report an untested selection when the host cannot judge fill state at all', async () => {
+			const context = createMockContext();
+			(context.credentialService.isTestable as Mock).mockResolvedValue(false);
+			// A host that never wired the capability — the tool must not throw on it.
+			delete (context.credentialService as { getCredentialFillState?: unknown })
+				.getCredentialFillState;
+
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [{ credentialType: 'httpHeaderAuth' }],
+				},
+				resumeCtx({ approved: true, credentials: { httpHeaderAuth: 'cred-1' } }),
+			);
+
+			expect(result).toMatchObject({
+				verified: false,
+				selections: [
+					{ credentialType: 'httpHeaderAuth', credentialId: 'cred-1', connection: 'untested' },
+				],
+			});
 		});
 
 		it('should treat a failing connection test call as a failed selection', async () => {

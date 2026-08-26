@@ -4809,6 +4809,26 @@ describe('createCredentialAdapter', () => {
 			await expect(credentialService.getCredentialFillState!('cred-1')).resolves.toBe('blank');
 		});
 
+		// Types like Templated Custom Auth keep their secrets in one structured field,
+		// so emptiness has to be judged inside the value, not just on the key.
+		it.each([
+			['an object with no entries', {}, 'blank'],
+			['an object with entries', { api_key: 'abc' }, 'filled'],
+			['an array with no entries', [], 'blank'],
+			['a JSON string with no entries', '{}', 'blank'],
+			['a JSON string with entries', '{"api_key":"abc"}', 'filled'],
+		])('judges a structured field holding %s', async (_label, placeholderValues, expected) => {
+			const credentialService = adapterFor(
+				[
+					{ name: 'placeholderValues', type: 'json' },
+					{ name: 'testUrl', type: 'string' },
+				],
+				{ placeholderValues, testUrl: '' },
+			);
+
+			await expect(credentialService.getCredentialFillState!('cred-1')).resolves.toBe(expected);
+		});
+
 		it('reports unknown when the type declares no value fields to judge', async () => {
 			const credentialService = adapterFor([{ name: 'notice', type: 'notice' }], {});
 

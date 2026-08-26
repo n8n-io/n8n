@@ -910,8 +910,7 @@ async function verifySelectedCredential(
 	};
 }
 
-const SETUP_CARD_CLOSED_NOTE =
-	'The setup card is no longer open and no user action (such as OAuth authorization) is needed.';
+const SETUP_CARD_CLOSED_NOTE = 'The setup card is no longer open.';
 
 function describeSelectionProblem(selection: SelectedCredentialOutcome): string | undefined {
 	const label = `${selection.credentialType} (${selection.credentialId})`;
@@ -943,7 +942,8 @@ function buildSetupOutcomeMessage(selections: SelectedCredentialOutcome[]): stri
 	if (problems.length === 0) {
 		return (
 			'Credential setup is complete — every selected credential passed its connection test and is ' +
-			`ready to use. ${SETUP_CARD_CLOSED_NOTE} Confirm the outcome to the user.`
+			`ready to use. ${SETUP_CARD_CLOSED_NOTE} No further user action (such as OAuth ` +
+			'authorization) is needed; confirm the outcome to the user.'
 		);
 	}
 
