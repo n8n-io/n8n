@@ -123,7 +123,11 @@ describe('EngineV2Dispatcher', () => {
 
 			const { graph } = proxy.startExecution.mock.calls[0][0];
 			expect(graph.nodes).toEqual([
-				{ id: MANUAL_TRIGGER.id, name: MANUAL_TRIGGER.name, type: 'trigger' },
+				expect.objectContaining({
+					id: MANUAL_TRIGGER.id,
+					name: MANUAL_TRIGGER.name,
+					type: 'trigger',
+				}),
 				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
 			]);
 			expect(graph.edges).toEqual([
@@ -161,7 +165,11 @@ describe('EngineV2Dispatcher', () => {
 
 			const { graph } = proxy.startExecution.mock.calls[0][0];
 			expect(graph.nodes).toEqual([
-				{ id: MANUAL_TRIGGER.id, name: MANUAL_TRIGGER.name, type: 'trigger' },
+				expect.objectContaining({
+					id: MANUAL_TRIGGER.id,
+					name: MANUAL_TRIGGER.name,
+					type: 'trigger',
+				}),
 				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
 			]);
 			expect(graph.edges).toEqual([
@@ -192,7 +200,12 @@ describe('EngineV2Dispatcher', () => {
 
 			const { graph } = proxy.startExecution.mock.calls[0][0];
 			expect(graph.nodes).toEqual([
-				{ id: scheduleTrigger.id, name: scheduleTrigger.name, type: 'trigger' },
+				{
+					id: scheduleTrigger.id,
+					name: scheduleTrigger.name,
+					type: 'trigger',
+					config: { nodeType: scheduleTrigger.type, typeVersion: 1, parameters: {} },
+				},
 				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
 			]);
 		});
@@ -202,7 +215,11 @@ describe('EngineV2Dispatcher', () => {
 
 			const { graph } = proxy.startExecution.mock.calls[0][0];
 			expect(graph.nodes).toEqual([
-				{ id: MANUAL_TRIGGER.id, name: MANUAL_TRIGGER.name, type: 'trigger' },
+				expect.objectContaining({
+					id: MANUAL_TRIGGER.id,
+					name: MANUAL_TRIGGER.name,
+					type: 'trigger',
+				}),
 				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
 			]);
 		});

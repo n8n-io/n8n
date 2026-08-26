@@ -13,6 +13,17 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
+/**
+ * The v1 identity of a trigger node. The trigger step never runs on the engine,
+ * so this exists only to rebuild the node for expression resolution — without
+ * it, `$('Webhook').params` reads the parameters of a Manual Trigger stub.
+ */
+export interface TriggerStepConfig {
+	nodeType: string;
+	typeVersion: number;
+	parameters: INodeParameters;
+}
+
 export interface V1NodeStepConfig {
 	nodeType: string;
 	typeVersion: number;

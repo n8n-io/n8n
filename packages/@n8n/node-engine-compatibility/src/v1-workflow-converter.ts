@@ -19,7 +19,7 @@ import {
 	UnsupportedWorkflowError,
 } from './errors';
 import { isRecord } from './guards';
-import type { V1NodeStepConfig } from './types';
+import type { TriggerStepConfig, V1NodeStepConfig } from './types';
 
 /**
  * Converts a v1 workflow (node-based JSON) into the Engine 2.0 `WorkflowGraph`.
@@ -30,11 +30,12 @@ import type { V1NodeStepConfig } from './types';
  * rejected with a clear error rather than silently mistranslated.
  *
  * One v1 trigger node becomes the `trigger` step, which carries the payload the
- * caller supplies; the trigger node itself never runs on the engine, so its
- * parameters are dropped. The caller names the trigger that fired, because only
- * it knows. With no name we fall back to the workflow's sole trigger, and reject
- * a workflow with several — the engine runs one trigger per graph, and picking
- * for the caller would run the wrong branch.
+ * caller supplies. The trigger node itself never runs on the engine; its config
+ * records the v1 identity only so expressions can read it back. The caller names
+ * the trigger that fired, because only it knows. With no name we fall back to
+ * the workflow's sole trigger, and reject a workflow with several — the engine
+ * runs one trigger per graph, and picking for the caller would run the wrong
+ * branch.
  *
  * The graph is always rooted at that trigger: nodes it cannot reach are left
  * out, which drops the other triggers, their branches, and anything
@@ -115,7 +116,13 @@ export class V1WorkflowConverter {
 
 	private toGraphNode(node: INode, firedTriggerId?: string): GraphNode {
 		if (node.id === firedTriggerId) {
-			return { id: node.id, name: node.name, type: 'trigger' };
+			const config: TriggerStepConfig = {
+				nodeType: node.type,
+				typeVersion: node.typeVersion,
+				parameters: node.parameters,
+			};
+
+			return { id: node.id, name: node.name, type: 'trigger', config };
 		}
 
 		if (node.onError === 'continueErrorOutput') {

@@ -67,11 +67,18 @@ describe('V1WorkflowConverter', () => {
 		])('maps %s to a single trigger graph node', (_name, type) => {
 			const graph = converter.convert(workflow({ nodes: [trigger('t-uuid', 'Start', type)] }));
 
-			expect(graph.nodes).toEqual([{ id: 't-uuid', name: 'Start', type: 'trigger' }]);
+			expect(graph.nodes).toEqual([
+				{
+					id: 't-uuid',
+					name: 'Start',
+					type: 'trigger',
+					config: { nodeType: type, typeVersion: 1, parameters: {} },
+				},
+			]);
 			expect(graph.edges).toEqual([]);
 		});
 
-		it('drops the trigger parameters, since the trigger never runs on the engine', () => {
+		it('keeps the trigger v1 identity, which expressions read back', () => {
 			const graph = converter.convert(
 				workflow({
 					nodes: [
@@ -83,7 +90,18 @@ describe('V1WorkflowConverter', () => {
 				}),
 			);
 
-			expect(graph.nodes).toEqual([{ id: 't-uuid', name: 'Webhook', type: 'trigger' }]);
+			expect(graph.nodes).toEqual([
+				{
+					id: 't-uuid',
+					name: 'Webhook',
+					type: 'trigger',
+					config: {
+						nodeType: 'n8n-nodes-base.webhook',
+						typeVersion: 2,
+						parameters: { path: 'abc', httpMethod: 'POST' },
+					},
+				},
+			]);
 		});
 
 		it('makes the named node the trigger, over the one it would have guessed', () => {
@@ -99,7 +117,9 @@ describe('V1WorkflowConverter', () => {
 				'A',
 			);
 
-			expect(graph.nodes).toEqual([{ id: 'a-uuid', name: 'A', type: 'trigger' }]);
+			expect(graph.nodes).toEqual([
+				expect.objectContaining({ id: 'a-uuid', name: 'A', type: 'trigger' }),
+			]);
 			expect(graph.edges).toEqual([]);
 		});
 
@@ -127,7 +147,7 @@ describe('V1WorkflowConverter', () => {
 			);
 
 			expect(graph.nodes).toEqual([
-				{ id: 'webhook-uuid', name: 'Webhook', type: 'trigger' },
+				expect.objectContaining({ id: 'webhook-uuid', name: 'Webhook', type: 'trigger' }),
 				expect.objectContaining({ id: 'a-uuid', type: 'v1-node' }),
 			]);
 			expect(graph.edges).toEqual([
