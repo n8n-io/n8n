@@ -9,6 +9,7 @@ vi.mock('@/modules/community-packages/npm-utils', async () => ({
 import type { CommunityNodeType } from '@n8n/api-types';
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { OWNER_API_KEY_SCOPES } from '@n8n/permissions';
 import path from 'node:path';
@@ -16,6 +17,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityNodeTypesService } from '@/modules/community-packages/community-node-types.service';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { executeNpmCommand } from '@/modules/community-packages/npm-utils';
 
@@ -61,6 +63,7 @@ describe('Community packages (Public API)', () => {
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
+		Container.get(CommunityPackagesConfig).unverifiedEnabled = false;
 		communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 		communityNodeTypesService.findVetted.mockResolvedValue(mockedVettedPackage);
 		await testDb.truncate(['User']);
@@ -116,7 +119,8 @@ describe('Community packages (Public API)', () => {
 			expect(response.body[0].packageName).toBe(pkg.packageName);
 		});
 
-		it('should run npm outdated when packages exist', async () => {
+		it('should run npm outdated when packages exist and unverified packages are enabled', async () => {
+			Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
 			communityPackagesService.getAllInstalledPackages.mockResolvedValue([mockPackage()]);
 			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([]);
 
@@ -129,6 +133,7 @@ describe('Community packages (Public API)', () => {
 		});
 
 		it('should return packages with updateAvailable when outdated', async () => {
+			Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
 			const pkg = mockPackage();
 			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
 

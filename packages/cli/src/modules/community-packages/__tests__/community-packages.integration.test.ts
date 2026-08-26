@@ -4,9 +4,11 @@ vi.mock('../npm-utils', async () => ({
 }));
 
 import { mockInstance } from '@n8n/backend-test-utils';
+import { Container } from '@n8n/di';
 import path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
@@ -52,6 +54,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	vi.resetAllMocks();
+	Container.get(CommunityPackagesConfig).unverifiedEnabled = false;
 	communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 });
 
@@ -123,7 +126,8 @@ describe('GET /community-packages', () => {
 		expect(mockedExecuteNpmCommand).not.toHaveBeenCalled();
 	});
 
-	test('should check for updates if packages installed', async () => {
+	test('should check for updates if packages installed and unverified packages are enabled', async () => {
+		Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
 		communityPackagesService.getAllInstalledPackages.mockResolvedValue([mockPackage()]);
 
 		await authAgent.get('/community-packages').expect(200);
@@ -134,6 +138,7 @@ describe('GET /community-packages', () => {
 	});
 
 	test('should report package updates if available', async () => {
+		Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
 		const pkg = mockPackage();
 		communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
 
