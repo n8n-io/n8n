@@ -111,6 +111,15 @@ export class McpTrigger extends Node {
 		],
 		outputs: [],
 		sensitiveOutputFields: ['headers.authorization', 'headers.cookie'],
+		triggerIdentity: {
+			establishes: true,
+			mergeStrategy: 'index-merge',
+			// Calls context.checkTriggerCredentialStatus() itself, from
+			// getConnectedToolsRespectingCredentialGate — it needs the gate
+			// result mid-flow, to decide whether to expose a placeholder
+			// "connect credentials" tool instead of the real tool list.
+			gate: 'manual',
+		},
 		credentials: [
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed

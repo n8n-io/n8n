@@ -25,6 +25,7 @@ import type {
 	IExecuteResponsePromiseData,
 	IN8nHttpFullResponse,
 	INode,
+	INodeTypes,
 	IPinData,
 	IRunExecutionData,
 	IWebhookData,
@@ -34,6 +35,7 @@ import type {
 	WebhookResponseMode,
 	OAuth2FailureReason,
 	OAuthResourceGrant,
+	TriggerExecutionSeeding,
 	Workflow,
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
@@ -47,13 +49,11 @@ import {
 	ExecutionCancelledError,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
-	MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
 	NodeOperationError,
 	OperationalError,
 	tryToParseUrl,
 	UnexpectedError,
 	WAIT_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
 	WorkflowConfigurationError,
 } from 'n8n-workflow';
 import { finished } from 'stream/promises';
@@ -387,36 +387,69 @@ export function setupResponseNodePromise(
 }
 
 /**
- * Predicate (not an action): checks whether the start node will establish a
- * triggering-user identity from within its `webhook()` method (via
- * `context.establishTriggerIdentity`). Such nodes need their `runExecutionData`
- * created before the webhook runs, and the webhook output merged into the seeded
- * execution stack afterwards.
+ * Reads the start node's declared `triggerIdentity` capability (see
+ * `TriggerIdentityCapability` in n8n-workflow), resolving the `establishes`
+ * predicate against this node instance's parameters where it's a function
+ * (e.g. the Webhook node's opt-in "n8n User Auth (OAuth2)" mode).
  *
- * The Webhook node does this only when its opt-in "n8n User Auth (OAuth2)" mode
- * (`n8nOAuth2`) is selected; the MCP / chat / Agent365 triggers always do.
+ * TEMPORARY: Chat Trigger hasn't been migrated to declare this capability yet
+ * (tracked separately, alongside IAM-1259) and keeps its historical hardcoded
+ * treatment below wherever this returns `undefined` for it.
  */
-function shouldEstablishTriggerIdentity(workflowStartNode: INode): boolean {
-	return (
-		workflowStartNode.type === WEBHOOK_NODE_TYPE &&
-		workflowStartNode.parameters?.authentication === 'n8nOAuth2'
+function getTriggerIdentityCapability(nodeTypes: INodeTypes, workflowStartNode: INode) {
+	const { description } = nodeTypes.getByNameAndVersion(
+		workflowStartNode.type,
+		workflowStartNode.typeVersion,
 	);
+	const capability = description.triggerIdentity;
+	if (!capability) return undefined;
+
+	const establishes =
+		typeof capability.establishes === 'function'
+			? capability.establishes(workflowStartNode)
+			: capability.establishes;
+
+	return establishes ? capability : undefined;
+}
+
+/**
+ * Resolves how a pre-seeded execution stack should be reconciled: identity
+ * establishment (`triggerIdentity`) implies seeding; a node can otherwise
+ * declare bare `triggerExecutionSeeding` for the same stack-timing need
+ * without establishing identity (e.g. Agent365, which authenticates the
+ * caller via Bot Framework JWT rather than n8n's identity/credential system).
+ *
+ * TEMPORARY: Chat Trigger isn't migrated yet — see `getTriggerIdentityCapability`.
+ */
+function getExecutionSeedingCapability(
+	nodeTypes: INodeTypes,
+	workflowStartNode: INode,
+): TriggerExecutionSeeding | undefined {
+	const identityCapability = getTriggerIdentityCapability(nodeTypes, workflowStartNode);
+	if (identityCapability) return identityCapability;
+
+	const { description } = nodeTypes.getByNameAndVersion(
+		workflowStartNode.type,
+		workflowStartNode.typeVersion,
+	);
+	return description.triggerExecutionSeeding;
 }
 
 /**
  * Reconciles a pre-seeded execution stack (identity/context trigger flows) with the
  * webhook node's real output. No-op unless the start node seeded execution data.
  *
- * - MCP / chat / Agent365 (single-output triggers): index-merge the webhook output
- *   into the seeded item so seeded input data is preserved.
- * - n8n Identity webhook: the identity was already established from the seeded
- *   placeholder during the node's `webhook()` call (credentials now live on
- *   `executionData.runtimeData`, a sibling that survives the reassignment). Replace
- *   the seeded stack with the real output instead of index-merging — a naive merge
- *   keeps the empty placeholder in output slot 0 and would spuriously fire that
- *   branch on multi-method webhooks.
+ * - Index-merge (single-output triggers, e.g. MCP, Agent365): fold the webhook
+ *   output into the seeded item so seeded input data is preserved.
+ * - Replace (e.g. n8n Identity webhook): the identity was already established
+ *   from the seeded placeholder during the node's `webhook()` call (credentials
+ *   now live on `executionData.runtimeData`, a sibling that survives the
+ *   reassignment). Replace the seeded stack with the real output instead of
+ *   index-merging — a naive merge keeps the empty placeholder in output slot 0
+ *   and would spuriously fire that branch on multi-method webhooks.
  */
 function reconcileSeededExecutionStack(
+	nodeTypes: INodeTypes,
 	workflowStartNode: INode,
 	runExecutionData: IRunExecutionData | undefined,
 	nodeExecutionStack: IExecuteData[],
@@ -424,18 +457,24 @@ function reconcileSeededExecutionStack(
 	const executionData = runExecutionData?.executionData;
 	if (!executionData?.nodeExecutionStack) return;
 
-	if (
-		[MCP_TRIGGER_NODE_TYPE, MICROSOFT_AGENT365_TRIGGER_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE].includes(
-			workflowStartNode.type,
-		)
-	) {
+	// TEMPORARY: Chat Trigger isn't migrated to declare a capability yet.
+	if (workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE) {
 		merge(executionData.nodeExecutionStack, nodeExecutionStack);
-	} else if (shouldEstablishTriggerIdentity(workflowStartNode)) {
+		return;
+	}
+
+	const seeding = getExecutionSeedingCapability(nodeTypes, workflowStartNode);
+	if (!seeding) return;
+
+	if (seeding.mergeStrategy === 'index-merge') {
+		merge(executionData.nodeExecutionStack, nodeExecutionStack);
+	} else {
 		executionData.nodeExecutionStack = nodeExecutionStack;
 	}
 }
 
 export function prepareExecutionData(
+	nodeTypes: INodeTypes,
 	executionMode: WorkflowExecuteMode,
 	workflowStartNode: INode,
 	webhookResultData: IWebhookResponseData,
@@ -457,7 +496,7 @@ export function prepareExecutionData(
 		},
 	];
 
-	reconcileSeededExecutionStack(workflowStartNode, runExecutionData, nodeExecutionStack);
+	reconcileSeededExecutionStack(nodeTypes, workflowStartNode, runExecutionData, nodeExecutionStack);
 
 	runExecutionData ??= createRunExecutionData({
 		executionData: {
@@ -715,12 +754,9 @@ export async function executeWebhook(
 
 		// TODO: remove this hack, and make sure that execution data is properly created before the MCP trigger is executed
 		if (
-			[
-				MCP_TRIGGER_NODE_TYPE,
-				MICROSOFT_AGENT365_TRIGGER_NODE_TYPE,
-				CHAT_TRIGGER_NODE_TYPE,
-			].includes(workflowStartNode.type) ||
-			shouldEstablishTriggerIdentity(workflowStartNode)
+			// TEMPORARY: Chat Trigger isn't migrated to declare a capability yet.
+			workflowStartNode.type === CHAT_TRIGGER_NODE_TYPE ||
+			getExecutionSeedingCapability(workflow.nodeTypes, workflowStartNode)
 		) {
 			// Initialize the data of the webhook node
 			const nodeExecutionStack: IExecuteData[] = [];
@@ -845,7 +881,11 @@ export async function executeWebhook(
 		// user's resolvable (private) credentials are still unconnected, responding
 		// 428 Precondition Required with the missing-credential list and a signed
 		// connect link for each.
-		if (!didSendResponse && !res.headersSent && shouldEstablishTriggerIdentity(workflowStartNode)) {
+		if (
+			!didSendResponse &&
+			!res.headersSent &&
+			getTriggerIdentityCapability(workflow.nodeTypes, workflowStartNode)?.gate === 'reactive'
+		) {
 			const credentialGate = await additionalData.checkTriggerCredentialStatus?.();
 			if (credentialGate && !credentialGate.readyToExecute) {
 				responseCallback(null, {
@@ -863,6 +903,7 @@ export async function executeWebhook(
 
 		// Prepare execution data
 		const { runExecutionData: preparedRunExecutionData, pinData } = prepareExecutionData(
+			workflow.nodeTypes,
 			executionMode,
 			workflowStartNode,
 			webhookResultData,

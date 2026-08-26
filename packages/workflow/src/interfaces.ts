@@ -1184,6 +1184,39 @@ export type CredentialCheckResult = {
 	credentials: CredentialCheckStatus[];
 };
 
+/**
+ * How a pre-seeded execution stack (created before a trigger's `webhook()`
+ * method runs) is reconciled with the trigger's real output once it's known.
+ */
+export type TriggerExecutionSeeding = {
+	/**
+	 * Single-output triggers: index-merge the real output into the seeded
+	 * item so whatever the seed carried (e.g. identity metadata) survives.
+	 */
+	mergeStrategy: 'index-merge' | 'replace';
+};
+
+/**
+ * Declares that this node type can establish a triggering end-user's identity
+ * from within its `webhook()` method (via `context.establishTriggerIdentity`),
+ * for end-user credential resolution. Implies execution-stack pre-seeding —
+ * the identity has to be attached before the trigger's real output exists.
+ */
+export interface TriggerIdentityCapability extends TriggerExecutionSeeding {
+	/**
+	 * Whether this node instance establishes identity for this run. A function
+	 * lets a node's own parameters decide (e.g. Webhook's "Authentication"
+	 * dropdown); `true` means it always does.
+	 */
+	establishes: boolean | ((node: INode) => boolean);
+	/**
+	 * 'reactive': the CLI's webhook-handling code calls
+	 * `checkTriggerCredentialStatus()` on the node's behalf, once, before the
+	 * execution is created. 'manual': the node's own code calls it itself.
+	 */
+	gate: 'reactive' | 'manual';
+}
+
 export type DynamicCredentialCheckProxyProvider = {
 	checkCredentialStatus(
 		workflowId: string,
@@ -3021,6 +3054,18 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	 * permissions and are never revealable.
 	 */
 	sensitiveOutputFields?: string[];
+	/**
+	 * This node establishes a triggering end-user's identity for credential
+	 * resolution. See `TriggerIdentityCapability`.
+	 */
+	triggerIdentity?: TriggerIdentityCapability;
+	/**
+	 * This node needs its execution stack pre-seeded before `webhook()` runs,
+	 * for reasons other than establishing identity (e.g. needing an execution
+	 * reference available up front). Nodes with `triggerIdentity` don't need
+	 * this separately — identity establishment implies seeding.
+	 */
+	triggerExecutionSeeding?: TriggerExecutionSeeding;
 }
 
 export type TriggerPanelDefinition = {

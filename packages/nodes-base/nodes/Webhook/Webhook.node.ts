@@ -75,6 +75,11 @@ export class Webhook extends Node {
 		credentials: credentialsProperty(this.authPropertyName),
 		webhooks: [defaultWebhookDescription],
 		sensitiveOutputFields: ['headers.authorization', 'headers.cookie'],
+		triggerIdentity: {
+			establishes: (node) => node.parameters?.authentication === 'n8nOAuth2',
+			mergeStrategy: 'replace',
+			gate: 'reactive',
+		},
 		properties: [
 			{
 				displayName: 'Allow Multiple HTTP Methods',

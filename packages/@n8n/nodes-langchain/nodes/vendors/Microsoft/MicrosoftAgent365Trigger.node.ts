@@ -48,6 +48,13 @@ export class MicrosoftAgent365Trigger implements INodeType {
 			}}`,
 		outputs: [NodeConnectionTypes.Main],
 		triggerPanel: false,
+		// Needs its execution stack pre-seeded before webhook() runs (see
+		// `TriggerExecutionSeeding`), but authenticates the caller via Bot
+		// Framework JWT (authorizeJWT below) rather than n8n's identity system —
+		// no `triggerIdentity` capability here.
+		triggerExecutionSeeding: {
+			mergeStrategy: 'index-merge',
+		},
 		webhooks: [
 			{
 				name: 'default',
