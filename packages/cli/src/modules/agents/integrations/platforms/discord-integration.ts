@@ -95,10 +95,11 @@ export class DiscordIntegration extends AgentChatIntegration {
 			'The agent needs to reply to Discord users in the same conversation context.',
 			'The agent needs to update or react to a Discord message in the current conversation.',
 			'The agent should send Discord messages as the connected Discord bot.',
+			'A scheduled Agent task should proactively send a DM or channel message through the connected Discord bot.',
 		],
 		useNodeToolWhen: [
 			'Discord is only a backend API step and the agent does not need to be connected as a Discord chat surface.',
-			'The request is a one-off Discord operation from another trigger without ongoing Discord conversation context.',
+			'The Discord operation is performed by a non-Agent workflow, or the exact operation is not listed in the Agent integration capabilities.',
 		],
 	};
 
@@ -130,6 +131,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 	];
 
 	readonly actionToolGuidance = [
+		'For scheduled tasks without an inbound conversation, use send_dm or send_channel_message with the known destination ID. These actions do not require current message context.',
 		'For edit_message, pass the messageId returned by a previous Discord action or get_current_message_context. The current Discord conversation is selected automatically.',
 		'For send_channel_message, channelId must be shaped "discord:<guildId>:<channelId>" — pass the value returned by search_channels or get_current_message_context. A bare Discord channel ID copied from the Discord app is rejected.',
 		'A Discord mention is answered inside a thread created off that message. Use send_channel_message when the reply belongs in the channel itself rather than that thread.',

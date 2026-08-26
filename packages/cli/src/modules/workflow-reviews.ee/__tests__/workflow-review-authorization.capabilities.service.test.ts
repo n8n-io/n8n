@@ -6,6 +6,7 @@ import type {
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
+	WorkflowReviewRequestWorkflowDetailRow,
 	WorkflowReviewRequestWorkflowRepository,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -42,11 +43,15 @@ describe('WorkflowReviewAuthorizationService: viewer capabilities', () => {
 
 	const request = () => mock<WorkflowReviewRequest>({ id: requestId, projectId });
 
+	const row = (id = 'wf-1') => mock<WorkflowReviewRequestWorkflowDetailRow>({ workflowId: id });
+
+	/** By default the review covers one workflow and the viewer can read it. */
 	const readable = (
 		overrides: Partial<Parameters<typeof service.resolveViewerEligibility>[1]> = {},
 	) => ({
 		request: request(),
-		canReadPinnedWorkflow: true,
+		workflowRows: [row()],
+		readableWorkflowRows: [row()],
 		...overrides,
 	});
 
@@ -166,7 +171,7 @@ describe('WorkflowReviewAuthorizationService: viewer capabilities', () => {
 
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),
-				readable({ canReadPinnedWorkflow: false }),
+				readable({ readableWorkflowRows: [] }),
 			);
 
 			expect(eligibility).toEqual({
@@ -196,13 +201,28 @@ describe('WorkflowReviewAuthorizationService: viewer capabilities', () => {
 				canComment: true,
 			});
 		});
+
+		it('requires read access to every covered workflow, not just one of them', async () => {
+			const rows = [row('wf-1'), row('wf-2')];
+
+			const eligibility = await service.resolveViewerEligibility(
+				memberUser(),
+				readable({ workflowRows: rows, readableWorkflowRows: rows.slice(1) }),
+			);
+
+			expect(eligibility).toEqual({
+				canDecide: false,
+				decisionIneligibilityReason: 'missing_permission',
+				canComment: false,
+			});
+		});
 	});
 
 	describe('who may comment', () => {
 		it('refuses commenting to a viewer who cannot open the workflow under review', async () => {
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),
-				readable({ canReadPinnedWorkflow: false }),
+				readable({ readableWorkflowRows: [] }),
 			);
 
 			expect(eligibility).toEqual({
@@ -229,7 +249,7 @@ describe('WorkflowReviewAuthorizationService: viewer capabilities', () => {
 
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),
-				readable({ canReadPinnedWorkflow: false }),
+				readable({ readableWorkflowRows: [] }),
 			);
 
 			expect(eligibility).toEqual({
@@ -242,7 +262,7 @@ describe('WorkflowReviewAuthorizationService: viewer capabilities', () => {
 		it('refuses both deciding and commenting on a review whose workflow is gone', async () => {
 			const eligibility = await service.resolveViewerEligibility(
 				memberUser(),
-				readable({ canReadPinnedWorkflow: false }),
+				readable({ readableWorkflowRows: [] }),
 			);
 
 			expect(eligibility).toEqual({
