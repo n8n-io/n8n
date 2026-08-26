@@ -2,7 +2,11 @@ import type { ICredentialDataDecryptedObject, IWebhookFunctions } from 'n8n-work
 import { mock } from 'vitest-mock-extended';
 
 import { ChatTriggerAuthorizationError } from '../error';
-import { establishChatWidgetIdentity, validateAuth } from '../GenericFunctions';
+import {
+	establishChatSessionIdentity,
+	resolveInnerFrameIdentity,
+	validateAuth,
+} from '../GenericFunctions';
 
 describe('validateAuth', () => {
 	const mockContext = mock<IWebhookFunctions>();
@@ -242,7 +246,7 @@ describe('validateAuth', () => {
 	});
 });
 
-describe('establishChatWidgetIdentity', () => {
+describe('establishChatSessionIdentity', () => {
 	const mockContext = mock<IWebhookFunctions>();
 	const resourceUrl = 'http://localhost:5678/webhook/abc/chat';
 	const user = {
@@ -274,20 +278,20 @@ describe('establishChatWidgetIdentity', () => {
 		mockContext.getRequestObject.mockReturnValue({
 			query: {},
 			headers: {},
-			originalUrl: '/webhook/abc/chat?n8nShellInner=1',
+			originalUrl: '/webhook/abc/chat',
 		} as never);
 		mockContext.beginN8nOAuth2Flow.mockResolvedValue('https://as.example.com/authorize');
 
-		const result = await establishChatWidgetIdentity(mockContext, resourceUrl);
+		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
 
-		expect(result).toBeNull();
+		expect(result).toBe(false);
 		expect(mockContext.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
 		expect(mockContext.getResponseObject().writeHead).toHaveBeenCalledWith(302, {
 			Location: 'https://as.example.com/authorize',
 		});
 	});
 
-	it('completes the AS callback and hands the token off via a one-hop cookie', async () => {
+	it('completes the AS callback, hands the token off via a one-hop cookie, and redirects to the clean shell URL', async () => {
 		mockContext.getRequestObject.mockReturnValue({
 			query: { code: 'auth-code', state: 'flow-state' },
 			headers: {},
@@ -295,17 +299,19 @@ describe('establishChatWidgetIdentity', () => {
 		} as never);
 		mockContext.completeN8nOAuth2Flow.mockResolvedValue({ valid: true, token: 'as-token', user });
 
-		const result = await establishChatWidgetIdentity(mockContext, resourceUrl);
+		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
 
-		expect(result).toBeNull();
+		expect(result).toBe(false);
 		expect(mockContext.completeN8nOAuth2Flow).toHaveBeenCalledWith('auth-code', 'flow-state');
 		expect(mockContext.getResponseObject().cookie).toHaveBeenCalledWith(
 			'n8n-chat-oauth',
 			'as-token',
 			expect.objectContaining({ httpOnly: true }),
 		);
+		// Redirects to the plain top-level URL — never to the inner-frame URL, which
+		// would render editor-ui/the AS callback inside the sandboxed frame.
 		expect(mockContext.getResponseObject().writeHead).toHaveBeenCalledWith(302, {
-			Location: '/webhook/abc/chat?n8nShellInner=1',
+			Location: '/webhook/abc/chat',
 		});
 	});
 
@@ -318,21 +324,86 @@ describe('establishChatWidgetIdentity', () => {
 		mockContext.completeN8nOAuth2Flow.mockResolvedValue({ valid: false, reason: 'expired' });
 		mockContext.beginN8nOAuth2Flow.mockResolvedValue('https://as.example.com/authorize');
 
-		const result = await establishChatWidgetIdentity(mockContext, resourceUrl);
+		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
 
-		expect(result).toBeNull();
+		expect(result).toBe(false);
 		expect(mockContext.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
+	});
+
+	it('confirms readiness from the one-hop cookie without clearing it, leaving it for the frame', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			query: {},
+			headers: { cookie: 'n8n-chat-oauth=as-token' },
+			originalUrl: '/webhook/abc/chat',
+		} as never);
+		mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user });
+
+		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
+
+		expect(result).toBe(true);
+		expect(mockContext.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
+		expect(mockContext.getResponseObject().clearCookie).not.toHaveBeenCalled();
+	});
+
+	it('restarts the flow when the one-hop cookie fails to validate', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			query: {},
+			headers: { cookie: 'n8n-chat-oauth=stale-token' },
+			originalUrl: '/webhook/abc/chat',
+		} as never);
+		mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: false, reason: 'invalid_token' });
+		mockContext.beginN8nOAuth2Flow.mockResolvedValue('https://as.example.com/authorize');
+
+		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
+
+		expect(result).toBe(false);
+		expect(mockContext.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
+	});
+
+	it('reports denial without restarting the flow', async () => {
+		mockContext.getRequestObject.mockReturnValue({
+			query: { error: 'access_denied' },
+			headers: {},
+			originalUrl: '/webhook/abc/chat?error=access_denied',
+		} as never);
+
+		const result = await establishChatSessionIdentity(mockContext, resourceUrl);
+
+		expect(result).toBe(false);
+		expect(mockContext.getResponseObject().status).toHaveBeenCalledWith(403);
+		expect(mockContext.beginN8nOAuth2Flow).not.toHaveBeenCalled();
+	});
+});
+
+describe('resolveInnerFrameIdentity', () => {
+	const mockContext = mock<IWebhookFunctions>();
+	const resourceUrl = 'http://localhost:5678/webhook/abc/chat';
+	const user = {
+		id: 'user-1',
+		email: 'visitor@example.com',
+		firstName: 'Vi',
+		lastName: 'Sitor',
+	};
+
+	const mockRes = () => {
+		const res = {
+			clearCookie: vi.fn().mockReturnThis(),
+		};
+		return res as never;
+	};
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockContext.getResponseObject.mockReturnValue(mockRes());
 	});
 
 	it('resolves the visitor from the one-hop cookie and clears it', async () => {
 		mockContext.getRequestObject.mockReturnValue({
-			query: {},
 			headers: { cookie: 'n8n-chat-oauth=as-token' },
-			originalUrl: '/webhook/abc/chat?n8nShellInner=1',
 		} as never);
 		mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: true, user });
 
-		const result = await establishChatWidgetIdentity(mockContext, resourceUrl);
+		const result = await resolveInnerFrameIdentity(mockContext, resourceUrl);
 
 		expect(result).toEqual({ visitor: user, authToken: 'as-token' });
 		expect(mockContext.validateN8nOAuth2Token).toHaveBeenCalledWith('as-token', resourceUrl);
@@ -342,32 +413,24 @@ describe('establishChatWidgetIdentity', () => {
 		);
 	});
 
-	it('restarts the flow when the one-hop cookie fails to validate', async () => {
-		mockContext.getRequestObject.mockReturnValue({
-			query: {},
-			headers: { cookie: 'n8n-chat-oauth=stale-token' },
-			originalUrl: '/webhook/abc/chat?n8nShellInner=1',
-		} as never);
-		mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: false, reason: 'invalid_token' });
-		mockContext.beginN8nOAuth2Flow.mockResolvedValue('https://as.example.com/authorize');
+	it('returns null, without starting a new flow, when there is no cookie', async () => {
+		mockContext.getRequestObject.mockReturnValue({ headers: {} } as never);
 
-		const result = await establishChatWidgetIdentity(mockContext, resourceUrl);
+		const result = await resolveInnerFrameIdentity(mockContext, resourceUrl);
 
 		expect(result).toBeNull();
-		expect(mockContext.beginN8nOAuth2Flow).toHaveBeenCalledWith(resourceUrl);
+		expect(mockContext.beginN8nOAuth2Flow).not.toHaveBeenCalled();
 	});
 
-	it('reports denial without restarting the flow', async () => {
+	it('returns null, without starting a new flow, when the cookie fails to validate', async () => {
 		mockContext.getRequestObject.mockReturnValue({
-			query: { error: 'access_denied' },
-			headers: {},
-			originalUrl: '/webhook/abc/chat?n8nShellInner=1&error=access_denied',
+			headers: { cookie: 'n8n-chat-oauth=stale-token' },
 		} as never);
+		mockContext.validateN8nOAuth2Token.mockResolvedValue({ valid: false, reason: 'invalid_token' });
 
-		const result = await establishChatWidgetIdentity(mockContext, resourceUrl);
+		const result = await resolveInnerFrameIdentity(mockContext, resourceUrl);
 
 		expect(result).toBeNull();
-		expect(mockContext.getResponseObject().status).toHaveBeenCalledWith(403);
 		expect(mockContext.beginN8nOAuth2Flow).not.toHaveBeenCalled();
 	});
 });

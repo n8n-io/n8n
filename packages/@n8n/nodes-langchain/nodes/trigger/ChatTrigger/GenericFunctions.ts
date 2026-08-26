@@ -4,7 +4,6 @@ import type { ICredentialDataDecryptedObject, IUser, IWebhookFunctions } from 'n
 
 import { ChatTriggerAuthorizationError } from './error';
 import {
-	CHAT_SHELL_INNER_PARAM,
 	clearChatOAuthToken,
 	isChatOAuth2Enabled,
 	readChatOAuthToken,
@@ -92,20 +91,23 @@ export async function validateAuth(context: IWebhookFunctions) {
 }
 
 /**
- * Resolves the visitor's identity for the sandboxed frame's own GET, via n8n's
- * internal AS rather than the session cookie the frame's opaque origin can't
- * send: `beginN8nOAuth2Flow` → (AS redirect) → `completeN8nOAuth2Flow`. A
- * one-hop cookie carries the token across that last redirect so `code`/`state`
- * never reach the author-shaped chat widget.
+ * Runs the AS handshake — `beginN8nOAuth2Flow` → (AS redirect) →
+ * `completeN8nOAuth2Flow` — on the trusted shell's own GET, i.e. a normal
+ * top-level document with real cookies. Must never be called for the
+ * sandboxed frame's request: that document has no origin, so it can't
+ * receive the AS's session-cookie check, and any consent/sign-in page the AS
+ * falls back to would then render editor-ui inside the opaque frame.
  *
- * Returns the resolved visitor and the token to embed in the page. Returns
- * `null` after already sending a redirect/error response — the caller must
- * abort with `noWebhookResponse`.
+ * On success, stashes the AS token in the one-hop `n8n-chat-oauth` cookie and
+ * returns `true` — the caller renders the shell, whose frame's own GET picks
+ * the cookie up via `resolveInnerFrameIdentity`. Returns `false` after
+ * already sending a redirect/error response — the caller must abort with
+ * `noWebhookResponse`.
  */
-export async function establishChatWidgetIdentity(
+export async function establishChatSessionIdentity(
 	context: IWebhookFunctions,
 	resourceUrl: string,
-): Promise<{ visitor: IUser; authToken: string } | null> {
+): Promise<boolean> {
 	const req = context.getRequestObject();
 	const res = context.getResponseObject();
 	const { code, state } = req.query;
@@ -118,22 +120,21 @@ export async function establishChatWidgetIdentity(
 		});
 		res.status(403).send('Access denied');
 		res.end();
-		return null;
+		return false;
 	}
 
 	if (typeof code === 'string' && typeof state === 'string') {
-		// Handle the AS callback. Don't render the frame here: this URL still carries
-		// `code`/`state`, which must never reach the author-shaped chat widget. Stash the
-		// token in a one-hop cookie and redirect to the clean inner-frame URL — the
-		// follow-up GET (below) picks up the cookie and renders the frame.
+		// Handle the AS callback. Stash the token in a one-hop cookie and redirect to
+		// the clean shell URL — the follow-up GET (below) picks up the cookie and
+		// renders the shell, whose frame then consumes it via `resolveInnerFrameIdentity`.
 		try {
 			const result = await context.completeN8nOAuth2Flow(code, state);
 			if (result.valid) {
 				setChatOAuthToken(res, req, resourceUrl, result.token);
 				const redirectPath = req.originalUrl.split('?')[0];
-				res.writeHead(302, { Location: `${redirectPath}?${CHAT_SHELL_INNER_PARAM}=1` });
+				res.writeHead(302, { Location: redirectPath });
 				res.end();
-				return null;
+				return false;
 			}
 			// Fall through to restart the OAuth2 flow if the callback is invalid.
 			context.logger.warn('Chat OAuth2 flow failed, restarting', { reason: result.reason });
@@ -143,13 +144,13 @@ export async function establishChatWidgetIdentity(
 		}
 	} else {
 		// Not an AS callback. If we just completed the flow, the token rides in the
-		// one-hop cookie set on the redirect above. Consume it once and render.
+		// one-hop cookie set on the redirect above — leave it for the frame's own GET
+		// to consume, just confirm it's still good before rendering the shell around it.
 		const cookieToken = readChatOAuthToken(req);
 		if (cookieToken) {
-			clearChatOAuthToken(res, req, resourceUrl);
 			const validation = await context.validateN8nOAuth2Token(cookieToken, resourceUrl);
 			if (validation.valid) {
-				return { visitor: validation.user, authToken: cookieToken };
+				return true;
 			}
 			// Stale/invalid cookie — fall through to restart the OAuth2 flow.
 		}
@@ -164,5 +165,35 @@ export async function establishChatWidgetIdentity(
 		context.logger.warn('Chat OAuth2 flow failed', { error });
 		throw new UnexpectedError('Chat OAuth2 flow failed');
 	}
-	return null;
+	return false;
+}
+
+/**
+ * Resolves the visitor's identity for the sandboxed frame's own GET, purely by
+ * reading the one-hop cookie the shell's `establishChatSessionIdentity` left
+ * behind. Never runs the OAuth2 handshake itself — the frame's opaque origin
+ * can't receive the AS's session-cookie check, so `beginN8nOAuth2Flow` here
+ * would just redirect this document to a sign-in/consent page it can't render.
+ *
+ * Returns `null` when the cookie is missing or invalid; the caller should
+ * fail the request rather than start a flow it can't complete.
+ */
+export async function resolveInnerFrameIdentity(
+	context: IWebhookFunctions,
+	resourceUrl: string,
+): Promise<{ visitor: IUser; authToken: string } | null> {
+	const req = context.getRequestObject();
+	const res = context.getResponseObject();
+
+	const cookieToken = readChatOAuthToken(req);
+	if (!cookieToken) {
+		return null;
+	}
+	clearChatOAuthToken(res, req, resourceUrl);
+
+	const validation = await context.validateN8nOAuth2Token(cookieToken, resourceUrl);
+	if (!validation.valid) {
+		return null;
+	}
+	return { visitor: validation.user, authToken: cookieToken };
 }
