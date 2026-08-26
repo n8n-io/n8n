@@ -26,9 +26,7 @@ vi.mock('@/app/modules.manifest', () => ({
 	modules: [contributingModule],
 }));
 
-const { registerModuleParameterInputs } = await import(
-	'@/app/moduleInitializer/moduleInitializer'
-);
+const { registerModuleParameterInputs } = await import('@/app/moduleInitializer/moduleInitializer');
 
 describe('registerModuleParameterInputs', () => {
 	const setActiveModules = (activeModules: string[]) => {

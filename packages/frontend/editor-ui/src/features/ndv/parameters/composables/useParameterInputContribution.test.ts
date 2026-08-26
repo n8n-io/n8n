@@ -93,9 +93,7 @@ describe('useParameterInputContribution', () => {
 		it('keeps the built-in chrome when a module claims a resource-locator type', () => {
 			parameterInputRegistry.register({ type: 'resourceLocator', component: stubComponent });
 
-			const { chrome } = useParameterInputContribution(
-				ref<NodePropertyTypes>('resourceLocator'),
-			);
+			const { chrome } = useParameterInputContribution(ref<NodePropertyTypes>('resourceLocator'));
 
 			expect(chrome.value.disableDrop).toBe(true);
 		});
