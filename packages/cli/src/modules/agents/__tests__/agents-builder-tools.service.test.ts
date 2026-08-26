@@ -14,13 +14,7 @@ import {
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
-import type {
-	CustomFetch,
-	HttpTransport,
-	OutboundHttp,
-	SsrfProtectionService,
-} from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -131,8 +125,6 @@ function makeService() {
 		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
-		mock<SsrfProtectionConfig>({ enabled: true }),
-		mock<SsrfProtectionService>(),
 		mock<FreeAiCreditsService>(),
 		telemetry,
 	);
@@ -308,7 +300,7 @@ describe('AgentsBuilderToolsService', () => {
 			service.getTools(agentId, projectId, credentialProvider, user);
 
 			expect(outboundHttp.transport).toHaveBeenCalledWith(
-				expect.not.objectContaining({ ssrf: 'disabled' }),
+				expect.not.objectContaining({ useDefaultSsrfPolicy: 'unsafe' }),
 			);
 		});
 
