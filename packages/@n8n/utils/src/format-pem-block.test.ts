@@ -111,6 +111,27 @@ ${'X'.repeat(64)}
 		expect(formatPemBlock(encrypted)).toBe(encrypted);
 	});
 
+	it('should preserve the header/body separator in legacy encrypted RSA PEM keys', () => {
+		// What the SSL Certificates credential stores after a multi-line legacy
+		// encrypted RSA key is pasted into the single-line "Private Key" input:
+		// newlines are collapsed to spaces, so the blank line separating the
+		// Proc-Type/DEK-Info headers from the body becomes two consecutive spaces.
+		const flattened =
+			'-----BEGIN RSA PRIVATE KEY----- ' +
+			'Proc-Type: 4,ENCRYPTED ' +
+			'DEK-Info: AES-256-CBC,A4F349D0CD99508CA625518C9D671B68  ' + // double space = blank line
+			'Pr9ZjzHxUr4HuhWspQ1vQHIgriYbTzbLdbXoWH/n6ABBRTocD3WO5/JFf83jZJzo ' +
+			'yGnbXk6DK1JScbTHPYT6IuBqfDpQGB8FfFCZuANLwYtBZTFqVKdrsEHwZzGb0hSK ' +
+			'-----END RSA PRIVATE KEY-----';
+
+		const output = formatPemBlock(flattened);
+
+		// A legacy encrypted PEM requires a blank line between its headers and the
+		// base64 body; without it OpenSSL 3 finds no matching decoder and fails with
+		// "DECODER routines::unsupported" before the passphrase is ever used.
+		expect(output).toMatch(/DEK-Info:[^\n]*\n\n[A-Za-z0-9+/=]/);
+	});
+
 	it('should collapse Proc-Type/DEK-Info headers on the fallback path', () => {
 		// Mismatched labels force the fallback formatter, where a body chunk carrying
 		// the encrypted-key headers exercises the Proc-Type/DEK-Info branch.
