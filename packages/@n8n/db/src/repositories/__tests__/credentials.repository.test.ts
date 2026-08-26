@@ -148,7 +148,7 @@ describe('CredentialsRepository', () => {
 			expect(callArg!.order).toBeUndefined();
 		});
 
-		it('should honor a caller-provided relations array (API-22)', async () => {
+		it('should honor a caller-provided relations array', async () => {
 			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
 
 			await credentialsRepository.findManyAndCount({
