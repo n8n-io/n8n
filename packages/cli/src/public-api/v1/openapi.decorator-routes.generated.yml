@@ -83,6 +83,12 @@ paths:
   /workflows/{workflowId}/unpublish:
     post:
       $ref: ./handlers/workflows/spec/paths/unpublishWorkflow.generated.yml
+  /workflows/{workflowId}/activate:
+    post:
+      $ref: ./handlers/workflows/spec/paths/activateWorkflow.generated.yml
+  /workflows/{workflowId}/deactivate:
+    post:
+      $ref: ./handlers/workflows/spec/paths/deactivateWorkflow.generated.yml
   /workflows/{workflowId}/history:
     get:
       $ref: ./handlers/workflows/spec/paths/getWorkflowHistory.generated.yml

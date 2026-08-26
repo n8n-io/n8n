@@ -1,5 +1,7 @@
 import {
 	createPage,
+	createShellPage,
+	escapeForHtmlAttribute,
 	escapeForScriptContext,
 	getSanitizedCustomCss,
 	getSanitizedInitialMessages,
@@ -606,6 +608,133 @@ describe('ChatTrigger Templates Security', () => {
 			expect(result.count).toBe('123');
 			expect(result.enabled).toBe('');
 			expect(result.obj).toBe('');
+		});
+	});
+});
+
+describe('escapeForHtmlAttribute', () => {
+	it('escapes what would break out of a double-quoted attribute', () => {
+		expect(escapeForHtmlAttribute('/chat?a="><script>&\'')).toBe(
+			'/chat?a=&quot;&gt;&lt;script&gt;&amp;&#39;',
+		);
+	});
+});
+
+describe('createShellPage', () => {
+	const shell = createShellPage({ iframeSrc: '/webhook/abc/chat?n8nShellInner=1' });
+
+	it('renders nothing but the frame the chat lives in', () => {
+		expect(shell).toContain('<iframe');
+		expect(shell).toContain('data-src="/webhook/abc/chat?n8nShellInner=1"');
+		// The widget, its stylesheet and the author's CSS all belong to the frame.
+		expect(shell).not.toContain('cdn.jsdelivr.net');
+		expect(shell).not.toContain('createChat');
+	});
+
+	it('gives the frame no origin of its own', () => {
+		expect(shell).toContain('sandbox="allow-scripts allow-forms allow-modals allow-popups"');
+		expect(shell).not.toContain('allow-same-origin');
+	});
+
+	// Links in bot replies are `target="_blank"`, so the frame needs `allow-popups`
+	// to open them at all — but not `allow-popups-to-escape-sandbox`, which would let
+	// author script put a real-origin document in front of the visitor.
+	it('lets the frame open popups without letting them escape the sandbox', () => {
+		expect(shell).toContain('allow-popups');
+		expect(shell).not.toContain('allow-popups-to-escape-sandbox');
+	});
+
+	// The src comes from the request URL, so it must not be able to close the
+	// attribute and add markup of its own.
+	it('escapes the frame src', () => {
+		const escaped = createShellPage({ iframeSrc: '/chat?x="><img src=x onerror=alert(1)>' });
+
+		expect(escaped).not.toContain('<img');
+		expect(escaped).toContain('&quot;&gt;&lt;img');
+	});
+
+	it('owns the session id so a frame reload continues the conversation', () => {
+		expect(shell).toContain("'n8n-chat-shell/sessionId' + window.location.pathname");
+		expect(shell).toContain("'#sessionId=' + encodeURIComponent(sessionId)");
+	});
+});
+
+describe('createPage inside the shell frame', () => {
+	const params = {
+		instanceId: 'test-instance',
+		webhookUrl: 'http://test.com/webhook',
+		showWelcomeScreen: false,
+		loadPreviousSession: 'notSupported' as const,
+		i18n: { en: {} },
+		mode: 'production' as const,
+		authentication: 'n8nUserAuth' as const,
+		allowFileUploads: false,
+		allowedFilesMimeTypes: '',
+		customCss: '.chat-message { color: red; }',
+		enableStreaming: false,
+		initialMessages: '',
+	};
+	const visitor = {
+		id: 'user-1',
+		email: 'visitor@example.com',
+		firstName: 'Vi',
+		lastName: 'Sitor',
+	};
+
+	const inner = createPage({
+		...params,
+		shellInner: true,
+		authToken: 'signed.jwt.token',
+		visitor,
+	});
+
+	it('stands in for localStorage before the widget loads', () => {
+		expect(inner).toContain("Object.defineProperty(window, 'localStorage'");
+		// A classic inline script runs before the deferred module script, so the shim
+		// is in place by the time the widget touches storage.
+		expect(inner.indexOf("Object.defineProperty(window, 'localStorage'")).toBeLessThan(
+			inner.indexOf('<script type="module">'),
+		);
+	});
+
+	it('takes the conversation session id from the shell', () => {
+		expect(inner).toContain('window.location.hash.slice(1)');
+		expect(inner).toContain('"n8n-chat/sessionId"');
+		expect(inner).toContain('sessionId: window.__n8nChatSessionId || undefined,');
+	});
+
+	it('authenticates messages by request header', () => {
+		expect(inner).toContain('\'x-auth-token\': "signed.jwt.token",');
+	});
+
+	it('takes the visitor from the server instead of fetching the login endpoint', () => {
+		expect(inner).toContain('const injectedVisitor = {"id":"user-1"');
+		expect(inner).toContain('if (injectedVisitor) {');
+		expect(inner.indexOf('if (injectedVisitor) {')).toBeLessThan(
+			inner.indexOf("fetch('/rest/login'"),
+		);
+	});
+
+	it('still renders the author own styling', () => {
+		expect(inner).toContain('.chat-message { color: red; }');
+	});
+
+	describe('outside the shell', () => {
+		const plain = createPage(params);
+
+		it('is unchanged: no shim, no session handover, no token header', () => {
+			expect(plain).not.toContain("Object.defineProperty(window, 'localStorage'");
+			expect(plain).not.toContain('window.__n8nChatSessionId');
+			expect(plain).not.toContain('x-auth-token');
+			expect(plain).toContain('const injectedVisitor = null;');
+		});
+
+		// The token and the visitor only ever belong to the sandboxed render.
+		it('ignores a token or visitor passed without the inner flag', () => {
+			const stray = createPage({ ...params, authToken: 'signed.jwt.token', visitor });
+
+			expect(stray).toContain('const injectedVisitor = null;');
+			expect(stray).not.toContain('x-auth-token');
 		});
 	});
 });

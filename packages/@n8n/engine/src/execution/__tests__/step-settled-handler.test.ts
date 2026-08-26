@@ -77,7 +77,6 @@ function makeStepStore(
 		iteration: 0,
 		status: 'completed',
 		outputs: null,
-		error: null,
 		...step,
 	};
 	const summariesByKey = Object.fromEntries(summaries.map((s) => [stepKeyId(s), s]));
@@ -104,6 +103,7 @@ function makeStepStore(
 		}),
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
+		loadAllSteps: vi.fn().mockResolvedValue([]),
 		// far from settled, so finish tests opt in explicitly
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
@@ -210,7 +210,7 @@ describe('StepSettledHandler', () => {
 
 		await handler.handle({ ...event, stepId: 'step-b' });
 
-		// b's only successor is m, and m reads from both b and c
+		// b's only successor is m; m reads from both b and c
 		expect(stepStore.loadStepSummariesByKeys).toHaveBeenCalledExactlyOnceWith('exec-1', [
 			{ nodeId: 'b', iteration: 0 },
 			{ nodeId: 'm', iteration: 0 },
