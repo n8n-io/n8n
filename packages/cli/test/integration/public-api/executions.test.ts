@@ -523,6 +523,13 @@ describe('GET /executions', () => {
 		}
 	});
 
+	test('should return 400 for an invalid cursor', async () => {
+		const response = await authOwnerAgent.get('/executions').query({ cursor: 'not-a-cursor' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('An invalid cursor was provided');
+	});
+
 	describe('with query status', () => {
 		type AllowedQueryStatus =
 			| 'canceled'

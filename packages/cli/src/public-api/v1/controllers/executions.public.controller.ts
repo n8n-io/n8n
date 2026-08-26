@@ -1,7 +1,9 @@
 import {
 	DeletedExecutionPublicDto,
+	ExecutionListPublicDto,
 	ExecutionPublicDto,
 	GetExecutionQueryDto,
+	ListExecutionsQueryDto,
 } from '@n8n/api-types';
 import { ExecutionsConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionBase, IExecutionResponse } from '@n8n/db';
@@ -21,11 +23,13 @@ import {
 import type { Response } from 'express';
 import { replaceCircularReferences } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { RedactableExecution } from '@/executions/execution-redaction';
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 import { ExecutionService } from '@/executions/execution.service';
+import { decodeCursor, encodeNextCursor } from '@/public-api/v1/shared/services/pagination.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 /** `deletedAt` is on the entity but missing from `IExecutionBase`, and the response carries it. */
@@ -46,6 +50,87 @@ export class ExecutionsPublicController {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly eventService: EventService,
 	) {}
+
+	@Get('/')
+	@ApiKeyScope('execution:list')
+	@ApiSummary('Retrieve all executions')
+	@ApiDescription('Retrieve all executions from your instance.')
+	@ApiTags(['Execution'])
+	@ApiResponse(200, ExecutionListPublicDto)
+	@ApiErrorResponse(404)
+	async getExecutions(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ListExecutionsQueryDto,
+	): Promise<ExecutionListPublicDto> {
+		let { limit } = query;
+		let lastId: string | undefined;
+
+		// The legacy `validCursor` middleware read `lastId` and `limit` off the cursor and answered
+		// 400 on a decode failure. An offset-form cursor was accepted and its `lastId` ignored.
+		if (query.cursor) {
+			try {
+				const decoded = decodeCursor(query.cursor);
+				if ('lastId' in decoded) {
+					lastId = decoded.lastId;
+				}
+				limit = decoded.limit;
+			} catch {
+				throw new BadRequestError('An invalid cursor was provided');
+			}
+		}
+
+		const sharedWorkflowsIds = await this.workflowSharingService.getSharedWorkflowIdsForScopes(
+			req.user,
+			['workflow:read'],
+			query.projectId,
+		);
+
+		if (
+			!sharedWorkflowsIds.length ||
+			(query.workflowId && !sharedWorkflowsIds.includes(query.workflowId))
+		) {
+			return { data: [], nextCursor: null };
+		}
+
+		const { executions, count } = await this.executionService.findManyAndCount(
+			query.workflowId ? [query.workflowId] : sharedWorkflowsIds,
+			{
+				status: query.status,
+				limit,
+				lastId,
+				includeData: query.includeData,
+				startedAfter: query.startedAfter,
+				startedBefore: query.startedBefore,
+				// for backward compatibility `running` executions are always excluded
+				// unless the user explicitly filters by `running` status
+				excludeRunning: query.status !== 'running',
+				maxDataSizeBytes: query.ignoreDataSizeLimit ? 0 : this.executionsConfig.maxDisplaySize,
+			},
+		);
+
+		const newLastId = executions.length === 0 ? '0' : executions.at(-1)!.id;
+
+		if (query.includeData) {
+			const redactableExecutions = executions.filter(isRedactableExecution);
+			await this.executionRedactionServiceProxy.processExecutions(redactableExecutions, {
+				user: req.user,
+				redactExecutionData: query.redactExecutionData,
+				ipAddress: req.ip ?? '',
+				userAgent: req.headers['user-agent'] ?? '',
+			});
+		}
+
+		this.eventService.emit('user-retrieved-all-executions', {
+			userId: req.user.id,
+			publicApi: true,
+		});
+
+		return replaceCircularReferences({
+			data: executions.map((execution) => this.toExecutionListItem(execution)),
+			nextCursor: encodeNextCursor({ lastId: newLastId, limit, numberOfNextRecords: count }),
+		}) as unknown as ExecutionListPublicDto;
+	}
 
 	@Get('/:executionId')
 	@ApiKeyScope('execution:read')
@@ -127,6 +212,28 @@ export class ExecutionsPublicController {
 		const execution = await this.executionService.deleteOne(executionId, sharedWorkflowsIds);
 
 		return this.toDeletedExecutionPublicDto(execution, executionId);
+	}
+
+	/** The list item is far smaller than the single-execution response. */
+	private toExecutionListItem(execution: PublicExecution) {
+		return {
+			id: execution.id,
+			finished: execution.finished,
+			mode: execution.mode,
+			retryOf: execution.retryOf ?? null,
+			retrySuccessId: execution.retrySuccessId ?? null,
+			status: execution.status,
+			startedAt: execution.startedAt ?? null,
+			stoppedAt: execution.stoppedAt ?? null,
+			workflowId: execution.workflowId,
+			waitTill: execution.waitTill ?? null,
+			...('storedAt' in execution && { storedAt: execution.storedAt }),
+			...('jsonSizeBytes' in execution && { jsonSizeBytes: execution.jsonSizeBytes }),
+			...('workflowVersionId' in execution && { workflowVersionId: execution.workflowVersionId }),
+			...('data' in execution && { data: execution.data }),
+			...('workflowData' in execution && { workflowData: execution.workflowData }),
+			...('customData' in execution && { customData: execution.customData }),
+		};
 	}
 
 	private toBaseFields(execution: PublicExecution) {

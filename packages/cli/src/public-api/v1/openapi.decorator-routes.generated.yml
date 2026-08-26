@@ -3,6 +3,9 @@ info:
   title: decorator-routes
   version: 0.0.0
 paths:
+  /executions:
+    get:
+      $ref: ./handlers/executions/spec/paths/getExecutions.generated.yml
   /executions/{executionId}:
     get:
       $ref: ./handlers/executions/spec/paths/getExecution.generated.yml

@@ -58,3 +58,34 @@ export const deletedExecutionPublicSchema = z.object({
 });
 
 export class DeletedExecutionPublicDto extends Z.class(deletedExecutionPublicSchema.shape) {}
+
+// The list returns a much smaller item than the single-execution route: ten fields always, five
+// more only with `includeData`, and `data` only when the execution stored any run data. Field order
+// here reaches both the response body and the generated spec, so it mirrors what the endpoint
+// already returns.
+export const executionListItemPublicSchema = executionPublicSchema
+	.pick({
+		id: true,
+		finished: true,
+		mode: true,
+		retryOf: true,
+		retrySuccessId: true,
+		status: true,
+		startedAt: true,
+		stoppedAt: true,
+		workflowId: true,
+		waitTill: true,
+	})
+	.extend({
+		storedAt: executionPublicSchema.shape.storedAt.optional(),
+		jsonSizeBytes: executionPublicSchema.shape.jsonSizeBytes.optional(),
+		workflowVersionId: executionPublicSchema.shape.workflowVersionId.optional(),
+		data: executionPublicSchema.shape.data,
+		workflowData: executionPublicSchema.shape.workflowData,
+		customData: executionPublicSchema.shape.customData,
+	});
+
+export class ExecutionListPublicDto extends Z.class({
+	data: z.array(executionListItemPublicSchema),
+	nextCursor: z.string().nullable(),
+}) {}
