@@ -13,6 +13,13 @@ if (engine === 'vm' || engine === 'quickjs') {
 			bridgeTimeout: 5000,
 			bridgeMemoryLimit: 128,
 		});
+		// Guard the dual-engine matrix: if init silently fell back, every suite in
+		// this project would pass against the wrong engine.
+		if (Expression.getActiveImplementation() !== engine) {
+			throw new Error(
+				`Expected active expression engine '${engine}', got '${Expression.getActiveImplementation()}'`,
+			);
+		}
 	});
 
 	afterAll(async () => {
