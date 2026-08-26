@@ -34,6 +34,27 @@ function reverse(value: unknown[]): unknown[] {
 	return [...value].reverse();
 }
 
+// Copy-first shims for native in-place mutators, like reverse(): the VM engine's
+// data proxies are read-only (the natives would throw), and mutations from
+// expressions must not leak into workflow data.
+function sort(value: unknown[], extraArgs: unknown[]): unknown[] {
+	const [comparator] = extraArgs as [((a: unknown, b: unknown) => number)?];
+	return [...value].sort(comparator);
+}
+
+function splice(value: unknown[], extraArgs: unknown[]): unknown[] {
+	const copy = [...value];
+	return copy.splice(...(extraArgs as [number, number, ...unknown[]]));
+}
+
+function fill(value: unknown[], extraArgs: unknown[]): unknown[] {
+	return [...value].fill(...(extraArgs as [unknown, number?, number?]));
+}
+
+function copyWithin(value: unknown[], extraArgs: unknown[]): unknown[] {
+	return [...value].copyWithin(...(extraArgs as [number, number, number?]));
+}
+
 function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 	if (!Array.isArray(extraArgs)) {
 		throw new ExpressionExtensionError('arguments must be passed to pluck');
@@ -738,6 +759,10 @@ export const arrayExtensions: ExtensionMap = {
 		first,
 		last,
 		reverse,
+		sort,
+		splice,
+		fill,
+		copyWithin,
 		pluck,
 		randomItem,
 		sum,
