@@ -21,8 +21,9 @@ type OwnedJob<T extends ScheduledJobOwner> = T & { ownerKey: string };
  * @returns an opaque key, only ever compared for equality.
  */
 export function ownerKeyFor(job: ScheduledJobOwner): string {
-	// NUL separated: it cannot appear in an id, so no combination of owner parts
-	// can spell out another owner's key.
+	// NUL separated: owner types come from the registry and owner ids are
+	// server-generated, so neither carries one. Both separators are then pinned
+	// by position, and no combination of owner parts can spell out another key.
 	return `${job.ownerType}\0${job.ownerId}\0${job.ownerMemberId ?? ''}`;
 }
 
