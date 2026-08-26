@@ -194,7 +194,7 @@ export class DiscordIntegration extends AgentChatIntegration {
 		super();
 		this.gateway = new DiscordGateway(logger, instanceSettings);
 		this.httpClient = outboundHttp.requests({
-			ssrf: 'disabled', // the Discord API host is fixed and public
+			useDefaultSsrfPolicy: 'unsafe', // the Discord API host is fixed and public
 		});
 	}
 
