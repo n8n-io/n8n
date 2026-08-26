@@ -12,7 +12,14 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 import type { WorkflowRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
-import { publicApiScope, projectScope } from '../../shared/middlewares/global.middleware';
+import {
+	publicApiScope,
+	projectScope,
+	deprecated,
+} from '../../shared/middlewares/global.middleware';
+
+// Fixed, never derived from `Date.now()`, so the header stays the same across requests.
+const VERSION_PATH_DEPRECATED_SINCE = new Date('2026-08-26T00:00:00Z');
 
 const handleError = (error: unknown) => {
 	if (error instanceof FolderNotFoundError) {
@@ -51,6 +58,7 @@ const workflowHandlers: WorkflowHandlers = {
 		},
 	],
 	getWorkflowVersion: [
+		deprecated({ since: VERSION_PATH_DEPRECATED_SINCE }),
 		publicApiScope('workflow:read'),
 		projectScope('workflow:read', 'workflow'),
 		async (req, res) => {
