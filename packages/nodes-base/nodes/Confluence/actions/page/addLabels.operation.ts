@@ -8,11 +8,7 @@ import { optionalSpaceRLC, pageRLC, resolvePageId } from '../common';
 import type { ConfluenceOperation } from '../router';
 
 const properties: INodeProperties[] = [
-	{
-		...optionalSpaceRLC,
-		description:
-			'Limits page selection and By Title lookups to one space. Leave empty or pick "All Spaces" to search across all spaces.',
-	},
+	optionalSpaceRLC,
 	{
 		...pageRLC,
 		description: 'The page to add labels to',
