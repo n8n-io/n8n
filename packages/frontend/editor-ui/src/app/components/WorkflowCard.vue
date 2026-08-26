@@ -36,14 +36,18 @@ import { useFavoritesStore } from '@/app/stores/favorites.store';
 
 import {
 	N8nActionToggle,
+	N8nAssistantIcon,
 	N8nBadge,
 	N8nBreadcrumbs,
+	N8nButton,
 	N8nCard,
 	N8nIcon,
 	N8nTags,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
+import { INSTANCE_AI_NEW_VIEW, INSTANCE_AI_SOURCE_QUERY } from '@/features/ai/instanceAi/constants';
 import WorkflowCardMcpToggle from '@/features/ai/mcpAccess/components/WorkflowCardMcpToggle.vue';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
@@ -296,6 +300,30 @@ const canEditMcp = computed(
 	() => Boolean(workflowPermissions.value.update) && !props.readOnly && !props.data.isArchived,
 );
 
+const openInAssistantExperiment = useOpenWorkflowInAssistantStore();
+
+const canOpenInAssistant = computed(
+	() =>
+		Boolean(workflowPermissions.value.update) &&
+		!props.readOnly &&
+		!props.data.isArchived &&
+		Boolean(props.data.homeProject?.id),
+);
+
+const opensInAssistant = computed(
+	() => canOpenInAssistant.value && openInAssistantExperiment.opensInAssistant,
+);
+
+const showOpenInAssistantButton = computed(
+	() => canOpenInAssistant.value && openInAssistantExperiment.showsOptedOutCardButton,
+);
+
+const openRoute = computed(() =>
+	opensInAssistant.value
+		? { name: INSTANCE_AI_NEW_VIEW, query: { workflowId: props.data.id } }
+		: { name: VIEWS.WORKFLOW, params: { workflowId: props.data.id } },
+);
+
 // Optimistic state for the legacy 3-dot menu fallback (used when the
 // 086_workflow_card_mcp_toggle experiment is off).
 const mcpToggleStatus = ref<boolean | null>(null);
@@ -326,18 +354,18 @@ const workflowHasDependencies = computed(() => hasDependencies(props.data.id));
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
-		const route = router.resolve({
-			name: VIEWS.WORKFLOW,
-			params: { workflowId: props.data.id },
-		});
+		const route = router.resolve(openRoute.value);
 		window.open(route.href, '_blank');
-
 		return;
 	}
 
+	await router.push(openRoute.value);
+}
+
+async function onOpenInAssistant() {
 	await router.push({
-		name: VIEWS.WORKFLOW,
-		params: { workflowId: props.data.id },
+		name: INSTANCE_AI_NEW_VIEW,
+		query: { workflowId: props.data.id, [INSTANCE_AI_SOURCE_QUERY]: 'workflow_list_button' },
 	});
 }
 
@@ -732,6 +760,22 @@ const tags = computed(
 					:is-mcp-module-active="props.isMcpModuleActive"
 					:can-manage-instance-mcp="props.canManageInstanceMcp"
 				/>
+				<N8nTooltip
+					v-if="showOpenInAssistantButton"
+					:content="locale.baseText('workflows.item.editWithAssistant')"
+					placement="top"
+				>
+					<N8nButton
+						variant="subtle"
+						icon-only
+						size="small"
+						:aria-label="locale.baseText('workflows.item.editWithAssistant')"
+						data-test-id="workflow-card-open-in-assistant"
+						@click="onOpenInAssistant"
+					>
+						<N8nAssistantIcon size="medium" />
+					</N8nButton>
+				</N8nTooltip>
 				<N8nActionToggle
 					:actions="actions"
 					placement="bottom-end"

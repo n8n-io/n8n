@@ -4830,6 +4830,7 @@
 	"workflows.unpublish": "Unpublish",
 	"workflows.project.add": "Add workflow to project",
 	"workflows.item.open": "Open",
+	"workflows.item.editWithAssistant": "Edit with AI Assistant",
 	"workflows.item.share": "Share...",
 	"workflows.item.duplicate": "Duplicate",
 	"workflows.item.delete": "Delete",
