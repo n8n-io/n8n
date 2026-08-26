@@ -49,8 +49,9 @@ function isObject(obj: unknown): obj is IDataObject {
  * circular, and `deepCopy` faithfully preserves cycles.
  *
  * A multipart upload is a `form-data` instance from node version 4.2 on, but a
- * plain `{ field: { value, options } }` map below that and in V1/V2 — hence the
- * nested case.
+ * plain `{ field: { value, options } }` map below that and in V1/V2, so a field
+ * value gets the same treatment as the root — it is a stream or a Buffer
+ * depending on whether binary data is stored outside the run data.
  */
 function replaceUploads(value: IDataObject[string]): IDataObject[string] {
 	if (value instanceof Stream) return STREAM_REPLACEMENT;
@@ -69,8 +70,8 @@ function replaceUploads(value: IDataObject[string]): IDataObject[string] {
 	return Object.fromEntries(
 		Object.entries(value).map(([key, entry]) => [
 			key,
-			isObject(entry) && entry.value instanceof Stream
-				? { ...entry, value: STREAM_REPLACEMENT }
+			isObject(entry) && 'value' in entry
+				? { ...entry, value: replaceUploads(entry.value) }
 				: entry,
 		]),
 	) as IDataObject;

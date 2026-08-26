@@ -170,20 +170,55 @@ describe('HTTP Node Utils', () => {
 			expect(sanitizeUiMessage(requestOptions, {}).formData).toEqual(STREAM_REPLACEMENT);
 		});
 
-		it('should remove a stream nested in a formData field (node version < 4.2, V1, V2)', () => {
-			const requestOptions: IRequestOptions = {
-				method: 'POST',
-				uri: 'https://example.com',
-				formData: {
-					file: { value: Readable.from(Buffer.alloc(10)), options: { filename: 'f.pdf' } },
-					name: 'invoice',
-				},
-			};
+		// Below node version 4.2 (and in V1/V2) the upload sits one level down, as
+		// `{ field: { value, options } }`. `value` is a stream when binary data is
+		// stored outside the run data and a Buffer when it is inline, so a field has
+		// to be capped there just like a root body.
+		it.each([
+			['a stream', () => Readable.from(Buffer.alloc(10)), STREAM_REPLACEMENT],
+			[
+				'an oversized Buffer',
+				() => Buffer.alloc(300000),
+				'Binary data got replaced with this text. Original was a Buffer with a size of 300000 bytes.',
+			],
+		])('should replace %s nested in a formData field', (_name, upload, replacement) => {
+			const uri = 'https://example.com';
 
-			expect(sanitizeUiMessage(requestOptions, {}).formData).toEqual({
-				file: { value: STREAM_REPLACEMENT, options: { filename: 'f.pdf' } },
+			expect(
+				sanitizeUiMessage(
+					{
+						method: 'POST',
+						uri,
+						formData: {
+							file: { value: upload(), options: { filename: 'f.pdf' } },
+							name: 'invoice',
+						},
+					},
+					{},
+				).formData,
+			).toEqual({
+				file: { value: replacement, options: { filename: 'f.pdf' } },
 				name: 'invoice',
 			});
+
+			// The same upload at the root has to reach the same verdict, so the two
+			// branches cannot drift apart again.
+			expect(sanitizeUiMessage({ method: 'POST', uri, body: upload() }, {}).body).toEqual(
+				replacement,
+			);
+		});
+
+		it('should keep a Buffer nested in a formData field below the size limit', () => {
+			const sanitized = sanitizeUiMessage(
+				{
+					method: 'POST',
+					uri: 'https://example.com',
+					formData: { file: { value: Buffer.alloc(10), options: { filename: 'f.pdf' } } },
+				},
+				{},
+			).formData as IDataObject;
+
+			expect(typeof (sanitized.file as IDataObject).value).not.toBe('string');
 		});
 
 		// `__proto__` arrives as an own key on anything JSON.parse builds, and
