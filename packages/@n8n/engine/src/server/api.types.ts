@@ -11,8 +11,8 @@ import type { WorkflowGraph } from '../graph';
  * `GET /:id` response. Timestamps go out as ISO strings, since `Date` has no
  * JSON form.
  *
- * `createdAt`/`updatedAt` are the only timing available: real `started_at` /
- * `finished_at` per step is a follow-up (no new columns for this ticket).
+ * TODO(CAT-4234): report real run timing. `createdAt`/`updatedAt` are row
+ * timestamps, the only timing available today.
  */
 export interface ExecutionSnapshot {
 	id: string;
