@@ -124,13 +124,15 @@ responses:
                 - az
             tracingContext:
               type: object
-              description: W3C trace context propagated with the execution.
+              nullable: true
               properties:
                 traceparent:
                   type: string
                 tracestate:
                   type: string
-              nullable: true
+              required:
+                - traceparent
+              description: W3C trace context propagated with the execution.
             deduplicationKey:
               type: string
               nullable: true

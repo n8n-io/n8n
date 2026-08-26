@@ -18,10 +18,10 @@ const anyObjectSchema = z.custom<Record<string, unknown>>(
 	{ message: 'Must be an object' },
 );
 
-const nullableObjectSchema = z.custom<Record<string, unknown> | null>(
-	(value) => value === null || (typeof value === 'object' && !Array.isArray(value)),
-	{ message: 'Must be an object or null' },
-);
+// A closed shape our own tracing code writes, unlike the free-form fields above.
+const tracingContextSchema = z
+	.object({ traceparent: z.string(), tracestate: z.string().optional() })
+	.nullable();
 
 // `mode`, `status` and `storedAt` are unconstrained varchar columns, so they publish an enum for
 // readers but validate as strings. A historical row may hold a value outside the documented set.
@@ -38,7 +38,7 @@ const executionBaseShape = {
 	workflowId: z.string().openapi(executionFieldDocs.workflowId),
 	waitTill: z.string().nullable().openapi(executionFieldDocs.waitTill),
 	storedAt: z.string().openapi(executionFieldDocs.storedAt),
-	tracingContext: nullableObjectSchema.openapi(tracingContextOpenApi),
+	tracingContext: tracingContextSchema.openapi(tracingContextOpenApi),
 	deduplicationKey: z.string().nullable().openapi(executionFieldDocs.deduplicationKey),
 	jsonSizeBytes: z.number().openapi(executionFieldDocs.jsonSizeBytes),
 	binaryDataSizeBytes: z.number().openapi(executionFieldDocs.binaryDataSizeBytes),

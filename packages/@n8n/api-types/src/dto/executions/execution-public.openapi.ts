@@ -112,11 +112,6 @@ export const customDataOpenApi: ZodOpenAPIMetadata = {
 		'Execution metadata set by the workflow. Only included when `includeData` is `true`.',
 };
 
-export const tracingContextOpenApi: ZodOpenAPIMetadata = alsoNullable({
-	type: 'object',
+export const tracingContextOpenApi: ZodOpenAPIMetadata = {
 	description: 'W3C trace context propagated with the execution.',
-	properties: {
-		traceparent: { type: 'string' },
-		tracestate: { type: 'string' },
-	},
-});
+};
