@@ -54,7 +54,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	vi.resetAllMocks();
-	// These endpoints predate verified-only mode; run them with unverified packages enabled.
+	// Most tests here assert the npm-based update check, which only runs when
+	// unverified packages are enabled - opt in instead of relying on the default.
 	Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
 	communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 });
