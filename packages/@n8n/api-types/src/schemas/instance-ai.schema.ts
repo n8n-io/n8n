@@ -1670,6 +1670,7 @@ const instanceAiPermissionsSchema = z.object({
 	runWorkflow: instanceAiPermissionModeSchema,
 	publishWorkflow: instanceAiPermissionModeSchema,
 	deleteWorkflow: instanceAiPermissionModeSchema,
+	createCredential: instanceAiPermissionModeSchema,
 	deleteCredential: instanceAiPermissionModeSchema,
 	createFolder: instanceAiPermissionModeSchema,
 	deleteFolder: instanceAiPermissionModeSchema,
@@ -1695,6 +1696,7 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 	runWorkflow: 'require_approval',
 	publishWorkflow: 'require_approval',
 	deleteWorkflow: 'require_approval',
+	createCredential: 'require_approval',
 	deleteCredential: 'require_approval',
 	createFolder: 'require_approval',
 	deleteFolder: 'require_approval',
@@ -1730,6 +1732,7 @@ const BRANCH_READ_ONLY_SAFE_PERMISSIONS: ReadonlySet<keyof InstanceAiPermissions
 	'fetchUrl',
 	'webSearch',
 	'publishWorkflow',
+	'createCredential',
 	'deleteCredential',
 	'restoreWorkflowVersion',
 ]);
@@ -1966,7 +1969,12 @@ export type InstanceAiVerificationResponse =
 			startupMs?: number;
 			resultCount?: number;
 	  }
-	| { ok: false; failure: InstanceAiVerificationFailure };
+	| {
+			ok: false;
+			failure: InstanceAiVerificationFailure;
+			/** Sanitized underlying error message, safe to show to the user. */
+			error?: string;
+	  };
 
 // ---------------------------------------------------------------------------
 // User preferences — per-user, self-service

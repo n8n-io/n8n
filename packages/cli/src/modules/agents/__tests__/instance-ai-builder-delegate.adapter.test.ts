@@ -147,6 +147,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					telemetry: sentinel,
 					mcpTools,
+					onRequiredArtifact: expect.any(Function),
 				},
 			);
 		});
@@ -233,6 +234,7 @@ describe('InstanceAiBuilderDelegateAdapterService', () => {
 					abortSignal,
 					instructionsAddendum: INSTANCE_AI_BUILDER_ADDENDUM,
 					mcpTools,
+					onRequiredArtifact: expect.any(Function),
 				},
 			);
 		});

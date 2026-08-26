@@ -91,6 +91,7 @@ export interface CredentialResolutionResult {
 export function buildCredentialResolutionNote(
 	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>,
 	heldForNewCredentialTypes: readonly string[] = [],
+	options?: { n8nCreditsDepleted?: boolean },
 ): string | undefined {
 	const storedParts: string[] = [];
 	const gatewayParts: string[] = [];
@@ -136,10 +137,24 @@ export function buildCredentialResolutionNote(
 	}
 	if (gatewayParts.length > 0) {
 		sentences.push(
-			'Briefly let the user know these run on n8n credits and work out of the box, and that they can switch to their own key anytime by editing the credential on the node.',
+			options?.n8nCreditsDepleted
+				? 'n8n credits are depleted. Tell the user they must top up n8n credits or add their own key on the node before the workflow can run. Do not offer a live test. Do not say it works out of the box.'
+				: 'Briefly let the user know these run on n8n credits and work out of the box, and that they can switch to their own key anytime by editing the credential on the node.',
 		);
 	}
 	return sentences.join(' ');
+}
+
+export async function isN8nCreditsWalletDepleted(
+	context: Pick<InstanceAiContext, 'credentialService'>,
+	resolvedCredentialsByNode: Record<string, ResolvedCredential[]>,
+): Promise<boolean> {
+	const hasN8nCreditsAttached = Object.values(resolvedCredentialsByNode).some((credentials) =>
+		credentials.some((credential) => credential.id === null),
+	);
+	if (!hasN8nCreditsAttached) return false;
+	const wallet = await context.credentialService.getAiGatewayWallet?.();
+	return wallet !== null && wallet !== undefined && wallet.balance <= 0;
 }
 
 /**

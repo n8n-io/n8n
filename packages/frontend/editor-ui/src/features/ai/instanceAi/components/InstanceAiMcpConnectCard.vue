@@ -263,7 +263,8 @@ function openSettings(row: CardRow) {
 }
 
 .awaitingInput {
-	border: 2px solid var(--color--primary);
+	border: 0;
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .header {

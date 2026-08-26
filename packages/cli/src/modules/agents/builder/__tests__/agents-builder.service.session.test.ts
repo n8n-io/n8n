@@ -11,7 +11,6 @@ import type { AgentsService } from '../../agents.service';
 import type { Agent as AgentEntity } from '../../entities/agent.entity';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
 import type { N8nMemory, N8nMemoryImpl } from '../../integrations/n8n-memory';
-import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository';
 import type { AgentsBuilderToolsService } from '../agents-builder-tools.service';
 import { AgentsBuilderService } from '../agents-builder.service';
 
@@ -176,7 +175,6 @@ function setup(
 	const n8nMemory = mock<N8nMemory>();
 	const instanceAiCreditService = mock<InstanceAiCreditService>();
 	const n8nCheckpointStorage = mock<N8NCheckpointStorage>();
-	const agentCheckpointRepository = mock<AgentCheckpointRepository>();
 
 	nodeCatalogService.initialize.mockResolvedValue(undefined);
 	agentsBuilderToolsService.getTools.mockReturnValue(standardTools);
@@ -202,7 +200,6 @@ function setup(
 		n8nMemory,
 		instanceAiCreditService,
 		n8nCheckpointStorage,
-		agentCheckpointRepository,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
