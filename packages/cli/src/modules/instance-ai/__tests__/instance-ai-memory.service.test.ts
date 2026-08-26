@@ -410,8 +410,8 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 	it('derives the tree from the log even when the stored snapshot is degenerate', async () => {
 		// The stored snapshot was built over an evicted buffer: an empty
 		// cancelled tree with none of the run's work (the INS-595 bug family).
-		// Snapshot rows keep being written flag-on (the rollback path until Gate
-		// B), but they are never read once the thread has log rows.
+		// Snapshot rows keep being written, but they are never read once the
+		// thread has log rows.
 		mockDbSnapshotStorage.getForWindow.mockResolvedValue([
 			{
 				tree: makeTree({ status: 'cancelled', textContent: '', timeline: [], toolCalls: [] }),

@@ -200,9 +200,9 @@ export class InterruptedRunSweeper {
 
 		const checkpoints = await this.checkpointRepo.findActiveByThreadId(threadId);
 		const subAgentPrefix = createSubAgentResourceIdPrefix(threadId);
-		// Exact hostRunId match only: every flag-on run post-dates the column
-		// (production never runs a hybrid pre/post-log state), and sub-agent or
-		// legacy rows carry null, so they never match another run's sweep.
+		// Exact hostRunId match only: every logged run post-dates the column, and
+		// sub-agent or legacy rows carry null, so they never match another run's
+		// sweep.
 		const runCheckpoints = checkpoints.filter(
 			(row) => !row.resourceId?.startsWith(subAgentPrefix) && row.hostRunId === runId,
 		);

@@ -1996,7 +1996,7 @@ describe('InstanceAiController', () => {
 	});
 });
 
-describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
+describe('InstanceAiController — durable-log SSE replay', () => {
 	const instanceAiService = mock<InstanceAiService>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const settingsService = mock<InstanceAiSettingsService>();

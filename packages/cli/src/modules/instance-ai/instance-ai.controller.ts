@@ -462,7 +462,7 @@ export class InstanceAiController {
 				if (stored.id !== undefined) lastReplayedSeq = stored.id;
 			}
 			// Build each live group's bootstrap tree from the durable log, so the
-			// group renders fully even when the bus cache was evicted, the process
+			// group renders fully even when the process
 			// restarted, or this main never buffered the thread (sibling main).
 			// Remember which coalesced blocks each delivered tree folds: the gap
 			// read below may return the same rows, and re-applying a block the
@@ -966,8 +966,8 @@ export class InstanceAiController {
 
 		// Include the next SSE event ID so the frontend can skip past events
 		// already covered by these historical messages (prevents duplicates).
-		// Flag on: durable authority, valid across restarts and mains. Flag off:
-		// the shared sequence, so the cursor is valid against any main.
+		// Read from the log, so the cursor is valid across restarts and across
+		// mains sharing the database.
 		const nextEventId = await this.eventLog.getNextEventId(threadId);
 		return { ...result, nextEventId };
 	}
