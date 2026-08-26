@@ -88,6 +88,16 @@ function isErrorSentinel(value: unknown): value is ErrorSentinel {
 	);
 }
 
+function isEscapedObject(
+	value: unknown,
+): value is { __isEscaped: true; __value: Record<string, unknown> } {
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		(value as Record<string, unknown>).__isEscaped === true
+	);
+}
+
 /**
  * Recursively reconstruct Date objects, NaN values, Map, and Set from
  * sentinels produced by the QuickJS-side __prepareForTransfer wrapper.
@@ -95,6 +105,17 @@ function isErrorSentinel(value: unknown): value is ErrorSentinel {
 function unwrapSentinels(value: unknown): unknown {
 	if (value === null || value === undefined) return value;
 	if (typeof value !== 'object') return value;
+	// Escaped user objects: keys collided with the sentinel markers, so the
+	// guest wrapped them (see injectTransferWrapper). Unwrap the values but
+	// treat the object itself as plain data.
+	if (isEscapedObject(value)) {
+		const inner = value.__value;
+		const result: Record<string, unknown> = {};
+		for (const key of Object.keys(inner)) {
+			result[key] = unwrapSentinels(inner[key]);
+		}
+		return result;
+	}
 	if (isDateSentinel(value)) return new Date(value.__isoString);
 	if (isNaNSentinel(value)) return NaN;
 	if (isErrorValueSentinel(value)) {
@@ -416,6 +437,8 @@ export class QuickJsBridge implements RuntimeBridge {
 	}
 
 	async initialize(): Promise<void> {
+		// Disposal is terminal (matches IsolatedVmBridge, whose isolate cannot be revived).
+		if (this.disposed) throw new Error('Bridge has been disposed and cannot be reinitialized.');
 		if (this.initialized) return;
 
 		const { getQuickJS } = await getQuickJSModule();
@@ -743,7 +766,8 @@ export class QuickJsBridge implements RuntimeBridge {
 	function wrapSpecialValues(v) {
 		if (v === null || v === undefined) return v;
 		if (v instanceof Date) {
-			return { __isDate: true, __isoString: v.toISOString() };
+			// Invalid Dates have no ISO string; '' rebuilds an Invalid Date on the host.
+			return { __isDate: true, __isoString: isNaN(v.getTime()) ? '' : v.toISOString() };
 		}
 		if (typeof v === 'number' && isNaN(v)) {
 			return { __isNaN: true };
@@ -778,10 +802,21 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (v.__isError) return v;
 		var result = {};
 		var keys = Object.keys(v);
+		var collides = false;
 		for (var i = 0; i < keys.length; i++) {
-			result[keys[i]] = wrapSpecialValues(v[keys[i]]);
+			var key = keys[i];
+			if (
+				key === '__isDate' || key === '__isNaN' || key === '__isErrorValue' ||
+				key === '__isMap' || key === '__isSet' || key === '__isEscaped'
+			) {
+				collides = true;
+			}
+			result[key] = wrapSpecialValues(v[key]);
 		}
-		return result;
+		// User objects whose keys collide with transfer markers are escaped so
+		// the host returns them as plain data (as isolated-vm does) instead of
+		// misreading them as sentinels.
+		return collides ? { __isEscaped: true, __value: result } : result;
 	}
 })();
 `;
