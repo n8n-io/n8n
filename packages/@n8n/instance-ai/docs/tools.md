@@ -20,7 +20,7 @@ live in `src/tools/tool-ids.ts`.
 | `workspace` | 8 |
 | `executions` | 7 |
 | `credentials` | 6 |
-| `nodes` | 6 |
+| `nodes` | 7 |
 | `mcp-servers` | 4 |
 | `task-control` | 3 |
 | `research` | 2 |
@@ -693,7 +693,7 @@ Test whether a credential is valid and can connect to its service.
 
 ---
 
-## `nodes` (6 actions)
+## `nodes` (7 actions)
 
 The full domain surface has six actions. The orchestrator receives all six
 actions in the current registry. The tool also defines a restricted
@@ -774,6 +774,52 @@ discriminator values like spreadsheet IDs, calendar names, etc.
 | `currentNodeParameters` | object | no | Parameters needed by dependent lookups |
 
 **Returns**: `{ results, paginationToken?, builderHint?, error? }`.
+
+### `nodes(action="execute")`
+
+Execute a single node standalone — real credentials, caller-supplied parameters
+and input items — and return its real output items. The node runs through the
+regular execution engine (an archived temporary workflow is created for the run
+and deleted afterwards), so queue-mode worker dispatch applies. Intended for
+learning a node's exact output shape before wiring downstream expressions, or
+testing one node in isolation.
+
+Before the approval prompt, `config` is validated against the generated
+workflow-sdk node schema (`validateNodeConfig`) - a malformed config returns
+field-level errors immediately.
+
+**Approval mirrors `executions(action="run")`** — executing one node is
+equivalent to running a one-node workflow, so the same `runWorkflow` admin
+policy applies (`blocked` denies; `always_allow` skips the prompt — a
+standalone node request is always agent-authored, the analog of an AI-created
+workflow). Under the default `require_approval`, the tool suspends with
+severity `warning`; "Always allow" persists a session grant scoped by node
+type + resource + operation (`nodes:execute:<type>_<resource>_<operation>`,
+discriminators omitted when the node has none) — the same split the generated
+node TS types use, so a future per-operation destructiveness policy plugs in
+without changing the key format. Later executions of the same operation skip
+the prompt for the session.
+
+The request envelope mirrors a workflow-sdk node (`{ type, version, config }`),
+so the agent can pass a node it is building verbatim:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `type` | string | yes | Full node type name, e.g. `n8n-nodes-base.slack` |
+| `version` | number | yes | Node type version |
+| `config.parameters` | object | yes | Same shape as workflow-sdk `NodeConfig.parameters` |
+| `config.credentials` | object | no | Resolved credential references `{ id, name }` by credential type |
+| `input` | array | no | Input items `{ json }` (defaults to one empty item) |
+| `timeoutMs` | number | no | Max execution time, capped at 60s |
+
+**Returns**: `{ status: 'success', output: items[][] }` or
+`{ status: 'error', error: { message, description?, nodeErrorType? } }`.
+Binary output is reduced to metadata (`fileName`, `mimeType`, `fileSize`).
+
+Limitations: the node really runs (side effects happen); expressions
+referencing other nodes cannot resolve; trigger/webhook-only nodes are
+rejected; credentials must be resolved references — the SDK's
+placeholder/new-credential forms have no stored row and cannot execute.
 
 ---
 

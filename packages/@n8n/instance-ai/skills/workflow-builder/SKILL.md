@@ -77,6 +77,30 @@ replaces the payload flowing into the next node with its own API response.
 Branch it in parallel, reorder it upstream of the data producer, or make the
 downstream node reference the data node explicitly.
 
+## Testing a Single Node
+
+`nodes(action="execute")` runs one node standalone with real credentials and
+returns its real output items (same approval flow as
+`executions(action="run")`). Two uses while building:
+
+- **Learn a real output shape** before wiring downstream expressions, when the
+  type definition has no output type and the operation is a read (get, list,
+  search). Prefer one observed run over guessing field names from
+  documentation.
+- **Isolate a suspect node during repair**: re-run just that node with
+  controlled `input` items and its resolved parameters instead of the whole
+  workflow, to separate "node config is wrong" from "upstream data is wrong".
+
+Pass the node the same shape as in SDK code — `{ type, version, config:
+{ parameters, credentials } }` — plus literal `input` items. Constraints: the
+node runs alone, so expressions referencing other nodes cannot resolve —
+inline literal test values; side effects are real, so do not test write
+operations unless the write itself is wanted; output is the returned items
+(binary as metadata only), capped at 60s.
+
+This never substitutes for `verify-built-workflow` or a live run: it proves
+one node's config and output shape, not the wiring between nodes.
+
 ## Escalation
 
 If the service or workflow shape is clear, never stop before the first

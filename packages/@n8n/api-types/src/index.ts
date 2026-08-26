@@ -305,6 +305,7 @@ export {
 
 export {
 	buildRunWorkflowSessionGrantKey,
+	buildExecuteNodeSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
 	buildDataTablesSessionGrantKey,
 	buildSetupSkipGrantKey,
