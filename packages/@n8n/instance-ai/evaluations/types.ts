@@ -245,6 +245,16 @@ export interface WorkflowTestCase {
 	 *  absence and content ("an agent was created and no workflow", "the agent instructions mention
 	 *  escalating refunds"). Also run in prebuilt/MCP runs. Counted toward the pass rate. */
 	outcomeExpectations?: string[];
+	/** Optional NL assertions about the agent's CONTEXT STATE — what survived compression, and what
+	 *  retrieval put in front of the model. LLM-judged from the captured run debug (the compressed
+	 *  observation block plus the final system prompt) rather than from the transcript or the
+	 *  workflow, so a miss is attributable to recall rather than to the build. Requires run debug,
+	 *  so skipped in prebuilt/MCP runs. Counted toward the pass rate. */
+	memoryExpectations?: Array<string | MemoryExpectation>;
+	/** Exact values that must (or must not) appear in the agent's captured context,
+	 *  checked by deterministic substring search rather than by the judge. Counted
+	 *  toward the pass rate. See `harness/context-assertions.ts`. */
+	contextAssertions?: ContextAssertion[];
 	/**
 	 * Credentials visible to this case's build. Created for real before the build
 	 * and pinned as the thread's entire credential view — cases without this
@@ -297,6 +307,63 @@ export interface ExecutionScenarioResult {
 	incomplete?: boolean;
 }
 
+/**
+ * Which moment in the graded turn a context claim is judged against.
+ *
+ * `probe` — the state the model held when the request arrived, before it produced
+ * anything. Correct for RETENTION claims ("a fact from earlier survived to here"),
+ * because the agent restates facts as it works and the end state would let a probe
+ * manufacture its own evidence.
+ *
+ * `turn-end` — the state at the end of the turn. Correct for WITHIN-TURN RETRIEVAL
+ * claims ("the agent fetched the sibling workflow it needed"). The agent receives the
+ * request, *then* calls tools, so a retrieval claim graded at the probe can never pass:
+ * the anchor excludes the very thing the claim is about.
+ */
+export type ContextAnchor = 'probe' | 'turn-end';
+
+/** A judged claim about context state, with an explicit anchor. The bare-string form
+ *  is equivalent to `{ text, anchor: 'probe' }`. */
+export interface MemoryExpectation {
+	text: string;
+	anchor?: ContextAnchor;
+}
+
+/**
+ * A run of a seeded workflow, performed BEFORE the graded turn.
+ *
+ * Creates a real execution record in the instance's history, so a case can ask about
+ * "the last run" and the honest answer requires reading it. Without this, execution
+ * history is unreachable as a context surface: the harness only ever executes a
+ * workflow *after* the build.
+ */
+export interface SeedPriorRun {
+	/** Seeded workflow to run, by its declared `name`. */
+	workflow: string;
+	/**
+	 * Steer the mock layer, exactly as `executionScenarios[].dataSetup` does — this is
+	 * how a prior run is made to FAIL in a specific way, which is the interesting case:
+	 * the user reports "it broke again" and the agent has to go and find out how.
+	 */
+	hints?: string;
+}
+
+/** One deterministic claim about the agent's captured context. */
+export interface ContextAssertion {
+	text: string;
+	/** Omit or true → must appear. False → must NOT appear. */
+	mustAppear?: boolean;
+	note?: string;
+	/** Defaults to `probe`. Set `turn-end` when the claim is about something the agent
+	 *  went and fetched during this turn rather than something it carried in. */
+	anchor?: ContextAnchor;
+}
+
+/** Normalise either accepted form of a memory expectation. */
+export function asMemoryExpectation(value: string | MemoryExpectation): MemoryExpectation {
+	return typeof value === 'string' ? { text: value } : value;
+}
+
 /** Verdict for one author-written build expectation. Scored as a unit in the
  *  pass rate alongside execution scenarios. */
 export interface BuildExpectationResult {
@@ -308,6 +375,12 @@ export interface BuildExpectationResult {
 	/** Who owns a failed expectation. Stamped where the verdicts are attached to
 	 *  a row (the only place that also knows whether the build died on infra). */
 	attribution?: EvalAttribution;
+	/** Set on verdicts graded against the CONTEXT STATE rather than the conversation
+	 *  or the workflow. Present so a memory miss is identifiable in the report and in
+	 *  `eval-results.json` without matching expectation strings back to the case file —
+	 *  the whole point of the kind being separate. Conversation-judged verdicts are
+	 *  left untagged, so absence means "process or outcome". */
+	kind?: 'memory';
 }
 
 export interface WorkflowTestCaseResult {
@@ -355,6 +428,10 @@ export interface TranscriptTurn {
 	/** True for turns restored from a conversation seed — context that predates
 	 *  the evaluated run, as opposed to behaviour captured live. */
 	seeded?: boolean;
+	/** True when this seeded turn belongs to a DIFFERENT session than the graded
+	 *  turn (`seed.sessionBoundary`). The agent never saw it in this thread, so the
+	 *  judge must not read it as earlier turns of one continuous conversation. */
+	priorSession?: boolean;
 }
 
 /** One ordered step within a turn: a slice of agent narration or a tool interaction. */

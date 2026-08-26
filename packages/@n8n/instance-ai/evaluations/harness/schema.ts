@@ -94,6 +94,41 @@ export const CaseSeedSchema = z.discriminatedUnion('mode', [
 	ConversationSeedSchema.extend({
 		mode: z.literal('inline'),
 		messages: inlineSeedMessagesSchema,
+		/**
+		 * Restore the seeded conversation into a SEPARATE thread, and run the live turn
+		 * in a fresh one — a real session boundary rather than earlier turns of the same
+		 * conversation.
+		 *
+		 * Artifacts cross the boundary and the conversation does not. Seeded workflows,
+		 * data tables and agents are instance-scoped, so they are still discoverable by
+		 * the agent's tools; the messages are not, so nothing about the prior session is
+		 * recoverable from the thread. That is what separates cross-session recall from
+		 * window eviction and compression, which one-thread seeding conflates.
+		 *
+		 * Write expectations accordingly: on today's product there is no cross-session
+		 * memory at all, so the honest behaviour is to ask rather than to guess. The
+		 * seeded turns are marked as a prior session in the graded transcript so the
+		 * judge does not expect continuity the agent cannot have.
+		 */
+		sessionBoundary: z.boolean().optional(),
+		/**
+		 * Workflows to RUN before the graded turn, creating real execution records the
+		 * agent can look up. Names must match seeded `workflows[].name`.
+		 *
+		 * A failing prior run is the point rather than a problem: `hints` steers the mock
+		 * layer, so a case can establish "the 06:00 run died on the HTTP node" and then ask
+		 * only "it broke again". The build is NOT failed when a prior run fails.
+		 */
+		priorRuns: z
+			.array(
+				z
+					.object({
+						workflow: z.string().min(1),
+						hints: z.string().min(1).optional(),
+					})
+					.strict(),
+			)
+			.optional(),
 	}).strict(),
 	/** Reproduce a real conversation from its LangSmith trace at run time (seed =
 	 *  before the live turn, live = that turn). Commits only the thread id;
@@ -137,6 +172,51 @@ const evalTestCaseObjectSchema = z
 		 *  and from the rendered agent/config-eval context when the build produced one, so they also
 		 *  cover artifact existence/absence/content. Also run in prebuilt/MCP runs. Counted as units. */
 		outcomeExpectations: z.array(z.string().min(1)).optional(),
+		/** Optional NL assertions about the agent's CONTEXT STATE — what survived compression, and
+		 *  what retrieval put in front of the model. LLM-judged from the captured run debug (the
+		 *  compressed observation block plus the final system prompt), so a miss is attributable to
+		 *  recall rather than to the build. Needs run debug, so skipped in prebuilt/MCP runs.
+		 *  Counted as units. */
+		memoryExpectations: z
+			.array(
+				z.union([
+					z.string().min(1),
+					z
+						.object({
+							text: z.string().min(1),
+							/** `probe` (default) for retention claims; `turn-end` for claims about
+							 *  context the agent fetched DURING this turn — retrieval happens after
+							 *  the probe, so grading it at the probe can never pass. */
+							anchor: z.enum(['probe', 'turn-end']).optional(),
+						})
+						.strict(),
+				]),
+			)
+			.optional(),
+		/** Exact values that must (or must not) appear in the agent's captured context.
+		 *  Checked deterministically by substring search — no LLM, so it cannot
+		 *  hallucinate and needs no rubric. Use for concrete values (a date, a channel,
+		 *  a column name, a parameter key); leave genuinely fuzzy claims to
+		 *  `memoryExpectations`. Assert ATOMIC values, not formatted phrases: the same
+		 *  value is serialised with different spacing depending on which tier carries
+		 *  it. Counted as units. */
+		contextAssertions: z
+			.array(
+				z
+					.object({
+						text: z.string().min(1),
+						/** Omit or true → must appear. False → must NOT appear (a stale value
+						 *  that should have been dropped). */
+						mustAppear: z.boolean().optional(),
+						/** Shown in the verdict when the raw string is not self-explanatory. */
+						note: z.string().min(1).optional(),
+						/** `probe` (default) for retention claims; `turn-end` for a value the
+						 *  agent fetched during this turn. */
+						anchor: z.enum(['probe', 'turn-end']).optional(),
+					})
+					.strict(),
+			)
+			.optional(),
 		/**
 		 * Removed in favour of the process/outcome split. Declared as a forbidden key (rather
 		 * than dropped from the shape) so a legacy fixture fails loudly with a migration hint,
@@ -267,17 +347,34 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		//
 		// A case needs at least one gradable unit. Execution scenarios grade the built workflow;
 		// process/outcome expectations grade the conversation, the workflow, and any non-workflow
-		// artifact (agent, config-eval) rendered into the judge context.
+		// artifact (agent, config-eval) rendered into the judge context; memory expectations grade
+		// the captured context state.
 		if (
 			(c.executionScenarios?.length ?? 0) === 0 &&
 			(c.processExpectations?.length ?? 0) === 0 &&
-			(c.outcomeExpectations?.length ?? 0) === 0
+			(c.outcomeExpectations?.length ?? 0) === 0 &&
+			(c.memoryExpectations?.length ?? 0) === 0 &&
+			(c.contextAssertions?.length ?? 0) === 0
 		) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
 				message:
-					'a case needs at least one executionScenario, or a process/outcome expectation to grade it',
+					'a case needs at least one executionScenario, or a process/outcome/memory expectation, or a context assertion to grade it',
 			});
+		}
+		// A prior run needs a workflow to run. Catching it at authoring time beats a
+		// mid-build failure, which reads like an infrastructure fault rather than a typo.
+		if (c.seed?.mode === 'inline' && c.seed.priorRuns?.length) {
+			const names = new Set(c.seed.workflows.map((w) => w.name));
+			for (const [index, run] of c.seed.priorRuns.entries()) {
+				if (!names.has(run.workflow)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						path: ['seed', 'priorRuns', index, 'workflow'],
+						message: `priorRuns names workflow "${run.workflow}", which this seed does not declare. Seeded workflow names: ${[...names].join(', ') || '(none)'}`,
+					});
+				}
+			}
 		}
 	});
 

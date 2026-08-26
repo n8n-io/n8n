@@ -69,7 +69,7 @@ describe('EvalTestCaseSchema', () => {
 
 	it('rejects 0 execution scenarios AND 0 expectations (a case must assert something)', () => {
 		expect(() => EvalTestCaseSchema.parse({ ...validFixture(), executionScenarios: [] })).toThrow(
-			/at least one executionScenario, or a process\/outcome expectation/,
+			/at least one executionScenario, or a process\/outcome\/memory expectation/,
 		);
 	});
 
@@ -733,7 +733,7 @@ describe('EvalTestCaseSchema · artifact grading via outcome expectations', () =
 	it('rejects a case with no scenario and no process/outcome expectation', () => {
 		const { executionScenarios: _omit, ...rest } = validFixture();
 		expect(() => EvalTestCaseSchema.parse(rest)).toThrow(
-			/needs at least one executionScenario, or a process\/outcome expectation/,
+			/needs at least one executionScenario, or a process\/outcome\/memory expectation/,
 		);
 	});
 

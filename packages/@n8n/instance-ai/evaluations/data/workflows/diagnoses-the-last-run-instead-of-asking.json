@@ -1,0 +1,132 @@
+{
+	"description": "The nightly sync FAILED in its last run, and the user reports only that it 'broke again' — naming no node, no error and no time. Everything needed is in the execution record and nowhere else.\n\nThe failure mode this catches: asking the user which node failed, or guessing a plausible cause from the workflow's shape. Both look helpful and neither reads the one place that knows. The assertion targets `failedNode`, a field of the executions debug payload, so it cannot be satisfied by inspecting the workflow.\n\nAuthoring note: `hints` steers the failure's NATURE, not its literal response body. An earlier version asserted a string from the JSON body the hints requested; the mock returned an equivalent rate-limit error worded differently and the assertion failed on a run that was otherwise perfect. Assert the record's own structure, not the mocked payload.\n\nExecution history as a context surface. A seeded workflow is RUN before the graded turn (`seed.priorRuns`), so a real execution record exists on the instance. The live turn then withholds the detail, which is only recoverable by reading that record.\n\nBoth context claims are anchored at TURN END, not at the probe. The agent learns what happened by calling the executions tool DURING the turn, and tool calls land after the request arrives — grading them at the probe would fail every time regardless of whether retrieval worked.",
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "Set up a nightly job that pulls orders from our API and keeps the order id."
+			},
+			{
+				"role": "assistant",
+				"text": "Done — 'Nightly Orders Sync' runs at 02:00, fetches the orders and keeps the id."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfnightlyorders1",
+				"name": "Nightly Orders Sync",
+				"nodes": [
+					{
+						"id": "aa000000-0000-4000-8000-000000000001",
+						"name": "Nightly Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 2
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "aa000000-0000-4000-8000-000000000002",
+						"name": "Fetch Orders",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/orders",
+							"options": {}
+						}
+					},
+					{
+						"id": "aa000000-0000-4000-8000-000000000003",
+						"name": "Keep Order Id",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.4,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "f1",
+										"name": "order_id",
+										"type": "string",
+										"value": "={{ $json.id }}"
+									}
+								]
+							}
+						}
+					}
+				],
+				"connections": {
+					"Nightly Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Orders",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Orders": {
+						"main": [
+							[
+								{
+									"node": "Keep Order Id",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			}
+		],
+		"priorRuns": [
+			{
+				"workflow": "Nightly Orders Sync",
+				"hints": "The request to https://api.example.com/v1/orders must FAIL with a rate-limit error (HTTP 429). Do not return a successful response for this URL."
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "the nightly sync broke again, can you sort it out"
+		}
+	],
+	"complexity": "medium",
+	"tags": ["memory", "execution-history"],
+	"messageBudget": 8,
+	"contextAssertions": [
+		{
+			"text": "failedNode",
+			"anchor": "turn-end",
+			"note": "a field of the executions debug payload — it cannot come from the workflow definition, so its presence proves the agent read the execution record"
+		}
+	],
+	"memoryExpectations": [
+		{
+			"text": "By the end of the turn the agent's context contains the actual outcome of the previous run of Nightly Orders Sync, retrieved from execution history — the failing node and the error it returned. A context holding only the workflow's definition is NOT sufficient: the workflow says what should happen, the execution record says what did.",
+			"anchor": "turn-end"
+		}
+	],
+	"processExpectations": [
+		"The agent looked up the previous run in execution history rather than asking the user which node failed, what the error was, or when it happened. The user's report contains none of that, and the record contains all of it.",
+		"The agent did not invent or assume a cause. Any statement about why the run failed is grounded in the execution record, not inferred from the workflow's shape — and if it could not read the record, it said so rather than guessing."
+	],
+	"outcomeExpectations": [
+		"The change addresses a rate-limit / quota failure on the orders request specifically — for example retry with backoff on the HTTP node — rather than an unrelated edit or a rebuild of the whole workflow."
+	],
+	"datasets": ["memory"]
+}

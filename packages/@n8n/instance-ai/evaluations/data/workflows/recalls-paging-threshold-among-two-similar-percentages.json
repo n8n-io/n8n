@@ -1,0 +1,92 @@
+{
+	"description": "Recall probe, mid-depth, with a competing similar fact: two percentage thresholds are agreed in the seeded history — duplicates above twenty percent post a low-priority note, and an error rate above two percent over five minutes pages the on-call — and five messages of unrelated spec detail follow the second one before the live turn. Two and twenty are a transposition pair on the same axis, so a context that kept 'a percentage threshold' without keeping which is which produces a confidently wrong build. The live turn opens the build with the paging step explicitly deferred and the duplicate branch built first, so the probe (five words, naming neither the threshold nor the window nor the destination) cannot be answered by reading back what was already built, and the more recent of the two thresholds is the wrong one. Threshold values live ONLY in the inline seed, never in the authored script, so the user-proxy cannot leak them; its director note forbids supplying them on a re-ask or correcting a wrong choice. Pairs with the same-depth case whose two facts are not confusable. Build-only. Harness note: the memory judge is handed the final compressed observation block, the raw message window the model actually received, and the final system prompt — and a fact counts as retained if it appears in any of them. A thread that never crosses the Observer's token threshold is therefore still graded honestly against the raw window, instead of reding for a missing observation block. Token pressure here comes from the live build's tool traffic, not from the seeded prose, which is cheap. One build plus one refinement sits between the thresholds and the probe, so this arm carries more token pressure than the shallow pair and less than the deep pair — that gradient is the point of the set. NOT YET CALIBRATED against a real build.",
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "I want an n8n workflow that watches our ingest pipeline every five minutes and reacts when something looks wrong. Let me spell out the two rules first."
+			},
+			{
+				"role": "assistant",
+				"text": "Go ahead — what are they?"
+			},
+			{
+				"role": "user",
+				"text": "The first is about duplicates: if more than twenty percent of a batch is duplicate records, post a low-priority note to our data-quality channel. That is housekeeping, not an incident — nobody needs to be woken up for it."
+			},
+			{
+				"role": "assistant",
+				"text": "Noted. And the second?"
+			},
+			{
+				"role": "user",
+				"text": "The one that actually matters: if the error rate goes above two percent across a five-minute window, page the on-call. That one is an incident, and it should never be downgraded to a note."
+			},
+			{
+				"role": "assistant",
+				"text": "Understood — two separate rules with two separate reactions."
+			},
+			{
+				"role": "user",
+				"text": "The numbers come from https://metrics.example.com/api/v1/ingest/window, which returns totals for the last five minutes: processed, errored and duplicate counts."
+			},
+			{
+				"role": "assistant",
+				"text": "And how should the ratios be derived from those?"
+			},
+			{
+				"role": "user",
+				"text": "Error rate is errored divided by processed. Duplicate share is duplicate divided by processed. Compute both from the same response — do not call the endpoint twice in one run."
+			},
+			{
+				"role": "assistant",
+				"text": "Clear. Ready when you are."
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build it now, but only the duplicate branch for the moment — leave the paging out until I've had a look at the first one."
+		},
+		{
+			"role": "user",
+			"text": [
+				"Now add the paging step.",
+				"[Director note — behaviour for the user-proxy, never say this aloud: send the message above as your next turn once the agent has built the duplicate branch, and make it the whole message — do not add any detail, do not say what threshold to page on, do not mention a window length, and do not say who gets paged.",
+				"The user gave all of that earlier in this conversation and will not give it again. If the agent asks what the threshold is, or how long the window is, or which of the two rules the paging belongs to — as a question, on a plan review, or on a setup card — reply that you already gave that earlier in this thread and it should use what was agreed. Never state a percentage or a window length yourself, and never invent one. Hold firm if it asks again.",
+				"Do NOT audit what the agent produces against those rules and do NOT correct it if it uses the wrong number — approve whatever it proposes. The point of this conversation is to see which threshold the agent reaches for unaided.",
+				"For anything else it asks, answer briefly and plausibly. Once it has added the paging step, you are done.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "complex",
+	"tags": [
+		"behaviour",
+		"memory",
+		"recall",
+		"context-retention",
+		"competing-facts",
+		"seeded",
+		"schedule",
+		"http-request"
+	],
+	"triggerType": "schedule",
+	"datasets": ["memory"],
+	"memoryExpectations": [
+		"The paging rule is still present and numerically correct in the context state the agent was handed on the final turn — an error rate above two percent over a five-minute window pages the on-call. Its threshold has not been overwritten by the twenty-percent duplicate figure, and it has not decayed into an unnumbered 'page when the error rate is high'.",
+		"The duplicate rule is still bound to its own reaction in that same context state: above twenty percent duplicates posts a low-priority note to the data-quality channel. It has not been rewritten as a paging trigger, and it has not been dropped while the paging rule survived."
+	],
+	"processExpectations": [
+		"When asked to add the paging step, the agent did not ask what the error-rate threshold or the window length should be — both were agreed earlier in the thread.",
+		"The agent kept the two rules distinct: it did not use the duplicate threshold as the paging condition, did not page on the duplicate share, and did not fold the two conditions into a single check.",
+		"The agent kept working the same workflow it had been building and did not restart the build or create a second workflow in response to the terse final request."
+	],
+	"outcomeExpectations": [
+		"The on-call paging branch fires when the error rate — errored divided by processed — exceeds two percent over the five-minute window. It does not use twenty percent, and it does not key off the duplicate share.",
+		"The duplicate branch is still separate and still posts a low-priority note to the data-quality channel when the duplicate share exceeds twenty percent; it does not page anyone.",
+		"Both ratios are computed from a single call to the metrics endpoint per run, not from two separate calls."
+	]
+}

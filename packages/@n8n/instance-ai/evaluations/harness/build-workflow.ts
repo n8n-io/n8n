@@ -21,9 +21,10 @@ import {
 } from './chat-loop';
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
 import {
-	activeSeedAgentId,
-	remapSeedArtifactIds,
 	SEED_NAME_RE,
+	activeSeedAgentId,
+	orderRestoredAgentIds,
+	remapSeedArtifactIds,
 	seedNameBase,
 	transcriptPrefixFromSeed,
 	type ConversationSeed,
@@ -43,6 +44,7 @@ import {
 import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
+import { executePriorRuns } from './prior-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -239,6 +241,14 @@ export interface BuildResult {
 	events?: CapturedEvent[];
 	/** The thread id used during the build — keys the LangSmith trace lookup. */
 	threadId?: string;
+	/** Outcomes of any pre-turn runs of seeded workflows. Present so an author can
+	 *  confirm the history the agent was handed — in particular whether a run failed,
+	 *  which for these cases is usually the intended setup rather than a fault. */
+	priorRuns?: Array<{ workflow: string; workflowId: string; success: boolean; errors: string[] }>;
+	/** The SEPARATE thread the seeded history went into, when the case declares a
+	 *  session boundary. Present only when it differs from `threadId`, so cleanup can
+	 *  delete it without double-deleting the live thread on ordinary cases. */
+	seedThreadId?: string;
 	/** Counts of UserProxyLlm decisions by category (multi-turn builds only). */
 	proxyDecisionStats?: ProxyDecisionStats;
 	/** Chat-style transcript built from the SSE event stream + proxy responses. */
@@ -478,6 +488,15 @@ export function workflowExpectedForCase(
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
 	const threadId = crypto.randomUUID();
+	// A session boundary restores the seed into its OWN thread, so the live turn below
+	// starts with an empty conversation. Seeded artifacts are instance-scoped and are
+	// unaffected, which is the point: artifacts cross the boundary, the conversation
+	// does not. Without a boundary this is the same thread, as before.
+	const sessionBoundary = config.seed?.mode === 'inline' && config.seed.sessionBoundary === true;
+	const seedThreadId = sessionBoundary ? crypto.randomUUID() : threadId;
+	// Only a boundary run has a second thread to clean up. Undefined otherwise, so
+	// cleanup does not try to delete the live thread twice.
+	const seedThreadIdForCleanup = sessionBoundary ? seedThreadId : undefined;
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
@@ -490,6 +509,14 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let restoredWorkflowIds: string[] = [];
 	let restoredDataTableIds: string[] = [];
 	let restoredAgentIds: string[] = [];
+	/** Outcomes of any pre-turn runs, so the caller can see what history the agent was
+	 *  given — and, crucially, whether the run failed as the case intended. */
+	let priorRunResults: Array<{
+		workflow: string;
+		workflowId: string;
+		success: boolean;
+		errors: string[];
+	}> = [];
 	/** The agent the seeded history last targeted — graded and executed first. */
 	let seedActiveAgentId: string | undefined;
 	// TRUST-311 follow-up: scenario seed tables are created empty before the build
@@ -638,6 +665,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		const projectId = await client.getPersonalProjectId();
 		await client.ensureThread(threadId, projectId);
+		// `restore-thread` asserts access to an EXISTING thread rather than creating
+		// one, so the prior session has to be created before the seed can land in it.
+		// Same project, so its artifacts are visible from the graded thread.
+		if (sessionBoundary) await client.ensureThread(seedThreadId, projectId);
 
 		// Pin the thread's credential view to the case's declared set (empty by
 		// default) before the first message, so every build-workflow call inside
@@ -733,7 +764,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					config.laneTag,
 				);
 				const restoreResult = await client.restoreThread(
-					threadId,
+					seedThreadId,
 					remapped.messages,
 					remapped.workflows,
 					remapped.dataTables,
@@ -746,16 +777,46 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				// the harness has to grade that same one — array order is an authoring
 				// artifact and `findAgentArtifactRef` takes the first ref it sees.
 				seedActiveAgentId = activeSeedAgentId(remapped);
-				seededTranscript = transcriptPrefixFromSeed(remapped.messages);
+				if (sessionBoundary && remapped.agents.length > 0) {
+					// Not refused: agents are instance-scoped and crossing the boundary is the
+					// point. But the thread→agent binding lands on the seed thread, so the live
+					// turn inherits none — and the harness still has to grade against SOME agent,
+					// which it takes in seed-declaration order. Say that plainly: with more than
+					// one seeded agent the author decides which is graded by listing it first.
+					logger.warn(
+						`  Session boundary with ${String(remapped.agents.length)} seeded agent(s): the agent binding stays on the prior session, so grading falls back to seed order — declare the agent to grade first`,
+					);
+				}
+				seededTranscript = transcriptPrefixFromSeed(remapped.messages, {
+					priorSession: sessionBoundary,
+				});
 				const dtSuffix =
 					restoredDataTableIds.length > 0
 						? `, ${String(restoredDataTableIds.length)} data table(s)`
 						: '';
 				const agentSuffix =
 					restoredAgentIds.length > 0 ? `, ${String(restoredAgentIds.length)} agent(s)` : '';
+				// Name the boundary in the log: a run whose seeded history is invisible to
+				// the graded turn looks like a broken seed unless you know it was asked for.
+				const boundarySuffix = sessionBoundary
+					? ` into a SEPARATE session (${seedThreadId.slice(0, 8)}); live turn runs in ${threadId.slice(0, 8)}`
+					: '';
 				logger.info(
-					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${config.laneTag ?? ''}`,
+					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${agentSuffix}${boundarySuffix}${config.laneTag ?? ''}`,
 				);
+				// Run seeded workflows BEFORE the live turn, so their executions exist in
+				// history for the turn to ask about. Has to happen here: after the workflows
+				// exist, and before the agent is given anything to respond to.
+				if (config.seed?.mode === 'inline' && config.seed.priorRuns?.length) {
+					priorRunResults = await executePriorRuns(
+						client,
+						config.seed.priorRuns,
+						remapped.workflows,
+						restoredWorkflowIds,
+						logger,
+						config.laneTag,
+					);
+				}
 			} catch (error: unknown) {
 				seedingFailed = true;
 				throw new Error(
@@ -936,12 +997,11 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const seenAgentIds = new Set(
 			eventOutcome.artifactRefs.filter((ref) => ref.type === 'agent').map((ref) => ref.id),
 		);
-		// Active agent first, so `findAgentArtifactRef` picks the one the restored
-		// thread actually continues rather than whichever the seed happened to list first.
-		const restoredAgentOrder =
-			seedActiveAgentId && restoredAgentIds.includes(seedActiveAgentId)
-				? [seedActiveAgentId, ...restoredAgentIds.filter((id) => id !== seedActiveAgentId)]
-				: restoredAgentIds;
+		const restoredAgentOrder = orderRestoredAgentIds(
+			restoredAgentIds,
+			seedActiveAgentId,
+			sessionBoundary,
+		);
 		const artifactRefs: ArtifactRef[] = [
 			...eventOutcome.artifactRefs,
 			...restoredAgentOrder
@@ -983,6 +1043,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					conversationMetrics,
 					events,
 					threadId,
+					seedThreadId: seedThreadIdForCleanup,
+					priorRuns: priorRunResults.length > 0 ? priorRunResults : undefined,
 					proxyDecisionStats,
 					transcript,
 					credentialViewPinned,
@@ -1002,6 +1064,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				conversationMetrics,
 				events,
 				threadId,
+				seedThreadId: seedThreadIdForCleanup,
+				priorRuns: priorRunResults.length > 0 ? priorRunResults : undefined,
 				proxyDecisionStats,
 				transcript,
 				credentialViewPinned,
@@ -1042,6 +1106,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			conversationMetrics,
 			events,
 			threadId,
+			seedThreadId: seedThreadIdForCleanup,
+			priorRuns: priorRunResults.length > 0 ? priorRunResults : undefined,
 			proxyDecisionStats,
 			transcript,
 			workflowChecks,
@@ -1062,6 +1128,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			conversationMetrics,
 			events,
 			threadId,
+			seedThreadId: seedThreadIdForCleanup,
+			priorRuns: priorRunResults.length > 0 ? priorRunResults : undefined,
 			credentialViewPinned,
 			seedingFailed,
 			laneBootFailed,

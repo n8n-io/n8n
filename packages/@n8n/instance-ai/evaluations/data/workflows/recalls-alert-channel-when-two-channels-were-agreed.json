@@ -1,0 +1,83 @@
+{
+	"description": "Recall probe, shallow, with a competing similar fact: two Slack channels are agreed in the seeded history — #payments-weekly for the Monday roll-up and #payments-eu for live failure alerts — and the live turn asks for the alert path in five words that name no channel. Neither channel name is derivable from the probe, and the two share a prefix, so the only way to route correctly is to have kept each channel bound to its own purpose. The probed fact (#payments-eu) is the last one stated, so this pairs with the no-distractor shallow case at the same depth: the only difference is the presence of a confusable sibling. Channel names live ONLY in the inline seed, never in the authored script, so the user-proxy cannot leak either one; its director note also forbids naming a channel or correcting a wrong choice, because a correction would repair the miss the case exists to observe. Build-only. Harness note: the memory judge is handed the final compressed observation block, the raw message window the model actually received, and the final system prompt — and a fact counts as retained if it appears in any of them. A thread that never crosses the Observer's token threshold is therefore still graded honestly against the raw window, instead of reding for a missing observation block. Token pressure here comes from the live build's tool traffic, not from the seeded prose, which is cheap. This is a shallow arm and therefore among the ones most likely to land in the 'never compressed' state; when it does, the verdict describes which tier was carrying the fact, and lowering the observer threshold for this lane is the way to force compression. NOT YET CALIBRATED against a real build.",
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "We need n8n to react to payment failures. Our provider posts a webhook to us on every failed charge, and separately I want a weekly roll-up of them."
+			},
+			{
+				"role": "assistant",
+				"text": "I can do both. Where should each of those two things land?"
+			},
+			{
+				"role": "user",
+				"text": "The Monday roll-up of the week's failures goes to #payments-weekly. That is a quiet channel — nobody watches it during the day, so nothing time-critical should ever be sent there."
+			},
+			{
+				"role": "assistant",
+				"text": "Noted for the roll-up. And the live failures?"
+			},
+			{
+				"role": "user",
+				"text": "#payments-eu. That is the channel the on-call rota actually watches, so every live failure alert goes there and nowhere else."
+			},
+			{
+				"role": "assistant",
+				"text": "Understood — two separate destinations, one for each. Ready when you are."
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Let's start with the live alert path — wire the failure alert to Slack."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Director note — behaviour for the user-proxy, never say this aloud: the user already told the agent which Slack channel each of the two things goes to, and will not say it again.",
+				"If the agent asks which channel the failure alert should go to — as a question, on a plan review, or on a setup card — reply that you already gave the channels earlier in this thread and it should use the one you agreed for live alerts. Never name a channel yourself, never spell one out, and never invent one, even if the agent offers a list to pick from. Hold firm if it asks again.",
+				"Do NOT audit the agent's choice and do NOT correct it if it picks the wrong channel — approve whatever it proposes. The point of this conversation is to see which channel the agent reaches for unaided.",
+				"For anything else it asks, answer briefly and plausibly. Once it has built the alert path, you are done.]"
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": [
+		"behaviour",
+		"memory",
+		"recall",
+		"context-retention",
+		"competing-facts",
+		"seeded",
+		"slack",
+		"webhook"
+	],
+	"triggerType": "webhook",
+	"datasets": ["memory"],
+	"memoryExpectations": [
+		"The binding of live failure alerts to #payments-eu is still present and correct in the context state the agent was handed on the final turn — carried in the compressed observation block or restated in the final system prompt. It has not been replaced by #payments-weekly, merged with it into one channel, or reduced to a generic 'a Slack channel'.",
+		"The second channel is still bound to its own purpose in that same context state: #payments-weekly is still associated with the Monday roll-up only. It has not been rewritten as the alert destination, and it has not been dropped from the context while the alert channel survived."
+	],
+	"processExpectations": [
+		"The agent did not ask the user which Slack channel the failure alert should go to — the channel was agreed earlier in the thread and the agent treated it as known.",
+		"The agent did not conflate the two channels: nothing it said or built routes live failure alerts to the weekly roll-up channel, and nothing describes the two channels as interchangeable."
+	],
+	"outcomeExpectations": [
+		"The failure alert is posted to #payments-eu — the channel agreed for live alerts — and not to #payments-weekly or to an invented channel such as #general or #alerts.",
+		"The alert path is driven by an inbound webhook trigger fed by the payment provider's failed-charge callback, not by a schedule."
+	],
+	"contextAssertions": [
+		{
+			"text": "#payments-eu",
+			"note": "the live-alert channel agreed in the thread"
+		},
+		{
+			"text": "#payments-weekly",
+			"note": "the competing roll-up channel — present but must not be the alert target"
+		}
+	]
+}

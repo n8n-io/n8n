@@ -1,0 +1,153 @@
+{
+	"description": "A pattern that is only visible across several runs. The workflow has run six times, four of them FAILED on the same node, and the MOST RECENT run SUCCEEDED. The user asks why it has been flaky all week.\n\nWritten expecting it to FAIL, on the theory that the agent samples the head of the execution list and would see a success and conclude nothing was wrong. **That theory was wrong.** It passes 6/6 in both iterations: the agent lists all six executions, then debugs two of the non-latest error runs, and never stops at the successful newest one. Judge, verbatim: \"listed 6 executions, then debugged execution 1120 and 1119 (both errors), not just the most recent 1121 (which succeeded)\". Five tool calls.\n\nSo this is a REGRESSION GUARD, not a red baseline. Multi-record aggregation over execution history is a capability the agent already has, and the guard's job is to catch a context change that takes it away — aggressive compression or a retrieval layer that only surfaces the latest run would show up here as a drop from 6/6.\n\nIts second job is cost. At quality ceiling the measurable axis is spend: five tool calls and the token totals for this case are the baseline a cheaper context approach has to beat without losing the pattern.\n\nThe deterministic assertion stays precise about the mechanism: `failedNode` cannot appear if only the latest execution was debugged, because the latest execution did not fail. Its presence proves the agent looked past the head of the list.\n\nBoth context claims are anchored at TURN END — the agent learns all of this by calling the executions tool during the turn.",
+	"seed": {
+		"mode": "inline",
+		"messages": [
+			{
+				"role": "user",
+				"text": "Set up a nightly job that pulls orders from our API and keeps the order id."
+			},
+			{
+				"role": "assistant",
+				"text": "Done — 'Orders Sync' runs at 02:00, fetches the orders and keeps the id."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfordersflaky001",
+				"name": "Orders Sync",
+				"nodes": [
+					{
+						"id": "bb000000-0000-4000-8000-000000000001",
+						"name": "Nightly Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 2
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "bb000000-0000-4000-8000-000000000002",
+						"name": "Fetch Orders",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/orders",
+							"options": {}
+						}
+					},
+					{
+						"id": "bb000000-0000-4000-8000-000000000003",
+						"name": "Keep Order Id",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.4,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "f1",
+										"name": "order_id",
+										"type": "string",
+										"value": "={{ $json.id }}"
+									}
+								]
+							}
+						}
+					}
+				],
+				"connections": {
+					"Nightly Run": {
+						"main": [
+							[
+								{
+									"node": "Fetch Orders",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Orders": {
+						"main": [
+							[
+								{
+									"node": "Keep Order Id",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			}
+		],
+		"priorRuns": [
+			{
+				"workflow": "Orders Sync",
+				"hints": "The request to https://api.example.com/v1/orders must FAIL with an upstream gateway error (HTTP 502). Do not return a successful response for this URL."
+			},
+			{
+				"workflow": "Orders Sync",
+				"hints": "The request to https://api.example.com/v1/orders must FAIL with an upstream gateway error (HTTP 502). Do not return a successful response for this URL."
+			},
+			{
+				"workflow": "Orders Sync",
+				"hints": "The request to https://api.example.com/v1/orders must SUCCEED. Respond with HTTP 200 and a JSON array of two order objects, each with an \"id\" field."
+			},
+			{
+				"workflow": "Orders Sync",
+				"hints": "The request to https://api.example.com/v1/orders must FAIL with an upstream gateway error (HTTP 502). Do not return a successful response for this URL."
+			},
+			{
+				"workflow": "Orders Sync",
+				"hints": "The request to https://api.example.com/v1/orders must FAIL with an upstream gateway error (HTTP 502). Do not return a successful response for this URL."
+			},
+			{
+				"workflow": "Orders Sync",
+				"hints": "The request to https://api.example.com/v1/orders must SUCCEED. Respond with HTTP 200 and a JSON array of two order objects, each with an \"id\" field."
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "the orders sync has been flaky all week — what's actually going wrong with it?"
+		}
+	],
+	"complexity": "medium",
+	"tags": ["memory", "execution-history"],
+	"messageBudget": 8,
+	"contextAssertions": [
+		{
+			"text": "failedNode",
+			"anchor": "turn-end",
+			"note": "the most recent execution SUCCEEDED, so this field can only come from debugging an earlier run — its presence proves the agent looked past the head of the list"
+		}
+	],
+	"memoryExpectations": [
+		{
+			"text": "By the end of the turn the agent's context contains the outcomes of SEVERAL prior runs of Orders Sync, not only the most recent one. Evidence of more than one execution record is required: a context holding only the latest run — which succeeded — cannot support any statement about a pattern across the week.",
+			"anchor": "turn-end"
+		}
+	],
+	"processExpectations": [
+		"The agent looked beyond the most recent execution. Since the latest run succeeded, answering a question about a week of flakiness requires inspecting earlier runs — listing executions alone is not enough if it only ever opened the newest one.",
+		"The agent did not conclude that the workflow is healthy on the strength of the latest run succeeding. The user's report of flakiness is corroborated by the history, so dismissing it would be wrong.",
+		"The agent identified that the failures are concentrated on the orders request rather than spread across the workflow, and did not attribute the flakiness to a node that never failed."
+	],
+	"outcomeExpectations": [
+		"Any change addresses intermittent upstream failures on the orders request — for example a retry with backoff on that HTTP node — rather than rebuilding the workflow or editing nodes that never failed."
+	],
+	"datasets": ["memory"]
+}
