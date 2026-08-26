@@ -50,7 +50,7 @@ describe('logAiEvent', () => {
 
 			const payload = mockExecuteFunctions.logAiEvent.mock.calls[0][1];
 			expect(payload).toContain('api_key');
-			expect(payload).toContain('[redacted]');
+			expect(payload).toContain('[REDACTED]');
 			expect(payload).not.toContain('sk-live-abcdef123456');
 			expect(payload).not.toContain('eyJhbGciOiJIUzI1NiJ9');
 		});
@@ -62,7 +62,7 @@ describe('logAiEvent', () => {
 			});
 
 			const payload = mockExecuteFunctions.logAiEvent.mock.calls[0][1];
-			expect(payload).toContain('[redacted]');
+			expect(payload).toContain('[REDACTED]');
 			expect(payload).not.toContain('sk-live-abcdef123456');
 		});
 
@@ -73,7 +73,7 @@ describe('logAiEvent', () => {
 			});
 
 			const payload = mockExecuteFunctions.logAiEvent.mock.calls[0][1];
-			expect(payload).toContain('[redacted]');
+			expect(payload).toContain('[REDACTED]');
 			expect(payload).not.toContain('sk-live-abcdef123456');
 			expect(payload).not.toContain('cs-live-abcdef');
 		});
@@ -85,7 +85,7 @@ describe('logAiEvent', () => {
 			});
 
 			const payload = mockExecuteFunctions.logAiEvent.mock.calls[0][1];
-			expect(payload).toContain('[redacted]');
+			expect(payload).toContain('[REDACTED]');
 			expect(payload).not.toContain('sk-abc123DEF456ghi789jkl012');
 		});
 
@@ -96,7 +96,7 @@ describe('logAiEvent', () => {
 			});
 
 			const payload = mockExecuteFunctions.logAiEvent.mock.calls[0][1];
-			expect(payload).toContain('[redacted]');
+			expect(payload).toContain('[REDACTED]');
 			expect(payload).not.toContain('AKIAIOSFODNN7EXAMPLE');
 			expect(payload).not.toContain('wJalrXUtnFEMI/K7MDENG');
 			expect(payload).not.toContain('session=abc123');

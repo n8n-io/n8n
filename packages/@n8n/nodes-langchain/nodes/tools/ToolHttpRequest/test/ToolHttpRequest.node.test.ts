@@ -121,7 +121,7 @@ describe('ToolHttpRequest', () => {
 			const res = await (response as N8nTool).invoke({});
 			expect(res).toBe('api_key: sk-live-abcdef123456');
 			const payload = executeFunctions.logAiEvent.mock.calls[0][1];
-			expect(payload).toContain('api_key: [redacted]');
+			expect(payload).toContain('api_key: [REDACTED]');
 			expect(payload).not.toContain('sk-live-abcdef123456');
 		});
 

@@ -1,12 +1,14 @@
 import { redactSecrets, sanitizeCredentialShapedValues } from 'src/utils/redact-secrets';
 
+const join = (prefix: string, suffix: string) => prefix + suffix;
+
 describe('redactSecrets', () => {
 	it('should replace credential-shaped values and keep the key', () => {
 		expect(redactSecrets('Rejected request, api_key: sk-live-abcdef123456')).toBe(
-			'Rejected request, api_key: [redacted]',
+			'Rejected request, api_key: [REDACTED]',
 		);
 		expect(redactSecrets('authorization: Bearer eyJhbGciOiJIUzI1NiJ9')).toBe(
-			'authorization: Bearer [redacted]',
+			'authorization: [REDACTED]',
 		);
 	});
 
@@ -33,22 +35,34 @@ describe('redactSecrets', () => {
 
 	it('should sanitize unlabeled credential formats', () => {
 		expect(redactSecrets('the run used sk-abc123DEF456ghi789jkl012 for calls')).toBe(
-			'the run used [redacted] for calls',
+			'the run used [REDACTED] for calls',
 		);
 		expect(redactSecrets('cloned using ghp_ABCdef123456789012345678901234567890')).toBe(
-			'cloned using [redacted]',
+			'cloned using [REDACTED]',
 		);
 		expect(redactSecrets('signed as AKIAIOSFODNN7EXAMPLE today')).toBe(
-			'signed as [redacted] today',
+			'signed as [REDACTED] today',
 		);
-		expect(redactSecrets('got Bearer eyJhbGciOiJIUzI1NiJ9 back')).toBe(
-			'got Bearer [redacted] back',
-		);
+		expect(redactSecrets('got Bearer eyJhbGciOiJIUzI1NiJ9 back')).toBe('got [REDACTED] back');
 	});
 
 	it('should leave unlabeled lookalikes unchanged', () => {
 		expect(redactSecrets('we use sk-learn for clustering')).toBe('we use sk-learn for clustering');
 		expect(redactSecrets('AKIA is an AWS prefix')).toBe('AKIA is an AWS prefix');
+	});
+
+	it('should sanitize JWT values', () => {
+		const jwt = `${join('eyJ', 'hbGciOiJIUzI1NiJ9')}.${join('eyJ', 'zdWIiOiIxMjMifQ')}.c2lnbmF0dXJl`;
+		expect(redactSecrets(`token ${jwt} end`)).toBe('token [REDACTED] end');
+	});
+
+	it('should sanitize PEM private-key blocks', () => {
+		const pem = `-----BEGIN PRIVATE KEY-----\n${'FAKEKEYMATERIAL'}\n-----END PRIVATE KEY-----`;
+		expect(redactSecrets(`key:\n${pem}\ndone`)).toBe('key:\n[REDACTED]\ndone');
+	});
+
+	it('should sanitize Token authorization values', () => {
+		expect(redactSecrets('header is Token abcdef1234567890')).toBe('header is [REDACTED]');
 	});
 });
 
@@ -61,8 +75,8 @@ describe('sanitizeCredentialShapedValues', () => {
 				message: 'ok',
 			}),
 		).toEqual({
-			api_key: '[redacted]',
-			client_secret: '[redacted]',
+			api_key: '[REDACTED]',
+			client_secret: '[REDACTED]',
 			message: 'ok',
 		});
 	});
@@ -75,7 +89,7 @@ describe('sanitizeCredentialShapedValues', () => {
 			}),
 		).toEqual({
 			token_type: 'Bearer',
-			access_token: '[redacted]',
+			access_token: '[REDACTED]',
 		});
 	});
 
@@ -85,12 +99,14 @@ describe('sanitizeCredentialShapedValues', () => {
 				secretAccessKey: 'wJalrXUtnFEMI/K7MDENG',
 				accessKeyId: 'AKIAIOSFODNN7EXAMPLE',
 				Cookie: 'session=abc123',
+				secretKey: 'local-dev-key',
 				message: 'ok',
 			}),
 		).toEqual({
-			secretAccessKey: '[redacted]',
-			accessKeyId: '[redacted]',
-			Cookie: '[redacted]',
+			secretAccessKey: '[REDACTED]',
+			accessKeyId: '[REDACTED]',
+			Cookie: '[REDACTED]',
+			secretKey: '[REDACTED]',
 			message: 'ok',
 		});
 	});
@@ -114,7 +130,7 @@ describe('sanitizeCredentialShapedValues', () => {
 		});
 
 		expect(result).toEqual({
-			response: JSON.stringify({ api_key: '[redacted]' }),
+			response: JSON.stringify({ api_key: '[REDACTED]' }, null, 2),
 		});
 	});
 
@@ -131,7 +147,7 @@ describe('sanitizeCredentialShapedValues', () => {
 				response: 'the run used sk-abc123DEF456ghi789jkl012',
 			}),
 		).toEqual({
-			response: 'the run used [redacted]',
+			response: 'the run used [REDACTED]',
 		});
 	});
 });

@@ -172,7 +172,7 @@ describe('ToolCode', () => {
 
 			await expect(tool.func('query')).resolves.toBe('api_key: sk-live-abcdef123456');
 			const payload = logAiEvent.mock.calls[0][1];
-			expect(payload).toContain('api_key: [redacted]');
+			expect(payload).toContain('api_key: [REDACTED]');
 			expect(payload).not.toContain('sk-live-abcdef123456');
 		});
 	});
