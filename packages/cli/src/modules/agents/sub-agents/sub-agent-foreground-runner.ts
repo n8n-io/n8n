@@ -43,6 +43,7 @@ import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
 import type { MessageRecord } from '../execution-recorder';
 import { ExecutionRecorder } from '../execution-recorder';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import { buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { WorkflowToolExecutionMode } from '../tools/workflow-tool-factory';
 import { streamAgentChunks } from '../utils/agent-stream';
 import { SubAgentSourceResolver } from './sub-agent-source-resolver';
@@ -509,9 +510,17 @@ function applyDifficultyModelOverride(
 	difficulty?: SubAgentTaskDifficulty,
 ): RunnableAgentJsonConfig {
 	const modelConfig = difficulty ? config.subAgents?.modelsByDifficulty?.[difficulty] : undefined;
-	return modelConfig
-		? { ...config, model: modelConfig.model, credential: modelConfig.credential }
-		: config;
+	if (!modelConfig) return config;
+
+	const providerTools = Object.fromEntries(
+		buildProviderToolsForModel(config, modelConfig.model).map(({ name, args }) => [name, args]),
+	);
+	return {
+		...config,
+		model: modelConfig.model,
+		credential: modelConfig.credential,
+		providerTools,
+	};
 }
 
 function parseResumeContext(

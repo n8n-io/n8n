@@ -486,6 +486,11 @@ describe('SubAgentForegroundRunner', () => {
 			memory: { enabled: true, storage: 'n8n' },
 			tools: [{ type: 'custom', id: 'tool_1' }],
 			skills: [{ type: 'skill', id: 'skill_1' }],
+			config: { webSearch: { enabled: true } },
+			providerTools: {
+				'anthropic.web_search': { maxUses: 3 },
+				'openai.image_generation': {},
+			},
 			subAgents: {
 				modelsByDifficulty: {
 					high: {
@@ -517,6 +522,9 @@ describe('SubAgentForegroundRunner', () => {
 					...parentConfig,
 					model: 'anthropic/claude-sonnet-4-5',
 					credential: 'high-credential',
+					providerTools: {
+						'anthropic.web_search_20250305': { maxUses: 3 },
+					},
 				},
 				toolDescriptors: runtimeSource.toolDescriptors,
 				toolCodeByName: runtimeSource.toolCodeByName,
