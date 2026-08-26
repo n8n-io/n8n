@@ -63,7 +63,8 @@ describe('Community packages (Public API)', () => {
 
 	beforeEach(async () => {
 		vi.resetAllMocks();
-		Container.get(CommunityPackagesConfig).unverifiedEnabled = false;
+		// These endpoints predate verified-only mode; run them with unverified packages enabled.
+		Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
 		communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 		communityNodeTypesService.findVetted.mockResolvedValue(mockedVettedPackage);
 		await testDb.truncate(['User']);
@@ -74,6 +75,10 @@ describe('Community packages (Public API)', () => {
 		const apiKey = await addApiKey(ownerUser, { scopes });
 		ownerUser.apiKeys = [apiKey];
 		owner = ownerUser;
+	});
+
+	afterEach(() => {
+		Container.get(CommunityPackagesConfig).unverifiedEnabled = false;
 	});
 
 	describe('GET /community-packages', () => {
@@ -119,8 +124,7 @@ describe('Community packages (Public API)', () => {
 			expect(response.body[0].packageName).toBe(pkg.packageName);
 		});
 
-		it('should run npm outdated when packages exist and unverified packages are enabled', async () => {
-			Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
+		it('should run npm outdated when packages exist', async () => {
 			communityPackagesService.getAllInstalledPackages.mockResolvedValue([mockPackage()]);
 			communityPackagesService.matchPackagesWithUpdates.mockReturnValue([]);
 
@@ -133,7 +137,6 @@ describe('Community packages (Public API)', () => {
 		});
 
 		it('should return packages with updateAvailable when outdated', async () => {
-			Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
 			const pkg = mockPackage();
 			communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
 

@@ -54,8 +54,13 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	vi.resetAllMocks();
-	Container.get(CommunityPackagesConfig).unverifiedEnabled = false;
+	// These endpoints predate verified-only mode; run them with unverified packages enabled.
+	Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
 	communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
+});
+
+afterEach(() => {
+	Container.get(CommunityPackagesConfig).unverifiedEnabled = false;
 });
 
 describe('GET /community-packages', () => {
@@ -126,8 +131,7 @@ describe('GET /community-packages', () => {
 		expect(mockedExecuteNpmCommand).not.toHaveBeenCalled();
 	});
 
-	test('should check for updates if packages installed and unverified packages are enabled', async () => {
-		Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
+	test('should check for updates if packages installed', async () => {
 		communityPackagesService.getAllInstalledPackages.mockResolvedValue([mockPackage()]);
 
 		await authAgent.get('/community-packages').expect(200);
@@ -138,7 +142,6 @@ describe('GET /community-packages', () => {
 	});
 
 	test('should report package updates if available', async () => {
-		Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
 		const pkg = mockPackage();
 		communityPackagesService.getAllInstalledPackages.mockResolvedValue([pkg]);
 
