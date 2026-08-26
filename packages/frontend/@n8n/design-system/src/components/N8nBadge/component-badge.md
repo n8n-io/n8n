@@ -12,8 +12,8 @@ A compact label that identifies a status, category, count, or other metadata. A 
 
 **Props**
 
-- `variant?: BadgeVariant` - Visual style of the badge | `default: 'default'`
-  - `default`: Neutral filled badge for general metadata
+- `variant?: BadgeVariant` - Visual style of the badge | `default: 'outline'`
+  - `filled`: Neutral filled badge for general metadata
   - `primary`: Brand-filled badge for prominent information
   - `secondary`: Purple-filled badge for secondary or AI-related information
   - `subtle`: Surface badge with a border and shadow
@@ -43,7 +43,7 @@ The component does not declare custom events. Native events, such as `click`, fa
 
 ```typescript
 type BadgeVariant =
-  | 'default'
+  | 'filled'
   | 'primary'
   | 'secondary'
   | 'subtle'

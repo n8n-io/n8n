@@ -50,7 +50,7 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 			:icon="props.leadingIcon"
 			:size="effectiveIconSize"
 		/>
-		<N8nText as="span" :class="$style.label" :step="effectiveTextSize" bold>
+		<N8nText :class="$style.label" :step="effectiveTextSize" bold>
 			<slot></slot>
 		</N8nText>
 		<N8nIcon
@@ -98,12 +98,12 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	outline: none;
 	cursor: pointer;
 
-	&:hover {
+	&:not(:disabled):hover {
 		background-color: color-mix(in srgb, var(--n8n-badge--background), black 5%);
 		border-color: color-mix(in srgb, var(--n8n-badge--background), black 5%);
 	}
 
-	&:active {
+	&:not(:disabled):active {
 		background-color: color-mix(in srgb, var(--n8n-badge--background), black 10%);
 		border-color: color-mix(in srgb, var(--n8n-badge--background), black 10%);
 	}
