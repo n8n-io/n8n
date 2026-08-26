@@ -140,6 +140,118 @@ export function useWorkflowSaving({
 	const workflowId = useWorkflowId();
 	const { removeInvalidNodeGroups } = useInvalidNodeGroupCleanup();
 
+	function showSaveErrorToast(errorMessage: string, retryDelay?: number) {
+		toast.showMessage({
+			title: i18n.baseText('workflowHelpers.showMessage.title'),
+			message:
+				retryDelay === undefined
+					? errorMessage
+					: i18n.baseText('generic.autosave.retrying', {
+							interpolate: {
+								error: errorMessage,
+								retryIn: `${Math.ceil(retryDelay / 1000)}s`,
+							},
+						}),
+			type: 'error',
+			...(retryDelay === undefined ? {} : { duration: retryDelay }),
+		});
+	}
+
+	function scheduleAutoSaveRetry(retryDelay: number) {
+		saveStore.setRetrying(true);
+
+		setTimeout(() => {
+			saveStore.setRetrying(false);
+			// Trigger autosave again if workflow is still dirty
+			if (uiStore.stateIsDirty) {
+				scheduleAutoSave();
+			}
+		}, retryDelay);
+	}
+
+	function handleAutoSaveFailure(error: unknown, errorMessage: string): false {
+		// Handle autosave failures with exponential backoff
+		if (!shouldRetryAutoSaveFailure(error)) {
+			saveStore.resetRetry();
+			saveStore.setLastError(errorMessage);
+			showSaveErrorToast(errorMessage);
+
+			return false;
+		}
+
+		saveStore.incrementRetry();
+		saveStore.setLastError(errorMessage);
+
+		// Schedule retry with exponential backoff
+		const retryDelay = saveStore.getRetryDelay();
+		scheduleAutoSaveRetry(retryDelay);
+		showSaveErrorToast(errorMessage, retryDelay);
+
+		return false;
+	}
+
+	async function handleConflictSaveFailure({
+		error,
+		errorMessage,
+		currentWorkflow,
+		id,
+		redirect,
+		autosaved,
+	}: {
+		error: unknown;
+		errorMessage: string;
+		currentWorkflow: string;
+		id: string | undefined;
+		redirect: boolean;
+		autosaved: boolean;
+	}): Promise<boolean> {
+		telemetry.track('User attempted to save locked workflow', {
+			workflowId: currentWorkflow,
+			sharing_role: getWorkflowProjectRole(currentWorkflow),
+		});
+
+		// Hide modal if we already showed it
+		// So that user could explore the workflow
+		if (!saveStore.conflictModalShown) {
+			if (autosaved) {
+				saveStore.setConflictModalShown(true);
+			}
+
+			const url = router.resolve({
+				name: VIEWS.WORKFLOW,
+				params: { workflowId: currentWorkflow },
+			}).href;
+
+			const overwrite = await message.confirm(
+				i18n.baseText('workflows.concurrentChanges.confirmMessage.message', {
+					interpolate: {
+						url,
+					},
+				}),
+				i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
+				{
+					confirmButtonText: i18n.baseText(
+						'workflows.concurrentChanges.confirmMessage.confirmButtonText',
+					),
+					cancelButtonText: i18n.baseText(
+						'workflows.concurrentChanges.confirmMessage.cancelButtonText',
+					),
+				},
+			);
+
+			if (overwrite === MODAL_CONFIRM) {
+				return await saveCurrentWorkflow({ id }, redirect, true);
+			}
+		}
+
+		// For autosaves, use retry logic so we still communicate autosave stopped working.
+		if (autosaved) {
+			return handleAutoSaveFailure(error, errorMessage);
+		}
+
+		return false;
+	}
+
 	// Preview hosts (template, workflow history, execution) render the real canvas
 	// and scope their subtree read-only through the editor context. The context is
 	// injected, so it only resolves inside a component — fall back to no context
@@ -395,101 +507,21 @@ export function useWorkflowSaving({
 				console.error(error);
 
 				if (isExistingWorkflowSave && getHttpStatusCode(error) === 409) {
-					telemetry.track('User attempted to save locked workflow', {
-						workflowId: currentWorkflow,
-						sharing_role: getWorkflowProjectRole(currentWorkflow),
+					return await handleConflictSaveFailure({
+						error,
+						errorMessage,
+						currentWorkflow,
+						id,
+						redirect,
+						autosaved,
 					});
-
-					// Hide modal if we already showed it
-					// So that user could explore the workflow
-					if (!saveStore.conflictModalShown) {
-						if (autosaved) {
-							saveStore.setConflictModalShown(true);
-						}
-
-						const url = router.resolve({
-							name: VIEWS.WORKFLOW,
-							params: { workflowId: currentWorkflow },
-						}).href;
-
-						const overwrite = await message.confirm(
-							i18n.baseText('workflows.concurrentChanges.confirmMessage.message', {
-								interpolate: {
-									url,
-								},
-							}),
-							i18n.baseText('workflows.concurrentChanges.confirmMessage.title'),
-							{
-								confirmButtonText: i18n.baseText(
-									'workflows.concurrentChanges.confirmMessage.confirmButtonText',
-								),
-								cancelButtonText: i18n.baseText(
-									'workflows.concurrentChanges.confirmMessage.cancelButtonText',
-								),
-							},
-						);
-
-						if (overwrite === MODAL_CONFIRM) {
-							return await saveCurrentWorkflow({ id }, redirect, true);
-						}
-					}
-
-					// For autosaves, fall through to retry logic below
-					// As we want to still communicate autosave stopped working
-					if (!autosaved) {
-						return false;
-					}
 				}
 
-				// Handle autosave failures with exponential backoff
 				if (autosaved) {
-					if (!shouldRetryAutoSaveFailure(error)) {
-						saveStore.resetRetry();
-						saveStore.setLastError(errorMessage);
-						toast.showMessage({
-							title: i18n.baseText('workflowHelpers.showMessage.title'),
-							message: errorMessage,
-							type: 'error',
-						});
-
-						return false;
-					}
-
-					saveStore.incrementRetry();
-					saveStore.setLastError(errorMessage);
-
-					// Schedule retry with exponential backoff
-					const retryDelay = saveStore.getRetryDelay();
-					saveStore.setRetrying(true);
-
-					setTimeout(() => {
-						saveStore.setRetrying(false);
-						// Trigger autosave again if workflow is still dirty
-						if (uiStore.stateIsDirty) {
-							scheduleAutoSave();
-						}
-					}, retryDelay);
-
-					toast.showMessage({
-						title: i18n.baseText('workflowHelpers.showMessage.title'),
-						message: i18n.baseText('generic.autosave.retrying', {
-							interpolate: {
-								error: errorMessage,
-								retryIn: `${Math.ceil(retryDelay / 1000)}s`,
-							},
-						}),
-						type: 'error',
-						duration: retryDelay,
-					});
-
-					return false;
+					return handleAutoSaveFailure(error, errorMessage);
 				}
 
-				toast.showMessage({
-					title: i18n.baseText('workflowHelpers.showMessage.title'),
-					message: errorMessage,
-					type: 'error',
-				});
+				showSaveErrorToast(errorMessage);
 
 				return false;
 			}
@@ -725,11 +757,7 @@ export function useWorkflowSaving({
 				return null;
 			}
 
-			toast.showMessage({
-				title: i18n.baseText('workflowHelpers.showMessage.title'),
-				message: getErrorMessage(e),
-				type: 'error',
-			});
+			showSaveErrorToast(getErrorMessage(e));
 
 			return null;
 		}
