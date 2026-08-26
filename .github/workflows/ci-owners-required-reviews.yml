@@ -1,0 +1,92 @@
+name: 'CI: Owners Required Reviews'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Required Reviews (PR #{0})', inputs.pr_number) || '' }}"
+
+# Enforces the `required` entries in .github/OWNERS: when a PR changes a file
+# whose winning OWNERS entry carries `required`, a member of each listed team
+# must approve the PR before merge.
+#
+# Replaces the GitHub-native CODEOWNERS enforcement, which could not express
+# team ownership metadata beyond "request a review".
+#
+# Triggers
+#   - pull_request_target (opened/synchronize/reopened/ready_for_review):
+#     re-evaluates whenever the changeset can change. Runs with secrets for
+#     fork PRs too, and NEVER checks out or executes PR code — the scripts and
+#     the OWNERS file always come from the base branch, so a PR cannot lift its
+#     own review requirement.
+#   - pull_request_review (submitted/dismissed): re-evaluates when approvals
+#     change.
+#   - merge_group: re-reports on the merge-queue head so a ruleset can require
+#     the status at queue time.
+#   - workflow_dispatch: manual re-check (e.g. after a team membership change).
+#
+# Output
+#   - A commit status named "Required Reviews" on the PR head SHA (or
+#     merge-group head SHA). Add this name to a ruleset's required-checks list
+#     to gate merges on it. The job itself only fails on evaluation errors.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+    branches:
+      - master
+  pull_request_review:
+    types: [submitted, dismissed]
+  merge_group:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull request number to re-evaluate'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: >-
+    owners-required-reviews-${{ github.event.pull_request.number
+      || github.event.merge_group.head_sha
+      || inputs.pr_number
+      || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  required-reviews:
+    name: Check required reviews
+    # pull_request_review has no `branches` filter; the script also skips
+    # non-master bases, this just saves the runner.
+    if: >-
+      github.event_name != 'pull_request_review' ||
+      github.event.pull_request.base.ref == 'master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      statuses: write
+    steps:
+      - name: Generate App Token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+          private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+
+      # Always check out the base branch, never the PR merge ref: the OWNERS
+      # file and the scripts must be trusted input.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.pull_request.base.ref || github.event.merge_group.base_ref || github.ref }}
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+
+      - name: Evaluate required reviews
+        env:
+          # App token: reading org team membership is beyond GITHUB_TOKEN.
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          PULL_REQUEST_NUMBER: ${{ inputs.pr_number || '' }}
+        run: node .github/scripts/owners-required-reviews.mjs

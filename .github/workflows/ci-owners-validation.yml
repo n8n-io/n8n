@@ -1,0 +1,27 @@
+name: 'CI: Validate OWNERS'
+
+# Validates .github/OWNERS: line syntax, duplicate patterns, and patterns
+# that no longer point at an existing file or directory. Runs on OWNERS
+# changes and on changes to the owned paths, so a move or delete that
+# orphans an OWNERS entry fails here.
+
+on:
+  pull_request:
+    paths:
+      - '.github/OWNERS'
+      - '.github/scripts/owners.mjs'
+      - 'packages/**'
+      - 'docker/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # owners.mjs only uses node built-ins, so no dependency install is needed.
+      - run: node .github/scripts/owners.mjs --check

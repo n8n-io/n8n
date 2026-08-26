@@ -13,7 +13,7 @@ This folder contains n8n's GitHub Actions infrastructure.
 | `workflows/` | GitHub Actions workflows |
 | `actions/` | Reusable composite actions |
 | `scripts/` | Release & Docker automation |
-| `CODEOWNERS` | Team review ownership |
+| `OWNERS` | Team review ownership (`required` entries gate merges) |
 
 ### Workflow Naming
 

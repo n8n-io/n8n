@@ -2,9 +2,13 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
 	assignOwnership,
+	findOwningEntry,
 	ownershipsToAllocations,
 	parseOwnersContent,
 	parseOwnersFile,
+	resolveRequiredTeams,
+	teamHandleToSlug,
+	validateOwners,
 } from './owners.mjs';
 
 /**
@@ -13,8 +17,13 @@ import {
  * node --test ./.github/scripts/owners.test.mjs
  * */
 
+/** @param {Partial<import('./owners.mjs').OwnersEntry>} entry */
+function entry(entry) {
+	return { teams: [], required: false, line: 1, pattern: '*', ...entry };
+}
+
 describe('parseOwnersContent', () => {
-	it('parses well-formed OWNERS lines into Owner records', () => {
+	it('parses well-formed OWNERS lines into entries', () => {
 		const content = [
 			'# header comment',
 			'',
@@ -24,50 +33,128 @@ describe('parseOwnersContent', () => {
 		].join('\n');
 
 		assert.deepEqual(parseOwnersContent(content), [
-			{ filepath: '*', team: '@n8n-io/catalysts' },
-			{ filepath: 'packages/cli/', team: '@n8n-io/cli-team' },
-			{ filepath: 'packages/foo/bar.ts', team: '@n8n-io/some-team' },
+			{ pattern: '*', teams: ['@n8n-io/catalysts'], required: false, line: 3 },
+			{ pattern: 'packages/cli/', teams: ['@n8n-io/cli-team'], required: false, line: 4 },
+			{ pattern: 'packages/foo/bar.ts', teams: ['@n8n-io/some-team'], required: false, line: 5 },
 		]);
 	});
 
-	it('skips lines without an @n8n-io team', () => {
-		const content = [
-			'# comment',
-			'*  @other-org/team',
-			'pkg/  @n8n-io/keepers',
-			'',
-		].join('\n');
+	it('parses the `required` option after the team', () => {
+		const entries = parseOwnersContent('pkg/  @n8n-io/keepers required');
 
-		assert.deepEqual(parseOwnersContent(content), [
-			{ filepath: 'pkg/', team: '@n8n-io/keepers' },
+		assert.deepEqual(entries, [
+			{ pattern: 'pkg/', teams: ['@n8n-io/keepers'], required: true, line: 1 },
 		]);
 	});
 
-	it('returns an empty array when no lines reference @n8n-io', () => {
-		assert.deepEqual(parseOwnersContent('# nothing here\n*  @someone-else'), []);
+	it('parses multiple teams on one line', () => {
+		const entries = parseOwnersContent('pkg/  @n8n-io/keepers @n8n-io/others required');
+
+		assert.deepEqual(entries[0].teams, ['@n8n-io/keepers', '@n8n-io/others']);
+		assert.equal(entries[0].required, true);
+	});
+
+	it('ignores inline comments', () => {
+		const entries = parseOwnersContent('pkg/  @n8n-io/keepers # the why');
+
+		assert.deepEqual(entries[0].teams, ['@n8n-io/keepers']);
+	});
+
+	it('throws on an unknown token with the line number', () => {
+		assert.throws(
+			() => parseOwnersContent('# comment\npkg/  @n8n-io/keepers banana'),
+			/OWNERS line 2: unknown token "banana"/,
+		);
+	});
+
+	it('throws when a pattern has no team', () => {
+		assert.throws(() => parseOwnersContent('pkg/ required'), /OWNERS line 1: no team/);
+	});
+
+	it('returns an empty array for comment-only content', () => {
+		assert.deepEqual(parseOwnersContent('# nothing here\n\n'), []);
 	});
 });
 
 describe('parseOwnersFile', () => {
-	it('reads the real OWNERS file into well-formed Owner records', () => {
-		const owners = parseOwnersFile();
+	it('reads the real OWNERS file into well-formed entries', () => {
+		const entries = parseOwnersFile();
 
-		assert.ok(owners.length > 0, 'OWNERS file should not be empty');
+		assert.ok(entries.length > 0, 'OWNERS file should not be empty');
 		assert.ok(
-			owners.every(o => o.team && o.filepath),
-			'every parsed entry should have both team and filepath',
+			entries.every((e) => e.teams.length > 0 && e.pattern),
+			'every parsed entry should have both teams and a pattern',
 		);
 		assert.ok(
-			owners.every(o => o.team?.startsWith('@n8n-io/')),
+			entries.every((e) => e.teams.every((team) => team.startsWith('@n8n-io/'))),
 			'every parsed team should belong to the @n8n-io org',
 		);
+	});
+
+	it('the real OWNERS file passes validation', () => {
+		assert.deepEqual(validateOwners(parseOwnersFile()), []);
+	});
+});
+
+describe('validateOwners', () => {
+	it('reports duplicate patterns with both line numbers', () => {
+		const entries = [
+			entry({ pattern: 'pkg/', line: 3 }),
+			entry({ pattern: 'pkg/', line: 7 }),
+		];
+
+		const errors = validateOwners(entries, () => true);
+
+		assert.equal(errors.length, 1);
+		assert.match(errors[0], /duplicate pattern "pkg\/" \(lines 3 and 7\)/);
+	});
+
+	it('reports patterns that do not exist, except the catch-all', () => {
+		const entries = [entry({ pattern: '*' }), entry({ pattern: 'gone/', line: 2 })];
+
+		const errors = validateOwners(entries, () => false);
+
+		assert.equal(errors.length, 1);
+		assert.match(errors[0], /pattern "gone\/" \(line 2\) does not exist/);
+	});
+
+	it('returns no errors for a valid set of entries', () => {
+		const entries = [entry({ pattern: '*' }), entry({ pattern: 'pkg/', line: 2 })];
+
+		assert.deepEqual(validateOwners(entries, () => true), []);
+	});
+});
+
+describe('teamHandleToSlug', () => {
+	it('strips the org prefix from an OWNERS team handle', () => {
+		assert.equal(teamHandleToSlug('@n8n-io/catalysts'), 'catalysts');
+	});
+
+	it('leaves a bare slug untouched', () => {
+		assert.equal(teamHandleToSlug('catalysts'), 'catalysts');
+	});
+});
+
+describe('findOwningEntry', () => {
+	it('returns the last matching entry', () => {
+		const entries = [
+			entry({ pattern: '*', teams: ['@n8n-io/catalysts'] }),
+			entry({ pattern: 'pkg/', teams: ['@n8n-io/keepers'] }),
+		];
+
+		assert.equal(findOwningEntry('pkg/a.ts', entries), entries[1]);
+		assert.equal(findOwningEntry('other.ts', entries), entries[0]);
+	});
+
+	it('returns undefined when nothing matches', () => {
+		assert.equal(findOwningEntry('a.ts', [entry({ pattern: 'pkg/' })]), undefined);
 	});
 });
 
 describe('assignOwnership', () => {
 	it('assigns every file to the catch-all team when only `*` is defined', () => {
 		const files = new Set(['a.ts', 'packages/cli/src/index.ts', 'docs/readme.md']);
-		const owners = [{ filepath: '*', team: '@n8n-io/catalysts' }];
+		const owners = [entry({ pattern: '*', teams: ['@n8n-io/catalysts'] })];
 
 		const result = assignOwnership(files, owners);
 
@@ -85,8 +172,8 @@ describe('assignOwnership', () => {
 			'packages/cli/src/lib/foo.ts',
 		]);
 		const owners = [
-			{ filepath: '*', team: '@n8n-io/catalysts' },
-			{ filepath: 'packages/cli/', team: '@n8n-io/cli-team' },
+			entry({ pattern: '*', teams: ['@n8n-io/catalysts'] }),
+			entry({ pattern: 'packages/cli/', teams: ['@n8n-io/cli-team'] }),
 		];
 
 		const result = assignOwnership(files, owners);
@@ -103,7 +190,7 @@ describe('assignOwnership', () => {
 			'packages/cli/src/deep/nested/file.ts',
 			'packages/cli/package.json',
 		]);
-		const owners = [{ filepath: 'packages/cli/', team: '@n8n-io/cli-team' }];
+		const owners = [entry({ pattern: 'packages/cli/', teams: ['@n8n-io/cli-team'] })];
 
 		const result = assignOwnership(files, owners);
 
@@ -119,10 +206,10 @@ describe('assignOwnership', () => {
 			'packages/cli/src/controllers/other.controller.ts',
 		]);
 		const owners = [
-			{
-				filepath: 'packages/cli/src/controllers/ai.controller.ts',
-				team: '@n8n-io/ai-team',
-			},
+			entry({
+				pattern: 'packages/cli/src/controllers/ai.controller.ts',
+				teams: ['@n8n-io/ai-team'],
+			}),
 		];
 
 		const result = assignOwnership(files, owners);
@@ -134,9 +221,19 @@ describe('assignOwnership', () => {
 		assert.equal(result.size, 1);
 	});
 
+	it('assigns a file to every team of the winning entry', () => {
+		const files = new Set(['pkg/a.ts']);
+		const owners = [entry({ pattern: 'pkg/', teams: ['@n8n-io/team-a', '@n8n-io/team-b'] })];
+
+		const result = assignOwnership(files, owners);
+
+		assert.deepEqual(result.get('@n8n-io/team-a'), ['pkg/a.ts']);
+		assert.deepEqual(result.get('@n8n-io/team-b'), ['pkg/a.ts']);
+	});
+
 	it('omits files that match no rule (no catch-all present)', () => {
 		const files = new Set(['unowned/file.ts', 'packages/cli/src/x.ts']);
-		const owners = [{ filepath: 'packages/cli/', team: '@n8n-io/cli-team' }];
+		const owners = [entry({ pattern: 'packages/cli/', teams: ['@n8n-io/cli-team'] })];
 
 		const result = assignOwnership(files, owners);
 
@@ -145,10 +242,65 @@ describe('assignOwnership', () => {
 	});
 
 	it('returns an empty Map when there are no changed files', () => {
-		const owners = [{ filepath: '*', team: '@n8n-io/catalysts' }];
+		const owners = [entry({ pattern: '*', teams: ['@n8n-io/catalysts'] })];
 		const result = assignOwnership(new Set(), owners);
 
 		assert.equal(result.size, 0);
+	});
+});
+
+describe('resolveRequiredTeams', () => {
+	const owners = [
+		entry({ pattern: '*', teams: ['@n8n-io/catalysts'] }),
+		entry({ pattern: '.github/', teams: ['@n8n-io/qa-dx'] }),
+		entry({ pattern: '.github/workflows/', teams: ['@n8n-io/qa-dx'], required: true }),
+		entry({ pattern: 'db/migrations/', teams: ['@n8n-io/migrations-review'], required: true }),
+	];
+
+	it('collects the teams of `required` entries that win for a changed file', () => {
+		const result = resolveRequiredTeams(
+			new Set(['.github/workflows/ci.yml', 'db/migrations/1-init.ts', 'src/a.ts']),
+			owners,
+		);
+
+		assert.deepEqual(result.get('@n8n-io/qa-dx'), ['.github/workflows/ci.yml']);
+		assert.deepEqual(result.get('@n8n-io/migrations-review'), ['db/migrations/1-init.ts']);
+		assert.equal(result.size, 2);
+	});
+
+	it('ignores files whose winning entry is not required', () => {
+		const result = resolveRequiredTeams(new Set(['.github/OWNERS', 'src/a.ts']), owners);
+
+		assert.equal(result.size, 0);
+	});
+
+	it('a later non-required entry overrides an earlier required one', () => {
+		const result = resolveRequiredTeams(new Set(['db/migrations/1-init.ts']), [
+			entry({ pattern: 'db/', teams: ['@n8n-io/migrations-review'], required: true }),
+			entry({ pattern: 'db/migrations/', teams: ['@n8n-io/catalysts'] }),
+		]);
+
+		assert.equal(result.size, 0);
+	});
+
+	it('requires every team of a required entry', () => {
+		const result = resolveRequiredTeams(new Set(['pkg/a.ts']), [
+			entry({ pattern: 'pkg/', teams: ['@n8n-io/team-a', '@n8n-io/team-b'], required: true }),
+		]);
+
+		assert.deepEqual([...result.keys()].sort(), ['@n8n-io/team-a', '@n8n-io/team-b']);
+	});
+
+	it('lists files deterministically (sorted) per team', () => {
+		const result = resolveRequiredTeams(
+			new Set(['.github/workflows/z.yml', '.github/workflows/a.yml']),
+			owners,
+		);
+
+		assert.deepEqual(result.get('@n8n-io/qa-dx'), [
+			'.github/workflows/a.yml',
+			'.github/workflows/z.yml',
+		]);
 	});
 });
 

@@ -1,10 +1,12 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
- * @typedef Owner
- * @property { string } filepath
- * @property { string } team
+ * @typedef OwnersEntry
+ * @property { string } pattern
+ * @property { string[] } teams
+ * @property { boolean } required A member of each team must approve before merge.
+ * @property { number } line 1-based line number in the OWNERS file.
  * */
 
 /**
@@ -21,34 +23,121 @@ import { join } from "node:path";
 // (workflow runs from repo root; `npm test` runs from .github/scripts).
 export const OWNERS_FILE = join(import.meta.dirname, "..", "OWNERS");
 
+const REPO_ROOT = join(import.meta.dirname, "..", "..");
+
+// GitHub team handle, e.g. `@n8n-io/catalysts`.
+const TEAM_TOKEN = /^@[\w.-]+\/[\w.-]+$/;
+
 /**
- * Parse OWNERS file content into Owner records. Lines without an `@n8n-io/*`
- * team are skipped.
+ * Line grammar: `<pattern> <@org/team>... [required]`
+ * New option keywords (e.g. and/or team combinators) go here.
+ */
+const OPTION_TOKENS = new Set(["required"]);
+
+/**
+ * @param { string } line
+ * @returns { string }
+ */
+function stripComment(line) {
+	const commentStart = line.match(/(^|\s)#/);
+	return commentStart ? line.slice(0, commentStart.index) : line;
+}
+
+/**
+ * Parse OWNERS file content into structured entries.
+ *
+ * Throws on lines that do not follow the grammar, so a malformed OWNERS
+ * file fails loudly in every consumer instead of being silently ignored.
  *
  * @param { string } content
- * @returns { Owner[] }
+ * @returns { OwnersEntry[] }
  * */
 export function parseOwnersContent(content) {
-	return content.split("\n")
-		.filter(line => line.includes("@n8n-io"))
-		.map(line => ({
-			filepath: line.match(/^\S+/)?.at(0),
-			team: line.match(/@n8n-io\/.*/)?.at(0)
-		}))
-		.filter(/** @returns { owner is Owner } */ (owner) =>
-			owner.filepath !== undefined && owner.team !== undefined
-		);
+	/** @type { OwnersEntry[] } */
+	const entries = [];
+
+	content.split("\n").forEach((rawLine, index) => {
+		const lineNumber = index + 1;
+		const line = stripComment(rawLine).trim();
+		if (!line) return;
+
+		const [pattern, ...tokens] = line.split(/\s+/);
+		/** @type { string[] } */
+		const teams = [];
+		let required = false;
+
+		for (const token of tokens) {
+			if (TEAM_TOKEN.test(token)) {
+				teams.push(token);
+			} else if (token === "required") {
+				required = true;
+			} else if (OPTION_TOKENS.has(token)) {
+				throw new Error(`OWNERS line ${lineNumber}: option "${token}" is not handled`);
+			} else {
+				throw new Error(`OWNERS line ${lineNumber}: unknown token "${token}"`);
+			}
+		}
+
+		if (teams.length === 0) {
+			throw new Error(`OWNERS line ${lineNumber}: no team for pattern "${pattern}"`);
+		}
+
+		entries.push({ pattern, teams, required, line: lineNumber });
+	});
+
+	return entries;
 }
 
 /**
  * Read and parse the .github/OWNERS file.
  *
  * @param { string } [path] Optional override; defaults to OWNERS_FILE.
- * @returns { Owner[] }
+ * @returns { OwnersEntry[] }
  * */
 export function parseOwnersFile(path = OWNERS_FILE) {
 	const content = readFileSync(path, "utf8");
 	return parseOwnersContent(content);
+}
+
+/**
+ * Validate parsed OWNERS entries beyond the line grammar:
+ *   - no duplicate patterns
+ *   - every pattern (except `*`) points at an existing file or directory
+ *
+ * @param { OwnersEntry[] } entries
+ * @param { (pattern: string) => boolean } [pathExists]
+ * @returns { string[] } validation errors, empty when the file is valid
+ * */
+export function validateOwners(entries, pathExists = (pattern) => existsSync(join(REPO_ROOT, pattern))) {
+	const errors = [];
+	/** @type { Map<string, number> } */
+	const seenPatterns = new Map();
+
+	for (const entry of entries) {
+		const firstLine = seenPatterns.get(entry.pattern);
+		if (firstLine !== undefined) {
+			errors.push(`duplicate pattern "${entry.pattern}" (lines ${firstLine} and ${entry.line})`);
+		} else {
+			seenPatterns.set(entry.pattern, entry.line);
+		}
+
+		if (entry.pattern !== "*" && !pathExists(entry.pattern)) {
+			errors.push(`pattern "${entry.pattern}" (line ${entry.line}) does not exist in the repository`);
+		}
+	}
+
+	return errors;
+}
+
+/**
+ * Convert an OWNERS team handle (`@n8n-io/catalysts`) into the GitHub team slug
+ * (`catalysts`) expected by the teams API.
+ *
+ * @param { string } team
+ * @returns { string }
+ */
+export function teamHandleToSlug(team) {
+	return team.replace(/^@[^/]+\//, "");
 }
 
 /**
@@ -73,30 +162,73 @@ export function matchesPattern(file, pattern) {
 }
 
 /**
- * Map each changed file to the team that owns it, applying CODEOWNERS
+ * Find the entry that owns `file`, applying CODEOWNERS last-match-wins
+ * semantics. Returns undefined when no entry matches.
+ *
+ * @param { string } file
+ * @param { OwnersEntry[] } entries
+ * @returns { OwnersEntry | undefined }
+ * */
+export function findOwningEntry(file, entries) {
+	for (let i = entries.length - 1; i >= 0; i--) {
+		if (matchesPattern(file, entries[i].pattern)) return entries[i];
+	}
+	return undefined;
+}
+
+/**
+ * Map each changed file to the team(s) that own it, applying CODEOWNERS
  * last-match-wins semantics. Files that match no rule are omitted.
  *
  * @param { Set<string> } files
- * @param { Owner[] } owners
+ * @param { OwnersEntry[] } entries
  * @returns { Ownerships } team -> files it owns in this changeset
  * */
-export function assignOwnership(files, owners) {
+export function assignOwnership(files, entries) {
 	/** @type { Ownerships } */
 	const teamToFiles = new Map();
 
 	for (const file of files) {
-		// Walk rules in reverse so the *last* matching rule wins.
-		for (let i = owners.length - 1; i >= 0; i--) {
-			if (matchesPattern(file, owners[i].filepath)) {
-				const team = owners[i].team;
-				const bucket = teamToFiles.get(team);
+		const entry = findOwningEntry(file, entries);
+		if (!entry) continue;
 
-				if (bucket) {
-					bucket.push(file);
-				} else {
-					teamToFiles.set(team, [file]);
-				}
-				break;
+		for (const team of entry.teams) {
+			const bucket = teamToFiles.get(team);
+
+			if (bucket) {
+				bucket.push(file);
+			} else {
+				teamToFiles.set(team, [file]);
+			}
+		}
+	}
+
+	return teamToFiles;
+}
+
+/**
+ * Determine which teams must approve the changeset: a team is required when
+ * it appears on a `required` entry that wins (last-match) for a changed file.
+ *
+ * @param { Set<string> } files
+ * @param { OwnersEntry[] } entries
+ * @returns { Ownerships } required team -> files that triggered the requirement
+ * */
+export function resolveRequiredTeams(files, entries) {
+	/** @type { Ownerships } */
+	const teamToFiles = new Map();
+
+	for (const file of [...files].sort()) {
+		const entry = findOwningEntry(file, entries);
+		if (!entry?.required) continue;
+
+		for (const team of entry.teams) {
+			const bucket = teamToFiles.get(team);
+
+			if (bucket) {
+				bucket.push(file);
+			} else {
+				teamToFiles.set(team, [file]);
 			}
 		}
 	}
@@ -131,30 +263,58 @@ export function readChangedFilesList(path) {
 	);
 }
 
-// CLI: `node owners.mjs <changed-files-list>`
-// Reads the given file (one changed path per line), runs ownership
-// allocation against .github/OWNERS. Prints out an object with ownerships for files
-// and the ownership counts per team as JSON on stdout.
-if (import.meta.url === `file://${process.argv[1]}`) {
-	const path = process.argv[2];
-	if (!path) {
-		console.error("Usage: node owners.mjs <changed-files-list>");
-		console.error("  <changed-files-list>: path to a file containing one changed path per line");
+/**
+ * @returns { never }
+ */
+function exitWithUsage() {
+	console.error("Usage: node owners.mjs <changed-files-list> | --check");
+	console.error("  <changed-files-list>: path to a file containing one changed path per line");
+	console.error("  --check: validate the OWNERS file (syntax, duplicates, dead paths)");
+	process.exit(1);
+}
+
+function runCheck() {
+	/** @type { import('./owners.mjs').OwnersEntry[] } */
+	let entries;
+	try {
+		entries = parseOwnersFile();
+	} catch (error) {
+		console.error(`OWNERS is invalid: ${error.message}`);
 		process.exit(1);
 	}
 
-	const files = readChangedFilesList(path);
-	const ownerships = assignOwnership(files, parseOwnersFile());
-	const totalFiles = files.size;
+	const errors = validateOwners(entries);
+	if (errors.length > 0) {
+		for (const error of errors) console.error(`OWNERS is invalid: ${error}`);
+		process.exit(1);
+	}
 
-	const allocations = Array.from(ownerships)
-		.map(([team, ownedFiles]) => ({
-			team,
-			fileCount: ownedFiles.length,
-			share: totalFiles === 0 ? 0 : Math.round((ownedFiles.length / totalFiles) * 100),
-			files: ownedFiles,
-		}))
-		.sort((a, b) => b.fileCount - a.fileCount);
+	const requiredCount = entries.filter((entry) => entry.required).length;
+	console.log(`OWNERS is valid: ${entries.length} entries, ${requiredCount} with required review.`);
+}
 
-	console.log(JSON.stringify({ totalFiles, allocations }, null, 4));
+// CLI: `node owners.mjs <changed-files-list>` prints ownership allocations for
+// the given changed paths as JSON. `node owners.mjs --check` validates OWNERS.
+if (import.meta.url === `file://${process.argv[1]}`) {
+	const arg = process.argv[2];
+	if (!arg) exitWithUsage();
+
+	if (arg === "--check") {
+		runCheck();
+	} else {
+		const files = readChangedFilesList(arg);
+		const ownerships = assignOwnership(files, parseOwnersFile());
+		const totalFiles = files.size;
+
+		const allocations = Array.from(ownerships)
+			.map(([team, ownedFiles]) => ({
+				team,
+				fileCount: ownedFiles.length,
+				share: totalFiles === 0 ? 0 : Math.round((ownedFiles.length / totalFiles) * 100),
+				files: ownedFiles,
+			}))
+			.sort((a, b) => b.fileCount - a.fileCount);
+
+		console.log(JSON.stringify({ totalFiles, allocations }, null, 4));
+	}
 }

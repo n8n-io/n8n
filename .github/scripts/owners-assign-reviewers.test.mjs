@@ -30,9 +30,9 @@ mock.module('./github-helpers.mjs', {
 	},
 });
 
-/** @type {() => Array<{ filepath: string, team: string }>} */
+/** @type {() => Array<import('./owners.mjs').OwnersEntry>} */
 let parseOwnersFileImpl = () => [];
-/** @type {(files: Set<string>, owners: Array<{ filepath: string, team: string }>) => Map<string, string[]>} */
+/** @type {(files: Set<string>, entries: Array<import('./owners.mjs').OwnersEntry>) => Map<string, string[]>} */
 let assignOwnershipImpl = () => new Map();
 /** @type {(ownerships: Map<string, string[]>) => Array<{ team: string, fileCount: number }>} */
 let ownershipsToAllocationsImpl = () => [];
@@ -40,8 +40,10 @@ let ownershipsToAllocationsImpl = () => [];
 mock.module('./owners.mjs', {
 	namedExports: {
 		parseOwnersFile: () => parseOwnersFileImpl(),
-		assignOwnership: (files, owners) => assignOwnershipImpl(files, owners),
+		assignOwnership: (files, entries) => assignOwnershipImpl(files, entries),
 		ownershipsToAllocations: (ownerships) => ownershipsToAllocationsImpl(ownerships),
+		// Mirrors the real implementation; the mock replaces the whole module.
+		teamHandleToSlug: (team) => team.replace(/^@[^/]+\//, ''),
 	},
 });
 

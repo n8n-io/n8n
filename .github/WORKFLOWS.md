@@ -10,7 +10,7 @@ Complete reference for n8n's `.github/` folder.
 .github/
 ├── WORKFLOWS.md                          # This document
 ├── CI-TELEMETRY.md                       # Telemetry & metrics guide
-├── CODEOWNERS                            # Team ownership for PR reviews
+├── OWNERS                                # Team ownership for PR reviews
 ├── pull_request_template.md              # PR description template
 ├── pull_request_title_conventions.md     # Title format rules (Angular)
 ├── actionlint.yml                        # Workflow linter config
@@ -557,13 +557,39 @@ See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
 
 ---
 
-## CODEOWNERS
+## OWNERS
 
-Team ownership mappings in `CODEOWNERS`:
+Team ownership lives in `.github/OWNERS` (this replaced the GitHub-native
+`CODEOWNERS` file). Line format:
 
-| Path Pattern                                                 | Team                       |
-|--------------------------------------------------------------|----------------------------|
-| `packages/@n8n/db/src/migrations/`                           | @n8n-io/migrations-review  |
+```
+<pattern> <@org/team>... [required]
+```
+
+Rules are last-match-wins, so specific rules must come after general rules.
+Patterns are a catch-all (`*`), a directory prefix (`packages/x/`), or an
+exact path.
+
+The file drives four workflows:
+
+| Workflow                          | Purpose                                                                  |
+|-----------------------------------|--------------------------------------------------------------------------|
+| `ci-owners-validation.yml`        | Validates OWNERS (syntax, duplicates, dead paths) via `owners.mjs --check` |
+| `ci-owners-review-recommendations.yml` | Advisory PR comment: reviewer teams, line stats, required reviews    |
+| `ci-owners-assign-reviewers.yml`  | Opt-in reviewer auto-assignment (label-triggered)                        |
+| `ci-owners-required-reviews.yml`  | Enforces `required` entries via the "Required Reviews" commit status     |
+
+### Required reviews
+
+An entry with the `required` option makes team approval mandatory: when a PR
+changes a file whose winning entry carries `required`, a member of each listed
+team must approve the PR. `ci-owners-required-reviews.yml` evaluates this on
+PR changes, review events, and merge-queue runs, and reports a commit status
+named **Required Reviews** on the head SHA. The ruleset for `master` must list
+that status as a required check for the block to take effect.
+
+The workflow reads OWNERS and its scripts from the base branch only, so a PR
+cannot lift its own review requirement.
 
 ---
 

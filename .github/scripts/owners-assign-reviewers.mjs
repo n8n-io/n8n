@@ -23,21 +23,17 @@ import {
 	removeLabel,
 	requestTeamReviewers,
 } from './github-helpers.mjs';
-import { assignOwnership, ownershipsToAllocations, parseOwnersFile } from './owners.mjs';
+import {
+	assignOwnership,
+	ownershipsToAllocations,
+	parseOwnersFile,
+	teamHandleToSlug,
+} from './owners.mjs';
+
+export { teamHandleToSlug };
 
 export const AUTO_ASSIGN_LABEL = 'Auto-assign reviewers';
 export const ASSIGNED_LABEL = 'Reviewers auto-assigned';
-
-/**
- * Convert an OWNERS team handle (`@n8n-io/catalysts`) into the GitHub team slug
- * (`catalysts`) expected by the requestReviewers API.
- *
- * @param { string } team
- * @returns { string }
- */
-export function teamHandleToSlug(team) {
-	return team.replace(/^@[^/]+\//, '');
-}
 
 /**
  * @param { string[] } labels

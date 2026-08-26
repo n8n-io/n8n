@@ -4,13 +4,28 @@
  * Posts (or updates) a single PR comment that combines:
  *   - Recommended reviewer teams based on file ownership
  *   - A breakdown of changed lines by category (source code, test files, misc)
+ *   - The required team reviews (OWNERS entries with `required`), with a
+ *     suggested reviewer that covers the most required teams
  *
- * Advisory only — does not gate merging.
+ * Advisory only — does not gate merging. Enforcement of required reviews
+ * lives in owners-required-reviews.mjs.
  */
 
 import { minimatch } from 'minimatch';
-import { ensureEnvVar, getPrFiles, postOrUpdateComment } from './github-helpers.mjs';
-import { assignOwnership, ownershipsToAllocations, parseOwnersFile } from './owners.mjs';
+import {
+	ensureEnvVar,
+	getPrFiles,
+	getPullRequestById,
+	listTeamMembers,
+	postOrUpdateComment,
+} from './github-helpers.mjs';
+import {
+	assignOwnership,
+	ownershipsToAllocations,
+	parseOwnersFile,
+	resolveRequiredTeams,
+	teamHandleToSlug,
+} from './owners.mjs';
 import { MISC_PATTERNS, SIZE_LIMIT, TEST_PATTERNS } from './quality/check-pr-size.mjs';
 
 /** @typedef {import('./owners.mjs').Allocation} Allocation */
@@ -193,6 +208,79 @@ export function buildOverviewTable(allocations, changedFiles, totalLineStats, li
 }
 
 /**
+ * Pick the reviewer that covers the most required teams. Ties are broken in
+ * favor of reviewers that share a team with the PR author, then
+ * alphabetically for a stable result.
+ *
+ * @param { string[] } requiredTeams Team handles whose approval is required.
+ * @param { Map<string, Set<string>> } membersByTeam Team handle -> member logins (may include non-required teams, used for the same-team tie-break).
+ * @param { string } author PR author login, excluded from candidates.
+ * @returns { { login: string, coveredTeams: string[] } | null }
+ */
+export function suggestReviewer(requiredTeams, membersByTeam, author) {
+	/** @type { Map<string, number> } */
+	const coverage = new Map();
+
+	for (const team of requiredTeams) {
+		for (const login of membersByTeam.get(team) ?? []) {
+			if (login === author) continue;
+			coverage.set(login, (coverage.get(login) ?? 0) + 1);
+		}
+	}
+
+	if (coverage.size === 0) return null;
+
+	const authorTeams = [...membersByTeam]
+		.filter(([, members]) => members.has(author))
+		.map(([team]) => team);
+	const sharesTeamWithAuthor = (login) =>
+		authorTeams.some((team) => membersByTeam.get(team)?.has(login));
+
+	const [login] = [...coverage.entries()].toSorted(
+		([loginA, coverageA], [loginB, coverageB]) =>
+			coverageB - coverageA ||
+			Number(sharesTeamWithAuthor(loginB)) - Number(sharesTeamWithAuthor(loginA)) ||
+			loginA.localeCompare(loginB),
+	)[0];
+
+	return {
+		login,
+		coveredTeams: requiredTeams.filter((team) => membersByTeam.get(team)?.has(login)),
+	};
+}
+
+/**
+ * Build the section that lists required team approvals and, when available,
+ * a suggested reviewer. Returns null when no approval is required.
+ *
+ * @param { Map<string, string[]> } requiredTeamFiles Required team handle -> files that triggered the requirement.
+ * @param { { login: string, coveredTeams: string[] } | null } [suggestion]
+ * @returns { string | null }
+ */
+export function buildRequiredReviewsSection(requiredTeamFiles, suggestion = null) {
+	if (requiredTeamFiles.size === 0) return null;
+
+	const lines = [
+		'### Required reviews',
+		'',
+		'Some changed files have a `required` owner in `.github/OWNERS`. A member of each of these teams must approve this PR before it can merge:',
+		'',
+		'| Team | Files |',
+		'| --- | ---: |',
+		...[...requiredTeamFiles].map(([team, files]) => `| ${team} | ${files.length} |`),
+	];
+
+	if (suggestion) {
+		lines.push(
+			'',
+			`**Suggested reviewer:** @${suggestion.login} (covers ${suggestion.coveredTeams.join(', ')})`,
+		);
+	}
+
+	return lines.join('\n');
+}
+
+/**
  * Construct the full PR comment body from reviewer allocations and line stats.
  *
  * @param { Allocation[] } allocations
@@ -200,19 +288,64 @@ export function buildOverviewTable(allocations, changedFiles, totalLineStats, li
  * @param { LineStats } lineStats
  * @param { Map<string, LineStats> } lineStatsByTeam
  * @param { Allocation[] } [otherAllocations]
+ * @param { string | null } [requiredSection]
  * @returns { string }
  */
-export function buildComment(allocations, changedFiles, lineStats, lineStatsByTeam = new Map(), otherAllocations = []) {
+export function buildComment(allocations, changedFiles, lineStats, lineStatsByTeam = new Map(), otherAllocations = [], requiredSection = null) {
 	const body = [
 		BOT_MARKER,
 		buildOverviewTable(allocations, changedFiles, lineStats, lineStatsByTeam, otherAllocations),
 	];
+
+	if (requiredSection) {
+		body.push('', requiredSection);
+	}
 
 	if (lineStats.sourceCodeAdded > SIZE_LIMIT) {
 		body.push('', `❗ Source code additions (${lineStats.sourceCodeAdded.toLocaleString()}) exceed the ${SIZE_LIMIT.toLocaleString()}-line limit.`);
 	}
 
 	return body.join('\n');
+}
+
+/**
+ * Fetch the member logins of every team that appears in OWNERS. Non-required
+ * teams are included so the suggestion can tie-break on the author's teams.
+ *
+ * @param { import('./owners.mjs').OwnersEntry[] } entries
+ * @returns { Promise<Map<string, Set<string>>> } team handle -> member logins
+ */
+async function fetchMembersByTeam(entries) {
+	const membersByTeam = new Map();
+
+	for (const team of new Set(entries.flatMap((entry) => entry.teams))) {
+		membersByTeam.set(team, new Set(await listTeamMembers(teamHandleToSlug(team))));
+	}
+
+	return membersByTeam;
+}
+
+/**
+ * @param { number } pullRequestNumber
+ * @param { Map<string, string[]> } requiredTeamFiles
+ * @param { import('./owners.mjs').OwnersEntry[] } entries
+ * @returns { Promise<string | null> }
+ */
+async function buildRequiredSection(pullRequestNumber, requiredTeamFiles, entries) {
+	if (requiredTeamFiles.size === 0) return null;
+
+	// The suggestion is best-effort: without org member read access the
+	// section still renders, just without a suggested reviewer.
+	let suggestion = null;
+	try {
+		const author = (await getPullRequestById(pullRequestNumber)).user.login;
+		const membersByTeam = await fetchMembersByTeam(entries);
+		suggestion = suggestReviewer([...requiredTeamFiles.keys()], membersByTeam, author);
+	} catch (error) {
+		console.warn(`Could not compute a reviewer suggestion: ${error.message}`);
+	}
+
+	return buildRequiredReviewsSection(requiredTeamFiles, suggestion);
 }
 
 /**
@@ -243,7 +376,10 @@ export async function run(pullRequestNumber) {
 	const topAllocations = sortedAllocations.slice(0, 3);
 	const otherAllocations = sortedAllocations.slice(3);
 
-	const body = buildComment(topAllocations, changedFiles, lineStats, lineStatsByTeam, otherAllocations);
+	const requiredTeamFiles = resolveRequiredTeams(changedFiles, owners);
+	const requiredSection = await buildRequiredSection(pullRequestNumber, requiredTeamFiles, owners);
+
+	const body = buildComment(topAllocations, changedFiles, lineStats, lineStatsByTeam, otherAllocations, requiredSection);
 
 	await postOrUpdateComment(pullRequestNumber, body, BOT_MARKER);
 }
