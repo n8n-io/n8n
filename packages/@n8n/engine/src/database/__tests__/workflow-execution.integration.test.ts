@@ -7,7 +7,7 @@ import { ExecutionNotFoundError } from '../../execution/execution-store';
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
 import { WorkflowStepExecution } from '../entities/workflow-step-execution.entity';
-import { TypeOrmExecutionReadStore } from '../typeorm-execution-read-store';
+import { TypeOrmExecutionViewStore } from '../typeorm-execution-view-store';
 
 describe('workflow_execution table (integration)', () => {
 	let container: StartedPostgreSqlContainer;
@@ -53,7 +53,7 @@ describe('workflow_execution table (integration)', () => {
 		expect(found.updatedAt).toBeInstanceOf(Date);
 	});
 
-	it('TypeOrmExecutionReadStore.loadExecutionView reports the timing and leaves the trigger payload behind', async () => {
+	it('TypeOrmExecutionViewStore.loadExecutionView reports the timing and leaves the trigger payload behind', async () => {
 		const repo = dataSource.getRepository(WorkflowExecution);
 		const finishedAt = new Date();
 		const created = repo.create({
@@ -65,12 +65,12 @@ describe('workflow_execution table (integration)', () => {
 			finishedAt,
 		});
 		await repo.save(created);
-		const readStore = new TypeOrmExecutionReadStore(
+		const viewStore = new TypeOrmExecutionViewStore(
 			repo,
 			dataSource.getRepository(WorkflowStepExecution),
 		);
 
-		const view = await readStore.loadExecutionView(created.id);
+		const view = await viewStore.loadExecutionView(created.id);
 
 		expect(view).toEqual({
 			id: created.id,
@@ -84,14 +84,14 @@ describe('workflow_execution table (integration)', () => {
 		});
 	});
 
-	it('TypeOrmExecutionReadStore.loadExecutionView throws for an unknown id', async () => {
-		const readStore = new TypeOrmExecutionReadStore(
+	it('TypeOrmExecutionViewStore.loadExecutionView throws for an unknown id', async () => {
+		const viewStore = new TypeOrmExecutionViewStore(
 			dataSource.getRepository(WorkflowExecution),
 			dataSource.getRepository(WorkflowStepExecution),
 		);
 
 		await expect(
-			readStore.loadExecutionView('00000000-0000-0000-0000-000000000000'),
+			viewStore.loadExecutionView('00000000-0000-0000-0000-000000000000'),
 		).rejects.toBeInstanceOf(ExecutionNotFoundError);
 	});
 

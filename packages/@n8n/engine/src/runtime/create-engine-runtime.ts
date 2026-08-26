@@ -63,7 +63,7 @@ export function createEngineRuntime({
 }: EngineRuntimeOptions): EngineRuntime {
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 	const stepQueue = new InMemoryWorkQueue<StepMessage>();
-	const { executionStore, stepStore, executionReadStore } = createStores(dataSource);
+	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
 
 	const orchestrationWorker = new OrchestrationWorker(
 		orchestrationQueue,
@@ -76,13 +76,13 @@ export function createEngineRuntime({
 			executionStore,
 			stepStore,
 			orchestrationQueue,
-			externalDependencies?.({ executionStore, stepStore, executionReadStore }) ?? {},
+			externalDependencies?.({ executionStore, stepStore, executionViewStore }) ?? {},
 		),
 	);
 
 	const { app } = createEngineServer({
 		startExecution: new StartExecutionService(admittance, executionStore, orchestrationQueue),
-		executionQuery: new ExecutionQueryService(executionReadStore),
+		executionQuery: new ExecutionQueryService(executionViewStore),
 		identityVerifier,
 	});
 

@@ -16,7 +16,7 @@ export type {
 } from './execution.types';
 export { ExecutionNotFoundError } from './execution-store';
 export type { ExecutionRecord, ExecutionStore, NewExecutionRecord } from './execution-store';
-export type { ExecutionReadStore, ExecutionView, StepView } from './execution-read-store';
+export type { ExecutionViewStore, ExecutionView, StepView } from './execution-view-store';
 export { StepNotFoundError } from './step-store';
 export type { NewStepRecord, StepRecord, StepStore, StepSummary } from './step-store';
 export { ExecutionStartHandler } from './execution-start-handler';

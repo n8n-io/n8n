@@ -1,22 +1,22 @@
 import type { Repository } from '@n8n/typeorm';
 
 import type { WorkflowExecution, WorkflowStepExecution } from './entities';
+import { ExecutionNotFoundError } from '../execution/execution-store';
 import type {
-	ExecutionReadStore,
+	ExecutionViewStore,
 	ExecutionView,
 	StepView,
-} from '../execution/execution-read-store';
-import { ExecutionNotFoundError } from '../execution/execution-store';
+} from '../execution/execution-view-store';
 
 /**
- * TypeORM-backed `ExecutionReadStore` adapter. It spans both tables, since a
+ * TypeORM-backed `ExecutionViewStore` adapter. It spans both tables, since a
  * read of an execution and a read of its steps are one concern.
  *
  * Both queries name their columns rather than returning entities, so the read
  * path pulls no payload it doesn't report — `trigger_outputs` today, and
  * whatever the execution path adds later.
  */
-export class TypeOrmExecutionReadStore implements ExecutionReadStore {
+export class TypeOrmExecutionViewStore implements ExecutionViewStore {
 	constructor(
 		private readonly executions: Repository<WorkflowExecution>,
 		private readonly steps: Repository<WorkflowStepExecution>,

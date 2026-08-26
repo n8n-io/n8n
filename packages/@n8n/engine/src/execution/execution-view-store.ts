@@ -52,7 +52,7 @@ export interface StepView {
  * structural, so an adapter returning whole rows still type-checks. Name the
  * columns in the query.
  */
-export interface ExecutionReadStore {
+export interface ExecutionViewStore {
 	/** Read view of one execution. Throws `ExecutionNotFoundError` if absent. */
 	loadExecutionView(id: string): Promise<ExecutionView>;
 
