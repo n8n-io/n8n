@@ -10,6 +10,7 @@ import {
 	executionErrorLabel,
 	executionErrorMessage,
 	formatDuration,
+	hitlRequestLabelKey,
 	hitlTimelineName,
 	isErroredTimelineItem,
 	isSubAgentTimelineItem,
@@ -119,11 +120,7 @@ function popoverLabel(item: TimelineItem): string {
 		case 'execution-error':
 			return executionErrorLabel(item, i18n);
 		case 'suspension':
-			return i18n.baseText(
-				item.hitlRequestType === 'approval'
-					? 'agentSessions.timeline.approvalRequested'
-					: 'agentSessions.timeline.hitlRequested',
-			);
+			return i18n.baseText(hitlRequestLabelKey(item.hitlRequestType));
 		case 'hitl-response':
 			return i18n.baseText('agentSessions.timeline.hitlResponse');
 		default:

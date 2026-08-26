@@ -144,7 +144,7 @@ const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
 const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
 // Keep in sync with NODE_VERSION in .github/workflows/docker-build-push.yml,
 // which is what the published images are actually built with.
-const nodeVersion = process.env.NODE_VERSION || '26.5.1';
+const nodeVersion = process.env.NODE_VERSION || '26.7.0';
 
 const config = {
 	base: {
