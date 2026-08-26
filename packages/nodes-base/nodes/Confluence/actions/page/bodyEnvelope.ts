@@ -183,10 +183,70 @@ function adfNodeHasContent(node: unknown): boolean {
 	return Array.isArray(content) && content.some(adfNodeHasContent);
 }
 
+// Storage-format tags that render nothing by themselves: only their text does.
+// Unknown tags (ac:* macros, ri:* references, img, hr, …) count as content, so an
+// exotic but real comment is never rejected as empty. Mirrors STRUCTURAL_ADF_TYPES.
+const STRUCTURAL_STORAGE_TAGS = new Set([
+	'p',
+	'br',
+	'div',
+	'span',
+	'h1',
+	'h2',
+	'h3',
+	'h4',
+	'h5',
+	'h6',
+	'blockquote',
+	'ul',
+	'ol',
+	'li',
+	'pre',
+	'code',
+	'table',
+	'tbody',
+	'thead',
+	'tfoot',
+	'colgroup',
+	'col',
+	'tr',
+	'td',
+	'th',
+	'strong',
+	'b',
+	'em',
+	'i',
+	'u',
+	's',
+	'del',
+	'ins',
+	'sub',
+	'sup',
+]);
+
+function storageHasContent(markup: string): boolean {
+	// CDATA text renders verbatim (even when it looks like markup), and the tag strip
+	// below would swallow it together with its wrapper
+	for (const [, cdata] of markup.matchAll(/<!\[CDATA\[([\s\S]*?)\]\]>/g)) {
+		if (cdata.trim() !== '') return true;
+	}
+	const text = markup
+		.replace(/<!\[CDATA\[[\s\S]*?\]\]>/g, ' ')
+		.replace(/<[^>]*>/g, ' ')
+		.replace(/&(?:nbsp|#160|#xa0);/gi, ' ')
+		.trim();
+	if (text !== '') return true;
+	for (const [, tagName] of markup.matchAll(/<\/?([a-zA-Z][\w:-]*)/g)) {
+		if (!STRUCTURAL_STORAGE_TAGS.has(tagName.toLowerCase())) return true;
+	}
+	return false;
+}
+
 /** True when the body renders to something a reader can see. An empty ADF document
- * still serializes to non-blank JSON, so the ADF check walks the parsed document. */
+ * still serializes to non-blank JSON, and empty storage markup (`<p></p>`) is non-blank
+ * text, so both checks look through the wrapping to the rendered result. */
 export function envelopeHasContent(envelope: ConfluenceBodyEnvelope): boolean {
-	if (envelope.representation !== 'atlas_doc_format') return envelope.value.trim() !== '';
+	if (envelope.representation !== 'atlas_doc_format') return storageHasContent(envelope.value);
 	try {
 		return adfNodeHasContent(JSON.parse(envelope.value));
 	} catch {

@@ -83,7 +83,66 @@ describe('envelopeHasContent', () => {
 	it.each([
 		['storage markup', buildBodyEnvelope('storage', '<p>x</p>'), true],
 		['a whitespace-only storage body', buildBodyEnvelope('storage', '  \n '), false],
+		[
+			'a storage body of only empty paragraphs',
+			buildBodyEnvelope('storage', '<p></p><p> </p>'),
+			false,
+		],
+		[
+			'a storage body of only nested structural markup',
+			buildBodyEnvelope(
+				'storage',
+				'<div><br /><ul><li></li></ul><table><tr><td></td></tr></table></div>',
+			),
+			false,
+		],
+		[
+			'a storage body of only non-breaking spaces',
+			buildBodyEnvelope('storage', '<p>&nbsp;</p>'),
+			false,
+		],
+		[
+			'a storage body of only numeric non-breaking-space entities',
+			buildBodyEnvelope('storage', '<p>&#160;</p><p>&#xa0;</p>'),
+			false,
+		],
+		[
+			'CDATA text as the only storage content',
+			buildBodyEnvelope('storage', '<p><![CDATA[hello]]></p>'),
+			true,
+		],
+		[
+			'a storage body with only a blank CDATA section',
+			buildBodyEnvelope('storage', '<p><![CDATA[  ]]></p>'),
+			false,
+		],
+		['a storage body with a visible entity', buildBodyEnvelope('storage', '<p>&amp;</p>'), true],
+		[
+			'text nested in structural storage markup',
+			buildBodyEnvelope('storage', '<div><p>hi</p></div>'),
+			true,
+		],
+		[
+			'an emoticon as the only storage content',
+			buildBodyEnvelope('storage', '<p><ac:emoticon ac:name="smile" /></p>'),
+			true,
+		],
+		[
+			'a macro as the only storage content',
+			buildBodyEnvelope('storage', '<ac:structured-macro ac:name="toc" />'),
+			true,
+		],
+		[
+			'an attached image as the only storage content',
+			buildBodyEnvelope(
+				'storage',
+				'<p><ac:image><ri:attachment ri:filename="x.png" /></ac:image></p>',
+			),
+			true,
+		],
+		['a horizontal rule as the only storage content', buildBodyEnvelope('storage', '<hr />'), true],
 		['a plain-text body', buildBodyEnvelope('plainText', 'Hello'), true],
+		['an empty plain-text body', buildBodyEnvelope('plainText', ' \n '), false],
 		['an empty ADF document', adf([]), false],
 		[
 			'an ADF document with only empty paragraphs',
