@@ -4,14 +4,12 @@ import {
 	CreateWorkflowDto,
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
-	ImportWorkflowFromUrlDto,
 	ManualRunDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
 	type WorkflowPublicationStatus,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { OutboundHttp, SsrfBlockedIpError } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import {
 	AuthenticatedRequest,
@@ -31,12 +29,10 @@ import {
 	Post,
 	ProjectScope,
 	Put,
-	Query,
 	RestController,
 } from '@n8n/decorators';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import express from 'express';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 
@@ -46,7 +42,6 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExecutionService } from '@/executions/execution.service';
-import { IWorkflowResponse } from '@/interfaces';
 import { License } from '@/license';
 import { listQueryMiddleware } from '@/middlewares';
 import { userHasScopes } from '@/permissions.ee/check-access';
@@ -89,7 +84,6 @@ export class WorkflowsController {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly executionService: ExecutionService,
 		private readonly collaborationService: CollaborationService,
-		private readonly outboundHttp: OutboundHttp,
 		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 		private readonly ownershipService: OwnershipService,
 	) {}
@@ -169,39 +163,6 @@ export class WorkflowsController {
 
 		const name = await this.namingService.getUniqueWorkflowName(requestedName);
 		return { name };
-	}
-
-	@Get('/from-url')
-	async getFromUrl(
-		req: AuthenticatedRequest,
-		_res: express.Response,
-		@Query query: ImportWorkflowFromUrlDto,
-	) {
-		const projectId = query.projectId;
-		if (
-			!(await this.projectService.getProjectWithScope(req.user, projectId, ['workflow:create']))
-		) {
-			throw new ForbiddenError(
-				"You don't have the permissions to create a workflow in this project.",
-			);
-		}
-
-		const workflowData = await this.fetchWorkflowFromUrl(query.url);
-
-		// Do a very basic check if it is really a n8n-workflow-json
-		if (
-			workflowData?.nodes === undefined ||
-			!Array.isArray(workflowData.nodes) ||
-			workflowData.connections === undefined ||
-			typeof workflowData.connections !== 'object' ||
-			Array.isArray(workflowData.connections)
-		) {
-			throw new BadRequestError(
-				'The data in the file does not seem to be a n8n workflow JSON file!',
-			);
-		}
-
-		return workflowData;
 	}
 
 	@Get('/:workflowId')
@@ -729,33 +690,5 @@ export class WorkflowsController {
 			ResponseHelper.reportError(error);
 			ResponseHelper.sendErrorResponse(res, error);
 		}
-	}
-
-	private async fetchWorkflowFromUrl(url: string) {
-		// user-supplied URL, so the default safe mode applies
-		const client = this.outboundHttp.requests();
-
-		try {
-			return await client.request<IWorkflowResponse>({ method: 'GET', url });
-		} catch (error) {
-			const blockedError = this.findSsrfBlockedError(error);
-			if (blockedError) throw blockedError;
-			throw new BadRequestError('The URL does not point to valid JSON file!');
-		}
-	}
-
-	/**
-	 * Walk the error cause chain to find a {@link SsrfBlockedIpError} buried
-	 * inside axios/redirect wrappers (AxiosError → RedirectionError → SsrfBlockedIpError).
-	 */
-	private findSsrfBlockedError(error: unknown): SsrfBlockedIpError | undefined {
-		let current = ensureError(error);
-
-		for (let depth = 0; depth < 4 && current; depth++) {
-			if (current instanceof SsrfBlockedIpError) return current;
-			current = ensureError(current.cause);
-		}
-
-		return undefined;
 	}
 }
