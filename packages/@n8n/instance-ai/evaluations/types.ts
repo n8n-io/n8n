@@ -235,6 +235,10 @@ export interface WorkflowTestCase {
 	executionScenarios?: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Build style the harness sends with every chat message of this case.
+	 *  Absent → `progressive` (evals mirror the product default); `default`
+	 *  opts the case back into the classic single-pass flow. */
+	buildMode?: 'progressive' | 'default';
 	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 	 *  ordering). LLM-judged from the transcript; requires a transcript, so skipped in
 	 *  prebuilt/MCP runs. Counted toward the per-case + headline pass rate alongside scenarios. */

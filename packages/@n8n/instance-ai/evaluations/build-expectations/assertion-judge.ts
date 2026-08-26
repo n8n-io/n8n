@@ -76,6 +76,18 @@ export async function judgeExpectations(
 			clearTimeout(timer);
 		}
 
+		// The runtime returns model/API errors on the result instead of throwing —
+		// without this, a dead key or depleted balance reads as the opaque
+		// "produced no parseable results" below.
+		if (result.finishReason === 'error' || result.error !== undefined) {
+			const err = result.error;
+			const msg = err instanceof Error ? err.message : String(err ?? 'unknown model error');
+			console.warn(
+				`[expectations] attempt ${attempt}/${MAX_VERIFY_ATTEMPTS} model call errored: ${msg}`,
+			);
+			continue;
+		}
+
 		const parsed = expectationResultSchema.safeParse(result.structuredOutput);
 		const byIndex = new Map<number, { pass: boolean; reason: string }>();
 		if (parsed.success) {

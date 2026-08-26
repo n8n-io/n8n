@@ -145,6 +145,7 @@ export function createEvalSession(config: EvalSessionConfig): EvalSession {
 							client: lane.client,
 							conversation: buildArgs.conversation,
 							messageBudget: buildArgs.messageBudget,
+							buildMode: buildArgs.buildMode,
 							credentials: buildArgs.credentials,
 							seed: buildArgs.seed,
 							executionScenarios: buildArgs.executionScenarios,

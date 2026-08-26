@@ -130,6 +130,10 @@ const evalTestCaseObjectSchema = z
 		triggerType: z.enum(['manual', 'webhook', 'schedule', 'form']).optional(),
 		executionScenarios: z.array(ExecutionScenarioSchema).optional(),
 		messageBudget: z.number().int().positive().optional(),
+		/** Build style the harness sends with every chat message. Evals default to
+		 *  `progressive` (the mode is the product default); `default` opts a case
+		 *  back into the classic single-pass flow. */
+		buildMode: z.enum(['progressive', 'default']).optional(),
 		/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 		 *  ordering). LLM-judged from the transcript, so skipped in prebuilt/MCP runs. Counted as units. */
 		processExpectations: z.array(z.string().min(1)).optional(),

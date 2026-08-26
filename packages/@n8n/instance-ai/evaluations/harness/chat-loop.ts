@@ -11,7 +11,7 @@
 // flows automatically.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { InstanceAiBuildMode, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS } from '@n8n/api-types';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -293,6 +293,10 @@ export type NextMessageDecision =
 
 export interface MultiTurnConfig extends WaitConfig {
 	nextMessageDecider: () => Promise<NextMessageDecision>;
+	/** Sent with every follow-up message — the mode is per-message on the wire
+	 *  and the backend keeps "latest message wins", so a follow-up that omitted
+	 *  it would silently clear the thread's mode. */
+	buildMode?: InstanceAiBuildMode;
 }
 
 export async function runMultiTurnConversation(config: MultiTurnConfig): Promise<void> {
@@ -324,7 +328,12 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 		);
 		recordUserTurn(config.events, decision.message);
 		try {
-			await config.client.sendMessage(config.threadId, decision.message);
+			await config.client.sendMessage(
+				config.threadId,
+				decision.message,
+				undefined,
+				config.buildMode,
+			);
 		} catch (error: unknown) {
 			const msg = error instanceof Error ? error.message : String(error);
 			config.logger.verbose(`[multi-turn] sendMessage failed: ${msg} — exiting loop`);

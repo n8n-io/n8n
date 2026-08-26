@@ -55,12 +55,20 @@ function isResolvingBuilderModel(modelId: string): boolean {
 	return modelId === builderModel;
 }
 
+/** `.env` files commonly carry empty placeholders (`KEY=`); treat those as
+ *  unset so the `??` fallback chain below doesn't stop on an empty string. */
+function nonEmptyEnv(value: string | undefined): string | undefined {
+	const trimmed = value?.trim();
+	return trimmed ? trimmed : undefined;
+}
+
 function getApiKey(modelId: string): string {
 	const [provider] = modelId.split('/');
 	const providerKeyEnv = PROVIDER_API_KEY_ENV[provider];
-	const providerKey = providerKeyEnv ? process.env[providerKeyEnv] : undefined;
-	const anthropicLegacy = provider === 'anthropic' ? process.env.N8N_AI_ANTHROPIC_KEY : undefined;
-	const genericKey = process.env.N8N_INSTANCE_AI_MODEL_API_KEY;
+	const providerKey = providerKeyEnv ? nonEmptyEnv(process.env[providerKeyEnv]) : undefined;
+	const anthropicLegacy =
+		provider === 'anthropic' ? nonEmptyEnv(process.env.N8N_AI_ANTHROPIC_KEY) : undefined;
+	const genericKey = nonEmptyEnv(process.env.N8N_INSTANCE_AI_MODEL_API_KEY);
 
 	// Builder model: prefer the lane's N8N_INSTANCE_AI_MODEL_API_KEY.
 	// Separate eval model (e.g. Anthropic mocks while builder is custom/openai):

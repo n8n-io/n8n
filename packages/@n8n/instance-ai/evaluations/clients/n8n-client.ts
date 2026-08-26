@@ -7,6 +7,7 @@
 // ---------------------------------------------------------------------------
 
 import type {
+	InstanceAiBuildMode,
 	InstanceAiConfirmRequest,
 	InstanceAiRichMessagesResponse,
 	InstanceAiEvalAgentExecutionResult,
@@ -295,10 +296,15 @@ export class N8nClient {
 		threadId: string,
 		message: string,
 		attachments?: InstanceAiWorkflowAttachment[],
+		mode?: InstanceAiBuildMode,
 	): Promise<{ runId: string }> {
 		const result = await this.fetch(`/rest/instance-ai/chat/${threadId}`, {
 			method: 'POST',
-			body: attachments && attachments.length > 0 ? { message, attachments } : { message },
+			body: {
+				message,
+				...(attachments && attachments.length > 0 ? { attachments } : {}),
+				...(mode ? { mode } : {}),
+			},
 		});
 		return result as { runId: string };
 	}

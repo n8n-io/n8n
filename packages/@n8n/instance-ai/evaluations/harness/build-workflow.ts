@@ -7,7 +7,11 @@
 // execution and cleanup.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiConfirmRequest, InstanceAiWorkflowAttachment } from '@n8n/api-types';
+import type {
+	InstanceAiBuildMode,
+	InstanceAiConfirmRequest,
+	InstanceAiWorkflowAttachment,
+} from '@n8n/api-types';
 import crypto from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 
@@ -104,6 +108,8 @@ interface MultiTurnDriverConfig {
 	threadId: string;
 	conversation: ConversationTurn[];
 	messageBudget?: number;
+	/** Resolved wire value sent with every message (see `resolveEvalBuildMode`). */
+	buildMode?: InstanceAiBuildMode;
 	events: CapturedEvent[];
 	approvedRequests: Set<string>;
 	startTime: number;
@@ -191,6 +197,7 @@ async function driveMultiTurnConversation(
 		config.threadId,
 		openingMessage + (config.openingMessageSuffix ?? ''),
 		config.openingAttachments,
+		config.buildMode,
 	);
 
 	await runMultiTurnConversation({
@@ -204,6 +211,7 @@ async function driveMultiTurnConversation(
 		confirmationStrategy,
 		nextMessageDecider,
 		proxyResponses: config.proxyResponses,
+		buildMode: config.buildMode,
 	});
 
 	return { ...proxy.getDecisionStats() };
@@ -420,6 +428,9 @@ export interface BuildWorkflowConfig {
 	conversation?: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Case-declared build style; resolved via `resolveEvalBuildMode` (absent →
+	 *  progressive, mirroring the product default). */
+	buildMode?: WorkflowTestCase['buildMode'];
 	/** Credentials this build should see (created for real, view pinned to them). */
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
@@ -458,6 +469,15 @@ export interface BuildWorkflowConfig {
 	/** Credential type for a `local` run, where there is no fixture manifest to
 	 *  read it from. */
 	credentialSetupType?: string;
+}
+
+/** Wire value for a case's build mode. Evals default to progressive so the
+ *  full suite exercises the progressive loop the product defaults to; a case
+ *  opts back into the classic single-pass flow with `buildMode: 'default'`. */
+export function resolveEvalBuildMode(
+	buildMode: WorkflowTestCase['buildMode'],
+): InstanceAiBuildMode | undefined {
+	return buildMode === 'default' ? undefined : 'progressive';
 }
 
 /** A case needs a workflow iff something judges one: execution scenarios or
@@ -856,6 +876,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				conversation,
 				messageBudget: config.messageBudget,
+				buildMode: resolveEvalBuildMode(config.buildMode),
 				events,
 				approvedRequests,
 				startTime,
@@ -886,6 +907,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				threadId,
 				openingMessage + scenarioSeedTablesNote,
 				openingAttachments,
+				resolveEvalBuildMode(config.buildMode),
 			);
 			await waitForAllActivity({
 				client,
