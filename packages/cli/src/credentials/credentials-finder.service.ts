@@ -2,7 +2,7 @@ import type { SharedCredentials, User } from '@n8n/db';
 import {
 	CredentialsEntity,
 	CredentialsRepository,
-	idChunks,
+	chunkIds,
 	SharedCredentialsRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -311,7 +311,7 @@ export class CredentialsFinderService {
 		}
 
 		const result = new Set<string>();
-		for (const chunk of idChunks(credentialIds)) {
+		for (const chunk of chunkIds(credentialIds)) {
 			const sharedCredentials = await this.sharedCredentialsRepository.find({
 				select: { credentialsId: true },
 				where: { ...where, credentialsId: In(chunk) },
@@ -323,7 +323,7 @@ export class CredentialsFinderService {
 
 		// Also include global credentials if scopes allow read-only access
 		if (this.hasGlobalReadOnlyAccess(scopes)) {
-			for (const chunk of idChunks(credentialIds)) {
+			for (const chunk of chunkIds(credentialIds)) {
 				const globalCreds = await this.credentialsRepository.find({
 					where: { id: In(chunk), isGlobal: true, usageScope: 'project' },
 					select: ['id'],
@@ -332,7 +332,7 @@ export class CredentialsFinderService {
 			}
 		} else if (this.hasGlobalConnectAccess(scopes)) {
 			// Only end-user (resolvable) global credentials grant connect access.
-			for (const chunk of idChunks(credentialIds)) {
+			for (const chunk of chunkIds(credentialIds)) {
 				const globalCreds = await this.credentialsRepository.find({
 					where: {
 						id: In(chunk),
