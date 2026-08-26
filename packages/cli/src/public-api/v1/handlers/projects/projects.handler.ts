@@ -6,17 +6,8 @@ import {
 	UpdateProjectWithRelationsDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
-
-import { ProjectController } from '@/controllers/project.controller';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import type { PaginatedRequest } from '@/public-api/types';
-import { ProjectService } from '@/services/project.service.ee';
 
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
@@ -25,6 +16,14 @@ import {
 	validCursor,
 } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
+
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import type { PaginatedRequest } from '@/public-api/types';
+import { ProjectService, TeamProjectOverQuotaError } from '@/services/project.service.ee';
 
 type GetAll = PaginatedRequest;
 type GetProjectUsersRequest = AuthenticatedRequest<{ projectId: string }> & GetAll;
@@ -63,9 +62,24 @@ const projectHandlers: ProjectHandlers = {
 				throw new BadRequestError(payload.error.errors[0].message);
 			}
 
-			const project = await Container.get(ProjectController).createProject(req, res, payload.data);
+			const projectService = Container.get(ProjectService);
 
-			return res.status(201).json(project);
+			const project = await projectService.createTeamProject(req.user, payload.data).catch((e) => {
+				if (e instanceof TeamProjectOverQuotaError) {
+					throw new BadRequestError(e.message);
+				}
+				throw e;
+			});
+
+			Container.get(EventService).emit('team-project-created', {
+				userId: req.user.id,
+				role: req.user.role.slug,
+				uiContext: payload.data.uiContext,
+			});
+
+			const scopes = await projectService.getProjectScopesForUser(req.user, project.id);
+
+			return res.status(201).json({ ...project, role: 'project:admin', scopes });
 		},
 	],
 	updateProject: [
@@ -77,12 +91,17 @@ const projectHandlers: ProjectHandlers = {
 				throw new BadRequestError(payload.error.errors[0].message);
 			}
 
-			await Container.get(ProjectController).updateProject(
-				req,
-				res,
-				payload.data,
-				req.params.projectId,
-			);
+			const { projectId } = req.params;
+			await Container.get(ProjectService).updateProject(projectId, payload.data);
+
+			Container.get(EventService).emit('team-project-updated', {
+				userId: req.user.id,
+				role: req.user.role.slug,
+				projectId,
+				...(payload.data.customTelemetryTags !== undefined
+					? { otelProjectCustomTagsCount: payload.data.customTelemetryTags.length }
+					: {}),
+			});
 
 			return res.status(204).send();
 		},
@@ -96,12 +115,19 @@ const projectHandlers: ProjectHandlers = {
 				throw new BadRequestError(query.error.errors[0].message);
 			}
 
-			await Container.get(ProjectController).deleteProject(
-				req,
-				res,
-				query.data,
-				req.params.projectId,
-			);
+			const { projectId } = req.params;
+			const { transferId } = query.data;
+			await Container.get(ProjectService).deleteProject(req.user, projectId, {
+				migrateToProject: transferId,
+			});
+
+			Container.get(EventService).emit('team-project-deleted', {
+				userId: req.user.id,
+				role: req.user.role.slug,
+				projectId,
+				removalType: transferId !== undefined ? 'transfer' : 'delete',
+				targetProjectId: transferId,
+			});
 
 			return res.status(204).send();
 		},
@@ -113,7 +139,7 @@ const projectHandlers: ProjectHandlers = {
 		async (req, res) => {
 			const { offset = 0, limit = 100 } = req.query;
 
-			const [projects, count] = await Container.get(ProjectRepository).findAndCount({
+			const [projects, count] = await Container.get(ProjectService).getProjectsAndCount({
 				skip: offset,
 				take: limit,
 			});
@@ -145,10 +171,7 @@ const projectHandlers: ProjectHandlers = {
 				throw new NotFoundError(`Could not find project with ID "${projectId}"`);
 			}
 
-			const projectRelationRepository = Container.get(ProjectRelationRepository);
-			const [relations, count] = await projectRelationRepository.findAndCount({
-				where: { projectId },
-				relations: { user: true, role: true },
+			const [relations, count] = await projectService.getProjectMembersAndCount(projectId, {
 				skip: offset,
 				take: limit,
 			});

@@ -18,6 +18,8 @@ import {
 	getAuthPrincipalScopes,
 	hasGlobalScope,
 	type Scope,
+	type GlobalRole,
+	type ProjectRole,
 	AssignableProjectRole,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_ADMIN_ROLE_SLUG,
@@ -27,12 +29,12 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
+import { OwnershipService } from './ownership.service';
+import { RoleService } from './role.service';
+
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-
-import { OwnershipService } from './ownership.service';
-import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -68,6 +70,11 @@ export interface ProjectCreateOverrides {
 	description?: string | null;
 	customTelemetryTags?: Array<{ key: string; value: string }>;
 }
+
+export type ProjectWithRelationsAndScopes = Project & {
+	role: ProjectRole | AssignableProjectRole | GlobalRole;
+	scopes?: Scope[];
+};
 
 @Service()
 export class ProjectService {
@@ -385,8 +392,73 @@ export class ProjectService {
 		return await this.projectRepository.getShareableProjectsAndCount(user.id, options);
 	}
 
+	async getProjectsAndCount({
+		skip,
+		take,
+	}: {
+		skip: number;
+		take: number;
+	}): Promise<[Project[], number]> {
+		return await this.projectRepository.findAndCount({ skip, take });
+	}
+
 	async getPersonalProjectOwners(projectIds: string[]): Promise<ProjectRelation[]> {
 		return await this.projectRelationRepository.getPersonalProjectOwners(projectIds);
+	}
+
+	async getMyProjects(user: User): Promise<ProjectWithRelationsAndScopes[]> {
+		const relations = await this.getProjectRelationsForUser(user);
+		const otherTeamProjects = hasGlobalScope(user, 'project:read')
+			? await this.projectRepository.findTeamProjectsExcluding(relations.map((pr) => pr.projectId))
+			: [];
+
+		const results: ProjectWithRelationsAndScopes[] = [];
+
+		for (const pr of relations) {
+			const result: ProjectWithRelationsAndScopes = Object.assign(
+				this.projectRepository.create(pr.project),
+				{ role: pr.role.slug, scopes: [] },
+			);
+
+			if (result.scopes) {
+				result.scopes.push(
+					...combineScopes({
+						global: getAuthPrincipalScopes(user),
+						project: pr.role.scopes.map((scope) => scope.slug),
+					}),
+				);
+			}
+
+			results.push(result);
+		}
+
+		for (const project of otherTeamProjects) {
+			const result: ProjectWithRelationsAndScopes = Object.assign(
+				this.projectRepository.create(project),
+				{
+					// If the user has the global `project:read` scope then they may not
+					// own this relationship in that case we use the global user role
+					// instead of the relation role, which is for another user.
+					role: user.role.slug,
+					scopes: [],
+				},
+			);
+
+			if (result.scopes) {
+				result.scopes.push(...combineScopes({ global: getAuthPrincipalScopes(user) }));
+			}
+
+			results.push(result);
+		}
+
+		// Deduplicate and sort scopes
+		for (const result of results) {
+			if (result.scopes) {
+				result.scopes = [...new Set(result.scopes)].sort();
+			}
+		}
+
+		return results;
 	}
 
 	private async createTeamProjectWithEntityManager(
@@ -848,6 +920,28 @@ export class ProjectService {
 			where: { projectId, userId },
 			relations: { user: true, role: true },
 		});
+	}
+
+	async getProjectMembersAndCount(
+		projectId: string,
+		{ skip, take }: { skip: number; take: number },
+	): Promise<[ProjectRelation[], number]> {
+		return await this.projectRelationRepository.findAndCount({
+			where: { projectId },
+			relations: { user: true, role: true },
+			skip,
+			take,
+		});
+	}
+
+	async getProjectScopesForUser(user: User, projectId: string): Promise<Scope[]> {
+		const relation = await this.getProjectRelationForUserAndProject(user.id, projectId);
+		return [
+			...combineScopes({
+				global: getAuthPrincipalScopes(user),
+				project: relation?.role.scopes.map((scope) => scope.slug) ?? [],
+			}),
+		];
 	}
 
 	async getUserOwnedOrAdminProjects(userId: string): Promise<Project[]> {

@@ -6,7 +6,7 @@ import {
 	ChangeUserRoleInProject,
 	ListProjectsQueryDto,
 } from '@n8n/api-types';
-import { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
+import { AuthenticatedRequest } from '@n8n/db';
 import {
 	Get,
 	Post,
@@ -20,9 +20,7 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
-import { combineScopes, getAuthPrincipalScopes, hasGlobalScope } from '@n8n/permissions';
-import type { Scope } from '@n8n/permissions';
-import { In, Not } from '@n8n/typeorm';
+import { combineScopes, getAuthPrincipalScopes } from '@n8n/permissions';
 import { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -42,7 +40,6 @@ import { UserManagementMailer } from '@/user-management/email';
 export class ProjectController {
 	constructor(
 		private readonly projectsService: ProjectService,
-		private readonly projectRepository: ProjectRepository,
 		private readonly eventService: EventService,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly provisioningService: ProvisioningService,
@@ -108,20 +105,10 @@ export class ProjectController {
 				uiContext: payload.uiContext,
 			});
 
-			const relation = await this.projectsService.getProjectRelationForUserAndProject(
-				req.user.id,
-				project.id,
-			);
-
 			return {
 				...project,
 				role: 'project:admin',
-				scopes: [
-					...combineScopes({
-						global: getAuthPrincipalScopes(req.user),
-						project: relation?.role.scopes.map((scope) => scope.slug) ?? [],
-					}),
-				],
+				scopes: await this.projectsService.getProjectScopesForUser(req.user, project.id),
 			};
 		} catch (e) {
 			if (e instanceof TeamProjectOverQuotaError) {
@@ -136,61 +123,7 @@ export class ProjectController {
 		req: AuthenticatedRequest,
 		_res: Response,
 	): Promise<ProjectRequest.GetMyProjectsResponse> {
-		const relations = await this.projectsService.getProjectRelationsForUser(req.user);
-		const otherTeamProject = hasGlobalScope(req.user, 'project:read')
-			? await this.projectRepository.findBy({
-					type: 'team',
-					id: Not(In(relations.map((pr) => pr.projectId))),
-				})
-			: [];
-
-		const results: ProjectRequest.GetMyProjectsResponse = [];
-
-		for (const pr of relations) {
-			const result: ProjectRequest.GetMyProjectsResponse[number] = Object.assign(
-				this.projectRepository.create(pr.project),
-				{ role: pr.role.slug, scopes: [] },
-			);
-
-			if (result.scopes) {
-				result.scopes.push(
-					...combineScopes({
-						global: getAuthPrincipalScopes(req.user),
-						project: pr.role.scopes.map((scope) => scope.slug),
-					}),
-				);
-			}
-
-			results.push(result);
-		}
-
-		for (const project of otherTeamProject) {
-			const result: ProjectRequest.GetMyProjectsResponse[number] = Object.assign(
-				this.projectRepository.create(project),
-				{
-					// If the user has the global `project:read` scope then they may not
-					// own this relationship in that case we use the global user role
-					// instead of the relation role, which is for another user.
-					role: req.user.role.slug,
-					scopes: [],
-				},
-			);
-
-			if (result.scopes) {
-				result.scopes.push(...combineScopes({ global: getAuthPrincipalScopes(req.user) }));
-			}
-
-			results.push(result);
-		}
-
-		// Deduplicate and sort scopes
-		for (const result of results) {
-			if (result.scopes) {
-				result.scopes = [...new Set(result.scopes)].sort();
-			}
-		}
-
-		return results;
+		return await this.projectsService.getMyProjects(req.user);
 	}
 
 	@Get('/personal')
@@ -200,16 +133,7 @@ export class ProjectController {
 			throw new NotFoundError('Could not find a personal project for this user');
 		}
 
-		const relation = await this.projectsService.getProjectRelationForUserAndProject(
-			req.user.id,
-			project.id,
-		);
-		const scopes: Scope[] = [
-			...combineScopes({
-				global: getAuthPrincipalScopes(req.user),
-				project: relation?.role.scopes.map((scope) => scope.slug) ?? [],
-			}),
-		];
+		const scopes = await this.projectsService.getProjectScopesForUser(req.user, project.id);
 		return {
 			...project,
 			scopes,

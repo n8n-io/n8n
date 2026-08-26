@@ -1,5 +1,5 @@
 import { ListProjectsQueryDto } from '@n8n/api-types';
-import type { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
+import type { AuthenticatedRequest } from '@n8n/db';
 import type { Response } from 'express';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -13,13 +13,11 @@ import type { UserManagementMailer } from '@/user-management/email';
 describe('ProjectController', () => {
 	const eventService = mock<EventService>();
 	const projectsService = mock<ProjectService>();
-	const projectRepository = mock<ProjectRepository>();
 	const userManagementMailer = mock<UserManagementMailer>();
 	const provisioningService = mock<ProvisioningService>();
 
 	const controller = new ProjectController(
 		projectsService as unknown as ProjectService,
-		projectRepository as unknown as ProjectRepository,
 		eventService as unknown as EventService,
 		userManagementMailer as unknown as UserManagementMailer,
 		provisioningService as unknown as ProvisioningService,
