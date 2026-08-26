@@ -214,7 +214,10 @@ export {
 	clearedAgentBuilderTargetMetadata,
 	seedAgentBuilderTargetMetadata,
 	saveAgentBuilderTarget,
+	threadAuthorizesAgentAdoption,
+	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
+export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,

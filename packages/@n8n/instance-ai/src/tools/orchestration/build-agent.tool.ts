@@ -931,19 +931,33 @@ async function resolveTargetForCall(
 					mode: 'continued',
 				};
 			}
+			// Adoption is authorized precisely when the id came from this thread's
+			// own pending marker: the editor may have won the insert on it and
+			// already configured the row. A backend-minted id can't collide, so the
+			// flag is meaningless there.
+			const pendingId = await pendingAgentIdFor(domainContext);
 			const created = await delegate.createAgent(
 				input.name,
-				await pendingAgentIdFor(domainContext),
+				pendingId ? { id: pendingId, adoptOnCollision: true } : undefined,
 			);
 			const target: AgentBuilderTarget = {
 				agentId: created.agentId,
 				projectId: created.projectId,
-				name: input.name,
+				// An adopted row keeps the name it was configured with; labelling the
+				// binding with the requested one would show a name nothing persisted.
+				name: created.name ?? input.name,
 				ref: key,
 			};
 			domainContext.agentBuilderTarget = target;
 			await saveAgentBuilderTarget(domainContext, target);
-			return { ok: true, target, bindAfterTurn: false, mode: 'create' };
+			// Adopting means the editor won the insert on the pending id, so this turn
+			// is editing an existing agent — which the pre-turn snapshot depends on.
+			return {
+				ok: true,
+				target,
+				bindAfterTurn: false,
+				mode: created.adopted ? 'edit' : 'create',
+			};
 		}
 
 		return { ok: false, error: UNKNOWN_REF_ERROR };

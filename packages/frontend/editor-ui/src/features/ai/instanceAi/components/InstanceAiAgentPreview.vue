@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import AgentBuilderView from '@/features/agents/views/AgentBuilderView.vue';
 import type { AgentResource } from '@/features/agents/types';
+import { persistPendingAgent } from '../instanceAi.memory.api';
 import { isAgentEditingAgent } from '../canvasPreview.utils';
 import {
 	getAgentBuilderTargetFromThreadMetadata,
@@ -36,6 +38,7 @@ const emit = defineEmits<{
 // `artifact-editing-locked` on `AgentBuilderView`.
 const thread = useThread();
 const instanceAiStore = useInstanceAiStore();
+const rootStore = useRootStore();
 
 const isAgentBuilding = computed(() => {
 	for (const message of thread.messages) {
@@ -68,8 +71,21 @@ async function syncAgentTarget(name: string) {
 	});
 }
 
-async function onAgentPersisted(agent: AgentResource) {
-	await syncAgentTarget(agent.name);
+/**
+ * Persist the pending artifact: one request creates (or adopts, when the chat
+ * already created it under the same id) the agent and replaces this thread's
+ * pending marker with the bound target. The builder treats resolution as the
+ * acknowledgement, so the binding is durable before it stops drafting.
+ */
+async function persistAgent(name: string): Promise<AgentResource> {
+	const { agent, thread: updatedThread } = await persistPendingAgent(
+		rootStore.restApiContext,
+		thread.id,
+		{ projectId: props.projectId, agentId: props.agentId, name },
+	);
+	// Authoritative: the server dropped the pending key, which a merge would keep.
+	instanceAiStore.setThreadMetadata(thread.id, updatedThread.metadata);
+	return agent;
 }
 </script>
 
@@ -82,7 +98,7 @@ async function onAgentPersisted(agent: AgentResource) {
 			:artifact-preview-session-id="props.previewSessionId"
 			:artifact-agent-pending="props.pending"
 			:artifact-editing-locked="isAgentBuilding"
-			@persisted="onAgentPersisted"
+			:artifact-persist-agent="persistAgent"
 			@preview-open-change="emit('preview-open-change', $event)"
 			@assistant-handoff="emit('assistant-handoff', $event)"
 			@name-saved="syncAgentTarget"

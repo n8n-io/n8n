@@ -261,6 +261,16 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		return typeof used === 'number' ? used : undefined;
 	}
 
+	/**
+	 * Replace a thread's metadata with an authoritative server copy — used after a
+	 * write the server itself made (e.g. persisting a pending agent binds it),
+	 * where a merge would keep locally-known keys the server just removed.
+	 */
+	function setThreadMetadata(threadId: string, metadata: Record<string, unknown> | undefined) {
+		const thread = threads.value.find((t) => t.id === threadId);
+		if (thread) thread.metadata = metadata;
+	}
+
 	async function updateThreadMetadata(
 		threadId: string,
 		metadata: Record<string, unknown>,
@@ -299,6 +309,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		getThreadMetadata,
 		threadCreditsUsed,
 		updateThreadMetadata,
+		setThreadMetadata,
 		loadThreads,
 		fetchCredits,
 		handleCreditsPush,

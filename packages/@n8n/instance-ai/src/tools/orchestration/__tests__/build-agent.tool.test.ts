@@ -1206,7 +1206,10 @@ describe('build-agent tool', () => {
 
 			await runTool(context, { message: 'Build it', name: 'Support Triage' });
 
-			expect(delegate.createAgent).toHaveBeenCalledWith('Support Triage', 'aBcDeFgHiJkLmNoP');
+			expect(delegate.createAgent).toHaveBeenCalledWith('Support Triage', {
+				id: 'aBcDeFgHiJkLmNoP',
+				adoptOnCollision: true,
+			});
 		});
 
 		it('ignores a pending artifact belonging to another project', async () => {

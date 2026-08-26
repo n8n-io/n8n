@@ -217,7 +217,7 @@ describe('AgentsService', () => {
 			);
 		});
 
-		it('adopts a same-project unconfigured agent when the builder race flag is set', async () => {
+		it('adopts a same-project agent when the adoption flag is set', async () => {
 			const { service, agentRepository } = makeService();
 			const raced = makeAgent({
 				id: mintedId,
@@ -231,7 +231,7 @@ describe('AgentsService', () => {
 			await expect(
 				service.create(projectId, 'Support Agent', {
 					id: mintedId,
-					adoptUnconfiguredOnCollision: true,
+					adoptOnCollision: true,
 				}),
 			).resolves.toBe(raced);
 		});
@@ -252,23 +252,32 @@ describe('AgentsService', () => {
 			expect(agentRepository.findByIdAndProjectId).not.toHaveBeenCalled();
 		});
 
-		it('rejects when the same-project row is already configured, even with the adoption flag', async () => {
+		// The whole point of the adoption path: the winner of the insert usually
+		// gets to configure the row before the loser collides on it.
+		it('adopts an already configured same-project row, unchanged', async () => {
 			const { service, agentRepository } = makeService();
 			const configured = makeAgent({
 				id: mintedId,
-				schema: { name: 'Support Agent', model: 'anthropic/claude-sonnet-4-5', instructions: 'Hi' },
+				name: 'Support Triage',
+				schema: {
+					name: 'Support Triage',
+					model: 'anthropic/claude-sonnet-4-5',
+					instructions: 'Hi',
+				},
 				integrations: [],
 			});
-			agentRepository.create.mockReturnValue(configured);
+			agentRepository.create.mockReturnValue(makeAgent({ id: mintedId }));
 			agentRepository.save.mockRejectedValue(uniqueViolation());
 			agentRepository.findByIdAndProjectId.mockResolvedValue(configured);
 
 			await expect(
-				service.create(projectId, 'Support Agent', {
+				service.create(projectId, 'New Agent', {
 					id: mintedId,
-					adoptUnconfiguredOnCollision: true,
+					adoptOnCollision: true,
 				}),
-			).rejects.toThrow(ConflictError);
+			).resolves.toBe(configured);
+			// The draft name/config this call carried must not overwrite the winner's.
+			expect(agentRepository.save).toHaveBeenCalledTimes(1);
 		});
 
 		it('rejects without disclosing when the id collides outside this project', async () => {
@@ -280,7 +289,7 @@ describe('AgentsService', () => {
 			await expect(
 				service.create(projectId, 'Support Agent', {
 					id: mintedId,
-					adoptUnconfiguredOnCollision: true,
+					adoptOnCollision: true,
 				}),
 			).rejects.toThrow(ConflictError);
 		});

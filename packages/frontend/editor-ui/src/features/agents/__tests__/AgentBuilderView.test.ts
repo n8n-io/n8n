@@ -620,6 +620,27 @@ const commonStubs = {
 // Common reset shared by every describe block below. Each describe's own
 // beforeEach calls this first, then applies its own divergent setup
 // (permission defaults, spy restoration, or mocks it alone exercises).
+function notFoundError() {
+	return Object.assign(new Error('Agent not found'), { httpStatusCode: 404 });
+}
+
+/**
+ * Model the server for client-minted ids: a pending artifact's id has no row
+ * behind it until this view creates one, so the hydration probe 404s first and
+ * resolves afterwards. Without this a pending test silently exercises the
+ * already-persisted path instead.
+ */
+function mockPendingAgentRow(...pendingIds: string[]) {
+	const absent = new Set(pendingIds);
+	getAgentMock.mockImplementation(async (_context, projectId: string, id: string) => {
+		const created = createAgentMock.mock.calls.some(
+			(call) => (call[3] as { id?: string } | undefined)?.id === id,
+		);
+		if (absent.has(id) && !created) throw notFoundError();
+		return makeAgentResponse({ id, projectId });
+	});
+}
+
 function resetViewMocks() {
 	vi.clearAllMocks();
 	for (let index = localStorage.length - 1; index >= 0; index--) {
@@ -1446,6 +1467,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 	});
 
 	it('flushes edits and persists an unsaved artifact before a Preview message', async () => {
+		mockPendingAgentRow('a2');
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -1481,6 +1503,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 	it('shows an error when an unsaved artifact cannot be prepared for Preview', async () => {
 		const error = new Error('create failed');
+		mockPendingAgentRow('a2');
 		createAgentMock.mockRejectedValueOnce(error);
 		const wrapper = await renderView({
 			props: {
@@ -1557,6 +1580,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 			routerPush.mockClear();
 			routerReplace.mockClear();
+			mockPendingAgentRow(nextProps.artifactAgentId ?? 'a2');
 			await wrapper.setProps(nextProps);
 			await flushPromises();
 
@@ -1575,6 +1599,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		createAgentMock
 			.mockReturnValueOnce(firstCreate.promise)
 			.mockReturnValueOnce(secondCreate.promise);
+		mockPendingAgentRow('a2', 'a3');
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -1583,6 +1608,8 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 				artifactAgentPending: true,
 			},
 		});
+		const unsaved = () =>
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved');
 		const firstSend = (await startArtifactPreviewSend(wrapper, 'ephemeral-a2')).pending;
 		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledTimes(1));
 
@@ -1595,11 +1622,12 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 
 		firstCreate.resolve(makeAgentResponse({ id: 'a2' }));
 		await firstSend;
-		expect(wrapper.emitted('persisted')).toBeUndefined();
+		// a2's create landing must not mark the a3 artifact saved.
+		expect(unsaved()).toBe(true);
 
 		secondCreate.resolve(makeAgentResponse({ id: 'a3' }));
 		await secondSend;
-		expect(wrapper.emitted('persisted')).toEqual([[expect.objectContaining({ id: 'a3' })]]);
+		expect(unsaved()).toBe(false);
 	});
 
 	it('reuses an unresolved persistence flight when returning to its artifact target', async () => {
@@ -1608,6 +1636,7 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		createAgentMock
 			.mockReturnValueOnce(firstCreate.promise)
 			.mockReturnValueOnce(secondCreate.promise);
+		mockPendingAgentRow('a2', 'a3');
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -1631,12 +1660,17 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		firstCreate.resolve(makeAgentResponse({ id: 'a2' }));
 		secondCreate.resolve(makeAgentResponse({ id: 'a3' }));
 		await Promise.all([firstSend, secondSend, returnedSend]);
-		expect(wrapper.emitted('persisted')).toEqual([[expect.objectContaining({ id: 'a2' })]]);
+		// The returning send joined a2's existing flight instead of starting a third.
+		expect(createAgentMock).toHaveBeenCalledTimes(2);
+		expect(wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved')).toBe(
+			false,
+		);
 	});
 
 	it('reuses a successfully created resource when returning to its pending artifact target', async () => {
 		const firstCreate = Promise.withResolvers<ReturnType<typeof makeAgentResponse>>();
 		createAgentMock.mockReturnValueOnce(firstCreate.promise);
+		mockPendingAgentRow('a2', 'a3');
 		const wrapper = await renderView({
 			props: {
 				artifactMode: true,
@@ -1645,6 +1679,8 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 				artifactAgentPending: true,
 			},
 		});
+		const unsaved = () =>
+			wrapper.findComponent({ name: 'AgentBuilderEditorColumn' }).props('agentUnsaved');
 
 		const firstSend = (await startArtifactPreviewSend(wrapper, 'ephemeral-a2')).pending;
 		await vi.waitFor(() => expect(createAgentMock).toHaveBeenCalledOnce());
@@ -1652,15 +1688,16 @@ describe('AgentBuilderView — preview routing', { timeout: 60_000 }, () => {
 		await flushPromises();
 		firstCreate.resolve(makeAgentResponse({ id: 'a2' }));
 		await firstSend;
-		expect(wrapper.emitted('persisted')).toBeUndefined();
+		expect(unsaved()).toBe(true);
 
 		await wrapper.setProps({ artifactAgentId: 'a2' });
 		await flushPromises();
 		const returnedSend = await startArtifactPreviewSend(wrapper, 'ephemeral-a2-return');
 		await returnedSend.pending;
 
+		// a2 was already created — returning to it reuses that row.
 		expect(createAgentMock).toHaveBeenCalledOnce();
-		expect(wrapper.emitted('persisted')).toEqual([[expect.objectContaining({ id: 'a2' })]]);
+		expect(unsaved()).toBe(false);
 	});
 
 	it('restarts an in-flight draft initialization when the host reports external persistence', async () => {
@@ -2574,12 +2611,43 @@ describe('AgentBuilderView — three-column shell', () => {
 			artifactAgentPending: true,
 		};
 
-		it('renders without reading anything for an agent that does not exist yet', async () => {
+		beforeEach(() => {
+			mockPendingAgentRow('aBcDeFgHiJkLmNoP');
+		});
+
+		it('reads nothing but the existence probe for an agent that does not exist yet', async () => {
 			await renderView({ props: pendingProps });
 
-			expect(getAgentMock).not.toHaveBeenCalled();
+			expect(getAgentMock).toHaveBeenCalledTimes(1);
 			expect(fetchConfigMock).not.toHaveBeenCalled();
 			expect(createAgentMock).not.toHaveBeenCalled();
+		});
+
+		// A stale pending marker (the chat created the agent under this id, or a
+		// previous binding write failed) must not draft over the real row.
+		it('hydrates an existing row instead of drafting over it', async () => {
+			getAgentMock.mockReset();
+			getAgentMock.mockResolvedValue(
+				makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP', name: 'Support Triage' }),
+			);
+			const artifactPersistAgent = vi
+				.fn()
+				.mockResolvedValue(makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP', name: 'Support Triage' }));
+			const wrapper = await renderView({
+				props: { ...pendingProps, artifactPersistAgent },
+			});
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+			expect(editor.props('agentUnsaved')).toBe(false);
+			expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'aBcDeFgHiJkLmNoP');
+			// The host is told, so it can retire the stale pending marker.
+			await vi.waitFor(() => expect(artifactPersistAgent).toHaveBeenCalledTimes(1));
+
+			editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+			// No second persist: the row already exists.
+			expect(createAgentMock).not.toHaveBeenCalled();
+			expect(artifactPersistAgent).toHaveBeenCalledTimes(1);
 		});
 
 		it('creates the pending agent once and refreshes validation after the first save', async () => {
@@ -2640,15 +2708,50 @@ describe('AgentBuilderView — three-column shell', () => {
 			);
 		});
 
-		it('reports the agent so the host can stop treating the artifact as pending', async () => {
-			const wrapper = await renderView({ props: pendingProps });
+		// The host's persist call creates AND durably binds the agent, so it stands
+		// in for the plain create — and only its resolution retires the draft.
+		it('persists a hosted artifact through the host, not the strict create', async () => {
+			const persisted = makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP' });
+			const artifactPersistAgent = vi.fn().mockResolvedValue(persisted);
+			const wrapper = await renderView({
+				props: { ...pendingProps, artifactPersistAgent },
+			});
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
 
-			wrapper
-				.findComponent({ name: 'AgentBuilderEditorColumn' })
-				.vm.$emit('update:config', { instructions: 'Answer support mail' });
+			editor.vm.$emit('update:config', { name: 'Support Agent' });
 			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
 
-			expect(wrapper.emitted('persisted')).toHaveLength(1);
+			expect(artifactPersistAgent).toHaveBeenCalledTimes(1);
+			expect(artifactPersistAgent).toHaveBeenCalledWith('Support Agent');
+			expect(createAgentMock).not.toHaveBeenCalled();
+			expect(editor.props('agentUnsaved')).toBe(false);
+		});
+
+		it('keeps drafting when the host cannot bind the agent, and retries on the next edit', async () => {
+			const persisted = makeAgentResponse({ id: 'aBcDeFgHiJkLmNoP' });
+			const artifactPersistAgent = vi
+				.fn()
+				.mockRejectedValueOnce(new Error('binding failed'))
+				.mockResolvedValue(persisted);
+			const wrapper = await renderView({
+				props: { ...pendingProps, artifactPersistAgent },
+			});
+			const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+			editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+			await vi.waitFor(() => expect(artifactPersistAgent).toHaveBeenCalledTimes(1));
+			await flushPromises();
+
+			// An unbound agent must not have its config written, and the artifact
+			// stays a draft so the next edit retries.
+			expect(updateConfigMock).not.toHaveBeenCalled();
+			expect(editor.props('agentUnsaved')).toBe(true);
+
+			editor.vm.$emit('update:config', { instructions: 'Answer support mail, politely' });
+			await vi.waitFor(() => expect(updateConfigMock).toHaveBeenCalled());
+
+			expect(artifactPersistAgent).toHaveBeenCalledTimes(2);
+			expect(editor.props('agentUnsaved')).toBe(false);
 		});
 
 		it('keeps the editor mounted while a newly persisted artifact hydrates', async () => {
@@ -3338,6 +3441,7 @@ describe('AgentBuilderView — evals focus request', { timeout: 60_000 }, () => 
 	it('ignores the request while the agent is still unsaved', async () => {
 		// Unsaved narrows the row to Agent only, so honouring the request here
 		// would render evals content with no Evals tab visible to match it.
+		mockPendingAgentRow('aBcDeFgHiJkLmNoP');
 		const wrapper = await seedFocusRequest('aBcDeFgHiJkLmNoP', true, {
 			artifactMode: true,
 			artifactProjectId: 'p1',
