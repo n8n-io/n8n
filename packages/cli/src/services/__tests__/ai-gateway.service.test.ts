@@ -121,7 +121,7 @@ describe('AiGatewayService', () => {
 			const result = await service.getGatewayConfig();
 
 			expect(result).toEqual(MOCK_GATEWAY_CONFIG);
-			expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(outboundHttp.requests).toHaveBeenCalledWith({ useDefaultSsrfPolicy: 'unsafe' });
 			expect(requestMock).toHaveBeenCalledWith(
 				expect.objectContaining({ method: 'GET', url: `${BASE_URL}/v1/gateway/config` }),
 			);
