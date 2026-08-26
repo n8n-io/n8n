@@ -31,9 +31,3 @@ export class ConnectionLostError extends ImapError {
 		super('Connection to the IMAP server was lost');
 	}
 }
-
-export class ReconnectTimeoutError extends ImapError {
-	constructor() {
-		super('Reconnecting to the IMAP server timed out');
-	}
-}
