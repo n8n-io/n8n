@@ -7,6 +7,7 @@ import { QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { EventService } from '@/events/event.service';
 import type { Telemetry } from '@/telemetry';
 
@@ -222,6 +223,86 @@ describe('AgentPublishService', () => {
 		expect(trx.save).not.toHaveBeenCalled();
 		expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
 		expect(agent.activeVersionId).toBeNull();
+	});
+
+	describe('channel startup preflight', () => {
+		const telegram = { type: 'telegram', credentialId: 'cred-1' } as const;
+
+		it('rejects the publish when a channel cannot start, leaving nothing written', async () => {
+			const {
+				service,
+				agentRepository,
+				agentHistoryRepository,
+				chatIntegrationService,
+				runtimeCacheService,
+				trx,
+			} = makeService();
+			const agent = makeAgent({ integrations: [telegram] });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+			chatIntegrationService.assertStartupPreconditions.mockRejectedValue(
+				new ConflictError('This Telegram credential is already connected to agent "Other"'),
+			);
+
+			await expect(service.publishAgent(agentId, projectId, user, byUser)).rejects.toThrow(
+				ConflictError,
+			);
+
+			expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+			expect(trx.save).not.toHaveBeenCalled();
+			expect(runtimeCacheService.clearRuntimes).not.toHaveBeenCalled();
+			expect(chatIntegrationService.syncToConfig).not.toHaveBeenCalled();
+			expect(agent.activeVersionId).toBeNull();
+		});
+
+		it('checks every configured channel and skips draft entries, which have no credential', async () => {
+			const { service, agentRepository, chatIntegrationService } = makeService();
+			const draft = { type: 'slack', credentialId: '' } as const;
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ integrations: [telegram, draft] }),
+			);
+
+			await service.publishAgent(agentId, projectId, user, byUser);
+
+			expect(chatIntegrationService.assertStartupPreconditions).toHaveBeenCalledTimes(1);
+			expect(chatIntegrationService.assertStartupPreconditions).toHaveBeenCalledWith(
+				agentId,
+				telegram,
+				projectId,
+			);
+		});
+
+		it('preflights a channel whose settings a later version made required', async () => {
+			// Whether the preflight re-runs a platform's own `validateConfig` is
+			// asserted against the real service in `chat-integration.service.test.ts`;
+			// here the point is only that a legacy entry still reaches the preflight.
+			const { service, agentRepository, chatIntegrationService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ integrations: [{ type: 'telegram', credentialId: 'cred-1' }] }),
+			);
+
+			await expect(service.publishAgent(agentId, projectId, user, byUser)).resolves.toBeDefined();
+
+			expect(chatIntegrationService.assertStartupPreconditions).toHaveBeenCalledWith(
+				agentId,
+				{ type: 'telegram', credentialId: 'cred-1' },
+				projectId,
+			);
+		});
+
+		it('runs before the version is written, so a rejection cannot leave a half-publish', async () => {
+			const { service, agentRepository, chatIntegrationService, agentHistoryRepository } =
+				makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({ integrations: [telegram] }),
+			);
+			chatIntegrationService.assertStartupPreconditions.mockImplementation(async () => {
+				expect(agentHistoryRepository.saveVersion).not.toHaveBeenCalled();
+			});
+
+			await service.publishAgent(agentId, projectId, user, byUser);
+
+			expect(agentHistoryRepository.saveVersion).toHaveBeenCalled();
+		});
 	});
 
 	it('rejects publishing a specific version when its snapshot fails validation, without touching the current draft validator', async () => {
