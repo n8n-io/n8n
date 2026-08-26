@@ -370,6 +370,9 @@ describe('GlobalConfig', () => {
 			canvasNodeContextEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
+			activityLogEnabled: false,
+			activityLogRetentionDays: 14,
+			activityLogMaxEntries: 20_000,
 		},
 		queue: {
 			health: {

@@ -33,6 +33,7 @@ import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
 import { TestRunCleanupService } from '@/evaluation.ee/test-runner/test-run-cleanup.service.ee';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { ActivityLogEventRelay } from '@/events/relays/activity-log.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { ExecutionDataJsonStore } from '@/executions/execution-data/execution-data-json-store';
@@ -228,6 +229,9 @@ export abstract class BaseCommand<F = never> {
 		await Container.get(PostHogClient).init();
 		await Container.get(TelemetryEventRelay).init();
 		Container.get(WorkflowFailureNotificationEventRelay).init();
+		// Registered for every instance type: execution events fire on whichever process ran the
+		// execution, which in scaling mode is the worker.
+		Container.get(ActivityLogEventRelay).init();
 
 		if (this.needsExpressionEngine) {
 			const { engine, poolSize, maxCodeCacheSize, bridgeTimeout, bridgeMemoryLimit, idleTimeout } =

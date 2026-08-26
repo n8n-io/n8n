@@ -236,4 +236,20 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_ACTIVATION_LOCK_MESSAGE_THRESHOLD')
 	activationLockMessageThreshold: number = 1;
+
+	/**
+	 * Record recent instance activity (workflow changes, runs, failures, credential setup) to
+	 * `activity_event`, so the agent can be given it as context instead of discovering it.
+	 * Off by default: it adds a write per recorded event, including one per execution.
+	 */
+	@Env('N8N_INSTANCE_AI_ACTIVITY_LOG_ENABLED')
+	activityLogEnabled: boolean = false;
+
+	/** Days of activity to keep. Entries older than this are pruned. 0 = keep until the count cap bites. */
+	@Env('N8N_INSTANCE_AI_ACTIVITY_LOG_RETENTION_DAYS')
+	activityLogRetentionDays: number = 14;
+
+	/** Hard ceiling on stored entries, as a backstop for an instance busier than the age cap assumes. */
+	@Env('N8N_INSTANCE_AI_ACTIVITY_LOG_MAX_ENTRIES')
+	activityLogMaxEntries: number = 20_000;
 }

@@ -39,6 +39,7 @@ import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 import { PollJobProvider } from '@/scheduling/poll-trigger-node/poll-job-provider';
 import { Server } from '@/server';
+import { ActivityLogPruningService } from '@/services/activity-log-pruning.service';
 import { JwtService } from '@/services/jwt.service';
 import { ExecutionsPruningService } from '@/services/pruning/executions-pruning.service';
 import { WorkflowHistoryCompactionService } from '@/services/pruning/workflow-history-compaction.service';
@@ -410,6 +411,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		Container.get(ExecutionsPruningService).init();
 		Container.get(WorkflowHistoryCompactionService).init();
 		Container.get(WorkflowStatisticsRollupService).init();
+		Container.get(ActivityLogPruningService).init();
 		Container.get(N8NCheckpointStorage).init();
 		Container.get(DurableScheduler).start();
 

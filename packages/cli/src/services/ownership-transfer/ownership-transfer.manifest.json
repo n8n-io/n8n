@@ -73,6 +73,11 @@
 			"name": "GitConnectionProject",
 			"path": "packages/cli/src/modules/git-connections.ee/database/entities/git-connection-project.entity.ts",
 			"reason": "Project-scoped git configuration (which connection the project is linked to), not user data. Dropped via the projectId FK cascade when the source project itself is deleted, as in ownership-transfer flows."
+		},
+		{
+			"name": "ActivityEvent",
+			"path": "packages/@n8n/db/src/entities/activity-event.ts",
+			"reason": "Records what happened while the project existed; re-scoping entries to a new owner would falsify the record. Dropped via FK cascade with the project."
 		}
 	]
 }
