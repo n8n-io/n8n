@@ -54,7 +54,6 @@ const PAIRED_ITEM_METHOD = {
 	PAIRED_ITEM: 'pairedItem',
 	ITEM_MATCHING: 'itemMatching',
 	ITEM: 'item',
-	$GET_PAIRED_ITEM: '$getPairedItem',
 } as const;
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
@@ -815,36 +814,13 @@ export class WorkflowDataProxy {
 	 * Returns the data proxy object which allows to query data from current run
 	 *
 	 */
-	getDataProxy(opts?: { throwOnMissingExecutionData: boolean }): IWorkflowDataProxyData {
+	/**
+	 * Paired-item resolution and the expression errors it raises. Kept out of
+	 * `getDataProxy` so the execution engine can resolve paired items without
+	 * building the expression data object.
+	 */
+	private pairedItemHelpers() {
 		const that = this;
-
-		// replacing proxies with the actual data.
-		const jmespathWrapper = (data: IDataObject | IDataObject[], query: string) => {
-			if (typeof data !== 'object' || typeof query !== 'string') {
-				throw new ExpressionError('expected two arguments (Object, string) for this function', {
-					runIndex: that.runIndex,
-					itemIndex: that.itemIndex,
-				});
-			}
-
-			// jmespath decodes escape sequences inside quoted identifiers, so
-			// the token check below must run against an unescaped query. Reject
-			// any backslash up front to keep the property-name match meaningful.
-			if (query.includes('\\') || containsUnsafeObjectPropertyToken(query)) {
-				throw new ExpressionError(
-					'Cannot access this property in a jmespath query due to security concerns',
-					{
-						runIndex: that.runIndex,
-						itemIndex: that.itemIndex,
-					},
-				);
-			}
-
-			if (!Array.isArray(data) && typeof data === 'object') {
-				return jmespath.search({ ...data }, query);
-			}
-			return jmespath.search(data, query);
-		};
 
 		const createExpressionError = (
 			message: string,
@@ -1033,7 +1009,7 @@ export class WorkflowDataProxy {
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
-			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
+			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.PAIRED_ITEM,
 			nodeBeforeLast?: string,
 		): INodeExecutionData => {
 			// Normalize inputs
@@ -1105,6 +1081,69 @@ export class WorkflowDataProxy {
 
 			return first;
 		};
+
+		return {
+			createExpressionError,
+			createMissingPairedItemError,
+			createNoConnectionError,
+			getPairedItem,
+		};
+	}
+
+	/**
+	 * Resolves the item in `destinationNodeName` that the given paired item
+	 * traces back to. The execution engine calls this directly for error-output
+	 * items, so it is deliberately not part of the expression API.
+	 */
+	resolvePairedItem(
+		destinationNodeName: string,
+		incomingSourceData: ISourceData | null,
+		initialPairedItem: IPairedItemData,
+	): INodeExecutionData {
+		return this.pairedItemHelpers().getPairedItem(
+			destinationNodeName,
+			incomingSourceData,
+			initialPairedItem,
+		);
+	}
+
+	getDataProxy(opts?: { throwOnMissingExecutionData: boolean }): IWorkflowDataProxyData {
+		const that = this;
+
+		// replacing proxies with the actual data.
+		const jmespathWrapper = (data: IDataObject | IDataObject[], query: string) => {
+			if (typeof data !== 'object' || typeof query !== 'string') {
+				throw new ExpressionError('expected two arguments (Object, string) for this function', {
+					runIndex: that.runIndex,
+					itemIndex: that.itemIndex,
+				});
+			}
+
+			// jmespath decodes escape sequences inside quoted identifiers, so
+			// the token check below must run against an unescaped query. Reject
+			// any backslash up front to keep the property-name match meaningful.
+			if (query.includes('\\') || containsUnsafeObjectPropertyToken(query)) {
+				throw new ExpressionError(
+					'Cannot access this property in a jmespath query due to security concerns',
+					{
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					},
+				);
+			}
+
+			if (!Array.isArray(data) && typeof data === 'object') {
+				return jmespath.search({ ...data }, query);
+			}
+			return jmespath.search(data, query);
+		};
+
+		const {
+			createExpressionError,
+			createMissingPairedItemError,
+			createNoConnectionError,
+			getPairedItem,
+		} = this.pairedItemHelpers();
 
 		const handleFromAi = (
 			name: string,
@@ -1656,7 +1695,6 @@ export class WorkflowDataProxy {
 
 			Duration,
 			...that.additionalKeys,
-			$getPairedItem: getPairedItem,
 
 			// deprecated
 			$jmespath: jmespathWrapper,

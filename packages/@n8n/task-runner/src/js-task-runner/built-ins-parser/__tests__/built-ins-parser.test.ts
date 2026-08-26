@@ -289,7 +289,6 @@ describe('BuiltInsParser', () => {
 				'$secrets',
 				'$executionId',
 				'$resumeWebhookUrl',
-				'$getPairedItem',
 				'$jmespath',
 				'$position',
 				'$thisItem',
