@@ -3,6 +3,10 @@ import { jsonParse, jsonStringify } from 'n8n-workflow';
 
 const OPTIONS = { secrets: true, redactSensitiveKeys: true };
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 function parseJsonObject(value: string): object | undefined {
 	try {
 		const parsed: unknown = JSON.parse(value);
@@ -23,28 +27,55 @@ function serializeJson(original: string, parsed: unknown, redacted: unknown): st
 	return original.includes('\n') ? JSON.stringify(redacted, null, 2) : jsonStringify(redacted);
 }
 
-function redactJsonValue(value: unknown): unknown {
+/** Expand JSON-looking strings so nested payloads can be walked as structure. */
+function parseNestedJson(value: unknown): unknown {
 	if (typeof value === 'string') {
 		const parsed = parseJsonObject(value);
-		if (parsed !== undefined) {
-			return serializeJson(value, parsed, redactJsonValue(parsed));
-		}
-		return redactText(value, OPTIONS).text;
+		return parsed === undefined ? value : parseNestedJson(parsed);
 	}
 
 	if (Array.isArray(value)) {
-		return value.map(redactJsonValue);
+		return value.map(parseNestedJson);
 	}
 
-	if (value !== null && typeof value === 'object') {
+	if (isPlainObject(value)) {
 		const walked: Record<string, unknown> = {};
 		for (const [key, child] of Object.entries(value)) {
-			walked[key] = redactJsonValue(child);
+			walked[key] = parseNestedJson(child);
 		}
-		return redactDeep(walked, OPTIONS).value;
+		return walked;
 	}
 
 	return value;
+}
+
+/** Put parsed JSON strings back; keep the original when redaction did not change them. */
+function restoreJsonStrings(original: unknown, redacted: unknown): unknown {
+	if (typeof original === 'string') {
+		const parsed = parseJsonObject(original);
+		if (parsed !== undefined) {
+			return serializeJson(original, parsed, restoreJsonStrings(parsed, redacted));
+		}
+		return redacted;
+	}
+
+	if (Array.isArray(original) && Array.isArray(redacted)) {
+		return original.map((item, index) => restoreJsonStrings(item, redacted[index]));
+	}
+
+	if (isPlainObject(original) && isPlainObject(redacted)) {
+		const restored: Record<string, unknown> = {};
+		for (const [key, child] of Object.entries(original)) {
+			restored[key] = restoreJsonStrings(child, redacted[key]);
+		}
+		return restored;
+	}
+
+	return redacted;
+}
+
+function redactJsonValue(value: unknown): unknown {
+	return restoreJsonStrings(value, redactDeep(parseNestedJson(value), OPTIONS).value);
 }
 
 /**
