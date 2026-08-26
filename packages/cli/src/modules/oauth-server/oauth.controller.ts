@@ -205,6 +205,31 @@ export class OAuthController {
 		res.json(metadata);
 	}
 
+	@Options('/.well-known/oauth-authorization-server/*issuerPath', {
+		skipAuth: true,
+		usesTemplates: true,
+		ipRateLimit: wellKnownIpRateLimit,
+	})
+	pathInsertedMetadataOptions(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+		res.status(204).end();
+	}
+
+	/**
+	 * RFC 8414 path-inserted probes target issuers with a path component; this
+	 * instance's issuer is the bare origin, so answer with a machine-readable
+	 * 404 rather than letting the probe fall through to Express's HTML 404.
+	 */
+	@Get('/.well-known/oauth-authorization-server/*issuerPath', {
+		skipAuth: true,
+		usesTemplates: true,
+		ipRateLimit: wellKnownIpRateLimit,
+	})
+	pathInsertedMetadata(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+		res.status(404).json({ message: 'Unknown authorization server' });
+	}
+
 	@Options('/.well-known/oauth-protected-resource/*resourcePath', {
 		skipAuth: true,
 		usesTemplates: true,

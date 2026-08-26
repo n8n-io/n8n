@@ -97,6 +97,16 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 
 		expect(response.statusCode).toBe(200);
 	});
+
+	test('should return a JSON 404 for a path-inserted authorization server probe', async () => {
+		const response = await testServer.restlessAgent.get(
+			'/.well-known/oauth-authorization-server/mcp/some-trigger',
+		);
+
+		expect(response.statusCode).toBe(404);
+		expect(response.headers['content-type']).not.toContain('text/html');
+		expect(response.body).toEqual({ message: 'Unknown authorization server' });
+	});
 });
 
 describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
