@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import {
 	ImapFlow,
 	type FetchMessageObject,
@@ -16,6 +17,12 @@ const LOGOUT_GRACE_PERIOD = 2000;
 
 /** How long one attempt at restoring the connection may take before it is abandoned. */
 const DEFAULT_RECONNECT_TIMEOUT = 45_000;
+
+/** Tries at getting a transport back before a drop counts as one nothing could be done about. */
+const RESTORE_ATTEMPTS = 6;
+
+/** Doubled per try, so the attempts span roughly the half minute a restarting server is away. */
+const RESTORE_BACKOFF = 1000;
 
 /**
  * Why a connection stopped for good:
@@ -119,6 +126,9 @@ export class ImapSimple {
 	/** `close` was emitted; the connection is spent and stays silent from here on. */
 	private closed = false;
 
+	/** Until a first transport is in place there is no caller to restore one for. */
+	private installed = false;
+
 	private queue: Promise<unknown> = Promise.resolve();
 
 	/** Arrivals that landed before a handler was registered. */
@@ -131,6 +141,9 @@ export class ImapSimple {
 	private attempt = 0;
 
 	private timer: NodeJS.Timeout | undefined;
+
+	/** Cuts short a wait between tries, so an unreachable server cannot hold up `end`. */
+	private readonly aborter = new AbortController();
 
 	private readonly handlers: {
 		arrival?: (arrival: Arrival) => Promise<void> | void;
@@ -226,15 +239,13 @@ export class ImapSimple {
 	}
 
 	private async start(): Promise<void> {
-		const attempt = this.attempt;
 		const client = await this.open();
 
-		// A drop during the first SELECT starts a restore, which has either put its own transport in
-		// place or given up; either way this one is stale.
-		if (attempt !== this.attempt) {
+		// The transport can drop during the first SELECT: the close was already reported, and a
+		// connection that never came up is not installed behind the caller's back.
+		if (this.closed) {
 			this.discard(client);
-			if (this.closed) throw this.failure ?? this.dropCause ?? new ConnectionLostError();
-			return;
+			throw this.failure ?? this.dropCause ?? new ConnectionLostError();
 		}
 
 		this.install(client);
@@ -263,6 +274,7 @@ export class ImapSimple {
 
 	private install(client: ImapTransport): void {
 		this.client = client;
+		this.installed = true;
 
 		// An `exists` that only reports expunged messages is not an arrival.
 		client.on('exists', ({ count, prevCount }) => {
@@ -304,26 +316,51 @@ export class ImapSimple {
 	}
 
 	private canRestore(): boolean {
-		return this.reconnectOptions !== undefined && !this.ended && !this.closed;
+		return this.installed && this.reconnectOptions !== undefined && !this.ended && !this.closed;
 	}
 
 	/**
-	 * Puts a fresh transport in place of the current one. Reports and closes if it cannot, because
-	 * a caller that is never told has no way to know its mail stopped arriving.
+	 * Puts a fresh transport in place of the current one, trying again a few times so a server that
+	 * is only briefly away costs the caller nothing. Reports and closes once the tries run out,
+	 * because a caller that is never told has no way to know its mail stopped arriving.
 	 */
 	private async restore(): Promise<void> {
-		this.attempt += 1;
-		const attempt = this.attempt;
+		for (let tries = 0; ; tries++) {
+			this.attempt += 1;
+			const attempt = this.attempt;
 
-		try {
-			await withTimeout(this.reopen(attempt), this.reconnectTimeout);
-		} catch (error) {
-			if (attempt !== this.attempt || !this.canRestore()) return;
-			// A drop nothing could be done about, so the close carries `dropped` and the attempt
-			// that failed. Reporting an error first would relabel it as one the caller can read.
-			this.dropCause = error instanceof Error ? error : new Error(String(error));
-			this.reportClose();
+			try {
+				await withTimeout(this.reopen(attempt), this.reconnectTimeout);
+				return;
+			} catch (error) {
+				// Another restore has taken over, or the caller is gone: either way this one is
+				// no longer the connection anyone is waiting on.
+				if (attempt !== this.attempt || !this.canRestore()) return;
+
+				if (tries + 1 < RESTORE_ATTEMPTS) {
+					if (await this.waitToTryAgain(tries, attempt)) continue;
+					return;
+				}
+
+				// A drop nothing could be done about, so the close carries `dropped` and the
+				// attempt that failed. Reporting an error first would relabel it as one the
+				// caller can read.
+				this.dropCause = error instanceof Error ? error : new Error(String(error));
+				this.reportClose();
+				return;
+			}
 		}
+	}
+
+	/** Waits out the backoff, answering whether another try is still wanted once it is over. */
+	private async waitToTryAgain(tries: number, attempt: number): Promise<boolean> {
+		try {
+			await sleep(RESTORE_BACKOFF * 2 ** tries, this.aborter.signal);
+		} catch {
+			return false;
+		}
+
+		return attempt === this.attempt && this.canRestore();
 	}
 
 	private async reopen(attempt: number): Promise<void> {
@@ -532,6 +569,7 @@ export class ImapSimple {
 	end(): void {
 		this.ended = true;
 		clearTimeout(this.timer);
+		this.aborter.abort();
 		this.lose();
 
 		const client = this.client;
@@ -546,6 +584,11 @@ export class ImapSimple {
 		void client
 			.logout()
 			.catch(() => client.close())
-			.finally(() => clearTimeout(teardown));
+			.finally(() => {
+				clearTimeout(teardown);
+				// The transport a restore already discarded emits no `close` of its own, so the
+				// settled LOGOUT is what says the connection is gone.
+				this.reportClose();
+			});
 	}
 }
