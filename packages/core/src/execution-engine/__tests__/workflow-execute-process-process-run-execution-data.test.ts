@@ -147,7 +147,7 @@ describe('processRunExecutionData', () => {
 
 			const main = await runWorkflowWithNodeOutput(nodeType);
 
-expect(main?.[0]).toMatchObject([{ json: {} }]);
+			expect(main?.[0]).toMatchObject([{ json: {} }]);
 			expect(main?.[1]).toEqual([]);
 		});
 
