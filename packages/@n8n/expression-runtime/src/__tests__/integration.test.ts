@@ -291,6 +291,36 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(evaluator.evaluate('{{ 0/0 }}', data, caller)).toBeNaN();
 	});
 
+	it('should round-trip an invalid Date return value', () => {
+		const data = { $json: {} };
+
+		const result = evaluator.evaluate('{{ new Date("not-a-date") }}', data, caller);
+		expect(result).toBeInstanceOf(Date);
+		expect(Number.isNaN((result as Date).getTime())).toBe(true);
+	});
+
+	it('should return user objects whose keys collide with transfer markers unchanged', () => {
+		const data = { $json: {} };
+
+		expect(
+			evaluator.evaluate('{{ ({ __isDate: true, __isoString: "x" }) }}', data, caller),
+		).toEqual({ __isDate: true, __isoString: 'x' });
+		expect(evaluator.evaluate('{{ ({ __isMap: true, __entries: [] }) }}', data, caller)).toEqual({
+			__isMap: true,
+			__entries: [],
+		});
+		expect(evaluator.evaluate('{{ ({ __isNaN: true }) }}', data, caller)).toEqual({
+			__isNaN: true,
+		});
+		expect(
+			evaluator.evaluate('{{ ({ nested: { __isSet: true, __values: [1] } }) }}', data, caller),
+		).toEqual({ nested: { __isSet: true, __values: [1] } });
+		expect(evaluator.evaluate('{{ ({ __isEscaped: true, __value: 1 }) }}', data, caller)).toEqual({
+			__isEscaped: true,
+			__value: 1,
+		});
+	});
+
 	it('should throw on invalid timezone', async () => {
 		const data = { $json: { x: 1 } };
 
@@ -648,6 +678,17 @@ describe(`Integration: ${engineName} error handling`, () => {
 			}
 		},
 	);
+
+	it('should not reinitialize or execute after dispose', async () => {
+		const bridge = newBridge({ timeout: 1000 });
+		await bridge.initialize();
+		await bridge.dispose();
+
+		expect(bridge.isDisposed()).toBe(true);
+		await expect(bridge.initialize()).rejects.toThrow();
+		expect(bridge.isDisposed()).toBe(true);
+		expect(() => bridge.execute('1', {})).toThrow();
+	});
 
 	it('should throw MemoryLimitError when expression exceeds memory limit', async () => {
 		const bridge = newBridge({ memoryLimit: 8 });
