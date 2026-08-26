@@ -59,6 +59,13 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({ track: telemetryTrack })),
 }));
 
+vi.mock('../instanceAi.store', () => ({
+	useInstanceAiStore: vi.fn(() => ({
+		progressiveMode: false,
+		setProgressiveMode: vi.fn(),
+	})),
+}));
+
 const CustomInsertSuggestionsComponent = defineComponent({
 	name: 'CustomInsertSuggestionsComponent',
 	props: {

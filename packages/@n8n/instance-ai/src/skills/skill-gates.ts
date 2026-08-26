@@ -5,14 +5,19 @@
 /** Skill folder id gated by the `088_config_evaluations` flag. */
 export const CONFIG_EVALS_SKILL_ID = 'config-evals';
 
+/** Skill folder id gated by the thread's progressive build mode. */
+export const PROGRESSIVE_BUILDING_SKILL_ID = 'progressive-building';
+
 /** Resolved feature flags that gate one or more runtime skills. */
 export interface InstanceAiSkillFlags {
 	configEvalsEnabled: boolean;
+	progressiveBuildingEnabled: boolean;
 }
 
 /** Skill ids to hide from a user's catalog given their resolved flags. */
 export function disabledInstanceAiSkillIds(flags: InstanceAiSkillFlags): string[] {
 	const disabled: string[] = [];
 	if (!flags.configEvalsEnabled) disabled.push(CONFIG_EVALS_SKILL_ID);
+	if (!flags.progressiveBuildingEnabled) disabled.push(PROGRESSIVE_BUILDING_SKILL_ID);
 	return disabled;
 }

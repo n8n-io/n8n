@@ -410,9 +410,11 @@ export {
 	deriveInstanceAiSetupState,
 	INSTANCE_AI_THREAD_SOURCES,
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+	instanceAiBuildModeSchema,
 } from './schemas/instance-ai.schema';
 
 export type {
+	InstanceAiBuildMode,
 	InstanceAiThreadSource,
 	InstanceAiThreadSourcePersisted,
 	InstanceAiThreadOrigin,

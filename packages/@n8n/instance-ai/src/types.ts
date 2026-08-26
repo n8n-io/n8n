@@ -18,6 +18,7 @@ import type {
 	AgentSkill,
 	EvaluationMetric,
 	TaskList,
+	InstanceAiBuildMode,
 	InstanceAiFileAttachment,
 	InstanceAiPermissions,
 	McpTool,
@@ -1092,6 +1093,12 @@ export interface InstanceAiContext {
 	 */
 	tracing?: InstanceAiTraceContext;
 	projectId?: string;
+	/**
+	 * Build style for the run. `progressive` activates the progressive-building
+	 * system-prompt section and post-build handoff. Sticky per thread on the
+	 * host side so server-initiated follow-up runs keep the mode.
+	 */
+	buildMode?: InstanceAiBuildMode;
 	/**
 	 * Host-resolved model for the current run (proxy-managed on cloud). Domain
 	 * tools pass it as the fallback for utility LLM calls (simulation fixtures,

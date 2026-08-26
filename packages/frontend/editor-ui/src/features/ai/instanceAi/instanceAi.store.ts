@@ -3,6 +3,7 @@ import { ref, computed, inject, provide, shallowReactive, type InjectionKey } fr
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { UNLIMITED_CREDITS, type InstanceAiThreadSummary, type PushMessage } from '@n8n/api-types';
 import {
 	ensureThread,
@@ -41,6 +42,20 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	/** Whether the pool has been locked by the activation cap. */
 	const quotaLocked = ref(false);
 
+	// --- Progressive building mode ---
+	// A single client-side toggle (like the legacy builder's mode selector), not
+	// keyed by thread: the empty view only allocates a threadId at submit time.
+	// The backend keeps it sticky per thread from the latest user message.
+	const progressiveMode = ref(false);
+
+	function setProgressiveMode(enabled: boolean): void {
+		if (progressiveMode.value === enabled) return;
+		progressiveMode.value = enabled;
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_TOGGLED_PROGRESSIVE_BUILDING, {
+			enabled,
+		});
+	}
+
 	// --- Thread runtimes ---
 	const runtimes = shallowReactive(new Map<string, ThreadRuntime>());
 	const runtimeHooks = {
@@ -53,6 +68,7 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 			void loadThreads();
 		},
 		getThreadMetadata: (threadId) => threads.value.find((t) => t.id === threadId)?.metadata,
+		getBuildMode: () => (progressiveMode.value ? ('progressive' as const) : undefined),
 	} satisfies Parameters<typeof createThreadRuntime>[1];
 
 	function getOrCreateRuntime(threadId: string, projectId?: string): ThreadRuntime {
@@ -282,6 +298,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		debugMode,
 		creditsQuota,
 		creditsClaimed,
+		progressiveMode,
+		setProgressiveMode,
 
 		// Computed
 		isGatewayConnected,

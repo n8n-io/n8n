@@ -1262,12 +1262,21 @@ export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
+/**
+ * Build style for a run. `progressive` makes the agent build a minimal working
+ * slice first, gate increments on real executions, and extend on actual
+ * execution data. Absent = default behavior.
+ */
+export const instanceAiBuildModeSchema = z.enum(['progressive']);
+export type InstanceAiBuildMode = z.infer<typeof instanceAiBuildModeSchema>;
+
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
 	context: instanceAiHandoffContextSchema.optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
+	mode: instanceAiBuildModeSchema.optional(),
 }) {}
 
 export class InstanceAiCorrectTaskRequest extends Z.class({

@@ -66,6 +66,14 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 		description: 'The user clicked the plus button in the AI Assistant input.',
 		properties: z.object({}),
 	},
+	USER_TOGGLED_PROGRESSIVE_BUILDING: {
+		name: 'User toggled progressive building',
+		description:
+			'The user switched the AI Assistant build style between progressive and default in the chat input.',
+		properties: z.object({
+			enabled: z.boolean().describe('True when progressive building was turned on'),
+		}),
+	},
 	TOOLS_LIST_OPENED: {
 		name: 'Instance AI tools list opened',
 		description: 'The user opened the AI Assistant tools connection modal.',

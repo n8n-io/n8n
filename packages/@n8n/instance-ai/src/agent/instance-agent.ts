@@ -206,6 +206,7 @@ export async function createInstanceAgent(
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
 		projectId: context.projectId,
+		progressiveBuilding: context.buildMode === 'progressive',
 		workspaceRoot:
 			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
 				? orchestrationContext.workspaceRoot

@@ -141,6 +141,9 @@ export class RunStateRegistry<TUser = unknown> {
 	/** IANA time zone captured at initial-run entry and reused by follow-up runs. */
 	private readonly threadTimeZones = new Map<string, string>();
 
+	/** Build mode captured at user-run entry and reused by follow-up runs. */
+	private readonly threadBuildModes = new Map<string, string>();
+
 	startRun(options: StartRunOptions<TUser>): StartedRunState {
 		const runId = `run_${nanoid()}`;
 		const abortController = new AbortController();
@@ -437,6 +440,20 @@ export class RunStateRegistry<TUser = unknown> {
 	}
 
 	/**
+	 * Record the thread's build mode from a user-initiated run. `undefined`
+	 * clears it — the latest user message wins, so a thread whose user toggled
+	 * the mode off doesn't keep a stale value for follow-up runs.
+	 */
+	setBuildMode(threadId: string, buildMode: string | undefined): void {
+		if (buildMode === undefined) this.threadBuildModes.delete(threadId);
+		else this.threadBuildModes.set(threadId, buildMode);
+	}
+
+	getBuildMode(threadId: string): string | undefined {
+		return this.threadBuildModes.get(threadId);
+	}
+
+	/**
 	 * Find active/suspended runs and pending confirmations that timed out under policy.
 	 * Returns thread IDs and request IDs that should be cancelled/rejected.
 	 * Does NOT mutate state — the caller is responsible for cancelling.
@@ -586,6 +603,7 @@ export class RunStateRegistry<TUser = unknown> {
 
 		this.threadUsers.delete(threadId);
 		this.threadTimeZones.delete(threadId);
+		this.threadBuildModes.delete(threadId);
 
 		const groupId = this.threadMessageGroupId.get(threadId);
 		if (groupId) this.runIdsByMessageGroup.delete(groupId);
@@ -630,6 +648,7 @@ export class RunStateRegistry<TUser = unknown> {
 		this.pendingConfirmations.clear();
 		this.threadUsers.clear();
 		this.threadTimeZones.clear();
+		this.threadBuildModes.clear();
 		this.threadMessageGroupId.clear();
 		this.runIdsByMessageGroup.clear();
 

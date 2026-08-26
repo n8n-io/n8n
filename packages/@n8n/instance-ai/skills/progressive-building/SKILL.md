@@ -1,0 +1,142 @@
+---
+name: progressive-building
+description: >-
+  Iterative build loop for progressive building mode: scope the first build to
+  a minimal working slice, set up at most one or two new credentials, get a
+  real successful execution, then extend on actual execution data. Load after
+  workflow-builder and before calling build-workflow whenever progressive
+  building mode is active.
+recommended_tools:
+  - build-workflow
+  - workflows
+  - credentials
+  - executions
+  - verify-built-workflow
+---
+
+# Progressive Building
+
+Progressive building mode is active for this conversation. The goal is to get
+the user to a real, successful workflow execution as fast as possible, then
+extend the workflow in small increments using actual execution data. Prefer a
+small working workflow now over a complete workflow later.
+
+This skill extends `workflow-builder` and `post-build-flow` — load
+`workflow-builder` first for the build mechanics, then this skill last, so
+these scoping rules are the final instructions before you build. All of their
+rules (validation, setup card etiquette, publish gates, live-test rules,
+success claims, cleanup) still apply; this skill only changes how much you
+build per iteration and when you stop to run.
+
+These instructions are in English, but user-visible text you write while
+following them stays in the user's conversation language.
+
+## Scoping the first slice
+
+The first build is the smallest end-to-end workflow that produces a visible
+result: one trigger, one service action, minimal glue in between. It is a
+working v1, not a demo — every node in it is part of the final workflow.
+
+When the request names several services or triggers, pick ONE for the first
+slice and park the rest as named next steps. Pick the slice service in this
+order:
+
+1. The service the user's request centers on — their stated intent always
+   wins; never substitute a different service for an easier one.
+2. Among equally central options, the service that already has a credential —
+   check `credentials(action="list")` before deciding.
+3. When no specific service is required to start, a manual or schedule
+   trigger with the simplest data source.
+
+Prefer the slice that needs the fewest new credentials: at most 1–2 new
+credentials per increment. This is a soft budget for slicing decisions, not a
+hard stop — placeholders and node parameters (channel selection, sheet IDs)
+don't count toward it; they ride along in the same setup card.
+
+## Question shape
+
+Clarifying questions are fine, but every question must narrow the first slice
+— never widen it.
+
+- Never ask multi-select questions listing services or triggers to include
+  ("Which of these should I add: Slack, Discord, email, SMS?"). Each selected
+  option becomes a credential the user must set up before anything works.
+- Single-select between a few options is fine when the choice materially
+  changes the first slice.
+- When the answer is guessable, don't ask: pick the sensible default and
+  state the assumption in one sentence ("Starting with Slack since you
+  mentioned it first — Discord and email come after it works.").
+- Do not load `planning` or call `create-tasks` for anything that fits a
+  single workflow built in increments. Reserve planned tasks for genuinely
+  multi-artifact work (multiple dependent workflows, shared cross-task data
+  tables); progressive building then applies within each task.
+
+## Credential gate
+
+Immediately after each build, route credential and parameter setup for the
+new nodes — the `post-build-flow` setup steps apply unchanged. Then stop: do
+not build the next increment while the current one has unconfigured
+credentials.
+
+Respect skipped credentials exactly as `post-build-flow` specifies. If the
+user skips or defers setup twice in the conversation, drop the gating: build
+the rest of what they asked for in full and offer setup once at the end.
+
+## Execution gate
+
+A real successful execution of the current increment gates the next one. A
+mocked or simulated pass (`verify-built-workflow` with mocked credentials,
+simulated outputs, fixture overrides, or pin data) does NOT advance the loop
+— it proves wiring, not the increment.
+
+- Verify with `verify-built-workflow` first, as `post-build-flow` requires.
+- Then drive a live run. For triggers you can start (manual, schedule), offer
+  `executions(action="run")` — the approval card is the user's consent.
+- For event triggers that need a real external event (form submission,
+  webhook call, incoming message), tell the user the one concrete action to
+  take ("submit the form once — here is the URL") and ask them to say when
+  they have. On their reply, find the run with
+  `executions(action="list", workflowId)` and inspect it with
+  `executions(action="get")` — their statement alone is not execution
+  evidence.
+- If the user declines a run twice, drop the gate the same way as the
+  credential gate: finish the requested scope and summarize what remains
+  untested.
+
+## Extending on real data
+
+Before designing the next increment, read the actual output of the nodes it
+builds on with `executions(action="get-node-output")`. When real data is
+available, use its actual field names, structures, and sample values — never
+guessed schemas.
+
+Each increment is itself a build → setup → run cycle. Patch the same workflow
+(same `workflowId`/`workItemId`, same workspace source file), keep increments
+outcome-sized (one new capability the user can see), and propose the next
+increment instead of silently building it — a short question ("Working! Want
+me to add the Discord notification next?") keeps the user driving.
+
+## Roadmap framing
+
+While the loop is running, every substantive reply carries a compact roadmap
+so the user sees a path, not a stripped-down product:
+
+- **Done** — what already works. Only claim it after real execution evidence;
+  the `post-build-flow` success-claim rules apply.
+- **Next** — the parked increments, named by outcome ("Discord notification
+  when the form is submitted"), not by node.
+
+Keep it to a few short lines, not a formal plan document.
+
+## Escape hatches
+
+Scope-down applies to broad or multi-service requests — not to everything.
+
+- A precise, complete specification — an explicit node list, a step-by-step
+  description, an attached template or workflow — is built as specified, in
+  one build. Don't slice it artificially.
+- When the user asks for the rest in one go ("build it all", "just finish
+  it"), build all remaining increments in one pass and run the normal
+  post-build flow once.
+- When the user declines runs or setup twice (see the gates above), stop
+  gating and fall back to the default flow.

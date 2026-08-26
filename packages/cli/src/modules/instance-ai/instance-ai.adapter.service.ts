@@ -7,7 +7,7 @@ import {
 	upsertEvaluationConfigSchema,
 	INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT,
 } from '@n8n/api-types';
-import type { AiGatewayConfigDto } from '@n8n/api-types';
+import type { AiGatewayConfigDto, InstanceAiBuildMode } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
@@ -321,6 +321,8 @@ export class InstanceAiAdapterService {
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
+			/** Build style for the run (sticky per thread via run state). */
+			buildMode?: InstanceAiBuildMode;
 		},
 	): InstanceAiContext {
 		const {
@@ -334,6 +336,7 @@ export class InstanceAiAdapterService {
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
 			modelId,
+			buildMode,
 		} = options ?? {};
 
 		// Record gateway availability once per context. Fire-and-forget: the
@@ -346,6 +349,7 @@ export class InstanceAiAdapterService {
 			userId: user.id,
 			projectId,
 			modelId,
+			buildMode,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService: this.createCredentialAdapter(

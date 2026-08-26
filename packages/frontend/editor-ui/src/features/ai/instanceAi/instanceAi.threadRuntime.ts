@@ -19,6 +19,7 @@ import {
 	type InstanceAiAgentNode,
 	type InstanceAiToolCallState,
 	type InstanceAiSSEConnectionState,
+	type InstanceAiBuildMode,
 	type InstanceAiHandoffContext,
 	type TaskList,
 	type AgentRunState,
@@ -108,6 +109,8 @@ export interface ThreadRuntimeHooks {
 	onRunFinish: () => void;
 	/** Thread-list metadata, used to enrich historical artifacts. */
 	getThreadMetadata?: (threadId: string) => Record<string, unknown> | undefined;
+	/** Build style attached to outgoing user messages (e.g. progressive building). */
+	getBuildMode?: () => InstanceAiBuildMode | undefined;
 }
 
 export function getAgentBuilderTargetFromThreadMetadata(
@@ -1173,6 +1176,7 @@ export function createThreadRuntime(
 				handoffContext,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
+				hooks.getBuildMode?.(),
 			);
 
 			if (runId) {

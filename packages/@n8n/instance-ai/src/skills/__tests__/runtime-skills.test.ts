@@ -159,16 +159,28 @@ describe('Instance AI runtime skills', () => {
 
 	it('gates the config-evals skill by its folder id', () => {
 		expect(CONFIG_EVALS_SKILL_ID).toBe('config-evals');
-		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: false })).toContain(
-			CONFIG_EVALS_SKILL_ID,
-		);
-		expect(disabledInstanceAiSkillIds({ configEvalsEnabled: true })).not.toContain(
-			CONFIG_EVALS_SKILL_ID,
-		);
+		expect(
+			disabledInstanceAiSkillIds({ configEvalsEnabled: false, progressiveBuildingEnabled: true }),
+		).toContain(CONFIG_EVALS_SKILL_ID);
+		expect(
+			disabledInstanceAiSkillIds({ configEvalsEnabled: true, progressiveBuildingEnabled: true }),
+		).not.toContain(CONFIG_EVALS_SKILL_ID);
 
 		const source = loadInstanceAiRuntimeSkillSource();
 		const configEvals = source.registry.skills.find((skill) => skill.name === 'config-evals');
 		expect(configEvals?.id).toBe(CONFIG_EVALS_SKILL_ID);
+	});
+
+	it('gates the progressive-building skill by its folder id', () => {
+		expect(
+			disabledInstanceAiSkillIds({ configEvalsEnabled: true, progressiveBuildingEnabled: false }),
+		).toContain('progressive-building');
+
+		const source = loadInstanceAiRuntimeSkillSource();
+		const progressive = source.registry.skills.find(
+			(skill) => skill.name === 'progressive-building',
+		);
+		expect(progressive?.id).toBe('progressive-building');
 	});
 
 	it('excludes bundled Agents module skills unless the module is enabled', async () => {

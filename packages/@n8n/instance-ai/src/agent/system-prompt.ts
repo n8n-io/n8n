@@ -23,6 +23,8 @@ interface SystemPromptOptions {
 	projectId?: string;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
+	/** When true, the progressive-building section is rendered. */
+	progressiveBuilding?: boolean;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -92,6 +94,25 @@ This conversation is scoped to a single n8n project. When the user says "this pr
 If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in.`;
 }
 
+/**
+ * Rendered as a presence flag only — same prompt-cache rule as
+ * `getProjectScopeSection`: never interpolate per-thread values. The full loop
+ * lives in the `progressive-building` skill; this section carries only the
+ * rules that must hold before the model loads it.
+ */
+function getProgressiveBuildingSection(enabled?: boolean): string {
+	if (!enabled) return '';
+	return `
+## Progressive Building Mode
+
+Progressive building mode is active. Before any workflow build, load the skill the request routes to (usually \`workflow-builder\`) first, then load \`progressive-building\` last — after the other skills and before calling \`build-workflow\` — so its scoping rules are the final instructions you read before building. Follow it for the whole build loop. Until it is loaded, these rules already apply:
+
+- Build the smallest end-to-end working slice first — one trigger, one service action — then extend in increments gated on real successful executions.
+- Clarifying questions must narrow the first slice, never widen it. Never ask multi-select questions listing services or triggers to include.
+- Prefer the slice that needs the fewest new credentials (at most 1–2 per increment; placeholders and node parameters don't count).
+- A precise, complete specification from the user is built as specified — don't slice it artificially.`;
+}
+
 function getLicenseLimitationsSection(licenseHints?: string[]): string {
 	if (!licenseHints?.length) return '';
 
@@ -138,6 +159,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		branchReadOnly,
 		projectId,
 		workspaceRoot,
+		progressiveBuilding,
 	} = options;
 
 	return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load one or more skills to help them achieve their goal. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\` / \`load_tool\`).
@@ -145,6 +167,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 ${webhookBaseUrl && formBaseUrl ? getInstanceInfoSection(webhookBaseUrl, formBaseUrl) : ''}
 ${workspaceRoot ? `${getSandboxWorkspaceSection(workspaceRoot)}` : ''}
 ${getProjectScopeSection(projectId)}
+${getProgressiveBuildingSection(progressiveBuilding)}
 ${SECRET_ASK_GUARDRAIL}
 ${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
 ## Communication Style

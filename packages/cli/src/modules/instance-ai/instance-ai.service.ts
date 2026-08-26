@@ -14,6 +14,7 @@ import {
 	formatAttachmentSizeLimit,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiAttachment,
+	type InstanceAiBuildMode,
 	type InstanceAiHandoffContext,
 	type InstanceAiAgentAttachment,
 	type InstanceAiFileAttachment,
@@ -1348,6 +1349,7 @@ export class InstanceAiService {
 		context?: InstanceAiHandoffContext,
 		timeZone?: string,
 		pushRef?: string,
+		mode?: InstanceAiBuildMode,
 	): string {
 		this.liveness.clearThreadState(threadId);
 		const { runId, abortController, messageGroupId } = this.runState.startRun({
@@ -1361,6 +1363,10 @@ export class InstanceAiService {
 		if (timeZone) {
 			this.runState.setTimeZone(threadId, timeZone);
 		}
+
+		// Always set (undefined clears): the latest user message wins, and
+		// server-initiated follow-up runs reuse the recorded value.
+		this.runState.setBuildMode(threadId, mode);
 
 		if (pushRef !== undefined) {
 			this.threadPushRef.set(threadId, pushRef);
@@ -1379,6 +1385,12 @@ export class InstanceAiService {
 		);
 
 		return runId;
+	}
+
+	/** Narrow the registry's raw string back into the build-mode enum. */
+	private getThreadBuildMode(threadId: string): InstanceAiBuildMode | undefined {
+		const raw = this.runState.getBuildMode(threadId);
+		return raw === 'progressive' ? raw : undefined;
 	}
 
 	/** Get the current messageGroupId for a thread (used by SSE sync). */
@@ -2422,6 +2434,8 @@ export class InstanceAiService {
 
 		const configEvalsEnabled = await this.adapterService.isConfigEvalsEnabled(user);
 		const mcpConnectionsEnabled = await this.adapterService.isMcpConnectionsEnabled(user);
+		// Sticky per thread (set on user runs, reused by follow-up runs) — see startRun.
+		const buildMode = this.getThreadBuildMode(threadId);
 		const context = this.adapterService.createContext(user, {
 			searchProxyConfig,
 			pushRef,
@@ -2433,6 +2447,7 @@ export class InstanceAiService {
 			configEvalsEnabled,
 			mcpConnectionsEnabled,
 			modelId,
+			buildMode,
 		});
 
 		// Merge both local gateway and direct browser-use into a single
@@ -2552,7 +2567,10 @@ export class InstanceAiService {
 
 		// Per-user skill gate: hide flag-gated skills (filtered copy, cache
 		// preserved) so every derived skill source inherits the exclusion.
-		const flagDisabledSkillIds = disabledInstanceAiSkillIds({ configEvalsEnabled });
+		const flagDisabledSkillIds = disabledInstanceAiSkillIds({
+			configEvalsEnabled,
+			progressiveBuildingEnabled: buildMode === 'progressive',
+		});
 		const allRuntimeSkills =
 			flagDisabledSkillIds.length > 0
 				? filterRuntimeSkillSource(loadInstanceAiRuntimeSkillSource(), flagDisabledSkillIds)
