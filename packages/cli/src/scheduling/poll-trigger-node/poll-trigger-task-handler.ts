@@ -47,7 +47,8 @@ function timeoutAfter(ms: number): { timedOut: Promise<typeof TIMED_OUT>; cancel
 }
 
 /**
- * Runs a due poll occurrence's `poll()` once and dispatches only when it returns new data.
+ * Runs a due poll occurrence's `poll()` once and dispatches when it hands data off —
+ * through mid-poll `__emit` calls or the returned batch.
  * Carries no `deduplicationKey`: under the at-least-once scheduler contract an occurrence
  * can run twice, later cursor write wins; tolerable since two polls can legitimately differ anyway.
  */
@@ -110,12 +111,21 @@ export class PollTriggerTaskHandler implements TaskHandler {
 
 		const node = this.resolveTriggerNode(workflowData, nodeId, task);
 
+		let midPollDispatched = false;
 		const { workflow, pollFunctions } =
 			await this.triggerExecutionContextFactory.createPollExecutionContext(
 				workflowData,
 				node,
 				{ taskId: task.id, leaseEpoch: task.leaseEpoch },
 				state?.cursor,
+				() => {
+					// Stamped the moment an emit hands off: a throw later in this tick must
+					// not retry the occurrence and duplicate the run. The marker is permanent,
+					// so a discard path returning notDispatched() cannot downgrade it; the
+					// flag only steers the decision when poll() returns null.
+					midPollDispatched = true;
+					report.dispatched();
+				},
 			);
 
 		// Poll and hand-off share one staging scope, so a cursor staged here can only
@@ -135,9 +145,9 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			try {
 				// `poll()` takes no abort signal, so the deadline abandons it rather than
 				// cancelling it: the call keeps running until it settles on its own, and its
-				// outcome is discarded. The cursor never moves on that path (it only moves
-				// through the staged commit or __emit below), so an abandoned tick leaves
-				// the poll window untouched for the next occurrence to cover.
+				// outcome is discarded. The staged cursor cannot commit on that path; batches
+				// the node already emitted mid-poll were handed off with their own advances,
+				// and the next occurrence covers the rest of the window.
 				const deadline = timeoutAfter(this.pollTimeoutMs);
 				const poll = this.triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
 				// Deliberately not chained: keeps an abandoned poll's eventual rejection from
@@ -156,9 +166,10 @@ export class PollTriggerTaskHandler implements TaskHandler {
 							nodeId,
 							pollTimeoutMs: this.pollTimeoutMs,
 						});
-						// Not routed to the error workflow: an abandoned poll produces no run, and
-						// an error run is one. It does count as a poll failure, so a source that
-						// keeps hanging is re-polled at a widening interval like any failing source.
+						// Not routed to the error workflow: the timeout itself failed no run —
+						// anything emitted before the deadline was handed off normally. It does
+						// count as a poll failure, so a source that keeps hanging is re-polled
+						// at a widening interval like any failing source.
 						const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
 						if (isActive) {
 							await this.pollBackoffService.recordFailure({
@@ -204,9 +215,9 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					return report.dispatched();
 				}
 
-				// A poll with no items may still have moved its cursor, committed here on
-				// its own. Active state is re-read first so a workflow deactivated mid-poll
-				// doesn't get its cursor moved.
+				// A poll that returned nothing may still have staged a cursor advance — on
+				// its own, or after its last mid-poll emit — committed here. Active state is
+				// re-read first so a workflow deactivated mid-poll doesn't get its cursor moved.
 				try {
 					if (await this.workflowRepository.isActive(workflowId))
 						await commitStagedCursor(pollFunctions);
@@ -222,6 +233,22 @@ export class PollTriggerTaskHandler implements TaskHandler {
 					);
 				}
 
+				// Checked after the cursor commit on purpose: the commit must still run on
+				// this path, and a failed commit must not downgrade an occurrence whose
+				// executions were already handed off.
+				if (midPollDispatched) {
+					this.logger.debug(
+						'Poll returned no new data; mid-poll emits already dispatched executions',
+						{
+							taskId: task.id,
+							jobId: task.jobId,
+							workflowId,
+							nodeId,
+						},
+					);
+					return report.dispatched();
+				}
+
 				this.logger.debug('Poll returned no new data; nothing to hand off', {
 					taskId: task.id,
 					jobId: task.jobId,
@@ -232,7 +259,8 @@ export class PollTriggerTaskHandler implements TaskHandler {
 			} catch (error) {
 				// Routed to the error workflow instead of rethrown, which would retry and
 				// dead-letter without ever running it. __emitError commits no cursor, so
-				// the cursor holds and the next tick retries the same window.
+				// anything not yet handed off holds and the next tick re-covers it from
+				// the last committed advance.
 				if (!polled) {
 					const isActive = await this.workflowRepository.isActive(workflowId).catch(() => true);
 					if (isActive) {

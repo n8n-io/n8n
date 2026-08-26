@@ -190,6 +190,7 @@ describe('PollTriggerTaskHandler', () => {
 				triggerNode,
 				{ taskId: 'task-1', leaseEpoch: 1 },
 				undefined,
+				expect.any(Function),
 			);
 			expect(triggersAndPollers.runPollFunction).toHaveBeenCalledWith(
 				workflow,
@@ -212,6 +213,7 @@ describe('PollTriggerTaskHandler', () => {
 				triggerNode,
 				{ taskId: 'task-1', leaseEpoch: 1 },
 				{ lastItemId: 'prefetched' },
+				expect.any(Function),
 			);
 		});
 
@@ -242,6 +244,59 @@ describe('PollTriggerTaskHandler', () => {
 			expect(onDispatch).not.toHaveBeenCalled();
 			// The isolate is released on this path too, not just the happy path.
 			expect(releaseIsolate).toHaveBeenCalledTimes(1);
+		});
+
+		test('reports a dispatch when poll() returned null after emitting mid-poll', async () => {
+			triggersAndPollers.runPollFunction.mockImplementation(async () => {
+				// The factory reports each handed-off mid-poll emit through the callback
+				// the handler passed into createPollExecutionContext.
+				const onDispatched = triggerExecutionContextFactory.createPollExecutionContext.mock
+					.calls[0][4] as (() => void) | undefined;
+				onDispatched?.();
+				return null;
+			});
+
+			const decision = await handler.execute(buildTask(), report);
+
+			expect(decision).toBe(report.dispatched());
+			expect(onDispatch).toHaveBeenCalled();
+			// The end-of-poll emit stays unused; the mid-poll emits already dispatched.
+			expect(pollFunctions.__emit).not.toHaveBeenCalled();
+			// A staged advance made after the last emit still commits on this path.
+			expect(pollFunctions.__commitCursor).toHaveBeenCalled();
+		});
+
+		test('stamps the dispatch marker while the poll is still running, not only at its end', async () => {
+			triggersAndPollers.runPollFunction.mockImplementation(async () => {
+				const onDispatched = triggerExecutionContextFactory.createPollExecutionContext.mock
+					.calls[0][4] as (() => void) | undefined;
+				onDispatched?.();
+				// The marker must be stamped the moment the emit hands off: if the
+				// process dies before poll() returns, the occurrence must not be
+				// retried and duplicate the execution.
+				expect(onDispatch).toHaveBeenCalledTimes(1);
+				return null;
+			});
+
+			const decision = await handler.execute(buildTask(), report);
+
+			expect(decision).toBe(report.dispatched());
+		});
+
+		test('still reports a dispatch when the trailing cursor commit fails after mid-poll emits', async () => {
+			triggersAndPollers.runPollFunction.mockImplementation(async () => {
+				const onDispatched = triggerExecutionContextFactory.createPollExecutionContext.mock
+					.calls[0][4] as (() => void) | undefined;
+				onDispatched?.();
+				return null;
+			});
+			pollFunctions.__commitCursor.mockRejectedValue(new Error('poller state write failed'));
+
+			const decision = await handler.execute(buildTask(), report);
+
+			// The executions were handed off mid-poll; a failed trailing cursor write
+			// must not downgrade the occurrence to retry-safe.
+			expect(decision).toBe(report.dispatched());
 		});
 
 		test('discards the result and reports no dispatch when the workflow was deactivated during poll()', async () => {

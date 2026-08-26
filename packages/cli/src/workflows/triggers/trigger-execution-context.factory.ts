@@ -280,8 +280,15 @@ export class TriggerExecutionContextFactory {
 		resolveWorkflowData: () => Promise<IWorkflowBase>,
 		fence?: PollLeaseFence,
 		prefetchedCursor?: PollerCursor,
+		// Optional: the legacy activation paths register poll functions without a
+		// dispatch reporter, so only the durable task handler passes a callback.
+		onDispatched?: () => void,
 	): IGetExecutePollFunctions {
 		return (workflow: Workflow, node: INode) => {
+			// Hand-offs from one poll run strictly in emit order: each commit is a
+			// last-write-wins cursor write, so two in flight at once could land out of
+			// order and move the cursor backwards.
+			let emitChain: Promise<unknown> = Promise.resolve();
 			// A poll must finish inside both the handler's abandon deadline and the task
 			// lease; past either, its commits are fenced out or discarded. The margin —
 			// 20%, at least 5s, at most half the ceiling — leaves room for the trailing
@@ -303,6 +310,9 @@ export class TriggerExecutionContextFactory {
 			>();
 
 			const __runPoll = async <T>(poll: () => Promise<T>): Promise<T> => {
+				// Fresh chain per poll: the legacy activation path reuses this context
+				// across ticks, and one tick's hung hand-off must not defer the next's.
+				emitChain = Promise.resolve();
 				const resolved = await this.pollCursorService.resolveCursor(
 					workflowData.id,
 					node.id,
@@ -344,11 +354,16 @@ export class TriggerExecutionContextFactory {
 				// data, or an unmigrated node's own bucket, which still doubles as its cursor.
 				void this.workflowStaticDataService.saveStaticData(workflow);
 
+				// Only the hand-off waits on the chain. The cursor and static data were
+				// captured above, synchronously: they must reflect what the node had staged
+				// at this emit, not what it stages while earlier hand-offs drain.
+				//
 				// TODO(CAT-3202): resolves workflow data via callback so we
 				// can feature-flag between in-memory data and the published data
 				// service. Once the flag is removed, we'll call the service directly.
-				const executePromise = resolveWorkflowData().then(async (freshWorkflowData) =>
-					cursor === null
+				const executePromise = emitChain.then(async () => {
+					const freshWorkflowData = await resolveWorkflowData();
+					return cursor === null
 						? await this.workflowExecutionService.runWorkflow(
 								freshWorkflowData,
 								node,
@@ -366,8 +381,18 @@ export class TriggerExecutionContextFactory {
 								cursor,
 								responsePromise,
 								fence,
-							),
-				);
+							);
+				});
+				// The swallowed copy keeps the chain alive and quiet: a failed hand-off must
+				// not block later emits, and its rejection is already reported through
+				// executePromise (done promise and failure log below).
+				emitChain = executePromise
+					.then((executionId) => {
+						// No id: the fence rejected the commit or the hand-off failed before
+						// creating an execution. Nothing ran, so it does not count as a dispatch.
+						if (executionId) onDispatched?.();
+					})
+					.catch(() => {});
 
 				if (donePromise) this.settleDonePromise(executePromise, donePromise);
 
@@ -441,6 +466,7 @@ export class TriggerExecutionContextFactory {
 		node: INode,
 		fence?: PollLeaseFence,
 		prefetchedCursor?: PollerCursor,
+		onDispatched?: () => void,
 	): Promise<{ workflow: Workflow; pollFunctions: IPollFunctions }> {
 		const workflow = new Workflow({
 			id: workflowData.id,
@@ -469,6 +495,7 @@ export class TriggerExecutionContextFactory {
 			resolveWorkflowData,
 			fence,
 			prefetchedCursor,
+			onDispatched,
 		);
 		// getPollFunctions already closed over these; its signature still requires them.
 		const pollFunctions = getPollFunctions(workflow, node, additionalData, 'trigger', 'update');

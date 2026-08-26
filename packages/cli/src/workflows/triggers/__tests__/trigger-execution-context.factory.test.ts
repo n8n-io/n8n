@@ -1001,6 +1001,161 @@ describe('TriggerExecutionContextFactory', () => {
 			expect(cursors).toEqual([{ lastItemId: 'fast' }, { lastItemId: 'slow' }]);
 		});
 
+		describe('mid-poll emits', () => {
+			const unhandled: unknown[] = [];
+			const captureUnhandled = (reason: unknown) => unhandled.push(reason);
+
+			beforeEach(() => {
+				unhandled.length = 0;
+				process.on('unhandledRejection', captureUnhandled);
+			});
+
+			afterEach(() => {
+				process.off('unhandledRejection', captureUnhandled);
+			});
+
+			test('starts the next emit commit only after the previous one settled', async () => {
+				const firstRun = createDeferredPromise<string>();
+				workflowExecutionService.runPolledWorkflow
+					.mockReturnValueOnce(firstRun.promise)
+					.mockResolvedValueOnce('exec-2');
+
+				await context.__runPoll(async () => {
+					Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+					context.__emit(pollData);
+					Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'b' });
+					context.__emit(pollData);
+				});
+				await sleep(0);
+
+				// The first commit is still in flight, so the second must not have started:
+				// the cursor write is last-write-wins, and an out-of-order commit would
+				// regress the cursor to the earlier batch.
+				expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(1);
+
+				firstRun.resolve('exec-1');
+				await sleep(0);
+
+				expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(2);
+				expect(unhandled).toEqual([]);
+			});
+
+			test('captures each emit cursor delta when the node calls __emit, not when its commit runs', async () => {
+				await context.__runPoll(async () => {
+					Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+					context.__emit(pollData);
+					Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'b' });
+					context.__emit(pollData);
+				});
+				await sleep(0);
+
+				const cursors = workflowExecutionService.runPolledWorkflow.mock.calls.map(
+					(call) => call[5],
+				);
+				expect(cursors).toEqual([{ lastItemId: 'a' }, { lastItemId: 'b' }]);
+			});
+
+			test('runs the next emit commit even when the previous one rejected', async () => {
+				workflowExecutionService.runPolledWorkflow
+					.mockRejectedValueOnce(new UnexpectedError('db down'))
+					.mockResolvedValueOnce('exec-2');
+
+				await context.__runPoll(async () => {
+					Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+					context.__emit(pollData);
+					Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'b' });
+					context.__emit(pollData);
+				});
+				await sleep(0);
+				await new Promise((resolve) => setImmediate(resolve));
+
+				expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(2);
+				expect(scopedLogger.error).toHaveBeenCalled();
+				expect(unhandled).toEqual([]);
+			});
+
+			const buildDispatchContext = (onDispatched: () => void) => {
+				const getPollFunctions = factory.getExecutePollFunctions(
+					mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+					additionalData,
+					mode,
+					activation,
+					async () => mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+					undefined,
+					undefined,
+					onDispatched,
+				);
+				return getPollFunctions(
+					workflow,
+					node,
+					additionalData,
+					mode,
+					activation,
+				) as RunnablePollFunctions;
+			};
+
+			test('notifies onDispatched once per handed-off emit, skipping fenced-out ones', async () => {
+				const onDispatched = vi.fn();
+				const dispatchContext = buildDispatchContext(onDispatched);
+
+				// The first emit is fenced out (no execution row), the second hands off.
+				workflowExecutionService.runPolledWorkflow
+					.mockResolvedValueOnce(undefined)
+					.mockResolvedValueOnce('exec-polled');
+
+				await dispatchContext.__runPoll(async () => {
+					Object.assign(dispatchContext.getWorkflowStaticData('node'), { lastItemId: 'a' });
+					dispatchContext.__emit(pollData);
+					Object.assign(dispatchContext.getWorkflowStaticData('node'), { lastItemId: 'b' });
+					dispatchContext.__emit(pollData);
+				});
+				await sleep(0);
+
+				expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(2);
+				expect(onDispatched).toHaveBeenCalledTimes(1);
+			});
+
+			test('does not notify onDispatched when every emit was fenced out', async () => {
+				const onDispatched = vi.fn();
+				const dispatchContext = buildDispatchContext(onDispatched);
+
+				workflowExecutionService.runPolledWorkflow.mockResolvedValue(undefined);
+
+				await dispatchContext.__runPoll(async () => {
+					Object.assign(dispatchContext.getWorkflowStaticData('node'), { lastItemId: 'a' });
+					dispatchContext.__emit(pollData);
+				});
+				await sleep(0);
+
+				expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(1);
+				expect(onDispatched).not.toHaveBeenCalled();
+			});
+
+			test('does not queue a later poll emit behind an earlier poll unsettled commit', async () => {
+				const firstRun = createDeferredPromise<string>();
+				workflowExecutionService.runPolledWorkflow
+					.mockReturnValueOnce(firstRun.promise)
+					.mockResolvedValueOnce('exec-2');
+
+				await context.__runPoll(async () => {
+					Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'a' });
+					context.__emit(pollData);
+				});
+				await sleep(0);
+
+				// The legacy activation path reuses one context for every tick, so a
+				// hung hand-off from one tick must not defer the next tick's dispatch.
+				// firstRun is left unresolved on purpose.
+				await context.__runPoll(async () => {
+					Object.assign(context.getWorkflowStaticData('node'), { lastItemId: 'b' });
+					context.__emit(pollData);
+				});
+				await sleep(0);
+
+				expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(2);
+			});
+		});
+
 		describe('getPollBudgetMs', () => {
 			const buildBudgetContext = (
 				pollTimeoutSeconds: number,
@@ -1416,6 +1571,7 @@ describe('TriggerExecutionContextFactory', () => {
 				expect.any(Function),
 				undefined,
 				undefined,
+				undefined,
 			);
 
 			expect(getPollFunctions).toHaveBeenCalledWith(
@@ -1449,6 +1605,7 @@ describe('TriggerExecutionContextFactory', () => {
 				expect.any(Function),
 				fence,
 				undefined,
+				undefined,
 			);
 		});
 
@@ -1475,6 +1632,7 @@ describe('TriggerExecutionContextFactory', () => {
 				expect.any(Function),
 				fence,
 				prefetched,
+				undefined,
 			);
 		});
 
