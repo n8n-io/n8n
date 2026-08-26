@@ -46,7 +46,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	// A single client-side toggle (like the legacy builder's mode selector), not
 	// keyed by thread: the empty view only allocates a threadId at submit time.
 	// The backend keeps it sticky per thread from the latest user message.
-	const progressiveMode = ref(false);
+	// Default on while the PoC is dogfooded; the selector opts out per session.
+	const progressiveMode = ref(true);
 
 	function setProgressiveMode(enabled: boolean): void {
 		if (progressiveMode.value === enabled) return;
