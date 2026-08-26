@@ -14,7 +14,6 @@ on:
   push:
     branches:
       - 'probe-registry**'
-      - 'pnpm-fixing-session'
   workflow_dispatch:
     inputs:
       reqs:

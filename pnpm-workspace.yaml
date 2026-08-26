@@ -24,7 +24,12 @@ loglevel: warn
 packageImportMethod: clone-or-copy
 
 minimumReleaseAge: 2880
-#fetchTimeout: 300000
+# Blacksmith's path to Cloudflare AMS intermittently stalls a single connection
+# for tens of seconds while aggregate throughput stays at ~1Gbit/s. The 60s
+# default turns those stalls into failed installs; a probe caught the same
+# request completing at 39.6s on one runner and aborting at exactly 60.0s on
+# another. See https://github.com/n8n-io/n8n/actions/runs/32991441403
+fetchTimeout: 300000
 
 minimumReleaseAgeExclude:
   - '@n8n/*'
