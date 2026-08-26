@@ -8,13 +8,18 @@ export function getAll(): CommandBarEntry[] {
 }
 
 function notifyListeners(): void {
-	const snapshot = getAll();
-	listeners.forEach((listener) => listener(snapshot));
+	// One array per listener: `sort`, `reverse` and `splice` mutate in place.
+	listeners.forEach((listener) => listener(getAll()));
 }
 
 export function register(command: CommandBarEntry): void {
-	if (commands.has(command.id)) {
-		console.warn(`Command with id "${command.id}" is already registered. Skipping.`);
+	const existing = commands.get(command.id);
+	if (existing) {
+		// Same definition replayed by a re-login is a no-op; a different one
+		// claiming a taken id is the real collision.
+		if (existing !== command) {
+			console.warn(`Command with id "${command.id}" is already registered. Skipping.`);
+		}
 		return;
 	}
 	commands.set(command.id, command);

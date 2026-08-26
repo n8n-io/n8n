@@ -113,7 +113,7 @@ import {
 } from '@n8n/instance-ai';
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import type { Scope } from '@n8n/permissions';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { redactTelemetryProperties, redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { lazyImport } from '@n8n/utils/lazy-import';
 import { setSchemaBaseDirs } from '@n8n/workflow-sdk';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
@@ -2622,8 +2622,11 @@ export class InstanceAiService {
 		context.workspaceRoot = workspaceRoot;
 		context.threadId = threadId;
 		context.threadMemory = memory;
+		// Tool-emitted telemetry is an open-ended property bag (search queries,
+		// remediation reasons, node error strings) — scrub at the boundary so a
+		// new call site can't leak by omission.
 		context.trackTelemetry = (eventName, properties) => {
-			this.telemetry.track(eventName, properties);
+			this.telemetry.track(eventName, redactTelemetryProperties(properties));
 		};
 		const domainTools = createAllTools(context);
 
@@ -2639,7 +2642,7 @@ export class InstanceAiService {
 			eventBus: this.eventBus,
 			logger: this.logger,
 			trackTelemetry: (eventName, properties) => {
-				this.telemetry.track(eventName, properties);
+				this.telemetry.track(eventName, redactTelemetryProperties(properties));
 			},
 			// Aggregate on the instance-AI thread (not the `ia-builder:` session
 			// thread) so the credit service's per-thread display total and FE push
@@ -4135,7 +4138,7 @@ export class InstanceAiService {
 				if (intermediateText) {
 					this.telemetry.track('Builder sent message', {
 						thread_id: threadId,
-						message: intermediateText,
+						message: redactTelemetryText(intermediateText),
 						is_intermediate: true,
 					});
 				}
@@ -4312,7 +4315,7 @@ export class InstanceAiService {
 			if (result.status === 'completed') {
 				this.telemetry.track('Builder sent message', {
 					thread_id: threadId,
-					message: outputText,
+					message: redactTelemetryText(outputText),
 				});
 				this.telemetry.track('Builder satisfied user intent', {
 					thread_id: threadId,
@@ -5476,7 +5479,7 @@ export class InstanceAiService {
 				if (intermediateText) {
 					this.telemetry.track('Builder sent message', {
 						thread_id: opts.threadId,
-						message: intermediateText,
+						message: redactTelemetryText(intermediateText),
 						is_intermediate: true,
 					});
 				}
@@ -5658,7 +5661,7 @@ export class InstanceAiService {
 				);
 				this.telemetry.track('Builder sent message', {
 					thread_id: opts.threadId,
-					message: outputText,
+					message: redactTelemetryText(outputText),
 				});
 				this.telemetry.track('Builder satisfied user intent', {
 					thread_id: opts.threadId,
@@ -6497,7 +6500,7 @@ export class InstanceAiService {
 			this.telemetry.track('Builder generation errored', {
 				thread_id: threadId,
 				run_id: runId,
-				error_message: errorInfo?.errorMessage ?? reason ?? 'unknown',
+				error_message: redactTelemetryText(errorInfo?.errorMessage ?? reason ?? 'unknown'),
 				...(errorInfo?.errorSource ? { error_source: errorInfo.errorSource } : {}),
 				...(userId ? { user_id: userId } : {}),
 			});

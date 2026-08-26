@@ -114,9 +114,13 @@ export class ClientOAuth2 {
 			// Axios rejects the promise by default for all status codes 4xx.
 			// We override this to reject promises only on 5xxs
 			validateStatus: (status) => status < 500,
-			// Disable axios's built-in proxy handling so requests are routed
-			// through n8n's global proxy agents (HttpProxyManager / HttpsProxyManager)
-			// instead of being double-proxied in corporate proxy-chain environments.
+			// In the shipped artifact this package resolves its own axios copy, which
+			// n8n's shared axios defaults (including the 300s timeout) do not reach —
+			// so bound the request explicitly. Matches the shared default.
+			timeout: 300_000,
+			// Disable axios's built-in proxy handling; the agents built below own
+			// env-proxy routing, avoiding double-proxying in corporate proxy-chain
+			// environments.
 			proxy: false,
 		};
 
@@ -134,25 +138,31 @@ export class ClientOAuth2 {
 			};
 		}
 
+		const proxyUrl = resolveProxyUrl(url);
+
 		// Resolution is re-checked on the agent, so a hostname that resolves to a
 		// different address between validation and connect is still caught. Only for
 		// direct connections though: through a proxy the agent resolves the proxy host,
 		// not the final target, so applying the lookup there would check the wrong host.
-		const lookup = resolveProxyUrl(url) ? undefined : ssrfBridge?.createSecureLookup();
+		const lookup = proxyUrl ? undefined : ssrfBridge?.createSecureLookup();
 
-		// Agents are built here rather than left to the global ones so the per-request
-		// `lookup` and relaxed TLS apply. Both factories are proxy-aware, so ignoring SSL
-		// issues still routes through the env proxy (HTTP(S)_PROXY / NO_PROXY) instead of
-		// connecting directly and bypassing it.
-		if (options.ignoreSSLIssues || lookup) {
+		// Agents are built per request whenever a proxy applies (not only for the
+		// `lookup` and relaxed-TLS cases). Whether this package's axios shares the
+		// instance that n8n's agent-injecting interceptor patches depends on package
+		// layout: the shipped artifact materialises its own copy, so without these
+		// agents a process lacking the global env-proxy agents connects directly and
+		// bypasses the proxy.
+		if (options.ignoreSSLIssues || lookup || proxyUrl) {
 			requestConfig.httpsAgent = createHttpsProxyAgent(url, undefined, {
 				...(options.ignoreSSLIssues ? { rejectUnauthorized: false } : {}),
 				...(lookup ? { lookup } : {}),
 			});
 		}
 
-		if (lookup) {
-			requestConfig.httpAgent = createHttpProxyAgent(url, undefined, { lookup });
+		if (lookup || proxyUrl) {
+			requestConfig.httpAgent = createHttpProxyAgent(url, undefined, {
+				...(lookup ? { lookup } : {}),
+			});
 		}
 
 		const response = await axios.request(requestConfig);

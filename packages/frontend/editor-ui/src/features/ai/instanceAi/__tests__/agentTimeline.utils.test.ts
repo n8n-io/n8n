@@ -399,10 +399,41 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
 	});
 
-	test('streaming tail text without same-response trace renders outside', () => {
+	test('short streaming tail text of a later response stays inside the block', () => {
 		const blocks = blocksOf([reasoning('r1'), text('Quick answer.', 'r2')], [], 'active');
 
-		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+		expect(blocks).toHaveLength(1);
+		expect(blocks[0].type === 'thinking' && blocks[0].entries).toHaveLength(2);
+	});
+
+	test('streaming text with no trace anywhere in the run renders outside', () => {
+		const blocks = blocksOf([text('Quick answer.', 'r1')], [], 'active');
+
+		expect(blocks.map((b) => b.type)).toEqual(['text']);
+	});
+
+	test('narration leading a reasoning-less step never renders outside the block', () => {
+		const narration = text('No services are connected yet.', 'r2');
+		const toolCalls = [makeToolCall({ toolCallId: 'tc-1' }), makeToolCall({ toolCallId: 'tc-2' })];
+
+		// The step emits its narration a few hundred ms before its tool call and
+		// carries no reasoning, so its response has no trace content of its own.
+		const streaming = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1'), narration],
+			toolCalls,
+			'active',
+		);
+		expect(streaming).toHaveLength(1);
+		expect(streaming[0].type === 'thinking' && streaming[0].entries).toHaveLength(3);
+
+		// Once the tool call lands the grouping is unchanged — nothing re-flows.
+		const withToolCall = blocksOf(
+			[reasoning('r1'), toolEntry('tc-1', 'r1'), narration, toolEntry('tc-2', 'r2')],
+			toolCalls,
+			'active',
+		);
+		expect(withToolCall).toHaveLength(1);
+		expect(withToolCall[0].type === 'thinking' && withToolCall[0].entries).toHaveLength(4);
 	});
 
 	test('short trailing text promotes out once the run settles', () => {
@@ -613,10 +644,10 @@ describe('buildTimelineBlocks', () => {
 	});
 
 	test('the trailing thinking block stays active while tentative tail text streams', () => {
-		// Tail text may still fold back into the block (if same-response trace
-		// content follows), so the block must not settle to "Thought for Xs" yet.
+		// Tail text kept inside the block is still tentative, so the block must
+		// not settle to "Thought for Xs" yet.
 		const tailText = blocksOf([reasoning('r1'), text('Answer...', 'r2')], [], 'active');
-		expect(tailText.map((b) => b.type)).toEqual(['thinking', 'text']);
+		expect(tailText.map((b) => b.type)).toEqual(['thinking']);
 		expect(tailText[0].type === 'thinking' && tailText[0].active).toBe(true);
 	});
 

@@ -35,9 +35,8 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import type { WorkflowReviewAccessService } from '../workflow-review-access.service';
+import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 
-import type { WorkflowReviewEligibilityService } from '../workflow-review-eligibility.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewRequestService } from '../workflow-review-request.service';
 
@@ -64,13 +63,12 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const activityRepository = mock<WorkflowReviewActivityRepository>();
 	const userRepository = mock<UserRepository>();
-	const eligibilityService = mock<WorkflowReviewEligibilityService>();
 	const roleService = mock<RoleService>();
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
 	const workflowService = mock<WorkflowService>();
-	const accessService = mock<WorkflowReviewAccessService>();
+	const authorizationService = mock<WorkflowReviewAuthorizationService>();
 	const logger = mock<Logger>();
 	const eventService = mock<EventService>();
 	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
@@ -90,12 +88,11 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		reviewerRepository,
 		activityRepository,
 		userRepository,
-		eligibilityService,
 		roleService,
 		dbLockService,
 		collaborationService,
 		workflowService,
-		accessService,
+		authorizationService,
 		eventService,
 	);
 
@@ -134,7 +131,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		accessService.resolveOpenableRequestIds.mockResolvedValue(new Set());
+		authorizationService.resolveOpenableRequestIds.mockResolvedValue(new Set());
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
 		// By default, run the critical section against the mocked transaction.
@@ -250,7 +247,7 @@ describe('WorkflowReviewRequestService.updateVersion', () => {
 		const result = await service.updateVersion(user, requestId, dto);
 
 		expect(dbLockService.withLockContext).toHaveBeenCalledWith(
-			DbLock.WORKFLOW_REVIEW_REQUEST_CREATE,
+			DbLock.WORKFLOW_REVIEW_MUTATION,
 			expect.any(Function),
 		);
 		// Re-checked under the lock through the transaction manager.

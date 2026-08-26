@@ -379,7 +379,7 @@ describe('CommunityPackagesService', () => {
 		beforeEach(() => {
 			vi.clearAllMocks();
 
-			// First check exists (pre-download backup); later checks don't (already backed up).
+			// The one existence check is the pre-download backup, and it finds a directory.
 			vi.mocked(access).mockResolvedValueOnce(undefined).mockRejectedValue(new Error('ENOENT'));
 
 			vi.mocked(execFile).mockImplementation(execMockForThisBlock);
@@ -444,6 +444,14 @@ describe('CommunityPackagesService', () => {
 
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
 			vi.mocked(readFile)
+				// The ledger as it stands before the update, which is what the rollback restores.
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: 'installed-nodes',
+						private: true,
+						dependencies: { [PACKAGE_NAME]: COMMUNITY_PACKAGE_VERSION.CURRENT },
+					}),
+				)
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,
@@ -557,6 +565,10 @@ describe('CommunityPackagesService', () => {
 
 			loadNodesAndCredentials.loadPackage.mockRejectedValueOnce(new Error('broken package'));
 			vi.mocked(readFile)
+				// Nothing on disk and nothing in the ledger, so there is no entry to restore.
+				.mockResolvedValueOnce(
+					JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }),
+				)
 				.mockResolvedValueOnce(
 					JSON.stringify({
 						name: PACKAGE_NAME,
@@ -720,7 +732,8 @@ describe('CommunityPackagesService', () => {
 
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'community-package-update',
-				payload: { packageName: PACKAGE_NAME, packageVersion: 'latest' },
+				// The resolved version that was just persisted, not the requested `latest` specifier.
+				payload: { packageName: PACKAGE_NAME, packageVersion: COMMUNITY_PACKAGE_VERSION.CURRENT },
 			});
 		});
 
@@ -1383,6 +1396,8 @@ describe('CommunityPackagesService', () => {
 
 	describe('handleInstallEvent', () => {
 		test('should call unloadPackage before loadPackage to handle already-loaded packages', async () => {
+			vi.mocked(readFile).mockRejectedValue(new Error('ENOENT'));
+
 			const callOrder: string[] = [];
 			loadNodesAndCredentials.unloadPackage.mockImplementation(async () => {
 				callOrder.push('unloadPackage');
@@ -1419,6 +1434,27 @@ describe('CommunityPackagesService', () => {
 				expect.objectContaining({ packageName: 'n8n-nodes-test', packageVersion: '1.0.0' }),
 			);
 		});
+
+		test('should skip the download when the on-disk version already matches and the loader is registered', async () => {
+			vi.mocked(readFile).mockResolvedValue(JSON.stringify({ version: '1.0.0' }));
+			loadNodesAndCredentials.loaders['n8n-nodes-test'] = mock<PackageDirectoryLoader>();
+
+			const downloadPackageSpy = vi
+				.spyOn(communityPackagesService as any, 'downloadPackage')
+				.mockResolvedValue(undefined);
+
+			await communityPackagesService.handleInstallEvent({
+				packageName: 'n8n-nodes-test',
+				packageVersion: '1.0.0',
+			});
+
+			expect(downloadPackageSpy).not.toHaveBeenCalled();
+			expect(loadNodesAndCredentials.unloadPackage).not.toHaveBeenCalled();
+			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+			expect(logger.debug).toHaveBeenCalledWith(
+				'Community package n8n-nodes-test already at 1.0.0, skipping',
+			);
+		});
 	});
 
 	describe('handleUninstallEvent', () => {
@@ -1441,6 +1477,8 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
 			loadNodesAndCredentials.loadPackage.mockResolvedValue(mock<PackageDirectoryLoader>());
 			loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
+			// No package.json on disk, so the already-installed check doesn't short-circuit.
+			vi.mocked(readFile).mockRejectedValue(new Error('ENOENT'));
 		});
 
 		test('serializes two overlapping handleInstallEvent calls for different packages', async () => {
@@ -1472,10 +1510,8 @@ describe('CommunityPackagesService', () => {
 				packageVersion: '1.0.0',
 			});
 
-			// Flush a couple of microtask ticks: only pkg-a's download should have been reached.
-			await Promise.resolve();
-			await Promise.resolve();
-			expect(callOrder).toEqual(['start:pkg-a']);
+			// Only pkg-a's download should have been reached; pkg-b is still waiting on the mutex.
+			await vi.waitFor(() => expect(callOrder).toEqual(['start:pkg-a']));
 
 			releaseFirst();
 			await Promise.all([eventA, eventB]);
@@ -1520,9 +1556,8 @@ describe('CommunityPackagesService', () => {
 				packageVersion: '1.0.0',
 			});
 
-			await Promise.resolve();
-			await Promise.resolve();
-			expect(callOrder).toEqual(['start:pkg-http']);
+			// Only pkg-http's download should have been reached; pkg-pubsub is still waiting.
+			await vi.waitFor(() => expect(callOrder).toEqual(['start:pkg-http']));
 
 			releaseFirst();
 			await Promise.all([installCall, pubsubCall]);
