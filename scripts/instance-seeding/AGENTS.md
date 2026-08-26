@@ -191,11 +191,17 @@ data tables they read, working credentials, a fortnight of runs, four Instance A
 conversations about that estate, and a matching activity log.
 
 ```sh
-pnpm build --filter=n8n-core          # once — the cipher is reused, not reimplemented
-export ANTHROPIC_API_KEY=...
+export ANTHROPIC_API_KEY=...          # or put both in packages/cli/.env
 export LINEAR_API_KEY=...
-node scripts/instance-seeding/seed-anthropic-linear.mjs
+pnpm seed:account
 ```
+
+`pnpm seed:account` builds `n8n-core` first, because the script reuses n8n's own
+cipher rather than reimplementing the key derivation. Tokens are read from the
+environment, else from `packages/cli/.env`, `packages/@n8n/instance-ai/.env` or a
+root `.env`, in that order — the shell always wins. A missing token is named
+alongside every place it can be set, and the run report says which source each
+token came from, never its value.
 
 Fixtures live in `seed-anthropic-linear.data.mjs`; the runner holds the phases and the
 choice table. SQLite only, via `node:sqlite`, so it needs no dependency of its own.

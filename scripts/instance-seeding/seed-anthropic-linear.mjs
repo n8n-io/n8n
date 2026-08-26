@@ -27,10 +27,14 @@
  *
  * Usage
  * -----
- *   pnpm build --filter=n8n-core        # once — the cipher is reused, not reimplemented
- *   export ANTHROPIC_API_KEY=...
- *   export LINEAR_API_KEY=...
- *   node scripts/instance-seeding/seed-anthropic-linear.mjs
+ *   pnpm seed:account
+ *
+ * The pnpm script builds n8n-core first, because this reuses n8n's own cipher rather than
+ * reimplementing the key derivation.
+ *
+ * The two API tokens can come from the environment or from a dotenv file this repo already uses
+ * for local secrets — packages/cli/.env, packages/@n8n/instance-ai/.env, or a root .env. The
+ * environment wins over a file, and a missing token is named alongside every place it can be set.
  *
  * Stop n8n first, or reload the UI afterwards. Re-running is safe: every phase replaces its own
  * rows, matched on the `seedAl` id prefix.
@@ -100,6 +104,7 @@ const CREDENTIALS = [
 		name: 'Anthropic (seed)',
 		type: 'anthropicApi',
 		envVar: 'ANTHROPIC_API_KEY',
+		tokenSource: 'create one at console.anthropic.com under API Keys',
 		// Mirrors the credential's own defaults, so the UI shows a complete, valid credential.
 		buildData: (apiKey) => ({ apiKey, url: 'https://api.anthropic.com', header: false }),
 		nodeTypes: ['@n8n/n8n-nodes-langchain.lmChatAnthropic'],
@@ -109,6 +114,7 @@ const CREDENTIALS = [
 		name: 'Linear (seed)',
 		type: 'linearApi',
 		envVar: 'LINEAR_API_KEY',
+		tokenSource: 'create a personal API key in Linear under Settings > Security & access',
 		buildData: (apiKey) => ({ apiKey, signingSecret: '' }),
 		// The tool variants are separate generated node types, so they are listed explicitly.
 		nodeTypes: ['n8n-nodes-base.linear', 'n8n-nodes-base.linearTool'],
@@ -163,6 +169,42 @@ function resolveEncryptionKey(folder) {
 }
 
 /**
+ * Dotenv files this repo already uses for local secrets, most specific first.
+ */
+const ENV_FILES = ['packages/cli/.env', 'packages/@n8n/instance-ai/.env', '.env'];
+
+/**
+ * Takes only the two token variables from those files, and only when the environment does not
+ * already carry one — so a shell export always wins, and nothing else in those files leaks into
+ * this process. Returns which file each token came from, for the run report.
+ */
+function loadTokensFromEnvFiles() {
+	const wanted = new Set(CREDENTIALS.map((c) => c.envVar));
+	const found = new Map();
+
+	for (const relative of ENV_FILES) {
+		const file = path.join(repoRoot, relative);
+		if (!existsSync(file)) continue;
+
+		for (const line of readFileSync(file, 'utf8').split('\n')) {
+			const match = /^\s*(?:export\s+)?([A-Z_][A-Z0-9_]*)\s*=\s*(.*)$/.exec(line);
+			if (!match) continue;
+			const [, name, rawValue] = match;
+			if (!wanted.has(name) || found.has(name) || process.env[name]) continue;
+			// Strip one layer of matching quotes; on an unquoted value, drop a trailing comment.
+			const trimmed = rawValue.trim();
+			const value = /^(['"]).*\1$/.test(trimmed)
+				? trimmed.slice(1, -1)
+				: trimmed.split('#')[0].trim();
+			if (value) found.set(name, { value, file: relative });
+		}
+	}
+
+	for (const [name, { value }] of found) process.env[name] = value;
+	return found;
+}
+
+/**
  * Reuses n8n's own cipher and flatted encoder rather than reimplementing either. Both are loaded
  * by path: this script is standalone and the repo root depends on neither, so package resolution
  * would not find them.
@@ -194,12 +236,29 @@ const { cipher, flatted } = await loadEncoders();
 const folder = n8nFolder();
 const { key, source } = resolveEncryptionKey(folder);
 
-const missing = CREDENTIALS.filter((c) => !process.env[c.envVar]).map((c) => c.envVar);
+const tokensFromFiles = loadTokensFromEnvFiles();
+
+const missing = CREDENTIALS.filter((c) => !process.env[c.envVar]);
 if (missing.length > 0) {
-	fail(
-		`Missing token${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}.`,
-		'Export them and re-run. They are read from the environment and written nowhere but the local database.',
+	const plural = missing.length > 1;
+	console.error(`\n  Cannot seed credentials: the API token${plural ? 's are' : ' is'} missing.\n`);
+	for (const credential of missing) {
+		console.error(`    ${credential.envVar}`);
+		console.error(`      needed for the ${credential.type} credential`);
+		console.error(`      ${credential.tokenSource}`);
+	}
+	console.error(
+		'\n  Set them in any of these — the shell wins over a file, earlier files win over later:\n',
 	);
+	console.error('    the shell             export ANTHROPIC_API_KEY=... LINEAR_API_KEY=...');
+	for (const relative of ENV_FILES) {
+		const state = existsSync(path.join(repoRoot, relative)) ? 'exists' : 'create it';
+		console.error(`    ${relative.padEnd(21)} (${state})`);
+	}
+	console.error(
+		'\n  Tokens are read into this process only. Nothing is written outside the local database.\n',
+	);
+	process.exit(1);
 }
 
 const dbFile = path.join(folder, process.env.DB_SQLITE_DATABASE ?? 'database.sqlite');
@@ -324,7 +383,7 @@ for (const credential of CREDENTIALS) {
 	);
 	shareCredential.run(credential.id, project.id, credentialStamp, credentialStamp);
 	console.log(
-		`  credential      ${credential.type.padEnd(24)} from ${credential.envVar} (${token.length} chars)`,
+		`  credential      ${credential.type.padEnd(24)} ${credential.envVar} via ${tokensFromFiles.get(credential.envVar)?.file ?? 'environment'} (${token.length} chars)`,
 	);
 }
 

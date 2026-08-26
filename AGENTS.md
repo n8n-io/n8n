@@ -88,6 +88,37 @@ by default) for a fast recovery: it cleans build outputs and force-rebuilds
 use `pnpm reset --full`, which also wipes untracked files and reinstalls
 dependencies.
 
+### Seeding a local instance with realistic data
+
+An empty instance is a bad place to test anything that reasons about a user's
+work. Two seeds exist, and they do different jobs:
+
+```bash
+pnpm seed:account   # one plausible account: 10 workflows, credentials, runs, AI threads
+```
+
+`pnpm seed:account` fills a local SQLite instance with a small, deliberately
+consistent estate — ten workflows that all use the Anthropic chat model and all
+touch Linear, the two data tables they read, **working credentials built from
+your own API tokens**, a fortnight of execution history, Instance AI
+conversations about those workflows, and (on builds that have the migration) a
+matching activity log. It needs `ANTHROPIC_API_KEY` and `LINEAR_API_KEY`, from
+the shell or from `packages/cli/.env`; it names them and every place they can be
+set if either is missing. Re-running is safe.
+
+Reach for it whenever you need an instance that looks used: manual UI checks,
+demos, anything reading execution history, data tables, AI threads, or the
+activity log. **Its consistency is deliberate** — for every job where n8n offers
+a choice, exactly one node is used everywhere, so it doubles as a fixture for
+anything reasoning about what a user tends to reach for. Adding a workflow means
+following the `CHOICES` table in the script rather than picking again.
+
+For a large synthetic org instead — ~500 workflows across ~30 projects, for
+dependency-graph and perf work — use `scripts/instance-seeding/seedInstance.mjs`.
+Both are documented in
+[scripts/instance-seeding/AGENTS.md](scripts/instance-seeding/AGENTS.md),
+including why credentials cannot be shared in a seed file.
+
 ### Testing
 - `pnpm test` - Run all tests
 - `pnpm test:affected` - Runs tests based on what has changed since the last
