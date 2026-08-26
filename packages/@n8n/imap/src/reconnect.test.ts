@@ -4,6 +4,15 @@ import { box, NOWHERE, transportFactory, settle, type FakeImap } from '../test/f
 
 const WATCHING = { mailbox: 'INBOX' };
 
+/** Runs `restore` out of tries. Each one settles over several ticks before the next backoff. */
+const runOutTries = async () => {
+	for (let i = 0; i < 8; i++) {
+		await settle();
+		await vi.advanceTimersByTimeAsync(20_000);
+	}
+	await settle();
+};
+
 /** The transport settles through `setImmediate`, so only the timers under test are faked. */
 const useTimers = () => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
 
@@ -85,15 +94,69 @@ describe('reconnect', () => {
 		});
 	});
 
-	describe('when it cannot be restored', () => {
-		it('closes as dropped, carrying the attempt that failed', async () => {
-			const { events, imap } = await connect(WATCHING, (transport, attempt) => {
+	describe('when an attempt fails', () => {
+		it('tries again, so a server only briefly away costs the caller nothing', async () => {
+			useTimers();
+			const { factory, events, imap } = await connect(WATCHING, (transport, attempt) => {
+				if (attempt === 1 || attempt === 2) transport.connectResult = 'close';
+			});
+
+			imap().drop();
+			await settle();
+			await vi.advanceTimersByTimeAsync(1000);
+			await settle();
+			await vi.advanceTimersByTimeAsync(2000);
+			await settle();
+
+			expect(factory.built).toHaveLength(4);
+			expect(events.reconnect).toHaveBeenCalledTimes(1);
+			expect(events.error).not.toHaveBeenCalled();
+			expect(events.close).not.toHaveBeenCalled();
+		});
+
+		it('stops waiting to try again once the caller ends the connection', async () => {
+			useTimers();
+			const { connection, factory, imap } = await connect(WATCHING, (transport, attempt) => {
 				if (attempt > 0) transport.connectResult = 'close';
 			});
 
 			imap().drop();
 			await settle();
+			expect(factory.built).toHaveLength(2);
 
+			connection.end();
+			await runOutTries();
+
+			expect(factory.built).toHaveLength(2);
+		});
+
+		it('leaves the caller alone while it still has tries left', async () => {
+			useTimers();
+			const { factory, events, imap } = await connect(WATCHING, (transport, attempt) => {
+				if (attempt > 0) transport.connectResult = 'close';
+			});
+
+			imap().drop();
+			await settle();
+			await vi.advanceTimersByTimeAsync(1000);
+			await settle();
+
+			expect(factory.built).toHaveLength(3);
+			expect(events.close).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('when it cannot be restored', () => {
+		it('closes as dropped, carrying the attempt that failed', async () => {
+			useTimers();
+			const { factory, events, imap } = await connect(WATCHING, (transport, attempt) => {
+				if (attempt > 0) transport.connectResult = 'close';
+			});
+
+			imap().drop();
+			await runOutTries();
+
+			expect(factory.built).toHaveLength(7);
 			expect(events.error).not.toHaveBeenCalled();
 			expect(events.close).toHaveBeenCalledWith('dropped', expect.any(ConnectionClosedError));
 		});
@@ -105,13 +168,13 @@ describe('reconnect', () => {
 			});
 
 			imap().drop();
-			await vi.advanceTimersByTimeAsync(1000);
-			await settle();
+			await runOutTries();
 
 			expect(events.close).toHaveBeenCalledWith('dropped', expect.any(ConnectionTimeoutError));
 		});
 
 		it('still closes as dropped when a handler failed earlier on its own', async () => {
+			useTimers();
 			const { connection, events, imap } = await connect(WATCHING, (transport, attempt) => {
 				if (attempt > 0) transport.connectResult = 'close';
 			});
@@ -126,7 +189,7 @@ describe('reconnect', () => {
 			);
 
 			imap().drop();
-			await settle();
+			await runOutTries();
 
 			expect(events.close).toHaveBeenCalledWith('dropped', expect.any(ConnectionClosedError));
 		});

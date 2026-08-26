@@ -1,3 +1,4 @@
+import { sleep } from '@n8n/utils/sleep';
 import Imap, { type ImapMessage } from 'imap';
 
 import { toImapOptions, type ImapConnectionOptions } from './connection-options';
@@ -19,6 +20,12 @@ export const imapErrorCode = (error: Error): string =>
 const LOGOUT_GRACE_PERIOD = 2000;
 
 const DEFAULT_RECONNECT_TIMEOUT = 45_000;
+
+/** Tries at getting a transport back before a drop counts as one nothing could be done about. */
+const RESTORE_ATTEMPTS = 6;
+
+/** Doubled per try, so the attempts span roughly the half minute a restarting server is away. */
+const RESTORE_BACKOFF = 1000;
 
 /** `ended`: the caller asked. `error`: a failure preceded it. `dropped`: neither, and unrecoverable. */
 export type CloseReason = 'ended' | 'error' | 'dropped';
@@ -198,6 +205,9 @@ export class ImapSimple {
 
 	private timer: NodeJS.Timeout | undefined;
 
+	/** Cuts short a wait between tries, so an unreachable server cannot hold up `end`. */
+	private readonly aborter = new AbortController();
+
 	private readonly handlers: {
 		arrival?: (arrival: Arrival) => Promise<void> | void;
 		error?: (error: Error) => void;
@@ -359,22 +369,46 @@ export class ImapSimple {
 	}
 
 	/**
-	 * Puts a fresh transport in place of the current one. Reports and closes if it cannot, because
-	 * a caller that is never told has no way to know its mail stopped arriving.
+	 * Puts a fresh transport in place of the current one, trying again a few times so a server that
+	 * is only briefly away costs the caller nothing. Reports and closes once the tries run out,
+	 * because a caller that is never told has no way to know its mail stopped arriving.
 	 */
 	private async restore(): Promise<void> {
-		this.attempt += 1;
-		const attempt = this.attempt;
+		for (let tries = 0; ; tries++) {
+			this.attempt += 1;
+			const attempt = this.attempt;
 
-		try {
-			await this.reopen(attempt);
-		} catch (error) {
-			if (attempt !== this.attempt || !this.canRestore()) return;
-			// A drop nothing could be done about, so the close carries `dropped` and the attempt
-			// that failed. Reporting an error first would relabel it as one the caller can read.
-			this.dropCause = error instanceof Error ? error : new Error(String(error));
-			this.reportClose();
+			try {
+				await this.reopen(attempt);
+				return;
+			} catch (error) {
+				// Another restore has taken over, or the caller is gone: either way this one is
+				// no longer the connection anyone is waiting on.
+				if (attempt !== this.attempt || !this.canRestore()) return;
+
+				if (tries + 1 === RESTORE_ATTEMPTS) {
+					// A drop nothing could be done about, so the close carries `dropped` and the
+					// attempt that failed. Reporting an error first would relabel it as one the
+					// caller can read.
+					this.dropCause = error instanceof Error ? error : new Error(String(error));
+					this.reportClose();
+					return;
+				}
+
+				if (!(await this.waitToTryAgain(tries, attempt))) return;
+			}
 		}
+	}
+
+	/** Waits out the backoff, answering whether another try is still wanted once it is over. */
+	private async waitToTryAgain(tries: number, attempt: number): Promise<boolean> {
+		try {
+			await sleep(RESTORE_BACKOFF * 2 ** tries, this.aborter.signal);
+		} catch {
+			return false;
+		}
+
+		return attempt === this.attempt && this.canRestore();
 	}
 
 	private async reopen(attempt: number): Promise<void> {
@@ -603,6 +637,7 @@ export class ImapSimple {
 	end(): void {
 		this.ended = true;
 		clearTimeout(this.timer);
+		this.aborter.abort();
 		this.lose();
 
 		const client = this.client;
