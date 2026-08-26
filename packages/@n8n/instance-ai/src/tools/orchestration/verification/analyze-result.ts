@@ -335,8 +335,24 @@ function buildCoverageNote(
 	result: ExecutionRunResult,
 	success: boolean,
 	reachedHaltedGates: string[],
+	triggerNodeName: string | undefined,
 ): string | undefined {
 	if (nodesNotReached.length === 0) return undefined;
+	// A trigger-scoped pass only ever reaches its own trigger's branch, so the
+	// generic "a lookup returned nothing" guidance would send the agent editing
+	// a workflow whose other branches simply are not on this path.
+	if (success && triggerNodeName) {
+		return (
+			`Partial coverage by design: this pass started from trigger "${triggerNodeName}", so it ` +
+			`covers that trigger's branch only. ${String(nodesNotReached.length)} planned node(s) were ` +
+			`not reached: ${nodesNotReached.join(', ')}. Nodes on another trigger's branch are ` +
+			'expected to be unreached here — call verify-built-workflow again with `triggerNodeName` ' +
+			'set to each remaining trigger and treat coverage as the union of those passes. Do not ' +
+			'edit, disable, reorder, or copy the workflow to reach them. Any unreached node that IS on ' +
+			"this trigger's branch did not receive input items (usually an empty lookup or query) — " +
+			'seed matching test data and re-run before treating it as verified.'
+		);
+	}
 	if (success && reachedHaltedGates.length > 0) {
 		return (
 			`Verification pauses at wait gate(s) ${reachedHaltedGates.join(', ')} — in a live run the ` +
@@ -415,6 +431,8 @@ export function analyzeVerificationResult(args: {
 	chatModelRelatedNodeNames?: ReadonlySet<string>;
 	/** Precomputed replacement suggestions and n8n-credits availability for chat-model recovery guidance. */
 	chatModelRecovery?: ChatModelRecoveryOptions;
+	/** Trigger this pass started from, when the caller named one. */
+	triggerNodeName?: string;
 }): VerificationAnalysis {
 	const {
 		result,
@@ -425,6 +443,7 @@ export function analyzeVerificationResult(args: {
 		runId,
 		chatModelRelatedNodeNames,
 		chatModelRecovery,
+		triggerNodeName,
 	} = args;
 	const nodeErrors = result.nodeErrors ?? [];
 	const reachedNames = new Set(
@@ -485,6 +504,7 @@ export function analyzeVerificationResult(args: {
 			result,
 			success,
 			(haltedGateNames ?? []).filter((name) => reachedNames.has(name)),
+			triggerNodeName,
 		),
 		errorMessage,
 		nodeErrors,

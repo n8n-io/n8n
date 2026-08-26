@@ -321,3 +321,62 @@ describe('analyzeVerificationResult — workflow-pinned nodes', () => {
 		]);
 	});
 });
+
+describe('analyzeVerificationResult — trigger-scoped coverage', () => {
+	const twoBranchOutcome = makeBuildOutcome({
+		nodeSimulationPlan: [
+			{
+				nodeName: 'Post Movers',
+				verdict: 'simulate',
+				reason: 'Sends a message',
+				confidence: 'high',
+				source: 'deterministic',
+			},
+			{
+				nodeName: 'Post Summary',
+				verdict: 'simulate',
+				reason: 'Sends a message',
+				confidence: 'high',
+				source: 'deterministic',
+			},
+		],
+	});
+	const weekdayPass = {
+		executionId: 'exec-weekday',
+		status: 'success',
+		executedNodeNames: ['Every Weekday 9am', 'Build Movers Message', 'Post Movers'],
+		lastNodeExecuted: 'Post Movers',
+		data: { 'Post Movers': [{ ok: true }] },
+	} as unknown as ExecutionRunResult;
+
+	it('attributes the unreached nodes to the other triggers when a trigger was named', () => {
+		const analysis = analyzeVerificationResult({
+			result: weekdayPass,
+			buildOutcome: twoBranchOutcome,
+			simulatedNodes: [{ nodeName: 'Post Movers', reason: 'Sends a message' }],
+			stateBefore: undefined,
+			runId: 'run-1',
+			triggerNodeName: 'Every Weekday 9am',
+		});
+
+		expect(analysis.nodesNotReached).toEqual(['Post Summary']);
+		expect(analysis.coverageNote).toContain('Every Weekday 9am');
+		expect(analysis.coverageNote).toContain('triggerNodeName');
+		// The generic "a lookup returned nothing, seed test data" guidance would
+		// send the agent editing a workflow whose other branch is simply not on
+		// this trigger's path.
+		expect(analysis.coverageNote).not.toContain('Seed matching test data');
+	});
+
+	it('keeps the generic zero-output guidance when no trigger was named', () => {
+		const analysis = analyzeVerificationResult({
+			result: weekdayPass,
+			buildOutcome: twoBranchOutcome,
+			simulatedNodes: [{ nodeName: 'Post Movers', reason: 'Sends a message' }],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.coverageNote).toContain('Seed matching test data');
+	});
+});
