@@ -10,6 +10,7 @@ import {
 	assertParamIsString,
 	getHighlightedInputKey,
 	HIGHLIGHTED_SESSION_KEY,
+	CHAT_TRIGGER_PATH_SUFFIX,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -20,17 +21,25 @@ import type {
 	INodeExecutionData,
 	IBinaryData,
 	INodeProperties,
+	IUser,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { ChatTriggerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
+import { generateChatUserAuthToken } from './auth-token';
 import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
-import { createPage } from './templates';
+import {
+	buildAbsoluteChatUrl,
+	buildInnerFrameSrc,
+	CHAT_FRAME_SANDBOX,
+	isChatOAuth2Enabled,
+	isShellInnerRequest,
+	readAuthCookie,
+} from './shell';
+import { createPage, createShellPage } from './templates';
 import { assertValidLoadPreviousSessionOption } from './types';
-
-const CHAT_TRIGGER_PATH_IDENTIFIER = 'chat';
 
 const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
 const allowFileUploadsOption: INodeProperties = {
@@ -317,7 +326,7 @@ export class ChatTrigger extends Node {
 				name: 'setup',
 				httpMethod: 'GET',
 				responseMode: 'onReceived',
-				path: CHAT_TRIGGER_PATH_IDENTIFIER,
+				path: CHAT_TRIGGER_PATH_SUFFIX,
 				ndvHideUrl: true,
 			},
 			{
@@ -325,7 +334,7 @@ export class ChatTrigger extends Node {
 				httpMethod: 'POST',
 				responseMode:
 					'={{$parameter.options?.["responseMode"] ?? ($parameter.availableInChat ? "streaming" : "lastNode") }}',
-				path: CHAT_TRIGGER_PATH_IDENTIFIER,
+				path: CHAT_TRIGGER_PATH_SUFFIX,
 				ndvHideMethod: true,
 				ndvHideUrl: isPublicChatTriggerDisabled() ? true : '={{ !$parameter.public }}',
 			},
@@ -906,6 +915,50 @@ export class ChatTrigger extends Node {
 					}
 				}
 
+				// An n8n-controlled shell on the real origin, with the author's chat in a frame
+				// that has no origin. The connect experience needs the real origin (OAuth popup,
+				// success channel, `localStorage`), so nothing author-shaped may live there.
+				let shellInner = false;
+				let authToken: string | undefined;
+				let visitor: IUser | undefined;
+
+				if (isChatOAuth2Enabled() && authentication === 'n8nUserAuth') {
+					shellInner = isShellInnerRequest(req);
+
+					// The frame can't fetch `/rest/login` for itself, so resolve the visitor here.
+					// Same-site either way: the frame's first GET is issued by the shell, before
+					// any opaque document exists.
+					const authCookie = readAuthCookie(req);
+					if (authCookie) {
+						try {
+							visitor = await ctx.validateCookieAuth(authCookie);
+						} catch {}
+					}
+
+					if (!visitor) {
+						res.writeHead(302, {
+							Location: `/signin?redirect=${encodeURIComponent(buildAbsoluteChatUrl(req))}`,
+						});
+						res.end();
+						return { noWebhookResponse: true };
+					}
+
+					if (!shellInner) {
+						res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
+						res
+							.status(200)
+							.send(createShellPage({ iframeSrc: buildInnerFrameSrc(req) }))
+							.end();
+						return { noWebhookResponse: true };
+					}
+
+					// By header as well as by the iframe's attribute, so the document has no
+					// origin even if the attribute is ever stripped.
+					res.setHeader('Content-Security-Policy', `sandbox ${CHAT_FRAME_SANDBOX}`);
+					// Cookies aren't sent from an opaque origin; messages carry this instead.
+					authToken = generateChatUserAuthToken(ctx.getNode(), visitor);
+				}
+
 				const page = createPage({
 					i18n: {
 						en: i18nConfig,
@@ -921,6 +974,9 @@ export class ChatTrigger extends Node {
 					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
 					customCss: options.customCss,
 					enableStreaming,
+					shellInner,
+					authToken,
+					visitor,
 				});
 
 				res.status(200).send(page).end();

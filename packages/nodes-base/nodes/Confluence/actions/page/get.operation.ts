@@ -1,5 +1,4 @@
 import type { IDataObject, IExecuteFunctions, INodeProperties } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import { confluenceApiRequest } from '../../transport';
 import type { ConfluenceBodyFormat } from '../common';
@@ -9,6 +8,7 @@ import {
 	extractNextCursor,
 	optionalSpaceRLC,
 	pageRLC,
+	parsePositiveInt,
 	resolvePageId,
 	shapeBody,
 } from '../common';
@@ -21,8 +21,6 @@ const MAX_DEPTH = 10;
 export const description: INodeProperties[] = [
 	{
 		...optionalSpaceRLC,
-		description:
-			'Limits page selection and By Title lookups to one space. Leave empty or pick "All Spaces" to search across all spaces.',
 		displayOptions: {
 			show: {
 				resource: ['page'],
@@ -187,13 +185,12 @@ export const execute: ConfluenceOperation = async function (
 		return shapeBody(page, bodyFormat);
 	}
 
-	const rawMaxPages = this.getNodeParameter('maxPages', itemIndex, 100) as number;
-	if (!Number.isFinite(rawMaxPages) || rawMaxPages < 1) {
-		throw new NodeOperationError(this.getNode(), 'Max Pages must be a number of at least 1', {
-			itemIndex,
-		});
-	}
-	const maxPages = Math.floor(rawMaxPages);
+	const maxPages = parsePositiveInt.call(
+		this,
+		this.getNodeParameter('maxPages', itemIndex, 100),
+		'Max Pages',
+		itemIndex,
+	);
 	const descendantIds = await collectDescendantPageIds.call(
 		this,
 		pageId,

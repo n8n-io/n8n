@@ -175,6 +175,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		expect(result.readFilesystem).toBe('require_approval');
 		expect(result.fetchUrl).toBe('require_approval');
 		expect(result.publishWorkflow).toBe('require_approval');
+		expect(result.createCredential).toBe('require_approval');
 		expect(result.deleteCredential).toBe('require_approval');
 		expect(result.restoreWorkflowVersion).toBe('require_approval');
 
@@ -198,6 +199,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		const permissions: InstanceAiPermissions = {
 			...DEFAULT_INSTANCE_AI_PERMISSIONS,
 			publishWorkflow: 'always_allow',
+			createCredential: 'always_allow',
 			deleteCredential: 'always_allow',
 			readFilesystem: 'always_allow',
 		};
@@ -205,6 +207,7 @@ describe('applyBranchReadOnlyOverrides', () => {
 		const result = applyBranchReadOnlyOverrides(permissions);
 
 		expect(result.publishWorkflow).toBe('always_allow');
+		expect(result.createCredential).toBe('always_allow');
 		expect(result.deleteCredential).toBe('always_allow');
 		expect(result.readFilesystem).toBe('always_allow');
 	});
