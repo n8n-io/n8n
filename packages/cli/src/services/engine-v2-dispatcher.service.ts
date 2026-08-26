@@ -75,6 +75,9 @@ export class EngineV2Dispatcher {
 			mode: 'manual',
 		});
 
+		// TODO(CAT-4255): the engine can publish lifecycle events before this line
+		// runs, and the relay drops them because no session exists yet. Let the
+		// control plane mint the execution id so this can register before dispatch.
 		this.registerPushSession(executionId, data, triggerMain);
 
 		return executionId;
