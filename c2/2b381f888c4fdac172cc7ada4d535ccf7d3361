@@ -1,0 +1,48 @@
+packages/core/src/execution-engine/node-execution-context/webhook-context.ts
+  s_16453cac85f858::t_82fd7f0930096c 18
+  s_16453cac85f858::t_6abf2c3a8d9e29 212-224
+packages/nodes-base/nodes/Webhook/test/Webhook.test.ts
+  s_16453cac85f858::t_0eb5a038ac2e05 115-123
+  s_16453cac85f858::t_1b6533a7ef45b3 158-159
+  s_16453cac85f858::t_06cb35278535ad 105
+  s_16453cac85f858::t_d715b1028b338a 93-102
+  s_16453cac85f858::t_ac697a849d3200 65-92,103-104,106-114,124-157,160-202
+packages/workflow/src/interfaces.ts
+  s_16453cac85f858::t_cb272039563a1f 3714-3722
+  s_16453cac85f858::t_f95447eb99bb29 161-190
+  s_16453cac85f858::t_60d5bf49d9c6ef 1594-1602
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_16453cac85f858::t_3f7d2f5dbcb23f 275-278
+  s_16453cac85f858::t_6995e5e178dd9d 246-247,251-253
+  s_16453cac85f858::t_69ea2115c93f55 370-404
+  s_16453cac85f858::t_2ce675f03dab41 20
+  s_16453cac85f858::t_25514371c92e42 302
+  s_16453cac85f858::t_66631d2d7000d1 148,152
+packages/cli/src/webhooks/webhook-helpers.ts
+  s_16453cac85f858::t_da39e431c1f08b 580,596,603-611
+  s_16453cac85f858::t_443161edb83df5 578-579,581-595,597-602,612-615
+packages/nodes-base/nodes/Webhook/utils.ts
+  s_16453cac85f858::t_af8c72a8700a3a 95
+  s_16453cac85f858::t_7935d99f9396fd 114-116,130-131
+  s_16453cac85f858::t_1127b6b5158e40 132
+packages/nodes-base/nodes/Webhook/description.ts
+  s_16453cac85f858::t_1b26f69b70eb68 95-97,116
+  s_16453cac85f858::t_f084abe10fc2be 146-159
+  s_16453cac85f858::t_158c10960396f4 22-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "c22b381f888c4fdac172cc7ada4d535ccf7d3361",
+  "prompts": {},
+  "sessions": {
+    "s_16453cac85f858": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "398bf54f-42db-4a1a-8d95-4f932ca49cf1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

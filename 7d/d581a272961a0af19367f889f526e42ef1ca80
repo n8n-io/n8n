@@ -1,0 +1,22 @@
+packages/cli/test/integration/dynamic-credentials.ee/credential-resolvers.api.test.ts
+  s_c96fcfaca170a2::t_31a92833f878c6 239-242
+  s_c96fcfaca170a2::t_42f5fe530d961c 272-302
+  s_c96fcfaca170a2::t_536672fdd8fe95 7
+  s_c96fcfaca170a2::t_d5f7f4238a12a0 175,179,182,184,187-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "7dd581a272961a0af19367f889f526e42ef1ca80",
+  "prompts": {},
+  "sessions": {
+    "s_c96fcfaca170a2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5bb1e44e-2ec6-4ca9-83eb-26a3d926e11f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

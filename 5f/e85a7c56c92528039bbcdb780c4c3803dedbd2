@@ -1,0 +1,136 @@
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_305955daf24d02::t_d6a717a3c9ca4a 27,160-177,441-443,525,655,706-708,711-712
+  s_305955daf24d02::t_e8cad79a485450 422
+  s_305955daf24d02::t_09dc4983768517 715,721
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_305955daf24d02::t_78292a11868bf9 266,279-280,423-426,430
+  s_305955daf24d02::t_375b27805d1814 235,246-247,268-269,276-278,281-289,293,337-358,362,380-385,403,413-422,427-429,431-467
+  s_305955daf24d02::t_c9b8f5c21105e9 255-260,392-397
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_305955daf24d02::t_2d5440a736dd32 142
+  s_305955daf24d02::t_9d3bd0ce10f3f3 110,114,120,123-132,139
+  s_305955daf24d02::t_b97405040e04b9 143-147
+  s_305955daf24d02::t_75cd144fba08df 150-189
+  s_305955daf24d02::t_0e110f2580344c 148-149
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineChart.vue
+  s_305955daf24d02::t_2f46ef0a34f7f4 366
+  s_305955daf24d02::t_28fb83b6db03c5 114-120,144-146,156-167,364-365,367-371
+  s_305955daf24d02::t_b97405040e04b9 9-11,13-15,142-143,147-150
+  s_305955daf24d02::t_08bdeaf07f80b6 12,168-172,372-374,376,378
+  s_305955daf24d02::t_bd800e41d85019 196,363
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_305955daf24d02::t_d6a717a3c9ca4a 72-73
+packages/frontend/editor-ui/src/features/agents/__tests__/InteractiveCard.test.ts
+  s_305955daf24d02::t_8a16585b683517 20,55-59,71-74
+  s_305955daf24d02::t_a3320d97d194b5 85-87
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_305955daf24d02::t_1086ac49b09c63 1261-1334
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_305955daf24d02::t_1086ac49b09c63 43-48,79-82,104-105,107-108,565,569-572,909-910
+  s_305955daf24d02::t_f17e1261a01d40 911-913
+packages/cli/src/modules/agents/builder/__tests__/format-preview-context.test.ts
+  s_305955daf24d02::t_2316d1e78b87a7 108-116,127
+packages/frontend/editor-ui/src/features/agents/session-timeline.styles.ts
+  s_305955daf24d02::t_958e6151c9a2fe 25-26
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineTable.vue
+  s_305955daf24d02::t_958e6151c9a2fe 42-52
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_305955daf24d02::t_c283bf9ed6b893 1-8,10-12,26,37-42
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_305955daf24d02::t_d6a717a3c9ca4a 50,126-135
+packages/@n8n/api-types/src/agents/types.ts
+  s_305955daf24d02::t_d6a717a3c9ca4a 175-176
+packages/cli/src/modules/agents/builder/format-preview-context.ts
+  s_305955daf24d02::t_2316d1e78b87a7 46-48
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_305955daf24d02::t_e8cad79a485450 303-308,371-381
+  s_305955daf24d02::t_d6a717a3c9ca4a 206-260
+  s_305955daf24d02::t_c283bf9ed6b893 296-302,309,470-475
+  s_305955daf24d02::t_d0775389260bf9 382
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelinePill.vue
+  s_305955daf24d02::t_958e6151c9a2fe 35-36
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_305955daf24d02::t_d6a717a3c9ca4a 108,112-120,123
+  s_305955daf24d02::t_9d64199251db5b 121-122,124,257,323-326
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_305955daf24d02::t_f95f7b812afd9b 372,422,485
+  s_305955daf24d02::t_3d47c9baf3d8c1 283,290,293,300-301,304-305,309-310,386,457-458,468,477
+  s_305955daf24d02::t_e0ae8b2c1a59ed 28-30
+  s_305955daf24d02::t_25dede4a484a1b 88,297,455
+  s_305955daf24d02::t_b97405040e04b9 33-39
+  s_305955daf24d02::t_fc1f7f46015a92 241-248,279,282,284,335-347,350-368,370-371,373-378,384,420-421,423-424,431,450-452,459-461,463-467,481-484
+  s_305955daf24d02::t_c283bf9ed6b893 3-10,87,89,91-92,94-95,106-107,165,179,237-238,264-266,268-278,281,285-289,291-292,294-296,298-299,312-324,326-329,332-334,348-349,383,385,418-419,425-427,430,438,454,456,475-476,478-479
+  s_305955daf24d02::t_f2d6bfbc09b9bb 280,369,462
+  s_305955daf24d02::t_08bdeaf07f80b6 26-27,31-32
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_305955daf24d02::t_e8cad79a485450 229-234
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_305955daf24d02::t_39dc778e0b3055 257,265-270,276-286
+  s_305955daf24d02::t_8a16585b683517 3,15-18,20-31,33-52
+  s_305955daf24d02::t_c9b8f5c21105e9 303
+  s_305955daf24d02::t_78292a11868bf9 288-302,304-306
+  s_305955daf24d02::t_ecfd59752b80cf 19,32
+  s_305955daf24d02::t_8cc841a21bd64c 287
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_305955daf24d02::t_78292a11868bf9 465,467-471,473
+  s_305955daf24d02::t_c9b8f5c21105e9 466,472
+packages/frontend/editor-ui/src/features/agents/components/SessionTimelineRow.vue
+  s_305955daf24d02::t_958e6151c9a2fe 45-63,114-119,146-153
+  s_305955daf24d02::t_b97405040e04b9 79-83
+  s_305955daf24d02::t_08bdeaf07f80b6 10-14,154-155,157,159,161
+  s_305955daf24d02::t_6e888b213f5a6d 113
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_305955daf24d02::t_8a16585b683517 400,450
+packages/frontend/editor-ui/src/features/agents/components/interactive/ApprovalCard.vue
+  s_305955daf24d02::t_d6a717a3c9ca4a 21-23,25,27,53-59,136,148-149
+  s_305955daf24d02::t_2c3dee18b482ce 52
+  s_305955daf24d02::t_39af71f684cadc 150-151
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_305955daf24d02::t_e569b6484911bd 53-83,662-695
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionDetailPanel.spec.ts
+  s_305955daf24d02::t_b97405040e04b9 232,253-257
+  s_305955daf24d02::t_9d3bd0ce10f3f3 198-211,213-231,233-252,258,346
+  s_305955daf24d02::t_d6417fb0838cae 303,310,343
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_305955daf24d02::t_ecfd59752b80cf 78,96
+  s_305955daf24d02::t_9706f4473d1bac 793-801
+  s_305955daf24d02::t_8a16585b683517 390-455
+  s_305955daf24d02::t_78292a11868bf9 844-851
+packages/frontend/editor-ui/src/features/agents/components/SessionDetailPanel.vue
+  s_305955daf24d02::t_6c88a55f145790 442,444
+  s_305955daf24d02::t_1ef787f949da94 159-166,170-173,175-199,233,243-244,256,299-304,328-334,347-417,419,438-441,443,445,551-560
+  s_305955daf24d02::t_3bacf9eb2c432c 425,515
+  s_305955daf24d02::t_08bdeaf07f80b6 26-30,305-308,310,312
+  s_305955daf24d02::t_b97405040e04b9 234-237,239-242
+  s_305955daf24d02::t_879424e988c750 238
+  s_305955daf24d02::t_2f46ef0a34f7f4 174,446
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_305955daf24d02::t_d6a717a3c9ca4a 7366
+  s_305955daf24d02::t_e3e0a435a3e119 1488-1490,1492,1494-1495,1497-1498
+  s_305955daf24d02::t_b97405040e04b9 1491,1493
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_305955daf24d02::t_8a16585b683517 135-173
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineChart.spec.ts
+  s_305955daf24d02::t_9d3bd0ce10f3f3 146,151,153-154,169
+  s_305955daf24d02::t_b97405040e04b9 164,171-173
+  s_305955daf24d02::t_75cd144fba08df 179-201
+  s_305955daf24d02::t_b635c0b74abbaa 174-178
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_305955daf24d02::t_958e6151c9a2fe 100-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5fe85a7c56c92528039bbcdb780c4c3803dedbd2",
+  "prompts": {},
+  "sessions": {
+    "s_305955daf24d02": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffb56-d72e-7fb2-bb76-81cc38f4e9a6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

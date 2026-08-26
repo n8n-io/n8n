@@ -1,0 +1,22 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-tracing.service.test.ts
+  s_45e2f6fac3868c::t_b58df8722e7c46 92-145
+  s_45e2f6fac3868c::t_e44395d13898aa 2
+packages/cli/src/modules/instance-ai/tracing/instance-ai-tracing.service.ts
+  s_45e2f6fac3868c::t_8b24a71a726123 304-320,323-326
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f329a6e358eaba23ee5ec0ac1f027e0e0d4f863c",
+  "prompts": {},
+  "sessions": {
+    "s_45e2f6fac3868c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f39f7fb-75e7-4ba4-8950-d44a46855e76",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

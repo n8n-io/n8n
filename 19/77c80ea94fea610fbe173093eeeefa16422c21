@@ -1,0 +1,21 @@
+packages/cli/src/workflow-execute-additional-data.ts
+  s_8b3bad4c2d4a6d::t_48959bb30d26a5 402,423-427
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_8b3bad4c2d4a6d::t_48959bb30d26a5 27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1977c80ea94fea610fbe173093eeeefa16422c21",
+  "prompts": {},
+  "sessions": {
+    "s_8b3bad4c2d4a6d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01515-a259-7350-81e0-b9243394aa13",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-tracing.service.test.ts
+  ai_agent 92-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "06b4af732bd804366c1ab4716dd3ec3390e56cf9",
+  "prompts": {}
+}

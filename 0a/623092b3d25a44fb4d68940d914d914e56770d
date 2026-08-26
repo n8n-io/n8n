@@ -1,0 +1,37 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6d2e9a4e3371da::t_cf183baea930d4 7190-7192
+packages/cli/src/modules/agents/builder/agents-builder-prompts.ts
+  s_6d2e9a4e3371da::t_b5cdeec0fe7026 15-17
+packages/cli/src/modules/agents/builder/skills/target-tasks.skill.ts
+  s_6d2e9a4e3371da::t_eb3f49e6808514 97-98
+  s_6d2e9a4e3371da::t_2da517073b3005 10,13-14,22-23,37-42,49-50,65-66,70-74,86-91,103-104,108-109,121-122
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_6d2e9a4e3371da::t_373b9dbf2a2a4c 170-189,1170-1228
+  s_6d2e9a4e3371da::t_5175f243cabcd2 1244-1246,1333-1334
+packages/cli/src/modules/agents/builder/task-objective-template.ts
+  s_6d2e9a4e3371da::t_0592ed1c979f12 7-9,15,21-22,28,35-36
+  s_6d2e9a4e3371da::t_ec7b265f031ea1 18,37-40
+packages/cli/src/modules/agents/builder/builder-tool-names.ts
+  s_6d2e9a4e3371da::t_57725dace14722 27-28
+packages/frontend/editor-ui/src/features/agents/utils/toolDisplayName.ts
+  s_6d2e9a4e3371da::t_ebc341734262c0 23-24
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_6d2e9a4e3371da::t_e5fbfef19ac19d 1987-2092
+  s_6d2e9a4e3371da::t_4272619b0059a6 243-254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "0a623092b3d25a44fb4d68940d914d914e56770d",
+  "prompts": {},
+  "sessions": {
+    "s_6d2e9a4e3371da": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8aea5d4b-c606-4291-a7f3-323702dcf4d7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

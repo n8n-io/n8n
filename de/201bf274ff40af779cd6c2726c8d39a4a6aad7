@@ -1,0 +1,24 @@
+packages/@n8n/api-types/src/dto/workflow-history/list-workflow-history-query.dto.ts
+  s_780f67d563c722::t_0996ec9a53519c 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "de201bf274ff40af779cd6c2726c8d39a4a6aad7",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_780f67d563c722": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb397fea-0a8a-4091-88a8-95ed23f092af",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

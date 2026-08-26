@@ -1,0 +1,21 @@
+packages/testing/playwright/tests/dev-server-smoke/user-folder.spec.ts
+  s_9fc8be0aa06faa::t_e278b0774f5242 28-29,31,36
+packages/testing/playwright/scripts/run-local-isolated.mjs
+  s_9fc8be0aa06faa::t_9e59aaea78c7ac 79-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b091bcb7d1eeb7a9826374c2596a537596b99637",
+  "prompts": {},
+  "sessions": {
+    "s_9fc8be0aa06faa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f94f504-960b-4cfe-94a8-ec5cab89ea33",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

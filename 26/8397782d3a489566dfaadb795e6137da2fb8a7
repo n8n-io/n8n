@@ -1,0 +1,27 @@
+packages/cli/src/modules/instance-ai/event-bus/__tests__/in-process-event-bus.test.ts
+  s_45e2f6fac3868c::t_17bfcb4b83b595 30,78,616-617
+  s_45e2f6fac3868c::t_f9b2bf7ee2109c 561,570,573,585,594-606,608-615,618-627,651,654-657,659-663,666,669
+  s_45e2f6fac3868c::t_8e6f770b7546e4 607
+packages/cli/src/modules/instance-ai/event-bus/in-process-event-bus.ts
+  s_45e2f6fac3868c::t_e6262743a2471f 15-16,21-24,98-100,145-148,150,153-158,336-343
+  s_45e2f6fac3868c::t_8e6f770b7546e4 17-20,149,370
+  s_45e2f6fac3868c::t_38cc2a0d0c08d2 76-78,377-380,383,389,394-398,400,418-421,471-486
+  ai_agent 159-163
+  s_45e2f6fac3868c::t_17bfcb4b83b595 368-369,371-376
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "268397782d3a489566dfaadb795e6137da2fb8a7",
+  "prompts": {},
+  "sessions": {
+    "s_45e2f6fac3868c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7f39f7fb-75e7-4ba4-8950-d44a46855e76",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
