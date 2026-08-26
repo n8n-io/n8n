@@ -73,6 +73,13 @@ test.describe(
 				expect(metadata.bearer_methods_supported).toEqual(['header']);
 				expect(metadata.authorization_servers).toHaveLength(1);
 			});
+
+			test('should 404 a path-inserted authorization server probe', async ({ api }) => {
+				const response = await api.mcpOauth.getAuthorizationServerMetadata('/mcp/some-trigger');
+
+				expect(response.status()).toBe(404);
+				expect(response.headers()['content-type']).not.toContain('text/html');
+			});
 		});
 
 		test.describe('Authorization code flow', () => {
