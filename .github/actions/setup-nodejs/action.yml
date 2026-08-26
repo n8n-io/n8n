@@ -181,6 +181,10 @@ runs:
     # SafeChain has no config-file equivalent (verified in 1.5.7 and 1.5.15
     # sources), and the shim strips all `--safe-chain-*` args before it runs
     # the real pnpm.
+    #
+    # Not passed on Windows: SafeChain's shims there are `.cmd`/`.ps1`, which
+    # bash does not resolve for a bare `pnpm` — this step runs the real pnpm
+    # unwrapped, and the flag would fail as an unknown pnpm option.
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
       id: install-deps
@@ -189,6 +193,7 @@ runs:
         INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
         PNPM_DIAG_DIR: ${{ runner.temp }}/pnpm-diagnostics
         SAFE_CHAIN_LOGGING: verbose
+        SAFE_CHAIN_SKIP_ARGS: ${{ runner.os != 'Windows' && '--safe-chain-skip-minimum-package-age' || '' }}
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         # Stable, artifact-name-safe id for the upload step (written first so it
@@ -199,7 +204,7 @@ runs:
 
         set +o pipefail
         timeout --kill-after=30s 600s $INSTALL_COMMAND \
-          --safe-chain-skip-minimum-package-age \
+          $SAFE_CHAIN_SKIP_ARGS \
           --config.logs-dir="$PNPM_DIAG_DIR/pnpm-logs" \
           --reporter=append-only --config.loglevel=info 2>&1 | tee "$INSTALL_LOG"
         rc=${PIPESTATUS[0]}
