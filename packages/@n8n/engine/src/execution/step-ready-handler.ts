@@ -6,13 +6,14 @@ import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
 	isSettledStatus,
+	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
 } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
-import type { StepError, StepRecord, StepStore } from './step-store';
+import type { StepRecord, StepStore } from './step-store';
 import { validateStepContext } from './validate-step-context';
 
 /**

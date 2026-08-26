@@ -2,15 +2,17 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
 import { router } from '../../actions/router';
-import { confluenceApiRequest } from '../../transport';
+import { confluenceApiRequest, confluenceApiRequestUpload } from '../../transport';
 import { mockExecuteCtx } from '../shared';
 
 vi.mock('../../transport', async (importOriginal) => ({
 	...(await importOriginal<object>()),
 	confluenceApiRequest: vi.fn(),
+	confluenceApiRequestUpload: vi.fn(),
 }));
 
 const apiRequest = confluenceApiRequest as unknown as Mock;
+const apiRequestUpload = confluenceApiRequestUpload as unknown as Mock;
 
 const createParams: Record<string, unknown> = {
 	resource: 'page',
@@ -31,6 +33,15 @@ const getParams: Record<string, unknown> = {
 	includeDescendants: false,
 };
 
+const searchParams: Record<string, unknown> = {
+	resource: 'search',
+	operation: 'query',
+	cql: 'type = page',
+	returnAll: false,
+	limit: 100,
+	options: {},
+};
+
 describe('Confluence router', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -46,6 +57,23 @@ describe('Confluence router', () => {
 				{ json: { id: '222', title: 'My Page' }, pairedItem: { item: 0 } },
 				{ json: { id: '222', title: 'My Page' }, pairedItem: { item: 1 } },
 			],
+		]);
+	});
+
+	it('dispatches attachment:delete and returns the deletion report', async () => {
+		apiRequest.mockResolvedValue('');
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'attachment',
+				operation: 'delete',
+				attachmentId: 'att123',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/attachments/att123');
+		expect(result).toEqual([
+			[{ json: { deleted: true, attachmentId: 'att123', purged: false }, pairedItem: { item: 0 } }],
 		]);
 	});
 
@@ -69,6 +97,34 @@ describe('Confluence router', () => {
 			{ limit: 250 },
 		);
 		expect(result).toEqual([[{ json: { id: 'a1', title: 'notes.txt' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('dispatches attachment:upload and returns the created attachment', async () => {
+		apiRequestUpload.mockResolvedValue({ results: [{ id: 'att1', title: 'notes.txt' }] });
+		const ctx = mockExecuteCtx({
+			resource: 'attachment',
+			operation: 'upload',
+			page: { mode: 'id', value: '9' },
+			binaryPropertyName: 'data',
+			minorEdit: false,
+			comment: '',
+		});
+		ctx.helpers.assertBinaryData.mockReturnValue({
+			data: '',
+			mimeType: 'text/plain',
+			fileName: 'notes.txt',
+		});
+		ctx.helpers.getBinaryDataBuffer.mockResolvedValue(Buffer.from('file-bytes'));
+
+		const result = await router.call(ctx);
+
+		expect(apiRequestUpload).toHaveBeenCalledWith(
+			'/wiki/rest/api/content/9/child/attachment',
+			expect.anything(),
+		);
+		expect(result).toEqual([
+			[{ json: { id: 'att1', title: 'notes.txt' }, pairedItem: { item: 0 } }],
+		]);
 	});
 
 	it('dispatches page:delete and returns the deletion report', async () => {
@@ -146,6 +202,118 @@ describe('Confluence router', () => {
 		]);
 	});
 
+	describe('page:getLabels', () => {
+		const getLabelsParams: Record<string, unknown> = {
+			resource: 'page',
+			operation: 'getLabels',
+			page: { mode: 'id', value: '1' },
+			returnAll: false,
+			limit: 50,
+			options: {},
+		};
+		const label1 = { id: '10', name: 'release', prefix: 'global' };
+		const label2 = { id: '11', name: 'draft', prefix: 'my' };
+
+		it('dispatches page:getLabels and fans the labels out into one item per label', async () => {
+			apiRequest.mockResolvedValue({ results: [label1, label2] });
+
+			const result = await router.call(mockExecuteCtx(getLabelsParams));
+
+			expect(apiRequest).toHaveBeenCalledWith(
+				'GET',
+				'/wiki/api/v2/pages/1/labels',
+				{},
+				{ limit: 50 },
+			);
+			expect(result).toEqual([
+				[
+					{ json: label1, pairedItem: { item: 0 } },
+					{ json: label2, pairedItem: { item: 0 } },
+				],
+			]);
+		});
+
+		it('emits no item for a page with no labels', async () => {
+			apiRequest
+				.mockResolvedValueOnce({ results: [] })
+				.mockResolvedValueOnce({ results: [label1, label2] });
+
+			const result = await router.call(mockExecuteCtx(getLabelsParams, 2));
+
+			expect(result).toEqual([
+				[
+					{ json: label1, pairedItem: { item: 1 } },
+					{ json: label2, pairedItem: { item: 1 } },
+				],
+			]);
+		});
+
+		it('discards partial labels for a failed item when continue-on-fail is on', async () => {
+			const ctx = mockExecuteCtx({ ...getLabelsParams, limit: 300 });
+			ctx.continueOnFail.mockReturnValue(true);
+			apiRequest
+				.mockResolvedValueOnce({
+					results: [label1, label2],
+					_links: { next: '/wiki/api/v2/pages/1/labels?cursor=next' },
+				})
+				.mockRejectedValueOnce(new Error('boom'));
+
+			const result = await router.call(ctx);
+
+			expect(apiRequest).toHaveBeenCalledTimes(2);
+			expect(result).toEqual([[{ json: { error: 'boom' }, pairedItem: { item: 0 } }]]);
+		});
+	});
+
+	it('dispatches space:get and returns the fetched space', async () => {
+		apiRequest.mockResolvedValue({ id: '98432', key: 'NQK', name: 'Docs' });
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'space',
+				operation: 'get',
+				space: { mode: 'id', value: '98432' },
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces/98432', {}, {});
+		expect(result).toEqual([
+			[{ json: { id: '98432', key: 'NQK', name: 'Docs' }, pairedItem: { item: 0 } }],
+		]);
+	});
+
+	it('dispatches space:getMany and fans the spaces out into one item each', async () => {
+		apiRequest.mockResolvedValue({ results: [{ id: '1' }, { id: '2' }] });
+
+		const result = await router.call(
+			mockExecuteCtx({ resource: 'space', operation: 'getMany', returnAll: false, limit: 50 }),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('GET', '/wiki/api/v2/spaces', {}, { limit: 50 });
+		expect(result).toEqual([
+			[
+				{ json: { id: '1' }, pairedItem: { item: 0 } },
+				{ json: { id: '2' }, pairedItem: { item: 0 } },
+			],
+		]);
+	});
+
+	it('emits an error item for a failing space operation when continue-on-fail is on', async () => {
+		const ctx = mockExecuteCtx(
+			{ resource: 'space', operation: 'get', space: { mode: 'id', value: '1' } },
+			2,
+		);
+		ctx.continueOnFail.mockReturnValue(true);
+		apiRequest.mockRejectedValueOnce(new Error('boom')).mockResolvedValueOnce({ id: '1' });
+
+		expect(await router.call(ctx)).toEqual([
+			[
+				{ json: { error: 'boom' }, pairedItem: { item: 0 } },
+				{ json: { id: '1' }, pairedItem: { item: 1 } },
+			],
+		]);
+	});
+
 	it.each(['update', 'append'])('dispatches page:%s', async (operation) => {
 		apiRequest
 			.mockResolvedValueOnce({
@@ -164,6 +332,25 @@ describe('Confluence router', () => {
 		expect(apiRequest).toHaveBeenCalledTimes(2);
 		expect(apiRequest.mock.calls[1][0]).toBe('PUT');
 		expect(result).toEqual([[{ json: { id: '222' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('dispatches search:query and fans the results out into items', async () => {
+		apiRequest.mockResolvedValue({ results: [{ title: 'A' }, { title: 'B' }] });
+
+		const result = await router.call(mockExecuteCtx(searchParams));
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/rest/api/search',
+			{},
+			{ cql: 'type = page', limit: 50 },
+		);
+		expect(result).toEqual([
+			[
+				{ json: { title: 'A' }, pairedItem: { item: 0 } },
+				{ json: { title: 'B' }, pairedItem: { item: 0 } },
+			],
+		]);
 	});
 
 	it('emits an error item and continues with later items when continue-on-fail is on', async () => {
