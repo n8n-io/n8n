@@ -709,10 +709,6 @@ export class InstanceAiService {
 
 	/** Domain-access trackers per thread — persists approvals across runs within a conversation. */
 	private readonly domainAccessTrackersByThread = new Map<string, DomainAccessTracker>();
-	/** Rendered project-context line per project id — a project's name and type don't
-	 *  change over a thread's life, so this saves a read per turn. Keyed by project, not
-	 *  thread, so threads in the same project share one entry. */
-	private readonly projectContextByProjectId = new Map<string, string>();
 
 	/** Tracks the iframe pushRef per thread for live execution push events. */
 	private readonly threadPushRef = new Map<string, string>();
@@ -5085,17 +5081,15 @@ export class InstanceAiService {
 		const projectId = context.projectId;
 		if (!projectId) return undefined;
 
-		const cached = this.projectContextByProjectId.get(projectId);
-		if (cached) return cached;
-
+		// Read per turn, deliberately NOT cached. A cache keyed by project id has no
+		// invalidation path here, so a renamed project would have the agent naming the
+		// old name for the rest of the process's life — and naming the wrong project is
+		// the failure this block exists to prevent. One indexed read next to an LLM turn
+		// is not worth that.
 		try {
 			const project = await context.workspaceService?.getProject?.(projectId);
 			if (!project) return undefined;
-			const section = getProjectContextSection({ name: project.name, type: project.type });
-			// A project's name and type are effectively static for a thread's lifetime, so
-			// this is cached rather than re-read on every turn of every conversation.
-			this.projectContextByProjectId.set(projectId, section);
-			return section;
+			return getProjectContextSection({ name: project.name, type: project.type });
 		} catch {
 			return undefined;
 		}

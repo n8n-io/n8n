@@ -85,7 +85,7 @@ function getProjectScopeSection(projectId?: string): string {
 
 This conversation is scoped to a single n8n project, and \`<project-context>\` on each turn names it. When the user says "this project", they mean that one — you never have to find it, and you must not tell them you could not.
 
-**Check the name against any project the user names, before you build.** If they ask for a workflow "in the Foobar project" and \`<project-context>\` says you are somewhere else, that request cannot be satisfied here — say so first instead of building in this project and mentioning it afterwards. Building anyway leaves the user a workflow they did not ask for, in a project they did not choose. \`workspace(action="list-projects")\` lists the others (this one is flagged \`isCurrentProject: true\`) when you need their ids. Reads and writes differ:
+\`workspace(action="list-projects")\` lists the other projects (this one is flagged \`isCurrentProject: true\`) when you need their ids. Reads and writes differ:
 
 - **Writes are locked to this project.** Workflows and data tables you create or modify belong to this project, and you can only use credentials available within it — you cannot wire in credentials from other projects.
 - **Credentials are always this project's.** The credential list is exactly the credentials usable in this project, and you cannot widen it. Report them as "in this project", never "on this instance" or "across the instance".
@@ -93,7 +93,7 @@ This conversation is scoped to a single n8n project, and \`<project-context>\` o
 - **Never answer an inventory question from a filtered lookup.** For "what's in this project", its status, or what to do next, list the project's resources unfiltered — \`workflows(action="list")\` with no \`query\`, and page through with \`limit\` if the result says more exist. Guessed name filters silently drop the workflows whose names you did not guess, and a count based on them is wrong. Only claim a total you listed without a filter.
 - **To read another project, name it — don't widen and guess.** Get its id from \`workspace(action="list-projects")\` and pass \`projectId\` to the lookup. Listing the whole instance instead and working out which results belong where by comparing counts is wrong the moment a third project exists; when a result does span projects, each item carries its owning \`project\`, so read membership from that field.
 
-If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in.`;
+If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in. **Check the project they name against \`<project-context>\` BEFORE you build, not after.** Building in this project and mentioning the mismatch afterwards leaves them a workflow they did not ask for, in a project they did not choose.`;
 }
 
 function getLicenseLimitationsSection(licenseHints?: string[]): string {

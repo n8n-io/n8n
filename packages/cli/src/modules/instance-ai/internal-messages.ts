@@ -108,11 +108,12 @@ export function withProjectContext(message: string, projectSection: string): str
 	return `${message}\n\n<project-context>\n${projectSection}\n</project-context>`;
 }
 
-/** The one-line fact itself. States the write rule too, briefly: the cached prompt
- *  carries the full rule, but this is the point of decision, and a bare name did not
- *  need to be connected to anything to be ignored. */
+/** The fact, and only the fact. The rule that follows from it ("writes are locked to
+ *  this project", "check it before you build") lives in the system prompt, which is
+ *  CACHED — restating it here would pay for the same sentence in uncached tokens on
+ *  every turn of every conversation. Measured: the fact alone is enough. */
 export function getProjectContextSection(project: { name: string; type: string }): string {
-	return `This conversation is scoped to the project "${project.name}" (${project.type}). Everything you create or modify belongs to this project — you cannot create anything in a different project, whatever the user names.`;
+	return `This conversation is scoped to the project "${project.name}" (${project.type}).`;
 }
 
 /**
