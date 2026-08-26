@@ -1,0 +1,88 @@
+import { createTestingPinia } from '@pinia/testing';
+import { setActivePinia } from 'pinia';
+
+import { VIEWS } from '@/app/constants';
+import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '../constants';
+import { launchWorkflowThread } from './launchWorkflowThread';
+
+const fetchWorkflow = vi.fn();
+vi.mock('@/app/stores/workflowsList.store', () => ({
+	useWorkflowsListStore: () => ({ fetchWorkflow }),
+}));
+
+const provisionLaunchedThread = vi.fn();
+vi.mock('./useInstanceAiHandoff', () => ({
+	provisionLaunchedThread: (...args: unknown[]) => provisionLaunchedThread(...args),
+}));
+
+describe('launchWorkflowThread', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		setActivePinia(createTestingPinia());
+		fetchWorkflow.mockResolvedValue({
+			id: 'wf1',
+			name: 'Gmail fetch',
+			homeProject: { id: 'p1' },
+		});
+		provisionLaunchedThread.mockResolvedValue('thread-1');
+	});
+
+	it('rejects a malformed workflow id without fetching', async () => {
+		await expect(launchWorkflowThread('not valid!', undefined)).resolves.toEqual({
+			name: INSTANCE_AI_VIEW,
+		});
+		expect(fetchWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('falls back to the manual editor when the fetch fails', async () => {
+		fetchWorkflow.mockRejectedValue(new Error('403'));
+		await expect(launchWorkflowThread('wf1', undefined)).resolves.toEqual({
+			name: VIEWS.WORKFLOW,
+			params: { workflowId: 'wf1' },
+		});
+	});
+
+	it('falls back to the manual editor when the workflow has no home project', async () => {
+		fetchWorkflow.mockResolvedValue({ id: 'wf1', name: 'Gmail fetch', homeProject: null });
+		await expect(launchWorkflowThread('wf1', undefined)).resolves.toEqual({
+			name: VIEWS.WORKFLOW,
+			params: { workflowId: 'wf1' },
+		});
+	});
+
+	it('provisions a thread with the fetched name and redirects to the thread view', async () => {
+		await expect(launchWorkflowThread('wf1', undefined)).resolves.toEqual({
+			name: INSTANCE_AI_THREAD_VIEW,
+			params: { threadId: 'thread-1' },
+		});
+		expect(provisionLaunchedThread).toHaveBeenCalledWith(
+			'p1',
+			{
+				message: '',
+				attachments: [{ type: 'workflow', id: 'wf1', name: 'Gmail fetch' }],
+			},
+			{
+				source: 'workflow_list_auto',
+				origin: 'internal',
+				sourceContext: { workflowId: 'wf1' },
+			},
+		);
+	});
+
+	it('honors the deliberate button source', async () => {
+		await launchWorkflowThread('wf1', 'workflow_list_button');
+		expect(provisionLaunchedThread).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.anything(),
+			expect.objectContaining({ source: 'workflow_list_button' }),
+		);
+	});
+
+	it('falls back to the manual editor when provisioning fails', async () => {
+		provisionLaunchedThread.mockResolvedValue(null);
+		await expect(launchWorkflowThread('wf1', undefined)).resolves.toEqual({
+			name: VIEWS.WORKFLOW,
+			params: { workflowId: 'wf1' },
+		});
+	});
+});
