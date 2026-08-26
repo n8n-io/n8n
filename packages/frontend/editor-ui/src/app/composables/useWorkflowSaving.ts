@@ -87,6 +87,44 @@ export function useWorkflowSaving({
 	// for the out-of-tree callers, the way `useRunWorkflow` does for the same key.
 	const editorContext = getCurrentInstance() ? useEditorContext() : undefined;
 	const canAutoSave = computed(() => ownsAutoSave && editorContext?.readOnly.value !== true);
+	const currentWorkflowDocumentStore = computed(() =>
+		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
+	);
+	const canScheduleAutoSave = computed(() => {
+		// Don't schedule from a read-only canvas, or from an instance that doesn't
+		// own one. Every autosave entry point funnels through here, so a preview
+		// never writes whatever marked it dirty.
+		if (!canAutoSave.value) {
+			return false;
+		}
+
+		// Don't schedule if autosave is disabled via environment variable
+		if (!settingsStore.isAutosaveEnabled) {
+			return false;
+		}
+
+		// Don't schedule if a save is already in progress - the finally block
+		// will reschedule if there are pending changes
+		if (saveStore.pendingSave) {
+			return false;
+		}
+
+		// Don't schedule if we're waiting for retry backoff to complete
+		if (saveStore.isRetrying) {
+			return false;
+		}
+
+		// Don't schedule if we're offline
+		if (!backendConnectionStore.isOnline) {
+			return false;
+		}
+
+		if (!currentWorkflowDocumentStore.value.hydrated) {
+			return false;
+		}
+
+		return true;
+	});
 
 	async function promptSaveUnsavedWorkflowChanges(
 		next: NavigationGuardNext,
@@ -141,6 +179,7 @@ export function useWorkflowSaving({
 				await cancel();
 
 				uiStore.markStateClean();
+				cancelAutoSave();
 				next();
 
 				return;
@@ -600,8 +639,8 @@ export function useWorkflowSaving({
 				return;
 			}
 
-			// Check if another save is already in progress
-			if (saveStore.pendingSave) {
+			if (!uiStore.stateIsDirty || !canScheduleAutoSave.value) {
+				saveStore.setAutoSaveState(AutoSaveState.Idle);
 				return;
 			}
 
@@ -615,7 +654,7 @@ export function useWorkflowSaving({
 						saveStore.setAutoSaveState(AutoSaveState.Idle);
 					}
 					// If changes were made during save, reschedule autosave
-					if (uiStore.stateIsDirty && !saveStore.isRetrying) {
+					if (uiStore.stateIsDirty && canScheduleAutoSave.value) {
 						saveStore.setAutoSaveState(AutoSaveState.Scheduled);
 						void autoSaveWorkflowDebounced();
 					}
@@ -627,31 +666,7 @@ export function useWorkflowSaving({
 	);
 
 	const scheduleAutoSave = () => {
-		// Don't schedule from a read-only canvas, or from an instance that doesn't
-		// own one. Every autosave entry point funnels through here, so a preview
-		// never writes whatever marked it dirty.
-		if (!canAutoSave.value) {
-			return;
-		}
-
-		// Don't schedule if autosave is disabled via environment variable
-		if (!settingsStore.isAutosaveEnabled) {
-			return;
-		}
-
-		// Don't schedule if a save is already in progress - the finally block
-		// will reschedule if there are pending changes
-		if (saveStore.pendingSave) {
-			return;
-		}
-
-		// Don't schedule if we're waiting for retry backoff to complete
-		if (saveStore.isRetrying) {
-			return;
-		}
-
-		// Don't schedule if we're offline
-		if (!backendConnectionStore.isOnline) {
+		if (!canScheduleAutoSave.value) {
 			return;
 		}
 
@@ -676,23 +691,13 @@ export function useWorkflowSaving({
 		// Instance AI preview locks the canvas while its agent edits, and nothing
 		// else would save what the agent wrote. Mirrors the AI-builder re-arm in
 		// NodeView.
-		watch(canAutoSave, (allowed, wasAllowed) => {
+		// Watch for network coming back online, and for other autosave eligibility
+		// returning after retry backoff, save completion, or document hydration.
+		watch(canScheduleAutoSave, (allowed, wasAllowed) => {
 			if (allowed && !wasAllowed && uiStore.stateIsDirty) {
 				scheduleAutoSave();
 			}
 		});
-
-		// Watch for network coming back online
-		watch(
-			() => backendConnectionStore.isOnline,
-			(isOnline, wasOnline) => {
-				if (isOnline && !wasOnline) {
-					if (uiStore.stateIsDirty) {
-						scheduleAutoSave();
-					}
-				}
-			},
-		);
 	}
 
 	return {
