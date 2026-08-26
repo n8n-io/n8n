@@ -21,6 +21,8 @@ interface CreateAuthFetchOptions {
 	 * unauthorized host. Mode `none` blocks all requests.
 	 */
 	allowedDomains?: AuthFetchDomainPolicy;
+	/** Trusted destination domains, applied in addition to the credential policy. */
+	trustedDomains?: string;
 }
 
 function headersToRecord(headers: HeadersInit | undefined): Record<string, string> {
@@ -77,6 +79,7 @@ export function createAuthFetch({
 	initialHeaders,
 	onUnauthorized,
 	allowedDomains,
+	trustedDomains,
 }: CreateAuthFetchOptions): typeof fetch {
 	let headers = initialHeaders;
 
@@ -98,12 +101,15 @@ export function createAuthFetch({
 		});
 	};
 
-	if (!allowedDomains) return authedFetch;
+	if (!allowedDomains && !trustedDomains) return authedFetch;
 
 	return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
 		const startUrl = input instanceof Request ? input.url : input;
 		return await fetchFollowingRedirects(authedFetch, startUrl, init, {
-			onBeforeHop: (hopUrl) => assertDomainPolicyAllowsUrl(hopUrl, allowedDomains),
+			onBeforeHop: (hopUrl) => {
+				if (allowedDomains) assertDomainPolicyAllowsUrl(hopUrl, allowedDomains);
+				if (trustedDomains) assertUrlAllowed({ url: hopUrl, allowedDomains: trustedDomains });
+			},
 		});
 	};
 }

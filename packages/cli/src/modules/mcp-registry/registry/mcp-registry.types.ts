@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { McpRegistryServerEntity } from './mcp-registry-server.entity';
+import { LoggerProxy } from 'n8n-workflow/src/index.js';
 
 type McpRegistryServerUpsertRow = Pick<
 	McpRegistryServerEntity,
@@ -8,8 +9,6 @@ type McpRegistryServerUpsertRow = Pick<
 >;
 
 const serverStatuses = ['active', 'deprecated'] as const;
-
-type McpRegistryServerStatus = (typeof serverStatuses)[number];
 
 /**
  * Override values for the credential identified by `extends`. Only properties
@@ -30,52 +29,112 @@ export const mcpRegistryExtendsCredentialSchema = z.object({
 
 export type McpRegistryExtendsCredential = z.infer<typeof mcpRegistryExtendsCredentialSchema>;
 
-/**
- * The shape of an entry returned by the MCP server registry.
- */
-export type McpRegistryServer = {
-	name: string;
-	slug: string;
-	title: string;
-	description: string;
-	tagline: string;
-	version: string;
-	updatedAt: string;
-	icons: McpRegistryIcon[];
-	websiteUrl?: string;
-	authType: 'oauth2' | 'extendsCredential';
-	remotes: McpRegistryRemote[];
-	tools: McpRegistryTool[];
-	isOfficial: boolean;
-	origin: 'registry';
-	status: McpRegistryServerStatus;
-	// FIXME: api returns {data?: string[]} not string[]
-	tags?: string[];
-	extendsCredential?: McpRegistryExtendsCredential;
-};
+export const mcpRegistryUsesCredentialSchema = z.object({
+	credentialType: z.string().min(1),
+	name: z.string().min(1),
+	value: z.string().min(1),
+});
 
-export type McpRegistryIcon = {
-	src: string;
-	mimeType?: 'image/png' | 'image/jpeg' | 'image/jpg' | 'image/svg+xml' | 'image/webp';
-	theme?: 'light' | 'dark';
-};
+export const mcpRegistryUsesCredentialsSchema = z
+	.array(mcpRegistryUsesCredentialSchema)
+	.min(1)
+	.superRefine((credentials, ctx) => {
+		const credentialTypes = new Set<string>();
+		const values = new Set<string>();
 
-export type McpRegistryRemoteType = 'streamable-http' | 'sse';
+		for (const [index, credential] of credentials.entries()) {
+			if (credentialTypes.has(credential.credentialType)) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'Credential types must be unique',
+					path: [index, 'credentialType'],
+				});
+			}
+			if (values.has(credential.value)) {
+				ctx.addIssue({
+					code: 'custom',
+					message: 'Credential selector values must be unique',
+					path: [index, 'value'],
+				});
+			}
+			credentialTypes.add(credential.credentialType);
+			values.add(credential.value);
+		}
+	});
 
-export type McpRegistryRemote = {
-	type: McpRegistryRemoteType;
-	url: string;
-};
+export type McpRegistryUsesCredential = z.infer<typeof mcpRegistryUsesCredentialSchema>;
 
-export type McpRegistryToolAnnotations = {
-	readOnlyHint?: boolean;
-};
+const mcpRegistryServerBaseSchema = z.object({
+	name: z.string(),
+	slug: z.string(),
+	title: z.string(),
+	description: z.string(),
+	tagline: z.string(),
+	version: z.string(),
+	updatedAt: z.string(),
+	icons: z.array(
+		z.object({
+			src: z.string(),
+			mimeType: z
+				.enum(['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp'])
+				.optional(),
+			theme: z.enum(['light', 'dark']).optional(),
+		}),
+	),
+	websiteUrl: z
+		.string()
+		.nullish()
+		.transform((value) => value ?? undefined),
+	remotes: z.array(
+		z.object({
+			type: z.enum(['streamable-http', 'sse']),
+			url: z.string(),
+		}),
+	),
+	tools: z.array(
+		z.object({
+			name: z.string(),
+			title: z.string().optional(),
+			annotations: z.object({ readOnlyHint: z.boolean().optional() }).optional(),
+		}),
+	),
+	isOfficial: z.boolean(),
+	origin: z.literal('registry'),
+	status: z.enum(serverStatuses),
+	tags: z
+		.union([z.array(z.string()), z.object({ data: z.array(z.string()) })])
+		.optional()
+		.transform((value) => (value && !Array.isArray(value) ? value.data : value)),
+});
 
-export type McpRegistryTool = {
-	name: string;
-	title?: string;
-	annotations?: McpRegistryToolAnnotations;
-};
+const mcpRegistryServerAuthSchema = z.discriminatedUnion('authType', [
+	z.object({ authType: z.literal('oauth2') }),
+	z.object({
+		authType: z.literal('extendsCredential'),
+		extendsCredential: mcpRegistryExtendsCredentialSchema,
+	}),
+	z.object({
+		authType: z.literal('usesCredentials'),
+		usesCredentials: mcpRegistryUsesCredentialsSchema,
+	}),
+]);
+
+export const mcpRegistryServerSchema = mcpRegistryServerBaseSchema.and(mcpRegistryServerAuthSchema);
+
+export type McpRegistryServer = z.output<typeof mcpRegistryServerSchema>;
+export type McpRegistryIcon = McpRegistryServer['icons'][number];
+export type McpRegistryRemote = McpRegistryServer['remotes'][number];
+export type McpRegistryRemoteType = McpRegistryRemote['type'];
+export type McpRegistryTool = McpRegistryServer['tools'][number];
+export type McpRegistryToolAnnotations = NonNullable<McpRegistryTool['annotations']>;
+
+export function parseMcpRegistryServer(value: unknown): McpRegistryServer | null {
+	const result = mcpRegistryServerSchema.safeParse(value);
+	if (!result.success) {
+		LoggerProxy.warn('Failed to parse MCP registry server', { error: result.error });
+	}
+	return result.success ? result.data : null;
+}
 
 export function toEntity(server: McpRegistryServer): McpRegistryServerUpsertRow {
 	const { slug, status, version, updatedAt, ...rest } = server;

@@ -126,7 +126,6 @@ export const getRequestHelperFunctions = (
 				additionalCredentialOptions,
 			);
 		},
-
 		async refreshOAuth2Token(
 			this: IAllExecuteFunctions,
 			credentialsType: string,

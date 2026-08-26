@@ -43,6 +43,7 @@ export type McpConnectionConfig = {
 	authentication: McpAuthenticationOption;
 	transport: McpServerTransport;
 	endpointUrl: string;
+	trustedDomains?: string;
 	timeout: number;
 };
 
@@ -80,6 +81,7 @@ async function connectAndGetTools(
 		authentication: config.authentication,
 		serverTransport: config.transport,
 		endpointUrl: config.endpointUrl,
+		trustedDomains: config.trustedDomains,
 		surface: 'MCP Client Tool',
 		signal: ctx.getExecutionCancelSignal?.(),
 	});
@@ -379,6 +381,7 @@ export async function loadMcpToolOptions(
 		authentication: config.authentication,
 		serverTransport: config.transport,
 		endpointUrl: config.endpointUrl,
+		trustedDomains: config.trustedDomains,
 		surface: 'MCP Client Tool',
 	});
 

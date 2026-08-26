@@ -440,9 +440,8 @@ export async function getAuthHeaders(
 			};
 		}
 		case 'none':
-		default: {
+		default:
 			return {};
-		}
 	}
 }
 
@@ -499,31 +498,39 @@ export async function connectMcpClientForCredential(
 		authentication: McpAuthenticationOption;
 		serverTransport: McpServerTransport;
 		endpointUrl: string;
+		trustedDomains?: string;
 		surface: string;
 		signal?: AbortSignal;
 	},
 ): Promise<Result<Client, ConnectMcpClientError>> {
 	const node = ctx.getNode();
 	const { headers, credentials } = await getAuthHeaders(ctx, config.authentication);
+	const endpointUrl = config.endpointUrl;
+	const isOAuth2 = isMcpOAuth2Authentication(config.authentication);
 
-	const allowedDomains = credentials
-		? assertCredentialAllowsUrl({
+	let allowedDomains = config.trustedDomains;
+	const isUsingFallbackToTrustedDomains = config.trustedDomains && credentials?.allowedHttpRequestDomains === 'none';
+	if (credentials && !isUsingFallbackToTrustedDomains) {
+		const credentialAllowedDomains = assertCredentialAllowsUrl({
 				node,
 				credentialData: credentials,
-				url: config.endpointUrl,
+				url: endpointUrl,
 				surface: config.surface,
-			})
-		: undefined;
+			});
+		allowedDomains ??= credentialAllowedDomains;
+	}
 
 	return await connectMcpClient({
 		serverTransport: config.serverTransport,
-		endpointUrl: config.endpointUrl,
+		endpointUrl,
 		headers,
 		allowedDomains,
 		secureEgressFilter: ctx.helpers.getSecureEgressFilter?.(),
 		name: node.type,
 		version: node.typeVersion,
-		onUnauthorized: async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h),
+		onUnauthorized: isOAuth2
+			? async (h) => await tryRefreshOAuth2Token(ctx, config.authentication, h)
+			: undefined,
 		signal: config.signal,
 	});
 }

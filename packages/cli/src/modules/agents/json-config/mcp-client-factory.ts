@@ -6,7 +6,11 @@ import { isMcpOAuth2Authentication, OperationalError } from 'n8n-workflow';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 import type { OauthService } from '@/oauth/oauth.service';
-import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
+import {
+	type AuthFetchDomainPolicy,
+	createAuthFetch,
+	resolveAllowedDomains,
+} from '@/utils/auth-fetch';
 
 /**
  * Convert the JSON-config `approval` shape into the SDK's `requireApproval`
@@ -133,7 +137,7 @@ function deriveHeadersForAuthentication(
  * the langchain MCP node — kept inline here so the agents module does not
  * have to depend on `@n8n/nodes-langchain`.
  *
- * For any `*McpOAuth2Api` credential type, the Bearer header is computed from
+ * For any supported OAuth2 credential type, the Bearer header is computed from
  * the already-stored `oauthTokenData.access_token`. Refresh-on-401 is handled
  * by `createAuthFetch` below; this function only computes the initial set.
  */
@@ -153,12 +157,39 @@ async function deriveAuthHeaders(
 	}
 }
 
+function isNativeOAuth2Credential(authentication: string): boolean {
+	return (
+		isMcpOAuth2Authentication(authentication) &&
+		authentication !== 'mcpOAuth2Api' &&
+		!authentication.endsWith('McpOAuth2Api')
+	);
+}
+
+function resolveMcpDomainPolicy(
+	server: AgentJsonMcpServerConfig,
+	credentialData: ICredentialDataDecryptedObject,
+	mcpHostname: string | undefined,
+): AuthFetchDomainPolicy | undefined {
+	if (!isNativeOAuth2Credential(server.authentication) || !mcpHostname) {
+		return resolveAllowedDomains(credentialData);
+	}
+
+	switch (credentialData.allowedHttpRequestDomains) {
+		case 'domains':
+			return resolveAllowedDomains(credentialData);
+		case 'all':
+			return undefined;
+		default:
+			return { mode: 'domains', domains: mcpHostname };
+	}
+}
+
 export interface BuildMcpClientDeps {
 	credentialProvider: CredentialProvider;
 	/**
 	 * Used to refresh OAuth2 tokens on a 401 response without an
 	 * `IExecuteFunctions` workflow context. Only invoked when
-	 * `server.authentication` is any `*McpOAuth2Api` credential type.
+	 * `server.authentication` is a supported OAuth2 credential type.
 	 */
 	oauthService: OauthService;
 	projectId: string;
@@ -200,7 +231,14 @@ export async function buildMcpClientForServer(
 		credentialData,
 		credentialError,
 	} = await deriveAuthHeaders(server, credentialProvider);
-	const allowedDomains = credentialData ? resolveAllowedDomains(credentialData) : undefined;
+	const isRegistryServer = server.metadata?.nodeTypeName?.startsWith('@n8n/mcp-registry.') === true;
+	const shouldPinToMcpHostname =
+		isRegistryServer || isNativeOAuth2Credential(server.authentication);
+	const mcpHostname =
+		shouldPinToMcpHostname && URL.canParse(server.url) ? new URL(server.url).hostname : undefined;
+	const allowedDomains = credentialData
+		? resolveMcpDomainPolicy(server, credentialData, mcpHostname)
+		: undefined;
 
 	const onUnauthorized =
 		isMcpOAuth2Authentication(server.authentication) && server.credential
@@ -230,6 +268,7 @@ export async function buildMcpClientForServer(
 				initialHeaders,
 				onUnauthorized,
 				allowedDomains,
+				trustedDomains: mcpHostname,
 			});
 
 	const sdkServerConfig: McpServerConfig = {

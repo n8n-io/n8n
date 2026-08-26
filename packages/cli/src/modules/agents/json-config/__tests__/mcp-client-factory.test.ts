@@ -385,6 +385,14 @@ describe('buildMcpClientForServer — auth header edge cases', () => {
 		);
 		expect(headers.Authorization).toBe('Bearer notion-oauth-token');
 	});
+
+	it('uses the OAuth2 path for native OAuth2 credential types', async () => {
+		const headers = await captureInitialHeaders(
+			makeServer({ authentication: 'githubOAuth2Api', credential: 'cred-1' }),
+			{ oauthTokenData: { access_token: 'github-oauth-token' } },
+		);
+		expect(headers.Authorization).toBe('Bearer github-oauth-token');
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -475,6 +483,28 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
 		await expect(configs[0].fetch('https://example.test/mcp')).rejects.toThrow(UserError);
 		expect(proxyFetchMock).not.toHaveBeenCalled();
+	});
+
+	it('falls back to the MCP hostname for native OAuth2 credentials in none mode', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		credentialProvider.resolve.mockResolvedValue({
+			oauthTokenData: { access_token: 'github-token' },
+			allowedHttpRequestDomains: 'none',
+		} as never);
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(
+			makeServer({
+				authentication: 'githubOAuth2Api',
+				credential: 'cred-1',
+				url: 'https://api.githubcopilot.com/mcp/',
+			}),
+			{ credentialProvider, oauthService, projectId: 'proj-1', proxyFetch },
+		);
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
+		await expect(configs[0].fetch('https://api.githubcopilot.com/mcp/')).resolves.toBeDefined();
+		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
 	});
 
 	it('blocks requests when the server URL is not in the credential allowlist', async () => {

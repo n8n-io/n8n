@@ -16,11 +16,14 @@ import { QueryFailedError } from '@n8n/typeorm';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
+import { CredentialTypes } from '@/credential-types';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { getMcpRegistryCredentialOptions } from '@/modules/mcp-registry/node-description-transform';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type {
 	McpRegistryRemote,
@@ -28,7 +31,11 @@ import type {
 } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
-import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
+import {
+	type AuthFetchDomainPolicy,
+	createAuthFetch,
+	resolveAllowedDomains,
+} from '@/utils/auth-fetch';
 
 import type {
 	InstanceAiMcpRegistryConnection,
@@ -42,6 +49,7 @@ interface ResolvedRegistryServer {
 	serverSlug: string;
 	credentialId: string;
 	authType: McpRegistryServer['authType'];
+	allowedCredentialTypes: string[];
 	endpointUrl: string;
 	transport: Transport;
 }
@@ -65,6 +73,25 @@ function readAccessToken(tokenData: Record<string, unknown>): string | undefined
 function readOAuthTokenData(data: ICredentialDataDecryptedObject): Record<string, unknown> | null {
 	const tokenData = data.oauthTokenData;
 	return isObjectLiteral(tokenData) ? tokenData : null;
+}
+
+function resolveRegistryDomainPolicy(
+	credentialData: ICredentialDataDecryptedObject,
+	config: ResolvedRegistryServer,
+): { allowedDomains?: AuthFetchDomainPolicy; trustedDomains?: string } {
+	const usesExistingCredential = config.authType === 'usesCredentials';
+	// mcp servers with 'usesCredentials' fallback to trusted mcp endpoint by default
+	const allowedDomains =
+		usesExistingCredential && credentialData.allowedHttpRequestDomains === 'none'
+			? undefined
+			: resolveAllowedDomains(credentialData);
+
+	return {
+		...(allowedDomains ? { allowedDomains } : {}),
+		...(usesExistingCredential
+			? { trustedDomains: new URL(config.endpointUrl).hostname }
+			: {}),
+	};
 }
 
 function getPreferredRemote(remotes: McpRegistryRemote[]): {
@@ -156,6 +183,7 @@ export class InstanceAiMcpRegistryService {
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsService: CredentialsService,
+		private readonly credentialTypes: CredentialTypes,
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
 		private readonly outboundHttp: OutboundHttp,
@@ -204,6 +232,7 @@ export class InstanceAiMcpRegistryService {
 		if (!credential) {
 			throw new NotFoundError('Credential not found or not accessible');
 		}
+		this.assertCredentialTypeAllowed(server, credential.type);
 
 		const entity = this.connectionRepository.create({
 			id: randomUUID(),
@@ -253,7 +282,11 @@ export class InstanceAiMcpRegistryService {
 		}
 
 		if (payload.credentialId) {
-			await this.swapCredential(user, connection, payload.credentialId);
+			const server = await this.mcpRegistryService.get(connection.serverSlug);
+			if (!server) {
+				throw new NotFoundError(`Unknown MCP registry server: ${connection.serverSlug}`);
+			}
+			await this.swapCredential(user, connection, payload.credentialId, server);
 		}
 
 		connection.toolFilter = resolveToolFilter(payload, connection.toolFilter);
@@ -302,6 +335,7 @@ export class InstanceAiMcpRegistryService {
 			connection.credentialId,
 			server.authType,
 			server.remotes,
+			getMcpRegistryCredentialOptions(server).map((option) => option.credentialType),
 		);
 		if (!resolvedServer) return disconnectedToolsResponse(connection.id);
 
@@ -399,6 +433,7 @@ export class InstanceAiMcpRegistryService {
 				connection.credentialId,
 				server.authType,
 				server.remotes,
+				getMcpRegistryCredentialOptions(server).map((option) => option.credentialType),
 			);
 			if (!resolvedServer) {
 				continue;
@@ -415,28 +450,16 @@ export class InstanceAiMcpRegistryService {
 				metadata: { serverSlug: resolvedServer.serverSlug, userId: user.id },
 			};
 
-			if (resolvedServer.authType === 'oauth2') {
-				const oauth2FetchContext = await this.buildOAuth2FetchContext(
-					resolvedServer,
-					user,
-					connection.id,
-				);
-				if (!oauth2FetchContext) {
-					continue;
-				}
-
-				const requestFetch = await this.buildRegistryServerFetch(
-					resolvedServer,
-					user,
-					connection.id,
-					aiMcpFetch,
-				);
-				if (!requestFetch) {
-					continue;
-				}
-
-				serverConfig.fetch = requestFetch;
+			const requestFetch = await this.buildRegistryServerFetch(
+				resolvedServer,
+				user,
+				connection.id,
+				aiMcpFetch,
+			);
+			if (!requestFetch) {
+				continue;
 			}
+			serverConfig.fetch = requestFetch;
 
 			resolved.push(serverConfig);
 		}
@@ -450,6 +473,7 @@ export class InstanceAiMcpRegistryService {
 		credentialId: string,
 		authType: McpRegistryServer['authType'],
 		remotes: McpRegistryRemote[],
+		allowedCredentialTypes: string[],
 	): ResolvedRegistryServer | null {
 		const remote = getPreferredRemote(remotes);
 		if (!remote) {
@@ -465,6 +489,7 @@ export class InstanceAiMcpRegistryService {
 			serverSlug,
 			credentialId,
 			authType,
+			allowedCredentialTypes,
 			endpointUrl: remote.endpointUrl,
 			transport: remote.transport,
 		};
@@ -476,37 +501,6 @@ export class InstanceAiMcpRegistryService {
 		connectionId: string,
 		baseFetch: CustomFetch,
 	): Promise<CustomFetch | null> {
-		if (config.authType !== 'oauth2') {
-			return baseFetch;
-		}
-
-		const oauth2FetchContext = await this.buildOAuth2FetchContext(config, user, connectionId);
-		if (!oauth2FetchContext) {
-			return null;
-		}
-
-		return createAuthFetch({
-			baseFetch,
-			initialHeaders: { Authorization: `Bearer ${oauth2FetchContext.accessToken}` },
-			onUnauthorized: async () => {
-				if (!oauth2FetchContext.projectId) {
-					return null;
-				}
-
-				return await this.oauthService.refreshOAuth2CredentialById(
-					oauth2FetchContext.credentialId,
-					oauth2FetchContext.projectId,
-				);
-			},
-			allowedDomains: resolveAllowedDomains(oauth2FetchContext.credentialData),
-		});
-	}
-
-	private async buildOAuth2FetchContext(
-		config: ResolvedRegistryServer,
-		user: User,
-		connectionId: string,
-	): Promise<OAuth2FetchContext | null> {
 		const credentialWithData = await this.getCredentialWithData(config.credentialId, user);
 		if (!credentialWithData) {
 			this.logger.warn('Skipping MCP registry connection with inaccessible credential', {
@@ -518,6 +512,70 @@ export class InstanceAiMcpRegistryService {
 			return null;
 		}
 
+		const credentialType = credentialWithData.credential.type;
+		if (!config.allowedCredentialTypes.includes(credentialType)) {
+			this.logger.warn('Skipping MCP registry connection with unsupported credential type', {
+				connectionId,
+				serverSlug: config.serverSlug,
+				credentialType,
+			});
+			return null;
+		}
+		const credentialTypeDefinition = this.credentialTypes.getByName(credentialType);
+		if (
+			credentialTypeDefinition.authenticate !== undefined ||
+			credentialTypeDefinition.preAuthentication !== undefined
+		) {
+			this.logger.warn('Rejecting MCP registry credential with authentication hooks', {
+				connectionId,
+				serverSlug: config.serverSlug,
+				credentialType,
+			});
+			return null;
+		}
+
+		const parentTypes = this.credentialTypes.getParentTypes(credentialType);
+		if (credentialType !== 'oAuth2Api' && !parentTypes.includes('oAuth2Api')) {
+			this.logger.warn('Rejecting non-OAuth MCP registry credential', {
+				connectionId,
+				serverSlug: config.serverSlug,
+				credentialType,
+			});
+			return null;
+		}
+
+		const oauth2FetchContext = this.buildOAuth2FetchContext(
+			config,
+			connectionId,
+			credentialWithData,
+		);
+		if (!oauth2FetchContext) return null;
+
+		return createAuthFetch({
+			baseFetch,
+			initialHeaders: { authorization: `Bearer ${oauth2FetchContext.accessToken}` },
+			onUnauthorized: async () => {
+				if (!oauth2FetchContext.projectId) {
+					return null;
+				}
+
+				return await this.oauthService.refreshOAuth2CredentialById(
+					oauth2FetchContext.credentialId,
+					oauth2FetchContext.projectId,
+				);
+			},
+			...resolveRegistryDomainPolicy(oauth2FetchContext.credentialData, config),
+		});
+	}
+
+	private buildOAuth2FetchContext(
+		config: ResolvedRegistryServer,
+		connectionId: string,
+		credentialWithData: {
+			credential: CredentialsEntity;
+			data: ICredentialDataDecryptedObject;
+		},
+	): OAuth2FetchContext | null {
 		const tokenData = readOAuthTokenData(credentialWithData.data);
 		if (!tokenData) {
 			this.logger.warn('Skipping MCP registry connection without OAuth2 token data', {
@@ -580,16 +638,8 @@ export class InstanceAiMcpRegistryService {
 		user: User,
 		connection: InstanceAiMcpRegistryConnection,
 		newCredentialId: string,
+		server: McpRegistryServer,
 	) {
-		const currentCredential = await this.credentialsFinderService.findCredentialForUser(
-			connection.credentialId,
-			user,
-			['credential:read'],
-		);
-		if (!currentCredential) {
-			throw new NotFoundError('Credential not found or not accessible');
-		}
-
 		const newCredential = await this.credentialsFinderService.findCredentialForUser(
 			newCredentialId,
 			user,
@@ -599,11 +649,24 @@ export class InstanceAiMcpRegistryService {
 			throw new NotFoundError('Credential not found or not accessible');
 		}
 
-		if (currentCredential.type !== newCredential.type) {
-			throw new ConflictError('Cannot change credential to a different type');
-		}
-
+		this.assertCredentialTypeAllowed(server, newCredential.type);
 		connection.credentialId = newCredentialId;
+	}
+
+	private assertCredentialTypeAllowed(server: McpRegistryServer, credentialType: string): void {
+		const allowedTypes = getMcpRegistryCredentialOptions(server).map(
+			(option) => option.credentialType,
+		);
+		const credentialTypeDefinition = this.credentialTypes.getByName(credentialType);
+		const parentTypes = this.credentialTypes.getParentTypes(credentialType);
+		const isOAuth2 =
+			credentialType === 'oAuth2Api' || parentTypes.includes('oAuth2Api');
+		const hasAuthenticationHooks =
+			credentialTypeDefinition.authenticate !== undefined ||
+			credentialTypeDefinition.preAuthentication !== undefined;
+		if (!allowedTypes.includes(credentialType) || !isOAuth2 || hasAuthenticationHooks) {
+			throw new BadRequestError('Credential type is not supported by this MCP server');
+		}
 	}
 }
 

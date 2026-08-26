@@ -316,6 +316,19 @@ describe('utils', () => {
 			expect(result).toEqual({});
 		});
 
+		it('should apply a native OAuth2 credential', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = { oauthTokenData: { access_token: 'github-token' } };
+			ctx.getCredentials.mockResolvedValue(credentials);
+
+			const result = await getAuthHeaders(ctx, 'githubOAuth2Api');
+
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer github-token' },
+				credentials,
+			});
+		});
+
 		it.each([
 			'headerAuth',
 			'bearerAuth',

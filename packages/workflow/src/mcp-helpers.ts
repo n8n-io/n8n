@@ -1,12 +1,18 @@
-/** Covers `mcpOAuth2Api` and registry-specific variants like `notionMcpOAuth2Api`. */
-export type McpOAuth2CredentialType = 'mcpOAuth2Api' | `${string}McpOAuth2Api`;
+/** Covers MCP-specific and existing native OAuth2 credential type names. */
+export type McpOAuth2CredentialType =
+	| 'oAuth2Api'
+	| `${string}OAuth2Api`
+	| `${string}OAuth2`;
 
 /**
- * Returns `true` for `mcpOAuth2Api` and any credential type ending in
- * `McpOAuth2Api` (e.g. `notionMcpOAuth2Api`, `githubMcpOAuth2Api`).
+ * Returns `true` for MCP-specific and native OAuth2 credential naming conventions.
  */
 export function isMcpOAuth2Authentication(
 	authentication: string,
 ): authentication is McpOAuth2CredentialType {
-	return authentication === 'mcpOAuth2Api' || authentication.endsWith('McpOAuth2Api');
+	return (
+		authentication === 'oAuth2Api' ||
+		authentication.endsWith('OAuth2Api') ||
+		authentication.endsWith('OAuth2')
+	);
 }

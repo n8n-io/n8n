@@ -79,9 +79,21 @@ function createExecuteCtx(params: ParamMap, nodeOverrides?: ParamMap) {
 	return ctx;
 }
 
+function createRegisteredNode(
+	endpointUrl: string,
+	transport: 'httpStreamable' | 'sse' = 'httpStreamable',
+): McpRegistryClientTool {
+	const node = new McpRegistryClientTool();
+	node.registerEndpoint('notion', endpointUrl, transport, [
+		{ credentialType: 'someServiceMcpOAuth2Api', value: 'oAuth2' },
+	]);
+	return node;
+}
+
 describe('McpRegistryClientTool', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
+		new McpRegistryClientTool().resetRegistry();
 	});
 
 	describe('loadOptions: getTools', () => {
@@ -93,7 +105,7 @@ describe('McpRegistryClientTool', () => {
 			});
 			loadMcpToolOptionsMock.mockResolvedValue([{ name: 'tool-a', value: 'tool-a' }]);
 
-			const node = new McpRegistryClientTool();
+			const node = createRegisteredNode('https://mcp.example.com/mcp');
 			const result = await node.methods.loadOptions.getTools.call(ctx);
 
 			expect(loadMcpToolOptionsMock).toHaveBeenCalledWith(ctx, {
@@ -117,10 +129,10 @@ describe('McpRegistryClientTool', () => {
 				},
 			);
 			loadMcpToolOptionsMock.mockResolvedValue([{ name: 'tool-a', value: 'tool-a' }]);
-			const node = new McpRegistryClientTool();
+			const node = createRegisteredNode('https://mcp.example.com/mcp');
 
 			await expect(node.methods.loadOptions.getTools.call(ctx)).rejects.toThrow(
-				'No MCP OAuth2 credential type found',
+				'No MCP credential found',
 			);
 		});
 
@@ -131,7 +143,7 @@ describe('McpRegistryClientTool', () => {
 			});
 			loadMcpToolOptionsMock.mockResolvedValue([]);
 
-			const node = new McpRegistryClientTool();
+			const node = createRegisteredNode('https://mcp.example.com/sse', 'sse');
 			await node.methods.loadOptions.getTools.call(ctx);
 
 			expect(loadMcpToolOptionsMock).toHaveBeenCalledWith(
@@ -154,7 +166,7 @@ describe('McpRegistryClientTool', () => {
 			const expectedToolkit = { response: {}, closeFunction: vi.fn() };
 			buildMcpToolkitMock.mockResolvedValue(expectedToolkit as never);
 
-			const node = new McpRegistryClientTool();
+			const node = createRegisteredNode('https://mcp.notion.com/mcp');
 			const result = await node.supplyData.call(ctx, 0);
 
 			const expectedConfig: ResolvedMcpConfig = {
@@ -180,7 +192,7 @@ describe('McpRegistryClientTool', () => {
 			});
 			buildMcpToolkitMock.mockResolvedValue({ response: {} } as never);
 
-			const node = new McpRegistryClientTool();
+			const node = createRegisteredNode('https://mcp.notion.com/mcp');
 			await node.supplyData.call(ctx, 0);
 
 			expect(buildMcpToolkitMock).toHaveBeenCalledWith(
@@ -206,9 +218,83 @@ describe('McpRegistryClientTool', () => {
 			);
 			buildMcpToolkitMock.mockResolvedValue({ response: {} } as never);
 
-			const node = new McpRegistryClientTool();
+			const node = createRegisteredNode('https://mcp.notion.com/mcp');
 			await expect(node.supplyData.call(ctx, 0)).rejects.toThrow(
-				'No MCP OAuth2 credential type found',
+				'No MCP credential found',
+			);
+		});
+
+		it('uses the credential type selected by the registry authentication option', async () => {
+			const ctx = createSupplyDataCtx(
+				{
+					authentication: 'enterpriseOAuth2',
+					serverTransport: 'httpStreamable',
+					endpointUrl: 'https://api.githubcopilot.com/mcp/',
+					include: 'all',
+				},
+				{
+					type: '@n8n/mcp-registry.gitHub',
+					credentials: {
+						githubOAuth2Api: {},
+						githubEnterpriseOAuth2Api: {},
+					},
+				},
+			);
+			buildMcpToolkitMock.mockResolvedValue({ response: {} } as never);
+			const node = new McpRegistryClientTool();
+			node.registerEndpoint(
+				'gitHub',
+				'https://api.githubcopilot.com/mcp/',
+				'httpStreamable',
+				[
+					{ credentialType: 'githubOAuth2Api', value: 'oAuth2' },
+					{ credentialType: 'githubEnterpriseOAuth2Api', value: 'enterpriseOAuth2' },
+				],
+				'api.githubcopilot.com',
+			);
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(buildMcpToolkitMock).toHaveBeenCalledWith(
+				ctx,
+				0,
+				expect.objectContaining({
+					authentication: 'githubEnterpriseOAuth2Api',
+					trustedDomains: 'api.githubcopilot.com',
+				}),
+			);
+		});
+
+		it('uses the registered connection instead of saved endpoint parameters', async () => {
+			const ctx = createSupplyDataCtx(
+				{
+					serverTransport: 'httpStreamable',
+					endpointUrl: 'https://attacker.example/mcp',
+					include: 'all',
+				},
+				{
+					type: '@n8n/mcp-registry.secureServer',
+					credentials: { secureApi: {} },
+				},
+			);
+			const node = new McpRegistryClientTool();
+			node.registerEndpoint(
+				'secureServer',
+				'https://trusted.example/mcp',
+				'httpStreamable',
+				[{ credentialType: 'secureApi', value: 'apiKey' }],
+			);
+			buildMcpToolkitMock.mockResolvedValue({ response: {} } as never);
+
+			await node.supplyData.call(ctx, 0);
+
+			expect(buildMcpToolkitMock).toHaveBeenCalledWith(
+				ctx,
+				0,
+				expect.objectContaining({
+					endpointUrl: 'https://trusted.example/mcp',
+					transport: 'httpStreamable',
+				}),
 			);
 		});
 	});
@@ -228,7 +314,7 @@ describe('McpRegistryClientTool', () => {
 			);
 			executeMcpToolMock.mockResolvedValue([[]]);
 
-			const node = new McpRegistryClientTool();
+			const node = createRegisteredNode('https://mcp.notion.com/mcp');
 			await node.execute.call(ctx);
 
 			expect(executeMcpToolMock).toHaveBeenCalledWith(
@@ -288,7 +374,7 @@ describe('McpRegistryClientTool', () => {
 
 			const node = new McpRegistryClientTool();
 
-			await expect(node.execute.call(ctx)).rejects.toThrow('No MCP OAuth2 credential type found');
+			await expect(node.execute.call(ctx)).rejects.toThrow('No MCP credential found');
 		});
 	});
 });

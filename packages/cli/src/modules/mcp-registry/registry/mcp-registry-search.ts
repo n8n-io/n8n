@@ -6,11 +6,12 @@
  */
 import { camelCase } from 'change-case';
 
-import type { McpRegistryServer } from './mcp-registry.types';
 import {
+	getMcpRegistryCredentialOptions,
 	getMcpRegistryCredentialTypeName,
 	MCP_REGISTRY_PACKAGE_NAME,
 } from '../node-description-transform';
+import type { McpRegistryServer } from './mcp-registry.types';
 
 export interface McpRegistrySearchResult {
 	slug: string;
@@ -39,7 +40,13 @@ function pickPreferredRemote(
 function toSearchResult(server: McpRegistryServer): McpRegistrySearchResult | null {
 	const remote = pickPreferredRemote(server);
 	if (!remote) return null;
-	const credentialType = getMcpRegistryCredentialTypeName(server);
+	const usesCredentials = getMcpRegistryCredentialOptions(server);
+	const defaultCredential = usesCredentials[0];
+	if (!defaultCredential) return null;
+	const credentialType =
+		server.authType === 'usesCredentials'
+			? defaultCredential.credentialType
+			: getMcpRegistryCredentialTypeName(server);
 	return {
 		slug: server.slug,
 		name: camelCase(server.slug),

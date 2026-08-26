@@ -9,9 +9,11 @@ import type {
 
 import {
 	mcpRegistryExtendsCredentialSchema,
+	mcpRegistryUsesCredentialsSchema,
 	type McpRegistryExtendsCredential,
 	type McpRegistryIcon,
 	type McpRegistryServer,
+	type McpRegistryUsesCredential,
 } from './registry/mcp-registry.types';
 
 export const MCP_REGISTRY_PACKAGE_NAME = '@n8n/mcp-registry';
@@ -39,6 +41,19 @@ export function getMcpRegistryCredentialTypeName(server: McpRegistryServer): str
 	return `${camelCase(server.slug)}McpOAuth2Api`;
 }
 
+export function getMcpRegistryCredentialOptions(
+	server: McpRegistryServer,
+): McpRegistryUsesCredential[] {
+	if (server.authType === 'usesCredentials') return server.usesCredentials ?? [];
+	return [
+		{
+			credentialType: getMcpRegistryCredentialTypeName(server),
+			name: 'OAuth2',
+			value: 'oAuth2',
+		},
+	];
+}
+
 /**
  * Shared identity fields for every synthetic credential the registry produces.
  */
@@ -58,7 +73,7 @@ function getMcpRegistryCredentialHeader(
 function resolveCredentialRemote(
 	server: McpRegistryServer,
 ): { endpointUrl: string; hostname: string } | null {
-	const remote = pickRemote(server);
+	const remote = getMcpRegistryRemote(server);
 	if (!remote) return null;
 	try {
 		return { endpointUrl: remote.endpointUrl, hostname: new URL(remote.endpointUrl).hostname };
@@ -128,7 +143,7 @@ function getValidatedExtendsCredential(
 	server: McpRegistryServer,
 	isKnownCredentialType: IsKnownCredentialType,
 ) {
-	if (!server.extendsCredential) return null;
+	if (server.authType !== 'extendsCredential') return null;
 
 	const parseResult = mcpRegistryExtendsCredentialSchema.safeParse(server.extendsCredential);
 	if (!parseResult.success) return null;
@@ -144,6 +159,20 @@ function getValidatedExtendsCredential(
 	>;
 
 	return { parentType, overrides };
+}
+
+function getValidatedUsesCredentials(
+	server: McpRegistryServer,
+	isKnownCredentialType: IsKnownCredentialType,
+): McpRegistryUsesCredential[] | null {
+	if (server.authType !== 'usesCredentials') return null;
+
+	const parseResult = mcpRegistryUsesCredentialsSchema.safeParse(server.usesCredentials);
+	if (!parseResult.success) return null;
+	const supportedCredentials = parseResult.data.filter(({ credentialType }) =>
+		isKnownCredentialType(credentialType),
+	);
+	return supportedCredentials.length > 0 ? supportedCredentials : null;
 }
 
 /**
@@ -190,16 +219,45 @@ function getNodeDescriptionCredentials(
 			if (!validated) return [];
 			return [{ name: getMcpRegistryCredentialTypeName(server), required: true }];
 		}
+		case 'usesCredentials': {
+			const credentials = getValidatedUsesCredentials(server, isKnownCredentialType);
+			if (!credentials) return [];
+			if (credentials.length === 1) {
+				return [{ name: credentials[0].credentialType, required: true }];
+			}
+			return credentials.map(({ credentialType, value }) => ({
+				name: credentialType,
+				required: true,
+				displayOptions: { show: { authentication: [value] } },
+			}));
+		}
 		default:
 			return [];
 	}
+}
+
+function getAuthenticationProperty(
+	server: McpRegistryServer,
+	isKnownCredentialType: IsKnownCredentialType,
+): INodeProperties | null {
+	const credentials = getValidatedUsesCredentials(server, isKnownCredentialType);
+	if (!credentials || credentials.length < 2) return null;
+
+	return {
+		displayName: 'Authentication',
+		name: 'authentication',
+		type: 'options',
+		noDataExpression: true,
+		options: credentials.map(({ name, value }) => ({ name, value })),
+		default: credentials[0].value,
+	};
 }
 
 /**
  * Pick the connection details from a registry server. Only `streamable-http`
  * and `sse` are supported; `streamable-http` is preferred.
  */
-function pickRemote(
+export function getMcpRegistryRemote(
 	server: McpRegistryServer,
 ): { transport: 'httpStreamable' | 'sse'; endpointUrl: string } | null {
 	const streamable = server.remotes.find((r) => r.type === 'streamable-http');
@@ -243,17 +301,13 @@ function pickIconUrl(icons: McpRegistryIcon[]): Themed<string> | undefined {
 }
 
 /**
- * Patches the `endpointUrl` and `serverTransport` defaults on a cloned property
- * list with the entry's resolved remote, leaving the rest of the runtime's UI
- * surface untouched.
+ * Patches the `serverTransport` default on a cloned property list.
  */
-function withRemoteDefaults(
+function withTransportDefault(
 	properties: INodeProperties[],
 	transport: 'httpStreamable' | 'sse',
-	endpointUrl: string,
 ): INodeProperties[] {
 	return properties.map((prop) => {
-		if (prop.name === 'endpointUrl') return { ...prop, default: endpointUrl };
 		if (prop.name === 'serverTransport') return { ...prop, default: transport };
 		return prop;
 	});
@@ -271,6 +325,8 @@ export function serverToCredentialDescription(
 			return serverToOAuth2CredentialDescription(server);
 		case 'extendsCredential':
 			return serverToExtendedCredentialDescription(server, isKnownCredentialType);
+		case 'usesCredentials':
+			return null;
 		default:
 			return null;
 	}
@@ -284,10 +340,18 @@ export function serverToNodeDescription(
 	baseDescription: INodeTypeDescription,
 	isKnownCredentialType: IsKnownCredentialType,
 ): INodeTypeDescription | null {
-	if (server.authType !== 'oauth2' && server.authType !== 'extendsCredential') return null;
+	if (
+		server.authType !== 'oauth2' &&
+		server.authType !== 'extendsCredential' &&
+		server.authType !== 'usesCredentials'
+	) {
+		return null;
+	}
 
-	const remote = pickRemote(server);
+	const remote = getMcpRegistryRemote(server);
 	if (!remote) return null;
+	const credentials = getNodeDescriptionCredentials(server, isKnownCredentialType);
+	if (credentials.length === 0) return null;
 
 	const displayName = `${server.title} MCP`;
 	const description = structuredClone(baseDescription);
@@ -302,18 +366,18 @@ export function serverToNodeDescription(
 	description.iconUrl = pickIconUrl(server.icons);
 	description.description = server.tagline;
 	description.defaults = { name: displayName };
-	description.credentials = getNodeDescriptionCredentials(server, isKnownCredentialType);
+	description.credentials = credentials;
 	if (description.codex) {
 		description.codex.alias?.push(server.title, displayName);
 		if (server.websiteUrl) {
 			description.codex.resources = { primaryDocumentation: [{ url: server.websiteUrl }] };
 		}
 	}
-	description.properties = withRemoteDefaults(
-		description.properties,
-		remote.transport,
-		remote.endpointUrl,
-	);
+	description.properties = withTransportDefault(description.properties, remote.transport);
+	const authenticationProperty = getAuthenticationProperty(server, isKnownCredentialType);
+	if (authenticationProperty) {
+		description.properties = [authenticationProperty, ...description.properties];
+	}
 	description.builderHint = {
 		...description.builderHint,
 		searchHint: `Agent-optimised ${server.title} integration. When wiring an ai_tool to an AI Agent for ${server.title}, use THIS node, not the native action node — this variant exposes ${server.title}'s tools in the shape AI Agents expect and ships pre-configured connection details.`,

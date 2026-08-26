@@ -5,11 +5,6 @@ export type McpTool = { name: string; description?: string; inputSchema: JSONSch
 
 export type McpServerTransport = 'sse' | 'httpStreamable';
 
-export type McpAuthenticationOption =
-	| 'none'
-	| 'headerAuth'
-	| 'bearerAuth'
-	| 'multipleHeadersAuth'
-	| McpOAuth2CredentialType;
+export type McpAuthenticationOption = string;
 
 export { isMcpOAuth2Authentication, type McpOAuth2CredentialType };

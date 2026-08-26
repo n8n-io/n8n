@@ -21,11 +21,35 @@ import {
 	LANGCHAIN_PACKAGE_NAME,
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
+	getMcpRegistryCredentialOptions,
+	getMcpRegistryRemote,
 	serverToCredentialDescription,
 	serverToNodeDescription,
 	type IsKnownCredentialType,
 } from './node-description-transform';
 import type { McpRegistryServer } from './registry/mcp-registry.types';
+
+type McpRegistryBaseNode = INodeType & {
+	registerEndpoint(
+		nodeTypeName: string,
+		endpointUrl: string,
+		transport: 'httpStreamable' | 'sse',
+		credentials: Array<{ credentialType: string; value: string }>,
+		trustedDomains?: string,
+	): void;
+	resetRegistry(): void;
+};
+
+function supportsEndpointRegistration(
+	node: INodeType | IVersionedNodeType,
+): node is McpRegistryBaseNode {
+	return (
+		'registerEndpoint' in node &&
+		typeof node.registerEndpoint === 'function' &&
+		'resetRegistry' in node &&
+		typeof node.resetRegistry === 'function'
+	);
+}
 
 /**
  * Synthetic node loader: turns each registry server into a node type, all
@@ -67,9 +91,10 @@ export class McpRegistryNodeLoader implements NodeLoader {
 
 		const { type: baseNode, sourcePath } = baseLoaded;
 		const { description: baseDescription } = NodeHelpers.getVersionedNodeType(baseNode);
+		if (supportsEndpointRegistration(baseNode)) baseNode.resetRegistry();
 
 		const isKnownCredentialType: IsKnownCredentialType = (name) =>
-			Object.hasOwn(this.loadNodesAndCredentials.knownCredentials, name);
+			this.isSupportedOAuth2CredentialType(name);
 
 		for (const server of this.servers) {
 			const nodeDescription = serverToNodeDescription(
@@ -78,9 +103,27 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				isKnownCredentialType,
 			);
 			const credentialDescription = serverToCredentialDescription(server, isKnownCredentialType);
-			if (!nodeDescription || !credentialDescription) continue;
+			if (!nodeDescription) continue;
+			if (server.authType !== 'usesCredentials' && !credentialDescription) continue;
 
 			const bareName = camelCase(server.slug);
+			const remote = getMcpRegistryRemote(server);
+			if (supportsEndpointRegistration(baseNode) && remote) {
+				const supportedCredentialTypes = new Set(
+					nodeDescription.credentials?.map(({ name }) => name) ?? [],
+				);
+				baseNode.registerEndpoint(
+					bareName,
+					remote.endpointUrl,
+					remote.transport,
+					getMcpRegistryCredentialOptions(server).filter(({ credentialType }) =>
+						supportedCredentialTypes.has(credentialType),
+					),
+					server.authType === 'usesCredentials'
+						? new URL(remote.endpointUrl).hostname
+						: undefined,
+				);
+			}
 
 			this.types.nodes.push(nodeDescription);
 			const syntheticNode = Object.create(baseNode, {
@@ -92,17 +135,19 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				sourcePath,
 			};
 
-			this.types.credentials.push(credentialDescription);
-			this.credentialTypes[credentialDescription.name] = {
-				type: credentialDescription,
-				sourcePath: '',
-			};
-			this.known.credentials[credentialDescription.name] = {
-				className: 'McpRegistryApi',
-				sourcePath: '',
-				extends: credentialDescription.extends,
-				supportedNodes: [bareName],
-			};
+			if (credentialDescription) {
+				this.types.credentials.push(credentialDescription);
+				this.credentialTypes[credentialDescription.name] = {
+					type: credentialDescription,
+					sourcePath: '',
+				};
+				this.known.credentials[credentialDescription.name] = {
+					className: 'McpRegistryApi',
+					sourcePath: '',
+					extends: credentialDescription.extends,
+					supportedNodes: [bareName],
+				};
+			}
 		}
 	}
 
@@ -156,5 +201,34 @@ export class McpRegistryNodeLoader implements NodeLoader {
 			);
 			return undefined;
 		}
+	}
+
+	private isSupportedOAuth2CredentialType(name: string): boolean {
+		if (!Object.hasOwn(this.loadNodesAndCredentials.knownCredentials, name)) return false;
+
+		try {
+			const credentialType = this.loadNodesAndCredentials.getCredential(name).type;
+			if (
+				credentialType.authenticate !== undefined ||
+				credentialType.preAuthentication !== undefined
+			) {
+				return false;
+			}
+		} catch {
+			return false;
+		}
+
+		return name === 'oAuth2Api' || this.getParentCredentialTypes(name).includes('oAuth2Api');
+	}
+
+	private getParentCredentialTypes(name: string, seen = new Set<string>()): string[] {
+		if (seen.has(name)) return [];
+		seen.add(name);
+
+		const parents = this.loadNodesAndCredentials.knownCredentials[name]?.extends ?? [];
+		return parents.flatMap((parent) => [
+			parent,
+			...this.getParentCredentialTypes(parent, seen),
+		]);
 	}
 }

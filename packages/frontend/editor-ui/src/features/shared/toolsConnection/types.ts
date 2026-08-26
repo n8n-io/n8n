@@ -14,6 +14,7 @@ export type ToolIconSource =
 
 export interface ToolCredentialRef {
 	authType: string;
+	displayName?: string;
 	credentialId?: string;
 	required?: boolean;
 }
