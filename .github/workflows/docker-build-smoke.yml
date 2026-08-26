@@ -15,9 +15,9 @@ env:
   NODE_VERSION: '26.7.0'
   # Also build the distroless runners image (what cloud deploys) and exec-check
   # both runners images' interpreters, so a broken runtime assembly (e.g. a
-  # missing shared library after a Node bump) fails at PR time.
+  # missing shared library after a Node bump) fails at PR time. The smoke
+  # script derives the images to check from this same flag.
   DOCKER_BUILD_DISTROLESS: 'true'
-  SMOKE_RUNNERS_IMAGES: 'n8nio/runners:local,n8nio/runners:local-distroless'
 
 on:
   schedule:

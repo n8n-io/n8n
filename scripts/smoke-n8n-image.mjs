@@ -12,7 +12,13 @@ process.env.FORCE_COLOR = '1';
 
 const IMAGE = process.env.SMOKE_IMAGE || 'n8nio/n8n:local';
 // Runners images to exec-check; empty string skips (e.g. when only the n8n image was built).
-const RUNNERS_IMAGES = (process.env.SMOKE_RUNNERS_IMAGES ?? 'n8nio/runners:local')
+// The default tracks DOCKER_BUILD_DISTROLESS so the same flag drives both build and check.
+const RUNNERS_IMAGES = (
+	process.env.SMOKE_RUNNERS_IMAGES ??
+	(process.env.DOCKER_BUILD_DISTROLESS === 'true'
+		? 'n8nio/runners:local,n8nio/runners:local-distroless'
+		: 'n8nio/runners:local')
+)
 	.split(',')
 	.filter(Boolean);
 const TIMEOUT = '45s';
