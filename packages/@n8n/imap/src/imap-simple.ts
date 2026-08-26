@@ -6,7 +6,6 @@ import {
 	ConnectionEndedError,
 	ConnectionLostError,
 	ConnectionTimeoutError,
-	ReconnectTimeoutError,
 } from './errors';
 import { getMessage } from './helpers/get-message';
 import { attachmentParts, bodyPart, getParts } from './message';
@@ -76,7 +75,7 @@ const withTimeout = async <T>(operation: Promise<T>, ms: number): Promise<T> => 
 		return await Promise.race([
 			operation,
 			new Promise<never>((_, reject) => {
-				timer = setTimeout(() => reject(new ReconnectTimeoutError()), ms);
+				timer = setTimeout(() => reject(new ConnectionTimeoutError(ms)), ms);
 			}),
 		]);
 	} finally {
@@ -123,9 +122,30 @@ const connectTransport = async (client: ImapTransport): Promise<void> => {
 	});
 };
 
+/**
+ * node-imap abandons its request queue on a close without calling back, so a SELECT the drop cut
+ * short is let go here — left to the driver it never settles, and neither does its connection.
+ */
 const selectMailbox = async (client: ImapTransport, boxName: string): Promise<Imap.Box> =>
 	await new Promise((resolve, reject) => {
-		client.openBox(boxName, (error, box) => (error ? reject(error) : resolve(box)));
+		const cleanUp = () => {
+			client.removeListener('close', onLost);
+			client.removeListener('end', onLost);
+		};
+
+		const onLost = () => {
+			cleanUp();
+			reject(new ConnectionLostError());
+		};
+
+		client.once('close', onLost);
+		client.once('end', onLost);
+
+		client.openBox(boxName, (error, box) => {
+			cleanUp();
+			if (error) reject(error);
+			else resolve(box);
+		});
 	});
 
 /**
@@ -155,11 +175,14 @@ export class ImapSimple {
 	/** The error reported, if any; the close that follows is its consequence, not a separate event. */
 	private failure: Error | undefined;
 
-	/** Why an unrecoverable drop gave up, for the close it reports and for an `open` that raced it. */
+	/** Why an unrecoverable drop gave up, for the close it reports. */
 	private dropCause: Error | undefined;
 
 	/** `close` was emitted; the connection is spent and stays silent from here on. */
 	private closed = false;
+
+	/** Until a first transport is in place there is no caller to restore one for. */
+	private installed = false;
 
 	private queue: Promise<unknown> = Promise.resolve();
 
@@ -260,22 +283,29 @@ export class ImapSimple {
 
 	/** The first transport. What the mailbox already holds is not an arrival; see `reopen`. */
 	private async open(): Promise<void> {
-		const attempt = this.attempt;
-		const client = await this.dial();
-
-		// A drop during the first SELECT starts a restore, which has either put its own transport in
-		// place or given up; either way this one is stale.
-		if (attempt !== this.attempt) {
-			this.discard(client);
-			if (this.closed) throw this.failure ?? this.dropCause ?? new ConnectionLostError();
-			return;
-		}
-
-		this.install(client);
+		this.install(await this.dial());
 	}
 
+	/**
+	 * A transport that is up and watching the mailbox, or none at all. Bounded, so a server that
+	 * answers the handshake and then goes quiet cannot leave a caller waiting for good.
+	 */
 	private async dial(): Promise<ImapTransport> {
 		const client = this.createTransport();
+
+		try {
+			await withTimeout(this.handshake(client), this.reconnectTimeout);
+		} catch (error) {
+			// Left connected it keeps the handlers `handshake` wired to it, and its later close
+			// would start a restore of a connection that never came up.
+			this.discard(client);
+			throw error;
+		}
+
+		return client;
+	}
+
+	private async handshake(client: ImapTransport): Promise<void> {
 		await connectTransport(client);
 
 		// Wired before the SELECT, so a transport that drops under it is still recovered from.
@@ -283,21 +313,12 @@ export class ImapSimple {
 		client.on('close', () => this.onTransportClose());
 
 		const mailbox = this.reconnectOptions?.mailbox;
-		if (mailbox === undefined) return client;
-
-		try {
-			await selectMailbox(client, mailbox);
-			return client;
-		} catch (error) {
-			// Left connected it keeps the handlers wired above, and its later close would start a
-			// restore of a connection that never came up.
-			this.discard(client);
-			throw error;
-		}
+		if (mailbox !== undefined) await selectMailbox(client, mailbox);
 	}
 
 	private install(client: ImapTransport): void {
 		this.client = client;
+		this.installed = true;
 
 		client.on('mail', (count: number) => this.enqueue({ count }));
 		client.on('update', (seqNo: number, info: FlagsEvent['info']) =>
@@ -334,7 +355,7 @@ export class ImapSimple {
 	}
 
 	private canRestore(): boolean {
-		return this.reconnectOptions !== undefined && !this.ended && !this.closed;
+		return this.installed && this.reconnectOptions !== undefined && !this.ended && !this.closed;
 	}
 
 	/**
@@ -346,7 +367,7 @@ export class ImapSimple {
 		const attempt = this.attempt;
 
 		try {
-			await withTimeout(this.reopen(attempt), this.reconnectTimeout);
+			await this.reopen(attempt);
 		} catch (error) {
 			if (attempt !== this.attempt || !this.canRestore()) return;
 			// A drop nothing could be done about, so the close carries `dropped` and the attempt
@@ -362,8 +383,8 @@ export class ImapSimple {
 		this.discard(this.client);
 		const client = await this.dial();
 
-		// A timed-out attempt keeps running, so it discards the transport it built itself: reading
-		// `this.client` would tear down whichever transport won the race instead.
+		// Another attempt may have taken over while this one dialled, so it discards the transport
+		// it built itself: reading `this.client` would tear down whichever one won the race.
 		if (attempt !== this.attempt || this.ended || this.closed) {
 			this.discard(client);
 			return;
