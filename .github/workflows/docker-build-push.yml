@@ -220,8 +220,8 @@ jobs:
             NODE_VERSION=${{ env.NODE_VERSION }}
             N8N_VERSION=${{ needs.determine-build-context.outputs.n8n_version }}
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
-            BUILDER_IMAGE=n8nio/node-pc:26.5.1-dev@sha256:9ecfe9d5c7ea835bccc604d06c3cb76a837b64496d4a999338cb8b53a50bb0bd
-            RUNTIME_IMAGE=n8nio/node-pc:26.5.1@sha256:e535408e7815904c98f81fb0203f7f657047d7db3d4edc77de44d2ea72c6bf18
+            BUILDER_IMAGE=n8nio/node-pc:26.7.0-dev@sha256:c64642dcb9464e50bd08aef8504affafeb795d01aed2f7ab158976c334a36ef6
+            RUNTIME_IMAGE=n8nio/node-pc:26.7.0@sha256:6577d0742ad043baaa39db7dda2ce8aeb73f32c84eb241c49bf716f170c53297
             IMAGE_DESCRIPTION=Workflow Automation Tool (pointer-compressed variant, internal to n8n Cloud, no support or stability guarantees)
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
