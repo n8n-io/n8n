@@ -8,7 +8,7 @@ import TemplatesView from './TemplatesView.vue';
 import type { ITemplatesCategory } from '@n8n/rest-api-client/api/templates';
 import type { IDataObject } from 'n8n-workflow';
 import { CREATOR_HUB_URL, VIEWS } from '@/app/constants';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useToast } from '@n8n/composables/useToast';

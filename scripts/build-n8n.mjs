@@ -10,6 +10,7 @@
 
 import { $, echo, fs, chalk } from 'zx';
 import path from 'path';
+import os from 'os';
 
 // Check if running in a CI environment
 const isCI = process.env.CI === 'true';
@@ -33,9 +34,6 @@ const config = {
 	cliDir: path.join(rootDir, 'packages', 'cli'),
 	rootDir: rootDir,
 };
-
-// Define backend patches to keep during deployment
-const PATCHES_TO_KEEP = ['pdfjs-dist', 'pkce-challenge', 'bull'];
 
 // #endregion ===== Configuration =====
 
@@ -126,55 +124,17 @@ const packageJsonFiles = await $`cd ${config.rootDir} && find . -name "package.j
 -not -path "./compiled/*" \
 -type f`.lines();
 
-// Backup all package.json files
-// This is only needed locally, not in CI
-if (process.env.CI !== 'true') {
-	for (const file of packageJsonFiles) {
-		if (file) {
-			const fullPath = path.join(config.rootDir, file);
-			await fs.copy(fullPath, `${fullPath}.bak`);
-		}
+// Backup all package.json files. The FE trim below mutates them, and pnpm verifies
+// the lockfile before running any later script, which fails until they are restored.
+// Backups live outside the workspace: siblings would be packed into the deployment.
+const packageJsonBackupDir = await fs.mkdtemp(path.join(os.tmpdir(), 'n8n-build-pkgjson-'));
+for (const file of packageJsonFiles) {
+	if (file) {
+		await fs.copy(path.join(config.rootDir, file), path.join(packageJsonBackupDir, file));
 	}
 }
 // Run FE trim script
 await $`cd ${config.rootDir} && node .github/scripts/trim-fe-packageJson.js`;
-echo(chalk.yellow('INFO: Performing selective patch cleanup...'));
-
-const packageJsonPath = path.join(config.rootDir, 'package.json');
-
-if (await fs.pathExists(packageJsonPath)) {
-	try {
-		// 1. Read the package.json file
-		const packageJsonContent = await fs.readFile(packageJsonPath, 'utf8');
-		let packageJson = JSON.parse(packageJsonContent);
-
-		// 2. Modify the patchedDependencies directly in JavaScript
-		if (packageJson.pnpm && packageJson.pnpm.patchedDependencies) {
-			const filteredPatches = {};
-			for (const [key, value] of Object.entries(packageJson.pnpm.patchedDependencies)) {
-				// Check if the key (patch name) starts with any of the allowed patches
-				const shouldKeep = PATCHES_TO_KEEP.some((patchPrefix) => key.startsWith(patchPrefix));
-				if (shouldKeep) {
-					filteredPatches[key] = value;
-				}
-			}
-			packageJson.pnpm.patchedDependencies = filteredPatches;
-		}
-
-		// 3. Write the modified package.json back
-		await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf8');
-
-		echo(chalk.green('✅ Kept backend patches: ' + PATCHES_TO_KEEP.join(', ')));
-		echo(
-			chalk.gray(
-				`Removed FE/dev patches that are not in the list of backend patches to keep: ${PATCHES_TO_KEEP.join(', ')}`,
-			),
-		);
-	} catch (error) {
-		echo(chalk.red(`ERROR: Failed to cleanup patches in package.json: ${error.message}`));
-		process.exit(1);
-	}
-}
 
 echo(chalk.yellow(`INFO: Creating pruned production deployment in '${config.compiledAppDir}'...`));
 startTimer('package_deploy');
@@ -195,9 +155,11 @@ if (excludeTestController) {
 // top level, so cdxgen would miss the transitive tree (the manifest would be incomplete).
 // Re-enable hoisting for the licenses build only — shipped images keep the non-hoisted
 // layout, since regular builds leave N8N_GENERATE_LICENSES unset.
+// `PNPM_CONFIG_*` and not `npm_config_*`: pnpm 11 no longer reads npm-style env config,
+// so an `npm_config_` name here is silently ignored and the SBOM comes out incomplete.
 const generateLicenses = process.env.N8N_GENERATE_LICENSES === 'true';
 if (generateLicenses) {
-	process.env.npm_config_shamefully_hoist = 'true';
+	process.env.PNPM_CONFIG_SHAMEFULLY_HOIST = 'true';
 }
 
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=n8n --prod --legacy deploy --no-optional ./compiled`;
@@ -247,6 +209,8 @@ const runtimeAssetGlobs = [
 	'*/@n8n/instance-ai/knowledge-base/*',
 	'*/dist/node-definitions/*',
 ];
+
+echo(chalk.yellow('INFO: Verifying Runtime assets'));
 for (const glob of runtimeAssetGlobs) {
 	const found = await $`find ${config.compiledAppDir} -type f -path ${glob}`.nothrow();
 	if (found.stdout.split('\n').filter(Boolean).length === 0) {
@@ -265,6 +229,44 @@ echo(
 );
 
 await $`cd ${config.rootDir} && NODE_ENV=production DOCKER_BUILD=true pnpm --filter=@n8n/task-runner --prod --legacy deploy --no-optional ${config.compiledTaskRunnerDir}`;
+
+// Check the production closure for single-instance dependency duplication. A curated
+// library resolving to more than one physical copy silently breaks instanceof /
+// singletons at runtime. Report-first: a duplicate is surfaced loudly but does NOT fail
+// the build — matching the continue-on-error npm-install CI jobs, so a transitive
+// third-party re-split can't hard-break every nightly/release with no config escape.
+// Promote to a hard gate once it has proven stable across releases.
+// Both closures this build produces are checked. The task runner is deployed independently and
+// ships as its own image, and `@n8n/task-runner` is a host package — it carries the curated libs as
+// real dependencies rather than peers, so it is if anything the likelier place for a second copy.
+const verifySingleInstance = async (label, dir) => {
+	echo(chalk.yellow(`INFO: Verifying single-instance dependency integrity in ${label}...`));
+	// `--dir` rather than `--filter`: a filter that matches nothing exits 0, so a renamed or moved
+	// package would report a passing check having run no verifier at all.
+	const verifyProcess = $`cd ${config.rootDir} && pnpm --dir packages/testing/code-health exec tsx src/cli.ts verify-closure ${dir}`.nothrow();
+	verifyProcess.pipe(process.stdout);
+	const { exitCode } = await verifyProcess;
+	// 0 and 3 are the only codes the verifier itself produces; everything else (tsx failing to load,
+	// a missing package or closure, a crash) means the closure was never checked.
+	if (exitCode === 0) {
+		echo(chalk.green(`✅ Single-instance dependency check passed for ${label}`));
+	} else if (exitCode === 3) {
+		echo(
+			chalk.red(
+				`⚠️  Single-instance dependency duplication reported in ${label} (see above) — not failing the build (report-first).`,
+			),
+		);
+	} else {
+		echo(
+			chalk.red(
+				`⚠️  Single-instance verifier failed to run for ${label} (exit ${exitCode}); that closure was NOT checked. This is a tooling error, not a duplication report.`,
+			),
+		);
+	}
+};
+
+await verifySingleInstance('the production closure', config.compiledAppDir);
+await verifySingleInstance('the JavaScript task runner closure', config.compiledTaskRunnerDir);
 
 const packageDeployTime = getElapsedTime('package_deploy');
 
@@ -301,18 +303,15 @@ if (generateLicenses) {
 }
 
 // Restore package.json files
-// This is only needed locally, not in CI
-if (process.env.CI !== 'true') {
-	for (const file of packageJsonFiles) {
-		if (file) {
-			const fullPath = path.join(config.rootDir, file);
-			const backupPath = `${fullPath}.bak`;
-			if (await fs.pathExists(backupPath)) {
-				await fs.move(backupPath, fullPath, { overwrite: true });
-			}
+for (const file of packageJsonFiles) {
+	if (file) {
+		const backupPath = path.join(packageJsonBackupDir, file);
+		if (await fs.pathExists(backupPath)) {
+			await fs.move(backupPath, path.join(config.rootDir, file), { overwrite: true });
 		}
 	}
 }
+await fs.remove(packageJsonBackupDir);
 
 // Calculate output size
 const compiledAppOutputSize = (await $`du -sh ${config.compiledAppDir} | cut -f1`).stdout.trim();

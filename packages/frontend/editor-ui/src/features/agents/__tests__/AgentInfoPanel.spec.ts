@@ -9,6 +9,11 @@ import type { AgentJsonConfig } from '../types';
 
 const ensureLoadedMock = vi.fn();
 const selectCredentialMock = vi.fn();
+// Reactive holder mirroring the real composable, whose verified-default cache
+// is a ref that updates when the backend response lands — watch getters that
+// call the mock must re-run when tests change the value.
+const defaultModelHolder = ref<Record<string, unknown> | null>(null);
+const getDefaultModelForPickerMock = vi.fn(() => defaultModelHolder.value);
 
 function makeCatalog(): ProviderCatalog {
 	return {
@@ -52,6 +57,10 @@ vi.mock('@n8n/i18n', () => ({
 				'agents.builder.agent.instructions.label': 'Instructions',
 				'agents.builder.agent.instructions.placeholder': 'Enter instructions here',
 				'agents.builder.agent.instructions.characterCount': `${options?.interpolate?.count ?? '0'} characters`,
+				'agents.builder.agent.model.defaultSelected.title': 'Default model selected',
+				'agents.builder.agent.model.defaultSelected.description':
+					'A sensible default has been chosen for you. You can change it anytime.',
+				'agents.builder.agent.model.defaultSelected.dismiss': 'Got it',
 			})[key] ?? key,
 	}),
 }));
@@ -65,6 +74,17 @@ vi.mock('@n8n/design-system', () => ({
 			'<div v-bind="$attrs" data-testid="markdown-editor">{{ modelValue }} {{ placeholder }}</div>',
 	},
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
+	N8nCallout: {
+		name: 'N8nCallout',
+		props: ['theme', 'slim', 'icon'],
+		template: '<div v-bind="$attrs" data-testid="n8n-callout"><slot /></div>',
+	},
+	N8nIconButton: {
+		name: 'N8nIconButton',
+		props: ['icon', 'size', 'variant', 'title', 'text'],
+		emits: ['click'],
+		template: '<button v-bind="$attrs" data-testid="n8n-icon-button" @click="$emit(\'click\')" />',
+	},
 }));
 
 vi.mock('@n8n/composables/useToast', () => ({
@@ -112,6 +132,7 @@ vi.mock('../composables/useModelCatalog', () => ({
 				],
 			},
 		}),
+		getDefaultModelForPicker: getDefaultModelForPickerMock,
 		isLoading: ref(false),
 	}),
 }));
@@ -121,7 +142,7 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 		name: 'AgentModelSelector',
 		template: '<div data-testid="agent-model-selector" />',
 		props: ['selectedModel', 'credentials', 'warnMissingCredentials', 'modelsByProvider'],
-		emits: ['change'],
+		emits: ['change', 'select-credential', 'configure-credential'],
 	},
 }));
 
@@ -171,6 +192,7 @@ describe('AgentInfoPanel', () => {
 		vi.clearAllMocks();
 		modelCatalog.value = makeCatalog();
 		credsHolder.value = { anthropic: 'credential-1' };
+		defaultModelHolder.value = null;
 	});
 
 	it('renders instructions as a contained markdown editor', () => {
@@ -282,6 +304,193 @@ describe('AgentInfoPanel', () => {
 	);
 
 	describe('model credential resolution', () => {
+		it('persists the verified default after selecting a credential for an empty draft', async () => {
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: '',
+				instructions: 'Help users.',
+			});
+			defaultModelHolder.value = {
+				provider: 'anthropic',
+				model: 'claude-sonnet-4-5',
+				name: 'Claude Sonnet 4.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			};
+
+			wrapper
+				.findComponent({ name: 'AgentModelSelector' })
+				.vm.$emit('select-credential', 'anthropic', 'credential-1');
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.emitted('update:config')).toContainEqual([
+				expect.objectContaining({
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'credential-1',
+				}),
+			]);
+		});
+
+		it('applies the verified default on mount when a credential is already available', async () => {
+			defaultModelHolder.value = {
+				provider: 'anthropic',
+				model: 'claude-sonnet-4-5',
+				name: 'Claude Sonnet 4.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			};
+
+			// No picker interaction at all: the initial credentials seed resolution.
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: '',
+				instructions: 'Help users.',
+			});
+			await wrapper.vm.$nextTick();
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.emitted('update:config')).toContainEqual([
+				expect.objectContaining({
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'credential-1',
+				}),
+			]);
+			expect(wrapper.find('[data-testid="agent-default-model-hint"]').exists()).toBe(true);
+		});
+
+		it('seeds the managed openai fallback on mount when only n8n credits are available', async () => {
+			credsHolder.value = { openai: AI_GATEWAY_MANAGED_TAG };
+			defaultModelHolder.value = {
+				provider: 'openai',
+				model: 'gpt-5-mini',
+				name: 'GPT-5 mini',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			};
+
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: '',
+				instructions: 'Help users.',
+			});
+			await wrapper.vm.$nextTick();
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.emitted('update:config')).toContainEqual([
+				expect.objectContaining({
+					model: 'openai/gpt-5-mini',
+					credential: AI_GATEWAY_MANAGED_TAG,
+				}),
+			]);
+		});
+
+		it('does not seed a managed non-openai provider on mount (creation resolver falls back to openai only)', async () => {
+			credsHolder.value = { anthropic: AI_GATEWAY_MANAGED_TAG };
+			defaultModelHolder.value = {
+				provider: 'anthropic',
+				model: 'claude-sonnet-4-5',
+				name: 'Claude Sonnet 4.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			};
+
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: '',
+				instructions: 'Help users.',
+			});
+			await wrapper.vm.$nextTick();
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.emitted('update:config')).toBeUndefined();
+		});
+
+		it('does not touch a draft that already has a model on mount', async () => {
+			defaultModelHolder.value = {
+				provider: 'anthropic',
+				model: 'claude-sonnet-4-5',
+				name: 'Claude Sonnet 4.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			};
+
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: 'anthropic/claude-3-haiku',
+				credential: 'credential-1',
+				instructions: 'Help users.',
+			});
+			await wrapper.vm.$nextTick();
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.emitted('update:config')).toBeUndefined();
+			expect(wrapper.find('[data-testid="agent-default-model-hint"]').exists()).toBe(false);
+		});
+
+		it('shows the default-model hint after a default is auto-applied, and clears it on a manual pick', async () => {
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: '',
+				instructions: 'Help users.',
+			});
+			expect(wrapper.find('[data-testid="agent-default-model-hint"]').exists()).toBe(false);
+
+			defaultModelHolder.value = {
+				provider: 'anthropic',
+				model: 'claude-sonnet-4-5',
+				name: 'Claude Sonnet 4.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			};
+
+			wrapper
+				.findComponent({ name: 'AgentModelSelector' })
+				.vm.$emit('select-credential', 'anthropic', 'credential-1');
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.find('[data-testid="agent-default-model-hint"]').exists()).toBe(true);
+
+			// A manual model pick clears the hint.
+			wrapper.findComponent({ name: 'AgentModelSelector' }).vm.$emit('change', {
+				provider: 'anthropic',
+				model: 'claude-3-haiku',
+			});
+			await wrapper.vm.$nextTick();
+
+			expect(wrapper.find('[data-testid="agent-default-model-hint"]').exists()).toBe(false);
+		});
+
+		it('dismisses the default-model hint via the close button', async () => {
+			const wrapper = mountModelPanel({
+				name: 'Support agent',
+				model: '',
+				instructions: 'Help users.',
+			});
+			defaultModelHolder.value = {
+				provider: 'anthropic',
+				model: 'claude-sonnet-4-5',
+				name: 'Claude Sonnet 4.5',
+				description: null,
+				createdAt: null,
+				metadata: { functionCalling: true, available: true },
+			};
+
+			wrapper
+				.findComponent({ name: 'AgentModelSelector' })
+				.vm.$emit('select-credential', 'anthropic', 'credential-1');
+			await wrapper.vm.$nextTick();
+
+			await wrapper.find('[data-testid="agent-default-model-hint-dismiss"]').trigger('click');
+
+			expect(wrapper.find('[data-testid="agent-default-model-hint"]').exists()).toBe(false);
+		});
+
 		it("overlays the agent config's credential for the model provider (builder-created agent)", () => {
 			// Builder writes config.credential but not localStorage, so the manual-selection
 			// state falls back to the managed default — the overlay must still surface the real

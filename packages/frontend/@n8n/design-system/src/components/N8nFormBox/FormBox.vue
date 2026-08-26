@@ -1,11 +1,5 @@
 <script lang="ts" setup>
-import type {
-	FormFieldValue,
-	IFormInput,
-	FormFieldValueUpdate,
-	FormValues,
-} from '@n8n/design-system/types';
-
+import type { FormFieldValue, IFormInput, FormFieldValueUpdate, FormValues } from '../../types';
 import { createFormEventBus } from '../../utils';
 import N8nButton from '../N8nButton';
 import N8nFormInputs from '../N8nFormInputs';

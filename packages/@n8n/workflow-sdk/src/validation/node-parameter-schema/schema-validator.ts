@@ -5,6 +5,7 @@
  * Schemas are loaded from `nodeDefinitionDirs` configured via `setSchemaBaseDirs()`.
  */
 
+import { realpathSync } from 'fs';
 import * as path from 'path';
 import type { ZodSchema, ZodIssue } from 'zod';
 
@@ -29,6 +30,12 @@ export interface SchemaValidationResult {
 	errors: Array<{
 		path: string;
 		message: string;
+		/**
+		 * The only problem is an omitted `resource`/`operation`/`mode` discriminator.
+		 * n8n falls back to the node default at runtime (the editor strips default
+		 * values on save), so consumers may treat this as non-blocking.
+		 */
+		missingDiscriminator?: boolean;
 	}>;
 }
 
@@ -62,6 +69,31 @@ function nodeTypeToPathComponents(nodeType: string): { pkg: string; nodeName: st
 	const [pkg, ...rest] = normalized.split('.');
 	const nodeName = rest.join('.'); // Handle multi-part names (shouldn't happen, but be safe)
 	return { pkg, nodeName };
+}
+
+/**
+ * Whether a node-type-derived path component is a single, safe path segment.
+ * A legitimate `pkg`/`nodeName` never contains separators or parent references.
+ */
+function isSafePathComponent(component: string): boolean {
+	if (component.includes('\0')) return false;
+	if (component.includes('/') || component.includes('\\')) return false;
+	if (component === '.' || component === '..') return false;
+	return true;
+}
+
+/**
+ * Real (symlink-resolved) path of `child` if it lands on `parent` itself or
+ * somewhere beneath it, otherwise null. Comparing fully resolved paths means
+ * neither a `..` sequence nor a symlinked directory or file can point outside
+ * `parent`. Both paths must already exist. Callers should use the returned path
+ * so the resolved real file is what gets loaded.
+ */
+function realPathWithin(parent: string, child: string): string | null {
+	const realParent = realpathSync(parent);
+	const realChild = realpathSync(child);
+	const contained = realChild === realParent || realChild.startsWith(realParent + path.sep);
+	return contained ? realChild : null;
 }
 
 /**
@@ -132,13 +164,23 @@ function buildExpectedFactoryName(
 }
 
 /**
- * Try to load a schema module from a given path
- * @returns The module if found, null otherwise
+ * Try to load a schema module from a given path, but only if the file `require()`
+ * would actually open resolves inside `nodesRoot`. Resolving the module first
+ * (with its real extension, following any symlinks) and checking containment on
+ * the realpath closes both `..` traversal and symlinked directory/leaf escapes.
+ * @returns The module if found and contained, null otherwise
  */
-function tryLoadSchemaModule(schemaPath: string): Record<string, unknown> | null {
+function tryLoadSchemaModule(
+	schemaPath: string,
+	nodesRoot: string,
+): Record<string, unknown> | null {
 	try {
+		const safePath = realPathWithin(nodesRoot, require.resolve(schemaPath));
+		if (!safePath) {
+			return null;
+		}
 		// eslint-disable-next-line @typescript-eslint/no-require-imports -- Dynamic module loading requires CommonJS require
-		return require(schemaPath) as Record<string, unknown>;
+		return require(safePath) as Record<string, unknown>;
 	} catch {
 		return null;
 	}
@@ -214,15 +256,25 @@ function tryLoadSchemaForNodeType(nodeType: string, version: number): SchemaOrFa
 	const versionStr = versionToString(version);
 	const isLangchain = pkg === 'n8n-nodes-langchain';
 
-	for (const baseDir of schemaBaseDirs) {
-		// Try flat structure first: nodes/{pkg}/{nodeName}/{version}.schema.js
-		const flatSchemaPath = path.join(baseDir, 'nodes', pkg, nodeName, `${versionStr}.schema`);
-		// Try split structure: nodes/{pkg}/{nodeName}/{version}/index.schema.js
-		const splitSchemaPath = path.join(baseDir, 'nodes', pkg, nodeName, versionStr, 'index.schema');
+	// Reject node types whose path components could escape the schema directory.
+	// Only built-in nodes have generated schemas, so a rejected type would resolve
+	// to nothing anyway; returning null falls back to skip-validation.
+	if (!isSafePathComponent(pkg) || !isSafePathComponent(nodeName)) {
+		return null;
+	}
 
-		// Try flat structure first, then split structure
+	for (const baseDir of schemaBaseDirs) {
+		const nodesRoot = path.resolve(baseDir, 'nodes');
+		// Try flat structure first: nodes/{pkg}/{nodeName}/{version}.schema.js
+		const flatSchemaPath = path.join(nodesRoot, pkg, nodeName, `${versionStr}.schema`);
+		// Try split structure: nodes/{pkg}/{nodeName}/{version}/index.schema.js
+		const splitSchemaPath = path.join(nodesRoot, pkg, nodeName, versionStr, 'index.schema');
+
+		// Try flat structure first, then split structure. `tryLoadSchemaModule`
+		// refuses to require() a file that resolves outside the schema root.
 		const schemaModule =
-			tryLoadSchemaModule(flatSchemaPath) ?? tryLoadSchemaModule(splitSchemaPath);
+			tryLoadSchemaModule(flatSchemaPath, nodesRoot) ??
+			tryLoadSchemaModule(splitSchemaPath, nodesRoot);
 
 		if (!schemaModule) {
 			continue;
@@ -351,16 +403,49 @@ function collectIssuesFromBestPath(unionErrors: Array<{ issues: ZodIssue[] }>): 
 }
 
 /**
- * Recursively collect ALL discriminator values from all union variants.
- * Used when a discriminator is missing to show all valid options.
+ * Discriminators from outermost to innermost. An `operation` is chosen within a
+ * `resource`, so a variant for a different resource offers different operations.
+ */
+const DISCRIMINATOR_ORDER = ['mode', 'resource', 'operation'];
+
+function discriminatorRank(path: string): number {
+	return DISCRIMINATOR_ORDER.findIndex((field) => path.endsWith(field));
+}
+
+/**
+ * Whether a union variant already failed on a discriminator that outranks `rank`.
+ *
+ * When listing the operations valid for `resource: "lead"`, the `account` variant
+ * describes a different resource, so its operations are not valid answers. Zod
+ * still reports them, because a failing object surfaces an issue per key.
+ */
+function failsHigherLevelDiscriminator(issues: ZodIssue[], rank: number): boolean {
+	return issues.some((iss) => {
+		if (iss.code !== 'invalid_literal') return false;
+		const otherRank = discriminatorRank(iss.path.join('.'));
+		return otherRank !== -1 && otherRank < rank;
+	});
+}
+
+/**
+ * Recursively collect ALL discriminator values from the union variants that are
+ * reachable given the discriminators already supplied. Used to list valid options
+ * for a discriminator that is missing or invalid.
  */
 function collectAllDiscriminatorValues(
 	unionErrors: Array<{ issues: ZodIssue[] }>,
 	discriminatorPath: string,
 ): unknown[] {
 	const values: unknown[] = [];
+	const rank = discriminatorRank(discriminatorPath);
 
 	for (const unionError of unionErrors) {
+		// Nested unions surface the resource literal one level down, so this check
+		// applies at every level rather than only at the top.
+		if (rank !== -1 && failsHigherLevelDiscriminator(unionError.issues, rank)) {
+			continue;
+		}
+
 		for (const iss of unionError.issues) {
 			if (iss.code === 'invalid_literal' && iss.path.join('.') === discriminatorPath) {
 				values.push((iss as { expected?: unknown }).expected);
@@ -382,11 +467,19 @@ function collectAllDiscriminatorValues(
 	return [...new Set(values)];
 }
 
+/** Formatted issue with structured metadata alongside the human-readable message. */
+interface FormattedIssue {
+	message: string;
+	missingDiscriminator?: boolean;
+}
+
 /**
  * Extract the most useful error information from union validation failures.
  * Returns a clear, actionable error message summarizing what went wrong.
  */
-function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): string | null {
+function extractUnionErrorSummary(
+	unionErrors: Array<{ issues: ZodIssue[] }>,
+): FormattedIssue | null {
 	// Find the best matching variant and collect its issues (handles nested unions)
 	const bestPathIssues = collectIssuesFromBestPath(unionErrors);
 
@@ -413,15 +506,36 @@ function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): s
 				if (literalIssues.length > 0) {
 					const receivedValue = (literalIssues[0] as { received?: unknown }).received;
 
-					// For missing discriminators, collect ALL valid values from ALL variants
+					// Collect ALL valid values from ALL variants, not just the best-matching
+					// one — otherwise a node with 12 resources reports only the first.
+					// The best-path literals are a fallback for schemas whose variants
+					// don't surface an issue at this exact path.
+					const allValues = collectAllDiscriminatorValues(unionErrors, path);
 					const expectedValues =
-						receivedValue === undefined
-							? collectAllDiscriminatorValues(unionErrors, path)
+						allValues.length > 0
+							? allValues
 							: [...new Set(literalIssues.map((i) => (i as { expected?: unknown }).expected))];
 
 					const expectedStr = expectedValues.map((v) => `"${String(v)}"`).join(', ');
 					if (receivedValue === undefined) {
-						return `Missing discriminator "${path}". Expected one of: ${expectedStr}. When "${field}" is omitted, n8n falls back to the node default at runtime (the editor strips default values on save), so this can be intentional. If you set it, make sure "${field}" is inside "parameters".`;
+						// The downgrade signal only applies when there EXISTS a variant this
+						// config satisfies apart from the omitted discriminator(s). Quantified
+						// over all variants, not the best-path one: best-path selection breaks
+						// score ties by order, so a variant failing only on discriminators
+						// could win while the config satisfies no variant at all.
+						const isOmittedDiscriminator = (iss: ZodIssue) =>
+							iss.code === 'invalid_literal' &&
+							(iss as { received?: unknown }).received === undefined &&
+							discriminatorFields.some((discriminator) =>
+								iss.path.join('.').endsWith(discriminator),
+							);
+						const onlyOmittedDiscriminators = unionErrors.some((unionError) =>
+							unionError.issues.every(isOmittedDiscriminator),
+						);
+						return {
+							message: `Missing discriminator "${path}". Expected one of: ${expectedStr}. When "${field}" is omitted, n8n falls back to the node default at runtime (the editor strips default values on save), so this can be intentional. If you set it, make sure "${field}" is inside "parameters".`,
+							...(onlyOmittedDiscriminators ? { missingDiscriminator: true } : {}),
+						};
 					}
 					let receivedStr: string;
 					if (typeof receivedValue === 'object') {
@@ -430,7 +544,9 @@ function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): s
 						// eslint-disable-next-line @typescript-eslint/no-base-to-string -- Object case handled above
 						receivedStr = String(receivedValue);
 					}
-					return `Invalid value for "${path}": got "${receivedStr}", expected one of: ${expectedStr}.`;
+					return {
+						message: `Invalid value for "${path}": got "${receivedStr}", expected one of: ${expectedStr}.`,
+					};
 				}
 			}
 		}
@@ -461,7 +577,7 @@ function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): s
 
 		if (uniqueMismatches.size === 1) {
 			const [path, { expected, received }] = [...uniqueMismatches.entries()][0];
-			return `Field "${path}" has wrong type: expected ${expected}, got ${received}.`;
+			return { message: `Field "${path}" has wrong type: expected ${expected}, got ${received}.` };
 		}
 
 		// Multiple type mismatches - summarize
@@ -471,7 +587,7 @@ function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): s
 			return `"${p}" (expected ${expected}, got ${received})`;
 		});
 		const more = uniqueMismatches.size > 3 ? ` and ${uniqueMismatches.size - 3} more` : '';
-		return `Type mismatches: ${summaries.join(', ')}${more}.`;
+		return { message: `Type mismatches: ${summaries.join(', ')}${more}.` };
 	}
 
 	// Fallback: show the first few specific issues
@@ -486,7 +602,7 @@ function extractUnionErrorSummary(unionErrors: Array<{ issues: ZodIssue[] }>): s
 			}
 			return `"${path}": ${iss.message}`;
 		});
-		return `Validation failed: ${summaries.join('; ')}.`;
+		return { message: `Validation failed: ${summaries.join('; ')}.` };
 	}
 
 	return null;
@@ -510,9 +626,10 @@ function formatInvalidType(issue: ZodIssue, path: string): string {
 }
 
 /**
- * Format invalid_union issues
+ * Format invalid_union issues. Returns structured metadata so callers can tell
+ * a missing-discriminator finding apart from other union failures.
  */
-function formatInvalidUnion(issue: ZodIssue, path: string): string {
+function formatInvalidUnion(issue: ZodIssue, path: string): FormattedIssue {
 	if ('unionErrors' in issue && Array.isArray(issue.unionErrors)) {
 		// Check if all union errors are about undefined/missing value
 		const allMissing = issue.unionErrors.every((ue) =>
@@ -521,7 +638,7 @@ function formatInvalidUnion(issue: ZodIssue, path: string): string {
 			),
 		);
 		if (allMissing) {
-			return `Required field "${path}" is missing.`;
+			return { message: `Required field "${path}" is missing.` };
 		}
 
 		// Extract the most useful error summary from the union
@@ -530,7 +647,7 @@ function formatInvalidUnion(issue: ZodIssue, path: string): string {
 			return errorSummary;
 		}
 	}
-	return `Field "${path}" has invalid value. None of the expected types matched.`;
+	return { message: `Field "${path}" has invalid value. None of the expected types matched.` };
 }
 
 /**
@@ -597,7 +714,6 @@ function formatUnrecognizedKeys(issue: ZodIssue, path: string): string {
  */
 const ISSUE_FORMATTERS: Partial<Record<string, IssueFormatter>> = {
 	invalid_type: formatInvalidType,
-	invalid_union: formatInvalidUnion,
 	invalid_literal: formatInvalidLiteral,
 	invalid_enum_value: formatInvalidEnum,
 	too_small: formatTooSmall,
@@ -608,26 +724,35 @@ const ISSUE_FORMATTERS: Partial<Record<string, IssueFormatter>> = {
 /**
  * Format a single Zod issue into a clear, actionable error message
  */
-function formatZodIssue(issue: ZodIssue): string {
+function formatZodIssue(issue: ZodIssue): FormattedIssue {
 	const path = issue.path.length > 0 ? issue.path.join('.') : 'config';
-	const formatter = ISSUE_FORMATTERS[issue.code];
 
+	// Union issues carry structured metadata (missing-discriminator detection)
+	if (issue.code === 'invalid_union') {
+		return formatInvalidUnion(issue, path);
+	}
+
+	const formatter = ISSUE_FORMATTERS[issue.code];
 	if (formatter) {
-		return formatter(issue, path);
+		return { message: formatter(issue, path) };
 	}
 
 	// Fallback to Zod's default message with path context
-	return `Field "${path}": ${issue.message}`;
+	return { message: `Field "${path}": ${issue.message}` };
 }
 
 /**
  * Convert Zod issues to our error format with clear, actionable messages
  */
-function formatZodErrors(issues: ZodIssue[]): Array<{ path: string; message: string }> {
-	return issues.map((issue) => ({
-		path: issue.path.join('.'),
-		message: formatZodIssue(issue),
-	}));
+function formatZodErrors(issues: ZodIssue[]): SchemaValidationResult['errors'] {
+	return issues.map((issue) => {
+		const { message, missingDiscriminator } = formatZodIssue(issue);
+		return {
+			path: issue.path.join('.'),
+			message,
+			...(missingDiscriminator ? { missingDiscriminator } : {}),
+		};
+	});
 }
 
 /**

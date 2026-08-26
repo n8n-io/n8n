@@ -14,7 +14,7 @@ import { runObservationLogReflector } from './observation-log-reflector';
 import { renderObservationLog } from './observation-log-renderer';
 import { hasObservationLogStore, hasObservationLogTaskLockStore } from './observation-log-store';
 import { ScopedMemoryTaskRunner } from './scoped-memory-task-runner';
-import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
+import { settleOrphanedToolMessages } from './strip-orphaned-tool-messages';
 import type {
 	AgentExecutionCounter,
 	BuiltMemory,
@@ -28,6 +28,7 @@ import type { AgentDbMessage } from '../../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sdk/observation-log';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import type { AgentMessageList } from '../model/message-list';
+import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
 import type { BackgroundTaskTracker } from '../state/background-task-tracker';
 import type { AgentEventBus } from '../state/event-bus';
 import {
@@ -36,6 +37,7 @@ import {
 	type MemorySpanAttributes,
 	type RuntimeTelemetry,
 } from '../telemetry/runtime-telemetry';
+import { sanitizeOffloadedToolResultsForMemory } from '../tools/tool-result-guard';
 
 const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
 const logger = createFilteredLogger();
@@ -75,6 +77,7 @@ export class MemoryOrchestrator {
 		private readonly backgroundTasks: BackgroundTaskTracker,
 		private readonly eventBus: AgentEventBus,
 		private readonly runtimeTelemetry: RuntimeTelemetry,
+		private readonly tokenCounter: TokenCounter = estimateObservationTokens,
 	) {}
 
 	async loadHistoryMessages(
@@ -152,7 +155,9 @@ export class MemoryOrchestrator {
 			const memMessages = await this.loadHistoryMessages(options.persistence, telemetry);
 
 			if (memMessages.length > 0) {
-				list.addHistory(stripOrphanedToolMessages(memMessages));
+				// Settle (not strip) so an abandoned suspension stays visible as an
+				// explicit "never completed" record instead of vanishing (INS-1223).
+				list.addHistory(settleOrphanedToolMessages(memMessages));
 			}
 		}
 
@@ -259,8 +264,8 @@ export class MemoryOrchestrator {
 	 * / title jobs that `saveToMemory` schedules; those stay at end-of-turn. Idempotent
 	 * with the end-of-turn save: ids are stable across serialize/deserialize, so both
 	 * writes target the same rows and TypeORM upserts (pending tool-call → resolved in
-	 * place). A still-pending tool-call left by an abort is stripped on the next load
-	 * (`stripOrphanedToolMessages`), so persisting an incomplete turn can't malform history.
+	 * place). A still-pending tool-call left by an abort is settled on the next load
+	 * (`settleOrphanedToolMessages`), so persisting an incomplete turn can't malform history.
 	 */
 	async persistTurnDelta(
 		list: AgentMessageList,
@@ -268,7 +273,7 @@ export class MemoryOrchestrator {
 	): Promise<void> {
 		const memory = this.config.memory;
 		if (!memory || !options?.persistence) return;
-		const delta = list.turnDelta();
+		const delta = sanitizeOffloadedToolResultsForMemory(list.turnDelta());
 		if (delta.length === 0) return;
 		try {
 			const telemetry = this.runtimeTelemetry.resolve(options);
@@ -303,7 +308,7 @@ export class MemoryOrchestrator {
 	): Promise<void> {
 		const memory = this.config.memory;
 		if (!memory || !options?.persistence) return;
-		const delta = list.turnDelta();
+		const delta = sanitizeOffloadedToolResultsForMemory(list.turnDelta());
 		if (delta.length === 0) return;
 		const telemetry = this.runtimeTelemetry.resolve(options);
 		await this.saveMessagesWithSpan(
@@ -361,6 +366,7 @@ export class MemoryOrchestrator {
 							observerThresholdTokens,
 							observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 							observe,
+							tokenCounter: this.tokenCounter,
 							executionCounter,
 							telemetry,
 						}),
@@ -382,6 +388,7 @@ export class MemoryOrchestrator {
 							...scope,
 							reflectorThresholdTokens,
 							reflect,
+							tokenCounter: this.tokenCounter,
 							executionCounter,
 							telemetry,
 						}),

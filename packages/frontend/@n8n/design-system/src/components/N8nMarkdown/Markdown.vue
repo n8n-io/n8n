@@ -5,7 +5,8 @@ import markdownEmoji from 'markdown-it-emoji';
 import markdownLink from 'markdown-it-link-attributes';
 import markdownTaskLists from 'markdown-it-task-lists';
 import { computed, ref } from 'vue';
-import xss, { whiteList } from 'xss';
+import type { IWhiteList } from 'xss';
+import xss from 'xss';
 
 import { markdownYoutubeEmbed, YOUTUBE_EMBED_SRC_REGEX, type YoutubeEmbedConfig } from './youtube';
 import { toggleCheckbox, serializeAttr } from '../../utils/markdown';
@@ -72,6 +73,12 @@ const md = new Markdown(options.markdown)
 	.use(markdownEmoji)
 	.use(markdownTaskLists, options.tasklists)
 	.use(markdownYoutubeEmbed, options.youtube);
+
+// `xss` is CJS with no `exports` map. Node's lexer cannot see `whiteList` as a
+// named export, so `import { whiteList }` throws at link time under native ESM
+// once a consumer loads our `dist`. At runtime `module.exports` is the filter
+// function with the helpers hung off it, which the shipped typings don't model.
+const { whiteList } = xss as unknown as { whiteList: IWhiteList };
 
 const xssWhiteList = {
 	...whiteList,
@@ -321,8 +328,10 @@ const onCheckboxChange = (index: number) => {
 		}
 	}
 
+	// The pre box (background + padding) comes from the global .n8n-markdown
+	// styles in css/markdown.scss; a second box on code doubles it up.
 	pre > code {
-		background-color: var(--color--background);
+		background-color: transparent;
 		color: var(--color--text--shade-1);
 	}
 
@@ -425,6 +434,7 @@ input[type='checkbox'] + label {
 	}
 
 	pre > code {
+		padding: var(--spacing--sm);
 		background-color: var(--sticky--code--color--background);
 		color: var(--sticky--code--color--text);
 	}
@@ -461,7 +471,6 @@ input[type='checkbox'] + label {
 
 	pre > code {
 		display: block;
-		padding: var(--spacing--sm);
 		overflow-x: auto;
 	}
 

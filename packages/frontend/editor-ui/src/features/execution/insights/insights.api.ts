@@ -7,6 +7,7 @@ import type {
 	ListInsightsWorkflowQueryDto,
 	InsightsDateFilterDto,
 } from '@n8n/api-types';
+import { getLocalTimeZone } from '@internationalized/date';
 
 type SerializedDateFilter<T> = Omit<T, 'startDate' | 'endDate'> & {
 	startDate?: string;
@@ -27,6 +28,10 @@ export function serializeInsightsFilter<
 	if (endDate) {
 		serialized.endDate = endDate.toISOString();
 	}
+
+	// Send the browser timezone so the backend floors custom ranges to the day the
+	// user actually selected instead of the UTC calendar day.
+	serialized.timeZone = getLocalTimeZone();
 
 	return serialized;
 }

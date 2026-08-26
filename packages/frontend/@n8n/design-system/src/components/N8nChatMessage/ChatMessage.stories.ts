@@ -6,7 +6,7 @@ import N8nChatMessage from './ChatMessage.vue';
 import N8nIconButton from '../N8nIconButton';
 
 export default {
-	title: 'AI/ChatMessage',
+	title: 'Areas/Assistant/ChatMessage',
 	component: N8nChatMessage,
 	argTypes: {
 		role: {

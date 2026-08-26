@@ -10,7 +10,7 @@ vi.mock('n8n-core', () => ({
 }));
 
 import { Container } from '@n8n/di';
-import { type Response } from 'express';
+import { type Request, type Response } from 'express';
 import { type MockProxy, mock } from 'vitest-mock-extended';
 import { getHtmlSandboxCSP, InstanceSettings, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import { ExpressionError, type INode, type IUser, type IWebhookFunctions } from 'n8n-workflow';
@@ -86,6 +86,16 @@ describe('formCompletionUtils', () => {
 		mockWebhookFunctions = mock<IWebhookFunctions>();
 
 		mockWebhookFunctions.getNode.mockReturnValue(mockNode);
+		mockWebhookFunctions.getWorkflow.mockReturnValue({
+			id: 'workflow-id',
+			name: 'Workflow',
+			active: true,
+		});
+		mockWebhookFunctions.getExecutionId.mockReturnValue('execution-id');
+		// A plain top-level page: no shell around it, so nothing to delegate to.
+		mockWebhookFunctions.getRequestObject.mockReturnValue(
+			mock<Request>({ headers: {}, query: {} }),
+		);
 	});
 
 	afterEach(() => {
@@ -206,6 +216,7 @@ describe('formCompletionUtils', () => {
 					completionTitle: 'Form Completion',
 					completionMessage: maliciousMessage,
 					responseText,
+					respondWith: 'showText',
 					options: { formTitle: 'Form Title' },
 				};
 				return params[parameterName];
@@ -240,6 +251,7 @@ describe('formCompletionUtils', () => {
 					completionTitle: 'Form Completion',
 					completionMessage,
 					responseText,
+					respondWith: 'showText',
 					options: { formTitle: 'Form Title' },
 				};
 				return params[parameterName];
@@ -426,6 +438,8 @@ describe('formCompletionUtils', () => {
 					completionMessage: 'Form has been submitted successfully',
 					options: { formTitle: 'Form Title' },
 					respondWith: 'redirect',
+					responseText: '<p>Unused response</p>',
+					redirectUrl: 'https://example.com',
 				};
 				return params[parameterName];
 			});
@@ -436,7 +450,13 @@ describe('formCompletionUtils', () => {
 				'Content-Security-Policy',
 				expect.any(String),
 			);
-			expect(mockResponse.render).toHaveBeenCalled();
+			expect(mockResponse.render).toHaveBeenCalledWith(
+				'form-trigger-completion',
+				expect.objectContaining({
+					redirectUrl: 'https://example.com',
+					responseText: '',
+				}),
+			);
 		});
 
 		it('embeds an x-auth-token-compatible authToken when an authed user is provided', async () => {
@@ -461,7 +481,59 @@ describe('formCompletionUtils', () => {
 				authToken: string;
 			};
 			expect(renderArgs.authToken).toBeTruthy();
-			expect(verifyFormUserAuthToken(renderArgs.authToken, mockNode)).toEqual(authedUser);
+			// Bound to the run that rendered the page, so it is only accepted for it.
+			expect(verifyFormUserAuthToken(renderArgs.authToken, mockNode, 'execution-id')).toEqual(
+				authedUser,
+			);
+			expect(verifyFormUserAuthToken(renderArgs.authToken, mockNode, 'other-execution')).toBeNull();
+		});
+
+		// The completion page reloads itself while the run finishes, and inside the
+		// hosting shell that hop has to go through the host like every other one.
+		describe('host-driven navigation', () => {
+			const setupCompletionParams = () => {
+				mockWebhookFunctions.getNodeParameter.mockImplementation((parameterName: string) => {
+					const params: { [key: string]: any } = {
+						completionTitle: 'Form Completion',
+						completionMessage: 'Done',
+						options: { formTitle: 'Form Title' },
+					};
+					return params[parameterName];
+				});
+			};
+
+			it('is offered when the shell navigated its frame here', async () => {
+				setupCompletionParams();
+				mockWebhookFunctions.getRequestObject.mockReturnValue(
+					mock<Request>({
+						headers: { 'sec-fetch-dest': 'iframe', 'sec-fetch-site': 'same-origin' },
+						query: { n8nShellHosted: '1' },
+					}),
+				);
+				mockWebhookFunctions.evaluateExpression.mockImplementation((expression) =>
+					expression === '{{ $execution.resumeFormUrl }}'
+						? 'http://localhost:5678/form-waiting/execution-id'
+						: '',
+				);
+
+				await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+				expect(mockResponse.render).toHaveBeenCalledWith(
+					'form-trigger-completion',
+					expect.objectContaining({ hostNavigationPath: '/form-waiting' }),
+				);
+			});
+
+			it('is not offered to a top-level completion page', async () => {
+				setupCompletionParams();
+
+				await renderFormCompletion(mockWebhookFunctions, mockResponse, trigger);
+
+				expect(mockResponse.render).toHaveBeenCalledWith(
+					'form-trigger-completion',
+					expect.objectContaining({ hostNavigationPath: undefined }),
+				);
+			});
 		});
 
 		it('should NOT set Content-Security-Policy header when form HTML sandboxing is disabled', async () => {

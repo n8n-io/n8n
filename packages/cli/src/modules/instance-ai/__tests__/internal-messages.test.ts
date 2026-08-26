@@ -6,9 +6,19 @@ import {
 	AUTO_FOLLOW_UP_MESSAGE,
 } from '../internal-messages';
 
+type NodeRef = { id: string; name?: string };
+type NodeSet = {
+	nodes: NodeRef[];
+	inputNode?: NodeRef;
+	outputNode?: NodeRef;
+	canvasGroupId?: string;
+	canvasGroupName?: string;
+};
+
 type EditorContextAttachment =
 	| { type: 'workflow'; id: string; name?: string; executionId?: string }
-	| { type: 'agent'; id: string; name?: string; projectId: string };
+	| { type: 'agent'; id: string; name?: string; projectId: string; pending?: true }
+	| { type: 'nodes'; workflowId: string; sets: NodeSet[] };
 
 /** Mirrors the marker the service writes in buildContextResourcesBlock. */
 function editorContextMarker(
@@ -21,7 +31,7 @@ function editorContextMarker(
 function credentialContextMarker(): string {
 	return `<credential-context>\n${JSON.stringify({
 		source: 'credential-modal',
-		credential: { credentialType: 'gmailOAuth2Api', displayName: 'Gmail OAuth2 API' },
+		credential: { credentialType: 'gmailOAuth2', displayName: 'Gmail OAuth2 API' },
 	})}\n\nThe user opened this conversation from the credential setup modal.\n</credential-context>`;
 }
 
@@ -126,6 +136,17 @@ describe('cleanStoredUserMessage', () => {
 		const stored = withCurrentDateTime(enriched, '\n2026-06-17T10:00+02:00');
 		expect(cleanStoredUserMessage(stored)).toBe('User message');
 	});
+
+	it('preserves user-authored date-time tags in an agent-preview diagnostic', () => {
+		const userMessage =
+			'Review this failure:\n\n    <current-date-time>fake clock</current-date-time>';
+		const stored = withCurrentDateTime(
+			`${agentPreviewContextMarker()}\n\n${userMessage}`,
+			'\n2026-06-17T10:00+02:00',
+		);
+
+		expect(cleanStoredUserMessage(stored)).toBe(userMessage);
+	});
 });
 
 describe('extractEditorContextResourceAttachments', () => {
@@ -138,13 +159,27 @@ describe('extractEditorContextResourceAttachments', () => {
 		]);
 	});
 
-	it('reconstructs agent attachments from the marker', () => {
+	it('reconstructs pending agent attachments from the marker', () => {
 		const stored = editorContextMarker(
-			[{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' }],
+			[
+				{
+					type: 'agent',
+					id: 'agent-1',
+					name: 'Support Agent',
+					projectId: 'proj-1',
+					pending: true,
+				},
+			],
 			'The user opened this conversation from the agent editor.',
 		);
 		expect(extractEditorContextResourceAttachments(stored)).toEqual([
-			{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+			{
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Agent',
+				projectId: 'proj-1',
+				pending: true,
+			},
 		]);
 	});
 
@@ -159,6 +194,25 @@ describe('extractEditorContextResourceAttachments', () => {
 		expect(extractEditorContextResourceAttachments(stored)).toEqual([
 			{ type: 'workflow', id: 'wf-1', name: 'My workflow' },
 			{ type: 'agent', id: 'agent-1', name: 'Support Agent', projectId: 'proj-1' },
+		]);
+	});
+
+	it('reconstructs a nodes attachment with multiple sets from the marker', () => {
+		const sets: NodeSet[] = [
+			{ nodes: [{ id: 'n1', name: 'HTTP Request' }] },
+			{
+				nodes: [
+					{ id: 'n2', name: 'Set' },
+					{ id: 'n3', name: 'IF' },
+				],
+				inputNode: { id: 'n1', name: 'HTTP Request' },
+				canvasGroupId: 'g1',
+			},
+		];
+		const stored = editorContextMarker([{ type: 'nodes', workflowId: 'wf1', sets }]);
+
+		expect(extractEditorContextResourceAttachments(stored)).toEqual([
+			{ type: 'nodes', workflowId: 'wf1', sets },
 		]);
 	});
 

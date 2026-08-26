@@ -13,18 +13,28 @@ Copy the working flow from `v1/controllers/tags.public.controller.ts` (and
 `workflows.public.controller.ts` for a `@Param` list) rather than pasting a
 snippet here — a copy would drift. The moving parts:
 
-- Input DTO composes `publicApiPaginationSchema` from `@n8n/api-types` (a `limit`
-  plus an opaque `cursor`).
+- Input DTO takes `limit: publicApiPaginationSchema.limit` plus an opaque
+  `cursor: z.string().optional()` — cherry-pick `limit` but never spread the whole
+  `publicApiPaginationSchema`. That schema also exports `offset`, used by
+  internal-API-style page params elsewhere; a Public API list DTO must never
+  expose it as a query param. See `ListTagsQueryDto` for the shape to copy.
 - `decodeCursor` / `encodeNextCursor` live in
   `v1/shared/services/pagination.service.ts`. Decode the incoming cursor to
   `{ offset, limit }`, guard the decoded shape, and pass `offset`/`limit` to the
-  service.
+  service — `offset` is an internal implementation detail of the cursor here,
+  never a client-facing query param.
 - Treat the cursor as opaque; never hand-encode a token.
 - Return an envelope `{ data, nextCursor }` — never a bare array.
 - `encodeNextCursor(...)` returns `null` when there is no further page; surface
   that as `nextCursor: null`.
 - An invalid/undecodable cursor is a `400` via the existing bad-request error.
-- For an existing list endpoint, keep its current pagination semantics unchanged.
+- For an existing list endpoint, keep its current *cursor* semantics unchanged.
+  A leaked `offset` query param (DTO spreading `publicApiPaginationSchema`
+  instead of picking `limit`) is a defect to remove, not a contract to
+  preserve — decorator-routed DTOs validate via a plain `z.object()`, which
+  silently strips unknown query keys rather than rejecting them, so removing
+  `offset` from the DTO makes it inert rather than erroring for existing
+  callers.
 
 The output DTO wraps the list as `{ data, nextCursor }` and is declared with
 `@ApiResponse(...)` so the registry strips undeclared fields.
@@ -122,9 +132,14 @@ not templates.
   separate from the path's own `$ref` in `openapi.yml` and are easy to miss;
   left dangling, the next bundle fails on a broken `$ref`.
 - If the legacy handler gated on a license (`isLicensed('feat:x')` middleware),
-  `@Licensed` does not replicate that for a controller route (see the decorator
-  table in [SKILL.md](SKILL.md#declaring-a-controller)) — replicate the check
-  manually in the controller, don't drop it.
+  `@Licensed('feat:x')` now replicates that for a controller route (see the
+  decorator table in [SKILL.md](SKILL.md#declaring-a-controller)) — but only for
+  a single feature. If the legacy check was an any-of/all-of over several flags
+  (e.g. `LicenseState.isProvisioningLicensed()`), `@Licensed` can't express
+  that; replicate it manually in the controller instead, don't drop it - this
+  is exactly what the internal `provisioning.controller.ee.ts` and
+  `role-mapping-rule.controller.ee.ts` already do, since neither uses
+  `@Licensed` for that reason.
 - As a legacy file drops repository access / the `export =` tuple, remove its
   entry from the `off` allowlists for `no-repository-in-public-api-handler` and
   `require-public-api-controller` in `packages/cli/eslint.config.mjs` (shrink-only

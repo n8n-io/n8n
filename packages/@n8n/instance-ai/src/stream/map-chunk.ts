@@ -1,4 +1,4 @@
-import type { StreamChunk } from '@n8n/agents';
+import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
@@ -7,6 +7,7 @@ import {
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
 	channelConfigSchema,
+	mcpConnectRequestSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -198,6 +199,15 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 		return info;
 	}
 
+	if (isRecord(error)) {
+		if (error.type === 'overloaded_error') {
+			return { content: 'The model is overloaded. Try again in a few minutes.' };
+		}
+
+		const message = nonEmptyString(error.message);
+		if (message) return { content: message };
+	}
+
 	return { content: 'Unknown error' };
 }
 
@@ -319,6 +329,7 @@ function mapSuspendedChunk(
 		suspendPayload.credentialRequests,
 		credentialRequestSchema,
 	);
+	const requireUserSelection = suspendPayload.requireUserSelection === true;
 	const projectId = presentString(suspendPayload.projectId);
 	const inputType = parseInputType(suspendPayload.inputType);
 	const questions = parseSchemaArray(suspendPayload.questions, questionItemSchema);
@@ -335,6 +346,22 @@ function mapSuspendedChunk(
 		gatewayConfirmationRequiredPayloadSchema,
 	);
 	const channelConfig = parseSchemaRecord(suspendPayload.channelConfig, channelConfigSchema);
+	const mcpConnectRequest = parseSchemaRecord(
+		suspendPayload.mcpConnectRequest,
+		mcpConnectRequestSchema,
+	);
+	const targetApprovalResult = isRecord(suspendPayload.builderCheckpoint)
+		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
+		: undefined;
+	const targetApproval = targetApprovalResult?.success
+		? {
+				toolName: targetApprovalResult.data.toolName,
+				...(targetApprovalResult.data.displayName
+					? { displayName: targetApprovalResult.data.displayName }
+					: {}),
+				args: targetApprovalResult.data.args,
+			}
+		: undefined;
 
 	return {
 		type: 'confirmation-request',
@@ -349,7 +376,9 @@ function mapSuspendedChunk(
 				typeof suspendPayload.message === 'string'
 					? suspendPayload.message
 					: 'Confirmation required',
+			...(targetApproval ? { targetApproval } : {}),
 			...(credentialRequests ? { credentialRequests } : {}),
+			...(requireUserSelection ? { requireUserSelection } : {}),
 			...(projectId ? { projectId } : {}),
 			...(inputType ? { inputType } : {}),
 			...(domainAccess ? { domainAccess } : {}),
@@ -363,6 +392,7 @@ function mapSuspendedChunk(
 			...(planItems ? { planItems } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
 			...(channelConfig ? { channelConfig } : {}),
+			...(mcpConnectRequest ? { mcpConnectRequest } : {}),
 		},
 	};
 }

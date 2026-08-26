@@ -7,10 +7,11 @@ import { incrementMessageCount, incrementTokenCountFromUsage } from './execution
 import { GenerateSink } from './generate-sink';
 import { hydrateFileParts } from './hydrate-file-parts';
 import type { RunOutputSink, RunServices } from './run-output-sink';
-import { RuntimeContextBuilder, getModelIdString } from './runtime-context';
+import { RuntimeContextBuilder } from './runtime-context';
 import {
 	extractSettledToolCalls,
 	formatMcpConnectionNote,
+	isEmptyModelTurn,
 	makeErrorStream,
 	mergeUsage,
 	normalizeInput,
@@ -51,12 +52,16 @@ import type {
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
+import { getModelIdString } from '../../utils/model';
 import { parseWithSchema } from '../../utils/parse';
+import { removeToolResultRun, type WorkspaceFilesystem } from '../../workspace';
+import { createFilteredLogger } from '../logger';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner';
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import type { FetchFn } from '../model/model-factory';
+import { createModelTokenCounter } from '../model/model-token-counter';
 import {
 	applyRuntimeCacheBreakpoints,
 	buildInstructionPromptCacheOptions,
@@ -90,6 +95,7 @@ export interface AgentRuntimeConfig {
 	instructionProviderOptions?: ProviderOptions;
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
+	workspaceFilesystem?: WorkspaceFilesystem;
 	toolSearch?: {
 		topK?: number;
 	};
@@ -136,6 +142,10 @@ export interface AgentRuntimeConfig {
 
 const MAX_LOOP_ITERATIONS = 30;
 
+/** Retries for a `stop` turn that produced no output at all (see isEmptyModelTurn). */
+const MAX_EMPTY_TURN_RETRIES = 2;
+const logger = createFilteredLogger();
+
 const EMPTY_MESSAGE_LIST: SerializedMessageList = {
 	messages: [],
 	historyIds: [],
@@ -161,7 +171,7 @@ interface LoopContext {
  *
  * Memory strategy:
  * - `filterLlmMessages` strips custom messages before sending to the LLM.
- * - Memory stores ALL AgentMessages (including custom) unchanged.
+ * - Memory stores all messages, but expires run-scoped offload locators.
  * - New messages for each turn are tracked via AgentMessageList.turnDelta(),
  *   which uses Set-based source tracking to identify turn-only messages.
  *   The list serializes with id-based sets so it can survive process restarts.
@@ -193,6 +203,7 @@ export class AgentRuntime {
 
 	constructor(config: AgentRuntimeConfig) {
 		this.config = config;
+		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
 		if (config.deferredTools && config.deferredTools.length > 0) {
@@ -206,12 +217,15 @@ export class AgentRuntime {
 			this.backgroundTasks,
 			this.eventBus,
 			this.telemetry,
+			tokenCounter,
 		);
 		this.toolExecutor = new ToolCallExecutor({
 			telemetry: this.telemetry,
 			eventBus: this.eventBus,
 			concurrency: config.toolCallConcurrency ?? 1,
 			onCancelled: () => this.updateState({ status: 'cancelled' }),
+			tokenCounter,
+			...(config.workspaceFilesystem ? { workspaceFilesystem: config.workspaceFilesystem } : {}),
 		});
 		this.modelCost = config.modelCost;
 		this.currentState = {
@@ -280,7 +294,6 @@ export class AgentRuntime {
 			list = builtList;
 			return this.finalizeGenerate(rawResult, list);
 		} catch (error) {
-			await this.telemetry.flush(options);
 			const isAbort = abortScope.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
 			if (isAbort) {
@@ -290,6 +303,8 @@ export class AgentRuntime {
 			} else {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
+			await this.cleanupRun();
+			await this.telemetry.flush(options);
 			return {
 				runId: this.runId,
 				messages: list?.responseDelta() ?? [],
@@ -369,10 +384,11 @@ export class AgentRuntime {
 
 		let resumeData: unknown = data;
 		let abortScope: AgentAbortScope | undefined;
+		let resumeClaimed = false;
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
 		if (!isCancellation(resumeData) && resumeSchema) {
-			const parseResult = await parseWithSchema(resumeSchema, data);
+			const parseResult = await parseWithSchema(resumeSchema, data, { stripUnknown: true });
 			if (!parseResult.success) {
 				throw new Error(`Invalid resume payload: ${parseResult.error}`);
 			}
@@ -416,6 +432,7 @@ export class AgentRuntime {
 			if (!claimed) {
 				throw new StaleResumeError(`Run ${this.runId} is not suspended. Cannot resume.`);
 			}
+			resumeClaimed = true;
 			await options.onResumeClaimed?.();
 
 			abortScope = this.eventBus.createAbortScope(resumeOptions.abortSignal);
@@ -474,6 +491,7 @@ export class AgentRuntime {
 			if (!isAbort) {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
+			if (resumeClaimed) await this.cleanupRun();
 			if (method === 'generate') {
 				return {
 					runId: this.runId,
@@ -861,7 +879,7 @@ export class AgentRuntime {
 				staticToolCacheName,
 			});
 
-			const turn = await sink.callModel({
+			const modelCallContext = {
 				model: staticLoopContext.model,
 				system,
 				messages: cached.messages,
@@ -871,8 +889,28 @@ export class AgentRuntime {
 				reasoning: staticLoopContext.reasoning,
 				providerOptions: staticLoopContext.providerOptions,
 				outputSpec: staticLoopContext.outputSpec,
+				maxOutputTokens: staticLoopContext.maxOutputTokens,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),
-			});
+			};
+			let turn = await sink.callModel(modelCallContext);
+
+			// Some providers occasionally return a `stop` turn with no output at
+			// all mid-task, which would silently end the run with work half-done.
+			// Retry the call a bounded number of times before accepting the empty
+			// turn; each discarded attempt still bills its usage.
+			for (
+				let emptyRetry = 0;
+				emptyRetry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn);
+				emptyRetry++
+			) {
+				totalUsage = mergeUsage(totalUsage, turn.usage);
+				incrementTokenCountFromUsage(options?.executionCounter, turn.usage);
+				// Publish before the abort check so a cancel between the empty attempt
+				// and the retry still bills those tokens via getTerminalFinish().
+				sink.reportUsage(totalUsage);
+				this.assertNotAborted(abortScope);
+				turn = await sink.callModel(modelCallContext);
+			}
 
 			// Fold the just-finished turn's usage in before the abort check so a
 			// stop that lands right after the model call still bills its tokens.
@@ -989,7 +1027,7 @@ export class AgentRuntime {
 					sink,
 				);
 			},
-			getAbortFinish: () => sink?.getAbortFinish() ?? {},
+			getTerminalFinish: () => sink?.getTerminalFinish() ?? {},
 			// Durably save the turn-so-far when a streaming run is aborted, so a cancelled
 			// run still leaves its assistant work in memory. Fold in the text streamed for
 			// the in-flight turn first — its `newMessages` are only built once the stream
@@ -1028,6 +1066,21 @@ export class AgentRuntime {
 		const resolvedIterationCount = iterationCount ?? options?.iterationCount;
 		const executionOptions: PersistedExecutionOptions | undefined =
 			resolvedMaxIterations !== undefined ? { maxIterations: resolvedMaxIterations } : undefined;
+
+		// Record what confirmation each suspended call showed the user, so an
+		// abandoned suspension can be settled with that context on a later
+		// history load instead of vanishing from the transcript.
+		for (const pending of Object.values(pendingToolCalls)) {
+			if (!pending.suspended) continue;
+			const payload =
+				typeof pending.suspendPayload === 'object' && pending.suspendPayload !== null
+					? (pending.suspendPayload as { message?: unknown; requestId?: unknown })
+					: undefined;
+			list.markToolCallSuspended(pending.toolCallId, {
+				...(typeof payload?.message === 'string' ? { message: payload.message } : {}),
+				...(typeof payload?.requestId === 'string' ? { requestId: payload.requestId } : {}),
+			});
+		}
 
 		const state: SerializableAgentState = {
 			persistence: options?.persistence,
@@ -1077,7 +1130,20 @@ export class AgentRuntime {
 
 	/** Clean up stored state for a run when it finishes without re-suspending. */
 	private async cleanupRun(): Promise<void> {
-		await this.runState.complete(this.runId);
+		try {
+			await this.runState.complete(this.runId);
+		} catch (error) {
+			logger.warn('Failed to clean up agent run checkpoint', { runId: this.runId, error });
+			return;
+		}
+
+		if (this.config.workspaceFilesystem) {
+			try {
+				await removeToolResultRun(this.config.workspaceFilesystem, this.runId);
+			} catch (error) {
+				logger.warn('Failed to clean up agent run tool results', { runId: this.runId, error });
+			}
+		}
 	}
 
 	/** Emit a TurnEnd event when an assistant message is present in `newMessages`. */

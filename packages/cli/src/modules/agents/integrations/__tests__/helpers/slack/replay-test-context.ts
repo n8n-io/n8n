@@ -2,14 +2,16 @@ import type { StreamChunk } from '@n8n/agents';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import nock from 'nock';
 import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { AgentRepository } from '../../../../repositories/agent.repository';
 import type { ChatInstance } from '../../../chat-integration.service';
 import { ComponentMapper } from '../../../component-mapper';
 import type {
 	getIntegrationToolConnectionDescriptors,
 	IntegrationMessageContext,
 } from '../../../integration-tools';
-import { SlackIntegration } from '../../../platforms/slack-integration';
+import { SlackIntegration } from '../../../platforms/slack/slack-integration';
 import {
 	createReplayContextSetup,
 	type MemoryMessageContextStore,
@@ -216,7 +218,7 @@ export async function createSlackReplayContext(
 	const integration: AgentIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
 	const setup = createReplayContextSetup({
 		chat: chat as never,
-		integrationImpl: new SlackIntegration(),
+		integrationImpl: new SlackIntegration(mock<AgentRepository>()),
 		integration,
 		componentMapper: new ComponentMapper(),
 		stream: options.stream,

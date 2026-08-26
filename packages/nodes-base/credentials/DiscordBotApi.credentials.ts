@@ -23,6 +23,25 @@ export class DiscordBotApi implements ICredentialType {
 				password: true,
 			},
 		},
+		{
+			displayName: 'Application ID',
+			name: 'applicationId',
+			type: 'string',
+			default: '',
+			description:
+				'Only needed when using Discord as an agent channel. Found on the application General Information page.',
+		},
+		{
+			displayName: 'Public Key',
+			name: 'publicKey',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			description:
+				'Only needed when using Discord as an agent channel. Used to verify Discord interaction signatures.',
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {

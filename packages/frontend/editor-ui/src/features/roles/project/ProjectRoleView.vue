@@ -14,7 +14,7 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { computed, toRaw } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes';

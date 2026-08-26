@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import BlinkingCursor from './BlinkingCursor.vue';
 
 export default {
-	title: 'Assistant/BlinkingCursor',
+	title: 'Areas/Assistant/BlinkingCursor',
 	component: BlinkingCursor,
 	argTypes: {},
 };

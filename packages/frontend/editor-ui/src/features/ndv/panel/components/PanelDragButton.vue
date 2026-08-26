@@ -1,12 +1,7 @@
 <script setup lang="ts">
+import { N8nIcon } from '@n8n/design-system';
 import Draggable from '@/app/components/Draggable.vue';
 import type { XYPosition } from '@/Interface';
-
-import { N8nIcon } from '@n8n/design-system';
-defineProps<{
-	canMoveRight: boolean;
-	canMoveLeft: boolean;
-}>();
 
 const emit = defineEmits<{
 	drag: [e: XYPosition];
@@ -29,115 +24,55 @@ const onDragStart = () => {
 
 <template>
 	<Draggable
-		type="panel-resize"
 		:class="$style.dragContainer"
+		type="panel-resize"
+		cursor="ew-resize"
+		data-test-id="panel-drag-button"
 		@drag="onDrag"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 	>
 		<template #default="{ isDragging }">
-			<div :class="{ [$style.dragButton]: true }" data-test-id="panel-drag-button">
-				<span
-					v-if="canMoveLeft"
-					:class="{ [$style.leftArrow]: true, [$style.visible]: isDragging }"
-				>
-					<N8nIcon icon="arrow-left" />
-				</span>
-				<span
-					v-if="canMoveRight"
-					:class="{ [$style.rightArrow]: true, [$style.visible]: isDragging }"
-				>
-					<N8nIcon icon="arrow-right" />
-				</span>
-				<div :class="$style.grid">
-					<div>
-						<div></div>
-						<div></div>
-						<div></div>
-						<div></div>
-						<div></div>
-					</div>
-					<div>
-						<div></div>
-						<div></div>
-						<div></div>
-						<div></div>
-						<div></div>
-					</div>
-				</div>
-			</div>
+			<button :class="[$style.dragButton, { [$style.dragging]: isDragging }]">
+				<N8nIcon :class="$style.arrow" icon="arrow-left" />
+				<N8nIcon :class="$style.handle" icon="menu" />
+				<N8nIcon :class="$style.arrow" icon="arrow-right" />
+			</button>
 		</template>
 	</Draggable>
 </template>
 
 <style lang="scss" module>
-.dragContainer {
-	pointer-events: all;
-}
 .dragButton {
-	background-color: var(--ndv--header--color);
-	width: 64px;
-	height: 21px;
+	cursor: ew-resize;
+	border: none;
+	outline: none;
+	background: var(--ndv--background--color);
+
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs) 0 var(--spacing--3xs);
+	color: var(--color--foreground--shade-2);
+	border: var(--border);
+	border-bottom: none;
 	border-top-left-radius: var(--radius);
 	border-top-right-radius: var(--radius);
-	cursor: grab;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	overflow: visible;
-	position: relative;
-	z-index: 3;
 
-	&:hover {
-		.leftArrow,
-		.rightArrow {
-			visibility: visible;
-		}
+	.arrow {
+		opacity: 0;
+		width: 10px;
 	}
-}
 
-.visible {
-	visibility: visible !important;
-}
+	.handle {
+		width: 11px;
+		transform: rotate(90deg);
+	}
 
-.arrow {
-	position: absolute;
-	color: var(--color--background--light-3);
-	font-size: var(--font-size--3xs);
-	visibility: hidden;
-	top: 0;
-}
-
-.leftArrow {
-	composes: arrow;
-	left: -16px;
-}
-
-.rightArrow {
-	composes: arrow;
-	right: -16px;
-}
-
-.grid {
-	> div {
-		display: flex;
-
-		&:first-child {
-			> div {
-				margin-bottom: 2px;
-			}
-		}
-
-		> div {
-			height: 2px;
-			width: 2px;
-			border-radius: 50%;
-			background-color: var(--color--foreground--shade-2);
-			margin-right: 4px;
-
-			&:last-child {
-				margin-right: 0;
-			}
+	&:hover,
+	&.dragging {
+		.arrow {
+			opacity: 1;
 		}
 	}
 }

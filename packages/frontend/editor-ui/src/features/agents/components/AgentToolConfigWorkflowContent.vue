@@ -37,7 +37,15 @@ function getAllOutputs() {
 }
 
 function getWorkflow() {
-	return contentRef.value?.workflow ?? '';
+	return contentRef.value?.getWorkflow() ?? '';
+}
+
+function getWorkflowId() {
+	return contentRef.value?.getWorkflowId();
+}
+
+function getInputs() {
+	return contentRef.value?.getInputs();
 }
 
 defineExpose({
@@ -45,6 +53,8 @@ defineExpose({
 	getDescription,
 	getAllOutputs,
 	getWorkflow,
+	getWorkflowId,
+	getInputs,
 	handleChangeName,
 });
 </script>

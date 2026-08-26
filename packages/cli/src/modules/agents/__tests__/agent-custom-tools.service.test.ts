@@ -51,7 +51,7 @@ function makeService() {
 	const agentRepository = mock<AgentRepository>();
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const modificationTelemetry = mock<AgentModificationTelemetryService>();
-	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
+	agentRepository.saveDraftFenced.mockResolvedValue(true);
 
 	const service = new AgentCustomToolsService(
 		mockLogger(),
@@ -89,7 +89,7 @@ describe('AgentCustomToolsService', () => {
 		expect(agent.tools[result.id]).toEqual({ code: 'return 1;', descriptor });
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, undefined);
 	});
 
 	it('throws when building a tool for a missing agent', async () => {
@@ -148,7 +148,7 @@ describe('AgentCustomToolsService', () => {
 		]);
 		expect(agent.versionId).not.toBe(agent.activeVersionId);
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
-		expect(agentRepository.save).toHaveBeenCalledWith(agent);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(agent, undefined);
 	});
 
 	it('snapshots only configured custom tools', () => {

@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
-import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
-
 import { TagsInputItemDelete, TagsInputItemText } from './reka-ui';
 import TagsInput from './TagsInput.vue';
+import N8nIcon from '../../../components/N8nIcon/Icon.vue';
 
 type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;
@@ -148,6 +147,50 @@ export const Disabled = {
 	}),
 	args: {
 		disabled: true,
+	},
+} satisfies Story;
+
+export const Embedded = {
+	render: (args) => ({
+		components: { TagsInput },
+		setup() {
+			const value = ref(args.modelValue ?? ['workflow', 'production']);
+			return { args, value };
+		},
+		template: `
+		<div style="${storyContainerStyle}; display: flex; flex-direction: column; gap: var(--spacing--md);">
+			<p style="margin: 0; font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
+				Layout-only mode for composition inside another field (e.g. Combobox).
+				The host owns border, background, and focus styles.
+			</p>
+			<div
+				style="
+					--tags-input--padding: var(--spacing--4xs);
+					display: flex;
+					align-items: center;
+					width: 100%;
+					min-height: var(--height--lg);
+					padding: var(--tags-input--padding);
+					padding-inline-end: var(--spacing--xs);
+					border-radius: var(--radius--2xs);
+					background-color: light-dark(var(--color--neutral-white), var(--color--neutral-950));
+					box-shadow: inset 0 0 0 1px var(--border-color);
+					color: var(--color--text--shade-1);
+				"
+			>
+				<TagsInput
+					v-bind="args"
+					v-model="value"
+					embedded
+					placeholder="Add tags..."
+				/>
+			</div>
+		</div>
+		`,
+	}),
+	args: {
+		modelValue: ['workflow', 'production'],
+		embedded: true,
 	},
 } satisfies Story;
 
@@ -325,7 +368,7 @@ export const CustomTags = {
 				:display-value="displayValue"
 				:convert-value="convertValue"
 			>
-				<template #tag="{ value: tag, disabled, ui }">
+				<template #tag="{ value: tag, displayValue, disabled, ui }">
 					<span
 						aria-hidden="true"
 						:style="{
@@ -339,8 +382,17 @@ export const CustomTags = {
 						}"
 					/>
 					<TagsInputItemText :class="ui.text" />
-					<TagsInputItemDelete :class="ui.delete" :disabled="disabled">
-						<N8nIcon icon="x" size="small" />
+					<TagsInputItemDelete as-child :disabled="disabled" @mousedown.prevent>
+						<button
+							type="button"
+							:class="ui.delete"
+							tabindex="-1"
+							:disabled="disabled"
+							aria-labelledby=""
+							:aria-label="\`Remove \${displayValue}\`"
+						>
+							<N8nIcon icon="x" size="small" />
+						</button>
 					</TagsInputItemDelete>
 				</template>
 			</TagsInput>

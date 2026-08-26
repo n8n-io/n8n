@@ -1,10 +1,7 @@
 import { i18n } from '@n8n/i18n';
 import type { FrontendModuleDescription } from '@n8n/frontend-module-sdk';
-import {
-	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
-	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
-} from '@/app/constants/modals';
 import { VIEWS } from '@/app/constants';
+import { INSTANCE_AI_MODALS } from './modals';
 import {
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
@@ -22,10 +19,6 @@ const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
 const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
-const ComputerUseSetupModal = async () =>
-	await import('./components/modals/ComputerUseSetupModal.vue');
-const BrowserUseSetupModal = async () =>
-	await import('./components/modals/BrowserUseSetupModal.vue');
 
 export const InstanceAiModule: FrontendModuleDescription = {
 	id: 'instance-ai',
@@ -36,6 +29,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		{
 			path: '/assistant',
 			component: InstanceAiView,
+			beforeEnter: () => (useInstanceAiAvailable().value ? true : { name: VIEWS.HOMEPAGE }),
 			meta: {
 				layout: 'instanceAi',
 				middleware: ['authenticated', 'custom'],
@@ -155,10 +149,16 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		project: [],
 	},
 	resources: [],
-	modals: [
-		{ key: INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY, component: ComputerUseSetupModal },
-		{ key: INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY, component: BrowserUseSetupModal },
-	],
+	modals: INSTANCE_AI_MODALS,
+	pushHandlers: {
+		// Credits are instance-level state, so the module owns this push type through
+		// the SDK registry instead of a view-scoped store listener. The store is
+		// imported lazily so it stays out of the startup bundle.
+		updateInstanceAiCredits: async (event) => {
+			const { useInstanceAiStore } = await import('./instanceAi.store');
+			useInstanceAiStore().handleCreditsPush(event.data);
+		},
+	},
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',

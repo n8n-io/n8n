@@ -27,6 +27,8 @@ import {
 	type KafkaCredentials,
 	getSchemaRegistryOptions,
 	resolveKafkaSsl,
+	resolveRetryDelay,
+	sanitizeRegistryError,
 	setSchemaRegistry,
 	stopAndDisconnectConsumer,
 	withTimeout,
@@ -40,6 +42,93 @@ vi.mock('@n8n/utils/sleep', () => ({
 const mockedSleep = vi.mocked(sleep);
 
 describe('Kafka Utils', () => {
+	describe('sanitizeRegistryError', () => {
+		const CAP = 500;
+
+		describe('credentials in the URL', () => {
+			it('redacts userinfo', () => {
+				expect(
+					sanitizeRegistryError(new Error('request to https://user:pw@registry.local failed')),
+				).toStrictEqual({ message: 'request to https://***@registry.local failed' });
+			});
+
+			it('redacts up to the last @ when the password contains an unencoded one', () => {
+				// The shared scrubber stops at the first @ and would leave "ssw0rd" behind.
+				const { message } = sanitizeRegistryError(
+					new Error('request to https://user:p@ssw0rd@registry.local failed'),
+				);
+
+				expect(message).toBe('request to https://***@registry.local failed');
+				expect(message).not.toContain('ssw0rd');
+			});
+
+			it('leaves a URL without credentials alone', () => {
+				expect(
+					sanitizeRegistryError(new Error('request to https://registry.local failed')),
+				).toStrictEqual({ message: 'request to https://registry.local failed' });
+			});
+		});
+
+		describe('secrets the shared scrubber catches', () => {
+			it.each([
+				['a JWT', 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abc123def456', 'eyJ'],
+				['a Bearer header', 'Authorization: Bearer abcdefghijklmnop123456', 'abcdefghij'],
+				['an API key assignment', 'api_key=sk-ant-abcdefghijklmnop1234', 'sk-ant-'],
+			])('redacts %s echoed back in the body', (_, secret, leak) => {
+				const { message } = sanitizeRegistryError(new Error(`registry rejected: ${secret}`));
+
+				expect(message).not.toContain(leak);
+				expect(message).toContain('[REDACTED]');
+			});
+		});
+
+		describe('length', () => {
+			it('caps an oversized message and marks it truncated', () => {
+				const { message } = sanitizeRegistryError(new Error('x'.repeat(CAP + 100)));
+
+				expect(message).toHaveLength(CAP + 3);
+				expect(message.endsWith('...')).toBe(true);
+			});
+
+			it('leaves a message at the cap untouched', () => {
+				const { message } = sanitizeRegistryError(new Error('x'.repeat(CAP)));
+
+				expect(message).toHaveLength(CAP);
+				expect(message.endsWith('...')).toBe(false);
+			});
+
+			it('caps after redacting, so the cap applies to the safe text', () => {
+				// A long secret must not survive by pushing the redaction past the cap.
+				const secret = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.' + 'a'.repeat(600);
+				const { message } = sanitizeRegistryError(new Error(secret));
+
+				expect(message).not.toContain('eyJ');
+				expect(message.length).toBeLessThanOrEqual(CAP + 3);
+			});
+		});
+
+		describe('shape', () => {
+			it('includes the status when the error carries one', () => {
+				expect(
+					sanitizeRegistryError(Object.assign(new Error('nope'), { status: 404 })),
+				).toStrictEqual({ message: 'nope', status: 404 });
+			});
+
+			it('omits the status when the error has none', () => {
+				expect(Object.keys(sanitizeRegistryError(new Error('nope')))).toStrictEqual(['message']);
+			});
+
+			it('drops a thrown value that is not an Error rather than stringifying it', () => {
+				// ensureError substitutes a placeholder, so an arbitrary thrown value
+				// never reaches the log, which is the safe outcome here.
+				const { message } = sanitizeRegistryError('https://user:pw@registry.local');
+
+				expect(message).not.toContain('registry.local');
+				expect(message).toBe('Error that was not an instance of Error was thrown');
+			});
+		});
+	});
+
 	describe('resolveKafkaSsl', () => {
 		const CERT_PEM = '-----BEGIN CERTIFICATE-----\nMIIBclientcertbody==\n-----END CERTIFICATE-----';
 		const KEY_PEM = '-----BEGIN PRIVATE KEY-----\nMIIBclientkeybody==\n-----END PRIVATE KEY-----';
@@ -118,6 +207,51 @@ describe('Kafka Utils', () => {
 			expect(() => resolveKafkaSsl(creds({ cert: truncated, key: KEY_PEM }))).toThrow(
 				'not a valid PEM block',
 			);
+		});
+	});
+
+	describe('resolveRetryDelay', () => {
+		it('keeps a usable delay', () => {
+			expect(resolveRetryDelay(10_000)).toBe(10_000);
+		});
+
+		it('keeps zero, which means do not wait', () => {
+			expect(resolveRetryDelay(0)).toBe(0);
+		});
+
+		it('keeps the largest delay a timer can hold', () => {
+			expect(resolveRetryDelay(2_147_483_647)).toBe(2_147_483_647);
+		});
+
+		it.each([
+			['missing', undefined],
+			['NaN, e.g. from an expression that did not produce a number', Number.NaN],
+			['Infinity', Number.POSITIVE_INFINITY],
+			['negative', -1],
+			['past the 32-bit timer limit', 2_147_483_648],
+		])('falls back to the default when the delay is %s', (_case, value) => {
+			// setTimeout turns every one of these into no wait at all, so without
+			// this the pacing would silently disappear rather than fail.
+			expect(resolveRetryDelay(value)).toBe(5000);
+		});
+
+		it.each([Number.NaN, -1, 2_147_483_648])(
+			'warns that a delay of %s was replaced, so the misconfiguration is visible',
+			(value) => {
+				const logger = mock<Logger>();
+
+				resolveRetryDelay(value, logger);
+
+				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Retry Delay on Error'));
+			},
+		);
+
+		it('stays quiet when no delay was set, which is not a misconfiguration', () => {
+			const logger = mock<Logger>();
+
+			resolveRetryDelay(undefined, logger);
+
+			expect(logger.warn).not.toHaveBeenCalled();
 		});
 	});
 

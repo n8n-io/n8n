@@ -3,6 +3,7 @@ import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
 import { NoOpPollJobManager, PollJobManager } from 'n8n-core';
 
+import { isDurablePollerChainEnabled } from './durable-poller-chain';
 import { PollTriggerJobRegistrar } from './poll-trigger-job-registrar';
 
 /**
@@ -24,9 +25,7 @@ export class PollJobProvider {
 
 	/** Called once at startup, lazily before the first workflow activation. */
 	init(): void {
-		const intercepting =
-			this.globalConfig.scheduler.enabled && this.workflowsConfig.useWorkflowPublicationService;
-		const active = intercepting && this.globalConfig.scheduler.enabledForPollTriggers;
+		const active = isDurablePollerChainEnabled(this.globalConfig.scheduler, this.workflowsConfig);
 
 		if (
 			this.globalConfig.scheduler.enabled &&

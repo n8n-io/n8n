@@ -36,12 +36,8 @@ import { initNodeTypes } from '@test-integration/utils';
 
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
+import { importPackageRequest } from './fixtures/import-request';
 import {
-	FolderConflictPolicy,
-	DataTableMatchingMode,
-	DataTableMissingMode,
-	DataTableSchemaConflictPolicy,
-	MissingNodeTypeMode,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
@@ -59,63 +55,13 @@ import {
 import { streamToBuffer } from './utils/tar-support';
 import type { SerializedWorkflow } from '../spec/serialized/workflow.schema';
 
-type ImportPackageParams = Omit<
-	ImportPackageRequest,
-	| 'credentialMatchingMode'
-	| 'credentialMissingMode'
-	| 'bindings'
-	| 'workflowConflictPolicy'
-	| 'workflowPublishingPolicy'
-	| 'workflowIdPolicy'
-	| 'missingNodeTypeMode'
-	| 'folderConflictPolicy'
-	| 'dataTableMatchingMode'
-	| 'dataTableMissingMode'
-	| 'dataTableSchemaConflictPolicy'
-	| 'variableMissingMode'
-	| 'variableParentPolicy'
-	| 'tagMissingMode'
-	| 'tagConflictPolicy'
-> &
-	Partial<
-		Pick<
-			ImportPackageRequest,
-			| 'credentialMatchingMode'
-			| 'credentialMissingMode'
-			| 'bindings'
-			| 'workflowConflictPolicy'
-			| 'workflowPublishingPolicy'
-			| 'workflowIdPolicy'
-			| 'missingNodeTypeMode'
-			| 'folderConflictPolicy'
-			| 'dataTableMatchingMode'
-			| 'dataTableMissingMode'
-			| 'dataTableSchemaConflictPolicy'
-			| 'variableMissingMode'
-			| 'variableParentPolicy'
-			| 'tagMissingMode'
-			| 'tagConflictPolicy'
-		>
-	>;
+type ImportPackageParams = Pick<ImportPackageRequest, 'user' | 'packageBuffer'> &
+	Partial<ImportPackageRequest>;
 
 async function importPackage(params: ImportPackageParams) {
-	return await Container.get(N8nPackagesService).importPackage({
-		credentialMatchingMode: 'id-only',
-		credentialMissingMode: 'must-preexist',
-		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
-		workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
-		workflowIdPolicy: WorkflowIdPolicy.New,
-		missingNodeTypeMode: MissingNodeTypeMode.Fail,
-		folderConflictPolicy: FolderConflictPolicy.Merge,
-		dataTableMatchingMode: DataTableMatchingMode.ById,
-		dataTableMissingMode: DataTableMissingMode.Create,
-		dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
-		variableMissingMode: 'do-nothing',
-		variableParentPolicy: 'project',
-		tagMissingMode: 'create',
-		tagConflictPolicy: 'skip',
-		...params,
-	});
+	return await Container.get(N8nPackagesService).importPackage(
+		importPackageRequest({ variableParentPolicy: 'project', ...params }),
+	);
 }
 
 /**
@@ -1204,6 +1150,11 @@ describe('Package import event emission', () => {
 					created: 2,
 					updated: 0,
 					skipped: 0,
+					archived: 0,
+					deleted: 0,
+				},
+				folders: {
+					removed: 0,
 				},
 				credentials: {
 					matched: 0,
@@ -1220,6 +1171,7 @@ describe('Package import event emission', () => {
 					missing: 0,
 					created: 0,
 					stubbed: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				tags: {
@@ -1298,6 +1250,11 @@ describe('Package import event emission', () => {
 					created: 3,
 					updated: 0,
 					skipped: 0,
+					archived: 0,
+					deleted: 0,
+				},
+				folders: {
+					removed: 0,
 				},
 				credentials: {
 					matched: 2,
@@ -1314,6 +1271,7 @@ describe('Package import event emission', () => {
 					missing: 0,
 					created: 0,
 					stubbed: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				tags: {
@@ -1361,6 +1319,11 @@ describe('Package import event emission', () => {
 					created: 1,
 					updated: 0,
 					skipped: 1,
+					archived: 0,
+					deleted: 0,
+				},
+				folders: {
+					removed: 0,
 				},
 				credentials: {
 					matched: 0,
@@ -1377,6 +1340,7 @@ describe('Package import event emission', () => {
 					missing: 0,
 					created: 0,
 					stubbed: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				tags: {
@@ -1426,6 +1390,11 @@ describe('Package import event emission', () => {
 					created: 0,
 					updated: 1,
 					skipped: 0,
+					archived: 0,
+					deleted: 0,
+				},
+				folders: {
+					removed: 0,
 				},
 				credentials: {
 					matched: 0,
@@ -1442,6 +1411,7 @@ describe('Package import event emission', () => {
 					missing: 0,
 					created: 0,
 					stubbed: 0,
+					updated: 0,
 					requirements: 0,
 				},
 				tags: {
@@ -2243,7 +2213,7 @@ describe('credential-missing-mode: create-stub', () => {
 		const result = await importPackage({
 			user: owner,
 			credentialMissingMode: 'create-stub',
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 			packageBuffer: await buildImportPackageBuffer(
 				[
@@ -2313,7 +2283,7 @@ describe('Package import workflow publishing policy', () => {
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
-			workflowConflictPolicy: 'fail',
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 			workflowPublishingPolicy,
 		});
 
@@ -2341,7 +2311,7 @@ describe('Package import workflow publishing policy', () => {
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
-			workflowConflictPolicy: 'fail',
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 			workflowPublishingPolicy,
 		});
 
@@ -2370,7 +2340,7 @@ describe('Package import workflow publishing policy', () => {
 					isPublished: false,
 				}),
 			]),
-			workflowConflictPolicy: 'fail',
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.MatchSource,
 		});
 
@@ -2412,7 +2382,7 @@ describe('Package import workflow publishing policy', () => {
 					],
 				}),
 			]),
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.UnpublishAll,
 		});
 
@@ -2447,7 +2417,7 @@ describe('Package import workflow publishing policy', () => {
 		const result = await importPackage({
 			user: owner,
 			packageBuffer: await buildImportPackageBuffer([baseWorkflow]),
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		});
 
@@ -2486,7 +2456,7 @@ describe('Package import workflow publishing policy', () => {
 					nodes: scheduleTriggerNodes(),
 				}),
 			]),
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		});
 
@@ -2503,6 +2473,93 @@ describe('Package import workflow publishing policy', () => {
 
 		// No (re)activation was triggered for the imported draft.
 		expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+	});
+
+	const webhookNodes = (id: string, path: string, httpMethod?: string) => [
+		{
+			id,
+			name: 'Webhook',
+			type: 'n8n-nodes-base.webhook',
+			typeVersion: 1,
+			position: [0, 0] as [number, number],
+			webhookId: id,
+			parameters: httpMethod ? { path, httpMethod } : { path },
+		},
+	];
+
+	it('"publish-all" publishes one of two workflows sharing a webhook path and reports the other as failed', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-webhook-a',
+					name: 'Webhook A',
+					isPublished: false,
+					nodes: webhookNodes('wh-a', '/test'),
+				}),
+				serializedWorkflow({
+					id: 'wf-webhook-b',
+					name: 'Webhook B',
+					isPublished: false,
+					nodes: webhookNodes('wh-b', '/test'),
+				}),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+		});
+
+		expect(result.workflows).toHaveLength(2);
+		expect(
+			result.workflows.map(({ status, publishing, activeVersionId }) => ({
+				status,
+				publishing,
+				activeVersionId,
+			})),
+		).toEqual(
+			expect.arrayContaining([
+				{
+					status: 'created',
+					publishing: { state: 'published' },
+					activeVersionId: expect.any(String),
+				},
+				{
+					status: 'created',
+					publishing: { state: 'failed', error: 'There is a conflict with one of the webhooks.' },
+					activeVersionId: null,
+				},
+			]),
+		);
+	});
+
+	it('"publish-all" publishes both workflows when they share a webhook path under different methods', async () => {
+		const owner = await createOwner();
+
+		const result = await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({
+					id: 'wf-webhook-get',
+					name: 'Webhook GET',
+					isPublished: false,
+					nodes: webhookNodes('wh-get', '/test'),
+				}),
+				serializedWorkflow({
+					id: 'wf-webhook-post',
+					name: 'Webhook POST',
+					isPublished: false,
+					nodes: webhookNodes('wh-post', '/test', 'POST'),
+				}),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
+			workflowPublishingPolicy: WorkflowPublishingPolicy.PublishAll,
+		});
+
+		expect(result.workflows.map(({ publishing }) => publishing)).toEqual([
+			{ state: 'published' },
+			{ state: 'published' },
+		]);
 	});
 });
 
@@ -2676,7 +2733,7 @@ describe('Package import missing node type mode', () => {
 		const result = await importPackage({
 			user: owner,
 			missingNodeTypeMode: 'import-anyway',
-			workflowConflictPolicy: 'new-version',
+			workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
 			workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 			packageBuffer: await buildImportPackageBuffer(
 				[

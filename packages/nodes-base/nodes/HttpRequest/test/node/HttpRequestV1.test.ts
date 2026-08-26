@@ -150,4 +150,65 @@ describe('HttpRequestV1', () => {
 			);
 		});
 	});
+
+	describe('credential selection', () => {
+		const setupRequest = (authentication: string) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'authentication':
+						return authentication;
+					case 'responseFormat':
+						return 'json';
+					case 'requestMethod':
+						return 'GET';
+					case 'url':
+						return 'http://example.com';
+					case 'jsonParameters':
+						return false;
+					case 'options':
+						return {};
+					case 'bodyParametersUi':
+					case 'headerParametersUi':
+					case 'queryParametersUi':
+						return { parameter: [] };
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({ success: true });
+		};
+
+		it('should retrieve only the selected credential type', async () => {
+			setupRequest('headerAuth');
+			(executeFunctions.getCredentials as Mock).mockResolvedValue({
+				name: 'Authorization',
+				value: 'Bearer secret',
+			});
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.getCredentials).toHaveBeenCalledOnce();
+			expect(executeFunctions.getCredentials).toHaveBeenCalledWith('httpHeaderAuth');
+		});
+
+		it("should not retrieve credentials when authentication is 'none'", async () => {
+			setupRequest('none');
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.getCredentials).not.toHaveBeenCalled();
+		});
+
+		it('should continue without authentication when the selected credential cannot be retrieved', async () => {
+			setupRequest('headerAuth');
+			(executeFunctions.getCredentials as Mock).mockRejectedValue(new Error('No credentials'));
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.getCredentials).toHaveBeenCalledOnce();
+			expect(executeFunctions.getCredentials).toHaveBeenCalledWith('httpHeaderAuth');
+			expect(executeFunctions.helpers.request).toHaveBeenCalledTimes(1);
+		});
+	});
 });

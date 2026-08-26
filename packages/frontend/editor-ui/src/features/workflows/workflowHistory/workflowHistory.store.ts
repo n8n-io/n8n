@@ -14,7 +14,7 @@ import type {
 import * as whApi from '@n8n/rest-api-client/api/workflowHistory';
 import { getFirstAdoptionDate } from '@n8n/rest-api-client/api/instance-version-history';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getNewWorkflow } from '@/app/api/workflows';

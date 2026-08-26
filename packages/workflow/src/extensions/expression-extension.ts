@@ -56,7 +56,7 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 		...Object.keys(genericExtensions),
 	]),
 );
-
+// eslint-disable-next-line n8n-local-rules/no-dynamic-regexp -- static pattern
 const EXPRESSION_EXTENSION_REGEX = new RegExp(
 	`(\\$if|\\.(${EXPRESSION_EXTENSION_METHODS.join('|')})\\s*(\\?\\.)?)\\s*\\(`,
 );

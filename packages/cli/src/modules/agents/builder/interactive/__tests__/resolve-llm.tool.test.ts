@@ -51,7 +51,7 @@ describe('resolve_llm tool', () => {
 		expect(result).toEqual({
 			ok: true,
 			provider: 'openai',
-			model: 'gpt-5-mini',
+			model: 'gpt-5.6-terra',
 			credentialId: 'c1',
 			credentialName: 'My OpenAI',
 		});
@@ -74,7 +74,7 @@ describe('resolve_llm tool', () => {
 		expect(result).toEqual({
 			ok: true,
 			provider: 'openrouter',
-			model: 'anthropic/claude-sonnet-4.6',
+			model: 'anthropic/claude-sonnet-5',
 			credentialId: 'c2',
 			credentialName: 'My OpenRouter',
 		});
@@ -311,7 +311,7 @@ describe('resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'openrouter',
-				model: 'anthropic/claude-sonnet-4.6',
+				model: 'anthropic/claude-sonnet-5',
 				credentialId: 'c2',
 				credentialName: 'Work OpenRouter',
 			});
@@ -355,7 +355,7 @@ describe('resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'anthropic',
-				model: 'claude-sonnet-4-6',
+				model: 'claude-sonnet-5',
 				credentialId: 'c2',
 				credentialName: 'My Anthropic',
 				autoPicked: true,
@@ -385,7 +385,7 @@ describe('resolve_llm tool', () => {
 			expect(result).toEqual({
 				ok: true,
 				provider: 'anthropic',
-				model: 'claude-sonnet-4-6',
+				model: 'claude-sonnet-5',
 				credentialId: 'c1',
 				credentialName: 'My Anthropic',
 			});
@@ -847,6 +847,118 @@ describe('resolve_llm tool', () => {
 			);
 
 			expect(result).toMatchObject({ ok: false, reason: 'ambiguous_credential' });
+		});
+	});
+
+	describe('explicit n8n credits request (useN8nCredits)', () => {
+		it('resolves n8n credits for the requested provider even when the user has their own credential', async () => {
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'GPT-5 mini', value: 'gpt-5-mini' },
+			]);
+			const tool = buildResolveLlmTool({
+				// User has their own OpenAI key — the implicit path would suppress n8n
+				// credits, but an explicit request wins.
+				credentialProvider: makeProvider([{ id: 'own-1', name: 'My OpenAI', type: 'openAiApi' }]),
+				modelLookup,
+				isProviderServedByGateway: async (provider) => provider === 'openai',
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'openai', useN8nCredits: true }, {});
+
+			expect(result).toEqual({
+				ok: true,
+				provider: 'openai',
+				model: 'gpt-5-mini',
+				credentialId: AI_GATEWAY_MANAGED_TAG,
+				credentialName: 'n8n credits',
+			});
+		});
+
+		it('resolves the sole served provider when none is named', async () => {
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'GPT-5 mini', value: 'gpt-5-mini' },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup,
+				isProviderServedByGateway: async (provider) => provider === 'openai',
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ useN8nCredits: true }, {});
+
+			expect(result).toMatchObject({
+				ok: true,
+				provider: 'openai',
+				credentialId: AI_GATEWAY_MANAGED_TAG,
+				credentialName: 'n8n credits',
+			});
+		});
+
+		it('reports n8n_credits_unsupported_provider when the gateway does not serve the requested provider', async () => {
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup: makeModelLookup(),
+				isProviderServedByGateway: async (provider) => provider === 'openai',
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ provider: 'anthropic', useN8nCredits: true }, {});
+
+			expect(result).toMatchObject({
+				ok: false,
+				reason: 'n8n_credits_unsupported_provider',
+				provider: 'anthropic',
+			});
+		});
+
+		it('reports ambiguous_n8n_credits_provider with the served providers when none is named', async () => {
+			const served = new Set(['openai', 'google']);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup: makeModelLookup(),
+				isProviderServedByGateway: async (provider) => served.has(provider),
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ useN8nCredits: true }, {});
+
+			expect(result).toMatchObject({ ok: false, reason: 'ambiguous_n8n_credits_provider' });
+			const { providers } = result as { providers: string[] };
+			expect(providers).toEqual(expect.arrayContaining(['openai', 'google']));
+		});
+
+		it('reports n8n_credits_unavailable when the gateway serves no provider', async () => {
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup: makeModelLookup(),
+				isProviderServedByGateway: async () => false,
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!({ useN8nCredits: true }, {});
+
+			// No providers list — there is nothing for the caller to pick from.
+			expect(result).toEqual({ ok: false, reason: 'n8n_credits_unavailable' });
+		});
+
+		it('surfaces the allowlisted models on unknown_model so the agent can retry', async () => {
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'GPT-5 mini', value: 'gpt-5-mini' },
+			]);
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([]),
+				modelLookup,
+				isProviderServedByGateway: async (provider) => provider === 'openai',
+				freeCredits: makeFreeCredits(),
+			});
+			const result = await tool.handler!(
+				{ provider: 'openai', model: 'gpt-nonexistent', useN8nCredits: true },
+				{},
+			);
+
+			expect(result).toMatchObject({
+				ok: false,
+				reason: 'unknown_model',
+				provider: 'openai',
+				availableModels: [{ name: 'GPT-5 mini', value: 'gpt-5-mini' }],
+			});
 		});
 	});
 });

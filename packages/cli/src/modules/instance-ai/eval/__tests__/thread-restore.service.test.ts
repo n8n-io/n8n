@@ -1,7 +1,10 @@
+import { ModuleRegistry } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { AgentsService } from '@/modules/agents/agents.service';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
 
@@ -249,6 +252,187 @@ describe('EvalThreadRestoreService', () => {
 			expect(saved.nodes?.[0]?.parameters).toEqual({
 				dataTableId: { __rl: true, mode: 'id', value: 'dt-new' },
 			});
+		});
+	});
+
+	describe('restoreAgents', () => {
+		const agentsService = mockInstance(AgentsService);
+		const moduleRegistry = mockInstance(ModuleRegistry);
+
+		const seedAgent = (over: { id?: string; name?: string } = {}) => ({
+			id: over.id ?? 'agent-original',
+			config: {
+				name: over.name ?? 'Support Triage',
+				model: 'anthropic/claude-sonnet-4-5',
+				instructions: 'Triage inbound tickets.',
+				skills: [{ type: 'skill' as const, id: 'skill_1' }],
+			},
+			skills: {
+				skill_1: { name: 'Triage rules', description: 'How to sort', instructions: 'Sort them.' },
+			},
+		});
+
+		beforeEach(() => {
+			moduleRegistry.isActive.calledWith('agents').mockReturnValue(true);
+		});
+
+		it('creates the agent at its seeded id, carrying its config and skill bodies', async () => {
+			const agent = seedAgent();
+
+			const created = await service.restoreAgents([agent], 'project-1');
+
+			expect(created).toEqual(['agent-original']);
+			expect(agentsService.create).toHaveBeenCalledExactlyOnceWith('project-1', 'Support Triage', {
+				id: 'agent-original',
+				schema: agent.config,
+				skills: agent.skills,
+			});
+		});
+
+		it('rewrites data-table ids in an agent node tool to the recreated tables', async () => {
+			// Same rewrite the workflow restore does: a seeded agent's node tool carries
+			// table ids from the instance the seed was authored on, which address nothing
+			// here. Missed, the restored agent reads an empty/absent table.
+			const agent = seedAgent();
+			const config = {
+				...agent.config,
+				tools: [
+					{
+						type: 'node' as const,
+						name: 'read_leads',
+						node: {
+							nodeType: 'n8n-nodes-base.dataTable',
+							nodeTypeVersion: 1,
+							nodeParameters: { dataTableId: 'dt-authored-01' },
+						},
+					},
+				],
+			};
+
+			await service.restoreAgents(
+				[{ ...agent, config }],
+				'project-1',
+				new Map([['dt-authored-01', 'dt-new-99']]),
+			);
+
+			const [, , options] = agentsService.create.mock.calls[0];
+			expect(JSON.stringify(options?.schema)).toContain('dt-new-99');
+			expect(JSON.stringify(options?.schema)).not.toContain('dt-authored-01');
+		});
+
+		it('rewrites the longer id first when one table id prefixes another', async () => {
+			// "dt1234567" inside "dt12345678": replacing the short one first would eat
+			// the long one's prefix and leave it addressing a table that never existed.
+			const agent = seedAgent();
+			const config = {
+				...agent.config,
+				tools: [
+					{
+						type: 'node' as const,
+						name: 'read_leads',
+						node: {
+							nodeType: 'n8n-nodes-base.dataTable',
+							nodeTypeVersion: 1,
+							nodeParameters: { a: 'dt1234567', b: 'dt12345678' },
+						},
+					},
+				],
+			};
+
+			await service.restoreAgents(
+				[{ ...agent, config }],
+				'project-1',
+				new Map([
+					['dt1234567', 'SHORT-NEW'],
+					['dt12345678', 'LONG-NEW'],
+				]),
+			);
+
+			const [, , options] = agentsService.create.mock.calls[0];
+			const serialized = JSON.stringify(options?.schema);
+			expect(serialized).toContain('SHORT-NEW');
+			expect(serialized).toContain('LONG-NEW');
+			expect(serialized).not.toContain('SHORT-NEW8');
+		});
+
+		it('leaves the config untouched when the seed created no data tables', async () => {
+			const agent = seedAgent();
+
+			await service.restoreAgents([agent], 'project-1');
+
+			const [, , options] = agentsService.create.mock.calls[0];
+			expect(options?.schema).toEqual(agent.config);
+		});
+
+		it('blanks credential ids, which address the instance the seed came from', async () => {
+			// The agent counterpart of stripping a seed workflow's node credentials.
+			// Emptied rather than removed: `credential` is a required FIELD on a vector
+			// store and its embedding, so deleting it would fail config validation.
+			const agent = seedAgent();
+			const config = {
+				...agent.config,
+				credential: 'cred-from-source-instance',
+				vectorStores: [
+					{
+						provider: 'pinecone' as const,
+						name: 'docs',
+						credential: 'cred-pinecone',
+						useWhen: 'searching docs',
+						embedding: { model: 'openai/text-embedding-3-small', credential: 'cred-openai' },
+						indexName: 'docs',
+					},
+				],
+				// A chat integration names its credential `credentialId`; emptying it is
+				// the draft state the config schema already models.
+				integrations: [{ type: 'slack' as const, credentialId: 'cred-slack' }],
+			};
+
+			await service.restoreAgents([{ ...agent, config }], 'project-1');
+
+			const [, , options] = agentsService.create.mock.calls[0];
+			expect(options?.schema).toMatchObject({
+				credential: '',
+				vectorStores: [{ credential: '', embedding: { credential: '' } }],
+				integrations: [{ type: 'slack', credentialId: '' }],
+			});
+			// Everything else survives the blanking untouched.
+			expect(options?.schema).toMatchObject({
+				name: 'Support Triage',
+				instructions: 'Triage inbound tickets.',
+				vectorStores: [{ indexName: 'docs', name: 'docs' }],
+			});
+		});
+
+		it('rolls back agents already created when a later one fails', async () => {
+			// A partial restore would leak an agent into the shared eval project, and the
+			// build fails anyway — the thread never gets the history that references it.
+			agentsService.create
+				.mockResolvedValueOnce(mock())
+				.mockRejectedValueOnce(new Error('An agent with this id already exists'));
+
+			await expect(
+				service.restoreAgents(
+					[seedAgent({ id: 'agent-1' }), seedAgent({ id: 'agent-2', name: 'Other' })],
+					'project-1',
+				),
+			).rejects.toThrow('already exists');
+
+			expect(agentsService.delete).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
+		});
+
+		it('fails loudly when the agents module is disabled, rather than seeding nothing', async () => {
+			moduleRegistry.isActive.calledWith('agents').mockReturnValue(false);
+
+			await expect(service.restoreAgents([seedAgent()], 'project-1')).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(agentsService.create).not.toHaveBeenCalled();
+		});
+
+		it('does not touch the agents module for a seed that declares no agents', async () => {
+			moduleRegistry.isActive.calledWith('agents').mockReturnValue(false);
+
+			await expect(service.restoreAgents([], 'project-1')).resolves.toEqual([]);
 		});
 	});
 });

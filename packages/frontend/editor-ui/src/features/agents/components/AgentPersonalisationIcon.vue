@@ -66,6 +66,16 @@ const iconSize = computed(() => Math.round(props.size * 0.6));
 		z-index: 0;
 	}
 
+	@supports (background: linear-gradient(90deg in oklch, red, blue)) {
+		&::before {
+			background: linear-gradient(
+				var(--agent-personalisation-gradient-angle) in oklch,
+				var(--agent-personalisation-gradient-from) var(--agent-personalisation-gradient-from-stop),
+				var(--agent-personalisation-gradient-to) var(--agent-personalisation-gradient-to-stop)
+			);
+		}
+	}
+
 	> * {
 		position: relative;
 		z-index: 1;

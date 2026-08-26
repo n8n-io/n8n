@@ -9,6 +9,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { context } from '@opentelemetry/api';
 import type { JSONSchema7 } from 'json-schema';
 import {
 	OperationalError,
@@ -20,26 +21,64 @@ import {
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentRunTelemetryType } from '@/interfaces';
+import { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 import { Telemetry } from '@/telemetry';
 
+import { AgentExecutionService, type StartExecutionParams } from './agent-execution.service';
+import { AgentRunTracingService } from './agent-run-tracing.service';
+import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
+import {
+	encodeAgentSandboxHostMetadata,
+	type AgentSandboxPrincipalHash,
+} from './agent-sandbox-principal';
 import {
 	buildAgentConfigurationTelemetry,
 	buildAgentConfigurationTelemetryFromConfig,
 } from './agent-telemetry';
-import { AgentExecutionService } from './agent-execution.service';
-import { AgentRunTracingService } from './agent-run-tracing.service';
-import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type { Agent } from './entities/agent.entity';
 import { ExecutionRecorder, type MessageRecord } from './execution-recorder';
+import { NodeToolAiGatewayService } from './json-config/node-tool-ai-gateway.service';
 import { AgentRepository } from './repositories/agent.repository';
 import { createInputDataTool } from './tools/input-data-tool';
 import { createWorkflowContextTool } from './tools/workflow-context-tool';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { createAgentExecutionCounter } from './utils/agent-execution-counter';
+import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { streamAgentChunks } from './utils/agent-stream';
 import { validateNodeToolConfigs, validateNodeToolExpressions } from './utils/node-tool-validation';
-import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
 import { describeStructuredOutputError } from './utils/structured-output-error';
+import {
+	WorkflowAgentStreamAdapter,
+	type WorkflowAgentStreamObserver,
+} from './workflow-agent-stream';
+
+interface WorkflowSandboxScope {
+	principalHash: AgentSandboxPrincipalHash;
+}
+
+function getFinalWorkflowResponse(messageRecord: MessageRecord): string {
+	let lastToolCallIndex = -1;
+	for (let index = messageRecord.timeline.length - 1; index >= 0; index--) {
+		if (messageRecord.timeline[index]?.type === 'tool-call') {
+			lastToolCallIndex = index;
+			break;
+		}
+	}
+	if (lastToolCallIndex === -1) return messageRecord.assistantResponse;
+
+	return messageRecord.timeline
+		.slice(lastToolCallIndex + 1)
+		.filter((event) => event.type === 'text')
+		.map((event) => event.content)
+		.join('');
+}
+
+function createWorkflowAgentExecutionError(message: string, cause?: Error): OperationalError {
+	return new OperationalError(message, {
+		description: message,
+		...(cause ? { cause } : {}),
+	});
+}
 
 /**
  * Executes agents invoked from inside a workflow execution (the AI Agent node
@@ -57,16 +96,25 @@ export class AgentWorkflowExecutionService {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 		private readonly agentRunTracingService: AgentRunTracingService,
+		private readonly executionLevelTracer: ExecutionLevelTracer,
+		private readonly nodeToolAiGatewayService: NodeToolAiGatewayService,
 	) {}
 
 	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
 		const normalizedError = error instanceof Error ? error : new Error(String(error));
-		if (!outputSchema || normalizedError instanceof OperationalError) return normalizedError;
+		if (!outputSchema || normalizedError instanceof OperationalError) {
+			if ('description' in normalizedError && typeof normalizedError.description === 'string') {
+				return normalizedError;
+			}
+			return createWorkflowAgentExecutionError(normalizedError.message, normalizedError);
+		}
 
 		const structuredOutputError = describeStructuredOutputError(normalizedError.message);
-		if (!structuredOutputError) return normalizedError;
+		if (!structuredOutputError) {
+			return createWorkflowAgentExecutionError(normalizedError.message, normalizedError);
+		}
 
-		return new OperationalError(structuredOutputError, { cause: normalizedError });
+		return createWorkflowAgentExecutionError(structuredOutputError, normalizedError);
 	}
 
 	/**
@@ -115,6 +163,7 @@ export class AgentWorkflowExecutionService {
 		runType: AgentRunTelemetryType,
 		outputSchema?: JSONSchema7,
 		extraTools?: BuiltTool[],
+		sandboxPrincipalHash?: AgentSandboxPrincipalHash,
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
@@ -133,6 +182,14 @@ export class AgentWorkflowExecutionService {
 					agentEntity,
 					credentialProvider,
 					runType,
+					undefined,
+					undefined,
+					undefined,
+					'manual',
+					sandboxPrincipalHash,
+					// A workflow execution cannot resume a suspended run — it throws
+					// instead (see `recorder.suspended` below).
+					false,
 				);
 			return this.applyPerCallAgentExtras(reconstructed, outputSchema, extraTools);
 		} catch (e) {
@@ -210,7 +267,11 @@ export class AgentWorkflowExecutionService {
 			executionId?: string;
 			workflowId?: string;
 			nodeId?: string;
+			nodeName?: string;
 		};
+		recordingParams?: StartExecutionParams;
+		streamObserver?: WorkflowAgentStreamObserver;
+		sandboxScope?: { projectId: string; principalHash: AgentSandboxPrincipalHash };
 	}): Promise<WorkflowAgentRunOutcome> {
 		const {
 			agentInstance,
@@ -221,78 +282,153 @@ export class AgentWorkflowExecutionService {
 			runType,
 			outputSchema,
 			tracing,
+			recordingParams,
+			streamObserver,
+			sandboxScope,
 		} = params;
+		const streamAdapter = new WorkflowAgentStreamAdapter(streamObserver);
 
-		const recorder = new ExecutionRecorder();
+		let agentExecutionId: string | undefined;
+		const recorder = new ExecutionRecorder(undefined, (timeline) => {
+			if (agentExecutionId && recordingParams) {
+				this.agentExecutionService.recordTimelineSnapshot({
+					projectId: recordingParams.projectId,
+					agentId: recordingParams.agentId,
+					threadId: recordingParams.threadId,
+					executionId: agentExecutionId,
+					timeline,
+				});
+			}
+		});
+		const startedAt = recorder.startedAt;
 
 		let structuredOutput: unknown = null;
 		const toolCalls: ExecuteAgentData['toolCalls'] = [];
 		const toolInputs = new Map<string, { toolName: string; input: unknown }>();
 		let streamError: Error | undefined;
 
-		try {
-			// No model_id here: BuiltAgent (unlike the cached-runtime RuntimeAgent
-			// used by the chat/task paths) doesn't expose a snapshot. The AI SDK's
-			// own gen_ai.request.model attribute on its model spans still carries
-			// this regardless.
-			const telemetry = await this.agentRunTracingService.build({
-				agentId: telemetryAgentId,
-				projectId: tracing.projectId,
-				threadId,
-				userId: telemetryUserId,
-				source: 'workflow',
-				executionId: tracing.executionId,
-				workflowId: tracing.workflowId,
-				nodeId: tracing.nodeId,
-			});
+		// Nest the agent's root span under the calling node's OTel span (rather
+		// than a disconnected root trace) by running inside its active context.
+		// Falls back to running unwrapped when no such span is tracked (e.g. otel
+		// disabled) — `context.with` needs an actual parent context to nest under.
+		const parentCtx = tracing.executionId
+			? this.executionLevelTracer.getActiveContext(tracing.executionId, tracing.nodeName)
+			: undefined;
 
-			const resultStream = await agentInstance.stream(message, {
-				// The memory store scopes message reads by `resourceId` (the
-				// "per-user scope"; chat integrations pass the chat user id there).
-				// Workflow runs have no user, so key the scope by the thread
-				// itself: it is stable across executions, which is what lets a
-				// caller-supplied session id actually continue the conversation.
-				// The previous key — the execution id — changed every run and hid
-				// all prior messages of the thread from the model.
-				persistence: { resourceId: threadId, threadId },
-				executionCounter: createAgentExecutionCounter(this.telemetry, {
+		const run = async (): Promise<void> => {
+			try {
+				// No model_id here: BuiltAgent (unlike the cached-runtime RuntimeAgent
+				// used by the chat/task paths) doesn't expose a snapshot. The AI SDK's
+				// own gen_ai.request.model attribute on its model spans still carries
+				// this regardless.
+				const telemetry = await this.agentRunTracingService.build({
 					agentId: telemetryAgentId,
+					projectId: tracing.projectId,
+					threadId,
 					userId: telemetryUserId,
-					runType,
-				}),
-				...(telemetry ? { telemetry } : {}),
-			});
+					source: 'workflow',
+					executionId: tracing.executionId,
+					workflowId: tracing.workflowId,
+					nodeId: tracing.nodeId,
+					hasParentContext: parentCtx !== undefined,
+				});
 
-			for await (const value of streamAgentChunks(resultStream.stream)) {
-				recorder.record(value);
+				const resultStream = await agentInstance.stream(message, {
+					// The memory store scopes message reads by `resourceId` (the
+					// "per-user scope"; chat integrations pass the chat user id there).
+					// Workflow runs have no user, so key the scope by the thread
+					// itself: it is stable across executions, which is what lets a
+					// caller-supplied session id actually continue the conversation.
+					// The previous key — the execution id — changed every run and hid
+					// all prior messages of the thread from the model.
+					persistence: {
+						resourceId: threadId,
+						threadId,
+						...(sandboxScope ? { hostMetadata: encodeAgentSandboxHostMetadata(sandboxScope) } : {}),
+					},
+					executionCounter: createAgentExecutionCounter(this.telemetry, {
+						agentId: telemetryAgentId,
+						userId: telemetryUserId,
+						runType,
+					}),
+					...(telemetry ? { telemetry } : {}),
+				});
 
-				if (value.type === 'tool-call') {
-					toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
-				} else if (value.type === 'tool-result') {
-					const pending = toolInputs.get(value.toolCallId);
-					toolCalls.push({
-						toolName: value.toolName,
-						input: pending?.input ?? null,
-						result: value.output,
-					});
-					toolInputs.delete(value.toolCallId);
-				} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
-					structuredOutput = value.structuredOutput;
+				if (recordingParams) {
+					try {
+						agentExecutionId = await this.agentExecutionService.startExecutionRecording(
+							recordingParams,
+							startedAt,
+						);
+					} catch (error) {
+						this.logger.warn('Failed to start agent execution recording from workflow', {
+							agentId: recordingParams.agentId,
+							threadId,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					}
 				}
+
+				for await (const value of streamAgentChunks(resultStream.stream)) {
+					recorder.record(value);
+					await streamAdapter.observe(value);
+
+					if (value.type === 'tool-call') {
+						toolInputs.set(value.toolCallId, { toolName: value.toolName, input: value.input });
+					} else if (value.type === 'tool-result') {
+						const pending = toolInputs.get(value.toolCallId);
+						toolCalls.push({
+							toolName: value.toolName,
+							input: pending?.input ?? null,
+							result: value.output,
+						});
+						toolInputs.delete(value.toolCallId);
+					} else if (value.type === 'finish' && value.structuredOutput !== undefined) {
+						structuredOutput = value.structuredOutput;
+					}
+				}
+			} catch (error) {
+				const normalizedError = this.normalizeWorkflowStreamError(error, outputSchema);
+				recorder.record({ type: 'error', error: normalizedError });
+				recorder.record({ type: 'finish', finishReason: 'error' });
+				streamError = normalizedError;
+				streamAdapter.fail();
 			}
-		} catch (error) {
-			const normalizedError = this.normalizeWorkflowStreamError(error, outputSchema);
-			recorder.record({ type: 'error', error: normalizedError });
-			recorder.record({ type: 'finish', finishReason: 'error' });
-			streamError = normalizedError;
+		};
+
+		if (parentCtx) {
+			await context.with(parentCtx, run);
+		} else {
+			await run();
 		}
+
+		if (streamError && recordingParams && !agentExecutionId) {
+			try {
+				agentExecutionId = await this.agentExecutionService.startExecutionRecording(
+					recordingParams,
+					startedAt,
+				);
+			} catch (error) {
+				this.logger.warn('Failed to start agent execution recording from workflow', {
+					agentId: recordingParams.agentId,
+					threadId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+
+		const messageRecord = recorder.getMessageRecord();
 
 		return {
 			recorder,
-			messageRecord: recorder.getMessageRecord(),
+			messageRecord: {
+				...messageRecord,
+				assistantResponse: getFinalWorkflowResponse(messageRecord),
+			},
 			structuredOutput,
 			toolCalls,
 			streamError,
+			agentExecutionId,
 		};
 	}
 
@@ -313,7 +449,7 @@ export class AgentWorkflowExecutionService {
 		}
 
 		if (recorder.suspended) {
-			throw new OperationalError(
+			throw createWorkflowAgentExecutionError(
 				'Agent execution suspended waiting for tool approval. ' +
 					'Suspend/resume is not supported in workflow execution context.',
 			);
@@ -323,14 +459,14 @@ export class AgentWorkflowExecutionService {
 			if (outputSchema) {
 				const structuredOutputError = describeStructuredOutputError(messageRecord.error);
 				if (structuredOutputError) {
-					throw new OperationalError(structuredOutputError);
+					throw createWorkflowAgentExecutionError(structuredOutputError);
 				}
 			}
-			throw new OperationalError(`Agent execution failed: ${messageRecord.error}`);
+			throw createWorkflowAgentExecutionError(`Agent execution failed: ${messageRecord.error}`);
 		}
 
 		if (messageRecord.finishReason === 'error') {
-			throw new OperationalError(
+			throw createWorkflowAgentExecutionError(
 				outputSchema
 					? 'Agent execution finished with an error while producing structured output. ' +
 							"The agent's model or provider may not support JSON Schema structured output."
@@ -364,6 +500,36 @@ export class AgentWorkflowExecutionService {
 		useDraftVersion?: boolean,
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
+		sandboxScope?: WorkflowSandboxScope,
+		streamObserver?: WorkflowAgentStreamObserver,
+	): Promise<ExecuteAgentData> {
+		return await this.executeForWorkflowInternal(
+			agentId,
+			message,
+			executionId,
+			threadId,
+			projectId,
+			telemetryUserId,
+			useDraftVersion,
+			outputSchema,
+			workflowContext,
+			sandboxScope,
+			streamObserver,
+		);
+	}
+
+	private async executeForWorkflowInternal(
+		agentId: string,
+		message: string,
+		executionId: string,
+		threadId: string,
+		projectId: string,
+		telemetryUserId?: string,
+		useDraftVersion?: boolean,
+		outputSchema?: JSONSchema7,
+		workflowContext?: ExecuteAgentWorkflowContext,
+		sandboxScope?: WorkflowSandboxScope,
+		streamObserver?: WorkflowAgentStreamObserver,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -387,6 +553,7 @@ export class AgentWorkflowExecutionService {
 			runType,
 			outputSchema,
 			extraTools?.length ? extraTools : undefined,
+			sandboxScope?.principalHash,
 		);
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
@@ -406,30 +573,54 @@ export class AgentWorkflowExecutionService {
 				executionId,
 				workflowId: workflowContext?.workflowId,
 				nodeId: workflowContext?.callingNodeId,
+				nodeName: workflowContext?.callingNodeName,
 			},
-		});
-
-		void this.agentExecutionService
-			.recordMessage({
+			recordingParams: {
 				threadId,
 				agentId,
 				agentName: agentInstance.name,
 				projectId,
 				userMessage: message,
-				record: run.messageRecord,
 				source: AGENT_WORKFLOW_TRIGGER_TYPE,
 				telemetry: {
 					runType,
 					configuration: telemetryConfiguration,
 				},
-			})
-			.catch((error) => {
+			},
+			streamObserver,
+			...(sandboxScope
+				? {
+						sandboxScope: {
+							projectId,
+							principalHash: sandboxScope.principalHash,
+						},
+					}
+				: {}),
+		});
+
+		if (run.agentExecutionId) {
+			try {
+				await this.agentExecutionService.finalizeExecution(run.agentExecutionId, {
+					threadId,
+					agentId,
+					agentName: agentInstance.name,
+					projectId,
+					userMessage: message,
+					record: run.messageRecord,
+					source: AGENT_WORKFLOW_TRIGGER_TYPE,
+					telemetry: {
+						runType,
+						configuration: telemetryConfiguration,
+					},
+				});
+			} catch (error) {
 				this.logger.warn('Failed to record agent execution from workflow', {
 					agentId,
 					threadId,
 					error: error instanceof Error ? error.message : String(error),
 				});
-			});
+			}
+		}
 
 		return this.buildWorkflowResult({
 			run,
@@ -459,6 +650,7 @@ export class AgentWorkflowExecutionService {
 		runType: AgentRunTelemetryType = 'production',
 		outputSchema?: JSONSchema7,
 		workflowContext?: ExecuteAgentWorkflowContext,
+		streamObserver?: WorkflowAgentStreamObserver,
 	): Promise<ExecuteAgentData> {
 		const { config, skills } = await this.validateInlineAgentConfig(inlineAgent);
 
@@ -484,6 +676,18 @@ export class AgentWorkflowExecutionService {
 			: config;
 
 		const credentialProvider = createAgentCredentialProvider(this.credentialsService, projectId);
+
+		// Re-validate any `__aiGatewayManaged` marker on node-tool credentials
+		// against live gateway eligibility. The marker is server-assigned, but the
+		// inline config comes straight from a workflow node parameter and never
+		// passes the agent-config write path that reconciles persisted agents — so
+		// re-earn it here, or a workflow author could forge one for a node/action
+		// n8n Connect doesn't cover and mint a managed credential regardless.
+		const accessibleCredentials = await credentialProvider.list();
+		await this.nodeToolAiGatewayService.assignManagedCredentials(
+			runtimeConfig.tools,
+			new Set(accessibleCredentials.map((credential) => credential.type)),
+		);
 
 		// For telemetry/logging and memory-owner keying — never persisted, and
 		// stable enough to aggregate runs of the same node across executions.
@@ -519,7 +723,9 @@ export class AgentWorkflowExecutionService {
 				executionId,
 				workflowId: workflowContext?.workflowId,
 				nodeId: workflowContext?.callingNodeId,
+				nodeName: workflowContext?.callingNodeName,
 			},
+			streamObserver,
 		});
 
 		// No `recordMessage` here: inline runs have no agent entity to attach a
@@ -597,4 +803,5 @@ interface WorkflowAgentRunOutcome {
 	structuredOutput: unknown;
 	toolCalls: ExecuteAgentData['toolCalls'];
 	streamError?: Error;
+	agentExecutionId?: string;
 }

@@ -4,7 +4,9 @@ import { Service } from '@n8n/di';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { WorkflowSerializer } from './workflow.serializer';
+import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
 import type { PackageWriter } from '../../io/package-writer';
+import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
@@ -24,6 +26,7 @@ export interface WorkflowExportRequest {
 	workflowIds: string[];
 	writer: PackageWriter;
 	includeTags: boolean;
+	workflowVersionPolicy: WorkflowVersionPolicy;
 
 	// Directory the workflow is written under. e.g. folders/{folderId}/
 	basePrefix?: string;
@@ -50,7 +53,11 @@ export class WorkflowExporter {
 			request.workflowIds,
 			request.user,
 			['workflow:export'],
-			{ includeParentFolder: true, includeTags: request.includeTags },
+			{
+				includeParentFolder: true,
+				includeTags: request.includeTags,
+				includeActiveVersion: needsActiveVersion(request.workflowVersionPolicy),
+			},
 		);
 
 		await assertEveryRequestedEntityAccessible(
@@ -60,7 +67,10 @@ export class WorkflowExporter {
 			async (ids) => await this.workflowFinder.findExistingWorkflowIds(ids),
 		);
 
-		const workflowsForExport = this.orderWorkflowsByRequest(request.workflowIds, workflows);
+		const workflowsForExport = this.orderWorkflowsByRequest(
+			request.workflowIds,
+			applyWorkflowVersionPolicy(workflows, request.workflowVersionPolicy),
+		);
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
 		const dataTables: WorkflowDataTableRequirement[] = [];
@@ -78,8 +88,11 @@ export class WorkflowExporter {
 				includeTags: request.includeTags,
 			});
 
-			request.writer.writeDirectory(target);
-			request.writer.writeFile(`${target}/workflow.json`, JSON.stringify(serialized, null, '\t'));
+			await request.writer.writeDirectory(target);
+			await request.writer.writeFile(
+				`${target}/workflow.json`,
+				JSON.stringify(serialized, null, '\t'),
+			);
 
 			entries.push({
 				id: workflow.id,

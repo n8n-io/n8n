@@ -1,71 +1,73 @@
-import { mockInstance } from '@n8n/backend-test-utils';
 import { LicenseState } from '@n8n/backend-common';
-import type {
-	User,
-	UserRepository,
-	WorkflowPublishedVersionRepository,
-	WorkflowReviewRequest,
-	WorkflowReviewRequestReviewerRepository,
-} from '@n8n/db';
+import { mockInstance } from '@n8n/backend-test-utils';
+import type { InboxVisibility, User, WorkflowReviewRequest } from '@n8n/db';
 import { WorkflowReviewRequestRepository, WorkflowReviewRequestWorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ProjectService } from '@/services/project.service.ee';
-import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-
-import type { WorkflowReviewDecisionEligibilityService } from '../workflow-review-decision-eligibility.service';
+import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
 import { WorkflowReviewInboxService } from '../workflow-review-inbox.service';
+import type {
+	WorkflowReviewParticipantResolver,
+	WorkflowReviewParticipants,
+} from '../workflow-review-participant.resolver';
+
+import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 
 describe('WorkflowReviewInboxService', () => {
 	const workflowReviewPolicyService = mockInstance(WorkflowReviewPolicyService);
-	const workflowFinderService = mock<WorkflowFinderService>();
+	const authorizationService = mock<WorkflowReviewAuthorizationService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
-	const publishedVersionRepository = mock<WorkflowPublishedVersionRepository>();
 	const workflowReviewRequestRepository = mockInstance(WorkflowReviewRequestRepository);
 	const workflowReviewRequestWorkflowRepository = mockInstance(
 		WorkflowReviewRequestWorkflowRepository,
 	);
-	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
-	const userRepository = mock<UserRepository>();
-	const projectService = mockInstance(ProjectService);
+	const participantResolver = mock<WorkflowReviewParticipantResolver>();
 	const licenseState = mockInstance(LicenseState);
 
 	let service: WorkflowReviewInboxService;
 
 	const user = mock<User>({ id: 'user-1', role: { slug: 'global:member', scopes: [] } });
 
+	/** The resolver is exercised in its own test; here it only has to answer. */
+	function mockParticipants(participants: Partial<WorkflowReviewParticipants> = {}) {
+		participantResolver.resolve.mockResolvedValue({
+			for: () => ({ requester: null, authors: [], reviewers: [], ...participants }),
+		});
+	}
+
 	beforeEach(() => {
 		vi.resetAllMocks();
-		process.env.N8N_ENV_FEAT_WORKFLOW_REVIEWS = 'true';
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
-		reviewerRepository.findByRequestIds.mockResolvedValue([]);
-		userRepository.findManyByIds.mockResolvedValue([]);
+		mockParticipants();
 
 		service = new WorkflowReviewInboxService(
 			new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
-			workflowFinderService,
+			authorizationService,
 			workflowHistoryService,
-			publishedVersionRepository,
 			workflowReviewRequestRepository,
 			workflowReviewRequestWorkflowRepository,
-			reviewerRepository,
-			userRepository,
-			projectService,
-			mock<WorkflowReviewDecisionEligibilityService>(),
+			participantResolver,
 		);
 	});
 
+	const involvedVisibility: InboxVisibility = {
+		scope: 'involved',
+		userId: 'user-1',
+		adminProjectIds: [],
+		readableProjectIds: ['proj-1'],
+		readableWorkflowRoles: ['workflow:owner', 'workflow:editor'],
+	};
+
 	describe('listForInbox', () => {
-		function mockAccessibleProjects(projectIds: string[] = ['proj-1']) {
-			projectService.getProjectIdsWithScope.mockResolvedValueOnce(projectIds);
+		function mockVisibility(visibility: InboxVisibility = involvedVisibility) {
+			authorizationService.resolveInboxVisibility.mockResolvedValueOnce(visibility);
 		}
 
 		it('returns paginated data with hasMore and nextCursor', async () => {
-			mockAccessibleProjects();
+			mockVisibility();
 			const rows = [
 				mock<WorkflowReviewRequest>({
 					id: 'req-2',
@@ -94,8 +96,7 @@ describe('WorkflowReviewInboxService', () => {
 			const result = await service.listForInbox(user, { limit: 1 });
 
 			expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith({
-				projectIds: ['proj-1'],
-				requesterId: 'user-1',
+				visibility: involvedVisibility,
 				state: 'open',
 				limit: 2,
 				cursor: undefined,
@@ -109,10 +110,12 @@ describe('WorkflowReviewInboxService', () => {
 				'base64url',
 			);
 			expect(result.nextCursor).toBe(expectedCursor);
+			// Participants are only resolved for the page, never for the lookahead row.
+			expect(participantResolver.resolve).toHaveBeenCalledWith([rows[0]]);
 		});
 
 		it('decodes the incoming cursor into a keyset boundary', async () => {
-			mockAccessibleProjects();
+			mockVisibility();
 			workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([]);
 			workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
 				new Map(),
@@ -129,53 +132,89 @@ describe('WorkflowReviewInboxService', () => {
 		});
 
 		it('rejects a malformed cursor', async () => {
-			mockAccessibleProjects();
+			mockVisibility();
 			const cursor = Buffer.from('not-a-valid-cursor', 'utf8').toString('base64url');
 
 			await expect(service.listForInbox(user, { limit: 15, cursor })).rejects.toThrow(
 				'Invalid pagination cursor',
 			);
 		});
+
+		describe('category', () => {
+			beforeEach(() => {
+				workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([]);
+				workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
+					new Map(),
+				);
+			});
+
+			it.each(['authored', 'waiting'] as const)(
+				'passes category %s through with the requesting user',
+				async (category) => {
+					mockVisibility();
+
+					await service.listForInbox(user, { limit: 15, category });
+
+					expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith(
+						expect.objectContaining({ category: { userId: 'user-1', category } }),
+					);
+				},
+			);
+
+			it('derives the user from the request, never from the query', async () => {
+				mockVisibility();
+				const otherUser = mock<User>({ id: 'user-2', role: { slug: 'global:member', scopes: [] } });
+
+				await service.listForInbox(otherUser, { limit: 15, category: 'authored' });
+
+				expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith(
+					expect.objectContaining({ category: { userId: 'user-2', category: 'authored' } }),
+				);
+			});
+
+			it('leaves the query unfiltered when the category is omitted', async () => {
+				mockVisibility();
+
+				await service.listForInbox(user, { limit: 15 });
+
+				expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith(
+					expect.objectContaining({ category: undefined }),
+				);
+			});
+		});
 	});
-	describe('resolveAccessibleProjectIds', () => {
-		it('returns the publish-scoped project ids for members', async () => {
-			projectService.getProjectIdsWithScope.mockResolvedValueOnce(['publish-proj']);
-
-			expect(await service.resolveAccessibleProjectIds(user)).toEqual(['publish-proj']);
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(user, [
-				'workflow:publish',
-			]);
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledTimes(1);
-			// Requesters see their own reviews via the repository's requesterId filter,
-			// so no personal-project fallback is needed here.
-			expect(projectService.getPersonalProject).not.toHaveBeenCalled();
+	describe('participants on inbox items', () => {
+		const inboxRow = mock<WorkflowReviewRequest>({
+			id: 'req-1',
+			projectId: 'proj-1',
+			title: 'First',
+			decision: 'pending',
+			state: 'open',
+			createdById: 'requester-1',
+			createdAt: new Date('2024-01-01T00:00:00.000Z'),
+			updatedAt: new Date('2024-01-01T00:00:00.000Z'),
 		});
 
-		it('returns null (all projects) for users with global workflow:publish without enumerating projects', async () => {
-			const owner = mock<User>({
-				role: {
-					slug: 'global:owner',
-					scopes: [{ slug: 'workflow:publish' }],
-				},
-			});
-
-			expect(await service.resolveAccessibleProjectIds(owner)).toBeNull();
-			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
+		beforeEach(() => {
+			authorizationService.resolveInboxVisibility.mockResolvedValue(involvedVisibility);
+			workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([inboxRow]);
+			workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
+				new Map(),
+			);
 		});
 
-		it('does not short-circuit for a global project:delete role without workflow:publish', async () => {
-			const admin = mock<User>({
-				role: {
-					slug: 'custom:global',
-					scopes: [{ slug: 'project:delete' }],
-				},
+		it('carries the resolved participants onto the inbox item', async () => {
+			mockParticipants({
+				requester: mock({ id: 'requester-1' }),
+				authors: [mock({ id: 'requester-1' }), mock({ id: 'author-2' })],
+				reviewers: [mock({ id: 'reviewer-1' })],
 			});
-			projectService.getProjectIdsWithScope.mockResolvedValueOnce(['publish-proj']);
 
-			expect(await service.resolveAccessibleProjectIds(admin)).toEqual(['publish-proj']);
-			expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(admin, [
-				'workflow:publish',
-			]);
+			const [item] = (await service.listForInbox(user, { limit: 15 })).data;
+
+			expect(item?.requester).toMatchObject({ id: 'requester-1' });
+			expect(item?.authors.map((author) => author.id)).toEqual(['requester-1', 'author-2']);
+			expect(item?.reviewers.map((reviewer) => reviewer.id)).toEqual(['reviewer-1']);
 		});
 	});
 });

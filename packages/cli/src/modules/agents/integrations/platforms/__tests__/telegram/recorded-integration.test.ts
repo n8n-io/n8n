@@ -39,9 +39,6 @@ const approvalCardText = [
 	'Approval required',
 	'The agent wants to run this tool: Send Telegram message',
 	'Tool: Send Telegram message',
-	'Input: {',
-	'  "text": "Ship it?"',
-	'}',
 ].join('\n');
 
 function approvalSuspensionStream(): StreamChunk[] {
@@ -168,11 +165,11 @@ describe('Telegram recorded integration replay', () => {
 					channelId: 'telegram:123456789',
 				},
 			});
-			const sentMessages = ctx.apiCalls.filter((call) => call.method === 'sendMessage');
+			const sentMessages = ctx.apiCalls.filter((call) => call.method === 'sendRichMessage');
 			expect(sentMessages).toHaveLength(1);
 			expect(sentMessages[0]?.body).toMatchObject({
 				chat_id: '123456789',
-				text: 'Test response',
+				rich_message: { markdown: 'Test response' },
 			});
 		} finally {
 			await ctx.shutdown();
@@ -324,7 +321,7 @@ describe('Telegram recorded integration replay', () => {
 		}
 	});
 
-	it('leaves non-approval Telegram cards unchanged after callbacks', async () => {
+	it('settles non-approval Telegram cards and invalidates sibling callbacks', async () => {
 		const ctx = await createTelegramReplayContext(telegramFixtures, {
 			stream: [
 				{
@@ -334,7 +331,10 @@ describe('Telegram recorded integration replay', () => {
 					toolName: 'custom_card',
 					suspendPayload: {
 						title: 'Choose an action',
-						components: [{ type: 'button', label: 'Continue', value: 'continue' }],
+						components: [
+							{ type: 'button', label: 'Continue', value: 'continue' },
+							{ type: 'button', label: 'Cancel', value: 'cancel' },
+						],
 					},
 				},
 				{ type: 'finish', finishReason: 'stop' },
@@ -343,11 +343,19 @@ describe('Telegram recorded integration replay', () => {
 		try {
 			await ctx.sendTelegramWebhook(telegramFixtures.mention);
 
-			const callbackData = getTelegramInlineCallbackData(ctx.lastApiCall('sendMessage'));
-			await clickTelegramCard(ctx, callbackData ?? '', 'Choose an action');
+			const cardMessage = ctx.lastApiCall('sendMessage');
+			const continueCallback = getTelegramInlineCallbackData(cardMessage, 0);
+			const cancelCallback = getTelegramInlineCallbackData(cardMessage, 1);
+			await clickTelegramCard(ctx, continueCallback ?? '', 'Choose an action');
+			await clickTelegramCard(ctx, cancelCallback ?? '', 'Choose an action');
 
 			expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledTimes(1);
-			expect(ctx.lastApiCall('editMessageText')).toBeUndefined();
+			expect(ctx.lastApiCall('editMessageText')?.body).toMatchObject({
+				chat_id: '123456',
+				message_id: 1000,
+				text: 'Choose an action\n\n✅ Continue selected by Alice',
+				reply_markup: { inline_keyboard: [] },
+			});
 		} finally {
 			await ctx.shutdown();
 		}

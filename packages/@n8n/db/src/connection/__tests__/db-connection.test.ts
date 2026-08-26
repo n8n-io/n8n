@@ -65,6 +65,9 @@ describe('DbConnection', () => {
 		vi.resetAllMocks();
 
 		connectionOptions.getOptions.mockReturnValue(postgresOptions);
+		// resetAllMocks leaves deep-mock properties in place, so clear the one
+		// the version check reads or it leaks a proxy into unrelated tests
+		dataSource.driver.version = undefined;
 		// Default to legacy single-attempt behavior; retry tests override startupConnectMaxRetries.
 		databaseConfig.startupConnectMaxRetries = 0;
 		databaseConfig.minRecoveryBackoffMs = 1;
@@ -101,6 +104,60 @@ describe('DbConnection', () => {
 			await dbConnection.init();
 
 			expect(monitor.start).toHaveBeenCalled();
+		});
+
+		it('should warn when the postgres server is below the supported range', async () => {
+			dataSource.initialize.mockResolvedValue(dataSource);
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			dataSource.driver.version = '14.22';
+
+			await dbConnection.init();
+
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Postgres 14'));
+		});
+
+		it('should not warn when the postgres server is supported', async () => {
+			dataSource.initialize.mockResolvedValue(dataSource);
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			dataSource.driver.version = '17.6';
+
+			await dbConnection.init();
+
+			expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('Postgres'));
+		});
+
+		it('should complete startup even when the version check throws', async () => {
+			dataSource.initialize.mockResolvedValue(dataSource);
+			// getDbVersion never rejects today; pin that a future regression cannot abort startup
+			vi.spyOn(dbConnection, 'getDbVersion').mockRejectedValue(new Error('boom'));
+
+			await dbConnection.init();
+
+			expect(dbConnection.connectionState.connected).toBe(true);
+			expect(monitor.start).toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith('Could not check database version: boom');
+		});
+
+		it('should not warn about the version on sqlite', async () => {
+			connectionOptions.getOptions.mockReturnValue({ type: 'sqlite', database: ':memory:' });
+			// options are @Memoized and read in the constructor — re-instantiate
+			const sqliteConnection = new DbConnection(
+				errorReporter,
+				connectionOptions,
+				databaseConfig,
+				logger,
+				dbConnectionMetrics,
+			);
+			dataSource.initialize.mockResolvedValue(dataSource);
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+
+			await sqliteConnection.init();
+
+			expect(dataSource.query).not.toHaveBeenCalled();
+			expect(logger.warn).not.toHaveBeenCalledWith(expect.stringContaining('Postgres'));
 		});
 
 		it('should not reinitialize if already connected', async () => {
