@@ -94,7 +94,8 @@ An empty instance is a bad place to test anything that reasons about a user's
 work. Two seeds exist, and they do different jobs:
 
 ```bash
-pnpm seed:account   # one plausible account: 10 workflows, credentials, runs, AI threads
+pnpm seed:account       # one plausible account: 10 workflows, credentials, runs, AI threads
+pnpm inspect:activity   # a one-page viewer for the activity_event table
 ```
 
 `pnpm seed:account` fills a local SQLite instance with a small, deliberately
@@ -112,6 +113,14 @@ activity log. **Its consistency is deliberate** — for every job where n8n offe
 a choice, exactly one node is used everywhere, so it doubles as a fixture for
 anything reasoning about what a user tends to reach for. Adding a workflow means
 following the `CHOICES` table in the script rather than picking again.
+
+`pnpm inspect:activity` serves a single page on 127.0.0.1:5699 showing every
+column of `activity_event`, paginated, sortable on any column, with a free-text
+filter that searches the JSON `data` column too — so a run id or a failing node
+name finds its entry without knowing which field holds it. Read-only, no build
+step, no dependency, and loopback-only; it is a debug surface, not a product
+page, and the whole table is served unauthenticated to anything that can reach
+the port.
 
 For a large synthetic org instead — ~500 workflows across ~30 projects, for
 dependency-graph and perf work — use `scripts/instance-seeding/seedInstance.mjs`.
