@@ -487,16 +487,18 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		expect(getByTestId('workflow-review-submit-button')).toBeEnabled();
 	});
 
-	it('keeps submission blocked when loading the reviewers fails', async () => {
-		vi.mocked(fetchEligibleReviewers).mockRejectedValue(new Error('nope'));
+	it('shows error toast and keeps submission blocked when loading the reviewers fails', async () => {
+		const error = new Error('nope');
+		vi.mocked(fetchEligibleReviewers).mockRejectedValue(error);
 		const { getByTestId, goToStep2 } = await renderDialog();
-		await goToStep2();
 
+		await waitFor(() => expect(mockShowError).toHaveBeenCalledWith(error, expect.any(String)));
+
+		await goToStep2();
 		await userEvent.type(getByTestId('workflow-review-title-input'), 'Review payments');
 
 		expect(getByTestId('workflow-review-submit-button')).toBeDisabled();
 		expect(createWorkflowReviewRequest).not.toHaveBeenCalled();
-		expect(mockShowError).not.toHaveBeenCalled();
 	});
 
 	it('closes and hands off to the update-review flow when an open review conflicts', async () => {

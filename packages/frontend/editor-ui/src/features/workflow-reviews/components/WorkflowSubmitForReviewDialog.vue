@@ -101,9 +101,10 @@ const loadEligibleReviewers = async () => {
 		});
 		if (sequence !== loadReviewersSequence) return;
 		eligibleReviewers.value = data;
-	} catch {
+	} catch (error) {
 		if (sequence !== loadReviewersSequence) return;
 		eligibleReviewers.value = [];
+		toast.showError(error, i18n.baseText('workflowReviews.submitForReview.error.loadReviewers'));
 	} finally {
 		if (sequence === loadReviewersSequence) isLoadingReviewers.value = false;
 	}
