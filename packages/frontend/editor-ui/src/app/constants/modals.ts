@@ -7,7 +7,6 @@ export const MODAL_CLOSE = 'close';
 export const ABOUT_MODAL_KEY = 'about';
 export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
-export const IMPORT_WORKFLOW_URL_MODAL_KEY = 'importWorkflowUrl';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
