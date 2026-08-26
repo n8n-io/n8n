@@ -103,11 +103,22 @@ export class BatchingLifecycleEventPublisher implements LifecycleEventPublisher 
 	/** Starts the drain loop, unless it is already running. */
 	private startDraining(): void {
 		this.disarm();
-		this.draining ??= this.drain().finally(() => (this.draining = undefined));
+		if (this.draining) return;
+
+		this.draining = this.drain().finally(() => {
+			this.draining = undefined;
+		});
 	}
 
 	/** Sends the buffered events, one batch at a time, until none are left. */
 	private async drain(): Promise<void> {
+		// Yields before the first send, so `startDraining` has recorded this loop
+		// by the time the host's callback runs. The callback runs synchronously
+		// from here, and one that publishes back into the engine would otherwise
+		// find no loop recorded and start a second one. It also keeps `publish`
+		// free of host code, as its contract promises.
+		await Promise.resolve();
+
 		while (this.pending.length > 0 && !this.abandoned) {
 			const batch = this.pending.splice(0, this.batchSize);
 			this.reportDropped();

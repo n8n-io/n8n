@@ -141,6 +141,30 @@ describe('BatchingLifecycleEventPublisher', () => {
 		]);
 	});
 
+	it('starts no second drain when the callback publishes re-entrantly', async () => {
+		let inFlight = 0;
+		let concurrent = 0;
+		// The callback needs the publisher that calls it, so it reads it back here.
+		const host: { publisher?: BatchingLifecycleEventPublisher } = {};
+		const send = vi.fn(async (batch: LifecycleEvent[]) => {
+			inFlight++;
+			concurrent = Math.max(concurrent, inFlight);
+			// A host callback that publishes back into the engine.
+			if (batch[0] === a) host.publisher?.publish(c);
+			await Promise.resolve();
+			inFlight--;
+		});
+		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS, 1);
+		host.publisher = publisher;
+
+		publisher.publish(a);
+		publisher.publish(b);
+		await vi.advanceTimersByTimeAsync(FLUSH_MS);
+
+		expect(concurrent).toBe(1);
+		expect(send.mock.calls.map(([batch]) => batch)).toEqual([[a], [b], [c]]);
+	});
+
 	it('keeps flushing after the callback rejects', async () => {
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const send = vi
@@ -219,10 +243,12 @@ describe('BatchingLifecycleEventPublisher', () => {
 				}),
 			)
 			.mockResolvedValue(undefined);
-		// One event on the wire, two waiting behind it; a fourth has nowhere to go.
 		const publisher = new BatchingLifecycleEventPublisher(send, FLUSH_MS, 1, 2, TIMEOUT_MS);
 
-		for (const published of [a, b, c, d]) publisher.publish(published);
+		// One event on the wire, two waiting behind it; a fourth has nowhere to go.
+		publisher.publish(a);
+		await vi.advanceTimersByTimeAsync(0);
+		for (const published of [b, c, d]) publisher.publish(published);
 
 		release();
 		await vi.advanceTimersByTimeAsync(FLUSH_MS);
@@ -268,10 +294,11 @@ describe('BatchingLifecycleEventPublisher', () => {
 		await vi.advanceTimersByTimeAsync(TIMEOUT_MS * 4);
 		await stopping;
 
-		// `c` never reaches the host: stop() gave up while it waited its turn.
-		expect(send.mock.calls.map(([batch]) => batch)).toEqual([[a], [b]]);
+		// Only the batch that reached the wire was tried. `b` and `c` never leave
+		// the buffer: shutdown stopped waiting before their turn came.
+		expect(send.mock.calls.map(([batch]) => batch)).toEqual([[a]]);
 		expect(console.warn).toHaveBeenCalledWith(
-			'engine: lifecycle event publisher stopped, dropped 1 unsent event(s)',
+			'engine: lifecycle event publisher stopped, dropped 2 unsent event(s)',
 		);
 	});
 
