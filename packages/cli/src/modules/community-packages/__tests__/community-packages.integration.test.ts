@@ -6,14 +6,10 @@ vi.mock('../npm-utils', async () => ({
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
-import { N8N_NODES_API_VERSION } from 'n8n-workflow';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'path';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { CommunityPackagesModule } from '@/modules/community-packages/community-packages.module';
+import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import type { InstalledNodes } from '@/modules/community-packages/installed-nodes.entity';
 import type { InstalledPackages } from '@/modules/community-packages/installed-packages.entity';
@@ -59,6 +55,9 @@ beforeAll(async () => {
 
 beforeEach(() => {
 	vi.resetAllMocks();
+	// Most tests here assert the npm-based update check, which only runs when
+	// unverified packages are enabled - opt in instead of relying on the default.
+	Container.get(CommunityPackagesConfig).unverifiedEnabled = true;
 	communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 });
 
