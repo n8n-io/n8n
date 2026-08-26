@@ -1,0 +1,48 @@
+packages/cli/src/services/project.service.ee.ts
+  s_cc728b598484e1::t_1d354780fe3c74 389-392,396
+  s_cc728b598484e1::t_c7a93add909fe6 393-395,397-398,403-455
+  s_cc728b598484e1::t_90c0e1ae57abfd 36
+  s_cc728b598484e1::t_d65bf3d391f247 919-920,922,929-940
+  s_cc728b598484e1::t_9025c3449ebb43 921,923-928
+packages/cli/src/public-api/v1/handlers/projects/projects.handler.ts
+  s_cc728b598484e1::t_e7e94112bb35a0 65,73-80,82
+  s_cc728b598484e1::t_6ed11443c00671 142
+  s_cc728b598484e1::t_d0b8ace307e51c 67-72
+  s_cc728b598484e1::t_5a289749998edf 118-130
+  s_cc728b598484e1::t_748956a88f120d 174
+  s_cc728b598484e1::t_796ec1745b66bb 23-26
+  s_cc728b598484e1::t_6639f4003f0b4d 94-104
+packages/@n8n/db/src/repositories/project.repository.ts
+  s_cc728b598484e1::t_ba84339b48834e 3
+  s_cc728b598484e1::t_63eccba3ee5ded 46-49
+packages/cli/src/controllers/project.controller.ts
+  s_cc728b598484e1::t_5f1552d1df4385 136
+  s_cc728b598484e1::t_524f6363f12292 9
+  s_cc728b598484e1::t_9c039c19c5aa6c 111
+  s_cc728b598484e1::t_8d817347090753 126
+  s_cc728b598484e1::t_3b39b3ea4417df 23
+packages/cli/src/controllers/__tests__/project.controller.test.ts
+  s_cc728b598484e1::t_02a59f73ee53bc 2
+packages/cli/test/integration/public-api/projects.test.ts
+  s_cc728b598484e1::t_7cc5c3dcad205a 14
+  s_cc728b598484e1::t_9ba01ff5c42fc8 167-171
+  s_cc728b598484e1::t_db508ff7f60c23 265-271
+  s_cc728b598484e1::t_b1e9b1b0e97718 361-365
+  s_cc728b598484e1::t_a56df09ac94f4a 28-29,36-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce03351acba1268c9cbb897ddd78c49f86d7b22a",
+  "prompts": {},
+  "sessions": {
+    "s_cc728b598484e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e67a9c6-e181-4e1f-895c-e5e45bed4238",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}
