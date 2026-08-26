@@ -1,3 +1,4 @@
+import type { WorkflowReviewWorkflowCauseActivityType } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -22,6 +23,15 @@ type PendingDeleteCapture = {
 
 /** A request a cause-recording pass closed, with the actor to attribute the close telemetry to. */
 type ClosedRequest = { requestId: string; actorKind: 'user' | 'system'; userId: string | null };
+
+const CLOSE_TRIGGER_BY_ACTIVITY_TYPE = {
+	'workflow.archived': 'workflow-archived',
+	'workflow.moved': 'workflow-moved',
+	'workflow.deleted': 'workflow-deleted',
+} as const satisfies Record<
+	WorkflowReviewWorkflowCauseActivityType,
+	'workflow-archived' | 'workflow-moved' | 'workflow-deleted'
+>;
 
 /**
  * A delete that never completes leaves its capture behind; the map is bounded so those
@@ -227,9 +237,8 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 		userId: string | null,
 	): Promise<void> {
 		const actorKind = userId === null ? 'system' : 'user';
-		const trigger = type === 'workflow.archived' ? 'workflow-archived' : 'workflow-moved';
 
-		await this.recordCauseEventsAndClose(type, trigger, workflowIds, async (ctx) => {
+		await this.recordCauseEventsAndClose(type, workflowIds, async (ctx) => {
 			// Under the lock, so the close can't race a concurrent decide/version sync.
 			const openRequests = await this.workflowReviewRequestRepository.findOpenRequestsForWorkflows(
 				workflowIds,
@@ -275,7 +284,6 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 	): Promise<void> {
 		await this.recordCauseEventsAndClose(
 			'workflow.deleted',
-			'workflow-deleted',
 			batchWorkflowIds,
 			async (ctx) => {
 				const affected = new Set<string>();
@@ -315,8 +323,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 	}
 
 	private async recordCauseEventsAndClose(
-		type: 'workflow.archived' | 'workflow.moved' | 'workflow.deleted',
-		trigger: 'workflow-archived' | 'workflow-moved' | 'workflow-deleted',
+		type: WorkflowReviewWorkflowCauseActivityType,
 		logWorkflowIds: string[],
 		gather: (
 			ctx: OperationContext,
@@ -328,6 +335,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 				gather,
 			);
 
+			const trigger = CLOSE_TRIGGER_BY_ACTIVITY_TYPE[type];
 			// Ahead of the affected-ids guard below: the close is what is being reported.
 			for (const { requestId, actorKind, userId } of closedRequests) {
 				this.eventService.emit('workflow-review-closed', {
