@@ -1,18 +1,27 @@
 import { UnexpectedError, UnimplementedError, type JsonValue } from '../common';
 import type { ExternalDependencies, IStepExecutor } from '../dependencies';
-import { deriveLoops, type GraphEdge, type GraphNode, type WorkflowLoop } from '../graph';
+import {
+	deriveLoops,
+	isBatchStepConfig,
+	type GraphEdge,
+	type GraphNode,
+	type WorkflowLoop,
+} from '../graph';
+import { runBatchStep } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
 import {
 	stepKeyId,
 	isSettledStatus,
+	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
 } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
-import type { StepError, StepRecord, StepStore } from './step-store';
+import type { StepRecord, StepStore } from './step-store';
+import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
 
 /**
@@ -44,7 +53,8 @@ export class StepReadyHandler {
 		// this in the future (CAT-2938, CAT-3930).
 		const execution = await this.executionStore.loadExecution(event.executionId);
 		const node = validateStepContext(step, execution);
-		const executor = this.executorFor(step, node);
+		// The engine runs a batch step itself, so it has no executor to look up.
+		const executor = node.type === 'batch' ? undefined : this.executorFor(step, node);
 
 		if (execution.status !== 'running') {
 			// The execution is no longer running, so we don't run the step.
@@ -65,7 +75,9 @@ export class StepReadyHandler {
 		try {
 			run = {
 				ok: true,
-				outputs: await this.runStep(step, execution, node, inputs, executor),
+				outputs: executor
+					? await this.runStep(step, execution, node, inputs, executor)
+					: await this.runBatchNode(step, execution, node),
 			};
 		} catch (error) {
 			run = { ok: false, error };
@@ -105,9 +117,46 @@ export class StepReadyHandler {
 				stepId: step.id,
 				workflowId: execution.workflowId,
 				mode: execution.mode,
+				iteration: step.iteration,
 			},
 		});
 		return outputs;
+	}
+
+	/** Runs one pass of a batch node, in place of an executor. */
+	private async runBatchNode(
+		step: StepRecord,
+		execution: ExecutionRecord,
+		node: GraphNode,
+	): Promise<StepSlots> {
+		if (!isBatchStepConfig(node.config)) {
+			throw new UnexpectedError(
+				`step ${step.id} runs batch node ${step.nodeId}, whose config has no whole batch size of at least 1`,
+			);
+		}
+
+		const loops = deriveLoops(execution.graph);
+		const loop = loops.find((l) => l.batchNodeId === step.nodeId);
+		if (!loop) {
+			throw new UnexpectedError(
+				`step ${step.id} runs batch node ${step.nodeId}, which heads no loop in the execution graph`,
+			);
+		}
+
+		// An earlier loop feeding this one is read at its last pass, not its first.
+		const terminalIterations = await loadTerminalIterations(
+			this.stepStore,
+			execution.id,
+			exitSourcesInto(execution.graph, loops, [step.nodeId]),
+		);
+		const reader = createStoreLoopReader(
+			this.stepStore,
+			execution.id,
+			loops,
+			loop,
+			terminalIterations,
+		);
+		return await runBatchStep(node.config, step.iteration, reader);
 	}
 
 	/** Inputs for `node`, each slot taken from the row its edge reads. */
@@ -153,8 +202,9 @@ export class StepReadyHandler {
 	}
 
 	/**
-	 * The executor for `node`'s step type. Step types the engine runs itself
-	 * (`wait`, `subworkflow`, `batch`) don't reach this seam, and aren't built yet.
+	 * The executor for `node`'s step type. Step types the engine runs itself don't
+	 * reach this seam: `batch` is handled before it, and `wait` and `subworkflow`
+	 * aren't built yet.
 	 */
 	private executorFor(step: StepRecord, node: GraphNode): IStepExecutor {
 		if (node.type === 'v1-node') {

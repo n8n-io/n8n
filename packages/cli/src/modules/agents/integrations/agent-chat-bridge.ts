@@ -19,6 +19,7 @@ import {
 	type StoredAttachmentRef,
 } from '../agent-chat-attachment.service';
 import type { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import { AgentExecutionService } from '../agent-execution.service';
 import {
 	hashAgentSandboxPrincipal,
 	type AgentSandboxPrincipalHash,
@@ -42,9 +43,28 @@ import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { IntegrationMessageContextService } from './integration-message-context.service';
 import type { ReplyExpectation } from './integration-tools';
+import { N8NCheckpointStorage } from './n8n-checkpoint-storage';
 import { downloadDiscordAttachment } from './platforms/discord-operations';
 
 import { type InternalThread, toInternalThreadId } from './types';
+
+/**
+ * Reply sent when a message arrives while the run is parked. Leads with the
+ * suspension card's own title (e.g. `Waiting on "Approval workflow"`) so the
+ * user knows what is holding things up, and falls back to a generic line for
+ * payloads that carry no title.
+ */
+function stillWaitingNotice(suspendPayload: unknown): string {
+	const title =
+		typeof suspendPayload === 'object' &&
+		suspendPayload !== null &&
+		'title' in suspendPayload &&
+		typeof suspendPayload.title === 'string' &&
+		suspendPayload.title.length > 0
+			? suspendPayload.title
+			: "I'm still waiting on the previous step";
+	return `⏳ ${title} — use the buttons on that card and I'll continue from there.`;
+}
 
 interface AgentExecutor {
 	executeForChatPublished(config: {
@@ -65,6 +85,21 @@ interface AgentExecutor {
 		resumeData: unknown;
 		integrationType?: string;
 	}): AsyncGenerator<StreamChunk>;
+
+	/**
+	 * The thread's still-open suspension, if the run is parked on one right now.
+	 * Optional so a caller that cannot look checkpoints up (tests) simply skips
+	 * the inbound gate.
+	 */
+	findOpenSuspension?(config: {
+		agentId: string;
+		threadId: string;
+	}): Promise<OpenSuspension | null>;
+}
+
+/** Enough of a parked run to tell the user what the agent is still waiting on. */
+interface OpenSuspension {
+	suspendPayload?: unknown;
 }
 
 /**
@@ -213,6 +248,24 @@ export class AgentChatBridge {
 			async *resumeForChat(config) {
 				yield* agentService.resumeForChat(config);
 			},
+			async findOpenSuspension({ agentId: aid, threadId }) {
+				// Checkpoints carry no thread index, so the authoritative lookup parses
+				// every active checkpoint of the agent. Gate it behind a counted query
+				// on the thread's own runs: a thread that never parked one cannot have
+				// an open checkpoint, and that is the common case for inbound traffic.
+				if (!(await Container.get(AgentExecutionService).hasSuspendedRun(threadId))) {
+					return null;
+				}
+				const checkpoint = await Container.get(N8NCheckpointStorage).findSuspendedForThread(
+					aid,
+					threadId,
+				);
+				if (!checkpoint) return null;
+				const suspended = Object.values(checkpoint.pendingToolCalls ?? {}).find(
+					(toolCall) => toolCall.suspended,
+				);
+				return suspended ? { suspendPayload: suspended.suspendPayload } : null;
+			},
 		};
 		return new AgentChatBridge(
 			chat,
@@ -226,7 +279,7 @@ export class AgentChatBridge {
 			Container.get(AgentChatAttachmentService),
 			integration.type === 'discord'
 				? Container.get(OutboundHttp).requests({
-						ssrf: 'disabled', // Discord attachment URLs are restricted to its fixed CDN host
+						useDefaultSsrfPolicy: 'unsafe', // Discord attachment URLs are restricted to its fixed CDN host
 					})
 				: undefined,
 		);
@@ -294,6 +347,33 @@ export class AgentChatBridge {
 	// Thread ID resolution — single place to apply per-platform formatting
 	// ---------------------------------------------------------------------------
 
+	/**
+	 * Resume from a server-side trigger rather than a user action. Rebuilds the
+	 * platform thread from the stored agent thread id, so the continuation streams
+	 * back into the conversation the suspension was posted to.
+	 */
+	async resumeInAgentThread(
+		agentThreadId: string,
+		runId: string,
+		toolCallId: string,
+		resumeData: unknown,
+	): Promise<void> {
+		const prefix = `${this.agentId}:`;
+		const platformThreadId = agentThreadId.startsWith(prefix)
+			? agentThreadId.slice(prefix.length)
+			: agentThreadId;
+		const sdkThreadId =
+			this.integrationImpl?.formatThreadId?.toSdk(platformThreadId) ?? platformThreadId;
+
+		await this.hitlResumeHandler.executeResume(
+			this.chat.thread(sdkThreadId),
+			runId,
+			toolCallId,
+			resumeData,
+			false,
+		);
+	}
+
 	private resolvePlatformThreadId(thread: Thread<unknown, unknown>) {
 		return this.integrationImpl?.formatThreadId?.fromSdk(thread) ?? thread.id;
 	}
@@ -344,6 +424,11 @@ export class AgentChatBridge {
 		const sessionOrigin = await this.messageContextBridge.resolveSession(threadId.id);
 		const memoryThreadId = sessionOrigin ? toInternalThreadId(sessionOrigin.threadId) : threadId;
 		const memoryResourceId = sessionOrigin?.resourceId ?? resourceId;
+		// The run parks against the session it executes in, which for a bound reply
+		// is the task's thread rather than the platform one — so this has to come
+		// after the binding is resolved, and before anything is stored for a turn
+		// that is not going to run.
+		if (await this.postStillWaitingReply(thread, memoryThreadId.id)) return;
 		const { attachments, attachmentNotes } = await this.storeInboundAttachments(
 			inboundAttachments,
 			memoryThreadId.id,
@@ -446,6 +531,38 @@ export class AgentChatBridge {
 			// no-op await of the consumer's clear when that already ran.
 			await statusHandle?.clearBeforeResponse();
 		}
+	}
+
+	/**
+	 * A run parked on a suspension owns the conversation until it is resolved.
+	 * Starting a second run here would hand the model a history with the pending
+	 * tool call stripped out, so it would call the same tool again — a duplicate
+	 * side effect and a second parked run. Tell the user instead of executing,
+	 * and let them resolve the open card.
+	 *
+	 * Returns true when the message was answered with the notice and must not
+	 * start a run. A failure to post propagates: the gate has already decided not
+	 * to run, and the handler's error reply is the only thing left that can tell
+	 * the user their message went nowhere.
+	 */
+	private async postStillWaitingReply(thread: Thread, threadId: string): Promise<boolean> {
+		const open = await this.agentService.findOpenSuspension?.({
+			agentId: this.agentId,
+			threadId,
+		});
+		if (!open) return false;
+
+		try {
+			await thread.post(stillWaitingNotice(open.suspendPayload));
+		} catch (error) {
+			this.logger.warn('[AgentChatBridge] Failed to post the still-waiting notice', {
+				agentId: this.agentId,
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			throw error;
+		}
+		return true;
 	}
 
 	/**

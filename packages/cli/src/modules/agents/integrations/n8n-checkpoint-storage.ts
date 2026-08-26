@@ -172,6 +172,40 @@ export class N8NCheckpointStorage {
 		);
 	}
 
+	/**
+	 * The agent's open (unexpired, still parked) checkpoint for a thread, or
+	 * null. The authoritative "is this conversation suspended right now?"
+	 * lookup: unlike the `suspended` execution record, a checkpoint stops being
+	 * suspended the moment the run is resumed or cancelled.
+	 */
+	async findSuspendedForThread(
+		agentId: string,
+		threadId: string,
+	): Promise<SerializableAgentState | null> {
+		const rows = await this.agentCheckpointRepository.findActiveForAgent(agentId);
+		for (const row of rows) {
+			const checkpoint = this.parseSuspendedState(row.state, threadId);
+			if (checkpoint) return checkpoint;
+		}
+		return null;
+	}
+
+	private parseSuspendedState(
+		state: string | null,
+		threadId: string,
+	): SerializableAgentState | null {
+		if (!state) return null;
+		let parsed: SerializableAgentState;
+		try {
+			parsed = jsonParse<SerializableAgentState>(state);
+		} catch {
+			return null;
+		}
+		if (parsed.status !== 'suspended' || parsed.persistence?.delegated === true) return null;
+		if (parsed.persistence?.threadId !== threadId) return null;
+		return parsed;
+	}
+
 	async getStatus(key: string, agentId: string): Promise<CheckpointStatus> {
 		const checkpoint = await this.agentCheckpointRepository.findByRunIdAndAgentId(key, agentId);
 		if (!checkpoint) return { status: 'not-found' };

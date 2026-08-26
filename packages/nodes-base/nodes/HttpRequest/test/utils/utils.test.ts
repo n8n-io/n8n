@@ -1,7 +1,9 @@
 import FormData from 'form-data';
 import { Readable } from 'stream';
+import { jsonParse } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
+	IDataObject,
 	INodeExecutionData,
 	IRequestOptions,
 } from 'n8n-workflow';
@@ -132,6 +134,8 @@ describe('HTTP Node Utils', () => {
 	});
 
 	describe('sanitizeUiMessage', () => {
+		const STREAM_REPLACEMENT = 'Binary data got replaced with this text. Original was a stream.';
+
 		it('should remove large Buffers', async () => {
 			const requestOptions: IRequestOptions = {
 				method: 'POST',
@@ -141,6 +145,104 @@ describe('HTTP Node Utils', () => {
 
 			expect(sanitizeUiMessage(requestOptions, {}).body).toEqual(
 				'Binary data got replaced with this text. Original was a Buffer with a size of 900000 bytes.',
+			);
+		});
+
+		it('should remove a streamed body', () => {
+			const requestOptions: IRequestOptions = {
+				method: 'POST',
+				uri: 'https://example.com',
+				body: Readable.from(Buffer.alloc(10)),
+			};
+
+			expect(sanitizeUiMessage(requestOptions, {}).body).toEqual(STREAM_REPLACEMENT);
+		});
+
+		it('should remove a multipart upload built as form-data (node version >= 4.2)', () => {
+			const formData = new FormData();
+			formData.append('file', Readable.from(Buffer.alloc(10)), { filename: 'f.pdf' });
+			const requestOptions: IRequestOptions = {
+				method: 'POST',
+				uri: 'https://example.com',
+				formData,
+			};
+
+			expect(sanitizeUiMessage(requestOptions, {}).formData).toEqual(STREAM_REPLACEMENT);
+		});
+
+		// Below node version 4.2 (and in V1/V2) the upload sits one level down, as
+		// `{ field: { value, options } }`. `value` is a stream when binary data is
+		// stored outside the run data and a Buffer when it is inline, so a field has
+		// to be capped there just like a root body.
+		it.each([
+			['a stream', () => Readable.from(Buffer.alloc(10)), STREAM_REPLACEMENT],
+			[
+				'an oversized Buffer',
+				() => Buffer.alloc(300000),
+				'Binary data got replaced with this text. Original was a Buffer with a size of 300000 bytes.',
+			],
+		])('should replace %s nested in a formData field', (_name, upload, replacement) => {
+			const uri = 'https://example.com';
+
+			expect(
+				sanitizeUiMessage(
+					{
+						method: 'POST',
+						uri,
+						formData: {
+							file: { value: upload(), options: { filename: 'f.pdf' } },
+							name: 'invoice',
+						},
+					},
+					{},
+				).formData,
+			).toEqual({
+				file: { value: replacement, options: { filename: 'f.pdf' } },
+				name: 'invoice',
+			});
+
+			// The same upload at the root has to reach the same verdict, so the two
+			// branches cannot drift apart again.
+			expect(sanitizeUiMessage({ method: 'POST', uri, body: upload() }, {}).body).toEqual(
+				replacement,
+			);
+		});
+
+		it('should keep a Buffer nested in a formData field below the size limit', () => {
+			const sanitized = sanitizeUiMessage(
+				{
+					method: 'POST',
+					uri: 'https://example.com',
+					formData: { file: { value: Buffer.alloc(10), options: { filename: 'f.pdf' } } },
+				},
+				{},
+			).formData as IDataObject;
+
+			expect(typeof (sanitized.file as IDataObject).value).not.toBe('string');
+		});
+
+		// `__proto__` arrives as an own key on anything JSON.parse builds, and
+		// assigning it would retarget the copy's prototype and drop the key.
+		it('should keep an own __proto__ key without retargeting the prototype', () => {
+			const body = jsonParse('{"__proto__": {"injected": "yes"}, "keep": 1}');
+			const requestOptions: IRequestOptions = { method: 'POST', uri: 'https://example.com', body };
+
+			const sanitized = sanitizeUiMessage(requestOptions, {}).body as IDataObject;
+
+			expect(Object.getPrototypeOf(sanitized)).toBe(Object.prototype);
+			expect(Object.getOwnPropertyNames(sanitized)).toEqual(['__proto__', 'keep']);
+			expect(sanitized.injected).toBeUndefined();
+		});
+
+		it('should keep the placeholder when the body also carries auth data', () => {
+			const requestOptions: IRequestOptions = {
+				method: 'POST',
+				uri: 'https://example.com',
+				body: Readable.from(Buffer.alloc(10)),
+			};
+
+			expect(sanitizeUiMessage(requestOptions, { body: ['token'] }).body).toEqual(
+				STREAM_REPLACEMENT,
 			);
 		});
 

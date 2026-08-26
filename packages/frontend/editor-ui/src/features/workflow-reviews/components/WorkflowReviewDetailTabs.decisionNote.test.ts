@@ -33,8 +33,6 @@ const review: WorkflowReviewRequestDetail = {
 	id: 'req-1',
 	projectId: 'proj-1',
 	title: 'Needs review',
-	workflowName: 'My workflow',
-	workflowVersionId: null,
 	requester: null,
 	authors: [],
 	reviewers: [],
