@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { And, LessThan, MoreThan } from '@n8n/typeorm';
+import { And, In, LessThan, MoreThan } from '@n8n/typeorm';
 
 import { ActivityEvent } from '../../entities';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
@@ -79,13 +79,20 @@ describe('ActivityEventRepository', () => {
 		it('reads newest first, which is both the render order and the index order', async () => {
 			entityManager.find.mockResolvedValueOnce([]);
 
-			await repository.findFeed({ projectId: 'project1', limit: 30 });
+			await repository.findFeed({ projectIds: ['project1'], limit: 30 });
 
 			expect(entityManager.find).toHaveBeenCalledWith(ActivityEvent, {
-				where: { projectId: 'project1' },
+				where: { projectId: In(['project1']) },
 				order: { id: 'DESC' },
 				take: 30,
 			});
+		});
+
+		it('reads nothing at all when the caller may see no project', async () => {
+			const entries = await repository.findFeed({ projectIds: [], limit: 30 });
+
+			expect(entries).toEqual([]);
+			expect(entityManager.find).not.toHaveBeenCalled();
 		});
 
 		it('combines both id bounds instead of letting one overwrite the other', async () => {

@@ -63,6 +63,7 @@ import type {
 	EvaluationConfigSummary,
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
+	InstanceAiActivityService,
 	InstanceAiMcpService,
 	McpRegistryServerSummary,
 	ModelConfig,
@@ -163,6 +164,7 @@ import {
 	pruneUnreachedVerificationPinData,
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
+import { ActivityFeedService } from './activity-feed.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
@@ -287,6 +289,7 @@ export class InstanceAiAdapterService {
 		// DI (by type, not position) always provides it in a running instance.
 		private readonly evaluationConfigService?: EvaluationConfigService,
 		private readonly llmJudgeProviderRegistry?: LlmJudgeProviderRegistry,
+		private readonly activityFeed?: ActivityFeedService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -364,6 +367,10 @@ export class InstanceAiAdapterService {
 					}
 				: {}),
 			mcpService: mcpConnectionsEnabled ? this.createMcpAdapter(user) : undefined,
+			// Presence is the gate, as with the services above: no activity log, no `activity` tool.
+			...(this.globalConfig.instanceAi.activityLogEnabled && this.activityFeed
+				? { activityService: this.createActivityAdapter(user, projectId) }
+				: {}),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
 			templatesService: this.getTemplatesService(),
@@ -445,6 +452,33 @@ export class InstanceAiAdapterService {
 		return (
 			flags?.[INSTANCE_AI_MCP_CONNECTIONS_FLAG] === INSTANCE_AI_MCP_CONNECTIONS_ENABLED_VARIANT
 		);
+	}
+
+	/**
+	 * Binds the reader to this conversation's user and project, so the tool can never widen its own
+	 * scope: the visible projects are decided here, not by anything the model passes in.
+	 */
+	private createActivityAdapter(user: User, projectId?: string): InstanceAiActivityService {
+		const feed = this.activityFeed;
+		if (!feed) throw new UnexpectedError('Activity feed service is not available');
+
+		return {
+			list: async (input) =>
+				await feed.list({
+					userId: user.id,
+					...(projectId !== undefined ? { projectId } : {}),
+					limit: input.limit,
+					...(input.category !== undefined ? { category: input.category } : {}),
+					...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
+					...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
+				}),
+			expand: async (id) =>
+				await feed.expand({
+					id,
+					userId: user.id,
+					...(projectId !== undefined ? { projectId } : {}),
+				}),
+		};
 	}
 
 	private createMcpAdapter(user: User): InstanceAiMcpService {

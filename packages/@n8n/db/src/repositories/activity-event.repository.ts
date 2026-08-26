@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { And, DataSource, LessThan, MoreThan, Repository } from '@n8n/typeorm';
+import { And, DataSource, In, LessThan, MoreThan, Not, IsNull, Repository } from '@n8n/typeorm';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
 import type { IDataObject } from 'n8n-workflow';
 
@@ -19,8 +19,15 @@ export type ActivityEventInput = Pick<ActivityEvent, 'category' | 'action'> &
 
 export type ActivityFeedQuery = {
 	limit: number;
-	projectId?: string;
+	/**
+	 * The projects whose entries the caller may see. Required for any agent-facing read: without
+	 * it a read spans every project on the instance, including ones the user cannot open.
+	 * Entries with no project are excluded, since there is no way to prove they are in scope.
+	 */
+	projectIds?: string[];
 	userId?: string;
+	resourceId?: string;
+	category?: ActivityEvent['category'];
 	/** Exclusive lower bound — entries newer than an id a caller has already seen. */
 	afterId?: number;
 	/** Exclusive upper bound, for paging backwards through older entries. */
@@ -60,8 +67,15 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 	 */
 	async findFeed(query: ActivityFeedQuery): Promise<ActivityEvent[]> {
 		const where: FindOptionsWhere<ActivityEvent> = {};
-		if (query.projectId !== undefined) where.projectId = query.projectId;
+		if (query.projectIds !== undefined) {
+			// An empty allowance means nothing is visible, not everything — `In([])` would match no
+			// row on Postgres but is worth being explicit about rather than relying on it.
+			if (query.projectIds.length === 0) return [];
+			where.projectId = In(query.projectIds);
+		}
 		if (query.userId !== undefined) where.userId = query.userId;
+		if (query.resourceId !== undefined) where.resourceId = query.resourceId;
+		if (query.category !== undefined) where.category = query.category;
 
 		// Both bounds can apply at once — "what arrived while this page was open" pages an
 		// already-bounded range — so they combine rather than overwrite each other.
@@ -73,6 +87,48 @@ export class ActivityEventRepository extends Repository<ActivityEvent> {
 		else if (bounds.length === 2) where.id = And(...bounds);
 
 		return await this.find({ where, order: { id: 'DESC' }, take: query.limit });
+	}
+
+	/**
+	 * Everything recorded about one resource, newest first — the history behind a single entry, and
+	 * the read `IDX_activity_event_resource` exists for.
+	 */
+	async findByResource(
+		resourceType: NonNullable<ActivityEvent['resourceType']>,
+		resourceId: string,
+		limit: number,
+	): Promise<ActivityEvent[]> {
+		return await this.find({
+			where: { resourceType, resourceId },
+			order: { id: 'DESC' },
+			take: limit,
+		});
+	}
+
+	/** One entry by id, for expanding it. Callers check its project against their own scope. */
+	async findById(id: number): Promise<ActivityEvent | null> {
+		return await this.findOne({ where: { id } });
+	}
+
+	/**
+	 * The project a resource was last seen in, from the log's own earlier entries.
+	 *
+	 * This is the only way to scope an entry recorded after the resource is gone: by the time
+	 * `workflow-deleted` fires, the sharing rows that would name its project are deleted too.
+	 * Without it such entries have no project, and an agent-facing read has to drop them — which
+	 * would silently lose deletions, the entries most worth surfacing.
+	 */
+	async findProjectIdForResource(
+		resourceType: NonNullable<ActivityEvent['resourceType']>,
+		resourceId: string,
+	): Promise<string | undefined> {
+		const [latest] = await this.find({
+			where: { resourceType, resourceId, projectId: Not(IsNull()) },
+			order: { id: 'DESC' },
+			take: 1,
+			select: { projectId: true },
+		});
+		return latest?.projectId ?? undefined;
 	}
 
 	/** Retention by age. Returns how many entries went, so a caller can log a sweep worth noticing. */

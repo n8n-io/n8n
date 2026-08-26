@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { ActivityEvent, ActivityEventRepository } from '@n8n/db';
+import type { ActivityEvent, ActivityEventRepository, Project, ProjectRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ActivityFeedService, readLastInjectedActivityId } from '../activity-feed.service';
@@ -32,14 +32,48 @@ function entry(overrides: Partial<ActivityEvent> = {}): ActivityEvent {
 describe('ActivityFeedService', () => {
 	const repository = mock<ActivityEventRepository>();
 	const logger = mock<Logger>({ scoped: () => mock<Logger>() });
+	const projectRepository = mock<ProjectRepository>();
 
 	function createService(activityLogEnabled = true) {
 		const globalConfig = mock<GlobalConfig>({ instanceAi: { activityLogEnabled } });
-		return new ActivityFeedService(logger, globalConfig, repository);
+		return new ActivityFeedService(logger, globalConfig, repository, projectRepository);
 	}
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		projectRepository.getAccessibleProjects.mockResolvedValue([
+			mock<Project>({ id: 'project1' }),
+			mock<Project>({ id: 'project2' }),
+		]);
+	});
+
+	describe('project scope', () => {
+		it('limits an unscoped conversation to the projects the user can open', async () => {
+			repository.findFeed.mockResolvedValueOnce([entry({ id: 3 })]);
+
+			await createService().buildBlock({ userId: 'user1', sinceId: 0, now });
+
+			expect(projectRepository.getAccessibleProjects).toHaveBeenCalledWith('user1');
+			expect(repository.findFeed).toHaveBeenCalledWith(
+				expect.objectContaining({ projectIds: ['project1', 'project2'] }),
+			);
+		});
+
+		it('limits a project-scoped conversation to that project alone', async () => {
+			repository.findFeed.mockResolvedValueOnce([entry({ id: 3 })]);
+
+			await createService().buildBlock({
+				userId: 'user1',
+				projectId: 'project7',
+				sinceId: 0,
+				now,
+			});
+
+			expect(projectRepository.getAccessibleProjects).not.toHaveBeenCalled();
+			expect(repository.findFeed).toHaveBeenCalledWith(
+				expect.objectContaining({ projectIds: ['project7'] }),
+			);
+		});
 	});
 
 	it('builds nothing when the activity log is disabled', async () => {
@@ -120,7 +154,7 @@ describe('ActivityFeedService', () => {
 			'[12] · 3h ago · credential · created · "slackApi" (credential:cred9)',
 		);
 		expect(repository.findFeed).toHaveBeenCalledWith(
-			expect.objectContaining({ projectId: 'project1' }),
+			expect.objectContaining({ projectIds: ['project1'] }),
 		);
 	});
 
@@ -199,6 +233,96 @@ describe('ActivityFeedService', () => {
 		const result = await createService().buildBlock({ userId: 'user1', sinceId: 0, now });
 
 		expect(result).toBeNull();
+	});
+
+	describe('list', () => {
+		it('passes the filters through, scoped to what the caller may see', async () => {
+			repository.findFeed.mockResolvedValueOnce([entry({ id: 9, data: { nodeCount: 4 } })]);
+
+			const entries = await createService().list({
+				userId: 'user1',
+				projectId: 'project1',
+				limit: 5,
+				category: 'workflow',
+				resourceId: 'wf1',
+				beforeId: 50,
+			});
+
+			expect(repository.findFeed).toHaveBeenCalledWith({
+				limit: 5,
+				projectIds: ['project1'],
+				category: 'workflow',
+				resourceId: 'wf1',
+				beforeId: 50,
+			});
+			expect(entries).toEqual([
+				{
+					id: 9,
+					at: minutesAgo(5).toISOString(),
+					category: 'workflow',
+					action: 'saved',
+					byCurrentUser: true,
+					resourceType: 'workflow',
+					resourceId: 'wf1',
+					resourceName: 'Lead enrichment',
+					detail: { nodeCount: 4 },
+				},
+			]);
+		});
+
+		it('drops a category it does not recognise rather than filtering on it', async () => {
+			repository.findFeed.mockResolvedValueOnce([]);
+
+			await createService().list({ userId: 'user1', limit: 5, category: 'nonsense' });
+
+			expect(repository.findFeed).toHaveBeenCalledWith(
+				expect.not.objectContaining({ category: expect.anything() }),
+			);
+		});
+	});
+
+	describe('expand', () => {
+		it('returns the entry, the rest of its resource history, and where to get the live record', async () => {
+			repository.findById.mockResolvedValueOnce(
+				entry({ id: 10, category: 'execution', action: 'failed', data: { executionId: 'exec5' } }),
+			);
+			repository.findByResource.mockResolvedValueOnce([
+				entry({ id: 10, category: 'execution', action: 'failed' }),
+				entry({ id: 4, action: 'saved' }),
+			]);
+
+			const result = await createService().expand({
+				id: 10,
+				userId: 'user1',
+				projectId: 'project1',
+			});
+
+			expect(result?.entry.id).toBe(10);
+			// The entry itself is not repeated inside its own history.
+			expect(result?.resourceHistory.map((other) => other.id)).toEqual([4]);
+			expect(result?.liveRecordHint).toBe('executions(action="get", executionId="exec5")');
+		});
+
+		it("is indistinguishable from a pruned id when the entry is outside the caller's scope", async () => {
+			repository.findById.mockResolvedValueOnce(entry({ id: 10, projectId: 'other-project' }));
+
+			const result = await createService().expand({
+				id: 10,
+				userId: 'user1',
+				projectId: 'project1',
+			});
+
+			expect(result).toBeNull();
+			expect(repository.findByResource).not.toHaveBeenCalled();
+		});
+
+		it('returns nothing for an entry that has been pruned', async () => {
+			repository.findById.mockResolvedValueOnce(null);
+
+			const result = await createService().expand({ id: 999, userId: 'user1' });
+
+			expect(result).toBeNull();
+		});
 	});
 
 	describe('readLastInjectedActivityId', () => {

@@ -135,15 +135,17 @@ export class ActivityLogEventRelay extends EventRelay {
 	}
 
 	/**
-	 * The one entry whose name can never be recovered later, and no project can be resolved: by the
-	 * time this fires the workflow and its sharing rows are gone. It lands at instance level, which
-	 * is the honest place for it.
+	 * The one entry whose name can never be recovered later: by the time this fires the workflow and
+	 * its sharing rows are gone. The project comes from the log's own earlier entries instead —
+	 * without it the entry would have no project, and agent-facing reads drop those, which would
+	 * lose deletions entirely.
 	 */
 	private async onWorkflowDeleted({ user, workflowId }: RelayEventMap['workflow-deleted']) {
 		await this.record({
 			category: 'workflow',
 			action: 'deleted',
 			userId: user.id,
+			projectId: await this.recallProjectId('workflow', workflowId),
 			resourceType: 'workflow',
 			resourceId: workflowId,
 		});
@@ -228,9 +230,13 @@ export class ActivityLogEventRelay extends EventRelay {
 			category: 'credential',
 			action,
 			userId: event.user.id,
-			// Only creation carries a project; an update or delete lands at instance level. Resolving
-			// one would mean reading the credential's sharing rows on a path that gains little from it.
-			projectId: 'projectId' in event ? event.projectId : undefined,
+			// Only creation carries a project. For an update or delete the log recalls it, the same
+			// way a workflow deletion does — an entry with no project is invisible to every
+			// agent-facing read, so recovering it is what makes the entry worth writing.
+			projectId:
+				'projectId' in event && event.projectId
+					? event.projectId
+					: await this.recallProjectId('credential', event.credentialId),
 			resourceType: 'credential',
 			resourceId: event.credentialId,
 			resourceName: event.credentialType,
@@ -267,6 +273,22 @@ export class ActivityLogEventRelay extends EventRelay {
 		try {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflowId);
 			return project?.id;
+		} catch {
+			return undefined;
+		}
+	}
+
+	/**
+	 * For events that fire after the resource is gone, so no live lookup can place them. Falls back
+	 * to the project the log last saw that resource in; a resource with no recorded history stays
+	 * unscoped, and its entry will not be shown.
+	 */
+	private async recallProjectId(
+		resourceType: 'workflow' | 'credential',
+		resourceId: string,
+	): Promise<string | undefined> {
+		try {
+			return await this.activityEventRepository.findProjectIdForResource(resourceType, resourceId);
 		} catch {
 			return undefined;
 		}

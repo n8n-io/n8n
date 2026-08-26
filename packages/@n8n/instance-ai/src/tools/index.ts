@@ -36,6 +36,9 @@ const loadMcpServersTool = lazyMod(
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
+const loadActivityTool = lazyMod(
+	() => require('./activity.tool') as typeof import('./activity.tool'),
+);
 const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('./agents.tool'));
 const loadBuildAgentTool = lazyMod(
 	() =>
@@ -155,6 +158,12 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 	// only — sub-agents can't offer the user a connection.
 	if (context.mcpService) {
 		tools.push([DOMAIN_TOOL_IDS.MCP_SERVERS, loadMcpServersTool().createMcpServersTool(context)]);
+	}
+
+	// Same pattern again: the adapter wires activityService only when the activity log is on, so
+	// presence is the feature flag as far as the tool layer is concerned.
+	if (context.activityService) {
+		tools.push([DOMAIN_TOOL_IDS.ACTIVITY, loadActivityTool().createActivityTool(context)]);
 	}
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {

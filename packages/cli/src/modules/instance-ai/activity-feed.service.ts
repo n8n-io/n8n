@@ -1,9 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { ActivityEventRepository } from '@n8n/db';
+import { ActivityEventRepository, ProjectRepository } from '@n8n/db';
 import type { ActivityEvent, ActivityEventCategory } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { InstanceAiActivityEntry, InstanceAiActivityExpansion } from '@n8n/instance-ai';
 import type { IDataObject } from 'n8n-workflow';
 
 import { RECENT_ACTIVITY_CLOSE_TAG, RECENT_ACTIVITY_OPEN_TAG } from './internal-messages';
@@ -23,6 +24,9 @@ const maxAgeMs = 7 * Time.days.toMilliseconds;
  * made, which is the signal actually worth carrying.
  */
 const runEntryCap = 12;
+
+/** How much of one resource's own history an expand returns. A resource cannot need more. */
+const resourceHistoryLimit = 20;
 
 /**
  * Thread-metadata key holding the highest entry id this thread has been shown. Stored per thread
@@ -61,6 +65,7 @@ export class ActivityFeedService {
 		private readonly logger: Logger,
 		private readonly globalConfig: GlobalConfig,
 		private readonly activityEventRepository: ActivityEventRepository,
+		private readonly projectRepository: ProjectRepository,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
 	}
@@ -86,7 +91,7 @@ export class ActivityFeedService {
 			const isUpdate = input.sinceId > 0;
 			const rows = await this.activityEventRepository.findFeed({
 				limit: windowSize * fetchMultiplier,
-				...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
+				projectIds: await this.visibleProjectIds(input.userId, input.projectId),
 				...(isUpdate ? { afterId: input.sinceId } : {}),
 			});
 			if (rows.length === 0) return null;
@@ -106,6 +111,71 @@ export class ActivityFeedService {
 			return null;
 		}
 	}
+
+	/** Backs `activity(action="list")` — the same log, without the window's collapsing. */
+	async list(input: {
+		userId: string;
+		projectId?: string;
+		limit: number;
+		category?: string;
+		resourceId?: string;
+		beforeId?: number;
+	}): Promise<InstanceAiActivityEntry[]> {
+		const rows = await this.activityEventRepository.findFeed({
+			limit: input.limit,
+			projectIds: await this.visibleProjectIds(input.userId, input.projectId),
+			...(isKnownCategory(input.category) ? { category: input.category } : {}),
+			...(input.resourceId !== undefined ? { resourceId: input.resourceId } : {}),
+			...(input.beforeId !== undefined ? { beforeId: input.beforeId } : {}),
+		});
+		return rows.map((row) => toActivityEntry(row, input.userId));
+	}
+
+	/**
+	 * Backs `activity(action="expand")`. Returns nothing for an entry outside the caller's project
+	 * scope, exactly as it does for one that was pruned — an id is a guess the agent may get wrong,
+	 * and the two cases must be indistinguishable from outside.
+	 */
+	async expand(input: {
+		id: number;
+		userId: string;
+		projectId?: string;
+	}): Promise<InstanceAiActivityExpansion | null> {
+		const row = await this.activityEventRepository.findById(input.id);
+		if (!row) return null;
+
+		const visible = await this.visibleProjectIds(input.userId, input.projectId);
+		if (!row.projectId || !visible.includes(row.projectId)) return null;
+
+		const history =
+			row.resourceType && row.resourceId
+				? await this.activityEventRepository.findByResource(
+						row.resourceType,
+						row.resourceId,
+						resourceHistoryLimit,
+					)
+				: [];
+
+		return {
+			entry: toActivityEntry(row, input.userId),
+			resourceHistory: history
+				.filter((other) => other.id !== row.id)
+				.map((other) => toActivityEntry(other, input.userId)),
+			...(liveRecordHint(row) ? { liveRecordHint: liveRecordHint(row) } : {}),
+		};
+	}
+
+	/**
+	 * Which projects' entries this reader may see. A project-scoped conversation sees that project
+	 * and nothing else; an unscoped one sees every project the user is a member of — never the
+	 * whole instance, which would surface names from projects they cannot open.
+	 */
+	private async visibleProjectIds(userId: string, projectId?: string): Promise<string[]> {
+		if (projectId !== undefined) return [projectId];
+
+		const projects = await this.projectRepository.getAccessibleProjects(userId);
+		return projects.map((project) => project.id);
+	}
 }
 
 /**
@@ -120,7 +190,7 @@ function collapseRuns(rows: ActivityEvent[], currentUserId: string, now: Date): 
 
 	for (const row of rows) {
 		if (!isRun(row) || !row.resourceId) {
-			entries.push(toEntry(row, currentUserId, now));
+			entries.push(toFeedEntry(row, currentUserId, now));
 			continue;
 		}
 		const key = `${row.category}:${row.resourceId}`;
@@ -131,7 +201,9 @@ function collapseRuns(rows: ActivityEvent[], currentUserId: string, now: Date): 
 
 	for (const group of runGroups.values()) {
 		entries.push(
-			group.length === 1 ? toEntry(group[0], currentUserId, now) : toCollapsedRunEntry(group, now),
+			group.length === 1
+				? toFeedEntry(group[0], currentUserId, now)
+				: toCollapsedRunEntry(group, now),
 		);
 	}
 
@@ -150,8 +222,10 @@ function capRunEntries(entries: FeedEntry[]): FeedEntry[] {
 const initialPreamble = [
 	'Recent activity on this instance, newest first. Use it to understand what the user has been',
 	'working on and what they are likely to mean — not as a task list, and not as something to',
-	'comment on unprompted. The bracketed number is a stable id for the entry; the parenthesised',
-	'ids are the resources themselves. An entry may refer to a resource that no longer exists.',
+	'comment on unprompted. The parenthesised ids are the resources themselves.',
+	'Call `activity(action="expand", id=N)` on a bracketed id to see that entry in full along with',
+	'everything else that happened to the same resource, or `activity(action="list")` to look',
+	'further back than this window. An entry may name a resource that no longer exists.',
 ];
 
 /**
@@ -162,6 +236,7 @@ const updatePreamble = [
 	'Activity since the list earlier in this conversation, newest first. Those earlier entries',
 	'still stand — these are additions, not a replacement. Read them the same way: context on what',
 	'the user has been doing, not a task list or something to comment on unprompted.',
+	'`activity(action="expand", id=N)` and `activity(action="list")` work on these ids too.',
 ];
 
 function renderBlock(entries: FeedEntry[], isUpdate: boolean): string {
@@ -174,11 +249,46 @@ function renderBlock(entries: FeedEntry[], isUpdate: boolean): string {
 	return `${RECENT_ACTIVITY_OPEN_TAG}\n${prose}\n${RECENT_ACTIVITY_CLOSE_TAG}`;
 }
 
+const knownCategories = new Set<string>(['workflow', 'execution', 'eval', 'credential']);
+
+function isKnownCategory(category: string | undefined): category is ActivityEventCategory {
+	return category !== undefined && knownCategories.has(category);
+}
+
+/** The tool's payload: the stored entry, flattened, with nothing rendered or abbreviated. */
+function toActivityEntry(row: ActivityEvent, currentUserId: string): InstanceAiActivityEntry {
+	return {
+		id: row.id,
+		at: row.createdAt.toISOString(),
+		category: row.category,
+		action: row.action,
+		byCurrentUser: row.userId === currentUserId,
+		...(row.resourceType ? { resourceType: row.resourceType } : {}),
+		...(row.resourceId ? { resourceId: row.resourceId } : {}),
+		...(row.resourceName ? { resourceName: row.resourceName } : {}),
+		...(row.data ? { detail: row.data } : {}),
+	};
+}
+
+/**
+ * Names the tool that fetches the live record, rather than fetching it here: those reads already
+ * exist, they carry their own permission checks, and duplicating them would drift from them.
+ */
+function liveRecordHint(row: ActivityEvent): string | undefined {
+	const executionId = row.data ? readString(row.data, 'executionId') : undefined;
+	if (executionId) return `executions(action="get", executionId="${executionId}")`;
+	if (row.resourceType === 'workflow' && row.resourceId) {
+		return `workflows(action="get", workflowId="${row.resourceId}")`;
+	}
+	if (row.resourceType === 'credential') return 'credentials(action="list")';
+	return undefined;
+}
+
 function isRun(row: ActivityEvent): boolean {
 	return row.category === 'execution' || row.category === 'eval';
 }
 
-function toEntry(row: ActivityEvent, currentUserId: string, now: Date): FeedEntry {
+function toFeedEntry(row: ActivityEvent, currentUserId: string, now: Date): FeedEntry {
 	const parts = [
 		`[${row.id}]`,
 		formatAge(row.createdAt, now),

@@ -26,10 +26,11 @@ export type ActivityResourceType = (typeof activityResourceTypes)[number];
  * ids needed to fetch the full record on demand.
  */
 @Entity({ name: 'activity_event' })
-// `id` trails each so a newest-first scan is served by the index alone. Only these two: this is
-// the highest-write table in the schema, so a third index waits for a read that needs it.
+// `id` trails each so a newest-first scan is served by the index alone.
 @Index('IDX_activity_event_project', ['projectId', 'id'])
 @Index('IDX_activity_event_user', ['userId', 'id'])
+// Everything about one resource, for expanding an entry into that resource's own history.
+@Index('IDX_activity_event_resource', ['resourceType', 'resourceId', 'id'])
 export class ActivityEvent extends WithCreatedAt {
 	/**
 	 * Autoincrement int, not the usual nanoid: the feed orders by id, pages on it as a cursor, and
