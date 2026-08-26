@@ -105,7 +105,7 @@ describe('preserveExistingNodePositions', () => {
 			});
 		});
 
-		it('splices into the gap when there is room between parent and child', async () => {
+		it('centres an inserted node in the gap between its parent and child', async () => {
 			const saved = workflow([node('A', [96, 96]), node('B', [320, 96]), node('D', [800, 96])]);
 			const built = workflow(
 				[node('A', [0, 0]), node('B', [224, 0]), node('D', [448, 0]), node('C', [672, 0])],
@@ -114,16 +114,16 @@ describe('preserveExistingNodePositions', () => {
 
 			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
 
-			// C fits right of B without touching D, so nothing else moves.
+			// C lands midway between B and D; nothing else moves.
 			expect(positionsByName(built)).toEqual({
 				A: [96, 96],
 				B: [320, 96],
-				C: [544, 96],
+				C: [560, 96],
 				D: [800, 96],
 			});
 		});
 
-		it('slides the downstream block right when the insertion spot is occupied', async () => {
+		it('splices between adjacent nodes without moving them when it fits the gutters', async () => {
 			const saved = workflow([node('A', [96, 96]), node('B', [320, 96]), node('E', [544, 96])]);
 			const built = workflow(
 				[node('A', [0, 0]), node('C', [224, 0]), node('B', [448, 0]), node('E', [672, 0])],
@@ -132,16 +132,100 @@ describe('preserveExistingNodePositions', () => {
 
 			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
 
-			// C takes B's old spot; B and E slide one step right, keeping their spacing.
+			// Standard spacing leaves a node-plus-gutters gap, so C slots between A and B
+			// and the survivors stay exactly where the user put them.
+			expect(positionsByName(built)).toEqual({
+				A: [96, 96],
+				C: [208, 96],
+				B: [320, 96],
+				E: [544, 96],
+			});
+		});
+
+		it('re-flows the downstream from the frontier when the spliced node cannot fit', async () => {
+			const saved = workflow([node('A', [96, 96]), node('B', [224, 96])]);
+			const built = workflow([node('A', [0, 0]), node('C', [224, 0]), node('B', [448, 0])], {
+				...wire('A', 'C'),
+				...wire('C', 'B'),
+			});
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			// No room between A and B: preservation ends at the insertion frontier.
+			// C and the downstream B rejoin the fresh frame carried by A, so the
+			// flow continues on A's row at standard spacing.
 			expect(positionsByName(built)).toEqual({
 				A: [96, 96],
 				C: [320, 96],
 				B: [544, 96],
-				E: [768, 96],
 			});
 		});
 
-		it('fans branch children onto separate rows by output index', async () => {
+		it('stretches a sticky over the opened gap when the splice pushes its nodes', async () => {
+			const saved = workflow(
+				[
+					node('A', [96, 96]),
+					node('B', [224, 96]),
+					sticky('Sticky Note', [64, 32], { width: 320, height: 240 }),
+				],
+				wire('A', 'B'),
+			);
+			const built = workflow(
+				[
+					node('A', [0, 0]),
+					node('C', [224, 0]),
+					node('B', [448, 0]),
+					sticky('Sticky Note', [0, 600], { width: 320, height: 240 }),
+				],
+				{ ...wire('A', 'C'), ...wire('C', 'B') },
+			);
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			// B re-flows with the frontier; the sticky spans the old tail start, so it
+			// widens by the tail's shift instead of moving, and keeps wrapping A, C and B.
+			expect(positionsByName(built)).toMatchObject({
+				A: [96, 96],
+				C: [320, 96],
+				B: [544, 96],
+				'Sticky Note': [64, 32],
+			});
+			const stickyNode = built.nodes.find((n) => n.name === 'Sticky Note');
+			expect(stickyNode?.parameters?.width).toBe(640);
+		});
+
+		it('sizes an added host from its resolved inputs and re-flows around the wider card', async () => {
+			const saved = workflow([node('A', [96, 96]), node('B', [320, 96])]);
+			const built = workflow(
+				[node('A', [0, 0]), node('C', [224, 0], 'n8n-nodes-base.someVendor'), node('B', [448, 0])],
+				{ ...wire('A', 'C'), ...wire('C', 'B') },
+			);
+			const ctx = {
+				workflowService: { getAsWorkflowJSON: vi.fn().mockResolvedValue(saved) },
+				nodeService: {
+					// The adapter's NodeHelpers.getNodeInputs equivalent: C's type
+					// declares a sub-input slot, so it renders as a 224px host.
+					getResolvedNodeInputs: vi.fn(
+						async (_json: WorkflowJSON, name: string) =>
+							await Promise.resolve(
+								name === 'C' ? ['main', { type: 'ai_tool', displayName: 'Tools' }] : ['main'],
+							),
+					),
+				},
+			} as unknown as InstanceAiContext;
+
+			await preserveExistingNodePositions(built, 'wf-1', ctx);
+
+			// C occupies a full host card right of A, and the re-flowed B clears
+			// its rendered width plus spacing — not just a standard 96px card.
+			expect(positionsByName(built)).toEqual({
+				A: [96, 96],
+				C: [320, 96],
+				B: [672, 96],
+			});
+		});
+
+		it('fans branch children symmetrically around the branching node', async () => {
 			const saved = workflow([node('IF', [96, 96])]);
 			const built = workflow(
 				[node('IF', [0, 0]), node('True path', [224, 0]), node('False path', [224, 150])],
@@ -157,14 +241,15 @@ describe('preserveExistingNodePositions', () => {
 
 			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
 
+			// The same fan tidy-up produces: one branch above the IF row, one below.
 			expect(positionsByName(built)).toEqual({
 				IF: [96, 96],
-				'True path': [320, 96],
-				'False path': [320, 208],
+				'True path': [320, 0],
+				'False path': [320, 192],
 			});
 		});
 
-		it('anchors a multi-parent node right of its rightmost parent at the median row', async () => {
+		it('centres a multi-parent node between its parents, one step right', async () => {
 			const saved = workflow([node('P1', [96, 96]), node('P2', [96, 304])]);
 			const built = workflow([node('P1', [0, 0]), node('P2', [0, 150]), node('Merge', [224, 75])], {
 				...wire('P1', 'Merge'),
@@ -173,7 +258,7 @@ describe('preserveExistingNodePositions', () => {
 
 			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
 
-			expect(positionsByName(built).Merge).toEqual([320, 208]);
+			expect(positionsByName(built).Merge).toEqual([320, 200]);
 		});
 
 		it('anchors a chain of added nodes link by link', async () => {
@@ -192,7 +277,54 @@ describe('preserveExistingNodePositions', () => {
 			});
 		});
 
-		it('hangs an added ai_* node below its host', async () => {
+		it('anchors each added cluster to its own neighbourhood', async () => {
+			// Two flows the user parked far apart, each getting its own new node.
+			const saved = workflow([
+				node('X', [96, 96]),
+				node('Y', [320, 96]),
+				node('P', [2000, 1000]),
+				node('Q', [2224, 1000]),
+			]);
+			const built = workflow(
+				[
+					node('X', [0, 0]),
+					node('Y', [224, 0]),
+					node('C1', [448, 0]),
+					node('P', [0, 300]),
+					node('Q', [224, 300]),
+					node('C2', [448, 300]),
+				],
+				{ ...wire('X', 'Y'), ...wire('Y', 'C1'), ...wire('P', 'Q'), ...wire('Q', 'C2') },
+			);
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			expect(positionsByName(built)).toMatchObject({
+				C1: [544, 96],
+				C2: [2448, 1000],
+			});
+		});
+
+		it('pushes an occupying node aside as a block, keeping the cluster at its anchor', async () => {
+			const saved = workflow([node('A', [96, 96]), node('Blocker', [320, 96])]);
+			const built = workflow(
+				[node('A', [0, 0]), node('Blocker', [0, 300]), node('C1', [224, 0]), node('C2', [448, 0])],
+				{ ...wire('A', 'C1'), ...wire('C1', 'C2') },
+			);
+
+			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
+
+			// The chain stays where its anchor puts it; the unrelated occupant makes
+			// way, sliding right past the cluster.
+			expect(positionsByName(built)).toEqual({
+				A: [96, 96],
+				C1: [320, 96],
+				C2: [544, 96],
+				Blocker: [768, 96],
+			});
+		});
+
+		it('hangs an added ai_* node below the centre of its host card', async () => {
 			const saved = workflow([node('Agent', [320, 96])]);
 			const built = workflow([node('Agent', [0, 0]), node('Model', [0, 150])], {
 				Model: { ai_languageModel: [[{ node: 'Agent', type: 'ai_languageModel', index: 0 }]] },
@@ -200,7 +332,7 @@ describe('preserveExistingNodePositions', () => {
 
 			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
 
-			expect(positionsByName(built).Model).toEqual([320, 288]);
+			expect(positionsByName(built).Model).toEqual([400, 320]);
 		});
 
 		it('steps past a wide configurable parent instead of assuming standard width', async () => {
@@ -259,7 +391,7 @@ describe('preserveExistingNodePositions', () => {
 			expect(positionsByName(built).C).toEqual([320, 96]);
 		});
 
-		it('stretches a sticky spanning the insertion point instead of moving it', async () => {
+		it('splices inside a sticky span without moving or resizing the sticky', async () => {
 			const saved = workflow(
 				[
 					node('A', [96, 96]),
@@ -280,14 +412,15 @@ describe('preserveExistingNodePositions', () => {
 
 			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
 
+			// C fits between A and B, so the sticky still wraps all three untouched.
 			expect(positionsByName(built)).toMatchObject({
 				A: [96, 96],
-				C: [320, 96],
-				B: [544, 96],
+				C: [208, 96],
+				B: [320, 96],
 				'Sticky Note': [64, 32],
 			});
 			const stickyNode = built.nodes.find((n) => n.name === 'Sticky Note');
-			expect(stickyNode?.parameters?.width).toBe(704);
+			expect(stickyNode?.parameters?.width).toBe(480);
 		});
 
 		it('keeps an added sticky glued to the added nodes it was laid out around', async () => {

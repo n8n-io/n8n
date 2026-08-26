@@ -1,21 +1,17 @@
 import { isRecord } from '@n8n/utils/is-record';
-import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { FreshLayoutBox, NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import {
-	CONFIGURABLE_NODE_SIZE,
-	CONFIGURATION_NODE_RADIUS,
-	CONFIGURATION_NODE_SIZE,
 	DEFAULT_NODE_SIZE,
 	GRID_SIZE,
-	NODE_MIN_INPUT_ITEMS_COUNT,
 	NODE_X_SPACING,
 	NODE_Y_SPACING,
+	calculateFreshLayout,
 	isStickyNoteType,
 } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../types';
 
 type Position = [number, number];
-type Size = [number, number];
 
 interface Box {
 	x: number;
@@ -24,38 +20,25 @@ interface Box {
 	height: number;
 }
 
-const [NODE_WIDTH, NODE_HEIGHT] = DEFAULT_NODE_SIZE;
-
-/** Row step when one parent fans out to several outputs (IF/Switch branches). */
-const BRANCH_STEP_Y = NODE_HEIGHT + GRID_SIZE;
-
-/**
- * Vertical band around the insertion row that slides right together.
- * Mirrors the editor's insert-on-connection tolerance (~2 node heights).
- */
-const SHIFT_Y_TOLERANCE = NODE_HEIGHT * 2;
-
 /** Bound on the de-overlap walk so a pathological graph can't spin. */
 const MAX_SEPARATION_STEPS = 50;
 
-const DEFAULT_STICKY_SIZE: Size = [240, 160];
+/**
+ * Vertical band around a splice in which nodes ride the push right.
+ * Mirrors the editor's insert-on-connection tolerance (~2 node heights).
+ */
+const SHIFT_Y_TOLERANCE = DEFAULT_NODE_SIZE[1] * 2;
 
-function snapToGrid(value: number): number {
-	return Math.round(value / GRID_SIZE) * GRID_SIZE;
+const DEFAULT_STICKY_SIZE: [number, number] = [240, 160];
+
+function snapUpToGrid(value: number): number {
+	return Math.ceil(value / GRID_SIZE) * GRID_SIZE;
 }
 
 function median(values: number[]): number {
 	const sorted = [...values].sort((a, b) => a - b);
 	const mid = Math.floor(sorted.length / 2);
 	return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
-}
-
-function stickyBoxOf(node: NodeJSON): Box {
-	const width =
-		typeof node.parameters?.width === 'number' ? node.parameters.width : DEFAULT_STICKY_SIZE[0];
-	const height =
-		typeof node.parameters?.height === 'number' ? node.parameters.height : DEFAULT_STICKY_SIZE[1];
-	return { x: node.position[0], y: node.position[1], width, height };
 }
 
 /** Overlap test with a one-grid-cell gutter, so nodes never end up flush. */
@@ -68,362 +51,503 @@ function intersects(a: Box, b: Box): boolean {
 	);
 }
 
-interface Wire {
-	node: string;
-	type: string;
-	/** Index of the source node's output group this wire leaves from. */
-	outputIndex: number;
-	/** Index of the target node's input this wire lands on. */
-	inputIndex: number;
+function boundingBox(boxes: Box[]): Box {
+	const minX = Math.min(...boxes.map((box) => box.x));
+	const minY = Math.min(...boxes.map((box) => box.y));
+	const maxX = Math.max(...boxes.map((box) => box.x + box.width));
+	const maxY = Math.max(...boxes.map((box) => box.y + box.height));
+	return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 
-/** Direct predecessors and successors by node name, across all connection types. */
+function stickyBoxOf(node: NodeJSON): Box {
+	const width =
+		typeof node.parameters?.width === 'number' ? node.parameters.width : DEFAULT_STICKY_SIZE[0];
+	const height =
+		typeof node.parameters?.height === 'number' ? node.parameters.height : DEFAULT_STICKY_SIZE[1];
+	return { x: node.position[0], y: node.position[1], width, height };
+}
+
+/** Directed adjacency by node name, across all connection types. */
 function buildAdjacency(json: WorkflowJSON): {
-	parentsOf: Map<string, Wire[]>;
-	childrenOf: Map<string, Wire[]>;
+	parentsOf: Map<string, Set<string>>;
+	childrenOf: Map<string, Set<string>>;
+	subsOfHost: Map<string, Set<string>>;
 } {
-	const parentsOf = new Map<string, Wire[]>();
-	const childrenOf = new Map<string, Wire[]>();
+	const parentsOf = new Map<string, Set<string>>();
+	const childrenOf = new Map<string, Set<string>>();
+	const subsOfHost = new Map<string, Set<string>>();
+	const link = (map: Map<string, Set<string>>, from: string, to: string) => {
+		let set = map.get(from);
+		if (!set) {
+			set = new Set();
+			map.set(from, set);
+		}
+		set.add(to);
+	};
 
 	for (const [source, connectionsByType] of Object.entries(json.connections ?? {})) {
 		if (!isRecord(connectionsByType)) continue;
 		for (const [type, groups] of Object.entries(connectionsByType)) {
 			if (!Array.isArray(groups)) continue;
-			groups.forEach((group, outputIndex) => {
-				if (!Array.isArray(group)) return;
+			for (const group of groups) {
+				if (!Array.isArray(group)) continue;
 				for (const connection of group) {
 					if (!isRecord(connection) || typeof connection.node !== 'string') continue;
-					const target = connection.node;
-					const inputIndex = typeof connection.index === 'number' ? connection.index : 0;
-					const wire = { type, outputIndex, inputIndex };
-					childrenOf.set(source, [...(childrenOf.get(source) ?? []), { ...wire, node: target }]);
-					parentsOf.set(target, [...(parentsOf.get(target) ?? []), { ...wire, node: source }]);
+					link(childrenOf, source, connection.node);
+					link(parentsOf, connection.node, source);
+					// Sub-nodes (models, parsers, tools) hang off their host via
+					// non-main connections; they must travel with the host.
+					if (type !== 'main') link(subsOfHost, connection.node, source);
 				}
-			});
+			}
 		}
 	}
 
-	return { parentsOf, childrenOf };
-}
-
-function isAiConnectionType(type: string): boolean {
-	return type.startsWith('ai_');
-}
-
-interface InsertSpot {
-	position: Position;
-	/** Node whose downstream slides right when the spot is occupied. */
-	shiftAnchor?: string;
+	return { parentsOf, childrenOf, subsOfHost };
 }
 
 /**
- * Places nodes the build added, mimicking the editor's insert-on-connection:
- * a new node lands one step right of its wired parent, and when that spot is
- * taken the downstream block slides right to open a gap instead of the new
- * node being shoved into whatever space is free.
+ * Places nodes the build added onto the user's canvas. Preservation ends at the
+ * insertion frontier: everything upstream of an insertion keeps its saved spot
+ * (moving only to make room), everything from the insertion onward flows fresh.
+ *
+ * The mechanism is one rule, not per-shape heuristics: lay the whole new graph
+ * out fresh with the SDK's tidy-up engine (the "ideal frame", which already
+ * handles branch fanning, AI subtrees, node sizes and spacing), then carry each
+ * connected cluster of added nodes onto the canvas by the offset that maps its
+ * surviving neighbours' ideal positions onto their saved ones. A cluster that
+ * fits there moves nothing else. When it collides, a cluster spliced into an
+ * existing connection re-flows the canvas from the frontier: the downstream
+ * survivors rejoin the fresh frame beside it, carried by the upstream anchors so
+ * the flow continues on their rows instead of zigzagging between old and new
+ * ones. A colliding cluster without a downstream side keeps its anchored spot
+ * and the occupants slide right as one block, like the editor's
+ * insert-on-connection push.
  */
 class AddedNodePlacer {
-	private readonly byName = new Map<string, NodeJSON>();
+	/** Ideal frame: fresh tidy-up layout of the full new graph. */
+	private readonly ideal: Map<string, FreshLayoutBox>;
 
-	private readonly placed = new Set<NodeJSON>();
+	private readonly parentsOf: Map<string, Set<string>>;
 
-	private readonly parentsOf: Map<string, Wire[]>;
+	private readonly childrenOf: Map<string, Set<string>>;
 
-	private readonly childrenOf: Map<string, Wire[]>;
+	private readonly subsOfHost: Map<string, Set<string>>;
 
-	/** Per-node canvas size, mirroring the layout engine's getNodeDimensions. */
-	private readonly sizeByName = new Map<string, Size>();
+	/** Saved canvas positions of surviving nodes, already restored onto the JSON. */
+	private readonly survivorsByName = new Map<string, NodeJSON>();
 
-	/** Positions the layout engine gave the added nodes, before any reconciliation. */
+	/** Non-sticky nodes already on the canvas: survivors, then clusters as they settle. */
+	private readonly settled: NodeJSON[] = [];
+
+	/** Sticky notes already on the canvas — they stretch or ride along on a splice. */
+	private readonly settledStickies: NodeJSON[] = [];
+
+	/** Positions the build gave the added nodes, before any reconciliation. */
 	private readonly builtPositions = new Map<NodeJSON, Position>();
 
 	constructor(
 		json: WorkflowJSON,
 		private readonly added: NodeJSON[],
+		nonMainInputCounts?: ReadonlyMap<string, number>,
 	) {
+		this.ideal = calculateFreshLayout(json, nonMainInputCounts);
+		({
+			parentsOf: this.parentsOf,
+			childrenOf: this.childrenOf,
+			subsOfHost: this.subsOfHost,
+		} = buildAdjacency(json));
+
 		const addedSet = new Set(added);
 		for (const node of json.nodes ?? []) {
-			if (node.name) this.byName.set(node.name, node);
-			if (!addedSet.has(node)) this.placed.add(node);
+			if (addedSet.has(node)) continue;
+			if (node.name) this.survivorsByName.set(node.name, node);
+			if (isStickyNoteType(node.type)) this.settledStickies.push(node);
+			else this.settled.push(node);
 		}
-		for (const node of added) this.builtPositions.set(node, [...node.position]);
-		({ parentsOf: this.parentsOf, childrenOf: this.childrenOf } = buildAdjacency(json));
-		this.computeSizes();
+		for (const node of added) this.builtPositions.set(node, [node.position[0], node.position[1]]);
 	}
 
-	/**
-	 * Derives each node's rendered size from the connection graph, the same way
-	 * the layout engine does: ai_* sources are small round configuration nodes,
-	 * ai_* targets are wide configurable cards sized by their ai port count, and
-	 * plain nodes grow taller with extra main inputs/outputs.
-	 */
-	private computeSizes(): void {
-		const aiConfigs = new Set<string>();
-		const aiInputTypesByHost = new Map<string, Set<string>>();
-		for (const [source, wires] of this.childrenOf) {
-			for (const wire of wires) {
-				if (!isAiConnectionType(wire.type)) continue;
-				aiConfigs.add(source);
-				const types = aiInputTypesByHost.get(wire.node) ?? new Set<string>();
-				types.add(wire.type);
-				aiInputTypesByHost.set(wire.node, types);
-			}
-		}
-
-		for (const [name, node] of this.byName) {
-			if (isStickyNoteType(node.type)) continue;
-
-			if (aiConfigs.has(name)) {
-				this.sizeByName.set(name, [CONFIGURATION_NODE_SIZE[0], CONFIGURATION_NODE_SIZE[1]]);
-				continue;
-			}
-
-			const aiInputTypes = aiInputTypesByHost.get(name);
-			if (aiInputTypes) {
-				const portCount = Math.max(NODE_MIN_INPUT_ITEMS_COUNT, aiInputTypes.size);
-				this.sizeByName.set(name, [
-					CONFIGURATION_NODE_RADIUS * 2 + GRID_SIZE * (portCount - 1) * 3,
-					CONFIGURABLE_NODE_SIZE[1],
-				]);
-				continue;
-			}
-
-			const mainInputCount = Math.max(
-				1,
-				...(this.parentsOf.get(name) ?? [])
-					.filter((wire) => !isAiConnectionType(wire.type))
-					.map((wire) => wire.inputIndex + 1),
-			);
-			const mainOutputCount = Math.max(
-				1,
-				...(this.childrenOf.get(name) ?? [])
-					.filter((wire) => !isAiConnectionType(wire.type))
-					.map((wire) => wire.outputIndex + 1),
-			);
-			const verticalHandles = Math.max(mainInputCount, mainOutputCount);
-			this.sizeByName.set(name, [
-				NODE_WIDTH,
-				NODE_HEIGHT + Math.max(0, verticalHandles - 2) * GRID_SIZE * 2,
-			]);
-		}
-	}
-
-	private sizeOf(node: NodeJSON): Size {
-		return (node.name ? this.sizeByName.get(node.name) : undefined) ?? DEFAULT_NODE_SIZE;
-	}
-
+	/** Canvas box at the node's current position, sized from the ideal frame. */
 	private boxOf(node: NodeJSON): Box {
-		const [width, height] = this.sizeOf(node);
-		return { x: node.position[0], y: node.position[1], width, height };
+		const size = node.name ? this.ideal.get(node.name) : undefined;
+		return {
+			x: node.position[0],
+			y: node.position[1],
+			width: size?.width ?? DEFAULT_NODE_SIZE[0],
+			height: size?.height ?? DEFAULT_NODE_SIZE[1],
+		};
 	}
 
 	run(): void {
-		const pending = this.added.filter((node) => !isStickyNoteType(node.type));
+		const nodes = this.added.filter((node) => !isStickyNoteType(node.type));
 		const stickies = this.added.filter((node) => isStickyNoteType(node.type));
 
-		// Worklist: place nodes as their wired neighbours get final positions, so a
-		// chain of added nodes anchors link by link off the existing canvas.
-		let progress = true;
-		while (progress && pending.length > 0) {
-			progress = false;
-			for (const node of [...pending]) {
-				const spot = this.resolveInsertSpot(node);
-				if (!spot) continue;
-				this.place(node, spot);
-				pending.splice(pending.indexOf(node), 1);
-				progress = true;
+		for (const cluster of this.clustersOf(nodes)) {
+			this.placeCluster(cluster);
+		}
+		this.followAddedStickies(stickies, nodes);
+	}
+
+	/** Weakly connected components of the added nodes, in JSON order. */
+	private clustersOf(nodes: NodeJSON[]): NodeJSON[][] {
+		const byName = new Map<string, NodeJSON>();
+		for (const node of nodes) {
+			if (node.name) byName.set(node.name, node);
+		}
+		const neighboursOf = (name: string) => [
+			...(this.parentsOf.get(name) ?? []),
+			...(this.childrenOf.get(name) ?? []),
+		];
+
+		const clusters: NodeJSON[][] = [];
+		const seen = new Set<NodeJSON>();
+		for (const node of nodes) {
+			if (seen.has(node)) continue;
+			const cluster: NodeJSON[] = [];
+			const queue = [node];
+			seen.add(node);
+			while (queue.length > 0) {
+				const current = queue.shift();
+				if (!current) break;
+				cluster.push(current);
+				for (const name of neighboursOf(current.name ?? '')) {
+					const neighbour = byName.get(name);
+					if (neighbour && !seen.has(neighbour)) {
+						seen.add(neighbour);
+						queue.push(neighbour);
+					}
+				}
+			}
+			clusters.push(cluster);
+		}
+		return clusters;
+	}
+
+	/** Surviving nodes wired into (upstream) and out of (downstream) the cluster. */
+	private anchorsOf(cluster: NodeJSON[]): { upstream: NodeJSON[]; downstream: NodeJSON[] } {
+		const upstream = new Map<string, NodeJSON>();
+		const downstream = new Map<string, NodeJSON>();
+		for (const member of cluster) {
+			for (const name of this.parentsOf.get(member.name ?? '') ?? []) {
+				const survivor = this.survivorsByName.get(name);
+				if (survivor && !isStickyNoteType(survivor.type)) upstream.set(name, survivor);
+			}
+			for (const name of this.childrenOf.get(member.name ?? '') ?? []) {
+				const survivor = this.survivorsByName.get(name);
+				if (survivor && !isStickyNoteType(survivor.type)) downstream.set(name, survivor);
+			}
+		}
+		return { upstream: [...upstream.values()], downstream: [...downstream.values()] };
+	}
+
+	private placeCluster(cluster: NodeJSON[]): void {
+		// Nodes the ideal frame couldn't lay out (unnamed or duplicate-named) keep
+		// their built position and are only nudged clear of the canvas.
+		const placeable = cluster.filter((node) => node.name && this.ideal.has(node.name));
+		const placeableSet = new Set(placeable);
+		const strays = cluster.filter((node) => !placeableSet.has(node));
+
+		if (placeable.length > 0) {
+			const [deltaX, deltaY] = this.resolveClusterDelta(placeable);
+			for (const node of placeable) {
+				const box = this.ideal.get(node.name ?? '');
+				if (!box) continue;
+				node.position = [box.x + deltaX, box.y + deltaY];
+			}
+
+			const { upstream, downstream } = this.anchorsOf(placeable);
+			const collides = placeable.some((node) =>
+				this.settled.some((other) => intersects(this.boxOf(node), this.boxOf(other))),
+			);
+			// No room where the anchoring put it. A splice (anchors on both sides)
+			// re-flows everything from the frontier so old and new rows don't fight;
+			// otherwise the canvas makes way and the cluster keeps its anchored spot.
+			if (collides && upstream.length > 0 && downstream.length > 0) {
+				this.reflowFromFrontier(placeable, upstream, downstream);
+			} else {
+				if (collides) this.openGap(placeable);
+				this.settle(placeable);
+			}
+		}
+		for (const stray of strays) this.settle([stray]);
+	}
+
+	/**
+	 * Preservation ends at the insertion frontier: the cluster and everything
+	 * graph-downstream of it (surviving nodes included, with their sub-nodes)
+	 * rejoin the fresh frame, carried by the upstream anchors so the flow
+	 * continues on their rows. Pinning the downstream to its old rows here is
+	 * what produced vertical zigzags — those rows described a graph that no
+	 * longer exists.
+	 */
+	private reflowFromFrontier(
+		cluster: NodeJSON[],
+		upstream: NodeJSON[],
+		downstream: NodeJSON[],
+	): void {
+		const deltas: Position[] = [];
+		for (const anchor of upstream) {
+			const idealBox = anchor.name ? this.ideal.get(anchor.name) : undefined;
+			if (!idealBox) continue;
+			deltas.push([anchor.position[0] - idealBox.x, anchor.position[1] - idealBox.y]);
+		}
+		if (deltas.length === 0) {
+			this.openGap(cluster);
+			this.settle(cluster);
+			return;
+		}
+		const deltaX = Math.round(median(deltas.map(([dx]) => dx)));
+		const deltaY = Math.round(median(deltas.map(([, dy]) => dy)));
+
+		const clusterNames = new Set(cluster.map((node) => node.name));
+		const tail = this.expandTail(downstream, clusterNames);
+		const tailSet = new Set(tail);
+		const savedTailPositions = new Map(
+			tail.map((node) => [node, [node.position[0], node.position[1]] as Position]),
+		);
+		for (let index = this.settled.length - 1; index >= 0; index--) {
+			if (tailSet.has(this.settled[index])) this.settled.splice(index, 1);
+		}
+
+		const block = [...cluster, ...tail];
+		for (const node of block) {
+			const box = node.name ? this.ideal.get(node.name) : undefined;
+			if (box) node.position = [box.x + deltaX, box.y + deltaY];
+		}
+
+		// An unrelated surviving branch can still be in the way — push it aside.
+		const collides = block.some((node) =>
+			this.settled.some((other) => intersects(this.boxOf(node), this.boxOf(other))),
+		);
+		if (collides) this.openGap(block);
+
+		this.adjustStickiesForTailShift(tail, savedTailPositions);
+		this.settle(block);
+	}
+
+	/** Surviving nodes graph-downstream of the insertion, plus their sub-nodes. */
+	private expandTail(downstream: NodeJSON[], clusterNames: Set<string | undefined>): NodeJSON[] {
+		const settledByName = new Map(this.settled.map((node) => [node.name ?? '', node]));
+		const tail: NodeJSON[] = [];
+		const seen = new Set<NodeJSON>();
+		const queue = [...downstream];
+		while (queue.length > 0) {
+			const current = queue.shift();
+			if (!current) break;
+			if (seen.has(current)) continue;
+			seen.add(current);
+			tail.push(current);
+			const names = [
+				...(this.childrenOf.get(current.name ?? '') ?? []),
+				...(this.subsOfHost.get(current.name ?? '') ?? []),
+			];
+			for (const name of names) {
+				if (clusterNames.has(name)) continue;
+				const survivor = settledByName.get(name);
+				if (survivor && !seen.has(survivor)) queue.push(survivor);
+			}
+		}
+		return tail;
+	}
+
+	/**
+	 * Surviving stickies that wrapped the re-flowed tail keep wrapping it: ones
+	 * spanning the old tail start stretch by the tail's median rightward shift,
+	 * ones entirely beyond it slide along.
+	 */
+	private adjustStickiesForTailShift(
+		tail: NodeJSON[],
+		savedPositions: Map<NodeJSON, Position>,
+	): void {
+		if (tail.length === 0) return;
+		const shifts: number[] = [];
+		const savedBoxes: Box[] = [];
+		for (const node of tail) {
+			const saved = savedPositions.get(node);
+			if (!saved) continue;
+			shifts.push(node.position[0] - saved[0]);
+			const size = node.name ? this.ideal.get(node.name) : undefined;
+			savedBoxes.push({
+				x: saved[0],
+				y: saved[1],
+				width: size?.width ?? DEFAULT_NODE_SIZE[0],
+				height: size?.height ?? DEFAULT_NODE_SIZE[1],
+			});
+		}
+		const margin = Math.round(median(shifts));
+		if (margin <= 0 || savedBoxes.length === 0) return;
+		const savedBBox = boundingBox(savedBoxes);
+		this.adjustStickies(
+			savedBBox.x,
+			margin,
+			savedBBox.y - SHIFT_Y_TOLERANCE,
+			savedBBox.y + savedBBox.height + SHIFT_Y_TOLERANCE,
+		);
+	}
+
+	/**
+	 * Offset carrying the cluster from the ideal frame onto the canvas: the median
+	 * over its surviving neighbours of (saved position − ideal position). With one
+	 * anchor the cluster lands exactly as tidy-up would place it next to that node;
+	 * with several it splits the difference, e.g. centring an inserted node between
+	 * its parent and child. No anchors means a disconnected flow — park it below.
+	 */
+	private resolveClusterDelta(cluster: NodeJSON[]): Position {
+		const anchorNames = new Set<string>();
+		for (const node of cluster) {
+			const neighbourNames = [
+				...(this.parentsOf.get(node.name ?? '') ?? []),
+				...(this.childrenOf.get(node.name ?? '') ?? []),
+			];
+			for (const name of neighbourNames) {
+				if (this.survivorsByName.has(name) && this.ideal.has(name)) anchorNames.add(name);
 			}
 		}
 
-		// Nothing wires the leftovers to the canvas — park them below it as a block,
-		// keeping the arrangement the layout engine gave them.
-		if (pending.length > 0) this.parkBelow(pending);
-
-		this.followAddedStickies(stickies);
-	}
-
-	private isPlacedNode(name: string): NodeJSON | undefined {
-		const node = this.byName.get(name);
-		return node && this.placed.has(node) && !isStickyNoteType(node.type) ? node : undefined;
-	}
-
-	private rightEdgeOf(node: NodeJSON): number {
-		return node.position[0] + this.sizeOf(node)[0];
-	}
-
-	private resolveInsertSpot(node: NodeJSON): InsertSpot | undefined {
-		if (!node.name) return undefined;
-
-		const parents = (this.parentsOf.get(node.name) ?? [])
-			.map((wire) => ({ wire, node: this.isPlacedNode(wire.node) }))
-			.filter((entry): entry is { wire: Wire; node: NodeJSON } => entry.node !== undefined);
-		const children = (this.childrenOf.get(node.name) ?? [])
-			.map((wire) => ({ wire, node: this.isPlacedNode(wire.node) }))
-			.filter((entry): entry is { wire: Wire; node: NodeJSON } => entry.node !== undefined);
-
-		const mainParents = parents.filter(({ wire }) => !isAiConnectionType(wire.type));
-		if (mainParents.length > 0) {
-			const anchor = mainParents.reduce((a, b) =>
-				this.rightEdgeOf(b.node) > this.rightEdgeOf(a.node) ? b : a,
-			);
-			const x = this.rightEdgeOf(anchor.node) + NODE_X_SPACING;
-			const y =
-				mainParents.length > 1
-					? median(mainParents.map(({ node: parent }) => parent.position[1]))
-					: anchor.node.position[1] + anchor.wire.outputIndex * BRANCH_STEP_Y;
-			return { position: [x, y], shiftAnchor: anchor.node.name };
+		const deltas: Position[] = [];
+		for (const name of anchorNames) {
+			const survivor = this.survivorsByName.get(name);
+			const idealBox = this.ideal.get(name);
+			if (!survivor || !idealBox) continue;
+			deltas.push([survivor.position[0] - idealBox.x, survivor.position[1] - idealBox.y]);
 		}
 
-		// The node feeds an ai_* port (model/tool/memory) — hang it below its host.
-		const aiHost = children.find(({ wire }) => isAiConnectionType(wire.type));
-		if (aiHost) {
-			return {
-				position: [
-					aiHost.node.position[0],
-					aiHost.node.position[1] + this.sizeOf(aiHost.node)[1] + NODE_Y_SPACING,
-				],
-			};
-		}
+		if (deltas.length === 0) return this.parkBelowDelta(cluster);
 
-		// Spliced in front of an existing node (e.g. a new trigger) — one step left of it.
-		const mainChild = children.find(({ wire }) => !isAiConnectionType(wire.type));
-		if (mainChild) {
-			return {
-				position: [
-					mainChild.node.position[0] - NODE_X_SPACING - this.sizeOf(node)[0],
-					mainChild.node.position[1],
-				],
-			};
-		}
-
-		if (parents.length > 0) {
-			const anchor = parents[0];
-			return {
-				position: [this.rightEdgeOf(anchor.node) + NODE_X_SPACING, anchor.node.position[1]],
-				shiftAnchor: anchor.node.name,
-			};
-		}
-
-		return undefined;
+		// Exact, not grid-snapped: staying on the anchor's row beats staying on the
+		// grid when the user parked the anchor off-grid.
+		return [
+			Math.round(median(deltas.map(([dx]) => dx))),
+			Math.round(median(deltas.map(([, dy]) => dy))),
+		];
 	}
 
-	private place(node: NodeJSON, spot: InsertSpot): void {
-		node.position = [snapToGrid(spot.position[0]), snapToGrid(spot.position[1])];
+	/** Left-aligned with the canvas, one row gap below everything on it. */
+	private parkBelowDelta(cluster: NodeJSON[]): Position {
+		const boxes = cluster
+			.map((node) => (node.name ? this.ideal.get(node.name) : undefined))
+			.filter((box): box is FreshLayoutBox => box !== undefined);
+		const frame =
+			this.settled.length > 0
+				? this.settled.map((node) => this.boxOf(node))
+				: this.settledStickies.map(stickyBoxOf);
+		if (boxes.length === 0 || frame.length === 0) return [0, 0];
 
-		const collider = this.findCollider(node);
-		// A pre-existing node holds the spot: slide the downstream block right to open
-		// a gap, like the editor does. Colliding with a just-placed sibling instead
-		// means a fan-out from the same parent, which spreads downward.
-		if (collider && !this.builtPositions.has(collider) && spot.shiftAnchor) {
-			const margin = this.sizeOf(node)[0] + NODE_X_SPACING;
-			this.shiftRight(this.boxOf(node), spot.shiftAnchor, node, margin);
-		}
-		this.pushDownUntilFree(node);
+		const clusterMinX = Math.min(...boxes.map((box) => box.x));
+		const clusterMinY = Math.min(...boxes.map((box) => box.y));
+		const frameMinX = Math.min(...frame.map((box) => box.x));
+		const frameBottom = Math.max(...frame.map((box) => box.y + box.height));
 
-		this.placed.add(node);
+		return [
+			Math.round(frameMinX - clusterMinX),
+			Math.round(frameBottom + NODE_Y_SPACING - clusterMinY),
+		];
 	}
 
-	private findCollider(node: NodeJSON): NodeJSON | undefined {
-		const box = this.boxOf(node);
-		for (const other of this.placed) {
-			// Stickies sit behind nodes, so they never block a spot.
-			if (other === node || isStickyNoteType(other.type)) continue;
-			if (intersects(box, this.boxOf(other))) return other;
+	/**
+	 * Opens a gap so the cluster can keep its anchored spot, mirroring the editor's
+	 * shiftDownstreamNodesPosition: everything at or beyond the insertion point —
+	 * nodes in the cluster's vertical band plus their graph-downstream nodes —
+	 * slides right as one block by the width the cluster needs. Sticky notes
+	 * spanning the insertion point stretch instead, so they keep wrapping the nodes
+	 * that slid.
+	 */
+	private openGap(cluster: NodeJSON[]): void {
+		const clusterSet = new Set(cluster);
+		const bbox = boundingBox(cluster.map((node) => this.boxOf(node)));
+		const insertX = bbox.x;
+		const margin = snapUpToGrid(bbox.width + NODE_X_SPACING);
+		const bandTop = bbox.y - SHIFT_Y_TOLERANCE;
+		const bandBottom = bbox.y + bbox.height + SHIFT_Y_TOLERANCE;
+
+		// Movers: canvas nodes overlapping or right of the insertion point in the
+		// splice's band, plus everything graph-downstream of them that also sits
+		// at or beyond the insertion point (the editor's getNodesToShift).
+		const overlapsInsertX = (box: Box) => box.x + box.width > insertX - GRID_SIZE;
+		const movers = new Set<NodeJSON>();
+		for (const node of this.settled) {
+			if (clusterSet.has(node)) continue;
+			const box = this.boxOf(node);
+			if (overlapsInsertX(box) && box.y + box.height > bandTop && box.y < bandBottom) {
+				movers.add(node);
+			}
 		}
-		return undefined;
+		const byName = new Map(this.settled.map((node) => [node.name ?? '', node]));
+		const queue = [...movers];
+		while (queue.length > 0) {
+			const current = queue.pop();
+			if (!current) break;
+			for (const name of this.childrenOf.get(current.name ?? '') ?? []) {
+				const child = byName.get(name);
+				if (!child || movers.has(child) || clusterSet.has(child)) continue;
+				if (!overlapsInsertX(this.boxOf(child))) continue;
+				movers.add(child);
+				queue.push(child);
+			}
+		}
+
+		for (const node of movers) {
+			node.position = [node.position[0] + margin, node.position[1]];
+		}
+
+		this.adjustStickies(insertX, margin, bandTop, bandBottom);
 	}
 
-	private pushDownUntilFree(node: NodeJSON): void {
-		for (let step = 0; step < MAX_SEPARATION_STEPS; step++) {
-			const collider = this.findCollider(node);
-			if (!collider) return;
-			node.position = [
-				node.position[0],
-				snapToGrid(collider.position[1] + this.sizeOf(collider)[1] + NODE_Y_SPACING),
-			];
+	/**
+	 * Stickies in the band: stretch the ones spanning the insertion point,
+	 * slide the ones entirely beyond it.
+	 */
+	private adjustStickies(
+		insertX: number,
+		margin: number,
+		bandTop: number,
+		bandBottom: number,
+	): void {
+		for (const sticky of this.settledStickies) {
+			const box = stickyBoxOf(sticky);
+			if (box.y + box.height <= bandTop || box.y >= bandBottom) continue;
+			if (box.x >= insertX) {
+				sticky.position = [sticky.position[0] + margin, sticky.position[1]];
+			} else if (box.x + box.width > insertX) {
+				sticky.parameters = { ...sticky.parameters, width: box.width + margin };
+			}
 		}
 	}
 
 	/**
-	 * Slides everything at or right of the insertion spot one step right, together
-	 * with the anchor's downstream nodes — the editor's shiftDownstreamNodesPosition.
-	 * Sticky notes spanning the insertion point stretch instead of moving, so they
-	 * keep wrapping the nodes that slid.
+	 * Safety net for residual overlaps after the gap opened (or for strays and
+	 * parked clusters): slide the cluster down as a rigid block until free.
 	 */
-	private shiftRight(insertBox: Box, anchorName: string, inserted: NodeJSON, margin: number): void {
-		const downstream = new Set<string>();
-		const queue = [anchorName];
-		while (queue.length > 0) {
-			const current = queue.shift();
-			if (current === undefined) break;
-			for (const wire of this.childrenOf.get(current) ?? []) {
-				if (downstream.has(wire.node)) continue;
-				downstream.add(wire.node);
-				queue.push(wire.node);
-			}
-		}
-
-		const inYBand = (box: Box) => Math.abs(box.y - insertBox.y) <= SHIFT_Y_TOLERANCE;
-
-		for (const node of this.placed) {
-			if (node === inserted) continue;
-			if (isStickyNoteType(node.type)) {
-				const box = stickyBoxOf(node);
-				const overlapsBand =
-					box.y <= insertBox.y + insertBox.height + SHIFT_Y_TOLERANCE &&
-					box.y + box.height >= insertBox.y - SHIFT_Y_TOLERANCE;
-				if (!overlapsBand) continue;
-				if (box.x >= insertBox.x) {
-					node.position = [node.position[0] + margin, node.position[1]];
-				} else if (box.x + box.width > insertBox.x) {
-					node.parameters = { ...node.parameters, width: box.width + margin };
+	private settle(cluster: NodeJSON[]): void {
+		for (let step = 0; step < MAX_SEPARATION_STEPS; step++) {
+			let shift = 0;
+			for (const node of cluster) {
+				const box = this.boxOf(node);
+				for (const other of this.settled) {
+					const obstacle = this.boxOf(other);
+					if (!intersects(box, obstacle)) continue;
+					shift = Math.max(shift, obstacle.y + obstacle.height + NODE_Y_SPACING - box.y);
 				}
-				continue;
 			}
-
-			const box = this.boxOf(node);
-			const rightOfInsert = box.x + box.width > insertBox.x;
-			const isDownstream = node.name !== undefined && downstream.has(node.name);
-			if ((rightOfInsert && inYBand(box)) || isDownstream) {
-				node.position = [node.position[0] + margin, node.position[1]];
+			if (shift <= 0) break;
+			const deltaY = snapUpToGrid(shift);
+			for (const node of cluster) {
+				node.position = [node.position[0], node.position[1] + deltaY];
 			}
 		}
-	}
-
-	private parkBelow(leftovers: NodeJSON[]): void {
-		const canvas = [...this.placed].filter((node) => !isStickyNoteType(node.type));
-		if (canvas.length === 0) return;
-
-		const canvasMinX = Math.min(...canvas.map((node) => node.position[0]));
-		const canvasMaxBottom = Math.max(
-			...canvas.map((node) => node.position[1] + this.sizeOf(node)[1]),
-		);
-		const builtMinX = Math.min(...leftovers.map((node) => node.position[0]));
-		const builtMinY = Math.min(...leftovers.map((node) => node.position[1]));
-		const deltaX = canvasMinX - builtMinX;
-		const deltaY = canvasMaxBottom + NODE_Y_SPACING - builtMinY;
-
-		for (const node of leftovers) {
-			node.position = [
-				snapToGrid(node.position[0] + deltaX),
-				snapToGrid(node.position[1] + deltaY),
-			];
-			this.pushDownUntilFree(node);
-			this.placed.add(node);
-		}
+		this.settled.push(...cluster);
 	}
 
 	/**
 	 * An added sticky was laid out around added nodes in the build's frame; move it
 	 * by the same offset its nearest added node ended up moving, so it still wraps it.
 	 */
-	private followAddedStickies(stickies: NodeJSON[]): void {
-		const anchors = this.added.filter((node) => !isStickyNoteType(node.type));
-
+	private followAddedStickies(stickies: NodeJSON[], anchors: NodeJSON[]): void {
 		for (const sticky of stickies) {
 			const builtSticky = this.builtPositions.get(sticky);
 			if (!builtSticky || anchors.length === 0) {
-				if (anchors.length === 0) this.parkBelow([sticky]);
+				this.parkSticky(sticky);
 				continue;
 			}
 
@@ -436,11 +560,19 @@ class AddedNodePlacer {
 			});
 			const builtNearest = this.builtPositions.get(nearest) ?? nearest.position;
 			sticky.position = [
-				snapToGrid(builtSticky[0] + nearest.position[0] - builtNearest[0]),
-				snapToGrid(builtSticky[1] + nearest.position[1] - builtNearest[1]),
+				builtSticky[0] + nearest.position[0] - builtNearest[0],
+				builtSticky[1] + nearest.position[1] - builtNearest[1],
 			];
-			this.placed.add(sticky);
 		}
+	}
+
+	/** No added nodes to follow — drop the sticky below everything on the canvas. */
+	private parkSticky(sticky: NodeJSON): void {
+		if (this.settled.length === 0) return;
+		const boxes = this.settled.map((node) => this.boxOf(node));
+		const minX = Math.min(...boxes.map((box) => box.x));
+		const bottom = Math.max(...boxes.map((box) => box.y + box.height));
+		sticky.position = [minX, bottom + NODE_Y_SPACING];
 	}
 }
 
@@ -452,10 +584,14 @@ class AddedNodePlacer {
  * engine put it — scattering a canvas the user had arranged by hand. Reconciling by
  * name here keeps the user's layout authoritative, mirroring ensureWebhookIds.
  *
- * Nodes the build added are then spliced in the way the editor inserts a node on a
- * connection: one step right of their wired parent, sliding the downstream block
- * right when the spot is occupied. Surviving nodes keep their arrangement but may
- * translate right as a block to make room.
+ * Nodes the build added are then placed the way tidy-up would arrange them around
+ * their surviving neighbours: each connected cluster of added nodes keeps its
+ * fresh-layout arrangement and is anchored onto the saved canvas via its neighbours.
+ * Preservation ends at the insertion frontier: when a spliced cluster doesn't fit,
+ * the downstream survivors rejoin the fresh flow beside it rather than pinning
+ * rows of a graph that no longer exists; a colliding cluster with no downstream
+ * side keeps its spot and the occupants slide right as one block — the editor's
+ * insert-on-connection push.
  */
 export async function preserveExistingNodePositions(
 	json: WorkflowJSON,
@@ -483,12 +619,11 @@ export async function preserveExistingNodePositions(
 	}
 	if (savedPositionsByName.size === 0) return;
 
-	const nodes = json.nodes ?? [];
 	const added: NodeJSON[] = [];
 	let survivors = 0;
-	for (const node of nodes) {
+	for (const node of json.nodes ?? []) {
 		const saved = node.name ? savedPositionsByName.get(node.name) : undefined;
-		// Restore before any geometry, so insertion math sees the real canvas.
+		// Restore before any geometry, so placement math sees the real canvas.
 		if (saved) {
 			node.position = saved;
 			survivors++;
@@ -500,5 +635,38 @@ export async function preserveExistingNodePositions(
 	// Every node is new (or renamed) — there is no prior layout left to honour.
 	if (survivors === 0) return;
 
-	if (added.length > 0) new AddedNodePlacer(json, added).run();
+	if (added.length > 0) {
+		const nonMainInputCounts = await resolveNonMainInputCounts(json, ctx);
+		new AddedNodePlacer(json, added, nonMainInputCounts).run();
+	}
+}
+
+/**
+ * Resolve each node's non-main input slot count from its real node type
+ * description, the way the editor sizes nodes: NodeHelpers.getNodeInputs
+ * evaluates expression-valued `inputs` against the node's parameters and
+ * version, so hosts render wide even with empty sub-input slots and types the
+ * static fallback list would call hosts render standard when their variant has
+ * none. Absent the adapter (sandbox, tests), layout falls back to heuristics.
+ */
+async function resolveNonMainInputCounts(
+	json: WorkflowJSON,
+	ctx: InstanceAiContext,
+): Promise<Map<string, number> | undefined> {
+	const resolveInputs = ctx.nodeService?.getResolvedNodeInputs?.bind(ctx.nodeService);
+	if (!resolveInputs) return undefined;
+
+	const counts = new Map<string, number>();
+	for (const node of json.nodes ?? []) {
+		if (!node.name || isStickyNoteType(node.type)) continue;
+		const inputs = await resolveInputs(json, node.name).catch(() => undefined);
+		// An empty list is ambiguous (trigger vs unknown type) — leave those to
+		// the heuristics, which size both as standard cards anyway.
+		if (!inputs || inputs.length === 0) continue;
+		const nonMain = inputs.filter(
+			(input) => (typeof input === 'string' ? input : input.type) !== 'main',
+		).length;
+		counts.set(node.name, nonMain);
+	}
+	return counts;
 }
