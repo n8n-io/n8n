@@ -74,6 +74,49 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		super(WorkflowEntity, dataSource.manager, transactionRunner);
 	}
 
+	/**
+	 * The most recently touched non-archived workflows in these projects, newest first, with the
+	 * total in scope.
+	 *
+	 * For telling an agent what already exists here. An event log cannot answer that: a workflow
+	 * nobody has run or edited lately produces no events, so it is invisible to a feed while being
+	 * exactly the work someone might want picked up.
+	 */
+	async findRecentForProjects(
+		projectIds: string[],
+		limit: number,
+	): Promise<{ total: number; workflows: Array<{ id: string; name: string; active: boolean }> }> {
+		if (projectIds.length === 0) return { total: 0, workflows: [] };
+
+		// A workflow can be shared into several projects, so rows can multiply; both the count and
+		// the page are made distinct on the workflow itself.
+		const base = () =>
+			this.createQueryBuilder('workflow')
+				.innerJoin('shared_workflow', 'shared', 'shared.workflowId = workflow.id')
+				.where('shared.projectId IN (:...projectIds)', { projectIds })
+				.andWhere('workflow.isArchived = :archived', { archived: false });
+
+		const totalRow = await base()
+			.select('COUNT(DISTINCT workflow.id)', 'total')
+			.getRawOne<{ total: number | string }>();
+
+		const rows = await base()
+			.select('workflow.id', 'id')
+			.addSelect('MAX(workflow.name)', 'name')
+			.addSelect('MAX(workflow.active)', 'active')
+			.addSelect('MAX(workflow.updatedAt)', 'updatedAt')
+			.groupBy('workflow.id')
+			.orderBy('MAX(workflow.updatedAt)', 'DESC')
+			.limit(limit)
+			.getRawMany<{ id: string; name: string; active: number | boolean }>();
+
+		return {
+			// Postgres returns COUNT as a bigint string.
+			total: Number(totalRow?.total ?? 0),
+			workflows: rows.map((row) => ({ id: row.id, name: row.name, active: Boolean(row.active) })),
+		};
+	}
+
 	async get(
 		where: FindOptionsWhere<WorkflowEntity>,
 		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },

@@ -1,6 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { ActivityEvent, ActivityEventRepository, Project, ProjectRepository } from '@n8n/db';
+import type {
+	ActivityEvent,
+	ActivityEventRepository,
+	Project,
+	ProjectRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ActivityFeedService, readLastInjectedActivityId } from '../activity-feed.service';
@@ -33,14 +39,22 @@ describe('ActivityFeedService', () => {
 	const repository = mock<ActivityEventRepository>();
 	const logger = mock<Logger>({ scoped: () => mock<Logger>() });
 	const projectRepository = mock<ProjectRepository>();
+	const workflowRepository = mock<WorkflowRepository>();
 
 	function createService(activityLogEnabled = true) {
 		const globalConfig = mock<GlobalConfig>({ instanceAi: { activityLogEnabled } });
-		return new ActivityFeedService(logger, globalConfig, repository, projectRepository);
+		return new ActivityFeedService(
+			logger,
+			globalConfig,
+			repository,
+			projectRepository,
+			workflowRepository,
+		);
 	}
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		workflowRepository.findRecentForProjects.mockResolvedValue({ total: 0, workflows: [] });
 		projectRepository.getAccessibleProjects.mockResolvedValue([
 			mock<Project>({ id: 'project1' }),
 			mock<Project>({ id: 'project2' }),
@@ -233,6 +247,67 @@ describe('ActivityFeedService', () => {
 		const result = await createService().buildBlock({ userId: 'user1', sinceId: 0, now });
 
 		expect(result).toBeNull();
+	});
+
+	describe('existing-work inventory', () => {
+		it('names what already exists, which the event log cannot express', async () => {
+			repository.findFeed.mockResolvedValueOnce([entry({ id: 9 })]);
+			workflowRepository.findRecentForProjects.mockResolvedValueOnce({
+				total: 12,
+				workflows: [
+					{ id: 'wfA', name: 'Missed Call Text-Back', active: false },
+					{ id: 'wfB', name: 'Nightly Sync', active: true },
+				],
+			});
+
+			const result = await createService().buildBlock({ userId: 'user1', sinceId: 0, now });
+
+			expect(result?.block).toContain('Workflows that already exist here: 12');
+			// A workflow with no activity entry at all still has to be nameable — that is the point.
+			expect(result?.block).toContain('"Missed Call Text-Back" (workflow:wfA)');
+			expect(result?.block).toContain('"Nightly Sync" (workflow:wfB) [published]');
+			expect(result?.block).toContain('and 10 more');
+		});
+
+		it('says an empty project is empty rather than staying silent about it', async () => {
+			repository.findFeed.mockResolvedValueOnce([entry({ id: 9 })]);
+			workflowRepository.findRecentForProjects.mockResolvedValueOnce({ total: 0, workflows: [] });
+
+			const result = await createService().buildBlock({ userId: 'user1', sinceId: 0, now });
+
+			expect(result?.block).toContain('no workflows yet');
+		});
+
+		it('still names existing work when nothing has happened lately', async () => {
+			// The case that motivated the inventory: workflows exist, no events at all. Gating the
+			// block on events meant the one instance that most needed "here is what exists" got
+			// silence instead.
+			repository.findFeed.mockResolvedValueOnce([]);
+			workflowRepository.findRecentForProjects.mockResolvedValueOnce({
+				total: 3,
+				workflows: [{ id: 'wfQuiet', name: 'Untouched Workflow', active: false }],
+			});
+
+			const result = await createService().buildBlock({ userId: 'user1', sinceId: 0, now });
+
+			expect(result?.block).toContain('"Untouched Workflow" (workflow:wfQuiet)');
+		});
+
+		it('stays silent only when the project is genuinely empty', async () => {
+			repository.findFeed.mockResolvedValueOnce([]);
+			workflowRepository.findRecentForProjects.mockResolvedValueOnce({ total: 0, workflows: [] });
+
+			expect(await createService().buildBlock({ userId: 'user1', sinceId: 0, now })).toBeNull();
+		});
+
+		it('leaves the inventory out of a delta, where it would just be repetition', async () => {
+			repository.findFeed.mockResolvedValueOnce([entry({ id: 43 })]);
+
+			const result = await createService().buildBlock({ userId: 'user1', sinceId: 42, now });
+
+			expect(result?.block).not.toContain('already exist here');
+			expect(workflowRepository.findRecentForProjects).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('list', () => {

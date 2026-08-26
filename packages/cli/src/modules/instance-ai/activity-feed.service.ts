@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import { ActivityEventRepository, ProjectRepository } from '@n8n/db';
+import { ActivityEventRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import type { ActivityEvent, ActivityEventCategory } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { InstanceAiActivityEntry, InstanceAiActivityExpansion } from '@n8n/instance-ai';
@@ -24,6 +24,9 @@ const maxAgeMs = 7 * Time.days.toMilliseconds;
  * made, which is the signal actually worth carrying.
  */
 const runEntryCap = 12;
+
+/** Existing workflows to name in the opening block. Enough to recognise the estate, not an index. */
+const inventorySize = 8;
 
 /** How much of one resource's own history an expand returns. A resource cannot need more. */
 const resourceHistoryLimit = 20;
@@ -66,6 +69,7 @@ export class ActivityFeedService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly activityEventRepository: ActivityEventRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly workflowRepository: WorkflowRepository,
 	) {
 		this.logger = this.logger.scoped('instance-ai');
 	}
@@ -89,22 +93,36 @@ export class ActivityFeedService {
 			// by then wrong — "ran 3×, all succeeded" sitting above "ran 40×, 2 failed" for the same
 			// workflow is worse than no second block at all. With a delta, each entry appears once.
 			const isUpdate = input.sinceId > 0;
+			const projectIds = await this.visibleProjectIds(input.userId, input.projectId);
 			const rows = await this.activityEventRepository.findFeed({
 				limit: windowSize * fetchMultiplier,
-				projectIds: await this.visibleProjectIds(input.userId, input.projectId),
+				projectIds,
 				...(isUpdate ? { afterId: input.sinceId } : {}),
 			});
-			if (rows.length === 0) return null;
 
-			const newestId = rows[0].id;
 			const now = input.now ?? new Date();
 			const fresh = rows.filter((row) => now.getTime() - row.createdAt.getTime() <= maxAgeMs);
-			if (fresh.length === 0) return null;
-
 			const entries = capRunEntries(collapseRuns(fresh, input.userId, now)).slice(0, windowSize);
-			if (entries.length === 0) return null;
 
-			return { block: renderBlock(entries, isUpdate), newestId };
+			// Only on the opening block. An event log says what changed; it cannot say what exists,
+			// because a workflow nobody has touched lately produces no events at all — and that is
+			// exactly the work a user may be asking about. Deltas skip it: the inventory has not
+			// changed in a way the earlier block failed to cover.
+			const inventory = isUpdate
+				? undefined
+				: await this.workflowRepository.findRecentForProjects(projectIds, inventorySize);
+
+			// An instance can hold plenty of work and have had nothing happen to it lately — a fresh
+			// clone, or a quiet fortnight. Returning nothing there was the whole gap: the block was
+			// gated on events, so the one case that most needed "here is what exists" got silence.
+			// Now the block stands on either leg, and only genuine emptiness suppresses it.
+			if (entries.length === 0 && !inventory?.total) return null;
+
+			// With no events at all there is no high-water mark to advance; 0 keeps the next turn
+			// eligible for a full block rather than a delta against nothing.
+			const newestId = rows.length > 0 ? rows[0].id : input.sinceId;
+
+			return { block: renderBlock(entries, isUpdate, inventory), newestId };
 		} catch (error) {
 			// Context is an enhancement; failing to build it must not fail the user's turn.
 			this.logger.debug('Failed to build the recent-activity block', { error });
@@ -245,10 +263,30 @@ const updatePreamble = [
 	'`activity(action="expand", id=N)` and `activity(action="list")` work on these ids too.',
 ];
 
-function renderBlock(entries: FeedEntry[], isUpdate: boolean): string {
+type Inventory = { total: number; workflows: Array<{ id: string; name: string; active: boolean }> };
+
+/** Named so the agent can act on one without a lookup: the id is what every tool takes. */
+function renderInventory(inventory: Inventory): string[] {
+	if (inventory.total === 0) return ['This project has no workflows yet.'];
+
+	const named = inventory.workflows.map(
+		(w) => `  - "${w.name}" (workflow:${w.id})${w.active ? ' [published]' : ''}`,
+	);
+	const more = inventory.total - inventory.workflows.length;
+	return [
+		`Workflows that already exist here: ${inventory.total}. Most recently worked on:`,
+		...named,
+		...(more > 0 ? [`  ... and ${more} more — \`workflows(action="list")\` for the rest.`] : []),
+		'',
+	];
+}
+
+function renderBlock(entries: FeedEntry[], isUpdate: boolean, inventory?: Inventory): string {
 	const prose = [
 		...(isUpdate ? updatePreamble : initialPreamble),
 		'',
+		...(inventory ? renderInventory(inventory) : []),
+		...(inventory ? ['What has happened recently:'] : []),
 		...entries.map((entry) => entry.line),
 	].join('\n');
 
