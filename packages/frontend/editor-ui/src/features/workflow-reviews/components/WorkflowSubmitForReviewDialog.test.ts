@@ -501,6 +501,22 @@ describe('WorkflowSubmitForReviewDialog', () => {
 		expect(createWorkflowReviewRequest).not.toHaveBeenCalled();
 	});
 
+	it('stays silent when the reviewer load fails after the dialog has closed', async () => {
+		let rejectLoad!: (error: unknown) => void;
+		const pendingLoad = new Promise<never>((_resolve, reject) => {
+			rejectLoad = reject;
+		});
+		vi.mocked(fetchEligibleReviewers).mockReturnValue(pendingLoad);
+		const { rerender, flushSave } = await renderDialog();
+
+		// Close before the in-flight load settles, then let it fail.
+		await rerender({ open: false, workflowId: 'workflow-1', flushSave });
+		rejectLoad(new Error('nope'));
+		await pendingLoad.catch(() => {});
+
+		expect(mockShowError).not.toHaveBeenCalled();
+	});
+
 	it('closes and hands off to the update-review flow when an open review conflicts', async () => {
 		vi.mocked(createWorkflowReviewRequest).mockRejectedValue(
 			new ResponseError('Conflict', {

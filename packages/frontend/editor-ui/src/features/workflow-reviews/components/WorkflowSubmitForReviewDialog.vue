@@ -113,7 +113,11 @@ const loadEligibleReviewers = async () => {
 watch(
 	() => props.open,
 	(isOpen) => {
-		if (!isOpen) return;
+		if (!isOpen) {
+			// Invalidate any in-flight load so it can't toast after the dialog closes.
+			loadReviewersSequence++;
+			return;
+		}
 
 		step.value = 1;
 		reviewTitle.value = '';
