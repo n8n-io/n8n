@@ -15,6 +15,9 @@ const NOWHERE: ImapConnectionOptions = {
 const RECONNECT_TIMEOUT = 45_000;
 const REPLACE_INTERVAL = 5 * 60 * 1000;
 
+/** What `restore` waits out across its six tries: 1 + 2 + 4 + 8 + 16 seconds of backoff. */
+const ALL_BACKOFF = 31_000;
+
 class FakeTransport extends EventEmitter {
 	usable = true;
 
@@ -145,15 +148,11 @@ describe('reconnecting', () => {
 				releaseSelect = () => resolve({ exists: 0 });
 			}),
 		);
-		let handedOutFirst = false;
+		const createTransport = vi.fn(() => first as unknown as ImapTransport);
 
-		const connecting = expect(
-			openWatching(() => {
-				if (handedOutFirst) throw new Error('getaddrinfo ENOTFOUND imap.test.com');
-				handedOutFirst = true;
-				return first as unknown as ImapTransport;
-			}),
-		).rejects.toThrow('ENOTFOUND');
+		const connecting = expect(openWatching(createTransport)).rejects.toThrow(
+			'Connection to the IMAP server was lost',
+		);
 
 		await vi.advanceTimersByTimeAsync(1);
 		first.emit('close');
@@ -161,6 +160,10 @@ describe('reconnecting', () => {
 		releaseSelect();
 
 		await connecting;
+		// A connection nobody holds is not restored behind the caller's back.
+		await vi.advanceTimersByTimeAsync(ALL_BACKOFF);
+		expect(createTransport).toHaveBeenCalledTimes(1);
+		expect(first.close).toHaveBeenCalled();
 	});
 
 	it('tears down a transport whose first SELECT failed', async () => {
@@ -182,7 +185,7 @@ describe('reconnecting', () => {
 		connection.onClose(onClose);
 
 		first.emit('close');
-		await vi.advanceTimersByTimeAsync(1);
+		await vi.advanceTimersByTimeAsync(ALL_BACKOFF);
 
 		expect(second.close).toHaveBeenCalled();
 		const [reason, cause] = onClose.mock.calls[0] as [string, Error];
@@ -218,12 +221,58 @@ describe('reconnecting', () => {
 		connection.onError(onError).onClose(onClose);
 
 		first.emit('close');
-		await vi.advanceTimersByTimeAsync(1);
+		await vi.advanceTimersByTimeAsync(ALL_BACKOFF);
 
 		expect(onError).not.toHaveBeenCalled();
 		const [reason, cause] = onClose.mock.calls[0] as [string, Error];
 		expect(reason).toBe('dropped');
 		expect(cause.message).toContain('ENOTFOUND');
+	});
+
+	it('tries again, so a server that is only briefly away costs the caller nothing', async () => {
+		const first = new FakeTransport();
+		const onClose = vi.fn();
+		const onReconnect = vi.fn();
+		let attempts = 0;
+
+		const connection = await openWatching(() => {
+			attempts++;
+			if (attempts === 1) return first as unknown as ImapTransport;
+			if (attempts <= 3) throw new Error('ECONNREFUSED');
+			return new FakeTransport() as unknown as ImapTransport;
+		});
+		connection.onClose(onClose).onReconnect(onReconnect);
+
+		first.emit('close');
+		// The first try fails outright, the second after 1s of backoff, the third comes back.
+		await vi.advanceTimersByTimeAsync(3000);
+
+		expect(attempts).toBe(4);
+		expect(onReconnect).toHaveBeenCalledTimes(1);
+		expect(onClose).not.toHaveBeenCalled();
+	});
+
+	it('stops waiting to try again once the caller ends the connection', async () => {
+		const first = new FakeTransport();
+		const onClose = vi.fn();
+		let attempts = 0;
+
+		const connection = await openWatching(() => {
+			attempts++;
+			if (attempts === 1) return first as unknown as ImapTransport;
+			throw new Error('still down');
+		});
+		connection.onClose(onClose);
+
+		first.emit('close');
+		await vi.advanceTimersByTimeAsync(1);
+		expect(attempts).toBe(2);
+
+		connection.end();
+		await vi.advanceTimersByTimeAsync(ALL_BACKOFF);
+
+		expect(attempts).toBe(2);
+		expect(onClose).toHaveBeenCalledExactlyOnceWith('ended', undefined);
 	});
 
 	it('gives up on an attempt that outlives the timeout', async () => {
@@ -240,7 +289,7 @@ describe('reconnecting', () => {
 		connection.onError(onError).onClose(onClose);
 
 		first.emit('close');
-		await vi.advanceTimersByTimeAsync(RECONNECT_TIMEOUT + 1);
+		await vi.advanceTimersByTimeAsync(6 * RECONNECT_TIMEOUT + ALL_BACKOFF + 1);
 
 		expect(onError).not.toHaveBeenCalled();
 		expect(onClose).toHaveBeenCalledWith(
@@ -262,7 +311,7 @@ describe('reconnecting', () => {
 		connection.onClose(onClose);
 
 		first.emit('close');
-		await vi.advanceTimersByTimeAsync(1);
+		await vi.advanceTimersByTimeAsync(ALL_BACKOFF);
 		first.emit('close');
 		await vi.advanceTimersByTimeAsync(1);
 
@@ -429,7 +478,7 @@ describe('reconnecting', () => {
 			);
 
 			first.emit('close');
-			await vi.advanceTimersByTimeAsync(1);
+			await vi.advanceTimersByTimeAsync(ALL_BACKOFF);
 
 			expect(onClose).toHaveBeenCalledWith('dropped', expect.any(Error));
 		});
@@ -509,11 +558,11 @@ describe('reconnecting', () => {
 			);
 			connection.onError(onError).onClose(onClose);
 
-			await vi.advanceTimersByTimeAsync(REPLACE_INTERVAL * 4);
+			await vi.advanceTimersByTimeAsync(REPLACE_INTERVAL + 6 * RECONNECT_TIMEOUT + ALL_BACKOFF + 1);
 
 			expect(onError).not.toHaveBeenCalled();
 			expect(onClose).toHaveBeenCalledExactlyOnceWith('dropped', expect.any(Error));
-			expect(createTransport).toHaveBeenCalledTimes(2);
+			expect(createTransport).toHaveBeenCalledTimes(1 + 6);
 		});
 
 		it('stops replacing once a drop it could not recover from closed it', async () => {
@@ -538,7 +587,7 @@ describe('reconnecting', () => {
 			first.emit('close');
 			await vi.advanceTimersByTimeAsync(REPLACE_INTERVAL * 3);
 
-			expect(createTransport).toHaveBeenCalledTimes(2);
+			expect(createTransport).toHaveBeenCalledTimes(1 + 6);
 		});
 
 		it('stops replacing once the caller ends it', async () => {
