@@ -182,48 +182,86 @@ fan-out".
 
 ---
 
-# Seed: Anthropic + Linear workflow estate
+# Seed: Anthropic + Linear estate
 
-`seed-anthropic-linear-workflows.sql` is a second, much smaller seed that goes
-straight at the database rather than the public API. Where `seedInstance.mjs`
-builds a ~500-workflow org to stress the dependency graph, this one builds
-**eight readable workflows** so a fresh account has a plausible recent history to
-look at — and, on builds that have the activity-log migrations, seeds
-`activity_event` to match.
+`seed-anthropic-linear.mjs` is a second, much smaller seed. Where `seedInstance.mjs` builds
+a ~500-workflow org through the public API to stress the dependency graph, this one writes
+straight to the database to produce **one plausible account**: ten readable workflows, the
+data tables they read, working credentials, a fortnight of runs, four Instance AI
+conversations about that estate, and a matching activity log.
 
 ```sh
-sqlite3 ~/.n8n/database.sqlite < scripts/instance-seeding/seed-anthropic-linear-workflows.sql
+pnpm build --filter=n8n-core          # once — the cipher is reused, not reimplemented
+export ANTHROPIC_API_KEY=...
+export LINEAR_API_KEY=...
+node scripts/instance-seeding/seed-anthropic-linear.mjs
 ```
 
-## Why SQL and not the API
+Fixtures live in `seed-anthropic-linear.data.mjs`; the runner holds the phases and the
+choice table. SQLite only, via `node:sqlite`, so it needs no dependency of its own.
 
-Two reasons the public API cannot cover:
+## Why not SQL, and why not the public API
 
-- **`activity_event` has no API.** It is written from the event bus, so the only
-  way to seed a history is to insert it.
-- **Timestamps.** The API stamps `createdAt`/`updatedAt` at request time, so
-  every workflow looks like it was made in the same second. SQL can spread them
-  over a fortnight, which is what makes an activity feed worth reading.
+Three things cannot be expressed in a shareable `.sql` file:
 
-The trade-off is that credentials are out of reach: their secrets are encrypted
-with the instance key. The file therefore seeds no credentials and leaves nodes
-unattached, with an optional section at the end that links whichever Anthropic
-and Linear credentials it finds.
+- **`execution_data.data` is flatted-encoded**, not JSON — a hand-written payload is
+  unreadable and unmaintainable.
+- **Data-table rows live in a table that does not exist yet.** Rows go in
+  `data_table_user_<id>`, created at runtime by `DataTableDdlService`, so the DDL has to be
+  issued first.
+- **Credential secrets are encrypted with the instance key.** See below.
+
+And two things the public API cannot do: `activity_event` is written from the event bus and
+has no endpoint, and the API stamps timestamps at request time — so every workflow would
+look one second old. Spreading the estate over a fortnight is what makes the runs list and
+the activity feed worth looking at.
+
+## Credentials, and the trap worth avoiding
+
+The instance encryption key **can** be pinned across a team via `N8N_ENCRYPTION_KEY`, and
+n8n's ciphertext **is** portable when it is — `CipherAes256CBC` uses the OpenSSL `Salted__`
+envelope, so the salt travels inside the blob and any instance with the same key string
+decrypts it. Two things stop that being the answer:
+
+1. **A key shared next to its ciphertext gives no confidentiality.** Committing an encrypted
+   token beside the key that opens it is a slower way of committing the token. This is a
+   public repo.
+2. **Pinning is a hard cutover.** If `~/.n8n/config` already holds a key and
+   `N8N_ENCRYPTION_KEY` differs, n8n refuses to start (`instance-settings.ts`, "Mismatching
+   encryption keys"). Every developer with a local instance would have to delete or edit
+   that file first.
+
+So no key is pinned and nothing secret is shared. The script reads the key this machine
+already has, takes the tokens from the environment, and encrypts locally. The script is the
+shareable artefact; the key, the tokens and the ciphertext never leave the machine. Token
+*lengths* are reported, never values.
 
 ## The bias is the point
 
-Every workflow uses the Anthropic chat model and touches Linear, and where n8n
-offers more than one node for a job exactly one was chosen and used everywhere
-(If over Switch, Filter over If-plus-NoOp, Loop Over Items over a Code loop, and
-no Code node at all). The full table of choices — and of the alternatives passed
-over — is in the file header. **Adding a workflow means following that table
-rather than picking again**; the consistency is what makes the estate usable as a
-fixture for anything that reasons about what a user tends to reach for.
+Every workflow uses the Anthropic chat model and touches Linear, and for every job where
+n8n offers a choice, exactly one node was picked and used everywhere — If over Switch,
+Filter over If-plus-NoOp, Loop Over Items over a Code loop, and **no Code node anywhere**.
+The `CHOICES` table at the top of the runner records each pick and what it was chosen over.
+**Adding a workflow means following that table rather than picking again**; the consistency
+is what makes the estate usable as a fixture for anything that reasons about what a user
+tends to reach for.
+
+## Phases, and why the order matters
+
+Data tables → credentials → workflows → executions → threads → activity. Each phase takes
+real ids from the ones before it, so the parts cannot drift: activity entries cite the
+execution ids that were actually inserted, threads reference workflows that exist, and the
+data-table workflows point at tables that were really created. A hand-maintained set of
+fixtures across six tables would have gone stale on the first edit.
+
+The activity phase is skipped with a printed note on a build whose migrations do not include
+`activity_event`, so the script is safe to run on master.
 
 ## Interaction with `seedInstance.mjs`
 
-They do not collide. `seedInstance.mjs` clears on the prefix `[seed] ` (with a
-trailing space); this file names its workflows `[seed-al] …` and matches its own
-rows on the id prefix `seedAlWf`. Running either does not disturb the other.
+They do not collide. `seedInstance.mjs` clears on the prefix `[seed] ` (trailing space); this
+script names its workflows `[seed-al] …` and matches its own rows on the `seedAl` id prefix.
 
-Both are safe to re-run: the SQL file deletes its own rows first.
+Both are safe to re-run. Verified over three consecutive runs: the counts stay at 10
+workflows, 2 credentials, 9 executions, 4 threads, 12 messages, 2 data tables and 30
+activity entries, with no duplicated credential blocks on any node.
