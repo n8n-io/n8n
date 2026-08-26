@@ -14,6 +14,7 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -41,6 +42,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:open': [value: boolean];
 	saved: [id: string];
+	delete: [id: string];
 }>();
 
 const i18n = useI18n();
@@ -108,12 +110,26 @@ const existingPublicKey = computed(() =>
 		: null,
 );
 
-const isSaveDisabled = computed(() => {
-	if (isSubmitting.value || isLoading.value) return true;
-	if (!form.name.trim() || !form.repositoryUrl.trim()) return true;
-	if (areCredentialsIncomplete.value) return true;
-	return false;
+// The payload builder already decides what an edit would actually send, so an
+// empty one means there is nothing to save.
+const hasChanges = computed(
+	() => !current.value || Object.keys(buildUpdatePayload(form, current.value)).length > 0,
+);
+
+// A half-filled credential pair blocks the whole form, which is otherwise
+// invisible when the user is editing an unrelated field.
+const saveDisabledReason = computed(() => {
+	if (!form.name.trim() || !form.repositoryUrl.trim())
+		return i18n.baseText('settings.gitConnections.form.incomplete');
+	if (areCredentialsIncomplete.value)
+		return i18n.baseText('settings.gitConnections.form.credentials.required');
+	if (!hasChanges.value) return i18n.baseText('settings.gitConnections.form.noChanges');
+	return undefined;
 });
+
+const isSaveDisabled = computed(
+	() => isSubmitting.value || isLoading.value || saveDisabledReason.value !== undefined,
+);
 
 // The dialog is rendered under `v-if`, so it mounts already open: a watcher on
 // `open` would never fire and the edit form would stay blank.
@@ -180,10 +196,6 @@ async function submit() {
 		let saved: GitConnection;
 		if (existing) {
 			const payload = buildUpdatePayload(form, existing);
-			if (Object.keys(payload).length === 0) {
-				close();
-				return;
-			}
 			saved = await updateGitConnection(rootStore.publicApiContext, existing.id, payload);
 		} else {
 			saved = await createGitConnection(rootStore.publicApiContext, buildCreatePayload(form));
@@ -442,6 +454,17 @@ async function submit() {
 
 			<N8nDialogFooter>
 				<N8nButton
+					v-if="connectionId"
+					type="button"
+					variant="destructive"
+					:class="$style.deleteButton"
+					:disabled="isSubmitting"
+					data-test-id="git-connection-delete-button"
+					@click="emit('delete', connectionId)"
+				>
+					{{ i18n.baseText('generic.delete') }}
+				</N8nButton>
+				<N8nButton
 					type="button"
 					variant="outline"
 					:disabled="isSubmitting"
@@ -450,14 +473,16 @@ async function submit() {
 				>
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
-				<N8nButton
-					type="submit"
-					:loading="isSubmitting"
-					:disabled="isSaveDisabled"
-					data-test-id="git-connection-save-button"
-				>
-					{{ i18n.baseText('generic.save') }}
-				</N8nButton>
+				<N8nTooltip :disabled="!saveDisabledReason" :content="saveDisabledReason">
+					<N8nButton
+						type="submit"
+						:loading="isSubmitting"
+						:disabled="isSaveDisabled"
+						data-test-id="git-connection-save-button"
+					>
+						{{ i18n.baseText('generic.save') }}
+					</N8nButton>
+				</N8nTooltip>
 			</N8nDialogFooter>
 		</form>
 	</N8nDialog>
@@ -486,5 +511,9 @@ async function submit() {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	margin-top: var(--spacing--xs);
+}
+
+.deleteButton {
+	margin-right: auto;
 }
 </style>
