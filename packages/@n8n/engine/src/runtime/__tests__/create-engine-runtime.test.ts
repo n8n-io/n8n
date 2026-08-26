@@ -1,10 +1,11 @@
 import type { DataSource } from '@n8n/typeorm';
 import request from 'supertest';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import type { EngineStores } from '../../database';
+import { BatchingStatusPublisher } from '../../status';
 import { createEngineRuntime } from '../create-engine-runtime';
 
 /** Enough of a `DataSource` for the stores: they only hold on to a repository. */
@@ -22,6 +23,10 @@ const runtime = () =>
 	});
 
 describe('createEngineRuntime', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	it('mounts the execution API behind authentication', async () => {
 		const unauthenticated = await request(runtime().app).post('/api/workflow-executions').send({});
 		expect(unauthenticated.status).toBe(401);
@@ -84,20 +89,21 @@ describe('createEngineRuntime', () => {
 		expect(build).toHaveBeenCalledOnce();
 	});
 
-	it('flushes buffered status updates on stop', async () => {
-		// Nothing has run, so this only proves the publisher is wired to `stop()`
-		// and that a host without a callback still stops cleanly.
-		const statusCallback = vi.fn().mockResolvedValue(undefined);
+	it('stops the batching publisher it builds for a host status callback', async () => {
+		// The flush itself belongs to `BatchingStatusPublisher.stop()` and is covered
+		// by its own tests; what only the runtime can get wrong is building the
+		// batching publisher for a host callback and awaiting its `stop()`.
+		const flushOnStop = vi.spyOn(BatchingStatusPublisher.prototype, 'stop');
 		const engine = createEngineRuntime({
 			dataSource: fakeDataSource(),
 			admittance: new AllowAllAdmittance(),
 			identityVerifier,
-			externalDependencies: () => ({ statusCallback }),
+			externalDependencies: () => ({ statusCallback: vi.fn().mockResolvedValue(undefined) }),
 		});
 		engine.start();
 
 		await expect(engine.stop()).resolves.toBeUndefined();
-		expect(statusCallback).not.toHaveBeenCalled();
+		expect(flushOnStop).toHaveBeenCalledOnce();
 	});
 
 	it('starts and stops both workers', async () => {

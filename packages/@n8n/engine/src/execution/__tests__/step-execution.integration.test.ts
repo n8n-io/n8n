@@ -90,9 +90,9 @@ describe('step execution (integration)', () => {
 				});
 				return {
 					v1StepExecutor: executor,
-					statusCallback: async (batch) => {
+					statusCallback: async (batch, signal) => {
 						updates.push(...batch);
-						await statusCallback?.(batch);
+						await statusCallback?.(batch, signal);
 					},
 				};
 			},

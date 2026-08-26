@@ -16,5 +16,9 @@ export type StatusUpdate = z.infer<typeof statusUpdateSchema>;
  * Ships a batch of updates to the host. Rejecting reports a failed delivery;
  * the engine logs and drops the batch rather than failing anything, so this
  * cannot be used to apply back pressure.
+ *
+ * The signal aborts when the send outlives its deadline and the engine stops
+ * waiting for it. Pass it to the request the callback makes, so an abandoned
+ * batch cancels that request instead of leaving it running.
  */
-export type StatusCallback = (updates: StatusUpdate[]) => Promise<void>;
+export type StatusCallback = (updates: StatusUpdate[], signal: AbortSignal) => Promise<void>;

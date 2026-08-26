@@ -1,6 +1,8 @@
 export {
 	BatchingStatusPublisher,
+	DEFAULT_MAX_PENDING_BATCHES,
 	DEFAULT_STATUS_FLUSH_INTERVAL_MS,
+	DEFAULT_STATUS_SEND_TIMEOUT_MS,
 } from './batching-status-publisher';
 export { noopStatusPublisher } from './status-publisher';
 export type { StatusPublisher } from './status-publisher';

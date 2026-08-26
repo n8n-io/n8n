@@ -6,12 +6,28 @@ import type { StatusCallback, StatusUpdate } from './status-update.types';
 export const DEFAULT_STATUS_FLUSH_INTERVAL_MS = 50;
 
 /**
+ * Deadline on one callback invocation, and on the final flush in `stop()`. A
+ * callback that hangs instead of rejecting must not wedge the chain or hold
+ * shutdown open.
+ */
+export const DEFAULT_STATUS_SEND_TIMEOUT_MS = 10_000;
+
+/** Batches allowed on the chain before new ones are dropped. */
+export const DEFAULT_MAX_PENDING_BATCHES = 20;
+
+/**
  * Buffers updates and hands them to the host's callback in batches.
  *
  * One flush is in flight at a time: each is chained onto its predecessor, so
  * batches reach the host in the order they were produced. A callback that
- * rejects is logged and its batch dropped — the data plane is the source of
- * truth, so a failed delivery costs the host freshness, never correctness.
+ * rejects, or that outlives its deadline, is logged and its batch dropped — the
+ * data plane is the source of truth, so a failed delivery costs the host
+ * freshness, never correctness. A batch dropped on its deadline aborts the
+ * signal its callback was given, so the host can cancel the request behind it.
+ *
+ * A host slower than the engine is bounded rather than buffered: at most
+ * `maxPendingBatches` batches wait on the chain, and a flush past that cap
+ * drops its own batch instead of growing the backlog.
  */
 export class BatchingStatusPublisher implements StatusPublisher {
 	private buffer: StatusUpdate[] = [];
@@ -21,12 +37,20 @@ export class BatchingStatusPublisher implements StatusPublisher {
 	/** Tail of the flush chain. Never rejects — the callback's error is caught inside. */
 	private inFlight: Promise<void> = Promise.resolve();
 
+	/** Batches on the chain: the one on the wire plus those waiting behind it. */
+	private pendingBatches = 0;
+
 	private stopped = false;
+
+	/** Set once shutdown stops waiting: batches still queued are dropped unsent. */
+	private abandoned = false;
 
 	constructor(
 		private readonly send: StatusCallback,
 		private readonly flushIntervalMs: number = DEFAULT_STATUS_FLUSH_INTERVAL_MS,
 		private readonly maxBuffered: number = MAX_STATUS_UPDATES_PER_BATCH,
+		private readonly maxPendingBatches: number = DEFAULT_MAX_PENDING_BATCHES,
+		private readonly sendTimeoutMs: number = DEFAULT_STATUS_SEND_TIMEOUT_MS,
 	) {}
 
 	publish(update: StatusUpdate): void {
@@ -35,8 +59,8 @@ export class BatchingStatusPublisher implements StatusPublisher {
 		this.buffer.push(update);
 
 		// Flushed rather than dropped on reaching the cap: a `step:completed`
-		// carries data the host cannot reconstruct from a later event. Chaining
-		// keeps memory bounded even when the host is slower than the engine.
+		// carries data the host cannot reconstruct from a later event. The backlog
+		// cap in `flush()` is what bounds memory when the host is the slow side.
 		if (this.buffer.length >= this.maxBuffered) {
 			void this.flush();
 			return;
@@ -58,13 +82,29 @@ export class BatchingStatusPublisher implements StatusPublisher {
 		const batch = this.buffer;
 		this.buffer = [];
 
+		// Dropping the newest batch keeps the backlog bounded and the delivered
+		// prefix in order. Chaining it instead would retain every batch the host
+		// has not taken yet, so a sustained slowdown would grow engine memory.
+		if (this.pendingBatches >= this.maxPendingBatches) {
+			console.warn(
+				`engine: status backlog full at ${this.pendingBatches} batches, dropped ${batch.length} update(s)`,
+			);
+			return await this.inFlight;
+		}
+
+		this.pendingBatches++;
 		this.inFlight = this.inFlight.then(async () => {
 			try {
-				await this.send(batch);
+				// Shutdown has stopped waiting, so the chain behind it is abandoned
+				// rather than worked through one deadline at a time.
+				if (this.abandoned) throw new Error('status publisher stopped before the batch was sent');
+				await this.sendWithinDeadline(batch);
 			} catch (error) {
 				// Caught inside the chain: a rejected `inFlight` would silently stop
 				// every later flush.
 				console.warn(`engine: status callback failed, dropped ${batch.length} update(s)`, error);
+			} finally {
+				this.pendingBatches--;
 			}
 		});
 
@@ -75,7 +115,43 @@ export class BatchingStatusPublisher implements StatusPublisher {
 		// Set first, so an update from a straggling handler cannot land behind the
 		// final flush and be stranded in the buffer.
 		this.stopped = true;
-		await this.flush();
+
+		// Bounded as a whole, not just per send: a backlog of hung callbacks must
+		// not stretch shutdown out one deadline at a time. Abandoning what is left
+		// costs the host freshness, never correctness.
+		const deadline = delay(this.sendTimeoutMs);
+		try {
+			await Promise.race([
+				this.flush(),
+				deadline.promise.then(() => {
+					this.abandoned = true;
+				}),
+			]);
+		} finally {
+			deadline.cancel();
+		}
+	}
+
+	/** Awaits the callback, abandoning it once it outlives its deadline. */
+	private async sendWithinDeadline(batch: StatusUpdate[]): Promise<void> {
+		const overdue = new AbortController();
+		const deadline = delay(this.sendTimeoutMs);
+		try {
+			// `Promise.race` stays subscribed to the abandoned send, so a rejection
+			// arriving after the deadline is handled rather than unhandled.
+			await Promise.race([
+				this.send(batch, overdue.signal),
+				deadline.promise.then(() => {
+					const error = new Error(`status callback did not settle within ${this.sendTimeoutMs}ms`);
+					// The engine stops waiting either way. The signal is what lets the
+					// host cancel the request behind the callback.
+					overdue.abort(error);
+					throw error;
+				}),
+			]);
+		} finally {
+			deadline.cancel();
+		}
 	}
 
 	/** Schedules the next flush, unless one is already scheduled. */
@@ -89,4 +165,14 @@ export class BatchingStatusPublisher implements StatusPublisher {
 		// A pending flush must not hold the process open on shutdown.
 		this.flushTimer.unref();
 	}
+}
+
+/** A cancellable timer as a promise. Unref'd: a deadline never holds the process open. */
+function delay(ms: number): { promise: Promise<void>; cancel: () => void } {
+	let timer: NodeJS.Timeout | undefined;
+	const promise = new Promise<void>((resolve) => {
+		timer = setTimeout(resolve, ms);
+		timer.unref();
+	});
+	return { promise, cancel: () => clearTimeout(timer) };
 }

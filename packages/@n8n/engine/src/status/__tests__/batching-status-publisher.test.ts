@@ -4,6 +4,7 @@ import { BatchingStatusPublisher } from '../batching-status-publisher';
 import type { StatusUpdate } from '../status-update.types';
 
 const FLUSH_MS = 50;
+const TIMEOUT_MS = 1000;
 
 const update = (executionId: string): StatusUpdate => ({
 	type: 'execution:completed',
@@ -16,7 +17,19 @@ const a = update('exec-a');
 const b = update('exec-b');
 const c = update('exec-c');
 
+/** Every send is handed the batch plus the signal that abandons it. */
+const signal = expect.any(AbortSignal) as AbortSignal;
+
 describe('BatchingStatusPublisher', () => {
+	const capture = () => {
+		let signal: AbortSignal | undefined;
+		const send = vi.fn(async (_batch: StatusUpdate[], given: AbortSignal) => {
+			signal = given;
+			await new Promise<void>(() => {});
+		});
+		return { send, signal: () => signal };
+	};
+
 	beforeEach(() => {
 		vi.useFakeTimers();
 	});
@@ -35,7 +48,7 @@ describe('BatchingStatusPublisher', () => {
 		publisher.publish(c);
 		await vi.advanceTimersByTimeAsync(FLUSH_MS);
 
-		expect(send).toHaveBeenCalledExactlyOnceWith([a, b, c]);
+		expect(send).toHaveBeenCalledExactlyOnceWith([a, b, c], signal);
 	});
 
 	it('sends nothing before the interval elapses', async () => {
@@ -66,7 +79,10 @@ describe('BatchingStatusPublisher', () => {
 		publisher.publish(b);
 		await vi.advanceTimersByTimeAsync(FLUSH_MS);
 
-		expect(send.mock.calls).toEqual([[[a]], [[b]]]);
+		expect(send.mock.calls).toEqual([
+			[[a], signal],
+			[[b], signal],
+		]);
 	});
 
 	it('delivers batches in order, one flush in flight at a time', async () => {
@@ -83,12 +99,15 @@ describe('BatchingStatusPublisher', () => {
 		await vi.advanceTimersByTimeAsync(FLUSH_MS);
 
 		// The second batch waits on the first, which has not resolved.
-		expect(send).toHaveBeenCalledExactlyOnceWith([a]);
+		expect(send).toHaveBeenCalledExactlyOnceWith([a], signal);
 
 		release();
 		await vi.advanceTimersByTimeAsync(0);
 
-		expect(send.mock.calls).toEqual([[[a]], [[b]]]);
+		expect(send.mock.calls).toEqual([
+			[[a], signal],
+			[[b], signal],
+		]);
 	});
 
 	it('keeps flushing after the callback rejects', async () => {
@@ -104,10 +123,125 @@ describe('BatchingStatusPublisher', () => {
 		publisher.publish(b);
 		await vi.advanceTimersByTimeAsync(FLUSH_MS);
 
-		expect(send.mock.calls).toEqual([[[a]], [[b]]]);
+		expect(send.mock.calls).toEqual([
+			[[a], signal],
+			[[b], signal],
+		]);
 		expect(console.warn).toHaveBeenCalledWith(
 			'engine: status callback failed, dropped 1 update(s)',
 			expect.any(Error),
+		);
+	});
+
+	it('abandons a batch whose callback outlives the deadline, and keeps flushing', async () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const send = vi
+			.fn()
+			.mockReturnValueOnce(new Promise<void>(() => {}))
+			.mockResolvedValue(undefined);
+		const publisher = new BatchingStatusPublisher(send, FLUSH_MS, 500, 20, TIMEOUT_MS);
+
+		publisher.publish(a);
+		await vi.advanceTimersByTimeAsync(FLUSH_MS);
+		publisher.publish(b);
+		await vi.advanceTimersByTimeAsync(FLUSH_MS);
+
+		// The second batch is still waiting on the first, which never settles.
+		expect(send).toHaveBeenCalledExactlyOnceWith([a], signal);
+
+		await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+
+		expect(send.mock.calls).toEqual([
+			[[a], signal],
+			[[b], signal],
+		]);
+		expect(console.warn).toHaveBeenCalledWith(
+			'engine: status callback failed, dropped 1 update(s)',
+			expect.objectContaining({ message: `status callback did not settle within ${TIMEOUT_MS}ms` }),
+		);
+	});
+
+	it('aborts the callback signal once the batch outlives its deadline', async () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const { send, signal } = capture();
+		const publisher = new BatchingStatusPublisher(send, FLUSH_MS, 500, 20, TIMEOUT_MS);
+
+		publisher.publish(a);
+		await vi.advanceTimersByTimeAsync(FLUSH_MS);
+		expect(signal()?.aborted).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+
+		expect(signal()?.aborted).toBe(true);
+	});
+
+	it('drops new batches instead of growing the backlog past the cap', async () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		let release: () => void = () => {};
+		const send = vi.fn().mockReturnValueOnce(
+			new Promise<void>((resolve) => {
+				release = resolve;
+			}),
+		);
+		// One batch on the wire, one waiting behind it; a third has nowhere to go.
+		const publisher = new BatchingStatusPublisher(send, FLUSH_MS, 500, 2, TIMEOUT_MS);
+
+		for (const update of [a, b, c]) {
+			publisher.publish(update);
+			await vi.advanceTimersByTimeAsync(FLUSH_MS);
+		}
+
+		release();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(send.mock.calls).toEqual([
+			[[a], signal],
+			[[b], signal],
+		]);
+		expect(console.warn).toHaveBeenCalledWith(
+			'engine: status backlog full at 2 batches, dropped 1 update(s)',
+		);
+	});
+
+	it('stops within the deadline when the callback never settles', async () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const send = vi.fn().mockReturnValue(new Promise<void>(() => {}));
+		const publisher = new BatchingStatusPublisher(send, FLUSH_MS, 500, 20, TIMEOUT_MS);
+
+		publisher.publish(a);
+		let stopped = false;
+		const stopping = publisher.stop().then(() => {
+			stopped = true;
+		});
+		await vi.advanceTimersByTimeAsync(0);
+		expect(stopped).toBe(false);
+
+		await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
+		await stopping;
+
+		expect(stopped).toBe(true);
+	});
+
+	it('drops the batches still queued once stopping gives up', async () => {
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
+		// Every send hangs, so the chain outlives the deadline stop() waits on.
+		const { send } = capture();
+		const publisher = new BatchingStatusPublisher(send, FLUSH_MS, 500, 20, TIMEOUT_MS);
+
+		for (const update of [a, b, c]) {
+			publisher.publish(update);
+			await vi.advanceTimersByTimeAsync(FLUSH_MS);
+		}
+
+		const stopping = publisher.stop();
+		await vi.advanceTimersByTimeAsync(TIMEOUT_MS * 4);
+		await stopping;
+
+		// The third batch never reaches the host: stop() gave up while it queued.
+		expect(send.mock.calls.map(([batch]) => batch)).toEqual([[a], [b]]);
+		expect(console.warn).toHaveBeenCalledWith(
+			'engine: status callback failed, dropped 1 update(s)',
+			expect.objectContaining({ message: 'status publisher stopped before the batch was sent' }),
 		);
 	});
 
@@ -120,7 +254,10 @@ describe('BatchingStatusPublisher', () => {
 		publisher.publish(c);
 		await vi.advanceTimersByTimeAsync(FLUSH_MS);
 
-		expect(send.mock.calls).toEqual([[[a, b]], [[c]]]);
+		expect(send.mock.calls).toEqual([
+			[[a, b], signal],
+			[[c], signal],
+		]);
 	});
 
 	it('delivers the buffer on stop without waiting for the interval', async () => {
@@ -130,7 +267,7 @@ describe('BatchingStatusPublisher', () => {
 		publisher.publish(a);
 		await publisher.stop();
 
-		expect(send).toHaveBeenCalledExactlyOnceWith([a]);
+		expect(send).toHaveBeenCalledExactlyOnceWith([a], signal);
 	});
 
 	it('waits on a flush already in flight when stopping', async () => {
@@ -165,7 +302,7 @@ describe('BatchingStatusPublisher', () => {
 		await publisher.stop();
 		await vi.advanceTimersByTimeAsync(FLUSH_MS * 2);
 
-		expect(send).toHaveBeenCalledExactlyOnceWith([a]);
+		expect(send).toHaveBeenCalledExactlyOnceWith([a], signal);
 	});
 
 	it('ignores updates published after stopping', async () => {
