@@ -66,8 +66,7 @@ export class ExecutionsPublicController {
 		let { limit } = query;
 		let lastId: string | undefined;
 
-		// The legacy `validCursor` middleware read `lastId` and `limit` off the cursor and answered
-		// 400 on a decode failure. An offset-form cursor was accepted and its `lastId` ignored.
+		// Legacy accepted an offset-form cursor too, ignoring its `lastId`.
 		if (query.cursor) {
 			try {
 				const decoded = decodeCursor(query.cursor);
@@ -214,7 +213,6 @@ export class ExecutionsPublicController {
 		return this.toDeletedExecutionPublicDto(execution, executionId);
 	}
 
-	/** The list item is far smaller than the single-execution response. */
 	private toExecutionListItem(execution: PublicExecution) {
 		return {
 			id: execution.id,

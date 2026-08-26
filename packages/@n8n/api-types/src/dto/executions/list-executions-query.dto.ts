@@ -8,18 +8,15 @@ import { Z } from '../../zod-class';
 export class ListExecutionsQueryDto extends Z.class({
 	includeData: booleanFromString.optional().default('false'),
 	ignoreDataSizeLimit: booleanFromString.optional().default('false'),
-	// Tri-state on purpose: `true` always redacts, `false` requests unredacted data and needs the
-	// `execution:reveal` scope, and omitted follows the workflow's redaction policy.
+	// Tri-state: `true` redacts, `false` needs the `execution:reveal` scope, omitted follows policy.
 	redactExecutionData: booleanFromString.optional(),
 	status: z.enum(ExecutionStatusList).optional(),
 	workflowId: z.string().optional(),
 	projectId: z.string().optional(),
-	// `.datetime()` reproduces the `format: date-time` check the legacy validator ran. Without it a
-	// malformed value reaches the query builder instead of answering 400.
+	// `.datetime()` reproduces the legacy `format: date-time` check, which answered 400.
 	startedAfter: z.string().datetime().optional(),
 	startedBefore: z.string().datetime().optional(),
-	// `limit` only. Spreading `publicApiPaginationSchema` would expose `offset`, which is not a
-	// Public API query param.
+	// `limit` only. Spreading the schema would expose `offset`, which is not a public query param.
 	limit: publicApiPaginationSchema.limit,
 	cursor: z.string().optional(),
 }) {}

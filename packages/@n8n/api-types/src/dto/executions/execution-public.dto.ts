@@ -59,10 +59,8 @@ export const deletedExecutionPublicSchema = z.object({
 
 export class DeletedExecutionPublicDto extends Z.class(deletedExecutionPublicSchema.shape) {}
 
-// The list returns a much smaller item than the single-execution route: ten fields always, five
-// more only with `includeData`, and `data` only when the execution stored any run data. Field order
-// here reaches both the response body and the generated spec, so it mirrors what the endpoint
-// already returns.
+// The list item is much smaller than the single-execution response. Key order reaches both the
+// response body and the generated spec, so it mirrors what the endpoint already returns.
 export const executionListItemPublicSchema = executionPublicSchema
 	.pick({
 		id: true,
