@@ -42,7 +42,7 @@
  * SQLite only, via node:sqlite, so it needs no dependency of its own.
  */
 import { DatabaseSync } from 'node:sqlite';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
@@ -166,6 +166,36 @@ function resolveEncryptionKey(folder) {
 	}
 	if (!parsed.encryptionKey) fail(`${settingsFile} holds no encryptionKey.`);
 	return { key: parsed.encryptionKey, source: settingsFile };
+}
+
+/**
+ * Why `activity_event` is absent, which is two different situations with two different fixes.
+ *
+ * The table is created by a migration. A checkout that carries that migration but a database that
+ * has never run it is the common case — n8n applies migrations on startup, so a database last
+ * touched by a different branch simply predates the table. That is worth saying out loud, because
+ * "no activity_event table" reads like the feature is missing when the feature is right here.
+ */
+function diagnoseMissingActivityTable(applied) {
+	const migrationsDir = path.join(repoRoot, 'packages/@n8n/db/src/migrations/common');
+	const inCheckout = existsSync(migrationsDir)
+		? readdirSync(migrationsDir).some((file) => file.includes('ActivityEventTable'))
+		: false;
+
+	if (!inCheckout) {
+		return ['skipped: this checkout has no activity-log migration, so the feature is not present'];
+	}
+	if (applied) {
+		return [
+			'skipped: the migration is recorded as applied but the table is gone — check the database',
+		];
+	}
+	return [
+		'skipped: this database has not run the activity-log migration yet',
+		'  the migration is in this checkout; n8n applies migrations on startup, so this',
+		'  database was last used by a build that predates it',
+		'  fix: start n8n once from this worktree, then re-run pnpm seed:account',
+	];
 }
 
 /**
@@ -603,7 +633,12 @@ console.log(`  ai threads      ${THREADS.length} threads, ${messageCount} messag
 // ---------------------------------------------------------------------------------------------
 
 if (!hasTable('activity_event')) {
-	console.log('  activity        skipped: this build has no activity_event table');
+	const applied = Boolean(
+		db.prepare("SELECT 1 FROM migrations WHERE name LIKE '%ActivityEvent%' LIMIT 1").get(),
+	);
+	for (const [index, line] of diagnoseMissingActivityTable(applied).entries()) {
+		console.log(index === 0 ? `  activity        ${line}` : `                  ${line}`);
+	}
 } else {
 	const insertActivity = db.prepare(`
 		INSERT INTO activity_event
