@@ -58,6 +58,11 @@ const stringifyQuery = (query: Record<string, unknown>): Record<string, string |
 	return result;
 };
 
+const attachSize = async <T extends { id: string }>(dataTable: T) => {
+	const sizes = await Container.get(DataTableService).getCachedSizeBytesByIds([dataTable.id]);
+	return { ...dataTable, sizeBytes: sizes.get(dataTable.id) ?? 0 };
+};
+
 type DataTableHandlers = {
 	listDataTables: PublicAPIEndpoint<DataTableRequest.List>;
 	createDataTable: PublicAPIEndpoint<DataTableRequest.Create>;
@@ -107,7 +112,14 @@ const dataTableHandlers: DataTableHandlers = {
 					sortBy,
 				});
 
-				const data = result.data.map(({ project: _project, ...rest }) => rest);
+				const sizes = await Container.get(DataTableService).getCachedSizeBytesByIds(
+					result.data.map((dataTable) => dataTable.id),
+				);
+
+				const data = result.data.map(({ project: _project, ...rest }) => ({
+					...rest,
+					sizeBytes: sizes.get(rest.id) ?? 0,
+				}));
 
 				return res.json({
 					data,
@@ -140,7 +152,7 @@ const dataTableHandlers: DataTableHandlers = {
 
 				const { project: _project, ...dataTable } = result;
 
-				return res.status(201).json(dataTable);
+				return res.status(201).json(await attachSize(dataTable));
 			} catch (error) {
 				return handleError(error);
 			}
@@ -168,7 +180,7 @@ const dataTableHandlers: DataTableHandlers = {
 
 				const { project: _project, ...dataTable } = result;
 
-				return res.json(dataTable);
+				return res.json(await attachSize(dataTable));
 			} catch (error) {
 				return handleError(error);
 			}
@@ -203,7 +215,7 @@ const dataTableHandlers: DataTableHandlers = {
 
 				const { project: _project, ...dataTable } = result;
 
-				return res.json(dataTable);
+				return res.json(await attachSize(dataTable));
 			} catch (error) {
 				return handleError(error);
 			}

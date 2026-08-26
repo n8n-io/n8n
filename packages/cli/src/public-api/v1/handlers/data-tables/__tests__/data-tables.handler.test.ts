@@ -74,6 +74,7 @@ describe('DataTable Handler', () => {
 		});
 
 		mockDataTableService.getProjectIdForDataTable.mockResolvedValue(projectId);
+		mockDataTableService.getCachedSizeBytesByIds.mockResolvedValue(new Map());
 		mockProjectRelationRepository.find.mockResolvedValue([]);
 
 		mockResponse = {
@@ -140,6 +141,104 @@ describe('DataTable Handler', () => {
 			const callArgs = mockDataTableService.getManyAndCount.mock.calls[0][0];
 			expect(callArgs.filter?.projectId).toBeUndefined();
 			expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('sizeBytes', () => {
+		const otherDataTableId = 'other-data-table-id';
+
+		const makeDataTable = (id: string) => ({
+			id,
+			name: `table-${id}`,
+			columns: [],
+			project: { id: projectId },
+		});
+
+		beforeEach(() => {
+			mockDataTableService.getCachedSizeBytesByIds.mockResolvedValue(
+				new Map([
+					[dataTableId, 4096],
+					[otherDataTableId, 8192],
+				]),
+			);
+		});
+
+		it('should attach sizeBytes to every item when listing', async () => {
+			const req = {
+				query: {},
+				user: makeUser(['dataTable:listProject']),
+			} as unknown as DataTableRequest.List;
+			mockDataTableService.getManyAndCount.mockResolvedValue({
+				data: [makeDataTable(dataTableId), makeDataTable(otherDataTableId)],
+				count: 2,
+			} as never);
+
+			await mainHandler.listDataTables[2](req, mockResponse as Response);
+
+			const { data } = (mockResponse.json as Mock).mock.calls[0][0];
+			expect(data).toHaveLength(2);
+			expect(data[0]).toMatchObject({ id: dataTableId, sizeBytes: 4096 });
+			expect(data[1]).toMatchObject({ id: otherDataTableId, sizeBytes: 8192 });
+		});
+
+		it('should include sizeBytes on the create response', async () => {
+			const req = {
+				body: { name: 'test-table', columns: [] },
+				user: makeUser(),
+			} as unknown as DataTableRequest.Create;
+			mockProjectRepository.getPersonalProjectForUserOrFail.mockResolvedValue({
+				id: projectId,
+			} as never);
+			mockDataTableService.createDataTable.mockResolvedValue(makeDataTable(dataTableId) as never);
+
+			await mainHandler.createDataTable[1](req, mockResponse as Response);
+
+			expect(mockResponse.status).toHaveBeenCalledWith(201);
+			expect((mockResponse.json as Mock).mock.calls[0][0]).toMatchObject({ sizeBytes: 4096 });
+		});
+
+		it('should include sizeBytes when reading a single data table', async () => {
+			const req = {
+				params: { dataTableId },
+				user: makeUser(),
+			} as unknown as DataTableRequest.Get;
+			mockDataTableRepository.findOne.mockResolvedValue(makeDataTable(dataTableId) as never);
+
+			await mainHandler.getDataTable[2](req, mockResponse as Response);
+
+			expect((mockResponse.json as Mock).mock.calls[0][0]).toMatchObject({
+				id: dataTableId,
+				sizeBytes: 4096,
+			});
+		});
+
+		it('should include sizeBytes on the update response', async () => {
+			const req = {
+				params: { dataTableId },
+				body: { name: 'renamed' },
+				user: makeUser(),
+			} as unknown as DataTableRequest.Update;
+			mockDataTableRepository.findOne.mockResolvedValue(makeDataTable(dataTableId) as never);
+
+			await mainHandler.updateDataTable[2](req, mockResponse as Response);
+
+			expect((mockResponse.json as Mock).mock.calls[0][0]).toMatchObject({
+				id: dataTableId,
+				sizeBytes: 4096,
+			});
+		});
+
+		it('should serialise a table missing from the size map as 0, not undefined', async () => {
+			mockDataTableService.getCachedSizeBytesByIds.mockResolvedValue(new Map());
+			const req = {
+				params: { dataTableId },
+				user: makeUser(),
+			} as unknown as DataTableRequest.Get;
+			mockDataTableRepository.findOne.mockResolvedValue(makeDataTable(dataTableId) as never);
+
+			await mainHandler.getDataTable[2](req, mockResponse as Response);
+
+			expect((mockResponse.json as Mock).mock.calls[0][0].sizeBytes).toBe(0);
 		});
 	});
 

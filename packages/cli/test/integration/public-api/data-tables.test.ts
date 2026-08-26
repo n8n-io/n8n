@@ -4,6 +4,7 @@ import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
+import { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 
 import { createDataTable } from '../shared/db/data-tables';
@@ -2151,5 +2152,92 @@ describe('PATCH /data-tables/:dataTableId/columns/:columnId', () => {
 			});
 
 		expect(response.statusCode).toBe(403);
+	});
+});
+
+describe('sizeBytes on data table responses', () => {
+	// Instance-wide cache, so clear it between tests.
+	const resetSizeCache = () => Container.get(DataTableSizeValidator).reset();
+
+	beforeEach(() => {
+		resetSizeCache();
+	});
+
+	test('should return sizeBytes when creating a data table', async () => {
+		const response = await authOwnerAgent.post('/data-tables').send({
+			name: 'sized-on-create',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		expect(response.statusCode).toBe(201);
+		expect(typeof response.body.sizeBytes).toBe('number');
+	});
+
+	test('should return sizeBytes when reading a single data table', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'sized-on-read',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+		resetSizeCache();
+
+		const response = await authOwnerAgent.get(`/data-tables/${dataTable.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(typeof response.body.sizeBytes).toBe('number');
+	});
+
+	test('should return sizeBytes on every item when listing', async () => {
+		await createDataTable(ownerPersonalProject, {
+			name: 'sized-list-one',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+		await createDataTable(ownerPersonalProject, {
+			name: 'sized-list-two',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+		resetSizeCache();
+
+		const response = await authOwnerAgent.get('/data-tables');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBeGreaterThanOrEqual(2);
+		for (const dataTable of response.body.data) {
+			expect(typeof dataTable.sizeBytes).toBe('number');
+		}
+	});
+
+	test('should return sizeBytes when updating a data table', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'sized-on-update',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+		resetSizeCache();
+
+		const response = await authOwnerAgent
+			.patch(`/data-tables/${dataTable.id}`)
+			.send({ name: 'sized-renamed' });
+
+		expect(response.statusCode).toBe(200);
+		expect(typeof response.body.sizeBytes).toBe('number');
+	});
+
+	test('should report a non-zero size for a table holding rows', async () => {
+		const dataTable = await createDataTable(ownerPersonalProject, {
+			name: 'sized-with-rows',
+			columns: [{ name: 'name', type: 'string' }],
+		});
+
+		await authOwnerAgent.post(`/data-tables/${dataTable.id}/rows`).send({
+			data: Array.from({ length: 50 }, (_, index) => ({ name: `row-${index}` })),
+			returnType: 'count',
+		});
+
+		// The rows landed after the last refresh, so re-measure before reading.
+		resetSizeCache();
+
+		const response = await authOwnerAgent.get(`/data-tables/${dataTable.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.sizeBytes).toBeGreaterThan(0);
 	});
 });
