@@ -11,8 +11,8 @@ import {
 } from './execution-public.openapi';
 import { Z } from '../../zod-class';
 
-// Deliberately loose: `replaceCircularReferences` can leave the string '[Circular Reference]' at
-// any depth, so a stricter schema would answer 500 on a valid payload.
+// `data` and `workflowData` hold whatever the run produced, so only the container is checked.
+// Describing their contents would reject real payloads.
 const anyObjectSchema = z.custom<Record<string, unknown>>(
 	(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
 	{ message: 'Must be an object' },
