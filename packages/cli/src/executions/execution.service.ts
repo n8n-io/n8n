@@ -170,8 +170,7 @@ export class ExecutionService {
 
 		const { id: executionId } = req.params;
 		let execution: IExecutionResponse | IExecutionBase | undefined;
-		// The shape of the id picks the backend: a v2 execution lives only in the
-		// data plane, so there is no control-plane row to read.
+		// A v2 execution has no control-plane row.
 		if (isExecutionIdV2(executionId)) {
 			execution = await this.engineV2ExecutionReader.findOne(executionId, sharedWorkflowIds);
 		} else {

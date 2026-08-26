@@ -179,14 +179,13 @@ describe('GET /executions/:id', () => {
 				mode: 'manual',
 				finished: true,
 			});
-			// The workflow must ride along: the redaction policy is read off its settings.
+			// Redaction reads the policy off the workflow.
 			expect(response.body.data.workflowData.id).toBe(workflow.id);
 		});
 
 		test('does not serve an execution whose workflow the caller cannot read', async () => {
 			const workflow = await createWorkflow({}, owner);
-			// The member owns an unrelated workflow, so the request gets past the
-			// controller's "no accessible workflows" check and reaches the reader.
+			// Give the member a workflow, so the request reaches the reader.
 			await createWorkflow({}, member);
 			getExecution.mockResolvedValue(snapshot(workflow.id));
 
@@ -209,7 +208,7 @@ describe('GET /executions/:id', () => {
 			const v1 = await testServer.authAgentFor(owner).get('/executions/999999').expect(200);
 
 			expect(getExecution).toHaveBeenCalledWith(V2_EXECUTION_ID);
-			// Not a 400: the id was understood, there is just nothing behind it.
+			// The id was understood; there is just nothing behind it.
 			expect(v2.body).toEqual(v1.body);
 		});
 	});
@@ -225,11 +224,21 @@ describe('PATCH /executions/:id', () => {
 	});
 
 	test('reports annotating an engine 2.0 execution as not implemented', async () => {
+		await createWorkflow({}, owner);
+
 		await testServer
 			.authAgentFor(owner)
 			.patch('/executions/01a038ae-c4a8-7799-8a3e-e3c2ca055cfa')
 			.send({ vote: 'up' })
 			.expect(501);
+	});
+
+	test('reports an engine 2.0 execution as not found when no workflow is accessible', async () => {
+		await testServer
+			.authAgentFor(member)
+			.patch('/executions/01a038ae-c4a8-7799-8a3e-e3c2ca055cfa')
+			.send({ vote: 'up' })
+			.expect(404);
 	});
 });
 

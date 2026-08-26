@@ -9,7 +9,7 @@ import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.
 
 import type { ExecutionIdV2 } from './execution-id';
 
-/** A status this map has not learned yet reads as v1's `unknown`, which says just that. */
+/** A status added later reads as `unknown` rather than being guessed at. */
 const STATUS_V1 = new Map<ExecutionStatus, ExecutionStatusV1>([
 	['queued', 'new'],
 	['running', 'running'],
@@ -18,19 +18,15 @@ const STATUS_V1 = new Map<ExecutionStatus, ExecutionStatusV1>([
 	['cancelled', 'canceled'],
 ]);
 
-/** Only a manual run is manual in v1 terms; anything else the engine adds is a production run. */
+/** Anything not manual is a production run. */
 const MODE_V1 = new Map<ExecutionMode, WorkflowExecuteMode>([
 	['manual', 'manual'],
 	['production', 'trigger'],
 ]);
 
 /**
- * Reads an engine 2.0 execution for display.
- *
- * The data plane is the only store of a v2 execution, so the control plane has
- * no row to read. It does still own the workflow, which is where `workflowData`
- * comes from — and it must come from somewhere, because the redaction policy is
- * read off `workflowData.settings`.
+ * Reads an engine 2.0 execution for display. The data plane is its only store,
+ * but the workflow it ran still comes from the control plane.
  */
 @Service()
 export class EngineV2ExecutionReader {
@@ -39,26 +35,17 @@ export class EngineV2ExecutionReader {
 		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
-	/**
-	 * `undefined` when the execution is absent, its workflow is not shared with
-	 * the caller, or the workflow is gone — all of which the caller reports as
-	 * "not found", so a caller without access learns nothing about existence.
-	 *
-	 * Step data is not mapped yet (CAT-2923): `data` is an empty run-data object,
-	 * so the response carries the execution's identity, status and timing only.
-	 */
+	/** `undefined` for absent and for inaccessible alike, so neither reveals the other. */
 	async findOne(
 		executionId: ExecutionIdV2,
 		sharedWorkflowIds: string[],
 	): Promise<IExecutionResponse | undefined> {
-		// TODO(CAT-4235): store the basic execution metadata on the control-plane
-		// side too, so we can authorize against it. Today the workflow id arrives
-		// only with the data-plane response, which forces this read to happen
-		// before the access check and before the workflow lookup below.
+		// TODO(CAT-4235): mirror this metadata on the control plane, so we can
+		// authorize before reading.
 		const snapshot = await this.dataPlane.getExecution(executionId);
 		if (!snapshot) return undefined;
 
-		// Checked here rather than inside the query, as the v1 path does.
+		// The `workflow:read` check.
 		if (!sharedWorkflowIds.includes(snapshot.workflowId)) return undefined;
 
 		const workflowData = await this.workflowRepository.findById(snapshot.workflowId);
@@ -71,8 +58,7 @@ export class EngineV2ExecutionReader {
 		snapshot: ExecutionSnapshot,
 		workflowData: IExecutionResponse['workflowData'],
 	): IExecutionResponse {
-		// The engine reports row timestamps, not run timing (CAT-4234), so the row's
-		// creation is the best available answer for both.
+		// No real run timing yet (CAT-4234), so both come from the row.
 		const startedAt = new Date(snapshot.createdAt);
 
 		return {
@@ -85,6 +71,7 @@ export class EngineV2ExecutionReader {
 			startedAt,
 			stoppedAt: snapshot.finishedAt ? new Date(snapshot.finishedAt) : undefined,
 			storedAt: 'db',
+			// Step data is not mapped yet, so there is no run data to report.
 			data: createEmptyRunExecutionData(),
 			workflowData,
 			// The data plane stores neither.

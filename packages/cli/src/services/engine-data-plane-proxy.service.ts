@@ -47,11 +47,7 @@ export class EngineDataPlaneProxyService implements EngineDataPlaneProvider {
 		return await this.provider.startExecution(request);
 	}
 
-	/**
-	 * Unlike {@link startExecution}, a missing provider is not an error here: with
-	 * the module off no v2 execution can exist, so the id reads as "not found"
-	 * rather than as a misconfiguration the caller can do nothing about.
-	 */
+	/** No provider means no v2 execution can exist, so this is a miss, not an error. */
 	async getExecution(id: ExecutionIdV2): Promise<ExecutionSnapshot | undefined> {
 		if (!this.provider) return undefined;
 

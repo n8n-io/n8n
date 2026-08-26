@@ -52,9 +52,18 @@ describe('ExecutionsController', () => {
 		});
 
 		it('should 501 for an engine 2.0 id, which has no annotation store', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(['wf-1']);
 			const req = mock<ExecutionRequest.Update>({ params: { id: V2_EXECUTION_ID } });
 
 			await expect(executionsController.update(req)).rejects.toThrow(NotImplementedError);
+			expect(executionService.annotate).not.toHaveBeenCalled();
+		});
+
+		it('should 404 for an engine 2.0 id when no workflows are accessible', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+			const req = mock<ExecutionRequest.Update>({ params: { id: V2_EXECUTION_ID } });
+
+			await expect(executionsController.update(req)).rejects.toThrow(NotFoundError);
 			expect(executionService.annotate).not.toHaveBeenCalled();
 		});
 	});

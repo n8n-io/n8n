@@ -148,16 +148,15 @@ export class ExecutionsController {
 	async update(req: ExecutionRequest.Update) {
 		this.assertKnownExecutionId(req.params.id);
 
-		// The data plane stores no annotations, so letting a v2 id through would
-		// report "not found" for a reason that has nothing to do with the id.
-		if (isExecutionIdV2(req.params.id)) {
-			throw new NotImplementedError('Annotating engine 2.0 executions is not supported yet');
-		}
-
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
 
 		// Fail fast if no workflows are accessible
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		// The data plane stores no annotations.
+		if (isExecutionIdV2(req.params.id)) {
+			throw new NotImplementedError('Annotating engine 2.0 executions is not supported yet');
+		}
 
 		const { body: payload } = req;
 		const validatedPayload = validateExecutionUpdatePayload(payload);
@@ -167,10 +166,6 @@ export class ExecutionsController {
 		return await this.executionService.findOne(req, workflowIds);
 	}
 
-	/**
-	 * The two id spaces are distinct: a v1 id is a positive integer from the
-	 * control-plane table, a v2 id is a UUID minted by the data plane.
-	 */
 	private assertKnownExecutionId(id: string) {
 		if (!isPositiveInteger(id) && !isExecutionIdV2(id)) {
 			throw new BadRequestError('Execution ID is not valid');

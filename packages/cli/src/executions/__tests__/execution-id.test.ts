@@ -8,7 +8,7 @@ describe('isExecutionIdV2', () => {
 	});
 
 	it('should accept a uuid whose version nibble is not 1-5', () => {
-		// uuidv7 sets it to 7. A version-pinned regex would reject every engine id.
+		// A version-pinned regex would reject every engine id.
 		expect(isExecutionIdV2('01a038ae-c4a8-7799-8a3e-e3c2ca055cfa')).toBe(true);
 	});
 

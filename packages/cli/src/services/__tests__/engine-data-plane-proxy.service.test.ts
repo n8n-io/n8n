@@ -44,8 +44,7 @@ describe('EngineDataPlaneProxyService', () => {
 	});
 
 	it('reads no execution when no provider is registered', async () => {
-		// A read, unlike a start, degrades to "not found": with the module off no
-		// v2 execution can exist, so the caller has nothing to act on.
+		// A read degrades to a miss; only a start is worth failing loudly.
 		await expect(proxy.getExecution(executionId)).resolves.toBeUndefined();
 	});
 
