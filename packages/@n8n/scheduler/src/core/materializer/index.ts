@@ -18,3 +18,4 @@ export type {
 	RunInTransaction,
 	MaterializerTransaction,
 } from './transaction';
+export { ownerKeyFor, withOwnerKeys, type ScheduledJobOwner } from './owner-key';
