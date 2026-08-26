@@ -11,6 +11,7 @@ import {
 	WorkflowRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowPublicationOutboxRepository,
+	WorkflowPublicationReason,
 	WorkflowPublishedVersionRepository,
 	ProjectRepository,
 } from '@n8n/db';
@@ -18,14 +19,23 @@ import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import { In } from '@n8n/typeorm';
+import { In, QueryFailedError } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import type { INode, INodes, IWorkflowSettings, JsonValue, IConnections } from 'n8n-workflow';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { PROJECT_ROOT, Workflow, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+
+import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
+import { getEnabledTriggerNodes } from './triggers/enabled-trigger-nodes';
+import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
+import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
+import { WorkflowMutationHooksProxy } from './workflow-mutation-hooks-proxy.service';
+import { WorkflowPublishGuardProxy } from './workflow-publish-guard-proxy.service';
+import { WorkflowValidationService } from './workflow-validation.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
@@ -44,6 +54,7 @@ import { validateEntity } from '@/generic-helpers';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
@@ -52,17 +63,14 @@ import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
+import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
+import { WebhookService } from '@/webhooks/webhook.service';
 import { getBase as getWorkflowExecutionData } from '@/workflow-execute-additional-data';
+import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
-import { WorkflowValidationService } from './workflow-validation.service';
-
-import { WebhookService } from '@/webhooks/webhook.service';
-import * as WorkflowHelpers from '@/workflow-helpers';
-import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
-import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
-import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
+/** Internal rollback vehicle for `publishAsSystem`'s guarded transaction; never escapes it. */
+class SystemPublishSupersededError extends Error {}
 
 @Service()
 export class WorkflowService {
@@ -96,6 +104,9 @@ export class WorkflowService {
 		private readonly pollTriggerJobRegistrar: PollTriggerJobRegistrar,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowHookContextService: WorkflowHookContextService,
+		private readonly workflowPublishGuard: WorkflowPublishGuardProxy,
+		private readonly workflowMutationHooks: WorkflowMutationHooksProxy,
+		private readonly policyEnforcementService: PolicyEnforcementService,
 	) {}
 
 	async getMany(
@@ -436,13 +447,14 @@ export class WorkflowService {
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
 		WorkflowHelpers.resolveNodeWebhookIds(workflowUpdateData, this.nodeTypes);
-		WorkflowHelpers.validateWorkflowStructure({
-			nodes: workflowUpdateData.nodes ?? workflow.nodes,
-			connections: workflowUpdateData.connections ?? workflow.connections,
-		});
-		// Validate node groups only for structural changes; a metadata-only edit re-persists
-		// already-validated groups, so re-checking is redundant and could block on legacy data.
+		// Validate structure and node groups only for structural changes; a metadata-only edit
+		// re-persists an already-validated graph, so re-checking is redundant and could block on
+		// legacy data. Both are safe to read off workflowUpdateData: it was backfilled above.
 		if (saveNewVersion) {
+			WorkflowHelpers.validateWorkflowStructure({
+				nodes: workflowUpdateData.nodes,
+				connections: workflowUpdateData.connections,
+			});
 			WorkflowHelpers.validateWorkflowNodeGroups(
 				{
 					nodes: workflowUpdateData.nodes,
@@ -529,6 +541,19 @@ export class WorkflowService {
 			toWorkflowLifecycleHookActor(user),
 		]);
 
+		// Gate the save on policy before persisting, so the author learns about a violation
+		// while editing rather than at runtime. Carries the stored workflow alongside the
+		// submitted one so a check can restrict its verdict to what this save adds.
+		await this.policyEnforcementService.enforceWorkflowSave({
+			workflow: {
+				id: workflow.id,
+				name: workflowUpdateData.name ?? workflow.name,
+				nodes: workflowUpdateData.nodes ?? workflow.nodes,
+			},
+			storedWorkflow: { id: workflow.id, name: workflow.name, nodes: workflow.nodes },
+			projectId: ownerProject.id,
+		});
+
 		const fieldsToUpdate = [
 			'name',
 			'nodes',
@@ -564,11 +589,8 @@ export class WorkflowService {
 			);
 		}
 
-		const publishCurrent = workflow.activeVersionId && publishIfActive;
-		if (publishCurrent) {
-			updatePayload.active = true;
-			updatePayload.activeVersionId = workflowUpdateData.versionId;
-		}
+		const versionIdToPublish =
+			workflow.activeVersionId && publishIfActive ? workflowUpdateData.versionId : null;
 
 		if (parentFolderId) {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
@@ -632,11 +654,17 @@ export class WorkflowService {
 			source,
 		});
 
-		// Activate workflow if requested, or
-		// Reactivate workflow if settings changed and workflow has an active version
-		if (updatedWorkflow.activeVersionId && (publishCurrent || settingsChanged)) {
+		if (versionIdToPublish) {
+			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
+				versionId: versionIdToPublish,
+				source,
+			});
+			updatedWorkflow.active = publishedWorkflow.active;
+			updatedWorkflow.activeVersionId = publishedWorkflow.activeVersionId;
+			updatedWorkflow.activeVersion = publishedWorkflow.activeVersion;
+		} else if (settingsChanged && workflow.activeVersionId) {
 			await this.activateWorkflow(user, workflowId, {
-				versionId: updatedWorkflow.activeVersionId,
+				versionId: workflow.activeVersionId,
 				source,
 			});
 		}
@@ -747,7 +775,7 @@ export class WorkflowService {
 
 		if (conflicts.length > 0) {
 			throw new ConflictError(
-				'There is a conflict with one of the webhooks.',
+				WEBHOOK_CONFLICT_MESSAGE,
 				JSON.stringify(
 					conflicts.map(({ trigger, conflict }) => ({
 						trigger,
@@ -828,6 +856,9 @@ export class WorkflowService {
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			this._validateTriggerNodeIds(workflowId, versionToActivate);
+		}
 
 		// Run hook before destructive state changes so a rejection leaves
 		// the previous active version running instead of deactivating it.
@@ -853,9 +884,22 @@ export class WorkflowService {
 			});
 		}
 
+		// re-applying the already-published version (e.g. a settings-only update)
+		// publishes no new version, so the review gate must not block it.
+		//
+		// This check is deliberately not serialized with review mutations: putting
+		// publishing behind the review feature's global lock would slow down a core
+		// workflow operation for every instance. A review opened just after this
+		// passes, or just before an approval's auto-publish reaches it, therefore
+		// races — accepted, because both outcomes degrade gracefully (the approval
+		// stands and auto-publish reports `failed`).`.
+		if (versionIdToActivate !== previousActiveVersionId) {
+			await this.workflowPublishGuard.assertCanPublish(workflowId);
+		}
+
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			await this._publishViaOutbox(
-				user,
+				user.id,
 				workflowId,
 				versionIdToActivate,
 				previousActiveVersionId,
@@ -935,6 +979,16 @@ export class WorkflowService {
 				{ source },
 			);
 		}
+
+		// The publication commit boundary: both branches above have durably published the
+		// version (outbox record committed / triggers registered and history recorded). The
+		// metadata update and re-fetch below can still fail, but the publication — and this
+		// record of it — stand. The hook must not throw.
+		await this.workflowMutationHooks.afterWorkflowPublished({
+			workflowId,
+			versionId: versionIdToActivate,
+			userId: user.id,
+		});
 
 		if (options?.name !== undefined || options?.description !== undefined) {
 			const updateFields: UpdateWorkflowHistoryVersionDto = {};
@@ -1088,6 +1142,107 @@ export class WorkflowService {
 	}
 
 	/**
+	 * Publishes a new system-authored version of an already-active workflow,
+	 * without a user: inserts the `workflow_history` row (author `'n8n'`),
+	 * advances `activeVersionId`, records publish history with a null user, and
+	 * enqueues the outbox record. The draft plane — `workflow_entity.nodes`,
+	 * `versionId`, `updatedAt` — stays untouched.
+	 *
+	 * Publication-service plane only; the caller owns flag and leader concerns.
+	 * Skips user-facing activation validation and lifecycle hooks: the workflow
+	 * is already active, and the content comes from internal correction code,
+	 * which may legitimately fail user-facing checks (e.g. duplicate node
+	 * names).
+	 *
+	 * The write only lands if the active version is still
+	 * `expectedActiveVersionId` — the version the corrected copy was derived
+	 * from, supplied by the caller so the guard spans the caller's whole
+	 * read-correct-publish window, not just this method's own read
+	 * (compare-and-swap). Any move past that baseline — a newer user publish,
+	 * an unpublish, a deletion — wins, and this method returns
+	 * `{ published: false, reason: 'superseded' }` having written nothing: the
+	 * version row, publish history, and outbox record all live in one
+	 * transaction that a guard miss rolls back. The caller must not retry —
+	 * whatever superseded the baseline enqueued its own outbox record, and the
+	 * next activation pass covers it. Two accepted residuals: a concurrent draft save's
+	 * `updatedAt` bump can be rolled back to the value read here (the guard
+	 * deliberately excludes `updatedAt` — a datetime-equality quirk would make
+	 * the heal silently never land, a worse failure direction than a bounded
+	 * timestamp clobber; draft content is untouched either way), and the *user*
+	 * path's unguarded update can still record a stale `deactivated` version
+	 * when the user wins the gap — a pre-existing property of
+	 * `activateWorkflow`, not of this method.
+	 */
+	async publishAsSystem(
+		workflowId: string,
+		versionData: {
+			nodes: WorkflowEntity['nodes'];
+			connections: WorkflowEntity['connections'];
+			nodeGroups?: WorkflowEntity['nodeGroups'];
+		},
+		expectedActiveVersionId: string,
+	): Promise<{ published: true; versionId: string } | { published: false; reason: 'superseded' }> {
+		const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
+		// A missing or inactive workflow, or an active version that already moved
+		// past the caller's baseline, is the same benign race as losing the guard
+		// below — whatever moved the version owns the state now. The transaction
+		// guard re-checks the same condition atomically; this early return just
+		// skips the doomed version-row insert.
+		if (
+			!workflow?.active ||
+			workflow.activeVersionId === null ||
+			workflow.activeVersionId !== expectedActiveVersionId
+		) {
+			return { published: false, reason: 'superseded' };
+		}
+
+		const versionId = uuid();
+		try {
+			await this.workflowRepository.manager.transaction(async (trx) => {
+				// The version row must precede the guarded update: `activeVersionId`'s
+				// foreign key requires it. `saveVersion` swallows insert errors; a
+				// missing row surfaces as a foreign-key violation on the update, which
+				// rolls the transaction back.
+				await this.workflowHistoryService.saveVersion(
+					'n8n',
+					{ versionId, ...versionData },
+					workflowId,
+					false,
+					undefined,
+					trx,
+				);
+
+				// Re-publication of the same version id in the gap (unpublish +
+				// publish of the version read above) passes the guard; same id means
+				// same content, so the heal is still a valid heal of the current
+				// active version.
+				const recorded = await this._recordPublishInTransaction(
+					trx,
+					null,
+					workflowId,
+					versionId,
+					expectedActiveVersionId,
+					workflow.updatedAt,
+					{ onlyIfActiveVersionIs: expectedActiveVersionId },
+				);
+				// Roll back the version row too — a lost race must leave no trace.
+				if (!recorded) throw new SystemPublishSupersededError();
+			});
+		} catch (error) {
+			if (error instanceof SystemPublishSupersededError) {
+				return { published: false, reason: 'superseded' };
+			}
+			throw error;
+		}
+
+		// Wake the leader now that the record is committed, so it drains without
+		// waiting for the next poll cycle.
+		this.workflowPublicationNotifier.requestDrain();
+
+		return { published: true, versionId };
+	}
+
+	/**
 	 * Flag-branched teardown shared by user- and system-initiated deactivation.
 	 * Keeping it in one place prevents the two paths from drifting apart, which
 	 * is how system deactivation ended up skipping unpublishing (CAT-3814).
@@ -1165,6 +1320,10 @@ export class WorkflowService {
 			throw new BadRequestError('Workflow must be archived before it can be deleted.');
 		}
 
+		// Ahead of every destructive step: the hook captures rows the delete is about
+		// to cascade away, so `afterWorkflowsDeleted` can still explain what happened.
+		await this.workflowMutationHooks.beforeWorkflowDeleted(workflowId, user.id);
+
 		if (workflow.active) {
 			// deactivate before deleting
 			await this.activeWorkflowManager.remove(workflowId);
@@ -1176,6 +1335,12 @@ export class WorkflowService {
 		await this.executionPersistence.hardDeleteByWorkflowId(workflowId);
 
 		await this.workflowRepository.delete(workflowId);
+
+		await this.ownershipService.invalidateWorkflowProjectCacheByIds([workflowId]);
+
+		// After the cascade, so it can see the rows the delete orphaned. Observes a
+		// committed delete, so it must not throw — the module swallows its own errors.
+		await this.workflowMutationHooks.afterWorkflowsDeleted([workflowId]);
 
 		this.eventService.emit('workflow-deleted', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterDelete', [
@@ -1242,6 +1407,8 @@ export class WorkflowService {
 		});
 
 		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
+
+		await this.workflowMutationHooks.afterWorkflowArchived(workflowId, user.id);
 
 		this.eventService.emit('workflow-archived', {
 			user,
@@ -1429,6 +1596,20 @@ export class WorkflowService {
 		}
 	}
 
+	private _validateTriggerNodeIds(workflowId: string, version: WorkflowHistory) {
+		const validation = this.workflowValidationService.validateTriggerNodeIds(
+			getEnabledTriggerNodes(version, this.nodeTypes),
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed trigger node id validation', {
+				workflowId,
+				error: validation.error,
+			});
+			throw new WorkflowValidationError(validation.error ?? 'Trigger node id validation failed');
+		}
+	}
+
 	private async _validateDynamicCredentials(
 		workflowId: string,
 		nodes: INode[],
@@ -1518,52 +1699,94 @@ export class WorkflowService {
 	 * manager here.
 	 */
 	private async _publishViaOutbox(
-		user: User,
+		userId: string | null,
 		workflowId: string,
 		versionIdToActivate: string,
 		previousActiveVersionId: string | null,
 		updatedAt: Date,
 	): Promise<void> {
 		await this.workflowRepository.manager.transaction(async (trx) => {
-			await trx.update(
-				WorkflowEntity,
-				{ id: workflowId },
-				{
-					activeVersionId: versionIdToActivate,
-					active: true,
-					// workflow content did not change, so we keep updatedAt as is
-					updatedAt,
-				},
-			);
-
-			if (previousActiveVersionId) {
-				await this.workflowPublishHistoryRepository.addRecord(
-					{
-						workflowId,
-						versionId: previousActiveVersionId,
-						event: 'deactivated',
-						userId: user.id,
-					},
-					trx,
-				);
-			}
-
-			await this.workflowPublishHistoryRepository.addRecord(
-				{
-					workflowId,
-					versionId: versionIdToActivate,
-					event: 'activated',
-					userId: user.id,
-				},
+			await this._recordPublishInTransaction(
 				trx,
+				userId,
+				workflowId,
+				versionIdToActivate,
+				previousActiveVersionId,
+				updatedAt,
 			);
-
-			await this.outboxRepository.enqueue(workflowId, versionIdToActivate, trx);
 		});
 
 		// Wake the leader now that the record is committed, so it drains without
 		// waiting for the next poll cycle.
 		this.workflowPublicationNotifier.requestDrain();
+	}
+
+	/**
+	 * Writes one publish into an open transaction: the workflow-row update, the
+	 * publish-history records, and the outbox record. With
+	 * `onlyIfActiveVersionIs`, the row update — this method's first write — is
+	 * guarded on the active version still being that value; a miss returns
+	 * `false` without writing anything further, and the caller owns rolling
+	 * back whatever it wrote earlier in the same transaction.
+	 */
+	private async _recordPublishInTransaction(
+		trx: EntityManager,
+		userId: string | null,
+		workflowId: string,
+		versionIdToActivate: string,
+		previousActiveVersionId: string | null,
+		updatedAt: Date,
+		options?: { onlyIfActiveVersionIs: string },
+	): Promise<boolean> {
+		const result = await trx.update(
+			WorkflowEntity,
+			options === undefined
+				? { id: workflowId }
+				: { id: workflowId, activeVersionId: options.onlyIfActiveVersionIs },
+			{
+				activeVersionId: versionIdToActivate,
+				active: true,
+				// workflow content did not change, so we keep updatedAt as is
+				updatedAt,
+			},
+		);
+
+		// A miss means a concurrent publish or unpublish moved the active version
+		// since the caller's read.
+		if (options !== undefined && (result.affected ?? 0) === 0) {
+			return false;
+		}
+
+		if (previousActiveVersionId) {
+			await this.workflowPublishHistoryRepository.addRecord(
+				{
+					workflowId,
+					versionId: previousActiveVersionId,
+					event: 'deactivated',
+					userId,
+				},
+				trx,
+			);
+		}
+
+		await this.workflowPublishHistoryRepository.addRecord(
+			{
+				workflowId,
+				versionId: versionIdToActivate,
+				event: 'activated',
+				userId,
+			},
+			trx,
+		);
+
+		await this.outboxRepository.enqueue(
+			workflowId,
+			versionIdToActivate,
+			WorkflowPublicationReason.Publish,
+			trx,
+		);
+
+		return true;
 	}
 
 	/**
@@ -1599,7 +1822,12 @@ export class WorkflowService {
 				trx,
 			);
 
-			await this.outboxRepository.enqueue(workflowId, deactivatedVersionId, trx);
+			await this.outboxRepository.enqueue(
+				workflowId,
+				deactivatedVersionId,
+				WorkflowPublicationReason.Publish,
+				trx,
+			);
 
 			// Durable jobs are DB state, so their removal commits here rather than
 			// waiting on the leader's outbox handler: a lost hand-off would otherwise
@@ -1611,5 +1839,29 @@ export class WorkflowService {
 		// Wake the leader now that the record is committed, so it drains without
 		// waiting for the next poll cycle.
 		this.workflowPublicationNotifier.requestDrain();
+	}
+
+	/**
+	 * Replace all tag mappings on a workflow. Missing tag IDs surface as NotFoundError.
+	 */
+	async updateWorkflowTags(user: User, workflowId: string, tagIds: string[]) {
+		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:update',
+		]);
+
+		if (!workflow) {
+			throw new NotFoundError('Not Found');
+		}
+
+		try {
+			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
+		} catch (error) {
+			if (error instanceof QueryFailedError) {
+				throw new NotFoundError('Some tags not found');
+			}
+			throw error;
+		}
+
+		return await this.tagService.getAllByWorkflowId(workflowId);
 	}
 }

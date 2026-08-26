@@ -9,12 +9,17 @@ import type {
 	INodeTypes,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	SCHEDULE_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 
-import { getWebhookDetails } from '../tools/webhook-utils';
+import { getTriggerDetails, getWebhookDetails } from '../tools/webhook-utils';
 
 const mockCredentialsService = (
 	impl: (id: string) => ICredentialDataDecryptedObject | Promise<ICredentialDataDecryptedObject>,
@@ -306,5 +311,95 @@ describe('getWebhookDetails', () => {
 			workflowId,
 		);
 		expect(resDefault).toContain('Returns the JSON data of the first entry of the last node');
+	});
+});
+
+describe('getTriggerDetails', () => {
+	const user = createUser();
+	const baseUrl = 'https://example.com';
+	const workflowId = 'wf-1';
+	const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
+	const credentialsService = mockCredentialsService(() => ({}));
+
+	const createTriggerNode = (overrides: Partial<INode> = {}): INode => ({
+		id: '1',
+		name: 'Gmail Trigger',
+		type: 'n8n-nodes-base.gmailTrigger',
+		typeVersion: 1.4,
+		position: [0, 0],
+		parameters: {},
+		...overrides,
+	});
+
+	it('reports manual-only when the workflow has no triggers at all', async () => {
+		const res = await getTriggerDetails(
+			user,
+			[],
+			[],
+			baseUrl,
+			credentialsService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+		expect(res).toBe(
+			'This workflow has no production triggers (Schedule, Webhook, Form, or Chat). It can only be executed in manual mode.',
+		);
+	});
+
+	it('clarifies when the workflow has triggers that MCP cannot execute directly', async () => {
+		const res = await getTriggerDetails(
+			user,
+			[],
+			[createTriggerNode()],
+			baseUrl,
+			credentialsService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+		expect(res).toContain('not supported for direct execution through MCP: Gmail Trigger');
+		expect(res).toContain('cannot be executed through MCP');
+		expect(res).not.toContain('no production triggers');
+		expect(res).not.toContain('manual mode');
+	});
+
+	it('documents triggerNodeName and the execute_workflow payload for each trigger type', async () => {
+		const webhook = createWebhookNode({ name: 'Webhook' });
+		const chat = createTriggerNode({
+			name: 'Chat Trigger',
+			type: CHAT_TRIGGER_NODE_TYPE,
+		});
+		const form = createTriggerNode({
+			name: 'Form Trigger',
+			type: FORM_TRIGGER_NODE_TYPE,
+			parameters: { formFields: { values: [{ fieldLabel: 'email' }] } },
+		});
+		const schedule = createTriggerNode({
+			name: 'Schedule Trigger',
+			type: SCHEDULE_TRIGGER_NODE_TYPE,
+		});
+
+		const res = await getTriggerDetails(
+			user,
+			[webhook, chat, form, schedule],
+			[],
+			baseUrl,
+			credentialsService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+
+		expect(res).toContain(
+			'{ triggerNodeName: "<node name>", inputs: { webhookData: { headers?, query?, body? } } }',
+		);
+		expect(res).toContain('{ triggerNodeName: "<node name>", inputs: { chatInput: "<message>" } }');
+		expect(res).toContain(
+			'{ triggerNodeName: "<node name>", inputs: { formData: { FIELD_NAME: VALUE } } }',
+		);
+		expect(res).not.toContain('formData: Array<');
+		expect(res).toContain('{ triggerNodeName: "<node name>" }');
+		expect(res).toContain('do not take inputs');
 	});
 });

@@ -13,6 +13,7 @@ import type {
 import type { SerializedDataTable } from '../../spec/serialized/data-table.schema';
 import type { SerializedFolder } from '../../spec/serialized/folder.schema';
 import type { SerializedProject } from '../../spec/serialized/project.schema';
+import type { SerializedVariable } from '../../spec/serialized/variable.schema';
 import type { SerializedWorkflow } from '../../spec/serialized/workflow.schema';
 import { streamToBuffer } from '../utils/tar-support';
 
@@ -325,6 +326,12 @@ export interface PackageDataTableEntry {
 	dataTable: SerializedDataTable;
 }
 
+export interface PackageVariableEntry {
+	id: string;
+	target: string;
+	variable: SerializedVariable;
+}
+
 /**
  * Builds a package at explicit target paths, so tests can shape the exact package layout
  * (top-level folders, nested folders, project-namespaced entities). Manifest entries are
@@ -335,6 +342,7 @@ export async function buildEntityPackageBuffer(options: {
 	folders?: PackageFolderEntry[];
 	projects?: PackageProjectEntry[];
 	dataTables?: PackageDataTableEntry[];
+	variables?: PackageVariableEntry[];
 	manifestExtras?: Partial<PackageManifest>;
 	sourceId?: string;
 }): Promise<Buffer> {
@@ -343,6 +351,7 @@ export async function buildEntityPackageBuffer(options: {
 	const folders = options.folders ?? [];
 	const projects = options.projects ?? [];
 	const dataTables = options.dataTables ?? [];
+	const variables = options.variables ?? [];
 
 	const manifest: PackageManifest = {
 		packageFormatVersion: FORMAT_VERSION,
@@ -385,6 +394,15 @@ export async function buildEntityPackageBuffer(options: {
 					})),
 				}
 			: {}),
+		...(variables.length > 0
+			? {
+					variables: variables.map(({ id, target, variable }) => ({
+						id,
+						name: variable.name,
+						target,
+					})),
+				}
+			: {}),
 		...options.manifestExtras,
 	};
 
@@ -405,6 +423,10 @@ export async function buildEntityPackageBuffer(options: {
 	for (const { target, dataTable } of dataTables) {
 		writer.writeDirectory(target);
 		writer.writeFile(`${target}/data-table.json`, JSON.stringify(dataTable));
+	}
+	for (const { target, variable } of variables) {
+		writer.writeDirectory(target);
+		writer.writeFile(`${target}/variable.json`, JSON.stringify(variable));
 	}
 
 	return await streamToBuffer(writer.finalize());

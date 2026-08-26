@@ -1,6 +1,7 @@
 export type {
 	ExecutionEnqueuedEvent,
 	OrchestrationMessage,
+	StepSettledEvent,
 	StepMessage,
 	StepReadyEvent,
 	WorkQueue,

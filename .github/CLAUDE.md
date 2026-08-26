@@ -30,7 +30,12 @@ Reusable workflows: add `-reusable` or `-callable` suffix.
 
 ### Common Tasks
 
-**Add workflow:** Create in `workflows/`, document in `WORKFLOWS.md`
+**Add workflow:** Create in `workflows/`, document in `WORKFLOWS.md`.
+Always declare a least-privilege top-level `permissions:` block (usually
+`contents: read`) — without one the workflow runs with the repo's broad
+default token and review flags it. Jobs needing more override at job level;
+a job calling a reusable workflow must grant at least what that workflow
+declares.
 
 **Add script:** Create `.mjs` in `scripts/`, document in `WORKFLOWS.md`
 

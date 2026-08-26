@@ -124,8 +124,8 @@ describe('packageManifestSchema', () => {
 			...validManifest,
 			requirements: {
 				variables: [
-					{ name: 'API_URL', value: 'a', usedByWorkflows: ['wf-abc'] },
-					{ name: 'API_URL', value: 'b', usedByWorkflows: ['wf-abc'] },
+					{ name: 'API_URL', usedByWorkflows: ['wf-abc'] },
+					{ name: 'API_URL', usedByWorkflows: ['wf-abc'] },
 				],
 			},
 		};

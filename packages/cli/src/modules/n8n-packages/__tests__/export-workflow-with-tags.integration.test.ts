@@ -1,7 +1,6 @@
 import { LicenseState } from '@n8n/backend-common';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { TagRepository, WorkflowTagMappingRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
@@ -14,7 +13,7 @@ import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
 import { N8nPackagesService } from '../n8n-packages.service';
-import { readExport, streamToBuffer } from './utils/tar-support';
+import { readExport } from './utils/tar-support';
 import type { UnpackedEntry } from './utils/tar-support';
 import { buildWorkflowCallingSubWorkflow } from './utils/test-builders';
 
@@ -124,7 +123,7 @@ describe('workflow package export — with tags', () => {
 		}
 	});
 
-	it('exports an untagged workflow without any tag artifacts', async () => {
+	it('exports an untagged workflow with empty tagIds and no tag artifacts', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Project A', owner);
 		const workflow = await createWorkflow({ name: 'Untagged workflow' }, project);
@@ -132,7 +131,8 @@ describe('workflow package export — with tags', () => {
 		const { stream } = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
-		expect(workflowJson(entries, manifest.workflows![0].target)).not.toHaveProperty('tagIds');
+		// An emitted `tagIds` key (vs absent) is how import knows tags were exported at all.
+		expect(workflowJson(entries, manifest.workflows![0].target).tagIds).toEqual([]);
 		expect(tagFiles(entries)).toEqual([]);
 		expect(manifest).not.toHaveProperty('tags');
 		expect(manifest.requirements).toEqual({ nodeTypes: expect.any(Array) });
@@ -222,42 +222,5 @@ describe('workflow package export — with tags', () => {
 		} finally {
 			globalConfig.tags.disabled = false;
 		}
-	});
-
-	it('imports a tag-bearing package as a no-op for tags', async () => {
-		const owner = await createOwner();
-		const source = await createTeamProject('Source project', owner);
-		const workflow = await createWorkflow({ name: 'Tagged workflow' }, source);
-		await createTag({ name: 'prod' }, workflow);
-		const packageBuffer = await streamToBuffer(
-			(await service.exportPackage({ user: owner, workflowIds: [workflow.id] })).stream,
-		);
-
-		const target = await createTeamProject('Target project', owner);
-		const result = await service.importPackage({
-			user: owner,
-			projectId: target.id,
-			packageBuffer,
-			credentialMatchingMode: 'id-only',
-			credentialMissingMode: 'must-preexist',
-			workflowConflictPolicy: 'fail',
-			workflowPublishingPolicy: 'preserve-published-state',
-			workflowIdPolicy: 'new',
-			folderConflictPolicy: 'merge',
-			dataTableMatchingMode: 'by-id',
-			dataTableMissingMode: 'create',
-			dataTableSchemaConflictPolicy: 'keep-existing',
-			variableMissingMode: 'do-nothing',
-			missingNodeTypeMode: 'fail',
-		});
-
-		expect(result.workflows).toHaveLength(1);
-		expect(result.workflows[0].status).toBe('created');
-
-		// Only the source tag and the source workflow's mapping remain — the import created neither.
-		const mappings = await Container.get(WorkflowTagMappingRepository).find();
-		expect(mappings).toHaveLength(1);
-		expect(mappings[0].workflowId).toBe(workflow.id);
-		expect(await Container.get(TagRepository).count()).toBe(1);
 	});
 });

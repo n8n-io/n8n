@@ -1,14 +1,27 @@
 <script setup lang="ts">
-import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, toRef, watch, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 import { N8nCallout, N8nIconButton, N8nSendStopButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
+import {
+	APPROVAL_TOOL_NAME,
+	WAIT_TOOL_NAME,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
+	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
+	PROVIDER_CAPABILITIES,
+} from '@n8n/api-types';
+import { useToast } from '@n8n/composables/useToast';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
+import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
-import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
+import { findTailOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
-import type { AgentJsonConfig } from '../types';
+import type {
+	AgentContinueLoadedEvent,
+	AgentFixWithAssistantEvent,
+	AgentJsonConfig,
+} from '../types';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import { TOOL_CALL_STATE } from '../constants';
@@ -42,15 +55,74 @@ const props = withDefaults(
 const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
-	'continue-loaded': [count: number];
+	'continue-loaded': [event: AgentContinueLoadedEvent];
 	'initial-consumed': [];
 	back: [];
 	'open-build': [];
-	'send-to-assistant': [executionId?: string];
+	'send-to-assistant': [event?: AgentFixWithAssistantEvent];
 }>();
 
 const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
+const toast = useToast();
+
+const attachedFiles = ref<File[]>([]);
+const chatInput = useTemplateRef<InstanceType<typeof ChatInputBase>>('chatInput');
+
+function focusInput(options?: FocusOptions) {
+	chatInput.value?.focus(options);
+}
+
+const attachmentCapabilities = computed(() => {
+	const provider = props.agentConfig?.model?.split('/')[0];
+	return provider ? PROVIDER_CAPABILITIES[provider]?.attachments : undefined;
+});
+const showAttach = computed(() => {
+	const capabilities = attachmentCapabilities.value;
+	return !!capabilities && (capabilities.image || capabilities.pdf || capabilities.audio);
+});
+const acceptedMimeTypes = computed(() => {
+	const capabilities = attachmentCapabilities.value;
+	if (!capabilities) return undefined;
+	return [
+		capabilities.image ? 'image/*' : null,
+		capabilities.pdf ? 'application/pdf' : null,
+		capabilities.audio ? 'audio/*' : null,
+	]
+		.filter((entry): entry is string => entry !== null)
+		.join(',');
+});
+
+function handleFilesSelected(files: File[]) {
+	for (const file of files) {
+		if (attachedFiles.value.length >= MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE) {
+			toast.showMessage({
+				type: 'error',
+				title: locale.baseText('agents.chat.attachments.tooMany', {
+					interpolate: { limit: String(MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE) },
+				}),
+			});
+			break;
+		}
+		if (file.size > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
+			toast.showMessage({
+				type: 'error',
+				title: locale.baseText('agents.chat.attachments.tooLarge', {
+					interpolate: {
+						fileName: file.name,
+						limit: String(MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB),
+					},
+				}),
+			});
+			continue;
+		}
+		attachedFiles.value.push(file);
+	}
+}
+
+function handleFileRemove(file: File) {
+	attachedFiles.value = attachedFiles.value.filter((f) => f !== file);
+}
 
 const internalInputText = ref(props.inputDraft ?? '');
 const inputText = computed<string>({
@@ -64,6 +136,7 @@ const inputText = computed<string>({
 	},
 });
 const isPreparingToSend = ref(false);
+let disposed = false;
 
 const {
 	messages,
@@ -84,7 +157,9 @@ const {
 	agentId: toRef(props, 'agentId'),
 	continueSessionId: toRef(props, 'continueSessionId'),
 	onHistoryLoaded: (count) => {
-		if (props.continueSessionId) emit('continue-loaded', count);
+		if (props.continueSessionId) {
+			emit('continue-loaded', { sessionId: props.continueSessionId, count });
+		}
 	},
 });
 
@@ -118,16 +193,48 @@ const missingFields = computed(() => {
 	return fatalError.value.missing.map(humaniseMissingField).join(', ');
 });
 
-const openInteractive = computed(() => findOpenInteractive(messages.value));
+/**
+ * Only the last turn can hold the input. A parked run is always the tail of the
+ * transcript, so anything after it — a resumed answer, a later turn — means that
+ * suspension is history. Reading the tail rather than the first open card
+ * anywhere keeps one abandoned card from wedging the chat for good, and keeps it
+ * from hiding a real question on the current turn.
+ */
+const openInteractive = computed(() => findTailOpenInteractive(messages.value));
 const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
 const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
+// A waiting card is an interactive the user can act on, but never a question:
+// its resume arrives from the workflow, so typing must not cancel and steer it.
+const hasOpenWaitCard = computed(() => openInteractive.value?.toolName === WAIT_TOOL_NAME);
 const hasOpenInteractiveQuestion = computed(
-	() => hasOpenInteraction.value && !hasOpenApproval.value,
+	() => hasOpenInteraction.value && !hasOpenApproval.value && !hasOpenWaitCard.value,
 );
-const hasOpenSuspension = computed(() =>
+const hasOpenSuspension = computed(
+	() =>
+		messages.value[messages.value.length - 1]?.toolCalls?.some(
+			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
+		) ?? false,
+);
+/**
+ * A parked run owns the conversation: sending now would start a second run
+ * whose context has the pending tool call stripped out, so the model would
+ * re-invoke the same tool. Only an open question is exempt — answering or
+ * steering it resumes the same run. Stop stays available either way.
+ */
+const inputBlockedBySuspension = computed(
+	() =>
+		hasOpenApproval.value ||
+		hasOpenWaitCard.value ||
+		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
+);
+// Tools still pending/running after the stream ended (desync): the backend
+// finished but their terminal events never arrived. Surfacing Stop here lets
+// the user clear the stale pulsing state without reloading the chat.
+const hasInFlightToolCalls = computed(() =>
 	messages.value.some((message) =>
 		message.toolCalls?.some(
-			(toolCall) => toolCall.state === TOOL_CALL_STATE.SUSPENDED && toolCall.runId,
+			(toolCall) =>
+				toolCall.state === TOOL_CALL_STATE.PENDING || toolCall.state === TOOL_CALL_STATE.RUNNING,
 		),
 	),
 );
@@ -138,33 +245,46 @@ const showStopAsPrimaryAction = computed(
 	() =>
 		isStreaming.value ||
 		isCancelling.value ||
-		hasOpenApproval.value ||
-		(hasOpenSuspension.value && !hasOpenInteractiveQuestion.value),
+		inputBlockedBySuspension.value ||
+		(!isStreaming.value && hasInFlightToolCalls.value),
 );
 
-const chatPlaceholder = computed(() =>
-	hasOpenApproval.value
-		? locale.baseText('agents.chat.approval.inputPlaceholder')
-		: hasOpenInteractiveQuestion.value
-			? locale.baseText('agents.chat.answerQuestionPlaceholder')
-			: locale.baseText('agents.chat.input.placeholder'),
-);
+const chatPlaceholder = computed(() => {
+	if (hasOpenApproval.value) {
+		return locale.baseText('agents.chat.approval.inputPlaceholder');
+	}
+	if (inputBlockedBySuspension.value) {
+		return locale.baseText('agents.chat.waiting.inputPlaceholder');
+	}
+	if (hasOpenInteractiveQuestion.value) {
+		return locale.baseText('agents.chat.answerQuestionPlaceholder');
+	}
+
+	const agentName = props.agentConfig?.name?.trim();
+	return agentName
+		? locale.baseText('agents.chat.input.placeholder.withAgent', {
+				interpolate: { agentName },
+			})
+		: locale.baseText('agents.chat.input.placeholder');
+});
 
 watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
+	const files = attachedFiles.value;
 	if (
-		!text ||
+		(!text && files.length === 0) ||
 		isStreaming.value ||
 		isCancelling.value ||
 		isPreparingToSend.value ||
-		hasOpenApproval.value
+		inputBlockedBySuspension.value
 	) {
 		return;
 	}
 
 	if (hasOpenInteractiveQuestion.value) {
+		if (!text) return;
 		inputText.value = '';
 		await cancelAndSteer(text);
 		return;
@@ -172,44 +292,61 @@ async function onSubmit() {
 
 	isPreparingToSend.value = true;
 	try {
-		await props.beforeSend?.();
-	} catch {
-		isPreparingToSend.value = false;
-		return;
-	}
-
-	try {
-		inputText.value = '';
+		const target = {
+			projectId: props.projectId,
+			agentId: props.agentId,
+			continueSessionId: props.continueSessionId,
+		};
+		const isCurrentTarget = () =>
+			!disposed &&
+			props.projectId === target.projectId &&
+			props.agentId === target.agentId &&
+			props.continueSessionId === target.continueSessionId;
+		try {
+			await props.beforeSend?.();
+		} catch {
+			return;
+		}
+		if (!isCurrentTarget()) return;
 
 		const fingerprint = await buildAgentConfigFingerprint(
 			props.agentConfig,
 			props.connectedTriggers,
 		);
+		if (!isCurrentTarget()) return;
+
+		inputText.value = '';
+		attachedFiles.value = [];
 		agentTelemetry.trackSubmittedMessage({
 			agentId: props.agentId,
 			status: props.agentStatus,
 			agentConfig: fingerprint,
 		});
 
-		await sendMessage(text);
+		if (files.length > 0) {
+			await sendMessage(text, files);
+		} else {
+			await sendMessage(text);
+		}
 	} finally {
 		isPreparingToSend.value = false;
 	}
 }
 
 function sendMessageFromOutside(message: string) {
-	if (hasOpenApproval.value) return;
+	if (inputBlockedBySuspension.value) return;
 	inputText.value = message;
 	void onSubmit();
 }
 
-defineExpose({ sendMessageFromOutside });
+defineExpose({ focusInput, sendMessageFromOutside });
 
 onMounted(() => {
 	void loadHistory();
 });
 
 onBeforeUnmount(() => {
+	disposed = true;
 	if (isStreaming.value) void stopGenerating();
 });
 </script>
@@ -268,7 +405,7 @@ onBeforeUnmount(() => {
 			</N8nCallout>
 		</div>
 
-		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" />
+		<AgentChatEmptyState v-if="messages.length === 0 && !isStreaming" :agent-config="agentConfig" />
 		<AgentChatMessageList
 			v-else
 			:messages="messages"
@@ -283,18 +420,22 @@ onBeforeUnmount(() => {
 
 		<div :class="$style.inputArea">
 			<ChatInputBase
+				ref="chatInput"
 				v-model="inputText"
 				:placeholder="chatPlaceholder"
 				:is-streaming="showStopAsPrimaryAction"
+				show-voice
+				:show-attach="showAttach"
+				:accepted-mime-types="acceptedMimeTypes"
 				:can-submit="
-					!hasOpenApproval &&
+					!inputBlockedBySuspension &&
 					!isStreaming &&
 					!isCancelling &&
 					!isPreparingToSend &&
-					inputText.trim().length > 0
+					(inputText.trim().length > 0 || attachedFiles.length > 0)
 				"
 				:disabled="
-					hasOpenApproval ||
+					inputBlockedBySuspension ||
 					isCancelling ||
 					isPreparingToSend ||
 					(isStreaming && messagingState !== 'receiving')
@@ -302,7 +443,19 @@ onBeforeUnmount(() => {
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"
+				@files-selected="handleFilesSelected"
 			>
+				<template v-if="attachedFiles.length > 0" #attachments>
+					<div :class="$style.attachmentsStrip">
+						<AttachmentPreview
+							v-for="(file, index) in attachedFiles"
+							:key="`${file.name}-${index}`"
+							:file="file"
+							is-removable
+							@remove="handleFileRemove"
+						/>
+					</div>
+				</template>
 				<template #footer-start>
 					<slot name="footer-start" />
 					<N8nSendStopButton
@@ -341,6 +494,16 @@ onBeforeUnmount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
+	width: 100%;
+	max-width: 800px;
+	margin: 0 auto;
+}
+
+.attachmentsStrip {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs) 0;
 }
 
 .errorBanner {

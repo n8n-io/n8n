@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type { ApiKey } from '@n8n/api-types';
-import type { TableHeader, TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
+import type { TableHeader, TableOptions } from '@n8n/design-system';
 import { N8nActionDropdown, N8nDataTableServer, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 
@@ -21,10 +21,13 @@ const props = withDefaults(
 		currentUserId?: string;
 		/** Hide the Owner column where ownership is implied (e.g. the "Mine" tab). */
 		showOwner?: boolean;
+		/** Whether the current user's role allows editing/rotating their own keys. */
+		canUpdate?: boolean;
 	}>(),
 	{
 		currentUserId: undefined,
 		showOwner: true,
+		canUpdate: true,
 	},
 );
 
@@ -65,7 +68,7 @@ type ApiKeyAction = 'edit' | 'view' | 'revoke' | 'rotate';
 
 function getRowActions(apiKey: ApiKey): Array<ActionDropdownItem<ApiKeyAction>> {
 	const actions: Array<ActionDropdownItem<ApiKeyAction>> = [];
-	if (isOwn(apiKey)) {
+	if (isOwn(apiKey) && props.canUpdate) {
 		actions.push({
 			id: 'edit',
 			label: i18n.baseText('settings.api.actions.edit'),
@@ -82,7 +85,8 @@ function getRowActions(apiKey: ApiKey): Array<ActionDropdownItem<ApiKeyAction>> 
 			});
 		}
 	} else {
-		// Non-owners open the same modal, which renders read-only based on ownership.
+		// Non-owners and roles without apiKey:update open the same modal,
+		// which renders read-only based on ownership and scopes.
 		actions.push({
 			id: 'view',
 			label: i18n.baseText('settings.api.actions.view'),

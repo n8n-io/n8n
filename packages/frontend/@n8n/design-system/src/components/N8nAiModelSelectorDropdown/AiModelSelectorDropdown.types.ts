@@ -2,6 +2,8 @@ import type { DropdownMenuItemProps } from '../N8nDropdownMenu/DropdownMenu.type
 
 export interface AiModelSelectorMenuItemData {
 	badgeLabel?: string;
+	/** Right-aligned action pill on the item (e.g. an n8n credits balance). */
+	actionPill?: { text: string; type?: 'default' | 'danger' | 'info' };
 	description?: string;
 	descriptionTooltipTeleported?: boolean;
 	fullName?: string;
@@ -10,6 +12,8 @@ export interface AiModelSelectorMenuItemData {
 	credentialType?: string;
 	/** Icon name shown instead of the credential icon (e.g. for "Configure credentials" actions). */
 	leadingIcon?: string;
+	/** Whether the item label represents content that is being resolved. */
+	loading?: boolean;
 }
 
 export type AiModelSelectorMenuItem<

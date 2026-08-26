@@ -28,6 +28,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 // Static agents-module imports are safe here: the ModuleRegistry gate decides
 // availability at runtime.
 import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
+import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
 import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-composition';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -39,6 +40,7 @@ import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { createAgentModelTurnRecorder } from './agent-model-turn-recorder';
 import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-scenario-seed';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
+import { snapshotLedgerBody } from './ledger-snapshot';
 import {
 	createMcpMockFetch,
 	type McpMockCanonicalTool,
@@ -288,6 +290,7 @@ export class EvalAgentExecutionService {
 			({ agent } = await reconstruction.reconstructFromAgentEntity(
 				agentEntity,
 				credentialProvider,
+				'test',
 				undefined,
 				user,
 				{
@@ -324,6 +327,8 @@ export class EvalAgentExecutionService {
 						);
 					},
 				},
+				'manual',
+				hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id }),
 			));
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
@@ -349,9 +354,12 @@ export class EvalAgentExecutionService {
 				if (!segmentToolCalls.includes(entry)) segmentToolCalls.push(entry);
 			}
 		};
+		const budgetSignal = AbortSignal.timeout(timeoutMs);
 		try {
-			const abortSignal = AbortSignal.timeout(timeoutMs);
-			result = await agent.generate(seed.openingMessage, { abortSignal, maxIterations });
+			result = await agent.generate(seed.openingMessage, {
+				abortSignal: budgetSignal,
+				maxIterations,
+			});
 			collectToolCalls(result);
 
 			// Approval-gated tools suspend the run. In real usage the user
@@ -366,7 +374,7 @@ export class EvalAgentExecutionService {
 				result = await agent.approve('generate', {
 					runId: pending.runId,
 					toolCallId: pending.toolCallId,
-					abortSignal,
+					abortSignal: budgetSignal,
 					maxIterations,
 				});
 				collectToolCalls(result);
@@ -378,6 +386,20 @@ export class EvalAgentExecutionService {
 			const message = error instanceof Error ? error.message : String(error);
 			// Flush so the failure result carries the recorded response bodies too.
 			await recorder.flush();
+			// A budget abort is the harness killing the run for time, NOT the builder
+			// failing. Say so in the words the WORKFLOW path already uses, so the one
+			// classifier (`isServerBudgetStop`) covers both — wrapping it as a plain
+			// `Agent run failed:` let a timed-out agent run score as a builder verdict,
+			// which is the misattribution this whole path exists to prevent.
+			if (budgetSignal.aborted) {
+				const seconds = Math.round(timeoutMs / 1000);
+				return this.errorResult(
+					`Agent run exceeded its ${seconds}s eval budget and was stopped`,
+					seed,
+					skippedFeatures,
+					{ modelTurns: recorder.turns, toolLedger, credentialHelpers },
+				);
+			}
 			return this.errorResult(`Agent run failed: ${message}`, seed, skippedFeatures, {
 				modelTurns: recorder.turns,
 				toolLedger,
@@ -533,7 +555,7 @@ export class EvalAgentExecutionService {
 				method: requestOptions.method ?? 'GET',
 				nodeType: node.type,
 				requestBody: requestOptions.body,
-				mockResponse: response?.body,
+				mockResponse: snapshotLedgerBody(response?.body),
 			});
 			this.logger.debug(
 				`[EvalAgentMock] Intercepted ${requestOptions.method ?? 'GET'} ${requestOptions.url} from tool "${toolName}" (${node.type})`,

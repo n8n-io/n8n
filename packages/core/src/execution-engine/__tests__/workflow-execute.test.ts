@@ -1562,8 +1562,9 @@ describe('WorkflowExecute', () => {
 	describe('runNode', () => {
 		const nodeTypes = mock<INodeTypes>();
 		const triggerNode = mock<INode>();
+		const closeFunctionSpy = vi.fn();
 		const triggerResponse = mock<ITriggerResponse>({
-			closeFunction: vi.fn(),
+			closeFunction: closeFunctionSpy,
 			// This node should never trigger, or return
 			manualTriggerFunction: async () => await new Promise(() => {}),
 		});
@@ -1618,10 +1619,11 @@ describe('WorkflowExecute', () => {
 			});
 			expect(isSettled).toBe(false);
 			expect(abortController.signal.aborted).toBe(false);
-			expect(triggerResponse.closeFunction).not.toHaveBeenCalled();
+			expect(closeFunctionSpy).not.toHaveBeenCalled();
 
 			abortController.abort();
-			expect(triggerResponse.closeFunction).toHaveBeenCalled();
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(closeFunctionSpy).toHaveBeenCalled();
 		});
 	});
 
@@ -1782,6 +1784,43 @@ describe('WorkflowExecute', () => {
 					json: {
 						error: 'Error occurred',
 						message: 'Error details',
+						someData: 'test',
+					},
+					pairedItem: { item: 0, input: 0 },
+				},
+			]);
+		});
+
+		test.each([
+			{
+				name: 'details',
+				json: { error: 'Error occurred', details: { httpCode: '500' } },
+			},
+			{
+				name: 'message and details',
+				json: {
+					error: 'Error occurred',
+					message: 'Error details',
+					details: { httpCode: '500' },
+				},
+			},
+		])('should handle error in json with $name properties', ({ json }) => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[
+					{
+						json,
+						pairedItem: { item: 0, input: 0 },
+					},
+				],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{
+					json: {
+						...json,
 						someData: 'test',
 					},
 					pairedItem: { item: 0, input: 0 },

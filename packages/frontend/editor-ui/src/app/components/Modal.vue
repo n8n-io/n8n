@@ -20,6 +20,7 @@ const props = withDefaults(
 		// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 		beforeClose?: () => boolean | Promise<boolean | void> | void;
 		customClass?: string;
+		overlayClass?: string;
 		center?: boolean;
 		width?: string;
 		minWidth?: string;
@@ -41,6 +42,7 @@ const props = withDefaults(
 		loading: false,
 		classic: false,
 		customClass: '',
+		overlayClass: '',
 		center: true,
 		width: '50%',
 		scrollable: false,
@@ -156,7 +158,7 @@ function getCustomClass() {
 		:lock-scroll="lockScroll"
 		:append-to-body="appendToBody"
 		:data-test-id="`${name}-modal`"
-		:modal-class="center ? $style.center : ''"
+		:modal-class="[center ? $style.center : '', overlayClass].filter(Boolean).join(' ')"
 		:z-index="APP_Z_INDEXES.MODALS"
 		@opened="onOpened"
 	>

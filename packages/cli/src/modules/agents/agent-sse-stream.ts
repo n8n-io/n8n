@@ -5,6 +5,7 @@ import type {
 	AgentSseMessage,
 	ToolSuspendedPayload,
 } from '@n8n/api-types';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import type { Response } from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 
@@ -64,6 +65,12 @@ function toAgentSseMessage(message: AgentMessage): AgentSseMessage | undefined {
 
 	if (content.length === 0) return undefined;
 	return { role: message.role, content };
+}
+
+function toolResultOutputForSse(output: unknown, isError: boolean | undefined): unknown {
+	if (!isError) return output;
+	const fallback = output instanceof Error ? output.name : undefined;
+	return scrubSecretsInText(stringifyError(output) || fallback || 'Tool execution failed');
 }
 
 /** SSE-emit text/reasoning lifecycle chunks. */
@@ -170,7 +177,7 @@ function emitToolChunk(
 				type: 'tool-result',
 				toolCallId: chunk.toolCallId,
 				toolName: chunk.toolName,
-				output: chunk.output,
+				output: toolResultOutputForSse(chunk.output, chunk.isError),
 				...(chunk.isError !== undefined && { isError: chunk.isError }),
 				...(toolResultChunk.canceled !== undefined && { canceled: toolResultChunk.canceled }),
 			});
@@ -225,6 +232,16 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 			if (sseMessage) ctx.send({ type: 'message', message: sseMessage });
 			return { suspended: false };
 		}
+		case 'subagent-chunk': {
+			if (chunk.parentToolCallId === undefined) return { suspended: false };
+			ctx.send({
+				type: 'subagent-chunk',
+				parentToolCallId: chunk.parentToolCallId,
+				taskPath: chunk.taskPath,
+				chunk: chunk.chunk,
+			});
+			return { suspended: false };
+		}
 		case 'error': {
 			const errMsg = stringifyError(chunk.error);
 			ctx.send({ type: 'error', message: errMsg });
@@ -245,8 +262,34 @@ function emitChunkEvents(chunk: StreamChunk, ctx: ChunkHandlerCtx): { suspended:
 	}
 }
 
+/** Find an ai-sdk `responseBody` on the error or its `cause` chain (the API error can arrive wrapped). */
+function readResponseBody(error: unknown): string | undefined {
+	if (typeof error !== 'object' || error === null) return undefined;
+	if ('responseBody' in error && typeof error.responseBody === 'string') return error.responseBody;
+	if ('cause' in error && error.cause !== error) return readResponseBody(error.cause);
+	return undefined;
+}
+
+/**
+ * The actionable message an ai-sdk error carries in its JSON `responseBody` —
+ * e.g. the n8n Connect gateway's "switch to your own credential" guidance. Prefer
+ * this over the bare status text ("Bad Request") so the chat shows what to do.
+ */
+function apiCallErrorMessage(error: unknown): string | undefined {
+	const body = readResponseBody(error);
+	if (!body) return undefined;
+	try {
+		const parsed = JSON.parse(body) as { message?: string; error?: { message?: string } };
+		return parsed?.error?.message ?? parsed?.message ?? undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 function stringifyError(error: unknown): string {
 	try {
+		const gatewayMessage = apiCallErrorMessage(error);
+		if (gatewayMessage) return gatewayMessage;
 		if (error instanceof Error) {
 			return error.message;
 		}
@@ -254,8 +297,8 @@ function stringifyError(error: unknown): string {
 			return JSON.stringify(error, null, 2);
 		}
 		return `Error: ${String(error)}`;
-	} catch (e) {
-		LoggerProxy.warn('Failed to stringify agent streaming error', { error });
+	} catch {
+		LoggerProxy.warn('Failed to stringify agent streaming error');
 	}
 	return 'Unknown error';
 }

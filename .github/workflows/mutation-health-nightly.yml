@@ -1,4 +1,5 @@
 name: 'Mutation Health (nightly)'
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Mutation Health (mode={0}, top_n={1}, source_file={2})', inputs.mode, inputs.top_n, inputs.source_file) || '' }}"
 
 on:
   schedule:
@@ -58,7 +59,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: 24.18.0
+          node-version: 24.18.1
 
       - name: Fetch read-all live ledger from BigQuery
         # Read-all (no ?package= param): one curl returns every row across

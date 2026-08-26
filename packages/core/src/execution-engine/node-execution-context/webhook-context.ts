@@ -29,6 +29,7 @@ import { getInputConnectionData } from './utils/get-input-connection-data';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { returnJsonArray } from './utils/return-json-array';
 import { getNodeWebhookUrl } from './utils/webhook-helper-functions';
+
 export class WebhookContext extends NodeExecutionContext implements IWebhookFunctions {
 	readonly helpers: IWebhookFunctions['helpers'];
 
@@ -137,13 +138,6 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	}
 
 	getNodeWebhookUrl(name: WebhookType): string | undefined {
-		// MCP and form webhooks are served under dedicated /mcp(+/mcp-test) and
-		// /form(+/form-test) endpoints; the OAuth resource URL must match the endpoint the
-		// request actually arrived on. Other webhook types keep their existing behaviour
-		// (production base) here.
-		const { nodeType } = this.webhookData.webhookDescription;
-		const isTest = nodeType === 'mcp' || nodeType === 'form' ? this.webhookData.isTest : undefined;
-
 		return getNodeWebhookUrl(
 			name,
 			this.workflow,
@@ -151,7 +145,20 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			this.additionalData,
 			this.mode,
 			this.additionalKeys,
-			isTest,
+		);
+	}
+
+	getWebhookResourceUrl(name: WebhookType): string | undefined {
+		// Unlike `getNodeWebhookUrl`, names the endpoint actually being served, since token
+		// minting and verification must agree on it (see `IWebhookFunctions`).
+		return getNodeWebhookUrl(
+			name,
+			this.workflow,
+			this.node,
+			this.additionalData,
+			this.mode,
+			this.additionalKeys,
+			this.webhookData.isTest,
 		);
 	}
 
@@ -202,11 +209,11 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 		return await this.additionalData.validateN8nOAuth2Token(token, resourceUrl);
 	}
 
-	async establishTriggerIdentity(token: string, resource: string): Promise<void> {
+	async establishTriggerIdentity(token: string, resource: string, subject?: string): Promise<void> {
 		if (!this.additionalData.establishTriggerIdentity) {
 			throw new UnexpectedError('Trigger identity establishment is not available');
 		}
-		await this.additionalData.establishTriggerIdentity(token, resource);
+		await this.additionalData.establishTriggerIdentity(token, resource, subject);
 	}
 
 	async checkTriggerCredentialStatus(): Promise<CredentialCheckResult | undefined> {
@@ -219,13 +226,16 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 	async getInputConnectionData(
 		connectionType: AINodeConnectionType,
 		itemIndex: number,
+		options?: number | { inputData?: IDataObject },
 	): Promise<unknown> {
+		const inputData =
+			typeof options === 'object' && options !== null ? options.inputData : undefined;
 		// To be able to use expressions like "$json.sessionId" set the
 		// body data the webhook received to what is normally used for
-		// incoming node data.
+		// incoming node data, unless the trigger supplied its own shape.
 		const connectionInputData: INodeExecutionData[] = [
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			{ json: this.additionalData.httpRequest?.body || {} },
+			{ json: inputData ?? (this.additionalData.httpRequest?.body || {}) },
 		];
 		const runExecutionData = this.runExecutionData ?? createEmptyRunExecutionData();
 		const executeData: IExecuteData = {

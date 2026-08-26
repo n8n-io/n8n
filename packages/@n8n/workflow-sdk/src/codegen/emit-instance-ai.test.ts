@@ -254,6 +254,9 @@ describe('emit-instance-ai', () => {
 			'validateWorkflow',
 			'getSchemaBaseDirs',
 			'setSchemaBaseDirs',
+			'isInformationalIssue',
+			'partitionValidationIssues',
+			'validateWorkflowBuilder',
 			// Pin-data + schema discovery
 			'discoverOutputSchemaForNode',
 			'discoverSchemasForNode',
@@ -279,6 +282,10 @@ describe('emit-instance-ai', () => {
 			'workflowToMermaid',
 			// Display-options matching
 			'matchesDisplayOptions',
+			// SDK-to-engine adapters for host-side validation and graph helpers
+			'dropInvalidWorkflowJsonGroups',
+			'toEngineConnections',
+			'toGroupValidationNodes',
 			// Plugin registration
 			'registerDefaultPlugins',
 			// Generate-types module (build-time type generation, never appears in workflows)

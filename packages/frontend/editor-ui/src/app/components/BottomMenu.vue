@@ -11,7 +11,7 @@ import {
 import { CHANGELOG_URL } from '@/app/constants';
 import { useVersionsStore } from '@n8n/stores/versions.store';
 import VersionUpdateCTA from '@/app/components/VersionUpdateCTA.vue';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 import { useI18n } from '@n8n/i18n';
 

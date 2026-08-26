@@ -1,6 +1,7 @@
 import {
 	BaseFilesystem,
 	BaseSandbox,
+	CORE_WORKSPACE_TOOL_NAMES,
 	Workspace,
 	raceWithAbort,
 	type AbortableOptions,
@@ -22,15 +23,6 @@ import {
 } from '@n8n/agents';
 
 export type RuntimeWorkspaceResolver = () => Promise<Workspace | undefined>;
-
-/** Workspace tools exposed to Instance AI agents — read/write/replace/execute only. */
-export const INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST = new Set([
-	'workspace_read_file',
-	'workspace_write_file',
-	'workspace_str_replace_file',
-	'workspace_batch_str_replace_file',
-	'workspace_execute_command',
-]);
 
 export interface LazyRuntimeWorkspaceOptions {
 	ensureWorkspace: RuntimeWorkspaceResolver;
@@ -69,7 +61,7 @@ export function createLazyRuntimeWorkspace({
 
 	const baseGetTools = workspace.getTools.bind(workspace);
 	workspace.getTools = () =>
-		baseGetTools().filter((tool) => INSTANCE_AI_WORKSPACE_TOOL_ALLOWLIST.has(tool.name));
+		baseGetTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name));
 
 	return workspace;
 }
@@ -320,10 +312,6 @@ class LazyRuntimeSandbox extends BaseSandbox {
 		await this.resolver.destroyResolvedWorkspace();
 	}
 
-	getDefaultCommandEnv(): NodeJS.ProcessEnv {
-		return this.resolver.current?.sandbox?.getDefaultCommandEnv?.() ?? {};
-	}
-
 	override async executeCommand(
 		command: string,
 		args: string[] = [],
@@ -334,12 +322,8 @@ class LazyRuntimeSandbox extends BaseSandbox {
 			throw new Error('Instance AI runtime sandbox does not support command execution.');
 		}
 
-		const defaultEnv = sandbox.getDefaultCommandEnv?.();
 		try {
-			return await sandbox.executeCommand(command, args, {
-				...options,
-				...(defaultEnv ? { env: { ...defaultEnv, ...options?.env } } : {}),
-			});
+			return await sandbox.executeCommand(command, args, options);
 		} finally {
 			this.syncStatus(sandbox);
 		}

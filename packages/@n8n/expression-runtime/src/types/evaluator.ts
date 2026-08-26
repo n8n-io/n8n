@@ -137,10 +137,10 @@ export interface NodeProxy {
  * type.
  *
  * Return types are `unknown` rather than `INodeExecutionData` / `[]`:
- * results cross the isolate boundary via `applySync({ result: { copy: true } })`,
- * which structured-clones the value and erases nominal types. The handlers
- * pass the clone through verbatim, so a precise return type would be
- * misleading. Matches the `NodeProxy` return type for the same reason.
+ * `ivm.Callback` structured-clones results as they pass between isolates,
+ * which erases nominal types. The handlers pass the clone through verbatim,
+ * so a precise return type would be misleading. Matches the `NodeProxy`
+ * return type for the same reason.
  */
 export interface InputProxy {
 	first?: () => unknown;

@@ -6,7 +6,6 @@ import {
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
 import type { DocumentType } from '@smithy/types';
-import { assertSupportedAwsRegion } from 'n8n-nodes-base/aws-credentials';
 import { awsNodeAuthOptions, awsNodeCredentials } from 'n8n-nodes-base/dist/nodes/Aws/utils';
 import {
 	jsonParse,
@@ -20,8 +19,9 @@ import {
 
 import { createBedrockRuntimeClient } from '@utils/aws/createBedrockRuntimeClient';
 import { resolveAwsCredentials } from '@utils/aws/resolveAwsCredentials';
+import { resolveBedrockRegion } from '@utils/aws/resolveBedrockRegion';
 
-import { listModels } from './methods/listModels';
+import { listInferenceProfiles, listModels } from './methods/listModels';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -151,10 +151,13 @@ export class LmChatAwsBedrock implements INodeType {
 				},
 			},
 			{
+				// Keeps the field exactly as the legacy declarative picker rendered it
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Model',
 				name: 'model',
 				type: 'options',
 				allowArbitraryValues: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description:
 					'The inference profile which will generate the completion. <a href="https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-use.html">Learn more</a>.',
 				displayOptions: {
@@ -164,40 +167,8 @@ export class LmChatAwsBedrock implements INodeType {
 					},
 				},
 				typeOptions: {
-					loadOptionsDependsOn: ['modelSource'],
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/inference-profiles?maxResults=1000',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'inferenceProfileSummaries',
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.inferenceProfileName}}',
-											description:
-												'={{$responseItem.description || $responseItem.inferenceProfileArn}}',
-											value: '={{$responseItem.inferenceProfileId}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
-						},
-					},
+					loadOptionsDependsOn: ['modelSource', 'authentication'],
+					loadOptionsMethod: 'listInferenceProfiles',
 				},
 				routing: {
 					send: {
@@ -360,6 +331,7 @@ export class LmChatAwsBedrock implements INodeType {
 
 	methods = {
 		loadOptions: {
+			listInferenceProfiles,
 			listModels,
 		},
 	};
@@ -388,17 +360,7 @@ export class LmChatAwsBedrock implements INodeType {
 			};
 		};
 
-		// If the model is specified as a full ARN, extract the region from it
-		// ARN format: arn:<partition>:bedrock:<region>:<account-id>:inference-profile/<profile-id>
-		// Partition covers commercial (aws), China (aws-cn) and GovCloud (aws-us-gov).
-		let region = credentialRegion;
-		const arnMatch = modelName.match(/^arn:(?:aws|aws-cn|aws-us-gov):bedrock:([a-z0-9-]+):/);
-		if (arnMatch) {
-			const arnRegion = arnMatch[1];
-			// Validate before the region is interpolated into the bedrock-runtime endpoint URL below.
-			assertSupportedAwsRegion(arnRegion);
-			region = arnRegion;
-		}
+		const region = resolveBedrockRegion(modelName, credentialRegion);
 
 		const client = createBedrockRuntimeClient({
 			region,

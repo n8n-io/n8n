@@ -10,5 +10,8 @@ export function toOidcConfigurationResponse(config: OidcRuntimeConfig): OidcConf
 		...config,
 		discoveryEndpoint: config.discoveryEndpoint.toString(),
 		clientSecret: config.clientSecret ? OIDC_CLIENT_SECRET_REDACTED_VALUE : config.clientSecret,
+		// The PUT body requires every writable field, so never omit this one — a GET
+		// response has to stay usable as a PUT body.
+		emailVerifiedRequired: config.emailVerifiedRequired ?? false,
 	};
 }

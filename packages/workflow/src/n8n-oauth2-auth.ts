@@ -1,5 +1,6 @@
+import { recordConsumedAuth } from './auth-redaction';
 import { UnexpectedError } from './errors';
-import type { IWebhookFunctions } from './interfaces';
+import type { IUser, IWebhookFunctions } from './interfaces';
 
 function trimTrailingSlash(url: string): string {
 	return url.endsWith('/') ? url.slice(0, -1) : url;
@@ -35,7 +36,8 @@ function sendUnauthorizedResponse(
  * and the MCP trigger — both expose it as the `n8nOAuth2` authentication mode.
  *
  * On success returns the validated `token` and `resource` URL, which the caller
- * passes to `context.establishTriggerIdentity` to run the workflow as that user.
+ * passes to `context.establishTriggerIdentity` to run the workflow as that user,
+ * plus the resolved `user` for triggers that surface the caller in their output.
  * When the token is missing or invalid the response is written here (401/403/503,
  * advertising the OAuth protected-resource metadata URL in `WWW-Authenticate`) and
  * `'handled'` is returned, so the request never reaches workflow execution.
@@ -47,24 +49,32 @@ function sendUnauthorizedResponse(
  */
 export const n8nOAuth2Auth = async (
 	context: IWebhookFunctions,
-	options: { realm: string },
+	options: { realm: string; method?: string },
 ): Promise<
 	| {
 			status: 'ok';
 			token: string;
 			resource: string;
+			user: IUser;
 	  }
 	| 'handled'
 > => {
-	const webhookUrl = context.getNodeWebhookUrl('default');
+	const webhookUrl = context.getWebhookResourceUrl('default');
 	if (!webhookUrl) {
 		throw new UnexpectedError('Webhook URL is not available');
 	}
 
-	const resourceUrl = trimTrailingSlash(webhookUrl);
+	// One webhook path can host several disjoint-method triggers, so the method being
+	// served selects which one a resource URL names. It has to be carried on both the
+	// token audience (`resourceUrl`) and the metadata URL advertised in
+	// `WWW-Authenticate` (`prmUrl`), keeping mint and verify consistent. Omitted for
+	// MCP, which is always POST and needs no selector.
+	const resourceUrl =
+		trimTrailingSlash(webhookUrl) +
+		(options.method ? `?method=${options.method.toUpperCase()}` : '');
 
 	const u = new URL(resourceUrl);
-	const prmUrl = `${u.origin}/.well-known/oauth-protected-resource${u.pathname}`;
+	const prmUrl = `${u.origin}/.well-known/oauth-protected-resource${u.pathname}${u.search}`;
 
 	const resp = context.getResponseObject();
 	const req = context.getRequestObject();
@@ -87,9 +97,12 @@ export const n8nOAuth2Auth = async (
 		return 'handled';
 	}
 
+	recordConsumedAuth(req, ['authorization']);
+
 	return {
 		status: 'ok',
 		token,
 		resource: resourceUrl,
+		user: validationResult.user,
 	};
 };

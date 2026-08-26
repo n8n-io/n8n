@@ -1,4 +1,5 @@
 name: 'Release: Publish New Package'
+run-name: "Release: Publish New Package (${{ inputs['package-path'] }})"
 
 on:
   workflow_dispatch:

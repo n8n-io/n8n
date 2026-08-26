@@ -1,38 +1,55 @@
-ARG NODE_VERSION=24.18.0
+ARG NODE_VERSION=26.7.0
 ARG N8N_VERSION=snapshot
 
-# Builder stage exists because the runtime base image has no toolchain.
-# Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
-# Bump the digest together with the tag when updating the base image.
-# Digest pins to node:24.18.0-alpine3.24 (Node 24.18.0, Alpine 3.24).
-FROM node:24.18.0-alpine3.24@sha256:a0b9bf06e4e6193cf7a0f58816cc935ff8c2a908f81e6f1a95432d679c54fbfd AS builder
-COPY ./compiled /usr/local/lib/node_modules/n8n
-RUN apk add --no-cache python3 make g++ && \
-    cd /usr/local/lib/node_modules/n8n && \
-    npm rebuild sqlite3 && \
-    # Rebuild isolated-vm from source. node-gyp-build's musl detection relies
-    # on /etc/alpine-release which DHI Alpine omits, so the bundled prebuilt
-    # loader picks the glibc binary and segfaults in musl pthread paths.
-    # Removing prebuilds and invoking node-gyp directly avoids npm rebuild's
-    # double-build behavior (built-in node-gyp + install-script node-gyp)
-    # which races on dep-file state.
-    # Use npm's bundled node-gyp rather than `npx node-gyp` so the toolchain
-    # version is fixed by the pinned image digest instead of being fetched
-    # from the registry at build time.
-    rm -rf node_modules/isolated-vm/prebuilds && \
-    cd node_modules/isolated-vm && \
+# The digest pins node:26.7.0-alpine3.24 for amd64 and arm64. Change the tag and the digest together.
+ARG BUILDER_IMAGE=node:26.7.0-alpine3.24@sha256:aadf416b2cdce311a8811ba3f0608a61b77dbf997500e2eafe781b51f6a0b019
+ARG RUNTIME_IMAGE=n8nio/base:26.7.0@sha256:33687300c4e94dc00f42ec79ae15082ae07330ecd82ae1167125905b65908ff8
+
+# The runtime base has no compiler, so this stage supplies one.
+FROM ${BUILDER_IMAGE} AS toolchain
+RUN apk add --no-cache python3 make g++
+
+# Build isolated-vm in a separate stage. The only cache input is the module source.
+# Below `COPY ./compiled`, each application change starts a new compile.
+FROM toolchain AS native-builder
+# `node_modules/isolated-vm` is a pnpm symlink, so copy the target directory.
+# The wildcard tracks the version in the catalog.
+COPY ./compiled/node_modules/.pnpm/isolated-vm@*/node_modules/isolated-vm /build/isolated-vm
+WORKDIR /build/isolated-vm
+# node-gyp-build reads /etc/alpine-release to detect musl. DHI Alpine has no such file,
+# so the loader takes the glibc prebuild and crashes. Build from source instead.
+# Call node-gyp directly: `npm rebuild` starts two builds that conflict, and
+# `npx node-gyp` downloads a different version at build time.
+RUN rm -rf prebuilds && \
     node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release -j max
 
-# Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
-# n8nio/base is republished by a separate workflow (docker/images/n8n-base) on every
-# base change, so a base rebuild does not reach this image until the digest is
-# manually re-pinned here. Bump the digest together with the tag whenever the base
-# image is intentionally updated.
-# Digest pins to n8nio/base:24.18.0 (Node 24.18.0, Alpine 3.24).
-FROM n8nio/base:24.18.0@sha256:29d9c11f55f02442276512592b439ebb2a1d1043c1339ad5cea4e56862520d22
+FROM toolchain AS builder
+COPY ./compiled /usr/local/lib/node_modules/n8n
+# Call node-gyp directly rather than `npm rebuild sqlite3`: sqlite3 is reachable through
+# several symlinks in the pnpm tree, and npm runs one install script per link
+# concurrently in the same store directory, where they collide on build/node_gyp_bins
+# and on each other's make output. npm's bundled node-gyp also fixes the toolchain
+# version to the pinned image digest instead of fetching it at build time.
+RUN cd /usr/local/lib/node_modules/n8n/node_modules/sqlite3 && \
+    node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release
+# The workspace install cannot build this binding, because CI installs on a Node version
+# Confluent ships no prebuild for, so `./compiled` arrives without one. Compile it here
+# and link against the runtime base's librdkafka. See: https://github.com/confluentinc/confluent-kafka-javascript/issues/397
+RUN apk add --no-cache librdkafka-dev && \
+    cd /usr/local/lib/node_modules/n8n/node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript && \
+    BUILD_LIBRDKAFKA=0 node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release
+COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
+     /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/build/Release/isolated_vm.node
+# node-gyp-build finds build/Release first. Delete the prebuilds to remove the glibc fallback.
+RUN rm -rf /usr/local/lib/node_modules/n8n/node_modules/isolated-vm/prebuilds
+
+# A separate workflow builds the base image, so a new base reaches this image only
+# when you change the reference here (see BUILDER_IMAGE/RUNTIME_IMAGE above).
+FROM ${RUNTIME_IMAGE}
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
+ARG IMAGE_DESCRIPTION="Workflow Automation Tool"
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
@@ -42,7 +59,7 @@ WORKDIR /home/node
 COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
 
-# The Alpine 3.24 base has no /usr/local/bin (node lives in /usr/bin); create it for the symlink.
+# The base keeps node in /usr/bin and has no /usr/local/bin. Make that directory for the symlink.
 RUN mkdir -p /usr/local/bin && \
     ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
@@ -54,7 +71,7 @@ USER node
 ENTRYPOINT ["tini", "--", "/docker-entrypoint.sh"]
 
 LABEL org.opencontainers.image.title="n8n" \
-      org.opencontainers.image.description="Workflow Automation Tool" \
+      org.opencontainers.image.description="${IMAGE_DESCRIPTION}" \
       org.opencontainers.image.source="https://github.com/n8n-io/n8n" \
       org.opencontainers.image.url="https://n8n.io" \
       org.opencontainers.image.version=${N8N_VERSION}

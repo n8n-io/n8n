@@ -5,7 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { jsonParse } from 'n8n-workflow';
 import { usePostMessageControls, usePostMessageHandler } from './usePostMessageHandler';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useNotificationsStore } from '@n8n/stores/notifications.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
@@ -53,7 +53,7 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 
 const mockToastShowError = vi.hoisted(() => vi.fn());
 const mockToastShowMessage = vi.hoisted(() => vi.fn());
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: mockToastShowError,
 		showMessage: mockToastShowMessage,
@@ -63,7 +63,7 @@ vi.mock('@/app/composables/useToast', () => ({
 const mockFetchAllCredentialsForWorkflow = vi.hoisted(() => vi.fn());
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: vi.fn(() => ({
-		fetchAllCredentialsForWorkflow: mockFetchAllCredentialsForWorkflow,
+		fetchUsableCredentials: mockFetchAllCredentialsForWorkflow,
 	})),
 }));
 

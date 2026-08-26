@@ -1,16 +1,18 @@
+import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
+import { WorkflowRepository } from '@n8n/db';
+import { Service } from '@n8n/di';
+import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+
 import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
-import { User, WorkflowRepository } from '@n8n/db';
-import { Service } from '@n8n/di';
-import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
+import { triggerResourceGate } from '../resource-gate';
 import {
+	FORM_TRIGGER_CONSENT_HINTS,
 	FORM_TRIGGER_SCOPES,
-	isFormOAuth2Enabled,
 	resourceUrlToWebhookPath,
 	trimSlashes,
 	trimTrailingSlash,
@@ -40,10 +42,6 @@ export class FormTriggerResourceResolver implements ProtectedResourceResolver {
 	}
 
 	async resolveByPath(pathname: string) {
-		if (!isFormOAuth2Enabled()) {
-			return undefined;
-		}
-
 		if (!pathname.startsWith(`/${this.config.endpoints.form}/`)) {
 			return undefined;
 		}
@@ -76,27 +74,24 @@ export class FormTriggerResourceResolver implements ProtectedResourceResolver {
 			node.parameters.authentication === 'n8nUserAuth'
 		) {
 			const resourceUrl = `${trimTrailingSlash(this.urlService.getWebhookBaseUrl())}/${this.config.endpoints.form}/${path}`;
-			const requireExecute = node.parameters.requireExecuteAccess !== false;
+			// Opt-in, unlike the MCP resolvers' `!== false`: defaulting off preserves the
+			// existing any-authenticated-user behaviour, so turning the feature flag on does
+			// not change who may submit an already-published form. Don't "align" these.
+			const requireExecute = node.parameters.requireExecuteAccess === true;
+			const audiences = [resourceUrl];
 			return {
 				id: 'workflow-form:' + workflow.id,
 				isFirstParty: true,
 				getResourceUrl: () => resourceUrl,
-				getAudiences: () => [resourceUrl],
+				getAudiences: () => audiences,
 				getAllowedRedirectUris: async () => [resourceUrl],
 				scopes: FORM_TRIGGER_SCOPES,
 				displayName: workflow.name,
-				authorize: async (user: User) => {
-					if (requireExecute) {
-						return (
-							await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
-								[workflow.id],
-								user,
-								['workflow:execute'],
-							)
-						).has(workflow.id);
-					}
-					return true;
-				},
+				uiHints: FORM_TRIGGER_CONSENT_HINTS,
+				...triggerResourceGate(this.workflowFinderService, {
+					audiences,
+					executeAccessWorkflowId: requireExecute ? workflow.id : undefined,
+				}),
 			};
 		}
 

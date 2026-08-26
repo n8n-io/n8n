@@ -168,7 +168,7 @@ export function createIntegrationActionTool(params: {
 
 			if (toolInput.actions !== undefined) {
 				return await executeActionToolBatch({
-					operations: toolInput.actions,
+					operations: toolInput.actions.map(toSingleActionOperation),
 					descriptor,
 					messageContextStore,
 					actionExecutor,

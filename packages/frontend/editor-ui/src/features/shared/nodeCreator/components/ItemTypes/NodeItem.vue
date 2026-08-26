@@ -57,7 +57,7 @@ const draggablePosition = ref({ x: -100, y: -100 });
 const draggableDataTransfer = ref(null as Element | null);
 
 const description = computed<string>(() => {
-	if (isCommunityNodePreview.value) {
+	if (isCommunityNodePreview.value || isCommunityNode.value) {
 		return props.nodeType.description;
 	}
 	if (isSendAndWaitCategory.value) {
@@ -65,7 +65,8 @@ const description = computed<string>(() => {
 	}
 	if (
 		props.subcategory === DEFAULT_SUBCATEGORY &&
-		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX)
+		!props.nodeType.name.startsWith(CREDENTIAL_ONLY_NODE_PREFIX) &&
+		!activeViewStack.search
 	) {
 		return '';
 	}

@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import type { ExecutionSummary } from 'n8n-workflow';
 
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useCreateCaseFromExecution } from '../../composables/useCreateCaseFromExecution';
 import { useUserExecutions } from '../../composables/useUserExecutions';
 import ExecutionRow from './ExecutionRow.vue';

@@ -14,35 +14,31 @@ import {
 	type INodeTypeDescription,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
-import {
-	computed,
-	toValue,
-	unref,
-	type ComputedRef,
-	type MaybeRef,
-	type MaybeRefOrGetter,
-} from 'vue';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
 export interface CredentialDropdownOption extends ICredentialsResponse {
 	typeDisplayName: string;
 }
 
 export function useNodeCredentialOptions(
-	node: ComputedRef<INodeUi | null>,
-	nodeType: ComputedRef<INodeTypeDescription | null>,
-	overrideCredType: MaybeRef<NodeParameterValueType | undefined>,
+	node: MaybeRefOrGetter<INodeUi | null>,
+	nodeType: MaybeRefOrGetter<INodeTypeDescription | null>,
+	overrideCredType: MaybeRefOrGetter<NodeParameterValueType | undefined>,
 	displayAllOptions: MaybeRefOrGetter<boolean> = false,
 ) {
 	const nodeHelpers = useNodeHelpers();
 	const credentialsStore = useCredentialsStore();
-	const mainNodeAuthField = computed(() => getMainAuthField(nodeType.value));
+	const mainNodeAuthField = computed(() => getMainAuthField(toValue(nodeType)));
 	const hasOverride = computed(() => {
-		const override = unref(overrideCredType);
+		const override = toValue(overrideCredType);
 		return typeof override === 'string' && override !== '';
 	});
 
 	const credentialTypesNodeDescriptions = computed(() =>
-		credentialsStore.getCredentialTypesNodeDescriptions(unref(overrideCredType), nodeType.value),
+		credentialsStore.getCredentialTypesNodeDescriptions(
+			toValue(overrideCredType),
+			toValue(nodeType),
+		),
 	);
 
 	const credentialTypesNodeDescriptionDisplayed = computed(() =>
@@ -71,7 +67,7 @@ export function useNodeCredentialOptions(
 
 		options = options.filter((option) => (option.usageScope ?? 'project') === 'project');
 
-		if (node.value?.type === HTTP_REQUEST_NODE_TYPE) {
+		if (toValue(node)?.type === HTTP_REQUEST_NODE_TYPE) {
 			options = options.filter((option) => !option.isManaged);
 		}
 
@@ -79,7 +75,8 @@ export function useNodeCredentialOptions(
 	}
 
 	function displayCredentials(credentialTypeDescription: INodeCredentialDescription): boolean {
-		if (!node.value) {
+		const nodeValue = toValue(node);
+		if (!nodeValue) {
 			return false;
 		}
 
@@ -88,21 +85,22 @@ export function useNodeCredentialOptions(
 			return true;
 		}
 		return nodeHelpers.displayParameter(
-			node.value.parameters,
+			nodeValue.parameters,
 			credentialTypeDescription,
 			'',
-			node.value,
+			nodeValue,
 		);
 	}
 
 	function showMixedCredentials(credentialType: INodeCredentialDescription): boolean {
-		if (!node.value || hasOverride.value) {
+		const nodeValue = toValue(node);
+		if (!nodeValue || hasOverride.value) {
 			return false;
 		}
 
-		const isRequired = isRequiredCredential(nodeType.value, credentialType);
+		const isRequired = isRequiredCredential(toValue(nodeType), credentialType);
 
-		return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(node.value.type) && isRequired;
+		return !KEEP_AUTH_IN_NDV_FOR_NODES.includes(nodeValue.type) && isRequired;
 	}
 
 	function isMainAuthCredential(credentialType: INodeCredentialDescription): boolean {
@@ -138,14 +136,19 @@ export function useNodeCredentialOptions(
 		}
 
 		// otherwise, return all related credential types
-		return getAllNodeCredentialForAuthType(nodeType.value, authFieldName).map((cred) => cred.name);
+		return getAllNodeCredentialForAuthType(toValue(nodeType), authFieldName).map(
+			(cred) => cred.name,
+		);
 	}
 
 	function isCredentialExisting(credentialType: INodeCredentialDescription): boolean {
-		const credential = node.value?.credentials?.[credentialType.name];
+		const credential = toValue(node)?.credentials?.[credentialType.name];
 		// Gateway-managed credentials have no real DB record but are properly configured
 		if (credential?.__aiGatewayManaged) return true;
 		if (!credential?.id) return false;
+		// Until the scoped fetch lands there is nothing to match against, and reporting
+		// a configured credential as missing raises a credential issue that isn't one.
+		if (!credentialsStore.hasFetchedUsableCredentials) return true;
 		const options = getCredentialOptions([credentialType.name]);
 		return !!options.find((option: ICredentialsResponse) => option.id === credential.id);
 	}

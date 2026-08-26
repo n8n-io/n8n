@@ -4,15 +4,17 @@ import { createTestingPinia } from '@pinia/testing';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { defaultSettings } from '@/__tests__/defaults';
 import MainSidebar from '@/app/components/MainSidebar.vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useVersionsStore } from '@n8n/stores/versions.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { usePersonalizedTemplatesV2Store } from '@/experiments/templateRecoV2/stores/templateRecoV2.store';
 import { usePersonalizedTemplatesV3Store } from '@/experiments/personalizedTemplatesV3/stores/personalizedTemplatesV3.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 import { ABOUT_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/app/constants';
+
+const openTopUpMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
@@ -20,6 +22,10 @@ vi.mock('vue-router', () => ({
 	}),
 	useRoute: () => reactive({ params: {} }),
 	RouterLink: vi.fn(),
+}));
+
+vi.mock('@/app/composables/useAiGatewayTopUp', () => ({
+	useAiGatewayTopUp: () => ({ openTopUp: openTopUpMock }),
 }));
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
@@ -45,6 +51,7 @@ const mockVersion: Version = {
 
 describe('MainSidebar', () => {
 	beforeEach(() => {
+		openTopUpMock.mockReset();
 		renderComponent = createComponentRenderer(MainSidebar, {
 			pinia: createTestingPinia(),
 		});
@@ -204,6 +211,25 @@ describe('MainSidebar', () => {
 					articleId: 123,
 				},
 			});
+		});
+
+		it('should open the top-up flow when n8n credits is selected', async () => {
+			settingsStore.settings = {
+				...defaultSettings,
+				aiGateway: {
+					enabled: true,
+					budget: 0,
+					cloudUbbEnabled: true,
+				},
+			};
+
+			const { getByText, findByText } = renderComponent();
+
+			getByText('Settings').click();
+			const creditsItem = await findByText('n8n credits');
+			creditsItem.click();
+
+			expect(openTopUpMock).toHaveBeenCalledWith({ source: 'settings_page' });
 		});
 	});
 });

@@ -12,6 +12,7 @@ import {
 
 import {
 	generateFormUserAuthToken,
+	getHostNavigationPath,
 	getNodeReference,
 	handleNewlines,
 	resolveRawData,
@@ -26,9 +27,16 @@ const getBinaryDataFromNode = (
 	context: IWebhookFunctions,
 	nodeName: string,
 ): IDataObject | undefined => {
-	return context.evaluateExpression(`{{ ${getNodeReference(nodeName)}.first().binary }}`) as
-		| IDataObject
-		| undefined;
+	try {
+		return context.evaluateExpression(`{{ ${getNodeReference(nodeName)}.first().binary }}`) as
+			| IDataObject
+			| undefined;
+	} catch {
+		// Parent nodes without run data (e.g. branches of another Form Trigger,
+		// or nodes that ran before a resumed waiting form in queue mode) throw
+		// an ExpressionError — treat them as having no binary data.
+		return undefined;
+	}
 };
 
 const getInputDataFieldNames = (inputDataFieldName: string) => {
@@ -86,12 +94,15 @@ export const renderFormCompletion = async (
 		formTitle: string;
 		customCss?: string;
 	};
-	const responseText = (context.getNodeParameter('responseText', '') as string) ?? '';
 	const respondWith = context.getNodeParameter('respondWith', '') as
 		| 'text'
 		| 'redirect'
 		| 'showText'
 		| 'returnBinary';
+	const responseText =
+		respondWith === 'showText'
+			? ((context.getNodeParameter('responseText', '') as string) ?? '')
+			: '';
 	const binary = respondWith === 'returnBinary' ? await binaryResponse(context) : [];
 	const triggerRef = getNodeReference(trigger.name);
 
@@ -112,7 +123,10 @@ export const renderFormCompletion = async (
 	// resumes the paused workflow) can re-authenticate the user — cookies
 	// aren't sent on fetch from the sandboxed completion page.
 	const authToken = authedUser
-		? generateFormUserAuthToken(context.getNode(), authedUser)
+		? generateFormUserAuthToken(context.getNode(), authedUser, {
+				workflowId: context.getWorkflow().id,
+				executionId: context.getExecutionId(),
+			})
 		: undefined;
 
 	res.render('form-trigger-completion', {
@@ -125,6 +139,10 @@ export const renderFormCompletion = async (
 		dangerousCustomCss: sanitizeCustomCss(options.customCss),
 		redirectUrl: validateSafeRedirectUrl(redirectUrl) ?? undefined,
 		authToken,
+		// The completion page reloads itself while the run finishes, and that hop is
+		// subject to the same cookie semantics as every other page of the form, so it
+		// goes through the host when the host is the shell.
+		hostNavigationPath: getHostNavigationPath(context),
 	});
 
 	return { noWebhookResponse: true };

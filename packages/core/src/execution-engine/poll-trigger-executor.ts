@@ -2,8 +2,10 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { INode, IPollFunctions, Workflow } from 'n8n-workflow';
 
+import { ErrorReporter } from '@/errors/error-reporter';
 import { SpanStatus, Tracing } from '@/observability';
 
+import { commitStagedCursor, runPollInStagingScope } from './poll-cursor-hooks';
 import { TriggersAndPollers } from './triggers-and-pollers';
 
 /** Runs a poll trigger's `poll()` once. `testingTrigger` flags the initial activation poll. */
@@ -20,6 +22,7 @@ export class PollTriggerExecutor {
 		private readonly logger: Logger,
 		private readonly triggersAndPollers: TriggersAndPollers,
 		private readonly tracing: Tracing,
+		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = logger.scoped('poll-trigger');
 	}
@@ -80,36 +83,66 @@ export class PollTriggerExecutor {
 						return;
 					}
 
+					// Poll and hand-off share one staging scope, so a cursor staged here can
+					// only be committed by this poll and never by a later tick. The try/catch
+					// wraps the staging scope itself, not just the callback inside it, so a
+					// cursor resolution failure (thrown by `__runPoll` before the callback
+					// ever runs) is routed the same way as any other poll failure instead of
+					// escaping as an unhandled rejection from the `void`-called scheduled tick.
+					let isolateAcquired = false;
 					try {
-						if (ownsIsolate) await workflow.expression.acquireIsolate();
+						await runPollInStagingScope(pollFunctions, async () => {
+							if (ownsIsolate) {
+								await workflow.expression.acquireIsolate();
+								isolateAcquired = true;
+							}
 
-						const pollResponse = await this.triggersAndPollers.runPollFunction(
-							workflow,
-							node,
-							pollFunctions,
-						);
-
-						// Same as the above `isCurrent` check; last chance to check before
-						// potentially starting the execution. Emitting now if superseded would run
-						// an execution against the old version of the workflow, so drop it.
-						// Bailing out here is safe even though `poll()` may have already advanced
-						// its state in the in-memory static data: persistence only happens inside
-						// `__emit` (`saveStaticData`), so the dropped call leaves the stored state
-						// untouched and the newly registered poller re-fetches the same events.
-						if (!testingTrigger && !isCurrent()) {
-							this.logger.debug(
-								`Discarding in-flight poll result for superseded workflow "${workflow.name}"`,
-								{ workflowId: workflow.id },
+							const pollResponse = await this.triggersAndPollers.runPollFunction(
+								workflow,
+								node,
+								pollFunctions,
 							);
+
+							// Same as the above `isCurrent` check; last chance to check before
+							// potentially starting the execution. Emitting now if superseded would run
+							// an execution against the old version of the workflow, so drop it.
+							// Bailing out here is safe even though `poll()` may have already advanced
+							// its state in the in-memory static data: persistence only happens inside
+							// `__emit` (`saveStaticData`) or `__commitCursor`, so the dropped call
+							// leaves the stored state untouched and the newly registered poller
+							// re-fetches the same events.
+							if (!testingTrigger && !isCurrent()) {
+								this.logger.debug(
+									`Discarding in-flight poll result for superseded workflow "${workflow.name}"`,
+									{ workflowId: workflow.id },
+								);
+								span.setStatus({ code: SpanStatus.ok });
+								return;
+							}
+
+							if (pollResponse !== null) {
+								pollFunctions.__emit(pollResponse);
+							} else if (!testingTrigger) {
+								// A poll with no items may still have moved its cursor, committed here
+								// on its own. Left out for the activation poll, which persists nothing
+								// when it emits nothing.
+								try {
+									await commitStagedCursor(pollFunctions);
+								} catch (error) {
+									// The poll itself succeeded, so a failed cursor write is logged rather
+									// than routed to the error workflow.
+									this.errorReporter.error(error, {
+										extra: { workflowId: workflow.id, nodeId: node.id },
+									});
+									this.logger.error(
+										`Failed to commit the poll cursor for workflow "${workflow.name}"; the next poll repeats the same window`,
+										{ workflowId: workflow.id, nodeId: node.id, error },
+									);
+								}
+							}
+
 							span.setStatus({ code: SpanStatus.ok });
-							return;
-						}
-
-						if (pollResponse !== null) {
-							pollFunctions.__emit(pollResponse);
-						}
-
-						span.setStatus({ code: SpanStatus.ok });
+						});
 					} catch (error) {
 						// If the poll trigger fails in the first activation
 						// throw the error back so we let the user know there is
@@ -132,7 +165,7 @@ export class PollTriggerExecutor {
 						span.setStatus({ code: SpanStatus.error });
 						pollFunctions.__emitError(error as Error);
 					} finally {
-						if (ownsIsolate) await workflow.expression.releaseIsolate();
+						if (isolateAcquired) await workflow.expression.releaseIsolate();
 					}
 				},
 			);

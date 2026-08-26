@@ -7,6 +7,12 @@
         "properties": {
             "type": "object",
             "properties": {
+                "accessTier": {
+                    "type": "string"
+                },
+                "accessTierInferred": {
+                    "type": "string"
+                },
                 "blobType": {
                     "type": "string"
                 },
@@ -55,5 +61,5 @@
             }
         }
     },
-    "version": 3
+    "version": 4
 }

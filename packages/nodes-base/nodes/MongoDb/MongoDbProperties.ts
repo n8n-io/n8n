@@ -134,10 +134,11 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		},
 		default: '',
-		placeholder: '[{ "$match": { "$gt": "1950-01-01" }, ... }]',
-		hint: 'Learn more about aggregation pipeline <a href="https://docs.mongodb.com/manual/core/aggregation-pipeline/">here</a>',
+		placeholder: '[{ "$match": { "name": "$1", "age": { "$gte": "$2" } } }]',
+		hint: 'Use query parameters for dynamic values instead of embedding expressions in the query. <a href="https://docs.mongodb.com/manual/core/aggregation-pipeline/" target="_blank">Learn more about aggregation pipelines</a>.',
 		required: true,
-		description: 'MongoDB aggregation pipeline query in JSON format',
+		description:
+			'MongoDB aggregation pipeline in JSON format. Use $1, $2, and so on as complete values to reference Query Parameters below.',
 	},
 
 	// ----------------------------------
@@ -157,9 +158,11 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		},
 		default: '{}',
-		placeholder: '{ "birth": { "$gt": "1950-01-01" } }',
+		placeholder: '{ "name": "$1", "age": "$2" }',
+		hint: 'Use query parameters for dynamic values instead of embedding expressions in the query',
 		required: true,
-		description: 'MongoDB Delete query',
+		description:
+			'MongoDB delete query in JSON format. Use $1, $2, and so on as complete values to reference Query Parameters below.',
 	},
 
 	// ----------------------------------
@@ -237,9 +240,31 @@ export const nodeProperties: INodeProperties[] = [
 			},
 		},
 		default: '{}',
-		placeholder: '{ "birth": { "$gt": "1950-01-01" } }',
+		placeholder: '{ "name": "$1", "age": "$2" }',
+		hint: 'Use query parameters for dynamic values instead of embedding expressions in the query',
 		required: true,
-		description: 'MongoDB Find query',
+		description:
+			'MongoDB find query in JSON format. Use $1, $2, and so on as complete values to reference Query Parameters below.',
+	},
+	{
+		displayName: 'Query Parameters',
+		name: 'queryParameters',
+		type: 'json',
+		typeOptions: {
+			rows: 2,
+		},
+		displayOptions: {
+			show: {
+				operation: ['aggregate', 'delete', 'find'],
+				resource: ['document'],
+			},
+		},
+		default: '[]',
+		placeholder: '["value1", 123, true, null]',
+		validateType: 'array',
+		description:
+			'JSON array of values to use for $1, $2, and so on, in order. Values can be strings, numbers, booleans, null, or arrays of these values. You can also use an expression that returns an array.',
+		hint: 'For example, ["Alice", 30] replaces $1 with "Alice" and $2 with 30',
 	},
 
 	// ----------------------------------

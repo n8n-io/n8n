@@ -28,7 +28,7 @@ vi.mock('../../evaluation.store', () => ({
 	useEvaluationStore: () => ({ getDatasetCandidate, addExecutionToDataset }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError, showMessage }),
 }));
 

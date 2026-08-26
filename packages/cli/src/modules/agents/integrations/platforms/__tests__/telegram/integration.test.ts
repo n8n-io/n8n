@@ -1,13 +1,13 @@
 /* eslint-disable @typescript-eslint/unbound-method -- mock-based tests intentionally reference unbound methods */
 import type { Mock, Mocked, MockedFunction } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
-import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
-import type { SsrfProtectionConfig } from '@n8n/config';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { Author } from 'chat';
 import { createHmac } from 'crypto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { UrlService } from '@/services/url.service';
 
@@ -37,8 +37,14 @@ const makeContext = (
 ): AgentChatIntegrationContext => ({
 	agentId: 'agent-1',
 	projectId: 'proj-1',
+	integration: {
+		type: 'telegram',
+		credentialId: 'cred-1',
+		settings: { accessMode: 'public', allowedUsers: [] },
+	},
 	credentialId: 'cred-1',
 	credential: { accessToken: 'bot-token' },
+	ingressEnabled: true,
 	webhookUrlFor: (platform) =>
 		`https://n8n.example.com/rest/projects/proj-1/agents/v2/agent-1/webhooks/${platform}`,
 	...overrides,
@@ -49,7 +55,6 @@ const makeIntegration = (
 		urlService?: Mocked<UrlService>;
 		agentRepository?: Mocked<AgentRepository>;
 		encryptionKey?: string;
-		ssrfEnabled?: boolean;
 	} = {},
 ) => {
 	const urlService =
@@ -67,16 +72,12 @@ const makeIntegration = (
 	const requestMock = httpClient.request as Mock;
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.requests.mockReturnValue(httpClient);
-	const ssrfConfig = { enabled: opts.ssrfEnabled ?? false } as SsrfProtectionConfig;
-	const ssrfProtectionService = mock<SsrfProtectionService>();
 	const integration = new TelegramIntegration(
 		mock<Logger>(),
 		urlService,
 		agentRepository,
 		instanceSettings,
 		outboundHttp,
-		ssrfConfig,
-		ssrfProtectionService,
 	);
 	return {
 		integration,
@@ -85,22 +86,24 @@ const makeIntegration = (
 		instanceSettings,
 		outboundHttp,
 		requestMock,
-		ssrfProtectionService,
 	};
 };
 
 describe('TelegramIntegration capabilities', () => {
-	it('advertises message editing with contextual targeting guidance', () => {
+	it('exposes message editing', () => {
 		const { integration } = makeIntegration();
 
 		expect(integration.actions).toEqual(['respond', 'send_dm', 'edit_message']);
-		expect(integration.builderGuidance.capabilities).toContain(
-			'Edit existing messages in the current Telegram conversation.',
-		);
-		expect(integration.actionToolGuidance).toEqual([
-			'For edit_message, pass the messageId returned by a previous Telegram action or get_current_message_context. The current Telegram conversation is selected automatically.',
-			'After a Telegram callback, edit the source message promptly so stale buttons are removed.',
-		]);
+	});
+});
+
+describe('TelegramIntegration.validateConfig', () => {
+	it('requires Telegram settings', () => {
+		const { integration } = makeIntegration();
+
+		expect(() =>
+			integration.validateConfig({ type: 'telegram', credentialId: 'credential-1' }),
+		).toThrow(BadRequestError);
 	});
 });
 
@@ -333,6 +336,30 @@ describe('TelegramIntegration secret token', () => {
 		});
 	});
 
+	it('createAdapter uses polling for ingress-enabled local connections', async () => {
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
+		const { integration } = makeIntegration({ urlService });
+
+		await integration.createAdapter(makeContext());
+
+		expect(createTelegramAdapter).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'polling' }),
+		);
+	});
+
+	it('createAdapter forces webhook mode for ingress-disabled local connections', async () => {
+		const urlService = mock<UrlService>();
+		urlService.getWebhookBaseUrl.mockReturnValue('http://localhost:5678/');
+		const { integration } = makeIntegration({ urlService });
+
+		await integration.createAdapter(makeContext({ ingressEnabled: false }));
+
+		expect(createTelegramAdapter).toHaveBeenCalledWith(
+			expect.objectContaining({ mode: 'webhook' }),
+		);
+	});
+
 	it('two service instances configured with the same encryption key produce identical secrets — the multi-main invariant', async () => {
 		const a = makeIntegration({ encryptionKey: 'shared-cluster-key' });
 		const b = makeIntegration({ encryptionKey: 'shared-cluster-key' });
@@ -374,24 +401,13 @@ describe('TelegramIntegration secret token', () => {
 		expect(request.body.secret_token).toBe(expectedSecret('cluster-key', 'agent-Z', 'cred-Z'));
 	});
 
-	it('onAfterConnect applies SSRF protection when enabled (user-configurable Bot API host)', async () => {
-		const { integration, requestMock, outboundHttp, ssrfProtectionService } = makeIntegration({
-			ssrfEnabled: true,
-		});
+	it('onAfterConnect uses the default safe client (user-configurable Bot API host)', async () => {
+		const { integration, requestMock, outboundHttp } = makeIntegration();
 		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
 
 		await integration.onAfterConnect(makeContext());
 
-		expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: ssrfProtectionService });
-	});
-
-	it('onAfterConnect disables SSRF protection when the global flag is off', async () => {
-		const { integration, requestMock, outboundHttp } = makeIntegration({ ssrfEnabled: false });
-		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
-
-		await integration.onAfterConnect(makeContext());
-
-		expect(outboundHttp.requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		expect(outboundHttp.requests).toHaveBeenCalledWith();
 	});
 
 	it('onAfterConnect throws when Telegram rejects setWebhook', async () => {

@@ -27,7 +27,7 @@ import type {
 	INodeCredentialsDetails,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { deepCopy, Workflow } from 'n8n-workflow';
+import { deepCopy, jsonParse, Workflow } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -246,6 +246,145 @@ describe('CredentialsHelper', () => {
 			).rejects.toThrow('save workflow to view');
 		});
 
+		test('resolves variables and external secrets in marked JSON credential leaves', async () => {
+			const credentialType: ICredentialType = {
+				name: 'httpTemplatedCustomAuth',
+				displayName: 'Simplified Custom Auth',
+				properties: [
+					{
+						displayName: 'Placeholder Values',
+						name: 'placeholderValues',
+						type: 'json',
+						default: '',
+						typeOptions: { resolveCredentialJsonLeaves: true },
+					},
+				],
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+			const externalSecretsProxy =
+				mock<NonNullable<IWorkflowExecuteAdditionalData['externalSecretsProxy']>>();
+			externalSecretsProxy.hasProvider.mockReturnValue(true);
+			externalSecretsProxy.hasSecret.mockReturnValue(true);
+			externalSecretsProxy.getSecret.mockReturnValue('secret-api-key');
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				variables: { tenant: 'acme' },
+			});
+			additionalData.externalSecretsProxy = externalSecretsProxy;
+			additionalData.externalSecretProviderKeysAccessibleByCredential = new Set(['vault']);
+
+			const result = await helper.applyDefaultsAndOverwrites(
+				additionalData,
+				{
+					placeholderValues: JSON.stringify({
+						api_key: '={{ $secrets.vault.apiKey }}',
+						tenant: '={{ $vars.tenant }}',
+					}),
+				},
+				credentialType.name,
+				'internal',
+			);
+
+			expect(externalSecretsProxy.hasProvider.mock.calls).toEqual([['vault']]);
+			expect(externalSecretsProxy.hasSecret.mock.calls).toEqual([['vault', 'apiKey']]);
+			expect(externalSecretsProxy.getSecret.mock.calls).toEqual([['vault', 'apiKey']]);
+			expect(jsonParse(result.placeholderValues as string)).toEqual({
+				api_key: 'secret-api-key',
+				tenant: 'acme',
+			});
+		});
+
+		test('resolves a hidden base URL computed from a sibling credential field', async () => {
+			const credentialType: ICredentialType = {
+				name: 'moonshotApi',
+				displayName: 'Moonshot',
+				properties: [
+					{
+						displayName: 'API Key',
+						name: 'apiKey',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+					{
+						displayName: 'Region',
+						name: 'region',
+						type: 'options',
+						options: [
+							{ name: 'International', value: 'international' },
+							{ name: 'China', value: 'china' },
+						],
+						default: 'international',
+					},
+					{
+						displayName: 'Base URL',
+						name: 'url',
+						type: 'hidden',
+						default:
+							'={{ $self.region === "china" ? "https://api.moonshot.cn/v1" : "https://api.moonshot.ai/v1" }}',
+					},
+				],
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+
+			// Region left at its default: neither `region` nor `url` was persisted.
+			await expect(
+				helper.applyDefaultsAndOverwrites(
+					mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+					{ apiKey: 'test-api-key' },
+					credentialType.name,
+					'internal',
+				),
+			).resolves.toMatchObject({
+				apiKey: 'test-api-key',
+				region: 'international',
+				url: 'https://api.moonshot.ai/v1',
+			});
+
+			// Region changed from its default, so it is persisted while `url` is not.
+			await expect(
+				helper.applyDefaultsAndOverwrites(
+					mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+					{ apiKey: 'test-api-key', region: 'china' },
+					credentialType.name,
+					'internal',
+				),
+			).resolves.toMatchObject({
+				apiKey: 'test-api-key',
+				region: 'china',
+				url: 'https://api.moonshot.cn/v1',
+			});
+		});
+
 		test('preserves PKCE flag negotiated by dynamic client registration', async () => {
 			const credentialType: ICredentialType = {
 				name: 'mcpOAuth2Api',
@@ -302,6 +441,221 @@ describe('CredentialsHelper', () => {
 				authentication: 'body',
 				usePkce: true,
 			});
+		});
+	});
+
+	describe('applyDefaultsAndOverwrites — managed OAuth endpoint fields', () => {
+		const buildHelper = (credentialsOverwrites: CredentialsOverwrites) =>
+			new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+
+		const registerType = (credentialType: ICredentialType) =>
+			mockNodesAndCredentials.getCredential
+				.calledWith(credentialType.name)
+				.mockReturnValue({ type: credentialType, sourcePath: '' });
+
+		const managedOAuth2Type: ICredentialType = {
+			name: 'slackOAuth2Api',
+			displayName: 'Slack OAuth2 API',
+			properties: [
+				{
+					displayName: 'Grant Type',
+					name: 'grantType',
+					type: 'hidden',
+					default: 'authorizationCode',
+				},
+				{
+					displayName: 'Authorization URL',
+					name: 'authUrl',
+					type: 'hidden',
+					default: 'https://slack.com/oauth/v2/authorize',
+				},
+				{
+					displayName: 'Access Token URL',
+					name: 'accessTokenUrl',
+					type: 'hidden',
+					default: 'https://slack.com/api/oauth.v2.access',
+				},
+				{ displayName: 'Authentication', name: 'authentication', type: 'hidden', default: 'body' },
+				{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '' },
+				{ displayName: 'Client Secret', name: 'clientSecret', type: 'string', default: '' },
+			],
+		};
+
+		const managedOAuth1Type: ICredentialType = {
+			name: 'twitterOAuth1Api',
+			displayName: 'Twitter OAuth1 API',
+			properties: [
+				{
+					displayName: 'Request Token URL',
+					name: 'requestTokenUrl',
+					type: 'hidden',
+					default: 'https://api.twitter.com/oauth/request_token',
+				},
+				{
+					displayName: 'Authorization URL',
+					name: 'authUrl',
+					type: 'hidden',
+					default: 'https://api.twitter.com/oauth/authorize',
+				},
+				{
+					displayName: 'Access Token URL',
+					name: 'accessTokenUrl',
+					type: 'hidden',
+					default: 'https://api.twitter.com/oauth/access_token',
+				},
+				{
+					displayName: 'Signature Method',
+					name: 'signatureMethod',
+					type: 'hidden',
+					default: 'HMAC-SHA1',
+				},
+				{ displayName: 'Consumer Key', name: 'consumerKey', type: 'string', default: '' },
+				{ displayName: 'Consumer Secret', name: 'consumerSecret', type: 'string', default: '' },
+			],
+		};
+
+		test('resolves hidden OAuth2 endpoint fields from the credential type for managed credentials', async () => {
+			registerType(managedOAuth2Type);
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+
+			const result = await buildHelper(credentialsOverwrites).applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{
+					clientId: 'shared-client-id',
+					clientSecret: 'shared-client-secret',
+					grantType: 'clientCredentials',
+					authUrl: 'https://custom.example.com/authorize',
+					accessTokenUrl: 'https://custom.example.com/token',
+					authentication: 'header',
+				},
+				managedOAuth2Type.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				grantType: 'authorizationCode',
+				authUrl: 'https://slack.com/oauth/v2/authorize',
+				accessTokenUrl: 'https://slack.com/api/oauth.v2.access',
+				authentication: 'body',
+				// The instance-provided client is preserved; only the endpoints are pinned.
+				clientId: 'shared-client-id',
+				clientSecret: 'shared-client-secret',
+			});
+		});
+
+		test('honors an admin overwrite for a pinned endpoint field, falling back to the type default for the rest', async () => {
+			registerType(managedOAuth2Type);
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+			credentialsOverwrites.getOverwrites.mockReturnValue({
+				accessTokenUrl: 'https://proxy.internal.example.com/token',
+			});
+
+			const result = await buildHelper(credentialsOverwrites).applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{
+					clientId: 'shared-client-id',
+					clientSecret: 'shared-client-secret',
+					authUrl: 'https://custom.example.com/authorize',
+					accessTokenUrl: 'https://custom.example.com/token',
+				},
+				managedOAuth2Type.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				// The admin overwrite wins over both the user value and the type default.
+				accessTokenUrl: 'https://proxy.internal.example.com/token',
+				// Fields without an overwrite still pin to the type default.
+				authUrl: 'https://slack.com/oauth/v2/authorize',
+			});
+		});
+
+		test('resolves hidden OAuth1 endpoint fields from the credential type for managed credentials', async () => {
+			registerType(managedOAuth1Type);
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+
+			const result = await buildHelper(credentialsOverwrites).applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{
+					consumerKey: 'shared-consumer-key',
+					consumerSecret: 'shared-consumer-secret',
+					requestTokenUrl: 'https://custom.example.com/request_token',
+					accessTokenUrl: 'https://custom.example.com/access_token',
+				},
+				managedOAuth1Type.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				requestTokenUrl: 'https://api.twitter.com/oauth/request_token',
+				accessTokenUrl: 'https://api.twitter.com/oauth/access_token',
+				consumerKey: 'shared-consumer-key',
+				consumerSecret: 'shared-consumer-secret',
+			});
+		});
+
+		test('keeps user-provided endpoint fields for non-managed credentials', async () => {
+			registerType(managedOAuth2Type);
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(false);
+
+			const result = await buildHelper(credentialsOverwrites).applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{
+					clientId: 'user-client-id',
+					clientSecret: 'user-client-secret',
+					accessTokenUrl: 'https://custom.example.com/token',
+				},
+				managedOAuth2Type.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({ accessTokenUrl: 'https://custom.example.com/token' });
+		});
+
+		test('leaves user-editable endpoint fields untouched for managed credentials', async () => {
+			const genericOAuth2Type: ICredentialType = {
+				name: 'oAuth2Api',
+				displayName: 'OAuth2 API',
+				properties: [
+					{ displayName: 'Access Token URL', name: 'accessTokenUrl', type: 'string', default: '' },
+					{ displayName: 'Client ID', name: 'clientId', type: 'string', default: '' },
+					{ displayName: 'Client Secret', name: 'clientSecret', type: 'string', default: '' },
+				],
+			};
+			registerType(genericOAuth2Type);
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			credentialsOverwrites.usesManagedAuth.mockReturnValue(true);
+
+			const result = await buildHelper(credentialsOverwrites).applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{
+					clientId: 'shared-client-id',
+					clientSecret: 'shared-client-secret',
+					accessTokenUrl: 'https://custom.example.com/token',
+				},
+				genericOAuth2Type.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({ accessTokenUrl: 'https://custom.example.com/token' });
 		});
 	});
 
@@ -1159,6 +1513,7 @@ describe('CredentialsHelper', () => {
 				{ apiKey: 'static-key' },
 				mockAdditionalData.executionContext,
 				mockAdditionalData.workflowSettings,
+				undefined, // executeData
 			);
 			expect(result).toEqual(resolvedData);
 		});

@@ -44,17 +44,19 @@ export type {
 	ProvisionedJob,
 	ProvisionSummary,
 } from './provisioning';
-export { createDispatchReporter } from './executor';
+export { createDispatchReporter, backoff } from './executor';
 export type {
 	ExecutorOptions,
 	TaskHandler,
 	DispatchReporter,
 	DispatchDecision,
+	BackoffOptions,
 } from './executor';
-export { DEFAULT_MATERIALIZER_OPTIONS, materialize } from './materializer';
+export { DEFAULT_MATERIALIZER_OPTIONS, materialize, totalDiscarded } from './materializer';
 export type {
 	MaterializerOptions,
 	MaterializerSummary,
+	MisfireCount,
 	NewOccurrence,
 	RunInTransaction,
 } from './materializer';

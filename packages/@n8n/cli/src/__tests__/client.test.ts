@@ -42,6 +42,22 @@ describe('N8nClient packages', () => {
 		vi.unstubAllGlobals();
 	});
 
+	describe('pushGitConnectionProjects', () => {
+		it('POSTs to the push endpoint and returns the connection id and export counts', async () => {
+			const response = {
+				connectionId: 'connection-id',
+				counts: { workflows: 0, folders: 0, credentials: 0, dataTables: 0, variables: 0, tags: 0 },
+			};
+			fetchMock.mockResolvedValue(jsonResponse(200, response));
+
+			await expect(client.pushGitConnectionProjects('connection-id')).resolves.toEqual(response);
+
+			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n8n.example.com/api/v1/git-connections/connection-id/push');
+			expect(init.method).toBe('POST');
+		});
+	});
+
 	describe('exportPackage', () => {
 		it('posts the workflow IDs as JSON and returns the archive bytes', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1, 2, 3])));
@@ -109,6 +125,23 @@ describe('N8nClient packages', () => {
 			);
 		});
 
+		it('includes the credential export policy when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({
+				workflowIds: ['a'],
+				credentialExportPolicy: 'no-values',
+			});
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(
+				JSON.stringify({
+					workflowIds: ['a'],
+					credentialExportPolicy: 'no-values',
+				}),
+			);
+		});
+
 		it('omits an empty collection from the body', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
 
@@ -152,6 +185,20 @@ describe('N8nClient packages', () => {
 
 			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a'], includeTags: false }));
+		});
+
+		it('includes the workflow version policy when provided', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1])));
+
+			await client.exportPackage({
+				workflowIds: ['a'],
+				workflowVersionPolicy: 'published-strict',
+			});
+
+			const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(init.body).toBe(
+				JSON.stringify({ workflowIds: ['a'], workflowVersionPolicy: 'published-strict' }),
+			);
 		});
 	});
 
@@ -262,7 +309,7 @@ describe('N8nClient packages', () => {
 		});
 
 		describe('variableMissingMode', () => {
-			it.each(['do-nothing', 'must-preexist', 'create-stub'])(
+			it.each(['do-nothing', 'must-preexist', 'create-stub', 'create-with-value'])(
 				'sends %s when provided',
 				async (policy) => {
 					fetchMock.mockResolvedValue(
@@ -270,7 +317,7 @@ describe('N8nClient packages', () => {
 							workflows: [],
 							bindings: {},
 							credentials: { matched: [], stubbed: [] },
-							variables: { matched: [], missing: [], stubbed: [] },
+							variables: { matched: [], missing: [], created: [], stubbed: [] },
 						}),
 					);
 
@@ -288,6 +335,30 @@ describe('N8nClient packages', () => {
 			);
 		});
 
+		describe('variableConflictPolicy', () => {
+			it.each(['keep-existing', 'overwrite', 'fail'])('sends %s when provided', async (policy) => {
+				fetchMock.mockResolvedValue(
+					jsonResponse(200, {
+						workflows: [],
+						bindings: {},
+						credentials: { matched: [], stubbed: [] },
+						variables: { matched: [], missing: [], created: [], stubbed: [], updated: [] },
+					}),
+				);
+
+				await client.importPackage(
+					{ buffer: Buffer.from('package-bytes'), filename: 'export.n8np' },
+					{
+						workflowConflictPolicy: 'fail',
+						variableConflictPolicy: policy,
+					},
+				);
+
+				const form = (fetchMock.mock.calls[0] as [string, RequestInit])[1].body as FormData;
+				expect(form.get('variableConflictPolicy')).toBe(policy);
+			});
+		});
+
 		describe('variableParentPolicy', () => {
 			it.each(['project', 'global'])('sends %s when provided', async (policy) => {
 				fetchMock.mockResolvedValue(
@@ -295,7 +366,7 @@ describe('N8nClient packages', () => {
 						workflows: [],
 						bindings: {},
 						credentials: { matched: [], stubbed: [] },
-						variables: { matched: [], missing: [], stubbed: [] },
+						variables: { matched: [], missing: [], created: [], stubbed: [] },
 					}),
 				);
 

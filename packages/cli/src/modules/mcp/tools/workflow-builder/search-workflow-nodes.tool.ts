@@ -24,6 +24,12 @@ const inputSchema = {
 		.describe(
 			'Search queries for n8n nodes — service names (e.g. "gmail", "slack"), trigger types (e.g. "schedule trigger", "webhook"), or utility nodes (e.g. "set", "if", "merge", "code")',
 		),
+	usage: z
+		.enum(['workflow', 'agentTool'])
+		.optional()
+		.describe(
+			'Use agentTool to return only nodes that can be configured as Agent tools; defaults to workflow',
+		),
 } satisfies z.ZodRawShape;
 
 const outputSchema = {
@@ -45,6 +51,21 @@ const outputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
+type SearchNodesInput = {
+	queries: string[];
+	usage?: 'workflow' | 'agentTool';
+};
+
+// The SDK's inferred handler input marks optional zod fields as required
+// properties, so callers would have to pass `usage: undefined` explicitly.
+type SearchNodesCallback = ToolDefinition<typeof inputSchema>['handler'];
+type SearchNodesToolDefinition = Omit<ToolDefinition<typeof inputSchema>, 'handler'> & {
+	handler: (
+		input: SearchNodesInput,
+		extra: Parameters<SearchNodesCallback>[1],
+	) => ReturnType<SearchNodesCallback>;
+};
+
 /**
  * MCP tool that searches for n8n nodes by keyword.
  * Wraps the code-builder's search tool.
@@ -54,11 +75,11 @@ export const createSearchWorkflowNodesTool = (
 	nodeCatalogService: NodeCatalogService,
 	telemetry: Telemetry,
 	aiGatewayService: AiGatewayService,
-): ToolDefinition<typeof inputSchema> => ({
+): SearchNodesToolDefinition => ({
 	name: CODE_BUILDER_SEARCH_NODES_TOOL.toolName,
 	config: {
 		description:
-			'Search for n8n nodes by service name, trigger type, or utility function. Returns node IDs, discriminators (resource/operation/mode), and related nodes needed for get_node_types.',
+			'Search for n8n nodes by service name, trigger type, or utility function. Set usage="agentTool" to return only Agent-compatible tool nodes. Returns node IDs, discriminators (resource/operation/mode), and related nodes needed for get_node_types.',
 		inputSchema,
 		outputSchema,
 		annotations: {
@@ -69,16 +90,23 @@ export const createSearchWorkflowNodesTool = (
 			openWorldHint: false,
 		},
 	},
-	handler: async ({ queries }: { queries: string[] }) => {
+	handler: async ({ queries, usage }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: CODE_BUILDER_SEARCH_NODES_TOOL.toolName,
-			parameters: { queries },
+			parameters: { queries, usage },
 		};
 
 		try {
+			const options =
+				usage === 'agentTool'
+					? {
+							nodeFilter: (await import('@/modules/agents/agents-tools.service.js'))
+								.isAgentToolNodeType,
+						}
+					: {};
 			const [{ results, queriesWithNoResults }, availability] = await Promise.all([
-				nodeCatalogService.searchNodes(queries),
+				nodeCatalogService.searchNodes(queries, options),
 				aiGatewayService.isAvailable(),
 			]);
 

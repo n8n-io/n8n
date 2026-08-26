@@ -1,18 +1,23 @@
-import { findTriggerNode, getSuccessorNodeIds } from '../graph';
-import type { ExecutionEnqueuedEvent, StepMessage, WorkQueue } from '../queue';
+import { UnexpectedError } from '../common';
+import { findTriggerNode } from '../graph';
+import type { ExecutionEnqueuedEvent, OrchestrationMessage, WorkQueue } from '../queue';
 import type { ExecutionStore } from './execution-store';
+import { DEFAULT_TRIGGER_OUTPUTS } from './execution.types';
 import type { StepStore } from './step-store';
 
 /**
  * Handles the `execution:enqueued` orchestration event: claims the execution
- * (`queued → running`), records the trigger as a completed step, and plans the
- * first step(s).
+ * (`queued -> running`), records the trigger as a completed step, and announces
+ * that completion. The first step(s) are planned by the step completion handler
+ * that handles the trigger completion.
+ * NOTE: this means an extra trip through the queue, but it eliminates some
+ * special-casing for triggers and simplifies the completion logic.
  */
 export class ExecutionStartHandler {
 	constructor(
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
-		private readonly stepQueue: WorkQueue<StepMessage>,
+		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 	) {}
 
 	async handle(event: ExecutionEnqueuedEvent): Promise<void> {
@@ -28,31 +33,35 @@ export class ExecutionStartHandler {
 
 		const trigger = findTriggerNode(execution.graph);
 		if (!trigger) {
-			// Malformed graph — no entry point to run.
-			await this.executionStore.transitionStatus(event.executionId, 'running', 'failed');
-			return;
+			// The start boundary rejects triggerless graphs, so this execution
+			// should never have been created.
+			throw new UnexpectedError(`Execution ${event.executionId} has no trigger node in its graph`);
 		}
 
-		// The trigger's output was captured at execution start; record it as
-		// already completed so successors can treat it as a satisfied predecessor.
-		await this.stepStore.createStep({
+		// The trigger's outputs were captured at execution start; record them as
+		// already completed so successors read them like any predecessor's slots.
+		// No payload means no slots at all: every successor edge reads undefined
+		// and is treated as dead, same as any other step that produced nothing.
+		// The claim above makes this the only writer, so the row cannot exist yet.
+		const [triggerStep] = await this.stepStore.createSteps(event.executionId, [
+			{
+				nodeId: trigger.id,
+				iteration: 0,
+				status: 'completed',
+				outputs: execution.triggerOutputs ?? DEFAULT_TRIGGER_OUTPUTS,
+			},
+		]);
+		if (!triggerStep) {
+			throw new UnexpectedError(
+				`Trigger step for execution ${event.executionId} already existed despite the claim`,
+			);
+		}
+
+		// Published only after the row exists, so the consumer can always load it.
+		await this.orchestrationQueue.publish({
+			type: 'step:settled',
 			executionId: event.executionId,
-			nodeId: trigger.id,
-			status: 'completed',
+			stepId: triggerStep.id,
 		});
-
-		const successorNodeIds = getSuccessorNodeIds(execution.graph, trigger.id);
-		for (const nodeId of successorNodeIds) {
-			const { id: stepId } = await this.stepStore.createStep({
-				executionId: event.executionId,
-				nodeId,
-				status: 'queued',
-			});
-			await this.stepQueue.publish({
-				type: 'step:ready',
-				executionId: event.executionId,
-				stepId,
-			});
-		}
 	}
 }

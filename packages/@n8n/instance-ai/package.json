@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.18.0",
+  "version": "1.22.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit && tsc -p evaluations/tsconfig.json",
@@ -17,6 +17,7 @@
     "eval:agents": "tsx evaluations/cli/index.ts --source langtracer --suite agents --tier agents",
     "eval:build-mcp-manifest": "tsx evaluations/cli/build-mcp-manifest.ts",
     "eval:langtracer-push": "tsx evaluations/cli/langtracer-push.ts",
+    "eval:serve-fixture": "tsx evaluations/cli/serve-fixture.ts",
     "eval:pairwise": "tsx evaluations/cli/pairwise.ts",
     "eval:pairwise:report": "tsx evaluations/cli/report.ts",
     "eval:pairwise:compare": "tsx evaluations/cli/compare-pairwise.ts",
@@ -44,20 +45,26 @@
       "import": "./dist/parsers/index.js",
       "types": "./dist/parsers/index.d.ts"
     },
+    "./confirmation-payload": {
+      "require": "./dist/runtime/confirmation-payload.js",
+      "import": "./dist/runtime/confirmation-payload.js",
+      "types": "./dist/runtime/confirmation-payload.d.ts"
+    },
     "./evaluations": "./evaluations/index.ts"
   },
   "typesVersions": {
     "*": {
       "parsers": [
         "dist/parsers/index.d.ts"
+      ],
+      "confirmation-payload": [
+        "dist/runtime/confirmation-payload.d.ts"
       ]
     }
   },
   "dependencies": {
     "@daytona/sdk": "catalog:",
-    "@joplin/turndown-plugin-gfm": "catalog:",
-    "@langchain/anthropic": "catalog:",
-    "@mozilla/readability": "catalog:",
+    "@e965/xlsx": "catalog:",
     "@n8n/agents": "workspace:*",
     "@n8n/ai-utilities": "workspace:*",
     "@n8n/api-types": "workspace:*",
@@ -65,29 +72,24 @@
     "@n8n/utils": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@opentelemetry/api": "catalog:",
-    "@thednp/dommatrix": "^2.0.12",
+    "@thednp/dommatrix": "^3.1.1",
     "ai": "catalog:",
     "csv-parse": "catalog:",
-    "fast-glob": "catalog:",
-    "flatted": "catalog:",
     "langsmith": "catalog:",
-    "linkedom": "^0.18.9",
+    "linkedom": "^0.18.13",
     "luxon": "catalog:",
-    "mammoth": "1.12.0",
+    "mammoth": "1.12.1",
     "n8n-workflow": "workspace:*",
-    "nanoid": "catalog:",
-    "p-limit": "^3.1.0",
+    "nanoid": "catalog:nanoid-v6",
     "pdf-parse": "catalog:",
-    "psl": "1.9.0",
+    "psl": "1.15.0",
     "source-map-support": "catalog:",
     "turndown": "catalog:",
-    "undici": "catalog:undici-v7",
-    "@e965/xlsx": "catalog:",
     "zod": "catalog:",
     "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5"
   },
   "devDependencies": {
-    "@ai-sdk/anthropic": "catalog:",
+    "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
@@ -95,8 +97,12 @@
     "@types/psl": "1.1.3",
     "@types/turndown": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "fast-glob": "catalog:",
+    "p-limit": "catalog:p-limit-v7",
+    "playwright-core": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
+    "undici": "catalog:undici-v7",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"

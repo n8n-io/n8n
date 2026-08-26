@@ -19,8 +19,9 @@ import {
 	AgentKnowledgeFileStore,
 	type StoredAgentKnowledgeFile,
 } from './agent-knowledge-file-store';
+import { AgentKnowledgeMirrorService } from './agent-knowledge-mirror.service';
 import { storageFileNameForOriginalFileName, toAgentFileDto } from './agent-knowledge-storage';
-import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
+import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import type { AgentFile } from './entities/agent-file.entity';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -48,7 +49,8 @@ export class AgentKnowledgeService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
 		private readonly agentFileRepository: AgentFileRepository,
-		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
+		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
+		private readonly agentKnowledgeMirrorService: AgentKnowledgeMirrorService,
 		private readonly agentKnowledgeFileStore: AgentKnowledgeFileStore,
 		private readonly logger: Logger,
 	) {}
@@ -73,8 +75,7 @@ export class AgentKnowledgeService {
 				throw error;
 			}
 
-			this.agentKnowledgeSandboxService.invalidateMirror(projectId, agentId);
-			this.agentKnowledgeSandboxService.prewarmMirrorInBackground(projectId, agentId);
+			this.agentKnowledgeMirrorService.prewarmMirrorInBackground(projectId, agentId);
 
 			return uploadedFiles.map((file) => toAgentFileDto(file));
 		} finally {
@@ -88,9 +89,11 @@ export class AgentKnowledgeService {
 		return files.map((file) => toAgentFileDto(file));
 	}
 
-	async warmSandbox(agentId: string, projectId: string): Promise<void> {
+	async warmKnowledgeSandbox(agentId: string, projectId: string): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
-		await this.agentKnowledgeSandboxService.warmSandbox(projectId, agentId);
+		if (!(await this.agentFileRepository.hasFilesForAgent(agentId))) return;
+
+		await this.agentSandboxRuntimeService.warmKnowledgeSandbox(projectId, agentId);
 	}
 
 	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<void> {
@@ -111,11 +114,14 @@ export class AgentKnowledgeService {
 					error: error instanceof Error ? error.message : error,
 				});
 			});
-		this.agentKnowledgeSandboxService.invalidateMirror(projectId, agentId);
-		this.agentKnowledgeSandboxService.prewarmMirrorInBackground(projectId, agentId);
+		if (await this.agentFileRepository.hasFilesForAgent(agentId)) {
+			this.agentKnowledgeMirrorService.prewarmMirrorInBackground(projectId, agentId);
+		} else {
+			await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
+		}
 	}
 
-	async deleteAllFilesForAgent(projectId: string, agentId: string): Promise<void> {
+	async deleteAllFilesForAgent(_projectId: string, agentId: string): Promise<void> {
 		const files = await this.agentFileRepository.findByAgentId(agentId);
 		await this.agentFileRepository.delete({ agentId });
 		if (files.length > 0) {
@@ -133,12 +139,11 @@ export class AgentKnowledgeService {
 					});
 				});
 		}
-		this.agentKnowledgeSandboxService.invalidateMirror(projectId, agentId);
 	}
 
 	/** Best-effort passthrough for agent/project deletion; never throws. */
-	async destroySandbox(projectId: string, agentId: string): Promise<void> {
-		await this.agentKnowledgeSandboxService.destroySandbox(projectId, agentId);
+	async destroyKnowledgeSandbox(projectId: string, agentId: string): Promise<void> {
+		await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
 	}
 
 	/** Stores the file's bytes via AgentKnowledgeFileStore, then reserves its DB row. */

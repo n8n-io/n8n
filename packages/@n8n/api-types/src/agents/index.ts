@@ -1,12 +1,17 @@
+export * from './agent-chat-attachments.constants';
 export * from './agent-config-lifecycle';
 export * from './agent-config-validation.schema';
 export * from './agent-files.constants';
 export * from './agent-integration.schema';
 export * from './agent-json-config.schema';
 export * from './agent-node-tool-operations';
+export * from './agent-personalisation';
 export * from './agent-skill.schema';
+export * from './child-trace';
 export * from './inline-agent-config.schema';
 export * from './sanitize-agent-json-config';
+export * from './sanitize-agent-tool-name';
+export * from './slack';
 export * from './agent-task.schema';
 export * from './dto';
 export * from './model-providers';
@@ -15,7 +20,13 @@ export * from './reasoning';
 export * from './rich-card.schema';
 export * from './sub-agent.schema';
 export * from './types';
-export type { AgentSseEvent, AgentSseMessage, ToolSuspendedPayload } from '../agent-sse';
+export * from './workflow-wait';
+export type {
+	AgentSseEvent,
+	AgentSseMessage,
+	ForwardedChildChunkWire,
+	ToolSuspendedPayload,
+} from '../agent-sse';
 export { AGENT_BUILDER_HIDDEN_AVAILABLE_TOOL_NODE_TYPES } from '../agent-builder-tool-node-types';
 // ASK_QUESTIONS_TOOL_NAME / CONFIGURE_CHANNEL_TOOL_NAME come from
 // ./agent-interaction.schema (re-exported below via `export *`).

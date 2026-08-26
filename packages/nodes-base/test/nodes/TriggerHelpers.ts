@@ -244,6 +244,7 @@ export async function testWebhookTriggerNode(
 		getHeaderData: () => options.headerData ?? request.headers ?? {},
 		getInputConnectionData: async () => ({}),
 		getNodeWebhookUrl: (name) => `/test-webhook-url/${name}`,
+		getWebhookResourceUrl: (name) => `/test-webhook-url/${name}`,
 		getParamsData: () => ({}),
 		getQueryData: () => ({}),
 		getRequestObject: () => request,

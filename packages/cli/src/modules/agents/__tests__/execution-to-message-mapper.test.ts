@@ -40,6 +40,46 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
+	it('carries childTrace onto the persisted tool-call content part', () => {
+		const childTrace = {
+			text: 'child said this',
+			reasoningSegments: [{ id: 'r-1', content: 'thinking' }],
+			steps: [{ toolCallId: 'child-tc-1', toolName: 'web_search', running: false }],
+		};
+		const result = executionToMessagesDto(
+			execution({
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'delegate_subagent',
+						toolCallId: 'tc-parent',
+						input: { goal: 'x' },
+						output: { status: 'completed', answer: 'done' },
+						startTime: 100,
+						endTime: 200,
+						success: true,
+						childTrace,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]?.content).toEqual([
+			{
+				type: 'tool-call',
+				toolName: 'delegate_subagent',
+				toolCallId: 'tc-parent',
+				input: { goal: 'x' },
+				startTime: 100,
+				endTime: 200,
+				state: 'resolved',
+				output: { status: 'completed', answer: 'done' },
+				childTrace,
+			},
+		]);
+	});
+
 	it('maps execution timeline text and tool calls into assistant message content', () => {
 		const result = executionToMessagesDto(
 			execution({
@@ -92,6 +132,45 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
+	it('associates a suspension payload with its original tool call', () => {
+		const suspendPayload = {
+			type: 'approval',
+			toolName: 'check_ledger',
+			args: {},
+			details: { node: { parameters: { operation: 'get', returnAll: true } } },
+		};
+		const result = executionToMessagesDto(
+			execution({
+				timeline: [
+					{
+						type: 'tool-call',
+						kind: 'node',
+						name: 'check_ledger',
+						toolCallId: 'call-1',
+						input: {},
+						output: undefined,
+						startTime: 100,
+						endTime: 0,
+						success: false,
+					},
+					{
+						type: 'suspension',
+						toolName: 'check_ledger',
+						toolCallId: 'call-1',
+						timestamp: 110,
+						suspendPayload,
+					},
+				],
+			}),
+		);
+
+		expect(result[1]?.content[0]).toMatchObject({
+			type: 'tool-call',
+			toolCallId: 'call-1',
+			suspendPayload,
+		});
+	});
+
 	it('maps failed timeline tool calls as rejected content parts', () => {
 		const result = executionToMessagesDto(
 			execution({
@@ -134,6 +213,52 @@ describe('execution-to-message-mapper', () => {
 					},
 				],
 				executionId: 'execution-1',
+			},
+		]);
+	});
+
+	it('includes attachment file parts on the user message', () => {
+		const result = executionToMessagesDto(
+			execution({
+				attachments: [{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 }],
+			}),
+		);
+
+		expect(result[0]).toEqual({
+			id: 'execution-1:user',
+			role: 'user',
+			content: [
+				{ type: 'text', text: 'Hello' },
+				{
+					type: 'file',
+					fileId: 'att-1',
+					fileName: 'photo.png',
+					mimeType: 'image/png',
+					sizeBytes: 33,
+				},
+			],
+			executionId: 'execution-1',
+		});
+	});
+
+	it('emits a user message for attachment-only turns without text', () => {
+		const result = executionToMessagesDto(
+			execution({
+				userMessage: null,
+				attachments: [
+					{ id: 'att-1', fileName: 'voice.ogg', mimeType: 'audio/ogg', sizeBytes: 100 },
+				],
+			}),
+		);
+
+		expect(result[0].role).toBe('user');
+		expect(result[0].content).toEqual([
+			{
+				type: 'file',
+				fileId: 'att-1',
+				fileName: 'voice.ogg',
+				mimeType: 'audio/ogg',
+				sizeBytes: 100,
 			},
 		]);
 	});

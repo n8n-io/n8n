@@ -1,5 +1,4 @@
 import type { AgentJsonConfig } from '@n8n/api-types';
-import { AGENT_EVALS_FLAG } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentEvalDataset, AgentEvalDatasetRepository, User } from '@n8n/db';
 import type { Mocked } from 'vitest';
@@ -8,14 +7,14 @@ import { mock } from 'vitest-mock-extended';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import type { PostHogClient } from '@/posthog';
+import type { InstanceWriteAccessService } from '@/services/instance-write-access.service';
 
 import type { AgentConfigService } from '../../agents/agent-config.service';
 import type { DataTable } from '../../data-table/data-table.entity';
 import type { DataTableService } from '../../data-table/data-table.service';
 import { DataTableNameConflictError } from '../../data-table/errors/data-table-name-conflict.error';
 import { AgentEvalCaseGenerationService } from '../agent-eval-case-generation.service';
+import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 
 // Stub the @n8n/agents SDK: fluent builder is a no-op; `generate` is a
 // controllable mock so tests drive the model's (in)valid structured output.
@@ -75,8 +74,8 @@ describe('AgentEvalCaseGenerationService', () => {
 	let credentialsService: Mocked<CredentialsService>;
 	let dataTableService: Mocked<DataTableService>;
 	let datasetRepository: Mocked<AgentEvalDatasetRepository>;
-	let postHogClient: Mocked<PostHogClient>;
-	let sourceControlPreferences: Mocked<SourceControlPreferencesService>;
+	let flagGate: Mocked<AgentEvalsFlagGate>;
+	let instanceWriteAccess: Mocked<InstanceWriteAccessService>;
 
 	beforeEach(() => {
 		logger = mock<Logger>();
@@ -85,17 +84,15 @@ describe('AgentEvalCaseGenerationService', () => {
 		credentialsService = mock<CredentialsService>();
 		dataTableService = mock<DataTableService>();
 		datasetRepository = mock<AgentEvalDatasetRepository>();
-		postHogClient = mock<PostHogClient>();
-		sourceControlPreferences = mock<SourceControlPreferencesService>();
-		sourceControlPreferences.getPreferences.mockReturnValue({
-			branchReadOnly: false,
-		} as ReturnType<SourceControlPreferencesService['getPreferences']>);
+		flagGate = mock<AgentEvalsFlagGate>();
+		instanceWriteAccess = mock<InstanceWriteAccessService>();
+		instanceWriteAccess.isReadOnly.mockReturnValue(false);
 
 		generateMock.mockReset();
 		resolveModelMock.mockReset();
 		resolveModelMock.mockResolvedValue({ id: 'anthropic/claude-sonnet-4-5' });
 
-		postHogClient.getFeatureFlags.mockResolvedValue({ [AGENT_EVALS_FLAG]: true });
+		flagGate.assertEnabled.mockResolvedValue(undefined);
 		agentConfigService.getConfig.mockResolvedValue(makeConfig());
 		dataTableService.createDataTable.mockResolvedValue({ id: 'dt-1' } as DataTable);
 		dataTableService.insertRows.mockResolvedValue(undefined as never);
@@ -107,13 +104,13 @@ describe('AgentEvalCaseGenerationService', () => {
 			credentialsService,
 			dataTableService,
 			datasetRepository,
-			postHogClient,
-			sourceControlPreferences,
+			flagGate,
+			instanceWriteAccess,
 		);
 	});
 
 	it('rejects when the agent-evals flag is disabled (as not-found, leaking no flag state)', async () => {
-		postHogClient.getFeatureFlags.mockResolvedValue({});
+		flagGate.assertEnabled.mockRejectedValue(new NotFoundError('Not found'));
 
 		await expect(service.generateDraftCases(user, 'project-1', 'agent-1')).rejects.toThrow(
 			NotFoundError,
@@ -122,9 +119,7 @@ describe('AgentEvalCaseGenerationService', () => {
 	});
 
 	it('rejects on a source-control read-only instance', async () => {
-		sourceControlPreferences.getPreferences.mockReturnValue({
-			branchReadOnly: true,
-		} as ReturnType<SourceControlPreferencesService['getPreferences']>);
+		instanceWriteAccess.isReadOnly.mockReturnValue(true);
 
 		await expect(service.generateDraftCases(user, 'project-1', 'agent-1')).rejects.toThrow(
 			ForbiddenError,

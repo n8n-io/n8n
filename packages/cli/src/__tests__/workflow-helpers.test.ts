@@ -472,10 +472,18 @@ describe('validateWorkflowStructure', () => {
 	});
 });
 
-describe('validateWorkflowNodeGroups', () => {
-	const makeNode = (id: string) =>
-		({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
+// Shared by both node-group suites: the connection fixtures below key off the
+// `Node <id>` naming, so the two must stay defined together.
+const makeNode = (id: string) =>
+	({ id, name: `Node ${id}`, type: 'test', position: [0, 0], parameters: {} }) as never;
+const regularNodeType = { group: ['transform'] } as never;
+// Two nodes connected n1 → n2 form a groupable chain.
+const connectedNodes = [makeNode('n1'), makeNode('n2')];
+const chainConnections = {
+	'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
+} as never;
 
+describe('validateWorkflowNodeGroups', () => {
 	it('should pass when nodeGroups is undefined', () => {
 		expect(() =>
 			validateWorkflowNodeGroups({ nodes: [makeNode('n1')], nodeGroups: undefined }, null),
@@ -583,12 +591,8 @@ describe('validateWorkflowNodeGroups', () => {
 
 	describe('full validation', () => {
 		const triggerType = { group: ['trigger'] } as never;
-		const regularType = { group: ['transform'] } as never;
-		// Two nodes connected n1 → n2 form a groupable chain.
-		const connectedNodes = [makeNode('n1'), makeNode('n2')];
-		const connections = {
-			'Node n1': { main: [[{ node: 'Node n2', type: 'main', index: 0 }]] },
-		} as never;
+		const regularType = regularNodeType;
+		const connections = chainConnections;
 
 		it('passes for a valid connected group', () => {
 			expect(() =>
@@ -613,7 +617,7 @@ describe('validateWorkflowNodeGroups', () => {
 					},
 					() => triggerType,
 				),
-			).toThrow('Node group "Has trigger" (g1) cannot contain trigger nodes');
+			).toThrow('Node group "Has trigger" cannot contain trigger nodes');
 		});
 
 		it('does not run full checks when getNodeType is null (basic-only)', () => {
@@ -682,7 +686,7 @@ describe('validateWorkflowNodeGroups', () => {
 						getNodeType,
 					),
 				).toThrow(
-					'Node group "Disconnected" (g1) must form a single connected subgraph with a single entry and exit.',
+					'Node group "Disconnected" must form a single connected subgraph with a single entry and exit.',
 				);
 			});
 		});

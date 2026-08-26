@@ -1,8 +1,9 @@
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import type { SerializedVariable } from '../../spec/serialized/variable.schema';
 import {
 	deriveParentFolderId,
-	deriveVariableScope,
 	foldersInScope,
+	placeByLayout,
 	workflowsInScope,
 } from '../package-layout';
 
@@ -56,37 +57,58 @@ describe('package-layout', () => {
 		});
 	});
 
-	describe('deriveVariableScope', () => {
+	describe('variable placement', () => {
 		const named = (name: string, target: string): ManifestEntry => ({ id: name, name, target });
+		const placedIn = (
+			manifestVariables: ManifestEntry[],
+			scopePrefix: string,
+			bundledVariables?: Map<string, SerializedVariable>,
+		) =>
+			placeByLayout({
+				requirements: [{ name: 'API_URL', usedByWorkflows: ['wf-1'] }],
+				manifestVariables,
+				scopePrefix,
+				bundledVariables,
+			})![0];
+		const scopeOf = (manifestVariables: ManifestEntry[], scopePrefix: string) =>
+			placedIn(manifestVariables, scopePrefix).globalPlacement ? 'global' : 'project';
 
-		it('reads a top-level entry as global', () => {
-			const entries = [named('SHARED_URL', 'variables/shared_url')];
-			expect(deriveVariableScope(entries, 'projects/x/', 'SHARED_URL')).toBe('global');
-		});
-
-		it('reads an entry bundled under the scope as project-scoped', () => {
-			const entries = [named('API_URL', 'projects/x/variables/api_url')];
-			expect(deriveVariableScope(entries, 'projects/x/', 'API_URL')).toBe('project');
-		});
-
-		it("prefers the scope's own entry over a top-level one of the same name", () => {
+		// A requirement names a variable, never a path, so both files answer to it. Hand-made only.
+		it('rejects two files claiming one name in the same directory', () => {
 			const entries = [
 				named('API_URL', 'variables/api_url'),
-				named('API_URL', 'projects/x/variables/api_url'),
+				named('API_URL', 'variables/api_url_2'),
 			];
-			expect(deriveVariableScope(entries, 'projects/x/', 'API_URL')).toBe('project');
-			// The other project sees only the top-level entry.
-			expect(deriveVariableScope(entries, 'projects/y/', 'API_URL')).toBe('global');
+			expect(() => scopeOf(entries, '')).toThrow(/ambiguous variable entries/);
 		});
 
-		it('falls back to the consuming project when the name is bundled under another project only', () => {
-			const entries = [named('API_URL', 'projects/y/variables/api_url')];
-			expect(deriveVariableScope(entries, 'projects/x/', 'API_URL')).toBe('project');
+		it('gives each project its own file when two projects bundle one name', () => {
+			const entries = [
+				named('API_URL', 'projects/cheddar/variables/api_url'),
+				named('API_URL', 'projects/brie/variables/api_url'),
+			];
+			const bundled = new Map<string, SerializedVariable>([
+				[
+					'projects/cheddar/variables/api_url',
+					{ name: 'API_URL', type: 'string', value: 'cheddar' },
+				],
+				['projects/brie/variables/api_url', { name: 'API_URL', type: 'string', value: 'brie' }],
+			]);
+
+			expect(placedIn(entries, 'projects/cheddar/', bundled)).toMatchObject({
+				globalPlacement: false,
+				packageValue: 'cheddar',
+			});
+			expect(placedIn(entries, 'projects/brie/', bundled)).toMatchObject({
+				globalPlacement: false,
+				packageValue: 'brie',
+			});
 		});
 
 		it('does not let one project prefix match another that shares its start', () => {
-			const entries = [named('API_URL', 'projects/xy/variables/api_url')];
-			expect(deriveVariableScope(entries, 'projects/x/', 'API_URL')).toBe('project');
+			expect(scopeOf([named('API_URL', 'projects/xy/variables/api_url')], 'projects/x/')).toBe(
+				'project',
+			);
 		});
 	});
 

@@ -31,13 +31,18 @@ export type FrontendModuleDescription = {
 	};
 	resources?: ResourceMetadata[];
 	modals?: ModalDefinition[];
+	/**
+	 * Prefixes for modal keys minted at runtime instead of registered. Declared
+	 * here so they arrive on the same path as `modals`, not by import side effect.
+	 */
+	adHocModalKeyPrefixes?: string[];
 	settingsPages?: IMenuItem[];
 
 	// --- descriptor v2 (all optional, additive) ---
 
 	/** Per-module i18n messages, merged into the active locale by the shell. */
 	locales?: ModuleLocaleMessages;
-	/** Push-message handlers, keyed by message type. */
+	/** Push-message handlers, keyed by message type. See `ModulePushHandlers`. */
 	pushHandlers?: ModulePushHandlers;
 	/** Command-bar contributions. */
 	commands?: CommandBarEntry[];

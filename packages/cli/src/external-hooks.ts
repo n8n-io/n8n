@@ -11,7 +11,13 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import type { IRun, IWorkflowBase, Workflow, WorkflowExecuteMode } from 'n8n-workflow';
+import type {
+	IRun,
+	IWorkflowBase,
+	Workflow,
+	WorkflowExecuteMode,
+	WorkflowExecutionSource,
+} from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 import type clientOAuth1 from 'oauth-1.0a';
 
@@ -144,6 +150,12 @@ type ExternalHooksMap = {
 		workflow: Workflow,
 		mode: WorkflowExecuteMode,
 		workflowContext: WorkflowHookContextService,
+		/**
+		 * Who initiated the run. Unset means a regular user-initiated run.
+		 * Agent-initiated runs mimic the trigger's mode, so consumers that meter
+		 * or bill executions must check this rather than `mode` alone.
+		 */
+		source?: WorkflowExecutionSource,
 	];
 	'workflow.postExecute': [
 		fullRunData: IRun | undefined,

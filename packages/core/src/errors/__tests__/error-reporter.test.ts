@@ -268,6 +268,15 @@ describe('ErrorReporter', () => {
 					},
 				});
 			});
+
+			it('should preserve a warning level supplied in the capture context', async () => {
+				const originalException = new TestError('Test error', { level: 'error' });
+				const testEvent = { level: 'warning' } as ErrorEvent;
+
+				const result = await errorReporter.beforeSend(testEvent, { originalException });
+
+				expect(result?.level).toBe('warning');
+			});
 		});
 
 		// `ExecutionBaseError` (the base of NodeApiError/NodeOperationError/ExpressionError)
@@ -388,6 +397,16 @@ describe('ErrorReporter', () => {
 			expect(logger.error).toHaveBeenCalledTimes(2);
 			expect(logger.error).toHaveBeenNthCalledWith(1, `outer\n${outer.stack}\n`, undefined);
 			expect(logger.error).toHaveBeenNthCalledWith(2, `root cause\n${cause.stack}\n`, undefined);
+		});
+
+		it('should stop walking a cause chain that loops back on itself', () => {
+			const outer = new Error('outer');
+			const inner = new Error('inner', { cause: outer });
+			outer.cause = inner;
+
+			errorReporter.error(outer);
+
+			expect(logger.error).toHaveBeenCalledTimes(2);
 		});
 	});
 

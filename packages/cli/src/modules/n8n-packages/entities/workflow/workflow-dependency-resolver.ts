@@ -4,11 +4,20 @@ import { Service } from '@n8n/di';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { extractWorkflowRequirements } from './references/extract-workflow-requirements';
+import { applyWorkflowVersionPolicy, needsActiveVersion } from './workflow-version-policy';
 import type { WorkflowSubWorkflowRequirement } from './workflow.types';
+import type { WorkflowVersionPolicy } from '../../n8n-packages.types';
 
 export interface WorkflowDependencyResolveRequest {
 	user: User;
 	workflowIds: string[];
+	/**
+	 * How far to follow static sub-workflow references: `transitive` (default)
+	 * walks the whole reference graph, `direct` stops after the requested
+	 * workflows' own references.
+	 */
+	traversal?: 'transitive' | 'direct';
+	workflowVersionPolicy: WorkflowVersionPolicy;
 }
 
 @Service()
@@ -18,6 +27,8 @@ export class WorkflowDependencyResolver {
 	async resolve(
 		request: WorkflowDependencyResolveRequest,
 	): Promise<WorkflowSubWorkflowRequirement[]> {
+		const traverse = (request.traversal ?? 'transitive') === 'transitive';
+		const policy = request.workflowVersionPolicy;
 		const queue = [...new Set(request.workflowIds)];
 		const seenWorkflowIds = new Set(queue);
 		const requirements: WorkflowSubWorkflowRequirement[] = [];
@@ -25,11 +36,13 @@ export class WorkflowDependencyResolver {
 		while (queue.length > 0) {
 			const workflowIds = queue.splice(0);
 
-			const workflows = await this.workflowFinder.findWorkflowsByIdsForUser(
+			const loaded = await this.workflowFinder.findWorkflowsByIdsForUser(
 				workflowIds,
 				request.user,
 				['workflow:export'],
+				{ includeActiveVersion: needsActiveVersion(policy) },
 			);
+			const workflows = applyWorkflowVersionPolicy(loaded, policy);
 			const workflowsById = new Map(workflows.map((workflow) => [workflow.id, workflow]));
 
 			for (const workflowId of workflowIds) {
@@ -41,6 +54,8 @@ export class WorkflowDependencyResolver {
 
 				const extractedRequirements = extractWorkflowRequirements(workflow);
 				requirements.push(...extractedRequirements);
+
+				if (!traverse) continue;
 
 				for (const { referencedWorkflowId } of extractedRequirements) {
 					if (seenWorkflowIds.has(referencedWorkflowId)) continue;

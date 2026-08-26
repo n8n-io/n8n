@@ -9,7 +9,7 @@ import {
 	useSelectionValidation,
 	type GroupValidationResult,
 } from '@/app/composables/useSelectionValidation';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,

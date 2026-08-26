@@ -381,11 +381,11 @@ describe('validate-workflow-code MCP tool', () => {
 			expect(result.isError).toBe(true);
 			expect(response).toEqual({
 				valid: false,
-				errors: ['Node group "Group" (g1) cannot contain trigger nodes: Trigger.'],
+				errors: ['Node group "Group" cannot contain trigger nodes: Trigger.'],
 			});
 			expect(trackedResults()).toEqual({
 				success: false,
-				error: 'Node group "Group" (g1) cannot contain trigger nodes: Trigger.',
+				error: 'Node group "Group" cannot contain trigger nodes: Trigger.',
 				data: {
 					groupCount: 1,
 					groupViolationCount: 1,

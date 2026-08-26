@@ -1,4 +1,9 @@
+import type { INodeParameters } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
+
+import { GristApi } from '../../../credentials/GristApi.credentials';
 import { gristBaseUrl } from '../GenericFunctions';
+import type { GristCredentials } from '../types';
 
 describe('Grist gristBaseUrl', () => {
 	it('uses the unified url field, stripping a trailing slash', () => {
@@ -45,6 +50,50 @@ describe('Grist gristBaseUrl', () => {
 			expect(
 				gristBaseUrl({ selfHostedUrl: 'https://grist.example.com', customSubdomain: 'acme' }),
 			).toBe('https://grist.example.com');
+		});
+	});
+
+	// Before a node sees credential data, n8n merges in the defaults of the declared
+	// credential fields and drops any stored value whose field is not declared. These
+	// tests resolve the base URL through that same step, so they fail if a default
+	// shadows the legacy fields or if the legacy fields stop being declared.
+	describe('after credential defaults are applied, as at execution time', () => {
+		const resolveThroughDefaults = (stored: INodeParameters) => {
+			const decrypted = NodeHelpers.getNodeParameters(
+				new GristApi().properties,
+				stored,
+				true,
+				false,
+				null,
+				null,
+			);
+			return gristBaseUrl(decrypted as GristCredentials);
+		};
+
+		it('keeps a legacy self-hosted credential on its own host', () => {
+			expect(
+				resolveThroughDefaults({
+					apiKey: 'k',
+					planType: 'selfHosted',
+					selfHostedUrl: 'https://grist.example.com',
+				}),
+			).toBe('https://grist.example.com');
+		});
+
+		it('keeps a legacy team credential on its subdomain host', () => {
+			expect(
+				resolveThroughDefaults({ apiKey: 'k', planType: 'paid', customSubdomain: 'acme' }),
+			).toBe('https://acme.getgrist.com');
+		});
+
+		it('uses the stored url when one has been saved', () => {
+			expect(resolveThroughDefaults({ apiKey: 'k', url: 'https://grist.example.com' })).toBe(
+				'https://grist.example.com',
+			);
+		});
+
+		it('sends a new credential with the url left empty to the SaaS API host', () => {
+			expect(resolveThroughDefaults({ apiKey: 'k', url: '' })).toBe('https://api.getgrist.com');
 		});
 	});
 });

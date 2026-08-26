@@ -104,7 +104,7 @@ export const workflowSettingsObjectSchema = z.object({
 	callerPolicy: z
 		.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'])
 		.describe(
-			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner".',
+			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner". Do not choose "any": it is deprecated and removed in version 3. Use "workflowsFromAList" with callerIds, or "workflowsFromSameOwner".',
 		)
 		.optional(),
 	callerIds: z
@@ -141,7 +141,7 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 			.string()
 			.min(2)
 			.describe(
-				'JSON Pointer (RFC 6901) path to the parameter to set, e.g. "/jsonSchema" or "/options/systemMessage". Must start with "/". Intermediate objects are created on demand. Array indices are NOT supported — to change a value inside an array, set the whole array. Use this instead of `updateNodeParameters` when you only need to set one nested key — the payload stays small regardless of the rest of the parameters object.',
+				'JSON Pointer (RFC 6901) path, e.g. "/options/systemMessage" or "/assignments/assignments/0/value". Numeric segments index into an existing array element only — to add or remove elements, set the whole array (or its parent) instead. Prefer over `updateNodeParameters` for a single nested key — the payload stays small regardless of the rest of the parameters object.',
 			),
 		value: z
 			.unknown()
@@ -364,6 +364,18 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 
 export type PartialUpdateOperation = z.infer<typeof partialUpdateOperationSchema>;
 
+/**
+ * Operation types whose failure `applyOperations` skips instead of aborting the whole
+ * batch. Groups are cosmetic — nothing about execution depends on them — so a single
+ * invalid group op shouldn't discard an otherwise-good batch of node/connection edits.
+ */
+export const NON_FATAL_OPERATION_TYPES: ReadonlySet<PartialUpdateOperation['type']> = new Set([
+	'setNodeGroups',
+	'addNodeGroup',
+	'removeNodeGroup',
+	'updateNodeGroup',
+]);
+
 interface WorkflowSlice {
 	name: string;
 	description?: string;
@@ -377,6 +389,18 @@ interface WorkflowSlice {
 	tagNames?: string[];
 }
 
+export interface SkippedOperation {
+	opIndex: number;
+	type: PartialUpdateOperation['type'];
+	reason: string;
+}
+
+/** The submitted operation that put a group in its current state. */
+export interface GroupOperationRef {
+	opIndex: number;
+	type: PartialUpdateOperation['type'];
+}
+
 export interface ApplyOperationsSuccess {
 	success: true;
 	workflow: WorkflowSlice;
@@ -388,6 +412,21 @@ export interface ApplyOperationsSuccess {
 	 * `workflow.nodeGroups` must be persisted rather than preserved-on-omit.
 	 */
 	nodeGroupsChanged: boolean;
+	/**
+	 * Operations of a type in `NON_FATAL_OPERATION_TYPES` that failed and were
+	 * skipped instead of aborting the batch. Empty when none were skipped.
+	 */
+	skippedOperations: SkippedOperation[];
+	/**
+	 * Group id -> the group operation that last put it in its current state.
+	 * Contains only groups this batch explicitly asked for; a pre-existing group,
+	 * or one merely affected as a side effect (e.g. `removeNode` pruning a
+	 * member), is deliberately absent. Lets a caller doing its own post-loop group
+	 * validation (structural rules aren't checked here — see
+	 * `NON_FATAL_OPERATION_TYPES`'s doc comment) tell "the caller requested this
+	 * group and it failed" from "an unrelated edit invalidated an existing group".
+	 */
+	groupOperations: Record<string, GroupOperationRef>;
 }
 
 export interface ApplyOperationsFailure {
@@ -423,53 +462,152 @@ const sanitizeUnsafeKeys = (value: unknown): unknown => {
 };
 
 /**
- * Decode a JSON Pointer path (RFC 6901) into safe property segments.
- * Returns null if the path is malformed, empty, contains an empty segment,
- * or contains an unsafe segment. The leading "/" is required.
- * Array indices are not supported: numeric segments are treated as object keys,
- * and descent into an array (or any non-object) fails at apply time.
+ * Decode a JSON Pointer path (RFC 6901) into safe segments, or null if malformed/unsafe.
+ * A numeric segment indexes an array (must reference an existing element) or keys an object — see `setAtPointer`.
  */
 const parseJsonPointer = (path: string): string[] | null => {
-	if (!path.startsWith('/')) return null;
+	if (!path.startsWith('/')) {
+		return null;
+	}
+
 	const tail = path.slice(1);
-	if (tail.length === 0) return null;
+	if (tail.length === 0) {
+		return null;
+	}
+
 	const rawSegments = tail.split('/');
 	const segments: string[] = [];
+
+	// RFC 6901: every '~' must be followed by '0' or '1'. Bare '~' or '~2' is malformed.
+	const invalidEscapeSequenceRegex = /~(?:[^01]|$)/;
+
 	for (const raw of rawSegments) {
-		// RFC 6901: every '~' must be followed by '0' or '1'. Bare '~' or '~2' is malformed.
-		if (/~(?:[^01]|$)/.test(raw)) return null;
+		if (invalidEscapeSequenceRegex.test(raw)) {
+			return null;
+		}
+
+		// Unescape RFC 6901 JSON Pointer tokens: '~1' -> '/' and '~0' -> '~'.
+		// reject empty segments or segments that are not considered safe object property names
 		const seg = raw.replace(/~1/g, '/').replace(/~0/g, '~');
-		if (seg.length === 0 || !isSafeObjectProperty(seg)) return null;
+		if (seg.length === 0 || !isSafeObjectProperty(seg)) {
+			return null;
+		}
+
 		segments.push(seg);
 	}
 	return segments;
 };
 
+const isArrayIndexSegment = (segment: string): boolean => /^(0|[1-9]\d*)$/.test(segment);
+
+/**
+ * Read/write a single segment on a cursor that may be a plain object or an array.
+ * Returns an error message for an out-of-bounds or non-numeric array segment,
+ * otherwise returns `{ value }` (the current value at that segment, possibly
+ * undefined) — writing is done separately by the caller via `writeSegment`.
+ */
+const readSegment = (
+	cursor: Record<string, unknown> | unknown[],
+	key: string,
+	failingPathForErrorMessage: string,
+): { value: unknown } | { error: string } => {
+	if (!Array.isArray(cursor)) {
+		return { value: cursor[key] };
+	}
+
+	if (!isArrayIndexSegment(key)) {
+		return { error: `cannot use '${key}' as an array index at '/${failingPathForErrorMessage}'` };
+	}
+
+	const index = Number(key);
+	if (index >= cursor.length) {
+		return {
+			error: `array index ${index} out of bounds (length ${cursor.length}) at '/${failingPathForErrorMessage}'`,
+		};
+	}
+
+	return { value: cursor[index] };
+};
+
+const writeSegment = (
+	cursor: Record<string, unknown> | unknown[],
+	key: string,
+	value: unknown,
+): void => {
+	if (Array.isArray(cursor)) {
+		cursor[Number(key)] = value;
+		return;
+	}
+	cursor[key] = value;
+};
+
 /**
  * Set `value` at `segments` inside `root`, creating intermediate objects on demand.
- * Returns an error message if an intermediate segment exists but is not a plain object,
- * otherwise mutates `root` in place and returns null.
+ * Numeric segments index into arrays (must reference an existing element, no auto-extension).
+ * Mutates `root` in place; returns an error message on failure, else null.
  */
+// PROVISIONAL — ejemplo:
+//   root     = { assignments: { assignments: [ { id: 'a', name: 'x', value: 1 } ] } }
+//   segments = ['assignments', 'assignments', '0', 'value']   // viene de parsear "/assignments/assignments/0/value"
+//   value    = 99
+// objetivo: dejar root.assignments.assignments[0].value = 99
 const setAtPointer = (
 	root: Record<string, unknown>,
 	segments: string[],
 	value: unknown,
 ): string | null => {
-	let cursor: Record<string, unknown> = root;
+	let cursor: Record<string, unknown> | unknown[] = root;
+
+	// Loop through all elements but the last one, since that is the one we want
+	// to write to, not read from. The previous segments are just for navigation
+	// to that point.
 	for (let i = 0; i < segments.length - 1; i++) {
-		const key = segments[i];
-		const next = cursor[key];
-		if (next === undefined) {
+		const key = segments[i]; // i=0 -> 'assignments'; i=1 -> 'assignments'; i=2 -> '0'
+
+		const failingPathSegmentReadingFailure = segments.slice(0, i).join('/');
+
+		const read = readSegment(cursor, key, failingPathSegmentReadingFailure);
+		if ('error' in read) {
+			return read.error;
+		}
+
+		if (read.value === undefined && !Array.isArray(cursor)) {
+			const nextKey = segments[i + 1];
+			if (isArrayIndexSegment(nextKey)) {
+				// Do not auto-create an array as in many if not all situations might result in a broken node and workflow
+				const containerPath = segments.slice(0, i + 1).join('/');
+				return `cannot create array at '/${containerPath}' for numeric segment '${nextKey}' — set the whole array via updateNodeParameters instead`;
+			}
+
 			const child: Record<string, unknown> = {};
-			cursor[key] = child;
+			writeSegment(cursor, key, child);
 			cursor = child;
-		} else if (isPlainObject(next)) {
-			cursor = next;
+		} else if (isPlainObject(read.value) || Array.isArray(read.value)) {
+			// The intermediate container already exists and is valid (object or array)
+			// it is our cursor now, next iteration will read from it.
+			cursor = read.value;
 		} else {
-			return `cannot descend into non-object at '/${segments.slice(0, i + 1).join('/')}'`;
+			const failingPath = segments.slice(0, i + 1).join('/');
+			return `cannot descend into non-object at '/${failingPath}'`;
 		}
 	}
-	cursor[segments[segments.length - 1]] = sanitizeUnsafeKeys(value);
+
+	// Here the cursor finally points to what we want to update
+	const lastKey = segments[segments.length - 1];
+	if (Array.isArray(cursor)) {
+		const failingPathWithoutIndex = segments.slice(0, -1).join('/');
+
+		if (!isArrayIndexSegment(lastKey)) {
+			return `cannot use '${lastKey}' as an array index at '/${failingPathWithoutIndex}'`;
+		}
+
+		const index = Number(lastKey);
+		if (index >= cursor.length) {
+			return `array index ${index} out of bounds (length ${cursor.length}) at '/${failingPathWithoutIndex}'`;
+		}
+	}
+
+	writeSegment(cursor, lastKey, sanitizeUnsafeKeys(value));
 	return null;
 };
 
@@ -588,15 +726,26 @@ interface ApplyContext {
 	// "tag ops applied to an empty set" at return time.
 	tagSet: Set<string> | null;
 	nodeGroupsChanged: boolean;
+	/**
+	 * Group id -> the group op that last put it in its current state. Only groups
+	 * this batch asked for land here, so a post-loop structural violation (which
+	 * only knows the group) can attribute the failure to a real submitted op —
+	 * or recognise that no op asked for this group at all.
+	 */
+	groupOperations: Map<string, GroupOperationRef>;
 }
 
 /**
  * Handler for a single operation type. Returns null on success, or a raw error
  * message (without the `Operation N failed:` prefix, which `fail` adds).
+ *
+ * `opIndex` is the op's position in the submitted batch; only the group handlers
+ * need it, to record which op is answerable for a group.
  */
 type OpHandler<K extends PartialUpdateOperation['type']> = (
 	op: Extract<PartialUpdateOperation, { type: K }>,
 	ctx: ApplyContext,
+	opIndex: number,
 ) => string | null;
 
 /**
@@ -719,7 +868,13 @@ const handleRemoveNode: OpHandler<'removeNode'> = (op, ctx) => {
 			}
 			ctx.nodeGroupsChanged = true;
 			const remaining = group.nodeIds.filter((id) => id !== node.id);
-			if (remaining.length > 0) prunedGroups.push({ ...group, nodeIds: remaining });
+			if (remaining.length > 0) {
+				// Not recorded in `groupOperations`: pruning is a side effect, so a group
+				// invalidated by it shouldn't discount this operation.
+				prunedGroups.push({ ...group, nodeIds: remaining });
+			} else {
+				ctx.groupOperations.delete(group.id);
+			}
 		}
 		ctx.workflow.nodeGroups = prunedGroups;
 	}
@@ -897,7 +1052,7 @@ const handleSetWorkflowSettings: OpHandler<'setWorkflowSettings'> = (op, ctx) =>
 	return null;
 };
 
-const handleSetNodeGroups: OpHandler<'setNodeGroups'> = (op, ctx) => {
+const handleSetNodeGroups: OpHandler<'setNodeGroups'> = (op, ctx, opIndex) => {
 	const nodeGroups: IWorkflowGroup[] = [];
 	for (const group of op.nodeGroups) {
 		const resolved = resolveGroupNodeIds(ctx.nodeByName, group.nodeNames, group.name);
@@ -916,10 +1071,14 @@ const handleSetNodeGroups: OpHandler<'setNodeGroups'> = (op, ctx) => {
 	}
 	ctx.workflow.nodeGroups = nodeGroups;
 	ctx.nodeGroupsChanged = true;
+	// Wholesale replace: this op is answerable for every surviving group.
+	ctx.groupOperations = new Map(
+		nodeGroups.map((group) => [group.id, { opIndex, type: 'setNodeGroups' as const }]),
+	);
 	return null;
 };
 
-const handleAddNodeGroup: OpHandler<'addNodeGroup'> = (op, ctx) => {
+const handleAddNodeGroup: OpHandler<'addNodeGroup'> = (op, ctx, opIndex) => {
 	const groups = ctx.workflow.nodeGroups ?? [];
 	if (groups.some((g) => g.name === op.name)) {
 		return `a node group named '${op.name}' already exists`;
@@ -935,15 +1094,17 @@ const handleAddNodeGroup: OpHandler<'addNodeGroup'> = (op, ctx) => {
 	}
 
 	const description = op.description?.trim();
-	groups.push({
+	const newGroup = {
 		id: op.id ?? uuid(),
 		name: op.name,
 		nodeIds: resolved.nodeIds,
 		...(description ? { description } : {}),
-	});
+	};
+	groups.push(newGroup);
 
 	ctx.workflow.nodeGroups = groups;
 	ctx.nodeGroupsChanged = true;
+	ctx.groupOperations.set(newGroup.id, { opIndex, type: 'addNodeGroup' });
 
 	return null;
 };
@@ -956,14 +1117,15 @@ const handleRemoveNodeGroup: OpHandler<'removeNodeGroup'> = (op, ctx) => {
 		return `node group '${op.groupName}' not found`;
 	}
 
-	groups.splice(index, 1);
+	const [removed] = groups.splice(index, 1);
 	ctx.workflow.nodeGroups = groups;
 	ctx.nodeGroupsChanged = true;
+	ctx.groupOperations.delete(removed.id);
 
 	return null;
 };
 
-const handleUpdateNodeGroup: OpHandler<'updateNodeGroup'> = (op, ctx) => {
+const handleUpdateNodeGroup: OpHandler<'updateNodeGroup'> = (op, ctx, opIndex) => {
 	// Cross-field "at least one change" lives here because zod v3 discriminated
 	// unions cannot carry a `.refine()` on their members.
 	if (op.newName === undefined && op.nodeNames === undefined && op.description === undefined) {
@@ -977,19 +1139,29 @@ const handleUpdateNodeGroup: OpHandler<'updateNodeGroup'> = (op, ctx) => {
 		return `node group '${op.groupName}' not found`;
 	}
 
+	// Validate every field before touching the group. A failing group op is
+	// skipped, not fatal, so a half-applied mutation would be persisted while the
+	// report says the operation never took effect.
+	let nodeIds: string[] | undefined;
 	if (op.nodeNames !== undefined) {
 		const resolved = resolveGroupNodeIds(ctx.nodeByName, op.nodeNames, op.groupName);
 		if ('error' in resolved) {
 			return resolved.error;
 		}
-		group.nodeIds = resolved.nodeIds;
+		nodeIds = resolved.nodeIds;
 	}
 
-	if (op.newName !== undefined && op.newName !== group.name) {
-		if (groups.some((g) => g !== group && g.name === op.newName)) {
-			return `a node group named '${op.newName}' already exists`;
-		}
-		group.name = op.newName;
+	const newName = op.newName !== undefined && op.newName !== group.name ? op.newName : undefined;
+	if (newName !== undefined && groups.some((g) => g !== group && g.name === newName)) {
+		return `a node group named '${newName}' already exists`;
+	}
+
+	if (nodeIds !== undefined) {
+		group.nodeIds = nodeIds;
+	}
+
+	if (newName !== undefined) {
+		group.name = newName;
 	}
 
 	if (op.description !== undefined) {
@@ -1003,6 +1175,7 @@ const handleUpdateNodeGroup: OpHandler<'updateNodeGroup'> = (op, ctx) => {
 	}
 
 	ctx.nodeGroupsChanged = true;
+	ctx.groupOperations.set(group.id, { opIndex, type: 'updateNodeGroup' });
 
 	return null;
 };
@@ -1053,8 +1226,8 @@ const OPERATION_HANDLERS: { [K in PartialUpdateOperation['type']]: OpHandler<K> 
 	updateNodeGroup: handleUpdateNodeGroup,
 	// Thin wrappers narrow the shared handler to each slot's exact op type; a
 	// direct `handleTagOp` assignment trips a variance check on the `Extract`.
-	addTags: (op, ctx) => handleTagOp(op, ctx),
-	removeTags: (op, ctx) => handleTagOp(op, ctx),
+	addTags: (op, ctx, opIndex) => handleTagOp(op, ctx, opIndex),
+	removeTags: (op, ctx, opIndex) => handleTagOp(op, ctx, opIndex),
 };
 
 /**
@@ -1062,11 +1235,20 @@ const OPERATION_HANDLERS: { [K in PartialUpdateOperation['type']]: OpHandler<K> 
  * Returns the mutated clone on success, or the first failure with the offending op index.
  *
  * The function never mutates the input.
+ *
+ * With `{ canvasGroupsEnabled: true }`, a failing operation of a type in
+ * `NON_FATAL_OPERATION_TYPES` does not abort the batch — it is skipped and recorded
+ * in the result's `skippedOperations` instead, and the remaining operations still
+ * apply. With the flag off (or omitted), every operation is fatal, matching the
+ * historical behavior exactly.
  */
 export function applyOperations(
 	input: WorkflowSlice,
 	operations: PartialUpdateOperation[],
+	options: { canvasGroupsEnabled?: boolean } = {},
 ): ApplyOperationsResult {
+	const skippedOperations: SkippedOperation[] = [];
+
 	const workflow = cloneWorkflow(input);
 	const ctx: ApplyContext = {
 		workflow,
@@ -1074,6 +1256,9 @@ export function applyOperations(
 		addedNodeNames: new Set<string>(),
 		tagSet: null,
 		nodeGroupsChanged: false,
+		// Starts empty: the groups the workflow arrives with weren't requested by
+		// this batch, so no submitted op is answerable for them.
+		groupOperations: new Map(),
 	};
 
 	for (let i = 0; i < operations.length; i++) {
@@ -1083,8 +1268,12 @@ export function applyOperations(
 		// `never`; the cast reconnects each op to its own handler.
 		const handler = OPERATION_HANDLERS[op.type] as OpHandler<typeof op.type>;
 
-		const error = handler(op, ctx);
+		const error = handler(op, ctx, i);
 		if (error) {
+			if (options.canvasGroupsEnabled && NON_FATAL_OPERATION_TYPES.has(op.type)) {
+				skippedOperations.push({ opIndex: i, type: op.type, reason: error });
+				continue;
+			}
 			return fail(i, error);
 		}
 	}
@@ -1099,6 +1288,8 @@ export function applyOperations(
 		addedNodeNames: [...ctx.addedNodeNames],
 		tagNames: ctx.tagSet !== null ? [...ctx.tagSet] : undefined,
 		nodeGroupsChanged: ctx.nodeGroupsChanged,
+		skippedOperations,
+		groupOperations: Object.fromEntries(ctx.groupOperations),
 	};
 }
 

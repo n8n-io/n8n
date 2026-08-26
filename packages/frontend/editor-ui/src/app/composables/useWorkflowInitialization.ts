@@ -2,7 +2,7 @@ import { ref, computed } from 'vue';
 import { type RouteRecordNameGeneric, useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { safeParseWorkflowStructure, WorkflowStructureValidationError } from 'n8n-workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
@@ -16,7 +16,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -113,7 +113,7 @@ export function useWorkflowInitialization() {
 			options = { projectId };
 		}
 
-		await credentialsStore.fetchAllCredentialsForWorkflow(options);
+		await credentialsStore.fetchUsableCredentials(options);
 	}
 
 	/**
@@ -334,6 +334,7 @@ export function useWorkflowInitialization() {
 
 		const parentFolder = await fetchParentFolder(parentFolderId);
 		currentWorkflowDocumentStore.value?.setParentFolder(parentFolder);
+		currentWorkflowDocumentStore.value.setHydrated(true);
 
 		uiStore.nodeViewInitialized = true;
 		initializedWorkflowId.value = workflowId.value;

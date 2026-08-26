@@ -27,6 +27,8 @@ const newJob = (name: string): NewScheduledJob => ({
 	fireAt: null,
 	nextRunAt: CLOCK,
 	maxAttempts: 5,
+	misfirePolicy: 'coalesce',
+	misfireGraceSeconds: 60,
 });
 
 /** A chainable insert query-builder mock; `execute` is set per test. */
@@ -89,13 +91,13 @@ describe('ScheduledJobRepository', () => {
 		});
 	});
 
-	describe('forceDueNowByWorkflowNode', () => {
-		it('sets nextRunAt to now for the node jobs', async () => {
+	describe('backdateNextRunAt', () => {
+		it('sets nextRunAt to secondsAgo in the past for the node jobs', async () => {
 			const qb = updateQb();
 			qb.execute.mockResolvedValue(undefined);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 
-			await repository.forceDueNowByWorkflowNode('wf', 'node');
+			await repository.backdateNextRunAt('wf', 'node', 120);
 
 			expect(qb.update).toHaveBeenCalledWith(ScheduledJob);
 			expect(qb.set).toHaveBeenCalledWith({ nextRunAt: expect.any(Function) });
@@ -103,6 +105,17 @@ describe('ScheduledJobRepository', () => {
 				workflowId: 'wf',
 				nodeId: 'node',
 			});
+			expect(qb.execute).toHaveBeenCalled();
+		});
+
+		it('sets nextRunAt to now when secondsAgo is 0', async () => {
+			const qb = updateQb();
+			qb.execute.mockResolvedValue(undefined);
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+
+			await repository.backdateNextRunAt('wf', 'node', 0);
+
+			expect(qb.set).toHaveBeenCalledWith({ nextRunAt: expect.any(Function) });
 			expect(qb.execute).toHaveBeenCalled();
 		});
 	});
@@ -259,6 +272,8 @@ describe('ScheduledJobRepository', () => {
 				intervalSeconds: null,
 				fireAt: null,
 				nextRunAt: CLOCK,
+				misfirePolicy: 'skip',
+				misfireGraceSeconds: 120,
 			};
 
 			await repository.updateDefinition(entityManager, 10, update);

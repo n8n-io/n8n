@@ -69,13 +69,14 @@ describe('normalizeExportedCase', () => {
 		}
 	});
 
-	it('keeps a real schema field (seedThread, incl. its endpoint) through the whitelist', () => {
+	it('keeps a real schema field (seed, incl. the replay endpoint) through the whitelist', () => {
 		const out = normalizeExportedCase({
-			seedThread: { threadId: 't1', endpoint: 'https://api.smith.langchain.com' },
+			seed: { mode: 'replay', threadId: 't1', endpoint: 'https://api.smith.langchain.com' },
 			complexity: 'medium',
 			id: 1,
 		}) as Record<string, unknown>;
-		expect(out.seedThread).toEqual({
+		expect(out.seed).toEqual({
+			mode: 'replay',
 			threadId: 't1',
 			endpoint: 'https://api.smith.langchain.com',
 		});

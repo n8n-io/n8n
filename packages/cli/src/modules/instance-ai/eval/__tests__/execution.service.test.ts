@@ -11,7 +11,7 @@ import type {
 	IWorkflowBase,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { TimeoutExecutionCancelledError, UserError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -525,6 +525,78 @@ describe('EvalExecutionService', () => {
 			expect(activeExecutions.getPostExecutePromise).toHaveBeenCalledWith(DB_EXECUTION_ID);
 		});
 
+		// Stopping rejects the promise the service awaits, as ActiveExecutions does —
+		// pinning that the budget is reported and not that rejection.
+		it('stops the execution and reports it when the run outlives the caller budget', async () => {
+			vi.useFakeTimers();
+			try {
+				let rejectRun: (error: Error) => void = () => {};
+				activeExecutions.getPostExecutePromise.mockImplementation(
+					async () =>
+						await new Promise<never>((_resolve, reject) => {
+							rejectRun = reject;
+						}),
+				);
+				activeExecutions.stopExecution.mockImplementation((_id, cancellationError) => {
+					rejectRun(cancellationError);
+				});
+
+				const pending = service.executeWithLlmMock('wf-1', makeUser(), { timeoutMs: 30_000 });
+				await vi.advanceTimersByTimeAsync(30_001);
+				const result = await pending;
+
+				expect(activeExecutions.stopExecution).toHaveBeenCalledWith(
+					DB_EXECUTION_ID,
+					expect.any(TimeoutExecutionCancelledError),
+				);
+				expect(result.success).toBe(false);
+				expect(result.errors).toEqual([expect.stringContaining('30s eval budget')]);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		// Hint generation is an LLM call, so it has to come out of the caller's
+		// budget — otherwise the request outlives the deadline it declared.
+		it('charges setup time against the caller budget', async () => {
+			vi.useFakeTimers();
+			try {
+				let rejectRun: (error: Error) => void = () => {};
+				activeExecutions.getPostExecutePromise.mockImplementation(
+					async () =>
+						await new Promise<never>((_resolve, reject) => {
+							rejectRun = reject;
+						}),
+				);
+				activeExecutions.stopExecution.mockImplementation((_id, cancellationError) => {
+					rejectRun(cancellationError);
+				});
+				// Setup burns 25s of the 30s budget. The clock moves without running
+				// timers — advancing them here would re-enter the timer queue the test
+				// drives below.
+				generateMockHintsMock.mockImplementation(async () => {
+					vi.setSystemTime(Date.now() + 25_000);
+					return makeEmptyHints();
+				});
+
+				const pending = service.executeWithLlmMock('wf-1', makeUser(), { timeoutMs: 30_000 });
+				// Only the 5s left after setup, not another full 30s.
+				await vi.advanceTimersByTimeAsync(5_001);
+				const result = await pending;
+
+				expect(activeExecutions.stopExecution).toHaveBeenCalled();
+				expect(result.errors).toEqual([expect.stringContaining('30s eval budget')]);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('keeps waiting indefinitely when the caller sends no budget', async () => {
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(activeExecutions.stopExecution).not.toHaveBeenCalled();
+		});
+
 		it('wraps additionalData.credentialsHelper inside configureAdditionalData', async () => {
 			await service.executeWithLlmMock('wf-1', makeUser());
 
@@ -877,6 +949,51 @@ describe('EvalExecutionService', () => {
 				const toolUrls = result.nodeResults['Get Order Tool'].interceptedRequests.map((r) => r.url);
 				expect(agentUrls).not.toContain('https://orders.example.com/v1/orders/42');
 				expect(toolUrls).not.toContain('https://api.openai.com/v1/chat/completions');
+			});
+
+			it('detaches the ledger entry from a node mutating the served response in place', async () => {
+				// The reported failure: the OpenAI node's json_schema mode parses
+				// `output[].content[].text` in place, so an aliased entry rewrote
+				// history and the judge blamed the mock. Asserted at this call site,
+				// not just on the helper, so a refactor can't bypass the snapshot.
+				const served = { output: [{ content: [{ type: 'output_text', text: '{"a":1}' }] }] };
+				const innerMockHandler = vi.fn().mockResolvedValue({
+					body: served,
+					headers: { 'content-type': 'application/json' },
+					statusCode: 200,
+				});
+				createLlmMockHandlerMock.mockReturnValue(innerMockHandler);
+
+				let capturedAd: StubAdditionalData | undefined;
+				workflowRunner.run.mockImplementation(async (data) => {
+					const ad = makeMockedAdditionalData();
+					await data.configureAdditionalData?.(ad as never);
+					capturedAd = ad;
+					return DB_EXECUTION_ID;
+				});
+
+				activeExecutions.getPostExecutePromise.mockImplementation(async () => {
+					const response = (await capturedAd?.evalLlmMockHandler?.(
+						{ url: 'https://api.openai.com/v1/responses', method: 'POST' },
+						{
+							id: 'node-2',
+							name: 'HTTP Request',
+							type: 'n8n-nodes-base.httpRequest',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					)) as { body: typeof served } | undefined;
+					// Node code mutates the body it was handed.
+					response!.body.output[0].content[0].text = { a: 1 } as never;
+					return makeIRun();
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+				const recorded = result.nodeResults['HTTP Request'].interceptedRequests[0]
+					.mockResponse as typeof served;
+				expect(recorded.output[0].content[0].text).toBe('{"a":1}');
 			});
 
 			it('records "(no URL)" when broken node routing emits a request without a URL', async () => {

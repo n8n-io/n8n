@@ -7,9 +7,9 @@ description: 'Configures Node.js with pnpm, installs Aikido SafeChain for supply
 
 inputs:
   node-version:
-    description: 'Node.js version to use. Pinned to 24.18.0 by default for reproducible builds.'
+    description: 'Node.js version to use. Pinned to 26.5.1 by default for reproducible builds.'
     required: false
-    default: '24.18.0'
+    default: '26.5.1'
   enable-docker-cache:
     description: 'Whether to set up Blacksmith Buildx for Docker layer caching (Blacksmith runners only).'
     required: false
@@ -31,7 +31,11 @@ runs:
   using: 'composite'
   steps:
     - name: Setup pnpm
-      uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      with:
+        install: false
+        version: 11.22.0
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     # Cache the Node toolcache so setup-node skips the ~33s nodejs.org download
     # on every subsequent job. First fresh runner pays the download; later jobs
@@ -183,7 +187,7 @@ runs:
         mkdir -p "$PNPM_DIAG_DIR/pnpm-logs"
 
         set +o pipefail
-        timeout --kill-after=30s 300s $INSTALL_COMMAND \
+        timeout --kill-after=30s 600s $INSTALL_COMMAND \
           --config.logs-dir="$PNPM_DIAG_DIR/pnpm-logs" \
           --reporter=append-only --config.loglevel=info 2>&1 | tee "$INSTALL_LOG"
         rc=${PIPESTATUS[0]}
@@ -217,7 +221,7 @@ runs:
           find "$PNPM_DIAG_DIR/pnpm-logs" -type f -exec sh -c 'echo "----- $1 -----"; cat "$1"' _ {} \; 2>/dev/null || echo "(none)"
           echo "::endgroup::"
           case "$rc" in
-            124) echo "::error::pnpm install timed out after 300s (exit 124)" ;;
+            124) echo "::error::pnpm install timed out after 600s (exit 124)" ;;
             137) echo "::error::pnpm install received SIGKILL (exit 137 — likely OOM or kill-after timeout)" ;;
           esac
         fi

@@ -27,6 +27,7 @@ export interface AgentBuilder {
 	reasoning(level?: ReasoningLevel): this;
 	toolCallConcurrency(n: number): this;
 	memory(m: unknown): this;
+	fileStore(store: unknown): this;
 	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this;
 	checkpoint(storage: 'memory' | CheckpointStore): this;
 	inputGuardrail(g: BuiltGuardrail): this;

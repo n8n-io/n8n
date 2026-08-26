@@ -13,6 +13,10 @@ Use this skill when you need quick reminders on critical patterns.
 
 ## Critical Rules (Must Follow)
 
+**Technical writing (comments, PRs, issues, docs):**
+- Write in ASD-STE100 Simplified Technical English: short sentences, the
+  active voice, one instruction for each sentence
+
 **TypeScript:**
 - Never `any` → use `unknown`
 - Prefer `satisfies` over `as` (except tests)
@@ -45,6 +49,10 @@ throw new UnexpectedError('message', { extra: { context } });
 **Database:**
 - SQLite/PostgreSQL only (app DB)
 - Exception: DB nodes (MySQL Node, etc.) can use DB-specific features
+
+**GitHub Workflows:**
+- Every workflow declares a least-privilege top-level `permissions:` block
+  (usually `contents: read`); jobs needing more override at job level
 
 **Commands:**
 ```bash

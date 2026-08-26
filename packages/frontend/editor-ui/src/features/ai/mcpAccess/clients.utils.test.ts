@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 
-import { getClientBrand } from './clients.utils';
+import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
+
+import { getClientBrand, isFullAccessGrant } from './clients.utils';
 
 describe('getClientBrand', () => {
 	it.each([
@@ -19,5 +21,26 @@ describe('getClientBrand', () => {
 		expect(getClientBrand('Claude Code').icon).not.toBeNull();
 		expect(getClientBrand('Cursor').icon).not.toBeNull();
 		expect(getClientBrand('Some Unknown Client').icon).toBeNull();
+	});
+});
+
+describe('isFullAccessGrant', () => {
+	const nonAgentScopes = MCP_INSTANCE_SCOPES.filter((scope) => !scope.startsWith('agent:'));
+
+	it('treats a grant covering every scope as full access', () => {
+		expect(isFullAccessGrant([...MCP_INSTANCE_SCOPES])).toBe(true);
+	});
+
+	it('treats an empty or partial grant as not full access', () => {
+		expect(isFullAccessGrant([])).toBe(false);
+		expect(isFullAccessGrant(['workflow:read'])).toBe(false);
+	});
+
+	it('counts a grant as full access when it covers every scope the instance offers', () => {
+		expect(isFullAccessGrant(nonAgentScopes, nonAgentScopes)).toBe(true);
+	});
+
+	it('still reports missing scopes that the instance does offer', () => {
+		expect(isFullAccessGrant(['workflow:read'], nonAgentScopes)).toBe(false);
 	});
 });

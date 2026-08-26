@@ -2,7 +2,7 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { ScheduledTaskRepository, type ScheduledTaskMetricSnapshot } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { SchedulerMetrics } from '@n8n/scheduler';
+import type { MisfireCount, SchedulerMetrics } from '@n8n/scheduler';
 import { InstanceSettings } from 'n8n-core';
 import promClient from 'prom-client';
 
@@ -33,9 +33,13 @@ export class PrometheusSchedulerMetricsService
 	private taskRetries!: promClient.Counter<'task_type'>;
 	private occurrencesMaterialized!: promClient.Counter;
 	private jobsDeferred!: promClient.Counter;
+	private occurrencesMisfired!: promClient.Counter<'task_type' | 'policy'>;
+	private occurrencesRetired!: promClient.Counter;
+	private occurrencesMissed!: promClient.Counter;
 	private tasksReclaimed!: promClient.Counter;
 	private tasksDeadLettered!: promClient.Counter;
 	private tasksPruned!: promClient.Counter;
+	private tasksLeaseLost!: promClient.Counter<'task_type'>;
 	private dispatchLagSeconds!: promClient.Histogram<'task_type'>;
 
 	constructor(
@@ -86,6 +90,22 @@ export class PrometheusSchedulerMetricsService
 			help: 'Total number of jobs deferred for retry during materialization.',
 		});
 
+		this.occurrencesMisfired = new promClient.Counter({
+			name: `${prefix}scheduler_occurrences_misfired_total`,
+			help: "Total number of due occurrences a schedule's misfire policy discarded rather than record, by task type and policy.",
+			labelNames: ['task_type', 'policy'],
+		});
+
+		this.occurrencesRetired = new promClient.Counter({
+			name: `${prefix}scheduler_occurrences_retired_total`,
+			help: 'Total number of already-recorded occurrences retired because a catch-up run superseded them.',
+		});
+
+		this.occurrencesMissed = new promClient.Counter({
+			name: `${prefix}scheduler_occurrences_missed_total`,
+			help: 'Total number of pending occurrences the reaper marked missed after they went past their deadline unclaimed.',
+		});
+
 		this.tasksReclaimed = new promClient.Counter({
 			name: `${prefix}scheduler_tasks_reclaimed_total`,
 			help: 'Total number of expired scheduler tasks reclaimed by the reaper.',
@@ -101,6 +121,12 @@ export class PrometheusSchedulerMetricsService
 			help: 'Total number of finished scheduler tasks deleted by retention.',
 		});
 
+		this.tasksLeaseLost = new promClient.Counter({
+			name: `${prefix}scheduler_tasks_lease_lost_total`,
+			help: 'Total number of scheduler tasks whose handler finished after the lease was reclaimed, so another instance may have run the same occurrence concurrently, by task type.',
+			labelNames: ['task_type'],
+		});
+
 		this.dispatchLagSeconds = new promClient.Histogram({
 			name: `${prefix}scheduler_dispatch_lag_seconds`,
 			help: 'Delay in seconds between a task becoming due and being dispatched, by task type.',
@@ -112,6 +138,8 @@ export class PrometheusSchedulerMetricsService
 		// series are created lazily as task types are discovered at runtime.
 		this.occurrencesMaterialized.inc(0);
 		this.jobsDeferred.inc(0);
+		this.occurrencesRetired.inc(0);
+		this.occurrencesMissed.inc(0);
 		this.tasksReclaimed.inc(0);
 		this.tasksDeadLettered.inc(0);
 		this.tasksPruned.inc(0);
@@ -201,6 +229,12 @@ export class PrometheusSchedulerMetricsService
 		}
 	}
 
+	recordLeaseLost(taskType: string) {
+		if (this.initialized) {
+			this.tasksLeaseLost.inc({ task_type: taskType }, 1);
+		}
+	}
+
 	recordMaterialized(occurrences: number, deferredJobs: number) {
 		if (this.initialized) {
 			this.occurrencesMaterialized.inc(occurrences);
@@ -208,10 +242,28 @@ export class PrometheusSchedulerMetricsService
 		}
 	}
 
-	recordReaped(reclaimed: number, deadLettered: number) {
+	recordMisfired(discarded: MisfireCount[]) {
+		if (this.initialized) {
+			for (const group of discarded) {
+				this.occurrencesMisfired.inc(
+					{ task_type: group.taskType, policy: group.policy },
+					group.discarded,
+				);
+			}
+		}
+	}
+
+	recordRetired(retired: number) {
+		if (this.initialized) {
+			this.occurrencesRetired.inc(retired);
+		}
+	}
+
+	recordReaped(reclaimed: number, deadLettered: number, missed: number) {
 		if (this.initialized) {
 			this.tasksReclaimed.inc(reclaimed);
 			this.tasksDeadLettered.inc(deadLettered);
+			this.occurrencesMissed.inc(missed);
 		}
 	}
 

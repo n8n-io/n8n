@@ -10,14 +10,16 @@ import { z } from 'zod';
  * presence, known node types, credential issues, etc.).
  *
  * Lives in n8n-workflow so it can be shared by:
- *   - Backend: create/update/import reject malformed payloads (400)
- *   - Frontend: open path warns but still renders; import path blocks
+ *   - Backend: create, import, and structural updates reject malformed payloads (400).
+ *     Metadata-only updates skip the check so legacy data stays editable.
+ *   - Frontend: open path warns but still renders; the sample-template JSON route blocks
  *
  * Validates:
  *   - Required node fields (name, type, position)
  *   - Position is a 2-number tuple
  *   - Connection entries have valid node/type/index
  *   - No duplicate node names
+ *   - No duplicate node ids, where present
  *   - Connection source/target keys reference existing nodes
  *
  * Does NOT validate:
@@ -66,6 +68,7 @@ type WorkflowStructureData = z.infer<typeof workflowStructureSchema>;
 
 type WorkflowStructureGraphIssueCode =
 	| 'duplicate_node_name'
+	| 'duplicate_node_id'
 	| 'unknown_connection_source'
 	| 'unknown_connection_target';
 
@@ -129,18 +132,31 @@ export function safeParseWorkflowStructure(input: unknown): WorkflowStructureVal
 	const { nodes, connections } = parsed.data;
 	const issues: WorkflowStructureIssue[] = [];
 	const nodeNames = new Set<string>();
+	const nodeNameById = new Map<string, string>();
 
 	for (const [index, node] of nodes.entries()) {
-		if (nodeNames.has(node.name)) {
+		// Ids are optional in the schema because the backend fills in absent and empty ones on
+		// save. A supplied id must be unique: it identifies a node independently of its name, and
+		// per-node state keyed on it would otherwise be shared between two nodes.
+		if (node.id !== undefined && node.id !== '') {
+			const firstNodeName = nodeNameById.get(node.id);
+
+			if (firstNodeName === undefined) nodeNameById.set(node.id, node.name);
+			else
+				issues.push({
+					path: ['nodes', index, 'id'],
+					message: `Nodes "${firstNodeName}" and "${node.name}" share the node ID "${node.id}"`,
+					code: 'duplicate_node_id',
+				});
+		}
+
+		if (nodeNames.has(node.name))
 			issues.push({
 				path: ['nodes', index, 'name'],
 				message: `Duplicate node name "${node.name}"`,
 				code: 'duplicate_node_name',
 			});
-			continue;
-		}
-
-		nodeNames.add(node.name);
+		else nodeNames.add(node.name);
 	}
 
 	for (const sourceNodeName of Object.keys(connections)) {

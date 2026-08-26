@@ -1,10 +1,11 @@
 import type { Response } from 'express';
-import { BadRequest } from 'express-openapi-validator/dist/framework/types';
+import { BadRequest, Unauthorized } from 'express-openapi-validator/dist/framework/types';
 import { UnexpectedError, UserError, OperationalError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 
 import { sendPublicApiErrorResponse } from '../public-api-error-response';
 
@@ -48,6 +49,24 @@ describe('sendPublicApiErrorResponse', () => {
 		expect(res._payload.body).toEqual({ message: 'managed declaratively' });
 	});
 
+	it('returns the review request that is blocking publication', () => {
+		const res = createMockRes();
+		sendPublicApiErrorResponse(
+			res,
+			new WorkflowPublishBlockedError({
+				reason: 'review_pending',
+				workflowReviewRequestId: 'review-1',
+			}),
+		);
+
+		expect(res._payload.statusCode).toBe(409);
+		expect(res._payload.body).toEqual({
+			message: expect.stringContaining('review is open'),
+			reason: 'review_pending',
+			workflowReviewRequestId: 'review-1',
+		});
+	});
+
 	it('maps UserError to 400', () => {
 		const res = createMockRes();
 		sendPublicApiErrorResponse(res, new UserError('bad input'));
@@ -75,6 +94,17 @@ describe('sendPublicApiErrorResponse', () => {
 		sendPublicApiErrorResponse(res, err);
 		expect(res._payload.statusCode).toBe(400);
 		expect(res._payload.body).toEqual({ message: 'schema failed' });
+	});
+
+	it('forwards classifier context so session-cookie Unauthorized is serialized as a generic 401', () => {
+		const res = createMockRes();
+		const err = new Unauthorized({
+			path: '/api/v1/insights/summary',
+			message: "'X-N8N-API-KEY' header required",
+		});
+		sendPublicApiErrorResponse(res, err, { hasSessionCookie: true });
+		expect(res._payload.statusCode).toBe(401);
+		expect(res._payload.body).toEqual({ message: 'Unauthorized' });
 	});
 
 	it('maps unknown errors to 500 with a generic message', () => {

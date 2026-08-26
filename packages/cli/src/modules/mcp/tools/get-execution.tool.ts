@@ -68,14 +68,14 @@ export const createGetExecutionTool = (
 	workflowFinderService: WorkflowFinderService,
 	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema.shape> => ({
-	name: 'get_execution',
+	name: 'get_workflow_execution',
 	config: {
 		description:
-			'Get execution details by execution ID and workflow ID. By default returns metadata only. Set includeData to true to include node execution data, optionally filtered by nodeNames and truncated by truncateData.',
+			'Get workflow execution details by execution ID and workflow ID. By default returns metadata only. Set includeData to true to include node execution data, optionally filtered by nodeNames and truncated by truncateData.',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
-			title: 'Get Execution',
+			title: 'Get Workflow Execution',
 			readOnlyHint: true,
 			destructiveHint: false,
 			idempotentHint: true,
@@ -91,7 +91,7 @@ export const createGetExecutionTool = (
 	}: z.infer<typeof inputSchema>) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
-			tool_name: 'get_execution',
+			tool_name: 'get_workflow_execution',
 			parameters: { workflowId, executionId, includeData, nodeNames, truncateData },
 		};
 

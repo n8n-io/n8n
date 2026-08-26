@@ -14,7 +14,7 @@ import { useI18n } from '@n8n/i18n';
 
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
-	AGENT_MODEL_PROVIDER_DEFINITIONS,
+	getProviderCredentialTypes,
 	isAgentModelProvider,
 } from '@/features/agents/model-providers';
 import AgentPersonalisationIcon from '@/features/agents/components/AgentPersonalisationIcon.vue';
@@ -53,7 +53,7 @@ const parsedModel = computed(() => {
 const modelCredentialType = computed(() => {
 	const provider = parsedModel.value?.provider;
 	return provider && isAgentModelProvider(provider)
-		? AGENT_MODEL_PROVIDER_DEFINITIONS[provider].credentialTypes[0]
+		? getProviderCredentialTypes(provider)[0]
 		: null;
 });
 

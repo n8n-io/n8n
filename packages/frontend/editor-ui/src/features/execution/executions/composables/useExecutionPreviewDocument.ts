@@ -4,7 +4,7 @@ import type { IWorkflowDb } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { MAX_PREVIEW_EXECUTIONS_IN_MEMORY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormalization';

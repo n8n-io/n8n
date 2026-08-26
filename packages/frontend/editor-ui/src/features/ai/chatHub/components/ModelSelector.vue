@@ -27,7 +27,7 @@ import {
 	isLlmProviderModel,
 } from '@/features/ai/chatHub/chat.utils';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import ChatProviderAvatar from './ChatProviderAvatar.vue';
@@ -187,6 +187,7 @@ defineExpose({
 	<N8nAiModelSelectorDropdown
 		ref="dropdownRef"
 		:items="filteredMenu"
+		:is-loading="isLoading"
 		:selected-label="selectedLabel"
 		:selected-credential-name="credentialsName"
 		:credentials-missing="isCredentialsMissing"

@@ -1,0 +1,75 @@
+{
+	"type": "object",
+	"properties": {
+		"author_name": {
+			"type": "string"
+		},
+		"author_user_id": {
+			"type": "string"
+		},
+		"blocks": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"properties": {
+					"block_id": {
+						"type": "string"
+					},
+					"elements": {
+						"type": "array",
+						"items": {
+							"type": "object",
+							"properties": {
+								"elements": {
+									"type": "array",
+									"items": {
+										"type": "object",
+										"properties": {
+											"text": {
+												"type": "string"
+											},
+											"type": {
+												"type": "string"
+											},
+											"user_id": {
+												"type": "string"
+											}
+										}
+									}
+								},
+								"type": {
+									"type": "string"
+								}
+							}
+						}
+					},
+					"type": {
+						"type": "string"
+					}
+				}
+			}
+		},
+		"channel_id": {
+			"type": "string"
+		},
+		"channel_name": {
+			"type": "string"
+		},
+		"content": {
+			"type": "string"
+		},
+		"is_author_bot": {
+			"type": "boolean"
+		},
+		"message_ts": {
+			"type": "string"
+		},
+		"permalink": {
+			"type": "string"
+		},
+		"team_id": {
+			"type": "string"
+		}
+	},
+	"version": 1
+}

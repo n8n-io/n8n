@@ -1,11 +1,11 @@
+// Modal keys belong to the feature that owns them. Only the three
+// dialog result sentinels stay here. To read the removal policy, see PR #36324.
 export const MODAL_CANCEL = 'cancel';
 export const MODAL_CONFIRM = 'confirm';
 export const MODAL_CLOSE = 'close';
 
 export const ABOUT_MODAL_KEY = 'about';
 export const CHAT_EMBED_MODAL_KEY = 'chatEmbed';
-export const CHANGE_PASSWORD_MODAL_KEY = 'changePassword';
-export const CONFIRM_PASSWORD_MODAL_KEY = 'confirmPassword';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const IMPORT_WORKFLOW_URL_MODAL_KEY = 'importWorkflowUrl';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
@@ -14,9 +14,6 @@ export const NPS_SURVEY_MODAL_KEY = 'npsSurvey';
 export const WORKFLOW_ACTIVE_MODAL_KEY = 'activation';
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const LOG_STREAM_MODAL_KEY = 'settingsLogStream';
-export const MFA_SETUP_MODAL_KEY = 'mfaSetup';
-export const PROMPT_MFA_CODE_MODAL_KEY = 'promptMfaCode';
-export const WORKFLOW_HISTORY_VERSION_RESTORE = 'workflowHistoryVersionRestore';
 export const WORKFLOW_HISTORY_VERSION_UNPUBLISH = 'workflowHistoryVersionUnpublish';
 export const WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY = 'workflowHistoryNameVersion';
 export const SETUP_CREDENTIALS_MODAL_KEY = 'setupCredentials';
@@ -44,10 +41,6 @@ export const WORKFLOW_HISTORY_PUBLISH_MODAL_KEY = 'workflowHistoryPublish';
 export const WORKFLOW_HISTORY_DIFF_MODAL_KEY = 'workflowHistoryDiff';
 export const CREDENTIAL_RESOLVER_EDIT_MODAL_KEY = 'credentialResolverEdit';
 export const AI_BUILDER_DIFF_MODAL_KEY = 'aiBuilderDiff';
-export const INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY = 'instanceAiCredentialSetup';
-export const INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY = 'instanceAiComputerUseSetup';
-export const INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY = 'instanceAiBrowserUseSetup';
-export const INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY = 'instanceAiToolsConnection';
-export const AGENT_CONFIRMATION_MODAL_KEY = 'agentConfirmation';
 export const ADD_EXECUTION_TO_DATASET_MODAL_KEY = 'addExecutionToDataset';
+export const TRIAL_INTRO_MODAL_KEY = 'trialIntroModal';
 export const MIGRATE_WORKFLOW_MODAL_KEY = 'migrateWorkflow';

@@ -16,11 +16,6 @@ import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-de
 
 export type NodeFilter = (nodeId: string) => boolean;
 
-/**
- * Built-in node IDs resolve through the richer, discriminator-aware on-disk
- * lookup; everything else (MCP registry, custom and community nodes) is
- * synthesized from its in-memory description.
- */
 const isBuiltinNodeId = (nodeId: string): boolean =>
 	BUILTIN_NODES_PACKAGES.some((pkg) => nodeId.startsWith(`${pkg}.`));
 
@@ -211,15 +206,10 @@ export class NodeCatalogService {
 		const cached = this.getCache.get(cacheKey);
 		if (cached) return cached;
 
-		// Built-in nodes resolve through the on-disk type defs (richer,
-		// discriminator-aware). Everything else (MCP registry, custom and
-		// community nodes) has no on-disk artifact, so synthesize from the
-		// in-memory description collected from the loaders.
 		const onDiskIds: NodeRequest[] = [];
 		const synthesizeIds: NodeRequest[] = [];
 		for (const id of nodeIds) {
-			const nodeId = typeof id === 'string' ? id : id.nodeId;
-			if (isBuiltinNodeId(nodeId)) {
+			if (this.resolvesFromDisk(this.toDefinitionRequest(id))) {
 				onDiskIds.push(id);
 			} else {
 				synthesizeIds.push(id);
@@ -260,7 +250,7 @@ export class NodeCatalogService {
 		const cached = this.getDefinitionCache.get(cacheKey);
 		if (cached) return cached;
 
-		const result = isBuiltinNodeId(request.nodeId)
+		const result = this.resolvesFromDisk(request)
 			? await this.getBuiltinNodeTypeDefinition(request)
 			: this.getSynthesizedNodeTypeDefinition(request);
 
@@ -330,6 +320,23 @@ export class NodeCatalogService {
 				this.descriptionsById.set(description.name, [description]);
 			}
 		}
+	}
+
+	/**
+	 * Built-in node IDs resolve through the richer, discriminator-aware on-disk
+	 * type defs; everything else (MCP registry, custom and community nodes) has
+	 * no on-disk artifact and is synthesized from its in-memory description.
+	 * Hidden built-ins (e.g. messageAnAgent, surfaced in search but skipped by
+	 * the build-time generator) are synthesized too — the on-disk lookup would
+	 * report them as not found.
+	 */
+	private resolvesFromDisk(request: NodeTypeDefinitionRequest): boolean {
+		if (!isBuiltinNodeId(request.nodeId)) return false;
+		const candidates = this.descriptionsById.get(request.nodeId);
+		// Unknown built-in ids stay on the on-disk path so its lookup reports the error.
+		if (!candidates?.length) return true;
+		const description = this.selectDescription(candidates, request.version);
+		return description?.hidden !== true;
 	}
 
 	private toDefinitionRequest(nodeRequest: NodeRequest): NodeTypeDefinitionRequest {

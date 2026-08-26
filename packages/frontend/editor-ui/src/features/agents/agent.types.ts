@@ -17,6 +17,7 @@ export interface CustomToolEntry {
 }
 
 import type { AgentVersionDto, AgentSkill, AgentJsonConfig } from '@n8n/api-types';
+import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
 export type AgentVersion = AgentVersionDto;
 
@@ -24,6 +25,10 @@ export type Agent = {
 	id: string;
 	name: string;
 	projectId: string;
+	// Narrow declaration of the eagerly-loaded home project relation — only
+	// the fields list consumers (e.g. the MCP agents table) read are typed.
+	project?: Pick<ProjectSharingData, 'id' | 'name' | 'type'> | null;
+	availableInMCP?: boolean;
 	isCompiled: boolean;
 	isRunnable?: boolean;
 	hasPublishHistory?: boolean;

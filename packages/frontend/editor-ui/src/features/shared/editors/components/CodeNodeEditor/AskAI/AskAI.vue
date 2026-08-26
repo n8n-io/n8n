@@ -14,7 +14,7 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';

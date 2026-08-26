@@ -4,7 +4,12 @@ import type { ModelMessage, SystemModelMessage } from 'ai';
 import { toAiMessages } from './messages';
 import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
 import type { SerializedMessageList } from '../../types/runtime/message-list';
-import type { AgentDbMessage, AgentMessage, ContentToolCall } from '../../types/sdk/message';
+import type {
+	AgentDbMessage,
+	AgentMessage,
+	ContentToolCall,
+	ToolCallSuspensionInfo,
+} from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
 import { stringifyError } from '../loop/runtime-helpers';
 import { stripOrphanedToolMessages } from '../memory/strip-orphaned-tool-messages';
@@ -255,6 +260,20 @@ export class AgentMessageList {
 		return host;
 	}
 
+	/**
+	 * Record on a pending tool-call block what confirmation the user was shown
+	 * (HITL suspension). No-op when the toolCallId is unknown or the block is
+	 * already settled. Lets a later history load of an abandoned suspension
+	 * explain the unanswered confirmation instead of silently dropping it.
+	 */
+	markToolCallSuspended(toolCallId: string, suspension: ToolCallSuspensionInfo): void {
+		const host = this.findToolCallHost(toolCallId);
+		if (!host) return;
+		const block = this.findToolCallBlock(host, toolCallId);
+		if (!block || block.state !== 'pending') return;
+		block.suspension = suspension;
+	}
+
 	private findToolCallHost(toolCallId: string): AgentDbMessage | undefined {
 		// Start from the last message and go backwards to find the host message
 		for (let i = this.all.length - 1; i >= 0; i--) {
@@ -323,6 +342,11 @@ export class AgentMessageList {
 	 */
 	inputDelta(): AgentDbMessage[] {
 		return this.all.filter((m) => this.inputSet.has(m));
+	}
+
+	/** All messages currently in the list, as live references. */
+	messages(): readonly AgentDbMessage[] {
+		return this.all;
 	}
 
 	serialize(): SerializedMessageList {

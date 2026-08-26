@@ -112,6 +112,19 @@ const genericCredentialRequest = async (ctx: ISupplyDataFunctions, itemIndex: nu
 		};
 	}
 
+	if (genericType === 'httpTemplatedCustomAuth') {
+		const templatedAuth = await ctx.getCredentials('httpTemplatedCustomAuth', itemIndex);
+
+		return async (options: IHttpRequestOptions) => {
+			assertCredentialUrlAllowed(ctx, templatedAuth, options);
+			return await ctx.helpers.httpRequestWithAuthentication.call(
+				ctx,
+				'httpTemplatedCustomAuth',
+				options,
+			);
+		};
+	}
+
 	if (genericType === 'oAuth1Api') {
 		const oAuth1 = await ctx.getCredentials('oAuth1Api', itemIndex);
 		return async (options: IHttpRequestOptions) => {

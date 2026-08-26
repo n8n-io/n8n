@@ -12,8 +12,11 @@ import { ProjectPackageImporter } from './engine/project-package-importer';
 import { WorkflowPackageImporter } from './engine/workflow-package-importer';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { DataTableExporter } from './entities/data-table/data-table.exporter';
+import {
+	folderPolicyRejection,
+	resolveFolderConflictPolicy,
+} from './entities/folder/folder-conflict-policy';
 import { FolderExporter } from './entities/folder/folder.exporter';
-import { PackageExportBlockedError } from './entities/package-export.errors';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { mergeRequirements } from './entities/requirements.types';
 import { TagExporter } from './entities/tag/tag.exporter';
@@ -28,14 +31,19 @@ import {
 import { WorkflowDependencyResolver } from './entities/workflow/workflow-dependency-resolver';
 import { WorkflowRequirementExporter } from './entities/workflow/workflow-requirement.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
+import { DirectoryPackageWriter } from './io/directory/directory-package-writer';
+import type { PackageWriter } from './io/package-writer';
 import { TarPackageReader } from './io/tar/tar-package-reader';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import { PackageImportConfig } from './n8n-packages.config';
 import {
+	CredentialExportPolicy,
 	MissingWorkflowDependencyPolicy,
+	WorkflowVersionPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageResult,
+	type ExportPackageSummary,
 	type ImportPackageRequest,
 	type ImportResult,
 } from './n8n-packages.types';
@@ -46,6 +54,14 @@ import {
 	type PackageManifest,
 } from './spec/manifest.schema';
 import type { PackageRequirements } from './spec/requirements.schema';
+
+interface WrittenExport {
+	counts: ExportPackageEventCounts;
+	workflowIds: string[];
+	folderIds: string[];
+	projectIds: string[];
+	credentialExportPolicy: CredentialExportPolicy;
+}
 
 @Service()
 export class N8nPackagesService {
@@ -71,19 +87,53 @@ export class N8nPackagesService {
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<ExportPackageResult> {
-		// TODO: remove this once reference-only is supported
-		const { missingWorkflowDependencyPolicy } = request;
-		if (missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly) {
-			throw new PackageExportBlockedError(
-				'Reference-only static sub-workflow dependencies are not supported. Export aborted.',
-			);
-		}
-
 		const writer = new TarPackageWriter();
+		const result = await this.writeExport(writer, request);
+		const stream = writer.finalize();
+
+		// This event represents a user-facing archive export, not an internal directory write.
+		this.eventService.emit('n8n-package-exported', {
+			user: request.user,
+			...(result.workflowIds.length ? { workflowIds: result.workflowIds } : {}),
+			...(result.folderIds.length ? { folderIds: result.folderIds } : {}),
+			...(result.projectIds.length ? { projectIds: result.projectIds } : {}),
+			counts: result.counts,
+			credentialExportPolicy: result.credentialExportPolicy,
+		});
+
+		return { stream, counts: result.counts };
+	}
+
+	/**
+	 * Exports the same n8n-packages layout as {@link exportPackage}, but as loose
+	 * files on disk (the unzipped format) under `target.targetDir` instead of a tar
+	 * stream. Reuses the full export orchestration; only the writer differs.
+	 */
+	async exportPackageToDirectory(
+		request: ExportPackageRequest,
+		target: { targetDir: string },
+	): Promise<ExportPackageSummary> {
+		const writer = new DirectoryPackageWriter(target.targetDir);
+		const result = await this.writeExport(writer, request);
+		await writer.finalize();
+		return { counts: result.counts };
+	}
+
+	private async writeExport(
+		writer: PackageWriter,
+		request: ExportPackageRequest,
+	): Promise<WrittenExport> {
+		const { missingWorkflowDependencyPolicy } = request;
+		const isReferenceOnly =
+			missingWorkflowDependencyPolicy === MissingWorkflowDependencyPolicy.ReferenceOnly;
+
 		const workflowIds = request.workflowIds ?? [];
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
 		const includeTags = (request.includeTags ?? true) && !this.globalConfig.tags.disabled;
+		const workflowVersionPolicy = request.workflowVersionPolicy ?? WorkflowVersionPolicy.Latest;
+		const credentialExportPolicy =
+			request.credentialExportPolicy ?? CredentialExportPolicy.ExpressionValuesOnly;
 
 		const folderExportResult =
 			folderIds.length > 0
@@ -92,6 +142,7 @@ export class N8nPackagesService {
 						folderIds,
 						writer,
 						includeTags,
+						workflowVersionPolicy,
 					})
 				: undefined;
 
@@ -107,6 +158,7 @@ export class N8nPackagesService {
 						workflowIds: workflowsForExport,
 						writer,
 						includeTags,
+						workflowVersionPolicy,
 					})
 				: undefined;
 
@@ -117,6 +169,7 @@ export class N8nPackagesService {
 						projectIds,
 						writer,
 						includeTags,
+						workflowVersionPolicy,
 					})
 				: undefined;
 
@@ -131,9 +184,14 @@ export class N8nPackagesService {
 			...(projectExportResult?.workflowEntries ?? []),
 		];
 
+		// Reference-only keeps missing dependencies out of the package, so only the
+		// direct references of packaged workflows matter — a referenced workflow's
+		// own dependency closure is assumed to exist on the target alongside it.
 		const workflowRequirements = await this.workflowDependencyResolver.resolve({
 			user: request.user,
 			workflowIds: allWorkflowsBeforeAutoInclude.map(({ id }) => id),
+			traversal: isReferenceOnly ? 'direct' : 'transitive',
+			workflowVersionPolicy,
 		});
 
 		let autoIncludedExportResult: AutoIncludedWorkflowExportResult | undefined;
@@ -146,9 +204,10 @@ export class N8nPackagesService {
 				folderWorkflowIds: folderExportResult?.workflowEntries.map(({ id }) => id) ?? [],
 				projectWorkflowIds: projectExportResult?.workflowEntries.map(({ id }) => id) ?? [],
 				includeTags,
+				workflowVersionPolicy,
 			});
 
-			autoIncludedExportResult = this.autoIncludedWorkflowExporter.export({
+			autoIncludedExportResult = await this.autoIncludedWorkflowExporter.export({
 				writer,
 				workflows: autoIncludedWorkflowResolution.autoIncludedWorkflows,
 				existingWorkflowEntries: allWorkflowsBeforeAutoInclude,
@@ -190,10 +249,13 @@ export class N8nPackagesService {
 			...(autoIncludedExportResult?.workflowEntries ?? []),
 		]);
 
-		assertStaticSubWorkflowsIncluded(
-			workflowRequirements,
-			new Set(allWorkflowsInPackage.map(({ id }) => id)),
-		);
+		// Reference-only records missing dependencies as requirements instead of aborting.
+		if (!isReferenceOnly) {
+			assertStaticSubWorkflowsIncluded(
+				workflowRequirements,
+				new Set(allWorkflowsInPackage.map(({ id }) => id)),
+			);
+		}
 
 		// The auto-include's projectTargetsById is a superset of the project targets from the project export result
 		// that's why it takes precedence when both are present.
@@ -204,6 +266,7 @@ export class N8nPackagesService {
 			user: request.user,
 			requirements: requirements.credentials,
 			writer,
+			credentialExportPolicy,
 			// Routes project-owned credentials into their project namespace; others stay top-level.
 			projectTargetsById,
 		});
@@ -216,7 +279,8 @@ export class N8nPackagesService {
 			projectTargetsById,
 		});
 
-		const workflowRequirementExportResult = this.workflowRequirementExporter.export({
+		const workflowRequirementExportResult = await this.workflowRequirementExporter.export({
+			user: request.user,
 			requirements: workflowRequirements,
 			workflows: allWorkflowsInPackage,
 		});
@@ -229,7 +293,7 @@ export class N8nPackagesService {
 			projectTargetsById,
 		});
 
-		const tagExportResult = this.tagExporter.export({
+		const tagExportResult = await this.tagExporter.export({
 			usages: requirements.tags,
 			writer,
 		});
@@ -264,9 +328,7 @@ export class N8nPackagesService {
 			...(allProjects.length > 0 ? { projects: allProjects } : {}),
 		});
 
-		writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
-
-		const stream = writer.finalize();
+		await writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
 
 		const counts: ExportPackageEventCounts = {
 			workflows: allWorkflowsInPackage.length,
@@ -277,17 +339,13 @@ export class N8nPackagesService {
 			tags: tagExportResult.entries.length,
 		};
 
-		this.eventService.emit('n8n-package-exported', {
-			user: request.user,
-			...(allWorkflowsInPackage.length
-				? { workflowIds: allWorkflowsInPackage.map(({ id }) => id) }
-				: {}),
-			...(allFolders.length ? { folderIds: allFolders.map(({ id }) => id) } : {}),
-			...(allProjects.length ? { projectIds: allProjects.map(({ id }) => id) } : {}),
+		return {
 			counts,
-		});
-
-		return { stream, counts };
+			workflowIds: allWorkflowsInPackage.map(({ id }) => id),
+			folderIds: allFolders.map(({ id }) => id),
+			projectIds: allProjects.map(({ id }) => id),
+			credentialExportPolicy,
+		};
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
@@ -299,9 +357,22 @@ export class N8nPackagesService {
 					'variableParentPolicy is not supported for project packages, where variable placement follows the package layout. Omit it.',
 				);
 			}
-			return await this.projectPackageImporter.import(request, reader, manifest);
+			const rejection = folderPolicyRejection(request, 'project');
+			if (rejection) throw new BadRequestError(rejection);
+			return await this.projectPackageImporter.import(
+				{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'project') },
+				reader,
+				manifest,
+			);
 		}
-		return await this.workflowPackageImporter.import(request, reader, manifest);
+
+		const rejection = folderPolicyRejection(request, 'workflow');
+		if (rejection) throw new BadRequestError(rejection);
+		return await this.workflowPackageImporter.import(
+			{ ...request, folderConflictPolicy: resolveFolderConflictPolicy(request, 'workflow') },
+			reader,
+			manifest,
+		);
 	}
 
 	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {

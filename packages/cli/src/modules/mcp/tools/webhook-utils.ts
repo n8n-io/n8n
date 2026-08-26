@@ -18,6 +18,7 @@ import {
 	hasJwtSecretDecryptedData,
 } from '../mcp.typeguards';
 import type { MCPTriggersMap } from '../mcp.types';
+import { getExecuteWorkflowCallExample } from './workflow-inputs';
 
 export type WebhookEndpoints = {
 	webhook: string;
@@ -69,6 +70,7 @@ const buildEndpointBaseUrl = (baseUrl: string, endpoint: string) => {
 export const getTriggerDetails = async (
 	user: User,
 	supportedTriggers: INode[],
+	unsupportedTriggers: INode[],
 	baseUrl: string,
 	credentialsService: CredentialsService,
 	nodeTypes: INodeTypes,
@@ -77,6 +79,10 @@ export const getTriggerDetails = async (
 	testBaseUrl: string = baseUrl,
 ): Promise<string> => {
 	if (supportedTriggers.length === 0) {
+		if (unsupportedTriggers.length > 0) {
+			const names = unsupportedTriggers.map((trigger) => trigger.name).join(', ');
+			return `This workflow's trigger(s) are not supported for direct execution through MCP: ${names}. Only Schedule, Webhook, Form, and Chat triggers can be executed directly through MCP, so this workflow cannot be executed through MCP. Its trigger(s) still run normally when the workflow is active.`;
+		}
 		return 'This workflow has no production triggers (Schedule, Webhook, Form, or Chat). It can only be executed in manual mode.';
 	}
 
@@ -133,8 +139,7 @@ export const getTriggerDetails = async (
 
 const getScheduleTriggerDetails = (scheduleTriggers: INode[]): string => {
 	const header = 'Schedule trigger(s):\n\n';
-	const footer =
-		'\n\nScheduled workflows can be executed directly through MCP clients and do not require external inputs.';
+	const footer = `\n\nScheduled workflows do not take inputs. To execute a specific schedule trigger, pass triggerNodeName only: ${getExecuteWorkflowCallExample(SCHEDULE_TRIGGER_NODE_TYPE)}.`;
 	const triggers = scheduleTriggers
 		.map(
 			(node, index) => `
@@ -148,8 +153,7 @@ const getScheduleTriggerDetails = (scheduleTriggers: INode[]): string => {
 
 const getFormTriggerDetails = (formTriggers: INode[]): string => {
 	const header = 'Form trigger(s):\n\n';
-	const footer =
-		'\n\nUse the following input format when directly executing this workflow using any of the form triggers: { inputs { formData: Array<{ FIELD_NAME: VALUE }> } }';
+	const footer = `\n\nTo execute a form trigger, pass triggerNodeName and inputs: ${getExecuteWorkflowCallExample(FORM_TRIGGER_NODE_TYPE)}.`;
 	const triggers = formTriggers
 		.map(
 			(node, index) => `
@@ -164,8 +168,7 @@ const getFormTriggerDetails = (formTriggers: INode[]): string => {
 
 const getChatTriggerDetails = (chatTriggers: INode[]): string => {
 	const header = 'Chat trigger(s):\n\n';
-	const footer =
-		'\n\nUse the following input format when directly executing this workflow using any of the chat triggers: { inputs { chatInput: <CHAT_MESSAGE_HERE> } }';
+	const footer = `\n\nTo execute a chat trigger, pass triggerNodeName and inputs: ${getExecuteWorkflowCallExample(CHAT_TRIGGER_NODE_TYPE)}.`;
 	const triggers = chatTriggers
 		.map(
 			(node, index) => `
@@ -253,7 +256,8 @@ const formatWebhookDetails = (details: WebhookNodeDetails[]): string => {
 	const triggers = details
 		.map((detail, index) => formatTriggerDescription(detail, index))
 		.join('\n\n');
-	return header + triggers;
+	const footer = `\n\nTo execute a webhook trigger, pass triggerNodeName and inputs: ${getExecuteWorkflowCallExample(WEBHOOK_NODE_TYPE)}.`;
+	return header + triggers + footer;
 };
 
 const formatTriggerDescription = (detail: WebhookNodeDetails, index: number): string => `

@@ -22,7 +22,20 @@ vi.mock('@n8n/scheduler', async (importOriginal) => ({
 }));
 
 describe('DurableScheduler', () => {
-	function makeScheduler({ enabled = true, instanceType = 'main', dbType = 'sqlite' } = {}) {
+	function makeScheduler({
+		enabled = true,
+		instanceType = 'main',
+		dbType = 'sqlite',
+		materializationIntervalSeconds = 10,
+		minIntervalSeconds = 0,
+		executorIntervalSeconds = 5,
+		materializationWindowSeconds = 60,
+		misfireGraceSeconds = 60,
+		enabledForPollTriggers = false,
+		pollTimeoutSeconds = 45,
+		leaseDurationSeconds = 60,
+		useWorkflowPublicationService = true,
+	} = {}) {
 		const inner = mock<Scheduler & SchedulerPasses>();
 		vi.mocked(createScheduler).mockReturnValue(inner);
 		const logger = mockLogger();
@@ -44,7 +57,19 @@ describe('DurableScheduler', () => {
 			mock<GlobalConfig>({
 				generic: { timezone: 'UTC' },
 				database: { type: dbType as 'sqlite' | 'postgresdb' },
-				scheduler: { enabled, executorIntervalSeconds: 5, jitterRatio: 0.1 },
+				scheduler: {
+					enabled,
+					executorIntervalSeconds,
+					jitterRatio: 0.1,
+					materializationIntervalSeconds,
+					minIntervalSeconds,
+					materializationWindowSeconds,
+					misfireGraceSeconds,
+					enabledForPollTriggers,
+					pollTimeoutSeconds,
+					leaseDurationSeconds,
+				},
+				workflows: { useWorkflowPublicationService },
 			}),
 			tracing,
 			scheduleTriggerTaskHandler,
@@ -77,6 +102,146 @@ describe('DurableScheduler', () => {
 
 			const deps = vi.mocked(createScheduler).mock.calls.at(-1)?.[0];
 			expect(deps?.lifecycle?.concurrencyMode).toBe('sequential');
+		});
+	});
+
+	describe('drain rate warning', () => {
+		it('warns when a pass cannot drain the fastest possible schedule before the next one is due', () => {
+			// maxPerJob is 1000: a schedule as fast as this instance allows (the default
+			// floor of one second) can outrun a 1001s materialization interval.
+			const { logger } = makeScheduler({ materializationIntervalSeconds: 1001 });
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('materialization interval'),
+				expect.objectContaining({ materializationIntervalSeconds: 1001 }),
+			);
+		});
+
+		it('does not warn at the default materialization interval', () => {
+			const { logger } = makeScheduler();
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('materialization interval'),
+				expect.anything(),
+			);
+		});
+
+		it('scales the threshold by an operator-configured minimum interval floor', () => {
+			// A 60s floor makes 1001s safe again: even the fastest schedule now
+			// produces at most one occurrence per 60s, well within maxPerJob's reach.
+			const { logger } = makeScheduler({
+				materializationIntervalSeconds: 1001,
+				minIntervalSeconds: 60,
+			});
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('materialization interval'),
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('misfire grace warning', () => {
+		it('warns when the grace is at or below the executor interval', () => {
+			const { logger } = makeScheduler({ misfireGraceSeconds: 5, executorIntervalSeconds: 5 });
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('executor interval'),
+				expect.objectContaining({ misfireGraceSeconds: 5, executorIntervalSeconds: 5 }),
+			);
+		});
+
+		it('warns when the grace is below the materialization window', () => {
+			const { logger } = makeScheduler({
+				misfireGraceSeconds: 30,
+				materializationWindowSeconds: 60,
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('materialization window'),
+				expect.objectContaining({ misfireGraceSeconds: 30, materializationWindowSeconds: 60 }),
+			);
+		});
+
+		it('does not warn at the default grace', () => {
+			const { logger } = makeScheduler();
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('misfire grace'),
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('poll timeout warning', () => {
+		it('warns when a poll may outlive the lease on its occurrence', () => {
+			const { logger } = makeScheduler({
+				enabledForPollTriggers: true,
+				pollTimeoutSeconds: 120,
+				leaseDurationSeconds: 60,
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('poll timeout'),
+				expect.objectContaining({ pollTimeoutSeconds: 120, leaseDurationSeconds: 60 }),
+			);
+		});
+
+		// The poll deadline starts after the occurrence's setup reads, so a timeout
+		// equal to the lease already lets a full-length poll outlive it.
+		it('warns when the timeout equals the lease', () => {
+			const { logger } = makeScheduler({
+				enabledForPollTriggers: true,
+				pollTimeoutSeconds: 60,
+				leaseDurationSeconds: 60,
+			});
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('poll timeout'),
+				expect.objectContaining({ pollTimeoutSeconds: 60, leaseDurationSeconds: 60 }),
+			);
+		});
+
+		it('does not warn when the timeout fits inside the lease', () => {
+			const { logger } = makeScheduler({
+				enabledForPollTriggers: true,
+				pollTimeoutSeconds: 45,
+				leaseDurationSeconds: 60,
+			});
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('poll timeout'),
+				expect.anything(),
+			);
+		});
+
+		it('does not warn when poll triggers do not use the durable scheduler', () => {
+			const { logger } = makeScheduler({
+				enabledForPollTriggers: false,
+				pollTimeoutSeconds: 120,
+				leaseDurationSeconds: 60,
+			});
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('poll timeout'),
+				expect.anything(),
+			);
+		});
+
+		// Without the publication service the durable poller chain is inactive and
+		// polls run on the legacy in-memory path, where the timeout does not apply.
+		it('does not warn when the workflow publication service is disabled', () => {
+			const { logger } = makeScheduler({
+				enabledForPollTriggers: true,
+				pollTimeoutSeconds: 120,
+				leaseDurationSeconds: 60,
+				useWorkflowPublicationService: false,
+			});
+
+			expect(logger.warn).not.toHaveBeenCalledWith(
+				expect.stringContaining('poll timeout'),
+				expect.anything(),
+			);
 		});
 	});
 
