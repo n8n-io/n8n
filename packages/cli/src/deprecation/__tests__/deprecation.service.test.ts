@@ -175,23 +175,6 @@ describe('DeprecationService', () => {
 		});
 	});
 
-	describe('default-flip warnings', () => {
-		test.each(['N8N_UNVERIFIED_PACKAGES_ENABLED'])('should warn when %s is unset', (envVar) => {
-			delete process.env[envVar];
-			deprecationService.warn();
-			expect(logger.warn.mock.lastCall?.[0] ?? '').toContain(envVar);
-		});
-
-		test.each([['N8N_UNVERIFIED_PACKAGES_ENABLED', 'false']])(
-			'should not warn when %s is set explicitly',
-			(envVar, value) => {
-				process.env[envVar] = value;
-				deprecationService.warn();
-				expect(logger.warn.mock.lastCall?.[0] ?? '').not.toContain(envVar);
-			},
-		);
-	});
-
 	describe('running outside a container', () => {
 		const message = 'Running n8n outside a container is deprecated';
 

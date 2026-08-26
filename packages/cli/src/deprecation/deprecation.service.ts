@@ -68,12 +68,6 @@ export class DeprecationService {
 				'Use N8N_WEBHOOK_URL instead, which sets the base URL for both test and production webhooks.',
 		},
 		{
-			envVar: 'N8N_UNVERIFIED_PACKAGES_ENABLED',
-			message:
-				'The default for this variable will change to `false` in a future version. Set it to `true` explicitly to keep installing unverified community packages.',
-			checkValue: (value?: string) => value === undefined,
-		},
-		{
 			envVar: 'N8N_EXPRESSION_ENGINE',
 			message:
 				'The `legacy` expression engine runs expressions without isolation, is no longer considered secure, and will be removed in a future version. Remove this environment variable to use the default `vm` engine.',
