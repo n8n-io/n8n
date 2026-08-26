@@ -24,7 +24,7 @@ interface Box {
 const MAX_SEPARATION_STEPS = 50;
 
 /**
- * Vertical band around a splice in which nodes ride the push right.
+ * Vertical band around an insertion in which nodes ride the push right.
  * Mirrors the editor's insert-on-connection tolerance (~2 node heights).
  */
 const SHIFT_Y_TOLERANCE = DEFAULT_NODE_SIZE[1] * 2;
@@ -107,22 +107,12 @@ function buildAdjacency(json: WorkflowJSON): {
 }
 
 /**
- * Places nodes the build added onto the user's canvas. Preservation ends at the
- * insertion frontier: everything upstream of an insertion keeps its saved spot
- * (moving only to make room), everything from the insertion onward flows fresh.
- *
- * The mechanism is one rule, not per-shape heuristics: lay the whole new graph
- * out fresh with the SDK's tidy-up engine (the "ideal frame", which already
- * handles branch fanning, AI subtrees, node sizes and spacing), then carry each
- * connected cluster of added nodes onto the canvas by the offset that maps its
- * surviving neighbours' ideal positions onto their saved ones. A cluster that
- * fits there moves nothing else. When it collides, a cluster spliced into an
- * existing connection re-flows the canvas from the frontier: the downstream
- * survivors rejoin the fresh frame beside it, carried by the upstream anchors so
- * the flow continues on their rows instead of zigzagging between old and new
- * ones. A colliding cluster without a downstream side keeps its anchored spot
- * and the occupants slide right as one block, like the editor's
- * insert-on-connection push.
+ * Places the added nodes onto the saved canvas. The mechanism is one rule, not
+ * per-shape heuristics: lay the whole new graph out fresh (the "ideal frame",
+ * which already handles branch fanning, AI subtrees, node sizes and spacing),
+ * then carry each connected cluster of added nodes onto the canvas by the
+ * offset that maps its surviving neighbours' ideal positions onto their saved
+ * ones. See {@link preserveExistingNodePositions} for the resulting contract.
  */
 class AddedNodePlacer {
 	/** Ideal frame: fresh tidy-up layout of the full new graph. */
@@ -140,7 +130,7 @@ class AddedNodePlacer {
 	/** Non-sticky nodes already on the canvas: survivors, then clusters as they settle. */
 	private readonly settled: NodeJSON[] = [];
 
-	/** Sticky notes already on the canvas — they stretch or ride along on a splice. */
+	/** Sticky notes already on the canvas — they stretch or ride along on a push. */
 	private readonly settledStickies: NodeJSON[] = [];
 
 	/** Positions the build gave the added nodes, before any reconciliation. */
@@ -241,36 +231,54 @@ class AddedNodePlacer {
 		return { upstream: [...upstream.values()], downstream: [...downstream.values()] };
 	}
 
-	private placeCluster(cluster: NodeJSON[]): void {
-		// Nodes the ideal frame couldn't lay out (unnamed or duplicate-named) keep
-		// their built position and are only nudged clear of the canvas.
-		const placeable = cluster.filter((node) => node.name && this.ideal.has(node.name));
-		const placeableSet = new Set(placeable);
-		const strays = cluster.filter((node) => !placeableSet.has(node));
-
-		if (placeable.length > 0) {
-			const [deltaX, deltaY] = this.resolveClusterDelta(placeable);
-			for (const node of placeable) {
-				const box = this.ideal.get(node.name ?? '');
-				if (!box) continue;
-				node.position = [box.x + deltaX, box.y + deltaY];
-			}
-
-			const { upstream, downstream } = this.anchorsOf(placeable);
-			const collides = placeable.some((node) =>
-				this.settled.some((other) => intersects(this.boxOf(node), this.boxOf(other))),
-			);
-			// No room where the anchoring put it. A splice (anchors on both sides)
-			// re-flows everything from the frontier so old and new rows don't fight;
-			// otherwise the canvas makes way and the cluster keeps its anchored spot.
-			if (collides && upstream.length > 0 && downstream.length > 0) {
-				this.reflowFromFrontier(placeable, upstream, downstream);
-			} else {
-				if (collides) this.openGap(placeable);
-				this.settle(placeable);
-			}
+	/**
+	 * Offset carrying a cluster from the ideal frame onto the canvas: the median
+	 * over the anchors of (saved position − ideal position). Exact, not
+	 * grid-snapped — staying on the anchor's row beats staying on the grid when
+	 * the user parked the anchor off-grid. Undefined when there are no anchors.
+	 */
+	private deltaFromAnchors(anchors: NodeJSON[]): Position | undefined {
+		const deltas: Position[] = [];
+		for (const anchor of anchors) {
+			const idealBox = anchor.name ? this.ideal.get(anchor.name) : undefined;
+			if (!idealBox) continue;
+			deltas.push([anchor.position[0] - idealBox.x, anchor.position[1] - idealBox.y]);
 		}
-		for (const stray of strays) this.settle([stray]);
+		if (deltas.length === 0) return undefined;
+		return [
+			Math.round(median(deltas.map(([dx]) => dx))),
+			Math.round(median(deltas.map(([, dy]) => dy))),
+		];
+	}
+
+	private moveToFrame(nodes: NodeJSON[], [deltaX, deltaY]: Position): void {
+		for (const node of nodes) {
+			const box = node.name ? this.ideal.get(node.name) : undefined;
+			if (box) node.position = [box.x + deltaX, box.y + deltaY];
+		}
+	}
+
+	private collides(nodes: NodeJSON[]): boolean {
+		return nodes.some((node) =>
+			this.settled.some((other) => intersects(this.boxOf(node), this.boxOf(other))),
+		);
+	}
+
+	private placeCluster(cluster: NodeJSON[]): void {
+		const { upstream, downstream } = this.anchorsOf(cluster);
+		const delta =
+			this.deltaFromAnchors([...upstream, ...downstream]) ?? this.parkBelowDelta(cluster);
+		this.moveToFrame(cluster, delta);
+
+		// No room where the anchoring put it. A splice (anchors on both sides)
+		// re-flows everything from the frontier so old and new rows don't fight;
+		// otherwise the canvas makes way and the cluster keeps its anchored spot.
+		if (this.collides(cluster) && upstream.length > 0 && downstream.length > 0) {
+			this.reflowFromFrontier(cluster, upstream, downstream);
+			return;
+		}
+		if (this.collides(cluster)) this.openGap(cluster);
+		this.settle(cluster);
 	}
 
 	/**
@@ -286,43 +294,28 @@ class AddedNodePlacer {
 		upstream: NodeJSON[],
 		downstream: NodeJSON[],
 	): void {
-		const deltas: Position[] = [];
-		for (const anchor of upstream) {
-			const idealBox = anchor.name ? this.ideal.get(anchor.name) : undefined;
-			if (!idealBox) continue;
-			deltas.push([anchor.position[0] - idealBox.x, anchor.position[1] - idealBox.y]);
-		}
-		if (deltas.length === 0) {
+		const delta = this.deltaFromAnchors(upstream);
+		if (!delta) {
 			this.openGap(cluster);
 			this.settle(cluster);
 			return;
 		}
-		const deltaX = Math.round(median(deltas.map(([dx]) => dx)));
-		const deltaY = Math.round(median(deltas.map(([, dy]) => dy)));
 
 		const clusterNames = new Set(cluster.map((node) => node.name));
 		const tail = this.expandTail(downstream, clusterNames);
 		const tailSet = new Set(tail);
-		const savedTailPositions = new Map(
-			tail.map((node) => [node, [node.position[0], node.position[1]] as Position]),
-		);
+		const savedTailBoxes = tail.map((node) => this.boxOf(node));
 		for (let index = this.settled.length - 1; index >= 0; index--) {
 			if (tailSet.has(this.settled[index])) this.settled.splice(index, 1);
 		}
 
 		const block = [...cluster, ...tail];
-		for (const node of block) {
-			const box = node.name ? this.ideal.get(node.name) : undefined;
-			if (box) node.position = [box.x + deltaX, box.y + deltaY];
-		}
+		this.moveToFrame(block, delta);
 
 		// An unrelated surviving branch can still be in the way — push it aside.
-		const collides = block.some((node) =>
-			this.settled.some((other) => intersects(this.boxOf(node), this.boxOf(other))),
-		);
-		if (collides) this.openGap(block);
+		if (this.collides(block)) this.openGap(block);
 
-		this.adjustStickiesForTailShift(tail, savedTailPositions);
+		this.stretchStickiesOverTailShift(tail, savedTailBoxes);
 		this.settle(block);
 	}
 
@@ -356,27 +349,11 @@ class AddedNodePlacer {
 	 * spanning the old tail start stretch by the tail's median rightward shift,
 	 * ones entirely beyond it slide along.
 	 */
-	private adjustStickiesForTailShift(
-		tail: NodeJSON[],
-		savedPositions: Map<NodeJSON, Position>,
-	): void {
+	private stretchStickiesOverTailShift(tail: NodeJSON[], savedBoxes: Box[]): void {
 		if (tail.length === 0) return;
-		const shifts: number[] = [];
-		const savedBoxes: Box[] = [];
-		for (const node of tail) {
-			const saved = savedPositions.get(node);
-			if (!saved) continue;
-			shifts.push(node.position[0] - saved[0]);
-			const size = node.name ? this.ideal.get(node.name) : undefined;
-			savedBoxes.push({
-				x: saved[0],
-				y: saved[1],
-				width: size?.width ?? DEFAULT_NODE_SIZE[0],
-				height: size?.height ?? DEFAULT_NODE_SIZE[1],
-			});
-		}
+		const shifts = tail.map((node, index) => node.position[0] - savedBoxes[index].x);
 		const margin = Math.round(median(shifts));
-		if (margin <= 0 || savedBoxes.length === 0) return;
+		if (margin <= 0) return;
 		const savedBBox = boundingBox(savedBoxes);
 		this.adjustStickies(
 			savedBBox.x,
@@ -384,43 +361,6 @@ class AddedNodePlacer {
 			savedBBox.y - SHIFT_Y_TOLERANCE,
 			savedBBox.y + savedBBox.height + SHIFT_Y_TOLERANCE,
 		);
-	}
-
-	/**
-	 * Offset carrying the cluster from the ideal frame onto the canvas: the median
-	 * over its surviving neighbours of (saved position − ideal position). With one
-	 * anchor the cluster lands exactly as tidy-up would place it next to that node;
-	 * with several it splits the difference, e.g. centring an inserted node between
-	 * its parent and child. No anchors means a disconnected flow — park it below.
-	 */
-	private resolveClusterDelta(cluster: NodeJSON[]): Position {
-		const anchorNames = new Set<string>();
-		for (const node of cluster) {
-			const neighbourNames = [
-				...(this.parentsOf.get(node.name ?? '') ?? []),
-				...(this.childrenOf.get(node.name ?? '') ?? []),
-			];
-			for (const name of neighbourNames) {
-				if (this.survivorsByName.has(name) && this.ideal.has(name)) anchorNames.add(name);
-			}
-		}
-
-		const deltas: Position[] = [];
-		for (const name of anchorNames) {
-			const survivor = this.survivorsByName.get(name);
-			const idealBox = this.ideal.get(name);
-			if (!survivor || !idealBox) continue;
-			deltas.push([survivor.position[0] - idealBox.x, survivor.position[1] - idealBox.y]);
-		}
-
-		if (deltas.length === 0) return this.parkBelowDelta(cluster);
-
-		// Exact, not grid-snapped: staying on the anchor's row beats staying on the
-		// grid when the user parked the anchor off-grid.
-		return [
-			Math.round(median(deltas.map(([dx]) => dx))),
-			Math.round(median(deltas.map(([, dy]) => dy))),
-		];
 	}
 
 	/** Left-aligned with the canvas, one row gap below everything on it. */
@@ -450,8 +390,8 @@ class AddedNodePlacer {
 	 * shiftDownstreamNodesPosition: everything at or beyond the insertion point —
 	 * nodes in the cluster's vertical band plus their graph-downstream nodes —
 	 * slides right as one block by the width the cluster needs. Sticky notes
-	 * spanning the insertion point stretch instead, so they keep wrapping the nodes
-	 * that slid.
+	 * spanning the insertion point stretch instead, so they keep wrapping the
+	 * nodes that slid.
 	 */
 	private openGap(cluster: NodeJSON[]): void {
 		const clusterSet = new Set(cluster);
@@ -461,9 +401,6 @@ class AddedNodePlacer {
 		const bandTop = bbox.y - SHIFT_Y_TOLERANCE;
 		const bandBottom = bbox.y + bbox.height + SHIFT_Y_TOLERANCE;
 
-		// Movers: canvas nodes overlapping or right of the insertion point in the
-		// splice's band, plus everything graph-downstream of them that also sits
-		// at or beyond the insertion point (the editor's getNodesToShift).
 		const overlapsInsertX = (box: Box) => box.x + box.width > insertX - GRID_SIZE;
 		const movers = new Set<NodeJSON>();
 		for (const node of this.settled) {
@@ -473,6 +410,7 @@ class AddedNodePlacer {
 				movers.add(node);
 			}
 		}
+		// Graph-downstream of the movers rides along (the editor's getNodesToShift).
 		const byName = new Map(this.settled.map((node) => [node.name ?? '', node]));
 		const queue = [...movers];
 		while (queue.length > 0) {
@@ -516,8 +454,8 @@ class AddedNodePlacer {
 	}
 
 	/**
-	 * Safety net for residual overlaps after the gap opened (or for strays and
-	 * parked clusters): slide the cluster down as a rigid block until free.
+	 * Safety net for residual overlaps (parked clusters, shapes the band push
+	 * missed): slide the cluster down as a rigid block until free.
 	 */
 	private settle(cluster: NodeJSON[]): void {
 		for (let step = 0; step < MAX_SEPARATION_STEPS; step++) {
@@ -577,21 +515,17 @@ class AddedNodePlacer {
 }
 
 /**
- * For updates, restore each surviving node's position from the saved workflow.
+ * For updates, restore each surviving node's position from the saved workflow —
+ * the sandbox build has no view of it, so `toJSON({ tidyUp: true })` scatters a
+ * canvas the user had arranged. Reconciling by name mirrors ensureWebhookIds.
  *
- * The sandbox build has no view of the saved workflow, so `toJSON({ tidyUp: true })`
- * lays the whole graph out from scratch and every node lands wherever the layout
- * engine put it — scattering a canvas the user had arranged by hand. Reconciling by
- * name here keeps the user's layout authoritative, mirroring ensureWebhookIds.
- *
- * Nodes the build added are then placed the way tidy-up would arrange them around
- * their surviving neighbours: each connected cluster of added nodes keeps its
- * fresh-layout arrangement and is anchored onto the saved canvas via its neighbours.
- * Preservation ends at the insertion frontier: when a spliced cluster doesn't fit,
- * the downstream survivors rejoin the fresh flow beside it rather than pinning
- * rows of a graph that no longer exists; a colliding cluster with no downstream
- * side keeps its spot and the occupants slide right as one block — the editor's
- * insert-on-connection push.
+ * Added nodes are then placed the way tidy-up would arrange them around their
+ * surviving neighbours. The saved layout is preserved up to the insertion point
+ * and never restructured: a cluster that fits moves nothing else; a colliding
+ * cluster pushes the occupants right as one block (the editor's
+ * insert-on-connection push); a splice that cannot fit re-flows the downstream
+ * survivors into the fresh frame beside it rather than pinning rows of a graph
+ * that no longer exists.
  */
 export async function preserveExistingNodePositions(
 	json: WorkflowJSON,
@@ -645,9 +579,8 @@ export async function preserveExistingNodePositions(
  * Resolve each node's non-main input slot count from its real node type
  * description, the way the editor sizes nodes: NodeHelpers.getNodeInputs
  * evaluates expression-valued `inputs` against the node's parameters and
- * version, so hosts render wide even with empty sub-input slots and types the
- * static fallback list would call hosts render standard when their variant has
- * none. Absent the adapter (sandbox, tests), layout falls back to heuristics.
+ * version. Absent the adapter (sandbox, tests), layout falls back to its
+ * wiring- and type-list heuristics.
  */
 async function resolveNonMainInputCounts(
 	json: WorkflowJSON,
