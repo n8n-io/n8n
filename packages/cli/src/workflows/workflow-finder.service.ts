@@ -1,5 +1,5 @@
 import type { SharedWorkflow, User, WorkflowEntity, ListQuery } from '@n8n/db';
-import { SharedWorkflowRepository, FolderRepository, WorkflowRepository, idChunks } from '@n8n/db';
+import { SharedWorkflowRepository, FolderRepository, WorkflowRepository, chunkIds } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere } from '@n8n/typeorm';
@@ -163,7 +163,7 @@ export class WorkflowFinderService {
 		const where = await this.findAllWhere(user, scopes);
 
 		const found = new Set<string>();
-		for (const chunk of idChunks(workflowIds)) {
+		for (const chunk of chunkIds(workflowIds)) {
 			const sharedWorkflows = await this.sharedWorkflowRepository.find({
 				select: { workflowId: true },
 				where: { ...where, workflowId: In(chunk) },
@@ -199,7 +199,7 @@ export class WorkflowFinderService {
 		const seen = new Set<string>();
 		const workflows: WorkflowEntity[] = [];
 
-		for (const chunk of idChunks(workflowIds)) {
+		for (const chunk of chunkIds(workflowIds)) {
 			const sharedWorkflows = await this.sharedWorkflowRepository.find({
 				where: { ...where, workflowId: In(chunk) },
 				relations: {
@@ -227,7 +227,7 @@ export class WorkflowFinderService {
 		const byFolder = new Map<string, string[]>();
 		const seen = new Set<string>();
 
-		for (const chunk of idChunks(folderIds)) {
+		for (const chunk of chunkIds(folderIds)) {
 			const rows = await this.sharedWorkflowRepository.find({
 				where: { workflow: { parentFolder: In(chunk) } },
 				relations: { workflow: { parentFolder: true } },
@@ -324,7 +324,7 @@ export class WorkflowFinderService {
 		// The two branches below each expand the id list, so this costs two bind
 		// parameters per id — half the ids fit in one statement compared with a
 		// single-branch lookup.
-		for (const chunk of idChunks(sourceWorkflowIds)) {
+		for (const chunk of chunkIds(sourceWorkflowIds)) {
 			const sharedWorkflows = await this.sharedWorkflowRepository.find({
 				where: [
 					{

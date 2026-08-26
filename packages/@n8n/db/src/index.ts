@@ -11,7 +11,7 @@ export {
 } from './entities/abstract-entity';
 
 export { generateNanoId } from '@n8n/utils/generate-nano-id';
-export { DEFAULT_ID_CHUNK_SIZE, idChunks } from './utils/bind-parameter-chunks';
+export { chunkIds } from './utils/chunk-ids';
 export { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from './utils/dialect-time';
 export { generateHostInstanceId } from './utils/generators';
 export { isStringArray } from './utils/is-string-array';

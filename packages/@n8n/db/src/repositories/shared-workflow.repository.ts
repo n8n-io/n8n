@@ -17,7 +17,7 @@ import { BaseRepository } from './base-repository';
 import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
-import { idChunks } from '../utils/bind-parameter-chunks';
+import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
 export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
@@ -38,7 +38,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 	async findByWorkflowIds(workflowIds: string[]) {
 		const rows = new Map<string, SharedWorkflow>();
 
-		for (const chunk of idChunks(workflowIds)) {
+		for (const chunk of chunkIds(workflowIds)) {
 			const found = await this.find({
 				where: {
 					role: 'workflow:owner',
@@ -56,7 +56,7 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 	async findOwnerProjectsByWorkflowIds(workflowIds: string[]): Promise<Map<string, Project>> {
 		const ownerRows: SharedWorkflow[] = [];
 
-		for (const chunk of idChunks(workflowIds)) {
+		for (const chunk of chunkIds(workflowIds)) {
 			ownerRows.push(
 				...(await this.find({
 					where: { workflowId: In(chunk), role: 'workflow:owner' },

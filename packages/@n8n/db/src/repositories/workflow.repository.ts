@@ -33,7 +33,7 @@ import type {
 } from '../entities/types-db';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
-import { idChunks } from '../utils/bind-parameter-chunks';
+import { chunkIds } from '../utils/chunk-ids';
 import { isStringArray } from '../utils/is-string-array';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 import { TimedQuery } from '../utils/timed-query';
@@ -241,7 +241,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		}
 
 		const workflows = new Map<string, WorkflowEntity>();
-		for (const chunk of idChunks(workflowIds)) {
+		for (const chunk of chunkIds(workflowIds)) {
 			const options: FindManyOptions<WorkflowEntity> = {
 				where: { id: In(chunk) },
 			};
@@ -302,7 +302,7 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 
 		const found = new Map<string, WorkflowEntity>();
 
-		for (const chunk of idChunks(workflowIds)) {
+		for (const chunk of chunkIds(workflowIds)) {
 			const workflows = await this.createQueryBuilder('workflow')
 				.select(['workflow.id', 'workflow.name', 'workflow.isArchived'])
 				.leftJoin('workflow.shared', 'shared', 'shared.role = :role', {
