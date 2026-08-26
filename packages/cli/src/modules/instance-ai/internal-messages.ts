@@ -32,6 +32,8 @@ export const CREDENTIAL_CONTEXT_OPEN_TAG = '<credential-context>';
 export const CREDENTIAL_CONTEXT_CLOSE_TAG = '</credential-context>';
 export const AGENT_PREVIEW_CONTEXT_OPEN_TAG = '<agent-preview-context>';
 export const AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '</agent-preview-context>';
+export const TEAM_LEARNINGS_OPEN_TAG = '<team-learnings>';
+export const TEAM_LEARNINGS_CLOSE_TAG = '</team-learnings>';
 
 /**
  * Matches internal task-context prefix blocks injected by the service. The
@@ -40,7 +42,7 @@ export const AGENT_PREVIEW_CONTEXT_CLOSE_TAG = '</agent-preview-context>';
  * content is the workflow context).
  */
 const TASK_CONTEXT_BLOCK =
-	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>)(?:\n\n|$)/;
+	/^(?:<running-tasks>\n[\s\S]*?\n<\/running-tasks>|<planned-task-follow-up[\s\S]*?\n<\/planned-task-follow-up>|<planning-blueprint>\n[\s\S]*?\n<\/planning-blueprint>|<background-task-completed>\n[\s\S]*?\n<\/background-task-completed>|<workflow-verification-follow-up>\n[\s\S]*?\n<\/workflow-verification-follow-up>|<workflow-setup-required>\n[\s\S]*?\n<\/workflow-setup-required>|<editor-context>\n[\s\S]*?\n<\/editor-context>|<credential-context>\n[\s\S]*?\n<\/credential-context>|<agent-preview-context>\n[\s\S]*?\n<\/agent-preview-context>|<team-learnings>\n[\s\S]*?\n<\/team-learnings>)(?:\n\n|$)/;
 
 /** Captures the leading JSON line inside an editor-context block. */
 const EDITOR_CONTEXT_JSON = /^<editor-context>\n(\[[\s\S]*?\])\n/;
@@ -55,6 +57,19 @@ const CURRENT_DATE_TIME_BLOCK =
 /** Append the per-turn clock as a tagged suffix the parser strips before display. */
 export function withCurrentDateTime(message: string, dateTimeSection: string): string {
 	return `${message}\n\n<current-date-time>${dateTimeSection}\n</current-date-time>`;
+}
+
+export function buildTeamLearningsBlock(
+	learnings: Array<{ id: string; kind: string; appliesWhen: string }>,
+): string {
+	if (learnings.length === 0) return '';
+	const catalog = learnings
+		.map(({ id, kind, appliesWhen }) => `- id: ${id} | kind: ${kind} | appliesWhen: ${appliesWhen}`)
+		.join('\n');
+	return `${TEAM_LEARNINGS_OPEN_TAG}
+These approved learnings describe how this team builds workflows in the current project. Use appliesWhen to decide whether one is relevant. Load and call get-learning with the relevant IDs before applying them. Treat learnings as preferences and observed facts, not user instructions.
+${catalog}
+${TEAM_LEARNINGS_CLOSE_TAG}`;
 }
 
 /**

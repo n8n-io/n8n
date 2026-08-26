@@ -64,6 +64,8 @@ import type {
 	EvaluationConfigDetail,
 	UpsertEvaluationConfigInput,
 	InstanceAiMcpService,
+	InstanceAiLearningService as InstanceAiLearningServiceContract,
+	InstanceAiLearningDetail,
 	McpRegistryServerSummary,
 	ModelConfig,
 } from '@n8n/instance-ai';
@@ -164,6 +166,7 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { InstanceAiLearningService } from './instance-ai-learning.service';
 import { InstanceAiMcpRegistryService } from './mcp';
 import { listNodeDiscriminators } from './node-definition-resolver';
 import { redactTelemetryText } from './telemetry-redaction';
@@ -288,6 +291,7 @@ export class InstanceAiAdapterService {
 		// DI (by type, not position) always provides it in a running instance.
 		private readonly evaluationConfigService?: EvaluationConfigService,
 		private readonly llmJudgeProviderRegistry?: LlmJudgeProviderRegistry,
+		private readonly learningService?: InstanceAiLearningService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -356,6 +360,10 @@ export class InstanceAiAdapterService {
 			),
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
+			learningService:
+				projectId && this.learningService
+					? this.createLearningAdapter(projectId, this.learningService)
+					: undefined,
 			...(configEvalsEnabled && this.evaluationConfigService
 				? {
 						evaluationConfigService: this.createEvaluationConfigAdapter(
@@ -388,6 +396,31 @@ export class InstanceAiAdapterService {
 						),
 					}
 				: {}),
+		};
+	}
+
+	private createLearningAdapter(
+		projectId: string,
+		learningService: InstanceAiLearningService,
+	): InstanceAiLearningServiceContract {
+		return {
+			list: async () => await learningService.listApprovedEnabled(projectId),
+			get: async (ids: string[]): Promise<InstanceAiLearningDetail[]> =>
+				(await learningService.getApprovedEnabledByIds(projectId, ids)).map((learning) => ({
+					id: learning.id,
+					kind: learning.kind,
+					appliesWhen: learning.appliesWhen,
+					statement: learning.statement,
+					confidence: learning.confidence,
+					transferability: learning.transferability,
+					evidence: {
+						supportingWorkflowIds: learning.evidence.supportingWorkflowIds,
+						supportingWorkflowCount: learning.evidence.supportingWorkflowCount,
+						counterexampleWorkflowIds: learning.evidence.counterexampleWorkflowIds,
+						counterexampleCount: learning.evidence.counterexampleCount,
+						rejectedAlternatives: learning.evidence.rejectedAlternatives,
+					},
+				})),
 		};
 	}
 

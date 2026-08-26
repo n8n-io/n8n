@@ -291,6 +291,14 @@ export const runStartPayloadSchema = z.object({
 export const runFinishPayloadSchema = z.object({
 	status: instanceAiRunStatusSchema,
 	reason: z.string().optional(),
+	/** Temporary debugging aid for comparing the prompt cost of Instance AI runs. */
+	usage: z
+		.object({
+			promptTokens: z.number().int().min(0),
+			completionTokens: z.number().int().min(0),
+			totalTokens: z.number().int().min(0),
+		})
+		.optional(),
 	/**
 	 * Workflow IDs the run-finish reap soft-deleted — intermediate
 	 * stepping-stones the agent created but never promoted to the main

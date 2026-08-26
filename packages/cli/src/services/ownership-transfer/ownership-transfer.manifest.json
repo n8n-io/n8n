@@ -60,6 +60,16 @@
 			"reason": "AI assistant conversation history; personal to the deleted user."
 		},
 		{
+			"name": "InstanceAiLearningRun",
+			"path": "packages/cli/src/modules/instance-ai/database/entities/instance-ai-learning-run.entity.ts",
+			"reason": "Analysis artifacts are dropped via creator/project cascades and can be regenerated."
+		},
+		{
+			"name": "InstanceAiLearning",
+			"path": "packages/cli/src/modules/instance-ai/database/entities/instance-ai-learning.entity.ts",
+			"reason": "Generated project knowledge is dropped with its source analysis run and can be regenerated."
+		},
+		{
 			"name": "InsightsMetadata",
 			"path": "packages/cli/src/modules/insights/database/entities/insights-metadata.ts",
 			"reason": "Denormalized analytics snapshot; historical insights keep the original project reference by design."

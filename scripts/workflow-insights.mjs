@@ -22,7 +22,7 @@ const OBSERVATION_SCHEMA = {
 			items: {
 				type: 'object',
 				additionalProperties: false,
-				required: ['id', 'lens', 'observation', 'nodeIds', 'nodeNames', 'kindHint'],
+				required: ['id', 'lens', 'observation', 'nodeIds', 'nodeNames'],
 				properties: {
 					id: { type: 'string' },
 					lens: {
@@ -42,10 +42,6 @@ const OBSERVATION_SCHEMA = {
 					observation: { type: 'string' },
 					nodeIds: { type: 'array', items: { type: 'string' } },
 					nodeNames: { type: 'array', items: { type: 'string' } },
-					kindHint: {
-						type: 'string',
-						enum: ['preference', 'environment_fact', 'hypothesis'],
-					},
 				},
 			},
 		},
@@ -362,18 +358,22 @@ function workflowForAnalysis(workflow) {
 }
 
 function observationPrompt(workflow) {
-	return `Extract concrete observations from this ONE n8n workflow independently.
+	return `Extract concrete observations from this n8n workflow. Describe only what the graph supports.
 
-Do not synthesize across workflows or infer team-wide preferences. Describe only what this graph
-supports. An observation may cover architecture, application purpose, systems of record, error
-handling, prompts, naming, credentials by purpose, notifications, or transformations.
+What makes an observation useful: it captures a CHOICE — something that could
+plausibly have been done another way — together with its specific values (channel
+names, credential names, dataset/table names, URLs, model ids, prompt structure
+and language, naming patterns). "Uses a Slack node" is useless; "sends error
+notifications to Slack #ops-alerts with the execution URL in the message" is useful.
+Common patterns are fine to record when you capture their specifics; skip commentary
+on n8n itself and best-practice judgments.
+Sticky notes are the builder's own documentation — treat their content as high-signal
+evidence.
 
 Rules:
 - Cite exact node IDs and node names. Do not invent nodes.
-- Do not write "the team always", "usually", or similar cross-workflow conclusions.
 - Do not include secrets, tokens, raw credential values, customer data, or long payloads.
-- Credential names and types may be useful evidence, but never include credential IDs.
-- Skip generic n8n facts unless their specific use is distinctive in this workflow.
+- Never include credential IDs.
 - Ignore disconnected nodes unless the observation explicitly says they are disconnected.
 - Prefer 3-10 useful observations. An empty list is valid for a trivial workflow.
 - Use IDs in the form "${workflow.id}-obs-1", incrementing within this workflow.
@@ -658,7 +658,7 @@ async function main() {
 			apiKey,
 			model: options.model,
 			effort: options.effort,
-			maxTokens: 12000,
+			maxTokens: 32000,
 			prompt: reductionPrompt(input.source?.projectId, observations),
 			schema: LEARNINGS_SCHEMA,
 			label: 'reducer',

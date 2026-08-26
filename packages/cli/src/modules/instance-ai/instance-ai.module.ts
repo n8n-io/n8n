@@ -29,6 +29,7 @@ export class InstanceAiModule implements ModuleInterface {
 		);
 		await Container.get(InstanceAiSetupTelemetryService).recordSetupCompletedIfNeeded();
 		await import('./instance-ai.controller.js');
+		await import('./instance-ai-learning.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 
 		// Instantiating the relay registers its `user-deleted` listener, which
@@ -120,6 +121,12 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiEventLogEntry } = await import(
 			'./entities/instance-ai-event-log-entry.entity.js'
 		);
+		const { InstanceAiLearningRun } = await import(
+			'./database/entities/instance-ai-learning-run.entity.js'
+		);
+		const { InstanceAiLearning } = await import(
+			'./database/entities/instance-ai-learning.entity.js'
+		);
 
 		return [
 			InstanceAiThread,
@@ -135,6 +142,8 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiMcpRegistryConnection,
 			InstanceAiThreadGrant,
 			InstanceAiEventLogEntry,
+			InstanceAiLearningRun,
+			InstanceAiLearning,
 		];
 	}
 

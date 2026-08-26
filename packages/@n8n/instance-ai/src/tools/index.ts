@@ -91,6 +91,9 @@ const loadWorkflowsTool = lazyMod(
 const loadWorkspaceTool = lazyMod(
 	() => require('./workspace.tool') as typeof import('./workspace.tool'),
 );
+const loadGetLearningTool = lazyMod(
+	() => require('./get-learning.tool') as typeof import('./get-learning.tool'),
+);
 
 /**
  * Creates all native n8n domain tools with the full action surface.
@@ -115,6 +118,13 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 	// when `088_config_evaluations` is on, so presence = expose the tool.
 	if (context.evaluationConfigService) {
 		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
+	}
+
+	if (context.learningService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.GET_LEARNING,
+			loadGetLearningTool().createGetLearningTool(context),
+		]);
 	}
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
@@ -148,6 +158,13 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 	// when `088_config_evaluations` is on, so presence = expose the tool.
 	if (context.evaluationConfigService) {
 		tools.push([DOMAIN_TOOL_IDS.EVAL_CONFIG, loadEvalConfigTool().createEvalConfigTool(context)]);
+	}
+
+	if (context.learningService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.GET_LEARNING,
+			loadGetLearningTool().createGetLearningTool(context),
+		]);
 	}
 
 	// Same pattern: the adapter only wires mcpService when MCP access is enabled

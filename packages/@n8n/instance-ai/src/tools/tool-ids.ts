@@ -16,6 +16,7 @@ export const DOMAIN_TOOL_IDS = {
 	PARSE_FILE: 'parse-file',
 	AGENTS: 'agents',
 	MCP_SERVERS: 'mcp-servers',
+	GET_LEARNING: 'get-learning',
 } as const;
 
 /** Trace-only chain-typed child run emitted by `build-workflow` with the

@@ -696,6 +696,35 @@ export {
 	type GenerateInsightsPayload,
 } from './schemas/eval-insights.schema';
 
+export {
+	instanceAiLearningKindSchema,
+	instanceAiLearningSensitivitySchema,
+	instanceAiLearningReviewStatusSchema,
+	instanceAiLearningRunStatusSchema,
+	instanceAiLearningRunStageSchema,
+	instanceAiWorkflowObservationSchema,
+	instanceAiWorkflowObservationDocumentSchema,
+	instanceAiGeneratedLearningSchema,
+	instanceAiLearningReductionSchema,
+	instanceAiLearningEvidenceSchema,
+	instanceAiLearningRunSchema,
+	instanceAiLearningSchema,
+	StartInstanceAiLearningRunDto,
+	ListInstanceAiLearningsQueryDto,
+	UpdateInstanceAiLearningDto,
+	type InstanceAiLearningKind,
+	type InstanceAiLearningSensitivity,
+	type InstanceAiLearningReviewStatus,
+	type InstanceAiLearningRunStatus,
+	type InstanceAiLearningRunStage,
+	type InstanceAiWorkflowObservationDocument,
+	type InstanceAiGeneratedLearning,
+	type InstanceAiLearningReduction,
+	type InstanceAiLearningEvidence,
+	type InstanceAiLearningRun,
+	type InstanceAiLearning,
+} from './schemas/instance-ai-learning.schema';
+
 export { ALLOWED_DOMAINS, isAllowedDomain } from './utils/allowed-domains';
 
 export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.schema';

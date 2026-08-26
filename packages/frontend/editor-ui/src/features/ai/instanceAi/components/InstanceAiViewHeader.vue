@@ -1,7 +1,13 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { N8nCallout, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
+import {
+	N8nCallout,
+	N8nIconButton,
+	N8nText,
+	N8nTooltip,
+	TOOLTIP_DELAY_MS,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -28,6 +34,20 @@ const activeThreadId = computed(() => {
 const threadCreditsUsed = computed(() =>
 	activeThreadId.value ? store.threadCreditsUsed(activeThreadId.value) : undefined,
 );
+
+const sessionTokenUsageLabel = computed(() => {
+	if (!activeThreadId.value) return undefined;
+	const usage = store.getRuntime(activeThreadId.value)?.sessionTokenUsage;
+	if (!usage || usage.totalTokens === 0) return undefined;
+
+	return i18n.baseText('instanceAi.sessionTokenUsage', {
+		interpolate: {
+			input: usage.promptTokens.toLocaleString(),
+			output: usage.completionTokens.toLocaleString(),
+			total: usage.totalTokens.toLocaleString(),
+		},
+	});
+});
 </script>
 
 <template>
@@ -53,6 +73,9 @@ const threadCreditsUsed = computed(() =>
 		</Transition>
 		<slot name="title" />
 		<div :class="$style.headerActions">
+			<N8nText v-if="sessionTokenUsageLabel" size="small" color="text-light">
+				{{ sessionTokenUsageLabel }}
+			</N8nText>
 			<CreditsSettingsDropdown
 				v-if="store.creditsRemaining !== undefined"
 				:credits-remaining="store.creditsRemaining"

@@ -6,6 +6,7 @@ import {
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
+	INSTANCE_AI_LEARNINGS_SETTINGS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 } from './constants';
 import {
@@ -19,6 +20,8 @@ const InstanceAiView = async () => await import('./InstanceAiView.vue');
 const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
 const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
+const SettingsInstanceAiLearningsView = async () =>
+	await import('./views/SettingsInstanceAiLearningsView.vue');
 
 export const InstanceAiModule: FrontendModuleDescription = {
 	id: 'instance-ai',
@@ -115,6 +118,23 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'rbac', 'custom'],
 				middlewareOptions: {
 					rbac: {
+						scope: 'instanceAi:manage',
+					},
+				},
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+		{
+			path: 'assistant/learnings',
+			name: INSTANCE_AI_LEARNINGS_SETTINGS_VIEW,
+			component: SettingsInstanceAiLearningsView,
+			meta: {
+				layout: 'settings',
+				middleware: ['authenticated', 'rbac'],
+				middlewareOptions: {
+					rbac: {
 						scope: ['instanceAi:message', 'instanceAi:manage'],
 					},
 				},
@@ -153,10 +173,23 @@ export const InstanceAiModule: FrontendModuleDescription = {
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',
-			icon: 'sparkles',
+			icon: 'brain',
 			label: i18n.baseText('settings.n8nAgent'),
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
+			preview: true,
+			get available() {
+				return hasPermission(['rbac'], {
+					rbac: { scope: 'instanceAi:manage' },
+				});
+			},
+		},
+		{
+			id: 'settings-instance-ai-learnings',
+			icon: 'sparkles',
+			label: i18n.baseText('settings.n8nAgent.learnings.title'),
+			position: 'top',
+			route: { to: { name: INSTANCE_AI_LEARNINGS_SETTINGS_VIEW } },
 			preview: true,
 			get available() {
 				return hasPermission(['rbac'], {

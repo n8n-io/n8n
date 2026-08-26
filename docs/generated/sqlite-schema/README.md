@@ -73,6 +73,8 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [instance_ai_checkpoints](instance_ai_checkpoints.md) | 9 |  | table |
 | [instance_ai_events](instance_ai_events.md) | 7 |  | table |
 | [instance_ai_iteration_logs](instance_ai_iteration_logs.md) | 6 |  | table |
+| [instance_ai_learning_runs](instance_ai_learning_runs.md) | 12 |  | table |
+| [instance_ai_learnings](instance_ai_learnings.md) | 16 |  | table |
 | [instance_ai_mcp_registry_connections](instance_ai_mcp_registry_connections.md) | 7 |  | table |
 | [instance_ai_messages](instance_ai_messages.md) | 8 |  | table |
 | [instance_ai_observation_cursors](instance_ai_observation_cursors.md) | 5 |  | table |
@@ -242,6 +244,11 @@ erDiagram
 "instance_ai_checkpoints" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_events" |o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_iteration_logs" }o--|| "instance_ai_threads" : "FOREIGN KEY (threadId) REFERENCES instance_ai_threads (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_learning_runs" }o--|| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_learning_runs" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_learnings" }o--o| "user" : "FOREIGN KEY (reviewedById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
+"instance_ai_learnings" }o--|| "instance_ai_learning_runs" : "FOREIGN KEY (runId) REFERENCES instance_ai_learning_runs (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"instance_ai_learnings" }o--|| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "user" : "FOREIGN KEY (userId) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "mcp_registry_server" : "FOREIGN KEY (serverSlug) REFERENCES mcp_registry_server (slug) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "instance_ai_mcp_registry_connections" }o--|| "credentials_entity" : "FOREIGN KEY (credentialId) REFERENCES credentials_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -982,6 +989,38 @@ erDiagram
   varchar_36_ id PK
   varchar taskKey
   varchar threadId FK
+  datetime_3_ updatedAt
+}
+"instance_ai_learning_runs" {
+  INTEGER completedWorkflows
+  datetime_3_ createdAt
+  varchar createdById FK
+  TEXT error
+  varchar_36_ id PK
+  TEXT observations
+  varchar_36_ projectId FK
+  varchar_16_ stage
+  varchar_16_ status
+  INTEGER totalWorkflows
+  datetime_3_ updatedAt
+  TEXT workflowIds
+}
+"instance_ai_learnings" {
+  TEXT appliesWhen
+  REAL confidence
+  datetime_3_ createdAt
+  boolean enabled
+  TEXT evidence
+  varchar_36_ id PK
+  varchar_32_ kind
+  varchar_36_ projectId FK
+  varchar_16_ reviewStatus
+  datetime_3_ reviewedAt
+  varchar reviewedById FK
+  varchar_36_ runId FK
+  varchar_16_ sensitivity
+  TEXT statement
+  TEXT transferability
   datetime_3_ updatedAt
 }
 "instance_ai_mcp_registry_connections" {

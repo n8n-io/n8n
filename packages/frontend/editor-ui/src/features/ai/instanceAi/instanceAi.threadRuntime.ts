@@ -67,6 +67,12 @@ export interface PlanEditContext {
 	taskCount: number;
 }
 
+export interface SessionTokenUsage {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+}
+
 /**
  * State the editor handed off, snapshotted before its stores are torn down so
  * the artifact can seed it directly without refetching. `workflow`/`execution`
@@ -369,6 +375,11 @@ export function createThreadRuntime(
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
 	const lastEventId = ref<number | undefined>(undefined);
+	const sessionTokenUsage = ref<SessionTokenUsage>({
+		promptTokens: 0,
+		completionTokens: 0,
+		totalTokens: 0,
+	});
 	// Event ids already applied on this thread — guards against replay overlap,
 	// e.g. an auto-reconnect replaying an id that already arrived just before
 	// the disconnect. Not reactive: only consulted inside onSSEMessage.
@@ -818,6 +829,14 @@ export function createThreadRuntime(
 					const next = new Set(archivedWorkflowIds.value);
 					for (const id of ids) next.add(id);
 					archivedWorkflowIds.value = next;
+				}
+				const usage = parsed.data.payload.usage;
+				if (usage) {
+					sessionTokenUsage.value = {
+						promptTokens: sessionTokenUsage.value.promptTokens + usage.promptTokens,
+						completionTokens: sessionTokenUsage.value.completionTokens + usage.completionTokens,
+						totalTokens: sessionTokenUsage.value.totalTokens + usage.totalTokens,
+					};
 				}
 			}
 			// Force Vue reactivity when streaming state changes (run-start can
@@ -1361,6 +1380,7 @@ export function createThreadRuntime(
 		hydrationStatus,
 		sseState,
 		lastEventId,
+		sessionTokenUsage,
 		amendContext,
 		activePlanEdit,
 		updatingPlanRequestIds,

@@ -10,6 +10,8 @@ export { InstanceAiObservationLock } from './instance-ai-observation-lock.entity
 export { InstanceAiMcpRegistryConnection } from './instance-ai-mcp-registry-connection.entity';
 export { InstanceAiThreadGrant } from './instance-ai-thread-grant.entity';
 export { InstanceAiEventLogEntry } from './instance-ai-event-log-entry.entity';
+export { InstanceAiLearningRun } from '../database/entities/instance-ai-learning-run.entity';
+export { InstanceAiLearning } from '../database/entities/instance-ai-learning.entity';
 export type {
 	InstanceAiObservationMarker,
 	InstanceAiObservationStatus,

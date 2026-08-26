@@ -3,6 +3,7 @@ import { INSTANCE_AI_THREAD_SOURCES, type InstanceAiThreadSource } from '@n8n/ap
 export const INSTANCE_AI_VIEW = 'InstanceAi';
 export const INSTANCE_AI_THREAD_VIEW = 'InstanceAiThread';
 export const INSTANCE_AI_SETTINGS_VIEW = 'InstanceAiSettings';
+export const INSTANCE_AI_LEARNINGS_SETTINGS_VIEW = 'InstanceAiLearningsSettings';
 export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
 /**
  * History-state key for the agent id minted at the click. Carried to the

@@ -163,6 +163,7 @@ import {
 	EDITOR_CONTEXT_CLOSE_TAG,
 	CREDENTIAL_CONTEXT_OPEN_TAG,
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
+	buildTeamLearningsBlock,
 	cleanStoredUserMessage,
 	withCurrentDateTime,
 } from './internal-messages';
@@ -3956,7 +3957,15 @@ export class InstanceAiService {
 			// The context block (an editor hand-off) leads the message so the agent
 			// knows what the user is looking at. On an empty-text hand-off it is the
 			// entire prompt, and the agent greets rather than investigating.
-			const messageWithContext = [contextResourcesBlock, handoffContextBlock, messageBody]
+			const teamLearningsBlock = buildTeamLearningsBlock(
+				(await context.learningService?.list()) ?? [],
+			);
+			const messageWithContext = [
+				teamLearningsBlock,
+				contextResourcesBlock,
+				handoffContextBlock,
+				messageBody,
+			]
 				.filter(Boolean)
 				.join('\n\n');
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
@@ -6479,6 +6488,7 @@ export class InstanceAiService {
 		archivedWorkflowIds?: string[],
 		userId?: string,
 		errorInfo?: RunFinishErrorInfo,
+		usage?: RunTokenUsage,
 	): void {
 		const effectiveStatus = status === 'errored' ? 'error' : status;
 		const hasArchived = archivedWorkflowIds && archivedWorkflowIds.length > 0;
@@ -6494,6 +6504,15 @@ export class InstanceAiService {
 						? { reason }
 						: {}),
 				...(hasArchived ? { archivedWorkflowIds } : {}),
+				...(usage
+					? {
+							usage: {
+								promptTokens: usage.promptTokens,
+								completionTokens: usage.completionTokens,
+								totalTokens: usage.totalTokens,
+							},
+						}
+					: {}),
 			},
 		});
 		// success-drop heartbeat; user_id required or PostHog drops instance-only events
@@ -6645,6 +6664,7 @@ export class InstanceAiService {
 			options?.archivedWorkflowIds,
 			options?.userId,
 			options?.errorInfo,
+			options?.usage,
 		);
 		this.emitRunMetrics(threadId, status, options);
 		await this.saveAgentTreeSnapshot(threadId, runId, snapshotStorage);

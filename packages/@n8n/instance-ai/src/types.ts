@@ -1065,6 +1065,30 @@ export interface InstanceAiBuilderDelegate {
 	} | null>;
 }
 
+export interface InstanceAiLearningSummary {
+	id: string;
+	kind: 'preference' | 'environment_fact' | 'hypothesis';
+	appliesWhen: string;
+}
+
+export interface InstanceAiLearningDetail extends InstanceAiLearningSummary {
+	statement: string;
+	confidence: number;
+	transferability: string;
+	evidence: {
+		supportingWorkflowIds: string[];
+		supportingWorkflowCount: number;
+		counterexampleWorkflowIds: string[];
+		counterexampleCount: number;
+		rejectedAlternatives: string[];
+	};
+}
+
+export interface InstanceAiLearningService {
+	list(): Promise<InstanceAiLearningSummary[]>;
+	get(ids: string[]): Promise<InstanceAiLearningDetail[]>;
+}
+
 // ── Local gateway status ─────────────────────────────────────────────────────
 
 export type LocalGatewayStatus =
@@ -1099,6 +1123,8 @@ export interface InstanceAiContext {
 	credentialService: InstanceAiCredentialService;
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
+	/** Approved project-specific workflow-building knowledge. */
+	learningService?: InstanceAiLearningService;
 	/** Optional — present when the host wires config-based eval support. */
 	evaluationConfigService?: InstanceAiEvaluationConfigService;
 	/** Optional — present when the host allows MCP registry discovery for this
