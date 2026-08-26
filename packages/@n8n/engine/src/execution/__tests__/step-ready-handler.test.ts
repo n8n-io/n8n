@@ -37,12 +37,12 @@ const graph: WorkflowGraph = {
 	],
 };
 
-/** A publisher fake. Handlers announce into it; tests that care assert on `publish`. */
+/** A publisher fake; tests that care assert on `publish`. */
 function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 	return { publish: vi.fn(), stop: vi.fn() };
 }
 
-/** `StepReadyHandler` with a throwaway publisher, for the tests that ignore it. */
+/** Handler with a throwaway publisher, for the tests that ignore it. */
 function makeHandler(
 	executionStore: ExecutionStore,
 	stepStore: StepStore,
@@ -741,8 +741,7 @@ describe('StepReadyHandler lifecycle events', () => {
 	});
 
 	it('announces the outcome before the settled event', async () => {
-		// The settled event starts the orchestration worker's dispatch loop
-		// synchronously, so announcing after it could invert causal order.
+		// Announcing after the settled event could invert causal order.
 		const order: string[] = [];
 		const lifecycleEventPublisher: LifecycleEventPublisher = {
 			publish: vi.fn((event: LifecycleEvent) => {
@@ -805,8 +804,7 @@ describe('StepReadyHandler lifecycle events', () => {
 	});
 
 	it('announces the start but no outcome for a step its execution no longer wants', async () => {
-		// The row genuinely is `running`, so the start is the honest report. The
-		// consumer resolves the step on the execution's terminal event.
+		// The row really is running, so the start is the honest report.
 		const lifecycleEventPublisher = makeLifecycleEventPublisher();
 		const handler = makeHandler(
 			makeExecutionStore({ status: 'cancelled' }),

@@ -7,12 +7,12 @@ import { ExecutionStartHandler } from '../execution-start-handler';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
 import type { StepStore } from '../step-store';
 
-/** A publisher fake. The handler announces into it; tests that care assert on `publish`. */
+/** A publisher fake; tests that care assert on `publish`. */
 function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 	return { publish: vi.fn(), stop: vi.fn() };
 }
 
-/** `ExecutionStartHandler` with a throwaway publisher, for the tests that ignore it. */
+/** Handler with a throwaway publisher, for the tests that ignore it. */
 function makeHandler(
 	executionStore: ExecutionStore,
 	stepStore: StepStore,

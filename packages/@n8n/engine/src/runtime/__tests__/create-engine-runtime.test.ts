@@ -75,8 +75,7 @@ describe('createEngineRuntime', () => {
 	});
 
 	it('builds the external dependencies exactly once', () => {
-		// Three handlers share the result; building twice would give them different
-		// executors and different callbacks.
+		// Three handlers share the result, so building twice would split them.
 		const build = vi.fn().mockReturnValue({});
 
 		createEngineRuntime({
@@ -90,9 +89,8 @@ describe('createEngineRuntime', () => {
 	});
 
 	it('stops the batching publisher it builds for a host lifecycle event callback', async () => {
-		// The flush itself belongs to `BatchingLifecycleEventPublisher.stop()` and is covered
-		// by its own tests; what only the runtime can get wrong is building the
-		// batching publisher for a host callback and awaiting its `stop()`.
+		// Only the wiring is this test's business: a host callback gets a batching
+		// publisher, and stopping the engine stops it.
 		const flushOnStop = vi.spyOn(BatchingLifecycleEventPublisher.prototype, 'stop');
 		const engine = createEngineRuntime({
 			dataSource: fakeDataSource(),

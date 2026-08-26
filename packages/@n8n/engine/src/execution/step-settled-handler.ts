@@ -67,28 +67,19 @@ export class StepSettledHandler {
 	}
 
 	private async failExecution(execution: ExecutionRecord): Promise<void> {
+		// Only the worker whose write won announces the outcome.
 		const finished = await this.executionStore.finishExecution(execution.id, 'failed');
-		if (finished) this.publishFinished(execution, 'execution:failed');
+		if (finished) {
+			this.lifecycleEventPublisher.publish({
+				type: 'execution:failed',
+				executionId: execution.id,
+				workflowId: execution.workflowId,
+				at: new Date().toISOString(),
+			});
+		}
 
-		// TODO(CAT-3990): this sweep moves rows `queued -> cancelled` and announces
-		// nothing, because the store method returns no rows to name.
+		// TODO(CAT-3990): this sweep names no rows, so it announces nothing.
 		await this.stepStore.cancelQueuedSteps(execution.id);
-	}
-
-	/**
-	 * Announces a terminal execution. Only reached when `finishExecution`'s CAS on
-	 * `running` succeeded, so this worker is the one that wrote the outcome.
-	 */
-	private publishFinished(
-		execution: ExecutionRecord,
-		type: 'execution:completed' | 'execution:failed',
-	): void {
-		this.lifecycleEventPublisher.publish({
-			type,
-			executionId: execution.id,
-			workflowId: execution.workflowId,
-			at: new Date().toISOString(),
-		});
 	}
 
 	/** Plans the settled step's direct successors, returning how many were queued. */
@@ -184,7 +175,12 @@ export class StepSettledHandler {
 			failed ? 'failed' : 'completed',
 		);
 		if (finished) {
-			this.publishFinished(execution, failed ? 'execution:failed' : 'execution:completed');
+			this.lifecycleEventPublisher.publish({
+				type: failed ? 'execution:failed' : 'execution:completed',
+				executionId: execution.id,
+				workflowId: execution.workflowId,
+				at: new Date().toISOString(),
+			});
 		}
 	}
 

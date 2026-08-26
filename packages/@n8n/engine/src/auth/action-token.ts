@@ -7,10 +7,8 @@ import {
 } from './shared-secret-token';
 
 /**
- * What an action token authorizes. Scoped rather than blanket: the data plane
- * reports lifecycle events and nothing else today, so a leaked token buys
- * nothing more than that, and the next surface it reaches for gets its own
- * scope.
+ * What an action token authorizes. Scoped, so a leaked token buys only what the
+ * data plane can already do: report lifecycle events.
  */
 export type ActionScope = 'lifecycle-events:write';
 

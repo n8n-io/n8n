@@ -8,7 +8,7 @@ export interface LifecycleEventPublisher {
 	stop(): Promise<void>;
 }
 
-/** Publisher for a host that supplied no `lifecycleEventCallback` — nothing is listening. */
+/** Publisher for a host that is not listening. */
 export const noopLifecycleEventPublisher: LifecycleEventPublisher = Object.freeze({
 	publish: () => {},
 	stop: async () => {},

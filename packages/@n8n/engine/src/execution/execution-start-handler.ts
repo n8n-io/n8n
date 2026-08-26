@@ -33,12 +33,8 @@ export class ExecutionStartHandler {
 
 		const execution = await this.executionStore.loadExecution(event.executionId);
 
-		// The claim above is the `queued -> running` transition, so this worker is
-		// the only one that can announce it. Announced after the load rather than
-		// straight after the claim because `workflowId` and `mode` save every
-		// consumer a round trip, and the load only reads. A load that throws leaves
-		// the execution running and unannounced, which reconciliation (CAT-2938)
-		// owns — the stream trades completeness for freshness by design.
+		// This worker won the claim, so it is the one that announces the start.
+		// After the load, because the ids it carries save consumers a round trip.
 		this.lifecycleEventPublisher.publish({
 			type: 'execution:started',
 			executionId: execution.id,

@@ -71,9 +71,6 @@ export interface IStepExecutor {
 export interface ExternalDependencies {
 	/** Executes `v1-node` steps — supplied by the host in integrated mode. */
 	v1StepExecutor?: IStepExecutor;
-	/**
-	 * Ships batches of lifecycle events to the host. Rejecting reports a failed
-	 * delivery and costs the host freshness only — it never fails a step.
-	 */
+	/** Ships lifecycle events to the host. A failed delivery never fails a step. */
 	lifecycleEventCallback?: LifecycleEventCallback;
 }

@@ -30,9 +30,8 @@ const every: LifecycleEvent[] = [
 ];
 
 describe('lifecycleEventSchema', () => {
-	// `LifecycleEvent` is inferred from the schema, so the two cannot disagree about
-	// the union. What can still drift is a field the schema restates in its own
-	// vocabulary; these pin those, in both directions.
+	// The union cannot drift, but a field the schema restates in its own
+	// vocabulary can. These pin those, in both directions.
 	it('keeps the mode enum in step with ExecutionMode', () => {
 		expectTypeOf<
 			Extract<LifecycleEvent, { type: 'execution:started' }>['mode']

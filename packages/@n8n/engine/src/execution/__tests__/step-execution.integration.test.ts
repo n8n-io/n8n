@@ -72,8 +72,7 @@ describe('step execution (integration)', () => {
 	) {
 		let done!: () => void;
 		const finished = new Promise<void>((resolve) => (done = resolve));
-		// `runtime.stop()` flushes the publisher, so by the time this returns every
-		// event the run produced has been delivered — no polling, no timers.
+		// stop() flushes, so every event is delivered by the time this returns.
 		const events: LifecycleEvent[] = [];
 
 		const runtime = createEngineRuntime({
@@ -133,8 +132,7 @@ describe('step execution (integration)', () => {
 		]);
 		const step = steps.find(({ nodeId }) => nodeId === 'node-a');
 
-		// One line for the whole status path: both emit points, causal ordering
-		// across the two workers, batched delivery, and the flush on stop.
+		// Covers both emit points, their order, and delivery.
 		expect(events.map(({ type }) => type)).toEqual([
 			'execution:started',
 			'step:started',
@@ -211,8 +209,7 @@ describe('step execution (integration)', () => {
 	});
 
 	it('runs the execution to completion even when every status batch is refused', async () => {
-		// The data plane is the source of truth, so a host that cannot be reached
-		// costs it freshness, never correctness.
+		// A host that cannot be reached costs freshness, never correctness.
 		vi.spyOn(console, 'warn').mockImplementation(() => {});
 		const executor: IStepExecutor = {
 			execute: async () => {

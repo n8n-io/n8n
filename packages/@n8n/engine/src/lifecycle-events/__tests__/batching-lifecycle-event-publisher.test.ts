@@ -133,8 +133,7 @@ describe('BatchingLifecycleEventPublisher', () => {
 		release();
 		await vi.advanceTimersByTimeAsync(FLUSH_MS);
 
-		// Batches are cut when a send starts, so the two that waited out `a` go
-		// to the host together.
+		// The two that waited out `a` go to the host together.
 		expect(send.mock.calls).toEqual([
 			[[a], signal],
 			[[b, c], signal],
@@ -144,7 +143,7 @@ describe('BatchingLifecycleEventPublisher', () => {
 	it('starts no second drain when the callback publishes re-entrantly', async () => {
 		let inFlight = 0;
 		let concurrent = 0;
-		// The callback needs the publisher that calls it, so it reads it back here.
+		// The callback needs the publisher that calls it.
 		const host: { publisher?: BatchingLifecycleEventPublisher } = {};
 		const send = vi.fn(async (batch: LifecycleEvent[]) => {
 			inFlight++;
@@ -294,8 +293,7 @@ describe('BatchingLifecycleEventPublisher', () => {
 		await vi.advanceTimersByTimeAsync(TIMEOUT_MS * 4);
 		await stopping;
 
-		// Only the batch that reached the wire was tried. `b` and `c` never leave
-		// the buffer: shutdown stopped waiting before their turn came.
+		// Shutdown stopped waiting before `b` and `c` had their turn.
 		expect(send.mock.calls.map(([batch]) => batch)).toEqual([[a]]);
 		expect(console.warn).toHaveBeenCalledWith(
 			'engine: lifecycle event publisher stopped, dropped 2 unsent event(s)',

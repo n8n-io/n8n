@@ -120,7 +120,7 @@ function makeOrchestrationQueue(): WorkQueue<OrchestrationMessage> {
 	return { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
 }
 
-/** A publisher fake. Handlers announce into it; tests that care assert on `publish`. */
+/** A publisher fake; tests that care assert on `publish`. */
 function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 	return { publish: vi.fn(), stop: vi.fn() };
 }
@@ -526,8 +526,7 @@ describe('StepSettledHandler lifecycle events', () => {
 	});
 
 	it('announces nothing for the steps it cancels or skips', async () => {
-		// TODO(CAT-3990): the cancel sweep names no rows, and a skip settles at
-		// birth. A consumer cannot tell either from "not reached yet".
+		// TODO(CAT-3990): cancelled and skipped steps announce nothing.
 		const { handler, lifecycleEventPublisher } = makeHandler(makeStepStore({ status: 'skipped' }));
 
 		await handler.handle(event);

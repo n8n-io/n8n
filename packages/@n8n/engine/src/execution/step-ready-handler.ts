@@ -56,12 +56,8 @@ export class StepReadyHandler {
 		const execution = await this.executionStore.loadExecution(event.executionId);
 		const node = validateStepContext(step, execution);
 
-		// `claimStep` is a CAS on `queued`, so this worker won the `queued ->
-		// running` transition and is the only one that can announce it. Announced
-		// ahead of the guards below on purpose: one rule — announce the transition
-		// you won — and the row genuinely is `running`. A step the execution-status
-		// guard then declines to run announces no outcome, and the consumer
-		// resolves it on the execution's terminal event.
+		// This worker won the claim, so it announces the start — ahead of the guards
+		// below, because the step really is running whether or not they let it run.
 		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
 		// The engine runs a batch step itself, so it has no executor to look up.
@@ -104,12 +100,8 @@ export class StepReadyHandler {
 		// only thing that can take a step over, and it doesn't exist yet.
 		if (!recorded) return;
 
-		// Announced before the settled event, not after: publishing starts the
-		// orchestration worker's dispatch loop synchronously, so that worker can
-		// reach `execution:completed` before this line would otherwise run, which
-		// would invert causal order within the execution.
-		// Outputs ride along on the one event that has them, so a consumer needs no
-		// read to render what the step produced.
+		// Before the settled event, or the execution could announce its end first.
+		// Outputs ride along so a consumer needs no read to render them.
 		this.lifecycleEventPublisher.publish(
 			run.ok
 				? { type: 'step:completed', ...stepEventFields(step, node), outputs: run.outputs }
@@ -318,7 +310,7 @@ function readEdgeValue(
 	return row.outputs?.[edge.outputIndex] ?? null;
 }
 
-/** The identifiers every step lifecycle event carries. */
+/** The identifiers every step event carries. */
 function stepEventFields(step: StepRecord, node: GraphNode) {
 	return {
 		executionId: step.executionId,

@@ -66,8 +66,7 @@ export function createEngineRuntime({
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 	const stepQueue = new InMemoryWorkQueue<StepMessage>();
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
-	// Hoisted out of the handler arguments: the factory must run exactly once, and
-	// every worker announces its own transitions.
+	// Built once, not per handler: the factory must not run twice.
 	const dependencies =
 		externalDependencies?.({ executionStore, stepStore, executionViewStore }) ?? {};
 	const lifecycleEventPublisher: LifecycleEventPublisher = dependencies.lifecycleEventCallback
@@ -120,9 +119,7 @@ export function createEngineRuntime({
 			// only for whatever it is mid-handling; anything queued behind it is
 			// dropped, since the in-memory queues die with the process.
 			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
-			// After the workers are quiet, so every event they emitted is buffered.
-			// Flushed rather than dropped: an execution's last events are the ones a
-			// host is waiting for.
+			// After the workers are quiet, so the last events still reach the host.
 			await lifecycleEventPublisher.stop();
 		},
 	};

@@ -20,8 +20,7 @@ export type {
 	StepDetail,
 } from './server';
 
-// The lifecycle event publisher and its implementations stay internal: the
-// runtime factory owns the engine's topology, so no host constructs or swaps one.
+// The publisher stays internal: no host constructs or swaps one.
 export {
 	MAX_LIFECYCLE_EVENTS_PER_BATCH,
 	lifecycleEventBatchSchema,
