@@ -9,7 +9,7 @@ import {
 	DELETE_SECRETS_PROVIDER_MODAL_KEY,
 	FROM_AI_PARAMETERS_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
-	IMPORT_WORKFLOW_URL_MODAL_KEY,
+	LOG_STREAM_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	NPS_SURVEY_MODAL_KEY,
@@ -69,6 +69,28 @@ import {
 } from '@/features/settings/communityNodes/communityNodes.constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '@/features/settings/apiKeys/apiKeys.constants';
 import type { ApiKeyWithRawValue } from '@n8n/api-types';
+import AboutModal from '@/app/components/AboutModal.vue';
+import ActivationModal from '@/features/workflows/components/ActivationModal.vue';
+import ApiKeyCreateOrEditModal from '@/features/settings/apiKeys/components/ApiKeyCreateOrEditModal.vue';
+import NewAssistantSessionModal from '@/features/ai/assistant/components/Chat/NewAssistantSessionModal.vue';
+import ChatEmbedModal from '@/app/components/ChatEmbedModal.vue';
+import CommunityPackageInstallModal from '@/features/settings/communityNodes/components/CommunityPackageInstallModal.vue';
+import CommunityPackageManageConfirmModal from '@/features/settings/communityNodes/components/CommunityPackageManageConfirmModal.vue';
+import CommunityPlusEnrollmentModal from '@/features/settings/usage/components/CommunityPlusEnrollmentModal.vue';
+import CredentialEdit from '@/features/credentials/components/CredentialEdit/CredentialEdit.vue';
+import CredentialsSelectModal from '@/features/credentials/components/CredentialsSelectModal.vue';
+import DebugPaywallModal from '@/features/execution/executions/components/DebugPaywallModal.vue';
+import DeleteFolderModal from '@/features/core/folders/components/DeleteFolderModal.vue';
+import MoveToFolderModal from '@/features/core/folders/components/MoveToFolderModal.vue';
+import DeleteUserModal from '@/features/settings/users/components/DeleteUserModal.vue';
+import DuplicateWorkflowDialog from '@/features/workflows/components/DuplicateWorkflowDialog.vue';
+import ExternalSecretsProviderModal from '@/features/integrations/externalSecrets.ee/components/ExternalSecretsProviderModal.ee.vue';
+import SecretsProviderConnectionModal from '@/features/integrations/secretsProviders.ee/components/SecretsProviderConnectionModal.ee.vue';
+import DeleteSecretsProviderModal from '@/features/integrations/secretsProviders.ee/components/DeleteSecretsProviderModal.ee.vue';
+import FromAiParametersModal from '@/features/ndv/parameters/components/FromAiParametersModal.vue';
+import ImportCurlModal from '@/features/ndv/parameters/components/ImportCurlModal.vue';
+import BinaryDataViewModal from '@/features/ndv/runData/components/BinaryDataViewModal.vue';
+import InviteUsersModal from '@/features/settings/users/components/InviteUsersModal.vue';
 import ModalRoot from '@/app/components/ModalRoot.vue';
 import NpsSurvey from '@/app/components/NpsSurvey.vue';
 import type { WorkflowVersionFormModalData } from '@/features/workflows/workflowHistory/components/WorkflowVersionFormModal.vue';
@@ -310,10 +332,6 @@ const TrialIntroModal = defineAsyncComponent(
 			<template #default="{ modalName, active, data }">
 				<DuplicateWorkflowDialog :data="data" :is-active="active" :modal-name="modalName" />
 			</template>
-		</ModalRoot>
-
-		<ModalRoot :name="IMPORT_WORKFLOW_URL_MODAL_KEY">
-			<ImportWorkflowUrlModal />
 		</ModalRoot>
 
 		<ModalRoot :name="PERSONALIZATION_MODAL_KEY">
