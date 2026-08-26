@@ -6,6 +6,8 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import { type Logger } from 'n8n-workflow';
 
+import { CacheService } from '@/services/cache/cache.service';
+
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChatBridge } from '../agent-chat-bridge';
 import {
@@ -41,6 +43,7 @@ function makeBot() {
 		mention?: (thread: unknown, message: unknown) => Promise<void>;
 		subscribed?: (thread: unknown, message: unknown) => Promise<void>;
 		action?: (event: unknown) => Promise<void>;
+		slashCommand?: (event: unknown) => Promise<void>;
 	} = {};
 	const bot = {
 		onNewMention: (h: typeof handlers.mention) => {
@@ -51,6 +54,9 @@ function makeBot() {
 		},
 		onAction: (h: typeof handlers.action) => {
 			handlers.action = h;
+		},
+		onSlashCommand: (_commands: unknown, h: typeof handlers.slashCommand) => {
+			handlers.slashCommand = h;
 		},
 		getAdapter: vi.fn().mockReturnValue(undefined),
 		thread: vi.fn(),
@@ -731,6 +737,328 @@ describe('AgentChatBridge — consumeStream', () => {
 					}),
 				}),
 			);
+		});
+	});
+
+	describe('session rotation', () => {
+		function integrationWithIdleTimeout(minutes: number | null): AgentIntegrationConfig {
+			return {
+				type: 'test-streaming',
+				credentialId: 'cred-1',
+				settings: { sessionIdleTimeoutMinutes: minutes },
+			} as unknown as AgentIntegrationConfig;
+		}
+
+		/** In-memory stand-in for CacheService, so state persists across calls within a test. */
+		function mockCache(seed?: [key: string, value: unknown]) {
+			const store = new Map<string, unknown>(seed ? [seed] : []);
+			const cache = {
+				get: vi.fn(async (key: string) => store.get(key)),
+				set: vi.fn(async (key: string, value: unknown) => {
+					store.set(key, value);
+				}),
+			};
+			Container.set(CacheService, cache as never);
+			return cache;
+		}
+
+		function sessionGenerationKey(baseId: string): string {
+			return `agents:chat-session-generation:${baseId}`;
+		}
+
+		it('stays on the same session while within the idle window', async () => {
+			mockCache([
+				sessionGenerationKey('agent-1:thread-1'),
+				{ generation: 0, lastActivityAt: Date.now() },
+			]);
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+			);
+
+			await handlers.mention!(makeThread('thread-1'), {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
+					}),
+				}),
+			);
+		});
+
+		it('rotates to a new session once the idle window has elapsed', async () => {
+			mockCache([
+				sessionGenerationKey('agent-1:thread-1'),
+				{ generation: 0, lastActivityAt: Date.now() - 31 * 60_000 },
+			]);
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+			);
+
+			await handlers.mention!(makeThread('thread-1'), {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1#1' }),
+					}),
+				}),
+			);
+		});
+
+		it('rotates again from an already-rotated generation', async () => {
+			mockCache([
+				sessionGenerationKey('agent-1:thread-1'),
+				{ generation: 3, lastActivityAt: Date.now() - 31 * 60_000 },
+			]);
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+			);
+
+			await handlers.mention!(makeThread('thread-1'), {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1#4' }),
+					}),
+				}),
+			);
+		});
+
+		it('resets on the /new command without invoking the agent, even without an idle timeout', async () => {
+			mockCache();
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+			);
+			const thread = makeThread('thread-1');
+
+			await handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('new session'));
+		});
+
+		it('resets on a native /new slash command (e.g. Telegram, which never delivers it as a message)', async () => {
+			mockCache();
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('thread-1');
+			bot.thread.mockReturnValue(thread);
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+			);
+
+			await handlers.slashCommand!({
+				channel: { id: 'thread-1' },
+				user: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(bot.thread).toHaveBeenCalledWith('thread-1');
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('new session'));
+		});
+
+		it('carries a /new reset over to the next message, even without an idle timeout configured', async () => {
+			mockCache();
+			const { bot, handlers } = makeBot();
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+			);
+			const thread = makeThread('thread-1');
+
+			await handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+			await handlers.mention!(thread, {
+				text: 'how many webhook tests?',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledTimes(1);
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1#1' }),
+					}),
+				}),
+			);
+		});
+
+		it('does not rotate an idle-expired thread that still has an open suspension', async () => {
+			mockCache([
+				sessionGenerationKey('agent-1:thread-1'),
+				{ generation: 0, lastActivityAt: Date.now() - 31 * 60_000 },
+			]);
+			const { bot, handlers } = makeBot();
+			const thread = makeThread('thread-1');
+			const agentExecutor = {
+				...makeAgentExecutor([finishChunk]),
+				findOpenSuspension: vi.fn().mockResolvedValue({ suspendPayload: {} }),
+			};
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+			);
+
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+
+			// Checked against the ORIGINAL (unrotated) thread id — had idle-timeout
+			// rotated first, this exact-match lookup would have missed the open
+			// suspension and silently started a second run instead of parking here.
+			expect(agentExecutor.findOpenSuspension).toHaveBeenCalledWith({
+				agentId: 'agent-1',
+				threadId: 'agent-1:thread-1',
+			});
+			expect(thread.post).toHaveBeenCalledWith(expect.stringContaining('still waiting'));
+			expect(agentExecutor.executeForChatPublished).not.toHaveBeenCalled();
+		});
+
+		it('looks up a bound task session by the base thread id, not a rotated one', async () => {
+			mockCache([
+				sessionGenerationKey('agent-1:thread-1'),
+				{ generation: 2, lastActivityAt: Date.now() },
+			]);
+			const { bot, handlers } = makeBot();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(30),
+				messageContextStore,
+			);
+
+			await handlers.mention!(makeThread('thread-1'), {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			// The binding (if any) was written by an outbound send keyed on the
+			// base id, which has no notion of session rotation — so the lookup
+			// must use that same base id, not whatever generation (#2) is active.
+			expect(messageContextStore.resolveSession).toHaveBeenCalledWith('agent-1:thread-1');
+		});
+	});
+
+	describe('resumeInAgentThread', () => {
+		function makeResumeBridge(integration: AgentIntegrationConfig) {
+			const { bot } = makeBot();
+			bot.thread.mockReturnValue(makeThread('1001'));
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			const bridge = new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integration,
+			);
+			return { bot, bridge };
+		}
+
+		it('strips a rotation suffix before reconstructing the platform thread id', async () => {
+			const { bot, bridge } = makeResumeBridge({
+				type: 'test-formatted-buffered',
+				credentialId: 'cred-1',
+			} as unknown as AgentIntegrationConfig);
+
+			await bridge
+				.resumeInAgentThread('agent-1:chat:bot1-1001#2', 'run-1', 'tool-1', {})
+				.catch(() => {});
+
+			expect(bot.thread).toHaveBeenCalledWith('1001');
+		});
+
+		it('reconstructs an unrotated thread id unchanged', async () => {
+			const { bot, bridge } = makeResumeBridge({
+				type: 'test-formatted-buffered',
+				credentialId: 'cred-1',
+			} as unknown as AgentIntegrationConfig);
+
+			await bridge
+				.resumeInAgentThread('agent-1:chat:bot1-1001', 'run-1', 'tool-1', {})
+				.catch(() => {});
+
+			expect(bot.thread).toHaveBeenCalledWith('1001');
+		});
+
+		it('strips a rotation suffix even for platforms with no formatThreadId override', async () => {
+			const { bot, bridge } = makeResumeBridge(streamingIntegration);
+
+			await bridge.resumeInAgentThread('agent-1:thread-1#3', 'run-1', 'tool-1', {}).catch(() => {});
+
+			expect(bot.thread).toHaveBeenCalledWith('thread-1');
 		});
 	});
 

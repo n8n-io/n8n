@@ -6,8 +6,9 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 	type AgentIntegrationConfig,
 } from '@n8n/api-types';
-import { LockService } from '@n8n/backend-common';
+import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
+import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
 import type { Attachment, Author, Chat, Message, Thread } from 'chat';
 import type { Logger } from 'n8n-workflow';
@@ -47,6 +48,20 @@ import { N8NCheckpointStorage } from './n8n-checkpoint-storage';
 import { downloadDiscordAttachment } from './platforms/discord-operations';
 
 import { type InternalThread, toInternalThreadId } from './types';
+
+const RESET_SESSION_COMMAND = '/new';
+
+/** Cache key prefix for the per-conversation session-generation pointer, shared across mains. */
+const SESSION_GENERATION_KEY_PREFIX = 'agents:chat-session-generation';
+const SESSION_GENERATION_TTL_MS = 90 * Time.days.toMilliseconds;
+/** Matches the rotation suffix appended to a rotated thread id, e.g. "#3". */
+const SESSION_GENERATION_SUFFIX_RE = /#\d+$/;
+
+interface SessionGenerationState {
+	/** Current rotation counter for a base thread id; 0 means the original, unsuffixed thread. */
+	generation: number;
+	lastActivityAt: number;
+}
 
 /**
  * Reply sent when a message arrives while the run is parked. Leads with the
@@ -105,10 +120,12 @@ interface OpenSuspension {
 /**
  * Bridges Chat SDK events to the agent execution pipeline.
  *
- * Registers three handlers on a Chat SDK `Bot` instance:
+ * Registers four handlers on a Chat SDK `Bot` instance:
  * 1. `onNewMention` — new @mentions and DMs → subscribe + execute
  * 2. `onSubscribedMessage` — follow-up messages in subscribed threads
  * 3. `onAction` — button clicks for HITL resume flow
+ * 4. `onSlashCommand` — /new session reset for adapters that never deliver a
+ *    leading "/" as a plain message (e.g. Telegram)
  *
  * Stream consumption has two strategies, selected per integration via the
  * `disableStreaming` flag on `AgentChatIntegration`:
@@ -323,6 +340,24 @@ export class AgentChatBridge {
 				await this.postErrorToThread(event.thread, error);
 			}
 		});
+
+		// Some adapters (e.g. Telegram) parse a leading "/" as a native slash
+		// command and never deliver it to onNewMention/onSubscribedMessage —
+		// intercept it here so /new still resets the session on those platforms.
+		// Unlike the plain-text path, this resolves the thread straight from the
+		// event's channel id, bypassing anchorInboundThread's re-anchoring — a
+		// no-op today since Telegram (the only adapter that fires this) has no
+		// messageThreadId override, but worth revisiting for a future adapter
+		// that has both.
+		this.chat.onSlashCommand(RESET_SESSION_COMMAND, async (event) => {
+			const thread = this.chat.thread(event.channel.id);
+			try {
+				if (!this.canUserAccess(event.user)) return;
+				await this.resetSession(thread);
+			} catch (error) {
+				await this.postErrorToThread(thread, error);
+			}
+		});
 	}
 
 	private canUserAccess(author: Author): boolean {
@@ -359,9 +394,15 @@ export class AgentChatBridge {
 		resumeData: unknown,
 	): Promise<void> {
 		const prefix = `${this.agentId}:`;
-		const platformThreadId = agentThreadId.startsWith(prefix)
+		const withoutAgentPrefix = agentThreadId.startsWith(prefix)
 			? agentThreadId.slice(prefix.length)
 			: agentThreadId;
+		// A rotated session appends "#<generation>" to the agent thread id (see
+		// resolveActiveSessionId); that bookkeeping is bridge-only and was never
+		// part of the platform's own thread id, so strip it before reconstructing
+		// the SDK thread — every formatThreadId.toSdk (or its identity fallback)
+		// expects the real platform id only.
+		const platformThreadId = withoutAgentPrefix.replace(SESSION_GENERATION_SUFFIX_RE, '');
 		const sdkThreadId =
 			this.integrationImpl?.formatThreadId?.toSdk(platformThreadId) ?? platformThreadId;
 
@@ -380,6 +421,116 @@ export class AgentChatBridge {
 
 	private toAgentThreadId(platformThreadId: string) {
 		return toInternalThreadId(`${this.agentId}:${platformThreadId}`);
+	}
+
+	/** The agent-prefixed thread id `thread` resolves to, before any session rotation. */
+	private baseThreadId(thread: Thread): string {
+		return this.toAgentThreadId(this.resolvePlatformThreadId(thread)).id;
+	}
+
+	/**
+	 * Resolves the thread to run this message in, applying the channel's
+	 * configured idle-timeout session rotation (`/new` is handled separately —
+	 * see {@link resetSession} — before this is ever called).
+	 */
+	private async resolveActiveThreadId(thread: Thread): Promise<InternalThread> {
+		const idleTimeoutMinutes = this.integration.settings?.sessionIdleTimeoutMinutes ?? null;
+		const { id } = await this.bumpSessionGeneration(
+			this.baseThreadId(thread),
+			false,
+			idleTimeoutMinutes,
+		);
+		return toInternalThreadId(id);
+	}
+
+	/**
+	 * Handles `/new` for adapters that deliver it as plain text rather than a
+	 * slash command (i.e. everything but Telegram — see the `onSlashCommand`
+	 * registration above). Only treated as the reset command alone: a `/new`
+	 * sent together with an attachment falls through to a normal turn instead
+	 * of silently dropping the attachment along with the reset. Returns
+	 * whether it was handled — the caller must not run a turn when it was.
+	 */
+	private async handleResetCommand(
+		thread: Thread,
+		text: string,
+		inboundAttachments: Attachment[],
+	): Promise<boolean> {
+		if (text.toLowerCase() !== RESET_SESSION_COMMAND || inboundAttachments.length > 0) return false;
+		await this.resetSession(thread);
+		return true;
+	}
+
+	/** Rotates to a brand-new session for `thread` and confirms it there. */
+	private async resetSession(thread: Thread): Promise<void> {
+		await this.bumpSessionGeneration(this.baseThreadId(thread), true, null);
+		await thread.post('🔄 Started a new session.');
+	}
+
+	/**
+	 * Resolves the currently active generation for `baseId`, rotating to a new
+	 * one when `forceRotate` is set (an explicit `/new`) or the channel's
+	 * configured idle timeout has elapsed since the last message on it. The
+	 * generation pointer lives in the shared cache (not the
+	 * `AgentExecutionThread` table) so a `/new` reset — which never runs an
+	 * agent turn, and so never creates a thread row — still takes effect on the
+	 * very next unrelated message.
+	 *
+	 * An idle-elapsed thread that still has a run parked on it is never
+	 * rotated: the suspension is keyed on the exact thread id, so rotating
+	 * away would silently orphan it (never resumed) instead of letting the
+	 * user's reply resolve it. `/new` overrides this — abandoning a pending
+	 * suspension is the user's own explicit call there.
+	 */
+	private async bumpSessionGeneration(
+		baseId: string,
+		forceRotate: boolean,
+		idleTimeoutMinutes: number | null,
+	): Promise<{ id: string }> {
+		const cache = Container.get(CacheService);
+		const key = this.sessionGenerationCacheKey(baseId);
+
+		// Fast path, unlocked: nothing to rotate and nothing has ever been
+		// tracked for this thread — the common case for every channel where the
+		// feature is unused. Re-checked under the lock below before any write.
+		const precheck = await cache.get<SessionGenerationState>(key);
+		if (!forceRotate && !precheck && !idleTimeoutMinutes) return { id: baseId };
+
+		// An explicit /new and a same-thread message that just went idle can
+		// race on this read-modify-write; without a lock, whichever write lands
+		// last wins even if it read stale state, silently undoing the other.
+		return await Container.get(LockService).withLease(LockNamespace.KNOWN_LOCKS, key, async () => {
+			const state = await cache.get<SessionGenerationState>(key);
+			const now = Date.now();
+			const currentGeneration = state?.generation ?? 0;
+			const idleExpired =
+				!forceRotate &&
+				idleTimeoutMinutes !== null &&
+				state !== undefined &&
+				now - state.lastActivityAt > idleTimeoutMinutes * 60_000;
+			const currentId = currentGeneration === 0 ? baseId : `${baseId}#${currentGeneration}`;
+			const rotate = forceRotate || (idleExpired && !(await this.hasOpenSuspension(currentId)));
+			const generation = rotate ? currentGeneration + 1 : currentGeneration;
+
+			// Only persist when it matters: a rotation just happened (so the next
+			// call sees it), or the idle timeout is actively configured (so
+			// lastActivityAt keeps sliding forward for the *next* expiry check).
+			// Otherwise this thread has never been touched by either mechanism, or
+			// the timeout was turned off after an earlier reset — nothing to track.
+			if (rotate || idleTimeoutMinutes !== null) {
+				await cache.set(key, { generation, lastActivityAt: now }, SESSION_GENERATION_TTL_MS);
+			}
+			return { id: generation === 0 ? baseId : `${baseId}#${generation}` };
+		});
+	}
+
+	private async hasOpenSuspension(threadId: string): Promise<boolean> {
+		const open = await this.agentService.findOpenSuspension?.({ agentId: this.agentId, threadId });
+		return open !== null && open !== undefined;
+	}
+
+	private sessionGenerationCacheKey(baseId: string): string {
+		return `${SESSION_GENERATION_KEY_PREFIX}:${baseId}`;
 	}
 
 	/**
@@ -413,15 +564,19 @@ export class AgentChatBridge {
 		// `?? []` guards rehydrated/serialized messages that predate the field.
 		const inboundAttachments = message.attachments ?? [];
 		if (!text && inboundAttachments.length === 0) return;
+		if (await this.handleResetCommand(thread, text, inboundAttachments)) return;
 
-		const platformThreadId = this.resolvePlatformThreadId(thread);
-		const threadId = this.toAgentThreadId(platformThreadId);
+		const threadId = await this.resolveActiveThreadId(thread);
 		const resourceId = integrationMemoryResourceId(this.integration.type, message.author.userId);
 		// If this thread was established by an outbound task send, continue that
 		// task's session instead of starting a fresh one. Attachments are stored
 		// on the execution thread so file-store hydration (scoped to
 		// persistence.threadId) can load them. The Slack reply thread is unchanged.
-		const sessionOrigin = await this.messageContextBridge.resolveSession(threadId.id);
+		// The binding is always keyed by the base (pre-rotation) thread id — it's
+		// written by an outbound send that has no notion of session rotation —
+		// so it has to be looked up the same way, not by whatever generation is
+		// currently active.
+		const sessionOrigin = await this.messageContextBridge.resolveSession(this.baseThreadId(thread));
 		const memoryThreadId = sessionOrigin ? toInternalThreadId(sessionOrigin.threadId) : threadId;
 		const memoryResourceId = sessionOrigin?.resourceId ?? resourceId;
 		// The run parks against the session it executes in, which for a bound reply
