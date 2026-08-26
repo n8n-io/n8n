@@ -1,9 +1,12 @@
 name: 'CI: Validate OWNERS'
 
-# Validates .github/owners/OWNERS: line syntax, duplicate patterns, and patterns
-# that no longer point at an existing file or directory. Runs on OWNERS
-# changes and on changes to the owned paths, so a move or delete that
-# orphans an OWNERS entry fails here.
+# Validates .github/owners/OWNERS strictly: line syntax (pattern, team(s),
+# then options), duplicate patterns, and patterns that no longer point at an
+# existing file or directory. Runs on OWNERS changes and on changes to the
+# owned paths, so a move or delete that orphans an OWNERS entry fails here.
+#
+# Team names are not checked here: that needs an org read token, which fork
+# PRs do not have. A separate workflow covers it (see DEVP-891).
 
 on:
   pull_request:

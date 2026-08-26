@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 /**
@@ -65,12 +65,17 @@ export function parseOwnersContent(content) {
 		/** @type { string[] } */
 		const teams = [];
 		let required = false;
+		let sawOption = false;
 
 		for (const token of tokens) {
 			if (TEAM_TOKEN.test(token)) {
+				if (sawOption) {
+					throw new Error(`OWNERS line ${lineNumber}: team "${token}" must come before options`);
+				}
 				teams.push(token);
 			} else if (token === "required") {
 				required = true;
+				sawOption = true;
 			} else if (OPTION_TOKENS.has(token)) {
 				throw new Error(`OWNERS line ${lineNumber}: option "${token}" is not handled`);
 			} else {
@@ -100,15 +105,27 @@ export function parseOwnersFile(path = OWNERS_FILE) {
 }
 
 /**
+ * @param { string } pattern
+ * @returns { 'file' | 'directory' | null }
+ * */
+function getPathKind(pattern) {
+	const stats = statSync(join(REPO_ROOT, pattern), { throwIfNoEntry: false });
+	if (!stats) return null;
+	return stats.isDirectory() ? "directory" : "file";
+}
+
+/**
  * Validate parsed OWNERS entries beyond the line grammar:
  *   - no duplicate patterns
- *   - every pattern (except `*`) points at an existing file or directory
+ *   - directory patterns (trailing `/`) point at existing directories,
+ *     all other patterns (except `*`) at existing files
+ *   - teams on a line sorted alphabetically
  *
  * @param { OwnersEntry[] } entries
- * @param { (pattern: string) => boolean } [pathExists]
+ * @param { (pattern: string) => 'file' | 'directory' | null } [pathKind]
  * @returns { string[] } validation errors, empty when the file is valid
  * */
-export function validateOwners(entries, pathExists = (pattern) => existsSync(join(REPO_ROOT, pattern))) {
+export function validateOwners(entries, pathKind = getPathKind) {
 	const errors = [];
 	/** @type { Map<string, number> } */
 	const seenPatterns = new Map();
@@ -121,8 +138,24 @@ export function validateOwners(entries, pathExists = (pattern) => existsSync(joi
 			seenPatterns.set(entry.pattern, entry.line);
 		}
 
-		if (entry.pattern !== "*" && !pathExists(entry.pattern)) {
-			errors.push(`pattern "${entry.pattern}" (line ${entry.line}) does not exist in the repository`);
+		if (entry.pattern !== "*") {
+			const kind = pathKind(entry.pattern);
+			const expectedKind = entry.pattern.endsWith("/") ? "directory" : "file";
+
+			if (kind === null) {
+				errors.push(`pattern "${entry.pattern}" (line ${entry.line}) does not exist in the repository`);
+			} else if (kind !== expectedKind) {
+				errors.push(
+					kind === "directory"
+						? `pattern "${entry.pattern}" (line ${entry.line}) is a directory; add a trailing "/"`
+						: `pattern "${entry.pattern}" (line ${entry.line}) is a file; remove the trailing "/"`,
+				);
+			}
+		}
+
+		const sortedTeams = entry.teams.toSorted();
+		if (entry.teams.some((team, index) => team !== sortedTeams[index])) {
+			errors.push(`teams of "${entry.pattern}" (line ${entry.line}) must be sorted alphabetically`);
 		}
 	}
 

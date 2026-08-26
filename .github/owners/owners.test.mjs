@@ -71,6 +71,13 @@ describe('parseOwnersContent', () => {
 		assert.throws(() => parseOwnersContent('pkg/ required'), /OWNERS line 1: no team/);
 	});
 
+	it('throws when a team comes after an option', () => {
+		assert.throws(
+			() => parseOwnersContent('pkg/ @n8n-io/keepers required @n8n-io/others'),
+			/OWNERS line 1: team "@n8n-io\/others" must come before options/,
+		);
+	});
+
 	it('returns an empty array for comment-only content', () => {
 		assert.deepEqual(parseOwnersContent('# nothing here\n\n'), []);
 	});
@@ -97,13 +104,16 @@ describe('parseOwnersFile', () => {
 });
 
 describe('validateOwners', () => {
+	// Path kind stub matching the pattern shape, for tests about other rules.
+	const kindFromShape = (pattern) => (pattern.endsWith('/') ? 'directory' : 'file');
+
 	it('reports duplicate patterns with both line numbers', () => {
 		const entries = [
 			entry({ pattern: 'pkg/', line: 3 }),
 			entry({ pattern: 'pkg/', line: 7 }),
 		];
 
-		const errors = validateOwners(entries, () => true);
+		const errors = validateOwners(entries, kindFromShape);
 
 		assert.equal(errors.length, 1);
 		assert.match(errors[0], /duplicate pattern "pkg\/" \(lines 3 and 7\)/);
@@ -112,18 +122,48 @@ describe('validateOwners', () => {
 	it('reports patterns that do not exist, except the catch-all', () => {
 		const entries = [entry({ pattern: '*' }), entry({ pattern: 'gone/', line: 2 })];
 
-		const errors = validateOwners(entries, () => false);
+		const errors = validateOwners(entries, () => null);
 
 		assert.equal(errors.length, 1);
 		assert.match(errors[0], /pattern "gone\/" \(line 2\) does not exist/);
 	});
 
-	it('returns no errors for a valid set of entries', () => {
-		const entries = [entry({ pattern: '*' }), entry({ pattern: 'pkg/', line: 2 })];
+	it('reports a directory pattern that points at a file', () => {
+		const errors = validateOwners([entry({ pattern: 'pkg/', line: 1 })], () => 'file');
 
-		assert.deepEqual(validateOwners(entries, () => true), []);
+		assert.equal(errors.length, 1);
+		assert.match(errors[0], /pattern "pkg\/" \(line 1\) is a file; remove the trailing "\/"/);
+	});
+
+	it('reports a file pattern that points at a directory', () => {
+		const errors = validateOwners([entry({ pattern: 'pkg', line: 1 })], () => 'directory');
+
+		assert.equal(errors.length, 1);
+		assert.match(errors[0], /pattern "pkg" \(line 1\) is a directory; add a trailing "\/"/);
+	});
+
+	it('reports teams that are not sorted alphabetically', () => {
+		const entries = [
+			entry({ pattern: 'pkg/', line: 1, teams: ['@n8n-io/zulu', '@n8n-io/alfa'] }),
+		];
+
+		const errors = validateOwners(entries, kindFromShape);
+
+		assert.equal(errors.length, 1);
+		assert.match(errors[0], /teams of "pkg\/" \(line 1\) must be sorted alphabetically/);
+	});
+
+	it('returns no errors for a valid set of entries', () => {
+		const entries = [
+			entry({ pattern: '*' }),
+			entry({ pattern: 'pkg/', line: 2, teams: ['@n8n-io/alfa', '@n8n-io/zulu'] }),
+			entry({ pattern: 'pkg/a.ts', line: 3 }),
+		];
+
+		assert.deepEqual(validateOwners(entries, kindFromShape), []);
 	});
 });
+
 
 describe('teamHandleToSlug', () => {
 	it('strips the org prefix from an OWNERS team handle', () => {

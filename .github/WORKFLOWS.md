@@ -567,15 +567,25 @@ format:
 <pattern> <@org/team>... [required]
 ```
 
-Rules are last-match-wins, so specific rules must come after general rules.
 Patterns are a catch-all (`*`), a directory prefix (`packages/x/`), or an
-exact path.
+exact file path. Matching is last-match-wins, so specific rules must come
+after general rules.
+
+The format is strict, enforced by `node .github/owners/owners.mjs --check`:
+
+- Tokens on a line come in a fixed order: pattern, team(s), then options such
+  as `required`. Multiple teams are sorted alphabetically.
+- Directory patterns end with `/` and must be existing directories; all other
+  patterns must be existing files. Duplicate patterns are rejected.
+
+Team existence is not checked by `--check` (it needs an org read token, which
+fork PRs do not have); a separate workflow covers it (DEVP-891).
 
 The file drives four workflows:
 
 | Workflow                          | Purpose                                                                  |
 |-----------------------------------|--------------------------------------------------------------------------|
-| `ci-owners-validation.yml`        | Validates OWNERS (syntax, duplicates, dead paths) via `owners.mjs --check` |
+| `ci-owners-validation.yml`        | Validates OWNERS (syntax, dead paths) via `owners.mjs --check` |
 | `ci-owners-review-recommendations.yml` | Advisory PR comment: reviewer teams, line stats, required reviews    |
 | `ci-owners-assign-reviewers.yml`  | Opt-in reviewer auto-assignment (label-triggered)                        |
 | `ci-owners-required-reviews.yml`  | Enforces `required` entries via the "Required Reviews" commit status     |
