@@ -498,7 +498,7 @@ describe('arrivals', () => {
 		connection.onArrival(handler);
 
 		client.emit('exists', arrival);
-		await vi.waitFor(() => expect(handler).toHaveBeenCalledWith({ count: 2, prevCount: 1 }));
+		await vi.waitFor(() => expect(handler).toHaveBeenCalledWith({ count: 1 }));
 	});
 
 	it('ignores a report that only counts expunged messages', async () => {
@@ -522,7 +522,7 @@ describe('arrivals', () => {
 		});
 
 		client.emit('exists', { path: 'INBOX', count: 1, prevCount: 0 });
-		client.emit('exists', { path: 'INBOX', count: 2, prevCount: 1 });
+		client.emit('exists', { path: 'INBOX', count: 3, prevCount: 1 });
 		await vi.waitFor(() => expect(order).toHaveLength(4));
 
 		expect(order).toEqual(['1:start', '1:end', '2:start', '2:end']);

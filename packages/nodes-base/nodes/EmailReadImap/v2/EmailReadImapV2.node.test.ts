@@ -28,7 +28,7 @@ const fetched = vi.mocked(getNewEmails);
 /** Stands in for a connection; the real one's own behaviour is covered in @n8n/imap. */
 const createConnection = () => {
 	const handlers: {
-		arrival?: (arrival: { count: number; prevCount: number }) => Promise<void>;
+		arrival?: (arrival: { count: number | 'unknown' }) => Promise<void>;
 		error?: (error: Error) => void;
 		close?: (reason: 'ended' | 'error' | 'dropped') => void;
 		reconnect?: () => void;
@@ -70,8 +70,8 @@ const createConnection = () => {
 };
 
 /** Delivers an arrival the way the connection would, and waits for the handler to finish. */
-const arrive = async (connection: MockConnection, count = 2, prevCount = 1) =>
-	await connection.handlers.arrival?.({ count, prevCount });
+const arrive = async (connection: MockConnection, count: number | 'unknown' = 1) =>
+	await connection.handlers.arrival?.({ count });
 
 type MockConnection = ReturnType<typeof createConnection>;
 
@@ -163,7 +163,7 @@ describe('EmailReadImapV2', () => {
 			connectMock.mockResolvedValueOnce(connection);
 			await startTrigger();
 
-			void arrive(connection, 2, 1);
+			void arrive(connection, 1);
 
 			await vi.waitFor(() => expect(fetched).toHaveBeenCalled());
 		});
@@ -176,8 +176,8 @@ describe('EmailReadImapV2', () => {
 			fetched.mockRejectedValueOnce(new Error('fetch blew up'));
 
 			await startTrigger({});
-			await arrive(connection, 2, 1).catch(() => {});
-			await arrive(connection, 3, 2);
+			await arrive(connection, 1).catch(() => {});
+			await arrive(connection, 1);
 
 			expect(fetched).toHaveBeenCalledTimes(2);
 		});
@@ -198,7 +198,7 @@ describe('EmailReadImapV2', () => {
 			await startTrigger({ trackLastMessageId: true });
 
 			for (let i = 0; i < 11; i++) {
-				void arrive(connection, 2, 1);
+				void arrive(connection, 1);
 				await vi.waitFor(() => expect(criteriaPerFetch).toHaveLength(i + 1));
 			}
 

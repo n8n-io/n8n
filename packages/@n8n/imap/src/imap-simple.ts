@@ -32,9 +32,10 @@ const RESTORE_BACKOFF = 1000;
  */
 export type CloseReason = 'ended' | 'error' | 'dropped';
 
+/** New mail worth looking at. The mailbox itself is the source of truth; this is the doorbell. */
 export interface Arrival {
-	count: number;
-	prevCount: number;
+	/** New messages the server reported, or 'unknown' when a reconnect asks for a rescan. */
+	count: number | 'unknown';
 }
 
 /** The driver surface a connection runs on. The real client satisfies it; tests supply their own. */
@@ -192,7 +193,9 @@ export class ImapSimple {
 	}
 
 	catchUp(): void {
-		this.enqueue({ count: 0, prevCount: 0 });
+		// What landed while the connection was down never reaches it as an event, so the count
+		// is honestly unknowable; the caller finds out by looking.
+		this.enqueue({ count: 'unknown' });
 	}
 
 	onFlags(handler: (event: FlagsEvent) => void): this {
@@ -278,7 +281,7 @@ export class ImapSimple {
 
 		// An `exists` that only reports expunged messages is not an arrival.
 		client.on('exists', ({ count, prevCount }) => {
-			if (count > prevCount) this.enqueue({ count, prevCount });
+			if (count > prevCount) this.enqueue({ count: count - prevCount });
 		});
 		client.on('flags', (data) => this.report('flags', (handler) => handler(data)));
 	}
