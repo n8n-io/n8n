@@ -908,6 +908,10 @@ export interface FreshLayoutBox {
 /**
  * Lay out a workflow JSON from scratch, ignoring any positions it carries.
  *
+ * Node names must be unique, like everywhere else in n8n — connections address
+ * nodes by name, so a duplicate-named graph is ambiguous before layout ever
+ * runs (the builder dedupes names at compile time; the import path renames).
+ *
  * Runs the same Dagre layout as `toJSON({ tidyUp: true })`, but unconditionally:
  * explicit positions are stripped first, so the result is one coherent frame even
  * when the JSON mixes authored and engine-generated positions. Returns a box per
