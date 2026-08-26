@@ -1,10 +1,20 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { type ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
-import type { EntityManager, NewScheduledJob, ScheduledJob } from '@n8n/db';
+import type {
+	EntityManager,
+	NewScheduledJob,
+	ScheduledJobOwner,
+	ScheduledJobOwnerRef,
+} from '@n8n/db';
 import { DataSource, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { createJobProvisioner, DEFAULT_MATERIALIZER_OPTIONS, materialize } from '@n8n/scheduler';
+import {
+	createJobProvisioner,
+	DEFAULT_MATERIALIZER_OPTIONS,
+	materialize,
+	withOwnerKeys,
+} from '@n8n/scheduler';
 import type {
 	DesiredJob,
 	ExistingJob,
@@ -14,13 +24,13 @@ import type {
 	RunInDeprovisionTransaction,
 	RunInProvisionTransaction,
 	RunInTransaction,
-	ScheduleDefinition,
 } from '@n8n/scheduler';
 import { Tracing } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
 
-import { withOwnerKeys } from './owner-key';
+import { rowSchedule, scheduleColumns } from './schedule-columns';
+import { createScheduledJobOwnerRegistry } from './scheduled-job-owner-registry';
 import { createSchedulerTracer } from './scheduler-tracer';
+import { WorkflowScheduledJobOwner } from './workflow-scheduled-job-owner';
 
 /**
  * Ceiling for a resolved misfire grace: the cap the config value carries, and well
@@ -28,45 +38,80 @@ import { createSchedulerTracer } from './scheduler-tracer';
  */
 const MAX_MISFIRE_GRACE_SECONDS = 30 * Time.days.toSeconds;
 
-/** Identifies one workflow node's jobs, and stamps the rows provisioning inserts. */
-interface ProvisionScope {
-	workflowId: string;
-	nodeId: string;
+/**
+ * One provisioning call: whose jobs to reconcile, and what to stamp on the rows
+ * it inserts.
+ */
+export interface ProvisionRequest {
+	/** The owner (and, when it has parts, the part) these jobs belong to. */
+	owner: ScheduledJobOwner;
+	/** Selects the registered handler that runs each occurrence. */
 	taskType: string;
+	/** Input handed to that handler. */
 	payload: Record<string, unknown>;
+	/** The jobs the owner wants stored, matched to existing rows by name. */
+	desired: DesiredJob[];
 	misfirePolicy: ScheduledJobMisfirePolicy;
+	/**
+	 * How late an occurrence may still be and count as on time. Clamped to the
+	 * scheduler's own floor and ceiling; omit to inherit the instance default.
+	 */
 	misfireGraceSeconds?: number;
 }
 
-/** Identifies jobs for deletion: one node's jobs, or one workflow's jobs of a task type. */
-type DeprovisionScope =
-	| Pick<ProvisionScope, 'workflowId' | 'nodeId'>
-	| Pick<ProvisionScope, 'workflowId' | 'taskType'>;
-
-/** A job row's schedule columns: one `ScheduleDefinition` flattened for storage. */
-type ScheduleColumns = Pick<
-	ScheduledJob,
-	| 'kind'
-	| 'cronExpression'
-	| 'timezone'
-	| 'recurrenceUnit'
-	| 'recurrenceSize'
-	| 'intervalSeconds'
-	| 'fireAt'
->;
+/** What provisioning stamps on the rows it writes, plus the owner it diffs against. */
+type ProvisionScope = Omit<ProvisionRequest, 'desired'>;
 
 /**
- * The write side of the durable scheduler: persists a workflow node's scheduled
- * jobs. The provisioning logic itself lives in the scheduler package (see
+ * Identifies jobs for deletion: one owner member's jobs, every job an owner
+ * holds, or an owner's jobs of one task type.
+ *
+ * Tagged rather than told apart by the shape of `owner`: a full
+ * {@link ScheduledJobOwner} is assignable to a {@link ScheduledJobOwnerRef}, so
+ * a structural test would silently narrow an owner-wide delete to one member.
+ */
+type DeprovisionScope =
+	| { scope: 'member'; owner: ScheduledJobOwner }
+	| { scope: 'owner'; owner: ScheduledJobOwnerRef }
+	| { scope: 'task-type'; owner: ScheduledJobOwnerRef; taskType: string };
+
+/**
+ * The write side of the durable scheduler: persists an owner's scheduled jobs.
+ * The provisioning logic itself lives in the scheduler package (see
  * {@link createJobProvisioner}); this service only binds that package's
  * transaction ports to the `@n8n/db` repositories and maps between the domain
  * `ScheduleDefinition` and the flat `scheduled_job` columns.
  *
+ * ## Owning scheduled jobs
+ *
+ * An owner is plain data on the row: `ownerType` (what kind of thing owns it),
+ * `ownerId` (which one), and an optional `ownerMemberId` (which part of it).
+ * Nothing here interprets those values, so any module can own scheduled jobs.
+ *
+ * In exchange, a module that owns jobs takes on two obligations. Both are
+ * required; neither substitutes for the other.
+ *
+ * 1. **Deprovision synchronously.** Call {@link deprovisionOwnerInTransaction}
+ *    (or a sibling) inside the same transaction that deletes the owner. There is
+ *    no database-level cascade behind these rows: a scheduled job outlives its
+ *    owner unless something deletes it. This is the mechanism that keeps
+ *    schedules from firing for things that no longer exist.
+ * 2. **Register a liveness resolver.** Declare the owner module in
+ *    `createScheduledJobOwnerRegistry` with a resolver that answers "which of
+ *    these owner ids still exist?". The reconciliation sweep uses it to find and
+ *    retire jobs a failed deprovision left behind. Provisioning itself refuses
+ *    an owner type with no resolver, so a new kind of owner cannot ship without
+ *    a cleanup story.
+ *
+ * The scheduler README's "Owning scheduled jobs" section is the long form.
+ *
+ * ## Relationship to the run side
+ *
  * The counterpart to `DurableScheduler`'s run side, deliberately a separate
- * service: authoring a node's jobs must not depend on this instance running the
- * scheduler loops. It also seeds a new job's first window of tasks itself (see
- * {@link seedInitialOccurrences}), so the two meet at the `scheduled_task` table
- * too, not only `scheduled_job`.
+ * service: authoring an owner's jobs must not depend on this instance running
+ * the scheduler loops. It also seeds a new job's first window of tasks itself
+ * (see {@link seedInitialOccurrences}), so the two meet at the `scheduled_task`
+ * table too, not only `scheduled_job`.
  *
  * A `ScheduleDefinition` is a discriminated union (one variant per kind); the
  * flat columns are a persistence detail, so the mapping between the two
@@ -89,12 +134,14 @@ export class DurableJobProvisioner {
 		private readonly jobs: ScheduledJobRepository,
 		private readonly tasks: ScheduledTaskRepository,
 		private readonly globalConfig: GlobalConfig,
+		workflowOwner: WorkflowScheduledJobOwner,
 		tracing: Tracing,
 	) {
 		this.logger = this.logger.scoped('scheduler');
 		this.provisioner = createJobProvisioner<ProvisionScope, DeprovisionScope>({
 			provisionTransaction: (scope) => this.provisionTransaction(scope),
 			deprovisionTransaction: (scope) => this.deprovisionTransaction(scope),
+			owners: createScheduledJobOwnerRegistry(workflowOwner),
 			tracer: createSchedulerTracer(tracing),
 		});
 		this.materializerOptions = {
@@ -105,56 +152,83 @@ export class DurableJobProvisioner {
 	}
 
 	/**
-	 * Provision a node's jobs so the stored set matches `desired`, matched by name;
-	 * see the package's `provision`. `taskType`/`payload` stamp the rows it inserts.
+	 * Reconcile one owner member's stored jobs to `request.desired`, matched by
+	 * name; see the scheduler package's `provision`. A job whose definition is
+	 * unchanged keeps its row, and therefore its id and its queued occurrences.
+	 *
+	 * @throws {UnregisteredOwnerTypeError} when the owner type has no registered
+	 * liveness resolver (see {@link createJobProvisioner}).
+	 * @throws {InvalidOwnerIdError} when the owner id is empty or too long to store.
+	 * @throws {InvalidOwnerMemberIdError} when the owner member id is empty or too long to store.
+	 * @returns what the call inserted, redefined, left unchanged and removed.
 	 */
-	async provision(
-		workflowId: string,
-		nodeId: string,
-		taskType: string,
-		payload: Record<string, unknown>,
-		desired: DesiredJob[],
-		misfirePolicy: ScheduledJobMisfirePolicy,
-		misfireGraceSeconds?: number,
-	): Promise<ProvisionSummary> {
-		return await this.provisioner.provision(
-			{ workflowId, nodeId, taskType, payload, misfirePolicy, misfireGraceSeconds },
-			desired,
-		);
-	}
-
-	/** Delete all of a node's jobs; their queued tasks cascade away. */
-	async deprovision(workflowId: string, nodeId: string): Promise<{ removed: number }> {
-		return await this.provisioner.deprovision({ workflowId, nodeId });
+	async provision({ desired, ...scope }: ProvisionRequest): Promise<ProvisionSummary> {
+		return await this.provisioner.provision(scope, desired);
 	}
 
 	/**
-	 * Delete all of a workflow's jobs of one task type, whichever nodes own them;
+	 * Delete the jobs of one owner member; their queued tasks cascade away.
+	 * Idempotent: a no-op when the member holds none.
+	 *
+	 * Owner modules must call this (or one of its siblings below) inside their own
+	 * delete transaction: nothing in the database removes a job when its owner
+	 * goes away. See the scheduler README's "Owning scheduled jobs".
+	 */
+	async deprovisionOwnerMember(owner: ScheduledJobOwner): Promise<{ removed: number }> {
+		return await this.provisioner.deprovision({ scope: 'member', owner });
+	}
+
+	/**
+	 * Delete every job an owner holds, whichever of its members provisioned them;
 	 * their queued tasks cascade away. For teardown paths that no longer know the
-	 * owning node ids.
+	 * member ids. Idempotent.
 	 */
-	async deprovisionWorkflow(workflowId: string, taskType: string): Promise<{ removed: number }> {
-		return await this.provisioner.deprovision({ workflowId, taskType });
+	async deprovisionOwner(owner: ScheduledJobOwnerRef): Promise<{ removed: number }> {
+		return await this.provisioner.deprovision({ scope: 'owner', owner });
 	}
 
 	/**
-	 * Delete all of a workflow's jobs of one task type within a caller-owned
-	 * transaction; their queued tasks cascade away. Lets a deactivation commit the
-	 * durable-job removal atomically with its own `active = false` write, on the
-	 * main handling the request, instead of routing through the leader. A single
-	 * DELETE, so it skips the provisioner's transaction port.
+	 * Delete an owner's jobs of one task type, whichever of its members own them;
+	 * their queued tasks cascade away. For an owner whose jobs are torn down one
+	 * task type at a time. Idempotent.
 	 */
-	async deprovisionWorkflowInTransaction(
+	async deprovisionOwnerTaskType(
+		owner: ScheduledJobOwnerRef,
+		taskType: string,
+	): Promise<{ removed: number }> {
+		return await this.provisioner.deprovision({ scope: 'task-type', owner, taskType });
+	}
+
+	/**
+	 * Delete every job an owner holds within a caller-owned transaction; their
+	 * queued tasks cascade away. This is the primary teardown mechanism: the
+	 * removal commits atomically with the caller's own delete, so a crash can
+	 * never leave jobs firing for an owner that is already gone. A single DELETE,
+	 * so it skips the provisioner's transaction port.
+	 */
+	async deprovisionOwnerInTransaction(
 		manager: EntityManager,
-		workflowId: string,
+		owner: ScheduledJobOwnerRef,
+	): Promise<void> {
+		await this.jobs.deleteByOwnerRef(manager, owner);
+	}
+
+	/**
+	 * Delete an owner's jobs of one task type within a caller-owned transaction;
+	 * their queued tasks cascade away. The task-type-scoped counterpart to
+	 * {@link deprovisionOwnerInTransaction}, for a caller that owns only part of
+	 * an owner's jobs.
+	 */
+	async deprovisionOwnerTaskTypeInTransaction(
+		manager: EntityManager,
+		owner: ScheduledJobOwnerRef,
 		taskType: string,
 	): Promise<void> {
-		await this.jobs.deleteByWorkflowTaskType(manager, workflowId, taskType);
+		await this.jobs.deleteByOwnerTaskType(manager, owner, taskType);
 	}
 
 	private provisionTransaction({
-		workflowId,
-		nodeId,
+		owner,
 		taskType,
 		payload,
 		misfirePolicy,
@@ -162,11 +236,21 @@ export class DurableJobProvisioner {
 	}: ProvisionScope): RunInProvisionTransaction {
 		const misfireGraceSeconds = this.resolveMisfireGraceSeconds(
 			requestedMisfireGraceSeconds,
-			workflowId,
-			nodeId,
+			owner,
 		);
 		return async (work) =>
 			await this.dataSource.transaction(async (manager) => {
+				// Provisioning is itself evidence the owner is back, so a quarantine the
+				// reconciliation sweep left behind is lifted here instead of waiting for
+				// its next pass. The clock stays the plan's to set: a quarantined row has
+				// none, so the diff below always redefines or removes it.
+				const revived = await this.jobs.liftQuarantineByOwner(manager, owner);
+				if (revived > 0) {
+					this.logger.info('Lifted the quarantine on scheduled jobs while provisioning them', {
+						...owner,
+						jobs: revived,
+					});
+				}
 				// Jobs freshly inserted or redefined this pass; their first window is
 				// seeded before the transaction commits (see `seedInitialOccurrences`).
 				const seededJobIds = new Set<number>();
@@ -174,7 +258,7 @@ export class DurableJobProvisioner {
 				const outdatedGraceJobIds: number[] = [];
 				const result = await work({
 					findExisting: async () => {
-						const rows = await this.jobs.findManyByWorkflowNode(manager, workflowId, nodeId);
+						const rows = await this.jobs.findManyByOwner(manager, owner);
 						for (const row of rows) {
 							const graceChanged = row.misfireGraceSeconds !== misfireGraceSeconds;
 							if (graceChanged) {
@@ -197,8 +281,7 @@ export class DurableJobProvisioner {
 						const rows = desired.map(
 							(job): NewScheduledJob => ({
 								name: job.name,
-								workflowId,
-								nodeId,
+								...owner,
 								taskType,
 								payload,
 								...scheduleColumns(job.schedule),
@@ -244,11 +327,7 @@ export class DurableJobProvisioner {
 			});
 	}
 
-	private resolveMisfireGraceSeconds(
-		requested: unknown,
-		workflowId: string,
-		nodeId: string,
-	): number {
+	private resolveMisfireGraceSeconds(requested: unknown, owner: ScheduledJobOwner): number {
 		const { misfireGraceSeconds, executorIntervalSeconds, materializationWindowSeconds } =
 			this.globalConfig.scheduler;
 
@@ -279,8 +358,7 @@ export class DurableJobProvisioner {
 					? "Raised a node's misfire grace to the scheduler's minimum"
 					: "Lowered a node's misfire grace to the scheduler's maximum",
 				{
-					workflowId,
-					nodeId,
+					...owner,
 					requestedMisfireGraceSeconds: numeric,
 					misfireGraceSeconds: effective,
 				},
@@ -360,82 +438,19 @@ export class DurableJobProvisioner {
 			await this.dataSource.transaction(
 				async (manager) =>
 					await work({
-						deleteAll: async () =>
-							'nodeId' in scope
-								? await this.jobs.deleteByWorkflowNode(manager, scope.workflowId, scope.nodeId)
-								: await this.jobs.deleteByWorkflowTaskType(
-										manager,
-										scope.workflowId,
-										scope.taskType,
-									),
+						deleteAll: async () => await this.deleteScope(manager, scope),
 					}),
 			);
 	}
-}
 
-/** Flatten a {@link ScheduleDefinition} into the row columns it stores; absent fields are null. */
-function scheduleColumns(schedule: ScheduleDefinition): ScheduleColumns {
-	const empty = {
-		cronExpression: null,
-		timezone: null,
-		recurrenceUnit: null,
-		recurrenceSize: null,
-		intervalSeconds: null,
-		fireAt: null,
-	};
-	switch (schedule.kind) {
-		case 'cron':
-			return {
-				...empty,
-				kind: schedule.kind,
-				cronExpression: schedule.cronExpression,
-				timezone: schedule.timezone,
-			};
-		case 'recurring_cron':
-			return {
-				...empty,
-				kind: schedule.kind,
-				cronExpression: schedule.cronExpression,
-				timezone: schedule.timezone,
-				recurrenceUnit: schedule.recurrenceUnit,
-				recurrenceSize: schedule.recurrenceSize,
-			};
-		case 'interval':
-			return { ...empty, kind: schedule.kind, intervalSeconds: schedule.intervalSeconds };
-		case 'one_off':
-			return { ...empty, kind: schedule.kind, fireAt: schedule.fireAt };
-	}
-}
-
-/**
- * Rebuild a {@link ScheduleDefinition} from a stored row, so provisioning can
- * diff it against the desired schedule. Rows are written by {@link scheduleColumns},
- * so a row of a given kind always carries that kind's columns; the coalescing only
- * guards a hand-corrupted row, which then reads as changed and is rewritten.
- *
- * A `kind` outside the known set (a row from a newer main during a mixed-version
- * deploy, a rollback, or a hand-edit) can't be diffed, so it throws rather than
- * returning `undefined` and tripping a downstream `sameSchedule` on a bad value.
- */
-function rowSchedule(row: ScheduledJob): ScheduleDefinition {
-	switch (row.kind) {
-		case 'cron':
-			return { kind: 'cron', cronExpression: row.cronExpression ?? '', timezone: row.timezone };
-		case 'recurring_cron':
-			return {
-				kind: 'recurring_cron',
-				cronExpression: row.cronExpression ?? '',
-				timezone: row.timezone,
-				recurrenceUnit: row.recurrenceUnit ?? 'hours',
-				recurrenceSize: row.recurrenceSize ?? 0,
-			};
-		case 'interval':
-			return { kind: 'interval', intervalSeconds: row.intervalSeconds ?? 0 };
-		case 'one_off':
-			return { kind: 'one_off', fireAt: row.fireAt ?? new Date(0) };
-		default: {
-			const exhaustive: never = row.kind;
-			throw new UnexpectedError(`Unexpected scheduled job kind: ${JSON.stringify(exhaustive)}`);
+	private async deleteScope(manager: EntityManager, target: DeprovisionScope): Promise<number> {
+		switch (target.scope) {
+			case 'member':
+				return await this.jobs.deleteByOwner(manager, target.owner);
+			case 'owner':
+				return await this.jobs.deleteByOwnerRef(manager, target.owner);
+			case 'task-type':
+				return await this.jobs.deleteByOwnerTaskType(manager, target.owner, target.taskType);
 		}
 	}
 }

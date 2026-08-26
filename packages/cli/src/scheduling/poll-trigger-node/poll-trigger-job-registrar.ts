@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto';
 import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
+import { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 import type { PollTriggerTaskPayload } from './poll-trigger-task';
 import { POLL_TRIGGER_TASK_TYPE } from './poll-trigger-task';
 
@@ -30,6 +31,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		globalConfig: GlobalConfig,
 		private readonly jobProvisioner: DurableJobProvisioner,
 		private readonly pollBackoffService: PollBackoffService,
+		private readonly owner: WorkflowScheduledJobOwner,
 	) {
 		super();
 		this.defaultTimezone = globalConfig.generic.timezone;
@@ -54,14 +56,13 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 		const payload: PollTriggerTaskPayload = { workflowId, nodeId: node.id };
 		// Skip, not coalesce: a poll fetches everything new since it last ran, so
 		// replaying missed polls would just repeat the same fetch.
-		const summary = await this.jobProvisioner.provision(
-			workflowId,
-			node.id,
-			POLL_TRIGGER_TASK_TYPE,
-			{ ...payload },
+		const summary = await this.jobProvisioner.provision({
+			owner: this.owner.member(workflowId, node.id),
+			taskType: POLL_TRIGGER_TASK_TYPE,
+			payload: { ...payload },
 			desired,
-			ScheduledJobMisfirePolicy.Skip,
-		);
+			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+		});
 
 		this.logger.debug('Provisioned scheduler jobs for poll trigger node', {
 			workflowId,
@@ -114,7 +115,7 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 
 	/** Delete the node's poll jobs on deactivation. No-op when none exist. */
 	async remove(workflowId: string, nodeId: string): Promise<void> {
-		await this.jobProvisioner.deprovision(workflowId, nodeId);
+		await this.jobProvisioner.deprovisionOwnerMember(this.owner.member(workflowId, nodeId));
 	}
 
 	/**
@@ -123,7 +124,10 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	 * when none exist, so it is safe on the legacy deactivation paths too.
 	 */
 	async removeWorkflow(workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionWorkflow(workflowId, POLL_TRIGGER_TASK_TYPE);
+		await this.jobProvisioner.deprovisionOwnerTaskType(
+			this.owner.ref(workflowId),
+			POLL_TRIGGER_TASK_TYPE,
+		);
 	}
 
 	/**
@@ -131,9 +135,9 @@ export class PollTriggerJobRegistrar extends PollJobManager {
 	 * commits atomically with the `active = false` write. Keyed and idempotent like {@link removeWorkflow}.
 	 */
 	async removeWorkflowInTransaction(manager: EntityManager, workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionWorkflowInTransaction(
+		await this.jobProvisioner.deprovisionOwnerTaskTypeInTransaction(
 			manager,
-			workflowId,
+			this.owner.ref(workflowId),
 			POLL_TRIGGER_TASK_TYPE,
 		);
 	}

@@ -31,6 +31,7 @@ import { License } from '@/license';
 import { MfaService } from '@/mfa/mfa.service';
 import { LogStreamingDestinationService } from '@/modules/log-streaming.ee/log-streaming-destination.service';
 import { Push } from '@/push';
+import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { CacheService } from '@/services/cache/cache.service';
 import { FrontendService } from '@/services/frontend.service';
 import { PasswordUtility } from '@/services/password.utility';
@@ -202,6 +203,7 @@ export class E2EController {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly logStreamingDestinationsService: LogStreamingDestinationService,
 		private readonly scheduledJobRepository: ScheduledJobRepository,
+		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
 		private readonly pollerStateRepository: PollerStateRepository,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
 		private readonly taskBroker: TaskBroker,
@@ -266,7 +268,9 @@ export class E2EController {
 	@Get('/scheduled-jobs/count', { skipAuth: true })
 	async countScheduledJobs(req: Request<{}, {}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.query;
-		const count = await this.scheduledJobRepository.countByWorkflowNode(workflowId, nodeId);
+		const count = await this.scheduledJobRepository.countByOwner(
+			this.workflowScheduledJobOwner.member(workflowId, nodeId),
+		);
 		return { count };
 	}
 
@@ -300,7 +304,10 @@ export class E2EController {
 	@Post('/scheduled-jobs/fire-now', { skipAuth: true })
 	async fireScheduledJobsNow(req: Request<{}, {}, { workflowId: string; nodeId: string }>) {
 		const { workflowId, nodeId } = req.body;
-		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, 0);
+		await this.scheduledJobRepository.backdateNextRunAt(
+			this.workflowScheduledJobOwner.member(workflowId, nodeId),
+			0,
+		);
 		return { success: true };
 	}
 
@@ -313,7 +320,10 @@ export class E2EController {
 		req: Request<{}, {}, { workflowId: string; nodeId: string; secondsAgo: number }>,
 	) {
 		const { workflowId, nodeId, secondsAgo } = req.body;
-		await this.scheduledJobRepository.backdateNextRunAt(workflowId, nodeId, secondsAgo);
+		await this.scheduledJobRepository.backdateNextRunAt(
+			this.workflowScheduledJobOwner.member(workflowId, nodeId),
+			secondsAgo,
+		);
 		return { success: true };
 	}
 

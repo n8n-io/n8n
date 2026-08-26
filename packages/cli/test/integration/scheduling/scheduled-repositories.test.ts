@@ -15,6 +15,8 @@ import {
 import { Container } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
 
+import { selfOwned } from './shared/job-factory';
+
 // SKIP LOCKED and truly parallel writes only apply on Postgres; the local sqlite driver
 // serializes every writer through a single lock. Tests that need real parallelism are
 // gated to Postgres (CI/container runs set DB_TYPE=postgresdb).
@@ -66,11 +68,11 @@ describe('scheduled repositories', () => {
 	async function createJob(
 		overrides: Partial<ScheduledJobEntity> = {},
 	): Promise<ScheduledJobEntity> {
+		const jobName = `job-${Math.random().toString(36).slice(2)}`;
 		return await jobRepository.save(
 			jobRepository.create({
-				name: `job-${Math.random().toString(36).slice(2)}`,
-				workflowId: null,
-				nodeId: null,
+				name: jobName,
+				...selfOwned(jobName),
 				taskType: 'scheduleTrigger',
 				payload: {},
 				kind: 'interval',
@@ -88,8 +90,7 @@ describe('scheduled repositories', () => {
 		name,
 		misfirePolicy: ScheduledJobMisfirePolicy.Coalesce,
 		misfireGraceSeconds: 60,
-		workflowId: null,
-		nodeId: null,
+		...selfOwned(name),
 		taskType: 'scheduleTrigger',
 		payload: {},
 		kind: 'interval',
