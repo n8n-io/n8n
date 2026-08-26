@@ -1,4 +1,5 @@
 import {
+	ActivateWorkflowPublicDto,
 	CreatedWorkflowPublicDto,
 	CreateWorkflowPublicDto,
 	GetWorkflowQueryDto,
@@ -32,6 +33,7 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Deprecated,
 	Get,
 	Param,
 	Post,
@@ -59,6 +61,8 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+
+const DEPRECATED_ALIAS_SINCE = new Date('2026-07-23T00:00:00Z');
 
 const PUBLISH_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. publication blocked by an open workflow review (then `reason` and ' +
@@ -503,6 +507,48 @@ export class WorkflowsPublicController {
 		});
 
 		return this.toWorkflowPublicDto(workflow);
+	}
+
+	@Post('/:workflowId/activate')
+	@Deprecated({ since: DEPRECATED_ALIAS_SINCE })
+	@ApiKeyScope('workflow:activate')
+	@ProjectScope('workflow:publish')
+	@ApiSummary('Publish a workflow')
+	@ApiDescription(
+		'Deprecated: use POST /workflows/{id}/publish instead. Publish a workflow. In n8n v1, ' +
+			'this action was termed activating a workflow.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublishPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409, {
+		dto: WorkflowPublishBlockedErrorPublicDto,
+		description: PUBLISH_CONFLICT_DESCRIPTION,
+	})
+	async activateWorkflow(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body body: ActivateWorkflowPublicDto,
+	): Promise<WorkflowPublishPublicDto> {
+		return await this.publishWorkflow(req, res, workflowId, body);
+	}
+
+	@Post('/:workflowId/deactivate')
+	@Deprecated({ since: DEPRECATED_ALIAS_SINCE })
+	@ApiKeyScope('workflow:deactivate')
+	@ProjectScope('workflow:unpublish')
+	@ApiSummary('Deactivate a workflow')
+	@ApiDescription('Deprecated: use POST /workflows/{id}/unpublish instead. Deactivate a workflow.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublicDto)
+	@ApiErrorResponse(404)
+	async deactivateWorkflow(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('workflowId') workflowId: string,
+	): Promise<WorkflowPublicDto> {
+		return await this.unpublishWorkflow(req, res, workflowId);
 	}
 
 	@Get('/:workflowId/history')

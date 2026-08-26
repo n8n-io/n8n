@@ -1,3 +1,6 @@
+import type { Response } from 'express';
+import assert from 'node:assert';
+
 /**
  * Body the engine API returns for every non-2xx response.
  *
@@ -10,4 +13,10 @@ export interface EngineErrorResponse {
 	error: string;
 	reason?: string;
 	details?: unknown;
+}
+
+/** Sends an error response. Shared, so every route and middleware answers in one shape. */
+export function fail(res: Response, status: number, body: EngineErrorResponse): void {
+	assert(status >= 400, `fail() sends error responses only, but got status ${status}`);
+	res.status(status).json(body);
 }
