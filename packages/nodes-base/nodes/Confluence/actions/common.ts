@@ -206,6 +206,26 @@ export const spaceOptionsCollection: INodeProperties = {
 	],
 };
 
+/** Companion to an endpoint-specific Sort By option; composed into `sort` by `sortQs`. */
+export const sortDirectionOption: INodeProperties = {
+	displayName: 'Sort Direction',
+	name: 'sortDirection',
+	type: 'options',
+	default: 'asc',
+	description: 'The direction to order in. Only applies when Sort By is set.',
+	options: [
+		{ name: 'ASC', value: 'asc' },
+		{ name: 'DESC', value: 'desc' },
+	],
+};
+
+/** Builds the v2 `sort` query fragment from an operation's Sort By / Sort Direction
+ * options. The API takes one enum encoding both field and direction, e.g. `name` / `-name`. */
+export function sortQs(options: IDataObject): IDataObject {
+	if (typeof options.sortBy !== 'string' || options.sortBy === '') return {};
+	return { sort: options.sortDirection === 'desc' ? `-${options.sortBy}` : options.sortBy };
+}
+
 /** Builds the `description-format` query fragment from an operation's Options collection. */
 export function spaceDescriptionFormatQs(options: IDataObject): IDataObject {
 	return typeof options.descriptionFormat === 'string' && options.descriptionFormat !== ''

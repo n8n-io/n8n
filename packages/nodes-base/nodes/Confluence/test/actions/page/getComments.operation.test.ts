@@ -92,11 +92,11 @@ describe('Confluence page:getComments operation', () => {
 		);
 	});
 
-	it('passes the sort option through', async () => {
+	it('composes the sort option from Sort By and Sort Direction', async () => {
 		apiRequest.mockResolvedValueOnce({ results: [] });
 		const ctx = createContext({
 			page: { mode: 'id', value: '123' },
-			options: { sort: '-created-date' },
+			options: { sortBy: 'created-date', sortDirection: 'desc' },
 		});
 
 		await execute.call(ctx, 0);
@@ -216,7 +216,7 @@ describe('Confluence page:getComments operation', () => {
 			apiRequest.mockResolvedValueOnce({ results: comments });
 			const ctx = createContext({
 				page: { mode: 'id', value: '123' },
-				options: { bodyFormat: 'atlas_doc_format' },
+				bodyFormat: 'atlas_doc_format',
 			});
 
 			const result = await execute.call(ctx, 0);
@@ -238,7 +238,7 @@ describe('Confluence page:getComments operation', () => {
 			});
 			const ctx = createContext({
 				page: { mode: 'id', value: '123' },
-				options: { bodyFormat: 'plainText' },
+				bodyFormat: 'plainText',
 			});
 
 			const result = (await execute.call(ctx, 0)) as IDataObject[];

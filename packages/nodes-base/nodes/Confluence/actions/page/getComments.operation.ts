@@ -12,6 +12,8 @@ import {
 	parsePositiveInt,
 	resolvePageId,
 	shapeBody,
+	sortDirectionOption,
+	sortQs,
 } from '../common';
 import type { ConfluenceOperation } from '../router';
 
@@ -23,6 +25,10 @@ const properties: INodeProperties[] = [
 	},
 	...returnAllOrLimit,
 	{
+		...bodyFormatOption,
+		description: 'The representation to return the comment bodies in',
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
@@ -30,34 +36,17 @@ const properties: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				...bodyFormatOption,
-				description: 'The representation to return the comment bodies in',
-			},
-			{
-				displayName: 'Sort',
-				name: 'sort',
+				displayName: 'Sort By',
+				name: 'sortBy',
 				type: 'options',
-				options: [
-					{
-						name: 'Created Date (Newest First)',
-						value: '-created-date',
-					},
-					{
-						name: 'Created Date (Oldest First)',
-						value: 'created-date',
-					},
-					{
-						name: 'Modified Date (Newest First)',
-						value: '-modified-date',
-					},
-					{
-						name: 'Modified Date (Oldest First)',
-						value: 'modified-date',
-					},
-				],
 				default: 'created-date',
-				description: 'The order the comments are returned in',
+				description: 'The field to order the comments by',
+				options: [
+					{ name: 'Created Date', value: 'created-date' },
+					{ name: 'Modified Date', value: 'modified-date' },
+				],
 			},
+			sortDirectionOption,
 		],
 	},
 ];
@@ -76,7 +65,7 @@ export const execute: ConfluenceOperation = async function (
 	itemIndex: number,
 ) {
 	const options = this.getNodeParameter('options', itemIndex, {});
-	const rawBodyFormat = options.bodyFormat;
+	const rawBodyFormat = this.getNodeParameter('bodyFormat', itemIndex, 'storage');
 	const bodyFormat: ConfluenceBodyFormat =
 		rawBodyFormat === 'atlas_doc_format' || rawBodyFormat === 'plainText'
 			? rawBodyFormat
@@ -96,8 +85,7 @@ export const execute: ConfluenceOperation = async function (
 
 	const pageId = await resolvePageId.call(this, itemIndex);
 
-	const qs: IDataObject = { 'body-format': requestedFormat };
-	if (typeof options.sort === 'string' && options.sort !== '') qs.sort = options.sort;
+	const qs: IDataObject = { 'body-format': requestedFormat, ...sortQs(options) };
 
 	const comments = await fetchPaginatedResults.call(
 		this,
