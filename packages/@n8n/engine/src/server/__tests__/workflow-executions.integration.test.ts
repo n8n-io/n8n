@@ -183,6 +183,7 @@ describe('POST /api/workflow-executions (integration)', () => {
 		// coherent, but the engine does not run it yet
 		const response = await request(url)
 			.post('/api/workflow-executions')
+			.set(authHeader())
 			.send({
 				workflowId: 'wf-1',
 				graph: {
