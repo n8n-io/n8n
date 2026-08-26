@@ -26,6 +26,11 @@ function makeCredentialService(creds: CredentialListItem[]): InstanceAiCredentia
 	credentialService.list.mockImplementation(async (options) =>
 		options?.type ? creds.filter((c) => c.type === options.type) : creds,
 	);
+	credentialService.get.mockImplementation(async (id: string) => {
+		const found = creds.find((c) => c.id === id);
+		if (!found) throw new Error(`Credential ${id} not found`);
+		return { id: found.id, name: found.name, type: found.type };
+	});
 	return credentialService;
 }
 

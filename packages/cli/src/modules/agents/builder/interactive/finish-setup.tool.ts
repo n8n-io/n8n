@@ -17,13 +17,25 @@ import { z } from 'zod';
 import type { BuilderTrackFn } from '../builder-config-telemetry';
 import { BUILDER_TOOLS } from '../builder-tool-names';
 
-async function listExistingCredentials(
-	credentialService: InstanceAiCredentialService,
-	projectId: string,
+/** Filter an already-fetched credential list down to one type, in the shape setup cards need. */
+function credentialsOfType(
+	all: Array<{ id: string; name: string; type: string }>,
 	credentialType: string,
-): Promise<Array<{ id: string; name: string }>> {
-	const listed = await credentialService.list({ type: credentialType, projectId });
-	return listed.map((c) => ({ id: c.id, name: c.name }));
+): Array<{ id: string; name: string }> {
+	return all.filter((c) => c.type === credentialType).map((c) => ({ id: c.id, name: c.name }));
+}
+
+/** Resolve a credential's display name by id via `get`, falling back to the id if it was deleted between suspend and resume. */
+async function credentialNameById(
+	credentialService: InstanceAiCredentialService,
+	credentialId: string,
+): Promise<string> {
+	try {
+		const credential = await credentialService.get(credentialId);
+		return credential.name;
+	} catch {
+		return credentialId;
+	}
 }
 
 export interface FinishSetupToolDeps {
@@ -216,15 +228,12 @@ async function computeInitialPlan(
 
 	if (credentialRequests.length) {
 		const integrationCredentialIds = (await deps.listIntegrationCredentialIds?.()) ?? [];
+		const all = await deps.credentialService.list({ projectId: deps.projectId });
 		const credentials: Record<string, z.infer<typeof credentialOutcomeSchema>> = {};
 
 		for (const slot of credentialRequests) {
 			const key = slot.credentialSlot ?? slot.credentialType;
-			const existingCredentials = await listExistingCredentials(
-				deps.credentialService,
-				deps.projectId,
-				slot.credentialType,
-			);
+			const existingCredentials = credentialsOfType(all, slot.credentialType);
 			const channelMatch = existingCredentials.find((credential) =>
 				integrationCredentialIds.includes(credential.id),
 			);
@@ -295,14 +304,7 @@ async function mergeResumeIntoCollected(
 		credentials[key] = credentialId
 			? {
 					id: credentialId,
-					name:
-						(
-							await listExistingCredentials(
-								deps.credentialService,
-								deps.projectId,
-								slot.credentialType,
-							)
-						).find((c) => c.id === credentialId)?.name ?? credentialId,
+					name: await credentialNameById(deps.credentialService, credentialId),
 				}
 			: 'skipped';
 	}
@@ -356,6 +358,7 @@ async function suspendForPhase(params: {
 		});
 	}
 
+	const all = await deps.credentialService.list({ projectId: deps.projectId });
 	const seenTypes = new Set<string>();
 	const credentialRequests: Array<{
 		credentialType: string;
@@ -371,11 +374,7 @@ async function suspendForPhase(params: {
 		credentialRequests.push({
 			credentialType: slot.credentialType,
 			reason: slot.purpose,
-			existingCredentials: await listExistingCredentials(
-				deps.credentialService,
-				deps.projectId,
-				slot.credentialType,
-			),
+			existingCredentials: credentialsOfType(all, slot.credentialType),
 		});
 	}
 	return await ctx.suspend({
