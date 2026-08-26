@@ -202,3 +202,53 @@ describe('Test Snowflake, executeQuery - connection cleanup', () => {
 		expect(mockDestroy).toHaveBeenCalled();
 	});
 });
+
+describe('Test Snowflake, executeQuery - continueOnFail', () => {
+	it('emits error item and continues when continueOnFail is true', async () => {
+		const queryError = new Error('SQL compilation error: syntax error line 1 at position 0');
+
+		mockExecute.mockImplementation(
+			({
+				sqlText,
+				complete,
+			}: {
+				sqlText: string;
+				complete: (error: Error | null, stmt: undefined, rows: unknown[] | undefined) => void;
+			}) =>
+				sqlText.startsWith('ALTER SESSION')
+					? complete(null, undefined, [])
+					: complete(queryError, undefined, undefined),
+		);
+
+		const executeFns = mock<IExecuteFunctions>({
+			getNode: () => mock<INode>({ typeVersion: 1 }),
+			getInputData: () => [{ json: {} }],
+			continueOnFail: () => true,
+			helpers: {
+				returnJsonArray: (item: unknown) => [item],
+				constructExecutionMetaData: (data: unknown[], meta: unknown) =>
+					data.map((entry) => ({ ...(typeof entry === 'object' && entry !== null ? entry : {}), ...meta })),
+			} as unknown as IExecuteFunctions['helpers'],
+		});
+		executeFns.getNodeParameter.mockImplementation((name, _itemIndex, fallback) => {
+			if (name === 'authentication') return 'credentials';
+			if (name === 'operation') return 'executeQuery';
+			if (name === 'query') return 'INVALID SQL';
+			return fallback;
+		});
+		executeFns.getCredentials.mockResolvedValue(snowflakeCredentials);
+
+		const result = await new Snowflake().execute.call(executeFns);
+
+		expect(result).toEqual([
+			[
+				expect.objectContaining({
+					error: 'SQL compilation error: syntax error line 1 at position 0',
+					itemData: { item: 0 },
+				}),
+			],
+		]);
+		expect(mockDestroy).toHaveBeenCalled();
+	});
+});
+
