@@ -7,9 +7,10 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import { createDataSource, createStores, WorkflowExecution } from '../../database';
-import { StartExecutionService } from '../../execution';
+import { ExecutionQueryService, StartExecutionService } from '../../execution';
 import type { WorkflowGraph } from '../../graph';
 import type { OrchestrationMessage, WorkQueue } from '../../queue';
+import { createEngineRuntime } from '../../runtime';
 import { startEngineServer } from '../../testing/start-engine-server';
 
 const sampleGraph: WorkflowGraph = {
@@ -23,38 +24,41 @@ const authHeader = () => ({
 	authorization: `Bearer ${mintIdentityToken(secret, { cpId: 'cp-1', tenantId: 'tenant-1' })}`,
 });
 
+let container: StartedPostgreSqlContainer;
+let dataSource: DataSource;
+let workQueue: WorkQueue<OrchestrationMessage>;
+let url: string;
+let stop: () => Promise<void>;
+
+// One container for the file: both suites talk to the same schema, and each
+// test gets a fresh server over it.
+beforeAll(async () => {
+	container = await new PostgreSqlContainer(postgresVersions.primary).start();
+	dataSource = createDataSource(container.getConnectionUri());
+	await dataSource.initialize();
+	await dataSource.runMigrations();
+}, 120_000);
+
+beforeEach(async () => {
+	workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
+	const { executionStore, executionViewStore } = createStores(dataSource);
+	({ url, stop } = await startEngineServer({
+		startExecution: new StartExecutionService(new AllowAllAdmittance(), executionStore, workQueue),
+		executionQuery: new ExecutionQueryService(executionViewStore),
+		identityVerifier: new SharedSecretIdentityVerifier(secret),
+	}));
+});
+
+afterEach(async () => {
+	if (stop) await stop();
+});
+
+afterAll(async () => {
+	if (dataSource?.isInitialized) await dataSource.destroy();
+	if (container) await container.stop();
+});
+
 describe('POST /api/workflow-executions (integration)', () => {
-	let container: StartedPostgreSqlContainer;
-	let dataSource: DataSource;
-	let workQueue: WorkQueue<OrchestrationMessage>;
-	let url: string;
-	let stop: () => Promise<void>;
-
-	beforeAll(async () => {
-		container = await new PostgreSqlContainer(postgresVersions.primary).start();
-		dataSource = createDataSource(container.getConnectionUri());
-		await dataSource.initialize();
-		await dataSource.runMigrations();
-	}, 120_000);
-
-	beforeEach(async () => {
-		workQueue = { publish: vi.fn(), start: vi.fn(), stop: vi.fn() };
-		const { executionStore } = createStores(dataSource);
-		({ url, stop } = await startEngineServer(
-			new StartExecutionService(new AllowAllAdmittance(), executionStore, workQueue),
-			new SharedSecretIdentityVerifier(secret),
-		));
-	});
-
-	afterEach(async () => {
-		if (stop) await stop();
-	});
-
-	afterAll(async () => {
-		if (dataSource?.isInitialized) await dataSource.destroy();
-		if (container) await container.stop();
-	});
-
 	it('creates an execution row, publishes execution:enqueued, returns 201', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')
@@ -210,5 +214,125 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(response.status).toBe(501);
 		expect((response.body as { error: string }).error).toBe('unimplemented');
 		expect(workQueue.publish).not.toHaveBeenCalled();
+	});
+});
+
+describe('GET /api/workflow-executions/:id (integration)', () => {
+	async function createExecution(): Promise<string> {
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send({
+				workflowId: 'wf-1',
+				graph: sampleGraph,
+				triggerOutputs: [[{ json: { hello: 'world' } }]],
+			});
+		return (response.body as { executionId: string }).executionId;
+	}
+
+	it('returns the persisted status, mode, workflow id, graph and ISO timestamps', async () => {
+		const executionId = await createExecution();
+
+		const response = await request(url)
+			.get(`/api/workflow-executions/${executionId}`)
+			.set(authHeader());
+
+		expect(response.status).toBe(200);
+		expect(response.body).toMatchObject({
+			id: executionId,
+			workflowId: 'wf-1',
+			status: 'queued',
+			mode: 'production',
+			graph: sampleGraph,
+			finishedAt: null,
+		});
+		const body = response.body as { createdAt: string; updatedAt: string };
+		expect(new Date(body.createdAt).toISOString()).toBe(body.createdAt);
+		expect(new Date(body.updatedAt).toISOString()).toBe(body.updatedAt);
+	});
+
+	it('returns 404 not_found for an unknown execution id', async () => {
+		const response = await request(url)
+			.get('/api/workflow-executions/00000000-0000-0000-0000-000000000000')
+			.set(authHeader());
+
+		expect(response.status).toBe(404);
+		expect((response.body as { error: string }).error).toBe('not_found');
+	});
+
+	it('returns 400 invalid_request for a non-uuid id', async () => {
+		const response = await request(url)
+			.get('/api/workflow-executions/not-a-uuid')
+			.set(authHeader());
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
+	});
+
+	it('returns the trigger step with its outputs in the slot shape the POST supplied', async () => {
+		// A trigger-only graph runs to completion with no executor needed, so
+		// this waits on a real orchestration queue to see the trigger step land.
+		let done!: () => void;
+		const finished = new Promise<void>((resolve) => (done = resolve));
+		const runtime = createEngineRuntime({
+			dataSource,
+			admittance: new AllowAllAdmittance(),
+			identityVerifier: new SharedSecretIdentityVerifier(secret),
+			externalDependencies: ({ executionStore }) => {
+				const finishExecution = executionStore.finishExecution.bind(executionStore);
+				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
+					const recorded = await finishExecution(id, status);
+					done();
+					return recorded;
+				});
+				return {};
+			},
+		});
+		runtime.start();
+
+		const postResponse = await request(runtime.app)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send({
+				workflowId: 'wf-1',
+				graph: sampleGraph,
+				triggerOutputs: [[{ json: { hello: 'world' } }]],
+			});
+		const { executionId } = postResponse.body as { executionId: string };
+		await finished;
+
+		const response = await request(runtime.app)
+			.get(`/api/workflow-executions/${executionId}/steps`)
+			.set(authHeader());
+		await runtime.stop();
+
+		expect(response.status).toBe(200);
+		const { steps } = response.body as { steps: Array<Record<string, unknown>> };
+		expect(steps).toHaveLength(1);
+		expect(steps[0]).toMatchObject({
+			nodeId: 'trigger',
+			iteration: 0,
+			status: 'completed',
+			outputs: [[{ json: { hello: 'world' } }]],
+			error: null,
+		});
+	});
+
+	it('returns 200 with an empty list from /steps for an unknown execution id', async () => {
+		const response = await request(url)
+			.get('/api/workflow-executions/00000000-0000-0000-0000-000000000000/steps')
+			.set(authHeader());
+
+		expect(response.status).toBe(200);
+		expect(response.body).toEqual({ steps: [] });
+	});
+
+	it('returns 400 invalid_request from /steps for a non-uuid id', async () => {
+		const response = await request(url)
+			.get('/api/workflow-executions/not-a-uuid/steps')
+			.set(authHeader());
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_request');
 	});
 });

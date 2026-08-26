@@ -173,24 +173,29 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 	}
 
 	/**
-	 * Closes every open request with no reviewable workflow left — every linked workflow deleted,
-	 * archived, or moved out of the request's project — reporting the closed ids.
+	 * Ids of the open requests with no reviewable workflow left — every linked workflow deleted,
+	 * archived, or moved out of the request's project. `candidateRequestIds` narrows the scan to
+	 * those requests (the targeted lifecycle paths); omitting it evaluates every open request (the
+	 * reconciliation sweep).
 	 *
 	 * Matches on the workflows' current state rather than on the mutation that changed it, so it
 	 * catches what the per-mutation hooks cannot: reviews a delete cascade unlinked before a hook
 	 * could find them by workflow id, mutations that skip the hooks entirely, and hooks whose
 	 * close rolled back after their mutation had already committed.
 	 *
-	 * Keys off the ids selected rather than off the state, so the caller must hold the
-	 * review-request lock.
+	 * Read-only; the caller closes the returned ids with {@link closeRequests} under the
+	 * review-request lock, so selecting and closing cannot race a concurrent decision.
 	 */
-	async closeUnreviewableOpenRequests(ctx: OperationContext): Promise<string[]> {
-		const openState: WorkflowReviewRequestState = 'open';
-		const closedState: WorkflowReviewRequestState = 'closed';
-		const ownerRole: WorkflowSharingRole = 'workflow:owner';
-		const manager = this.managerFor(ctx);
+	async findUnreviewableOpenRequestIds(
+		ctx: OperationContext,
+		candidateRequestIds?: string[],
+	): Promise<string[]> {
+		if (candidateRequestIds?.length === 0) return [];
 
-		const rows = await manager
+		const openState: WorkflowReviewRequestState = 'open';
+		const ownerRole: WorkflowSharingRole = 'workflow:owner';
+
+		const qb = this.managerFor(ctx)
 			.createQueryBuilder(WorkflowReviewRequest, 'review')
 			.select('review.id', 'requestId')
 			.addSelect('review.projectId', 'requestProjectId')
@@ -207,11 +212,15 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 				'shared.workflowId = link.workflowId AND shared.role = :ownerRole',
 				{ ownerRole },
 			)
-			.where('review.state = :openState', { openState })
-			.getRawMany<OpenRequestWorkflowRow>();
+			.where('review.state = :openState', { openState });
 
-		// Same close policy as the per-mutation path: one reviewable workflow keeps the
-		// request open, however many of its siblings are gone.
+		if (candidateRequestIds !== undefined) {
+			qb.andWhere('review.id IN (:...candidateRequestIds)', { candidateRequestIds });
+		}
+
+		const rows = await qb.getRawMany<OpenRequestWorkflowRow>();
+
+		// One reviewable workflow keeps the request open, however many of its siblings are gone.
 		const closableRequestIds = new Set<string>();
 		const requestIdsWithReviewableWorkflow = new Set<string>();
 		for (const row of rows) {
@@ -225,54 +234,26 @@ export class WorkflowReviewRequestRepository extends BaseRepository<WorkflowRevi
 			closableRequestIds.delete(requestId);
 		}
 
-		if (closableRequestIds.size === 0) return [];
-
-		// A system close has no closing user; the decision stays as-is.
-		await manager.update(WorkflowReviewRequest, [...closableRequestIds], {
-			state: closedState,
-			closedById: null,
-		});
-
 		return [...closableRequestIds];
 	}
 
 	/**
-	 * Close policy probe: does the request still cover a reviewable workflow — one that exists,
-	 * is not archived, and still belongs to the request's project — outside the given set? The
-	 * caller passes the workflows a mutation just affected; if nothing reviewable remains beyond
-	 * them, the request has nothing left to review and closes.
+	 * Bulk-closes the given requests. A system close has no closing user, and the decision stays
+	 * as-is. `updatedAt` is set explicitly because `manager.update` skips `@BeforeUpdate`.
+	 *
+	 * Keys off the given ids rather than a state predicate, so the caller must hold the
+	 * review-request lock across selecting them ({@link findUnreviewableOpenRequestIds}) and
+	 * closing them here.
 	 */
-	async hasReviewableWorkflowOutside(
-		requestId: string,
-		excludedWorkflowIds: string[],
-		ctx: OperationContext,
-	): Promise<boolean> {
-		const ownerRole: WorkflowSharingRole = 'workflow:owner';
+	async closeRequests(requestIds: string[], ctx: OperationContext): Promise<void> {
+		if (requestIds.length === 0) return;
 
-		const qb = this.managerFor(ctx)
-			.createQueryBuilder(WorkflowReviewRequest, 'review')
-			.select('1')
-			.innerJoin(WorkflowReviewRequestWorkflow, 'link', 'link.workflowReviewRequestId = review.id')
-			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = link.workflowId')
-			// Left join, like the sweep: a workflow with no owner row is a broken row, not
-			// a move, and {@link isReviewable} keeps it reviewable — dropping it here would
-			// let a targeted close take a request the sweep would leave open.
-			.leftJoin(
-				SharedWorkflow,
-				'shared',
-				'shared.workflowId = link.workflowId AND shared.role = :ownerRole',
-				{ ownerRole },
-			)
-			.where('review.id = :requestId', { requestId })
-			.andWhere('workflow.isArchived = :isArchived', { isArchived: false })
-			.andWhere('(shared.projectId IS NULL OR shared.projectId = review.projectId)')
-			.limit(1);
-
-		if (excludedWorkflowIds.length > 0) {
-			qb.andWhere('link.workflowId NOT IN (:...excludedWorkflowIds)', { excludedWorkflowIds });
-		}
-
-		return (await qb.getRawOne()) !== undefined;
+		const closedState: WorkflowReviewRequestState = 'closed';
+		await this.managerFor(ctx).update(WorkflowReviewRequest, requestIds, {
+			state: closedState,
+			closedById: null,
+			updatedAt: new Date(),
+		});
 	}
 
 	async findById(id: string, ctx: OperationContext): Promise<WorkflowReviewRequest | null> {

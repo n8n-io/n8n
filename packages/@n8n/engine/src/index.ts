@@ -8,7 +8,12 @@ export {
 } from './auth';
 export type { AuthenticatedCaller, IdentityVerifier } from './auth';
 
-export type { EngineErrorResponse } from './server';
+export type {
+	EngineErrorResponse,
+	ExecutionSnapshot,
+	ExecutionStepsResponse,
+	StepDetail,
+} from './server';
 
 export type { JsonObject, JsonValue } from './common';
 
@@ -50,9 +55,11 @@ export type {
 export { ExecutionNotFoundError, StepNotFoundError } from './execution';
 export type {
 	ExecutionMode,
+	ExecutionViewStore,
 	ExecutionRecord,
 	ExecutionStatus,
 	ExecutionStore,
+	ExecutionView,
 	NewExecutionRecord,
 	NewStepRecord,
 	StartExecutionRequest,
@@ -64,6 +71,7 @@ export type {
 	StepSlots,
 	StepStatus,
 	StepStore,
+	StepView,
 	TriggerOutputs,
 } from './execution';
 
