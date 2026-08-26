@@ -1,32 +1,25 @@
 import { isBatchStepConfig } from '@n8n/engine';
 import type { BatchStepConfig, GraphEdge, GraphNode, WorkflowGraph } from '@n8n/engine';
 import type { INode, INodeConnections, IWorkflowBase } from 'n8n-workflow';
+import { getChildNodes, isTriggerNodeType } from 'n8n-workflow';
 
 import {
 	DEFAULT_BATCH_SIZE,
 	MAIN_CONNECTION_TYPE,
-	MANUAL_TRIGGER_TYPE,
 	MERGE_TYPE,
 	SPLIT_IN_BATCHES_TYPE,
 	SPLIT_IN_BATCHES_TYPE_VERSION,
 } from './constants';
 import {
+	AmbiguousTriggerError,
+	UnknownTriggerError,
 	UnsupportedConnectionTypeError,
 	UnsupportedCycleError,
 	UnsupportedLoopEntryError,
-	UnsupportedTriggerError,
 	UnsupportedWorkflowError,
 } from './errors';
 import { isRecord } from './guards';
 import type { V1NodeStepConfig } from './types';
-
-/**
- * Common v1 trigger types that don't end in "Trigger". Non-exhaustive: combined
- * with the name heuristic below, it exists to reject unsupported triggers with a
- * clear message. A trigger we fail to recognise falls through to `v1-node` and
- * fails later with a less specific "node has no execute method" error.
- */
-const KNOWN_TRIGGER_TYPES = new Set(['n8n-nodes-base.webhook', 'n8n-nodes-base.cron']);
 
 /**
  * Converts a v1 workflow (node-based JSON) into the Engine 2.0 `WorkflowGraph`.
@@ -35,6 +28,18 @@ const KNOWN_TRIGGER_TYPES = new Set(['n8n-nodes-base.webhook', 'n8n-nodes-base.c
  * graph nodes and edges and never executes anything. Supported surface is kept
  * deliberately small (see the converter tests); unsupported constructs are
  * rejected with a clear error rather than silently mistranslated.
+ *
+ * One v1 trigger node becomes the `trigger` step, which carries the payload the
+ * caller supplies; the trigger node itself never runs on the engine, so its
+ * parameters are dropped. The caller names the trigger that fired, because only
+ * it knows. With no name we fall back to the workflow's sole trigger, and reject
+ * a workflow with several — the engine runs one trigger per graph, and picking
+ * for the caller would run the wrong branch.
+ *
+ * The graph is always rooted at that trigger: nodes it cannot reach are left
+ * out, which drops the other triggers, their branches, and anything
+ * disconnected. A node reachable from both the fired trigger and another one
+ * stays, minus the other trigger's edges into it.
  *
  * Branching is purely structural, so an edge records which output slot feeds
  * which input slot, nothing more. Branches leaving the same node are
@@ -59,15 +64,20 @@ const KNOWN_TRIGGER_TYPES = new Set(['n8n-nodes-base.webhook', 'n8n-nodes-base.c
  * all rejected.
  */
 export class V1WorkflowConverter {
-	convert(workflow: IWorkflowBase): WorkflowGraph {
-		const liveNodes = workflow.nodes.filter((node) => node.disabled !== true);
-		const disabledNodeIds = workflow.nodes
+	convert(workflow: IWorkflowBase, firedTriggerName?: string): WorkflowGraph {
+		const trigger = this.resolveFiredTrigger(workflow, firedTriggerName);
+		// Rooted before the disabled split, so a disabled node on the way does not
+		// cut the reachable set short.
+		const rooted = trigger === undefined ? workflow : rootAt(workflow, trigger);
+
+		const liveNodes = rooted.nodes.filter((node) => node.disabled !== true);
+		const disabledNodeIds = rooted.nodes
 			.filter((node) => node.disabled === true)
 			.map((node) => node.id);
 
-		const nodes = liveNodes.map((node) => this.toGraphNode(node));
+		const nodes = liveNodes.map((node) => this.toGraphNode(node, trigger?.id));
 
-		let edges = this.toEdges(workflow);
+		let edges = this.toEdges(rooted);
 		edges = this.spliceOutDisabledNodes(edges, disabledNodeIds);
 		edges = this.dedupeEdges(edges);
 		this.markBackEdges(nodes, edges);
@@ -75,13 +85,37 @@ export class V1WorkflowConverter {
 		return { nodes, edges };
 	}
 
-	private toGraphNode(node: INode): GraphNode {
-		if (node.type === MANUAL_TRIGGER_TYPE) {
-			return { id: node.id, name: node.name, type: 'trigger' };
+	/**
+	 * A named node is taken as given: the caller knows what fired, and a name we
+	 * cannot resolve must not silently convert the whole workflow instead. Only
+	 * without a name do we guess, and then a type heuristic is all we have — the
+	 * converter has no `INodeTypes` to ask.
+	 */
+	private resolveFiredTrigger(
+		workflow: IWorkflowBase,
+		firedTriggerName?: string,
+	): INode | undefined {
+		const liveNodes = workflow.nodes.filter((node) => node.disabled !== true);
+
+		if (firedTriggerName !== undefined) {
+			const fired = liveNodes.find((node) => node.name === firedTriggerName);
+			if (fired === undefined) throw new UnknownTriggerError(firedTriggerName);
+			return fired;
 		}
 
-		if (this.isTriggerNode(node)) {
-			throw new UnsupportedTriggerError(node.name, node.type);
+		const triggers = liveNodes.filter((node) => isTriggerNodeType(node.type));
+		if (triggers.length > 1) {
+			throw new AmbiguousTriggerError(triggers.map((node) => node.name));
+		}
+
+		// A trigger-less workflow converts to a graph the engine rejects, which is
+		// a clearer place to say so than here.
+		return triggers[0];
+	}
+
+	private toGraphNode(node: INode, firedTriggerId?: string): GraphNode {
+		if (node.id === firedTriggerId) {
+			return { id: node.id, name: node.name, type: 'trigger' };
 		}
 
 		if (node.onError === 'continueErrorOutput') {
@@ -124,15 +158,6 @@ export class V1WorkflowConverter {
 				`Node "${node.name}" sets its Merge mode with an expression, which cannot be checked at conversion time. Use a literal mode.`,
 			);
 		}
-	}
-
-	/** Heuristic trigger detection — see {@link KNOWN_TRIGGER_TYPES}. */
-	private isTriggerNode(node: INode): boolean {
-		return (
-			node.type === MANUAL_TRIGGER_TYPE ||
-			KNOWN_TRIGGER_TYPES.has(node.type) ||
-			node.type.toLowerCase().endsWith('trigger')
-		);
 	}
 
 	private toEdges(workflow: IWorkflowBase): GraphEdge[] {
@@ -366,6 +391,28 @@ export class V1WorkflowConverter {
 
 		return sccs;
 	}
+}
+
+/**
+ * Keeps the trigger and everything it reaches over main connections.
+ *
+ * Connections are filtered too, not just nodes: an excluded branch's
+ * connections would still be read for their type, so an `ai_tool` connection
+ * out there would fail a conversion it has no part in.
+ */
+function rootAt(workflow: IWorkflowBase, trigger: INode): IWorkflowBase {
+	const reachable = new Set([
+		trigger.name,
+		...getChildNodes(workflow.connections, trigger.name, MAIN_CONNECTION_TYPE, -1),
+	]);
+
+	return {
+		...workflow,
+		nodes: workflow.nodes.filter((node) => reachable.has(node.name)),
+		connections: Object.fromEntries(
+			Object.entries(workflow.connections).filter(([sourceName]) => reachable.has(sourceName)),
+		),
+	};
 }
 
 function toBatchConfig(node: INode): BatchStepConfig {

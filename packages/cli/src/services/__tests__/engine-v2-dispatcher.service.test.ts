@@ -1,4 +1,3 @@
-import { UnsupportedTriggerError } from '@n8n/node-engine-compatibility';
 import type {
 	INode,
 	IPinData,
@@ -183,14 +182,29 @@ describe('EngineV2Dispatcher', () => {
 			expect(proxy.startExecution).not.toHaveBeenCalled();
 		});
 
-		it('propagates a converter rejection for an unsupported trigger', async () => {
+		it('converts a production trigger to the trigger step', async () => {
 			const scheduleTrigger = { ...MANUAL_TRIGGER, type: 'n8n-nodes-base.scheduleTrigger' };
 			const data = runData({
 				workflowData: workflow({ nodes: [scheduleTrigger, SET_NODE] }),
 			});
 
-			await expect(dispatcher.start(data)).rejects.toThrow(UnsupportedTriggerError);
-			expect(proxy.startExecution).not.toHaveBeenCalled();
+			await dispatcher.start(data);
+
+			const { graph } = proxy.startExecution.mock.calls[0][0];
+			expect(graph.nodes).toEqual([
+				{ id: scheduleTrigger.id, name: scheduleTrigger.name, type: 'trigger' },
+				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
+			]);
+		});
+
+		it('lets the converter find the trigger when none was selected', async () => {
+			await dispatcher.start(runData({ triggerToStartFrom: undefined }));
+
+			const { graph } = proxy.startExecution.mock.calls[0][0];
+			expect(graph.nodes).toEqual([
+				{ id: MANUAL_TRIGGER.id, name: MANUAL_TRIGGER.name, type: 'trigger' },
+				expect.objectContaining({ id: SET_NODE.id, type: 'v1-node' }),
+			]);
 		});
 
 		describe('rejections', () => {

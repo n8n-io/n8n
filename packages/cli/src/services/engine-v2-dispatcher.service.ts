@@ -1,11 +1,7 @@
 import { Service } from '@n8n/di';
 import type { StepSlots, TriggerOutputs } from '@n8n/engine';
-import type {
-	INodeExecutionData,
-	IWorkflowBase,
-	IWorkflowExecutionDataProcess,
-} from 'n8n-workflow';
-import { getChildNodes, NodeConnectionTypes, UserError } from 'n8n-workflow';
+import type { INodeExecutionData, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
@@ -63,7 +59,7 @@ export class EngineV2Dispatcher {
 		// its dependencies into every n8n process, including ones with the module off.
 		const { V1WorkflowConverter, toStepOutputs } = await import('@n8n/node-engine-compatibility');
 
-		const graph = new V1WorkflowConverter().convert(this.selectTriggerSubgraph(data));
+		const graph = new V1WorkflowConverter().convert(workflowData, data.triggerToStartFrom?.name);
 
 		const { executionId } = await this.proxy.startExecution({
 			workflowId: workflowData.id,
@@ -73,32 +69,6 @@ export class EngineV2Dispatcher {
 		});
 
 		return executionId;
-	}
-
-	/** Keep only the branch that starts at the trigger selected for this manual run. */
-	private selectTriggerSubgraph(data: IWorkflowExecutionDataProcess): IWorkflowBase {
-		const { triggerToStartFrom, workflowData } = data;
-		if (triggerToStartFrom === undefined) return workflowData;
-
-		const includedNodeNames = new Set([
-			triggerToStartFrom.name,
-			...getChildNodes(
-				workflowData.connections,
-				triggerToStartFrom.name,
-				NodeConnectionTypes.Main,
-				-1,
-			),
-		]);
-
-		return {
-			...workflowData,
-			nodes: workflowData.nodes.filter((node) => includedNodeNames.has(node.name)),
-			connections: Object.fromEntries(
-				Object.entries(workflowData.connections).filter(([sourceNodeName]) =>
-					includedNodeNames.has(sourceNodeName),
-				),
-			),
-		};
 	}
 
 	/**

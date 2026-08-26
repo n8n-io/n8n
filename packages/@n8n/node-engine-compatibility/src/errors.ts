@@ -8,11 +8,21 @@ const quote = (names: string[]) => names.map((name) => `"${name}"`).join(', ');
  */
 export class UnsupportedWorkflowError extends UserError {}
 
-export class UnsupportedTriggerError extends UserError {
-	constructor(nodeName: string, nodeType: string) {
+/**
+ * A workflow with several triggers has no single graph to run, so the caller
+ * has to say which one fired. Multi-trigger semantics land in CAT-2930.
+ */
+export class AmbiguousTriggerError extends UserError {
+	constructor(nodeNames: string[]) {
 		super(
-			`Trigger node "${nodeName}" (${nodeType}) is not supported yet; only the Manual Trigger is currently supported.`,
+			`This workflow has ${nodeNames.length} triggers (${quote(nodeNames)}), so the trigger that fired must be named.`,
 		);
+	}
+}
+
+export class UnknownTriggerError extends UserError {
+	constructor(nodeName: string) {
+		super(`This workflow has no enabled node named "${nodeName}" to start from.`);
 	}
 }
 
