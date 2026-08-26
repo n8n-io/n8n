@@ -445,7 +445,9 @@ describe('OAuthTokenService', () => {
 
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
-			expect(result).toEqual({ user, authType: 'oauth', scopes: [] });
+			// The caller carries the client the token was issued to, handed back so
+			// callers can attribute activity per client and not only per user.
+			expect(result).toEqual({ user, caller: { authType: 'oauth', clientId }, scopes: [] });
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { id: userId },
 				relations: ['role'],
@@ -477,6 +479,48 @@ describe('OAuthTokenService', () => {
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
 			expect(result).toMatchObject({ user: null });
+		});
+	});
+
+	describe('authorizeSealedGrant', () => {
+		const grant = { audiences: ['https://host/mcp/wf'], executeAccessWorkflowId: 'wf' };
+
+		it('returns false when the user no longer exists', async () => {
+			userRepository.findOne.mockResolvedValue(null);
+
+			expect(await service.authorizeSealedGrant('user-123', grant)).toBe(false);
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+		});
+
+		it('returns false when the user is disabled', async () => {
+			userRepository.findOne.mockResolvedValue(mock<User>({ id: 'user-123', disabled: true }));
+
+			expect(await service.authorizeSealedGrant('user-123', grant)).toBe(false);
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).not.toHaveBeenCalled();
+		});
+
+		it('grants when the user still holds workflow:execute on the bound workflow', async () => {
+			const user = mock<User>({ id: 'user-123', disabled: false });
+			userRepository.findOne.mockResolvedValue(user);
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf']));
+
+			expect(await service.authorizeSealedGrant('user-123', grant)).toBe(true);
+			expect(userRepository.findOne).toHaveBeenCalledWith({
+				where: { id: 'user-123' },
+				relations: ['role'],
+			});
+			expect(workflowFinderService.findWorkflowIdsWithScopeForUser).toHaveBeenCalledWith(
+				['wf'],
+				user,
+				['workflow:execute'],
+			);
+		});
+
+		it('denies when the user no longer holds workflow:execute on the bound workflow', async () => {
+			userRepository.findOne.mockResolvedValue(mock<User>({ id: 'user-123', disabled: false }));
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
+
+			expect(await service.authorizeSealedGrant('user-123', grant)).toBe(false);
 		});
 	});
 

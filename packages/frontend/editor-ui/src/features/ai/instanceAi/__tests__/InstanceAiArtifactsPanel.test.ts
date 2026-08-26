@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { IconBodyLoaderKey } from '@n8n/design-system';
-import { defineComponent, h, nextTick, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { InstanceAiHandoffContext, TaskList } from '@n8n/api-types';
 import type { ResourceEntry } from '../useResourceRegistry';
@@ -37,20 +37,6 @@ const renderComponent = createComponentRenderer(InstanceAiArtifactsPanel, {
 			// Lucide-only icons (outside the curated set) need the async body loader.
 			[IconBodyLoaderKey as symbol]: async () => '<path d="M1 1"/>',
 		},
-		stubs: {
-			ConnectionsCard: defineComponent({
-				props: {
-					dropdownPortalTarget: { type: HTMLElement, required: false },
-				},
-				setup(props) {
-					return () =>
-						h('section', {
-							'data-test-id': 'connections-card',
-							'data-portal-target-tag': props.dropdownPortalTarget?.tagName ?? '',
-						});
-				},
-			}),
-		},
 	},
 });
 
@@ -64,7 +50,7 @@ describe('InstanceAiArtifactsPanel', () => {
 		updateThreadMetadataMock.mockClear();
 	});
 
-	it('keeps empty artifacts and connections sections visible without an empty tasks section', () => {
+	it('keeps the empty artifacts section visible without an empty tasks section', () => {
 		const { getByText, getByTestId, queryByText } = renderComponent();
 
 		expect(getByTestId('instance-ai-artifacts-sidebar')).toBeInTheDocument();
@@ -72,15 +58,6 @@ describe('InstanceAiArtifactsPanel', () => {
 		expect(getByText('No artifacts yet')).toBeInTheDocument();
 		expect(queryByText('To-do list')).not.toBeInTheDocument();
 		expect(queryByText('No tasks yet')).not.toBeInTheDocument();
-		expect(getByTestId('connections-card')).toBeInTheDocument();
-	});
-
-	it('anchors connection menus inside the panel', async () => {
-		const { getByTestId } = renderComponent();
-
-		await nextTick();
-
-		expect(getByTestId('connections-card')).toHaveAttribute('data-portal-target-tag', 'ASIDE');
 	});
 
 	it('opens artifacts in preview and shows tasks without progress counts', async () => {

@@ -28,10 +28,13 @@ const slackIntegration = {
 	icon: 'slack',
 	credentialTypes: ['slackApi'],
 };
-const statuses = ref<Record<string, 'configured' | 'connected' | 'disconnected'>>({});
+const statuses = ref<
+	Record<string, 'configured' | 'starting' | 'connected' | 'error' | 'disconnected'>
+>({});
 const connectedCredentials = ref<Record<string, string>>({});
 const selectedCredentials = ref<Record<string, string>>({});
 const loadingMap = ref<Record<string, boolean>>({});
+const runtimeErrors = ref<Record<string, string>>({});
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
@@ -146,9 +149,14 @@ vi.mock('../composables/useAgentIntegrationStatus', () => ({
 		loadingMap,
 		errorMessages: ref({}),
 		errorIsConflict: ref({}),
+		runtimeErrors,
 		isConnected: (type: string) => statuses.value[type] === 'connected',
 		isConfigured: (type: string) =>
-			['configured', 'connected'].includes(statuses.value[type] ?? 'disconnected'),
+			['configured', 'starting', 'connected', 'error'].includes(
+				statuses.value[type] ?? 'disconnected',
+			),
+		hasRuntimeError: (type: string) => statuses.value[type] === 'error',
+		isStarting: (type: string) => statuses.value[type] === 'starting',
 		connect: mocks.connect,
 		disconnect: mocks.disconnect,
 		clearError: mocks.clearError,
@@ -203,7 +211,14 @@ function mountModal(view: ChannelView = 'example_setup', isPublished = false) {
 				N8nIcon: { template: '<i />' },
 				N8nText: { template: '<span><slot /></span>' },
 				AgentChannelListItem: {
-					props: ['integration', 'configured', 'connected', 'connectAction'],
+					props: [
+						'integration',
+						'configured',
+						'connected',
+						'notRunning',
+						'runtimeError',
+						'connectAction',
+					],
 					emits: ['setup', 'disconnect'],
 					template: `
 						<li
@@ -211,6 +226,8 @@ function mountModal(view: ChannelView = 'example_setup', isPublished = false) {
 							:data-action="connectAction.label"
 							:data-configured="configured"
 							:data-connected="connected"
+							:data-not-running="notRunning"
+							:data-runtime-error="runtimeError"
 						>
 							<button data-testid="setup-channel" @click="$emit('setup', integration.type)" />
 							<button data-testid="disconnect-channel" @click="$emit('disconnect', integration.type)" />
@@ -230,6 +247,7 @@ describe('AgentChannelModal', () => {
 		connectedCredentials.value = {};
 		selectedCredentials.value = {};
 		loadingMap.value = {};
+		runtimeErrors.value = {};
 		mocks.connect.mockImplementation(async (type: string, credentialId: string) => {
 			statuses.value[type] = 'connected';
 			connectedCredentials.value[type] = credentialId;
@@ -286,6 +304,22 @@ describe('AgentChannelModal', () => {
 		expect(configured.get('[data-testid="channel-list-item"]').attributes('data-connected')).toBe(
 			'true',
 		);
+	});
+
+	it('shows a channel that failed to start as not running, with the reason', async () => {
+		statuses.value.example = 'error';
+		runtimeErrors.value.example = 'Credential cred-1 not found';
+		const wrapper = mountModal('list');
+		await flushPromises();
+
+		expect(wrapper.get('[data-testid="channel-list-item"]').attributes()).toMatchObject({
+			// Still set up, so the row keeps its Edit/Disconnect menu rather than
+			// offering to connect a channel that already exists.
+			'data-configured': 'true',
+			'data-connected': 'false',
+			'data-not-running': 'true',
+			'data-runtime-error': 'Credential cred-1 not found',
+		});
 	});
 
 	it('forwards publication state and persists before platform save', async () => {
