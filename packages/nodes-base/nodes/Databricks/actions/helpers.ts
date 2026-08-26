@@ -1,5 +1,5 @@
-import { UserError } from 'n8n-workflow';
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { NodeApiError, UserError } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
 
@@ -21,6 +21,33 @@ export async function getHost(
 ): Promise<string> {
 	const credentials = await context.getCredentials<DatabricksCredentials>(credentialType);
 	return credentials.host.replace(/\/$/, '');
+}
+
+// Body text comes from whatever server `host` points at — truncate and strip
+// control chars before promoting it to a visible error message
+export function sanitizeApiMessage(message: string): string {
+	// eslint-disable-next-line no-control-regex
+	return message.replace(/[\x00-\x1f\x7f]+/g, ' ').slice(0, 500);
+}
+
+// Must be called at every request entry point (router catch, listSearch wrapper) —
+// the node has no shared transport helper. Keyed on PERMISSION_DENIED only; widen
+// the key if other Databricks error_codes with legible messages show up. Keyed on
+// the error_code, not HTTP 403, so expired-token 403s (which core retries via
+// refresh) aren't mislabeled if they leak through. Mutates rather than re-wraps:
+// `new NodeApiError(node, existingNodeApiError)` returns the original untouched.
+export function makePermissionErrorLegible(error: unknown): void {
+	if (
+		error instanceof NodeApiError &&
+		(error.context?.data as IDataObject | undefined)?.error_code === 'PERMISSION_DENIED'
+	) {
+		const apiMessage = (error.context.data as IDataObject).message;
+		if (typeof apiMessage === 'string' && apiMessage) {
+			error.message = sanitizeApiMessage(apiMessage);
+			error.description =
+				'Grant the named permission to the signed-in user or service principal in Databricks, then retry.';
+		}
+	}
 }
 
 export function extractResourceLocatorValue(param: unknown): string {
