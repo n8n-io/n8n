@@ -309,7 +309,14 @@ describe('test vs production chat resources', () => {
 
 		const mint = async (resourceUrl: string) => {
 			const pair = tokenService.generateTokenPair(owner.id, clientId, resourceUrl, []);
-			await tokenService.saveTokenPair(pair.accessToken, pair.refreshToken, clientId, owner.id, []);
+			await tokenService.saveTokenPair(
+				pair.accessToken,
+				pair.refreshToken,
+				clientId,
+				owner.id,
+				[],
+				pair.audience,
+			);
 			return pair.accessToken;
 		};
 
