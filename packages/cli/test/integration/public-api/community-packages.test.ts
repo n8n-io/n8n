@@ -77,10 +77,6 @@ describe('Community packages (Public API)', () => {
 		owner = ownerUser;
 	});
 
-	afterEach(() => {
-		Container.get(CommunityPackagesConfig).unverifiedEnabled = false;
-	});
-
 	describe('GET /community-packages', () => {
 		it('should return 401 without API key', async () => {
 			const response = await testServer.publicApiAgentWithoutApiKey().get('/community-packages');

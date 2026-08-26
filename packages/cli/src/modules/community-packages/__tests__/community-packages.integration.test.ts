@@ -59,10 +59,6 @@ beforeEach(() => {
 	communityPackagesService.withLoadStatus.mockImplementation((packages) => packages);
 });
 
-afterEach(() => {
-	Container.get(CommunityPackagesConfig).unverifiedEnabled = false;
-});
-
 describe('GET /community-packages', () => {
 	test('should respond 200 if no nodes are installed', async () => {
 		communityPackagesService.getAllInstalledPackages.mockResolvedValue([]);
