@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/git-connections.test.ts
+  s_6372dc6c26eb1a::t_1564cfa667a7ae 301-306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e813fdb2d439c1136e0d012649c3259efddde86d",
+  "prompts": {},
+  "sessions": {
+    "s_6372dc6c26eb1a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "655d9eed-c2d8-4301-a773-66c71efeff38",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
