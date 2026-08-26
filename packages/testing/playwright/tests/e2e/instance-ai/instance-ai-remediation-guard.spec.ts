@@ -253,20 +253,17 @@ test.describe(
 						'When the build result reports that setup is required before verification, open the workflow setup card with workflows(action="setup") and stop editing.',
 				);
 
-				// The skill-opening narration is surfaced transiently in the thinking
-				// trace while the orchestrator loads the workflow-builder skill, then
-				// collapses once the build completes. Assert it while the run is still
-				// in progress — before awaiting the terminal setup card.
-				await expect(
-					n8n.instanceAi.getAssistantMessageText('Opening skill: workflow-builder'),
-				).toBeVisible({ timeout: 540_000 });
-
 				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 540_000 });
 				await expect(n8n.instanceAi.getAssistantMessageText(TERMINAL_FALLBACK_TEXT)).toHaveCount(0);
 
 				const events = getLatestRecordingEvents(await getTraceEvents(api, testInfo));
 				const summary = summarizeRemediationTrace(events);
 				const buildCalls = getToolCalls(events, 'build-workflow');
+				// Since #36808 the skill-opening narration lives inside the collapsed
+				// thinking block, so the skill load is only assertable from the trace.
+				const skillLoads = getToolCalls(events, 'load_skill').filter(
+					(event) => event.input?.skillId === 'workflow-builder',
+				);
 				const setupCalls = getToolEvents(events, 'workflows').filter(
 					(event) =>
 						event.input?.action === 'setup' && event.input.workflowId === summary.workflowId,
@@ -287,6 +284,7 @@ test.describe(
 					fallbackNarrationSeen: false,
 				});
 				expect(summary.postBuildRemediationSubmitsUsed).toBeLessThanOrEqual(2);
+				expect(skillLoads.length).toBeGreaterThan(0);
 				expect(buildCalls.find((event) => event.agentRole === 'orchestrator')).toMatchObject({
 					agentRole: 'orchestrator',
 					stepId: expect.any(Number),
