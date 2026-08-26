@@ -46,6 +46,7 @@ export const verifyBuiltWorkflowInputSchema = z.object({
 		),
 	triggerNodeName: z
 		.string()
+		.min(1)
 		.optional()
 		.describe(
 			'Name of the trigger node to start verification from. REQUIRED when the workflow has ' +

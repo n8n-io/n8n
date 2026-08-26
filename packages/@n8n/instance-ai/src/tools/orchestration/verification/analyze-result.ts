@@ -338,21 +338,17 @@ function buildCoverageNote(
 	triggerNodeName: string | undefined,
 ): string | undefined {
 	if (nodesNotReached.length === 0) return undefined;
-	// A trigger-scoped pass only ever reaches its own trigger's branch, so the
-	// generic "a lookup returned nothing" guidance would send the agent editing
-	// a workflow whose other branches simply are not on this path.
-	if (success && triggerNodeName) {
-		return (
-			`Partial coverage by design: this pass started from trigger "${triggerNodeName}", so it ` +
-			`covers that trigger's branch only. ${String(nodesNotReached.length)} planned node(s) were ` +
-			`not reached: ${nodesNotReached.join(', ')}. Nodes on another trigger's branch are ` +
-			'expected to be unreached here — call verify-built-workflow again with `triggerNodeName` ' +
-			'set to each remaining trigger and treat coverage as the union of those passes. Do not ' +
-			'edit, disable, reorder, or copy the workflow to reach them. Any unreached node that IS on ' +
-			"this trigger's branch did not receive input items (usually an empty lookup or query) — " +
-			'seed matching test data and re-run before treating it as verified.'
-		);
-	}
+	// A trigger-scoped pass only ever reaches its own trigger's branch, so nodes
+	// on the other branches are expected to be unreached. Appended to whichever
+	// note applies rather than returned on its own, so it never displaces the
+	// wait-gate guidance — nodes behind a gate stay uncoverable either way.
+	const triggerScopeNote = triggerNodeName
+		? ` This pass started from trigger "${triggerNodeName}", so it covers that trigger's branch ` +
+			"only — nodes on another trigger's branch are expected to be unreached here. Call " +
+			'verify-built-workflow again with `triggerNodeName` set to each remaining trigger and ' +
+			'treat coverage as the union of those passes. Do not edit, disable, reorder, or copy the ' +
+			'workflow to reach them.'
+		: '';
 	if (success && reachedHaltedGates.length > 0) {
 		return (
 			`Verification pauses at wait gate(s) ${reachedHaltedGates.join(', ')} — in a live run the ` +
@@ -362,7 +358,18 @@ function buildCoverageNote(
 			'not edit the workflow or re-run verification to force coverage there; recommend a live ' +
 			'end-to-end test instead. Any unreached node NOT behind the gate did not receive input ' +
 			'items (usually an empty lookup or query) — seed matching test data and re-run before ' +
-			'treating it as verified.'
+			'treating it as verified.' +
+			triggerScopeNote
+		);
+	}
+	if (success && triggerNodeName) {
+		return (
+			`Partial coverage by design: ${String(nodesNotReached.length)} planned node(s) were not ` +
+			`reached: ${nodesNotReached.join(', ')}.` +
+			triggerScopeNote +
+			" Any unreached node that IS on this trigger's branch did not receive input items " +
+			'(usually an empty lookup or query) — seed matching test data and re-run before treating ' +
+			'it as verified.'
 		);
 	}
 	const ending = result.lastNodeExecuted

@@ -362,10 +362,54 @@ describe('analyzeVerificationResult — trigger-scoped coverage', () => {
 		expect(analysis.nodesNotReached).toEqual(['Post Summary']);
 		expect(analysis.coverageNote).toContain('Every Weekday 9am');
 		expect(analysis.coverageNote).toContain('triggerNodeName');
-		// The generic "a lookup returned nothing, seed test data" guidance would
-		// send the agent editing a workflow whose other branch is simply not on
-		// this trigger's path.
-		expect(analysis.coverageNote).not.toContain('Seed matching test data');
+		// The generic "a lookup returned nothing" cause would send the agent
+		// editing a workflow whose other branch is simply not on this path.
+		expect(analysis.coverageNote).not.toContain('lookup or query returned nothing');
+	});
+
+	it('keeps the wait-gate guidance when a named-trigger pass halts at a gate', () => {
+		const gateOutcome = makeBuildOutcome({
+			nodeSimulationPlan: [
+				{
+					nodeName: 'Email Approval',
+					verdict: 'simulate',
+					reason: 'Send-and-wait gate on a loop',
+					confidence: 'high',
+					source: 'deterministic',
+					haltBranch: true,
+				},
+				{
+					nodeName: 'Publish',
+					verdict: 'simulate',
+					reason: 'Sends a message',
+					confidence: 'high',
+					source: 'deterministic',
+				},
+			],
+		});
+		const gatedPass = {
+			executionId: 'exec-gated',
+			status: 'success',
+			executedNodeNames: ['1st of Month', 'Format Draft', 'Email Approval'],
+			lastNodeExecuted: 'Email Approval',
+			data: { 'Email Approval': [] },
+		} as unknown as ExecutionRunResult;
+
+		const analysis = analyzeVerificationResult({
+			result: gatedPass,
+			buildOutcome: gateOutcome,
+			simulatedNodes: [{ nodeName: 'Email Approval', reason: 'Send-and-wait gate on a loop' }],
+			haltedGateNames: ['Email Approval'],
+			stateBefore: undefined,
+			runId: 'run-1',
+			triggerNodeName: '1st of Month',
+		});
+
+		// Nodes behind the gate can never be covered by verification, so the
+		// gate guidance must survive alongside the per-trigger scoping.
+		expect(analysis.coverageNote).toContain('pauses at wait gate');
+		expect(analysis.coverageNote).toContain('live end-to-end test');
+		expect(analysis.coverageNote).toContain('1st of Month');
 	});
 
 	it('keeps the generic zero-output guidance when no trigger was named', () => {
