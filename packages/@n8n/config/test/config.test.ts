@@ -368,6 +368,7 @@ describe('GlobalConfig', () => {
 			durableLog: true,
 			mcpConnectionsEnabled: false,
 			canvasNodeContextEnabled: false,
+			setupPanelEnabled: false,
 			activationCapped: false,
 			activationLockMessageThreshold: 1,
 		},

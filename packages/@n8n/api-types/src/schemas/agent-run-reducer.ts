@@ -508,6 +508,20 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'setup-items': {
+			// Thread-level state, so it folds onto the ROOT node regardless of the
+			// emitting agent — history restore reads only the tree root. Full-snapshot
+			// semantics: last event wins per workflowId.
+			const root = ensureAgent(state, state.rootAgentId);
+			if (root && isSafeObjectKey(event.payload.workflowId)) {
+				root.setupItemsByWorkflowId = {
+					...root.setupItemsByWorkflowId,
+					[event.payload.workflowId]: event.payload.items,
+				};
+			}
+			break;
+		}
+
 		case 'status': {
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {

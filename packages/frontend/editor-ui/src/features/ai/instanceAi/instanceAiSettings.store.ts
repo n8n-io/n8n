@@ -108,6 +108,10 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isWorkflowBuilderAvailable = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.workflowBuilderAvailable ?? true,
 	);
+	/** Setup panel v2 gate — the single FE accessor; the backing mechanism (env var today) stays swappable. */
+	const isSetupPanelEnabled = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.setupPanelEnabled === true,
+	);
 
 	function syncInstanceAiFlagIntoGlobalModuleSettings(
 		adminRes: InstanceAiAdminSettingsResponse,
@@ -639,6 +643,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isProxyEnabled,
 		isSandboxEnabled,
 		isWorkflowBuilderAvailable,
+		isSetupPanelEnabled,
 		fetchGatewayStatus,
 		connectLocalGateway,
 		isCloudManaged,
