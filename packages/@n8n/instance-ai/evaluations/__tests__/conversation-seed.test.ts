@@ -42,6 +42,7 @@ function makeSeed(): ConversationSeed {
 		workflows: [{ id: WF_ID, name: 'Daily digest', nodes: [], connections: {} }],
 		dataTables: [],
 		agents: [],
+		projects: [],
 	};
 }
 
@@ -71,6 +72,7 @@ function makeAgentSeed(): ConversationSeed {
 		],
 		workflows: [],
 		dataTables: [],
+		projects: [],
 		agents: [
 			{
 				id: AGENT_ID,
@@ -197,8 +199,12 @@ describe('ConversationSeedSchema message envelope', () => {
 		expect(ConversationSeedSchema.safeParse({ messages }).success).toBe(true);
 	});
 
-	it('still requires at least one message', () => {
-		expect(ConversationSeedSchema.safeParse({ messages: [] }).success).toBe(false);
+	// A message list may now be empty — a seed can carry only instance fixtures (a
+	// decoy project) and no history. What must never pass is a seed carrying NOTHING,
+	// and that is judged at the case level (EvalTestCaseSchema), the only place that
+	// sees every slot at once.
+	it('allows an empty message list, for a fixture-only seed', () => {
+		expect(ConversationSeedSchema.safeParse({ messages: [] }).success).toBe(true);
 	});
 });
 
@@ -302,6 +308,7 @@ describe('remapSeedArtifactIds', () => {
 			workflows: [],
 			dataTables: [],
 			agents: [],
+			projects: [],
 		};
 		expect(remapSeedArtifactIds(seed)).toBe(seed);
 	});
@@ -807,5 +814,67 @@ describe('activeSeedAgentId', () => {
 		const seed = makeAgentSeed();
 		seed.messages = [{ ...buildAgentCall('x', '2026-01-01T00:00:01.000Z', 'm1'), content: [] }];
 		expect(activeSeedAgentId(seed)).toBeUndefined();
+	});
+});
+
+// A decoy project is what gives a project-scope case its premise: a project the
+// agent can SEE but must not write to. It is the one seeded artifact carried
+// outside the id-remap blob, so it is also the one that can silently vanish.
+describe('seed projects', () => {
+	it('carries projects through the id remap', () => {
+		// The remap serializes only the id-bearing artifacts, so anything it does not
+		// re-attach comes back as the schema's `[]` default. A dropped project leaves
+		// the case running against a project list that never held the decoy — green
+		// for the wrong reason, which is worse than a failure.
+		const seed: ConversationSeed = {
+			...makeSeed(),
+			projects: [{ name: 'Foobar' }],
+		};
+
+		const remapped = remapSeedArtifactIds(seed);
+
+		expect(remapped.projects).toEqual([{ name: 'Foobar' }]);
+	});
+
+	it('accepts a seed that carries only projects', () => {
+		// The project-scope shape: an instance fixture exists, but the conversation
+		// under test starts from scratch, so there is no history to seed.
+		const parsed = ConversationSeedSchema.safeParse({
+			messages: [],
+			projects: [{ name: 'Foobar' }],
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects two projects sharing a name', () => {
+		// The case names its target project in prose, so duplicates would make "the
+		// Foobar project" ambiguous to the agent and to the judge.
+		const parsed = ConversationSeedSchema.safeParse({
+			messages: [],
+			projects: [{ name: 'Foobar' }, { name: 'Foobar' }],
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+});
+
+// n8n's projectNameSchema has no trim, so a padded name is created verbatim as a
+// SECOND project a human reads as the same one — and it would slip past both the
+// unique-name refine and the evict-leftover-by-exact-name pass.
+describe('seed project names', () => {
+	it('rejects a name that is not already trimmed', () => {
+		expect(
+			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: ' Foobar' }] }).success,
+		).toBe(false);
+		expect(
+			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: 'Foobar ' }] }).success,
+		).toBe(false);
+	});
+
+	it('accepts the trimmed form', () => {
+		expect(
+			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: 'Foobar' }] }).success,
+		).toBe(true);
 	});
 });
