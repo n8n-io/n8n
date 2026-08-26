@@ -117,6 +117,27 @@ describe('instanceAiEventSchema', () => {
 
 		expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
 	});
+
+	it('rejects a setup item claiming a different workflow than the payload', () => {
+		const event = {
+			type: 'setup-items',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				workflowId: 'wf-1',
+				items: [
+					{
+						id: 'wf-2:credential:slackApi',
+						workflowId: 'wf-2',
+						kind: 'credential',
+						credentialType: 'slackApi',
+					},
+				],
+			},
+		};
+
+		expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
+	});
 });
 
 describe('errorPayloadSchema', () => {

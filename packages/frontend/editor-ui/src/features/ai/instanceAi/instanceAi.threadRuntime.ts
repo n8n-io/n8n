@@ -231,7 +231,12 @@ function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | 
 	return null;
 }
 
-/** Latest setup-items snapshot per workflowId across all messages (newest wins per key). */
+/**
+ * Latest setup-items snapshot per workflowId across all messages (newest wins
+ * per key). Bounded by the hydrated message page: snapshots older than the
+ * page are deliberately not resurrected — at rest the panel derives its state
+ * from the saved workflow itself, the event feed only covers live builds.
+ */
 function findLatestSetupItemsFromMessages(
 	messages: InstanceAiMessage[],
 ): Record<string, InstanceAiSetupItem[]> {
@@ -933,6 +938,9 @@ export function createThreadRuntime(
 			msg.content = data.agentTree.textContent;
 			msg.reasoning = data.agentTree.reasoning;
 			latestTasks.value = findLatestTasksFromMessages(messages.value);
+			// Wholesale recompute, not a per-key merge with the live ref: the synced
+			// fold carries reconnect catch-up the ref never saw, and live events this
+			// connection already delivered are also in the message trees scanned here.
 			latestSetupItems.value = findLatestSetupItemsFromMessages(messages.value);
 			const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
 			// For background-only groups, the orchestrator already finished.

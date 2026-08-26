@@ -870,7 +870,10 @@ describe('agent-run-reducer', () => {
 			const state = stateWithRun('run-1', 'root');
 			reduceEvent(state, makeSetupItems('run-1', 'root', 'wf-1', 'slackApi'));
 
-			const restored = stateFromAgentTree(toAgentTree(state));
+			// Serialize in between: toAgentTree returns the live root and adoption
+			// is by reference, so without it this would compare a node to itself.
+			const snapshot = JSON.parse(JSON.stringify(toAgentTree(state))) as InstanceAiAgentNode;
+			const restored = stateFromAgentTree(snapshot);
 
 			expect(restored?.agentsById['root'].setupItemsByWorkflowId?.['wf-1'][0].credentialType).toBe(
 				'slackApi',
