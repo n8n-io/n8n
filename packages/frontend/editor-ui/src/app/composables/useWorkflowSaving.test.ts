@@ -18,7 +18,9 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
+import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import { ResponseError } from '@n8n/rest-api-client';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
@@ -1415,6 +1417,223 @@ describe('useWorkflowSaving', () => {
 				expect(saveStore.retryCount).toBe(initialRetryCount + 1);
 				expect(saveStore.lastError).toBe(errorMessage);
 				expect(saveStore.isRetrying).toBe(true);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('retries autosaved create failures that can recover', async () => {
+			vi.useFakeTimers();
+
+			try {
+				const newWorkflowId = 'w-autosave-create-failure';
+				const errorMessage = 'Network timeout';
+				const workflow = createTestWorkflow({
+					id: newWorkflowId,
+					name: 'Named new workflow',
+					nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				});
+
+				vi.spyOn(workflowsStore, 'createNewWorkflow').mockRejectedValue(new Error(errorMessage));
+
+				mockRoute.params = { workflowId: newWorkflowId };
+				useWorkflowDocumentStore(createWorkflowDocumentId(newWorkflowId)).hydrate(workflow);
+
+				const saveStore = useWorkflowSaveStore();
+				const { saveCurrentWorkflow } = useWorkflowSaving({
+					router,
+				});
+
+				const result = await saveCurrentWorkflow({}, true, false, true);
+
+				expect(result).toBe(false);
+				expect(saveStore.pendingSave).toBeNull();
+				expect(saveStore.retryCount).toBe(1);
+				expect(saveStore.lastError).toBe(errorMessage);
+				expect(saveStore.isRetrying).toBe(true);
+				expect(showMessageSpy).toHaveBeenCalledTimes(1);
+				expect(showMessageSpy).toHaveBeenCalledWith(
+					expect.objectContaining({
+						message: expect.stringContaining(errorMessage),
+						type: 'error',
+					}),
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
+		it('does not retry autosaved create when a post-create step fails', async () => {
+			vi.useFakeTimers();
+			const newWorkflowId = 'w-autosave-create-post-create-failure';
+			const createdWorkflow = createTestWorkflow({
+				id: 'w-autosave-created-before-post-create-failure',
+				name: 'Named new workflow',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+			});
+			const createSpy = vi
+				.spyOn(workflowsStore, 'createNewWorkflow')
+				.mockResolvedValue(createdWorkflow);
+			const focusPanelSpy = vi
+				.spyOn(useFocusPanelStore(), 'onNewWorkflowSave')
+				.mockImplementation(() => {
+					throw new Error('Focus panel failed');
+				});
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+			try {
+				mockRoute.params = { workflowId: newWorkflowId };
+				useWorkflowDocumentStore(createWorkflowDocumentId(newWorkflowId)).hydrate(
+					createTestWorkflow({
+						id: newWorkflowId,
+						name: 'Named new workflow',
+						nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+					}),
+				);
+
+				const saveStore = useWorkflowSaveStore();
+				const { saveCurrentWorkflow } = useWorkflowSaving({
+					router,
+				});
+
+				const result = await saveCurrentWorkflow({}, true, false, true);
+				await vi.advanceTimersByTimeAsync(saveStore.getRetryDelay() + 1);
+
+				expect(result).toBe(false);
+				expect(createSpy).toHaveBeenCalledTimes(1);
+				expect(workflowsListStore.getWorkflowById(createdWorkflow.id)).toEqual(createdWorkflow);
+				expect(saveStore.retryCount).toBe(0);
+				expect(saveStore.isRetrying).toBe(false);
+				expect(saveStore.lastError).toBeNull();
+				expect(consoleErrorSpy).toHaveBeenCalledWith(expect.any(Error));
+			} finally {
+				focusPanelSpy.mockRestore();
+				consoleErrorSpy.mockRestore();
+				vi.useRealTimers();
+			}
+		});
+
+		it('does not retry autosave after a permanent client error', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-autosave-client-error',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				active: true,
+			});
+			const errorMessage = 'Workflow name is required';
+
+			vi.spyOn(workflowsListStore, 'fetchWorkflow').mockResolvedValue(workflow);
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(
+				new ResponseError(errorMessage, { httpStatusCode: 400 }),
+			);
+
+			workflowsStore.setWorkflowId(workflow.id);
+			useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id)).hydrate(workflow);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+
+			const saveStore = useWorkflowSaveStore();
+			const { saveCurrentWorkflow } = useWorkflowSaving({
+				router,
+			});
+
+			const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, true);
+
+			expect(result).toBe(false);
+			expect(saveStore.pendingSave).toBeNull();
+			expect(saveStore.retryCount).toBe(0);
+			expect(saveStore.isRetrying).toBe(false);
+			expect(saveStore.lastError).toBe(errorMessage);
+		});
+
+		it('uses raw object messages for autosave errors that are not Error instances', async () => {
+			const { workflow } = prepareHydratedWorkflow('w-autosave-raw-node-api-error');
+			const errorMessage = 'Node API request failed';
+
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue({
+				name: 'NodeApiError',
+				message: errorMessage,
+				errorCode: 400,
+			});
+
+			const saveStore = useWorkflowSaveStore();
+			const { saveCurrentWorkflow } = useWorkflowSaving({
+				router,
+			});
+
+			const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, true);
+
+			expect(result).toBe(false);
+			expect(saveStore.retryCount).toBe(0);
+			expect(saveStore.isRetrying).toBe(false);
+			expect(saveStore.lastError).toBe(errorMessage);
+			expect(showMessageSpy).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: errorMessage,
+					type: 'error',
+				}),
+			);
+		});
+
+		it('does not retry autosave after a raw axios permanent client error', async () => {
+			const { workflow } = prepareHydratedWorkflow('w-autosave-raw-axios-error');
+			const errorMessage = 'Request failed with status code 413';
+
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockRejectedValue(
+				Object.assign(new Error(errorMessage), {
+					response: {
+						status: 413,
+					},
+				}),
+			);
+
+			const saveStore = useWorkflowSaveStore();
+			const { saveCurrentWorkflow } = useWorkflowSaving({
+				router,
+			});
+
+			const result = await saveCurrentWorkflow({ id: workflow.id }, true, false, true);
+
+			expect(result).toBe(false);
+			expect(saveStore.retryCount).toBe(0);
+			expect(saveStore.isRetrying).toBe(false);
+			expect(saveStore.lastError).toBe(errorMessage);
+		});
+
+		it('does not immediately re-arm debounced autosave after a permanent client error', async () => {
+			vi.useFakeTimers();
+
+			try {
+				mockedStore(useSettingsStore).isAutosaveEnabled = true;
+				prepareHydratedWorkflow('w-autosave-client-error-debounced');
+				const updateSpy = vi
+					.spyOn(workflowsStore, 'updateWorkflow')
+					.mockRejectedValue(
+						new ResponseError('Workflow name is required', { httpStatusCode: 400 }),
+					);
+				const saveStore = useWorkflowSaveStore();
+				const uiStore = useUIStore();
+
+				uiStore.markStateDirty();
+
+				const { autoSaveWorkflow } = useWorkflowSaving({ router, ownsAutoSave: true });
+
+				autoSaveWorkflow();
+				expect(saveStore.autoSaveState).toBe(AutoSaveState.Scheduled);
+
+				await vi.advanceTimersByTimeAsync(
+					getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE_MAX_WAIT) + 1000,
+				);
+
+				expect(updateSpy).toHaveBeenCalledTimes(1);
+				expect(saveStore.autoSaveState).toBe(AutoSaveState.Idle);
+				expect(saveStore.retryCount).toBe(0);
+				expect(saveStore.isRetrying).toBe(false);
+				expect(uiStore.stateIsDirty).toBe(true);
+
+				await vi.advanceTimersByTimeAsync(
+					getDebounceTime(DEBOUNCE_TIME.API.AUTOSAVE_MAX_WAIT) + 1000,
+				);
+
+				expect(updateSpy).toHaveBeenCalledTimes(1);
 			} finally {
 				vi.useRealTimers();
 			}

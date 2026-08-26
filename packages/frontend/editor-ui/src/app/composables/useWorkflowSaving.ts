@@ -21,6 +21,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import { ResponseError } from '@n8n/rest-api-client';
 import { isExpression, type IDataObject } from 'n8n-workflow';
 import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from './useExternalHooks';
@@ -42,6 +43,64 @@ import { useWorkflowSaveStore } from '@/app/stores/workflowSave.store';
 import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useInvalidNodeGroupCleanup } from '@/app/composables/useInvalidNodeGroupCleanup';
+
+function getErrorMessage(error: unknown): string {
+	if (error instanceof Error) {
+		return error.message;
+	}
+
+	if (error && typeof error === 'object' && 'message' in error) {
+		const { message } = error as { message?: unknown };
+		if (message !== undefined) {
+			return String(message);
+		}
+	}
+
+	return String(error);
+}
+
+function getHttpStatusCode(error: unknown): number | undefined {
+	if (error instanceof ResponseError) {
+		return error.httpStatusCode;
+	}
+
+	if (!error || typeof error !== 'object') {
+		return;
+	}
+
+	const { httpStatusCode, errorCode, response } = error as {
+		httpStatusCode?: unknown;
+		errorCode?: unknown;
+		response?: unknown;
+	};
+
+	if (typeof httpStatusCode === 'number') {
+		return httpStatusCode;
+	}
+
+	if (response && typeof response === 'object') {
+		const { status } = response as { status?: unknown };
+		if (typeof status === 'number') {
+			return status;
+		}
+	}
+
+	if (typeof errorCode === 'number' && errorCode >= 400 && errorCode < 600) {
+		return errorCode;
+	}
+
+	return undefined;
+}
+
+function shouldRetryAutoSaveFailure(error: unknown): boolean {
+	const statusCode = getHttpStatusCode(error);
+
+	if (!statusCode) {
+		return true;
+	}
+
+	return [408, 409, 429].includes(statusCode) || statusCode >= 500;
+}
 
 export function useWorkflowSaving({
 	router,
@@ -90,7 +149,8 @@ export function useWorkflowSaving({
 	const currentWorkflowDocumentStore = computed(() =>
 		useWorkflowDocumentStore(createWorkflowDocumentId(workflowId.value)),
 	);
-	const canScheduleAutoSave = computed(() => {
+
+	const canArmAutoSave = computed(() => {
 		// Don't schedule from a read-only canvas, or from an instance that doesn't
 		// own one. Every autosave entry point funnels through here, so a preview
 		// never writes whatever marked it dirty.
@@ -103,6 +163,23 @@ export function useWorkflowSaving({
 			return false;
 		}
 
+		// Don't schedule if we're offline
+		if (!backendConnectionStore.isOnline) {
+			return false;
+		}
+
+		if (!currentWorkflowDocumentStore.value.hydrated) {
+			return false;
+		}
+
+		return true;
+	});
+
+	const canScheduleAutoSave = computed(() => {
+		if (!canArmAutoSave.value) {
+			return false;
+		}
+
 		// Don't schedule if a save is already in progress - the finally block
 		// will reschedule if there are pending changes
 		if (saveStore.pendingSave) {
@@ -111,15 +188,6 @@ export function useWorkflowSaving({
 
 		// Don't schedule if we're waiting for retry backoff to complete
 		if (saveStore.isRetrying) {
-			return false;
-		}
-
-		// Don't schedule if we're offline
-		if (!backendConnectionStore.isOnline) {
-			return false;
-		}
-
-		if (!currentWorkflowDocumentStore.value.hydrated) {
 			return false;
 		}
 
@@ -241,20 +309,23 @@ export function useWorkflowSaving({
 		}
 
 		const savePromise = (async (): Promise<boolean> => {
-			// Check if workflow needs to be saved as new (doesn't exist in store yet)
-			const existingWorkflow = currentWorkflow
-				? workflowsListStore.getWorkflowById(currentWorkflow)
-				: null;
-			if (!currentWorkflow || !existingWorkflow?.id) {
-				const workflowId = await saveAsNewWorkflow(
-					{ parentFolderId, uiContext, autosaved },
-					redirect,
-				);
-				return !!workflowId;
-			}
+			let isExistingWorkflowSave = false;
 
-			// Workflow exists already so update it
 			try {
+				// Check if workflow needs to be saved as new (doesn't exist in store yet)
+				const existingWorkflow = currentWorkflow
+					? workflowsListStore.getWorkflowById(currentWorkflow)
+					: null;
+				if (!currentWorkflow || !existingWorkflow?.id) {
+					const workflowId = await saveAsNewWorkflow(
+						{ parentFolderId, uiContext, autosaved },
+						redirect,
+					);
+					return !!workflowId;
+				}
+
+				isExistingWorkflowSave = true;
+				// Workflow exists already so update it
 				if (!forceSave && isLoading) {
 					return true;
 				}
@@ -320,9 +391,10 @@ export function useWorkflowSaving({
 				onSaved?.(false); // Update of existing workflow
 				return true;
 			} catch (error) {
+				const errorMessage = getErrorMessage(error);
 				console.error(error);
 
-				if (error.errorCode === 409) {
+				if (isExistingWorkflowSave && getHttpStatusCode(error) === 409) {
 					telemetry.track('User attempted to save locked workflow', {
 						workflowId: currentWorkflow,
 						sharing_role: getWorkflowProjectRole(currentWorkflow),
@@ -371,8 +443,20 @@ export function useWorkflowSaving({
 
 				// Handle autosave failures with exponential backoff
 				if (autosaved) {
+					if (!shouldRetryAutoSaveFailure(error)) {
+						saveStore.resetRetry();
+						saveStore.setLastError(errorMessage);
+						toast.showMessage({
+							title: i18n.baseText('workflowHelpers.showMessage.title'),
+							message: errorMessage,
+							type: 'error',
+						});
+
+						return false;
+					}
+
 					saveStore.incrementRetry();
-					saveStore.setLastError(error.message);
+					saveStore.setLastError(errorMessage);
 
 					// Schedule retry with exponential backoff
 					const retryDelay = saveStore.getRetryDelay();
@@ -390,7 +474,7 @@ export function useWorkflowSaving({
 						title: i18n.baseText('workflowHelpers.showMessage.title'),
 						message: i18n.baseText('generic.autosave.retrying', {
 							interpolate: {
-								error: error.message,
+								error: errorMessage,
 								retryIn: `${Math.ceil(retryDelay / 1000)}s`,
 							},
 						}),
@@ -403,7 +487,7 @@ export function useWorkflowSaving({
 
 				toast.showMessage({
 					title: i18n.baseText('workflowHelpers.showMessage.title'),
-					message: error.message,
+					message: errorMessage,
 					type: 'error',
 				});
 
@@ -449,6 +533,8 @@ export function useWorkflowSaving({
 		} = {},
 		redirect = true,
 	): Promise<IWorkflowDb['id'] | null> {
+		let createRequestFailed = false;
+
 		try {
 			const currentDocumentStore = useWorkflowDocumentStore(
 				createWorkflowDocumentId(workflowId.value),
@@ -527,7 +613,13 @@ export function useWorkflowSaving({
 				workflowDataRequest.autosaved = autosaved;
 			}
 
-			const workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
+			let workflowData: IWorkflowDb;
+			try {
+				workflowData = await workflowsStore.createNewWorkflow(workflowDataRequest);
+			} catch (e) {
+				createRequestFailed = true;
+				throw e;
+			}
 
 			workflowsListStore.addWorkflow(workflowData);
 
@@ -622,9 +714,20 @@ export function useWorkflowSaving({
 			onSaved?.(true); // First save of new workflow
 			return workflowData.id;
 		} catch (e) {
+			if (autosaved && createRequestFailed) {
+				throw e;
+			}
+
+			if (autosaved) {
+				// The create request already succeeded; retrying this autosave
+				// would POST the same new workflow again.
+				console.error(e);
+				return null;
+			}
+
 			toast.showMessage({
 				title: i18n.baseText('workflowHelpers.showMessage.title'),
-				message: (e as Error).message,
+				message: getErrorMessage(e),
 				type: 'error',
 			});
 
@@ -647,14 +750,15 @@ export function useWorkflowSaving({
 			saveStore.setAutoSaveState(AutoSaveState.InProgress);
 
 			void (async () => {
+				let saved = false;
 				try {
-					await saveCurrentWorkflow({}, true, false, true);
+					saved = await saveCurrentWorkflow({}, true, false, true);
 				} finally {
 					if (saveStore.autoSaveState === AutoSaveState.InProgress) {
 						saveStore.setAutoSaveState(AutoSaveState.Idle);
 					}
 					// If changes were made during save, reschedule autosave
-					if (uiStore.stateIsDirty && canScheduleAutoSave.value) {
+					if (saved && uiStore.stateIsDirty && canScheduleAutoSave.value) {
 						saveStore.setAutoSaveState(AutoSaveState.Scheduled);
 						void autoSaveWorkflowDebounced();
 					}
@@ -692,8 +796,8 @@ export function useWorkflowSaving({
 		// else would save what the agent wrote. Mirrors the AI-builder re-arm in
 		// NodeView.
 		// Watch for network coming back online, and for other autosave eligibility
-		// returning after retry backoff, save completion, or document hydration.
-		watch(canScheduleAutoSave, (allowed, wasAllowed) => {
+		// returning after document hydration.
+		watch(canArmAutoSave, (allowed, wasAllowed) => {
 			if (allowed && !wasAllowed && uiStore.stateIsDirty) {
 				scheduleAutoSave();
 			}
