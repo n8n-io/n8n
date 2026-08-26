@@ -82,6 +82,7 @@ export class EngineV2Runtime {
 			// limits are applied.
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
+			logger: this.logger,
 			externalDependencies: ({ executionStore, stepStore }) => ({
 				v1StepExecutor: new V1StepExecutor({
 					nodeTypes: this.nodeTypes,
