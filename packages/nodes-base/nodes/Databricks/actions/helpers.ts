@@ -37,16 +37,27 @@ export function sanitizeApiMessage(message: string): string {
 // refresh) aren't mislabeled if they leak through. Mutates rather than re-wraps:
 // `new NodeApiError(node, existingNodeApiError)` returns the original untouched.
 export function makePermissionErrorLegible(error: unknown): void {
-	if (
-		error instanceof NodeApiError &&
-		(error.context?.data as IDataObject | undefined)?.error_code === 'PERMISSION_DENIED'
-	) {
-		const apiMessage = (error.context.data as IDataObject).message;
-		if (typeof apiMessage === 'string' && apiMessage) {
-			error.message = sanitizeApiMessage(apiMessage);
-			error.description =
-				'Grant the named permission to the signed-in user or service principal in Databricks, then retry.';
+	if (!(error instanceof NodeApiError)) return;
+
+	// Requests with encoding: 'arraybuffer' (file downloads) receive their 403
+	// JSON body as raw bytes, so parse Buffer/string bodies before reading it
+	let data = error.context.data;
+	if (Buffer.isBuffer(data) || typeof data === 'string') {
+		try {
+			data = JSON.parse(data.toString()) as IDataObject;
+		} catch {
+			return;
 		}
+	}
+
+	const body = data as IDataObject | undefined;
+	if (body?.error_code !== 'PERMISSION_DENIED') return;
+
+	const apiMessage = body.message;
+	if (typeof apiMessage === 'string' && apiMessage) {
+		error.message = sanitizeApiMessage(apiMessage);
+		error.description =
+			'Grant the named permission to the signed-in user or service principal in Databricks, then retry.';
 	}
 }
 

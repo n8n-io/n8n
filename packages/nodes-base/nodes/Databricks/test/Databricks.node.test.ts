@@ -688,6 +688,28 @@ describe('makePermissionErrorLegible', () => {
 		expect(error.message).toBe(`bad message${'x'.repeat(600)}`.slice(0, 500));
 	});
 
+	// encoding: 'arraybuffer' requests (file downloads) get their 403 JSON body
+	// as raw bytes — the helper must parse it before reading error_code
+	it('should parse a Buffer body from arraybuffer requests', () => {
+		const error = apiErrorFromBody(
+			403,
+			Buffer.from(JSON.stringify({ error_code: 'PERMISSION_DENIED', message: PERMISSION_MESSAGE })),
+		);
+
+		makePermissionErrorLegible(error);
+
+		expect(error.message).toBe(PERMISSION_MESSAGE);
+	});
+
+	it('should leave errors with a non-JSON Buffer body untouched', () => {
+		const error = apiErrorFromBody(403, Buffer.from('not json'));
+		const messageBefore = error.message;
+
+		makePermissionErrorLegible(error);
+
+		expect(error.message).toBe(messageBefore);
+	});
+
 	it('should leave non-PERMISSION_DENIED errors untouched', () => {
 		const error = apiErrorFromBody(403, {
 			error_code: 'IP_ACCESS_DENIED',
