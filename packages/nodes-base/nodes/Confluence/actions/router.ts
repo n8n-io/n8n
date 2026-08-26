@@ -40,6 +40,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'attachment:getMany':
 					responseItems = await attachment.getMany.execute.call(this, i);
 					break;
+				case 'attachment:upload':
+					responseData = await attachment.upload.execute.call(this, i);
+					break;
 				case 'page:append':
 					responseData = await page.append.execute.call(this, i);
 					break;
