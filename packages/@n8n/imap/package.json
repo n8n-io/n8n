@@ -23,6 +23,7 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/utils": "workspace:*",
     "iconv-lite": "catalog:",
     "imap": "0.8.19",
     "quoted-printable": "1.0.1",
