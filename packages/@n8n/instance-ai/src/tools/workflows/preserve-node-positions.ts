@@ -266,8 +266,10 @@ class AddedNodePlacer {
 
 	private placeCluster(cluster: NodeJSON[]): void {
 		const { upstream, downstream } = this.anchorsOf(cluster);
-		const delta =
-			this.deltaFromAnchors([...upstream, ...downstream]) ?? this.parkBelowDelta(cluster);
+		// A survivor wired both into and out of the cluster (a loop) must count
+		// once in the median, not twice.
+		const anchors = [...new Set([...upstream, ...downstream])];
+		const delta = this.deltaFromAnchors(anchors) ?? this.parkBelowDelta(cluster);
 		this.moveToFrame(cluster, delta);
 
 		// No room where the anchoring put it. A splice (anchors on both sides)

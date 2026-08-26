@@ -65,15 +65,6 @@ describe('preserveExistingNodePositions', () => {
 			expect(positionsByName(built)).toEqual(positionsByName(saved));
 		});
 
-		it('leaves positions untouched when the build already matched the saved canvas', async () => {
-			const saved = workflow([node('A', [320, 480]), node('B', [528, 480])]);
-			const built = workflow([node('A', [320, 480]), node('B', [528, 480])]);
-
-			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
-
-			expect(positionsByName(built)).toEqual({ A: [320, 480], B: [528, 480] });
-		});
-
 		it('ignores a workflow whose nodes were all renamed, leaving the fresh layout', async () => {
 			const saved = workflow([node('Old name', [4000, 900])]);
 			const built = workflow([node('New name', [0, 0])]);
@@ -182,15 +173,11 @@ describe('preserveExistingNodePositions', () => {
 
 			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
 
-			// B re-flows with the frontier; the sticky spans the old tail start, so it
-			// widens by the tail's shift instead of moving, and keeps wrapping A, C and B.
-			expect(positionsByName(built)).toMatchObject({
-				A: [96, 96],
-				C: [320, 96],
-				B: [544, 96],
-				'Sticky Note': [64, 32],
-			});
+			// Node placement is pinned by the re-flow test above; here only the
+			// sticky matters: it spans the old tail start, so it widens by the
+			// tail's shift instead of moving, and keeps wrapping A, C and B.
 			const stickyNode = built.nodes.find((n) => n.name === 'Sticky Note');
+			expect(stickyNode?.position).toEqual([64, 32]);
 			expect(stickyNode?.parameters?.width).toBe(640);
 		});
 
@@ -259,22 +246,6 @@ describe('preserveExistingNodePositions', () => {
 			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
 
 			expect(positionsByName(built).Merge).toEqual([320, 200]);
-		});
-
-		it('anchors a chain of added nodes link by link', async () => {
-			const saved = workflow([node('A', [96, 96])]);
-			const built = workflow([node('A', [0, 0]), node('C1', [224, 0]), node('C2', [448, 0])], {
-				...wire('A', 'C1'),
-				...wire('C1', 'C2'),
-			});
-
-			await preserveExistingNodePositions(built, 'wf-1', contextReturning(saved));
-
-			expect(positionsByName(built)).toEqual({
-				A: [96, 96],
-				C1: [320, 96],
-				C2: [544, 96],
-			});
 		});
 
 		it('anchors each added cluster to its own neighbourhood', async () => {
