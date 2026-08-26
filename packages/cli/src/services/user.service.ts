@@ -29,12 +29,6 @@ import type { IUserSettings } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import { validate as uuidValidate } from 'uuid';
 
-import { JwtService } from './jwt.service';
-import { OwnershipService } from './ownership.service';
-import { ProjectService } from './project.service.ee';
-import { PublicApiKeyService } from './public-api-key.service';
-import { RoleService } from './role.service';
-
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -49,6 +43,12 @@ import type { UserRequest } from '@/requests';
 import { UrlService } from '@/services/url.service';
 import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 import { UserManagementMailer } from '@/user-management/email';
+
+import { JwtService } from './jwt.service';
+import { OwnershipService } from './ownership.service';
+import { ProjectService } from './project.service.ee';
+import { PublicApiKeyService } from './public-api-key.service';
+import { RoleService } from './role.service';
 
 @Service()
 export class UserService {
@@ -716,18 +716,18 @@ export class UserService {
 	}
 
 	private async getWorkflowService() {
-		const { WorkflowService } = await import('@/workflows/workflow.service');
+		const { WorkflowService } = await import('@/workflows/workflow.service.js');
 		return Container.get(WorkflowService);
 	}
 
 	private async getCredentialsService() {
-		const { CredentialsService } = await import('@/credentials/credentials.service');
+		const { CredentialsService } = await import('@/credentials/credentials.service.js');
 		return Container.get(CredentialsService);
 	}
 
 	private async getOwnershipTransferService() {
 		const { OwnershipTransferService } = await import(
-			'@/services/ownership-transfer/ownership-transfer.service'
+			'@/services/ownership-transfer/ownership-transfer.service.js'
 		);
 		return Container.get(OwnershipTransferService);
 	}
