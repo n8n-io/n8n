@@ -34,8 +34,10 @@ import type { ExternalHooks, WorkflowLifecycleHookActor } from '@/external-hooks
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import type { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import type { PollTriggerJobRegistrar } from '@/scheduling/poll-trigger-node/poll-trigger-job-registrar';
 import type { ScheduleTriggerJobRegistrar } from '@/scheduling/schedule-trigger-node/schedule-trigger-job-registrar';
+import type { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { RoleService } from '@/services/role.service';
 import type { TagService } from '@/services/tag.service';
@@ -1749,8 +1751,11 @@ describe('WorkflowService', () => {
 		let workflowPublishedVersionRepositoryMock: MockProxy<WorkflowPublishedVersionRepository>;
 		let workflowMutationHooksMock: MockProxy<WorkflowMutationHooksProxy>;
 		let ownershipServiceMock: MockProxy<OwnershipService>;
+		let workflowScheduledJobOwnerMock: MockProxy<WorkflowScheduledJobOwner>;
+		let durableJobProvisionerMock: MockProxy<DurableJobProvisioner>;
 
 		const WORKFLOW_ID = 'workflow-1';
+		const WORKFLOW_OWNER_REF = { ownerType: 'workflow', ownerId: WORKFLOW_ID };
 
 		function makeWorkflowEntity(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
 			const workflow = new WorkflowEntity();
@@ -1773,6 +1778,9 @@ describe('WorkflowService', () => {
 			workflowMutationHooksMock = mock<WorkflowMutationHooksProxy>();
 			workflowPublishedVersionRepositoryMock = mock<WorkflowPublishedVersionRepository>();
 			workflowPublishedVersionRepositoryMock.getPublishedVersionId.mockResolvedValue(null);
+			workflowScheduledJobOwnerMock = mock<WorkflowScheduledJobOwner>();
+			workflowScheduledJobOwnerMock.ref.mockReturnValue(WORKFLOW_OWNER_REF);
+			durableJobProvisionerMock = mock<DurableJobProvisioner>();
 			globalConfigMock = mock<GlobalConfig>({
 				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: true }),
 			});
@@ -1805,8 +1813,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
-				mock(), // workflowScheduledJobOwner
-				mock(), // durableJobProvisioner
+				workflowScheduledJobOwnerMock, // workflowScheduledJobOwner
+				durableJobProvisionerMock, // durableJobProvisioner
 				workflowPublishedVersionRepositoryMock, // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
@@ -1857,6 +1865,34 @@ describe('WorkflowService', () => {
 			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
 
 			expect(workflowRepositoryMock.delete).toHaveBeenCalledWith(WORKFLOW_ID);
+		});
+
+		// Nothing in the database removes a workflow's scheduled jobs with it, so the
+		// delete has to do it, and before the row goes.
+		test('deprovisions the scheduled jobs the workflow owned before the row delete', async () => {
+			const workflow = makeWorkflowEntity({ isArchived: true, activeVersionId: null });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await workflowService.delete(mock<User>(), WORKFLOW_ID, true);
+
+			expect(workflowScheduledJobOwnerMock.ref).toHaveBeenCalledWith(WORKFLOW_ID);
+			expect(durableJobProvisionerMock.deprovisionOwner).toHaveBeenCalledExactlyOnceWith(
+				WORKFLOW_OWNER_REF,
+			);
+			expect(durableJobProvisionerMock.deprovisionOwner.mock.invocationCallOrder[0]).toBeLessThan(
+				workflowRepositoryMock.delete.mock.invocationCallOrder[0],
+			);
+		});
+
+		test('deprovisions no scheduled jobs when deletion is rejected', async () => {
+			const workflow = makeWorkflowEntity({ activeVersionId: 'v1' });
+			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(workflow);
+
+			await expect(workflowService.delete(mock<User>(), WORKFLOW_ID, true)).rejects.toBeInstanceOf(
+				ConflictError,
+			);
+
+			expect(durableJobProvisionerMock.deprovisionOwner).not.toHaveBeenCalled();
 		});
 
 		test('runs the beforeWorkflowDeleted lifecycle hook before the row delete', async () => {

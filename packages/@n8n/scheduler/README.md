@@ -281,8 +281,9 @@ registry.register('my-thing', {
 ```
 
 Build the registry in one place, a single manifest the host owns: declare every
-owner module there and hand the result to both readers (the provisioner and the
-scheduler's reconciliation pass), so neither can see an owner the other does not.
+owner module there, and let both readers (the provisioner and the scheduler's
+reconciliation pass) build theirs from it, so neither can see an owner the other
+does not.
 
 Two rules make the answer safe to act on:
 
@@ -321,7 +322,13 @@ stateDiagram-v2
 - It is **deleted only once that stamp is older than the quarantine grace** (a day by
   default), and only while its owner is still reported gone.
 - A stamped job whose owner turns out to exist after all is **re-enabled** with a freshly
-  computed clock, so a resolver bug corrected inside the grace window costs nothing.
+  computed clock, so a resolver bug corrected inside the grace window destroys nothing.
+
+A resolver answers whether an owner exists, not what it currently wants, so a revival
+restores the job exactly as it was stored. A job the owner would no longer provision
+(a part of it dropped while its jobs were quarantined) comes back too, and its runs
+fail until the owner provisions again. Provisioning is what reconciles an owner's set
+of jobs; the sweep only decides whether they may run at all.
 
 Two more guardrails: an owner type whose resolver throws, or that nothing claimed, is
 left entirely alone; and jobs younger than a short settle period are skipped, so an

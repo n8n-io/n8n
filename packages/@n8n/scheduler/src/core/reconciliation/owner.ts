@@ -26,8 +26,8 @@ export interface ScheduledJobOwnerResolver {
 
 /**
  * Where the liveness resolvers register, one per owner type. Populated by the
- * host before the reconciliation pass runs; the same instance is what a
- * provisioning guardrail consults to refuse an owner type with no cleanup story.
+ * host before the reconciliation pass runs, and read by the provisioning
+ * guardrail that refuses an owner type with no cleanup story.
  */
 export class ScheduledJobOwnerRegistry {
 	private readonly resolvers = new Map<string, ScheduledJobOwnerResolver>();

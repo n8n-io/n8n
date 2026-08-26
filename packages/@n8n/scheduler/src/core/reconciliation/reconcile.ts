@@ -66,7 +66,7 @@ export interface ReconciliationHooks {
  *   and only while its owner is still reported gone;
  * - a stamped job whose owner is reported alive again is **re-enabled** with a
  *   freshly computed clock, so a resolver bug corrected inside the grace window
- *   costs nothing.
+ *   destroys nothing (see {@link revive} for the limits of a revival).
  *
  * A resolver that throws, or an owner type nothing claimed, leaves every job of
  * that type exactly as it was: absence of an answer is never treated as an
@@ -282,6 +282,11 @@ async function deleteExpired(
  * was wrong, or an owner recreated under the same id. Each job's clock is
  * recomputed from its stored schedule, so it resumes at its next instant
  * rather than replaying the quarantine.
+ *
+ * A resolver answers existence, not intent, so a job is restored exactly as it
+ * was stored, including one the owner would no longer provision (a member
+ * dropped while its jobs were quarantined). Reconciling the set back to what
+ * the owner wants stays the owner's own job, done by provisioning it again.
  */
 async function revive(
 	store: ReconciliationJobStore,
