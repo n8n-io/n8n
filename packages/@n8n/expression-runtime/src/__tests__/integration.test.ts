@@ -268,7 +268,7 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		});
 	});
 
-	it('should enumerate keys that collide with internal marker strings', () => {
+	it('should enumerate keys that look like internal sentinel markers', () => {
 		const data = { $json: { __NaN__: 'a', other: 'b' } };
 
 		expect(evaluator.evaluate('{{ Object.keys($json).sort().join(",") }}', data, caller)).toBe(

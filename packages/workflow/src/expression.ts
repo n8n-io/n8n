@@ -646,7 +646,8 @@ export class Expression {
 	}
 
 	private renderExpression(expression: string, data: IWorkflowDataProxyData) {
-		// Use VM evaluator if engine is set to 'vm' or 'quickjs' and we're not in the browser
+		// The VM engines (isolated-vm, quickjs) are Node-only; the browser always
+		// uses the legacy path below.
 		if (
 			(Expression.expressionEngine === 'vm' || Expression.expressionEngine === 'quickjs') &&
 			!IS_FRONTEND
