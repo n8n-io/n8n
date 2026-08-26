@@ -6,10 +6,12 @@ import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotImplementedError } from '@/errors/response-errors/not-implemented.error';
 import { License } from '@/license';
 import { isPositiveInteger } from '@/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
+import { isExecutionIdV2 } from './execution-id';
 import { ExecutionService } from './execution.service';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { ExecutionRequest } from './execution.types';
@@ -86,9 +88,7 @@ export class ExecutionsController {
 
 	@Get('/:id')
 	async getOne(req: ExecutionRequest.GetOne) {
-		if (!isPositiveInteger(req.params.id)) {
-			throw new BadRequestError('Execution ID is not a number');
-		}
+		this.assertKnownExecutionId(req.params.id);
 
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
 
@@ -146,8 +146,12 @@ export class ExecutionsController {
 
 	@Patch('/:id')
 	async update(req: ExecutionRequest.Update) {
-		if (!isPositiveInteger(req.params.id)) {
-			throw new BadRequestError('Execution ID is not a number');
+		this.assertKnownExecutionId(req.params.id);
+
+		// The data plane stores no annotations, so letting a v2 id through would
+		// report "not found" for a reason that has nothing to do with the id.
+		if (isExecutionIdV2(req.params.id)) {
+			throw new NotImplementedError('Annotating engine 2.0 executions is not supported yet');
 		}
 
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
@@ -161,5 +165,15 @@ export class ExecutionsController {
 		await this.executionService.annotate(req.params.id, validatedPayload, workflowIds);
 
 		return await this.executionService.findOne(req, workflowIds);
+	}
+
+	/**
+	 * The two id spaces are distinct: a v1 id is a positive integer from the
+	 * control-plane table, a v2 id is a UUID minted by the data plane.
+	 */
+	private assertKnownExecutionId(id: string) {
+		if (!isPositiveInteger(id) && !isExecutionIdV2(id)) {
+			throw new BadRequestError('Execution ID is not valid');
+		}
 	}
 }
