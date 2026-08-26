@@ -25,12 +25,11 @@ const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 // Sentinel helpers
 //
 // QuickJS's vm.dump() loses Date / NaN / Map / Set / Error type identity
-// (Date → ISO string, NaN → null, Map/Set → plain object, Error → plain
-// object without prototype). Inside the QuickJS context we wrap those
-// values as sentinel objects ({ __isDate: true, __isoString: ... } etc.)
-// before they cross the boundary, then unwrap them on the host side.
-// The isolated-vm bridge does NOT need this — structured clone preserves
-// type identity natively.
+// (Date → ISO string, NaN → null, Map/Set/Error → empty plain object). Inside
+// the QuickJS context we wrap those values as sentinel objects
+// ({ __isDate: true, __isoString: ... } etc.) before they cross the boundary,
+// then unwrap them on the host side. The isolated-vm bridge does NOT need this
+// — structured clone preserves type identity natively.
 // ============================================================================
 
 function isDateSentinel(value: unknown): value is { __isDate: true; __isoString: string } {
@@ -125,7 +124,8 @@ function unwrapSentinels(value: unknown): unknown {
 		return new Set(value.__values.map(unwrapSentinels));
 	}
 	if (Array.isArray(value)) return value.map(unwrapSentinels);
-	// Don't recurse into error sentinels
+	// Pass error sentinels through untouched — execute() detects them after
+	// unwrapping and reconstructs the Error on the host.
 	if (isErrorSentinel(value)) return value;
 	const result: Record<string, unknown> = {};
 	for (const key of Object.keys(value as Record<string, unknown>)) {
@@ -138,9 +138,10 @@ function unwrapSentinels(value: unknown): unknown {
  * Serialize an error into a transferable metadata object.
  *
  * Host-side callbacks (getValueAtPath, etc.) catch errors and return this
- * sentinel instead of letting the error cross the sandbox boundary (which
- * strips custom class identity and properties). The sandbox-side proxy
- * detects __isError and reconstructs a proper Error to throw.
+ * sentinel instead of letting the error cross the boundary (which strips
+ * custom class identity and properties). The in-context proxy detects
+ * __isError and throws the sentinel; the host reconstructs a real Error
+ * after it round-trips back (see execute() / reconstructError).
  */
 function serializeError(err: unknown): ErrorSentinel {
 	if (err instanceof Error) {
@@ -160,7 +161,9 @@ function serializeError(err: unknown): ErrorSentinel {
 
 /**
  * Read the runtime IIFE bundle by walking up from `__dirname` until
- * `dist/bundle/runtime.iife.js` is found.
+ * `dist/bundle/runtime.iife.js` is found. Walking up (rather than a fixed
+ * relative path) works from either compiled output dir — `dist/cjs/bridge/`
+ * and `dist/esm/bridge/` sit at different depths from the bundle.
  */
 async function readRuntimeBundle(): Promise<string> {
 	let dir = __dirname;
@@ -181,9 +184,11 @@ async function readRuntimeBundle(): Promise<string> {
  * the string "undefined".
  *
  * Only objects/arrays reach this — primitives (including top-level NaN via
- * newNumber) and Date are handled directly by the caller. Nested NaN numbers
- * marshal as null (standard JSON.stringify behaviour); the only shapes that
- * cross here (lazy-proxy key/length metadata, Intl outputs) never contain one.
+ * newNumber) and Date are handled directly by the caller. Everything else
+ * (lazy-proxy metadata, Intl outputs, typed-RPC results, error-sentinel
+ * extras) goes through JSON.stringify, so a nested NaN marshals as null and a
+ * nested Date as an ISO string. isolated-vm keeps both via structured clone;
+ * this is a known divergence for nested values inside RPC results.
  */
 function hostValueToJson(value: unknown): string {
 	if (value === undefined) return 'undefined';
@@ -224,9 +229,8 @@ function getValueAtPath(data: Record<string, unknown>, pathArr: string[]): unkno
 		}
 	}
 
-	// Functions are not reachable via the lazy-proxy data path — return
-	// undefined unconditionally, matching IsolatedVmBridge (see the invariant
-	// documented in __tests__/host-fn-shadowing.test.ts).
+	// Functions must never cross the boundary — resolve them as undefined,
+	// matching IsolatedVmBridge (invariant: __tests__/host-fn-shadowing.test.ts).
 	if (typeof value === 'function') {
 		return undefined;
 	}
@@ -381,11 +385,10 @@ function dispatchHostCall(rawMsg: unknown, data: WorkflowData): unknown {
  * - Timeout enforcement via interrupt handler
  * - Complete isolation from host process
  *
- * Like IsolatedVmBridge, callbacks are scoped per-execute() call: the host
- * functions are re-registered each call, so concurrent / nested evaluations
- * see fresh data. The runtime bundle's `buildContext(callbacks, timezone)`
- * is invoked with the host callback functions directly — the runtime treats
- * bridge callbacks as plain functions.
+ * Callbacks are scoped per execute() call (see createCallbackHandles), so
+ * concurrent / nested evaluations see fresh data. The runtime treats bridge
+ * callbacks as plain functions, so `buildContext(callbacks, timezone)` gets
+ * the host callback functions directly.
  */
 export class QuickJsBridge implements RuntimeBridge {
 	private runtime: import('quickjs-emscripten').QuickJSRuntime | undefined;
@@ -422,7 +425,6 @@ export class QuickJsBridge implements RuntimeBridge {
 		this.runtime = QuickJS.newRuntime();
 		this.runtime.setMemoryLimit(this.config.memoryLimit * 1024 * 1024);
 
-		// Create context
 		this.vm = this.runtime.newContext();
 
 		// Install the interrupt handler once. It reads the live deadline stack, so
@@ -444,10 +446,9 @@ export class QuickJsBridge implements RuntimeBridge {
 		// Wrap __prepareForTransfer to mark Date/NaN/Map/Set/Error so they survive vm.dump()
 		this.injectTransferWrapper();
 
-		// Inject E() error handler matching the new IsolatedVmBridge semantics
+		// Inject E() error handler matching IsolatedVmBridge's E() semantics
 		this.injectErrorHandler();
 
-		// Verify proxy system loaded correctly
 		this.verifyProxySystem();
 
 		this.initialized = true;
@@ -773,7 +774,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			return { __isSet: true, __values: values };
 		}
 		if (Array.isArray(v)) return v.map(wrapSpecialValues);
-		// Don't recurse into error sentinels
+		// Error sentinels are already in transfer shape — leave them intact.
 		if (v.__isError) return v;
 		var result = {};
 		var keys = Object.keys(v);
@@ -955,7 +956,7 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * Execute JavaScript code in the QuickJS context.
 	 *
 	 * Mirrors IsolatedVmBridge.execute():
-	 * 1. Register per-call host callbacks (closure-scoped to `data`)
+	 * 1. Create per-call host callbacks scoped to `data` (createCallbackHandles)
 	 * 2. Build a fresh evaluation context via buildContext(callbacks, timezone)
 	 * 3. Run wrapped code with `this` set to the context
 	 * 4. Reconstruct error sentinels into real Errors
@@ -974,11 +975,10 @@ export class QuickJsBridge implements RuntimeBridge {
 		try {
 			const timezone = options?.timezone ? JSON.stringify(options.timezone) : 'undefined';
 
-			// The callback impls arrive as function arguments (closure-scoped to
-			// this call), never as globals — see createCallbackHandles(). The
-			// runtime expects plain functions (host-side ivm.Callback instances in
-			// the isolated-vm bridge); QuickJS host functions already are plain
-			// functions in-vm, so they pass through directly.
+			// The callback impls arrive as function arguments (scoped to this call),
+			// never as globals — see createCallbackHandles(). The runtime calls them
+			// as plain functions; the isolated-vm bridge wires ivm.Callback there,
+			// while QuickJS host functions are already plain functions in the context.
 			const wrappedCode = `
 (function(__getValueAtPathImpl, __getArrayElementImpl, __callHostImpl) {
   var __ctx = buildContext({
