@@ -96,5 +96,49 @@ describe('SharedWorkflowRepository', () => {
 
 			expect(result).toEqual(new Map());
 		});
+
+		it('merges owner projects returned from different chunks', async () => {
+			const firstProject = mock<Project>({ id: 'first-project' });
+			const lastProject = mock<Project>({ id: 'last-project' });
+			entityManager.find
+				.mockResolvedValueOnce([
+					mock<SharedWorkflow>({ workflowId: 'first', project: firstProject }),
+				])
+				.mockResolvedValueOnce([
+					mock<SharedWorkflow>({ workflowId: 'last', project: lastProject }),
+				]);
+			const workflowIds = Array.from({ length: 10_001 }, (_, index) => `workflow-${index}`);
+
+			const result = await sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+
+			expect(entityManager.find).toHaveBeenCalledTimes(2);
+			expect(result).toEqual(
+				new Map([
+					['first', firstProject],
+					['last', lastProject],
+				]),
+			);
+		});
+	});
+
+	describe('findByWorkflowIds', () => {
+		it('merges owner rows returned from different chunks', async () => {
+			const first = mock<SharedWorkflow>({ workflowId: 'first' });
+			const last = mock<SharedWorkflow>({ workflowId: 'last' });
+			entityManager.find.mockResolvedValueOnce([first]).mockResolvedValueOnce([last]);
+			const workflowIds = Array.from({ length: 10_001 }, (_, index) => `workflow-${index}`);
+
+			const result = await sharedWorkflowRepository.findByWorkflowIds(workflowIds);
+
+			expect(entityManager.find).toHaveBeenCalledTimes(2);
+			expect(entityManager.find).toHaveBeenNthCalledWith(2, SharedWorkflow, {
+				where: {
+					role: 'workflow:owner',
+					workflowId: In(['workflow-10000']),
+				},
+				relations: { project: { projectRelations: { user: true, role: true } } },
+			});
+			expect(result).toEqual([first, last]);
+		});
 	});
 });
