@@ -3223,29 +3223,6 @@ export function useCanvasOperations() {
 		workflowDocumentStore.value.addTags(tagIds);
 	}
 
-	async function fetchWorkflowDataFromUrl(url: string): Promise<WorkflowDataUpdate | undefined> {
-		let workflowData: WorkflowDataUpdate;
-
-		const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
-		if (!projectId) {
-			// We should never reach this point because the project should be selected before
-			throw new Error('No project selected');
-			return;
-		}
-
-		canvasStore.startLoading();
-		try {
-			workflowData = await workflowsStore.getWorkflowFromUrl(url, projectId);
-		} catch (error) {
-			toast.showError(error, i18n.baseText('nodeView.showError.getWorkflowDataFromUrl.title'));
-			return;
-		} finally {
-			canvasStore.stopLoading();
-		}
-
-		return workflowData;
-	}
-
 	function getNodeGroupsFullyContainedInSelection(
 		nodeIds: Set<string>,
 		groups: IWorkflowGroup[],
@@ -3851,7 +3828,6 @@ export function useCanvasOperations() {
 		filterConnectionsByNodes,
 		connectAdjacentNodes,
 		importWorkflowData,
-		fetchWorkflowDataFromUrl,
 		resetWorkspace,
 		initializeWorkspace,
 		resolveNodeWebhook,

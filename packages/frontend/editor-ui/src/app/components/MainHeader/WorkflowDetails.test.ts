@@ -471,7 +471,6 @@ describe('WorkflowDetails', () => {
 
 			await userEvent.click(getByTestId('workflow-menu'));
 			expect(queryByTestId('workflow-menu-item-duplicate')).not.toBeInTheDocument();
-			expect(queryByTestId('workflow-menu-item-import-from-url')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-import-from-file')).not.toBeInTheDocument();
 		});
 
