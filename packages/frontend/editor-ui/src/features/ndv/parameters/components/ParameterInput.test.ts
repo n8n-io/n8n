@@ -31,6 +31,7 @@ import type {
 } from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { parameterInputRegistry } from '@n8n/frontend-module-sdk';
 
 function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 	return {
@@ -1802,6 +1803,117 @@ describe('ParameterInput.vue', () => {
 
 			expect(updateNodeProperties).toHaveBeenCalledWith(credentialUpdate);
 			expect(onToolConfigCredentialSelected).toHaveBeenCalledWith(credentialUpdate);
+		});
+	});
+
+	describe('module-contributed parameter inputs', () => {
+		const ContributedInput = defineComponent({
+			props: {
+				parameter: { type: Object, required: true },
+				modelValue: { type: [String, Number, Boolean, Object, Array], default: '' },
+				isReadOnly: { type: Boolean, default: false },
+				droppable: { type: Boolean, default: false },
+			},
+			emits: ['update:modelValue'],
+			template:
+				'<button data-test-id="contributed-input" @click="$emit(\'update:modelValue\', \'from-module\')">{{ modelValue }}</button>',
+		});
+
+		const stringParameter = {
+			displayName: 'Custom',
+			name: 'custom',
+			type: 'string' as const,
+			default: '',
+		};
+
+		afterEach(() => {
+			parameterInputRegistry.clear();
+		});
+
+		test('should render the built-in input when no module claims the type', () => {
+			const { container, queryByTestId } = renderComponent({
+				props: { path: 'custom', parameter: stringParameter, modelValue: 'built-in' },
+			});
+
+			expect(queryByTestId('contributed-input')).not.toBeInTheDocument();
+			expect(container.querySelector('input')).toBeInTheDocument();
+		});
+
+		test('should render a contributed input for the claimed type', async () => {
+			parameterInputRegistry.register({ type: 'string', component: ContributedInput });
+
+			const { getByTestId } = renderComponent({
+				props: { path: 'custom', parameter: stringParameter, modelValue: 'from-shell' },
+			});
+			await nextTick();
+
+			expect(getByTestId('contributed-input')).toHaveTextContent('from-shell');
+		});
+
+		test('should emit the parameter update a contributed input sends', async () => {
+			parameterInputRegistry.register({ type: 'string', component: ContributedInput });
+
+			const { getByTestId, emitted } = renderComponent({
+				props: { path: 'custom', parameter: stringParameter, modelValue: '' },
+			});
+			await nextTick();
+
+			await fireEvent.click(getByTestId('contributed-input'));
+			await waitFor(() => expect(emitted().update).toBeTruthy());
+
+			expect(emitted().update[0]).toEqual([
+				expect.objectContaining({ name: 'custom', value: 'from-module' }),
+			]);
+		});
+
+		test('should leave another type on its built-in branch', async () => {
+			parameterInputRegistry.register({ type: 'string', component: ContributedInput });
+
+			const { container, queryByTestId } = renderComponent({
+				props: {
+					path: 'count',
+					parameter: { displayName: 'Count', name: 'count', type: 'number', default: 0 },
+					modelValue: 3,
+				},
+			});
+			await nextTick();
+
+			expect(queryByTestId('contributed-input')).not.toBeInTheDocument();
+			expect(container.querySelector('input')).toBeInTheDocument();
+		});
+
+		test('should yield to the expression editor when the input does not own expression rendering', async () => {
+			parameterInputRegistry.register({ type: 'string', component: ContributedInput });
+
+			const { queryByTestId } = renderComponent({
+				props: {
+					path: 'custom',
+					parameter: stringParameter,
+					modelValue: '={{ $json.value }}',
+				},
+			});
+			await nextTick();
+
+			expect(queryByTestId('contributed-input')).not.toBeInTheDocument();
+		});
+
+		test('should keep an expression value when the input owns expression rendering', async () => {
+			parameterInputRegistry.register({
+				type: 'string',
+				component: ContributedInput,
+				chrome: { ownsExpressionRendering: true },
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					path: 'custom',
+					parameter: stringParameter,
+					modelValue: '={{ $json.value }}',
+				},
+			});
+			await nextTick();
+
+			expect(getByTestId('contributed-input')).toBeInTheDocument();
 		});
 	});
 });

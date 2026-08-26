@@ -1,5 +1,6 @@
 export type * from './descriptor';
 export type * from './modal';
+export type * from './parameterInput';
 export type * from './resource';
 export type * from './tabs';
 export type * from './push';
