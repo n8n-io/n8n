@@ -233,7 +233,14 @@ function positionPanel(setIndex: number) {
 	openChipAnchor.value = anchor;
 	if (!anchor) return;
 	const rect = anchor.getBoundingClientRect();
-	panelStyle.value = { top: `${rect.bottom + 4}px`, left: `${rect.left}px` };
+	// Cap the panel to the space below the chip so a long list scrolls instead of
+	// running off the bottom of the viewport and getting clipped.
+	const maxHeight = Math.max(0, window.innerHeight - rect.bottom - 12);
+	panelStyle.value = {
+		top: `${rect.bottom + 4}px`,
+		left: `${rect.left}px`,
+		maxHeight: `${maxHeight}px`,
+	};
 }
 
 function toggleExpanded(index: number) {
@@ -380,6 +387,7 @@ const totalNodeCount = computed(() =>
 	background: var(--background--surface);
 	box-shadow: var(--shadow--sm);
 	min-width: 160px;
+	overflow-y: auto;
 }
 
 .panelRow {
