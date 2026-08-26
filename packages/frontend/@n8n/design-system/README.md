@@ -18,10 +18,10 @@ A UI library and design system for [n8n](https://n8n.io) using Storybook to prev
 
 ## Contributing
 - Always follow the core `CONTRIBUTING.md` guidelines in the root repo. 
-- Design System components should be generic, resuable across multiple areas of the product.
+- Design System components should be generic, reusable across multiple areas of the product.
 - Each component must have tests and stories attached
 - If replacing an existing component, make sure a migration path is considered
-- For brand new components, provide `component-*.md` spec using `COMPONENT_API_SPEC_TEMPLATE.md` for review first
+- For brand new components, provide `component-*.md` spec using `specification/COMPONENT_API_SPEC_TEMPLATE.md` for review first
 
 ## Owners
 @n8n/design
