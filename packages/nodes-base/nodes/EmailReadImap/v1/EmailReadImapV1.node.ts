@@ -367,11 +367,15 @@ export class EmailReadImapV1 implements INodeType {
 			for (const message of results) {
 				const lastMessageUid = staticData.lastMessageUid as number | undefined;
 				if (lastMessageUid !== undefined && message.uid <= lastMessageUid) continue;
+				// Advanced before the item builds and never backwards, as this node always has: a
+				// message that cannot be built is skipped for good, not refetched on every arrival.
+				if (lastMessageUid === undefined || lastMessageUid < message.uid) {
+					staticData.lastMessageUid = message.uid;
+				}
 
 				const item = await buildItem(message);
 				if (!item) continue;
 
-				staticData.lastMessageUid = message.uid;
 				newEmails.push(item);
 			}
 
