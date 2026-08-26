@@ -11,10 +11,6 @@ import assert from 'node:assert/strict';
 let getPrFilesImpl = async () => [];
 /** @type {(pullRequestNumber: number, body: string, botMarker: string) => Promise<void>} */
 let postOrUpdateCommentImpl = async () => {};
-/** @type {(pullRequestNumber: number) => Promise<any>} */
-let getPullRequestByIdImpl = async () => ({ user: { login: 'author' } });
-/** @type {(teamSlug: string) => Promise<string[]>} */
-let listTeamMembersImpl = async () => [];
 
 mock.module('./github-helpers.mjs', {
 	namedExports: {
@@ -23,8 +19,6 @@ mock.module('./github-helpers.mjs', {
 		getChangedFiles: () => Promise.resolve(new Set()),
 		getEventFromGithubEventPath: () => ({}),
 		getPrFiles: (n) => getPrFilesImpl(n),
-		getPullRequestById: (n) => getPullRequestByIdImpl(n),
-		listTeamMembers: (slug) => listTeamMembersImpl(slug),
 		postOrUpdateComment: (pullRequestNumber, body, botMarker) =>
 			postOrUpdateCommentImpl(pullRequestNumber, body, botMarker),
 	},
@@ -45,8 +39,6 @@ mock.module('./owners.mjs', {
 		assignOwnership: (files, entries) => assignOwnershipImpl(files, entries),
 		ownershipsToAllocations: (ownerships) => ownershipsToAllocationsImpl(ownerships),
 		resolveRequiredTeams: (files, entries) => resolveRequiredTeamsImpl(files, entries),
-		// Mirrors the real implementation; the mock replaces the whole module.
-		teamHandleToSlug: (team) => team.replace(/^@[^/]+\//, ''),
 	},
 });
 
@@ -57,7 +49,6 @@ const {
 	computeAllocationLineStats,
 	computeLineStats,
 	run,
-	suggestReviewer,
 } = await import('./owners-review-recommendations.mjs');
 
 const BOT_MARKER = '<!-- pr-recommendations -->';
@@ -325,67 +316,6 @@ describe('computeAllocationLineStats', () => {
 	});
 });
 
-describe('suggestReviewer', () => {
-	const membersByTeam = new Map([
-		['@n8n-io/qa-dx', new Set(['poly', 'quinn'])],
-		['@n8n-io/migrations-review', new Set(['poly', 'reese'])],
-		['@n8n-io/catalysts', new Set(['author', 'quinn'])],
-	]);
-
-	it('picks the reviewer that covers the most required teams', () => {
-		const suggestion = suggestReviewer(
-			['@n8n-io/qa-dx', '@n8n-io/migrations-review'],
-			membersByTeam,
-			'author',
-		);
-
-		assert.equal(suggestion.login, 'poly');
-		assert.deepEqual(suggestion.coveredTeams, ['@n8n-io/qa-dx', '@n8n-io/migrations-review']);
-	});
-
-	it('breaks coverage ties in favor of a reviewer in the same team as the author', () => {
-		// author is in catalysts; quinn shares it, reese does not.
-		const suggestion = suggestReviewer(
-			['@n8n-io/qa-dx', '@n8n-io/migrations-review'],
-			new Map([
-				['@n8n-io/qa-dx', new Set(['quinn'])],
-				['@n8n-io/migrations-review', new Set(['reese'])],
-				['@n8n-io/catalysts', new Set(['author', 'quinn'])],
-			]),
-			'author',
-		);
-
-		assert.equal(suggestion.login, 'quinn');
-	});
-
-	it('breaks remaining ties alphabetically for a stable suggestion', () => {
-		const suggestion = suggestReviewer(
-			['@n8n-io/qa-dx'],
-			new Map([['@n8n-io/qa-dx', new Set(['zoe', 'abe'])]]),
-			'author',
-		);
-
-		assert.equal(suggestion.login, 'abe');
-	});
-
-	it('never suggests the PR author', () => {
-		const suggestion = suggestReviewer(
-			['@n8n-io/qa-dx'],
-			new Map([['@n8n-io/qa-dx', new Set(['author', 'poly'])]]),
-			'author',
-		);
-
-		assert.equal(suggestion.login, 'poly');
-	});
-
-	it('returns null when no candidate exists', () => {
-		assert.equal(
-			suggestReviewer(['@n8n-io/qa-dx'], new Map([['@n8n-io/qa-dx', new Set(['author'])]]), 'author'),
-			null,
-		);
-	});
-});
-
 describe('buildRequiredReviewsSection', () => {
 	it('returns null when no approval is required', () => {
 		assert.equal(buildRequiredReviewsSection(new Map()), null);
@@ -402,16 +332,19 @@ describe('buildRequiredReviewsSection', () => {
 		assert.match(section, /### Required reviews/);
 		assert.match(section, /\| @n8n-io\/qa-dx \| 2 \|/);
 		assert.match(section, /\| @n8n-io\/migrations-review \| 1 \|/);
-		assert.doesNotMatch(section, /Suggested reviewer/);
 	});
 
-	it('includes the suggested reviewer with covered teams', () => {
-		const section = buildRequiredReviewsSection(new Map([['@n8n-io/qa-dx', ['a.yml']]]), {
-			login: 'poly',
-			coveredTeams: ['@n8n-io/qa-dx'],
-		});
+	it('prompts to request review from the team, plural when several teams are required', () => {
+		const singular = buildRequiredReviewsSection(new Map([['@n8n-io/qa-dx', ['a.yml']]]));
+		const plural = buildRequiredReviewsSection(
+			new Map([
+				['@n8n-io/qa-dx', ['a.yml']],
+				['@n8n-io/migrations-review', ['m.ts']],
+			]),
+		);
 
-		assert.match(section, /\*\*Suggested reviewer:\*\* @poly \(covers @n8n-io\/qa-dx\)/);
+		assert.match(singular, /Request a review from the team —/);
+		assert.match(plural, /Request a review from the teams —/);
 	});
 });
 
@@ -422,8 +355,6 @@ describe('run', () => {
 		getPrFilesImpl = async () => [];
 		postOrUpdateComment = mock.fn(async () => {});
 		postOrUpdateCommentImpl = postOrUpdateComment;
-		getPullRequestByIdImpl = async () => ({ user: { login: 'author' } });
-		listTeamMembersImpl = async () => [];
 		parseOwnersFileImpl = () => [];
 		assignOwnershipImpl = () => new Map();
 		ownershipsToAllocationsImpl = () => [];
@@ -504,32 +435,18 @@ describe('run', () => {
 		assert.doesNotMatch(body, /### Required reviews/);
 	});
 
-	it('includes the required reviews section with a suggested reviewer', async () => {
+	it('includes the required reviews section with the team review prompt', async () => {
 		getPrFilesImpl = async () => [{ filename: '.github/workflows/ci.yml', additions: 1, deletions: 0 }];
 		parseOwnersFileImpl = () => [
 			{ pattern: '.github/workflows/', teams: ['@n8n-io/qa-dx'], required: true, line: 1 },
 		];
 		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['.github/workflows/ci.yml']]]);
-		listTeamMembersImpl = async () => ['poly'];
 
 		await run(42);
 
 		const body = postOrUpdateComment.mock.calls[0].arguments[1];
 		assert.match(body, /### Required reviews/);
 		assert.match(body, /\| @n8n-io\/qa-dx \| 1 \|/);
-		assert.match(body, /\*\*Suggested reviewer:\*\* @poly \(covers @n8n-io\/qa-dx\)/);
-	});
-
-	it('renders the required section without a suggestion when membership lookup fails', async () => {
-		resolveRequiredTeamsImpl = () => new Map([['@n8n-io/qa-dx', ['.github/workflows/ci.yml']]]);
-		listTeamMembersImpl = async () => {
-			throw new Error('missing org permission');
-		};
-
-		await run(42);
-
-		const body = postOrUpdateComment.mock.calls[0].arguments[1];
-		assert.match(body, /### Required reviews/);
-		assert.doesNotMatch(body, /Suggested reviewer/);
+		assert.match(body, /Request a review from the team —/);
 	});
 });
