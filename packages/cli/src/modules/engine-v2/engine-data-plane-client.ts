@@ -34,7 +34,7 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 	) {
 		this.http = outboundHttp.requests({
 			// Fixed, n8n-controlled host.
-			ssrf: 'disabled',
+			useDefaultSsrfPolicy: 'unsafe',
 			// `engineConfig.host` is a bind address, not a destination, so it is not
 			// dialable. Default to loopback and let `N8N_ENGINE_BASE_URL` override
 			// when the engine answers somewhere else.
