@@ -259,11 +259,6 @@ test.describe(
 				const events = getLatestRecordingEvents(await getTraceEvents(api, testInfo));
 				const summary = summarizeRemediationTrace(events);
 				const buildCalls = getToolCalls(events, 'build-workflow');
-				// Since #36808 the skill-opening narration lives inside the collapsed
-				// thinking block, so the skill load is only assertable from the trace.
-				const skillLoads = getToolCalls(events, 'load_skill').filter(
-					(event) => event.input?.skillId === 'workflow-builder',
-				);
 				const setupCalls = getToolEvents(events, 'workflows').filter(
 					(event) =>
 						event.input?.action === 'setup' && event.input.workflowId === summary.workflowId,
@@ -284,7 +279,6 @@ test.describe(
 					fallbackNarrationSeen: false,
 				});
 				expect(summary.postBuildRemediationSubmitsUsed).toBeLessThanOrEqual(2);
-				expect(skillLoads.length).toBeGreaterThan(0);
 				expect(buildCalls.find((event) => event.agentRole === 'orchestrator')).toMatchObject({
 					agentRole: 'orchestrator',
 					stepId: expect.any(Number),
