@@ -14,7 +14,9 @@ const COLUMN_NAME = 'resource';
  * refresh. Access tokens are left alone; they are already audience-bound and
  * expire within the hour, so live sessions are unaffected.
  *
- * `down` restores the schema but not the cleared rows.
+ * Reversible on purpose, following `DisallowOrphanExecutions1693554410387`: the column
+ * is NOT NULL with no default, so a downgrade needs it dropped for the older code to
+ * insert tokens again. Reversal excludes restoring deleted rows.
  */
 export class AddResourceToOAuthRefreshTokens1787739515257 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column }, escape, runQuery }: MigrationContext) {
@@ -36,6 +38,7 @@ export class AddResourceToOAuthRefreshTokens1787739515257 implements ReversibleM
 		);
 	}
 
+	/** Reversal excludes restoring the cleared refresh tokens. */
 	async down({ schemaBuilder: { dropColumns } }: MigrationContext) {
 		await dropColumns(TABLE_NAME, [COLUMN_NAME], { recreatesOnSqlite: true });
 	}
