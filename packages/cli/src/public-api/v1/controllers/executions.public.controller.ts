@@ -28,10 +28,7 @@ import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
-/**
- * What the service hands back. `Partial<IExecutionResponse>` covers the fields that appear only
- * with `includeData`; `deletedAt` is on the entity but missing from `IExecutionBase`.
- */
+/** `deletedAt` is on the entity but missing from `IExecutionBase`, and the response carries it. */
 type PublicExecution = IExecutionBase & Partial<IExecutionResponse> & { deletedAt?: Date | null };
 
 function isRedactableExecution(
@@ -72,8 +69,6 @@ export class ExecutionsPublicController {
 			throw new NotFoundError('Not Found');
 		}
 
-		// `ignoreDataSizeLimit` opts out of the display-size guard (0 = no limit) to return
-		// full data even when oversized, at the caller's own memory risk.
 		const maxDataSizeBytes = query.ignoreDataSizeLimit ? 0 : this.executionsConfig.maxDisplaySize;
 
 		const execution = await this.executionService.findOneInWorkflows(
@@ -113,7 +108,7 @@ export class ExecutionsPublicController {
 	@ApiDescription('Deletes an execution from your instance.')
 	@ApiTags(['Execution'])
 	@ApiResponse(200, DeletedExecutionPublicDto)
-	// `deleteOne` refuses a running execution with a 400. The hand-written YAML never documented it.
+	// `deleteOne` refuses a running execution.
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async deleteExecution(
@@ -159,8 +154,7 @@ export class ExecutionsPublicController {
 	}
 
 	private toExecutionPublicDto(execution: PublicExecution): ExecutionPublicDto {
-		// `replaceCircularReferences` also turns every `Date` into an ISO string via `toJSON`, which
-		// is the form the DTO validates.
+		// `replaceCircularReferences` also calls `toJSON` on every `Date`, which is what the DTO expects.
 		return replaceCircularReferences({
 			id: execution.id,
 			...this.toBaseFields(execution),

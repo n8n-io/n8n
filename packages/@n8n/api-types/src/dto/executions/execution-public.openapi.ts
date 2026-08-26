@@ -3,13 +3,10 @@ import { ExecutionStatusList, WorkflowExecuteModeList } from 'n8n-workflow';
 
 import { alsoNullable } from '../openapi-nullable';
 
-// Key order below reaches the generated OpenAPI fragment verbatim, so each literal keeps the order
-// the published spec already uses.
-
+// Key order reaches the generated OpenAPI fragment verbatim.
 export const executionFieldDocs = {
 	id: { example: '1000' },
 	finished: { example: true },
-	// Derived, not copied. The hand-written YAML listed ten modes and missed `agent`.
 	mode: {
 		enum: [...WorkflowExecuteModeList],
 		example: 'manual',

@@ -11,10 +11,8 @@ import {
 } from './execution-public.openapi';
 import { Z } from '../../zod-class';
 
-// Execution payloads carry whatever the run produced, so the value space is open: arbitrary node
-// output, error objects, binary references, and — because `replaceCircularReferences` rewrites any
-// repeated object — the literal string '[Circular Reference]' at any depth. Validate the container
-// only. A stricter schema would answer 500 on a payload we never saw locally.
+// Deliberately loose: `replaceCircularReferences` can leave the string '[Circular Reference]' at
+// any depth, so a stricter schema would answer 500 on a valid payload.
 const anyObjectSchema = z.custom<Record<string, unknown>>(
 	(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
 	{ message: 'Must be an object' },
@@ -25,9 +23,8 @@ const nullableObjectSchema = z.custom<Record<string, unknown> | null>(
 	{ message: 'Must be an object or null' },
 );
 
-// `mode`, `status` and `storedAt` are varchar columns with no database constraint, so a historical
-// row can hold a value outside the documented set. The enum is published for readers; the schema
-// stays a plain string so an unexpected value does not break the response.
+// `mode`, `status` and `storedAt` are unconstrained varchar columns, so they publish an enum for
+// readers but validate as strings. A historical row may hold a value outside the documented set.
 const executionBaseShape = {
 	finished: z.boolean().openapi(executionFieldDocs.finished),
 	mode: z.string().openapi(executionFieldDocs.mode),
@@ -60,9 +57,8 @@ export const executionPublicSchema = z.object({
 
 export class ExecutionPublicDto extends Z.class(executionPublicSchema.shape) {}
 
-// The delete response reports `id` as a number. The legacy path parameter is declared
-// `type: number`, so express-openapi-validator coerced it and the handler spread the coerced value
-// over the entity. Reproduced deliberately — see API-205.
+// `id` is a number here and a string everywhere else. The legacy path parameter was declared
+// `type: number`, so the validator coerced it. Reproduced deliberately.
 export const deletedExecutionPublicSchema = z.object({
 	id: z.number().openapi(deletedExecutionIdOpenApi),
 	...executionBaseShape,
