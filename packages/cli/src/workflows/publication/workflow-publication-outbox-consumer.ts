@@ -6,7 +6,7 @@ import { OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import type {
@@ -371,10 +371,12 @@ export class WorkflowPublicationOutboxConsumer {
 						const cause = ensureError(error);
 						result = {
 							type: 'failed',
-							// An abort is our own doing, not an unexpected applier failure.
-							error: signal.aborted
-								? cause
-								: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
+							// An abort is our own doing and a UserError is a known cause (e.g.
+							// a missing credential), not an unexpected applier failure.
+							error:
+								signal.aborted || cause instanceof UserError
+									? cause
+									: new UnexpectedError(`Unexpected: ${cause.message}`, { cause }),
 						};
 					}
 

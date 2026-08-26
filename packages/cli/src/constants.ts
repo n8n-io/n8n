@@ -75,6 +75,18 @@ export const AUTH_COOKIE_NAME = 'n8n-auth';
 export const OIDC_STATE_COOKIE_NAME = 'n8n-oidc-state';
 export const OIDC_NONCE_COOKIE_NAME = 'n8n-oidc-nonce';
 
+/**
+ * Cookies the Form nodes set on their own pages, duplicated here because the
+ * names are owned by `nodes-base/nodes/Form/utils/utils.ts`
+ * (`FORM_AUTH_COOKIE_PREFIX` / `FORM_OAUTH_COOKIE_NAME`) and this package must
+ * not reach into that package's internals. Keep both sides in step. The form
+ * auth cookie's full name appends the workflow or execution it was minted for
+ * (`<prefix>-wf-<id>` / `<prefix>-ex-<id>`), so concurrent forms don't
+ * overwrite each other's cookie.
+ */
+export const FORM_AUTH_COOKIE_PREFIX = 'n8n-form-auth';
+export const FORM_OAUTH_COOKIE_NAME = 'n8n-form-oauth';
+
 export const NPM_COMMAND_TOKENS = {
 	NPM_PACKAGE_NOT_FOUND_ERROR: '404 Not Found',
 	NPM_PACKAGE_VERSION_NOT_FOUND_ERROR: 'No matching version found for',

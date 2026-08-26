@@ -4,7 +4,13 @@ import type { IWorkflowDb, WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ErrorReporter, Span, Tracing } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { WebhookPathTakenError, WorkflowActivationError, WorkflowExpression } from 'n8n-workflow';
+import {
+	UserError,
+	WebhookPathTakenError,
+	WorkflowActivationError,
+	WorkflowDeactivationError,
+	WorkflowExpression,
+} from 'n8n-workflow';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
@@ -516,6 +522,96 @@ describe('WorkflowTriggerActivator', () => {
 		).rejects.toThrow('webhook discovery failed');
 
 		expect(callOrder).toContain('deregister-non-webhook-finish');
+	});
+
+	describe('deactivate teardown failures', () => {
+		function buildDeactivationSetup(deregisterError: Error) {
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			const webhookOk = mock<IWebhookData>({ node: 'Webhook OK' });
+			const webhookBroken = mock<IWebhookData>({ node: 'Webhook Broken' });
+			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookOk, webhookBroken]);
+			webhookTriggerRegistrar.deregister.mockImplementation(async ({ webhookData }) => {
+				if (webhookData.node === 'Webhook Broken') throw deregisterError;
+				return webhookData.node;
+			});
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
+
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+			const deactivate = async () =>
+				await activator.deactivate(
+					mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+					{
+						nodes: [
+							node('ok-node', 'webhook', { name: 'Webhook OK' }),
+							node('broken-node', 'webhook', { name: 'Webhook Broken' }),
+						],
+						connections: {},
+					},
+					new Set(['ok-node', 'broken-node']),
+					abort,
+				);
+
+			return { webhookTriggerRegistrar, deactivate };
+		}
+
+		test('counts a webhook whose deregistration fails with a UserError as removed', async () => {
+			// The failure can never succeed on retry (e.g. the delete hook's
+			// credential was deleted): the remote registration is abandoned and the
+			// node's rows are cleared instead of retained.
+			const { webhookTriggerRegistrar, deactivate } = buildDeactivationSetup(
+				new UserError('Credential with ID "c-1" does not exist for type "trelloApi".'),
+			);
+
+			await deactivate();
+
+			expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
+				'Webhook OK',
+				'Webhook Broken',
+			]);
+		});
+
+		test('a retryable failure still fails and retains the node rows', async () => {
+			const { webhookTriggerRegistrar, deactivate } = buildDeactivationSetup(
+				new Error('remote unreachable'),
+			);
+
+			await expect(deactivate()).rejects.toThrow('remote unreachable');
+			expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
+				'Webhook OK',
+			]);
+		});
+
+		test('skips a non-webhook trigger whose deregistration fails with a UserError, even when wrapped', async () => {
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['t']);
+			nonWebhookTriggerRegistrar.deregister.mockRejectedValue(
+				new WorkflowDeactivationError('Failed to deactivate trigger of workflow ID "wf-1"', {
+					cause: new UserError('teardown broken'),
+				}),
+			);
+
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+
+			await activator.deactivate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{ nodes: [node('t', 'trigger')], connections: {} },
+				new Set(['t']),
+				abort,
+			);
+
+			expect(nonWebhookTriggerRegistrar.deregister).toHaveBeenCalledWith('wf-1', 't');
+		});
 	});
 
 	test('isolates failures across the concurrent webhook and non-webhook phases', async () => {

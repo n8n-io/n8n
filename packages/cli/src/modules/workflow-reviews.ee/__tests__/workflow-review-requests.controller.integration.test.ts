@@ -25,6 +25,8 @@ import { v4 as uuid } from 'uuid';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { WorkflowService } from '@/workflows/workflow.service';
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import { createAdmin, createMember, createOwner, createUser } from '@test-integration/db/users';
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 import type { SuperAgentTest } from '@test-integration/types';
@@ -386,6 +388,47 @@ describe('POST /workflow-review-requests', () => {
 				},
 			],
 		}).expect(400);
+	});
+
+	test('trims the review description on create', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+
+		await postReview(ownerAgent, {
+			title: 'Please review my workflow',
+			description: '  It is ready  ',
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(201);
+
+		const requests = await requestRepository.find();
+		expect(requests[0].description).toBe('It is ready');
+	});
+
+	test.each([
+		{ name: 'an empty', description: '' },
+		{ name: 'a whitespace-only', description: '   ' },
+	])('stores $name review description as null on create', async ({ description }) => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+
+		await postReview(ownerAgent, {
+			title: 'Please review my workflow',
+			description,
+			workflows: [
+				{
+					workflowId: workflow.id,
+					workflowVersionId: versionId,
+					workflowVersionName: 'Release candidate',
+				},
+			],
+		}).expect(201);
+
+		const requests = await requestRepository.find();
+		expect(requests[0].description).toBeNull();
 	});
 
 	test('returns 400 for a description exceeding 512 characters', async () => {
@@ -932,6 +975,147 @@ describe('publishing a workflow under review', () => {
 	});
 });
 
+/**
+ * The approval commits under the review lock, but auto-publish runs after it is
+ * released. Workflow mutations are deliberately not serialized behind that lock,
+ * so they can land in the gap. These pin the accepted outcomes: the approval
+ * stands and the publish that lost the race is reported as a failure.
+ */
+describe('a workflow mutation racing the auto-publish of an approval', () => {
+	/** Run `raceAction` in the gap between the committed approval and auto-publish. */
+	function raceBeforeAutoPublish(raceAction: () => Promise<unknown>) {
+		const workflowService = Container.get(WorkflowService);
+		const activate = workflowService.activateWorkflow.bind(workflowService);
+		vi.spyOn(workflowService, 'activateWorkflow').mockImplementationOnce(async (...args) => {
+			await raceAction();
+			return await activate(...args);
+		});
+	}
+
+	test('an archive that lands in the gap leaves an approved review and a failed auto-publish', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await createOpenReview(workflow.id, versionId);
+
+		raceBeforeAutoPublish(
+			async () => await ownerAgent.post(`/workflows/${workflow.id}/archive`).expect(200),
+		);
+
+		const response = await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			autoPublish: { status: 'failed', message: 'Cannot activate an archived workflow.' },
+		});
+
+		// The archive found the review already closed, so it left the approval alone.
+		const closed = await requestRepository.findById(request.id, {});
+		expect(closed).toMatchObject({ state: 'closed', decision: 'approved' });
+
+		const archived = await workflowEntityRepository.findOneByOrFail({ id: workflow.id });
+		expect(archived.isArchived).toBe(true);
+		expect(archived.activeVersionId).toBeNull();
+
+		// Publishing stays blocked by the archival itself, not by the closed review.
+		await ownerAgent.post(`/workflows/${workflow.id}/activate`).send({ versionId }).expect(400);
+	});
+
+	test('a transfer that lands in the gap leaves an approved review and a failed auto-publish', async () => {
+		const versionId = uuid();
+		const workflow = await createWorkflow({}, teamProject);
+		await createWorkflowHistoryItem(workflow.id, { versionId });
+
+		// The requester publishes on approval, so it must be someone who loses access
+		// when the workflow moves — the deciding owner never does.
+		const request = await requestRepository.createRequest(
+			{ projectId: teamProject.id, title: 'Review before publishing', createdById: member.id },
+			{},
+		);
+		await workflowRepository.createWorkflowRow(
+			{
+				workflowReviewRequestId: request.id,
+				workflowId: workflow.id,
+				workflowVersionId: versionId,
+			},
+			{},
+		);
+		await authorRepository.addAuthor(
+			{ workflowReviewRequestId: request.id, userId: member.id },
+			{},
+		);
+
+		const destination = await createTeamProject('Elsewhere', await createMember());
+		raceBeforeAutoPublish(
+			async () =>
+				await Container.get(EnterpriseWorkflowService).transferWorkflow(
+					owner,
+					workflow.id,
+					destination.id,
+				),
+		);
+
+		const response = await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			autoPublish: {
+				status: 'failed',
+				message:
+					'You do not have permission to activate this workflow. Ask the owner to share it with you.',
+			},
+		});
+
+		expect(await requestRepository.findById(request.id, {})).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+		});
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBeNull();
+	});
+
+	test('a review created in the gap blocks the auto-publish without failing the decision', async () => {
+		const { workflow, versionId } = await createReviewableWorkflow();
+		const request = await createOpenReview(workflow.id, versionId);
+
+		let racingRequestId = '';
+		raceBeforeAutoPublish(async () => {
+			racingRequestId = (await createOpenReview(workflow.id, versionId)).id;
+		});
+
+		const response = await ownerAgent
+			.post(`/workflow-review-requests/${request.id}/decision`)
+			.send({ decision: 'approved' })
+			.expect(200);
+
+		expect(response.body.data).toMatchObject({
+			state: 'closed',
+			decision: 'approved',
+			autoPublish: {
+				status: 'failed',
+				message:
+					"Workflow can't be published while its review is open. Submit this version to the review, or wait for the review to close.",
+			},
+		});
+
+		// The new review is untouched and still guards the workflow.
+		expect(await requestRepository.findOpenRequestForWorkflow(workflow.id, {})).toMatchObject({
+			id: racingRequestId,
+			state: 'open',
+		});
+		expect(
+			(await workflowEntityRepository.findOneByOrFail({ id: workflow.id })).activeVersionId,
+		).toBeNull();
+	});
+});
+
 describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version', () => {
 	/** Seed an open review request pinned to `versionId`, authored by `author`. */
 	async function seedOpenRequest(
@@ -1118,7 +1302,10 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 		});
 	});
 
-	test('clears the review description when an empty string is sent', async () => {
+	test.each([
+		{ name: 'an empty string', description: '' },
+		{ name: 'a whitespace-only string', description: '   ' },
+	])('clears the review description when $name is sent', async ({ description }) => {
 		const { workflow, versionId } = await createReviewableWorkflow();
 		const request = await seedOpenRequest(workflow.id, versionId, owner, ownerProject.id, {
 			description: 'Original review description',
@@ -1130,7 +1317,7 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/update-version
 				workflowId: workflow.id,
 				workflowVersionId: versionId,
 				workflowVersionName: 'Release candidate',
-				description: '',
+				description,
 			})
 			.expect(200);
 
@@ -1656,10 +1843,13 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 	test('returns 404 for a non-assigned editor', async () => {
 		const { request } = await seedRequest(owner, {}, []);
 
-		await memberAgent
+		const response = await memberAgent
 			.post(`/workflow-review-requests/${request.id}/decision`)
 			.send({ decision: 'approved' })
 			.expect(404);
+
+		// Same wording as an unknown id, so the refusal doesn't reveal the review exists.
+		expect(response.body.message).toBe('Could not find review request');
 	});
 
 	test('allows an assigned viewer to decide', async () => {
@@ -1717,10 +1907,12 @@ describe('POST /workflow-review-requests/:workflowReviewRequestId/decision', () 
 	});
 
 	test('returns 404 for an unknown review request id', async () => {
-		await memberAgent
+		const response = await memberAgent
 			.post('/workflow-review-requests/unknown-request/decision')
 			.send({ decision: 'approved' })
 			.expect(404);
+
+		expect(response.body.message).toBe('Could not find review request');
 	});
 
 	test('returns 409 for a closed review request', async () => {
@@ -3090,7 +3282,8 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 	/**
 	 * Seed a review in `teamProject` pinned to a workflow that has moved out of
 	 * `author`'s reach, covering a second workflow that is still readable. Row ids
-	 * are explicit — id ASC decides which row counts as pinned.
+	 * are set explicitly because generated nanoids would leave it to chance which
+	 * row the query's id ordering puts first, i.e. which one counts as pinned.
 	 */
 	async function seedTwoWorkflowRequest(author: User) {
 		const destinationProject = await createTeamProject('Moved Away', owner);
@@ -3154,11 +3347,13 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 			decision: 'pending',
 			title: 'Please review',
 			description: 'Some context',
-			workflowName: 'Reviewed workflow',
-			workflowVersionId: 'version-pinned',
 			requester: { id: owner.id, email: owner.email },
 			reviewers: [{ id: reviewer.id, email: reviewer.email }],
 		});
+		// The covered workflows live only in `workflows` — the inbox card's flat
+		// summary fields are not part of the detail response.
+		expect(response.body.data).not.toHaveProperty('workflowName');
+		expect(response.body.data).not.toHaveProperty('workflowVersionId');
 
 		expect(response.body.data.workflows).toHaveLength(1);
 		const [child] = response.body.data.workflows;
@@ -3324,7 +3519,6 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 		expect(response.body.data.id).toBe(request.id);
 		expect(response.body.data.state).toBe('open');
 		expect(response.body.data.workflows).toEqual([]);
-		expect(response.body.data.workflowName).toBeNull();
 	});
 
 	test('still opens a closed review after its workflow was deleted', async () => {
@@ -3356,8 +3550,6 @@ describe('GET /workflow-review-requests/:workflowReviewRequestId', () => {
 
 		expect(response.body.data.id).toBe(request.id);
 		expect(response.body.data.workflows).toEqual([]);
-		expect(response.body.data.workflowName).toBeNull();
-		expect(response.body.data.workflowVersionId).toBeNull();
 	});
 
 	test('lets an assigned reviewer in the review project open it', async () => {
