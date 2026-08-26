@@ -70,7 +70,11 @@ const CHAT_OAUTH_COOKIE_NAME = 'n8n-chat-oauth';
  */
 function isSecureRequest(req: Request): boolean {
 	const forwardedProto = req.headers['x-forwarded-proto'];
-	const proto = (typeof forwardedProto === 'string' ? forwardedProto.trim() : '') || req.protocol;
+	// A proxy chain sends this as a comma-separated list (closest proxy first), and
+	// Node normalises a repeated header into an array — handle both, and take only
+	// the first hop so a later "http" in the chain can't mask an https client leg.
+	const firstValue = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+	const proto = firstValue?.split(',')[0]?.trim() || req.protocol;
 	return proto === 'https';
 }
 

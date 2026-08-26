@@ -163,6 +163,41 @@ describe('chat OAuth2 one-hop cookie', () => {
 		);
 	});
 
+	// A multi-hop proxy chain sends the closest proxy's scheme first (e.g. the
+	// external request was https, an internal hop back to the app is http) —
+	// only that first value decides whether the client's own leg was secure.
+	it('marks the cookie secure from the first hop of a comma-separated proxy chain', () => {
+		const req = request({
+			headers: { 'x-forwarded-proto': 'https, http' },
+			protocol: 'http',
+		});
+		const res = response();
+
+		setChatOAuthToken(res, req, resourceUrl, 'as-token');
+
+		expect(res.cookie).toHaveBeenCalledWith(
+			'n8n-chat-oauth',
+			'as-token',
+			expect.objectContaining({ secure: true }),
+		);
+	});
+
+	it('marks the cookie secure from the first hop when the header repeats as an array', () => {
+		const req = request({
+			headers: { 'x-forwarded-proto': ['https', 'http'] },
+			protocol: 'http',
+		});
+		const res = response();
+
+		setChatOAuthToken(res, req, resourceUrl, 'as-token');
+
+		expect(res.cookie).toHaveBeenCalledWith(
+			'n8n-chat-oauth',
+			'as-token',
+			expect.objectContaining({ secure: true }),
+		);
+	});
+
 	it('reads the cookie back from the raw header', () => {
 		const req = request({ headers: { cookie: 'other=1; n8n-chat-oauth=as-token; more=2' } });
 
