@@ -109,6 +109,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
@@ -380,6 +382,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				workflowHookContextServiceMock, // workflowHookContextService
 				mock(), // workflowPublishGuard
@@ -1138,6 +1142,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				scheduleTriggerJobRegistrarMock, // scheduleTriggerJobRegistrar
 				pollTriggerJobRegistrarMock, // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				workflowHookContextServiceMock, // workflowHookContextService
 				workflowPublishGuardMock, // workflowPublishGuard
@@ -1676,6 +1682,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
@@ -1797,6 +1805,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				workflowPublishedVersionRepositoryMock, // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
@@ -2017,6 +2027,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
@@ -2182,6 +2194,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
@@ -2340,6 +2354,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard
@@ -2439,6 +2455,8 @@ describe('WorkflowService', () => {
 				mock(), // workflowPublicationNotifier
 				mock(), // scheduleTriggerJobRegistrar
 				mock(), // pollTriggerJobRegistrar
+				mock(), // workflowScheduledJobOwner
+				mock(), // durableJobProvisioner
 				mock(), // workflowPublishedVersionRepository
 				mock(), // workflowHookContextService
 				mock(), // workflowPublishGuard

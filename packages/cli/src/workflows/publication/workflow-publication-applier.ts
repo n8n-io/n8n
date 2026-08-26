@@ -15,6 +15,8 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { INode, WorkflowActivateMode } from 'n8n-workflow';
 
 import { NodeTypes } from '@/node-types';
+import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
+import { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import { Telemetry } from '@/telemetry';
 import { healNodeIds } from '@/workflows/publication/heal-node-ids';
 import type {
@@ -68,6 +70,8 @@ export class WorkflowPublicationApplier {
 		private readonly nodeTypes: NodeTypes,
 		private readonly workflowService: WorkflowService,
 		private readonly telemetry: Telemetry,
+		private readonly workflowScheduledJobOwner: WorkflowScheduledJobOwner,
+		private readonly durableJobProvisioner: DurableJobProvisioner,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -274,6 +278,18 @@ export class WorkflowPublicationApplier {
 		// database instead of the cache ever serving a version for an unpublished
 		// workflow. No repopulation follows: the end state has no published version.
 		await this.workflowPublishedDataService.invalidateCache(record.workflowId);
+
+		// Before the mapping goes, not after: the mapping is what makes the workflow
+		// an owner of scheduled jobs, so removing it first would turn any job this
+		// misses into an orphan only the reconciliation sweep could find. A crash
+		// between the two leaves no jobs and an intact mapping, which this same
+		// record retries. Keyed by the workflow alone rather than by the nodes
+		// deactivated above, so a job whose node is gone from the version, or whose
+		// task type this leader does not know, goes too.
+		await this.durableJobProvisioner.deprovisionOwner(
+			this.workflowScheduledJobOwner.ref(record.workflowId),
+		);
+
 		await this.workflowPublishedVersionRepository.removePublishedVersion(record.workflowId);
 
 		return { type: 'unpublished' };

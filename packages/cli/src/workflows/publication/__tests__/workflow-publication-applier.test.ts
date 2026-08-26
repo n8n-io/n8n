@@ -17,6 +17,8 @@ import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-publication-applier';
+import type { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
+import type { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
 import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
@@ -32,6 +34,12 @@ describe('WorkflowPublicationApplier', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const workflowService = mock<WorkflowService>();
 	const telemetry = mock<Telemetry>();
+	const workflowScheduledJobOwner = mock<WorkflowScheduledJobOwner>();
+	workflowScheduledJobOwner.ref.mockImplementation((workflowId) => ({
+		ownerType: 'workflow',
+		ownerId: workflowId,
+	}));
+	const durableJobProvisioner = mock<DurableJobProvisioner>();
 
 	const applier = new WorkflowPublicationApplier(
 		logger,
@@ -43,6 +51,8 @@ describe('WorkflowPublicationApplier', () => {
 		nodeTypes,
 		workflowService,
 		telemetry,
+		workflowScheduledJobOwner,
+		durableJobProvisioner,
 	);
 
 	function makeRecord(
@@ -161,6 +171,10 @@ describe('WorkflowPublicationApplier', () => {
 			const result = await applier.apply(makeRecord(), abort);
 
 			expect(result).toEqual({ type: 'unpublished' });
+			expect(durableJobProvisioner.deprovisionOwner).toHaveBeenCalledWith({
+				ownerType: 'workflow',
+				ownerId: 'wf-1',
+			});
 			expect(workflowTriggerActivator.getEnabledTriggerNodes).toHaveBeenCalledWith(oldVersion);
 			expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
@@ -217,6 +231,20 @@ describe('WorkflowPublicationApplier', () => {
 
 			await expect(applier.apply(makeRecord(), abort)).rejects.toThrow('teardown boom');
 			expect(workflowPublishedVersionRepository.removePublishedVersion).not.toHaveBeenCalled();
+			expect(durableJobProvisioner.deprovisionOwner).not.toHaveBeenCalled();
+		});
+
+		test('deprovisions the scheduled jobs the workflow owned even when its mapping is already gone', async () => {
+			// The retried leg of an interrupted unpublish: nothing left to deactivate,
+			// but jobs the first attempt never reached would otherwise keep firing.
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(makePublishedVersion(null));
+
+			await applier.apply(makeRecord(), abort);
+
+			expect(durableJobProvisioner.deprovisionOwner).toHaveBeenCalledWith({
+				ownerType: 'workflow',
+				ownerId: 'wf-1',
+			});
 		});
 	});
 
