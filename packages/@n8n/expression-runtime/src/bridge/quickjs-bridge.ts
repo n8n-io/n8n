@@ -283,7 +283,19 @@ function getArrayElement(data: Record<string, unknown>, pathArr: string[], index
 		return undefined;
 	}
 
+	// Reject non-integer / negative indices so a crafted "index" can't read off
+	// the prototype chain. Mirrors IsolatedVmBridge.getArrayElement.
+	if (!Number.isInteger(index) || index < 0) {
+		return undefined;
+	}
+
 	const element = arr[index];
+
+	// Functions must never cross the boundary — resolve as undefined, matching
+	// getValueAtPath and IsolatedVmBridge (invariant: host-fn-shadowing.test.ts).
+	if (typeof element === 'function') {
+		return undefined;
+	}
 
 	// Dates have no enumerable own keys; pass through instead of
 	// marshaling as an empty object.
@@ -386,6 +398,12 @@ export class QuickJsBridge implements RuntimeBridge {
 	// Long-lived host-callback handles (Intl polyfills) — disposed on dispose()
 	private intlHandles: Array<import('quickjs-emscripten').QuickJSHandle> = [];
 
+	// Wall-clock deadlines of the execute() calls currently in flight, outer to
+	// inner. execute() can re-enter (e.g. $evaluateExpression), and the runtime
+	// has a single interrupt handler; the handler interrupts once the earliest
+	// deadline passes, so a nested call cannot extend the outer call's budget.
+	private deadlines: number[] = [];
+
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
 			...DEFAULT_BRIDGE_CONFIG,
@@ -406,6 +424,11 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		// Create context
 		this.vm = this.runtime.newContext();
+
+		// Install the interrupt handler once. It reads the live deadline stack, so
+		// nested execute() calls share one budget: the earliest deadline wins.
+		// Math.min() of an empty stack is Infinity, so an idle runtime never fires.
+		this.runtime.setInterruptHandler(() => Date.now() > Math.min(...this.deadlines));
 
 		// Set up 'global' / 'globalThis' self-reference
 		const globalHandle = this.vm.global;
@@ -944,12 +967,12 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		const callbackHandles = this.createCallbackHandles(data);
 		let wrapperFn: import('quickjs-emscripten').QuickJSHandle | undefined;
+		// Push this call's deadline; the interrupt handler (set in initialize)
+		// interrupts on the earliest in-flight deadline. Popped in finally so a
+		// nested call can't leave the outer budget extended.
+		this.deadlines.push(Date.now() + this.config.timeout);
 		try {
 			const timezone = options?.timezone ? JSON.stringify(options.timezone) : 'undefined';
-
-			// Set up timeout via interrupt handler
-			const deadline = Date.now() + this.config.timeout;
-			this.runtime.setInterruptHandler(() => Date.now() > deadline);
 
 			// The callback impls arrive as function arguments (closure-scoped to
 			// this call), never as globals — see createCallbackHandles(). The
@@ -1051,6 +1074,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		} finally {
+			this.deadlines.pop();
 			wrapperFn?.dispose();
 			for (const handle of callbackHandles) {
 				handle.dispose();
