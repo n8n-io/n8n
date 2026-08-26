@@ -140,23 +140,25 @@ describe('CredentialsRepository', () => {
 			expect(callArg).toBeDefined();
 			expect(callArg!.take).toBe(10);
 			expect(callArg!.select).toBeDefined();
-			expect(callArg!.relations).toEqual({
-				shared: { project: { projectRelations: true } },
-			});
+			expect(callArg!.relations).toEqual([
+				'shared',
+				'shared.project',
+				'shared.project.projectRelations',
+			]);
 			expect(callArg!.order).toBeUndefined();
 		});
 
-		it('should honor a caller-provided relations tree', async () => {
+		it('should honor a caller-provided relations array (API-22)', async () => {
 			entityManager.findAndCount.mockResolvedValueOnce([[], 0]);
 
 			await credentialsRepository.findManyAndCount({
 				take: 10,
 				skip: 0,
-				relations: { shared: { project: true } },
+				relations: ['shared', 'shared.project'],
 			});
 
 			const callArg = entityManager.findAndCount.mock.calls[0]?.[1];
-			expect(callArg?.relations).toEqual({ shared: { project: true } });
+			expect(callArg?.relations).toEqual(['shared', 'shared.project']);
 		});
 
 		it('should apply credentialIds filter when provided', async () => {
@@ -240,14 +242,14 @@ describe('CredentialsRepository', () => {
 			);
 		});
 
-		it('skips projectRelations when the caller passes a narrower relations tree', async () => {
+		it('skips projectRelations when the caller passes a narrower relations array', async () => {
 			const qb = mockQueryBuilder();
 			vi.spyOn(credentialsRepository, 'createQueryBuilder').mockReturnValue(qb);
 
 			await credentialsRepository.getManyAndCountWithSharingSubquery(
 				mock<User>(),
 				{},
-				{ relations: { shared: { project: true } } },
+				{ relations: ['shared', 'shared.project'] },
 			);
 
 			expect(qb.leftJoinAndSelect).toHaveBeenCalledWith('credential.shared', 'shared');

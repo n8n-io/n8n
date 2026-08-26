@@ -10,7 +10,7 @@ export { AuthIdentityRepository } from './auth-identity.repository';
 export { AuthProviderSyncHistoryRepository } from './auth-provider-sync-history.repository';
 export { BaseRepository } from './base-repository';
 export { BinaryDataRepository } from './binary-data.repository';
-export { CredentialsRepository } from './credentials.repository';
+export { CredentialsRepository, type CredentialSharingRelation } from './credentials.repository';
 export { CredentialDependencyRepository } from './credential-dependency.repository';
 export {
 	DeploymentKeyRepository,

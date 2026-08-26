@@ -19,6 +19,7 @@ import type {
 	ICredentialsDb,
 	ScopesField,
 	OperationContext,
+	CredentialSharingRelation,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
@@ -109,7 +110,7 @@ type PrepareUpdateDataOptions = {
 
 type GetManyOptions = {
 	listQueryOptions?: ListQuery.Options & {
-		relations?: FindOptionsRelations<CredentialsEntity>;
+		relations?: CredentialSharingRelation[];
 	};
 	includeScopes?: boolean;
 	includeData?: boolean;

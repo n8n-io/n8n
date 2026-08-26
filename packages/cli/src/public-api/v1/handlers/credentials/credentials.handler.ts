@@ -132,7 +132,7 @@ const credentialsHandlers: CredentialsHandlers = {
 						skip: offset,
 						sortBy: 'createdAt:desc',
 						// skip eager-loading shared.project.projectRelations to avoid query fan-out
-						relations: { shared: { project: true } },
+						relations: ['shared', 'shared.project'],
 					},
 				},
 			);

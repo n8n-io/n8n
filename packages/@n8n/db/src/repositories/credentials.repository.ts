@@ -1,6 +1,6 @@
 import { Container, Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import type { FindManyOptions, FindOptionsRelations, SelectQueryBuilder } from '@n8n/typeorm';
+import type { FindManyOptions, SelectQueryBuilder } from '@n8n/typeorm';
 import { DataSource, In, Like, Not, QueryFailedError } from '@n8n/typeorm';
 
 import { CredentialsEntity, type User } from '../entities';
@@ -18,14 +18,21 @@ import { parseListQuerySortBy } from '../utils/list-query-sort';
 
 const SORTABLE_COLUMNS = new Set(['id', 'name', 'createdAt', 'updatedAt']);
 
-const DEFAULT_CREDENTIAL_RELATIONS: FindOptionsRelations<CredentialsEntity> = {
-	shared: { project: { projectRelations: true } },
-};
+export type CredentialSharingRelation =
+	| 'shared'
+	| 'shared.project'
+	| 'shared.project.projectRelations';
+
+const DEFAULT_CREDENTIAL_RELATIONS: CredentialSharingRelation[] = [
+	'shared',
+	'shared.project',
+	'shared.project.projectRelations',
+];
 
 type CredentialsListQueryOptions = ListQuery.Options & {
 	includeData?: boolean;
 	user?: User;
-	relations?: FindOptionsRelations<CredentialsEntity>;
+	relations?: CredentialSharingRelation[];
 };
 
 @Service()
@@ -528,18 +535,14 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 			qb.addSelect('credential.data');
 		}
 
-		// Apply relations. Walk the typed `relations` tree by hand
-		// and decide which joins to add. We need to discern boolean 'true' from objects.
+		// Apply relations.
 		if (!options.select) {
-			const relationsTree = options.relations ?? DEFAULT_CREDENTIAL_RELATIONS;
-			const sharedRel = relationsTree.shared;
-			if (sharedRel) {
+			const relations = options.relations ?? DEFAULT_CREDENTIAL_RELATIONS;
+			if (relations.includes('shared')) {
 				qb.leftJoinAndSelect('credential.shared', 'shared');
-				const projectRel = sharedRel === true ? undefined : sharedRel.project;
-				if (projectRel) {
+				if (relations.includes('shared.project')) {
 					qb.leftJoinAndSelect('shared.project', 'project');
-					const projectRelationsRel = projectRel === true ? undefined : projectRel.projectRelations;
-					if (projectRelationsRel) {
+					if (relations.includes('shared.project.projectRelations')) {
 						qb.leftJoinAndSelect('project.projectRelations', 'projectRelations');
 					}
 				}
