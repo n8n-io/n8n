@@ -1,6 +1,6 @@
 ---
 name: n8n:ui-design
-description: Guidelines on designing and building UI. Use when working on .vue files in packages/frontend. Triggers for tasks that include UI design, styling, component changes, or feature work.
+description: Guidelines on designing and building UI. Use when working in editor-ui or design-system packages. Triggers for tasks that include refactoring components, styling changes, or feature work.
 ---
 
 # UI Design
