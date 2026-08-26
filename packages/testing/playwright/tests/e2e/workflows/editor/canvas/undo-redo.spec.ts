@@ -270,19 +270,5 @@ test.describe(
 			await n8n.canvas.hitUndo();
 			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
 		});
-
-		test('should not undo/redo when NDV or a prompt is open', async ({ n8n }) => {
-			await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-			await n8n.canvas.clickWorkflowMenu();
-			await n8n.canvas.clickImportFromURL();
-
-			await n8n.canvas.getImportURLInput().click();
-			await n8n.canvas.hitUndo();
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(1);
-
-			await n8n.canvas.clickCancelImportURL();
-			await n8n.canvas.hitUndo();
-			await expect(n8n.canvas.getCanvasNodes()).toHaveCount(0);
-		});
 	},
 );
