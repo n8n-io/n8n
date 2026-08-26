@@ -324,8 +324,8 @@ export class Expression {
 	 * Used for testing and verification.
 	 */
 	static getActiveImplementation(): 'legacy' | 'vm' | 'quickjs' {
-		if (this.shouldUseVm()) return this.expressionEngine as 'vm' | 'quickjs';
-		return 'legacy';
+		if (!this.shouldUseVm()) return 'legacy';
+		return this.expressionEngine === 'quickjs' ? 'quickjs' : 'vm';
 	}
 
 	/**
