@@ -18,8 +18,17 @@ const SEARCH_PAGE_SIZE = 50;
 const MAX_FILTERED_SEARCH_PAGES = 10;
 const EMPTY_PAGE: SearchPage = { entries: [], base: '' };
 
-export async function searchSpaces(
+/**
+ * Shared list search over the v2 cursor-paginated lists that have no
+ * server-side text filter (spaces, labels): the typed text is matched
+ * client-side against `name`, fetching ahead so matches beyond the first
+ * page stay discoverable.
+ */
+async function searchByName(
 	this: ILoadOptionsFunctions,
+	endpoint: string,
+	baseQs: IDataObject,
+	toDisplayName: (name: string, entry: IDataObject) => string,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
@@ -27,28 +36,72 @@ export async function searchSpaces(
 	const results: INodeListSearchItems[] = [];
 	let cursor = paginationToken;
 
-	// No server-side text filter on the v2 spaces list; fetch ahead so matches
-	// beyond the first page stay discoverable
 	for (let fetched = 0; fetched < MAX_FILTERED_SEARCH_PAGES; fetched++) {
-		const qs: IDataObject = { limit: SEARCH_PAGE_SIZE, sort: 'name', status: 'current' };
+		const qs: IDataObject = { ...baseQs, limit: SEARCH_PAGE_SIZE };
 		if (cursor !== undefined) qs.cursor = cursor;
 
-		const response = await confluenceApiRequest.call(this, 'GET', '/wiki/api/v2/spaces', {}, qs);
+		const response = await confluenceApiRequest.call(this, 'GET', endpoint, {}, qs);
 		const entries = Array.isArray(response.results) ? (response.results as IDataObject[]) : [];
 
-		for (const space of entries) {
-			if (typeof space.id !== 'string' && typeof space.id !== 'number') continue;
-			if (typeof space.name !== 'string') continue;
-			if (filterLower !== '' && !space.name.toLowerCase().includes(filterLower)) continue;
-			const key = typeof space.key === 'string' && space.key !== '' ? ` (${space.key})` : '';
-			results.push({ name: `${space.name}${key}`, value: String(space.id) });
+		let lastName: string | undefined;
+		let exactFound = false;
+		for (const entry of entries) {
+			if (typeof entry.name !== 'string') continue;
+			lastName = entry.name.toLowerCase();
+			if (typeof entry.id !== 'string' && typeof entry.id !== 'number') continue;
+			if (filterLower !== '' && !lastName.includes(filterLower)) continue;
+			if (lastName === filterLower) exactFound = true;
+			results.push({ name: toDisplayName(entry.name, entry), value: String(entry.id) });
 		}
 
 		cursor = extractNextCursor(response);
-		if (cursor === undefined || filterLower === '' || results.length > 0) break;
+		if (cursor === undefined || filterLower === '' || exactFound) break;
+		// The list is name-sorted: don't stop on partial matches while an exact match may still lie ahead
+		const exactMayLieAhead = lastName !== undefined && lastName < filterLower;
+		if (results.length > 0 && !exactMayLieAhead) break;
 	}
 
 	return { results, paginationToken: cursor };
+}
+
+export async function searchSpaces(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchByName.call(
+		this,
+		'/wiki/api/v2/spaces',
+		{ sort: 'name', status: 'current' },
+		(name, space) => {
+			const key = typeof space.key === 'string' && space.key !== '' ? ` (${space.key})` : '';
+			return `${name}${key}`;
+		},
+		filter,
+		paginationToken,
+	);
+}
+
+export async function getLabels(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+	paginationToken?: string,
+): Promise<INodeListSearchResult> {
+	return await searchByName.call(
+		this,
+		'/wiki/api/v2/labels',
+		{ sort: 'name' },
+		(name, label) => {
+			// Non-global labels (my/team/system) share names with global ones; the prefix disambiguates
+			const prefix =
+				typeof label.prefix === 'string' && label.prefix !== '' && label.prefix !== 'global'
+					? ` (${label.prefix})`
+					: '';
+			return `${name}${prefix}`;
+		},
+		filter,
+		paginationToken,
+	);
 }
 
 export async function searchSpacesWithAll(

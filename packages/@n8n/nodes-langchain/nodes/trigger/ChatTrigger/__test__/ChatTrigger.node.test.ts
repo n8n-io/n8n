@@ -388,4 +388,167 @@ describe('ChatTrigger Node', () => {
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});
+
+	describe('hosted chat shell', () => {
+		const visitor = {
+			id: 'user-1',
+			email: 'visitor@example.com',
+			firstName: 'Vi',
+			lastName: 'Sitor',
+		};
+
+		const renderSetupPage = async (authentication = 'n8nUserAuth') => {
+			mockContext.getNodeParameter.mockImplementation(
+				(
+					paramName: string,
+					defaultValue?: boolean | string | object,
+				): boolean | string | object | undefined => {
+					if (paramName === 'public') return true;
+					if (paramName === 'mode') return 'hostedChat';
+					if (paramName === 'options') return {};
+					if (paramName === 'availableInChat') return false;
+					if (paramName === 'authentication') return authentication;
+					if (paramName === 'initialMessages') return '';
+					return defaultValue;
+				},
+			);
+			return await chatTrigger.webhook(mockContext);
+		};
+
+		const renderedPage = () => vi.mocked(mockResponse.send).mock.calls.at(-1)?.[0] as string;
+
+		beforeEach(() => {
+			// `generateChatUserAuthToken` needs the instance's hmac secret; everything
+			// else in the node still wants the chat config.
+			vi.mocked(Container.get).mockImplementation(((token: unknown) =>
+				token === ChatTriggerConfig
+					? chatTriggerConfig
+					: { hmacSignatureSecret: 'test-secret' }) as never);
+
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getNodeWebhookUrl.mockReturnValue('http://localhost:5678/webhook/abc/chat');
+			mockContext.getInstanceId.mockReturnValue('instance-1');
+			mockContext.validateCookieAuth.mockResolvedValue(visitor);
+			mockContext.getNode.mockReturnValue({
+				id: 'node-1',
+				name: 'Chat Trigger',
+				type: '@n8n/n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1.4,
+				webhookId: 'webhook-1',
+			} as never);
+
+			mockRequest.headers = {
+				'x-forwarded-proto': 'http',
+				host: 'localhost:5678',
+				cookie: 'n8n-auth=session-token',
+			};
+			mockRequest.query = {};
+			mockRequest.originalUrl = '/webhook/abc/chat';
+
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'true');
+		});
+
+		afterEach(() => {
+			vi.unstubAllEnvs();
+		});
+
+		it('renders the shell with the author chat in a sandboxed frame', async () => {
+			const result = await renderSetupPage();
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockResponse.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				"frame-ancestors 'none'",
+			);
+			expect(renderedPage()).toContain('data-src="/webhook/abc/chat?n8nShellInner=1"');
+			expect(renderedPage()).toContain(
+				'sandbox="allow-scripts allow-forms allow-modals allow-popups"',
+			);
+			// No author-supplied CSS or markup on the trusted document.
+			expect(renderedPage()).not.toContain('createChat');
+		});
+
+		it('renders the author chat for the frame own request', async () => {
+			mockRequest.query = { n8nShellInner: '1' };
+			mockRequest.headers = {
+				'x-forwarded-proto': 'http',
+				host: 'localhost:5678',
+				cookie: 'n8n-auth=session-token',
+				'sec-fetch-dest': 'iframe',
+			};
+
+			await renderSetupPage();
+
+			expect(mockResponse.setHeader).toHaveBeenCalledWith(
+				'Content-Security-Policy',
+				'sandbox allow-scripts allow-forms allow-modals allow-popups',
+			);
+			expect(renderedPage()).toContain('createChat');
+			// Identity injected server-side, and a header token for the messages that follow.
+			expect(renderedPage()).toContain('"email":"visitor@example.com"');
+			expect(renderedPage()).toContain("'x-auth-token'");
+		});
+
+		// Honouring the flag on a top-level navigation would let a visitor skip the
+		// trusted document, and with it the connect UI that lives there.
+		it('still renders the shell for a hand-typed inner URL', async () => {
+			mockRequest.query = { n8nShellInner: '1' };
+			mockRequest.headers = {
+				'x-forwarded-proto': 'http',
+				host: 'localhost:5678',
+				cookie: 'n8n-auth=session-token',
+				'sec-fetch-dest': 'document',
+			};
+
+			await renderSetupPage();
+
+			expect(renderedPage()).toContain('data-src=');
+			expect(renderedPage()).not.toContain('createChat');
+		});
+
+		it('sends an unauthenticated visitor to sign in', async () => {
+			mockRequest.headers = { 'x-forwarded-proto': 'http', host: 'localhost:5678' };
+			mockContext.validateCookieAuth.mockRejectedValue(new Error('nope'));
+
+			const result = await renderSetupPage();
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockResponse.writeHead).toHaveBeenCalledWith(302, {
+				Location: '/signin?redirect=http%3A%2F%2Flocalhost%3A5678%2Fwebhook%2Fabc%2Fchat',
+			});
+			expect(mockResponse.send).not.toHaveBeenCalled();
+		});
+
+		it('renders the page unsplit when the flag is off', async () => {
+			vi.stubEnv('N8N_ENV_FEAT_CHAT_TRIGGER_OAUTH2', 'false');
+
+			await renderSetupPage();
+
+			expect(mockResponse.setHeader).not.toHaveBeenCalled();
+			expect(renderedPage()).toContain('createChat');
+			expect(renderedPage()).not.toContain('n8nShellInner');
+		});
+
+		it.each(['none', 'basicAuth'])(
+			'renders the page unsplit for authentication %s',
+			async (authentication) => {
+				await renderSetupPage(authentication);
+
+				expect(mockResponse.setHeader).not.toHaveBeenCalled();
+				expect(renderedPage()).toContain('createChat');
+				expect(renderedPage()).not.toContain('n8nShellInner');
+			},
+		);
+
+		// The builder opens the test URL from the canvas, so it must split exactly as
+		// production does for the flow to be testable end to end.
+		it('splits the page in test mode too', async () => {
+			mockContext.getMode.mockReturnValue('manual');
+			mockRequest.originalUrl = '/webhook-test/abc/chat';
+
+			await renderSetupPage();
+
+			expect(renderedPage()).toContain('data-src="/webhook-test/abc/chat?n8nShellInner=1"');
+		});
+	});
 });

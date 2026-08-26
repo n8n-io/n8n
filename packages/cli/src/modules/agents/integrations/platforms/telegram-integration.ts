@@ -11,12 +11,12 @@ import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { UrlService } from '@/services/url.service';
 
 import { AgentRepository } from '../../repositories/agent.repository';
 import {
 	AgentChatIntegration,
+	type AgentChannelPreconditionContext,
 	type AgentChatIntegrationContext,
 	type ActionDecisionMessageParams,
 	type BridgeExecutionContext,
@@ -24,6 +24,7 @@ import {
 	type BridgeResumeExecutionContext,
 } from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
+import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadTelegramAdapter } from '../esm-loader';
 import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
 import {
@@ -68,10 +69,11 @@ export class TelegramIntegration extends AgentChatIntegration {
 			'The agent needs to reply to Telegram users in the same conversation context.',
 			'The agent needs to update a Telegram message in the current conversation.',
 			'The agent should send Telegram messages as the connected Telegram bot.',
+			'A scheduled Agent task should proactively send a direct message to a known Telegram user ID.',
 		],
 		useNodeToolWhen: [
 			'Telegram is only a backend API step and the agent does not need to be connected as a Telegram chat surface.',
-			'The request is a one-off Telegram operation from another trigger without ongoing Telegram conversation context.',
+			'The Telegram operation is performed by a non-Agent workflow, or the exact operation is not listed in the Agent integration capabilities.',
 		],
 	};
 
@@ -89,6 +91,7 @@ export class TelegramIntegration extends AgentChatIntegration {
 	]);
 
 	readonly actionToolGuidance = [
+		'For scheduled tasks without an inbound conversation, use send_dm with the known Telegram user ID. The integration action does not require current message context.',
 		'For edit_message, pass the messageId returned by a previous Telegram action or get_current_message_context. The current Telegram conversation is selected automatically.',
 	];
 
@@ -175,23 +178,18 @@ export class TelegramIntegration extends AgentChatIntegration {
 	}
 
 	/**
-	 * Block the connect flow if this Telegram credential is already claimed by
-	 * another agent in our DB. We deliberately don't probe Telegram for an
-	 * existing webhook here — `onAfterConnect` overwrites whatever URL Telegram
-	 * has on file, so a stale webhook from elsewhere isn't a connect blocker.
+	 * We deliberately don't probe Telegram for an existing webhook here —
+	 * `onAfterConnect` overwrites whatever URL Telegram has on file, so a stale
+	 * webhook from elsewhere isn't a connect blocker. That leaves the claim
+	 * check, which reads only our own DB, so publishing can run it as a
+	 * preflight.
 	 */
+	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
+		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
+	}
+
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		const others = await this.agentRepository.findByIntegrationCredential(
-			this.type,
-			ctx.credentialId,
-			ctx.projectId,
-			ctx.agentId,
-		);
-		if (others.length > 0) {
-			throw new ConflictError(
-				`Telegram credential is already connected to agent "${others[0].name}"`,
-			);
-		}
+		await this.assertStartupPreconditions(ctx);
 	}
 
 	async onAfterConnect(ctx: AgentChatIntegrationContext): Promise<void> {

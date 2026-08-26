@@ -29,6 +29,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import type { ExternalHooks } from '@/external-hooks';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { NodeTypes } from '@/node-types';
+import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
@@ -113,6 +114,9 @@ beforeAll(async () => {
 		Container.get(WorkflowHookContextService), // workflowHookContextService
 		workflowPublishGuard,
 		mock(), // workflowMutationHooks
+		// Real service on purpose: with no policy backend registered it clears every save,
+		// so these tests also prove save behavior is unchanged when the module is off.
+		Container.get(PolicyEnforcementService), // policyEnforcementService
 	);
 });
 

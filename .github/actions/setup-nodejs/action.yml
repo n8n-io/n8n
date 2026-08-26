@@ -31,7 +31,11 @@ runs:
   using: 'composite'
   steps:
     - name: Setup pnpm
-      uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+      uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+      with:
+        install: false
+        version: 11.22.0
+        cache-dependency-path: ${{ inputs.cache-dependency-path }}
 
     # Cache the Node toolcache so setup-node skips the ~33s nodejs.org download
     # on every subsequent job. First fresh runner pays the download; later jobs
