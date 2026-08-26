@@ -1,0 +1,33 @@
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/web-fetch.utils.ts
+  s_51cc314dd74007::t_850f102427c40d 163-166
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/test/web-fetch.proxy-routing.test.ts
+  s_492d84422f234f::t_5de6e1417bc938 108,111-113,115,117-120,124
+  s_51cc314dd74007::t_5fb3e9f31ccbbb 1-2,4,6-81,88,90-107,109-110,121-123,125-127
+  s_492d84422f234f::t_28e055b81686d0 3,5
+  s_51cc314dd74007::t_b319b770980205 82-87,89
+  s_492d84422f234f::t_484eb8c0051f26 114,116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b4a2aca266c2b4545d9f1ccb81edd411ff86db5a",
+  "prompts": {},
+  "sessions": {
+    "s_492d84422f234f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8321b424-f1ea-46b7-85a6-36f95d4b04dc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_51cc314dd74007": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e101b6f-161e-4acc-b93c-8733b20b060d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
