@@ -65,9 +65,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 make g+
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
 # Produces a relocatable venv tied to the python version used
 # ==============================================================================
-FROM python:${PYTHON_VERSION}-slim-bookworm AS python-runner-builder
+FROM python:${PYTHON_VERSION}-slim-trixie AS python-runner-builder
 ARG TARGETPLATFORM
 ARG UV_VERSION=0.8.14
+
+# Stage the multiarch lib dir under a name COPY can grab without flattening it.
+# This image must stay on the same Debian release as the distroless cc base:
+# the final image runs this stage's glibc against the base's libstdc++/libgcc.
+RUN mkdir /staged-libs && cp -a /usr/lib/*-linux-gnu* /staged-libs/
 
 RUN set -e; \
   apt-get update && apt-get install -y --no-install-recommends wget ca-certificates && \
@@ -153,13 +158,16 @@ COPY --from=python-runner-builder /usr/local/bin/python3.13 /runtime/usr/local/b
 COPY --from=python-runner-builder /usr/local/lib/python3.13 /runtime/usr/local/lib/python3.13
 COPY --from=python-runner-builder /usr/local/lib/libpython3.13.so* /runtime/usr/local/lib/
 
-# Copy Python dependencies (architecture-specific directories)
-# The /* glob will match x86_64-linux-gnu or aarch64-linux-gnu
-# Stage glibc into /usr/lib/ because cc-debian13 completes the usr-merge:
+# Copy Python dependencies and glibc as one set, preserving the
+# x86_64-linux-gnu / aarch64-linux-gnu directory. A COPY glob on the dir
+# would flatten its contents into /usr/lib/, putting this loader on the
+# arm64 ELF interp path (/lib/ld-linux-aarch64.so.1) while libc still
+# resolved from the base's multiarch dir - a mismatched loader/libc pair
+# breaks on GLIBC_PRIVATE symbols whenever either image updates.
+# Staged into /usr/lib/ because cc-debian13 completes the usr-merge:
 # /lib is a symlink to /usr/lib, so a final COPY into /lib/ would collide
 # with that symlink at the runtime stage.
-COPY --from=python-runner-builder /lib/*-linux-gnu* /runtime/usr/lib/
-COPY --from=python-runner-builder /usr/lib/*-linux-gnu* /runtime/usr/lib/
+COPY --from=python-runner-builder /staged-libs/ /runtime/usr/lib/
 
 # Copy Node.js runtime
 COPY --from=node-debian /usr/local/bin/node /runtime/usr/local/bin/node
