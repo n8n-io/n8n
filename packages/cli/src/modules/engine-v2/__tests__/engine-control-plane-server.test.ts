@@ -6,6 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';
+import type { EngineStatusPushRelay } from '../engine-status-push-relay';
 
 const authSecret = 'a'.repeat(32);
 
@@ -21,8 +22,8 @@ const events: LifecycleEvent[] = [
 /** Binds for real, so these exercise the wiring rather than a mock app. */
 describe('EngineControlPlaneServer', () => {
 	let server: EngineControlPlaneServer;
-	let logger: Logger;
 	let serverLogger: Logger;
+	let pushRelay: EngineStatusPushRelay;
 	let baseUrl: string;
 
 	const engineConfig = (overrides: Partial<EngineConfig> = {}) =>
@@ -35,11 +36,9 @@ describe('EngineControlPlaneServer', () => {
 		});
 
 	beforeEach(async () => {
-		logger = mock<Logger>();
 		serverLogger = mock<Logger>();
-		const controller = new EngineLifecycleEventController(
-			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
-		);
+		pushRelay = mock<EngineStatusPushRelay>();
+		const controller = new EngineLifecycleEventController(pushRelay);
 		server = new EngineControlPlaneServer(
 			engineConfig(),
 			controller,
@@ -92,10 +91,8 @@ describe('EngineControlPlaneServer', () => {
 		const response = await post({ events }, mintActionToken(authSecret, 'lifecycle-events:write'));
 
 		expect(response.status).toBe(204);
-		expect(logger.debug).toHaveBeenCalledExactlyOnceWith(
-			'Engine lifecycle event: execution:completed',
-			events[0],
-		);
+		// Proves the batch survived auth, body parsing, and routing intact.
+		expect(pushRelay.relay).toHaveBeenCalledExactlyOnceWith(events);
 	});
 
 	it.each([
