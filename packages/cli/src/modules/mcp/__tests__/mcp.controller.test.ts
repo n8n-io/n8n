@@ -289,7 +289,7 @@ describe('McpController', () => {
 
 		await controller.build(
 			createReq({
-				mcpAuthType: 'oauth',
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
 				body: {
 					jsonrpc: '2.0',
 					method: 'server/discover',
@@ -332,7 +332,7 @@ describe('McpController', () => {
 
 		await controller.build(
 			createReq({
-				mcpAuthType: 'oauth',
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
 				body: { jsonrpc: '2.0', method: 'server/discover', params: {} },
 			}),
 			res,
@@ -357,7 +357,7 @@ describe('McpController', () => {
 
 		await controller.build(
 			createReq({
-				mcpAuthType: 'oauth',
+				mcpCaller: { authType: 'oauth', clientId: 'client-abc' },
 				body: {
 					jsonrpc: '2.0',
 					method: 'initialize',
