@@ -23,6 +23,7 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/utils": "workspace:*",
     "imapflow": "1.7.1",
     "libmime": "5.4.2"
   },

@@ -2627,6 +2627,9 @@ importers:
 
   packages/@n8n/imap:
     dependencies:
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       imapflow:
         specifier: 1.7.1
         version: 1.7.1(patch_hash=9a2144a656c11ce1dbc8a0400e46e4fb575dc28be8b461e612cecf31be6f8025)
