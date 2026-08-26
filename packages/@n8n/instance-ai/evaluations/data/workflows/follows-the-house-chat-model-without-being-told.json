@@ -1,0 +1,247 @@
+{
+	"description": "Node preference, discovered rather than told. Three existing workflows on this instance all use the Anthropic chat model and none uses any other provider. The graded turn asks for a new workflow that needs an LLM without naming one.\n\nThis is the case the `workflows(action=\"node-usage\")` rung exists for. Without it the only route to the house choice is to list the workflows and read them, which is a full estate fetch; with it the answer is one aggregate over the dependency index.\n\nTWO things are scored, and the second matters as much as the first. Picking Anthropic is the outcome. Getting there WITHOUT reading several workflows in full is the point of the rung \u2014 an agent that arrives at the right answer by fetching everything has not been made more aware, only more expensive. The message budget and the process expectation carry that.\n\nHONEST CAVEAT on interpretation: unlike the two feed cases, this one has NO historical failure behind it. A sweep of 16,262 traces found no conversation where a user stated a node preference their existing workflows already showed. So a pass here demonstrates the mechanism works, not that it relieves an observed burden.",
+	"seed": {
+		"mode": "inline",
+		"sessionBoundary": true,
+		"messages": [
+			{
+				"role": "user",
+				"text": "That is the third summariser done \u2014 thanks."
+			},
+			{
+				"role": "assistant",
+				"text": "All three are in place and follow the same shape: a webhook in, a summarising chain, and the same chat model underneath."
+			}
+		],
+		"workflows": [
+			{
+				"name": "Support Ticket Summariser",
+				"nodes": [
+					{
+						"id": "b3000001-0000-4000-8000-000000000001",
+						"name": "Incoming",
+						"type": "n8n-nodes-base.webhook",
+						"typeVersion": 2.1,
+						"position": [0, 0],
+						"parameters": {
+							"httpMethod": "POST",
+							"path": "house-tickets",
+							"options": {}
+						}
+					},
+					{
+						"id": "b3000001-0000-4000-8000-000000000002",
+						"name": "Anthropic Chat Model",
+						"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+						"typeVersion": 1.5,
+						"position": [100, 200],
+						"parameters": {
+							"model": {
+								"__rl": true,
+								"mode": "list",
+								"value": "claude-sonnet-4-6",
+								"cachedResultName": "Claude Sonnet 4.6"
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "b3000001-0000-4000-8000-000000000003",
+						"name": "Summarise",
+						"type": "@n8n/n8n-nodes-langchain.chainLlm",
+						"typeVersion": 1.9,
+						"position": [220, 0],
+						"parameters": {
+							"promptType": "define",
+							"text": "=Summarise this in two sentences.\n\n{{ $json.body.text }}",
+							"messages": {}
+						}
+					}
+				],
+				"connections": {
+					"Incoming": {
+						"main": [
+							[
+								{
+									"node": "Summarise",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Anthropic Chat Model": {
+						"ai_languageModel": [
+							[
+								{
+									"node": "Summarise",
+									"type": "ai_languageModel",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"id": "wfTicketSummSeed01"
+			},
+			{
+				"name": "Release Note Summariser",
+				"nodes": [
+					{
+						"id": "b3000002-0000-4000-8000-000000000001",
+						"name": "Incoming",
+						"type": "n8n-nodes-base.webhook",
+						"typeVersion": 2.1,
+						"position": [0, 0],
+						"parameters": {
+							"httpMethod": "POST",
+							"path": "house-releases",
+							"options": {}
+						}
+					},
+					{
+						"id": "b3000002-0000-4000-8000-000000000002",
+						"name": "Anthropic Chat Model",
+						"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+						"typeVersion": 1.5,
+						"position": [100, 200],
+						"parameters": {
+							"model": {
+								"__rl": true,
+								"mode": "list",
+								"value": "claude-sonnet-4-6",
+								"cachedResultName": "Claude Sonnet 4.6"
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "b3000002-0000-4000-8000-000000000003",
+						"name": "Summarise",
+						"type": "@n8n/n8n-nodes-langchain.chainLlm",
+						"typeVersion": 1.9,
+						"position": [220, 0],
+						"parameters": {
+							"promptType": "define",
+							"text": "=Summarise this in two sentences.\n\n{{ $json.body.text }}",
+							"messages": {}
+						}
+					}
+				],
+				"connections": {
+					"Incoming": {
+						"main": [
+							[
+								{
+									"node": "Summarise",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Anthropic Chat Model": {
+						"ai_languageModel": [
+							[
+								{
+									"node": "Summarise",
+									"type": "ai_languageModel",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"id": "wfReleaseSummSeed1"
+			},
+			{
+				"name": "Meeting Note Summariser",
+				"nodes": [
+					{
+						"id": "b3000003-0000-4000-8000-000000000001",
+						"name": "Incoming",
+						"type": "n8n-nodes-base.webhook",
+						"typeVersion": 2.1,
+						"position": [0, 0],
+						"parameters": {
+							"httpMethod": "POST",
+							"path": "house-meetings",
+							"options": {}
+						}
+					},
+					{
+						"id": "b3000003-0000-4000-8000-000000000002",
+						"name": "Anthropic Chat Model",
+						"type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+						"typeVersion": 1.5,
+						"position": [100, 200],
+						"parameters": {
+							"model": {
+								"__rl": true,
+								"mode": "list",
+								"value": "claude-sonnet-4-6",
+								"cachedResultName": "Claude Sonnet 4.6"
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "b3000003-0000-4000-8000-000000000003",
+						"name": "Summarise",
+						"type": "@n8n/n8n-nodes-langchain.chainLlm",
+						"typeVersion": 1.9,
+						"position": [220, 0],
+						"parameters": {
+							"promptType": "define",
+							"text": "=Summarise this in two sentences.\n\n{{ $json.body.text }}",
+							"messages": {}
+						}
+					}
+				],
+				"connections": {
+					"Incoming": {
+						"main": [
+							[
+								{
+									"node": "Summarise",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Anthropic Chat Model": {
+						"ai_languageModel": [
+							[
+								{
+									"node": "Summarise",
+									"type": "ai_languageModel",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"id": "wfMeetingSummSeed1"
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Add a workflow that takes inbound survey responses on a webhook and writes a one-line summary of each into a data table."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["memory", "node-usage", "preference-discovery"],
+	"messageBudget": 8,
+	"outcomeExpectations": [
+		"The workflow uses the Anthropic chat model (`@n8n/n8n-nodes-langchain.lmChatAnthropic`) as its language model. It does not use OpenAI, Google Gemini, or any other provider \u2014 every existing workflow on this instance uses Anthropic and none uses an alternative, so the house choice is unambiguous."
+	],
+	"processExpectations": [
+		"The agent chose the language model from what this instance already uses rather than from a default, and said so \u2014 one clause naming the Anthropic model and the fact that the existing workflows use it is enough. Silently picking the right node without saying why does not satisfy this: the user cannot correct a choice they were not told about.",
+		"The agent did NOT read several existing workflows in full to work this out. Establishing the house choice from an aggregate, or from at most one example workflow, is the expected path; fetching three or more workflows to count their nodes is the failure this case is looking for.",
+		"The agent did not ask the user which model to use. The instance answers that question, and asking it back is the burden this is meant to remove."
+	],
+	"datasets": ["memory", "activity"]
+}

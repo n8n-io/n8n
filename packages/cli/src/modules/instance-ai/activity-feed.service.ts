@@ -220,15 +220,18 @@ function capRunEntries(entries: FeedEntry[]): FeedEntry[] {
 }
 
 const initialPreamble = [
-	'Recent activity on this instance, newest first. Use it to understand what the user has been',
-	'working on and what they are likely to mean — not as a task list, and not as something to',
-	'comment on unprompted. The parenthesised ids are the resources themselves.',
+	'Recent activity on this instance, newest first. This is work that already exists and that you',
+	'can pick up: when the user is vague ("fix it", "carry on", "what should I look at"), the answer',
+	'is usually the most recent thing here, and often the most recent failure. Name what you think',
+	'they mean and act on it rather than asking them to choose from a list they can already see.',
+	'Do not narrate the feed back to them — unless they asked what has been happening, let it',
+	'change what you do rather than what you say.',
 	'Call `activity(action="expand", id=N)` on a bracketed id to see that entry in full along with',
 	'everything else that happened to the same resource, or `activity(action="list")` to look',
 	'further back than this window. An entry may name a resource that no longer exists.',
 	'This is what happened, not what the user tends to build. For that — which node types they',
 	'reach for and which they never use — call `workflows(action="node-usage")`, which answers it',
-	'without opening a workflow.',
+	'without opening a workflow. Load the `instance-awareness` skill for how to use both.',
 ];
 
 /**

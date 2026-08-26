@@ -1,0 +1,133 @@
+{
+	"description": "Continuation across a session boundary. In a prior session the agent built and verified a missed-call text-back workflow; the graded turn, in a NEW session, re-describes the same automation without naming it.\n\nAuthored from a real reviewed trace, not invented: lang-tracer thread f4ca6874-7d2d-4e4e-9a1d-c3c7b5e015f8, observation 3870 `lost-prior-built-workflow-context` (handoff, severity `wrong`). There the agent had just built this exact workflow and then asked the user what they wanted to build with Twilio, and on the next turn re-elicited the SMS body it had already written. The reviewer's note: \"it forgot what it did 30 seconds ago\".\n\nA/B DISCRIMINATOR: the probe-anchored contextAssertion on the workflow name. With the activity feed off there is nothing to carry it into the turn, so it can only be reached by a tool call, which is `turn-end` and not `probe`. With the feed on it arrives in the prompt. Anchoring at the probe is what separates carried-in from fetched-during-turn, and it is the whole reason this case can tell the two arms apart.\n\nThe process expectation is deliberately behavioural, never narrational: it asks whether the agent re-elicited requirements it already had, not whether it can describe the feed. A probe that invites the agent to narrate its own context manufactures its own evidence.",
+	"seed": {
+		"mode": "inline",
+		"sessionBoundary": true,
+		"messages": [
+			{
+				"role": "user",
+				"text": "Use Twilio to text people back when we miss their call."
+			},
+			{
+				"role": "assistant",
+				"text": "Built and verified \"Missed Call Text-Back\": the webhook checks for a no-answer status and sends the SMS. The Twilio number is still a placeholder."
+			}
+		],
+		"workflows": [
+			{
+				"name": "Missed Call Text-Back",
+				"nodes": [
+					{
+						"id": "b1000000-0000-4000-8000-000000000001",
+						"name": "Call Status Webhook",
+						"type": "n8n-nodes-base.webhook",
+						"typeVersion": 2.1,
+						"position": [0, 0],
+						"parameters": {
+							"httpMethod": "POST",
+							"path": "twilio-missed-call",
+							"options": {}
+						}
+					},
+					{
+						"id": "b1000000-0000-4000-8000-000000000002",
+						"name": "Was It Missed",
+						"type": "n8n-nodes-base.if",
+						"typeVersion": 2.3,
+						"position": [220, 0],
+						"parameters": {
+							"conditions": {
+								"options": {
+									"caseSensitive": true,
+									"leftValue": "",
+									"typeValidation": "loose",
+									"version": 2
+								},
+								"conditions": [
+									{
+										"id": "c1",
+										"operator": {
+											"type": "string",
+											"operation": "equals"
+										},
+										"leftValue": "={{ $json.body.CallStatus }}",
+										"rightValue": "no-answer"
+									}
+								],
+								"combinator": "and"
+							},
+							"options": {}
+						}
+					},
+					{
+						"id": "b1000000-0000-4000-8000-000000000003",
+						"name": "Send Text Back",
+						"type": "n8n-nodes-base.twilio",
+						"typeVersion": 1,
+						"position": [440, -100],
+						"parameters": {
+							"resource": "sms",
+							"operation": "send",
+							"to": "={{ $json.body.From }}",
+							"message": "Hi, sorry we missed your call! We will call you back within 15 mins.",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Call Status Webhook": {
+						"main": [
+							[
+								{
+									"node": "Was It Missed",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Was It Missed": {
+						"main": [
+							[
+								{
+									"node": "Send Text Back",
+									"type": "main",
+									"index": 0
+								}
+							],
+							[]
+						]
+					}
+				},
+				"id": "wfMissedCallSeed01"
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want automation, when someone does not pick up a customer call it should send a message saying we will call them back"
+		}
+	],
+	"complexity": "medium",
+	"tags": ["memory", "activity-feed", "continuation", "from-trace"],
+	"messageBudget": 6,
+	"contextAssertions": [
+		{
+			"text": "Missed Call Text-Back",
+			"anchor": "probe",
+			"note": "The existing workflow must be in context BEFORE the agent answers. Off-arm cannot have it; on-arm gets it from the activity block."
+		}
+	],
+	"memoryExpectations": [
+		{
+			"text": "Before producing its answer, the agent's context state already identifies an existing workflow on this instance that does what the user is describing. A context state that only becomes aware of it after a tool call in this turn does NOT satisfy this.",
+			"anchor": "probe"
+		}
+	],
+	"processExpectations": [
+		"The agent referenced the existing missed-call workflow rather than starting over. It did not re-elicit the SMS message body, which the prior session already authored, and it did not ask an open question like what the user would like to build.",
+		"Any question the agent did ask is about something genuinely unknown \u2014 the Twilio phone number was left as a placeholder, so asking for that is legitimate. Re-asking for the message text or for the automation's purpose is not."
+	],
+	"datasets": ["memory", "activity"]
+}

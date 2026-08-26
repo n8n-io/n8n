@@ -1,0 +1,131 @@
+{
+	"description": "Failure awareness on an open opener. A scheduled workflow has already failed before the graded turn, and the user opens with nothing more than a greeting and a vague ask. Nothing in the message says what broke, or that anything broke at all.\n\nThis is the capability the activity feed is for: the off-arm has no way to know a run failed without being told, and the honest off-arm behaviour is to ask what the user wants. The on-arm has the failure and its failing node in the block it was handed.\n\nScored on behaviour: does the agent name the broken workflow. Not on whether it can recite the feed.",
+	"seed": {
+		"mode": "inline",
+		"sessionBoundary": true,
+		"messages": [
+			{
+				"role": "user",
+				"text": "Set up a nightly job that pulls our stock levels and shapes them for the warehouse feed."
+			},
+			{
+				"role": "assistant",
+				"text": "Built \"Nightly Inventory Sync\": it runs at 02:00, fetches the stock endpoint and shapes each row."
+			}
+		],
+		"workflows": [
+			{
+				"name": "Nightly Inventory Sync",
+				"nodes": [
+					{
+						"id": "b2000000-0000-4000-8000-000000000001",
+						"name": "Every Night",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.4,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "cronExpression",
+										"expression": "0 2 * * *"
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "b2000000-0000-4000-8000-000000000002",
+						"name": "Fetch Stock Levels",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.5,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/stock",
+							"options": {}
+						}
+					},
+					{
+						"id": "b2000000-0000-4000-8000-000000000003",
+						"name": "Shape Rows",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.5,
+						"position": [440, 0],
+						"parameters": {
+							"mode": "manual",
+							"assignments": {
+								"assignments": [
+									{
+										"id": "s1",
+										"name": "sku",
+										"type": "string",
+										"value": "={{ $json.sku }}"
+									}
+								]
+							},
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Every Night": {
+						"main": [
+							[
+								{
+									"node": "Fetch Stock Levels",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Fetch Stock Levels": {
+						"main": [
+							[
+								{
+									"node": "Shape Rows",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"id": "wfNightlyStockSeed1"
+			}
+		],
+		"priorRuns": [
+			{
+				"workflow": "Nightly Inventory Sync",
+				"hints": "The request to https://api.example.com/v1/stock must FAIL. Do not return a successful response for this URL."
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "morning \u2014 anything I should be looking at?"
+		}
+	],
+	"complexity": "medium",
+	"tags": ["memory", "activity-feed", "failure-awareness"],
+	"messageBudget": 6,
+	"contextAssertions": [
+		{
+			"text": "Nightly Inventory Sync",
+			"anchor": "probe",
+			"note": "The failing workflow must be in context before the agent answers, not discovered after."
+		}
+	],
+	"memoryExpectations": [
+		{
+			"text": "The agent's context state, before it answers, already contains that a run of a workflow on this instance failed recently. Learning this from a tool call made during this turn does not satisfy the claim.",
+			"anchor": "probe"
+		}
+	],
+	"processExpectations": [
+		"The agent named the failed workflow and the fact that it failed, without the user having mentioned any failure. It did not respond with only a generic offer of help.",
+		"The agent did not invent a cause. Anything it says about why the run failed is grounded in the record, and where it did not read the record it said so rather than guessing."
+	],
+	"datasets": ["memory", "activity"]
+}

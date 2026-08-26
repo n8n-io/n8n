@@ -172,10 +172,40 @@ Each test case declares a `datasets` array (default `["full"]` if omitted). The 
 | `full` | Default — every case runs in this grouping. Use for nightly / full-suite runs. |
 | `pr` | Curated thin set for PR-time runs, chosen for capability diversity and high baseline reliability. |
 | `agents` | Intent-resolution cases graded on enacted routing behavior, loaded from `data/agents/`. |
+| `activity` | Activity-awareness A/B set — see below. Also carries `memory`, so it runs under `--tier memory` too. |
 
 A case can belong to multiple groupings — e.g. PR-tier cases declare `"datasets": ["pr", "full"]` so they run in both contexts. Agent intent cases declare `"datasets": ["agents"]` and can be run with `pnpm eval:agents` or `pnpm eval:instance-ai --tier agents`. On sync, each value is propagated to the LangSmith example as a split alongside the file slug, so `--tier <name>` translates to a server-side splits filter.
 
 **Adding a case to `pr`**: edit the case's `datasets` in LangTracer — the suite is what CI runs, and the export round-trips non-default `datasets`, so `--tier pr` works in langtracer mode. For a not-yet-pushed local case, put `"pr"` in the JSON before `eval:langtracer-push` (push sends `datasets` on create but deliberately does not re-sync tier-only edits to an existing case — see the planner note in `langtracer/push.ts`). No promotion process is enforced today — use judgment about reliability + capability coverage when curating.
+
+### The `activity` tier: A/B for activity awareness
+
+Four cases measuring whether the agent uses instance state it was not told about. Run them with
+`scripts/ab-activity-eval.sh`, which drives two arms — the arms differ by
+`N8N_INSTANCE_AI_ACTIVITY_LOG_ENABLED` on the **instance under test**, not by a runner flag, so each
+arm needs its own instance start. The flag is read once when the relay registers; a running instance
+cannot be switched.
+
+| Case | Measures | Arm A (off) should |
+|---|---|---|
+| `picks-up-the-workflow-from-a-previous-session` | continuation across a session boundary | fail — nothing carries the prior workflow in |
+| `surfaces-the-failed-run-on-an-open-opener` | failure awareness on a vague opener | fail — it cannot know a run broke |
+| `follows-the-house-chat-model-without-being-told` | node preference via `node-usage` | pass in **both** arms (see below) |
+| `does-not-drag-recent-activity-into-an-unrelated-ask` | **negative control** — over-inference | pass, and must keep passing in arm B |
+
+Two things to hold onto when reading the result:
+
+- **`workflows(action="node-usage")` is not gated by that flag.** It reads the dependency index,
+  which is always present. So the preference case measures a capability available to both arms; a
+  difference there is noise. Only the two feed cases isolate the block.
+- **The negative control is the one that can stop a rollout.** An arm-B regression there means the
+  feed makes the agent over-infer, which is worse than not having it. Read it before the wins.
+
+The first two cases are authored from real reviewed traces rather than invented — lang-tracer
+observations 3870 and its siblings, where the agent restarted work it had just finished. The
+preference case has no such precedent: a sweep of 16,262 traces found no conversation where a user
+stated a node preference their own workflows already showed. A pass there shows the mechanism
+works, not that it relieves a burden anyone has been observed carrying.
 
 ### Sourcing test cases from LangTracer
 

@@ -1,0 +1,90 @@
+{
+	"description": "NEGATIVE CONTROL for the activity feed, and the case that can make the feature look worse than not having it. The instance has loud recent activity \u2014 a workflow created, run twice, and failed \u2014 and the user asks about something with no connection to it.\n\nThe failure this catches is over-inference: the agent treating whatever is recent as relevant, dragging the invoice workflow into an answer about a Slack notification, or opening with the failure the user did not ask about. That is strictly worse than an agent with no feed at all, and it is the outcome that should stop the rollout.\n\nDeliberately NOT asserted: that the workflow name is absent from context. It will be in context \u2014 the feed put it there. What is scored is whether the agent acted on it. The distinction between having a fact and using it is the whole measurement.",
+	"seed": {
+		"mode": "inline",
+		"sessionBoundary": true,
+		"messages": [
+			{
+				"role": "user",
+				"text": "Make a job that chases overdue invoices every morning."
+			},
+			{
+				"role": "assistant",
+				"text": "Built \"Invoice Reminder Chase\": it runs at 07:00 and pulls the overdue list."
+			}
+		],
+		"workflows": [
+			{
+				"name": "Invoice Reminder Chase",
+				"nodes": [
+					{
+						"id": "b4000000-0000-4000-8000-000000000001",
+						"name": "Every Morning",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.4,
+						"position": [0, 0],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "cronExpression",
+										"expression": "0 7 * * *"
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "b4000000-0000-4000-8000-000000000002",
+						"name": "Fetch Overdue",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.5,
+						"position": [220, 0],
+						"parameters": {
+							"url": "https://api.example.com/v1/invoices/overdue",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Every Morning": {
+						"main": [
+							[
+								{
+									"node": "Fetch Overdue",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"id": "wfInvoiceChaseSeed"
+			}
+		],
+		"priorRuns": [
+			{
+				"workflow": "Invoice Reminder Chase",
+				"hints": "The request to https://api.example.com/v1/invoices/overdue must FAIL with a 500 error."
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Set up a webhook that posts a message to a data table whenever a new signup comes in."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["memory", "activity-feed", "negative-control"],
+	"messageBudget": 6,
+	"processExpectations": [
+		"The agent built (or set about building) what was asked for and did not divert into the unrelated invoice workflow. Recent activity on this instance is not a reason to change the subject.",
+		"The agent did not open by reporting the failed invoice run. The user did not ask what had been happening, and volunteering it here is noise, not awareness.",
+		"If the agent mentioned the recent activity at all, it was a single aside after answering the actual request \u2014 not a reframing of it, and not a question about whether the user meant the invoice workflow instead."
+	],
+	"outcomeExpectations": [
+		"The workflow that was built receives signups on a webhook and writes them to a data table. It has nothing to do with invoices, reminders, or the existing scheduled workflow."
+	],
+	"datasets": ["memory", "activity"]
+}
