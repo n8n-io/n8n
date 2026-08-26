@@ -37,6 +37,7 @@ import {
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 import type { Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
@@ -325,11 +326,19 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		telemetryContext?: BuilderTelemetryContext,
 	): BuilderTools {
 		return {
-			json: this.getJsonTools(agentId, projectId, credentialProvider, user, telemetryContext),
+			json: this.getJsonTools(
+				agentId,
+				projectId,
+				credentialProvider,
+				credentialService,
+				user,
+				telemetryContext,
+			),
 			shared: this.getSharedTools(agentId, projectId, credentialProvider, user),
 		};
 	}
@@ -338,6 +347,7 @@ export class AgentsBuilderToolsService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		telemetryContext?: BuilderTelemetryContext,
 	): BuiltTool[] {
@@ -872,7 +882,7 @@ export class AgentsBuilderToolsService {
 				},
 			}),
 			buildAskCredentialTool({
-				credentialProvider,
+				credentialService,
 				projectId,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				listIntegrationCredentialIds: async () => {
@@ -884,7 +894,7 @@ export class AgentsBuilderToolsService {
 				track,
 			}),
 			buildAskEmbeddingCredentialTool({
-				credentialProvider,
+				credentialService,
 				projectId,
 				isCredentialTypeKnown: (credentialType) => this.credentialTypes.recognizes(credentialType),
 				isAssistantProxyEnabled: () => this.aiService.isProxyEnabled(),
@@ -905,7 +915,7 @@ export class AgentsBuilderToolsService {
 			),
 			this.withConfigMutationMarker(
 				buildFinishSetupTool({
-					credentialProvider,
+					credentialService,
 					agentId,
 					projectId,
 					track,

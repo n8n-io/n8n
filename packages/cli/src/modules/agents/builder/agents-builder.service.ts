@@ -21,6 +21,7 @@ import {
 	resolveAIAReasoning,
 	tokenUsageToBuilderUsageItems,
 	type BuilderRequiredArtifact,
+	type InstanceAiCredentialService,
 	type InstanceAiToolRegistry,
 	type ReportRequiredArtifactInput,
 } from '@n8n/instance-ai';
@@ -104,6 +105,7 @@ export class AgentsBuilderService {
 		projectId: string,
 		message: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
@@ -111,6 +113,7 @@ export class AgentsBuilderService {
 			agentId,
 			projectId,
 			credentialProvider,
+			credentialService,
 			user,
 			session,
 		);
@@ -146,6 +149,7 @@ export class AgentsBuilderService {
 		toolCallId: string,
 		resumeData: unknown,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): AsyncGenerator<StreamChunk> {
@@ -169,6 +173,7 @@ export class AgentsBuilderService {
 			agentId,
 			projectId,
 			credentialProvider,
+			credentialService,
 			user,
 			session,
 		);
@@ -208,6 +213,7 @@ export class AgentsBuilderService {
 		agentId: string,
 		projectId: string,
 		credentialProvider: CredentialProvider,
+		credentialService: InstanceAiCredentialService,
 		user: User,
 		session: InstanceAiBuilderSessionOptions,
 	): Promise<RuntimeAgent> {
@@ -243,6 +249,7 @@ export class AgentsBuilderService {
 			agentId,
 			projectId,
 			credentialProvider,
+			credentialService,
 			user,
 			{ threadId: session.hostThreadId, runId: session.runId },
 		);

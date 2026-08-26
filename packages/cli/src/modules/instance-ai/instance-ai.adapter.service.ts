@@ -339,20 +339,20 @@ export class InstanceAiAdapterService {
 		// underlying config is cached process-wide (1h TTL) so this rarely hits
 		// the network, and telemetry must never block context creation.
 		void this.trackGatewayAvailability();
-
 		const builderDelegateAdapter = this.getBuilderDelegateAdapter();
+		const credentialService = this.createCredentialAdapter(
+			user,
+			projectId,
+			credentialIdAllowlist,
+			shouldBypassCredentialTest,
+		);
 		return {
 			userId: user.id,
 			projectId,
 			modelId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
-			credentialService: this.createCredentialAdapter(
-				user,
-				projectId,
-				credentialIdAllowlist,
-				shouldBypassCredentialTest,
-			),
+			credentialService,
 			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			...(configEvalsEnabled && this.evaluationConfigService
@@ -384,6 +384,7 @@ export class InstanceAiAdapterService {
 							user,
 							projectId,
 							new AgentsCredentialProvider(this.credentialsService, projectId, user),
+							credentialService,
 						),
 					}
 				: {}),

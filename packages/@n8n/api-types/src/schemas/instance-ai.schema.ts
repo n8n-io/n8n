@@ -389,6 +389,12 @@ export const GENERIC_AUTH_CREDENTIAL_TYPES: ReadonlySet<string> = new Set([
 	'oAuth2Api',
 ]);
 
+export const shouldAutoResolveCredential = (
+	credentialType: string,
+	existingCount: number,
+): boolean => {
+	return !GENERIC_AUTH_CREDENTIAL_TYPES.has(credentialType) && existingCount === 1;
+};
 /** One user-provided input of a Templated Custom Auth credential. */
 export const credentialPlaceholderDefSchema = z.object({
 	/** Marker name referenced by the template as `{{name}}`. */
