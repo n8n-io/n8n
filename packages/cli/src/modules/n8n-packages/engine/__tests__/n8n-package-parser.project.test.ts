@@ -76,4 +76,44 @@ describe('N8nPackageParser.getProjects — custom span attributes', () => {
 
 		expect(readManifest).toHaveBeenCalledOnce();
 	});
+
+	it('reads and releases data table schemas only once', async () => {
+		const path = 'data-tables/orders/data-table.json';
+		const files: Record<string, unknown> = {
+			[path]: { id: 'dtsource1', name: 'Orders', columns: [] },
+		};
+		const reader = {
+			...makeReader(
+				{
+					...baseManifest(),
+					dataTables: [{ id: 'dtsource1', name: 'Orders', target: 'data-tables/orders' }],
+				},
+				files,
+			),
+			releaseFile: vi.fn((releasedPath: string) => {
+				delete files[releasedPath];
+			}),
+		};
+		const readFile = vi.spyOn(reader, 'readFile');
+
+		await parser.getDataTables(reader);
+		await parser.getDataTables(reader);
+
+		expect(readFile).toHaveBeenCalledOnce();
+		expect(reader.releaseFile).toHaveBeenCalledExactlyOnceWith(path);
+	});
+
+	it('releases malformed JSON files', async () => {
+		const path = 'projects/billing/project.json';
+		const releaseFile = vi.fn();
+		const reader: PackageReader = {
+			readManifest: async () => await Promise.resolve(baseManifest()),
+			readFile: async () => await Promise.resolve(Buffer.from('{not-json')),
+			releaseFile,
+			listEntries: async () => await Promise.resolve([path]),
+		};
+
+		await expect(parser.getProjects(reader)).rejects.toThrow(/not valid JSON/i);
+		expect(releaseFile).toHaveBeenCalledExactlyOnceWith(path);
+	});
 });

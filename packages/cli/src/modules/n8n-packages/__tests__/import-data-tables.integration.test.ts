@@ -29,6 +29,7 @@ import {
 	buildEntityPackageBuffer,
 	dataTableRequirement,
 	serializedDataTable,
+	serializedProject,
 	serializedWorkflowWithDataTable,
 } from './fixtures/package-fixtures';
 import { buildWorkflowReferencingDataTables } from './utils/test-builders';
@@ -164,6 +165,60 @@ describe('workflow package import — with data tables', () => {
 				{},
 			);
 			expect(rowCount).toBe(0);
+		});
+
+		it('reuses bundled table schemas across projects', async () => {
+			licenseMocker.enable('feat:projectRole:admin');
+			licenseMocker.setQuota('quota:maxTeamProjects', -1);
+			const firstTable = serializedDataTable({ id: 'dtsourcea', name: 'Customers' });
+			const secondTable = serializedDataTable({ id: 'dtsourceb', name: 'Orders' });
+			const firstWorkflow = serializedWorkflowWithDataTable({
+				id: 'WFA',
+				name: 'Customers workflow',
+				dataTableId: firstTable.id,
+			});
+			const secondWorkflow = serializedWorkflowWithDataTable({
+				id: 'WFB',
+				name: 'Orders workflow',
+				dataTableId: secondTable.id,
+			});
+			const packageBuffer = await buildEntityPackageBuffer({
+				projects: [
+					{
+						target: 'projects/alpha',
+						project: serializedProject({ id: 'P1', name: 'alpha' }),
+					},
+					{
+						target: 'projects/beta',
+						project: serializedProject({ id: 'P2', name: 'beta' }),
+					},
+				],
+				workflows: [
+					{ target: 'projects/alpha/workflows/customers', workflow: firstWorkflow },
+					{ target: 'projects/beta/workflows/orders', workflow: secondWorkflow },
+				],
+				dataTables: [
+					{ target: 'projects/alpha/data-tables/customers', dataTable: firstTable },
+					{ target: 'projects/beta/data-tables/orders', dataTable: secondTable },
+				],
+				manifestExtras: {
+					requirements: {
+						dataTables: [
+							dataTableRequirement(firstTable, [firstWorkflow.id]),
+							dataTableRequirement(secondTable, [secondWorkflow.id]),
+						],
+					},
+				},
+			});
+
+			try {
+				await service.importPackage(importPackageRequest({ user: owner, packageBuffer }));
+
+				expect((await tablesInProject('P1')).map(({ id }) => id)).toEqual([firstTable.id]);
+				expect((await tablesInProject('P2')).map(({ id }) => id)).toEqual([secondTable.id]);
+			} finally {
+				licenseMocker.reset();
+			}
 		});
 
 		it('handles a package mixing matched and created tables', async () => {

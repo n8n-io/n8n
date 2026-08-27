@@ -35,6 +35,7 @@ import { createProjectVariable, createVariable } from '@test-integration/db/vari
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
+import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { importPackageRequest } from './fixtures/import-request';
 import type {
@@ -165,12 +166,18 @@ describe('project shell import', () => {
 				{ target: 'projects/stilton', project: serializedProject({ id: 'P2', name: 'stilton' }) },
 			],
 		});
+		const releaseAllFiles = vi.spyOn(TarPackageReader.prototype, 'releaseAllFiles');
 
-		const result = await importProjects(owner, packageBuffer);
+		try {
+			const result = await importProjects(owner, packageBuffer);
 
-		expect(result.projects.map((p) => p.localId).sort()).toEqual(['P1', 'P2']);
-		expect(await findProject('P1')).not.toBeNull();
-		expect(await findProject('P2')).not.toBeNull();
+			expect(releaseAllFiles).toHaveBeenCalledOnce();
+			expect(result.projects.map((p) => p.localId).sort()).toEqual(['P1', 'P2']);
+			expect(await findProject('P1')).not.toBeNull();
+			expect(await findProject('P2')).not.toBeNull();
+		} finally {
+			releaseAllFiles.mockRestore();
+		}
 	});
 
 	it('creates two distinct projects that share a name but differ by id', async () => {

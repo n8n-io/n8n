@@ -109,6 +109,8 @@ export class WorkflowImporter {
 		}
 
 		const idConflicts = await this.collectIdConflicts(sourceCreateIds);
+		// Plan items take ownership of the entities so each source graph can be released after apply.
+		prepared.length = 0;
 
 		return { items, conflicts, idConflicts, folderConflicts };
 	}

@@ -113,6 +113,7 @@ export class ProjectPackageImporter {
 			const plan = await this.importOrchestrator.plan(input);
 			planned.push({ project, plan });
 		}
+		reader.releaseAllFiles?.();
 
 		assertTagWritesAllowed(
 			request.apiKeyScopes,

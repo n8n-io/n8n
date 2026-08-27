@@ -224,7 +224,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 					variableParentPolicy: payload.data.variableParentPolicy,
 					tagMissingMode: payload.data.tagMissingMode,
 					tagConflictPolicy: payload.data.tagConflictPolicy,
-					packageBuffer: packageFile.buffer,
+					packageBuffer: takePackageBuffer(packageFile),
 				});
 				return res.status(200).json(result);
 			} catch (error) {
@@ -239,5 +239,11 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 		},
 	],
 };
+
+function takePackageBuffer(file: Express.Multer.File): Buffer {
+	const buffer = file.buffer;
+	file.buffer = Buffer.alloc(0);
+	return buffer;
+}
 
 export = n8nPackagesHandlers;

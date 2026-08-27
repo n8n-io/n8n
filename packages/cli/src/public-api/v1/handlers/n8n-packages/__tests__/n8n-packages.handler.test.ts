@@ -617,16 +617,19 @@ describe('n8n-packages handler', () => {
 			const result = { package: {}, workflows: [], bindings: {}, credentials: {} };
 			mockService.importPackage.mockResolvedValue(result as never);
 			const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as unknown as Response;
+			const packageBuffer = Buffer.from('tar-bytes');
+			const files = [{ fieldname: 'package', buffer: packageBuffer } as Express.Multer.File];
 
 			const caught = await runImport(
-				makeImportRequest({ workflowConflictPolicy: undefined }, ['workflow:import']),
+				makeImportRequest({ workflowConflictPolicy: undefined }, ['workflow:import'], files),
 				res,
 			);
 
 			expect(caught).toBeUndefined();
 			expect(mockService.importPackage).toHaveBeenCalledWith(
-				expect.objectContaining({ workflowConflictPolicy: 'new-version' }),
+				expect.objectContaining({ packageBuffer, workflowConflictPolicy: 'new-version' }),
 			);
+			expect(files[0].buffer).toHaveLength(0);
 			expect(mockEventService.emit).not.toHaveBeenCalled();
 		});
 

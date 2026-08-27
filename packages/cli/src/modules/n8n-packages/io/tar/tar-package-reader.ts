@@ -35,6 +35,8 @@ export class TarPackageReader implements PackageReader {
 		if (this.manifest) return this.manifest;
 
 		const entries = await this.load();
+		if (this.manifest) return this.manifest;
+
 		const manifest = entries.get(MANIFEST_PATH);
 		if (!manifest) {
 			throw new BadRequestError('Package is missing manifest.json');
@@ -59,6 +61,10 @@ export class TarPackageReader implements PackageReader {
 
 	releaseFile(entryPath: string): void {
 		this.entries?.delete(entryPath);
+	}
+
+	releaseAllFiles(): void {
+		this.entries?.clear();
 	}
 
 	async listEntries(): Promise<string[]> {

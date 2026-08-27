@@ -83,6 +83,8 @@ export interface ImportOrchestrationInput {
 	subWorkflowRequirements?: PackageWorkflowRequirement[];
 }
 
+type ImportPlanInput = Omit<ImportOrchestrationInput, 'folders' | 'workflows'>;
+
 /**
  * Everything one scope's {@link ImportOrchestrator.apply} wrote, before the package-wide publish
  * sweep runs. Telemetry consumes this shape directly — it only reads statuses and ids.
@@ -101,7 +103,7 @@ export interface ImportContentResult {
 }
 
 export interface ImportPlan {
-	input: ImportOrchestrationInput;
+	input: ImportPlanInput;
 	folderContext: FolderImportContext;
 	credentialPlan: CredentialResolution;
 	workflowPlan: WorkflowImportPlan;
@@ -188,16 +190,9 @@ export class ImportOrchestrator {
 	}
 
 	async plan(input: ImportOrchestrationInput): Promise<ImportPlan> {
-		const {
-			context,
-			folders,
-			workflows,
-			credentialRequest,
-			dataTableRequest,
-			variableRequest,
-			tagRequest,
-			options,
-		} = input;
+		const { folders, workflows, ...planInput } = input;
+		const { context, credentialRequest, dataTableRequest, variableRequest, tagRequest, options } =
+			planInput;
 
 		await this.workflowPublisher.assertCanPublish(
 			context.user,
@@ -261,7 +256,7 @@ export class ImportOrchestrator {
 		});
 
 		return {
-			input,
+			input: planInput,
 			folderContext,
 			credentialPlan,
 			workflowPlan,

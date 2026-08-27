@@ -129,6 +129,7 @@ export class WorkflowPackageImporter {
 			options: request,
 			subWorkflowRequirements: identifyRequirements(manifest.requirements?.workflows, workflows),
 		});
+		reader.releaseAllFiles?.();
 
 		assertTagWritesAllowed(request.apiKeyScopes, [plan.tagPlan]);
 		await this.importOrchestrator.assertNotBlocked([plan], { apiKeyScopes: request.apiKeyScopes });

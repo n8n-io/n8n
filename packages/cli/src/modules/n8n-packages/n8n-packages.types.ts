@@ -268,7 +268,8 @@ export type ResolvedImportFolderProperties = ImportFolderProperties & {
 };
 
 /** An import request every importer can read without re-deriving what the caller omitted. */
-export type ResolvedImportPackageRequest = ImportPackageRequest & ResolvedImportFolderProperties;
+export type ResolvedImportPackageRequest = Omit<ImportPackageRequest, 'packageBuffer'> &
+	ResolvedImportFolderProperties;
 
 export type ImportFolderProperties = {
 	/**

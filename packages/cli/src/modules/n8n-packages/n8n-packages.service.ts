@@ -348,8 +348,17 @@ export class N8nPackagesService {
 		};
 	}
 
-	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
-		const reader = new TarPackageReader(request.packageBuffer, this.packageImportConfig);
+	// Keep the upload buffer out of the long-lived async import frame.
+	// eslint-disable-next-line @typescript-eslint/promise-function-async
+	importPackage({ packageBuffer, ...request }: ImportPackageRequest): Promise<ImportResult> {
+		const reader = new TarPackageReader(packageBuffer, this.packageImportConfig);
+		return this.importPackageFromReader(request, reader);
+	}
+
+	private async importPackageFromReader(
+		request: Omit<ImportPackageRequest, 'packageBuffer'>,
+		reader: TarPackageReader,
+	): Promise<ImportResult> {
 		const manifest = await this.packageParser.getManifest(reader);
 		if (isProjectPackage(manifest)) {
 			if (request.variableParentPolicy !== undefined) {

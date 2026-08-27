@@ -34,6 +34,7 @@ import { createMember, createOwner } from '@test-integration/db/users';
 import { LicenseMocker } from '@test-integration/license';
 import { initNodeTypes } from '@test-integration/utils';
 
+import { TarPackageReader } from '../io/tar/tar-package-reader';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { importPackageRequest } from './fixtures/import-request';
@@ -180,23 +181,29 @@ describe('Package import batch validation', () => {
 			serializedWorkflow({ id: 'wf-source-1', name: 'First' }),
 			serializedWorkflow({ id: 'wf-source-2', name: 'Second' }),
 		]);
+		const releaseAllFiles = vi.spyOn(TarPackageReader.prototype, 'releaseAllFiles');
 
-		const result = await importPackage({
-			user: owner,
-			packageBuffer: tarBuffer,
-		});
+		try {
+			const result = await importPackage({
+				user: owner,
+				packageBuffer: tarBuffer,
+			});
 
-		expect(result.workflows).toHaveLength(2);
-		expect(result.bindings.credentials).toEqual({});
+			expect(releaseAllFiles).toHaveBeenCalledOnce();
+			expect(result.workflows).toHaveLength(2);
+			expect(result.bindings.credentials).toEqual({});
 
-		const workflowRepo = Container.get(WorkflowRepository);
-		const sharedRepo = Container.get(SharedWorkflowRepository);
+			const workflowRepo = Container.get(WorkflowRepository);
+			const sharedRepo = Container.get(SharedWorkflowRepository);
 
-		expect(await workflowRepo.count()).toBe(2);
-		expect(await sharedRepo.count({ where: { projectId: personalProject.id } })).toBe(2);
+			expect(await workflowRepo.count()).toBe(2);
+			expect(await sharedRepo.count({ where: { projectId: personalProject.id } })).toBe(2);
 
-		const allWorkflows = await workflowRepo.find({ order: { name: 'ASC' } });
-		expect(allWorkflows.map((w) => w.sourceWorkflowId)).toEqual(['wf-source-1', 'wf-source-2']);
+			const allWorkflows = await workflowRepo.find({ order: { name: 'ASC' } });
+			expect(allWorkflows.map((w) => w.sourceWorkflowId)).toEqual(['wf-source-1', 'wf-source-2']);
+		} finally {
+			releaseAllFiles.mockRestore();
+		}
 	});
 });
 

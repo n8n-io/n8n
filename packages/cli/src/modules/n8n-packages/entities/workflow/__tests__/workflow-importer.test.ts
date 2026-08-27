@@ -8,9 +8,10 @@ import type {
 } from '@/workflows/workflow-creation.service';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
-import type { PackageImportBindings } from '../../../n8n-packages.types';
+import type { ImportWorkflowProperties, PackageImportBindings } from '../../../n8n-packages.types';
 import type { WorkflowImportMatchService } from '../workflow-import-match.service';
 import type {
+	PreparedWorkflow,
 	WorkflowImportContext,
 	WorkflowImportPlan,
 	WorkflowPlanItem,
@@ -32,6 +33,45 @@ const context = {
 	folderId: 'fallback-folder',
 	droppedTagIds: new Set<string>(),
 } as WorkflowImportContext;
+
+describe('WorkflowImporter.plan', () => {
+	it('transfers ownership of prepared workflow entities to the plan', async () => {
+		const findBySourceWorkflowIds = vi
+			.fn<WorkflowImportMatchService['findBySourceWorkflowIds']>()
+			.mockResolvedValue(new Map());
+		const findOwningProjectsByWorkflowId = vi
+			.fn<WorkflowImportMatchService['findOwningProjectsByWorkflowId']>()
+			.mockResolvedValue(new Map());
+		const importer = new WorkflowImporter(
+			mock<WorkflowImportMatchService>({
+				findBySourceWorkflowIds,
+				findOwningProjectsByWorkflowId,
+			}),
+			mock<WorkflowCreationService>(),
+			mock<WorkflowService>(),
+		);
+		const entity = makeWorkflow('source');
+		const prepared: PreparedWorkflow[] = [
+			{
+				entity,
+				sourceWorkflowId: 'source',
+				parentFolderId: null,
+				sourcePublished: false,
+			},
+		];
+		const options = {
+			workflowConflictPolicy: 'new-version',
+			workflowPublishingPolicy: 'preserve-published-state',
+			workflowIdPolicy: 'new',
+			missingNodeTypeMode: 'fail',
+		} satisfies ImportWorkflowProperties;
+
+		const plan = await importer.plan(context, prepared, options);
+
+		expect(prepared).toEqual([]);
+		expect(plan.items[0].entity).toBe(entity);
+	});
+});
 
 describe('WorkflowImporter.apply', () => {
 	it('prepares one batch context and passes it only to created workflows', async () => {
