@@ -59,7 +59,11 @@ export async function validateAuth(context: IWebhookFunctions) {
 			// origin never sends. Checked first so the frame doesn't depend on that cookie.
 			// Verified against n8n's internal AS (not just decoded) so the token also seeds
 			// the run's identity for private-credential resolution.
-			if (isChatOAuth2Enabled()) {
+			// Restricted to hostedChat: that's the only mode with a page to run the frame on,
+			// so a token from it must never authenticate a webhook-mode call — e.g. a stale
+			// token replayed after the node's mode was switched from hostedChat to webhook.
+			const mode = context.getNodeParameter('mode', 'hostedChat') as 'hostedChat' | 'webhook';
+			if (isChatOAuth2Enabled() && mode === 'hostedChat') {
 				const chatToken = headers['x-auth-token'];
 				if (typeof chatToken === 'string' && chatToken) {
 					const resourceUrl = context.getWebhookResourceUrl('default');
