@@ -480,10 +480,11 @@ main() {
 		if http_get "http://127.0.0.1:${N8N_PORT}/healthz"; then
 			say "n8n is already running at: http://localhost:${N8N_PORT}"
 		else
-			say "To start it: docker compose -f ${N8N_DIR}/compose.yml up -d"
+			say "To start it:  docker compose -f ${N8N_DIR}/compose.yml up -d"
 			say "Once started, n8n runs at: http://localhost:${N8N_PORT}"
 		fi
-		say "To upgrade:  curl -fsSL https://get.n8n.io | sh -s -- --upgrade"
+		say "To upgrade:   curl -fsSL https://get.n8n.io | sh -s -- --upgrade"
+		say "To uninstall: docker compose -f ${N8N_DIR}/compose.yml down -v && rm -rf ${N8N_DIR}   # DELETES all n8n data"
 		check_compose_freshness
 		exit 0
 	fi
