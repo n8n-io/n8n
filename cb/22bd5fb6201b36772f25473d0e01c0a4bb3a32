@@ -1,0 +1,208 @@
+packages/@n8n/api-types/src/dto/git-connections/__tests__/git-connections.dto.test.ts
+  s_aeecfe178a9b3d::t_b805497a554994 1-36,53-57
+  s_7562978115634d::t_eda8f562a9db0b 37-52
+packages/cli/src/modules/git-connections.ee/git-connections.service.ts
+  s_aeecfe178a9b3d::t_e8d218d4a78e36 5-7,9-13,15-16,18,20-23,25-26,29-49,52-55,63,74,79,81,85-86,100-102,106-108,114-121,166-219,227-249
+  s_677c6aba5d38ab::t_f6d54091595311 8,14,17,19,27-28
+  s_086a0479eaeb4e::t_0aea6e7976731c 50
+  s_9c782a75089598::t_a469b35443f67e 51
+  s_cde07e4490f40c::t_a05a4961f6826a 56-62,68-69,71-73,75-78,80,82,84,88-89,91,98-99,103,105,109,111
+  s_7562978115634d::t_51bcbad1f893a9 64-67,70,83
+  s_c99dd4ad746340::t_593315fe7ec5ee 93-97
+  s_7562978115634d::t_3e43ec157a957e 104,110
+  s_677c6aba5d38ab::t_ae3e69b4103d98 122-165
+  s_7562978115634d::t_705e7100060996 220-226
+packages/cli/src/modules/git-connections.ee/constants.ts
+  s_a5246f8acb611f::t_1004d94c1fd8b7 1-20,22-23
+packages/@n8n/api-types/src/dto/index.ts
+  s_aeecfe178a9b3d::t_c9994138f82526 100,113-119,121-123,355,363,106-112
+  s_677c6aba5d38ab::t_1bff40479a7636 104-105
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_aeecfe178a9b3d::t_5dfd4cdeb504cb 18
+packages/cli/src/modules/source-control.ee/__tests__/source-control-git.service.test.ts
+  s_a5246f8acb611f::t_ba777840d2ea96 335-340
+  s_a5246f8acb611f::t_ea2efcbfc06358 367-372
+  s_a5246f8acb611f::t_91c4daa66dec84 395
+packages/cli/src/modules/git-connections.ee/database/entities/git-connection.entity.ts
+  s_aeecfe178a9b3d::t_b4254cc5909fe6 2,1
+  s_396d47bc47d872::t_33929b1851a526 5-6
+packages/@n8n/api-types/src/dto/git-connections/git-connections.dto.ts
+  s_aeecfe178a9b3d::t_b805497a554994 1-11,16-22,25-32,35-36,38-65
+  s_41061fdec7ba5e::t_42b326398e51e7 12,23-24,33-34
+  s_7562978115634d::t_8deb080811fa6b 13-15
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.service.test.ts
+  s_7562978115634d::t_879215479568e4 1-16,21-33,55-69,71-72,102-104
+  s_7562978115634d::t_d2fca78a7dc460 17-20
+  s_37ea2c10fb0e32::t_6ee13a54bf658a 52,70
+  s_453e0bdd28d498::t_36f36e1b091566 53-54
+packages/cli/src/modules/source-control.ee/source-control-git.service.ee.ts
+  s_cbb79750df051b::t_4c3e4b7afd0cb7 17-24
+  s_cbb79750df051b::t_811a0e393e76e8 142,146-149
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections.service.test.ts
+  s_7562978115634d::t_38b110692dc811 1,3-6,9-10,12-17,32-37,39-40,44-49,51-54,62-191,194
+  s_677c6aba5d38ab::t_0abc180b57eddb 2,11,19,24-31
+  s_677c6aba5d38ab::t_3edc8e2bc282d2 7-8
+  s_7562978115634d::t_166d5d75abdc5c 20-23,38,41-43,50
+  s_7562978115634d::t_d37e3f61fb9dfc 55-60
+  s_7562978115634d::t_bc3301678c95a7 61
+packages/cli/src/modules/git-connections.ee/git-connections-git.service.ts
+  s_aeecfe178a9b3d::t_792465b8849b97 1
+  s_aeecfe178a9b3d::t_1aa7cf4efd8b44 2-10,12,19-29,36-37,44,93,108-119,121-122,134-140,142-154,158-164,171-174,186-189,197,207-214,216-222,225-226,228-234,236,241-250
+  s_a5246f8acb611f::t_0f8c1ef12c0bb9 11
+  s_cbb79750df051b::t_d67a0aecd2f407 13-18
+  s_7562978115634d::t_37004788c15186 62-68,72,78-81,91-92,94,103
+  s_7562978115634d::t_fc779b0f8a852a 69-71,73,104
+  s_37ea2c10fb0e32::t_159d945e1a6b1c 74-76,88-89
+  ai_agent 77,90
+  s_453e0bdd28d498::t_9c58d2412289c8 82-87,95-97,102
+  s_cbb79750df051b::t_b9b5d03e345528 120
+  s_c99dd4ad746340::t_102fefca7df94e 124-133
+  s_a5246f8acb611f::t_7f7d461c760b51 155-157
+  s_7562978115634d::t_b0d76f9c05e088 165,167-170,175-183
+  s_7562978115634d::t_806568d4ddde33 166
+  s_a5246f8acb611f::t_4fb843b4e1ad50 215
+  s_cbb79750df051b::t_46d70cad525a10 237-240
+packages/cli/src/modules/git-connections.ee/git-connections-git.utils.ts
+  s_cbb79750df051b::t_c4a7faebadafaf 1-4,14-16,21-26,33-38,40,44-45,47,49-69
+  s_a5246f8acb611f::t_3aa28c4831de89 5-12
+  s_7562978115634d::t_ad6b2e63eac650 18
+  s_a5246f8acb611f::t_cb5d28b750d2e2 27-32
+  s_a5246f8acb611f::t_0e0fe5c2d919a2 42
+packages/cli/src/modules/git-connections.ee/git-connections.module.ts
+  s_aeecfe178a9b3d::t_a4451ec3b56d95 1-18
+  ai_agent 20-21
+packages/@n8n/constants/src/index.ts
+  s_aeecfe178a9b3d::t_ad8f785e6d59d5 21
+packages/@n8n/config/src/configs/logging.config.ts
+  s_aeecfe178a9b3d::t_24bda96d710b9d 36
+packages/cli/src/modules/source-control.ee/source-control-helper.ee.ts
+  s_cbb79750df051b::t_ac87510a0510a6 20-21
+  s_cbb79750df051b::t_01eb2e9ad39eed 289-290
+packages/cli/src/modules/git-connections.ee/__tests__/git-connections-git.utils.test.ts
+  s_cbb79750df051b::t_4a8964854d3c3e 1-39,42-74,85-94,96-105,107-109,122,125-126,129-148
+  s_a5246f8acb611f::t_035061a681031b 40-41
+  s_a5246f8acb611f::t_0628c0599b464e 75-84
+  s_a5246f8acb611f::t_986a2e0d2fa5f7 110-118
+packages/cli/src/modules/git-connections.ee/database/repositories/git-connection.repository.ts
+  s_aeecfe178a9b3d::t_595152cf516cc4 1-11,25-26
+  s_9c782a75089598::t_03b13f0ff3f665 12,19-24
+  s_7562978115634d::t_63fb13e56a4fff 13-17
+  h_9b272a633435fb 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cb22bd5fb6201b36772f25473d0e01c0a4bb3a32",
+  "prompts": {},
+  "humans": {
+    "h_9b272a633435fb": {
+      "author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_086a0479eaeb4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1542716d-5651-44c2-8497-002755dfa5e5",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_37ea2c10fb0e32": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55d4e710-b67f-4069-939d-8d9aacc0d279",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_396d47bc47d872": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e5bfb8ea-92ad-44b7-bec2-37a3a6ca2c8d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_41061fdec7ba5e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "61f1414e-b826-4947-a27e-5fa60f13739f",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_453e0bdd28d498": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f7a1199-ba0e-4f9e-b114-8c40f48b7636",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_677c6aba5d38ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65836050-cd82-42db-a51e-69a4641dabf9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_7562978115634d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7789a6a0-eacd-4f54-97a9-3f6d2b2fb4c8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_9c782a75089598": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e00744d1-d8d4-4c51-afc6-6871d15ae4d6",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_a5246f8acb611f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1bd2ec7f-5396-4b40-bed9-4d5dd297a878",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_aeecfe178a9b3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1c3abc3-6b2a-413e-a33c-2c784b044f11",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c99dd4ad746340": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "573dbfcf-6518-4e1d-b9a1-0978f01bfbd9",
+        "model": "default"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_cbb79750df051b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d0d1ba17-1e97-4931-bc10-1912b50c57f0",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_cde07e4490f40c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7eeea650-8cd3-4efb-9b4c-d9f9d39dcfc1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
