@@ -91,8 +91,10 @@ async function provisionGatedWorkflow(
 		{
 			projectId: project.id,
 			transform: (wf) => {
-				// Attach the resolvable credential to the Private API node so the
-				// workflow carries an unconnected private credential.
+				// Attach the resolvable credential to the Private API tool so the
+				// workflow carries an unconnected private credential on a node the
+				// trigger can reach (the gate ignores nodes that can't run on this
+				// trigger, so a disconnected carrier node would not be checked).
 				const privateApiNode = wf.nodes?.find((n) => n.name === 'Private API');
 				if (privateApiNode) {
 					privateApiNode.credentials = {
