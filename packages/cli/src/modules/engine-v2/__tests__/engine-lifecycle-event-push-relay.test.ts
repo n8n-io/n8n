@@ -251,6 +251,21 @@ describe('EngineLifecycleEventPushRelay', () => {
 			expect(sentOfType('nodeExecuteAfter')).toHaveLength(1);
 		});
 
+		it('reports the outcome on redelivery when the first send failed', () => {
+			register();
+			vi.mocked(push.send).mockImplementationOnce(() => {
+				throw new Error('socket gone');
+			});
+
+			relay.relay([stepCompleted, stepCompleted]);
+
+			// The failed attempt sent nothing, so only the redelivery reported the run.
+			expect(sentOfType('nodeExecuteAfterData')).toHaveLength(1);
+			// The retry reuses the run, so the editor replaces it instead of appending.
+			const indexes = sentOfType('nodeExecuteAfter').map((m) => m.data.data.executionIndex);
+			expect(indexes).toEqual([0, 0]);
+		});
+
 		it('gives each step its own executionIndex and a rising sequenceNumber', () => {
 			register();
 			const second = { ...stepFields, stepId: 'step-2', nodeName: 'Edit Fields 2' };

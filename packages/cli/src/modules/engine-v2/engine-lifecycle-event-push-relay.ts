@@ -120,7 +120,6 @@ export class EngineLifecycleEventPushRelay {
 
 		// A missing `step:started` must not lose the outcome too.
 		const run = started ?? new EngineV2StepRun(session.nextExecutionIndex++, Date.parse(update.at));
-		run.settled = true;
 		session.steps.set(update.stepId, run);
 
 		this.sendNodeExecuteAfter(update.executionId, update.nodeName, run, session, {
@@ -128,6 +127,8 @@ export class EngineLifecycleEventPushRelay {
 			executionTime: Math.max(0, Date.parse(update.at) - run.startTime),
 			outputs,
 		});
+
+		run.settled = true;
 	}
 
 	private onExecutionFinished(
@@ -158,7 +159,7 @@ export class EngineLifecycleEventPushRelay {
 					executionId,
 					nodeName,
 					sequenceNumber: session.sequenceNumber++,
-					// No input lineage to report, so `source` is empty.
+					// No input lineage to report, so `source` is empty. See CAT-4265.
 					data: { startTime: run.startTime, executionIndex: run.executionIndex, source: [] },
 				},
 			},
@@ -180,6 +181,7 @@ export class EngineLifecycleEventPushRelay {
 		const taskData: ITaskData = {
 			startTime: run.startTime,
 			executionIndex: run.executionIndex,
+			// No input lineage to report, so `source` is empty. See CAT-4265.
 			source: [],
 			executionTime,
 			executionStatus: outputs ? 'success' : 'error',
