@@ -220,14 +220,14 @@ export class RoutingNode {
 					itemContext[itemIndex].requestData.options.timeout = 300_000;
 				}
 
-				if (credentials?.allowedHttpRequestDomains === 'none') {
-					throw new NodeOperationError(
-						node,
-						'This credential is configured to prevent use within an HTTP Request node',
-					);
-				}
-
-				const allowedDomains = getCredentialAllowedDomains(credentials);
+				// A declarative node's URL comes from its own routing, not from the user, so the
+				// restriction does not block it. Only `baseURL` is safe to widen the allowlist
+				// with: a per-operation `url` can interpolate a node parameter, and that host is
+				// the user's choice, not the node's.
+				const allowedDomains = getCredentialAllowedDomains(
+					credentials,
+					itemContext[itemIndex].requestData.options.baseURL,
+				);
 				if (credentials?.allowedHttpRequestDomains === 'domains' && !allowedDomains) {
 					throw new NodeOperationError(
 						node,

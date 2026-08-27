@@ -472,6 +472,16 @@ export function isDomainAllowed(
 	}
 }
 
+/** Hostname of an absolute URL, normalised for matching. `undefined` when there is none. */
+function toHostname(url: string | undefined): string | undefined {
+	if (!url) return undefined;
+	try {
+		return new URL(url).hostname.toLowerCase().replace(/\.$/, '') || undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 /**
  * Extracts the allow-listed domains configured on a credential via the
  * `allowedHttpRequestDomains` + `allowedDomains` properties.
@@ -480,17 +490,32 @@ export function isDomainAllowed(
  * 'domains' mode with a non-empty list, otherwise `undefined`. Callers that
  * need to reject 'none' mode or an empty 'domains' list must handle that
  * explicitly.
+ *
+ * Passing `nodeEndpointUrl` marks a credential-owned surface: one whose URL comes
+ * from a node definition rather than from the user. Its host joins the 'domains'
+ * allow-list, so a list the user wrote with the HTTP Request node in mind does not
+ * stop the credential working in the node it belongs to, and it stands in for an
+ * empty list. Pass it only for such a caller, never for a URL that arrives as
+ * request input.
  */
 export function getCredentialAllowedDomains(
 	credentialData: Record<string, unknown> | undefined,
+	nodeEndpointUrl?: string,
 ): string | undefined {
 	if (!credentialData || credentialData.allowedHttpRequestDomains !== 'domains') {
 		return undefined;
 	}
+	const endpointHost = toHostname(nodeEndpointUrl);
+	// A comma is a legal host character and would split into extra allow-list entries.
+	const ownHost = endpointHost?.includes(',') ? undefined : endpointHost;
+
 	const allowedDomains = credentialData.allowedDomains;
-	if (typeof allowedDomains !== 'string') return undefined;
-	const trimmed = allowedDomains.trim();
-	return trimmed === '' ? undefined : trimmed;
+	const trimmed = typeof allowedDomains === 'string' ? allowedDomains.trim() : '';
+	if (trimmed === '') return ownHost;
+	if (!ownHost || isDomainAllowed(`https://${ownHost}`, { allowedDomains: trimmed })) {
+		return trimmed;
+	}
+	return `${ownHost}, ${trimmed}`;
 }
 
 const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;

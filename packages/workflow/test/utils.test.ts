@@ -979,6 +979,94 @@ describe('getCredentialAllowedDomains', () => {
 		expect(getCredentialAllowedDomains(undefined)).toBeUndefined();
 		expect(getCredentialAllowedDomains({})).toBeUndefined();
 	});
+
+	describe('nodeEndpointUrl', () => {
+		const domainsCredential = {
+			allowedHttpRequestDomains: 'domains',
+			allowedDomains: 'other.example.com',
+		};
+
+		it("adds the node's own host to a 'domains' allowlist that omits it", () => {
+			expect(getCredentialAllowedDomains(domainsCredential, 'https://api.example.com/v2')).toBe(
+				'api.example.com, other.example.com',
+			);
+		});
+
+		it("does not duplicate the node's own host when the allowlist already covers it", () => {
+			expect(
+				getCredentialAllowedDomains(
+					{
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'other.example.com, API.Example.com',
+					},
+					'https://api.example.com/v2',
+				),
+			).toBe('other.example.com, API.Example.com');
+		});
+
+		it('strips the port from the node host it adds', () => {
+			expect(
+				getCredentialAllowedDomains(domainsCredential, 'https://api.example.com:8443/v2'),
+			).toBe('api.example.com, other.example.com');
+		});
+
+		it('does not add a host containing a comma, which would split the list', () => {
+			expect(getCredentialAllowedDomains(domainsCredential, 'https://one,two.example.com/v2')).toBe(
+				'other.example.com',
+			);
+		});
+
+		it('treats a wildcard entry as already covering the node host', () => {
+			expect(
+				getCredentialAllowedDomains(
+					{ allowedHttpRequestDomains: 'domains', allowedDomains: '*.example.com' },
+					'https://api.example.com/v2',
+				),
+			).toBe('*.example.com');
+		});
+
+		it.each([
+			['empty', '   '],
+			['missing', undefined],
+		])(
+			"falls back to the node's own host when the 'domains' list is %s",
+			(_label, allowedDomains) => {
+				expect(
+					getCredentialAllowedDomains(
+						{ allowedHttpRequestDomains: 'domains', allowedDomains },
+						'https://api.example.com/v2',
+					),
+				).toBe('api.example.com');
+			},
+		);
+
+		it("still returns undefined for an empty 'domains' list when there is no node host", () => {
+			expect(
+				getCredentialAllowedDomains({ allowedHttpRequestDomains: 'domains', allowedDomains: '' }),
+			).toBeUndefined();
+		});
+
+		it.each([
+			['an unresolved expression', '={{$credentials.baseUrl}}'],
+			['a relative path', '/api/v2'],
+			['a scheme with no host', 'https://'],
+			['an empty string', ''],
+			['undefined', undefined],
+		])('widens nothing when the node endpoint is %s', (_label, nodeEndpointUrl) => {
+			expect(getCredentialAllowedDomains(domainsCredential, nodeEndpointUrl)).toBe(
+				'other.example.com',
+			);
+		});
+
+		it.each([
+			["'all'", 'all'],
+			["'none'", 'none'],
+		])('ignores the node endpoint in %s mode', (_label, allowedHttpRequestDomains) => {
+			expect(
+				getCredentialAllowedDomains({ allowedHttpRequestDomains }, 'https://api.example.com/v2'),
+			).toBeUndefined();
+		});
+	});
 });
 
 describe('isCommunityPackageName', () => {
