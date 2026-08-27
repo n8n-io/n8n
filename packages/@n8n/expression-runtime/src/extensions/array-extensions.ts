@@ -55,6 +55,14 @@ function copyWithin(value: unknown[], extraArgs: unknown[]): unknown[] {
 	return [...value].copyWithin(...(extraArgs as [number, number, number?]));
 }
 
+function shift(value: unknown[]): unknown {
+	return [...value].shift();
+}
+
+function unshift(value: unknown[], extraArgs: unknown[]): number {
+	return [...value].unshift(...extraArgs);
+}
+
 function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
 	if (!Array.isArray(extraArgs)) {
 		throw new ExpressionExtensionError('arguments must be passed to pluck');
@@ -763,6 +771,8 @@ export const arrayExtensions: ExtensionMap = {
 		splice,
 		fill,
 		copyWithin,
+		shift,
+		unshift,
 		pluck,
 		randomItem,
 		sum,

@@ -114,6 +114,18 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi', 'Orange']);
 		});
 
+		it('shift() returns the removed first element', () => {
+			const json = { arr: ['Mango', 'Apple', 'Kiwi'] };
+			expect(evaluate('={{ $json.arr.shift() }}', json)).toBe('Mango');
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi']);
+		});
+
+		it('unshift() returns the new length', () => {
+			const json = { arr: ['Mango', 'Apple', 'Kiwi'] };
+			expect(evaluate('={{ $json.arr.unshift("Peach", "Grape") }}', json)).toBe(5);
+			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi']);
+		});
+
 		it('copyWithin() returns the copied-within array', () => {
 			const json = { arr: ['Mango', 'Apple', 'Kiwi', 'Orange'] };
 			expect(evaluate('={{ $json.arr.copyWithin(0, 2, 4) }}', json)).toEqual([
