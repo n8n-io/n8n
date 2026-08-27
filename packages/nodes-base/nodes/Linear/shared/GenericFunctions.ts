@@ -11,6 +11,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+export function getCredentialType(authenticationMethod: string): string {
+	if (authenticationMethod === 'apiToken') return 'linearApi';
+	if (authenticationMethod === 'clientCredentials') return 'linearClientCredentialsOAuth2Api';
+	return 'linearOAuth2Api';
+}
+
 export async function linearApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
 
@@ -33,7 +39,7 @@ export async function linearApiRequest(
 	try {
 		const response = await this.helpers.httpRequestWithAuthentication.call(
 			this,
-			authenticationMethod === 'apiToken' ? 'linearApi' : 'linearOAuth2Api',
+			getCredentialType(authenticationMethod),
 			options,
 		);
 

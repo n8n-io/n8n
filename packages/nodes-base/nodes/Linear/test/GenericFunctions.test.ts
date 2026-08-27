@@ -6,7 +6,12 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
-import { capitalizeFirstLetter, linearApiRequest, sort } from '../shared/GenericFunctions';
+import {
+	capitalizeFirstLetter,
+	getCredentialType,
+	linearApiRequest,
+	sort,
+} from '../shared/GenericFunctions';
 
 describe('Linear -> GenericFunctions', () => {
 	const mockHttpRequestWithAuthentication = vi.fn();
@@ -85,6 +90,35 @@ describe('Linear -> GenericFunctions', () => {
 					body: { query: '{ viewer { id } }' },
 				}),
 			);
+		});
+
+		it.each([
+			['apiToken', 'linearApi'],
+			['oAuth2', 'linearOAuth2Api'],
+			['clientCredentials', 'linearClientCredentialsOAuth2Api'],
+		])('should use the %s credential for authentication method %s', async (method, expected) => {
+			setupMockFunctions(method);
+			mockHttpRequestWithAuthentication.mockResolvedValue({});
+
+			await linearApiRequest.call(mockExecuteFunctions, { query: '{ viewer { id } }' });
+
+			expect(mockExecuteFunctions.helpers.httpRequestWithAuthentication).toHaveBeenCalledWith(
+				expected,
+				expect.anything(),
+			);
+		});
+	});
+
+	describe('getCredentialType', () => {
+		it('should map each authentication method to its credential type', () => {
+			expect(getCredentialType('apiToken')).toBe('linearApi');
+			expect(getCredentialType('oAuth2')).toBe('linearOAuth2Api');
+			expect(getCredentialType('clientCredentials')).toBe('linearClientCredentialsOAuth2Api');
+		});
+
+		it('should fall back to OAuth2 for unknown methods', () => {
+			expect(getCredentialType('somethingElse')).toBe('linearOAuth2Api');
+			expect(getCredentialType('')).toBe('linearOAuth2Api');
 		});
 	});
 

@@ -54,6 +54,15 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			},
 		},
+		{
+			name: 'linearClientCredentialsOAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['clientCredentials'],
+				},
+			},
+		},
 	],
 	properties: [
 		{
@@ -64,6 +73,12 @@ export const versionDescription: INodeTypeDescription = {
 				{
 					name: 'API Token',
 					value: 'apiToken',
+				},
+				{
+					name: 'Client Credentials',
+					value: 'clientCredentials',
+					description:
+						'Server-to-server token that acts as the application. Not supported by the Linear Trigger.',
 				},
 				{
 					name: 'OAuth2',
