@@ -8,8 +8,9 @@
  * approved the PR.
  *
  * The job itself always succeeds when the evaluation runs; the commit status
- * carries the verdict. Errors (e.g. the team membership API is unavailable)
- * fail the job and leave no success status, so the gate fails closed.
+ * carries the verdict. The status is set to pending before the evaluation
+ * starts, so a crash (e.g. the team membership API is unavailable) cannot
+ * leave an earlier green status in effect — the gate fails closed.
  */
 
 import {
@@ -113,26 +114,11 @@ function statusTargetUrl() {
 	return `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}`;
 }
 
-export async function run() {
-	const eventName = process.env.GITHUB_EVENT_NAME ?? 'workflow_dispatch';
-	const event = getEventFromGithubEventPath();
-
-	const pullRequestNumber = resolvePullRequestNumber(
-		eventName,
-		event,
-		process.env.PULL_REQUEST_NUMBER,
-	);
-	const pullRequest = await getPullRequestById(pullRequestNumber);
-
-	if (pullRequest.base.ref !== TARGET_BRANCH) {
-		console.log(`PR #${pullRequestNumber} targets "${pullRequest.base.ref}", not "${TARGET_BRANCH}"; skipping.`);
-		return;
-	}
-
-	// For merge-queue runs the queue watches the merge-group head, not the PR head.
-	const statusSha =
-		eventName === 'merge_group' ? event.merge_group.head_sha : pullRequest.head.sha;
-
+/**
+ * @param { number } pullRequestNumber
+ * @returns { Promise<{ state: 'success' | 'failure', description: string }> }
+ */
+async function evaluateRequiredReviews(pullRequestNumber) {
 	const changedFiles = await getChangedFiles(pullRequestNumber);
 	const requiredTeams = resolveRequiredTeams(changedFiles, parseOwnersFile());
 
@@ -157,13 +143,62 @@ export async function run() {
 		console.log('No changed file matches a `required` OWNERS entry.');
 	}
 
-	const status = buildStatus(missingTeams, requiredTeams.size);
+	return buildStatus(missingTeams, requiredTeams.size);
+}
+
+export async function run() {
+	const eventName = process.env.GITHUB_EVENT_NAME ?? 'workflow_dispatch';
+	const event = getEventFromGithubEventPath();
+
+	const pullRequestNumber = resolvePullRequestNumber(
+		eventName,
+		event,
+		process.env.PULL_REQUEST_NUMBER,
+	);
+	const pullRequest = await getPullRequestById(pullRequestNumber);
+
+	if (pullRequest.base.ref !== TARGET_BRANCH) {
+		console.log(`PR #${pullRequestNumber} targets "${pullRequest.base.ref}", not "${TARGET_BRANCH}"; skipping.`);
+		return;
+	}
+
+	// For merge-queue runs the queue watches the merge-group head, not the PR head.
+	const statusSha =
+		eventName === 'merge_group' ? event.merge_group.head_sha : pullRequest.head.sha;
+	const targetUrl = statusTargetUrl();
+
+	// Pending first: it replaces any earlier verdict on this SHA, so a crash
+	// during evaluation cannot leave a stale green status in effect.
+	await setCommitStatus(statusSha, {
+		state: 'pending',
+		context: STATUS_CONTEXT,
+		description: 'Evaluating required reviews',
+		targetUrl,
+	});
+
+	/** @type { { state: 'success' | 'failure', description: string } } */
+	let status;
+	try {
+		status = await evaluateRequiredReviews(pullRequestNumber);
+	} catch (evaluationError) {
+		// Best effort: nicer than a stuck pending status. The pending status
+		// already blocks the merge if this write fails too.
+		try {
+			await setCommitStatus(statusSha, {
+				state: 'error',
+				context: STATUS_CONTEXT,
+				description: 'Evaluation failed; see the workflow run',
+				targetUrl,
+			});
+		} catch {}
+		throw evaluationError;
+	}
 
 	console.log(`Setting "${STATUS_CONTEXT}" on ${statusSha} to ${status.state}: ${status.description}`);
 	await setCommitStatus(statusSha, {
 		...status,
 		context: STATUS_CONTEXT,
-		targetUrl: statusTargetUrl(),
+		targetUrl,
 	});
 }
 

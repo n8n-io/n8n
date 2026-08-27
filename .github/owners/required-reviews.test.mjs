@@ -179,11 +179,17 @@ describe('run', () => {
 		setCommitStatusImpl = setCommitStatus;
 	});
 
-	it('sets a success status on the PR head when nothing is required', async () => {
+	it('sets a pending status first, then a success status when nothing is required', async () => {
 		await run();
 
-		assert.equal(setCommitStatus.mock.calls.length, 1);
-		const [sha, status] = setCommitStatus.mock.calls[0].arguments;
+		assert.equal(setCommitStatus.mock.calls.length, 2);
+
+		const [pendingSha, pendingStatus] = setCommitStatus.mock.calls[0].arguments;
+		assert.equal(pendingSha, 'head-sha');
+		assert.equal(pendingStatus.context, STATUS_CONTEXT);
+		assert.equal(pendingStatus.state, 'pending');
+
+		const [sha, status] = setCommitStatus.mock.calls[1].arguments;
 		assert.equal(sha, 'head-sha');
 		assert.equal(status.context, STATUS_CONTEXT);
 		assert.equal(status.state, 'success');
@@ -198,9 +204,21 @@ describe('run', () => {
 
 		await run();
 
-		const [, status] = setCommitStatus.mock.calls[0].arguments;
+		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
 		assert.equal(status.state, 'failure');
 		assert.match(status.description, /Missing approval from: qa-dx/);
+	});
+
+	it('sets an error status and rethrows when the evaluation fails', async () => {
+		getChangedFilesImpl = async () => {
+			throw new Error('API unavailable');
+		};
+
+		await assert.rejects(run(), /API unavailable/);
+
+		assert.equal(setCommitStatus.mock.calls.length, 2);
+		assert.equal(setCommitStatus.mock.calls[0].arguments[1].state, 'pending');
+		assert.equal(setCommitStatus.mock.calls[1].arguments[1].state, 'error');
 	});
 
 	it('sets a success status when a member of each required team approved', async () => {
@@ -217,7 +235,7 @@ describe('run', () => {
 
 		await run();
 
-		const [, status] = setCommitStatus.mock.calls[0].arguments;
+		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
 		assert.equal(status.state, 'success');
 	});
 
@@ -231,7 +249,7 @@ describe('run', () => {
 
 		await run();
 
-		const [, status] = setCommitStatus.mock.calls[0].arguments;
+		const [, status] = setCommitStatus.mock.calls.at(-1).arguments;
 		assert.equal(status.state, 'failure');
 	});
 
@@ -257,7 +275,7 @@ describe('run', () => {
 
 		await run();
 
-		const [sha] = setCommitStatus.mock.calls[0].arguments;
+		const [sha] = setCommitStatus.mock.calls.at(-1).arguments;
 		assert.equal(sha, 'merge-group-sha');
 	});
 });

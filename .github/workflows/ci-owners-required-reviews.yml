@@ -23,10 +23,14 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 # Output
 #   - A commit status named "Required Reviews" on the PR head SHA (or
 #     merge-group head SHA). Add this name to a ruleset's required-checks list
-#     to gate merges on it. The job itself only fails on evaluation errors.
+#     to gate merges on it. The status is pending while the evaluation runs,
+#     so a crashed run cannot leave a stale verdict in effect. The job itself
+#     only fails on evaluation errors.
 
 on:
-  pull_request_target:
+  # Safe use of pull_request_target: no step checks out or executes PR code —
+  # the checkout below pins the trusted base branch.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
     types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - master
@@ -71,12 +75,20 @@ jobs:
         with:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          # Scope the token to what the script needs; without these inputs it
+          # would inherit every permission of the app installation.
+          permission-members: read
+          permission-pull-requests: read
+          permission-statuses: write
 
       # Always check out the base branch, never the PR merge ref: the OWNERS
-      # file and the scripts must be trusted input.
+      # file and the scripts must be trusted input. The 'master' fallback
+      # covers workflow_dispatch, so a dispatch from another branch cannot
+      # run that branch's policy.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ github.event.pull_request.base.ref || github.event.merge_group.base_ref || github.ref }}
+          ref: ${{ github.event.pull_request.base.ref || github.event.merge_group.base_ref || 'master' }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs

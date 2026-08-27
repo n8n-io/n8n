@@ -8,13 +8,19 @@ name: 'CI: Validate OWNERS'
 # Team names are not checked here: that needs an org read token, which fork
 # PRs do not have. A separate workflow covers it (see DEVP-891).
 
+# The paths cover every top-level path that OWNERS entries point at, so a
+# move or delete of an owned path cannot slip through unvalidated.
 on:
   pull_request:
     paths:
-      - '.github/owners/OWNERS'
-      - '.github/owners/owners.mjs'
-      - 'packages/**'
+      - '.github/**'
+      - 'assets/**'
       - 'docker/**'
+      - 'packages/**'
+      - 'patches/**'
+      - 'scripts/**'
+      - 'security/**'
+      - '.code-health-baseline.json'
 
 permissions:
   contents: read
@@ -25,6 +31,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       # owners.mjs only uses node built-ins, so no dependency install is needed.
       - run: node .github/owners/owners.mjs --check
