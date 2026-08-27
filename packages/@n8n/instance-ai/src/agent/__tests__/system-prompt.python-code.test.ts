@@ -68,6 +68,23 @@ describe('getSystemPrompt — Python Code nodes', () => {
 		expect(prompt).not.toMatch(/allows \*\*only\*\*/);
 	});
 
+	// n8n's values are not the ones an external runner reads, so an invalid one says
+	// nothing about whether that runner starts. Claiming otherwise would push the
+	// builder off Python on an instance where it works fine.
+	it('never claims the runner will not start from a policy it cannot confirm', () => {
+		const prompt = getSystemPrompt({
+			pythonImportPolicy: {
+				stdlib: [],
+				external: [],
+				authoritative: false,
+				misconfigured: true,
+			},
+		});
+
+		expect(prompt).not.toMatch(/refuse to start/i);
+		expect(prompt).toMatch(/assume no imports are available/i);
+	});
+
 	it('warns that an invalid allowlist stops the runner starting at all', () => {
 		const prompt = getSystemPrompt({
 			pythonImportPolicy: { stdlib: [], external: [], authoritative: true, misconfigured: true },

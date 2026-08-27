@@ -51,7 +51,12 @@ export function buildPythonImportPolicy({
 	const authoritative = mode === 'internal';
 
 	if (isRejectedByRunner(stdlib) || isRejectedByRunner(external)) {
-		return { stdlib: [], external: [], authoritative, misconfigured: true };
+		// Only n8n's own runner reads these values. In external mode an invalid one says
+		// nothing about whether the separately-configured runner will start, so report
+		// the usual "cannot confirm" policy rather than declaring Python unusable.
+		return authoritative
+			? { stdlib: [], external: [], authoritative: true, misconfigured: true }
+			: { stdlib: [], external: [], authoritative: false };
 	}
 
 	return { stdlib, external, authoritative };

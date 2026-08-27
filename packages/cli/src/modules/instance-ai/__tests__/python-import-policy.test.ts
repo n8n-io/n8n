@@ -29,6 +29,22 @@ describe('buildPythonImportPolicy', () => {
 		).toEqual({ stdlib: ['re', 'json'], external: [], authoritative: true });
 	});
 
+	it('reports a wildcard combined with named modules as a misconfiguration', () => {
+		expect(
+			buildPythonImportPolicy({ stdlibAllow: '*,re', externalAllow: '', mode: 'internal' }),
+		).toEqual({ stdlib: [], external: [], authoritative: true, misconfigured: true });
+	});
+
+	// In external runner mode these values are not the ones the runner reads, so an
+	// invalid one says nothing about whether the runner will start. Claiming a
+	// misconfiguration there would tell the builder Python is unusable on an instance
+	// whose separately-configured runner is perfectly fine.
+	it('does not call an invalid allowlist a misconfiguration in external runner mode', () => {
+		expect(
+			buildPythonImportPolicy({ stdlibAllow: '*,re', externalAllow: '', mode: 'external' }),
+		).toEqual({ stdlib: [], external: [], authoritative: false });
+	});
+
 	it('is not authoritative in external runner mode, where the runner is configured separately', () => {
 		expect(
 			buildPythonImportPolicy({ stdlibAllow: 're', externalAllow: '', mode: 'external' }),

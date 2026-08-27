@@ -129,17 +129,19 @@ function getPythonCodeSection(policy?: PythonImportPolicy): string {
 	];
 
 	let importRule: string;
-	if (policy.misconfigured) {
-		importRule =
-			'This instance combines a wildcard with named modules in an allowlist, which the runner rejects — it will **refuse to start**, so a Python Code node cannot run here at all. Use JavaScript, and tell the user their `N8N_RUNNERS_STDLIB_ALLOW` / `N8N_RUNNERS_EXTERNAL_ALLOW` setting is invalid: a `*` must be used alone.';
-	} else if (!policy.authoritative) {
-		// n8n cannot read the runner's own configuration here, so anything it reports may
-		// be wrong in the permissive direction. Lead with the safe assumption.
+	// `authoritative` is checked first on purpose: a policy n8n cannot confirm says
+	// nothing about the runner, including whether its configuration is even valid.
+	if (!policy.authoritative) {
+		// Anything n8n reports here may be wrong in the permissive direction, so lead
+		// with the safe assumption.
 		const configured =
 			allowed.length > 0
 				? ` n8n itself is configured for ${allowed.join(', and ')}, but that may not be what the runner enforces.`
 				: '';
 		importRule = `This instance runs task runners in **external runner mode**, so n8n cannot confirm what the runner allows. **Assume no imports are available** and write import-free Python.${configured} If an import fails at run time, rewrite the code without it rather than telling the user it should have worked.`;
+	} else if (policy.misconfigured) {
+		importRule =
+			'This instance combines a wildcard with named modules in an allowlist, which the runner rejects — it will **refuse to start**, so a Python Code node cannot run here at all. Use JavaScript, and tell the user their `N8N_RUNNERS_STDLIB_ALLOW` / `N8N_RUNNERS_EXTERNAL_ALLOW` setting is invalid: a `*` must be used alone.';
 	} else if (allowed.length === 0) {
 		importRule =
 			'This instance **allows no imports at all** — the allowlists are empty, so `import re`, `import json`, `import datetime` and every package fail at run time with "Import of ... is disallowed". Write import-free Python using builtins and str/list/dict methods, or use JavaScript when the task genuinely needs a library.';
