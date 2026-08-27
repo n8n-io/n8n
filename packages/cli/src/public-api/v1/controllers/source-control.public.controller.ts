@@ -18,8 +18,6 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
-import { resolveOffsetPagination } from '@/public-api/v1/shared/services/pagination.service';
-import { paginateSourceControlledFiles } from '@/public-api/v1/shared/services/source-controlled-file-pagination.service';
 
 const tags = ['SourceControl'];
 
@@ -37,8 +35,8 @@ export class SourceControlPublicController {
 	@ApiSummary('Preview pending source control changes')
 	@ApiDescription(
 		'Previews the pending changes between the instance and the connected Git repository, ' +
-			'in either direction. Does not modify the instance or the repository, but recomputes ' +
-			'the diff on every call, so treat each page as a fresh snapshot rather than a stable one.',
+			'in either direction. Does not modify the instance or the repository. The diff is computed on every call, ' +
+			'so the result is a live snapshot at request time.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, SourceControlStatusPublicDto)
@@ -53,8 +51,6 @@ export class SourceControlPublicController {
 			throw new BadRequestError('Source Control is not connected to a repository');
 		}
 
-		const { offset, limit } = resolveOffsetPagination({ ...query, validateCursor: true });
-
 		const result = await this.sourceControlService.getStatus(req.user, {
 			direction: query.direction,
 			preferLocalVersion: query.direction === 'push',
@@ -65,6 +61,6 @@ export class SourceControlPublicController {
 		// `verbose: false` above guarantees a flat file list at runtime, narrow explicitly rather than casting.
 		const files = Array.isArray(result) ? result : result.sourceControlledFiles;
 
-		return paginateSourceControlledFiles(files, { offset, limit });
+		return { data: files };
 	}
 }

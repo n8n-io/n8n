@@ -1,4 +1,4 @@
-import { MAX_ITEMS_PER_PAGE, type SourceControlledFile } from '@n8n/api-types';
+import type { SourceControlledFile } from '@n8n/api-types';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -275,7 +275,7 @@ describe('Source Control (Public API)', () => {
 				.query({ direction: 'push' });
 
 			expect(response.status).toBe(200);
-			expect(response.body).toEqual({ data: files, nextCursor: null });
+			expect(response.body).toEqual({ data: files });
 			expect(getStatusSpy).toHaveBeenCalledWith(
 				expect.objectContaining({ id: owner.id }),
 				expect.objectContaining({
@@ -302,7 +302,7 @@ describe('Source Control (Public API)', () => {
 				.query({ direction: 'pull' });
 
 			expect(response.status).toBe(200);
-			expect(response.body).toEqual({ data: files, nextCursor: null });
+			expect(response.body).toEqual({ data: files });
 			expect(getStatusSpy).toHaveBeenCalledWith(
 				expect.objectContaining({ id: owner.id }),
 				expect.objectContaining({
@@ -315,7 +315,7 @@ describe('Source Control (Public API)', () => {
 			);
 		});
 
-		it('should sort results deterministically before paginating', async () => {
+		it('should return files in the order getStatus produced them, unsorted', async () => {
 			testServer.license.enable('feat:sourceControl');
 			mockConnected();
 
@@ -332,49 +332,14 @@ describe('Source Control (Public API)', () => {
 				.query({ direction: 'push' });
 
 			expect(response.status).toBe(200);
-			expect(response.body.data.map((f: SourceControlledFile) => f.id)).toEqual(['1', '2', '3']);
+			expect(response.body.data.map((f: SourceControlledFile) => f.id)).toEqual(['3', '1', '2']);
 		});
 
-		it('should paginate: non-null nextCursor on page 1, null on the last page, no gaps or repeats', async () => {
+		it('should return every file with no bound on response size', async () => {
 			testServer.license.enable('feat:sourceControl');
 			mockConnected();
 
-			const files = [
-				sourceControlledFileFixture('1', { type: 'credential', file: 'a.json' }),
-				sourceControlledFileFixture('2', { type: 'workflow', file: 'a.json' }),
-				sourceControlledFileFixture('3', { type: 'workflow', file: 'b.json' }),
-			];
-			vi.spyOn(Container.get(SourceControlService), 'getStatus').mockResolvedValue(files);
-
-			const page1 = await testServer
-				.publicApiAgentFor(owner)
-				.get(statusUrl)
-				.query({ direction: 'push', limit: 2 });
-
-			expect(page1.status).toBe(200);
-			expect(page1.body.data).toHaveLength(2);
-			expect(page1.body.nextCursor).not.toBeNull();
-
-			const page2 = await testServer
-				.publicApiAgentFor(owner)
-				.get(statusUrl)
-				.query({ direction: 'push', cursor: page1.body.nextCursor });
-
-			expect(page2.status).toBe(200);
-			expect(page2.body.nextCursor).toBeNull();
-
-			const allIds = [...page1.body.data, ...page2.body.data].map(
-				(f: SourceControlledFile) => f.id,
-			);
-			expect(allIds).toEqual(['1', '2', '3']);
-		});
-
-		it('should clamp limit above the maximum page size', async () => {
-			testServer.license.enable('feat:sourceControl');
-			mockConnected();
-
-			// More files than the cap, so the page size itself proves the clamp.
-			const files = Array.from({ length: MAX_ITEMS_PER_PAGE + 50 }, (_, i) =>
+			const files = Array.from({ length: 500 }, (_, i) =>
 				sourceControlledFileFixture(String(i), { file: `${String(i).padStart(4, '0')}.json` }),
 			);
 			vi.spyOn(Container.get(SourceControlService), 'getStatus').mockResolvedValue(files);
@@ -382,38 +347,10 @@ describe('Source Control (Public API)', () => {
 			const response = await testServer
 				.publicApiAgentFor(owner)
 				.get(statusUrl)
-				.query({ direction: 'push', limit: 1000 });
+				.query({ direction: 'push' });
 
 			expect(response.status).toBe(200);
-			expect(response.body.data).toHaveLength(MAX_ITEMS_PER_PAGE);
-			expect(response.body.nextCursor).not.toBeNull();
-
-			// The cursor must carry the clamped limit, not the requested one.
-			const nextPage = await testServer
-				.publicApiAgentFor(owner)
-				.get(statusUrl)
-				.query({ direction: 'push', cursor: response.body.nextCursor });
-
-			expect(nextPage.status).toBe(200);
-			expect(nextPage.body.data).toHaveLength(50);
-			expect(nextPage.body.nextCursor).toBeNull();
-		});
-
-		it('should return 400 for a forged cursor', async () => {
-			testServer.license.enable('feat:sourceControl');
-			mockConnected();
-			vi.spyOn(Container.get(SourceControlService), 'getStatus').mockResolvedValue([]);
-
-			const forgedCursor = Buffer.from(JSON.stringify({ offset: -1, limit: 25 })).toString(
-				'base64',
-			);
-
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.get(statusUrl)
-				.query({ direction: 'push', cursor: forgedCursor });
-
-			expect(response.status).toBe(400);
+			expect(response.body.data).toHaveLength(500);
 		});
 	});
 });

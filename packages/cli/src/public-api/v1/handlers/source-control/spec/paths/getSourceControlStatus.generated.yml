@@ -2,11 +2,12 @@ operationId: getSourceControlStatus
 tags:
   - SourceControl
 summary: Preview pending source control changes
-description: Previews the pending changes between the instance and the connected Git repository, in either direction. Does not modify the instance or the repository, but recomputes the diff on every call, so treat each page as a fresh snapshot rather than a stable one.
+description: Previews the pending changes between the instance and the connected Git repository, in either direction. Does not modify the instance or the repository. The diff is computed on every call, so the result is a live snapshot at request time.
 x-required-scope: sourceControl:read
+x-eov-operation-id: unreachable
+x-eov-operation-handler: v1/handlers/decorator-routed.handler
+x-decorator-routed: true
 parameters:
-  - $ref: ../../../../shared/spec/parameters/limit.yml
-  - $ref: ../../../../shared/spec/parameters/cursor.yml
   - schema:
       type: string
       enum:
@@ -15,9 +16,6 @@ parameters:
     required: true
     name: direction
     in: query
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.
@@ -124,12 +122,8 @@ responses:
                   - location
                   - conflict
                   - updatedAt
-            nextCursor:
-              type: string
-              nullable: true
           required:
             - data
-            - nextCursor
   '400':
     $ref: ../../../../shared/spec/responses/badRequest.yml
   '401':
