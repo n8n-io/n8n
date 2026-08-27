@@ -17,6 +17,9 @@ importers:
       '@octokit/core':
         specifier: 7.0.6
         version: 7.0.6
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
       conventional-changelog:
         specifier: 7.2.0
         version: 7.2.0(conventional-commits-filter@5.0.0)
