@@ -320,8 +320,8 @@ const resizerMove = (event: MouseEvent) => {
    centered hit area wins when both are set. */
 .lineIndicator,
 .gripIndicator {
-	--resizer--size: var(--spacing--2xs);
-	--resizer--spacing--side: calc(var(--resizer--size) / -2);
+	--resizer--side--size: var(--spacing--2xs);
+	--resizer--spacing--side: calc(var(--resizer--side--size) / -2);
 	--resizer--indicator--thickness: var(--spacing--5xs);
 	--resizer--indicator--length: var(--spacing--xl);
 	--resizer--indicator--color: light-dark(var(--color--neutral-250), var(--color--neutral-700));
@@ -329,11 +329,13 @@ const resizerMove = (event: MouseEvent) => {
 	.right,
 	.left {
 		top: 0;
+		width: var(--resizer--side--size);
 	}
 
 	.top,
 	.bottom {
 		left: 0;
+		height: var(--resizer--side--size);
 	}
 
 	.right,
