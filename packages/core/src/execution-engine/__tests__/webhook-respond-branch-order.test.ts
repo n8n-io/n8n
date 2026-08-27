@@ -1,10 +1,15 @@
-// Minimal reproduction for CAT-4050 / GitHub issue #36175.
+// Documents branch execution order around the Respond to Webhook node, for
+// CAT-4050 / GitHub issue #36175.
 //
-// A webhook trigger in `responseMode: responseNode` fans out to two children:
-// the work branch, and a shared "Respond to Webhook" node. With
-// `executionOrder: v1` the engine runs the top-most child first, so the y
-// coordinate of the Respond node relative to the work branch decides whether
-// the caller is acknowledged immediately or only after the work finishes.
+// These tests describe behaviour that already exists and pass on master. They pin
+// the ordering rule that produces the reported problem. They are not a regression
+// guard for the response handling fixed in `packages/cli`, which has its own tests.
+//
+// A webhook trigger in `responseMode: responseNode` fans out to two children: the
+// work branch, and a shared Respond to Webhook node. With `executionOrder: v1` the
+// engine runs the top-most child first, so the y coordinate of the Respond node
+// relative to the work branch decides whether the caller is acknowledged
+// immediately or only after the work finishes.
 //
 //   Respond above the work node        Respond below the work node
 //   (y = 0 vs y = 500)                 (y = 1000 vs y = 500)
@@ -14,9 +19,9 @@
 //   Respond    Work                     Work     Respond
 //   (1st)      (2nd)                    (1st)     (2nd)
 //
-// When the work node fails and it ran first, the Respond node never executes,
-// so the deferred webhook response rejects and the caller receives the node
-// error instead of the intended acknowledgement.
+// When the work node runs first and fails, the Respond node never executes, so the
+// execution ends without producing a response. What the HTTP caller receives in
+// that case is decided in `packages/cli`, not here.
 
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { IExecuteFunctions, INodeTypeData, INodeTypeDescription, IRun } from 'n8n-workflow';
