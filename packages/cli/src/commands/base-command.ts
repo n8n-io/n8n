@@ -103,8 +103,8 @@ export abstract class BaseCommand<F = never> {
 
 	async init(): Promise<void> {
 		// First, so any default-agent egress during init already honours the proxy
-    // env vars. Sentry is unaffected either way: its transport builds its own
-    // agent and reads only the lowercase http(s)_proxy / no_proxy variables.
+		// env vars. Sentry is unaffected either way: its transport builds its own
+		// agent and reads only the lowercase http(s)_proxy / no_proxy variables.
 		this.installOutboundProxyAgents();
 
 		this.dbConnection = Container.get(DbConnection);
