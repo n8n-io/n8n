@@ -32,7 +32,7 @@ export function buildCreatePayload(form: GitConnectionFormState): CreateGitConne
 	if (form.connectionType === 'ssh') {
 		payload.keyGeneratorType = form.keyGeneratorType;
 	} else {
-		payload.username = form.username;
+		payload.username = form.username.trim();
 		payload.password = form.password;
 	}
 
@@ -71,8 +71,8 @@ export function buildUpdatePayload(
 		if (current.connectionType !== 'ssh') {
 			payload.keyGeneratorType = form.keyGeneratorType;
 		}
-	} else if (form.username && form.password) {
-		payload.username = form.username;
+	} else if (form.username.trim() && form.password.trim()) {
+		payload.username = form.username.trim();
 		payload.password = form.password;
 	}
 

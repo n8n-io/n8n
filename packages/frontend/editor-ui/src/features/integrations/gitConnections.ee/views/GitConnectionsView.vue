@@ -237,5 +237,4 @@ async function onDelete(id: string) {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 }
-
 </style>

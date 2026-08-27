@@ -93,13 +93,16 @@ const credentialsRequired = computed(
 	() => form.connectionType === 'https' && current.value?.connectionType !== 'https',
 );
 
+const hasUsername = computed(() => form.username.trim().length > 0);
+const hasPassword = computed(() => form.password.trim().length > 0);
+
 // `buildUpdatePayload` sends username and password together or not at all, so a
 // password-only edit would silently do nothing.
 const areCredentialsIncomplete = computed(
 	() =>
 		form.connectionType === 'https' &&
 		(credentialsRequired.value || !!form.username || !!form.password) &&
-		!(form.username && form.password),
+		!(hasUsername.value && hasPassword.value),
 );
 
 const isKeyTypeDisabled = computed(() => current.value?.connectionType === 'ssh');
@@ -365,14 +368,8 @@ async function submit() {
 					:disabled="isLoading"
 					data-test-id="git-connection-type-select"
 				>
-					<N8nOption
-						value="ssh"
-						label="SSH"
-					/>
-					<N8nOption
-						value="https"
-						label="HTTPS"
-					/>
+					<N8nOption value="ssh" label="SSH" />
+					<N8nOption value="https" label="HTTPS" />
 				</N8nSelect>
 			</N8nInputLabel>
 
@@ -464,7 +461,7 @@ async function submit() {
 					type="button"
 					variant="destructive"
 					:class="$style.deleteButton"
-					:disabled="isSubmitting"
+					:disabled="isSubmitting || isLoading"
 					data-test-id="git-connection-delete-button"
 					@click="emit('delete', connectionId)"
 				>

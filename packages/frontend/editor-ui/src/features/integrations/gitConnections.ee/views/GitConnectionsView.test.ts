@@ -216,8 +216,16 @@ describe('GitConnectionsView', () => {
 		await userEvent.click(within(dialog).getByTestId('git-connection-save-button'));
 		expect(api.updateGitConnection).not.toHaveBeenCalled();
 
-		await userEvent.type(within(dialog).getByTestId('git-connection-username-input'), 'deploy-bot');
-		await userEvent.type(within(dialog).getByTestId('git-connection-password-input'), 'token');
+		const usernameInput = within(dialog).getByTestId('git-connection-username-input');
+		const passwordInput = within(dialog).getByTestId('git-connection-password-input');
+		await userEvent.type(usernameInput, '   ');
+		await userEvent.type(passwordInput, '   ');
+		expect(within(dialog).getByTestId('git-connection-save-button')).toBeDisabled();
+
+		await userEvent.clear(usernameInput);
+		await userEvent.clear(passwordInput);
+		await userEvent.type(usernameInput, 'deploy-bot');
+		await userEvent.type(passwordInput, 'token');
 		await userEvent.click(within(dialog).getByTestId('git-connection-save-button'));
 
 		expect(api.updateGitConnection).toHaveBeenCalledWith(expect.anything(), 'conn-ssh', {
@@ -243,14 +251,21 @@ describe('GitConnectionsView', () => {
 		await waitFor(() =>
 			expect(within(dialog).getByTestId('git-connection-name-input')).toHaveValue('Production'),
 		);
-		await userEvent.type(within(dialog).getByTestId('git-connection-password-input'), 'new-token');
+		const usernameInput = within(dialog).getByTestId('git-connection-username-input');
+		const passwordInput = within(dialog).getByTestId('git-connection-password-input');
+		await userEvent.type(usernameInput, '   ');
+		await userEvent.type(passwordInput, '   ');
 		expect(within(dialog).getByTestId('git-connection-save-button')).toBeDisabled();
+
+		await userEvent.clear(usernameInput);
+		await userEvent.clear(passwordInput);
+		await userEvent.type(passwordInput, 'new-token');
 
 		// Editing an unrelated field must not let the half-filled pair through.
 		await userEvent.type(within(dialog).getByTestId('git-connection-name-input'), ' renamed');
 		expect(within(dialog).getByTestId('git-connection-save-button')).toBeDisabled();
 
-		await userEvent.type(within(dialog).getByTestId('git-connection-username-input'), 'deploy-bot');
+		await userEvent.type(usernameInput, 'deploy-bot');
 		expect(within(dialog).getByTestId('git-connection-save-button')).toBeEnabled();
 	});
 

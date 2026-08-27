@@ -40,14 +40,14 @@ describe('buildCreatePayload', () => {
 		});
 	});
 
-	it('sends both credentials and no key type for a new https connection', () => {
+	it('trims the username but preserves the password for a new https connection', () => {
 		expect(
 			buildCreatePayload(
 				form({
 					connectionType: 'https',
 					repositoryUrl: 'https://github.com/acme/workflows.git',
-					username: 'deploy-bot',
-					password: 'token-123',
+					username: '  deploy-bot  ',
+					password: ' token-123 ',
 				}),
 			),
 		).toEqual({
@@ -55,7 +55,7 @@ describe('buildCreatePayload', () => {
 			repositoryUrl: 'https://github.com/acme/workflows.git',
 			connectionType: 'https',
 			username: 'deploy-bot',
-			password: 'token-123',
+			password: ' token-123 ',
 		});
 	});
 
@@ -96,13 +96,13 @@ describe('buildUpdatePayload', () => {
 		expect(payload).toEqual({ connectionType: 'https' });
 	});
 
-	it('sends username alongside a rotated password', () => {
+	it('trims the username but preserves the rotated password', () => {
 		expect(
 			buildUpdatePayload(
-				form({ connectionType: 'https', username: 'deploy-bot', password: 'new-token' }),
+				form({ connectionType: 'https', username: ' deploy-bot ', password: ' new-token ' }),
 				existing({ connectionType: 'https', keyGeneratorType: null, publicKey: null }),
 			),
-		).toEqual({ username: 'deploy-bot', password: 'new-token' });
+		).toEqual({ username: 'deploy-bot', password: ' new-token ' });
 	});
 
 	it('treats a cleared branch as unchanged rather than removing it', () => {
