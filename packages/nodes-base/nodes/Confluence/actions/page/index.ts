@@ -6,6 +6,7 @@ import * as create from './create.operation';
 import * as del from './delete.operation';
 import * as deleteComment from './deleteComment.operation';
 import * as get from './get.operation';
+import * as getComments from './getComments.operation';
 import * as getLabels from './getLabels.operation';
 import * as getManyByLabel from './getManyByLabel.operation';
 import * as update from './update.operation';
@@ -17,6 +18,7 @@ export {
 	del as delete,
 	deleteComment,
 	get,
+	getComments,
 	getLabels,
 	getManyByLabel,
 	update,
@@ -71,6 +73,12 @@ export const description: INodeProperties[] = [
 				action: 'Get a page',
 			},
 			{
+				name: 'Get Comments',
+				value: 'getComments',
+				description: 'List the footer comments on a page, one item per comment',
+				action: 'Get comments on a page',
+			},
+			{
 				name: 'Get Labels',
 				value: 'getLabels',
 				description: 'List the labels on a page',
@@ -97,6 +105,7 @@ export const description: INodeProperties[] = [
 	...del.description,
 	...deleteComment.description,
 	...get.description,
+	...getComments.description,
 	...getLabels.description,
 	...getManyByLabel.description,
 	...update.description,

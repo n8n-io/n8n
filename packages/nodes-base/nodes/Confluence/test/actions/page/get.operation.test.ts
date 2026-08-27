@@ -473,6 +473,37 @@ describe('Confluence page:get operation', () => {
 			expect(result.map((page) => page.id)).toEqual(['100', '101', '102']);
 		});
 
+		it('stops discovery when the server echoes a cursor it already returned', async () => {
+			apiRequest.mockImplementation(async (_method, endpoint, _body, qs) => {
+				if (endpoint === '/wiki/api/v2/pages/100/descendants') {
+					return {
+						results:
+							(qs as IDataObject).cursor === undefined
+								? [{ id: '101', type: 'page', depth: 1 }]
+								: [],
+						_links: { next: '/wiki/api/v2/pages/100/descendants?cursor=same' },
+					};
+				}
+				if (endpoint === '/wiki/api/v2/pages') {
+					const ids = String((qs as IDataObject).id).split(',');
+					return { results: ids.map((id) => ({ id })) };
+				}
+				throw new Error(`unexpected endpoint ${endpoint}`);
+			});
+			const ctx = createContext({
+				page: { mode: 'id', value: '100' },
+				includeDescendants: true,
+			});
+
+			const result = (await execute.call(ctx, 0)) as IDataObject[];
+
+			const descendantCalls = apiRequest.mock.calls.filter(([, endpoint]) =>
+				endpoint.endsWith('/descendants'),
+			);
+			expect(descendantCalls).toHaveLength(2);
+			expect(result.map((page) => page.id)).toEqual(['100', '101']);
+		});
+
 		it('re-roots the walk from pages and folders at the maximum depth, but not whiteboards', async () => {
 			mockTree({
 				'100': [
