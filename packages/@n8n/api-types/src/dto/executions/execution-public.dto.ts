@@ -11,20 +11,15 @@ import {
 } from './execution-public.openapi';
 import { Z } from '../../zod-class';
 
-// `data` and `workflowData` hold whatever the run produced, so only the container is checked.
-// Describing their contents would reject real payloads.
 const anyObjectSchema = z.custom<Record<string, unknown>>(
 	(value) => typeof value === 'object' && value !== null && !Array.isArray(value),
 	{ message: 'Must be an object' },
 );
 
-// A closed shape our own tracing code writes, unlike the free-form fields above.
 const tracingContextSchema = z
 	.object({ traceparent: z.string(), tracestate: z.string().optional() })
 	.nullable();
 
-// `mode`, `status` and `storedAt` are unconstrained varchar columns, so they publish an enum for
-// readers but validate as strings. A historical row may hold a value outside the documented set.
 const executionBaseShape = {
 	finished: z.boolean().openapi(executionFieldDocs.finished),
 	mode: z.string().openapi(executionFieldDocs.mode),
@@ -57,8 +52,6 @@ export const executionPublicSchema = z.object({
 
 export class ExecutionPublicDto extends Z.class(executionPublicSchema.shape) {}
 
-// `id` is a number here and a string everywhere else. The legacy path parameter was declared
-// `type: number`, so the validator coerced it. Reproduced deliberately.
 export const deletedExecutionPublicSchema = z.object({
 	id: z.number().openapi(deletedExecutionIdOpenApi),
 	...executionBaseShape,

@@ -108,7 +108,6 @@ export class ExecutionsPublicController {
 	@ApiDescription('Deletes an execution from your instance.')
 	@ApiTags(['Execution'])
 	@ApiResponse(200, DeletedExecutionPublicDto)
-	// `deleteOne` refuses a running execution.
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
 	async deleteExecution(
@@ -154,26 +153,34 @@ export class ExecutionsPublicController {
 	}
 
 	private toExecutionPublicDto(execution: PublicExecution): ExecutionPublicDto {
-		// `replaceCircularReferences` also calls `toJSON` on every `Date`, which is what the DTO expects.
-		return replaceCircularReferences({
+		return this.serialize({
 			id: execution.id,
 			...this.toBaseFields(execution),
-			...('data' in execution && { data: execution.data }),
-			...('customData' in execution && { customData: execution.customData }),
-			...('workflowData' in execution && { workflowData: execution.workflowData }),
-			...('dataTooLargeToDisplay' in execution && {
-				dataTooLargeToDisplay: execution.dataTooLargeToDisplay,
-			}),
-		}) as unknown as ExecutionPublicDto;
+			// Absent unless `includeData` is set. An undefined value is dropped by `res.json`, so the
+			// key stays out of the response.
+			data: execution.data,
+			customData: execution.customData,
+			workflowData: execution.workflowData,
+			dataTooLargeToDisplay: execution.dataTooLargeToDisplay,
+		});
 	}
 
 	private toDeletedExecutionPublicDto(
 		execution: PublicExecution,
 		executionId: string,
 	): DeletedExecutionPublicDto {
-		return replaceCircularReferences({
+		return this.serialize({
 			id: Number(executionId),
 			...this.toBaseFields(execution),
-		}) as unknown as DeletedExecutionPublicDto;
+		});
+	}
+
+	/**
+	 * `replaceCircularReferences` makes the object safe to serialise and calls `toJSON` on every
+	 * `Date`, turning it into the ISO string the DTO declares. The cast covers that change, which
+	 * the type system cannot see.
+	 */
+	private serialize<T>(response: object): T {
+		return replaceCircularReferences(response) as unknown as T;
 	}
 }

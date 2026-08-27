@@ -3,7 +3,6 @@ import { ExecutionStatusList, WorkflowExecuteModeList } from 'n8n-workflow';
 
 import { alsoNullable } from '../openapi-nullable';
 
-// Key order reaches the generated OpenAPI fragment verbatim.
 export const executionFieldDocs = {
 	id: { example: '1000' },
 	finished: { example: true },
