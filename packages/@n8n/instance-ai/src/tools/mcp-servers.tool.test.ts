@@ -15,9 +15,7 @@ const notion: McpRegistryConnectServerSummary = {
 	slug: 'notion',
 	title: 'Notion',
 	description: 'Work with Notion pages and databases',
-	usesCredentials: [
-		{ credentialType: 'notionMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-	],
+	usesCredentials: [{ credentialType: 'notionMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 	tools: ['create_page', 'search_pages'],
 };
 
@@ -25,9 +23,7 @@ const linear: McpRegistryConnectServerSummary = {
 	slug: 'linear',
 	title: 'Linear',
 	description: 'Track issues in Linear',
-	usesCredentials: [
-		{ credentialType: 'linearMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-	],
+	usesCredentials: [{ credentialType: 'linearMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 	tools: ['create_issue'],
 };
 
