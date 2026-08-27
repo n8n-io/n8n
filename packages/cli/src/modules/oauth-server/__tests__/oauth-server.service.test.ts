@@ -159,6 +159,8 @@ describe('OAuthServerService', () => {
 
 		describe('getClient — virtual first-party client', () => {
 			const FIRST_PARTY_URL = 'https://n8n.example.com/form/abc';
+			const CHAT_FIRST_PARTY_URL =
+				'https://n8n.example.com/webhook/f0a1b2c3-d4e5-4678-9abc-def012345678/chat';
 			const NON_FIRST_PARTY_URL = 'https://n8n.example.com/mcp-server/http';
 			let firstPartyService: OAuthServerService;
 
@@ -171,6 +173,18 @@ describe('OAuthServerService', () => {
 					getResourceUrl: () => FIRST_PARTY_URL,
 					getAudiences: () => [FIRST_PARTY_URL],
 					getAllowedRedirectUris: async () => [FIRST_PARTY_URL],
+					scopes: [],
+					authorize: async () => true,
+				});
+				// A chat trigger's resource: served under the generic webhook base URL rather
+				// than a dedicated endpoint, so it covers the client-id guard's prefix check.
+				registry.register({
+					id: 'chat-abc',
+					isFirstParty: true,
+					displayName: 'My Chat',
+					getResourceUrl: () => CHAT_FIRST_PARTY_URL,
+					getAudiences: () => [CHAT_FIRST_PARTY_URL],
+					getAllowedRedirectUris: async () => [CHAT_FIRST_PARTY_URL],
 					scopes: [],
 					authorize: async () => true,
 				});
@@ -226,6 +240,31 @@ describe('OAuthServerService', () => {
 					response_types: ['code'],
 					logo_uri: undefined,
 					tos_uri: undefined,
+				});
+			});
+
+			it('lazily upserts and returns a virtual client for a chat trigger resource URL', async () => {
+				oauthClientRepository.findOneBy.mockResolvedValue(null);
+
+				const result = await firstPartyService.clientsStore.getClient(CHAT_FIRST_PARTY_URL);
+
+				expect(oauthClientRepository.upsert).toHaveBeenCalledWith(
+					{
+						id: CHAT_FIRST_PARTY_URL,
+						name: 'My Chat',
+						redirectUris: [CHAT_FIRST_PARTY_URL],
+						grantTypes: ['authorization_code'],
+						tokenEndpointAuthMethod: 'none',
+						clientSecret: null,
+						clientSecretExpiresAt: null,
+						isFirstParty: true,
+					},
+					['id'],
+				);
+				expect(result).toMatchObject({
+					client_id: CHAT_FIRST_PARTY_URL,
+					client_name: 'My Chat',
+					redirect_uris: [CHAT_FIRST_PARTY_URL],
 				});
 			});
 

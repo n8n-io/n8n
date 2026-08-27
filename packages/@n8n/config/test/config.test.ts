@@ -483,6 +483,7 @@ describe('GlobalConfig', () => {
 			maxAttempts: 5,
 			misfireGraceSeconds: 60,
 			durableCursorsEnabled: false,
+			enabledForSystemTasks: false,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -693,6 +694,7 @@ describe('GlobalConfig', () => {
 			sandboxSnapshot: 'daytonaio/sandbox:0.8.0',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
+			channelReconcileIntervalSeconds: 60,
 		},
 	} satisfies GlobalConfigShape;
 

@@ -73,7 +73,7 @@ export class CommunityPackagesService {
 		outboundHttp: OutboundHttp,
 	) {
 		this.http = outboundHttp.requests({
-			ssrf: 'disabled', // Fixed, n8n-controlled host
+			useDefaultSsrfPolicy: 'unsafe', // Fixed, n8n-controlled host
 			timeout: REQUEST_TIMEOUT_MS,
 		});
 	}
@@ -450,19 +450,24 @@ export class CommunityPackagesService {
 				authToken,
 			);
 
-			const previousVersion = isUpdate ? options.installedPackage.installedVersion : undefined;
+			// The ledger entry to put back on failure, read before `downloadPackage` overwrites it.
+			// Falls back to the DB record on update: if the ledger was missing or malformed,
+			// `downloadPackage` rebuilds it from the DB anyway, so that's the real previous value.
+			const previousVersion = isUpdate
+				? ((await this.readPackageJson())?.dependencies[packageName] ??
+					options.installedPackage.installedVersion)
+				: (await this.readPackageJson())?.dependencies[packageName];
 
-			// Keep the previous version aside so a failed update can be rolled back
-			const backupDirectory =
-				isUpdate && (await this.packageDirectoryExists(packageName))
-					? await this.backupPackageDirectory(packageName)
-					: undefined;
+			// Keep whatever is on disk aside so any failure below can roll back to it. This has
+			// to run for a fresh install too: a directory can pre-exist one, after a crash
+			// mid-install or when reinstalling a package the loader reports as missing.
+			const backupDirectory = await this.backupPackageDirectory(packageName);
 
 			try {
 				await this.downloadPackage(packageName, packageVersion, authToken);
 			} catch (error) {
 				// No reload here: the previous package was not unloaded before the download
-				await this.restoreFailedPackageInstallation(packageName, {
+				await this.restorePackageFiles(packageName, {
 					backupDirectory,
 					previousVersion,
 				});
@@ -481,7 +486,6 @@ export class CommunityPackagesService {
 				await this.restoreFailedPackageInstallation(packageName, {
 					backupDirectory,
 					previousVersion,
-					reloadPackage: isUpdate,
 				});
 				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_LOADING_FAILED, {
 					cause: error,
@@ -502,7 +506,6 @@ export class CommunityPackagesService {
 					await this.restoreFailedPackageInstallation(packageName, {
 						backupDirectory,
 						previousVersion,
-						reloadPackage: isUpdate,
 					});
 
 					throw new UnexpectedError('Failed to save installed package', {
@@ -513,18 +516,7 @@ export class CommunityPackagesService {
 
 				// The new version is now authoritative; later failures must not roll back,
 				// or the DB record would end up inconsistent with the restored files.
-				// Removing the backup is housekeeping — a failure here must not fail the update.
-				if (backupDirectory) {
-					try {
-						await rm(backupDirectory, { recursive: true, force: true, maxRetries: 3 });
-					} catch (error) {
-						this.logger.warn('Failed to remove community package backup directory', {
-							error: ensureError(error),
-							packageName,
-							backupDirectory,
-						});
-					}
-				}
+				await this.discardBackupDirectory(packageName, backupDirectory);
 				// Publish the resolved version, not the requested specifier (e.g. `latest`),
 				// so peers install the exact version this instance just persisted.
 				const { installedVersion } = installedPackage;
@@ -548,7 +540,6 @@ export class CommunityPackagesService {
 				await this.restoreFailedPackageInstallation(packageName, {
 					backupDirectory,
 					previousVersion,
-					reloadPackage: isUpdate,
 				});
 
 				throw new UnexpectedError(RESPONSE_ERROR_MESSAGES.PACKAGE_DOES_NOT_CONTAIN_NODES);
@@ -596,11 +587,29 @@ export class CommunityPackagesService {
 			}
 
 			const authToken = this.getNpmAuthToken();
-			await this.downloadPackage(packageName, packageVersion, authToken);
-			await this.loadNodesAndCredentials.unloadPackage(packageName);
-			await this.loadNodesAndCredentials.loadPackage(packageName);
-			await this.loadNodesAndCredentials.postProcessLoaders();
-			this.loadNodesAndCredentials.releaseTypes();
+			const backupDirectory = await this.backupPackageDirectory(packageName);
+
+			// Only the directory is rolled back here, never the ledger: on a follower its
+			// entry is justified by the leader's database record, not by this instance's disk.
+			try {
+				await this.downloadPackage(packageName, packageVersion, authToken);
+			} catch (error) {
+				// No reload: the previous package was not unloaded before the download
+				await this.restorePackageDirectory(packageName, backupDirectory);
+				throw error;
+			}
+
+			// A failed load keeps the new directory: rolling back to a working older version
+			// would leave this instance silently behind the leader's record.
+			try {
+				await this.loadNodesAndCredentials.unloadPackage(packageName);
+				await this.loadNodesAndCredentials.loadPackage(packageName);
+				await this.loadNodesAndCredentials.postProcessLoaders();
+				this.loadNodesAndCredentials.releaseTypes();
+			} finally {
+				await this.discardBackupDirectory(packageName, backupDirectory);
+			}
+
 			this.logger.info(`Community package installed: ${packageName}`);
 		});
 	}
@@ -628,11 +637,33 @@ export class CommunityPackagesService {
 		}
 	}
 
-	private async backupPackageDirectory(packageName: string) {
+	/**
+	 * Moves the package directory aside, if there is one, so a failed install can put it
+	 * back. Taking this once up front is what keeps a fresh install over an existing
+	 * directory recoverable.
+	 */
+	private async backupPackageDirectory(packageName: string): Promise<string | undefined> {
+		if (!(await this.packageDirectoryExists(packageName))) return undefined;
+
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 		const backupDirectory = `${packageDirectory}.backup-${Date.now()}`;
 		await rename(packageDirectory, backupDirectory);
 		return backupDirectory;
+	}
+
+	/** Drops a backup that is no longer needed. Housekeeping: a failure must not fail the install. */
+	private async discardBackupDirectory(packageName: string, backupDirectory?: string) {
+		if (!backupDirectory) return;
+
+		try {
+			await rm(backupDirectory, { recursive: true, force: true, maxRetries: 3 });
+		} catch (error) {
+			this.logger.warn('Failed to remove community package backup directory', {
+				error: ensureError(error),
+				packageName,
+				backupDirectory,
+			});
+		}
 	}
 
 	/** Discards whatever is at `packageDirectory` and puts the backup back in its place, if any. */
@@ -642,36 +673,65 @@ export class CommunityPackagesService {
 		await rename(backupDirectory, this.resolvePackageDirectory(packageName));
 	}
 
-	private async restoreFailedPackageInstallation(
-		packageName: string,
-		options: { backupDirectory?: string; previousVersion?: string; reloadPackage?: boolean },
-	) {
-		const { backupDirectory, previousVersion, reloadPackage = false } = options;
-
+	/**
+	 * Puts the backup back in place. Kept apart from the ledger rollback below because a
+	 * follower must not touch the ledger: its entry is justified by the leader's database
+	 * record, not by this instance's disk.
+	 */
+	private async restorePackageDirectory(packageName: string, backupDirectory?: string) {
 		try {
 			await this.restorePackageDirectoryFromBackup(packageName, backupDirectory);
+		} catch (cleanupError) {
+			// `backupDirectory` is the only pointer to the files if the rename half failed: the
+			// loader skips `.backup-<ts>` directories, so nothing finds them again on its own.
+			this.logger.warn('Failed to restore community package directory after failed installation', {
+				error: ensureError(cleanupError),
+				packageName,
+				backupDirectory,
+			});
+		}
+	}
 
-			// Reload only if the restore above succeeded, otherwise there's nothing
-			// valid on disk to load and we'd just unload a working loader for nothing.
-			if (backupDirectory && reloadPackage) {
-				try {
-					await this.loadNodesAndCredentials.unloadPackage(packageName);
-					await this.loadNodesAndCredentials.loadPackage(packageName);
-					await this.loadNodesAndCredentials.postProcessLoaders();
-					this.loadNodesAndCredentials.releaseTypes();
-				} catch (cleanupError) {
-					this.logger.warn('Failed to reload community package after failed installation', {
-						error: ensureError(cleanupError),
-						packageName,
-					});
-				}
+	/**
+	 * Unloads the version that failed and loads back whatever the rollback left on disk.
+	 * Only for callers that already unloaded the previous version.
+	 */
+	private async restoreLoadedPackage(packageName: string) {
+		try {
+			await this.loadNodesAndCredentials.unloadPackage(packageName);
+			// Check the disk instead of assuming the rollback restored something: a rename
+			// that failed halfway leaves no directory to load.
+			if (await this.packageDirectoryExists(packageName)) {
+				await this.loadNodesAndCredentials.loadPackage(packageName);
 			}
 		} catch (cleanupError) {
-			this.logger.warn('Failed to restore community package directory after failed installation', {
+			this.logger.warn('Failed to reload community package after failed installation', {
 				error: ensureError(cleanupError),
 				packageName,
 			});
 		}
+
+		// Runs even when the load above failed: `known` is only ever rebuilt here, so
+		// skipping it leaves node types advertised with no loader behind them, which
+		// `withLoadStatus` then reports as a healthy package.
+		try {
+			await this.loadNodesAndCredentials.postProcessLoaders();
+			this.loadNodesAndCredentials.releaseTypes();
+		} catch (cleanupError) {
+			this.logger.warn('Failed to refresh node types after failed community package install', {
+				error: ensureError(cleanupError),
+				packageName,
+			});
+		}
+	}
+
+	private async restorePackageFiles(
+		packageName: string,
+		options: { backupDirectory?: string; previousVersion?: string },
+	) {
+		const { backupDirectory, previousVersion } = options;
+
+		await this.restorePackageDirectory(packageName, backupDirectory);
 
 		// Independent of the restore above: a failed restore must not leave package.json
 		// pointing at the version that failed to install.
@@ -689,6 +749,20 @@ export class CommunityPackagesService {
 		}
 	}
 
+	/** Full rollback, for callers that already unloaded the package before failing. */
+	private async restoreFailedPackageInstallation(
+		packageName: string,
+		options: { backupDirectory?: string; previousVersion?: string },
+	) {
+		await this.restorePackageFiles(packageName, options);
+		await this.restoreLoadedPackage(packageName);
+	}
+
+	/**
+	 * Writes the package into its directory, which the caller must have freed first.
+	 * Recovering from a failure here is the caller's job: it holds the only backup, and
+	 * only it knows whether a later step still needs one.
+	 */
 	private async downloadPackage(
 		packageName: string,
 		packageVersion: string,
@@ -697,89 +771,59 @@ export class CommunityPackagesService {
 		const registry = this.getNpmRegistry();
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 
-		// Keep the previous install safe until the new one is fully built, so a failed
-		// pack/tar/npm-install never leaves the package permanently absent.
-		const backupDirectory = (await this.packageDirectoryExists(packageName))
-			? await this.backupPackageDirectory(packageName)
-			: undefined;
+		await mkdir(packageDirectory, { recursive: true });
+
+		// TODO: make sure that this works for scoped packages as well
+		// if (packageName.startsWith('@') && packageName.includes('/')) {}
+		const tarOutput = await executeNpmCommand(
+			['pack', `${packageName}@${packageVersion}`, '--quiet'],
+			{ cwd: this.downloadFolder, registry, authToken },
+		);
+
+		const tarballName = tarOutput?.trim();
 
 		try {
-			await mkdir(packageDirectory, { recursive: true });
-
-			// TODO: make sure that this works for scoped packages as well
-			// if (packageName.startsWith('@') && packageName.includes('/')) {}
-			const tarOutput = await executeNpmCommand(
-				['pack', `${packageName}@${packageVersion}`, '--quiet'],
-				{ cwd: this.downloadFolder, registry, authToken },
+			await asyncExecFile(
+				'tar',
+				['-xzf', tarballName, '-C', packageDirectory, '--strip-components=1'],
+				{ cwd: this.downloadFolder },
 			);
 
-			const tarballName = tarOutput?.trim();
+			// Strip dev, optional, and peer dependencies before running `npm install`
+			const packageJsonPath = `${packageDirectory}/package.json`;
+			const packageJsonContent = await readFile(packageJsonPath, 'utf-8');
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			const {
+				devDependencies,
+				peerDependencies,
+				optionalDependencies,
+				...packageJson
+			}: {
+				version: string;
+				devDependencies: Record<string, string>;
+				peerDependencies: Record<string, string>;
+				optionalDependencies: Record<string, string>;
+			} = JSON.parse(packageJsonContent);
+			await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
 
-			try {
-				await asyncExecFile(
-					'tar',
-					['-xzf', tarballName, '-C', packageDirectory, '--strip-components=1'],
-					{ cwd: this.downloadFolder },
-				);
-
-				// Strip dev, optional, and peer dependencies before running `npm install`
-				const packageJsonPath = `${packageDirectory}/package.json`;
-				const packageJsonContent = await readFile(packageJsonPath, 'utf-8');
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				const {
-					devDependencies,
-					peerDependencies,
-					optionalDependencies,
-					...packageJson
-				}: {
-					version: string;
-					devDependencies: Record<string, string>;
-					peerDependencies: Record<string, string>;
-					optionalDependencies: Record<string, string>;
-				} = JSON.parse(packageJsonContent);
-				await writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2), 'utf-8');
-
-				await executeNpmCommand(
-					[
-						'install',
-						'--audit=false',
-						'--fund=false',
-						'--bin-links=false',
-						'--install-strategy=shallow',
-						'--ignore-scripts=true',
-						'--package-lock=false',
-					],
-					{ cwd: packageDirectory, registry, authToken },
-				);
-				await this.updatePackageJsonDependency(packageName, packageJson.version);
-			} finally {
-				// `npm pack` failing to print a filename would otherwise resolve this to
-				// `downloadFolder` itself, and the non-recursive `rm` would mask the real error.
-				if (tarballName) {
-					await rm(join(this.downloadFolder, tarballName));
-				}
-			}
-		} catch (error) {
-			try {
-				await this.restorePackageDirectoryFromBackup(packageName, backupDirectory);
-			} catch (restoreError) {
-				this.logger.warn('Failed to restore community package directory after failed download', {
-					error: ensureError(restoreError),
-					packageName,
-				});
-			}
-			throw error;
-		}
-
-		if (backupDirectory) {
-			try {
-				await rm(backupDirectory, { recursive: true, force: true, maxRetries: 3 });
-			} catch (error) {
-				this.logger.warn('Failed to remove community package backup directory', {
-					error: ensureError(error),
-					packageName,
-					backupDirectory,
-				});
+			await executeNpmCommand(
+				[
+					'install',
+					'--audit=false',
+					'--fund=false',
+					'--bin-links=false',
+					'--install-strategy=shallow',
+					'--ignore-scripts=true',
+					'--package-lock=false',
+				],
+				{ cwd: packageDirectory, registry, authToken },
+			);
+			await this.updatePackageJsonDependency(packageName, packageJson.version);
+		} finally {
+			// `npm pack` failing to print a filename would otherwise resolve this to
+			// `downloadFolder` itself, and the non-recursive `rm` would mask the real error.
+			if (tarballName) {
+				await rm(join(this.downloadFolder, tarballName));
 			}
 		}
 

@@ -198,6 +198,16 @@ export {
 } from './types';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
 export { instanceAiBuilderThreadPrefix } from './tools/orchestration/builder-thread-id';
+export {
+	builderRequiredArtifactSchema,
+	builderRequiredArtifactsSchema,
+	REPORT_REQUIRED_ARTIFACT_TOOL_NAME,
+	reportRequiredArtifactInputSchema,
+} from './tools/orchestration/builder-required-artifact';
+export type {
+	BuilderRequiredArtifact,
+	ReportRequiredArtifactInput,
+} from './tools/orchestration/builder-required-artifact';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export {
 	agentBuilderTargetMetadata,
@@ -603,8 +613,6 @@ export const WorkflowLoopRuntime: typeof WorkflowLoopRuntimeMod.WorkflowLoopRunt
 export type PlannedTaskCoordinator = PlannedTaskServiceMod.PlannedTaskCoordinator;
 export const PlannedTaskCoordinator: typeof PlannedTaskServiceMod.PlannedTaskCoordinator =
 	lazyClass(() => loadPlannedTaskService().PlannedTaskCoordinator);
-export const applyPlannedTaskPermissions: typeof PlannedTaskPermissionsMod.applyPlannedTaskPermissions =
-	lazyFunction(() => loadPlannedTaskPermissions().applyPlannedTaskPermissions);
 export declare const PLANNED_TASK_PERMISSION_OVERRIDES: typeof PlannedTaskPermissionsMod.PLANNED_TASK_PERMISSION_OVERRIDES;
 export type {
 	InstanceAiContext,
