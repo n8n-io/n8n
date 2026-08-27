@@ -7,7 +7,7 @@ import N8nIcon from '../N8nIcon';
 import type { TabsProps } from './Tabs.types';
 import Tag from '../N8nTag/Tag.vue';
 import N8nTooltip from '../N8nTooltip';
-import PreviewTag from '../PreviewTag/PreviewTag.vue';
+import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
 
 const props = withDefaults(defineProps<TabsProps<Value>>(), {
 	modelValue: undefined,
@@ -125,7 +125,7 @@ const scrollRight = () => scroll(50);
 								:icon="option.icon ?? 'external-link'"
 								size="small"
 							/>
-							<PreviewTag v-if="option.preview" />
+							<PreviewBadge v-if="option.preview" />
 							<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 						</div>
 					</a>
@@ -139,7 +139,7 @@ const scrollRight = () => scroll(50);
 					>
 						<N8nIcon v-if="option.icon" :icon="option.icon" size="medium" />
 						<span v-if="option.label">{{ option.label }}</span>
-						<PreviewTag v-if="option.preview" />
+						<PreviewBadge v-if="option.preview" />
 						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</RouterLink>
 					<div
@@ -175,7 +175,7 @@ const scrollRight = () => scroll(50);
 							:class="$style.icon"
 							size="small"
 						/>
-						<PreviewTag v-if="option.preview" />
+						<PreviewBadge v-if="option.preview" />
 						<Tag v-if="option.tag" :text="option.tag" :clickable="false" />
 					</div>
 				</N8nTooltip>

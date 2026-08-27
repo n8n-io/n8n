@@ -14,9 +14,9 @@ import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import {
 	N8nActionDropdown,
+	N8nBadge,
 	N8nIcon,
 	N8nSpinner,
-	N8nTags,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -154,11 +154,11 @@ function onRetryMenuItemSelect(action: string): void {
 						<N8nIcon v-if="execution.annotation.vote == 'up'" :class="$style.up" icon="thumbs-up" />
 						<N8nIcon v-else :class="$style.down" icon="thumbs-down" />
 					</div>
-					<N8nTags
-						v-if="executionUIDetails.tags.length > 0"
-						:tags="executionUIDetails.tags"
-						:clickable="false"
-					></N8nTags>
+					<div v-if="executionUIDetails.tags.length > 0" :class="$style.tags">
+						<N8nBadge v-for="tag in executionUIDetails.tags" :key="tag.id">
+							{{ tag.name }}
+						</N8nBadge>
+					</div>
 				</div>
 			</div>
 			<div :class="$style.icons">
@@ -292,6 +292,11 @@ function onRetryMenuItemSelect(action: string): void {
 		gap: var(--spacing--3xs);
 		align-items: center;
 		margin: var(--spacing--4xs) 0 0;
+
+		.tags {
+			display: flex;
+			gap: var(--spacing--4xs);
+		}
 
 		.ratingIcon {
 			.up {

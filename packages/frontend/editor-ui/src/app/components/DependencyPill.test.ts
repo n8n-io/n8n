@@ -135,14 +135,14 @@ describe('DependencyPill', () => {
 		mockDepsResult = createDepsResult();
 		renderComponent({ props: defaultProps });
 
-		const items = capturedItems as Array<{ id: string; label: string; disabled?: boolean }>;
+		const items = capturedItems as Array<{ id: string; label: string; header?: boolean }>;
 
 		// Should have 4 headers + 4 items = 8 total
 		expect(items).toHaveLength(8);
 
 		// First group: credentials header + item
 		expect(items[0].id).toBe('header-credentialId');
-		expect(items[0].disabled).toBe(true);
+		expect(items[0].header).toBe(true);
 		expect(items[1].id).toBe('credentialId:cred-1');
 
 		// Second group: data tables header + item (should have divider)
@@ -168,10 +168,10 @@ describe('DependencyPill', () => {
 		};
 		renderComponent({ props: defaultProps });
 
-		const items = capturedItems as Array<{ id: string; label: string; disabled?: boolean }>;
+		const items = capturedItems as Array<{ id: string; label: string; header?: boolean }>;
 
 		expect(items).toHaveLength(2);
-		expect(items[0]).toMatchObject({ id: 'header-agentUsage', disabled: true });
+		expect(items[0]).toMatchObject({ id: 'header-agentUsage', header: true });
 		expect(baseTextSpy).toHaveBeenCalledWith('workflows.dependencies.type.agents');
 		expect(items[1].id).toBe('agentUsage:agent-1');
 
@@ -437,12 +437,12 @@ describe('DependencyPill', () => {
 		};
 		renderComponent({ props: defaultProps });
 
-		const items = capturedItems as Array<{ id: string; label: string; disabled?: boolean }>;
+		const items = capturedItems as Array<{ id: string; label: string; header?: boolean }>;
 
 		// Should have 2 headers + 2 items = 4 total
 		expect(items).toHaveLength(4);
 		expect(items[0].id).toBe('header-errorWorkflow');
-		expect(items[0].disabled).toBe(true);
+		expect(items[0].header).toBe(true);
 		expect(items[1].id).toBe('errorWorkflow:err-wf-1');
 		expect(items[2].id).toBe('header-errorWorkflowParent');
 		expect(items[3].id).toBe('errorWorkflowParent:parent-wf-1');
