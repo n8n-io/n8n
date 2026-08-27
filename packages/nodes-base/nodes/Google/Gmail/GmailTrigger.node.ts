@@ -30,7 +30,11 @@ import type {
 	MessageListResponse,
 } from './types';
 
+// Bounds one poll's list requests. Hitting the cap does not lose mail: the
+// leftover page token makes the poll hold the cursor (see poll below).
 const MAX_LIST_PAGES = 20;
+// Tracked-id count (pending + boundary ids) at which the poll stops holding
+// the cursor and accepts skipping any unlisted remainder.
 const MAX_TRACKED_BACKLOG_IDS = 5_000;
 
 export class GmailTrigger implements INodeType {
@@ -392,8 +396,10 @@ export class GmailTrigger implements INodeType {
 			}
 		};
 
-		// A poll that never reaches the list loop (early pending return, error) has
-		// no unlisted remainder, so the cursor advance stays allowed by default.
+		// A poll that never starts listing (early pending return) has no unlisted
+		// remainder, so the default keeps the cursor advance allowed. The list loop
+		// flips this to false on entry; from then on only an exhausted token proves
+		// the window complete.
 		let windowFullyListed = true;
 
 		try {
@@ -477,8 +483,9 @@ export class GmailTrigger implements INodeType {
 				pageToken = messagesResponse.nextPageToken;
 				pagesListed++;
 			} while (shouldLimitMessages && pageToken && pagesListed < MAX_LIST_PAGES);
-			// A remaining token means unlisted, older mail exists beyond the page cap;
-			// the cursor advance below must not move past it.
+			// A leftover token means the cap cut the listing short. Gmail lists newest
+			// first, so the remainder is older mail; a cursor moved past it would
+			// never list it again.
 			windowFullyListed = !pageToken;
 
 			// Pagination can repeat an id across pages when the mailbox shifts
@@ -489,9 +496,9 @@ export class GmailTrigger implements INodeType {
 				return null;
 			}
 
-			// For v1.4+, filter out boundary duplicates before fetching to save API calls.
-			// Gmail's `after:` query is inclusive at the second boundary, so messages at
-			// the lastTimeChecked timestamp can reappear.
+			// For v1.4+, filter out already-handled messages before fetching to save API
+			// calls. Gmail's `after:` query is inclusive at the second boundary, and a
+			// held cursor re-lists its whole window, so handled messages can reappear.
 			if (shouldLimitMessages) {
 				const possibleDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
 				if (possibleDuplicates.size > 0) {
@@ -572,13 +579,13 @@ export class GmailTrigger implements INodeType {
 				(nodeStaticData.pendingMessageIds?.length ?? 0) +
 				(nodeStaticData.possibleDuplicates?.length ?? 0);
 			if (trackedIds < MAX_TRACKED_BACKLOG_IDS) {
-				// Unlisted older mail exists beyond the page cap. Hold the cursor so the
-				// next windows can still reach it; the merge below keeps every handled id
-				// filterable at the held boundary.
+				// Unlisted older mail exists beyond the page cap. Hold the cursor so later
+				// polls can still list it. The possibleDuplicates update below keeps every
+				// handled id filterable, so the held-cursor re-list cannot re-emit them.
 				effectiveLastTimeChecked = +startDate;
 			} else {
-				// Give-up valve: holding would grow the tracked-id state without bound.
-				// Advance and accept the logged skip instead of wedging the trigger.
+				// Give-up valve: holding again would grow the tracked-id state without
+				// bound. Advance and accept skipping the unlisted older mail instead.
 				this.logger.warn(
 					`Gmail Trigger backlog exceeds ${MAX_TRACKED_BACKLOG_IDS} tracked ids; advancing past unlisted older messages`,
 					{ node: node.name },
@@ -586,8 +593,9 @@ export class GmailTrigger implements INodeType {
 			}
 		}
 
-		// When lastTimeChecked didn't advance (e.g., only older pending messages were processed),
-		// preserve existing possibleDuplicates — they're still at the query boundary.
+		// When lastTimeChecked didn't advance (only older pending messages were
+		// processed, or the cursor is held), preserve existing possibleDuplicates —
+		// they're still at the query boundary.
 		if (effectiveLastTimeChecked === +startDate && nodeStaticData.possibleDuplicates?.length) {
 			const merged = new Set([...nodeStaticData.possibleDuplicates, ...nextPollPossibleDuplicates]);
 			nodeStaticData.possibleDuplicates = Array.from(merged);
