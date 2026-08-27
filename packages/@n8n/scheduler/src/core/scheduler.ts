@@ -1,6 +1,7 @@
 import type { TaskHandler } from './executor';
 import type { MaterializerSummary } from './materializer';
 import type { ReapResult } from './reaper';
+import type { ReconciliationSummary } from './reconciliation';
 import type { RetentionSummary } from './retention';
 import type { ClaimedTask } from './types';
 
@@ -50,4 +51,10 @@ export interface SchedulerPasses {
 
 	/** One retention pass: delete finished tasks past their windows. */
 	prune(signal?: AbortSignal): Promise<RetentionSummary>;
+
+	/**
+	 * One owner reconciliation pass. Returns a no-op summary when the scheduler
+	 * was composed without reconciliation.
+	 */
+	reconcile(signal?: AbortSignal): Promise<ReconciliationSummary>;
 }

@@ -24,6 +24,18 @@ export class InvalidRetentionOptionsError extends Error {
 	}
 }
 
+/** Raised when a scheduler is composed with unusable reconciliation options. */
+export class InvalidReconciliationOptionsError extends Error {
+	constructor(
+		message: string,
+		readonly key: string,
+		readonly value: number,
+	) {
+		super(message);
+		this.name = 'InvalidReconciliationOptionsError';
+	}
+}
+
 /**
  * Raised when a scheduler is composed with unusable lifecycle options
  * (e.g. a jitter ratio that would allow a zero or negative delay between ticks).
@@ -82,5 +94,13 @@ export class DuplicateOwnerResolverError extends Error {
 	constructor(readonly ownerType: string) {
 		super('A resolver for this scheduled job owner type is already registered');
 		this.name = 'DuplicateOwnerResolverError';
+	}
+}
+
+/** Raised when a scheduler is composed with dependencies that cannot work together. */
+export class InvalidSchedulerDepsError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'InvalidSchedulerDepsError';
 	}
 }
