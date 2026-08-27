@@ -1609,4 +1609,185 @@ describe('GmailTrigger', () => {
 			expect(response?.[0]?.[0]?.json?.id).toBe('1');
 		});
 	});
+
+	describe('v1.4 - multi-page backlog pagination', () => {
+		// Contract under test: the list loop follows nextPageToken up to a page cap
+		// (20 pages). lastTimeChecked advances only when the token was exhausted
+		// (window fully listed) — otherwise the cursor holds so unlisted older mail
+		// cannot be skipped. Give-up valve: when holding would track more than
+		// 5000 ids, advance anyway rather than wedge the trigger.
+		const listPage = (ids: string[], nextPageToken?: string): MessageListResponse => ({
+			messages: ids.map((id) => createListMessage({ id })),
+			resultSizeEstimate: ids.length,
+			...(nextPageToken ? { nextPageToken } : {}),
+		});
+
+		const mockLabels = () =>
+			nock(baseUrl)
+				.get('/gmail/v1/users/me/labels')
+				.reply(200, { labels: [{ id: 'testLabelId', name: 'Test Label Name' }] });
+
+		const mockList = (page: MessageListResponse, expectedPageToken?: string) =>
+			nock(baseUrl)
+				.get('/gmail/v1/users/me/messages')
+				.query((q) =>
+					expectedPageToken === undefined
+						? q.pageToken === undefined
+						: q.pageToken === expectedPageToken,
+				)
+				.reply(200, page);
+
+		const mockGet = (id: string, internalDateMs: number) =>
+			nock(baseUrl)
+				.get(`/gmail/v1/users/me/messages/${id}`)
+				.query(true)
+				.reply(200, createMessage({ id, internalDate: String(internalDateMs) }));
+
+		it('should follow nextPageToken and deliver messages from all pages', async () => {
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': { lastTimeChecked: 1000000 },
+			};
+
+			mockLabels();
+			mockList(listPage(['6', '5', '4'], 'token-1'));
+			mockList(listPage(['3', '2', '1']), 'token-1');
+			mockGet('6', 6_000_000_000_000);
+			mockGet('5', 5_000_000_000_000);
+			mockGet('4', 4_000_000_000_000);
+			mockGet('3', 3_000_000_000_000);
+			mockGet('2', 2_000_000_000_000);
+			mockGet('1', 1_000_000_000_000);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 10 } },
+				workflowStaticData,
+			});
+
+			// Today only page 1 is listed and everything on page 2 is silently lost.
+			expect(response?.[0]).toHaveLength(6);
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['6', '5', '4', '3', '2', '1']);
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(6_000_000_000);
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds ?? []).toEqual([]);
+		});
+
+		it('should park later pages as pending and still advance when the token was exhausted', async () => {
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': { lastTimeChecked: 1000000 },
+			};
+
+			mockLabels();
+			mockList(listPage(['6', '5', '4'], 'token-1'));
+			mockList(listPage(['3', '2', '1']), 'token-1');
+			mockGet('6', 6_000_000_000_000);
+			mockGet('5', 5_000_000_000_000);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]).toHaveLength(2);
+			// The window was fully listed, so every unfetched id is tracked by id and
+			// advancing cannot lose anything.
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['4', '3', '2', '1']);
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(6_000_000_000);
+		});
+
+		it('should hold lastTimeChecked when the page cap is hit with a token remaining', async () => {
+			const initialTimestamp = 1000000;
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': { lastTimeChecked: initialTimestamp },
+			};
+
+			mockLabels();
+			// 20 pages, every one of them with a continuation token. Page 21 is
+			// deliberately not mocked: requesting it fails the test loudly.
+			const pages = Array.from({ length: 20 }, (_, page) => [`p${page}a`, `p${page}b`]);
+			const allIds = pages.flat();
+			pages.forEach((ids, page) =>
+				mockList(listPage(ids, `token-${page + 1}`), page === 0 ? undefined : `token-${page}`),
+			);
+			mockGet('p0a', 6_000_000_000_000);
+			mockGet('p0b', 5_000_000_000_000);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]).toHaveLength(2);
+			// The window was NOT fully listed: unlisted older mail exists beyond the
+			// cap, so the cursor must hold to keep it reachable.
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
+			// Everything listed but not fetched is parked by id.
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(allIds.slice(2));
+			// Fetched ids join the boundary set so the held-cursor re-list skips them.
+			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(
+				expect.arrayContaining(['p0a', 'p0b']),
+			);
+		});
+
+		it('should resume a held backlog and advance once the window is fully listed', async () => {
+			// Pin for the resume path: cursor held at T0, one pending id, one already
+			// handled id in the boundary set. The poll drains pending, re-lists under
+			// the held cursor, skips the handled id, fetches the new one, and — with
+			// the token exhausted — finally advances.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: 1000000,
+					pendingMessageIds: ['B'],
+					possibleDuplicates: ['A'],
+				},
+			};
+
+			mockLabels();
+			mockGet('B', 2_000_000_000_000);
+			mockList(listPage(['A', 'C']));
+			mockGet('C', 3_000_000_000_000);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['B', 'C']);
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(3_000_000_000);
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds ?? []).toEqual([]);
+		});
+
+		it('should give up holding and advance when the tracked-id bound is exceeded', async () => {
+			const initialTimestamp = 1000000;
+			// The boundary set is already at the tracking bound; holding through yet
+			// another capped cycle would grow it further, so the trigger advances and
+			// accepts the (loud) skip instead of wedging forever.
+			const hugeDuplicates = Array.from({ length: 5000 }, (_, i) => `dup${i}`);
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: initialTimestamp,
+					possibleDuplicates: hugeDuplicates,
+				},
+			};
+
+			mockLabels();
+			const pages = Array.from({ length: 20 }, (_, page) => [`n${page}a`, `n${page}b`]);
+			const allIds = pages.flat();
+			pages.forEach((ids, page) =>
+				mockList(listPage(ids, `token-${page + 1}`), page === 0 ? undefined : `token-${page}`),
+			);
+			mockGet('n0a', 6_000_000_000_000);
+			mockGet('n0b', 5_000_000_000_000);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]).toHaveLength(2);
+			// Cap was hit (20 pages listed, token remaining) but the valve fires:
+			// advance instead of holding.
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(6_000_000_000);
+			// Listed-but-unfetched ids stay tracked and drain normally.
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(allIds.slice(2));
+		});
+	});
 });
