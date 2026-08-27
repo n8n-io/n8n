@@ -21,7 +21,7 @@ const properties: INodeProperties[] = [
 		required: true,
 		placeholder: 'e.g. runbook, q3-release',
 		description:
-			'The label names to add, comma-separated for several. Label names cannot contain spaces. Existing labels are kept.',
+			'The label names to add, comma-separated for several. Label names cannot contain spaces — use an underscore or hyphen instead. Existing labels are kept.',
 	},
 ];
 
@@ -46,6 +46,16 @@ export const execute: ConfluenceOperation = async function (
 		.filter((name) => name !== '');
 	if (names.length === 0) {
 		throw new NodeOperationError(this.getNode(), "The 'Labels' parameter is empty", { itemIndex });
+	}
+	// Confluence splits a name on whitespace into several labels rather than rejecting it,
+	// so "release notes" would silently create "release" and "notes"
+	const spaced = names.find((name) => /\s/.test(name));
+	if (spaced !== undefined) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`The label "${spaced}" contains a space; use an underscore or hyphen instead`,
+			{ itemIndex },
+		);
 	}
 
 	const pageId = await resolvePageId.call(this, itemIndex);

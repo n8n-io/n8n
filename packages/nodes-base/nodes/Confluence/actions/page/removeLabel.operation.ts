@@ -51,6 +51,14 @@ export const execute: ConfluenceOperation = async function (
 			{ itemIndex },
 		);
 	}
+	// A label can never hold a space, so this would 204 as a no-op and report success too
+	if (/\s/.test(label)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`The label "${label}" contains a space; Confluence labels use an underscore or hyphen instead`,
+			{ itemIndex },
+		);
+	}
 
 	const pageId = await resolvePageId.call(this, itemIndex);
 

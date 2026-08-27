@@ -60,6 +60,19 @@ describe('Confluence page:removeLabel operation', () => {
 		expect(apiRequest).not.toHaveBeenCalled();
 	});
 
+	it('rejects a label containing a space instead of removing nothing', async () => {
+		const ctx = mockExecuteCtx({
+			page: { mode: 'title', value: 'Doc' },
+			labelName: 'release notes',
+		});
+
+		await expect(execute.call(ctx, 0)).rejects.toThrow(NodeOperationError);
+		await expect(execute.call(ctx, 0)).rejects.toThrow(
+			'The label "release notes" contains a space',
+		);
+		expect(apiRequest).not.toHaveBeenCalled();
+	});
+
 	it('resolves a By Title selection to its page ID before deleting', async () => {
 		apiRequest.mockResolvedValueOnce({ results: [{ id: '777', title: 'Doc', spaceId: '1' }] });
 		const ctx = mockExecuteCtx({ page: { mode: 'title', value: 'Doc' }, labelName: 'runbook' });
