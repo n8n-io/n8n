@@ -227,16 +227,15 @@ export class RoutingNode {
 				itemContext[itemIndex].requestData.options.timeout = 300_000;
 			}
 
-			// A declarative node's URL comes from its own routing, not from the user. Prefer
-			// `baseURL`: some nodes declare none and route absolutely, but a per-operation `url`
-			// can interpolate a node parameter, which the user does control.
-			const { baseURL, url: routedUrl } = itemContext[itemIndex].requestData.options;
+			// A declarative node's URL comes from its own routing, not from the user. Only
+			// `baseURL` is safe to widen the allowlist with: a per-operation `url` can
+			// interpolate a node parameter, and that host is the user's choice, not the node's.
 			const allowedDomains = credentials
 				? getCredentialAllowedDomains({
 						node,
 						credentialData: credentials,
 						credentialOwnedSurface: true,
-						nodeEndpointUrl: baseURL || routedUrl,
+						nodeEndpointUrl: itemContext[itemIndex].requestData.options.baseURL,
 					})
 				: undefined;
 			if (allowedDomains) {

@@ -2648,36 +2648,23 @@ describe('RoutingNode', () => {
 			expect(requestOptions.allowedDomains).toBe('api.example.com, other.example.com');
 		});
 
-		test('uses the routed URL when the base URL resolves to an empty string', async () => {
+		test.each([
+			['the node declares no base URL', null],
+			['the base URL resolves to an empty string', ''],
+		])('does not widen the allowlist from the routed URL when %s', async (_label, baseURL) => {
+			// The routed URL can interpolate a node parameter, so its host is the user's choice.
 			const result = await runWithCredential(
 				{
 					apiKey: 'testApiKey',
 					allowedHttpRequestDomains: 'domains',
 					allowedDomains: 'other.example.com',
 				},
-				{ baseURL: '', routedUrl: 'https://s.jina.ai/' },
+				{ baseURL, routedUrl: 'https://user-chosen.example.net/path' },
 			);
 
 			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
 				.requestOptions;
-			expect(requestOptions.allowedDomains).toBe('s.jina.ai, other.example.com');
-		});
-
-		test('uses the routed URL when the node declares no base URL', async () => {
-			// The JinaAI shape: `requestDefaults` carries headers only and operations route
-			// to absolute URLs.
-			const result = await runWithCredential(
-				{
-					apiKey: 'testApiKey',
-					allowedHttpRequestDomains: 'domains',
-					allowedDomains: 'other.example.com',
-				},
-				{ baseURL: null, routedUrl: 'https://s.jina.ai/' },
-			);
-
-			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
-				.requestOptions;
-			expect(requestOptions.allowedDomains).toBe('s.jina.ai, other.example.com');
+			expect(requestOptions.allowedDomains).toBe('other.example.com');
 		});
 
 		test("does not block a declarative node when mode is 'none'", async () => {
