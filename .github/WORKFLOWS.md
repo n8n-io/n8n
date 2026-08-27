@@ -245,9 +245,10 @@ parallelism). See the `--build-via-mcp` section in
 
 ### Other Manual Workflows
 
-| Workflow                  | Purpose                                                 |
-|---------------------------|---------------------------------------------------------|
-| `util-data-tooling.yml`   | SQLite/PostgreSQL export/import validation (manual)     |
+| Workflow                    | Purpose                                                 |
+|-----------------------------|---------------------------------------------------------|
+| `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
+| `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 
 ---
 
@@ -523,6 +524,7 @@ Scripts in `.github/scripts/`:
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
+| `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
 
 ### Branch Replay Scripts
 

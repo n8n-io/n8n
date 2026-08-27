@@ -18,7 +18,7 @@ describe('Confluence Node', () => {
 		expect(node.description.usableAsTool).toBeUndefined();
 	});
 
-	it('should expose the attachment, page, search and space resources with their operations', () => {
+	it('should expose the page resource with its operations', () => {
 		const resource = node.description.properties.find((p) => p.name === 'resource');
 		expect(resource?.options).toEqual([
 			expect.objectContaining({ value: 'attachment' }),
@@ -39,6 +39,7 @@ describe('Confluence Node', () => {
 			expect.objectContaining({ value: 'create' }),
 			expect.objectContaining({ value: 'delete' }),
 			expect.objectContaining({ value: 'get' }),
+			expect.objectContaining({ value: 'getComments' }),
 			expect.objectContaining({ value: 'getLabels' }),
 			expect.objectContaining({ value: 'getManyByLabel' }),
 			expect.objectContaining({ value: 'update' }),
