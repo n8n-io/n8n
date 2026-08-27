@@ -310,6 +310,20 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		).toBe('10:30 AM');
 	});
 
+	it('should throw when the result cannot be cloned (function or Promise)', () => {
+		const data = { $json: {} };
+
+		expect(() => evaluator.evaluate('{{ async () => 1 }}', data, caller)).toThrow(
+			'could not be cloned',
+		);
+		expect(() => evaluator.evaluate('{{ (async () => 1)() }}', data, caller)).toThrow(
+			'could not be cloned',
+		);
+		expect(() => evaluator.evaluate('{{ ({ fn: () => 1 }) }}', data, caller)).toThrow(
+			'could not be cloned',
+		);
+	});
+
 	it('should round-trip an invalid Date return value', () => {
 		const data = { $json: {} };
 
