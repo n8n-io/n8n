@@ -1704,13 +1704,56 @@ describe('workflows tool', () => {
 	});
 
 	describe('publish action', () => {
+		// INS-1265: the publish approval card is a turn-ending card like the setup card.
+		it('should carry the turn summary into the publish approval card as intro text', async () => {
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{
+					action: 'publish',
+					workflowId: 'wf1',
+					summary: 'Fixed the Gmail query and re-verified the run.',
+				},
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(suspend.mock.calls[0][0]).toMatchObject({
+				introMessage: 'Fixed the Gmail query and re-verified the run.',
+			});
+		});
+
+		it('should not open the publish approval card without a turn summary', async () => {
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(context.workflowService.publish).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				success: false,
+				error: expect.stringContaining('summary'),
+			});
+		});
+
 		it('should return denied when permission is blocked', async () => {
 			const context = createMockContext({
 				permissions: { publishWorkflow: 'blocked' },
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'publish', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{} as never,
+			);
 
 			expect(result).toEqual({
 				success: false,
@@ -1726,9 +1769,13 @@ describe('workflows tool', () => {
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
-				resumeData: { approved: true },
-			} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'publish', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					resumeData: { approved: true },
+				} as never,
+			);
 
 			expect(context.workflowService.publish).toHaveBeenCalledWith('wf1', {
 				versionId: undefined,
@@ -1768,9 +1815,13 @@ describe('workflows tool', () => {
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
-				resumeData: { approved: true },
-			} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'publish', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					resumeData: { approved: true },
+				} as never,
+			);
 
 			expect(context.workflowService.publish).toHaveBeenNthCalledWith(1, 'sub-a');
 			expect(context.workflowService.publish).toHaveBeenNthCalledWith(2, 'sub-b');
@@ -1834,9 +1885,13 @@ describe('workflows tool', () => {
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
-				resumeData: { approved: true },
-			} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'publish', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					resumeData: { approved: true },
+				} as never,
+			);
 
 			expect(context.workflowService.publish).toHaveBeenNthCalledWith(1, 'sub-a');
 			expect(context.workflowService.publish).toHaveBeenNthCalledWith(2, 'sub-b');
@@ -1877,10 +1932,14 @@ describe('workflows tool', () => {
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
+			await executeTool(
+				tool,
+				{ action: 'publish', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
 			expect(suspend).toHaveBeenCalled();
@@ -1910,10 +1969,14 @@ describe('workflows tool', () => {
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(tool, { action: 'publish', workflowId: 'wf1' }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
+			await executeTool(
+				tool,
+				{ action: 'publish', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				message: 'Publish My WF (ID: wf1) and 1 referenced supporting workflow(s)',
@@ -1929,9 +1992,13 @@ describe('workflows tool', () => {
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				resumeData: undefined,
-			} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(result).toEqual({
 				success: false,
@@ -1948,13 +2015,17 @@ describe('workflows tool', () => {
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				resumeData: {
-					approved: true,
-					action: 'apply',
-					nodeParameters: { Slack: { channel: '#ops' } },
-				},
-			} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					resumeData: {
+						approved: true,
+						action: 'apply',
+						nodeParameters: { Slack: { channel: '#ops' } },
+					},
+				} as never,
+			);
 
 			expect(result).toEqual({
 				success: false,
@@ -1974,7 +2045,12 @@ describe('workflows tool', () => {
 			const tool = createWorkflowsTool(context, 'full');
 			await executeTool(
 				tool,
-				{ action: 'setup', workflowId: 'wf1', preferNewCredentials: ['slackApi'] },
+				{
+					action: 'setup',
+					summary: 'Set up the workflow.',
+					workflowId: 'wf1',
+					preferNewCredentials: ['slackApi'],
+				},
 				{ suspend: vi.fn(), resumeData: undefined } as never,
 			);
 
@@ -1997,10 +2073,14 @@ describe('workflows tool', () => {
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
+			await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {});
 			expect(suspend).toHaveBeenCalled();
@@ -2010,6 +2090,90 @@ describe('workflows tool', () => {
 				setupRequests,
 				workflowId: 'wf1',
 			});
+		});
+
+		// INS-1265: a turn that both completes work and ends on a card used to render only the
+		// card's one-line message, so the work was never reported. The card must carry the
+		// turn's own summary as intro text.
+		it('should carry the turn summary into the setup card as intro text', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(
+				tool,
+				{
+					action: 'setup',
+					workflowId: 'wf1',
+					summary:
+						'Published the error handler and linked it to the invoice workflow. Slack still needs credentials.',
+				},
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(suspend.mock.calls[0][0]).toMatchObject({
+				introMessage:
+					'Published the error handler and linked it to the invoice workflow. Slack still needs credentials.',
+			});
+		});
+
+		// The union is flattened for Anthropic compatibility, so no field can be schema-required
+		// here — and a zod rejection is a hard AI_InvalidToolInputError, not a retryable result.
+		// The handler is therefore the enforcement point.
+		it('should not open the setup card without a turn summary', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				success: false,
+				error: expect.stringContaining('summary'),
+			});
+		});
+
+		it('should treat a blank turn summary as missing', async () => {
+			(analyzeWorkflow as Mock).mockResolvedValue([
+				{
+					node: { name: 'Slack', type: 'n8n-nodes-base.slack' },
+					credentialType: 'slackApi',
+					needsAction: true,
+				},
+			]);
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'setup', workflowId: 'wf1', summary: '   ' },
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ success: false });
 		});
 
 		it('should scope the setup suspend to the thread-bound project even when the model omits projectId', async () => {
@@ -2025,10 +2189,14 @@ describe('workflows tool', () => {
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
+			await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(suspend.mock.calls[0][0]).toMatchObject({ projectId: 'project-team-1' });
 		});
@@ -2064,10 +2232,14 @@ describe('workflows tool', () => {
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
+			await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0].setupRequests).toEqual([
@@ -2101,10 +2273,14 @@ describe('workflows tool', () => {
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(suspend).not.toHaveBeenCalled();
 			expect(result).toMatchObject({ success: true });
@@ -2137,10 +2313,19 @@ describe('workflows tool', () => {
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(tool, { action: 'setup', workflowId: 'wf1', includeAllNodes: true }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
+			await executeTool(
+				tool,
+				{
+					action: 'setup',
+					summary: 'Set up the workflow.',
+					workflowId: 'wf1',
+					includeAllNodes: true,
+				},
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(getLatestBuildOutcomeForWorkflow).not.toHaveBeenCalled();
 			expect(suspend).toHaveBeenCalled();
@@ -2177,10 +2362,14 @@ describe('workflows tool', () => {
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
+			await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0].setupRequests).toEqual([
@@ -2211,10 +2400,14 @@ describe('workflows tool', () => {
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
+			await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(suspend).toHaveBeenCalled();
 			expect(suspend.mock.calls[0][0].setupRequests).toEqual([
@@ -2236,10 +2429,14 @@ describe('workflows tool', () => {
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(suspend).not.toHaveBeenCalled();
 			expect(result).toMatchObject({
@@ -2262,10 +2459,19 @@ describe('workflows tool', () => {
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(tool, { action: 'setup', workflowId: 'wf1', allowPlainGenericAuth: true }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
+			await executeTool(
+				tool,
+				{
+					action: 'setup',
+					summary: 'Set up the workflow.',
+					workflowId: 'wf1',
+					allowPlainGenericAuth: true,
+				},
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(suspend).toHaveBeenCalled();
 		});
@@ -2284,10 +2490,14 @@ describe('workflows tool', () => {
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
+			await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(suspend).toHaveBeenCalled();
 		});
@@ -2306,10 +2516,14 @@ describe('workflows tool', () => {
 			const suspend = vi.fn();
 
 			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				suspend,
-				resumeData: undefined,
-			} as never);
+			await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					suspend,
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(suspend).toHaveBeenCalled();
 		});
@@ -2320,9 +2534,13 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				resumeData: undefined,
-			} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					resumeData: undefined,
+				} as never,
+			);
 
 			expect(result).toEqual({ success: true, reason: 'No nodes require setup.' });
 		});
@@ -2352,13 +2570,17 @@ describe('workflows tool', () => {
 			});
 
 			const tool = createWorkflowsTool(context, 'full');
-			await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				resumeData: {
-					approved: true,
-					action: 'apply',
-					nodeParameters: { 'HTTP Request': { url: 'https://example.com/api' } },
-				},
-			} as never);
+			await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					resumeData: {
+						approved: true,
+						action: 'apply',
+						nodeParameters: { 'HTTP Request': { url: 'https://example.com/api' } },
+					},
+				} as never,
+			);
 
 			expect(applyNodeChanges).toHaveBeenCalledWith(context, 'wf1', undefined, {
 				'HTTP Request': { url: 'https://example.com/api' },
@@ -2390,13 +2612,17 @@ describe('workflows tool', () => {
 			const context = createMockContext();
 
 			const tool = createWorkflowsTool(context, 'full');
-			const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-				resumeData: {
-					approved: true,
-					action: 'apply',
-					credentials: { Slack: { slackApi: 'cred-1' } },
-				},
-			} as never);
+			const result = await executeTool(
+				tool,
+				{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+				{
+					resumeData: {
+						approved: true,
+						action: 'apply',
+						credentials: { Slack: { slackApi: 'cred-1' } },
+					},
+				} as never,
+			);
 
 			expect(analyzeWorkflow).toHaveBeenCalledWith(context, 'wf1', undefined, {
 				includeSettled: true,
@@ -2458,10 +2684,14 @@ describe('workflows tool', () => {
 				const suspend = vi.fn();
 
 				const tool = createWorkflowsTool(context, 'full');
-				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-					suspend,
-					resumeData: undefined,
-				} as never);
+				await executeTool(
+					tool,
+					{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+					{
+						suspend,
+						resumeData: undefined,
+					} as never,
+				);
 
 				expect(suspend.mock.calls[0][0]).toMatchObject({ setupRequests: [sheetsRequest] });
 			});
@@ -2472,10 +2702,14 @@ describe('workflows tool', () => {
 				const suspend = vi.fn();
 
 				const tool = createWorkflowsTool(context, 'full');
-				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-					suspend,
-					resumeData: undefined,
-				} as never);
+				const result = await executeTool(
+					tool,
+					{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+					{
+						suspend,
+						resumeData: undefined,
+					} as never,
+				);
 
 				expect(suspend).not.toHaveBeenCalled();
 				expect(result).toMatchObject({
@@ -2492,7 +2726,12 @@ describe('workflows tool', () => {
 				const tool = createWorkflowsTool(context, 'full');
 				await executeTool(
 					tool,
-					{ action: 'setup', workflowId: 'wf1', reopenSkipped: ['Post to Slack'] },
+					{
+						action: 'setup',
+						summary: 'Set up the workflow.',
+						workflowId: 'wf1',
+						reopenSkipped: ['Post to Slack'],
+					},
 					{
 						suspend,
 						resumeData: undefined,
@@ -2526,10 +2765,14 @@ describe('workflows tool', () => {
 				const suspend = vi.fn();
 
 				const tool = createWorkflowsTool(context, 'full');
-				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-					suspend,
-					resumeData: undefined,
-				} as never);
+				const result = await executeTool(
+					tool,
+					{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+					{
+						suspend,
+						resumeData: undefined,
+					} as never,
+				);
 
 				// Slack is in scope but declined; Sheets is pending but untouched by this build.
 				expect(suspend).not.toHaveBeenCalled();
@@ -2560,10 +2803,14 @@ describe('workflows tool', () => {
 				const suspend = vi.fn();
 
 				const tool = createWorkflowsTool(context, 'full');
-				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-					suspend,
-					resumeData: undefined,
-				} as never);
+				await executeTool(
+					tool,
+					{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+					{
+						suspend,
+						resumeData: undefined,
+					} as never,
+				);
 
 				// Being in scope does not override the user's decision.
 				expect(suspend.mock.calls[0][0]).toMatchObject({ setupRequests: [sheetsRequest] });
@@ -2579,7 +2826,12 @@ describe('workflows tool', () => {
 				const tool = createWorkflowsTool(context, 'full');
 				const result = await executeTool(
 					tool,
-					{ action: 'setup', workflowId: 'wf1', reopenSkipped: ['Notion'] },
+					{
+						action: 'setup',
+						summary: 'Set up the workflow.',
+						workflowId: 'wf1',
+						reopenSkipped: ['Notion'],
+					},
 					{ suspend, resumeData: undefined } as never,
 				);
 
@@ -2601,7 +2853,12 @@ describe('workflows tool', () => {
 				const tool = createWorkflowsTool(context, 'full');
 				const result = await executeTool(
 					tool,
-					{ action: 'setup', workflowId: 'wf1', reopenSkipped: ['slackApi', 'Notion'] },
+					{
+						action: 'setup',
+						summary: 'Set up the workflow.',
+						workflowId: 'wf1',
+						reopenSkipped: ['slackApi', 'Notion'],
+					},
 					{ suspend, resumeData: undefined } as never,
 				);
 
@@ -2622,7 +2879,12 @@ describe('workflows tool', () => {
 				const tool = createWorkflowsTool(context, 'full');
 				const result = await executeTool(
 					tool,
-					{ action: 'setup', workflowId: 'wf1', reopenSkipped: ['Notion'] },
+					{
+						action: 'setup',
+						summary: 'Set up the workflow.',
+						workflowId: 'wf1',
+						reopenSkipped: ['Notion'],
+					},
 					{ suspend, resumeData: undefined } as never,
 				);
 
@@ -2640,9 +2902,13 @@ describe('workflows tool', () => {
 				const context = createGrantAwareContext();
 
 				const tool = createWorkflowsTool(context, 'full');
-				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-					resumeData: { approved: false },
-				} as never);
+				await executeTool(
+					tool,
+					{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+					{
+						resumeData: { approved: false },
+					} as never,
+				);
 
 				expect(context.grantSessionToolApproval).toHaveBeenCalledWith(
 					'workflows:setup-skip:node:wf1:Log to Sheet',
@@ -2657,9 +2923,13 @@ describe('workflows tool', () => {
 				const context = createGrantAwareContext();
 
 				const tool = createWorkflowsTool(context, 'full');
-				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-					resumeData: { approved: false },
-				} as never);
+				const result = await executeTool(
+					tool,
+					{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+					{
+						resumeData: { approved: false },
+					} as never,
+				);
 
 				expect(context.grantSessionToolApproval).toHaveBeenCalledWith(
 					'workflows:setup-skip:cred:slackApi',
@@ -2679,13 +2949,17 @@ describe('workflows tool', () => {
 				const context = createGrantAwareContext();
 
 				const tool = createWorkflowsTool(context, 'full');
-				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-					resumeData: {
-						approved: true,
-						action: 'apply',
-						skippedNodes: ['Post to Slack'],
-					},
-				} as never);
+				const result = await executeTool(
+					tool,
+					{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+					{
+						resumeData: {
+							approved: true,
+							action: 'apply',
+							skippedNodes: ['Post to Slack'],
+						},
+					} as never,
+				);
 
 				expect(context.grantSessionToolApproval).toHaveBeenCalledWith(
 					'workflows:setup-skip:cred:slackApi',
@@ -2706,13 +2980,17 @@ describe('workflows tool', () => {
 				const context = createGrantAwareContext(['workflows:setup-skip:cred:slackApi']);
 
 				const tool = createWorkflowsTool(context, 'full');
-				const result = await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-					resumeData: {
-						approved: true,
-						action: 'apply',
-						credentials: { 'Post to Slack': { slackApi: 'cred-1' } },
-					},
-				} as never);
+				const result = await executeTool(
+					tool,
+					{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+					{
+						resumeData: {
+							approved: true,
+							action: 'apply',
+							credentials: { 'Post to Slack': { slackApi: 'cred-1' } },
+						},
+					} as never,
+				);
 
 				expect(context.revokeSessionToolApproval).toHaveBeenCalledWith(
 					'workflows:setup-skip:cred:slackApi',
@@ -2730,14 +3008,18 @@ describe('workflows tool', () => {
 				const suspend = vi.fn();
 
 				const tool = createWorkflowsTool(context, 'full');
-				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-					suspend,
-					resumeData: {
-						approved: true,
-						action: 'test-trigger',
-						testTriggerNode: 'Log to Sheet',
-					},
-				} as never);
+				await executeTool(
+					tool,
+					{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+					{
+						suspend,
+						resumeData: {
+							approved: true,
+							action: 'test-trigger',
+							testTriggerNode: 'Log to Sheet',
+						},
+					} as never,
+				);
 
 				expect(suspend).toHaveBeenCalledTimes(1);
 				expect(suspend.mock.calls[0][0]).toMatchObject({ setupRequests: [sheetsRequest] });
@@ -2759,13 +3041,17 @@ describe('workflows tool', () => {
 				const context = createGrantAwareContext(['workflows:setup-skip:cred:slackApi']);
 
 				const tool = createWorkflowsTool(context, 'full');
-				await executeTool(tool, { action: 'setup', workflowId: 'wf1' }, {
-					resumeData: {
-						approved: true,
-						action: 'apply',
-						nodeParameters: { 'Alert on Slack': { channel: '#general' } },
-					},
-				} as never);
+				await executeTool(
+					tool,
+					{ action: 'setup', summary: 'Set up the workflow.', workflowId: 'wf1' },
+					{
+						resumeData: {
+							approved: true,
+							action: 'apply',
+							nodeParameters: { 'Alert on Slack': { channel: '#general' } },
+						},
+					} as never,
+				);
 
 				expect(context.revokeSessionToolApproval).not.toHaveBeenCalledWith(
 					'workflows:setup-skip:cred:slackApi',

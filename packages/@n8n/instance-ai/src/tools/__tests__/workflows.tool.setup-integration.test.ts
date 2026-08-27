@@ -50,6 +50,7 @@ async function openSetupCard(preferNewCredentials?: string[]) {
 		createWorkflowsTool(context, 'full'),
 		{
 			action: 'setup',
+			summary: 'Set up the workflow.',
 			workflowId: 'wf1',
 			...(preferNewCredentials ? { preferNewCredentials } : {}),
 		},
