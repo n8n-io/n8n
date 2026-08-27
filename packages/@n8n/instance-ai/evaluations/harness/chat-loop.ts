@@ -288,6 +288,14 @@ export type NextMessageDecision =
 			 * its own setup or credential work happens to advance the checksum.
 			 */
 			renameWorkflowTo?: string;
+			/**
+			 * The user-proxy asked for the last saved workflow to be executed through
+			 * the server's mocked executor at this turn boundary, driven by a stage
+			 * direction ("the user runs it themselves"). The execution persists as a
+			 * real DB record, so the agent can list and inspect it as evidence of a
+			 * user-run test — the moment progressive building gates increments on.
+			 */
+			runWorkflowNow?: boolean;
 	  }
 	| { kind: 'done' };
 
@@ -297,6 +305,10 @@ export interface MultiTurnConfig extends WaitConfig {
 	 *  and the backend keeps "latest message wins", so a follow-up that omitted
 	 *  it would silently clear the thread's mode. */
 	buildMode?: InstanceAiBuildMode;
+	/** External-service steering for a `runWorkflowNow` mid-run execution —
+	 *  same free-text contract as a scenario's `dataSetup`. Defaults to the
+	 *  case's first execution scenario when present. */
+	midRunDataSetup?: string;
 }
 
 export async function runMultiTurnConversation(config: MultiTurnConfig): Promise<void> {
@@ -321,6 +333,12 @@ export async function runMultiTurnConversation(config: MultiTurnConfig): Promise
 		// workflow would still be what the judge and workflow checks read.
 		if (decision.renameWorkflowTo !== undefined) {
 			await applyExternalRename(config, decision.renameWorkflowTo);
+		}
+
+		// Before the follow-up is delivered, so a "I just ran it" message is true
+		// by the time the agent reads it and inspects the executions list.
+		if (decision.runWorkflowNow === true) {
+			await applyMidRunMockExecution(config);
 		}
 
 		config.logger.verbose(
@@ -396,6 +414,46 @@ async function applyExternalRename(config: MultiTurnConfig, rename: string): Pro
 		const message = error instanceof Error ? error.message : String(error);
 		config.logger.warn(
 			`[external-edit] Failed to rename ${workflowId} to "${rename}": ${message} — the conflict path was not exercised`,
+		);
+	}
+}
+
+/** Mocked runs execute the full workflow with LLM-generated service responses;
+ *  minutes are normal (see `executeWithLlmMock`), so give it its own budget
+ *  instead of the client default. Bounded by the case timeout either way. */
+const MID_RUN_EXECUTION_TIMEOUT_MS = 240_000;
+
+/**
+ * Executes the workflow this run last saved through the server's mocked
+ * executor, from outside the conversation — the side effect behind a
+ * `runWorkflowNow` stage direction. The run persists as a real DB execution,
+ * so the agent's `executions` tool can list and inspect it as evidence of a
+ * user-run test — the moment progressive building gates increments on. A
+ * failure is logged, not thrown: the proxy's message is delivered either way,
+ * and the agent's honest handling of a missing/failed run is itself gradeable.
+ */
+async function applyMidRunMockExecution(config: MultiTurnConfig): Promise<void> {
+	const workflowId = lastSavedWorkflowIdFromEvents(config.events);
+	if (workflowId === undefined) {
+		config.logger.warn(
+			'[mid-run-execute] Skipped: this run has saved no workflow yet, so there is nothing to execute',
+		);
+		return;
+	}
+
+	try {
+		const result = await config.client.executeWithLlmMock(
+			workflowId,
+			config.midRunDataSetup,
+			MID_RUN_EXECUTION_TIMEOUT_MS,
+		);
+		config.logger.info(
+			`[mid-run-execute] Executed ${workflowId} via mocked executor: success=${String(result.success)} executionId=${result.executionId}${result.errors.length > 0 ? ` errors=${result.errors.join('; ').slice(0, 200)}` : ''}`,
+		);
+	} catch (error: unknown) {
+		const message = error instanceof Error ? error.message : String(error);
+		config.logger.warn(
+			`[mid-run-execute] Execution of ${workflowId} failed: ${message} — the agent will find no successful run to inspect`,
 		);
 	}
 }

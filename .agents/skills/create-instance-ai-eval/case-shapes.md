@@ -103,6 +103,7 @@ recognises this vocabulary:
 | Dismiss a setup card / skip a value | `[When the setup card asks for the API base URL, dismiss it — the user hasn't decided yet.]` (proxy dismisses via `approve_or_reject(false)`) |
 | Reject a plan that misses a requirement | `[When the agent shows its plan, reject it unless it sorts descending by count.]` |
 | Iterate change-by-change, in order | `[Send each change below in order, waiting for the build after each; keep bundled changes in one message.]` |
+| Run the workflow themselves and report back | `[When the agent asks you to test the workflow, run it yourself, then tell it you ran it.]` (proxy sets `runWorkflowNow`; the harness executes the last saved workflow through the mocked executor **before** the message is delivered, so a real persisted execution exists for the agent to list and inspect — the moment progressive building gates increments on. Steered by the case's first execution scenario's `dataSetup` when one exists.) |
 
 The `text` of a turn may be an **array of strings** (joined with newlines) so a
 long director note stays readable in JSON. A note governs only what it covers;

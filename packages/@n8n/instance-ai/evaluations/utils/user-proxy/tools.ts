@@ -147,6 +147,15 @@ const sendFollowUpMessageDecisionSchema = z.object({
 	 * that workflow already carries this name.
 	 */
 	renameWorkflowTo: z.string().min(1).optional(),
+	/**
+	 * Execute the workflow this run last saved through the harness's mocked
+	 * executor at this turn boundary, BEFORE `message` is delivered — so when
+	 * the user reports "I just ran it", a real persisted execution already
+	 * exists for the agent to list and inspect. Set it ONLY when a stage
+	 * direction says the user runs or tests the workflow themselves at this
+	 * moment. The harness ignores it when the run has saved no workflow yet.
+	 */
+	runWorkflowNow: z.boolean().optional(),
 });
 
 const declareDoneDecisionSchema = z.object({
@@ -248,7 +257,7 @@ export const CONFIRMATION_TOOL_DESCRIPTIONS = `Available actions — confirmatio
 
 export const USER_TURN_TOOL_DESCRIPTIONS = `Available actions — it is the user's turn. The agent finished its run, no widget is on screen, and the chat input is waiting. The user either types a message or ends the conversation:
 
-- send_follow_up_message(message, renameWorkflowTo?): Send the user's next chat message. Everything the user wants to say right now goes here — including answering a question the agent asked in plain text, and approving or rejecting a plan the agent presented in plain text ("No — two changes first: …" or "Yes, go ahead." ARE follow-up messages). Set \`renameWorkflowTo\` ONLY when a [stage direction] says the workflow was changed outside this conversation — e.g. renamed in another tab, or edited by a colleague. The harness renames the last saved workflow for real at this exact moment, and the agent is told nothing about it; \`message\` must NOT mention the rename, because the whole point is that the agent discovers the conflict on its next save. Leave it unset on every other turn.
+- send_follow_up_message(message, renameWorkflowTo?, runWorkflowNow?): Send the user's next chat message. Everything the user wants to say right now goes here — including answering a question the agent asked in plain text, and approving or rejecting a plan the agent presented in plain text ("No — two changes first: …" or "Yes, go ahead." ARE follow-up messages). Set \`renameWorkflowTo\` ONLY when a [stage direction] says the workflow was changed outside this conversation — e.g. renamed in another tab, or edited by a colleague. The harness renames the last saved workflow for real at this exact moment, and the agent is told nothing about it; \`message\` must NOT mention the rename, because the whole point is that the agent discovers the conflict on its next save. Set \`runWorkflowNow: true\` ONLY when a [stage direction] says the user runs or tests the workflow themselves at this moment. The harness executes the last saved workflow for real (external services mocked) at this exact turn boundary, BEFORE your message is delivered — so \`message\` can honestly report that the user just ran it and the agent can inspect the resulting execution. Leave both unset on every other turn.
 
 - declare_done(): The user got what they wanted (or has nothing left to say) and walks away; the conversation ends. Never pick this while the agent is waiting for an answer.`;
 

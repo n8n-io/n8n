@@ -337,6 +337,9 @@ export class UserProxyLlm {
 				kind: 'followUp',
 				message,
 				...(decision.renameWorkflowTo ? { renameWorkflowTo: decision.renameWorkflowTo } : {}),
+				// Like the rename, the mid-run execution is a harness side effect at
+				// this turn boundary, not something the user says.
+				...(decision.runWorkflowNow ? { runWorkflowNow: true } : {}),
 			};
 		}
 		if (decision.action !== 'declare_done') {

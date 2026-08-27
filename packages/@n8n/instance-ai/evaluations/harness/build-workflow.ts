@@ -110,6 +110,8 @@ interface MultiTurnDriverConfig {
 	messageBudget?: number;
 	/** Resolved wire value sent with every message (see `resolveEvalBuildMode`). */
 	buildMode?: InstanceAiBuildMode;
+	/** External-service steering for `runWorkflowNow` mid-run executions. */
+	midRunDataSetup?: string;
 	events: CapturedEvent[];
 	approvedRequests: Set<string>;
 	startTime: number;
@@ -212,6 +214,7 @@ async function driveMultiTurnConversation(
 		nextMessageDecider,
 		proxyResponses: config.proxyResponses,
 		buildMode: config.buildMode,
+		midRunDataSetup: config.midRunDataSetup,
 	});
 
 	return { ...proxy.getDecisionStats() };
@@ -877,6 +880,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				conversation,
 				messageBudget: config.messageBudget,
 				buildMode: resolveEvalBuildMode(config.buildMode),
+				// The mid-run mock execution steers external services the same way a
+				// scenario does; the first declared scenario is the case's canonical
+				// world, so reuse its dataSetup when one exists.
+				midRunDataSetup: config.executionScenarios?.[0]?.dataSetup,
 				events,
 				approvedRequests,
 				startTime,
