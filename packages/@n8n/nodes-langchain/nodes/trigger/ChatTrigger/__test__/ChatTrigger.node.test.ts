@@ -170,6 +170,22 @@ describe('ChatTrigger Node', () => {
 		});
 	});
 
+	describe('requireExecuteAccess property', () => {
+		it('exposes the toggle, off by default and scoped to n8nUserAuth hosted chat', () => {
+			const requireExecuteParam = chatTrigger.description.properties.find(
+				(property) => property.name === 'requireExecuteAccess',
+			);
+
+			expect(requireExecuteParam).toMatchObject({
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: { authentication: ['n8nUserAuth'], mode: ['hostedChat'], public: [true] },
+				},
+			});
+		});
+	});
+
 	describe('webhook method', () => {
 		it('returns 404 for public chat when instance policy disables public chat', async () => {
 			chatTriggerConfig.disablePublicChat = true;

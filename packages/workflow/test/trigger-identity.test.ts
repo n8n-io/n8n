@@ -51,15 +51,56 @@ describe('classifyTriggerIdentity', () => {
 			},
 		);
 
-		// A chat trigger establishes no identity at runtime through `n8nUserAuth`,
-		// regardless of the chat OAuth2 flag (which classification ignores).
-		it.each(['n8nUserAuth', 'none', 'basicAuth'])(
+		// A chat trigger establishes no identity at runtime through `none`/`basicAuth`.
+		it.each(['none', 'basicAuth'])(
 			'provides no identity for authentication %s',
 			(authentication) => {
 				expect(classifyTriggerIdentity(CHAT_TRIGGER_NODE_TYPE, { authentication })).toEqual({
 					providesN8nIdentity: false,
 					providesExternalIdentity: false,
 				});
+			},
+		);
+
+		// Only the hosted-chat page runs the OAuth2 handshake that establishes the
+		// visitor's identity — `mode` absent or explicit defaults to hosted.
+		it.each([{}, { mode: 'hostedChat' }])(
+			'provides both identities for public n8nUserAuth in hosted-chat mode (%o)',
+			(modeParams) => {
+				expect(
+					classifyTriggerIdentity(CHAT_TRIGGER_NODE_TYPE, {
+						public: true,
+						authentication: 'n8nUserAuth',
+						...modeParams,
+					}),
+				).toEqual({ providesN8nIdentity: true, providesExternalIdentity: true });
+			},
+		);
+
+		// Embedded/webhook-mode chat has no hosted page to run the OAuth2 handshake on, so
+		// `n8nUserAuth` establishes no identity there despite being selected (IAM-1262/IAM-1272).
+		it('provides no identity for n8nUserAuth in webhook mode', () => {
+			expect(
+				classifyTriggerIdentity(CHAT_TRIGGER_NODE_TYPE, {
+					public: true,
+					authentication: 'n8nUserAuth',
+					mode: 'webhook',
+				}),
+			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
+		});
+
+		// A non-public trigger 404s on every production request and skips auth entirely in
+		// test mode (`ChatTrigger.node.ts`'s `webhook()`), so it never reaches the code that
+		// establishes identity — regardless of authentication/mode.
+		it.each([{}, { public: false }])(
+			'provides no identity for n8nUserAuth in hosted-chat mode when not public (%o)',
+			(publicParams) => {
+				expect(
+					classifyTriggerIdentity(CHAT_TRIGGER_NODE_TYPE, {
+						authentication: 'n8nUserAuth',
+						...publicParams,
+					}),
+				).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
 			},
 		);
 	});

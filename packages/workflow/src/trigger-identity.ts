@@ -38,6 +38,21 @@ function hasContextEstablishmentHook(parameters: INodeParameters | undefined): b
 }
 
 /**
+ * Whether a Chat Trigger's `n8nUserAuth` establishes the visitor's n8n identity: only in
+ * hosted-chat mode (embedded/webhook mode has no page to run the OAuth2 handshake on) and
+ * only when public (a non-public trigger never reaches the auth code at all). Absent `mode`
+ * counts as `hostedChat`, its default.
+ */
+function isHostedChatUserAuthTrigger(nodeType: string, parameters: INodeParameters | undefined) {
+	return (
+		nodeType === CHAT_TRIGGER_NODE_TYPE &&
+		parameters?.public === true &&
+		parameters?.authentication === 'n8nUserAuth' &&
+		(parameters?.mode ?? 'hostedChat') === 'hostedChat'
+	);
+}
+
+/**
  * Classifies a single trigger node by the identity it can establish at runtime.
  *
  * Shared by the backend publish-time validation (`WorkflowValidationService`) and
@@ -68,6 +83,7 @@ export function classifyTriggerIdentity(
 	if (
 		isSubWorkflowTrigger ||
 		isChatHubTrigger ||
+		isHostedChatUserAuthTrigger(nodeType, parameters) ||
 		isMcpTrigger ||
 		isFormTrigger ||
 		isOAuth2Webhook
