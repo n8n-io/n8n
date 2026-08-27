@@ -289,7 +289,7 @@ export class VaultProvider extends SecretsProvider {
 		this.#http = this.outboundHttp.requests({
 			baseURL: new URL(this.settings.url).toString(), // Normalize here so a malformed URL fails at init time rather than on the first request.
 			headers: () => this.buildAuthHeaders(),
-			ssrf: 'disabled', // admin-configured infrastructure
+			useDefaultSsrfPolicy: 'unsafe', // admin-configured infrastructure
 		});
 
 		this.logger.debug('Vault provider initialized');

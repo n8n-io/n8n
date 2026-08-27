@@ -140,6 +140,51 @@ describe('PollCursorService', () => {
 			);
 		});
 
+		it('uses a prefetched cursor without any read or transaction when the flag is on', async () => {
+			const service = buildService(true);
+
+			const resolved = await service.resolveCursor(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'from-static-data' },
+				{ lastItemId: 'prefetched' },
+			);
+
+			expect(resolved).toEqual({ migrated: true, cursor: { lastItemId: 'prefetched' } });
+			expect(pollerStateRepository.getOrCreateCursor).not.toHaveBeenCalled();
+			expect(pollerStateRepository.findCursor).not.toHaveBeenCalled();
+			expect(txRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('treats an empty prefetched cursor as a stored cursor, not a missing one', async () => {
+			const service = buildService(true);
+
+			const resolved = await service.resolveCursor('wf-1', 'node-1', { lastItemId: 'seed' }, {});
+
+			expect(resolved).toEqual({ migrated: true, cursor: {} });
+			expect(pollerStateRepository.getOrCreateCursor).not.toHaveBeenCalled();
+		});
+
+		it('falls back to getOrCreateCursor when no cursor was prefetched', async () => {
+			const service = buildService(true);
+			pollerStateRepository.getOrCreateCursor.mockResolvedValue({ lastItemId: 'from-db' });
+
+			const resolved = await service.resolveCursor(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'seed' },
+				undefined,
+			);
+
+			expect(resolved).toEqual({ migrated: true, cursor: { lastItemId: 'from-db' } });
+			expect(pollerStateRepository.getOrCreateCursor).toHaveBeenCalledWith(
+				'wf-1',
+				'node-1',
+				{ lastItemId: 'seed' },
+				expect.anything(),
+			);
+		});
+
 		it('does not create a row when the flag is off and the node has never migrated', async () => {
 			const service = buildService(false);
 			pollerStateRepository.findCursor.mockResolvedValue(null);
