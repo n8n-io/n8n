@@ -216,24 +216,19 @@ jobs:
     runs-on: ${{ vars.RUNNER_PROVIDER == 'github' && 'ubuntu-latest' || 'blacksmith-4vcpu-ubuntu-2204' }}
     needs: install-and-build
     env:
-      # NODE_OPTIONS is per process and is inherited by every worker turbo
-      # spawns, so the budget that matters is concurrency x cap, not the cap
-      # alone. 2 concurrent turbo tasks x 6 GB is about 12 GB of the 15.2 GB on
-      # a 4vcpu runner. Keep the product under ~12 GB when changing either
-      # factor, and trade one against the other rather than raising the total:
-      # typechecking packages/cli alone needs more than 3 GB of heap.
+      # Inherited by every worker turbo spawns, so the real budget is
+      # concurrency x cap: 2 x 6 GB fits the runner's 15.2 GB.
       NODE_OPTIONS: --max-old-space-size=6144
     steps:
       - uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
         with:
           ref: ${{ needs.install-and-build.outputs.commit_sha }}
 
-      # Invoked as `pnpm turbo` rather than the root `typecheck` script so the
-      # concurrency bound is CI-only: turbo's default of 10 would otherwise
-      # permit ~72 GB of heap here. Leaves local dev behaviour untouched.
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
+          # turbo directly, not the root `typecheck` script, to keep the
+          # concurrency bound CI-only.
           build-command: pnpm turbo typecheck --concurrency=2
 
   lint:

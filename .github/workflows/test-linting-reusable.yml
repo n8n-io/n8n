@@ -15,12 +15,8 @@ on:
         default: 26.5.1
 
 env:
-  # NODE_OPTIONS is per process and is inherited by every worker turbo spawns,
-  # so the budget that matters is concurrency x cap, not the cap alone. 2
-  # concurrent turbo tasks (see lint:ci) x 6 GB is about 12 GB of the 15.2 GB
-  # on a 4vcpu runner. Keep the product under ~12 GB when changing either
-  # factor, and trade one against the other rather than raising the total:
-  # linting packages/cli alone needs more than 4 GB of heap.
+  # Inherited by every worker turbo spawns, so the real budget is
+  # concurrency x cap: lint:ci runs 2 x 6 GB, fitting the runner's 15.2 GB.
   NODE_OPTIONS: --max-old-space-size=6144
 
 jobs:
