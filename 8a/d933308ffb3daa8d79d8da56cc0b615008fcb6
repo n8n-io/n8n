@@ -1,0 +1,22 @@
+packages/cli/src/commands/__tests__/worker.test.ts
+  s_8ee0cc9d7eb2cb::t_0057a6a8c2212a 140-176
+  s_8ee0cc9d7eb2cb::t_a59a4fa6884c0b 57-66,68-71
+  s_8ee0cc9d7eb2cb::t_7c2b451d35944b 67
+  s_8ee0cc9d7eb2cb::t_1cf2c67af89af0 9,17-19,21-22,25-27,32,34-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "8ad933308ffb3daa8d79d8da56cc0b615008fcb6",
+  "prompts": {},
+  "sessions": {
+    "s_8ee0cc9d7eb2cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d44665bd-e66a-420e-88e2-e3f45c6d538b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}
