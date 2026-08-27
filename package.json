@@ -45,7 +45,7 @@
     "lint:styles:fix": "turbo run lint:styles:fix",
     "lint:affected": "turbo run lint --affected",
     "lint:fix": "turbo run lint:fix",
-    "lint:ci": "turbo run lint lint:styles --concurrency=4 --cache=local:r,remote:r && pnpm boundaries:check && pnpm check:workspace-private-deps",
+    "lint:ci": "turbo run lint lint:styles --concurrency=2 --cache=local:r,remote:r && pnpm boundaries:check && pnpm check:workspace-private-deps",
     "boundaries": "turbo boundaries",
     "boundaries:check": "node scripts/check-boundaries.mjs",
     "boundaries:baseline": "node scripts/check-boundaries.mjs --write",
