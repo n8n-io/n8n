@@ -11,9 +11,11 @@ import { WorkflowReviewRequest } from '../../entities/workflow-review-request.ee
 import { TypeOrmTransaction } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import {
-	WorkflowReviewRequestRepository,
+	WorkflowReviewInboxRepository,
 	type InboxVisibility,
-} from '../workflow-review-request.repository';
+} from '../workflow-review-inbox.repository';
+import { WorkflowReviewLifecycleRepository } from '../workflow-review-lifecycle.repository';
+import { WorkflowReviewRequestRepository } from '../workflow-review-request.repository';
 
 /** Stand-ins for the SQL TypeORM would render for the correlated junction subqueries. */
 const AUTHOR_SUBQUERY_SQL = '(SELECT 1 FROM workflow_review_request_authors author WHERE ...)';
@@ -50,9 +52,11 @@ function involvedVisibility(
 	};
 }
 
-describe('WorkflowReviewRequestRepository', () => {
+describe('workflow review repositories', () => {
 	const entityManager = mockEntityManager(WorkflowReviewRequest);
-	const repo = Container.get(WorkflowReviewRequestRepository);
+	const requestRepository = Container.get(WorkflowReviewRequestRepository);
+	const inboxRepository = Container.get(WorkflowReviewInboxRepository);
+	const lifecycleRepository = Container.get(WorkflowReviewLifecycleRepository);
 
 	let queryBuilder: Mocked<SelectQueryBuilder<WorkflowReviewRequest>>;
 	let subQueryBuilders: Array<Mocked<SelectQueryBuilder<WorkflowReviewRequestAuthor>>>;
@@ -92,17 +96,17 @@ describe('WorkflowReviewRequestRepository', () => {
 		queryBuilder.getMany.mockResolvedValue([]);
 		queryBuilder.getRawMany.mockResolvedValue([]);
 
-		vi.spyOn(repo, 'createQueryBuilder').mockReturnValue(queryBuilder);
+		vi.spyOn(inboxRepository, 'createQueryBuilder').mockReturnValue(queryBuilder);
 	});
 
-	describe('createRequest', () => {
+	describe('WorkflowReviewRequestRepository.createRequest', () => {
 		it('persists an open pending request with audit fields initialised', async () => {
 			(entityManager.create as Mock).mockImplementation(
 				(_target: unknown, entityLike: unknown) => entityLike as WorkflowReviewRequest,
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			await repo.createRequest(
+			await requestRepository.createRequest(
 				{
 					id: 'req-1',
 					projectId: 'proj-1',
@@ -134,7 +138,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			);
 			entityManager.save.mockImplementationOnce(async (_target, entity) => entity);
 
-			await repo.createRequest(
+			await requestRepository.createRequest(
 				{
 					projectId: 'proj-1',
 					title: 'Review title',
@@ -151,7 +155,7 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 	});
 
-	describe('findRequestsForWorkflow', () => {
+	describe('WorkflowReviewRequestRepository.findRequestsForWorkflow', () => {
 		let queryBuilder: Mocked<SelectQueryBuilder<WorkflowReviewRequest>>;
 
 		beforeEach(() => {
@@ -171,7 +175,7 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 
 		it('scopes to the requested workflow and orders newest first, ties broken by id', async () => {
-			await repo.findRequestsForWorkflow('workflow-1');
+			await requestRepository.findRequestsForWorkflow('workflow-1');
 
 			expect(queryBuilder.where).toHaveBeenCalledWith('requestWorkflow.workflowId = :workflowId', {
 				workflowId: 'workflow-1',
@@ -184,7 +188,7 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 
 		it.each(['open', 'closed'] as const)('narrows to state %s when given', async (state) => {
-			await repo.findRequestsForWorkflow('workflow-1', { state });
+			await requestRepository.findRequestsForWorkflow('workflow-1', { state });
 
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith('request.state = :state', { state });
 		});
@@ -197,7 +201,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			});
 			queryBuilder.getCount.mockResolvedValue(5);
 
-			const [data, count] = await repo.findRequestsForWorkflow('workflow-1', {
+			const [data, count] = await requestRepository.findRequestsForWorkflow('workflow-1', {
 				skip: 1,
 				take: 1,
 			});
@@ -232,7 +236,7 @@ describe('WorkflowReviewRequestRepository', () => {
 				],
 			});
 
-			const [data] = await repo.findRequestsForWorkflow('workflow-1');
+			const [data] = await requestRepository.findRequestsForWorkflow('workflow-1');
 
 			expect(data[0]).toEqual({
 				id: 'req-1',
@@ -247,7 +251,7 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 
 		it('applies skip and take when they are zero', async () => {
-			await repo.findRequestsForWorkflow('workflow-1', { skip: 0, take: 0 });
+			await requestRepository.findRequestsForWorkflow('workflow-1', { skip: 0, take: 0 });
 
 			expect(queryBuilder.skip).toHaveBeenCalledWith(0);
 			expect(queryBuilder.take).toHaveBeenCalledWith(0);
@@ -270,7 +274,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			});
 			queryBuilder.getCount.mockResolvedValue(2);
 
-			const [data] = await repo.findRequestsForWorkflow('workflow-1');
+			const [data] = await requestRepository.findRequestsForWorkflow('workflow-1');
 
 			expect(queryBuilder.addSelect).toHaveBeenCalledWith(
 				'requestWorkflow.workflowVersionId',
@@ -293,7 +297,7 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 	});
 
-	describe('findOpenRequestsForWorkflows', () => {
+	describe('WorkflowReviewLifecycleRepository.findOpenRequestsAffectedByWorkflows', () => {
 		let queryBuilder: Mocked<SelectQueryBuilder<WorkflowReviewRequest>>;
 
 		beforeEach(() => {
@@ -307,14 +311,17 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 
 		it('returns an empty list without querying when no workflow ids are given', async () => {
-			const result = await repo.findOpenRequestsForWorkflows([], {});
+			const result = await lifecycleRepository.findOpenRequestsAffectedByWorkflows([], {});
 
 			expect(result).toEqual([]);
 			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
 		});
 
 		it('scopes to the given workflows and to open requests only', async () => {
-			await repo.findOpenRequestsForWorkflows(['workflow-1', 'workflow-2'], {});
+			await lifecycleRepository.findOpenRequestsAffectedByWorkflows(
+				['workflow-1', 'workflow-2'],
+				{},
+			);
 
 			expect(queryBuilder.where).toHaveBeenCalledWith(
 				'requestWorkflow.workflowId IN (:...workflowIds)',
@@ -338,7 +345,10 @@ describe('WorkflowReviewRequestRepository', () => {
 				],
 			});
 
-			const result = await repo.findOpenRequestsForWorkflows(['workflow-1', 'workflow-2'], {});
+			const result = await lifecycleRepository.findOpenRequestsAffectedByWorkflows(
+				['workflow-1', 'workflow-2'],
+				{},
+			);
 
 			expect(queryBuilder.addSelect).toHaveBeenCalledWith(
 				'requestWorkflow.workflowVersionId',
@@ -362,7 +372,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			const transactionManager = mock<EntityManager>();
 			(transactionManager.createQueryBuilder as Mock).mockReturnValue(queryBuilder);
 
-			await repo.findOpenRequestsForWorkflows(['workflow-1'], {
+			await lifecycleRepository.findOpenRequestsAffectedByWorkflows(['workflow-1'], {
 				trx: new TypeOrmTransaction(transactionManager),
 			});
 
@@ -371,7 +381,7 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 	});
 
-	describe('findUnreviewableOpenRequestIds', () => {
+	describe('WorkflowReviewLifecycleRepository.findUnreviewableOpenRequestIds', () => {
 		let queryBuilder: Mocked<SelectQueryBuilder<WorkflowReviewRequest>>;
 
 		beforeEach(() => {
@@ -418,23 +428,23 @@ describe('WorkflowReviewRequestRepository', () => {
 				},
 			]);
 
-			expect(await repo.findUnreviewableOpenRequestIds({})).toEqual(['req-orphan']);
+			expect(await lifecycleRepository.findUnreviewableOpenRequestIds({})).toEqual(['req-orphan']);
 			expect(queryBuilder.andWhere).not.toHaveBeenCalled();
 
-			await repo.findUnreviewableOpenRequestIds({}, ['req-1', 'req-2']);
+			await lifecycleRepository.findUnreviewableOpenRequestIds({}, ['req-1', 'req-2']);
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.id IN (:...candidateRequestIds)', {
 				candidateRequestIds: ['req-1', 'req-2'],
 			});
 
 			(entityManager.createQueryBuilder as Mock).mockClear();
-			expect(await repo.findUnreviewableOpenRequestIds({}, [])).toEqual([]);
+			expect(await lifecycleRepository.findUnreviewableOpenRequestIds({}, [])).toEqual([]);
 			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
 		});
 	});
 
-	describe('closeRequests', () => {
+	describe('WorkflowReviewRequestRepository.closeRequests', () => {
 		it('bulk-closes the given requests, clearing the closing user and bumping updatedAt', async () => {
-			await repo.closeRequests(['req-1', 'req-2'], {});
+			await requestRepository.closeRequests(['req-1', 'req-2'], {});
 
 			expect(entityManager.update).toHaveBeenCalledWith(WorkflowReviewRequest, ['req-1', 'req-2'], {
 				state: 'closed',
@@ -443,18 +453,18 @@ describe('WorkflowReviewRequestRepository', () => {
 			});
 
 			entityManager.update.mockClear();
-			await repo.closeRequests([], {});
+			await requestRepository.closeRequests([], {});
 			expect(entityManager.update).not.toHaveBeenCalled();
 		});
 	});
 
-	describe('findById', () => {
+	describe('WorkflowReviewRequestRepository.findById', () => {
 		it("reads through the context's transaction manager", async () => {
 			const transactionManager = mock<EntityManager>();
 			const request = mock<WorkflowReviewRequest>({ id: 'req-1' });
 			transactionManager.findOne.mockResolvedValue(request);
 
-			const result = await repo.findById('req-1', {
+			const result = await requestRepository.findById('req-1', {
 				trx: new TypeOrmTransaction(transactionManager),
 			});
 
@@ -466,19 +476,19 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 	});
 
-	describe('findManyForInbox', () => {
+	describe('WorkflowReviewInboxRepository.findRequests', () => {
 		it('skips visibility filtering entirely for the whole-inbox scope', async () => {
 			const rows = [mock<WorkflowReviewRequest>({ id: 'req-1' })];
 			queryBuilder.getMany.mockResolvedValueOnce(rows);
 
-			const result = await repo.findManyForInbox({
+			const result = await inboxRepository.findRequests({
 				visibility: allVisibility,
 				state: 'open',
 				limit: 15,
 			});
 
 			expect(result).toBe(rows);
-			expect(repo.createQueryBuilder).toHaveBeenCalledWith('review');
+			expect(inboxRepository.createQueryBuilder).toHaveBeenCalledWith('review');
 			expect(queryBuilder.andWhere).not.toHaveBeenCalledWith(
 				expect.stringContaining('review.projectId'),
 				expect.anything(),
@@ -495,7 +505,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			const rows = [mock<WorkflowReviewRequest>({ id: 'req-1' })];
 			queryBuilder.getMany.mockResolvedValueOnce(rows);
 
-			const result = await repo.findManyForInbox({
+			const result = await inboxRepository.findRequests({
 				visibility: involvedVisibility({
 					adminProjectIds: ['admin-proj'],
 					readableProjectIds: ['read-1', 'read-2'],
@@ -516,7 +526,7 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 
 		it('resolves workflow readability through shared_workflow, not the stored project', async () => {
-			await repo.findManyForInbox({
+			await inboxRepository.findRequests({
 				visibility: involvedVisibility({ readableProjectIds: ['read-1'] }),
 				limit: 15,
 			});
@@ -539,7 +549,7 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 
 		it('drops the readability conjunct entirely when the caller is unrestricted', async () => {
-			await repo.findManyForInbox({
+			await inboxRepository.findRequests({
 				visibility: involvedVisibility({ readableProjectIds: null }),
 				limit: 15,
 			});
@@ -555,7 +565,7 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 
 		it('correlates both involvement subqueries through their entities, never literal table names', async () => {
-			await repo.findManyForInbox({ visibility: involvedVisibility(), limit: 15 });
+			await inboxRepository.findRequests({ visibility: involvedVisibility(), limit: 15 });
 
 			const [authorSubQuery, reviewerSubQuery] = subQueryBuilders;
 			expect(authorSubQuery.from).toHaveBeenCalledWith(
@@ -577,7 +587,7 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 
 		it('returns nothing when no project is readable, admin projects included', async () => {
-			await repo.findManyForInbox({
+			await inboxRepository.findRequests({
 				visibility: involvedVisibility({ adminProjectIds: ['admin-proj'], readableProjectIds: [] }),
 				limit: 15,
 			});
@@ -587,7 +597,7 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 
 		it('matches nothing when the caller administers no project and can read none', async () => {
-			const result = await repo.findManyForInbox({
+			const result = await inboxRepository.findRequests({
 				visibility: involvedVisibility({ adminProjectIds: [], readableProjectIds: [] }),
 				limit: 15,
 			});
@@ -597,11 +607,11 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 
 		it('applies the keyset boundary carried in the cursor without an anchor lookup', async () => {
-			const findOneSpy = vi.spyOn(repo, 'findOne');
+			const findOneSpy = vi.spyOn(inboxRepository, 'findOne');
 			queryBuilder.getMany.mockResolvedValueOnce([]);
 			const createdAt = new Date('2024-01-02T00:00:00.000Z');
 
-			await repo.findManyForInbox({
+			await inboxRepository.findRequests({
 				visibility: involvedVisibility(),
 				limit: 10,
 				cursor: { createdAt, id: 'req-cursor' },
@@ -616,7 +626,7 @@ describe('WorkflowReviewRequestRepository', () => {
 
 		describe('category filter', () => {
 			it('leaves the query untouched when no category is requested', async () => {
-				await repo.findManyForInbox({
+				await inboxRepository.findRequests({
 					visibility: allVisibility,
 					limit: 15,
 				});
@@ -625,7 +635,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			});
 
 			it('correlates both junction subqueries through their entities, never literal table names', async () => {
-				await repo.findManyForInbox({
+				await inboxRepository.findRequests({
 					visibility: allVisibility,
 					category: { userId: 'user-1', category: 'authored' },
 					limit: 15,
@@ -647,7 +657,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			// The requester always has an author row, so neither predicate needs
 			// the nullable `createdById`.
 			it('matches a non-reviewing author for the authored section', async () => {
-				await repo.findManyForInbox({
+				await inboxRepository.findRequests({
 					visibility: allVisibility,
 					category: { userId: 'user-1', category: 'authored' },
 					limit: 15,
@@ -660,7 +670,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			});
 
 			it('matches assigned reviewers first for the waiting section', async () => {
-				await repo.findManyForInbox({
+				await inboxRepository.findRequests({
 					visibility: allVisibility,
 					category: { userId: 'user-1', category: 'waiting' },
 					limit: 15,
@@ -673,7 +683,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			});
 
 			it('narrows the visibility predicate instead of replacing it', async () => {
-				await repo.findManyForInbox({
+				await inboxRepository.findRequests({
 					visibility: involvedVisibility(),
 					category: { userId: 'user-1', category: 'waiting' },
 					limit: 15,
@@ -689,7 +699,7 @@ describe('WorkflowReviewRequestRepository', () => {
 			it('applies the category filter before the limit and the cursor boundary', async () => {
 				const createdAt = new Date('2024-01-02T00:00:00.000Z');
 
-				await repo.findManyForInbox({
+				await inboxRepository.findRequests({
 					visibility: allVisibility,
 					category: { userId: 'user-1', category: 'authored' },
 					state: 'open',
@@ -706,16 +716,16 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 	});
 
-	describe('countByStateForInbox', () => {
+	describe('WorkflowReviewInboxRepository.countRequestsByState', () => {
 		it('groups by state under the involvement visibility predicate', async () => {
 			queryBuilder.getRawMany.mockResolvedValueOnce([{ state: 'open', count: '2' }]);
 
-			const result = await repo.countByStateForInbox({
-				visibility: involvedVisibility({ readableProjectIds: ['proj-1', 'proj-2'] }),
-			});
+			const result = await inboxRepository.countRequestsByState(
+				involvedVisibility({ readableProjectIds: ['proj-1', 'proj-2'] }),
+			);
 
 			expect(result).toEqual({ open: 2, closed: 0 });
-			expect(repo.createQueryBuilder).toHaveBeenCalledWith('review');
+			expect(inboxRepository.createQueryBuilder).toHaveBeenCalledWith('review');
 			expect(queryBuilder.select).toHaveBeenCalledWith('review.state', 'state');
 			expect(queryBuilder.addSelect).toHaveBeenCalledWith('COUNT(*)', 'count');
 			expect(queryBuilder.groupBy).toHaveBeenCalledWith('review.state');
@@ -735,7 +745,7 @@ describe('WorkflowReviewRequestRepository', () => {
 				{ state: 'closed', count: '12' },
 			]);
 
-			const result = await repo.countByStateForInbox({ visibility: allVisibility });
+			const result = await inboxRepository.countRequestsByState(allVisibility);
 
 			expect(result).toEqual({ open: 3, closed: 12 });
 			expect(queryBuilder.andWhere).not.toHaveBeenCalled();
@@ -745,9 +755,9 @@ describe('WorkflowReviewRequestRepository', () => {
 		it('counts nothing when the caller administers no project and can read none', async () => {
 			queryBuilder.getRawMany.mockResolvedValueOnce([]);
 
-			const result = await repo.countByStateForInbox({
-				visibility: involvedVisibility({ adminProjectIds: [], readableProjectIds: [] }),
-			});
+			const result = await inboxRepository.countRequestsByState(
+				involvedVisibility({ adminProjectIds: [], readableProjectIds: [] }),
+			);
 
 			expect(result).toEqual({ open: 0, closed: 0 });
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith('1 = 0');
