@@ -1,6 +1,6 @@
 import { type StoryFn } from '@storybook/vue3-vite';
 import { type ActionOptions, action } from 'storybook/actions';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import N8nResizeWrapper from './ResizeWrapper.vue';
 
@@ -97,14 +97,60 @@ Resize.args = {
 	],
 };
 
-export const LineIndicator = Template.bind({});
+// The rainbow template above drowns out the subtle indicator, so the indicator
+// stories use a quiet surface panel instead.
+const IndicatorTemplate: StoryFn = (args) => ({
+	setup: () => {
+		const newWidth = ref(args.width);
+		const newHeight = ref(args.height);
+
+		function onResize(resizeData: ResizeData) {
+			newHeight.value = resizeData.height;
+			newWidth.value = resizeData.width;
+		}
+
+		const panelStyles = computed(() => ({
+			width: `${newWidth.value}px`,
+			height: `${newHeight.value}px`,
+			display: 'flex',
+			alignItems: 'center',
+			justifyContent: 'center',
+			background: 'var(--background--surface)',
+			border: 'var(--border)',
+			borderRadius: 'var(--radius--xs)',
+			color: 'var(--color--text--tint-1)',
+			fontFamily: 'var(--font-family)',
+			fontSize: 'var(--font-size--sm)',
+		}));
+
+		return { args, newWidth, newHeight, onResize, panelStyles };
+	},
+	components: {
+		N8nResizeWrapper,
+	},
+	template: `<div style="width: fit-content; padding: var(--spacing--xl)">
+			<n8n-resize-wrapper
+				v-bind="args"
+				:width="newWidth"
+				:height="newHeight"
+				@resize="onResize"
+				@resizeend="onResizeEnd"
+				@resizestart="onResizeStart"
+			>
+				<div :style="panelStyles">Hover or drag an edge</div>
+			</n8n-resize-wrapper>
+		</div>`,
+	methods,
+});
+
+export const LineIndicator = IndicatorTemplate.bind({});
 LineIndicator.args = {
 	...Resize.args,
 	handleIndicator: 'line',
 	supportedDirections: ['right', 'top', 'bottom', 'left'],
 };
 
-export const GripIndicator = Template.bind({});
+export const GripIndicator = IndicatorTemplate.bind({});
 GripIndicator.args = {
 	...Resize.args,
 	handleIndicator: 'grip',
