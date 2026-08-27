@@ -7,6 +7,7 @@ import {
 	type GraphNode,
 	type WorkflowLoop,
 } from '../graph';
+import type { LifecycleEventPublisher } from '../lifecycle-events';
 import { runBatchStep } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
 import type { ExecutionRecord, ExecutionStore } from './execution-store';
@@ -39,6 +40,7 @@ export class StepReadyHandler {
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly dependencies: ExternalDependencies,
+		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 	) {}
 
 	async handle(event: StepReadyEvent): Promise<void> {
@@ -53,6 +55,7 @@ export class StepReadyHandler {
 		// this in the future (CAT-2938, CAT-3930).
 		const execution = await this.executionStore.loadExecution(event.executionId);
 		const node = validateStepContext(step, execution);
+
 		// The engine runs a batch step itself, so it has no executor to look up.
 		const executor = node.type === 'batch' ? undefined : this.executorFor(step, node);
 
@@ -62,6 +65,9 @@ export class StepReadyHandler {
 			// internal consistency checks (CAT-3930) to resolve.
 			return;
 		}
+
+		// This worker won the claim, so it is the one that announces the start.
+		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
 		// NOTE: an unexpected error in gathering inputs will leave the step
 		// running. In the future, this will be handled by either:
@@ -92,6 +98,14 @@ export class StepReadyHandler {
 		// whoever holds it now announce theirs. TODO(CAT-2938): reconciliation is the
 		// only thing that can take a step over, and it doesn't exist yet.
 		if (!recorded) return;
+
+		// Before the settled event, or the execution could announce its end first.
+		// Outputs ride along so a consumer needs no read to render them.
+		this.lifecycleEventPublisher.publish(
+			run.ok
+				? { type: 'step:completed', ...stepEventFields(step, node), outputs: run.outputs }
+				: { type: 'step:failed', ...stepEventFields(step, node) },
+		);
 
 		await this.orchestrationQueue.publish({
 			type: 'step:settled',
@@ -293,6 +307,18 @@ function readEdgeValue(
 	}
 	if (row.status !== 'completed') return null;
 	return row.outputs?.[edge.outputIndex] ?? null;
+}
+
+/** The identifiers every step event carries. */
+function stepEventFields(step: StepRecord, node: GraphNode) {
+	return {
+		executionId: step.executionId,
+		stepId: step.id,
+		nodeId: step.nodeId,
+		nodeName: node.name,
+		iteration: step.iteration,
+		at: new Date().toISOString(),
+	};
 }
 
 function toStepError(error: unknown): StepError {
