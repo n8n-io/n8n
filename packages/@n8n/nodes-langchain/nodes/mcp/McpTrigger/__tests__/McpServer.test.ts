@@ -11,9 +11,20 @@ import {
 	createMockServer,
 	MCP_SESSION_ID_HEADER,
 } from './helpers';
+import type { McpServerConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { z } from 'zod';
+
 import { QueuedExecutionStrategy } from '../execution/QueuedExecutionStrategy';
 import { McpServer } from '../McpServer';
 import { InMemorySessionStore } from '../session/InMemorySessionStore';
+import type { SessionManager } from '../session/SessionManager';
+
+const setEvictionConfig = (sessionIdleTtl: number, sessionSweepInterval: number) =>
+	vi
+		.mocked(Container.get)
+		.mockReturnValue({ sessionIdleTtl, sessionSweepInterval } as McpServerConfig);
 
 describe('McpServer', () => {
 	let mcpServer: McpServer;
@@ -22,11 +33,90 @@ describe('McpServer', () => {
 	beforeEach(() => {
 		// Reset singleton for testing
 		(McpServer as unknown as { instance_: McpServer | undefined }).instance_ = undefined;
+		setEvictionConfig(60 * 60 * 1000, 5 * 60 * 1000);
 		mockLogger = createMockLogger();
 		mcpServer = McpServer.instance(mockLogger);
 	});
 
+	describe('tools/list schema dialect', () => {
+		const sessionId = 'dialect-session';
+
+		const toolWithTuple = () =>
+			createMockTool('with_tuple', {
+				schema: z.object({ range: z.tuple([z.number(), z.number()]).rest(z.number()) }),
+			});
+
+		type ListToolsHandler = (
+			request: unknown,
+			extra: { sessionId?: string },
+		) => { tools: Array<{ name: string; inputSchema: Record<string, unknown> }> };
+
+		async function advertisedTools() {
+			const server = createMockServer();
+			const internals = mcpServer as unknown as {
+				sessionManager: SessionManager;
+				setupHandlers(server: unknown): void;
+			};
+
+			await internals.sessionManager.registerSession(
+				sessionId,
+				server,
+				createMockTransport(sessionId, 'streamableHttp'),
+				[toolWithTuple()],
+			);
+			internals.setupHandlers(server);
+
+			const listTools = server.setRequestHandler.mock.calls[0][1] as unknown as ListToolsHandler;
+			return listTools({}, { sessionId }).tools;
+		}
+
+		it('declares JSON Schema 2020-12', async () => {
+			const [tool] = await advertisedTools();
+
+			expect(tool.inputSchema.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
+		});
+
+		it('advertises tuples with the 2020-12 keywords', async () => {
+			const [tool] = await advertisedTools();
+
+			expect(tool.inputSchema.properties).toMatchObject({
+				range: {
+					type: 'array',
+					prefixItems: [{ type: 'number' }, { type: 'number' }],
+					items: { type: 'number' },
+				},
+			});
+			expect(JSON.stringify(tool.inputSchema)).not.toContain('additionalItems');
+		});
+
+		it('keeps plain objects open to extra keys', async () => {
+			const [tool] = await advertisedTools();
+
+			expect(tool.inputSchema.additionalProperties).toBe(true);
+		});
+
+		it('relays the same dialect over SSE', async () => {
+			const server = createMockServer();
+			const transport = createMockTransport(sessionId, 'sse');
+			const internals = mcpServer as unknown as { sessionManager: SessionManager };
+
+			await internals.sessionManager.registerSession(sessionId, server, transport, [
+				toolWithTuple(),
+			]);
+			mcpServer.handleWorkerResponse(sessionId, 'msg-1', { _listToolsRequest: true });
+
+			const [message] = transport.send.mock.calls[0] as unknown as [
+				{ result: { tools: Array<{ inputSchema: Record<string, unknown> }> } },
+			];
+			expect(message.result.tools[0].inputSchema).toMatchObject({
+				$schema: 'https://json-schema.org/draft/2020-12/schema',
+				properties: { range: { prefixItems: [{ type: 'number' }, { type: 'number' }] } },
+			});
+		});
+	});
+
 	afterEach(() => {
+		mcpServer.stopSweep();
 		// Clean up singleton
 		(McpServer as unknown as { instance_: McpServer | undefined }).instance_ = undefined;
 	});
@@ -159,6 +249,111 @@ describe('McpServer', () => {
 		});
 	});
 
+	describe('handlePostMessage resolution', () => {
+		const sessionId = 'sse-session';
+		const requestId = 'call-1';
+
+		type CallToolHandler = (
+			request: { params: { name: string; arguments: Record<string, unknown> } },
+			extra: { sessionId?: string; requestId?: string },
+		) => Promise<{ isError?: boolean; content: Array<{ text: string }> }>;
+
+		async function setupSseSession(tool: ReturnType<typeof createMockTool>) {
+			const transport = createMockTransport(sessionId, 'sse');
+			const server = createMockServer();
+			const internals = mcpServer as unknown as {
+				sessionManager: SessionManager;
+				setupHandlers(server: unknown): void;
+			};
+
+			await internals.sessionManager.registerSession(sessionId, server, transport, [tool]);
+			internals.setupHandlers(server);
+
+			const handler = server.setRequestHandler.mock.calls[1][1] as unknown as CallToolHandler;
+			let handlerResult: ReturnType<CallToolHandler> | undefined;
+			transport.handleRequest.mockImplementation(async () => {
+				handlerResult = handler(
+					{ params: { name: tool.name, arguments: {} } },
+					{ sessionId, requestId },
+				);
+			});
+
+			return {
+				transport,
+				getHandlerResult: (): ReturnType<CallToolHandler> | undefined => handlerResult,
+			};
+		}
+
+		const postToolCall = async (tool: ReturnType<typeof createMockTool>) =>
+			await mcpServer.handlePostMessage(
+				createMockRequestWithSessionId(
+					sessionId,
+					createValidToolCallMessage(tool.name, {}, requestId),
+				),
+				createMockResponse(),
+				[tool],
+			);
+
+		it('should keep an SSE tool call pending until the tool has finished', async () => {
+			let finishTool!: () => void;
+			const tool = createMockTool('get_weather');
+			tool.invoke.mockImplementation(async () => {
+				await new Promise<void>((resolve) => (finishTool = resolve));
+				return { ok: true };
+			});
+			await setupSseSession(tool);
+
+			let resolved = false;
+			const postPromise = postToolCall(tool).then((result) => {
+				resolved = true;
+				return result;
+			});
+
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(tool.invoke).toHaveBeenCalled();
+			expect(resolved).toBe(false);
+
+			finishTool();
+
+			expect((await postPromise).wasToolCall).toBe(true);
+		});
+
+		it('should resolve an SSE tool call whose tool throws', async () => {
+			const tool = createMockTool('get_weather', { invokeError: new Error('boom') });
+			const { getHandlerResult } = await setupSseSession(tool);
+
+			expect((await postToolCall(tool)).wasToolCall).toBe(true);
+
+			const handlerResult = await getHandlerResult();
+			expect(handlerResult?.isError).toBe(true);
+			expect(handlerResult?.content[0].text).toContain('boom');
+		});
+
+		it('should resolve an SSE tool call when the transport fails to handle the request', async () => {
+			const tool = createMockTool('get_weather');
+			const { transport } = await setupSseSession(tool);
+			transport.handleRequest.mockRejectedValue(new Error('SSE connection not established'));
+
+			expect((await postToolCall(tool)).wasToolCall).toBe(true);
+			expect(tool.invoke).not.toHaveBeenCalled();
+		});
+
+		it('should resolve a queue-mode tool call before the worker result arrives', async () => {
+			const tool = createMockTool('get_weather');
+			const { getHandlerResult } = await setupSseSession(tool);
+			mcpServer.setExecutionStrategy(
+				new QueuedExecutionStrategy(mcpServer.getPendingCallsManager()),
+			);
+
+			expect((await postToolCall(tool)).wasToolCall).toBe(true);
+			expect(mcpServer.hasPendingResponse(sessionId, requestId)).toBe(true);
+
+			mcpServer.handleWorkerResponse(sessionId, requestId, { ok: true });
+
+			expect((await getHandlerResult())?.isError).toBeUndefined();
+		});
+	});
+
 	describe('handleDeleteRequest', () => {
 		it('should return 400 when no sessionId provided', async () => {
 			const response = createMockResponse();
@@ -185,6 +380,60 @@ describe('McpServer', () => {
 		});
 	});
 
+	describe('createServer', () => {
+		type ServerFactory = {
+			createServer(serverName: string, instructions?: string): Server;
+		};
+
+		// Drives a real SDK Server through a stub transport and returns the
+		// InitializeResult the client would receive.
+		const initialize = async (server: Server) => {
+			const sent: Array<{ result?: { instructions?: string; serverInfo?: { name: string } } }> = [];
+			const transport = {
+				start: vi.fn().mockResolvedValue(undefined),
+				send: vi.fn().mockImplementation(async (message: (typeof sent)[number]) => {
+					sent.push(message);
+				}),
+				close: vi.fn().mockResolvedValue(undefined),
+				onmessage: undefined as ((message: unknown) => void) | undefined,
+			};
+			await server.connect(transport as never);
+			transport.onmessage?.({
+				jsonrpc: '2.0',
+				id: 1,
+				method: 'initialize',
+				params: {
+					protocolVersion: '2025-03-26',
+					capabilities: {},
+					clientInfo: { name: 'test-client', version: '1.0' },
+				},
+			});
+			await vi.waitFor(() => expect(sent).toHaveLength(1));
+			return sent[0].result;
+		};
+
+		it('should include instructions in the initialize result when provided', async () => {
+			const server = (mcpServer as unknown as ServerFactory).createServer(
+				'test-server',
+				'Call the context tool first.',
+			);
+
+			const result = await initialize(server);
+
+			expect(result?.serverInfo?.name).toBe('test-server');
+			expect(result?.instructions).toBe('Call the context tool first.');
+		});
+
+		it('should omit instructions from the initialize result when not provided', async () => {
+			const server = (mcpServer as unknown as ServerFactory).createServer('test-server');
+
+			const result = await initialize(server);
+
+			expect(result?.serverInfo?.name).toBe('test-server');
+			expect(result?.instructions).toBeUndefined();
+		});
+	});
+
 	describe('configuration', () => {
 		it('should allow setting custom session store', () => {
 			const customStore = new InMemorySessionStore();
@@ -203,6 +452,127 @@ describe('McpServer', () => {
 
 		it('should not be in queue mode by default', () => {
 			expect(mcpServer.isQueueMode()).toBe(false);
+		});
+	});
+
+	describe('idle session eviction', () => {
+		const TTL = 1_000;
+		const INTERVAL = 500;
+
+		const sessionManagerOf = (server: McpServer) =>
+			(server as unknown as { sessionManager: SessionManager }).sessionManager;
+
+		const registerSession = async (
+			sessionId: string,
+			transportType: 'sse' | 'streamableHttp' = 'streamableHttp',
+		) =>
+			await sessionManagerOf(mcpServer).registerSession(
+				sessionId,
+				createMockServer(),
+				createMockTransport(sessionId, transportType),
+			);
+
+		const touch = (sessionId: string) => sessionManagerOf(mcpServer).touch(sessionId);
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			vi.setSystemTime(0);
+			// Recreate the singleton with short timings registered under fake timers.
+			setEvictionConfig(TTL, INTERVAL);
+			(McpServer as unknown as { instance_: McpServer | undefined }).instance_ = undefined;
+			mcpServer = McpServer.instance(mockLogger);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('should evict a session idle past the ttl', async () => {
+			await registerSession('idle-1');
+			expect(mcpServer.getTransport('idle-1')).toBeDefined();
+
+			await vi.advanceTimersByTimeAsync(TTL + INTERVAL);
+
+			expect(mcpServer.getTransport('idle-1')).toBeUndefined();
+		});
+
+		it('should close the server when evicting a session', async () => {
+			await registerSession('idle-3');
+			const server = sessionManagerOf(mcpServer).getServer('idle-3');
+
+			await vi.advanceTimersByTimeAsync(TTL + INTERVAL);
+
+			expect(server?.close).toHaveBeenCalled();
+		});
+
+		it('should not evict an idle SSE session (cleaned up via connection close instead)', async () => {
+			await registerSession('sse-1', 'sse');
+
+			await vi.advanceTimersByTimeAsync(TTL * 2);
+
+			expect(mcpServer.getTransport('sse-1')).toBeDefined();
+		});
+
+		it('should not evict a session that keeps being touched', async () => {
+			await registerSession('active-1');
+
+			// Stay active across more than a full idle window via periodic touches.
+			await vi.advanceTimersByTimeAsync(TTL - INTERVAL);
+			touch('active-1');
+			await vi.advanceTimersByTimeAsync(TTL - INTERVAL);
+
+			expect(mcpServer.getTransport('active-1')).toBeDefined();
+		});
+
+		it('should not evict a session with an in-flight pending response', async () => {
+			await registerSession('busy-1');
+			mcpServer.storePendingResponse('busy-1', 'msg-1');
+
+			await vi.advanceTimersByTimeAsync(TTL + INTERVAL);
+			expect(mcpServer.getTransport('busy-1')).toBeDefined();
+
+			mcpServer.removePendingResponse('busy-1', 'msg-1');
+			await vi.advanceTimersByTimeAsync(INTERVAL);
+			expect(mcpServer.getTransport('busy-1')).toBeUndefined();
+		});
+
+		it('should not evict a session with an in-flight direct-mode tool call', async () => {
+			await registerSession('busy-2');
+			// Direct mode tracks the running call only via resolveFunctions.
+			const resolveFunctions = (
+				mcpServer as unknown as { resolveFunctions: Record<string, () => void> }
+			).resolveFunctions;
+			resolveFunctions['busy-2_msg-1'] = () => {};
+
+			await vi.advanceTimersByTimeAsync(TTL + INTERVAL);
+			expect(mcpServer.getTransport('busy-2')).toBeDefined();
+
+			delete resolveFunctions['busy-2_msg-1'];
+			await vi.advanceTimersByTimeAsync(INTERVAL);
+			expect(mcpServer.getTransport('busy-2')).toBeUndefined();
+		});
+
+		it('should evict a session whose only traffic was a handshake (no in-flight tool call)', async () => {
+			await registerSession('handshake-1');
+
+			void mcpServer.handlePostMessage(
+				createMockRequestWithSessionId('handshake-1', createListToolsMessage()),
+				createMockResponse(),
+				[],
+			);
+
+			await vi.advanceTimersByTimeAsync(TTL + INTERVAL);
+
+			expect(mcpServer.getTransport('handshake-1')).toBeUndefined();
+		});
+
+		it('should stop evicting once the sweep is stopped', async () => {
+			await registerSession('idle-2');
+			mcpServer.stopSweep();
+
+			await vi.advanceTimersByTimeAsync(TTL * 2);
+
+			expect(mcpServer.getTransport('idle-2')).toBeDefined();
 		});
 	});
 
@@ -319,6 +689,91 @@ describe('McpServer', () => {
 	});
 
 	describe('handleWorkerResponse', () => {
+		it('should set isError on error results sent via SSE transport', async () => {
+			const sessionId = 'test-session';
+			const transport = createMockTransport(sessionId, 'sse');
+			const server = createMockServer();
+
+			const sessionManager = (
+				mcpServer as unknown as {
+					sessionManager: {
+						registerSession: (
+							s: string,
+							srv: unknown,
+							tr: unknown,
+							tools?: unknown[],
+						) => Promise<void>;
+					};
+				}
+			).sessionManager;
+			await sessionManager.registerSession(sessionId, server, transport, [
+				createMockTool('test-tool'),
+			]);
+
+			// Set up queue mode so handleWorkerResponse uses SSE fallback path
+			const queuedStrategy = new QueuedExecutionStrategy(mcpServer.getPendingCallsManager());
+			mcpServer.setExecutionStrategy(queuedStrategy);
+
+			// Worker returns an error result (queue mode error format)
+			const errorResult = { error: { message: 'Bad request', name: 'NodeApiError' } };
+			mcpServer.handleWorkerResponse(sessionId, 'msg-1', errorResult);
+
+			expect(transport.send).toHaveBeenCalledWith(
+				expect.objectContaining({
+					jsonrpc: '2.0',
+					id: 'msg-1',
+					result: expect.objectContaining({
+						isError: true,
+						content: [{ type: 'text', text: JSON.stringify(errorResult) }],
+					}),
+				}),
+			);
+		});
+
+		it('should not set isError on successful results sent via SSE transport', async () => {
+			const sessionId = 'test-session';
+			const transport = createMockTransport(sessionId, 'sse');
+			const server = createMockServer();
+
+			const sessionManager = (
+				mcpServer as unknown as {
+					sessionManager: {
+						registerSession: (
+							s: string,
+							srv: unknown,
+							tr: unknown,
+							tools?: unknown[],
+						) => Promise<void>;
+					};
+				}
+			).sessionManager;
+			await sessionManager.registerSession(sessionId, server, transport, [
+				createMockTool('test-tool'),
+			]);
+
+			const queuedStrategy = new QueuedExecutionStrategy(mcpServer.getPendingCallsManager());
+			mcpServer.setExecutionStrategy(queuedStrategy);
+
+			// Worker returns a successful result
+			const successResult = { data: 'value', count: 42 };
+			mcpServer.handleWorkerResponse(sessionId, 'msg-1', successResult);
+
+			expect(transport.send).toHaveBeenCalledWith(
+				expect.objectContaining({
+					jsonrpc: '2.0',
+					id: 'msg-1',
+					result: expect.objectContaining({
+						content: [{ type: 'text', text: JSON.stringify(successResult) }],
+					}),
+				}),
+			);
+			// Verify isError is NOT present
+			const sentMessage = transport.send.mock.calls[0][0] as unknown as {
+				result: { isError?: boolean };
+			};
+			expect(sentMessage.result.isError).toBeUndefined();
+		});
+
 		it('should handle list tools request marker', async () => {
 			const sessionId = 'test-session';
 			const transport = createMockTransport(sessionId, 'sse');
@@ -344,6 +799,327 @@ describe('McpServer', () => {
 
 			// Should have attempted to send tools list via transport
 			expect(transport.send).toHaveBeenCalled();
+		});
+	});
+
+	describe('credential gate', () => {
+		const sessionId = 'gated-session';
+		const requestId = 'req-1';
+		const callId = `${sessionId}_${requestId}`;
+
+		type CallToolHandler = (
+			request: { params: { name: string; arguments: Record<string, unknown> } },
+			extra: { sessionId?: string; requestId?: string },
+		) => Promise<{ isError?: boolean; content: Array<{ text: string }>; [k: string]: unknown }>;
+
+		// Capture the CallTool handler that setupHandlers registers on the server.
+		function getCallToolHandler(
+			server: ReturnType<typeof createMockServer> = createMockServer(),
+		): CallToolHandler {
+			(mcpServer as unknown as { setupHandlers(s: unknown): void }).setupHandlers(server);
+			const calls = (server.setRequestHandler as unknown as { mock: { calls: unknown[][] } }).mock
+				.calls;
+			// [0] = ListTools handler, [1] = CallTool handler
+			return calls[1][1] as CallToolHandler;
+		}
+
+		// A mock server whose client advertised URL-mode elicitation support.
+		function serverWithUrlElicitation(
+			elicitResults: Array<{ action: 'accept' | 'decline' | 'cancel' }> | Error = [
+				{ action: 'accept' },
+			],
+		): ReturnType<typeof createMockServer> {
+			const server = createMockServer();
+			(
+				server.getClientCapabilities as unknown as { mockReturnValue: (v: unknown) => void }
+			).mockReturnValue({ elicitation: { url: {} } });
+			const elicit = server.elicitInput as unknown as {
+				mockReset: () => void;
+				mockRejectedValue: (e: unknown) => void;
+				mockResolvedValueOnce: (v: unknown) => unknown;
+			};
+			elicit.mockReset();
+			if (elicitResults instanceof Error) {
+				elicit.mockRejectedValue(elicitResults);
+			} else {
+				elicitResults.forEach((r) => elicit.mockResolvedValueOnce(r));
+			}
+			return server;
+		}
+
+		async function registerToolSession(tool: ReturnType<typeof createMockTool>): Promise<void> {
+			const transport = createMockTransport(sessionId);
+			await (
+				mcpServer as unknown as {
+					sessionManager: {
+						registerSession: (
+							s: string,
+							srv: unknown,
+							tr: unknown,
+							tools?: unknown[],
+						) => Promise<void>;
+					};
+				}
+			).sessionManager.registerSession(sessionId, createMockServer(), transport, [tool]);
+		}
+
+		function setPendingGate(result: unknown): void {
+			(mcpServer as unknown as { pendingGateResults: Record<string, unknown> }).pendingGateResults[
+				callId
+			] = result;
+		}
+
+		it('short-circuits with auth URLs and does not execute when not ready', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						resolverId: 'n8n',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize',
+					},
+				],
+			});
+
+			const handler = getCallToolHandler();
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toContain('https://n8n.test/authorize');
+			expect(tool.invoke).not.toHaveBeenCalled();
+		});
+
+		it('executes the tool when the gate result is ready', async () => {
+			const tool = createMockTool('get_weather', { invokeReturn: { ok: true } });
+			await registerToolSession(tool);
+			setPendingGate({ readyToExecute: true, credentials: [] });
+
+			const handler = getCallToolHandler();
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: { city: 'X' } } },
+				{ sessionId, requestId },
+			);
+
+			expect(tool.invoke).toHaveBeenCalledWith({ city: 'X' });
+			expect(result.isError).toBeUndefined();
+			expect(result.content[0].text).toBe(JSON.stringify({ ok: true }));
+		});
+
+		it('executes normally when no gate result is present for the call', async () => {
+			const tool = createMockTool('get_weather', { invokeReturn: { ok: true } });
+			await registerToolSession(tool);
+
+			const handler = getCallToolHandler();
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(tool.invoke).toHaveBeenCalled();
+			expect(result.content[0].text).toBe(JSON.stringify({ ok: true }));
+		});
+
+		it('falls back to text (no elicitation) when the client lacks the capability', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize',
+					},
+				],
+			});
+
+			// Default mock server advertises no elicitation capability.
+			const server = createMockServer();
+			const handler = getCallToolHandler(server);
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(server.elicitInput).not.toHaveBeenCalled();
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toContain('https://n8n.test/authorize');
+			expect(tool.invoke).not.toHaveBeenCalled();
+		});
+
+		it('drives connection through URL elicitation when the client supports it', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize/c1',
+					},
+				],
+			});
+
+			const server = serverWithUrlElicitation([{ action: 'accept' }]);
+			const handler = getCallToolHandler(server);
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(server.elicitInput).toHaveBeenCalledTimes(1);
+			const elicitParams = (server.elicitInput as unknown as { mock: { calls: unknown[][] } }).mock
+				.calls[0][0] as { mode: string; url: string; elicitationId: string };
+			expect(elicitParams.mode).toBe('url');
+			expect(elicitParams.url).toBe('https://n8n.test/authorize/c1');
+			expect(elicitParams.elicitationId).toBeTruthy();
+			// The raw URL is not relayed as tool text; the client surfaced it itself.
+			expect(result.content[0].text).not.toContain('https://n8n.test/authorize/c1');
+			expect(result.content[0].text).toContain('Slack (slackOAuth2Api)');
+			expect(result.isError).toBeUndefined();
+			expect(tool.invoke).not.toHaveBeenCalled();
+		});
+
+		it('elicits once per missing credential', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize/c1',
+					},
+					{
+						credentialId: 'c2',
+						credentialName: 'Notion',
+						credentialType: 'notionOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize/c2',
+					},
+				],
+			});
+
+			const server = serverWithUrlElicitation([{ action: 'accept' }, { action: 'accept' }]);
+			const handler = getCallToolHandler(server);
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(server.elicitInput).toHaveBeenCalledTimes(2);
+			expect(result.isError).toBeUndefined();
+			expect(result.content[0].text).toContain('Slack (slackOAuth2Api)');
+			expect(result.content[0].text).toContain('Notion (notionOAuth2Api)');
+		});
+
+		it('flags an error when the user declines an elicitation', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize/c1',
+					},
+				],
+			});
+
+			const server = serverWithUrlElicitation([{ action: 'decline' }]);
+			const handler = getCallToolHandler(server);
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toContain('still need to be connected');
+			expect(tool.invoke).not.toHaveBeenCalled();
+		});
+
+		it('falls back to text when elicitation throws', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize/c1',
+					},
+				],
+			});
+
+			const server = serverWithUrlElicitation(new Error('client closed'));
+			const handler = getCallToolHandler(server);
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			expect(server.elicitInput).toHaveBeenCalled();
+			expect(result.isError).toBe(true);
+			// Fallback response carries the raw URL.
+			expect(result.content[0].text).toContain('https://n8n.test/authorize/c1');
+		});
+
+		it('falls back to text when a missing credential has no connection URL', async () => {
+			const tool = createMockTool('get_weather');
+			await registerToolSession(tool);
+			setPendingGate({
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'c1',
+						credentialName: 'Slack',
+						credentialType: 'slackOAuth2Api',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize/c1',
+					},
+					{
+						credentialId: 'c2',
+						credentialName: 'Header Auth',
+						credentialType: 'httpHeaderAuth',
+						status: 'missing',
+					},
+				],
+			});
+
+			const server = serverWithUrlElicitation([{ action: 'accept' }]);
+			const handler = getCallToolHandler(server);
+			const result = await handler(
+				{ params: { name: 'get_weather', arguments: {} } },
+				{ sessionId, requestId },
+			);
+
+			// Can't fully drive connection via elicitation, so use the text path.
+			expect(server.elicitInput).not.toHaveBeenCalled();
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toContain('https://n8n.test/authorize/c1');
+			expect(result.content[0].text).toContain('Header Auth (httpHeaderAuth): not connected');
 		});
 	});
 });

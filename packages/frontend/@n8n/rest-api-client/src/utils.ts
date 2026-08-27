@@ -1,32 +1,23 @@
-import { BROWSER_ID_STORAGE_KEY } from '@n8n/constants';
+import { getBrowserId } from '@n8n/constants';
 import { assert } from '@n8n/utils/assert';
 import type { AxiosRequestConfig, Method, RawAxiosRequestHeaders } from 'axios';
 import axios from 'axios';
-import { ApplicationError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import type { GenericValue, IDataObject } from 'n8n-workflow';
 
 import type { IRestApiContext } from './types';
 
-const getBrowserId = () => {
-	let browserId = localStorage.getItem(BROWSER_ID_STORAGE_KEY);
-	if (!browserId) {
-		browserId = crypto.randomUUID();
-		localStorage.setItem(BROWSER_ID_STORAGE_KEY, browserId);
-	}
-	return browserId;
-};
-
 export const NO_NETWORK_ERROR_CODE = 999;
 export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';
 
-export class MfaRequiredError extends ApplicationError {
+export class MfaRequiredError extends Error {
 	constructor() {
 		super('MFA is required to access this resource. Please set up MFA in your user settings.');
 		this.name = 'MfaRequiredError';
 	}
 }
 
-export class ResponseError extends ApplicationError {
+export class ResponseError extends Error {
 	// The HTTP status code of response
 	httpStatusCode?: number;
 
@@ -81,6 +72,14 @@ export class ResponseError extends ApplicationError {
 			this.hint = hint;
 		}
 	}
+}
+
+export type UnauthorizedHandler = (baseURL: string) => void;
+let unauthorizedHandler: UnauthorizedHandler | undefined;
+
+// Called on every 401 from request() below, with its baseURL, so non-n8n hosts can be ignored.
+export function setUnauthorizedHandler(handler: UnauthorizedHandler): void {
+	unauthorizedHandler = handler;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -144,6 +143,12 @@ export async function request(config: {
 		if (errorResponseData?.mfaRequired === true) {
 			throw new MfaRequiredError();
 		}
+
+		// After mfaRequired: that 401 means valid-but-unenrolled, not expired.
+		if (error.response?.status === 401) {
+			unauthorizedHandler?.(baseURL);
+		}
+
 		if (errorResponseData?.message !== undefined) {
 			if (errorResponseData.name === 'NodeApiError') {
 				errorResponseData.httpStatusCode = error.response.status;
@@ -271,14 +276,22 @@ export async function streamRequest<T extends object>(
 			async function readStream() {
 				const { done, value } = await reader.read();
 				if (done) {
-					if (response.ok) {
-						onDone?.();
-					} else {
+					if (!response.ok) {
 						onErrorOnce?.(
 							new ResponseError(response.statusText, {
 								httpStatusCode: response.status,
 							}),
 						);
+					} else if (buffer.trim()) {
+						// The stream ended with leftover content that never parsed as JSON.
+						// A JSON-like fragment means the stream was cut off mid-chunk;
+						// anything else is a plain-text error body from an upstream
+						// service — surface its content instead of silently dropping it.
+						const leftover = buffer.trim();
+						const message = /^[[{]/.test(leftover) ? 'Connection lost' : leftover.slice(0, 256);
+						onErrorOnce?.(new Error(message));
+					} else {
+						onDone?.();
 					}
 					return;
 				}

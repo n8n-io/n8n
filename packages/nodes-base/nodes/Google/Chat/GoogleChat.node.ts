@@ -201,7 +201,6 @@ export class GoogleChat implements INodeType {
 						{
 							algorithm: 'RS256',
 							header: {
-								kid: privateKey,
 								typ: 'JWT',
 								alg: 'RS256',
 							},

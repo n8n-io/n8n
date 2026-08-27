@@ -1,9 +1,11 @@
 // Different LLMConfig type for this file - specific to LLM providers
+import type * as LangchainAnthropic from '@langchain/anthropic';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type * as LangchainOpenAI from '@langchain/openai';
+import type { CustomFetch } from '@n8n/backend-network/transport';
+import { lazyImport } from '@n8n/utils/lazy-import';
 
 import { MAX_OUTPUT_TOKENS } from '@/constants';
-
-import { getProxyAgent } from './utils/http-proxy-agent';
 
 /**
  * Configuration for LLM provider initialization.
@@ -12,10 +14,19 @@ export interface LLMProviderConfig {
 	apiKey: string;
 	baseUrl?: string;
 	headers?: Record<string, string>;
+	/**
+	 * Proxy-aware `fetch` supplied by the caller, passed to the provider SDK's
+	 * `fetch` option. A `fetch` replacement (not an undici `dispatcher`) is used
+	 * so it stays compatible with the SDKs' bundled undici version. When omitted
+	 * the SDK uses its default transport.
+	 */
+	fetch?: CustomFetch;
 }
 
 export const gpt52 = async (config: LLMProviderConfig) => {
-	const { ChatOpenAI } = await import('@langchain/openai');
+	const { ChatOpenAI } = await lazyImport<typeof LangchainOpenAI>(
+		async () => await import('@langchain/openai'),
+	);
 	return new ChatOpenAI({
 		model: 'gpt-5.2-2025-12-11',
 		apiKey: config.apiKey,
@@ -24,15 +35,15 @@ export const gpt52 = async (config: LLMProviderConfig) => {
 		configuration: {
 			baseURL: config.baseUrl,
 			defaultHeaders: config.headers,
-			fetchOptions: {
-				dispatcher: getProxyAgent(config.baseUrl ?? 'https://api.openai.com/v1'),
-			},
+			fetch: config.fetch,
 		},
 	});
 };
 
 export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
-	const { ChatAnthropic } = await import('@langchain/anthropic');
+	const { ChatAnthropic } = await lazyImport<typeof LangchainAnthropic>(
+		async () => await import('@langchain/anthropic'),
+	);
 	const model = new ChatAnthropic({
 		model: 'claude-sonnet-4-5-20250929',
 		apiKey: config.apiKey,
@@ -41,9 +52,7 @@ export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
 		anthropicApiUrl: config.baseUrl,
 		clientOptions: {
 			defaultHeaders: config.headers,
-			fetchOptions: {
-				dispatcher: getProxyAgent(config.baseUrl),
-			},
+			fetch: config.fetch,
 		},
 	});
 
@@ -53,7 +62,9 @@ export const anthropicClaudeSonnet45 = async (config: LLMProviderConfig) => {
 	return model;
 };
 export const anthropicClaudeSonnet45Think = async (config: LLMProviderConfig) => {
-	const { ChatAnthropic } = await import('@langchain/anthropic');
+	const { ChatAnthropic } = await lazyImport<typeof LangchainAnthropic>(
+		async () => await import('@langchain/anthropic'),
+	);
 	const model = new ChatAnthropic({
 		model: 'claude-sonnet-4-5-20250929',
 		apiKey: config.apiKey,
@@ -65,9 +76,7 @@ export const anthropicClaudeSonnet45Think = async (config: LLMProviderConfig) =>
 		},
 		clientOptions: {
 			defaultHeaders: config.headers,
-			fetchOptions: {
-				dispatcher: getProxyAgent(config.baseUrl),
-			},
+			fetch: config.fetch,
 		},
 	});
 
@@ -79,7 +88,9 @@ export const anthropicClaudeSonnet45Think = async (config: LLMProviderConfig) =>
 };
 
 export const anthropicHaiku45 = async (config: LLMProviderConfig) => {
-	const { ChatAnthropic } = await import('@langchain/anthropic');
+	const { ChatAnthropic } = await lazyImport<typeof LangchainAnthropic>(
+		async () => await import('@langchain/anthropic'),
+	);
 	const model = new ChatAnthropic({
 		model: 'claude-haiku-4-5-20251001',
 		apiKey: config.apiKey,
@@ -88,9 +99,7 @@ export const anthropicHaiku45 = async (config: LLMProviderConfig) => {
 		anthropicApiUrl: config.baseUrl,
 		clientOptions: {
 			defaultHeaders: config.headers,
-			fetchOptions: {
-				dispatcher: getProxyAgent(config.baseUrl),
-			},
+			fetch: config.fetch,
 		},
 	});
 
@@ -101,7 +110,9 @@ export const anthropicHaiku45 = async (config: LLMProviderConfig) => {
 };
 
 export const anthropicClaudeOpus45 = async (config: LLMProviderConfig) => {
-	const { ChatAnthropic } = await import('@langchain/anthropic');
+	const { ChatAnthropic } = await lazyImport<typeof LangchainAnthropic>(
+		async () => await import('@langchain/anthropic'),
+	);
 	const model = new ChatAnthropic({
 		model: 'claude-opus-4-5-20251101',
 		apiKey: config.apiKey,
@@ -110,9 +121,7 @@ export const anthropicClaudeOpus45 = async (config: LLMProviderConfig) => {
 		anthropicApiUrl: config.baseUrl,
 		clientOptions: {
 			defaultHeaders: config.headers,
-			fetchOptions: {
-				dispatcher: getProxyAgent(config.baseUrl),
-			},
+			fetch: config.fetch,
 		},
 	});
 
@@ -134,7 +143,9 @@ const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
  */
 function createOpenRouterModel(modelName: string) {
 	return async (config: LLMProviderConfig) => {
-		const { ChatOpenAI } = await import('@langchain/openai');
+		const { ChatOpenAI } = await lazyImport<typeof LangchainOpenAI>(
+			async () => await import('@langchain/openai'),
+		);
 		return new ChatOpenAI({
 			model: modelName,
 			apiKey: config.apiKey,
@@ -147,9 +158,7 @@ function createOpenRouterModel(modelName: string) {
 					'HTTP-Referer': 'https://n8n.io',
 					'X-Title': 'n8n AI Workflow Builder',
 				},
-				fetchOptions: {
-					dispatcher: getProxyAgent(OPENROUTER_BASE_URL),
-				},
+				fetch: config.fetch,
 			},
 		});
 	};

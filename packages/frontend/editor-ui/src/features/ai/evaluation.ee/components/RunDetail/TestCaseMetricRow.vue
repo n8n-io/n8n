@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import type { MetricScale } from '@n8n/api-types';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import {
 	formatMetricLabel,
@@ -13,6 +14,7 @@ const props = defineProps<{
 	name: string;
 	value: number | undefined;
 	category?: MetricCategory;
+	scale?: MetricScale;
 	sourceNodeName?: string;
 	errored?: boolean;
 	errorMessage?: string;
@@ -22,10 +24,14 @@ const locale = useI18n();
 
 const formattedLabel = computed(() => formatMetricLabel(props.name));
 const formattedPercent = computed(() =>
-	formatMetricPercent(props.value, { category: props.category }),
+	formatMetricPercent(props.value, {
+		key: props.name,
+		category: props.category,
+		scale: props.scale,
+	}),
 );
 const formattedRawScore = computed(() =>
-	formatMetricRawScore(props.value, { category: props.category }),
+	formatMetricRawScore(props.value, { category: props.category, scale: props.scale }),
 );
 const tooltipContent = computed(() =>
 	formattedRawScore.value ? `${formattedPercent.value} • ${formattedRawScore.value}` : '',

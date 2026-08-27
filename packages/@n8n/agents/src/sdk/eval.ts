@@ -1,5 +1,5 @@
 import { filterLlmMessages } from './message';
-import { AgentRuntime } from '../runtime/agent-runtime';
+import { AgentRuntime } from '../runtime/loop/agent-runtime';
 import type { BuiltEval, CheckFn, EvalInput, EvalScore, JudgeFn, JudgeHandlerFn } from '../types';
 import type { ModelConfig } from '../types/sdk/agent';
 import type { AgentMessage } from '../types/sdk/message';

@@ -2,14 +2,14 @@ import type { Component } from 'vue';
 import { computed, markRaw, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { STORES } from '@n8n/stores';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { DynamicBanner } from '@n8n/rest-api-client/api/dynamic-banners';
 import { getDynamicBanners } from '@n8n/rest-api-client/api/dynamic-banners';
 import type { BannerName } from '@n8n/api-types';
 import DynamicBannerComponent from '@/features/shared/banners/components/banners/DynamicBanner.vue';
 import { dismissBannerPermanently } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 
 export const useBannersStore = defineStore(STORES.BANNERS, () => {
 	const settingsStore = useSettingsStore();
@@ -48,9 +48,12 @@ export const useBannersStore = defineStore(STORES.BANNERS, () => {
 					deploymentType,
 					instanceId: settingsStore.settings.instanceId,
 					planName: settingsStore.settings.license?.planName,
+					userId: usersStore.currentUser?.id,
 					userCreatedAt: usersStore.currentUser?.createdAt,
 					isOwner: usersStore.currentUser?.isOwner,
 					role: usersStore.currentUser?.role,
+					publishedWorkflowCount:
+						settingsStore.settings.dynamicBanners.filters.publishedWorkflowCount,
 				})
 			).map((item) => ({
 				...item,

@@ -1,5 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
-import { regions } from './types';
+import { regions } from './regions';
 
 export const awsRegionProperty: INodeProperties = {
 	displayName: 'Region',
@@ -115,5 +115,33 @@ export const awsCustomEndpoints: INodeProperties[] = [
 		},
 		default: '',
 		placeholder: 'https://ssm.{region}.amazonaws.com',
+	},
+	{
+		displayName: 'Bedrock Endpoint',
+		name: 'bedrockEndpoint',
+		description:
+			'Control-plane endpoint used to list Bedrock models (e.g. in the AWS Bedrock model dropdowns). If you route Bedrock through a VPC endpoint (PrivateLink) without Private DNS, set the endpoint here. Leave blank to use the default endpoint.',
+		type: 'string',
+		displayOptions: {
+			show: {
+				customEndpoints: [true],
+			},
+		},
+		default: '',
+		placeholder: 'https://bedrock.{region}.amazonaws.com',
+	},
+	{
+		displayName: 'Bedrock Runtime Endpoint',
+		name: 'bedrockRuntimeEndpoint',
+		description:
+			'Runtime endpoint used for Bedrock inference (chat and embeddings). If you route Bedrock through a VPC endpoint (PrivateLink) without Private DNS, set the endpoint here. Leave blank to use the default endpoint.',
+		type: 'string',
+		displayOptions: {
+			show: {
+				customEndpoints: [true],
+			},
+		},
+		default: '',
+		placeholder: 'https://bedrock-runtime.{region}.amazonaws.com',
 	},
 ];

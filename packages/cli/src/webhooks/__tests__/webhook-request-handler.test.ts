@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { type Response } from 'express';
-import { mock } from 'jest-mock-extended';
 import { isWebhookHtmlSandboxingDisabled, getHtmlSandboxCSP } from 'n8n-core';
 import { OperationalError, randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
@@ -15,10 +15,10 @@ import type {
 	WebhookRequest,
 } from '@/webhooks/webhook.types';
 
-jest.mock('n8n-core', () => ({
-	...jest.requireActual('n8n-core'),
-	isWebhookHtmlSandboxingDisabled: jest.fn().mockReturnValue(false),
-	getHtmlSandboxCSP: jest.fn().mockReturnValue('sandbox allow-downloads allow-forms allow-modals'),
+vi.mock('n8n-core', async () => ({
+	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
+	isWebhookHtmlSandboxingDisabled: vi.fn().mockReturnValue(false),
+	getHtmlSandboxCSP: vi.fn().mockReturnValue('sandbox allow-downloads allow-forms allow-modals'),
 }));
 
 describe('WebhookRequestHandler', () => {
@@ -30,7 +30,7 @@ describe('WebhookRequestHandler', () => {
 	) => Promise<void>;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should throw for unsupported methods', async () => {
@@ -335,7 +335,7 @@ describe('WebhookRequestHandler', () => {
 		});
 
 		it('should not set CSP sandbox header when sandboxing is disabled', async () => {
-			jest.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValueOnce(true);
+			vi.mocked(isWebhookHtmlSandboxingDisabled).mockReturnValueOnce(true);
 
 			const req = mock<WebhookRequest>({
 				path: '/',

@@ -3,9 +3,10 @@ import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { readSheet } from '../../Google/Sheet/v2/actions/utils/readOperation';
 import { GoogleSheet } from '../../Google/Sheet/v2/helpers/GoogleSheet';
 import { getFilteredResults } from '../utils/evaluationTriggerUtils';
+import type { Mock } from 'vitest';
 
-jest.mock('../../Google/Sheet/v2/actions/utils/readOperation', () => ({
-	readSheet: jest.fn(),
+vi.mock('../../Google/Sheet/v2/actions/utils/readOperation', () => ({
+	readSheet: vi.fn(),
 }));
 
 describe('getFilteredResults', () => {
@@ -15,14 +16,14 @@ describe('getFilteredResults', () => {
 	beforeEach(() => {
 		// Mock the `this` context
 		mockThis = {
-			getNode: jest.fn().mockReturnValue({ typeVersion: 1 }),
+			getNode: vi.fn().mockReturnValue({ typeVersion: 1 }),
 		} as unknown as IExecuteFunctions;
 
 		// Mock the GoogleSheet instance
 		mockGoogleSheet = new GoogleSheet('mockSpreadsheetId', mockThis);
 
 		// Reset mocks before each test
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return filtered results based on endingRow', async () => {
@@ -32,7 +33,7 @@ describe('getFilteredResults', () => {
 		const startingRow = 1;
 		const endingRow = 3;
 
-		(readSheet as jest.Mock).mockResolvedValue([
+		(readSheet as Mock).mockResolvedValue([
 			{ json: { row_number: 1, data: 'Row 1' } },
 			{ json: { row_number: 2, data: 'Row 2' } },
 			{ json: { row_number: 3, data: 'Row 3' } },
@@ -80,7 +81,7 @@ describe('getFilteredResults', () => {
 		const startingRow = 1;
 		const endingRow = 0;
 
-		(readSheet as jest.Mock).mockResolvedValue([
+		(readSheet as Mock).mockResolvedValue([
 			{ json: { row_number: 1, data: 'Row 1' } },
 			{ json: { row_number: 2, data: 'Row 2' } },
 		]);

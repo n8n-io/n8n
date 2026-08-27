@@ -18,6 +18,7 @@ export type DocumentGetAllOptions = Partial<{
 	max_concurrent_shard_requests: number;
 	pre_filter_shard_size: number;
 	query: string;
+	queryParameters: unknown;
 	request_cache: boolean;
 	routing: string;
 	search_type: 'query_then_fetch' | 'dfs_query_then_fetch';

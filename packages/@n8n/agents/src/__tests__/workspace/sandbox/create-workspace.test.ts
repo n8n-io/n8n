@@ -1,4 +1,4 @@
-vi.mock('@n8n/utils', () => ({
+vi.mock('@n8n/utils/get-jwt-expiry', () => ({
 	getJwtExpiry: vi.fn(() => undefined),
 }));
 
@@ -57,6 +57,37 @@ describe('createSandbox', () => {
 		);
 	});
 
+	it('passes stop, archive and delete intervals through to the DaytonaSandbox', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'daytona',
+			daytonaApiUrl: 'https://api.daytona.io',
+			daytonaApiKey: 'test-key',
+			autoStopInterval: 30,
+			autoArchiveInterval: 1440,
+			autoDeleteInterval: 43_200,
+			timeout: 60_000,
+		};
+
+		const result = await createSandbox(config);
+
+		expect(
+			(
+				result as unknown as {
+					options: {
+						autoStopInterval?: number;
+						autoArchiveInterval?: number;
+						autoDeleteInterval?: number;
+					};
+				}
+			).options,
+		).toMatchObject({
+			autoStopInterval: 30,
+			autoArchiveInterval: 1440,
+			autoDeleteInterval: 43_200,
+		});
+	});
+
 	it('omits ephemeral from the DaytonaSandbox when not configured', async () => {
 		const config: SandboxConfig = {
 			enabled: true,
@@ -102,6 +133,21 @@ describe('createSandbox', () => {
 
 		expect(result).toBeInstanceOf(N8nSandboxServiceSandbox);
 		expect(result?.provider).toBe('n8n-sandbox');
+	});
+
+	it('passes the configured id through to the N8nSandboxServiceSandbox', async () => {
+		const config: SandboxConfig = {
+			enabled: true,
+			provider: 'n8n-sandbox',
+			serviceUrl: 'https://sandbox.example.com',
+			id: '11111111-1111-4111-8111-111111111111',
+			timeout: 45_000,
+		};
+
+		const result = await createSandbox(config);
+
+		expect(result).toBeInstanceOf(N8nSandboxServiceSandbox);
+		expect(result?.id).toBe('11111111-1111-4111-8111-111111111111');
 	});
 
 	it('does not include sandbox secrets in unsupported provider errors', async () => {

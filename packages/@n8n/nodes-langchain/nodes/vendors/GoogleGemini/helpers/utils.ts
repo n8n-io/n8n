@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { extension } from 'mime-types';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
@@ -128,16 +127,19 @@ async function getFileStreamFromUrlOrBinary(
 	qs?: IDataObject,
 ): Promise<FileStreamData | FileBufferData> {
 	if (downloadUrl) {
-		const downloadResponse = await axios.get(downloadUrl, {
-			params: qs,
-			responseType: 'stream',
-		});
+		const downloadResponse = (await this.helpers.httpRequest({
+			method: 'GET',
+			url: downloadUrl,
+			qs,
+			returnFullResponse: true,
+			encoding: 'stream',
+		})) as { body: Stream; headers: IDataObject };
 
 		const contentType = downloadResponse.headers['content-type'] as string | undefined;
 		const mimeType = contentType?.split(';')?.[0] ?? fallbackMimeType ?? 'application/octet-stream';
 
 		return {
-			stream: downloadResponse.data as Stream,
+			stream: downloadResponse.body,
 			mimeType,
 		};
 	}

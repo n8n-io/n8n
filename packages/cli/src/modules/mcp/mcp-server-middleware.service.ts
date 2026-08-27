@@ -1,17 +1,22 @@
 import { AuthenticatedRequest } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NextFunction, Response, Request } from 'express';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
+import {
+	OAuthTokenVerifierProxy,
+	type TelemetryAuthContext,
+	type UserWithContext,
+} from '@/services/oauth-token-verifier-proxy.service';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from './mcp-api-key.service';
-import { McpOAuthTokenService } from './mcp-oauth-token.service';
+import { McpProtectedResource } from './mcp-protected-resource';
 import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
-import type { TelemetryAuthContext, UserWithContext } from './mcp.types';
-import { getClientInfo } from './mcp.utils';
+import type { McpAuthenticatedRequest } from './mcp.types';
+import { getClientInfo, getProtocolVersion } from './mcp.utils';
 
 /**
  * MCP Server Middleware Service
@@ -22,7 +27,8 @@ import { getClientInfo } from './mcp.utils';
 export class McpServerMiddlewareService {
 	constructor(
 		private readonly mcpServerApiKeyService: McpServerApiKeyService,
-		private readonly mcpAuthTokenService: McpOAuthTokenService,
+		private readonly oauthTokenVerifier: OAuthTokenVerifierProxy,
+		private readonly mcpProtectedResource: McpProtectedResource,
 		private readonly jwtService: JwtService,
 		private readonly telemetry: Telemetry,
 	) {}
@@ -47,8 +53,8 @@ export class McpServerMiddlewareService {
 		}
 
 		if (decoded?.meta?.isOAuth === true) {
-			const expectedAudience = this.mcpAuthTokenService.getCanonicalResourceUrl();
-			return await this.mcpAuthTokenService.verifyOAuthAccessToken(token, expectedAudience);
+			const expectedAudience = this.mcpProtectedResource.getResourceUrl();
+			return await this.oauthTokenVerifier.verifyOAuthAccessToken(token, expectedAudience);
 		}
 
 		return await this.mcpServerApiKeyService.verifyApiKey(token);
@@ -93,8 +99,10 @@ export class McpServerMiddlewareService {
 			}
 
 			(req as AuthenticatedRequest).user = user;
-			(req as AuthenticatedRequest & { mcpAuthType?: UserWithContext['authType'] }).mcpAuthType =
-				result.authType;
+			const mcpReq = req as McpAuthenticatedRequest;
+			mcpReq.mcpCaller = result.caller;
+			// undefined for API keys = not scope-bearing → full tool access
+			mcpReq.mcpScopes = result.scopes;
 
 			next();
 		};
@@ -115,8 +123,11 @@ export class McpServerMiddlewareService {
 
 	private responseWithUnauthorized(res: Response, req: Request, context?: TelemetryAuthContext) {
 		this.trackUnauthorizedEvent(req, context);
-		// RFC 6750 Section 3: Include WWW-Authenticate header for 401 responses
-		res.header('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+		// RFC 6750 Section 3 / RFC 9728 Section 5.1: include the WWW-Authenticate
+		// header on 401s, advertising the protected-resource metadata URL so
+		// clients discover it directly instead of guessing the well-known path.
+		const prmUrl = this.mcpProtectedResource.getProtectedResourceMetadataUrl();
+		res.header('WWW-Authenticate', `Bearer realm="n8n MCP Server", resource_metadata="${prmUrl}"`);
 		res.status(401).send({
 			message: `${UNAUTHORIZED_ERROR_MESSAGE}${context?.error_details ? ': ' + context.error_details : ''}`,
 		});
@@ -129,6 +140,7 @@ export class McpServerMiddlewareService {
 			error: UNAUTHORIZED_ERROR_MESSAGE,
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
+			protocol_version: getProtocolVersion(req),
 			...context,
 		};
 		this.telemetry.track(USER_CONNECTED_TO_MCP_EVENT, payload);

@@ -1,3 +1,4 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	NodeOperationError,
 	NodeConnectionTypes,
@@ -7,7 +8,6 @@ import {
 	type INode,
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
 	AI_TRANSFORM_JS_CODE,
-	ensureError,
 } from 'n8n-workflow';
 
 import { JsTaskRunnerSandbox } from '../Code/JsTaskRunnerSandbox';
@@ -21,6 +21,7 @@ export class AiTransform implements INodeType {
 		group: ['transform'],
 		version: 1,
 		description: 'Modify data based on instructions written in plain english',
+		hidden: true,
 		defaults: {
 			name: 'AI Transform',
 		},

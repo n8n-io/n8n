@@ -21,14 +21,36 @@
  *
  * Outputs (under <package-dir>/reports/mutation/):
  *   raw.json      — full Stryker Mutation Testing Elements report
- *   raw.html      — Stryker's HTML report (browse for human review)
- *   summary.json  — compact actionable summary (this script)
+ *   summary.json  — compact actionable summary (this script). Emitted even on a
+ *                   non-zero / timed-out Stryker exit, as long as Stryker wrote
+ *                   a (partial) raw.json — a run that can't finish still surfaces
+ *                   the survivors it found rather than dying with nothing.
+ *
+ * Each summary file row also carries a `coverage` fraction in [0,1] — the share
+ * of mutants a test actually exercised — so the global picker can read
+ * `(1 − coverage)` from the ledger next cycle (DEVP-496). `emit-payload.mjs`
+ * forwards it onto the ledger row.
+ *
+ * Gate semantics:
+ *   A run passes only when the mutation score meets `STRYKER_THRESHOLD` AND
+ *   every remaining mutant is either killed or explicitly justified via a
+ *   `// Stryker disable …` comment (status `Ignored`). Any `Survived` or
+ *   `NoCoverage` mutant is an unjustified survivor and fails the gate even
+ *   above the threshold — raw score alone counts low-value and equivalent
+ *   mutants in the denominator and lets agents pad the suite to 80%. See
+ *   DEVP-442.
  *
  * Exit codes:
- *   0  — mutation score ≥ threshold
- *   1  — score < threshold (AI loop should iterate)
+ *   0  — gate passed (score ≥ threshold AND no unjustified survivors)
+ *   1  — gate failed: score < threshold OR at least one Survived/NoCoverage
+ *        mutant remains (AI loop should iterate), OR the run was partial (a
+ *        non-zero Stryker exit with a salvaged raw.json — untested mutants
+ *        could be survivors, so a partial run never passes). Also used when
+ *        Stryker reports "No tests were executed" — the file has no covering
+ *        tests, so we synthesise a score-0 red summary rather than hard-failing
+ *        the job. The ledger then records the gap and the picker advances.
  *   2  — usage / config error
- *   3  — Stryker run failed
+ *   3  — Stryker run failed for any other reason (instrumentation crash etc.)
  */
 
 import { spawn } from 'node:child_process';
@@ -49,24 +71,188 @@ function die(code, msg) {
 	process.exit(code);
 }
 
-// --- args: one positional target + --package-dir (required) + --config (optional)
-const argv = process.argv.slice(2);
-let packageDirArg;
-let configArg;
-let targetArg;
-for (let i = 0; i < argv.length; i++) {
-	const a = argv[i];
-	if (a === '--package-dir') packageDirArg = argv[++i];
-	else if (a === '--config') configArg = argv[++i];
-	else if (!a.startsWith('--') && targetArg === undefined) targetArg = a;
+// --- pure helpers (exported for the unit tests; no I/O, no process state) ---
+
+function emptyCounts() {
+	return {
+		killed: 0,
+		survived: 0,
+		noCoverage: 0,
+		timeout: 0,
+		compileError: 0,
+		runtimeError: 0,
+		ignored: 0,
+	};
 }
 
-const usage =
-	'Usage: node scripts/mutation-health/mutate.mjs <file> [--package-dir <repo-rel-path>] [--config <path>]\n' +
-	'  - repo-relative file → package is inferred: node scripts/mutation-health/mutate.mjs packages/@n8n/crdt/src/utils.ts\n' +
-	'  - package-relative file → pass --package-dir:  node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow';
+export function sliceFromLocation(source, loc) {
+	const lines = source.split('\n');
+	const { start, end } = loc;
+	if (start.line === end.line) {
+		return lines[start.line - 1].slice(start.column, end.column);
+	}
+	return [
+		lines[start.line - 1].slice(start.column),
+		...lines.slice(start.line, end.line - 1),
+		lines[end.line - 1].slice(0, end.column),
+	].join('\n');
+}
 
-if (!targetArg) die(2, `Missing mutate target.\n${usage}`);
+export function scoreFromCounts(c) {
+	const detected = c.killed + c.timeout;
+	const valid = c.killed + c.timeout + c.survived + c.noCoverage;
+	return valid === 0 ? 0 : +((detected / valid) * 100).toFixed(2);
+}
+
+/**
+ * Per-file line-coverage proxy distilled from the mutant census: the fraction
+ * of mutants a test actually exercised (anything that ran) over those that
+ * could be covered (ran + no-coverage). Ignored and compile-error mutants
+ * never ran for reasons unrelated to coverage, so they sit outside the ratio.
+ *
+ * Returns a fraction in [0,1] — clamped defensively. The global picker reads it
+ * back from the ledger as the `(1 − coverage)` term of its value formula, so a
+ * file no test touches (coverage 0) gets the strongest urge to be scored.
+ */
+export function coverageFromCounts(c) {
+	const covered = (c.killed ?? 0) + (c.survived ?? 0) + (c.timeout ?? 0) + (c.runtimeError ?? 0);
+	const total = covered + (c.noCoverage ?? 0);
+	if (total === 0) return 0;
+	return +Math.min(1, Math.max(0, covered / total)).toFixed(4);
+}
+
+// A run is only "passing" when the score meets the floor AND every unkilled
+// mutant has been explicitly justified (Ignored via a Stryker disable
+// comment). Any Survived/NoCoverage mutant is unjustified by definition.
+export function gatePassed(score, counts, threshold) {
+	return score >= threshold && counts.survived === 0 && counts.noCoverage === 0;
+}
+
+/**
+ * Build the compact summary from a raw Stryker Mutation Testing Elements
+ * report. Pure: takes the parsed report plus run metadata, returns the summary
+ * object written to summary.json (and consumed by emit-payload.mjs).
+ */
+export function buildSummary(raw, { threshold, target, generatedAt }) {
+	// test-id → test-name lookup so survivors can name the tests that covered
+	// the mutated line without killing the mutant.
+	const testIdToName = {};
+	for (const info of Object.values(raw.testFiles ?? {})) {
+		for (const t of info.tests ?? []) {
+			testIdToName[t.id] = t.name;
+		}
+	}
+
+	const filesSummary = [];
+	for (const [file, info] of Object.entries(raw.files)) {
+		const counts = emptyCounts();
+		const survivors = [];
+		const ignored = [];
+		for (const m of info.mutants) {
+			switch (m.status) {
+				case 'Killed':
+					counts.killed++;
+					break;
+				case 'Survived':
+					counts.survived++;
+					break;
+				case 'NoCoverage':
+					counts.noCoverage++;
+					break;
+				case 'Timeout':
+					counts.timeout++;
+					break;
+				case 'CompileError':
+					counts.compileError++;
+					break;
+				case 'RuntimeError':
+					counts.runtimeError++;
+					break;
+				case 'Ignored':
+					counts.ignored++;
+					break;
+			}
+			if (m.status === 'Survived' || m.status === 'NoCoverage') {
+				survivors.push({
+					id: m.id,
+					mutator: m.mutatorName,
+					status: m.status,
+					location: `${file}:${m.location.start.line}:${m.location.start.column}`,
+					line: m.location.start.line,
+					original: sliceFromLocation(info.source, m.location),
+					replacement: m.replacement,
+					coveringTests: (m.coveredBy ?? []).map((id) => testIdToName[id] ?? id),
+				});
+			}
+			if (m.status === 'Ignored') {
+				ignored.push({
+					id: m.id,
+					mutator: m.mutatorName,
+					location: `${file}:${m.location.start.line}:${m.location.start.column}`,
+					line: m.location.start.line,
+					reason: m.statusReason ?? '',
+				});
+			}
+		}
+		survivors.sort((a, b) => a.line - b.line);
+		ignored.sort((a, b) => a.line - b.line);
+		const score = scoreFromCounts(counts);
+		filesSummary.push({
+			file,
+			score,
+			coverage: coverageFromCounts(counts),
+			thresholdMet: gatePassed(score, counts, threshold),
+			counts,
+			survivors,
+			ignored,
+		});
+	}
+
+	const overallCounts = filesSummary.reduce((acc, f) => {
+		for (const k of Object.keys(acc)) acc[k] += f.counts[k];
+		return acc;
+	}, emptyCounts());
+
+	const overallScore = scoreFromCounts(overallCounts);
+	return {
+		generatedAt,
+		threshold,
+		target,
+		overall: {
+			score: overallScore,
+			coverage: coverageFromCounts(overallCounts),
+			counts: overallCounts,
+			thresholdMet: gatePassed(overallScore, overallCounts, threshold),
+		},
+		files: filesSummary,
+	};
+}
+
+/**
+ * Synthesise a score-0 red summary for the "No tests were executed" case —
+ * every mutant is no-coverage, so coverage is 0 too. See DEVP-414.
+ */
+export function buildNoTestsSummary({ threshold, target, noCoverage, generatedAt }) {
+	const counts = { ...emptyCounts(), noCoverage };
+	const coverage = coverageFromCounts(counts);
+	return {
+		generatedAt,
+		threshold,
+		target,
+		overall: { score: 0, coverage, counts, thresholdMet: false },
+		files: [
+			{
+				file: target,
+				score: 0,
+				coverage,
+				thresholdMet: false,
+				counts,
+				survivors: [],
+				ignored: [],
+			},
+		],
+	};
+}
 
 // Walk up from a path to the nearest enclosing package.json (bounded by repoRoot).
 function findPackageRoot(fromAbs) {
@@ -80,209 +266,197 @@ function findPackageRoot(fromAbs) {
 	return null;
 }
 
-// Resolve pkgRoot + the src-relative target, supporting two call styles:
-//   1. --package-dir given → target is package-relative (or absolute). (the nightly's style)
-//   2. no --package-dir → target is a repo-relative file; infer the package from it.
-let pkgRoot;
-let target;
-if (packageDirArg) {
-	pkgRoot = path.resolve(repoRoot, packageDirArg);
-	if (!existsSync(pkgRoot)) die(2, `Package dir not found: ${pkgRoot}`);
-	target = path.isAbsolute(targetArg) ? path.relative(pkgRoot, targetArg) : targetArg;
-} else {
-	const abs = path.resolve(repoRoot, targetArg);
-	if (!existsSync(abs)) die(2, `Target not found: ${abs}\n${usage}`);
-	const found = findPackageRoot(abs);
-	if (!found)
-		die(2, `Could not infer the package for ${targetArg} — pass --package-dir.\n${usage}`);
-	pkgRoot = found;
-	target = path.relative(pkgRoot, abs);
-}
-
-if (!target.startsWith('src/') || target.includes('..')) {
-	die(2, `Target must be under the package's src/. Got: ${target}`);
-}
-if (!existsSync(path.join(pkgRoot, target))) {
-	die(2, `Target not found: ${path.join(pkgRoot, target)}`);
-}
-const packageDir = path.relative(repoRoot, pkgRoot);
-
-// --- resolve the Stryker config: override → package-local → shared default
-const localConfig = path.join(pkgRoot, 'stryker.config.mjs');
-const defaultConfig = path.join(__dirname, 'stryker.default.mjs');
-const configPath = configArg
-	? path.resolve(repoRoot, configArg)
-	: existsSync(localConfig)
-		? localConfig
-		: defaultConfig;
-
-// --- resolve the Stryker binary from the hoisted store (works for any package)
-const strykerBin = path.join(
-	path.dirname(require.resolve('@stryker-mutator/core/package.json')),
-	'bin/stryker.js',
-);
-
-const reportDir = path.join(pkgRoot, 'reports/mutation');
-const rawJsonPath = path.join(reportDir, 'raw.json');
-const summaryJsonPath = path.join(reportDir, 'summary.json');
-await mkdir(reportDir, { recursive: true });
-
-process.stderr.write(
-	`Running Stryker on ${packageDir}/${target} (config: ${path.relative(repoRoot, configPath)}, threshold: ${THRESHOLD}%)\n`,
-);
-
-await new Promise((resolve) => {
-	const child = spawn(process.execPath, [strykerBin, 'run', configPath, '--mutate', target], {
-		cwd: pkgRoot,
-		stdio: 'inherit',
-	});
-	child.on('exit', (code) => {
-		if (code !== 0) die(3, `Stryker exited with code ${code}`);
-		resolve();
-	});
-	child.on('error', (err) => die(3, `Stryker failed to start: ${err.message}`));
-});
-
-if (!existsSync(rawJsonPath)) {
-	die(3, `Stryker did not produce ${rawJsonPath}`);
-}
-
-const raw = JSON.parse(await readFile(rawJsonPath, 'utf8'));
-
-// Build a test-id → test-name lookup so survivors can name the tests that
-// covered the mutated line without killing the mutant.
-const testIdToName = {};
-for (const info of Object.values(raw.testFiles ?? {})) {
-	for (const t of info.tests ?? []) {
-		testIdToName[t.id] = t.name;
+async function main() {
+	// --- args: one positional target + --package-dir (required) + --config (optional)
+	const argv = process.argv.slice(2);
+	let packageDirArg;
+	let configArg;
+	let targetArg;
+	for (let i = 0; i < argv.length; i++) {
+		const a = argv[i];
+		if (a === '--package-dir') packageDirArg = argv[++i];
+		else if (a === '--config') configArg = argv[++i];
+		else if (!a.startsWith('--') && targetArg === undefined) targetArg = a;
 	}
-}
 
-function sliceFromLocation(source, loc) {
-	const lines = source.split('\n');
-	const { start, end } = loc;
-	if (start.line === end.line) {
-		return lines[start.line - 1].slice(start.column, end.column);
+	const usage =
+		'Usage: node scripts/mutation-health/mutate.mjs <file> [--package-dir <repo-rel-path>] [--config <path>]\n' +
+		'  - repo-relative file → package is inferred: node scripts/mutation-health/mutate.mjs packages/@n8n/crdt/src/utils.ts\n' +
+		'  - package-relative file → pass --package-dir:  node scripts/mutation-health/mutate.mjs src/cron.ts --package-dir packages/workflow';
+
+	if (!targetArg) die(2, `Missing mutate target.\n${usage}`);
+
+	// Resolve pkgRoot + the src-relative target, supporting two call styles:
+	//   1. --package-dir given → target is package-relative (or absolute). (the nightly's style)
+	//   2. no --package-dir → target is a repo-relative file; infer the package from it.
+	let pkgRoot;
+	let target;
+	if (packageDirArg) {
+		pkgRoot = path.resolve(repoRoot, packageDirArg);
+		if (!existsSync(pkgRoot)) die(2, `Package dir not found: ${pkgRoot}`);
+		target = path.isAbsolute(targetArg) ? path.relative(pkgRoot, targetArg) : targetArg;
+	} else {
+		const abs = path.resolve(repoRoot, targetArg);
+		if (!existsSync(abs)) die(2, `Target not found: ${abs}\n${usage}`);
+		const found = findPackageRoot(abs);
+		if (!found)
+			die(2, `Could not infer the package for ${targetArg} — pass --package-dir.\n${usage}`);
+		pkgRoot = found;
+		target = path.relative(pkgRoot, abs);
 	}
-	return [
-		lines[start.line - 1].slice(start.column),
-		...lines.slice(start.line, end.line - 1),
-		lines[end.line - 1].slice(0, end.column),
-	].join('\n');
-}
 
-function scoreFromCounts(c) {
-	const detected = c.killed + c.timeout;
-	const valid = c.killed + c.timeout + c.survived + c.noCoverage;
-	return valid === 0 ? 0 : +((detected / valid) * 100).toFixed(2);
-}
-
-const filesSummary = [];
-for (const [file, info] of Object.entries(raw.files)) {
-	const counts = {
-		killed: 0,
-		survived: 0,
-		noCoverage: 0,
-		timeout: 0,
-		compileError: 0,
-		runtimeError: 0,
-		ignored: 0,
-	};
-	const survivors = [];
-	for (const m of info.mutants) {
-		switch (m.status) {
-			case 'Killed':
-				counts.killed++;
-				break;
-			case 'Survived':
-				counts.survived++;
-				break;
-			case 'NoCoverage':
-				counts.noCoverage++;
-				break;
-			case 'Timeout':
-				counts.timeout++;
-				break;
-			case 'CompileError':
-				counts.compileError++;
-				break;
-			case 'RuntimeError':
-				counts.runtimeError++;
-				break;
-			case 'Ignored':
-				counts.ignored++;
-				break;
-		}
-		if (m.status === 'Survived' || m.status === 'NoCoverage') {
-			survivors.push({
-				id: m.id,
-				mutator: m.mutatorName,
-				status: m.status,
-				location: `${file}:${m.location.start.line}:${m.location.start.column}`,
-				line: m.location.start.line,
-				original: sliceFromLocation(info.source, m.location),
-				replacement: m.replacement,
-				coveringTests: (m.coveredBy ?? []).map((id) => testIdToName[id] ?? id),
-			});
-		}
+	if (!target.startsWith('src/') || target.includes('..')) {
+		die(2, `Target must be under the package's src/. Got: ${target}`);
 	}
-	survivors.sort((a, b) => a.line - b.line);
-	const score = scoreFromCounts(counts);
-	filesSummary.push({
-		file,
-		score,
-		thresholdMet: score >= THRESHOLD,
-		counts,
-		survivors,
-	});
-}
+	if (!existsSync(path.join(pkgRoot, target))) {
+		die(2, `Target not found: ${path.join(pkgRoot, target)}`);
+	}
+	const packageDir = path.relative(repoRoot, pkgRoot);
 
-const overallCounts = filesSummary.reduce(
-	(acc, f) => {
-		for (const k of Object.keys(acc)) acc[k] += f.counts[k];
-		return acc;
-	},
-	{
-		killed: 0,
-		survived: 0,
-		noCoverage: 0,
-		timeout: 0,
-		compileError: 0,
-		runtimeError: 0,
-		ignored: 0,
-	},
-);
+	// --- resolve the Stryker config: override → package-local → shared default
+	const localConfig = path.join(pkgRoot, 'stryker.config.mjs');
+	const defaultConfig = path.join(__dirname, 'stryker.default.mjs');
+	const configPath = configArg
+		? path.resolve(repoRoot, configArg)
+		: existsSync(localConfig)
+			? localConfig
+			: defaultConfig;
 
-const summary = {
-	generatedAt: new Date().toISOString(),
-	threshold: THRESHOLD,
-	target,
-	overall: {
-		score: scoreFromCounts(overallCounts),
-		counts: overallCounts,
-		thresholdMet: scoreFromCounts(overallCounts) >= THRESHOLD,
-	},
-	files: filesSummary,
-};
-
-await writeFile(summaryJsonPath, JSON.stringify(summary, null, 2));
-
-process.stderr.write('\n=== Mutation summary ===\n');
-for (const f of filesSummary) {
-	const mark = f.thresholdMet ? '✓' : '✗';
-	process.stderr.write(
-		`${mark} ${f.file}  ${f.score.toFixed(2)}%  ` +
-			`(killed ${f.counts.killed} / survived ${f.counts.survived} / no-cov ${f.counts.noCoverage} / timeout ${f.counts.timeout})\n`,
+	// --- resolve the Stryker binary from the hoisted store (works for any package)
+	const strykerBin = path.join(
+		path.dirname(require.resolve('@stryker-mutator/core/package.json')),
+		'bin/stryker.js',
 	);
-	for (const s of f.survivors) {
-		process.stderr.write(
-			`   - ${s.status.toLowerCase().padEnd(10)} ${s.mutator.padEnd(22)} ${s.location}\n`,
+
+	const reportDir = path.join(pkgRoot, 'reports/mutation');
+	const rawJsonPath = path.join(reportDir, 'raw.json');
+	const summaryJsonPath = path.join(reportDir, 'summary.json');
+	await mkdir(reportDir, { recursive: true });
+
+	process.stderr.write(
+		`Running Stryker on ${packageDir}/${target} (config: ${path.relative(repoRoot, configPath)}, threshold: ${THRESHOLD}%)\n`,
+	);
+
+	// Capture Stryker's combined output while still forwarding it to the parent
+	// stdio (so CI logs look unchanged). We need the buffer to detect the
+	// "No tests were executed" dry-run case below.
+	const strykerOutputChunks = [];
+	const strykerExitCode = await new Promise((resolve) => {
+		const child = spawn(process.execPath, [strykerBin, 'run', configPath, '--mutate', target], {
+			cwd: pkgRoot,
+			stdio: ['inherit', 'pipe', 'pipe'],
+		});
+		child.stdout.on('data', (chunk) => {
+			strykerOutputChunks.push(chunk);
+			process.stdout.write(chunk);
+		});
+		child.stderr.on('data', (chunk) => {
+			strykerOutputChunks.push(chunk);
+			process.stderr.write(chunk);
+		});
+		child.on('exit', (code) => resolve(code ?? 1));
+		child.on('error', (err) => die(3, `Stryker failed to start: ${err.message}`));
+	});
+	const strykerOutput = Buffer.concat(strykerOutputChunks).toString('utf8');
+
+	// "No tests were executed" is Stryker's dry-run verdict when nothing in the
+	// test suite covers the picked source file. That's the most informative
+	// mutation result there is — effectively 0%, every mutant no-coverage — so we
+	// record it as a score-0 red ledger row instead of hard-failing the job. The
+	// picker can then advance to the next file the following night. See DEVP-414.
+	const noTestsExecuted = /no tests were executed/i.test(strykerOutput) && !existsSync(rawJsonPath);
+
+	// A non-zero exit shouldn't discard a report Stryker already wrote — salvage a
+	// partial summary from it below; only die when there's genuinely nothing to keep.
+	const strykerFailedWithoutReport =
+		strykerExitCode !== 0 && !noTestsExecuted && !existsSync(rawJsonPath);
+	if (strykerFailedWithoutReport) {
+		die(
+			3,
+			`Stryker exited with code ${strykerExitCode} without producing ${path.relative(repoRoot, rawJsonPath)}`,
 		);
 	}
-}
-process.stderr.write(
-	`\nThreshold: ${THRESHOLD}%  •  overall: ${summary.overall.score.toFixed(2)}%\n`,
-);
-process.stderr.write(`Summary written: ${summaryJsonPath}\n`);
 
-process.exit(summary.overall.thresholdMet ? 0 : 1);
+	if (noTestsExecuted) {
+		// Best-effort mutant count from the instrument phase log line, e.g.
+		//   INFO Instrumenter Instrumented 1 source file(s) with 47 mutant(s)
+		// Falls back to 0 if Stryker never got that far.
+		const mutantMatch = strykerOutput.match(
+			/Instrumented\s+\d+\s+source file\(s\)\s+with\s+(\d+)\s+mutant/i,
+		);
+		const noCoverage = mutantMatch ? Number(mutantMatch[1]) : 0;
+		const summary = buildNoTestsSummary({
+			threshold: THRESHOLD,
+			target,
+			noCoverage,
+			generatedAt: new Date().toISOString(),
+		});
+		await writeFile(summaryJsonPath, JSON.stringify(summary, null, 2));
+		process.stderr.write(
+			`\n=== Mutation summary ===\n` +
+				`✗ ${target}  0.00%  (no covering tests — recorded as score-0 red)\n` +
+				`Summary written: ${summaryJsonPath}\n`,
+		);
+		process.exit(1);
+	}
+
+	if (!existsSync(rawJsonPath)) {
+		die(3, `Stryker did not produce ${rawJsonPath}`);
+	}
+
+	const raw = JSON.parse(await readFile(rawJsonPath, 'utf8'));
+	const summary = buildSummary(raw, {
+		threshold: THRESHOLD,
+		target,
+		generatedAt: new Date().toISOString(),
+	});
+
+	// Report present but non-zero exit → run was cut short; flag it so consumers
+	// (and the gate below) know the survivor list may be incomplete.
+	const partial = strykerExitCode !== 0;
+	if (partial) summary.partial = true;
+
+	await writeFile(summaryJsonPath, JSON.stringify(summary, null, 2));
+
+	if (partial) {
+		process.stderr.write(
+			`\n⚠ Stryker exited with code ${strykerExitCode}; summary built from a partial raw.json — results may be incomplete.\n`,
+		);
+	}
+	process.stderr.write('\n=== Mutation summary ===\n');
+	for (const f of summary.files) {
+		const mark = f.thresholdMet ? '✓' : '✗';
+		process.stderr.write(
+			`${mark} ${f.file}  ${f.score.toFixed(2)}%  cov ${(f.coverage * 100).toFixed(0)}%  ` +
+				`(killed ${f.counts.killed} / survived ${f.counts.survived} / no-cov ${f.counts.noCoverage} / timeout ${f.counts.timeout} / ignored ${f.counts.ignored})\n`,
+		);
+		for (const s of f.survivors) {
+			process.stderr.write(
+				`   - ${s.status.toLowerCase().padEnd(10)} ${s.mutator.padEnd(22)} ${s.location}\n`,
+			);
+		}
+		for (const ig of f.ignored) {
+			const reason = ig.reason ? ` — ${ig.reason}` : ' — (no reason given)';
+			process.stderr.write(
+				`   · ${'ignored'.padEnd(10)} ${ig.mutator.padEnd(22)} ${ig.location}${reason}\n`,
+			);
+		}
+	}
+	// A partial run never passes: mutants it never tested could be survivors, so
+	// reporting PASS would mark the file done with work left undone.
+	const passed = summary.overall.thresholdMet && !summary.partial;
+	const gateState = passed ? 'PASS' : summary.partial ? 'FAIL (partial)' : 'FAIL';
+	const unjustified = summary.overall.counts.survived + summary.overall.counts.noCoverage;
+	process.stderr.write(
+		`\nGate: ${gateState}  •  threshold: ${THRESHOLD}%  •  score: ${summary.overall.score.toFixed(2)}%  •  ` +
+			`unjustified survivors: ${unjustified}  •  ignored (justified): ${summary.overall.counts.ignored}\n`,
+	);
+	process.stderr.write(`Summary written: ${summaryJsonPath}\n`);
+
+	process.exit(passed ? 0 : 1);
+}
+
+const isCli = import.meta.url === `file://${process.argv[1]}`;
+if (isCli) {
+	await main();
+}

@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import {
@@ -8,8 +8,9 @@ import {
 	getOpportunityFields,
 } from '../../../v2/methods/loadOptions';
 import * as transport from '../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../v2/transport', () => ({ odooApiRequest: jest.fn() }));
+vi.mock('../../../v2/transport', () => ({ odooApiRequest: vi.fn() }));
 
 describe('Odoo v2 — loadOptions methods', () => {
 	let ctx: MockProxy<ILoadOptionsFunctions>;
@@ -18,11 +19,11 @@ describe('Odoo v2 — loadOptions methods', () => {
 		ctx = mock<ILoadOptionsFunctions>();
 	});
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	describe('getContactFields', () => {
 		it('fetches fields from res.partner', async () => {
-			(transport.odooApiRequest as jest.Mock).mockResolvedValue({
+			(transport.odooApiRequest as Mock).mockResolvedValue({
 				name: { string: 'Name', type: 'char', required: true },
 				email: { string: 'Email', type: 'char', required: false },
 			});
@@ -37,7 +38,7 @@ describe('Odoo v2 — loadOptions methods', () => {
 		});
 
 		it('includes field type and required in description', async () => {
-			(transport.odooApiRequest as jest.Mock).mockResolvedValue({
+			(transport.odooApiRequest as Mock).mockResolvedValue({
 				name: { string: 'Name', type: 'char', required: true },
 			});
 			const result = await getContactFields.call(ctx);
@@ -45,7 +46,7 @@ describe('Odoo v2 — loadOptions methods', () => {
 		});
 
 		it('sorts fields alphabetically', async () => {
-			(transport.odooApiRequest as jest.Mock).mockResolvedValue({
+			(transport.odooApiRequest as Mock).mockResolvedValue({
 				zip: { string: 'Zip', type: 'char', required: false },
 				city: { string: 'City', type: 'char', required: false },
 				name: { string: 'Name', type: 'char', required: true },
@@ -58,7 +59,7 @@ describe('Odoo v2 — loadOptions methods', () => {
 
 	describe('getOpportunityFields', () => {
 		it('fetches fields from crm.lead', async () => {
-			(transport.odooApiRequest as jest.Mock).mockResolvedValue({});
+			(transport.odooApiRequest as Mock).mockResolvedValue({});
 			await getOpportunityFields.call(ctx);
 			expect(transport.odooApiRequest).toHaveBeenCalledWith(
 				'crm.lead',
@@ -70,7 +71,7 @@ describe('Odoo v2 — loadOptions methods', () => {
 
 	describe('getActivityFields', () => {
 		it('fetches fields from mail.activity', async () => {
-			(transport.odooApiRequest as jest.Mock).mockResolvedValue({});
+			(transport.odooApiRequest as Mock).mockResolvedValue({});
 			await getActivityFields.call(ctx);
 			expect(transport.odooApiRequest).toHaveBeenCalledWith(
 				'mail.activity',

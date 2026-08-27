@@ -1,15 +1,20 @@
-import { computed } from 'vue';
+import { computed, defineComponent, nextTick, reactive, shallowRef } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import {
+	ToolConfigCredentialSelectedKey,
+	WorkflowDocumentStoreKey,
+	WorkflowIdKey,
+} from '@/app/constants/injectionKeys';
 import ParameterInput from './ParameterInput.vue';
 import type { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import type { CompletionResult } from '@codemirror/autocomplete';
 import { createTestingPinia } from '@pinia/testing';
 import { faker } from '@faker-js/faker';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import userEvent from '@testing-library/user-event';
 import type { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore } from '@/__tests__/utils';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
@@ -18,11 +23,14 @@ import {
 	createTestNodeProperties,
 } from '@/__tests__/mocks';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import { type INodeParameterResourceLocator } from 'n8n-workflow';
-import type { IWorkflowDb, WorkflowListResource } from '@/Interface';
+import { type INodeParameterResourceLocator, type INodePropertyOptions } from 'n8n-workflow';
+import type {
+	INodeUpdatePropertiesInformation,
+	IWorkflowDb,
+	WorkflowListResource,
+} from '@/Interface';
 import { mock } from 'vitest-mock-extended';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
-import { nextTick, reactive } from 'vue';
 
 function getNdvStateMock(): Partial<ReturnType<typeof useNDVStore>> {
 	return {
@@ -76,6 +84,7 @@ vi.mock('@/features/ndv/shared/ndv.store', () => {
 	return {
 		useNDVStore: vi.fn(() => mockNdvState),
 		injectNDVStore: vi.fn(() => ({ value: mockNdvState })),
+		injectNDVStoreIfProvided: vi.fn(() => ({ value: mockNdvState })),
 	};
 });
 
@@ -105,6 +114,15 @@ vi.mock('vue-router', () => {
 	};
 });
 
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
+
 const mockBuilderState = {
 	trackWorkflowBuilderJourney: vi.fn(),
 	isAIBuilderEnabled: true,
@@ -125,6 +143,16 @@ vi.mock('@/features/ai/assistant/composables/useBuilderTodos', () => {
 		extractPlaceholderLabels: (value: unknown) => mockExtractPlaceholderLabels(value),
 	};
 });
+
+const { mockIsActionOptionVisible } = vi.hoisted(() => ({
+	mockIsActionOptionVisible: vi.fn(
+		(_node: unknown, _parameterName: string, _optionValue: string): boolean => true,
+	),
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: vi.fn(() => ({ isActionOptionVisible: mockIsActionOptionVisible })),
+}));
 
 const renderComponent = createComponentRenderer(ParameterInput, {
 	pinia: createTestingPinia(),
@@ -170,6 +198,8 @@ describe('ParameterInput.vue', () => {
 			}),
 		};
 		settingsStore.settings.enterprise = createMockEnterpriseSettings();
+		mockIsActionOptionVisible.mockReset();
+		mockIsActionOptionVisible.mockReturnValue(true);
 	});
 
 	afterEach(() => {
@@ -229,6 +259,174 @@ describe('ParameterInput.vue', () => {
 		expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 'append' })]);
 	});
 
+	test('should clamp long multi-option descriptions without truncating their content', async () => {
+		const longDescription =
+			'<p>Search every page and database in the workspace.</p><p>Returns complete metadata and matching content for the agent.</p>';
+		const { container, baseElement } = renderComponent({
+			props: {
+				path: 'includeTools',
+				parameter: {
+					displayName: 'Tools to Include',
+					name: 'includeTools',
+					type: 'multiOptions',
+					options: [
+						{
+							name: 'Search',
+							value: 'search',
+							description: longDescription,
+						},
+					],
+					default: [],
+				},
+				modelValue: [],
+			},
+		});
+
+		await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+		const description = baseElement.querySelector('.option-description');
+		expect(description).toHaveTextContent(
+			'Search every page and database in the workspace.Returns complete metadata and matching content for the agent.',
+		);
+		expect(description).toHaveClass('option-description--clamped');
+	});
+
+	test('should pass option disabled state to N8nOption', async () => {
+		const options = [
+			{ name: 'Connected Chat Trigger Node', value: 'auto', disabled: true },
+			{ name: 'Define below', value: 'define' },
+		] as unknown as INodePropertyOptions[];
+
+		const { container, baseElement } = renderComponent({
+			props: {
+				path: 'operation',
+				parameter: createTestNodeProperties({
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options,
+					default: 'define',
+				}),
+				modelValue: 'define',
+			},
+		});
+
+		const selectTrigger = container.querySelector('.select-trigger') as HTMLElement;
+		await userEvent.click(selectTrigger);
+
+		const optionsInDropdown = baseElement.querySelectorAll('[data-test-id="parameter-input-item"]');
+		expect(optionsInDropdown).toHaveLength(2);
+		expect(optionsInDropdown[0]).toHaveAttribute('aria-disabled', 'true');
+		expect(optionsInDropdown[1]).not.toHaveAttribute('aria-disabled', 'true');
+	});
+
+	describe('AI gateway action filtering', () => {
+		const operationParameter = {
+			displayName: 'Operation',
+			name: 'operation',
+			type: 'options' as const,
+			noDataExpression: true,
+			options: [
+				{ name: 'Append or Update Row', value: 'appendOrUpdate' },
+				{ name: 'Append Row', value: 'append' },
+			],
+			default: 'appendOrUpdate',
+		};
+
+		test('hides operation options the AI gateway cannot run', async () => {
+			mockIsActionOptionVisible.mockImplementation(
+				(_node, _name, value) => value === 'appendOrUpdate',
+			);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: 'appendOrUpdate',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(1);
+			expect(options[0].querySelector('.option-headline')).toHaveTextContent(
+				'Append or Update Row',
+			);
+		});
+
+		test('keeps the current value visible even when unsupported', async () => {
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: 'append',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(1);
+			expect(options[0].querySelector('.option-headline')).toHaveTextContent('Append Row');
+		});
+
+		test('uses the resource locator value as the current value', async () => {
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: { __rl: true, value: 'append', mode: 'list' },
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(1);
+			expect(options[0].querySelector('.option-headline')).toHaveTextContent('Append Row');
+		});
+
+		test('passes a null node to the gateway check when there is no active node', async () => {
+			mockNdvState.activeNode = undefined;
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container } = renderComponent({
+				props: {
+					path: 'parameters.operation',
+					parameter: operationParameter,
+					modelValue: 'append',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			expect(mockIsActionOptionVisible).toHaveBeenCalledWith(null, 'operation', 'appendOrUpdate');
+		});
+
+		test('does not filter nested operation parameters', async () => {
+			mockIsActionOptionVisible.mockReturnValue(false);
+
+			const { container, baseElement } = renderComponent({
+				props: {
+					path: 'parameters.filters.operation',
+					parameter: operationParameter,
+					modelValue: 'appendOrUpdate',
+				},
+			});
+
+			await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+
+			const options = baseElement.querySelectorAll('.list-option');
+			expect(options.length).toEqual(2);
+			expect(mockIsActionOptionVisible).not.toHaveBeenCalled();
+		});
+	});
+
 	test('should render an options parameter even if it has invalid fields (like displayName)', async () => {
 		// Test case based on the Schedule node
 		// type=options parameters shouldn't have a displayName field, but some do
@@ -274,6 +472,54 @@ describe('ParameterInput.vue', () => {
 		await waitFor(() =>
 			expect(emitted('update')).toContainEqual([expect.objectContaining({ value: 1 })]),
 		);
+	});
+
+	/**
+	 * TODO DS-579:
+	 * N8nInput and N8nSelect don't have aligned size tokens.
+	 * What is 'medium' for one isn't the same the other.
+	 * This has caused a few bugs where coding models have mixed the sizes up and they've slipped through the review.
+	 * For now, we'll use these tests to prevent further regression mixing the two up.
+	 */
+	test('uses medium input size by default', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				path: 'tag',
+				parameter: createTestNodeProperties({
+					displayName: 'Tag',
+					name: 'tag',
+					type: 'string',
+				}),
+				modelValue: '',
+			},
+			global: {
+				stubs: {
+					N8nInput: {
+						props: ['size'],
+						template: '<input data-test-id="parameter-input-field" :data-size="size" />',
+					},
+				},
+			},
+		});
+
+		expect(getByTestId('parameter-input-field')).toHaveAttribute('data-size', 'medium');
+	});
+
+	test('uses small select size by default', () => {
+		const { container } = renderComponent({
+			props: {
+				path: 'operation',
+				parameter: createTestNodeProperties({
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [{ name: 'Append Row', value: 'append' }],
+				}),
+				modelValue: 'append',
+			},
+		});
+
+		expect(container.querySelector('.el-select')).toHaveClass('el-select--small');
 	});
 
 	test('should render a string parameter', async () => {
@@ -909,13 +1155,12 @@ describe('ParameterInput.vue', () => {
 		});
 	});
 
-	describe('credential change resets options value', () => {
-		test('should reset options value when credentials change', async () => {
-			mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => [
-				{ name: 'GPT-4', value: 'gpt-4' },
-				{ name: 'GPT-3.5', value: 'gpt-3.5-turbo' },
-			]);
-
+	describe('credential change validates options value', () => {
+		function renderModelParam(
+			getModels: () => Promise<Array<{ name: string; value: string }>>,
+			modelValue: string = 'gpt-3.5-turbo',
+		) {
+			mockNodeTypesState.getNodeParameterOptions = vi.fn(getModels);
 			const activeNode = reactive({
 				id: faker.string.uuid(),
 				name: 'Test Node',
@@ -923,16 +1168,12 @@ describe('ParameterInput.vue', () => {
 				position: [0, 0] as [number, number],
 				type: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
 				typeVersion: 1,
-				credentials: {
-					openAiApi: { id: '1', name: 'OpenAI Account 1' },
-				},
+				credentials: { openAiApi: { id: '1', name: 'OpenAI Account 1' } } as Record<
+					string,
+					{ id: string; name: string }
+				>,
 			});
-
-			mockNdvState = {
-				...getNdvStateMock(),
-				activeNode,
-			};
-
+			mockNdvState = { ...getNdvStateMock(), activeNode };
 			const { emitted } = renderComponent({
 				props: {
 					path: 'model',
@@ -943,25 +1184,106 @@ describe('ParameterInput.vue', () => {
 						default: 'gpt-4',
 						typeOptions: { loadOptionsMethod: 'getModels' },
 					}),
-					modelValue: 'gpt-3.5-turbo',
+					modelValue,
 				},
 			});
+			return { emitted, activeNode };
+		}
 
-			await waitFor(() => {
-				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled();
-			});
-
-			// Change credentials — the previously selected model should be reset to the default
-			activeNode.credentials = {
-				openAiApi: { id: '2', name: 'OpenAI Account 2' },
-			};
+		async function switchCredentialsAndReload(activeNode: {
+			credentials: Record<string, { id: string; name: string }>;
+		}) {
+			await waitFor(() => expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled());
+			activeNode.credentials = { openAiApi: { id: '2', name: 'OpenAI Account 2' } };
 			await nextTick();
+			await waitFor(() =>
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalledTimes(2),
+			);
+			await flushPromises();
+		}
 
+		async function expectModelResetToDefault(
+			emitted: ReturnType<typeof renderComponent>['emitted'],
+		) {
 			await waitFor(() => {
 				expect(emitted('update')).toContainEqual([
 					expect.objectContaining({ name: 'model', value: 'gpt-4' }),
 				]);
 			});
+		}
+
+		test('should preserve options value when it is still valid for the new credentials', async () => {
+			const { emitted, activeNode } = renderModelParam(async () => [
+				{ name: 'GPT-4', value: 'gpt-4' },
+				{ name: 'GPT-3.5', value: 'gpt-3.5-turbo' },
+			]);
+			await switchCredentialsAndReload(activeNode);
+			expect(emitted('update') ?? []).not.toContainEqual([
+				expect.objectContaining({ name: 'model' }),
+			]);
+		});
+
+		test('should not reset an expression value on credential change', async () => {
+			const { emitted, activeNode } = renderModelParam(
+				async () => [{ name: 'GPT-4', value: 'gpt-4' }],
+				'={{ $json.model }}',
+			);
+			await switchCredentialsAndReload(activeNode);
+			expect(emitted('update') ?? []).not.toContainEqual([
+				expect.objectContaining({ name: 'model' }),
+			]);
+		});
+
+		test('should reset options value to default when it is no longer valid for the new credentials', async () => {
+			const { emitted, activeNode } = renderModelParam(async () => [
+				{ name: 'GPT-4', value: 'gpt-4' },
+			]);
+			await switchCredentialsAndReload(activeNode);
+			await expectModelResetToDefault(emitted);
+		});
+
+		test('should reset options value to default when the reloaded options fail to load', async () => {
+			const { emitted, activeNode } = renderModelParam(async () => {
+				throw new Error('Failed to load options');
+			});
+			await switchCredentialsAndReload(activeNode);
+			await expectModelResetToDefault(emitted);
+		});
+
+		test('should reset options value to default when the reloaded list is empty', async () => {
+			const { emitted, activeNode } = renderModelParam(async () => []);
+			await switchCredentialsAndReload(activeNode);
+			await expectModelResetToDefault(emitted);
+		});
+
+		test('should not apply a stale reload when credentials change again mid-load', async () => {
+			let resolveLoad!: (options: Array<{ name: string; value: string }>) => void;
+			const pendingLoad = new Promise<Array<{ name: string; value: string }>>((resolve) => {
+				resolveLoad = resolve;
+			});
+			let call = 0;
+			const { emitted, activeNode } = renderModelParam(async () => {
+				call += 1;
+				return call === 1 ? [{ name: 'GPT-3.5', value: 'gpt-3.5-turbo' }] : await pendingLoad;
+			});
+
+			await waitFor(() => expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalled());
+
+			activeNode.credentials = { openAiApi: { id: '2', name: 'OpenAI Account 2' } };
+			await nextTick();
+			await waitFor(() =>
+				expect(mockNodeTypesState.getNodeParameterOptions).toHaveBeenCalledTimes(2),
+			);
+
+			// Swap again before the first reload resolves, then resolve it stale.
+			activeNode.credentials = { openAiApi: { id: '3', name: 'OpenAI Account 3' } };
+			await nextTick();
+			resolveLoad([{ name: 'GPT-4', value: 'gpt-4' }]);
+			await flushPromises();
+
+			expect(emitted('update') ?? []).not.toContainEqual([
+				expect.objectContaining({ name: 'model' }),
+			]);
 		});
 
 		test('should not reset non-options parameter when credentials change', async () => {
@@ -1198,6 +1520,142 @@ describe('ParameterInput.vue', () => {
 		});
 	});
 
+	describe('multi-line masked (password) fields', () => {
+		test('renders a masked textarea (not a single-line password input) for a multi-line secret', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'privateKey',
+					parameter: createTestNodeProperties({
+						displayName: 'Private Key',
+						name: 'privateKey',
+						type: 'string',
+						typeOptions: { rows: 4, password: true },
+					}),
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			// A single-line <input type="password"> strips newlines and corrupts keys.
+			expect(container.querySelector('input[type="password"]')).not.toBeInTheDocument();
+			expect(container.querySelector('textarea')).toBeInTheDocument();
+			// Kept out of PostHog capture even in a node (non-credential) context.
+			expect(container.querySelector('.ph-no-capture')).toBeInTheDocument();
+		});
+
+		test('still renders a single-line password input for a single-line secret', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'passphrase',
+					parameter: createTestNodeProperties({
+						displayName: 'Passphrase',
+						name: 'passphrase',
+						type: 'string',
+						typeOptions: { password: true },
+					}),
+					modelValue: '',
+				},
+			});
+
+			await nextTick();
+			expect(container.querySelector('input[type="password"]')).toBeInTheDocument();
+			expect(container.querySelector('textarea')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('sqlEditor sizing (ADO-5553)', () => {
+		// Converts a CSS length ('40vh' | '53.3em' | '120px') to pixels using the
+		// current jsdom viewport, so a min-height in `em` can be compared against a
+		// max-height in `vh`.
+		function toPx(value: string): number {
+			const match = value.trim().match(/([\d.]+)\s*(vh|rem|em|px)/);
+			if (!match) throw new Error(`Unable to parse CSS length: "${value}"`);
+			const amount = Number.parseFloat(match[1]);
+			switch (match[2]) {
+				case 'vh':
+					return (amount / 100) * window.innerHeight;
+				case 'em':
+				case 'rem':
+					return amount * 16;
+				default:
+					return amount;
+			}
+		}
+
+		function getScrollerHeights() {
+			const css = Array.from(document.querySelectorAll('style'))
+				.map((style) => style.textContent ?? '')
+				.join('\n');
+			const rule = [...css.matchAll(/([^{}]*)\{([^}]*)\}/g)].find(
+				(match) =>
+					match[1].includes('cm-scroller') &&
+					/max-height/.test(match[2]) &&
+					/min-height/.test(match[2]),
+			);
+			if (!rule) throw new Error('Could not find the .cm-scroller sizing rule');
+			const body = rule[2];
+			const maxHeight = body.match(/max-height:\s*([^;]+);/)?.[1] ?? '';
+			const minHeight = body.match(/min-height:\s*([^;]+);/)?.[1] ?? '';
+			return { minHeight, maxHeight };
+		}
+
+		// Happy path: a short query fits comfortably, proving the harness reads the
+		// scroller sizing correctly and the assertion passes when sizing is sane.
+		it('keeps the editor min-height within its max-height for a short query', async () => {
+			const { container } = renderComponent({
+				props: {
+					path: 'sqlQuery',
+					parameter: createTestNodeProperties({
+						displayName: 'SQL Query',
+						name: 'sqlQuery',
+						type: 'string',
+						noDataExpression: true,
+						typeOptions: { editor: 'sqlEditor' },
+					}),
+					modelValue: 'SELECT * FROM dataset.table LIMIT 100',
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await waitFor(() => expect(container.querySelector('.cm-scroller')).toBeInTheDocument());
+
+			const { minHeight, maxHeight } = getScrollerHeights();
+			expect(toPx(minHeight)).toBeLessThanOrEqual(toPx(maxHeight));
+		});
+
+		// The BigQuery "SQL Query" field is a `sqlEditor` string parameter with no
+		// `rows` typeOption, so the editor height auto-follows the number of lines
+		// in the query. A long query must still fit within the NDV: the editor's
+		// min-height must never exceed its max-height, otherwise its bottom is
+		// pushed past the NDV boundary and becomes unreachable even by scrolling.
+		it('keeps the editor min-height within its max-height for a long query', async () => {
+			const longQuery = Array.from(
+				{ length: 40 },
+				(_, i) => `SELECT col_${i} FROM dataset.table_${i}`,
+			).join('\n');
+
+			const { container } = renderComponent({
+				props: {
+					path: 'sqlQuery',
+					parameter: createTestNodeProperties({
+						displayName: 'SQL Query',
+						name: 'sqlQuery',
+						type: 'string',
+						noDataExpression: true,
+						typeOptions: { editor: 'sqlEditor' },
+					}),
+					modelValue: longQuery,
+					expressionEvaluated: undefined,
+				},
+			});
+
+			await waitFor(() => expect(container.querySelector('.cm-scroller')).toBeInTheDocument());
+
+			const { minHeight, maxHeight } = getScrollerHeights();
+			expect(toPx(minHeight)).toBeLessThanOrEqual(toPx(maxHeight));
+		});
+	});
+
 	describe('JSON Password Field Validation', () => {
 		const jsonPasswordParameter = createTestNodeProperties({
 			displayName: 'Service Account Key',
@@ -1290,6 +1748,60 @@ describe('ParameterInput.vue', () => {
 
 			await fireEvent.update(input, '{"valid": true}');
 			expect(queryByTestId('parameter-issues')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('credentialSelected', () => {
+		const credentialUpdate: INodeUpdatePropertiesInformation = {
+			name: 'HTTP Tool',
+			properties: {
+				credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Darwin Webhook Auth' } },
+			},
+		};
+
+		it('invokes ToolConfigCredentialSelectedKey when CredentialsSelect emits credentialSelected', async () => {
+			const onToolConfigCredentialSelected = vi.fn();
+			const updateNodeProperties = vi.fn();
+
+			const CredentialsSelectStub = defineComponent({
+				emits: ['credentialSelected'],
+				setup(_, { emit }) {
+					return {
+						emitCredentialSelected: () => emit('credentialSelected', credentialUpdate),
+					};
+				},
+				template:
+					'<button data-test-id="emit-credential-selected" @click="emitCredentialSelected" />',
+			});
+
+			const { getByTestId } = renderComponent({
+				props: {
+					path: 'parameters.genericAuthType',
+					parameter: createTestNodeProperties({
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+					}),
+					modelValue: 'httpHeaderAuth',
+				},
+				global: {
+					provide: {
+						[ToolConfigCredentialSelectedKey as symbol]: onToolConfigCredentialSelected,
+						[WorkflowDocumentStoreKey as symbol]: shallowRef({
+							updateNodeProperties,
+							getNodeByName: vi.fn().mockReturnValue(null),
+						}),
+					},
+					stubs: {
+						CredentialsSelect: CredentialsSelectStub,
+					},
+				},
+			});
+
+			await fireEvent.click(getByTestId('emit-credential-selected'));
+
+			expect(updateNodeProperties).toHaveBeenCalledWith(credentialUpdate);
+			expect(onToolConfigCredentialSelected).toHaveBeenCalledWith(credentialUpdate);
 		});
 	});
 });

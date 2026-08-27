@@ -330,6 +330,15 @@ export const updateChatSettingsApi = async (
 	});
 };
 
+export const updateChatEnabledApi = async (
+	context: IRestApiContext,
+	enabled: boolean,
+): Promise<{ enabled: boolean }> => {
+	return await makeRestApiRequest<{ enabled: boolean }>(context, 'PUT', '/chat/enabled', {
+		enabled,
+	});
+};
+
 export const updateSemanticSearchSettingsApi = async (
 	context: IRestApiContext,
 	data: ChatHubSemanticSearchSettings,

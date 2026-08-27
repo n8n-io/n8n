@@ -2,7 +2,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import CommunityPackageManageConfirmModal from './CommunityPackageManageConfirmModal.vue';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { createTestingPinia } from '@pinia/testing';
@@ -25,7 +25,7 @@ const renderComponent = createComponentRenderer(CommunityPackageManageConfirmMod
 	pinia: createTestingPinia({
 		initialState: {
 			[STORES.UI]: {
-				modalsById: {
+				modalStateById: {
 					[COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY]: { open: true },
 				},
 			},

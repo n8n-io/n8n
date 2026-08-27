@@ -4,7 +4,7 @@ import {
 	createChildSubAgentTaskPath,
 	isSubAgentTaskPath,
 	sanitizeSubAgentTaskName,
-} from '../sub-agent-task-path';
+} from '../tools/sub-agent-task-path';
 
 describe('sub-agent task paths', () => {
 	it('sanitizes display task names into path segments', () => {

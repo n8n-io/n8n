@@ -27,12 +27,12 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
-import { WebhookResponse } from './webhook-response';
 
 import { authAllowlistedNodes } from './constants';
 import { matchesExpectedNodeType } from './node-type-matcher';
 import type { ExpectedWebhookNodeType } from './node-type-matcher';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
+import { WebhookResponse } from './webhook-response';
 import { WebhookService } from './webhook.service';
 import type {
 	IWebhookResponseCallbackData,
@@ -146,8 +146,10 @@ export class TestWebhooks implements IWebhookManager {
 		}
 
 		await workflow.expression.acquireIsolate();
-		try {
-			return await new Promise(async (resolve, reject) => {
+		// Release only after teardown below runs, not when resolve() settles the
+		// promise early — teardown still needs the isolate held.
+		return await new Promise(async (resolve, reject) => {
+			try {
 				try {
 					const executionMode = 'manual';
 					const executionId = await WebhookHelpers.executeWebhook(
@@ -172,7 +174,6 @@ export class TestWebhooks implements IWebhookManager {
 					// or a ping so do not resolve the promise and wait for the real webhook
 					// request instead.
 					if (executionId === undefined) {
-						await workflow.expression.releaseIsolate();
 						return;
 					}
 
@@ -186,7 +187,11 @@ export class TestWebhooks implements IWebhookManager {
 							pushRef,
 						);
 					}
-				} catch {}
+				} catch (error) {
+					// Settle the Promise to prevent hanging the request.
+					// No return to ensure test-webhook cleanup.
+					reject(error as Error);
+				}
 
 				/**
 				 * Multi-main setup: In a manual webhook execution, the main process that
@@ -199,16 +204,27 @@ export class TestWebhooks implements IWebhookManager {
 						command: 'clear-test-webhooks',
 						payload: { webhookKey: key, workflowEntity, pushRef },
 					});
+					// Response (if any) was already sent via WebhookHelpers.executeWebhook's
+					// callback; resolve to settle promise to be safe and avoid hanging.
+					resolve({ noWebhookResponse: true });
 					return;
 				}
 
 				this.clearTimeout(key);
 
 				await this.deactivateWebhooks(workflow);
-			});
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
+			} finally {
+				// Response (if any) was already sent, so a release failure here can only be logged.
+				try {
+					await workflow.expression.releaseIsolate();
+				} catch (error) {
+					this.logger.error('Failed to release expression isolate for test webhook', {
+						error,
+						workflowId: workflow.id,
+					});
+				}
+			}
+		});
 	}
 
 	@OnPubSubEvent('clear-test-webhooks', { instanceType: 'main' })
@@ -241,27 +257,41 @@ export class TestWebhooks implements IWebhookManager {
 		if (timeout) clearTimeout(timeout);
 	}
 
-	async getWebhooksFromPath(rawPath: string) {
+	/**
+	 * Find every test-webhook registration at the given path, across all HTTP
+	 * methods. Used by {@link getWebhooksFromPath} and by the OAuth
+	 * protected-resource resolver for test webhook triggers, which (unlike
+	 * {@link getActiveWebhook}) needs the full registration — not just the
+	 * `IWebhookData` — to read the trigger's node parameters straight off
+	 * `workflowEntity` without touching the DB.
+	 */
+	async getRegistrationsFromPath(rawPath: string): Promise<TestWebhookRegistration[]> {
 		const path = removeTrailingSlash(rawPath);
-		const webhooks: IWebhookData[] = [];
+		const found: TestWebhookRegistration[] = [];
 		const registrations = await this.registrations.getRegistrationsHash();
 
 		for (const httpMethod of ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] as IHttpRequestMethods[]) {
 			const key = this.registrations.toKey({ httpMethod, path });
-			let webhook = registrations?.[key]?.webhook;
-			if (!webhook) {
+			let registration = registrations?.[key];
+			if (!registration) {
 				// check for dynamic webhooks
 				const [webhookId, ...segments] = path.split('/');
 				const key = this.registrations.toKey({ httpMethod, path, webhookId });
-				if (registrations?.[key]) {
-					webhook = this.getActiveWebhookFromRegistration(segments.join('/'), registrations?.[key]);
+				const candidate = registrations?.[key];
+				if (candidate && this.getActiveWebhookFromRegistration(segments.join('/'), candidate)) {
+					registration = candidate;
 				}
 			}
-			if (webhook) {
-				webhooks.push(webhook);
+			if (registration) {
+				found.push(registration);
 			}
 		}
-		return webhooks;
+		return found;
+	}
+
+	async getWebhooksFromPath(rawPath: string) {
+		const registrations = await this.getRegistrationsFromPath(rawPath);
+		return registrations.map((registration) => registration.webhook);
 	}
 
 	async getWebhookMethods(rawPath: string) {

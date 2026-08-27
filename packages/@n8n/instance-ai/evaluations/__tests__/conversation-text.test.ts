@@ -1,5 +1,14 @@
-import type { TranscriptTurn } from '../types';
-import { transcriptAsText, userTurnsAsText } from '../utils/conversation-text';
+import type { CaseSeed } from '../harness/schema';
+import type { ConversationTurn, TranscriptTurn } from '../types';
+import {
+	agentTurnsAsText,
+	caseDisplayPrompt,
+	conversationUserTurnsAsText,
+	lastAgentText,
+	perTurnToolCallCounts,
+	transcriptAsText,
+	userTurnsAsText,
+} from '../utils/conversation-text';
 
 describe('userTurnsAsText', () => {
 	it('returns empty string on empty transcript', () => {
@@ -21,6 +30,134 @@ describe('userTurnsAsText', () => {
 			{ userMessage: 'a webhook', steps: [{ kind: 'agent-text', text: 'done' }] },
 		];
 		expect(userTurnsAsText(transcript)).toBe('Turn 1: build it\n\nTurn 2: a webhook');
+	});
+});
+
+describe('agentTurnsAsText', () => {
+	it('returns empty string on empty transcript', () => {
+		expect(agentTurnsAsText([])).toBe('');
+	});
+
+	it('returns the lone narration as plain text when only one turn narrates', () => {
+		const transcript: TranscriptTurn[] = [
+			{ userMessage: 'build a webhook', steps: [{ kind: 'agent-text', text: 'Added a webhook.' }] },
+		];
+		expect(agentTurnsAsText(transcript)).toBe('Added a webhook.');
+	});
+
+	it('numbers narration by conversation turn, dropping turns with no agent text', () => {
+		const transcript: TranscriptTurn[] = [
+			{ userMessage: 'build it', steps: [{ kind: 'agent-text', text: 'Added a webhook.' }] },
+			{
+				userMessage: 'tweak',
+				steps: [{ kind: 'tool-call', toolName: 'build-workflow', args: {} }],
+			},
+			{ userMessage: 'add a filter', steps: [{ kind: 'agent-text', text: 'Added a filter.' }] },
+		];
+		// Turn 2 has no narration, so it's skipped — but turn 3 keeps its turn number
+		// so each claim still aligns with the user turn that prompted it.
+		expect(agentTurnsAsText(transcript)).toBe(
+			'Turn 1: Added a webhook.\n\nTurn 3: Added a filter.',
+		);
+	});
+});
+
+describe('conversationUserTurnsAsText', () => {
+	it('returns empty string on empty conversation', () => {
+		expect(conversationUserTurnsAsText([])).toBe('');
+	});
+
+	it('returns empty string when conversation is undefined (replay-seeded case)', () => {
+		expect(conversationUserTurnsAsText(undefined)).toBe('');
+	});
+
+	it('returns the lone user message as plain text on a single user turn', () => {
+		const conversation: ConversationTurn[] = [{ role: 'user', text: 'build a webhook' }];
+		expect(conversationUserTurnsAsText(conversation)).toBe('build a webhook');
+	});
+
+	it('numbers user turns on multi-turn and drops assistant/empty turns', () => {
+		const conversation: ConversationTurn[] = [
+			{ role: 'user', text: 'build it' },
+			{ role: 'assistant', text: 'what kind?' },
+			{ role: 'user', text: '' },
+			{ role: 'user', text: 'a webhook' },
+		];
+		expect(conversationUserTurnsAsText(conversation)).toBe('Turn 1: build it\n\nTurn 2: a webhook');
+	});
+
+	it('returns empty string when there are no non-empty user turns', () => {
+		const conversation: ConversationTurn[] = [{ role: 'assistant', text: 'hello' }];
+		expect(conversationUserTurnsAsText(conversation)).toBe('');
+	});
+
+	// The editor hands the agent a resource reference, not text, so the faithful
+	// hand-off is `text: '' + attach`. Filtered as empty, it would hand the
+	// prompt-aware checks (fulfills-user-request) an EMPTY prompt.
+	it('names an attached workflow so a text-less hand-off is not dropped', () => {
+		const conversation: ConversationTurn[] = [
+			{ role: 'user', text: '', attach: { workflow: 'Batch loop' } },
+		];
+		expect(conversationUserTurnsAsText(conversation)).toBe('[attached workflow: Batch loop]');
+	});
+
+	it('keeps both the attachment and the text when the user typed something', () => {
+		const conversation: ConversationTurn[] = [
+			{ role: 'user', text: 'why is this failing?', attach: { workflow: 'Batch loop' } },
+		];
+		expect(conversationUserTurnsAsText(conversation)).toBe(
+			'[attached workflow: Batch loop] why is this failing?',
+		);
+	});
+
+	// `attach.workflow` is an id; the id means nothing to a prompt-aware check, so
+	// the note carries the name the seed declares for it (what the live path shows).
+	it('names the attachment by the seed workflow name, not its id', () => {
+		const conversation: ConversationTurn[] = [
+			{ role: 'user', text: '', attach: { workflow: 'wKk3RmT9xQ2bVn7L' } },
+		];
+		expect(conversationUserTurnsAsText(conversation, seedDeclaring('Batch loop'))).toBe(
+			'[attached workflow: Batch loop]',
+		);
+	});
+});
+
+/** An inline seed declaring one workflow under the id the tests attach. */
+function seedDeclaring(name: string): CaseSeed {
+	return {
+		mode: 'inline',
+		messages: [
+			{
+				id: 'm1',
+				type: 'llm',
+				role: 'user',
+				createdAt: '2020-01-01T00:00:00.000Z',
+				content: [{ type: 'text', text: 'earlier' }],
+			},
+		],
+		workflows: [{ id: 'wKk3RmT9xQ2bVn7L', name, nodes: [], connections: {} }],
+		dataTables: [],
+		agents: [],
+		projects: [],
+	};
+}
+
+describe('caseDisplayPrompt', () => {
+	it('uses the first authored turn', () => {
+		expect(caseDisplayPrompt({ conversation: [{ role: 'user', text: 'build a webhook' }] })).toBe(
+			'build a webhook',
+		);
+	});
+
+	// Without this the report labels, the comparison table and `Running case: ""`
+	// all come out empty for the faithful hand-off shape.
+	it('names the attachment when the opening turn carries no text', () => {
+		expect(
+			caseDisplayPrompt({
+				conversation: [{ role: 'user', text: '', attach: { workflow: 'wKk3RmT9xQ2bVn7L' } }],
+				seed: seedDeclaring('Batch loop'),
+			}),
+		).toBe('[attached workflow: Batch loop]');
 	});
 });
 
@@ -99,5 +236,43 @@ describe('transcriptAsText', () => {
 		expect(text).toContain('(rejected)');
 		expect(text).toContain('prompt: Here is the plan, approve?');
 		expect(text).toContain('user feedback: No — use a Webhook trigger, not a Schedule');
+	});
+});
+
+describe('perTurnToolCallCounts', () => {
+	it('counts each tool per turn and omits turns with no tool calls', () => {
+		const transcript: TranscriptTurn[] = [
+			{ userMessage: 'go', steps: [{ kind: 'agent-text', text: 'ok' }] },
+			{
+				steps: [
+					{ kind: 'tool-call', toolName: 'build-workflow' },
+					{ kind: 'tool-call', toolName: 'build-workflow' },
+					{ kind: 'tool-call', toolName: 'add-nodes' },
+				],
+			},
+			{ steps: [{ kind: 'tool-call', toolName: 'build-workflow' }] },
+		];
+		expect(perTurnToolCallCounts(transcript)).toBe(
+			'Turn 2: build-workflow×2, add-nodes×1\nTurn 3: build-workflow×1',
+		);
+	});
+
+	it('returns a sentinel when no turn called a tool', () => {
+		expect(perTurnToolCallCounts([{ steps: [{ kind: 'agent-text', text: 'hi' }] }])).toBe(
+			'(no tool calls in any turn)',
+		);
+	});
+});
+
+describe('lastAgentText', () => {
+	it('returns the most recent turn agent narration, skipping trailing turns with none', () => {
+		expect(lastAgentText([])).toBe('');
+		const transcript: TranscriptTurn[] = [
+			{ steps: [{ kind: 'agent-text', text: 'first' }], seeded: true },
+			{ steps: [{ kind: 'agent-text', text: 'latest' }], seeded: true },
+			// Live turn that produced no narration (the no-op fallback case).
+			{ userMessage: 'and now?', steps: [] },
+		];
+		expect(lastAgentText(transcript)).toBe('latest');
 	});
 });

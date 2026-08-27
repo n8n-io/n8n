@@ -1,4 +1,4 @@
-import { ApplicationError, type INodeTypeNameVersion } from 'n8n-workflow';
+import { UnexpectedError, type INodeTypeNameVersion } from 'n8n-workflow';
 import type { WorkflowDataWithTemplateId } from '@/Interface';
 import { isWorkflowDataWithTemplateId } from './typeGuards';
 /* eslint-disable import-x/extensions */
@@ -13,7 +13,7 @@ import apiFundamentalsJson from './samples/tutorial/api_fundamentals.json';
 
 const getWorkflowJson = (json: unknown): WorkflowDataWithTemplateId => {
 	if (!isWorkflowDataWithTemplateId(json)) {
-		throw new ApplicationError('Invalid workflow template JSON structure');
+		throw new UnexpectedError('Invalid workflow template JSON structure');
 	}
 
 	return json;

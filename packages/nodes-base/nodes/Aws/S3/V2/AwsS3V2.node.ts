@@ -1,4 +1,4 @@
-import { paramCase, snakeCase } from 'change-case';
+import { kebabCase, snakeCase } from 'change-case';
 import { createHash } from 'crypto';
 import type {
 	IDataObject,
@@ -96,7 +96,7 @@ export class AwsS3V2 implements INodeType {
 						const name = this.getNodeParameter('name', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.acl) {
-							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
+							headers['x-amz-acl'] = kebabCase(additionalFields.acl as string);
 						}
 						if (additionalFields.bucketObjectLockEnabled) {
 							headers['x-amz-bucket-object-lock-enabled'] =
@@ -508,7 +508,7 @@ export class AwsS3V2 implements INodeType {
 							).toUpperCase();
 						}
 						if (additionalFields.acl) {
-							headers['x-amz-acl'] = paramCase(additionalFields.acl as string);
+							headers['x-amz-acl'] = kebabCase(additionalFields.acl as string);
 						}
 						if (additionalFields.grantFullControl) {
 							headers['x-amz-grant-full-control'] = '';
@@ -805,7 +805,7 @@ export class AwsS3V2 implements INodeType {
 						}
 
 						if (additionalFields.acl) {
-							multipartHeaders['x-amz-acl'] = paramCase(additionalFields.acl as string);
+							multipartHeaders['x-amz-acl'] = kebabCase(additionalFields.acl as string);
 						}
 						if (additionalFields.grantFullControl) {
 							multipartHeaders['x-amz-grant-full-control'] = '';

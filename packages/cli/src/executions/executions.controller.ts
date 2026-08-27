@@ -1,18 +1,20 @@
-import type { User, ExecutionSummaries } from '@n8n/db';
-import { Get, Patch, Post, RestController } from '@n8n/decorators';
-import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
-
-import { ExecutionService } from './execution.service';
-import { EnterpriseExecutionsService } from './execution.service.ee';
-import { ExecutionRequest } from './execution.types';
-import { parseRangeQuery } from './parse-range-query.middleware';
-import { validateExecutionUpdatePayload } from './validation';
+import { DeleteExecutionsDto } from '@n8n/api-types';
+import type { AuthenticatedRequest, User, ExecutionSummaries } from '@n8n/db';
+import { Body, Get, Patch, Post, RestController } from '@n8n/decorators';
+import type { Scope } from '@n8n/permissions';
+import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { isPositiveInteger } from '@/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+
+import { ExecutionService } from './execution.service';
+import { EnterpriseExecutionsService } from './execution.service.ee';
+import { ExecutionRequest } from './execution.types';
+import { parseRangeQuery } from './parse-range-query.middleware';
+import { validateExecutionUpdatePayload } from './validation';
 
 @RestController('/executions')
 export class ExecutionsController {
@@ -24,14 +26,7 @@ export class ExecutionsController {
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
-		if (this.license.isSharingEnabled()) {
-			return await this.workflowSharingService.getSharedWorkflowIds(user, { scopes: [scope] });
-		} else {
-			return await this.workflowSharingService.getSharedWorkflowIds(user, {
-				workflowRoles: ['workflow:owner'],
-				projectRoles: [PROJECT_OWNER_ROLE_SLUG],
-			});
-		}
+		return await this.workflowSharingService.getSharedWorkflowIds(user, { scopes: [scope] });
 	}
 
 	@Get('/', { middlewares: [parseRangeQuery] })
@@ -141,12 +136,12 @@ export class ExecutionsController {
 	}
 
 	@Post('/delete')
-	async delete(req: ExecutionRequest.Delete) {
+	async delete(req: AuthenticatedRequest, _res: Response, @Body payload: DeleteExecutionsDto) {
 		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
-		return await this.executionService.delete(req, workflowIds);
+		return await this.executionService.delete(req.user, payload, workflowIds);
 	}
 
 	@Patch('/:id')

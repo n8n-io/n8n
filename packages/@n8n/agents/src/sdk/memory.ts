@@ -1,13 +1,12 @@
-import { hasEpisodicMemoryStore, isEpisodicMemoryEnabled } from '../runtime/episodic-memory';
+import { hasEpisodicMemoryStore, isEpisodicMemoryEnabled } from '../runtime/memory/episodic-memory';
 import {
 	DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
 	DEFAULT_EPISODIC_MEMORY_MAX_ENTRIES_PER_RUN,
 	DEFAULT_EPISODIC_MEMORY_TOP_K,
 	createEpisodicMemoryExtractFn,
 	createEpisodicMemoryReflectFn,
-} from '../runtime/episodic-memory-defaults';
-import { InMemoryMemory } from '../runtime/memory-store';
-import { createEmbeddingModel } from '../runtime/model-factory';
+} from '../runtime/memory/episodic-memory-defaults';
+import { InMemoryMemory } from '../runtime/memory/memory-store';
 import {
 	createObservationLogObserveFn,
 	createObservationLogReflectFn,
@@ -16,8 +15,9 @@ import {
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
 	DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 	DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
-} from '../runtime/observation-log-defaults';
-import { hasObservationLogStore } from '../runtime/observation-log-store';
+} from '../runtime/memory/observation-log-defaults';
+import { hasObservationLogStore } from '../runtime/memory/observation-log-store';
+import { createEmbeddingModel } from '../runtime/model/model-factory';
 import type {
 	BuiltMemory,
 	EpisodicMemoryConfig,

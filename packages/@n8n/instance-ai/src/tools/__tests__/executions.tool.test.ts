@@ -16,7 +16,7 @@ function createMockContext(
 		userId: 'user-1',
 		workflowService: {
 			get: vi.fn().mockResolvedValue({ id: 'wf-1', name: 'Fetched Name' }),
-			list: vi.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue({ workflows: [], total: 0, totalInScope: 0 }),
 		} as unknown as InstanceAiContext['workflowService'],
 		executionService: {
 			list: vi.fn(),
@@ -245,13 +245,14 @@ describe('executions tool', () => {
 			expect(result).toEqual(executionResult);
 		});
 
-		it('should execute immediately when permission is always_allow', async () => {
+		it('should execute immediately when always_allow + workflow was created by the agent', async () => {
 			const executionResult: ExecutionResult = {
 				executionId: 'exec-456',
 				status: 'success',
 			};
 			const context = createMockContext({
 				permissions: { runWorkflow: 'always_allow' },
+				aiCreatedWorkflowIds: new Set(['wf-1']),
 			});
 			(context.executionService.run as Mock).mockResolvedValue(executionResult);
 
@@ -273,6 +274,7 @@ describe('executions tool', () => {
 		it('should pass undefined inputData when not provided', async () => {
 			const context = createMockContext({
 				permissions: { runWorkflow: 'always_allow' },
+				aiCreatedWorkflowIds: new Set(['wf-1']),
 			});
 			(context.executionService.run as Mock).mockResolvedValue({
 				executionId: 'exec-1',
@@ -288,6 +290,161 @@ describe('executions tool', () => {
 
 			expect(context.executionService.run).toHaveBeenCalledWith('wf-1', undefined, {
 				timeout: undefined,
+			});
+		});
+
+		it('forwards the requested trigger node so a multi-trigger workflow runs the right branch', async () => {
+			const context = createMockContext({
+				permissions: { runWorkflow: 'always_allow' },
+				aiCreatedWorkflowIds: new Set(['wf-1']),
+			});
+			(context.executionService.run as Mock).mockResolvedValue({
+				executionId: 'exec-1',
+				status: 'success',
+			});
+
+			const tool = createExecutionsTool(context);
+			await executeTool(
+				tool,
+				{ action: 'run' as const, workflowId: 'wf-1', triggerNodeName: 'Weekly 5pm' },
+				createAgentCtx() as never,
+			);
+
+			expect(context.executionService.run).toHaveBeenCalledWith(
+				'wf-1',
+				undefined,
+				expect.objectContaining({ triggerNodeName: 'Weekly 5pm' }),
+			);
+		});
+
+		describe('session grant (always allow)', () => {
+			it('runs without HITL when the workflow has a session grant', async () => {
+				const context = createMockContext({
+					permissions: {},
+					sessionApprovedToolKeys: new Set(['executions:run:wf-1']),
+				});
+				(context.executionService.run as Mock).mockResolvedValue({
+					executionId: 'exec-1',
+					status: 'success',
+				});
+
+				const suspendFn = vi.fn();
+				const tool = createExecutionsTool(context);
+				await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).not.toHaveBeenCalled();
+				expect(context.executionService.run).toHaveBeenCalled();
+			});
+
+			it('still requires HITL for a different workflow than the one granted', async () => {
+				const context = createMockContext({
+					permissions: {},
+					sessionApprovedToolKeys: new Set(['executions:run:wf-1']),
+				});
+
+				const suspendFn = vi.fn();
+				const tool = createExecutionsTool(context);
+				await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-2' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).toHaveBeenCalled();
+			});
+
+			it('admin requireRunWorkflowApproval overrides the session grant', async () => {
+				const context = createMockContext({
+					permissions: {},
+					sessionApprovedToolKeys: new Set(['executions:run:wf-1']),
+					requireRunWorkflowApproval: true,
+				});
+
+				const suspendFn = vi.fn();
+				const tool = createExecutionsTool(context);
+				await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).toHaveBeenCalled();
+				expect(context.executionService.run).not.toHaveBeenCalled();
+			});
+
+			it('persists a grant when resumed with scope=session', async () => {
+				const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+				const context = createMockContext({ permissions: {}, grantSessionToolApproval });
+				(context.executionService.run as Mock).mockResolvedValue({
+					executionId: 'exec-1',
+					status: 'success',
+				});
+
+				const tool = createExecutionsTool(context);
+				await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ resumeData: { approved: true, scope: 'session' } }) as never,
+				);
+
+				expect(grantSessionToolApproval).toHaveBeenCalledWith('executions:run:wf-1');
+				expect(context.executionService.run).toHaveBeenCalled();
+			});
+
+			it('does not persist a grant when resumed with a one-time approval', async () => {
+				const grantSessionToolApproval = vi.fn().mockResolvedValue(undefined);
+				const context = createMockContext({ permissions: {}, grantSessionToolApproval });
+				(context.executionService.run as Mock).mockResolvedValue({
+					executionId: 'exec-1',
+					status: 'success',
+				});
+
+				const tool = createExecutionsTool(context);
+				await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ resumeData: { approved: true } }) as never,
+				);
+
+				expect(grantSessionToolApproval).not.toHaveBeenCalled();
+			});
+
+			it('honors a grant recorded mid-session for a later run of the same workflow', async () => {
+				// Mirrors the service wiring: the grant callback adds to the same set the tool reads,
+				// so a workflow approved "always" earlier in the run isn't re-asked later in the run.
+				const granted = new Set<string>();
+				const context = createMockContext({
+					permissions: {},
+					sessionApprovedToolKeys: granted,
+					grantSessionToolApproval: async (key: string) => {
+						await Promise.resolve();
+						granted.add(key);
+					},
+				});
+				(context.executionService.run as Mock).mockResolvedValue({
+					executionId: 'exec-1',
+					status: 'success',
+				});
+				const tool = createExecutionsTool(context);
+
+				await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ resumeData: { approved: true, scope: 'session' } }) as never,
+				);
+				expect(granted.has('executions:run:wf-1')).toBe(true);
+
+				const suspendFn = vi.fn();
+				await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+				expect(suspendFn).not.toHaveBeenCalled();
 			});
 		});
 
@@ -401,9 +558,11 @@ describe('executions tool', () => {
 						allowedRunWorkflowNames: new Set(['Replay Created WF']),
 					});
 					(context.workflowService.get as Mock).mockRejectedValue(new Error('not found'));
-					(context.workflowService.list as Mock).mockResolvedValue([
-						{ id: 'wf-current', name: 'Replay Created WF' },
-					]);
+					(context.workflowService.list as Mock).mockResolvedValue({
+						workflows: [{ id: 'wf-current', name: 'Replay Created WF' }],
+						total: 1,
+						totalInScope: 1,
+					});
 					(context.executionService.run as Mock).mockResolvedValue({
 						executionId: 'exec-1',
 						status: 'success',
@@ -473,6 +632,70 @@ describe('executions tool', () => {
 				expect(agentCtx.suspend).toHaveBeenCalled();
 				expect(context.executionService.run).not.toHaveBeenCalled();
 				expect(result).toBeUndefined();
+			});
+		});
+
+		describe('aiCreatedWorkflowIds scope (no explicit allow-list)', () => {
+			it('runs without HITL when always_allow + workflow was created by the agent', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					aiCreatedWorkflowIds: new Set(['wf-built']),
+				});
+				(context.executionService.run as Mock).mockResolvedValue({
+					executionId: 'exec-1',
+					status: 'success',
+				});
+				const suspendFn = vi.fn();
+
+				const tool = createExecutionsTool(context);
+				await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-built' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).not.toHaveBeenCalled();
+				expect(context.executionService.run).toHaveBeenCalledWith('wf-built', undefined, {
+					timeout: undefined,
+				});
+			});
+
+			it('still requires HITL for a pre-existing workflow the agent did not create', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+					aiCreatedWorkflowIds: new Set(['wf-built']),
+				});
+				(context.workflowService.get as Mock).mockResolvedValue({ name: 'Pre-existing WF' });
+				const suspendFn = vi.fn();
+
+				const tool = createExecutionsTool(context);
+				const result = await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-preexisting' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).toHaveBeenCalled();
+				expect(context.executionService.run).not.toHaveBeenCalled();
+				expect(result).toBeUndefined();
+			});
+
+			it('requires HITL when always_allow is set but the agent created nothing', async () => {
+				const context = createMockContext({
+					permissions: { runWorkflow: 'always_allow' },
+				});
+				(context.workflowService.get as Mock).mockResolvedValue({ name: 'Some WF' });
+				const suspendFn = vi.fn();
+
+				const tool = createExecutionsTool(context);
+				await executeTool(
+					tool,
+					{ action: 'run' as const, workflowId: 'wf-1' },
+					createAgentCtx({ suspend: suspendFn }) as never,
+				);
+
+				expect(suspendFn).toHaveBeenCalled();
+				expect(context.executionService.run).not.toHaveBeenCalled();
 			});
 		});
 	});

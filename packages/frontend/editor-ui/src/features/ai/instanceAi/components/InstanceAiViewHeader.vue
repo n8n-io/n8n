@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
+import { useRoute } from 'vue-router';
 import { N8nCallout, N8nIconButton, N8nTooltip, TOOLTIP_DELAY_MS } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -12,9 +13,21 @@ const store = useInstanceAiStore();
 const sourceControlStore = useSourceControlStore();
 const i18n = useI18n();
 const sidebar = useSidebarState();
+const route = useRoute();
 const { goToUpgrade } = usePageRedirectionHelper();
 
 const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.branchReadOnly);
+
+// The active thread comes from the `:threadId` route param (INSTANCE_AI_THREAD_VIEW);
+// undefined on the empty/new-conversation view, in which case no per-thread total shows.
+const activeThreadId = computed(() => {
+	const id = route.params.threadId;
+	return typeof id === 'string' ? id : undefined;
+});
+
+const threadCreditsUsed = computed(() =>
+	activeThreadId.value ? store.threadCreditsUsed(activeThreadId.value) : undefined,
+);
 </script>
 
 <template>
@@ -27,7 +40,7 @@ const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.bran
 					:show-after="TOOLTIP_DELAY_MS"
 				>
 					<N8nIconButton
-						icon="history"
+						icon="menu"
 						variant="ghost"
 						size="small"
 						icon-size="large"
@@ -44,6 +57,7 @@ const isReadOnlyEnvironment = computed(() => sourceControlStore.preferences.bran
 				v-if="store.creditsRemaining !== undefined"
 				:credits-remaining="store.creditsRemaining"
 				:credits-quota="store.creditsQuota"
+				:credits-used="threadCreditsUsed"
 				:is-low-credits="store.isLowCredits"
 				button-size="small"
 				@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"

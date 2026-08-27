@@ -64,4 +64,18 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 	it('implicit string coercion uses Array.prototype.toString', () => {
 		expect(evaluate('={{ "items: " + $json.arr }}', { arr: [1, 2, 3] })).toBe('items: 1,2,3');
 	});
+
+	it('reverse returns a reversed copy without mutating a subsequent sibling read', () => {
+		expect(evaluate('={{ [$json.arr.reverse(), $json.arr] }}', { arr: [1, 2, 3] })).toEqual([
+			[3, 2, 1],
+			[1, 2, 3],
+		]);
+	});
+
+	it('reverse does not mutate a preceding sibling read', () => {
+		expect(evaluate('={{ [$json.arr, $json.arr.reverse()] }}', { arr: [1, 2, 3] })).toEqual([
+			[1, 2, 3],
+			[3, 2, 1],
+		]);
+	});
 });

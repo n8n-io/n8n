@@ -16,6 +16,16 @@ import { flushPromises } from '@vue/test-utils';
 
 vi.mock('vue-router');
 
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
+
 const DEFAULT_OPTIONS: FilterOptionsValue = {
 	caseSensitive: true,
 	leftValue: '',
@@ -330,10 +340,16 @@ describe('FilterConditions.vue', () => {
 
 		const expressionEditor = within(condition)
 			.getByTestId('filter-condition-left')
-			.querySelector('.cm-line');
+			.querySelector('.cm-content');
+
+		expect(expressionEditor).toBeInTheDocument();
 
 		if (expressionEditor) {
-			await userEvent.type(expressionEditor, 'test');
+			// Focus the editor and wait until focus has landed before typing,
+			// otherwise the first keystroke can be dropped on slow runs
+			await userEvent.click(expressionEditor);
+			await waitFor(() => expect(expressionEditor).toHaveFocus());
+			await userEvent.type(expressionEditor, 'test', { skipClick: true });
 		}
 
 		await waitFor(() => {

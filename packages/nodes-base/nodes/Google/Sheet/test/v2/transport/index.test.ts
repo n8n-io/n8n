@@ -2,9 +2,10 @@ import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { getGoogleAccessToken } from '../../../../GenericFunctions';
 import { apiRequest, apiRequestAllItems } from '../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../../GenericFunctions', () => ({
-	getGoogleAccessToken: jest.fn(),
+vi.mock('../../../../GenericFunctions', () => ({
+	getGoogleAccessToken: vi.fn(),
 }));
 
 describe('Google Sheets Transport', () => {
@@ -13,12 +14,12 @@ describe('Google Sheets Transport', () => {
 
 	beforeEach(() => {
 		mockExecuteFunction = {
-			getNode: jest.fn(),
-			getNodeParameter: jest.fn(),
-			getCredentials: jest.fn(),
+			getNode: vi.fn(),
+			getNodeParameter: vi.fn(),
+			getCredentials: vi.fn(),
 			helpers: {
-				request: jest.fn(),
-				requestOAuth2: jest.fn(),
+				request: vi.fn(),
+				requestOAuth2: vi.fn(),
 			},
 		} as unknown as IExecuteFunctions;
 
@@ -26,7 +27,7 @@ describe('Google Sheets Transport', () => {
 			...mockExecuteFunction,
 		} as unknown as ILoadOptionsFunctions;
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 	const mockAccessToken = 'mock-access-token';
 
@@ -36,13 +37,13 @@ describe('Google Sheets Transport', () => {
 			const resource = '/v4/spreadsheets';
 			const mockResponse = { data: 'test' };
 
-			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue('serviceAccount');
-			mockExecuteFunction.getCredentials = jest.fn().mockResolvedValue({
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue('serviceAccount');
+			mockExecuteFunction.getCredentials = vi.fn().mockResolvedValue({
 				email: 'test@test.com',
 				privateKey: 'private-key',
 			});
-			(getGoogleAccessToken as jest.Mock).mockResolvedValue({ access_token: mockAccessToken });
-			mockExecuteFunction.helpers.request = jest.fn().mockResolvedValue(mockResponse);
+			(getGoogleAccessToken as Mock).mockResolvedValue({ access_token: mockAccessToken });
+			mockExecuteFunction.helpers.request = vi.fn().mockResolvedValue(mockResponse);
 
 			const result = await apiRequest.call(mockExecuteFunction, method, resource);
 
@@ -58,13 +59,58 @@ describe('Google Sheets Transport', () => {
 			);
 		});
 
+		it('should forward the sheetV2Trigger service scope to getGoogleAccessToken when passed', async () => {
+			const method = 'GET';
+			const resource = '';
+
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue('serviceAccount');
+			mockExecuteFunction.getCredentials = vi.fn().mockResolvedValue({});
+			(getGoogleAccessToken as Mock).mockResolvedValue({ access_token: mockAccessToken });
+			mockExecuteFunction.helpers.request = vi.fn().mockResolvedValue({});
+
+			await apiRequest.call(
+				mockExecuteFunction,
+				method,
+				resource,
+				undefined,
+				{ mimeType: 'application/test' },
+				'https://example.com/export',
+				undefined,
+				{ resolveWithFullResponse: true, encoding: null, json: false },
+				'sheetV2Trigger',
+			);
+
+			expect(getGoogleAccessToken as Mock).toHaveBeenCalledWith(
+				expect.anything(),
+				'sheetV2Trigger',
+			);
+		});
+
+		it('should default the service scope to sheetV2 when none is passed', async () => {
+			const method = 'GET';
+			const resource = '/v4/spreadsheets';
+
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue('serviceAccount');
+			mockExecuteFunction.getCredentials = vi.fn().mockResolvedValue({});
+			(getGoogleAccessToken as Mock).mockResolvedValue({ access_token: mockAccessToken });
+			mockExecuteFunction.helpers.request = vi.fn().mockResolvedValue({});
+
+			await apiRequest.call(mockExecuteFunction, method, resource);
+
+			expect(getGoogleAccessToken as Mock).toHaveBeenCalledWith(expect.anything(), 'sheetV2');
+			expect(getGoogleAccessToken as Mock).not.toHaveBeenCalledWith(
+				expect.anything(),
+				'sheetV2Trigger',
+			);
+		});
+
 		it('should make successful request with OAuth2 authentication', async () => {
 			const method = 'GET';
 			const resource = '/v4/spreadsheets';
 			const mockResponse = { data: 'test' };
 
-			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue('oAuth2');
-			mockExecuteFunction.helpers.requestOAuth2 = jest.fn().mockResolvedValue(mockResponse);
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue('oAuth2');
+			mockExecuteFunction.helpers.requestOAuth2 = vi.fn().mockResolvedValue(mockResponse);
 
 			const result = await apiRequest.call(mockExecuteFunction, method, resource);
 
@@ -78,9 +124,9 @@ describe('Google Sheets Transport', () => {
 			const headers = { 'Custom-Header': 'value' };
 			const qs = { param: 'value' };
 
-			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue('serviceAccount');
-			mockExecuteFunction.getCredentials = jest.fn().mockResolvedValue({});
-			(getGoogleAccessToken as jest.Mock).mockResolvedValue({ access_token: 'token' });
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue('serviceAccount');
+			mockExecuteFunction.getCredentials = vi.fn().mockResolvedValue({});
+			(getGoogleAccessToken as Mock).mockResolvedValue({ access_token: 'token' });
 
 			await apiRequest.call(mockExecuteFunction, method, resource, {}, qs, undefined, headers);
 
@@ -98,9 +144,9 @@ describe('Google Sheets Transport', () => {
 			const error = new Error('PERMISSION_DENIED');
 			error.message = 'PERMISSION_DENIED Some error';
 
-			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue('serviceAccount');
-			mockExecuteFunction.getCredentials = jest.fn().mockResolvedValue({});
-			mockExecuteFunction.helpers.request = jest.fn().mockRejectedValue(error);
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue('serviceAccount');
+			mockExecuteFunction.getCredentials = vi.fn().mockResolvedValue({});
+			mockExecuteFunction.helpers.request = vi.fn().mockRejectedValue(error);
 
 			await expect(apiRequest.call(mockExecuteFunction, method, resource)).rejects.toThrow();
 		});
@@ -110,9 +156,9 @@ describe('Google Sheets Transport', () => {
 			const resource = '/v4/spreadsheets';
 			const error = new Error('ERR_OSSL_PEM_NO_START_LINE');
 
-			mockExecuteFunction.getNodeParameter = jest.fn().mockReturnValue('serviceAccount');
-			mockExecuteFunction.getCredentials = jest.fn().mockResolvedValue({});
-			mockExecuteFunction.helpers.request = jest.fn().mockRejectedValue(error);
+			mockExecuteFunction.getNodeParameter = vi.fn().mockReturnValue('serviceAccount');
+			mockExecuteFunction.getCredentials = vi.fn().mockResolvedValue({});
+			mockExecuteFunction.helpers.request = vi.fn().mockRejectedValue(error);
 
 			await expect(apiRequest.call(mockExecuteFunction, method, resource)).rejects.toThrow();
 		});
@@ -132,11 +178,11 @@ describe('Google Sheets Transport', () => {
 				nextPageToken: undefined,
 			};
 
-			mockLoadOptionsFunction.getNodeParameter = jest.fn().mockReturnValue('serviceAccount');
-			mockLoadOptionsFunction.getCredentials = jest.fn().mockResolvedValue({});
+			mockLoadOptionsFunction.getNodeParameter = vi.fn().mockReturnValue('serviceAccount');
+			mockLoadOptionsFunction.getCredentials = vi.fn().mockResolvedValue({});
 
-			(getGoogleAccessToken as jest.Mock).mockResolvedValue({ access_token: mockAccessToken });
-			mockExecuteFunction.helpers.request = jest
+			(getGoogleAccessToken as Mock).mockResolvedValue({ access_token: mockAccessToken });
+			mockExecuteFunction.helpers.request = vi
 				.fn()
 				.mockResolvedValueOnce(firstPage)
 				.mockResolvedValueOnce(secondPage);
@@ -160,11 +206,11 @@ describe('Google Sheets Transport', () => {
 				items: [],
 			};
 
-			mockLoadOptionsFunction.getNodeParameter = jest.fn().mockReturnValue('serviceAccount');
-			mockLoadOptionsFunction.getCredentials = jest.fn().mockResolvedValue({});
+			mockLoadOptionsFunction.getNodeParameter = vi.fn().mockReturnValue('serviceAccount');
+			mockLoadOptionsFunction.getCredentials = vi.fn().mockResolvedValue({});
 
-			(getGoogleAccessToken as jest.Mock).mockResolvedValue({ access_token: mockAccessToken });
-			mockExecuteFunction.helpers.request = jest.fn().mockResolvedValue(emptyResponse);
+			(getGoogleAccessToken as Mock).mockResolvedValue({ access_token: mockAccessToken });
+			mockExecuteFunction.helpers.request = vi.fn().mockResolvedValue(emptyResponse);
 
 			const result = await apiRequestAllItems.call(
 				mockLoadOptionsFunction,

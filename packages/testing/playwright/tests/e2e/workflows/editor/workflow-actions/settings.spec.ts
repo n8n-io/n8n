@@ -30,29 +30,29 @@ test.describe(
 			await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();
 
 			await n8n.workflowSettingsModal.getErrorWorkflowField().click();
-			const optionCount = await n8n.page.getByRole('option').count();
+			const optionCount = await n8n.workflowSettingsModal.getVisiblePopoverOption().count();
 			expect(optionCount).toBeGreaterThanOrEqual(totalWorkflows + 2);
-			await n8n.page.getByRole('option').last().click();
+			await n8n.workflowSettingsModal.getVisiblePopoverOption().last().click();
 
 			await n8n.workflowSettingsModal.getTimezoneField().click();
-			await expect(n8n.page.getByRole('option').first()).toBeVisible();
-			await n8n.page.getByRole('option').nth(1).click();
+			await expect(n8n.workflowSettingsModal.getVisiblePopoverOption().first()).toBeVisible();
+			await n8n.workflowSettingsModal.getVisiblePopoverOption().nth(1).click();
 
 			await n8n.workflowSettingsModal.getSaveFailedExecutionsField().click();
-			await expect(n8n.page.getByRole('option')).toHaveCount(3);
-			await n8n.page.getByRole('option').last().click();
+			await expect(n8n.workflowSettingsModal.getVisiblePopoverOption()).toHaveCount(3);
+			await n8n.workflowSettingsModal.getVisiblePopoverOption().last().click();
 
 			await n8n.workflowSettingsModal.getSaveSuccessExecutionsField().click();
-			await expect(n8n.page.getByRole('option')).toHaveCount(3);
-			await n8n.page.getByRole('option').last().click();
+			await expect(n8n.workflowSettingsModal.getVisiblePopoverOption()).toHaveCount(3);
+			await n8n.workflowSettingsModal.getVisiblePopoverOption().last().click();
 
 			await n8n.workflowSettingsModal.getSaveManualExecutionsField().click();
-			await expect(n8n.page.getByRole('option')).toHaveCount(3);
-			await n8n.page.getByRole('option').last().click();
+			await expect(n8n.workflowSettingsModal.getVisiblePopoverOption()).toHaveCount(3);
+			await n8n.workflowSettingsModal.getVisiblePopoverOption().last().click();
 
 			await n8n.workflowSettingsModal.getSaveExecutionProgressField().click();
-			await expect(n8n.page.getByRole('option')).toHaveCount(3);
-			await n8n.page.getByRole('option').last().click();
+			await expect(n8n.workflowSettingsModal.getVisiblePopoverOption()).toHaveCount(3);
+			await n8n.workflowSettingsModal.getVisiblePopoverOption().last().click();
 
 			await n8n.workflowSettingsModal.getTimeoutSwitch().click();
 			await n8n.workflowSettingsModal.getTimeoutInput().fill('1');
@@ -65,13 +65,13 @@ test.describe(
 
 		test.describe('Menu entry Push To Git', () => {
 			test('should not show up in the menu for members @auth:member', async ({ n8n }) => {
-				await n8n.workflowSettingsModal.getWorkflowMenu().click();
-				await expect(n8n.workflowSettingsModal.getPushToGitMenuItem()).not.toBeAttached();
+				await n8n.workflowMenu.open();
+				await expect(n8n.workflowMenu.getPushToGitItem()).not.toBeAttached();
 			});
 
 			test('should show up for owners @auth:owner', async ({ n8n }) => {
-				await n8n.workflowSettingsModal.getWorkflowMenu().click();
-				await expect(n8n.workflowSettingsModal.getPushToGitMenuItem()).toBeVisible();
+				await n8n.workflowMenu.open();
+				await expect(n8n.workflowMenu.getPushToGitItem()).toBeVisible();
 			});
 		});
 	},

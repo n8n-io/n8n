@@ -1,8 +1,9 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import {
 	type User,
+	FolderRepository,
 	Project,
 	ProjectRelation,
 	ProjectRelationRepository,
@@ -22,18 +23,16 @@ import {
 	PROJECT_ADMIN_ROLE_SLUG,
 	isAssignableProjectRoleSlug,
 } from '@n8n/permissions';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
-
-import { OwnershipService } from './ownership.service';
-import { RoleService } from './role.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { OwnershipService } from './ownership.service';
+import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -64,6 +63,12 @@ class ProjectNotFoundError extends NotFoundError {
 	}
 }
 
+export interface ProjectCreateOverrides {
+	id?: string;
+	description?: string | null;
+	customTelemetryTags?: Array<{ key: string; value: string }>;
+}
+
 @Service()
 export class ProjectService {
 	constructor(
@@ -72,55 +77,63 @@ export class ProjectService {
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly folderRepository: FolderRepository,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly ownershipService: OwnershipService,
+		private readonly logger: Logger,
 	) {}
 
 	private get workflowService() {
-		return import('@/workflows/workflow.service').then(({ WorkflowService }) =>
+		return import('@/workflows/workflow.service.js').then(({ WorkflowService }) =>
 			Container.get(WorkflowService),
 		);
 	}
 
 	private get credentialsService() {
-		return import('@/credentials/credentials.service').then(({ CredentialsService }) =>
+		return import('@/credentials/credentials.service.js').then(({ CredentialsService }) =>
 			Container.get(CredentialsService),
 		);
 	}
 
-	private get folderService() {
-		return import('@/services/folder.service').then(({ FolderService }) =>
-			Container.get(FolderService),
-		);
-	}
-
 	private get dataTableService() {
-		return import('@/modules/data-table/data-table.service').then(({ DataTableService }) =>
+		return import('@/modules/data-table/data-table.service.js').then(({ DataTableService }) =>
 			Container.get(DataTableService),
 		);
 	}
 
 	private get secretsProvidersConnectionsService() {
-		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee').then(
+		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee.js').then(
 			({ SecretsProvidersConnectionsService }) => Container.get(SecretsProvidersConnectionsService),
 		);
 	}
 
 	private get agentRepository() {
-		return import('@/modules/agents/repositories/agent.repository').then(({ AgentRepository }) =>
+		return import('@/modules/agents/repositories/agent.repository.js').then(({ AgentRepository }) =>
 			Container.get(AgentRepository),
 		);
 	}
 
 	private get agentKnowledgeService() {
-		return import('@/modules/agents/agent-knowledge.service').then(({ AgentKnowledgeService }) =>
+		return import('@/modules/agents/agent-knowledge.service.js').then(({ AgentKnowledgeService }) =>
 			Container.get(AgentKnowledgeService),
 		);
 	}
 
+	private get agentExecutionService() {
+		return import('@/modules/agents/agent-execution.service.js').then(({ AgentExecutionService }) =>
+			Container.get(AgentExecutionService),
+		);
+	}
+
+	private get agentChatAttachmentService() {
+		return import('@/modules/agents/agent-chat-attachment.service.js').then(
+			({ AgentChatAttachmentService }) => Container.get(AgentChatAttachmentService),
+		);
+	}
+
 	private get connectionStatusProxy() {
-		return import('@/credentials/credential-connection-status-proxy').then(
+		return import('@/credentials/credential-connection-status-proxy.js').then(
 			({ CredentialConnectionStatusProxy }) => Container.get(CredentialConnectionStatusProxy),
 		);
 	}
@@ -164,6 +177,24 @@ export class ProjectService {
 			);
 		}
 
+		const ownedCredentials = await this.sharedCredentialsRepository.find({
+			where: { projectId: project.id, role: 'credential:owner' },
+			relations: { credentials: true },
+		});
+
+		// End-user credentials can't live in personal projects, so reject the whole
+		// migration before anything moves — deleteProject is a sequence of awaits,
+		// not a transaction.
+		if (targetProject?.type === 'personal') {
+			const endUserCredentials = ownedCredentials.filter((sc) => sc.credentials.isResolvable);
+			if (endUserCredentials.length > 0) {
+				const names = endUserCredentials.map((sc) => `"${sc.credentials.name}"`).join(', ');
+				throw new BadRequestError(
+					`Can't migrate end-user credentials (${names}) to a personal project. Switch them back to fixed credentials, move them to another team project, or delete this project without migrating.`,
+				);
+			}
+		}
+
 		// 1. delete or migrate workflows owned by this project
 		const ownedSharedWorkflows = await this.sharedWorkflowRepository.find({
 			where: { projectId: project.id, role: 'workflow:owner' },
@@ -181,11 +212,6 @@ export class ProjectService {
 		}
 
 		// 2. delete credentials owned by this project
-		const ownedCredentials = await this.sharedCredentialsRepository.find({
-			where: { projectId: project.id, role: 'credential:owner' },
-			relations: { credentials: true },
-		});
-
 		if (targetProject) {
 			await this.sharedCredentialsRepository.makeOwner(
 				ownedCredentials.map((sc) => sc.credentialsId),
@@ -199,8 +225,7 @@ export class ProjectService {
 
 		// 3. Move folders over to the target project, before deleting the project else cascading will delete workflows
 		if (targetProject) {
-			const folderService = await this.folderService;
-			await folderService.transferAllFoldersToProject(project.id, targetProject.id);
+			await this.folderRepository.transferAllFoldersToProject(project.id, targetProject.id);
 		}
 
 		// 4. delete shared credentials into this project
@@ -228,13 +253,39 @@ export class ProjectService {
 
 		// 8. delete agent knowledge files before project removal cascades delete agent_files rows.
 		if (this.moduleRegistry.isActive('agents')) {
-			const [agentRepository, agentKnowledgeService] = await Promise.all([
-				this.agentRepository,
-				this.agentKnowledgeService,
-			]);
+			const [agentRepository, agentKnowledgeService, agentExecutionService, agentChatAttachments] =
+				await Promise.all([
+					this.agentRepository,
+					this.agentKnowledgeService,
+					this.agentExecutionService,
+					this.agentChatAttachmentService,
+				]);
 			const agents = await agentRepository.findByProjectId(project.id);
 			for (const agent of agents) {
-				await agentKnowledgeService.deleteAllFilesForAgent(agent.id);
+				try {
+					await agentKnowledgeService.deleteAllFilesForAgent(project.id, agent.id);
+				} catch (error) {
+					this.logger.warn('Failed to delete knowledge files on project delete', {
+						agentId: agent.id,
+						projectId: project.id,
+						error: error instanceof Error ? error.message : error,
+					});
+				}
+
+				// Delete chat attachment bytes before the project removal cascades away
+				// the agent_chat_attachments rows that hold the binaryDataId handles.
+				try {
+					await agentChatAttachments.deleteByAgent(agent.id);
+				} catch (error) {
+					this.logger.warn('Failed to delete chat attachments on project delete', {
+						agentId: agent.id,
+						projectId: project.id,
+						error: error instanceof Error ? error.message : error,
+					});
+				}
+
+				await agentKnowledgeService.destroyKnowledgeSandbox(project.id, agent.id);
+				await agentExecutionService.deleteExecutionLogsForAgent(agent.id);
 			}
 		}
 
@@ -342,6 +393,7 @@ export class ProjectService {
 		adminUser: User,
 		data: CreateProjectDto,
 		trx: EntityManager,
+		overrides: ProjectCreateOverrides = {},
 	) {
 		const limit = this.licenseState.getMaxTeamProjects();
 		if (limit !== UNLIMITED_LICENSE_QUOTA) {
@@ -353,7 +405,12 @@ export class ProjectService {
 
 		const project = await trx.save(
 			Project,
-			this.projectRepository.create({ ...data, type: 'team', creatorId: adminUser.id }),
+			this.projectRepository.create({
+				...data,
+				...overrides,
+				type: 'team',
+				creatorId: adminUser.id,
+			}),
 		);
 
 		// Link admin
@@ -362,11 +419,15 @@ export class ProjectService {
 		return project;
 	}
 
-	async createTeamProject(adminUser: User, data: CreateProjectDto): Promise<Project> {
+	async createTeamProject(
+		adminUser: User,
+		data: CreateProjectDto,
+		overrides: ProjectCreateOverrides = {},
+	): Promise<Project> {
 		// This needs to be SERIALIZABLE otherwise the count would not block a
 		// concurrent transaction and we could insert multiple projects.
 		return await this.projectRepository.manager.transaction('SERIALIZABLE', async (trx) => {
-			return await this.createTeamProjectWithEntityManager(adminUser, data, trx);
+			return await this.createTeamProjectWithEntityManager(adminUser, data, trx, overrides);
 		});
 	}
 
@@ -704,6 +765,42 @@ export class ProjectService {
 		return projects.map((p) => p.id);
 	}
 
+	async findExistingProjectIds(projectIds: string[]): Promise<Set<string>> {
+		if (projectIds.length === 0) return new Set();
+		const projects = await this.projectRepository.find({
+			select: ['id'],
+			where: { id: In(projectIds) },
+		});
+		return new Set(projects.map(({ id }) => id));
+	}
+
+	async findProjectsByIdsForUser(
+		user: User,
+		projectIds: string[],
+		scopes: Scope[],
+	): Promise<Project[]> {
+		if (projectIds.length === 0) {
+			return [];
+		}
+
+		const where: FindOptionsWhere<Project> = {
+			id: In(projectIds),
+		};
+
+		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
+			where.projectRelations = {
+				role: In(projectRoles),
+				userId: user.id,
+			};
+		}
+
+		return await this.projectRepository.find({
+			where,
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
 	/**
 	 * Add a user to a team project with specified roles.
 	 *
@@ -729,6 +826,11 @@ export class ProjectService {
 				id: projectId,
 			},
 		});
+	}
+
+	/** Finds a project by id, or `null` when it does not exist. */
+	async findProject(projectId: string): Promise<Project | null> {
+		return await this.projectRepository.findOne({ where: { id: projectId } });
 	}
 
 	async getProjectRelations(projectId: string): Promise<ProjectRelation[]> {

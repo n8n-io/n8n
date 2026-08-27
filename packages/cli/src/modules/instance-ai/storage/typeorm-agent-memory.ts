@@ -16,8 +16,10 @@ import {
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	SUB_AGENT_RESOURCE_PREFIX,
+	createSubAgentResourceIdPrefix,
 	type AgentDbMessage,
 	type AgentMessage,
 	type BuiltMemory,
@@ -46,10 +48,6 @@ function parseJsonSafe(text: string): unknown {
 	} catch {
 		return undefined;
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isAgentMessage(value: unknown): value is AgentMessage {
@@ -364,6 +362,50 @@ export class TypeORMAgentMemory
 		await this.threadRepo.delete({ id: In(threadIds) });
 	}
 
+	/**
+	 * Delete every thread owned by `resourceId` (a user), the sub-agent threads
+	 * spawned under those threads, and all of their working-memory resources.
+	 * Downstream rows (messages, checkpoints, run snapshots, iteration logs,
+	 * grants, pending confirmations, observations) cascade via their `threadId`
+	 * FK; resources have no FK to threads and are removed explicitly. Returns the
+	 * number of owner threads deleted.
+	 */
+	async deleteThreadsByResourceId(resourceId: string): Promise<number> {
+		const ownerThreads = await this.threadRepo.find({
+			where: { resourceId },
+			select: { id: true },
+		});
+
+		// The user's resource-scoped working memory is keyed by the resourceId
+		// itself and can outlive the user's threads, so always clear it.
+		const resourceIdsToDelete = new Set<string>([resourceId]);
+		const threadIdsToDelete = ownerThreads.map((thread) => thread.id);
+		for (const threadId of threadIdsToDelete) {
+			resourceIdsToDelete.add(`thread:${threadId}`);
+		}
+
+		if (ownerThreads.length > 0) {
+			const subAgentThreads = await this.threadRepo.find({
+				where: ownerThreads.map((thread) => ({
+					resourceId: Like(`${createSubAgentResourceIdPrefix(thread.id)}%`),
+				})),
+				select: { id: true, resourceId: true },
+			});
+			for (const subAgent of subAgentThreads) {
+				threadIdsToDelete.push(subAgent.id);
+				resourceIdsToDelete.add(subAgent.resourceId);
+				resourceIdsToDelete.add(`thread:${subAgent.id}`);
+			}
+		}
+
+		await this.resourceRepo.delete({ id: In([...resourceIdsToDelete]) });
+		if (threadIdsToDelete.length > 0) {
+			await this.threadRepo.delete({ id: In(threadIdsToDelete) });
+		}
+
+		return ownerThreads.length;
+	}
+
 	async getMessages(
 		threadId: string,
 		opts?: { limit?: number; before?: Date },
@@ -387,21 +429,32 @@ export class TypeORMAgentMemory
 		threadId: string;
 		limit?: number;
 		page?: number;
-	}): Promise<{ messages: AgentDbMessage[] }> {
+		/** Also resolve `newerBoundaryAt`: the createdAt of the row immediately
+		 *  newer than the page, i.e. where the next page starts. Read in the same
+		 *  scan as the page itself (one extra row), not a second query. */
+		withNewerBoundary?: boolean;
+	}): Promise<{ messages: AgentDbMessage[]; newerBoundaryAt?: Date }> {
 		const limit = args.limit ?? 50;
 		const page = args.page ?? 0;
+		const offset = page * limit;
+		// The newest page has no newer neighbour — its span is open-ended.
+		const withBoundary = args.withNewerBoundary === true && offset > 0;
 		const entities = await this.messageRepo.find({
 			where: { threadId: args.threadId },
 			order: { createdAt: 'DESC', id: 'DESC' },
-			take: limit,
-			skip: page * limit,
+			take: withBoundary ? limit + 1 : limit,
+			skip: withBoundary ? offset - 1 : offset,
 		});
+		// Rows are newest-first, so the extra row is the neighbour, not part of
+		// the page.
+		const boundary = withBoundary ? entities.shift() : undefined;
 
 		return {
 			messages: entities.reverse().flatMap((entity) => {
 				const message = this.toAgentMessage(entity);
 				return message ? [message] : [];
 			}),
+			newerBoundaryAt: boundary?.createdAt,
 		};
 	}
 

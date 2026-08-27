@@ -1,4 +1,4 @@
-import type { StreamChunk } from '@n8n/agents';
+import { APPROVAL_SUSPEND_SCHEMA, type StreamChunk } from '@n8n/agents';
 import {
 	credentialRequestSchema,
 	workflowSetupNodeSchema,
@@ -6,17 +6,16 @@ import {
 	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
+	channelConfigSchema,
+	mcpConnectRequestSchema,
 } from '@n8n/api-types';
-import type {
-	InstanceAiCredentialRequest,
-	InstanceAiEvent,
-	InstanceAiWorkflowSetupNode,
-	PlannedTaskArg,
-	TaskList,
-	GatewayConfirmationRequiredPayload,
-	WebSearchMeta,
-} from '@n8n/api-types';
+import type { InstanceAiEvent } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
+
+import { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
+
+export { isQuotaExhaustedError, QUOTA_EXHAUSTED_ERROR_CODE } from '../utils/quota-error';
 
 const questionItemSchema = z.object({
 	id: z.string(),
@@ -24,10 +23,6 @@ const questionItemSchema = z.object({
 	type: z.enum(['single', 'multi', 'text']),
 	options: z.array(z.string()).optional(),
 });
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
 
 function getArrayProperty(record: Record<string, unknown>, key: string): unknown[] | undefined {
 	const value = record[key];
@@ -109,6 +104,7 @@ const agentStreamChunkTypes = new Set<string>([
 	'finish',
 	'text-delta',
 	'reasoning-delta',
+	'tool-input-start',
 	'tool-call',
 	'tool-result',
 	'error',
@@ -125,6 +121,44 @@ interface ErrorInfo {
 	statusCode?: number;
 	provider?: string;
 	technicalDetails?: string;
+	code?: 'quota_exhausted';
+}
+
+/** Find an ai-sdk `statusCode` on the error or its `cause` chain, alongside the response body. */
+function readStatusCode(error: unknown, visited = new WeakSet<object>()): number | undefined {
+	if (typeof error !== 'object' || error === null) return undefined;
+	if (visited.has(error)) return undefined;
+	visited.add(error);
+	if ('statusCode' in error && typeof error.statusCode === 'number') return error.statusCode;
+	if ('cause' in error && error.cause !== error) return readStatusCode(error.cause, visited);
+	return undefined;
+}
+
+/** Find an ai-sdk `responseBody` on the error or its `cause` chain (the API error can arrive wrapped). */
+function readResponseBody(error: unknown, visited = new WeakSet<object>()): string | undefined {
+	if (typeof error !== 'object' || error === null) return undefined;
+	if (visited.has(error)) return undefined;
+	visited.add(error);
+	if ('responseBody' in error && typeof error.responseBody === 'string') return error.responseBody;
+	if ('cause' in error && error.cause !== error) return readResponseBody(error.cause, visited);
+	return undefined;
+}
+
+/** Parse an ai-sdk JSON `responseBody` into its message and machine-readable code, if present. */
+function parseResponseBody(responseBody: string): { message?: string; code?: string } {
+	try {
+		const body = JSON.parse(responseBody) as {
+			message?: string;
+			code?: string;
+			error?: { message?: string; type?: string };
+		};
+		return {
+			message: body?.error?.message ?? body?.message,
+			code: body?.code ?? body?.error?.type,
+		};
+	} catch {
+		return {};
+	}
 }
 
 function extractErrorInfo(error: unknown): ErrorInfo {
@@ -134,21 +168,22 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 		const info: ErrorInfo = { content: error.message };
 
 		// APICallError from ai-sdk carries statusCode and responseBody
-		if ('statusCode' in error && typeof error.statusCode === 'number') {
-			info.statusCode = error.statusCode;
+		const statusCode = readStatusCode(error);
+		if (statusCode !== undefined) {
+			info.statusCode = statusCode;
 		}
 
 		if ('responseBody' in error && typeof error.responseBody === 'string') {
 			info.technicalDetails = error.responseBody;
-			try {
-				const body = JSON.parse(error.responseBody) as {
-					error?: { message?: string; type?: string };
-				};
-				if (body?.error?.message) {
-					info.content = body.error.message;
-				}
-			} catch {
-				// not JSON — keep raw responseBody as technicalDetails
+			const { message } = parseResponseBody(error.responseBody);
+			if (message) info.content = message;
+		} else {
+			// No direct responseBody — unwrap the cause chain (mirrors `readErrorCode`).
+			const wrappedBody = readResponseBody(error.cause);
+			if (wrappedBody) {
+				info.technicalDetails = wrappedBody;
+				const { message } = parseResponseBody(wrappedBody);
+				if (message) info.content = message;
 			}
 		}
 
@@ -159,10 +194,277 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 			else if (urlStr.includes('openai')) info.provider = 'OpenAI';
 		}
 
+		if (isQuotaExhaustedError(error)) info.code = QUOTA_EXHAUSTED_ERROR_CODE;
+
 		return info;
 	}
 
+	if (isRecord(error)) {
+		if (error.type === 'overloaded_error') {
+			return { content: 'The model is overloaded. Try again in a few minutes.' };
+		}
+
+		const message = nonEmptyString(error.message);
+		if (message) return { content: message };
+	}
+
 	return { content: 'Unknown error' };
+}
+
+type EventBase = { runId: string; agentId: string; responseId?: string };
+
+type ConfirmationInputType =
+	| 'approval'
+	| 'text'
+	| 'questions'
+	| 'plan-review'
+	| 'resource-decision'
+	| 'continue';
+
+/** A non-empty string, or undefined for anything else (matches the legacy `value ? value : undefined` gate). */
+function presentString(value: unknown): string | undefined {
+	return typeof value === 'string' && value ? value : undefined;
+}
+
+function parseSchemaArray<T>(value: unknown, schema: z.ZodType<T>): T[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const parsed = value
+		.map((item) => schema.safeParse(item))
+		.filter((r) => r.success)
+		.map((r) => r.data);
+	return parsed.length > 0 ? parsed : undefined;
+}
+
+function parseSchemaRecord<T>(value: unknown, schema: z.ZodType<T>): T | undefined {
+	if (!isRecord(value)) return undefined;
+	const parsed = schema.safeParse(value);
+	return parsed.success ? parsed.data : undefined;
+}
+
+function parseSeverity(value: unknown): 'destructive' | 'warning' | 'info' {
+	const raw = typeof value === 'string' ? value : '';
+	const valid = ['destructive', 'warning', 'info'] as const;
+	return (valid as readonly string[]).includes(raw) ? (raw as (typeof valid)[number]) : 'warning';
+}
+
+function parseInputType(value: unknown): ConfirmationInputType | undefined {
+	const raw = typeof value === 'string' ? value : undefined;
+	const valid = [
+		'approval',
+		'text',
+		'questions',
+		'plan-review',
+		'resource-decision',
+		'continue',
+	] as const;
+	return (valid as readonly string[]).includes(raw ?? '')
+		? (raw as (typeof valid)[number])
+		: undefined;
+}
+
+function parseDomainAccess(value: unknown): { url: string; host: string } | undefined {
+	const raw = isRecord(value) ? value : undefined;
+	return raw && typeof raw.url === 'string' && typeof raw.host === 'string'
+		? { url: raw.url, host: raw.host }
+		: undefined;
+}
+
+function parseCredentialFlow(value: unknown): { stage: 'generic' | 'finalize' } | undefined {
+	const raw = isRecord(value) ? value : undefined;
+	const validStages = new Set<'generic' | 'finalize'>(['generic', 'finalize']);
+	const stage = raw && typeof raw.stage === 'string' ? raw.stage : undefined;
+	return stage !== undefined && validStages.has(stage as 'generic' | 'finalize')
+		? { stage: stage as 'generic' | 'finalize' }
+		: undefined;
+}
+
+function mapToolCallChunk(
+	chunk: Extract<StreamChunk, { type: 'tool-call' }>,
+	base: EventBase,
+): InstanceAiEvent {
+	return {
+		type: 'tool-call',
+		...base,
+		payload: {
+			toolCallId: chunk.toolCallId,
+			toolName: chunk.toolName,
+			args: isRecord(chunk.input) ? chunk.input : {},
+		},
+	};
+}
+
+function mapToolResultChunk(
+	chunk: Extract<StreamChunk, { type: 'tool-result' }>,
+	base: EventBase,
+): InstanceAiEvent {
+	if (chunk.isError === true) {
+		return {
+			type: 'tool-error',
+			...base,
+			payload: { toolCallId: chunk.toolCallId, error: extractToolErrorText(chunk.output) },
+		};
+	}
+
+	return {
+		type: 'tool-result',
+		...base,
+		payload: { toolCallId: chunk.toolCallId, result: chunk.output },
+	};
+}
+
+function mapSuspendedChunk(
+	chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
+	base: EventBase,
+): InstanceAiEvent | null {
+	const suspendPayload = isRecord(chunk.suspendPayload) ? chunk.suspendPayload : {};
+	const toolCallId = typeof chunk.toolCallId === 'string' ? chunk.toolCallId : '';
+	const requestId =
+		typeof suspendPayload.requestId === 'string' && suspendPayload.requestId
+			? suspendPayload.requestId
+			: toolCallId;
+
+	if (!requestId || !toolCallId) return null;
+
+	const credentialRequests = parseSchemaArray(
+		suspendPayload.credentialRequests,
+		credentialRequestSchema,
+	);
+	const requireUserSelection = suspendPayload.requireUserSelection === true;
+	const projectId = presentString(suspendPayload.projectId);
+	const inputType = parseInputType(suspendPayload.inputType);
+	const questions = parseSchemaArray(suspendPayload.questions, questionItemSchema);
+	const introMessage = presentString(suspendPayload.introMessage);
+	const tasks = parseSchemaRecord(suspendPayload.tasks, taskListSchema);
+	const planItems = parseSchemaArray(suspendPayload.planItems, plannedTaskArgSchema);
+	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
+	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
+	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
+	const setupRequests = parseSchemaArray(suspendPayload.setupRequests, workflowSetupNodeSchema);
+	const workflowId = presentString(suspendPayload.workflowId);
+	const resourceDecision = parseSchemaRecord(
+		suspendPayload.resourceDecision,
+		gatewayConfirmationRequiredPayloadSchema,
+	);
+	const channelConfig = parseSchemaRecord(suspendPayload.channelConfig, channelConfigSchema);
+	const mcpConnectRequest = parseSchemaRecord(
+		suspendPayload.mcpConnectRequest,
+		mcpConnectRequestSchema,
+	);
+	const targetApprovalResult = isRecord(suspendPayload.builderCheckpoint)
+		? APPROVAL_SUSPEND_SCHEMA.safeParse(suspendPayload)
+		: undefined;
+	const targetApproval = targetApprovalResult?.success
+		? {
+				toolName: targetApprovalResult.data.toolName,
+				...(targetApprovalResult.data.displayName
+					? { displayName: targetApprovalResult.data.displayName }
+					: {}),
+				args: targetApprovalResult.data.args,
+			}
+		: undefined;
+
+	return {
+		type: 'confirmation-request',
+		...base,
+		payload: {
+			requestId,
+			toolCallId,
+			toolName: typeof chunk.toolName === 'string' ? chunk.toolName : '',
+			args: isRecord(chunk.input) ? chunk.input : {},
+			severity: parseSeverity(suspendPayload.severity),
+			message:
+				typeof suspendPayload.message === 'string'
+					? suspendPayload.message
+					: 'Confirmation required',
+			...(targetApproval ? { targetApproval } : {}),
+			...(credentialRequests ? { credentialRequests } : {}),
+			...(requireUserSelection ? { requireUserSelection } : {}),
+			...(projectId ? { projectId } : {}),
+			...(inputType ? { inputType } : {}),
+			...(domainAccess ? { domainAccess } : {}),
+			...(webSearch ? { webSearch } : {}),
+			...(credentialFlow ? { credentialFlow } : {}),
+			...(setupRequests ? { setupRequests } : {}),
+			...(workflowId ? { workflowId } : {}),
+			...(questions ? { questions } : {}),
+			...(introMessage ? { introMessage } : {}),
+			...(tasks ? { tasks } : {}),
+			...(planItems ? { planItems } : {}),
+			...(resourceDecision ? { resourceDecision } : {}),
+			...(channelConfig ? { channelConfig } : {}),
+			...(mcpConnectRequest ? { mcpConnectRequest } : {}),
+		},
+	};
+}
+
+function toolCallFromContent(part: unknown, base: EventBase): InstanceAiEvent | null {
+	if (!isRecord(part) || part.type !== 'tool-call') return null;
+	return {
+		type: 'tool-call',
+		...base,
+		payload: {
+			toolCallId: typeof part.toolCallId === 'string' ? part.toolCallId : '',
+			toolName: typeof part.toolName === 'string' ? part.toolName : '',
+			args: isRecord(part.input) ? part.input : {},
+		},
+	};
+}
+
+function toolResultFromContent(part: unknown, base: EventBase): InstanceAiEvent | null {
+	if (!isRecord(part) || part.type !== 'tool-result') return null;
+	const toolCallId = typeof part.toolCallId === 'string' ? part.toolCallId : '';
+	if (part.isError === true) {
+		return {
+			type: 'tool-error',
+			...base,
+			payload: { toolCallId, error: extractToolErrorText(part.result) },
+		};
+	}
+	return {
+		type: 'tool-result',
+		...base,
+		payload: { toolCallId, result: part.result },
+	};
+}
+
+function mapMessageChunk(
+	chunk: Extract<StreamChunk, { type: 'message' }>,
+	base: EventBase,
+): InstanceAiEvent | null {
+	const message = getRecordProperty(chunk, 'message');
+	if (message?.role !== 'tool') return null;
+
+	const content = getArrayProperty(message, 'content');
+	if (!content) return null;
+
+	const toolCall = toolCallFromContent(
+		content.find((part) => isRecord(part) && part.type === 'tool-call'),
+		base,
+	);
+	if (toolCall) return toolCall;
+
+	return toolResultFromContent(
+		content.find((part) => isRecord(part) && part.type === 'tool-result'),
+		base,
+	);
+}
+
+function mapErrorChunk(
+	chunk: Extract<StreamChunk, { type: 'error' }>,
+	base: EventBase,
+): InstanceAiEvent {
+	const errorInfo = extractErrorInfo(chunk.error);
+	return {
+		type: 'error',
+		...base,
+		payload: {
+			content: errorInfo.content,
+			...(errorInfo.statusCode !== undefined ? { statusCode: errorInfo.statusCode } : {}),
+			...(errorInfo.code ? { code: errorInfo.code } : {}),
+			...(errorInfo.provider ? { provider: errorInfo.provider } : {}),
+			...(errorInfo.technicalDetails ? { technicalDetails: errorInfo.technicalDetails } : {}),
+		},
+	};
 }
 
 export function mapAgentChunkToEvent(
@@ -173,278 +475,32 @@ export function mapAgentChunkToEvent(
 ): InstanceAiEvent | null {
 	if (!isAgentStreamChunk(chunk)) return null;
 
-	const base = { runId, agentId, ...(responseId ? { responseId } : {}) };
+	const base: EventBase = { runId, agentId, ...(responseId ? { responseId } : {}) };
 
-	if (chunk.type === 'text-delta') {
-		return {
-			type: 'text-delta',
-			...base,
-			payload: { text: chunk.delta },
-		};
-	}
-
-	if (chunk.type === 'reasoning-delta') {
-		return {
-			type: 'reasoning-delta',
-			...base,
-			payload: { text: chunk.delta },
-		};
-	}
-
-	if (chunk.type === 'tool-call') {
-		return {
-			type: 'tool-call',
-			...base,
-			payload: {
-				toolCallId: chunk.toolCallId,
-				toolName: chunk.toolName,
-				args: isRecord(chunk.input) ? chunk.input : {},
-			},
-		};
-	}
-
-	if (chunk.type === 'tool-result') {
-		if (chunk.isError === true) {
+	switch (chunk.type) {
+		case 'text-delta':
+			return { type: 'text-delta', ...base, payload: { text: chunk.delta } };
+		case 'reasoning-delta':
+			return { type: 'reasoning-delta', ...base, payload: { text: chunk.delta } };
+		case 'tool-input-start':
+			// Surfaces the pending tool call while its arguments stream — the
+			// full `tool-call` event follows once the args are complete.
 			return {
-				type: 'tool-error',
+				type: 'tool-input-start',
 				...base,
-				payload: {
-					toolCallId: chunk.toolCallId,
-					error: extractToolErrorText(chunk.output),
-				},
+				payload: { toolCallId: chunk.toolCallId, toolName: chunk.toolName },
 			};
-		}
-
-		return {
-			type: 'tool-result',
-			...base,
-			payload: {
-				toolCallId: chunk.toolCallId,
-				result: chunk.output,
-			},
-		};
+		case 'tool-call':
+			return mapToolCallChunk(chunk, base);
+		case 'tool-result':
+			return mapToolResultChunk(chunk, base);
+		case 'tool-call-suspended':
+			return mapSuspendedChunk(chunk, base);
+		case 'message':
+			return mapMessageChunk(chunk, base);
+		case 'error':
+			return mapErrorChunk(chunk, base);
+		default:
+			return null;
 	}
-
-	if (chunk.type === 'tool-call-suspended') {
-		const suspendPayload = isRecord(chunk.suspendPayload) ? chunk.suspendPayload : {};
-		const toolCallId = typeof chunk.toolCallId === 'string' ? chunk.toolCallId : '';
-
-		const requestId =
-			typeof suspendPayload.requestId === 'string' && suspendPayload.requestId
-				? suspendPayload.requestId
-				: toolCallId;
-
-		if (!requestId || !toolCallId) return null;
-
-		const rawSeverity = typeof suspendPayload.severity === 'string' ? suspendPayload.severity : '';
-		const validSeverities = ['destructive', 'warning', 'info'] as const;
-		const severity = (validSeverities as readonly string[]).includes(rawSeverity)
-			? (rawSeverity as (typeof validSeverities)[number])
-			: 'warning';
-
-		let credentialRequests: InstanceAiCredentialRequest[] | undefined;
-		if (Array.isArray(suspendPayload.credentialRequests)) {
-			const parsed = suspendPayload.credentialRequests
-				.map((item) => credentialRequestSchema.safeParse(item))
-				.filter((r) => r.success)
-				.map((r) => r.data);
-			if (parsed.length > 0) {
-				credentialRequests = parsed;
-			}
-		}
-
-		const projectId =
-			typeof suspendPayload.projectId === 'string' ? suspendPayload.projectId : undefined;
-
-		const rawInputType =
-			typeof suspendPayload.inputType === 'string' ? suspendPayload.inputType : undefined;
-		const validInputTypes = [
-			'approval',
-			'text',
-			'questions',
-			'plan-review',
-			'resource-decision',
-			'continue',
-		] as const;
-		const inputType = (validInputTypes as readonly string[]).includes(rawInputType ?? '')
-			? (rawInputType as (typeof validInputTypes)[number])
-			: undefined;
-
-		let questions: Array<z.infer<typeof questionItemSchema>> | undefined;
-		if (Array.isArray(suspendPayload.questions)) {
-			const parsed = suspendPayload.questions
-				.map((item) => questionItemSchema.safeParse(item))
-				.filter((r) => r.success)
-				.map((r) => r.data);
-			if (parsed.length > 0) {
-				questions = parsed;
-			}
-		}
-
-		const introMessage =
-			typeof suspendPayload.introMessage === 'string' ? suspendPayload.introMessage : undefined;
-
-		let tasks: TaskList | undefined;
-		if (isRecord(suspendPayload.tasks)) {
-			const parsed = taskListSchema.safeParse(suspendPayload.tasks);
-			if (parsed.success) {
-				tasks = parsed.data;
-			}
-		}
-
-		let planItems: PlannedTaskArg[] | undefined;
-		if (Array.isArray(suspendPayload.planItems)) {
-			const parsed = suspendPayload.planItems
-				.map((item) => plannedTaskArgSchema.safeParse(item))
-				.filter((r) => r.success)
-				.map((r) => r.data);
-			if (parsed.length > 0) {
-				planItems = parsed;
-			}
-		}
-
-		const rawDomainAccess = isRecord(suspendPayload.domainAccess)
-			? suspendPayload.domainAccess
-			: undefined;
-		const domainAccess =
-			rawDomainAccess &&
-			typeof rawDomainAccess.url === 'string' &&
-			typeof rawDomainAccess.host === 'string'
-				? { url: rawDomainAccess.url, host: rawDomainAccess.host }
-				: undefined;
-
-		let webSearch: WebSearchMeta | undefined;
-		if (isRecord(suspendPayload.webSearch)) {
-			const parsed = webSearchMetaSchema.safeParse(suspendPayload.webSearch);
-			if (parsed.success) {
-				webSearch = parsed.data;
-			}
-		}
-
-		const rawCredentialFlow = isRecord(suspendPayload.credentialFlow)
-			? suspendPayload.credentialFlow
-			: undefined;
-		const validStages = new Set<'generic' | 'finalize'>(['generic', 'finalize']);
-		const rawStage =
-			rawCredentialFlow && typeof rawCredentialFlow.stage === 'string'
-				? rawCredentialFlow.stage
-				: undefined;
-		const credentialFlow =
-			rawStage !== undefined && validStages.has(rawStage as 'generic' | 'finalize')
-				? { stage: rawStage as 'generic' | 'finalize' }
-				: undefined;
-
-		let setupRequests: InstanceAiWorkflowSetupNode[] | undefined;
-		if (Array.isArray(suspendPayload.setupRequests)) {
-			const parsed = suspendPayload.setupRequests
-				.map((item) => workflowSetupNodeSchema.safeParse(item))
-				.filter((r) => r.success)
-				.map((r) => r.data);
-			if (parsed.length > 0) {
-				setupRequests = parsed;
-			}
-		}
-
-		const workflowId =
-			typeof suspendPayload.workflowId === 'string' ? suspendPayload.workflowId : undefined;
-
-		let resourceDecision: GatewayConfirmationRequiredPayload | undefined;
-		if (isRecord(suspendPayload.resourceDecision)) {
-			const parsed = gatewayConfirmationRequiredPayloadSchema.safeParse(
-				suspendPayload.resourceDecision,
-			);
-			if (parsed.success) {
-				resourceDecision = parsed.data;
-			}
-		}
-
-		return {
-			type: 'confirmation-request',
-			...base,
-			payload: {
-				requestId,
-				toolCallId,
-				toolName: typeof chunk.toolName === 'string' ? chunk.toolName : '',
-				args: isRecord(chunk.input) ? chunk.input : {},
-				severity,
-				message:
-					typeof suspendPayload.message === 'string'
-						? suspendPayload.message
-						: 'Confirmation required',
-				...(credentialRequests ? { credentialRequests } : {}),
-				...(projectId ? { projectId } : {}),
-				...(inputType ? { inputType } : {}),
-				...(domainAccess ? { domainAccess } : {}),
-				...(webSearch ? { webSearch } : {}),
-				...(credentialFlow ? { credentialFlow } : {}),
-				...(setupRequests ? { setupRequests } : {}),
-				...(workflowId ? { workflowId } : {}),
-				...(questions ? { questions } : {}),
-				...(introMessage ? { introMessage } : {}),
-				...(tasks ? { tasks } : {}),
-				...(planItems ? { planItems } : {}),
-				...(resourceDecision ? { resourceDecision } : {}),
-			},
-		};
-	}
-
-	if (chunk.type === 'message') {
-		const message = getRecordProperty(chunk, 'message');
-		if (message?.role !== 'tool') return null;
-
-		const content = getArrayProperty(message, 'content');
-		if (!content) return null;
-
-		const toolCall = content.find((part) => isRecord(part) && part.type === 'tool-call');
-		if (isRecord(toolCall) && toolCall.type === 'tool-call') {
-			return {
-				type: 'tool-call',
-				...base,
-				payload: {
-					toolCallId: typeof toolCall.toolCallId === 'string' ? toolCall.toolCallId : '',
-					toolName: typeof toolCall.toolName === 'string' ? toolCall.toolName : '',
-					args: isRecord(toolCall.input) ? toolCall.input : {},
-				},
-			};
-		}
-
-		const toolResult = content.find((part) => isRecord(part) && part.type === 'tool-result');
-		if (isRecord(toolResult) && toolResult.type === 'tool-result') {
-			if (toolResult.isError === true) {
-				return {
-					type: 'tool-error',
-					...base,
-					payload: {
-						toolCallId: typeof toolResult.toolCallId === 'string' ? toolResult.toolCallId : '',
-						error: extractToolErrorText(toolResult.result),
-					},
-				};
-			}
-
-			return {
-				type: 'tool-result',
-				...base,
-				payload: {
-					toolCallId: typeof toolResult.toolCallId === 'string' ? toolResult.toolCallId : '',
-					result: toolResult.result,
-				},
-			};
-		}
-	}
-
-	if (chunk.type === 'error') {
-		const errorInfo = extractErrorInfo(chunk.error);
-		return {
-			type: 'error',
-			...base,
-			payload: {
-				content: errorInfo.content,
-				...(errorInfo.statusCode !== undefined ? { statusCode: errorInfo.statusCode } : {}),
-				...(errorInfo.provider ? { provider: errorInfo.provider } : {}),
-				...(errorInfo.technicalDetails ? { technicalDetails: errorInfo.technicalDetails } : {}),
-			},
-		};
-	}
-
-	return null;
 }

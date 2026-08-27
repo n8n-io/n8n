@@ -30,6 +30,29 @@ const templatesIndexSchema = z.object({
 
 const PIPE_DELIMITED_INDEX_LINE = /^([a-zA-Z0-9][a-zA-Z0-9._-]*\.ts)\s*\|\s*(.+)$/;
 
+const NODE_LIST_PATTERN = /(?:^|,)n8n-nodes-|(?:^|,)@[\w-]+\/n8n-nodes-/;
+
+/** Keep only the human title from CDN catalog descriptions (drop nodes, tags, URLs). */
+export function slimTemplateDescription(description: string): string {
+	const trimmed = description.trim();
+	const parts = trimmed
+		.split(' | ')
+		.map((part) => part.trim())
+		.filter((part) => part.length > 0);
+	if (parts.length <= 1) {
+		return trimmed;
+	}
+
+	const isCdnCatalogDescription = parts
+		.slice(1)
+		.some(
+			(part) =>
+				/^https?:\/\//.test(part) || part.startsWith('trigger:') || NODE_LIST_PATTERN.test(part),
+		);
+
+	return isCdnCatalogDescription ? parts[0] : trimmed;
+}
+
 function templateFilenameFromId(id: string): string {
 	return `${id}.ts`;
 }
@@ -52,7 +75,7 @@ function normalizeTemplateEntry(
 
 	const normalized: KnowledgeBaseTemplateEntry = {
 		id: entry.id,
-		description: entry.description,
+		description: slimTemplateDescription(entry.description),
 		file: templateFilePath(filename),
 	};
 	if (entry.version !== undefined) normalized.version = entry.version;
@@ -74,7 +97,7 @@ function parsePipeDelimitedTemplatesCatalog(content: string): KnowledgeBaseTempl
 		const filename = match[1];
 		entries.push({
 			id: filename.replace(/\.ts$/, ''),
-			description: match[2].trim(),
+			description: slimTemplateDescription(match[2]),
 			file: templateFilePath(filename),
 		});
 	}

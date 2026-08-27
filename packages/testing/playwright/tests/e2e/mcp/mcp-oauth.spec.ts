@@ -19,6 +19,14 @@ import { test, expect } from '../../../fixtures/base';
  * instance-global state, same as mcp-service.spec.ts.
  */
 
+// Both this spec and mcp-service.spec.ts toggle the instance-global MCP access
+// setting; in parallel workers against a shared instance, one file's
+// disabled-state test can break the other's OAuth flow mid-request. In
+// container runs this gives the OAuth spec its own worker/container. (Local
+// runs against a shared N8N_BASE_URL ignore this — run the two files
+// sequentially.)
+test.use({ capability: { env: { TEST_ISOLATION: 'mcp-oauth' } } });
+
 const CALLBACK_PATH = 'mcp-oauth-e2e-callback';
 
 test.describe(
@@ -329,6 +337,51 @@ test.describe(
 			});
 		});
 
+		test.describe('Neutral /oauth/* endpoint aliases', () => {
+			// The OAuth endpoints are also mounted under neutral /oauth/* paths
+			// (next to the /mcp-oauth/* paths advertised in discovery), which
+			// future, non-MCP protected resources will advertise. The aliases must
+			// serve the identical flow.
+			test('should serve the full authorization code flow on the /oauth/* aliases', async ({
+				api,
+			}) => {
+				const { client, tokens } = await api.mcpOauth.completeAuthorizationCodeFlow({
+					clientName: `e2e alias client ${nanoid(8)}`,
+					basePath: '/oauth',
+				});
+
+				// The access token minted via the aliases authenticates against the MCP server
+				const message = api.mcp.createMessage('tools/list');
+				const mcpResponse = await api.mcp.internalMcpSendMessageNoAuth(message, {
+					Authorization: `Bearer ${tokens.access_token}`,
+				});
+				expect(mcpResponse.status()).toBeLessThan(300);
+
+				// Refresh rotation works through the alias token endpoint
+				const refreshResponse = await api.mcpOauth.refreshToken({
+					refreshToken: tokens.refresh_token,
+					clientId: client.client_id,
+					basePath: '/oauth',
+				});
+				expect(refreshResponse.ok()).toBe(true);
+				const rotatedTokens = await refreshResponse.json();
+
+				// Revocation through the alias endpoint invalidates the token at the MCP server
+				const revokeResponse = await api.mcpOauth.revokeToken({
+					token: rotatedTokens.access_token,
+					clientId: client.client_id,
+					tokenTypeHint: 'access_token',
+					basePath: '/oauth',
+				});
+				expect(revokeResponse.ok()).toBe(true);
+
+				const afterRevoke = await api.mcp.internalMcpSendMessageNoAuth(message, {
+					Authorization: `Bearer ${rotatedTokens.access_token}`,
+				});
+				expect(afterRevoke.status()).toBe(401);
+			});
+		});
+
 		test.describe('MCP access disabled', () => {
 			test.beforeEach(async ({ api }) => {
 				await api.setMcpAccess(false);
@@ -338,30 +391,16 @@ test.describe(
 				await api.setMcpAccess(true);
 			});
 
-			test('should block OAuth endpoints when MCP access is disabled', async ({ api }) => {
-				const responses = await Promise.all([
-					api.mcpOauth.registerClient({
-						client_name: `e2e OAuth client ${nanoid(8)}`,
-						redirect_uris: ['https://example.com/callback'],
-						grant_types: ['authorization_code'],
-						token_endpoint_auth_method: 'none',
-					}),
-					api.mcpOauth.authorize({
-						clientId: 'any-client',
-						redirectUri: 'https://example.com/callback',
-						challenge: api.mcpOauth.createPkcePair().challenge,
-					}),
-					api.mcpOauth.exchangeAuthorizationCode({
-						code: 'any-code',
-						clientId: 'any-client',
-						codeVerifier: 'any-verifier',
-						redirectUri: 'https://example.com/callback',
-					}),
-				]);
+			// #32157 decoupled the OAuth server from MCP access; endpoints stay reachable when off.
+			test('should keep OAuth endpoints available when MCP access is disabled', async ({ api }) => {
+				const response = await api.mcpOauth.registerClient({
+					client_name: `e2e OAuth client ${nanoid(8)}`,
+					redirect_uris: ['https://example.com/callback'],
+					grant_types: ['authorization_code'],
+					token_endpoint_auth_method: 'none',
+				});
 
-				for (const response of responses) {
-					expect(response.status()).toBe(403);
-				}
+				expect(response.status()).toBe(201);
 			});
 		});
 
@@ -419,6 +458,82 @@ test.describe(
 					Authorization: `Bearer ${tokens.access_token}`,
 				});
 				expect(mcpResponse.status()).toBeLessThan(300);
+			});
+
+			test('should only expose read tools when the user grants read-only scopes', async ({
+				n8n,
+				api,
+			}) => {
+				const redirectUri = `http://localhost/${CALLBACK_PATH}`;
+				const pkce = api.mcpOauth.createPkcePair();
+
+				const client = await api.mcpOauth.registerClientOrFail({
+					client_name: `e2e read-only client ${nanoid(8)}`,
+					redirect_uris: [redirectUri],
+					grant_types: ['authorization_code', 'refresh_token'],
+					token_endpoint_auth_method: 'none',
+				});
+
+				await n8n.page.route(`**/${CALLBACK_PATH}*`, async (route) => {
+					await route.fulfill({
+						status: 200,
+						contentType: 'text/html',
+						body: '<html><body>OAuth callback received</body></html>',
+					});
+				});
+
+				await n8n.oauthConsent.goto(
+					api.mcpOauth.buildAuthorizeUrl({
+						clientId: client.client_id,
+						redirectUri,
+						challenge: pkce.challenge,
+					}),
+				);
+
+				await expect(n8n.oauthConsent.getScopesSelector()).toBeVisible();
+				await n8n.oauthConsent.selectReadOnlyScopes();
+				await n8n.oauthConsent.allow();
+				await n8n.page.waitForURL(`**/${CALLBACK_PATH}*`);
+
+				const code = new URL(n8n.page.url()).searchParams.get('code');
+				const tokens = await api.mcpOauth.exchangeAuthorizationCodeOrFail({
+					code: code!,
+					clientId: client.client_id,
+					codeVerifier: pkce.verifier,
+					redirectUri,
+				});
+
+				// The token response echoes the granted (read-only) scopes
+				expect(tokens.scope).toContain('workflow:read');
+				expect(tokens.scope).not.toContain('workflow:write');
+
+				// tools/list only exposes tools covered by the read scopes
+				const listResponse = await api.mcp.internalMcpSendMessageNoAuth(
+					api.mcp.createMessage('tools/list'),
+					{ Authorization: `Bearer ${tokens.access_token}` },
+				);
+				const { tools } = await api.mcp.parseResponse<{ tools: Array<{ name: string }> }>(
+					listResponse,
+				);
+				const toolNames = tools.map((tool) => tool.name);
+				expect(toolNames).toContain('search_workflows');
+				expect(toolNames).not.toContain('execute_workflow');
+				expect(toolNames).not.toContain('create_data_table');
+				expect(toolNames).not.toContain('publish_workflow');
+
+				// Calling a write tool is rejected because it is not registered for
+				// this grant. The tool isn't in the server, so the v2 SDK answers with
+				// a JSON-RPC "not found" error (-32602) rather than an isError result.
+				const callResponse = await api.mcp.internalMcpSendMessageNoAuth(
+					api.mcp.createMessage('tools/call', {
+						name: 'create_data_table',
+						arguments: { name: `e2e table ${nanoid(8)}`, columns: [] },
+					}),
+					{ Authorization: `Bearer ${tokens.access_token}` },
+				);
+				const callEnvelope = await api.mcp.parseResponseEnvelope(callResponse);
+				expect(callEnvelope.error?.code).toBe(-32602);
+				expect(callEnvelope.error?.message).toContain('create_data_table');
 			});
 		});
 	},

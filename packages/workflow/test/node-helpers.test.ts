@@ -16,6 +16,7 @@ import {
 	isTriggerNode,
 	isExecutable,
 	displayParameter,
+	getActiveCredentialTypes,
 	makeDescription,
 	getUpdatedToolDescription,
 	getToolDescriptionForNode,
@@ -27,6 +28,10 @@ import {
 	isHitlToolType,
 	getNodeOutputs,
 	nodeIssuesToString,
+	findDisplayedProperty,
+	isTriggerNodeType,
+	getCredentialActivationParameters,
+	resolveSupportedCredentialActivation,
 } from '../src/node-helpers';
 import type { Workflow } from '../src/workflow';
 import { mock } from 'vitest-mock-extended';
@@ -3728,6 +3733,30 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(testData.output.noneDisplayedTrue.defaultsTrue);
 			});
 		}
+
+		test('does not treat showOnDeployment as a parameter dependency', () => {
+			const properties: INodeProperties[] = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [{ name: 'Read', value: 'read' }],
+					default: 'read',
+				},
+				{
+					displayName: 'Cloud notice',
+					name: 'cloudNotice',
+					type: 'notice',
+					default: '',
+					displayOptions: {
+						show: { operation: ['read'] },
+						showOnDeployment: 'cloud',
+					},
+				},
+			];
+
+			expect(() => getNodeParameters(properties, {}, true, false, null, null)).not.toThrow();
+		});
 	});
 
 	describe('isSubNodeType', () => {
@@ -4393,6 +4422,52 @@ describe('NodeHelpers', () => {
 					testDateTime: ['Parameter "Date Time" is required.'],
 				},
 			});
+		});
+
+		it('Should treat agentSelector like a resource locator when required and empty', () => {
+			const nodeProperties: INodeProperties = {
+				displayName: 'Agent',
+				name: 'agentId',
+				type: 'agentSelector',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{ displayName: 'From List', name: 'list', type: 'list' },
+					{ displayName: 'By ID', name: 'id', type: 'string' },
+				],
+			};
+			const nodeValues: INodeParameters = {
+				agentId: { __rl: true, mode: 'list', value: '' },
+			};
+
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode, null);
+
+			expect(result).toEqual({
+				parameters: {
+					agentId: ['Parameter "Agent" is required.'],
+				},
+			});
+		});
+
+		it('Should not report an issue for a populated agentSelector', () => {
+			const nodeProperties: INodeProperties = {
+				displayName: 'Agent',
+				name: 'agentId',
+				type: 'agentSelector',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{ displayName: 'From List', name: 'list', type: 'list' },
+					{ displayName: 'By ID', name: 'id', type: 'string' },
+				],
+			};
+			const nodeValues: INodeParameters = {
+				agentId: { __rl: true, mode: 'list', value: 'agent-1' },
+			};
+
+			const result = getParameterIssues(nodeProperties, nodeValues, '', testNode, null);
+
+			expect(result).toEqual({});
 		});
 	});
 
@@ -5436,6 +5511,197 @@ describe('NodeHelpers', () => {
 		});
 	});
 
+	describe('getActiveCredentialTypes', () => {
+		const makeNode = (parameters: INodeParameters): INode => ({
+			id: '12345',
+			name: 'Test Node',
+			typeVersion: 1,
+			type: 'n8n-nodes-base.testNode',
+			position: [1, 1],
+			parameters,
+		});
+
+		const makeNodeType = (
+			credentials: INodeTypeDescription['credentials'],
+		): INodeTypeDescription => ({
+			name: 'Test Node',
+			version: 1,
+			defaults: {},
+			inputs: [],
+			outputs: [],
+			properties: [],
+			displayName: '',
+			group: [],
+			description: '',
+			credentials,
+		});
+
+		it('should return null when the node type description is unavailable', () => {
+			expect(getActiveCredentialTypes(makeNode({}), null)).toBeNull();
+		});
+
+		it('should include declared credentials without display options', () => {
+			const nodeType = makeNodeType([{ name: 'testApi' }]);
+			expect(getActiveCredentialTypes(makeNode({}), nodeType)).toEqual(new Set(['testApi']));
+		});
+
+		it('should include only declared credentials whose display options match', () => {
+			const nodeType = makeNodeType([
+				{ name: 'oauthApi', displayOptions: { show: { authentication: ['oAuth2'] } } },
+				{ name: 'tokenApi', displayOptions: { show: { authentication: ['accessToken'] } } },
+			]);
+			expect(getActiveCredentialTypes(makeNode({ authentication: 'oAuth2' }), nodeType)).toEqual(
+				new Set(['oauthApi']),
+			);
+		});
+
+		it('should include the type referenced by the nodeCredentialType parameter', () => {
+			const nodeType = makeNodeType([]);
+			const node = makeNode({
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'slackApi',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['slackApi']));
+		});
+
+		it('should include the type referenced by the genericAuthType parameter', () => {
+			const nodeType = makeNodeType([]);
+			const node = makeNode({
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpBasicAuth',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['httpBasicAuth']));
+		});
+
+		it('should ignore a stale genericAuthType value left over after switching to predefinedCredentialType', () => {
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([]),
+				properties: [
+					{
+						displayName: 'Credential Type',
+						name: 'nodeCredentialType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['extends:oAuth2Api'],
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['has:genericAuth'],
+						displayOptions: { show: { authentication: ['genericCredentialType'] } },
+					},
+				],
+			};
+			// User switched authentication from generic to predefined; genericAuthType's
+			// previous value is still stored on the node even though it's now hidden.
+			const node = makeNode({
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'slackApi',
+				genericAuthType: 'httpBasicAuth',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['slackApi']));
+		});
+
+		it('should union declared and parameter-referenced credential types', () => {
+			const nodeType = makeNodeType([
+				{ name: 'httpSslAuth', displayOptions: { show: { provideSslCertificates: [true] } } },
+			]);
+			const node = makeNode({
+				provideSslCertificates: true,
+				authentication: 'genericCredentialType',
+				genericAuthType: 'httpHeaderAuth',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(
+				new Set(['httpSslAuth', 'httpHeaderAuth']),
+			);
+		});
+
+		it('should ignore empty credential-type parameter values', () => {
+			const nodeType = makeNodeType([{ name: 'testApi' }]);
+			const node = makeNode({ nodeCredentialType: '', genericAuthType: '' });
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['testApi']));
+		});
+
+		it.each(['nodeCredentialType', 'genericAuthType'])(
+			'should return null when %s is an expression',
+			(paramName) => {
+				const nodeType = makeNodeType([{ name: 'testApi' }]);
+				const node = makeNode({ [paramName]: '={{ $json.credType }}' });
+				expect(getActiveCredentialTypes(node, nodeType)).toBeNull();
+			},
+		);
+
+		it('should ignore an expression left in a hidden credential-type parameter', () => {
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([]),
+				properties: [
+					{
+						displayName: 'Credential Type',
+						name: 'nodeCredentialType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['extends:oAuth2Api'],
+						displayOptions: { show: { authentication: ['predefinedCredentialType'] } },
+					},
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['has:genericAuth'],
+						displayOptions: { show: { authentication: ['genericCredentialType'] } },
+					},
+				],
+			};
+			// The hidden genericAuthType holds an expression from a previous setup. It
+			// resolves to nothing while hidden, so it must not make the active set
+			// indeterminable and stop callers from cleaning up.
+			const node = makeNode({
+				authentication: 'predefinedCredentialType',
+				nodeCredentialType: 'slackApi',
+				genericAuthType: '={{ $json.authType }}',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toEqual(new Set(['slackApi']));
+		});
+
+		it('should return null when an expression sits in a displayed credential-type parameter', () => {
+			const nodeType: INodeTypeDescription = {
+				...makeNodeType([]),
+				properties: [
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						credentialTypes: ['has:genericAuth'],
+						displayOptions: { show: { authentication: ['genericCredentialType'] } },
+					},
+				],
+			};
+			const node = makeNode({
+				authentication: 'genericCredentialType',
+				genericAuthType: '={{ $json.authType }}',
+			});
+			expect(getActiveCredentialTypes(node, nodeType)).toBeNull();
+		});
+
+		it('should return null when evaluating the node configuration throws', () => {
+			const nodeType = makeNodeType([{ name: 'testApi' }]);
+			const throwingParameters = new Proxy(
+				{},
+				{
+					get() {
+						throw new Error('malformed parameters');
+					},
+				},
+			) as INodeParameters;
+			expect(getActiveCredentialTypes(makeNode(throwingParameters), nodeType)).toBeNull();
+		});
+	});
+
 	describe('makeDescription', () => {
 		let mockNodeTypeDescription: INodeTypeDescription;
 
@@ -5901,6 +6167,52 @@ describe('NodeHelpers', () => {
 
 			// Assert
 			expect(result).toBe('This is the default node description');
+		});
+
+		test('should resolve expression in toolDescription via the resolver callback', () => {
+			// Arrange
+			mockNode.parameters = {
+				descriptionType: 'manual',
+				toolDescription: '={{ $json.sessionId }}{{ $json.user }}',
+			};
+			const resolveToolDescription = vi.fn().mockReturnValue('123ABC');
+
+			// Act
+			const result = getToolDescriptionForNode(mockNode, mockNodeType, resolveToolDescription);
+
+			// Assert
+			expect(resolveToolDescription).toHaveBeenCalledTimes(1);
+			expect(result).toBe('123ABC');
+		});
+
+		test('should not call resolver for static toolDescription', () => {
+			// Arrange
+			mockNode.parameters = {
+				descriptionType: 'manual',
+				toolDescription: 'Plain static description',
+			};
+			const resolveToolDescription = vi.fn();
+
+			// Act
+			const result = getToolDescriptionForNode(mockNode, mockNodeType, resolveToolDescription);
+
+			// Assert
+			expect(resolveToolDescription).not.toHaveBeenCalled();
+			expect(result).toBe('Plain static description');
+		});
+
+		test('should fall back to raw value when no resolver is provided for an expression', () => {
+			// Arrange
+			mockNode.parameters = {
+				descriptionType: 'manual',
+				toolDescription: '={{ $json.sessionId }}',
+			};
+
+			// Act
+			const result = getToolDescriptionForNode(mockNode, mockNodeType);
+
+			// Assert
+			expect(result).toBe('={{ $json.sessionId }}');
 		});
 	});
 	describe('isDefaultNodeName', () => {
@@ -6683,6 +6995,70 @@ describe('NodeHelpers', () => {
 			// When undefined, the default value (empty string) is used
 			expect(result?.resource).toBe('');
 		});
+
+		describe('$fromAI placeholder carve-out', () => {
+			const resolveQuery = (query: string) => {
+				const properties: INodeProperties[] = [
+					{
+						name: 'query',
+						displayName: 'Query',
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+					},
+				];
+
+				const nodeValues: Record<string, string> = { query };
+
+				const node: INode = {
+					id: 'test-123',
+					name: 'Test',
+					type: 'n8n-nodes-base.test',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: nodeValues,
+					credentials: {},
+				};
+
+				const description: INodeTypeDescription = {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties,
+				};
+
+				return getNodeParameters(properties, nodeValues, true, false, node, description)?.query;
+			};
+
+			it('keeps a lone $fromAI() placeholder intact', () => {
+				const query = "=$fromAI('sqlQuery', 'The SQL query to execute', 'string')";
+				expect(resolveQuery(query)).toBe(query);
+			});
+
+			it('keeps a $fromAI() placeholder wrapped in {{ }} intact', () => {
+				const query = "={{ $fromAI('sqlQuery') }}";
+				expect(resolveQuery(query)).toBe(query);
+			});
+
+			it('still strips a plain expression that is not a $fromAI() call', () => {
+				expect(resolveQuery('=$env.SECRET')).toBe('$env.SECRET');
+			});
+
+			it('still strips $fromAI() concatenated with another expression', () => {
+				expect(resolveQuery("=$fromAI('x') + $env.SECRET")).toBe("$fromAI('x') + $env.SECRET");
+			});
+
+			it('still strips $fromAI() with an interpolated value in its argument', () => {
+				// Split the `${` token so the lint rule doesn't read it as interpolation.
+				const interpolated = '`$' + '{$env.SECRET}`';
+				expect(resolveQuery(`=$fromAI(${interpolated})`)).toBe(`$fromAI(${interpolated})`);
+			});
+		});
 	});
 
 	describe('getNodeParameters filter defaults', () => {
@@ -6796,6 +7172,721 @@ describe('NodeHelpers', () => {
 					conditions: [],
 				},
 			});
+		});
+	});
+
+	describe('findDisplayedProperty', () => {
+		const routingFor = (url: string) => ({
+			typeOptions: { loadOptions: { routing: { request: { url } } } },
+		});
+		const resolve = (
+			path: string,
+			properties: INodeProperties[],
+			nodeValues: INodeParameters = {},
+			node: Pick<INode, 'typeVersion'> | null = null,
+		) =>
+			findDisplayedProperty(path, properties, nodeValues, node, null) as
+				| INodeProperties
+				| undefined;
+		const routingUrl = (property: INodeProperties | undefined) =>
+			property?.typeOptions?.loadOptions?.routing?.request?.url;
+
+		it('resolves a top-level property', () => {
+			const properties = [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					...routingFor('/models'),
+				},
+			] as INodeProperties[];
+
+			expect(resolve('parameters.model', properties)?.name).toBe('model');
+		});
+
+		it('resolves a property nested in a collection', () => {
+			const properties = [
+				{
+					displayName: 'Options',
+					name: 'options',
+					type: 'collection',
+					default: {},
+					options: [
+						{
+							displayName: 'Model',
+							name: 'model',
+							type: 'options',
+							default: '',
+							...routingFor('/m'),
+						},
+					],
+				},
+			] as INodeProperties[];
+
+			expect(resolve('parameters.options.model', properties)?.name).toBe('model');
+		});
+
+		it('resolves a field in a fixedCollection section, ignoring the array index', () => {
+			const properties = [
+				{
+					displayName: 'Create',
+					name: 'createContactAttributes',
+					type: 'fixedCollection',
+					default: {},
+					options: [
+						{
+							displayName: 'Attr',
+							name: 'attributesValues',
+							values: [
+								{
+									displayName: 'Field',
+									name: 'fieldName',
+									type: 'options',
+									default: '',
+									...routingFor('/create'),
+								},
+							],
+						},
+					],
+				},
+			] as INodeProperties[];
+
+			expect(
+				routingUrl(
+					resolve('parameters.createContactAttributes.attributesValues[0].fieldName', properties),
+				),
+			).toBe('/create');
+		});
+
+		it('picks the displayed variant when two properties share a name (param-gated)', () => {
+			const properties = [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					displayOptions: { show: { modelSource: ['a'] } },
+					...routingFor('/a'),
+				},
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					displayOptions: { show: { modelSource: ['b'] } },
+					...routingFor('/b'),
+				},
+			] as INodeProperties[];
+
+			expect(routingUrl(resolve('parameters.model', properties, { modelSource: 'a' }))).toBe('/a');
+			expect(routingUrl(resolve('parameters.model', properties, { modelSource: 'b' }))).toBe('/b');
+		});
+
+		it('picks the displayed variant by node type version', () => {
+			const properties = [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					displayOptions: { show: { '@version': [1] } },
+					...routingFor('/v1'),
+				},
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					displayOptions: { show: { '@version': [2] } },
+					...routingFor('/v2'),
+				},
+			] as INodeProperties[];
+
+			expect(routingUrl(resolve('parameters.model', properties, {}, { typeVersion: 2 }))).toBe(
+				'/v2',
+			);
+		});
+
+		it('returns undefined for an unknown path', () => {
+			const properties = [
+				{
+					displayName: 'Model',
+					name: 'model',
+					type: 'options',
+					default: '',
+					...routingFor('/models'),
+				},
+			] as INodeProperties[];
+
+			expect(resolve('parameters.unknown', properties)).toBeUndefined();
+		});
+
+		it('returns undefined when a collection property has no options', () => {
+			const properties = [
+				{ displayName: 'Options', name: 'options', type: 'collection', default: {} },
+			] as INodeProperties[];
+
+			expect(resolve('parameters.options.model', properties)).toBeUndefined();
+		});
+	});
+	describe('isTriggerNodeType', () => {
+		// Membership in TRIGGER_NODE_TYPES: each legacy/special type is matched by
+		// identity, not by the generic "contains trigger" heuristic.
+		test.each([
+			'n8n-nodes-base.webhook',
+			'n8n-nodes-base.cron',
+			'n8n-nodes-base.emailReadImap',
+			'n8n-nodes-base.telegramBot',
+			'n8n-nodes-base.start',
+		])('recognises the explicitly-listed trigger type %s', (type) => {
+			expect(isTriggerNodeType(type)).toBe(true);
+		});
+
+		it('recognises any type whose name contains "trigger"', () => {
+			expect(isTriggerNodeType('n8n-nodes-base.scheduleTrigger')).toBe(true);
+			expect(isTriggerNodeType('n8n-nodes-base.manualTrigger')).toBe(true);
+		});
+
+		it('matches "trigger" case-insensitively', () => {
+			// Guards the `.toLowerCase()` normalisation: without it these would miss.
+			expect(isTriggerNodeType('CustomTrigger')).toBe(true);
+			expect(isTriggerNodeType('SOMETRIGGERNODE')).toBe(true);
+		});
+
+		it('returns false for non-trigger types not in the set', () => {
+			expect(isTriggerNodeType('n8n-nodes-base.set')).toBe(false);
+			expect(isTriggerNodeType('n8n-nodes-base.httpRequest')).toBe(false);
+			expect(isTriggerNodeType('')).toBe(false);
+		});
+	});
+
+	describe('getParameterIssues - validation paths', () => {
+		const testNode: INode = {
+			id: '12345',
+			name: 'Test Node',
+			typeVersion: 1,
+			type: 'n8n-nodes-base.testNode',
+			position: [1, 1],
+			parameters: {},
+		};
+
+		describe('resourceLocator regex validation', () => {
+			const resourceLocatorProperties: INodeProperties = {
+				displayName: 'Document',
+				name: 'documentId',
+				type: 'resourceLocator',
+				default: { mode: 'id', value: '' },
+				modes: [
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[0-9]+',
+									errorMessage: 'Document ID must be numeric',
+								},
+							},
+						],
+					},
+				],
+			};
+
+			it('reports the configured error when the value fails the mode regex', () => {
+				const result = getParameterIssues(
+					resourceLocatorProperties,
+					{ documentId: { __rl: true, mode: 'id', value: 'abc' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({
+					parameters: { documentId: ['Document ID must be numeric'] },
+				});
+			});
+
+			it('returns no issues when the value matches the mode regex', () => {
+				const result = getParameterIssues(
+					resourceLocatorProperties,
+					{ documentId: { __rl: true, mode: 'id', value: '123' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+
+			it('skips validation for expression values (starting with "=")', () => {
+				// Metamorphic: an expression is resolved at runtime, so static
+				// validation must never flag it regardless of the regex.
+				const result = getParameterIssues(
+					resourceLocatorProperties,
+					{ documentId: { __rl: true, mode: 'id', value: '={{ $json.id }}' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+
+			it('returns no issues when the value mode has no matching mode definition', () => {
+				const result = getParameterIssues(
+					resourceLocatorProperties,
+					{ documentId: { __rl: true, mode: 'url', value: 'abc' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+
+			it('applies regex validation to workflowSelector values too', () => {
+				// workflowSelector shares the resource-locator validation branch.
+				const workflowSelectorProperties: INodeProperties = {
+					...resourceLocatorProperties,
+					name: 'workflowId',
+					type: 'workflowSelector',
+				};
+				const result = getParameterIssues(
+					workflowSelectorProperties,
+					{ workflowId: { __rl: true, mode: 'id', value: 'abc' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({
+					parameters: { workflowId: ['Document ID must be numeric'] },
+				});
+			});
+		});
+
+		describe('resourceMapper required-field validation', () => {
+			const resourceMapperProperties: INodeProperties = {
+				displayName: 'Columns',
+				name: 'columns',
+				type: 'resourceMapper',
+				default: {},
+				typeOptions: {
+					resourceMapper: {
+						// `add` mode is the only one that runs the required-field check.
+						mode: 'add',
+						resourceMapperMethod: 'getFields',
+						fieldWords: { singular: 'field', plural: 'fields' },
+					},
+				},
+			};
+
+			it('reports required schema fields that are missing in add mode', () => {
+				const result = getParameterIssues(
+					resourceMapperProperties,
+					{
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { providedField: 'x' },
+							schema: [
+								{
+									id: 'requiredField',
+									displayName: 'requiredField',
+									required: true,
+									defaultMatch: false,
+									display: true,
+									type: 'string',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result.parameters?.['columns.requiredField']).toContain(
+					'Field "requiredField" is required',
+				);
+			});
+
+			it('skips the required-field check outside add mode', () => {
+				// Only `add` mode validates required fields; update/upsert/map map onto
+				// existing rows where missing fields are legitimate.
+				const updateModeProperties: INodeProperties = {
+					...resourceMapperProperties,
+					typeOptions: {
+						resourceMapper: {
+							mode: 'update',
+							resourceMapperMethod: 'getFields',
+							fieldWords: { singular: 'field', plural: 'fields' },
+						},
+					},
+				};
+				const result = getParameterIssues(
+					updateModeProperties,
+					{
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { providedField: 'x' },
+							schema: [
+								{
+									id: 'requiredField',
+									displayName: 'requiredField',
+									required: true,
+									defaultMatch: false,
+									display: true,
+									type: 'string',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result.parameters?.['columns.requiredField']).toBeUndefined();
+			});
+
+			it('reports a type mismatch for a provided field value', () => {
+				const result = getParameterIssues(
+					resourceMapperProperties,
+					{
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { numField: 'not-a-number' },
+							schema: [
+								{
+									id: 'numField',
+									displayName: 'numField',
+									required: false,
+									defaultMatch: false,
+									display: true,
+									type: 'number',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result.parameters?.['columns.numField']).toBeDefined();
+				expect(result.parameters?.['columns.numField']?.length).toBeGreaterThan(0);
+			});
+
+			it('skips type validation for expression field values', () => {
+				// Metamorphic: an expression value is resolved at runtime, so a static
+				// type mismatch must not be reported.
+				const result = getParameterIssues(
+					resourceMapperProperties,
+					{
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { numField: '={{ $json.n }}' },
+							schema: [
+								{
+									id: 'numField',
+									displayName: 'numField',
+									required: false,
+									defaultMatch: false,
+									display: true,
+									type: 'number',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+
+			it('does not validate in automatic mapping mode', () => {
+				// Metamorphic: autoMapInputData has no user-entered values to validate,
+				// so it must never produce issues regardless of the schema.
+				const result = getParameterIssues(
+					resourceMapperProperties,
+					{
+						columns: {
+							mappingMode: 'autoMapInputData',
+							value: null,
+							schema: [
+								{
+									id: 'requiredField',
+									displayName: 'requiredField',
+									required: true,
+									defaultMatch: false,
+									display: true,
+									type: 'string',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+		});
+
+		describe('validateType', () => {
+			const numberProperties: INodeProperties = {
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 0,
+				validateType: 'number',
+			};
+
+			it('reports an issue when the value does not match validateType', () => {
+				const result = getParameterIssues(
+					numberProperties,
+					{ limit: 'not-a-number' },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result.parameters?.limit).toHaveLength(1);
+			});
+
+			it('returns no issues when the value matches validateType', () => {
+				const result = getParameterIssues(numberProperties, { limit: 5 }, '', testNode, null);
+
+				expect(result).toEqual({});
+			});
+
+			it('skips validateType for expression values (starting with "=")', () => {
+				const result = getParameterIssues(
+					numberProperties,
+					{ limit: '={{ $json.count }}' },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+		});
+
+		describe('required parameter emptiness by type', () => {
+			const requiredOf = (overrides: Partial<INodeProperties>): INodeProperties => ({
+				displayName: 'Field',
+				name: 'field',
+				type: 'string',
+				default: '',
+				required: true,
+				...overrides,
+			});
+
+			it('flags a required string that is an empty string', () => {
+				const result = getParameterIssues(requiredOf({}), { field: '' }, '', testNode, null);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('flags a required string that is undefined', () => {
+				const result = getParameterIssues(requiredOf({}), { field: undefined }, '', testNode, null);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('flags a required multiOptions with an empty array', () => {
+				const result = getParameterIssues(
+					requiredOf({ type: 'multiOptions', options: [], default: [] }),
+					{ field: [] },
+					'',
+					testNode,
+					null,
+				);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('flags a required options parameter that is an empty string', () => {
+				const result = getParameterIssues(
+					requiredOf({ type: 'options', options: [] }),
+					{ field: '' },
+					'',
+					testNode,
+					null,
+				);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('flags a required resourceLocator with an empty value', () => {
+				const result = getParameterIssues(
+					requiredOf({ type: 'resourceLocator', default: { mode: 'id', value: '' } }),
+					{ field: { __rl: true, mode: 'id', value: '' } },
+					'',
+					testNode,
+					null,
+				);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('does not flag a required string that has a value', () => {
+				const result = getParameterIssues(requiredOf({}), { field: 'present' }, '', testNode, null);
+				expect(result).toEqual({});
+			});
+
+			it('checks each entry of a required multipleValues parameter', () => {
+				const result = getParameterIssues(
+					requiredOf({ typeOptions: { multipleValues: true }, default: [] }),
+					{ field: ['ok', ''] },
+					'',
+					testNode,
+					null,
+				);
+				// Only the empty entry is flagged.
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+		});
+
+		it('recurses into collection children and validates required sub-fields', () => {
+			const collectionProperties: INodeProperties = {
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Required Field',
+						name: 'reqField',
+						type: 'string',
+						default: '',
+						required: true,
+					},
+				],
+			};
+
+			const result = getParameterIssues(collectionProperties, { reqField: '' }, '', testNode, null);
+
+			expect(result).toEqual({
+				parameters: { reqField: ['Parameter "Required Field" is required.'] },
+			});
+		});
+	});
+
+	describe('getCredentialActivationParameters', () => {
+		it('returns the parameter values that activate the credential', () => {
+			expect(getCredentialActivationParameters({ show: { authentication: ['apiKey'] } })).toEqual({
+				authentication: 'apiKey',
+			});
+		});
+
+		it('returns an empty object when the credential has no display condition', () => {
+			expect(getCredentialActivationParameters(undefined)).toEqual({});
+		});
+
+		it('excludes the @version key (not a settable parameter)', () => {
+			expect(
+				getCredentialActivationParameters({
+					show: { '@version': [2], authentication: ['apiKey'] },
+				}),
+			).toEqual({ authentication: 'apiKey' });
+		});
+	});
+
+	describe('resolveSupportedCredentialActivation', () => {
+		const multiAuthNodeType: INodeTypeDescription = {
+			displayName: 'Service',
+			name: 'service',
+			group: ['transform'],
+			version: 1,
+			description: '',
+			defaults: { name: 'Service' },
+			inputs: [],
+			outputs: [],
+			properties: [],
+			credentials: [
+				{ name: 'serviceOAuth2Api', displayOptions: { show: { authentication: ['oAuth2'] } } },
+				{ name: 'serviceApiKey', displayOptions: { show: { authentication: ['apiKey'] } } },
+			],
+		};
+
+		const node = { typeVersion: 1, parameters: { authentication: 'oAuth2' } };
+
+		it('resolves a supported sibling when the current auth type is unsupported', () => {
+			expect(
+				resolveSupportedCredentialActivation(
+					multiAuthNodeType,
+					node,
+					(type) => type === 'serviceApiKey',
+				),
+			).toEqual({ credentialType: 'serviceApiKey', parameters: { authentication: 'apiKey' } });
+		});
+
+		it('keeps the preferred type with no parameter changes when it is already active', () => {
+			expect(
+				resolveSupportedCredentialActivation(
+					multiAuthNodeType,
+					node,
+					() => true,
+					'serviceOAuth2Api',
+				),
+			).toEqual({ credentialType: 'serviceOAuth2Api', parameters: {} });
+		});
+
+		it('does not rewrite a parameter that already satisfies a multi-value show clause', () => {
+			const multiValueNodeType: INodeTypeDescription = {
+				...multiAuthNodeType,
+				credentials: [
+					{
+						name: 'serviceApiKey',
+						displayOptions: { show: { authentication: ['apiKey', 'apiKeyLegacy'] } },
+					},
+				],
+			};
+
+			expect(
+				resolveSupportedCredentialActivation(
+					multiValueNodeType,
+					{ typeVersion: 1, parameters: { authentication: 'apiKeyLegacy' } },
+					() => true,
+				),
+			).toEqual({ credentialType: 'serviceApiKey', parameters: {} });
+		});
+
+		it('returns undefined when no declared credential type is supported', () => {
+			expect(
+				resolveSupportedCredentialActivation(multiAuthNodeType, node, () => false),
+			).toBeUndefined();
+		});
+
+		it('skips a supported credential the node version cannot show', () => {
+			const versionGatedNodeType: INodeTypeDescription = {
+				...multiAuthNodeType,
+				credentials: [
+					{
+						name: 'serviceApiKey',
+						displayOptions: { show: { '@version': [2], authentication: ['apiKey'] } },
+					},
+				],
+			};
+
+			expect(
+				resolveSupportedCredentialActivation(versionGatedNodeType, node, () => true),
+			).toBeUndefined();
+			expect(
+				resolveSupportedCredentialActivation(
+					versionGatedNodeType,
+					{ ...node, typeVersion: 2 },
+					() => true,
+				),
+			).toEqual({ credentialType: 'serviceApiKey', parameters: { authentication: 'apiKey' } });
 		});
 	});
 });

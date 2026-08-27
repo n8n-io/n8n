@@ -3,9 +3,10 @@
  * Shared metrics sender for CI scripts.
  * See .github/CI-TELEMETRY.md for payload shape and BigQuery schema.
  *
- * Usage:
+ * Usage (fire-and-forget — best-effort, never blocks CI):
  *   import { sendMetrics, metric } from './send-metrics.mjs';
- *   await sendMetrics([metric('build-duration', 45.2, 's', { package: '@n8n/cli' })]);
+ *   sendMetrics([metric('build-duration', 45.2, 's', { package: '@n8n/cli' })])
+ *     .catch((err) => console.warn(`[metrics] send failed: ${err.message}`));
  *
  * Env: QA_METRICS_WEBHOOK_URL, QA_METRICS_WEBHOOK_USER, QA_METRICS_WEBHOOK_PASSWORD
  */
@@ -78,22 +79,31 @@ export async function sendMetrics(metrics, benchmarkName = null) {
 	const payload = { ...buildContext(benchmarkName), metrics };
 	const basicAuth = Buffer.from(`${webhookUser}:${webhookPassword}`).toString('base64');
 
-	const response = await fetch(webhookUrl, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Basic ${basicAuth}`,
-		},
-		body: JSON.stringify(payload),
-		signal: AbortSignal.timeout(30_000),
-	});
+	// Best-effort telemetry: never throw into the caller. Slow/down webhook
+	// becomes a one-line warning instead of an uncaught rejection. 5s caps
+	// wall-time in callers that do await this; fire-and-forget callers exit
+	// before then anyway.
+	try {
+		const response = await fetch(webhookUrl, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Basic ${basicAuth}`,
+			},
+			body: JSON.stringify(payload),
+			signal: AbortSignal.timeout(5_000),
+		});
 
-	if (!response.ok) {
-		const body = await response.text().catch(() => '');
-		throw new Error(
-			`Webhook failed: ${response.status} ${response.statusText}${body ? `\n${body}` : ''}`,
-		);
+		if (!response.ok) {
+			const body = await response.text().catch(() => '');
+			console.warn(
+				`[metrics] webhook ${response.status} ${response.statusText}${body ? `\n${body}` : ''}`,
+			);
+			return;
+		}
+
+		console.log(`Sent ${metrics.length} metric(s): ${response.status}`);
+	} catch (err) {
+		console.warn(`[metrics] send failed (non-fatal): ${err.message}`);
 	}
-
-	console.log(`Sent ${metrics.length} metric(s): ${response.status}`);
 }

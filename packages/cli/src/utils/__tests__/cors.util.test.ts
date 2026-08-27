@@ -1,16 +1,17 @@
 import type { Request, Response } from 'express';
+import type { Mock } from 'vitest';
 
 import { applyCors } from '../cors.util';
 
 describe('applyCors', () => {
 	let mockReq: Partial<Request>;
 	let mockRes: Partial<Response>;
-	let setHeaderSpy: jest.Mock;
-	let getHeaderSpy: jest.Mock;
+	let setHeaderSpy: Mock;
+	let getHeaderSpy: Mock;
 
 	beforeEach(() => {
-		setHeaderSpy = jest.fn();
-		getHeaderSpy = jest.fn();
+		setHeaderSpy = vi.fn();
+		getHeaderSpy = vi.fn();
 
 		mockReq = {
 			headers: {},
@@ -23,7 +24,7 @@ describe('applyCors', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should not modify headers if Access-Control-Allow-Origin is already set', () => {

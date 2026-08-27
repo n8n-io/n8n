@@ -15,7 +15,7 @@ test.describe(
 		}) => {
 			await n8n.canvas.clickCanvasPlusButton();
 			await n8n.canvas.nodeCreator.searchFor('n8n');
-			await n8n.canvas.nodeCreator.selectItem('n8n');
+			await n8n.canvas.nodeCreator.selectItem('n8n', { exact: true });
 			await n8n.canvas.nodeCreator.selectCategoryItem('Actions');
 			await n8n.canvas.nodeCreator.selectItem('Create a credential');
 			await n8n.page.keyboard.press('Escape');
@@ -29,7 +29,7 @@ test.describe(
 		}) => {
 			await n8n.canvas.clickCanvasPlusButton();
 			await n8n.canvas.nodeCreator.searchFor('n8n');
-			await n8n.canvas.nodeCreator.selectItem('n8n');
+			await n8n.canvas.nodeCreator.selectItem('n8n', { exact: true });
 			await n8n.canvas.nodeCreator.selectCategoryItem('Actions');
 			await n8n.canvas.nodeCreator.selectItem('Create a credential');
 			await n8n.page.keyboard.press('Escape');

@@ -1,8 +1,9 @@
-import { readFile } from 'node:fs/promises';
-import { randomUUID } from 'node:crypto';
-
-import type { IDataObject } from 'n8n-workflow';
+import { NodesConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import type IsolatedVM from 'isolated-vm';
+import type { IDataObject } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 
 // Lazy-loaded isolated-vm — avoids loading the native module at startup.
 // The module is only loaded when combineBySql is actually used.
@@ -10,16 +11,14 @@ type IsolatedVm = typeof IsolatedVM;
 let _ivm: IsolatedVm | null = null;
 
 async function getIvm(): Promise<IsolatedVm> {
-	if (!_ivm) {
-		const mod = await import('isolated-vm');
-		_ivm = mod.default;
+	if (_ivm) {
+		return _ivm;
 	}
-	return _ivm!;
-}
 
-// Hard heap limit for the cached isolate, in MB. Exceeding it disposes the
-// isolate mid-execution; ensureSandbox then rebuilds it lazily on the next call.
-const SANDBOX_MEMORY_LIMIT_MB = 64;
+	const mod = await import('isolated-vm');
+	_ivm = mod.default;
+	return mod.default;
+}
 
 /**
  * Whether an error is the isolate signalling that it ran out of memory (heap
@@ -47,7 +46,7 @@ export function resetSandboxCache(): void {
 	sandboxIsolate = null;
 }
 
-async function ensureSandbox(): Promise<{
+async function ensureSandbox(memoryLimitMb: number): Promise<{
 	isolate: IsolatedVM.Isolate;
 	bootstrap: IsolatedVM.Script;
 }> {
@@ -56,10 +55,9 @@ async function ensureSandbox(): Promise<{
 	}
 
 	const ivm = await getIvm();
-	sandboxIsolate = new ivm.Isolate({ memoryLimit: SANDBOX_MEMORY_LIMIT_MB });
+	sandboxIsolate = new ivm.Isolate({ memoryLimit: memoryLimitMb });
 
 	// Browser bundle only — no Node.js fs/require handlers inside the isolate.
-	// eslint-disable-next-line @typescript-eslint/no-require-imports
 	const alasqlBundlePath = require.resolve('alasql/dist/alasql.min.js');
 	const alasqlSource = await readFile(alasqlBundlePath, 'utf-8');
 
@@ -100,7 +98,8 @@ async function ensureSandbox(): Promise<{
  * handles the lifecycle automatically.
  */
 export async function createSandboxContext(): Promise<IsolatedVM.Context> {
-	const { isolate, bootstrap } = await ensureSandbox();
+	const memoryLimitMb = Container.get<NodesConfig>(NodesConfig).mergeSqlSandboxMemoryLimitMb;
+	const { isolate, bootstrap } = await ensureSandbox(memoryLimitMb);
 	const context = await isolate.createContext();
 	try {
 		await bootstrap.run(context);
@@ -136,9 +135,10 @@ export async function withSandboxContext<T>(
 export async function runAlaSqlInSandbox(
 	tableData: unknown[][],
 	query: string,
+	parameters: unknown[] = [],
 ): Promise<IDataObject[]> {
 	try {
-		return await executeAlaSql(tableData, query);
+		return await executeAlaSql(tableData, query, parameters);
 	} catch (error) {
 		// Hitting the isolate's memory limit disposes the isolate. That can mean
 		// this dataset is genuinely too large, but it can also be transient: earlier
@@ -147,13 +147,17 @@ export async function runAlaSqlInSandbox(
 		// rebuilds the disposed isolate on a clean heap, so a transient accumulation
 		// succeeds while a truly oversized dataset fails again and propagates.
 		if (isSandboxMemoryError(error)) {
-			return await executeAlaSql(tableData, query);
+			return await executeAlaSql(tableData, query, parameters);
 		}
 		throw error;
 	}
 }
 
-async function executeAlaSql(tableData: unknown[][], query: string): Promise<IDataObject[]> {
+async function executeAlaSql(
+	tableData: unknown[][],
+	query: string,
+	parameters: unknown[],
+): Promise<IDataObject[]> {
 	const dbId = randomUUID();
 
 	// evalClosure binds ($0, $1, $2) as parameters of an implicit wrapping function,
@@ -161,21 +165,21 @@ async function executeAlaSql(tableData: unknown[][], query: string): Promise<IDa
 	// which strips prototypes and functions so only inert plain data crosses the
 	// isolate boundary.
 	const script = `
-		const rows = $0, dbId = $1, query = $2;
+		const rows = $0, dbId = $1, query = $2, parameters = $3;
 		const db = new alasql.Database(dbId);
 		try {
 			for (let i = 0; i < rows.length; i++) {
 				db.exec('CREATE TABLE input' + (i + 1));
 				db.tables['input' + (i + 1)].data = rows[i];
 			}
-			return JSON.stringify(db.exec(query));
+			return JSON.stringify(db.exec(query, parameters));
 		} finally {
 			delete alasql.databases[dbId];
 		}
 	`;
 
 	return await withSandboxContext(async (context) => {
-		const resultJson = (await context.evalClosure(script, [tableData, dbId, query], {
+		const resultJson = (await context.evalClosure(script, [tableData, dbId, query, parameters], {
 			arguments: { copy: true },
 			result: { copy: true },
 			timeout: 30000,

@@ -14,10 +14,13 @@ import { chromium } from 'playwright-core';
 import { CDPRelayServer } from '../cdp-relay';
 import {
 	BrowserExecutableNotFoundError,
+	ElementNotActionableError,
 	PageNotFoundError,
 	StaleRefError,
 	type ConnectionLostReason,
+	type UnactionableReason,
 } from '../errors';
+import { buildExtensionConnectUrl } from '../extension-connect';
 import { createLogger } from '../logger';
 import { HTML_PROBE_SCRIPT, parseHtmlProbeResult } from '../sensitivity/html-probe';
 import type {
@@ -38,30 +41,39 @@ import type {
 	SnapshotResult,
 	TypeOptions,
 	WaitOptions,
+	DisconnectDetails,
 } from '../types';
 import { generateId, toError } from '../utils';
 
 const log = createLogger('playwright');
 
-// ---------------------------------------------------------------------------
-// Type augmentation for Playwright's private _snapshotForAI API.
-// This is used internally by Playwright MCP (playwright/lib/mcp/browser/tab.js)
-// and returns a YAML accessibility tree with aria-ref= annotations.
-// ---------------------------------------------------------------------------
+/**
+ * How long a control may stay unactionable before the action is refused.
+ * Generous on purpose: a control disabled by a debounce or an in-flight save
+ * was acted on before this guard existed, and refusing one is worse than
+ * waiting. Overridable because it pre-empts Playwright's own configurable
+ * timeout, and a slow backend can legitimately need longer.
+ */
+const ACTIONABLE_GRACE_MS = Number(process.env.N8N_MCP_BROWSER_ACTIONABLE_GRACE_MS) || 5_000;
+/** Re-read cadence within the grace window. */
+const ACTIONABLE_POLL_MS = 250;
+/** Budget for one read, which crosses the relay and so is not instant. */
+const ACTIONABLE_READ_TIMEOUT_MS = 2_000;
 
-interface SnapshotForAIResult {
-	/** Complete YAML accessibility tree with [ref=eN] annotations */
-	full: string;
-	/** Incremental diff (only changed elements), undefined on first call */
-	incremental?: string;
-}
-
-interface PlaywrightPagePrivate extends Page {
-	_snapshotForAI(options?: {
-		timeout?: number;
-		track?: string;
-	}): Promise<SnapshotForAIResult>;
-}
+/**
+ * What an action needs of its target.
+ *
+ * `click` and `select` mirror Playwright's own actionability, so the guard
+ * cannot refuse what Playwright would have performed — note a read-only
+ * `<select>` still accepts `selectOption`, so it needs `enabled`, not
+ * `editable`.
+ *
+ * `type` is deliberately STRICTER than Playwright: `pressSequentially` types
+ * into a disabled or read-only field without complaint and reports success,
+ * so the caller believes a value was entered when nothing was. Refusing is the
+ * lesser evil, and it is a correctness fix rather than a saved timeout.
+ */
+type Actionability = 'enabled' | 'editable';
 
 // ---------------------------------------------------------------------------
 // Per-page state tracked by the adapter
@@ -78,15 +90,22 @@ interface PageState {
 }
 
 // ---------------------------------------------------------------------------
-// Stable extension ID derived from the "key" field in mcp-browser-extension/manifest.json.
-// This ensures the same ID whether loaded unpacked or installed from the Chrome Web Store.
-// ---------------------------------------------------------------------------
-
-const BROWSER_USE_EXTENSION_ID = 'cegmdpndekdfpnafgacidejijecomlhh';
-
-// ---------------------------------------------------------------------------
 // Adapter
 // ---------------------------------------------------------------------------
+
+export interface PlaywrightAdapterOptions {
+	/**
+	 * Externally managed relay (remote mode). When provided, launch() does not
+	 * start a local browser or a relay of its own; it waits for the extension
+	 * on this relay and connects Playwright through it. The relay's lifecycle
+	 * is owned by the embedder.
+	 */
+	relay?: CDPRelayServer;
+	/** Explicit CDP endpoint to connect to in remote mode. Overrides `relay.cdpEndpoint()`. */
+	cdpEndpoint?: string;
+	/** Headers sent when connecting to the CDP endpoint (e.g. an auth token). */
+	cdpConnectHeaders?: Record<string, string>;
+}
 
 export class PlaywrightAdapter {
 	readonly name = 'playwright';
@@ -96,14 +115,24 @@ export class PlaywrightAdapter {
 	private context?: BrowserContext;
 	private pageStates = new Map<string, PageState>();
 	private relay?: CDPRelayServer;
+	private readonly externalRelay?: CDPRelayServer;
+	private readonly externalCdpEndpoint?: string;
+	private readonly cdpConnectHeaders?: Record<string, string>;
+	/** Puts the embedder's relay handlers back; set while ours are installed. */
+	private restoreRelayHandlers?: () => void;
 	/** Pending activation: set by ensurePage(), consumed by context.on('page'). */
 	private pendingActivation?: { id: string; resolve: (page: Page) => void };
 
 	/** Called when the browser connection is unexpectedly lost. */
-	onDisconnect?: (reason: ConnectionLostReason) => void;
+	onDisconnect?: (reason: ConnectionLostReason, details?: DisconnectDetails) => void;
 
-	constructor(config: ResolvedConfig) {
+	onBlocked?: (details: DisconnectDetails) => void;
+
+	constructor(config: ResolvedConfig, options?: PlaywrightAdapterOptions) {
 		this.resolvedConfig = config;
+		this.externalRelay = options?.relay;
+		this.externalCdpEndpoint = options?.cdpEndpoint;
+		this.cdpConnectHeaders = options?.cdpConnectHeaders;
 	}
 
 	// =========================================================================
@@ -112,6 +141,17 @@ export class PlaywrightAdapter {
 
 	async launch(config: ConnectConfig): Promise<void> {
 		log.debug('launch: browser =', config.browser);
+
+		if (this.externalRelay) {
+			// Remote mode - the extension connects to an externally managed relay
+			// (e.g. exposed by the n8n server). No local browser is launched.
+			this.relay = this.externalRelay;
+			log.debug('remote mode: waiting for extension on external relay...');
+			await this.relay.waitForExtension({ browserWasLaunched: true });
+			await this.connectPlaywright(this.externalCdpEndpoint ?? this.relay.cdpEndpoint());
+			return;
+		}
+
 		// Local mode — connect to the user's running Chrome via extension bridge.
 		// The CDPRelayServer bridges Playwright ↔ Chrome extension (chrome.debugger).
 		this.relay = new CDPRelayServer();
@@ -126,10 +166,7 @@ export class PlaywrightAdapter {
 		// always is — see `cdp-relay.ts`), so a crafted chrome-extension URL
 		// pointing at a remote relay can't trigger this path.
 		const autoConnect = process.env.N8N_EVAL_AUTO_BROWSER_CONNECT === '1';
-		const connectUrl =
-			`chrome-extension://${BROWSER_USE_EXTENSION_ID}/connect.html` +
-			`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}` +
-			(autoConnect ? '&autoConnect=1' : '');
+		const connectUrl = buildExtensionConnectUrl(extensionEndpoint, { autoConnect });
 		const browserInfo = this.resolvedConfig.browsers.get(config.browser);
 		const chromePath = browserInfo?.executablePath;
 		if (!chromePath) {
@@ -154,13 +191,20 @@ export class PlaywrightAdapter {
 		log.debug('waiting for extension...');
 		await this.relay.waitForExtension({ browserWasLaunched: true });
 
-		// Connect Playwright over CDP through the relay
-		const cdpEndpoint = this.relay.cdpEndpoint(port);
+		await this.connectPlaywright(this.relay.cdpEndpoint(port));
+	}
+
+	/** Connect Playwright over CDP through the relay and wire up handlers. */
+	private async connectPlaywright(cdpEndpoint: string): Promise<void> {
+		const relay = this.relay!;
 		log.debug('connecting Playwright over CDP:', cdpEndpoint);
-		this.browser = await chromium.connectOverCDP(cdpEndpoint);
+		this.browser = await chromium.connectOverCDP(cdpEndpoint, {
+			headers: this.cdpConnectHeaders,
+			noDefaults: true,
+		});
 		const contexts = this.browser.contexts();
 		log.debug('browser contexts:', contexts.length);
-		this.context = contexts[0] ?? (await this.browser.newContext());
+		this.context = contexts[0] ?? (await this.browser.newContext({ colorScheme: null }));
 
 		// Two-tier model: pages are created lazily via ensurePage().
 		// When ensurePage() triggers activateTab(), it sets pendingActivation
@@ -189,10 +233,23 @@ export class PlaywrightAdapter {
 			this.onDisconnect?.('browser_closed');
 		});
 
-		// Detect extension disconnection via the relay (already a typed reason)
-		this.relay.onExtensionDisconnect = (reason) => {
+		// In remote mode the relay outlives us, so chain onto the embedder's handlers
+		// and restore them on close. One closure so neither can be forgotten.
+		const previousDisconnect = relay.onExtensionDisconnect;
+		const previousBlocked = relay.onTabBlocked;
+		relay.onExtensionDisconnect = (reason, details) => {
 			log.debug('relay: extension disconnected, reason:', reason);
-			this.onDisconnect?.(reason);
+			previousDisconnect?.(reason, details);
+			this.onDisconnect?.(reason, details);
+		};
+		relay.onTabBlocked = (details) => {
+			log.debug('relay: tab blocked by', details.blockingExtensionIds);
+			previousBlocked?.(details);
+			this.onBlocked?.(details);
+		};
+		this.restoreRelayHandlers = () => {
+			relay.onExtensionDisconnect = previousDisconnect;
+			relay.onTabBlocked = previousBlocked;
 		};
 
 		log.debug('launch complete, context ready for lazy activation');
@@ -210,7 +267,13 @@ export class PlaywrightAdapter {
 			// browser may already be closed
 		}
 		if (this.relay) {
-			this.relay.stop();
+			if (this.relay === this.externalRelay) {
+				// Externally managed relay: restore handlers, leave it running.
+				this.restoreRelayHandlers?.();
+				this.restoreRelayHandlers = undefined;
+			} else {
+				this.relay.stop();
+			}
 			this.relay = undefined;
 		}
 		this.pageStates.clear();
@@ -220,7 +283,10 @@ export class PlaywrightAdapter {
 	// Pages
 	// =========================================================================
 
-	async newPage(url?: string): Promise<PageInfo> {
+	async newPage(
+		url?: string,
+		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
+	): Promise<PageInfo> {
 		log.debug('newPage: creating page, url =', url ?? '(none)');
 		const page = await this.requireContext().newPage();
 		// The relay assigned an ID during Target.createTarget → createTab()
@@ -229,7 +295,7 @@ export class PlaywrightAdapter {
 		const state = this.findPageState(page) ?? this.trackPage(page, tabId);
 
 		if (url) {
-			await page.goto(url, { waitUntil: 'load' });
+			await page.goto(url, { waitUntil });
 			state.info.title = await page.title();
 			state.info.url = page.url();
 		}
@@ -312,7 +378,7 @@ export class PlaywrightAdapter {
 	async navigate(
 		pageId: string,
 		url: string,
-		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'load',
+		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
 	): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
 		const response = await page.goto(url, { waitUntil });
@@ -323,21 +389,27 @@ export class PlaywrightAdapter {
 		};
 	}
 
-	async back(pageId: string): Promise<NavigateResult> {
+	async back(
+		pageId: string,
+		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
+	): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
-		await page.goBack({ waitUntil: 'load' });
+		await page.goBack({ waitUntil });
 		return { title: await page.title(), url: page.url(), status: 0 };
 	}
 
-	async forward(pageId: string): Promise<NavigateResult> {
+	async forward(
+		pageId: string,
+		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
+	): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
-		await page.goForward({ waitUntil: 'load' });
+		await page.goForward({ waitUntil });
 		return { title: await page.title(), url: page.url(), status: 0 };
 	}
 
 	async reload(
 		pageId: string,
-		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'load',
+		waitUntil: 'load' | 'domcontentloaded' | 'networkidle' = 'domcontentloaded',
 	): Promise<NavigateResult> {
 		const { page } = await this.ensurePage(pageId);
 		const response = await page.reload({ waitUntil });
@@ -355,6 +427,7 @@ export class PlaywrightAdapter {
 	async click(pageId: string, target: ElementTarget, options?: ClickOptions): Promise<void> {
 		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
+		await this.ensureActionable(locator, target, 'enabled');
 		await locator.click({
 			button: options?.button,
 			clickCount: options?.clickCount,
@@ -370,12 +443,18 @@ export class PlaywrightAdapter {
 	): Promise<void> {
 		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
+		await this.ensureActionable(locator, target, 'editable');
 
-		if (options?.clear) {
-			await locator.clear();
+		if (options?.mode === 'paste') {
+			// Code editors mangle key-by-key entry: auto-close and auto-indent fire per keystroke.
+			await locator.fill(text);
+		} else {
+			if (options?.clear) {
+				await locator.clear();
+			}
+
+			await locator.pressSequentially(text, { delay: options?.delay });
 		}
-
-		await locator.pressSequentially(text, { delay: options?.delay });
 
 		if (options?.submit) {
 			await locator.press('Enter');
@@ -385,6 +464,7 @@ export class PlaywrightAdapter {
 	async select(pageId: string, target: ElementTarget, values: string[]): Promise<string[]> {
 		await this.ensurePage(pageId);
 		const locator = await this.resolveLocator(pageId, target);
+		await this.ensureActionable(locator, target, 'enabled');
 		return await locator.selectOption(values);
 	}
 
@@ -503,22 +583,20 @@ export class PlaywrightAdapter {
 	async snapshot(
 		pageId: string,
 		target?: ElementTarget,
-		_interactive?: boolean,
+		interactive = true,
 	): Promise<SnapshotResult> {
 		const { page } = await this.ensurePage(pageId);
+		const mode = interactive ? 'ai' : 'default';
 
-		// Use Playwright's internal _snapshotForAI API which returns a YAML
-		// accessibility tree with [ref=eN] annotations on interactive elements.
-		// This is the same API used by Playwright MCP's Tab.captureSnapshot().
+		// Use Playwright's public ariaSnapshot() API.
+		// mode='ai' includes [ref=eN] annotations for interaction tools.
 		let yaml: string;
 		if (target) {
 			const locator = await this.resolveLocator(pageId, target);
-			// Scoped snapshots use the public ariaSnapshot() on the locator
-			yaml = await locator.ariaSnapshot();
+			// Scoped snapshots use ariaSnapshot() on the locator.
+			yaml = await locator.ariaSnapshot({ mode });
 		} else {
-			const privatePage = page as PlaywrightPagePrivate;
-			const result = await privatePage._snapshotForAI({ track: 'response' });
-			yaml = result.full;
+			yaml = await page.ariaSnapshot({ mode });
 		}
 
 		if (!yaml) {
@@ -874,6 +952,59 @@ export class PlaywrightAdapter {
 	// Private helpers
 	// =========================================================================
 
+	/**
+	 * Refuse an action whose target is still unactionable once the grace window is
+	 * up. Left alone, `click` and `select` wait out the full action timeout and
+	 * then fail with a message that says nothing about why, and `type` reports a
+	 * success it did not achieve.
+	 */
+	private async ensureActionable(
+		locator: Locator,
+		target: ElementTarget,
+		need: Actionability,
+	): Promise<void> {
+		const deadline = Date.now() + ACTIONABLE_GRACE_MS;
+		while (await this.readBlocked(locator, need)) {
+			const remaining = deadline - Date.now();
+			if (remaining <= 0) {
+				const described = 'ref' in target ? target.ref : target.selector;
+				throw new ElementNotActionableError(described, await this.blockedReason(locator));
+			}
+			await new Promise((resolve) => setTimeout(resolve, Math.min(ACTIONABLE_POLL_MS, remaining)));
+		}
+	}
+
+	/**
+	 * Uses Playwright's own predicates. They resolve `aria-ref` locators, which
+	 * most other locator reads do not — the callers target elements from a
+	 * snapshot. An unreadable state counts as fine, leaving the action to run.
+	 */
+	private async readBlocked(locator: Locator, need: Actionability): Promise<boolean> {
+		const options = { timeout: ACTIONABLE_READ_TIMEOUT_MS };
+		const blocked =
+			need === 'editable'
+				? locator.isEditable(options).then((editable) => !editable)
+				: locator.isDisabled(options);
+		return await blocked.catch((error: unknown) => {
+			// Only the error type: Playwright embeds matched element HTML in some
+			// messages, and this logger does not redact.
+			log.warn('actionability check failed:', toError(error).name);
+			return false;
+		});
+	}
+
+	/**
+	 * Only asked once the action is already refused, so the extra read costs
+	 * nothing on the happy path. Unreadable defaults to `disabled` — the far more
+	 * common cause, and the hint it picks is the more useful of the two.
+	 */
+	private async blockedReason(locator: Locator): Promise<UnactionableReason> {
+		const disabled = await locator
+			.isDisabled({ timeout: ACTIONABLE_READ_TIMEOUT_MS })
+			.catch(() => true);
+		return disabled ? 'disabled' : 'readonly';
+	}
+
 	private requireContext(): BrowserContext {
 		if (!this.context) throw new Error('Browser context not initialized');
 		return this.context;
@@ -1018,8 +1149,21 @@ export class PlaywrightAdapter {
 		}
 	}
 
-	getElementValue(_pageId: string, _target: ElementTarget): never {
-		throw new Error('Not implemented');
+	async getElementValue(pageId: string, target: ElementTarget): Promise<string> {
+		const locator = await this.resolveLocator(pageId, target);
+		try {
+			return await locator.inputValue();
+		} catch (error) {
+			// Only fall back to reading text when the element is genuinely not an
+			// <input>/<textarea>/<select>. If it's unreachable (timeout / detached /
+			// not connected) rethrow the original error so the caller fails once,
+			// promptly, instead of spending a second implicit timeout on innerText()
+			// and surfacing a misleading "not an input" error on the secret path.
+			const message = error instanceof Error ? error.message : String(error);
+			const isWrongElementKind = /not an?\b.*(input|textarea|select)/i.test(message);
+			if (!isWrongElementKind) throw error;
+			return await locator.innerText();
+		}
 	}
 
 	private async resolveLocator(pageId: string, target: ElementTarget): Promise<Locator> {

@@ -5,8 +5,10 @@ import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import { BINARY_ENCODING, sleep, jsonStringify, ensureError, UnexpectedError } from 'n8n-workflow';
-import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sleep } from '@n8n/utils/sleep';
+import { jsonStringify, UnexpectedError } from 'n8n-workflow';
+import type { IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -29,6 +31,7 @@ import type {
 	JobMessage,
 	JobFailedMessage,
 } from './scaling.types';
+import { decodeRelayedWebhookResponse, WebhookResponseRelay } from './webhook-response-relay';
 
 @Service()
 export class ScalingService {
@@ -46,6 +49,7 @@ export class ScalingService {
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
+		private readonly webhookResponseRelay: WebhookResponseRelay,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
@@ -54,7 +58,7 @@ export class ScalingService {
 
 	async setupQueue() {
 		const { default: BullQueue } = await import('bull');
-		const { RedisClientService } = await import('@/services/redis-client.service');
+		const { RedisClientService } = await import('@/services/redis-client.service.js');
 
 		if (this.queue) return;
 
@@ -78,7 +82,7 @@ export class ScalingService {
 		const { McpServer, QueuedExecutionStrategy, RedisSessionStore } = await import(
 			'@n8n/n8n-nodes-langchain/mcp/core'
 		);
-		const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+		const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 
 		const publisher = Container.get(Publisher);
 
@@ -350,10 +354,11 @@ export class ScalingService {
 				case 'send-chunk':
 					this.activeExecutions.sendChunk(msg.executionId, msg.chunkText);
 					break;
-				case 'respond-to-webhook':
-					const decodedResponse = this.decodeWebhookResponse(msg.response);
+				case 'respond-to-webhook': {
+					const decodedResponse = decodeRelayedWebhookResponse(msg.response);
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
+				}
 				case 'job-finished':
 					if (msg.success) {
 						this.activeExecutions.resolveResponsePromise(msg.executionId, {});
@@ -381,6 +386,10 @@ export class ScalingService {
 							metadata: msg.metadata,
 							startedAt: new Date(msg.startedAt),
 							stoppedAt: new Date(msg.stoppedAt),
+							// Dropping `waitTill` here makes main mistake a waiting execution
+							// for a finished one and delete it when the workflow does not
+							// save successful executions
+							waitTill: msg.waitTill ? new Date(msg.waitTill) : null,
 						});
 					}
 
@@ -470,13 +479,30 @@ export class ScalingService {
 					storedAt: executionData.storedAt,
 				};
 
-				const { McpService } = await import('@/modules/mcp/mcp.service');
+				const { McpService } = await import('@/modules/mcp/mcp.service.js');
 				const mcpService = Container.get(McpService);
 				mcpService.handleWorkerResponse(executionId, runData);
 			} else {
 				const { McpServer } = await import('@n8n/n8n-nodes-langchain/mcp/core');
 				const mcpServer = McpServer.instance(this.logger);
-				mcpServer.handleWorkerResponse(sessionId, messageId, response);
+
+				const holdsResponse =
+					mcpServer.hasSession(sessionId) || mcpServer.hasPendingResponse(sessionId, messageId);
+
+				if (holdsResponse) {
+					// Holding the session does not make this main the sole reader: a second
+					// main recreates the transport when a request for the session lands on
+					// it. So the stored body is left in place, and execution pruning
+					// reclaims it. Restoring under this guard only spares the mains that
+					// would discard the body a read of the whole thing.
+					const decoded = decodeRelayedWebhookResponse(response);
+					const toolResult = await this.webhookResponseRelay.restoreOffloadedBody(decoded, {
+						reclaim: false,
+						context: { executionId },
+					});
+
+					mcpServer.handleWorkerResponse(sessionId, messageId, toolResult);
+				}
 			}
 		} catch (error) {
 			this.logger.error('Failed to handle MCP response', {
@@ -488,22 +514,6 @@ export class ScalingService {
 	}
 
 	// #endregion
-
-	private decodeWebhookResponse(
-		response: IExecuteResponsePromiseData,
-	): IExecuteResponsePromiseData {
-		if (
-			typeof response === 'object' &&
-			typeof response.body === 'object' &&
-			response.body !== null &&
-			'__@N8nEncodedBuffer@__' in response.body &&
-			typeof response.body['__@N8nEncodedBuffer@__'] === 'string'
-		) {
-			response.body = Buffer.from(response.body['__@N8nEncodedBuffer@__'], BINARY_ENCODING);
-		}
-
-		return response;
-	}
 
 	private assertQueue() {
 		if (this.queue) return;

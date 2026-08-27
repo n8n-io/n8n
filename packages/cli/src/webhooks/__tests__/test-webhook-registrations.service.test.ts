@@ -1,5 +1,5 @@
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import type { CacheService } from '@/services/cache/cache.service';
 import type { TestWebhookRegistration } from '@/webhooks/test-webhook-registrations.service';
@@ -21,7 +21,7 @@ describe('TestWebhookRegistrationsService', () => {
 	const cacheKey = 'test-webhooks';
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		cacheService.exists.mockResolvedValue(true);
 	});
 

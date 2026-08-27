@@ -4,11 +4,13 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { createPinia, setActivePinia } from 'pinia';
 import * as dataTableApi from '@/features/core/dataTable/dataTable.api';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 vi.mock('@/features/collaboration/projects/projects.store');
-vi.mock('@/app/stores/settings.store');
+vi.mock('@n8n/stores/settings.store');
+vi.mock('@/app/utils/rbac/permissions', () => ({ hasPermission: vi.fn(() => true) }));
 
 function createTable(data: Partial<DataTable>) {
 	return {
@@ -181,6 +183,7 @@ describe('dataTable.store', () => {
 				updatedAt: '2024-01-01',
 				relations: [],
 				scopes: [],
+				rolesManaged: false,
 			};
 			vi.spyOn(dataTableApi, 'createDataTableApi').mockResolvedValue(mockTable);
 
@@ -262,6 +265,36 @@ describe('dataTable.store', () => {
 			const result = await dataTableStore.fetchDataTableDetails('dt-1', 'p1');
 
 			expect(result).toBeNull();
+		});
+	});
+
+	describe('fetchDataTableById', () => {
+		it('should look up a table across projects via the global endpoint', async () => {
+			const mockTable = createTable({ id: 'dt-1', projectId: 'p9' });
+			const spy = vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue({
+				count: 1,
+				data: [mockTable],
+			});
+
+			const result = await dataTableStore.fetchDataTableById('dt-1');
+
+			expect(spy).toHaveBeenCalledWith(rootStore.restApiContext, '', undefined, { id: 'dt-1' });
+			expect(result).toBe(mockTable);
+			expect(dataTableStore.dataTables).toEqual([]); // does not mutate the list
+		});
+
+		it('should return null when the table does not exist', async () => {
+			vi.spyOn(dataTableApi, 'fetchDataTablesApi').mockResolvedValue({ count: 0, data: [] });
+
+			expect(await dataTableStore.fetchDataTableById('dt-1')).toBeNull();
+		});
+
+		it('should return null without a request when the user cannot list data tables', async () => {
+			vi.mocked(hasPermission).mockReturnValueOnce(false);
+			const spy = vi.spyOn(dataTableApi, 'fetchDataTablesApi');
+
+			expect(await dataTableStore.fetchDataTableById('dt-1')).toBeNull();
+			expect(spy).not.toHaveBeenCalled();
 		});
 	});
 
@@ -677,6 +710,23 @@ describe('dataTable.store', () => {
 				rootStore.restApiContext,
 				'dt-1',
 				{},
+				'p1',
+			);
+			expect(result).toBe(mockRow);
+		});
+	});
+
+	describe('insertRow', () => {
+		it('should insert a row with the given data', async () => {
+			const mockRow = { id: 1, name: 'Given' };
+			vi.spyOn(dataTableApi, 'insertDataTableRowApi').mockResolvedValue([mockRow]);
+
+			const result = await dataTableStore.insertRow('dt-1', 'p1', { name: 'Given' });
+
+			expect(dataTableApi.insertDataTableRowApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'dt-1',
+				{ name: 'Given' },
 				'p1',
 			);
 			expect(result).toBe(mockRow);

@@ -1,19 +1,35 @@
 import { AgentIntegrationConfig } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Thread, Author } from 'chat';
 import { createHmac } from 'crypto';
 import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { UrlService } from '@/services/url.service';
 
 import { AgentRepository } from '../../repositories/agent.repository';
-import { AgentChatIntegration, type AgentChatIntegrationContext } from '../agent-chat-integration';
+import {
+	AgentChatIntegration,
+	type AgentChannelPreconditionContext,
+	type AgentChatIntegrationContext,
+	type ActionDecisionMessageParams,
+	type BridgeExecutionContext,
+	type BridgeMessageContextParams,
+	type BridgeResumeExecutionContext,
+} from '../agent-chat-integration';
 import type { SuspendComponent } from '../component-mapper';
+import { assertCredentialNotClaimed } from '../credential-claim';
 import { loadTelegramAdapter } from '../esm-loader';
-import type { IntegrationAction } from '../integration-tools';
+import { resolveIntegrationActionDefinitions } from '../integration-tool-definitions';
+import {
+	createTelegramBridgeExecutionContext,
+	createTelegramResumeExecutionContext,
+} from './telegram-bridge-behavior';
 
 /**
  * Telegram platform integration.
@@ -44,26 +60,65 @@ export class TelegramIntegration extends AgentChatIntegration {
 		capabilities: [
 			'Receive Telegram messages as agent triggers.',
 			'Respond in Telegram conversations and send direct Telegram messages.',
+			'Edit existing messages in the current Telegram conversation.',
 			'Render Telegram-compatible cards with buttons.',
 		],
 		useIntegrationWhen: [
 			'The agent should be chatted with from Telegram or act as a Telegram bot.',
 			'The agent needs to reply to Telegram users in the same conversation context.',
+			'The agent needs to update a Telegram message in the current conversation.',
 			'The agent should send Telegram messages as the connected Telegram bot.',
+			'A scheduled Agent task should proactively send a direct message to a known Telegram user ID.',
 		],
 		useNodeToolWhen: [
 			'Telegram is only a backend API step and the agent does not need to be connected as a Telegram chat surface.',
-			'The request is a one-off Telegram operation from another trigger without ongoing Telegram conversation context.',
+			'The Telegram operation is performed by a non-Agent workflow, or the exact operation is not listed in the Agent integration capabilities.',
 		],
 	};
 
-	readonly supportedComponents = ['section', 'button', 'divider', 'fields'];
+	readonly supportedComponents: readonly RichCardComponentType[] = [
+		'section',
+		'button',
+		'divider',
+		'fields',
+	];
 
-	readonly actions: IntegrationAction[] = ['respond', 'send_dm'];
+	readonly actionToolDefinitions = resolveIntegrationActionDefinitions([
+		'respond',
+		'send_dm',
+		'edit_message',
+	]);
+
+	readonly actionToolGuidance = [
+		'For scheduled tasks without an inbound conversation, use send_dm with the known Telegram user ID. The integration action does not require current message context.',
+		'For edit_message, pass the messageId returned by a previous Telegram action or get_current_message_context. The current Telegram conversation is selected automatically.',
+	];
 
 	readonly needsShortCallbackData = true;
 
+	readonly deleteActionMessageBeforeResume = false;
+
 	readonly disableStreaming = true;
+
+	formatActionDecisionMessage({
+		approved,
+		selectedLabel,
+		raw,
+		user,
+	}: ActionDecisionMessageParams): string {
+		const originalText =
+			isRecord(raw) && isRecord(raw.message) && typeof raw.message.text === 'string'
+				? raw.message.text
+				: '';
+		const responder = user.fullName || user.userName || user.userId;
+		const outcome =
+			approved === undefined
+				? `✅ ${selectedLabel || 'Action'} selected by ${responder}`
+				: approved
+					? `✅ Approved by ${responder}`
+					: `🚫 Declined by ${responder}`;
+		return originalText ? `${originalText}\n\n${outcome}` : outcome;
+	}
 
 	readonly formatThreadId = {
 		fromSdk: (thread: Thread<unknown, unknown>) => {
@@ -88,58 +143,62 @@ export class TelegramIntegration extends AgentChatIntegration {
 		private readonly urlService: UrlService,
 		private readonly agentRepository: AgentRepository,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly outboundHttp: OutboundHttp,
 	) {
 		super();
 	}
 
 	async createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown> {
 		const botToken = this.extractBotToken(ctx.credential);
-		const mode = this.getMode();
+		const mode = ctx.ingressEnabled ? this.getMode() : 'webhook';
 		const secretToken = this.deriveSecretToken(ctx.agentId, ctx.credentialId);
 		const { createTelegramAdapter } = await loadTelegramAdapter();
 		return createTelegramAdapter({ botToken, mode, secretToken });
+	}
+
+	validateConfig(integration: AgentIntegrationConfig): void {
+		if (integration.type === this.type && !integration.settings) {
+			throw new BadRequestError('Telegram integration settings are required');
+		}
 	}
 
 	/**
 	 * In polling mode the Chat SDK adapter long-polls Telegram, which must be
 	 * done by exactly one main — otherwise multiple instances race for the same
 	 * updates. Webhook mode is safe on every main.
+	 *
+	 * Mirrors `createAdapter`, which forces webhook mode when ingress is off: an
+	 * outbound connection opens no poll loop, so it is not leader-bound.
 	 */
-	override requiresLeader(): boolean {
-		return this.getMode() === 'polling';
+	override requiresLeader({ ingressEnabled } = { ingressEnabled: true }): boolean {
+		return ingressEnabled && this.getMode() === 'polling';
 	}
 
 	/**
-	 * Block the connect flow if this Telegram credential is already claimed by
-	 * another agent in our DB. We deliberately don't probe Telegram for an
-	 * existing webhook here — `onAfterConnect` overwrites whatever URL Telegram
-	 * has on file, so a stale webhook from elsewhere isn't a connect blocker.
+	 * We deliberately don't probe Telegram for an existing webhook here —
+	 * `onAfterConnect` overwrites whatever URL Telegram has on file, so a stale
+	 * webhook from elsewhere isn't a connect blocker. That leaves the claim
+	 * check, which reads only our own DB, so publishing can run it as a
+	 * preflight.
 	 */
+	async assertStartupPreconditions(ctx: AgentChannelPreconditionContext): Promise<void> {
+		await assertCredentialNotClaimed(this.agentRepository, this.displayLabel, this.type, ctx);
+	}
+
 	async onBeforeConnect(ctx: AgentChatIntegrationContext): Promise<void> {
-		const others = await this.agentRepository.findByIntegrationCredential(
-			this.type,
-			ctx.credentialId,
-			ctx.projectId,
-			ctx.agentId,
-		);
-		if (others.length > 0) {
-			throw new ConflictError(
-				`Telegram credential is already connected to agent "${others[0].name}"`,
-			);
-		}
+		await this.assertStartupPreconditions(ctx);
 	}
 
 	async onAfterConnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		if (this.getMode() !== 'webhook') return;
 		const webhookUrl = ctx.webhookUrlFor('telegram');
 		const secretToken = this.deriveSecretToken(ctx.agentId, ctx.credentialId);
-		const resp = await fetch(this.botApiUrl(ctx.credential, 'setWebhook'), {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ url: webhookUrl, secret_token: secretToken }),
+		const response = await this.botApiRequest(ctx.credential, 'setWebhook', {
+			url: webhookUrl,
+			secret_token: secretToken,
 		});
-		if (!resp.ok) {
-			throw new Error(`Failed to register Telegram webhook: ${await resp.text()}`);
+		if (!this.isOkStatus(response.statusCode)) {
+			throw new Error(`Failed to register Telegram webhook: ${this.stringifyBody(response.body)}`);
 		}
 		this.logger.info(`[TelegramIntegration] Webhook registered: ${webhookUrl}`);
 	}
@@ -151,11 +210,11 @@ export class TelegramIntegration extends AgentChatIntegration {
 	 */
 	async onBeforeDisconnect(ctx: AgentChatIntegrationContext): Promise<void> {
 		if (this.getMode() !== 'webhook') return;
-		const resp = await fetch(this.botApiUrl(ctx.credential, 'deleteWebhook'), {
-			method: 'POST',
-		});
-		if (!resp.ok) {
-			throw new Error(`Failed to deregister Telegram webhook: ${await resp.text()}`);
+		const response = await this.botApiRequest(ctx.credential, 'deleteWebhook');
+		if (!this.isOkStatus(response.statusCode)) {
+			throw new Error(
+				`Failed to deregister Telegram webhook: ${this.stringifyBody(response.body)}`,
+			);
 		}
 		this.logger.info(
 			`[TelegramIntegration] Webhook deregistered for agent ${ctx.agentId}, credential ${ctx.credentialId}`,
@@ -184,6 +243,20 @@ export class TelegramIntegration extends AgentChatIntegration {
 			const normalized = allowed.startsWith('@') ? allowed.slice(1) : allowed;
 			return normalized === author.userId || normalized === author.userName;
 		});
+	}
+
+	async createBridgeExecutionContext(
+		params: BridgeMessageContextParams,
+	): Promise<BridgeExecutionContext> {
+		return await Promise.resolve(createTelegramBridgeExecutionContext(params));
+	}
+
+	async createResumeExecutionContext(params: {
+		thread: BridgeMessageContextParams['thread'];
+		logger: BridgeMessageContextParams['logger'];
+		agentId: string;
+	}): Promise<BridgeResumeExecutionContext> {
+		return await Promise.resolve(createTelegramResumeExecutionContext(params));
 	}
 
 	normalizeComponents(components: SuspendComponent[]): SuspendComponent[] {
@@ -254,5 +327,30 @@ export class TelegramIntegration extends AgentChatIntegration {
 				? raw.trim().replace(/\/+$/, '')
 				: 'https://api.telegram.org';
 		return `${baseUrl}/bot${botToken}/${method}`;
+	}
+
+	private async botApiRequest(
+		credential: Record<string, unknown>,
+		method: string,
+		body?: Record<string, unknown>,
+	) {
+		return await this.outboundHttp
+			// the Bot API host is user-configurable, so the default safe mode applies
+			.requests()
+			.request({
+				method: 'POST',
+				url: this.botApiUrl(credential, method),
+				...(body ? { body, json: true } : {}),
+				returnFullResponse: true,
+				ignoreHttpStatusErrors: true,
+			});
+	}
+
+	private isOkStatus(statusCode: number): boolean {
+		return statusCode >= 200 && statusCode < 300;
+	}
+
+	private stringifyBody(body: unknown): string {
+		return typeof body === 'string' ? body : JSON.stringify(body);
 	}
 }

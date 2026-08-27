@@ -17,17 +17,27 @@ import type { AddedNode, INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
-import { RemoveNodeCommand, ReplaceNodeParametersCommand } from '@/app/models/history';
+import {
+	AddConnectionCommand,
+	AddNodeGroupCommand,
+	RemoveNodeCommand,
+	RemoveNodeGroupCommand,
+	ReplaceNodeParametersCommand,
+	UpdateNodeGroupCommand,
+} from '@/app/models/history';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useHistoryStore } from '@/app/stores/history.store';
+import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
+	createMockNodeTypes,
 	createTestNode,
 	createTestNodeProperties,
 	createTestWorkflow,
 	createTestWorkflowObject,
+	mockLoadedNodeType,
 	mockNode,
 	mockNodeTypeDescription,
 } from '@/__tests__/mocks';
@@ -37,6 +47,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
@@ -45,7 +56,9 @@ import {
 	AGENT_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -53,14 +66,15 @@ import {
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
 } from '@/app/constants';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { STORES } from '@n8n/stores';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
 import { isVNode, nextTick, reactive, ref } from 'vue';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
-import { useTelemetry } from './useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import * as workflowsApi from '@/app/api/workflows';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
@@ -103,7 +117,12 @@ vi.mock('@n8n/rest-api-client/api/workflowHistory', () => ({
 
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import * as workflowHelpersModule from '@/app/composables/useWorkflowHelpers';
-import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
+import {
+	AGENT_NODE_SIZE,
+	DEFAULT_NODE_SIZE,
+	GRID_SIZE,
+	HORIZONTAL_NODE_STEP,
+} from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('n8n-workflow')>();
@@ -132,14 +151,14 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({ track }),
 	};
 });
 
-vi.mock('@/app/composables/useToast', () => {
+vi.mock('@n8n/composables/useToast', () => {
 	const showMessage = vi.fn();
 	const showError = vi.fn();
 	const showToast = vi.fn();
@@ -153,6 +172,11 @@ vi.mock('@/app/composables/useToast', () => {
 		},
 	};
 });
+
+const getAutoSelectedCredentialMock = vi.hoisted(() => vi.fn());
+vi.mock('@/features/credentials/credentials.utils', () => ({
+	getAutoSelectedCredential: getAutoSelectedCredentialMock,
+}));
 
 const canPinNodeMock = vi.fn();
 const setDataMock = vi.fn();
@@ -330,6 +354,25 @@ describe('useCanvasOperations', () => {
 			expect(result.position).toEqual([32, 32]);
 		});
 
+		it('records the intended center until a new agent is measured', () => {
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+			const { addNode } = useCanvasOperations();
+			const result = addNode(
+				{
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+					position: [112, 112],
+				},
+				mockNodeTypeDescription({ name: MESSAGE_AN_AGENT_NODE_TYPE, version: 2 }),
+			);
+
+			expect(geometryStore.setPendingCenterY).toHaveBeenCalledWith(
+				workflowDocumentStoreInstance.workflowId,
+				result.id,
+				result.position[1] + AGENT_NODE_SIZE[1] / 2,
+			);
+		});
+
 		it('should not assign credentials when multiple credentials are available', () => {
 			const credentialsStore = useCredentialsStore();
 			const credentialA = mock<ICredentialsResponse>({ id: '1', name: 'credA', type: 'cred' });
@@ -425,6 +468,99 @@ describe('useCanvasOperations', () => {
 			});
 		});
 
+		describe('User added agent node telemetry', () => {
+			const agentNodeTypeDescription = mockNodeTypeDescription({
+				name: MESSAGE_AN_AGENT_NODE_TYPE,
+			});
+
+			it('tracks agent_source inline when the node carries the inline preset', async () => {
+				const telemetry = useTelemetry();
+
+				const { addNode } = useCanvasOperations();
+				const node = addNode(
+					{
+						type: MESSAGE_AN_AGENT_NODE_TYPE,
+						typeVersion: 3,
+						parameters: { agentSource: 'inline' },
+					},
+					agentNodeTypeDescription,
+					{ telemetry: true },
+				);
+
+				await waitFor(() => {
+					expect(telemetry.track).toHaveBeenCalledWith(
+						TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE,
+						expect.objectContaining({
+							agent_source: 'inline',
+							agent_id: undefined,
+							node_id: node.id,
+							node_version: 3,
+						}),
+					);
+				});
+			});
+
+			it('tracks agent_source referenced with the picked agent id', async () => {
+				const telemetry = useTelemetry();
+
+				const { addNode } = useCanvasOperations();
+				addNode(
+					{
+						type: MESSAGE_AN_AGENT_NODE_TYPE,
+						typeVersion: 3,
+						parameters: {
+							agentSource: 'referenced',
+							agentId: { __rl: true, mode: 'list', value: 'agent-123' },
+						},
+					},
+					agentNodeTypeDescription,
+					{ telemetry: true },
+				);
+
+				await waitFor(() => {
+					expect(telemetry.track).toHaveBeenCalledWith(
+						TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE,
+						expect.objectContaining({
+							agent_source: 'referenced',
+							agent_id: 'agent-123',
+						}),
+					);
+				});
+			});
+
+			it('omits agent_source when the node was added without the agents panel preset', async () => {
+				const telemetry = useTelemetry();
+
+				const { addNode } = useCanvasOperations();
+				addNode({ type: MESSAGE_AN_AGENT_NODE_TYPE, typeVersion: 3 }, agentNodeTypeDescription, {
+					telemetry: true,
+				});
+
+				await waitFor(() => {
+					expect(telemetry.track).toHaveBeenCalledWith(
+						TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE,
+						expect.objectContaining({ agent_source: undefined, agent_id: undefined }),
+					);
+				});
+			});
+
+			it('does not fire for other node types', async () => {
+				const telemetry = useTelemetry();
+
+				const { addNode } = useCanvasOperations();
+				addNode({ type: 'hubspot', typeVersion: 1 }, mockNodeTypeDescription({ name: 'hubspot' }), {
+					telemetry: true,
+				});
+
+				await waitFor(() => {
+					expect(telemetry.track).not.toHaveBeenCalledWith(
+						TELEMETRY_EVENT.AGENTS.USER_ADDED_AGENT_NODE,
+						expect.anything(),
+					);
+				});
+			});
+		});
+
 		it('re-evaluates all credential issues when the added node is a trigger', async () => {
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 			nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(true);
@@ -516,7 +652,69 @@ describe('useCanvasOperations', () => {
 			const { resolveNodePosition } = useCanvasOperations();
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position).toEqual([320, 112]);
+			// 112 + HORIZONTAL_NODE_STEP (224) = 336, matching the auto-layout step
+			expect(position).toEqual([336, 112]);
+		});
+
+		it('should place the node clear of the agent card when added after a message an agent node', () => {
+			const uiStore = mockedStore(useUIStore);
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+
+			const lastInteracted = createTestNode({
+				position: [112, 112],
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+			});
+			uiStore.lastInteractedWithNodeId = lastInteracted.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(
+				lastInteracted as INodeUi,
+			);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(
+				lastInteracted as INodeUi,
+			);
+			geometryStore.getNodeHeight.mockReturnValue(DEFAULT_NODE_SIZE[1]);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			// The new node keeps a constant NODE_X_SPACING gap past the agent card's
+			// right edge: HORIZONTAL_NODE_STEP + (agent width - default width).
+			expect(position).toEqual([
+				lastInteracted.position[0] +
+					HORIZONTAL_NODE_STEP +
+					(AGENT_NODE_SIZE[0] - DEFAULT_NODE_SIZE[0]),
+				lastInteracted.position[1],
+			]);
+		});
+
+		it('centers a node after an agent using the agent measured height', () => {
+			const uiStore = mockedStore(useUIStore);
+			const geometryStore = mockedStore(useAgentNodeCanvasGeometryStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const node = createTestNode({ id: 'target', type: SET_NODE_TYPE, typeVersion: 1 });
+			const nodeTypeDescription = mockNodeTypeDescription({ name: SET_NODE_TYPE, version: 1 });
+			const agent = createTestNode({
+				id: 'agent',
+				position: [112, 57],
+				type: MESSAGE_AN_AGENT_NODE_TYPE,
+				typeVersion: 2,
+			});
+
+			uiStore.lastInteractedWithNodeId = agent.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(agent as INodeUi);
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(agent as INodeUi);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+			geometryStore.getNodeHeight.mockReturnValue(206);
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			expect(position[1] + DEFAULT_NODE_SIZE[1] / 2).toBe(agent.position[1] + 206 / 2);
 		});
 
 		it('should place the node below the last interacted with node if it has non-main outputs', () => {
@@ -550,7 +748,7 @@ describe('useCanvasOperations', () => {
 			const { resolveNodePosition } = useCanvasOperations();
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
-			expect(position).toEqual([448, 96]);
+			expect(position).toEqual([464, 96]);
 		});
 
 		it('should place the node at the last clicked position if no other position is set', () => {
@@ -1431,7 +1629,7 @@ describe('useCanvasOperations', () => {
 				name: nodes[1].name,
 				type: nodeTypeName,
 				typeVersion: 1,
-				position: [32 + PUSH_NODES_OFFSET + 2 * GRID_SIZE, 32 + GRID_SIZE],
+				position: [32 + HORIZONTAL_NODE_STEP + 2 * GRID_SIZE, 32 + GRID_SIZE],
 				parameters: {},
 			});
 		});
@@ -1453,7 +1651,6 @@ describe('useCanvasOperations', () => {
 
 	describe('deleteNode', () => {
 		it('should delete node and track history', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const historyStore = mockedStore(useHistoryStore);
 			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
 
@@ -1471,10 +1668,83 @@ describe('useCanvasOperations', () => {
 			deleteNode(id, { trackHistory: true });
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(id);
-			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(node.name);
+			expect(
+				useWorkflowExecutionStateStore(workflowDocumentStoreInstance.documentId)
+					.clearActiveNodeExecutionData,
+			).toHaveBeenCalledWith(node.name);
 			expect(historyStore.pushCommandToUndo).toHaveBeenCalledWith(
 				new RemoveNodeCommand(node, expect.any(Number)),
 			);
+		});
+
+		it('records the group membership change when deleting a grouped node', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const node = createTestNode({ id: 'b', name: 'B' });
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+
+			const group = { id: 'g1', name: 'Group 1', nodeIds: ['a', 'b', 'c'] };
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockReturnValue(group);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockReturnValue({
+				...group,
+				nodeIds: ['a', 'c'],
+			});
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('b', { trackHistory: true });
+
+			const groupCommand = historyStore.pushCommandToUndo.mock.calls
+				.map(([command]) => command)
+				.find((command) => command instanceof UpdateNodeGroupCommand) as
+				| UpdateNodeGroupCommand
+				| undefined;
+			expect(groupCommand).toBeInstanceOf(UpdateNodeGroupCommand);
+			expect(groupCommand?.before.nodeIds).toEqual(['a', 'b', 'c']);
+			expect(groupCommand?.after.nodeIds).toEqual(['a', 'c']);
+		});
+
+		it('records a group removal when deleting the last grouped node', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const node = createTestNode({ id: 'b', name: 'B' });
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+
+			const group = { id: 'g1', name: 'Group 1', nodeIds: ['b'] };
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockReturnValue(group);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupById').mockReturnValue(undefined);
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('b', { trackHistory: true });
+
+			const groupCommand = historyStore.pushCommandToUndo.mock.calls
+				.map(([command]) => command)
+				.find((command) => command instanceof RemoveNodeGroupCommand) as
+				| RemoveNodeGroupCommand
+				| undefined;
+			expect(groupCommand).toBeInstanceOf(RemoveNodeGroupCommand);
+			expect(groupCommand?.group.nodeIds).toEqual(['b']);
+		});
+
+		it('does not record any group command when the deleted node is ungrouped', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
+
+			const node = createTestNode({ id: 'b', name: 'B' });
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node);
+			vi.spyOn(workflowDocumentStoreInstance, 'getGroupForNode').mockReturnValue(undefined);
+
+			const { deleteNode } = useCanvasOperations();
+			deleteNode('b', { trackHistory: true });
+
+			const groupCommand = historyStore.pushCommandToUndo.mock.calls
+				.map(([command]) => command)
+				.find(
+					(command) =>
+						command instanceof UpdateNodeGroupCommand || command instanceof RemoveNodeGroupCommand,
+				);
+			expect(groupCommand).toBeUndefined();
 		});
 
 		it('re-evaluates all credential issues when the deleted node is a trigger', () => {
@@ -1520,7 +1790,6 @@ describe('useCanvasOperations', () => {
 		});
 
 		it('should delete node without tracking history', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const historyStore = mockedStore(useHistoryStore);
 			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
 
@@ -1539,12 +1808,14 @@ describe('useCanvasOperations', () => {
 			deleteNode(id, { trackHistory: false });
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(id);
-			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(node.name);
+			expect(
+				useWorkflowExecutionStateStore(workflowDocumentStoreInstance.documentId)
+					.clearActiveNodeExecutionData,
+			).toHaveBeenCalledWith(node.name);
 			expect(historyStore.pushCommandToUndo).not.toHaveBeenCalled();
 		});
 
 		it('should connect adjacent nodes when deleting a node surrounded by other nodes', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 
 			nodeTypesStore.nodeTypes = {
@@ -1606,12 +1877,14 @@ describe('useCanvasOperations', () => {
 			deleteNode(nodes[1].id);
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
-			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(nodes[1].name);
+			expect(
+				useWorkflowExecutionStateStore(workflowDocumentStoreInstance.documentId)
+					.clearActiveNodeExecutionData,
+			).toHaveBeenCalledWith(nodes[1].name);
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
 		});
 
 		it('should handle nodes with null connections for unconnected indexes', () => {
-			const workflowsStore = mockedStore(useWorkflowsStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
 
 			nodeTypesStore.nodeTypes = {
@@ -1680,7 +1953,10 @@ describe('useCanvasOperations', () => {
 			deleteNode(nodes[1].id);
 
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
-			expect(workflowsStore.clearNodeExecutionData).toHaveBeenCalledWith(nodes[1].name);
+			expect(
+				useWorkflowExecutionStateStore(workflowDocumentStoreInstance.documentId)
+					.clearActiveNodeExecutionData,
+			).toHaveBeenCalledWith(nodes[1].name);
 			expect(workflowDocumentStoreInstance.removeNodeById).toHaveBeenCalledWith(nodes[1].id);
 		});
 	});
@@ -2488,9 +2764,45 @@ describe('useCanvasOperations', () => {
 			expect(toast.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 		});
 
-		it('should skip node group validation when the grouping feature flag is disabled', () => {
-			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
-			const toast = useToast();
+		it('records the auto-extend and the connection in one bulk when tracking history', () => {
+			const historyStore = mockedStore(useHistoryStore);
+			const nodeA = createGroupedNode('a', 'A');
+			const nodeB = createGroupedNode('b', 'B');
+			const nodeC = createGroupedNode('c', 'C');
+			const nodeD = createGroupedNode('d', 'D');
+			const group = { id: 'group', nodeIds: [nodeB.id, nodeC.id], name: 'Group 1' };
+			const { workflowDocumentStore } = setupGroupedCanvas({
+				nodes: [nodeA, nodeB, nodeC, nodeD],
+				connections: createConnectionsBySource(
+					workflowConnection(nodeA, nodeB),
+					workflowConnection(nodeB, nodeC),
+					workflowConnection(nodeC, nodeD),
+				),
+				groups: [group],
+			});
+			vi.spyOn(workflowDocumentStore, 'getGroupById').mockReturnValue({
+				...group,
+				nodeIds: [nodeB.id, nodeC.id, nodeA.id],
+			});
+
+			const { createConnection } = useCanvasOperations();
+			createConnection(canvasConnection(nodeA, nodeC), { trackHistory: true });
+
+			expect(historyStore.startRecordingUndo).toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalled();
+
+			const pushedCommands = historyStore.pushCommandToUndo.mock.calls.map(([command]) => command);
+			const groupCommand = pushedCommands.find(
+				(command) => command instanceof UpdateNodeGroupCommand,
+			) as UpdateNodeGroupCommand | undefined;
+			expect(groupCommand).toBeInstanceOf(UpdateNodeGroupCommand);
+			expect(groupCommand?.before.nodeIds).toEqual([nodeB.id, nodeC.id]);
+			expect(groupCommand?.after.nodeIds).toEqual([nodeB.id, nodeC.id, nodeA.id]);
+			expect(pushedCommands.some((command) => command instanceof AddConnectionCommand)).toBe(true);
+		});
+
+		it('does not record the auto-extend when history is not tracked', () => {
+			const historyStore = mockedStore(useHistoryStore);
 			const nodeA = createGroupedNode('a', 'A');
 			const nodeB = createGroupedNode('b', 'B');
 			const nodeC = createGroupedNode('c', 'C');
@@ -2510,9 +2822,12 @@ describe('useCanvasOperations', () => {
 			const { createConnection } = useCanvasOperations();
 			createConnection(canvasConnection(nodeA, nodeC));
 
-			expect(addNodesToGroupSpy).not.toHaveBeenCalled();
-			expectConnectionAdded(nodeA, nodeC);
-			expect(toast.showToast).not.toHaveBeenCalled();
+			expect(addNodesToGroupSpy).toHaveBeenCalledWith(group.id, [nodeA.id]);
+			expect(
+				historyStore.pushCommandToUndo.mock.calls.some(
+					([command]) => command instanceof UpdateNodeGroupCommand,
+				),
+			).toBe(false);
 		});
 
 		it('allows a main connection across the group boundary when the group stays valid', () => {
@@ -3530,7 +3845,7 @@ describe('useCanvasOperations', () => {
 				throw new Error('Expected ungroup action to be a vnode');
 			}
 
-			expect(ungroupAction.children).toBe('Ungroup');
+			expect(ungroupAction.children).toBe('Ungroup nodes');
 			expect(ungroupAction.props).toEqual(
 				expect.objectContaining({ href: '#', class: 'primary-color' }),
 			);
@@ -3634,7 +3949,8 @@ describe('useCanvasOperations', () => {
 			expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledWith({ connection });
 		});
 
-		it('replays group auto-extension when redoing a connection add', () => {
+		it('re-adds the connection without re-running group validation', () => {
+			// Undo restores an already-valid state, so the connection re-adds without validation.
 			const toast = useToast();
 			const nodeA = createGroupedNode('a', 'A');
 			const nodeB = createGroupedNode('b', 'B');
@@ -3656,7 +3972,7 @@ describe('useCanvasOperations', () => {
 			const { revertDeleteConnection } = useCanvasOperations();
 			revertDeleteConnection(connection);
 
-			expect(addNodesToGroupSpy).toHaveBeenCalledWith(group.id, [nodeA.id]);
+			expect(addNodesToGroupSpy).not.toHaveBeenCalled();
 			expect(workflowDocumentStoreInstance.addConnection).toHaveBeenCalledWith({ connection });
 			expect(toast.showToast).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }));
 		});
@@ -4349,6 +4665,29 @@ describe('useCanvasOperations', () => {
 			expect(workflowDocumentStoreInstance.setConnections).toHaveBeenCalled();
 		});
 
+		it('marks the document hydrated after nodes and connections are set', async () => {
+			const workflow = createTestWorkflow({
+				id: workflowId,
+				nodes: [createTestNode()],
+				connections: {},
+			});
+
+			const setNodesSpy = vi.spyOn(workflowDocumentStoreInstance, 'setNodes');
+			const setConnectionsSpy = vi.spyOn(workflowDocumentStoreInstance, 'setConnections');
+			const setHydratedSpy = vi.spyOn(workflowDocumentStoreInstance, 'setHydrated');
+			const { initializeWorkspace } = useCanvasOperations();
+
+			await initializeWorkspace(workflow);
+
+			expect(setHydratedSpy).toHaveBeenCalledWith(true);
+			expect(setHydratedSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+				setNodesSpy.mock.invocationCallOrder[0],
+			);
+			expect(setHydratedSpy.mock.invocationCallOrder[0]).toBeGreaterThan(
+				setConnectionsSpy.mock.invocationCallOrder[0],
+			);
+		});
+
 		it('should set connections even when workflowId is initially empty', async () => {
 			const workflowsStore = useWorkflowsStore();
 			// Simulate the state after resetWorkspace() — workflowId is cleared
@@ -4560,6 +4899,38 @@ describe('useCanvasOperations', () => {
 			);
 			expect(node).toBeDefined();
 		});
+
+		it('should name a new Message an Agent node AI Agent V2 when inline agents are enabled', () => {
+			const nodeTypeDescription = {
+				...mockNodeTypeDescription({ name: 'n8n-nodes-base.messageAnAgent' }),
+				defaults: { name: 'Message an Agent' },
+			};
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{ type: 'n8n-nodes-base.messageAnAgent', typeVersion: 2, position: [100, 100] },
+				nodeTypeDescription,
+			);
+
+			expect(node.name).toBe('AI Agent V2');
+		});
+
+		it('should keep the shipped Message an Agent name when inline agents are disabled', () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+			mockedStore(useNodeTypesStore).getNodeType = vi.fn().mockReturnValue(null);
+			const nodeTypeDescription = {
+				...mockNodeTypeDescription({ name: 'n8n-nodes-base.messageAnAgent' }),
+				defaults: { name: 'Message an Agent' },
+			};
+
+			const { addNode } = useCanvasOperations();
+			const node = addNode(
+				{ type: 'n8n-nodes-base.messageAnAgent', typeVersion: 2, position: [100, 100] },
+				nodeTypeDescription,
+			);
+
+			expect(node.name).toBe('Message an Agent');
+		});
 	});
 
 	describe('resetWorkspace', () => {
@@ -4584,12 +4955,6 @@ describe('useCanvasOperations', () => {
 			workflowsStore.removeTestWebhook = vi.fn();
 			workflowsStore.resetWorkflow = vi.fn();
 			workflowsStore.resetState = vi.fn();
-			workflowsStore.clearCurrentWorkflowExecutions = vi.fn(() => {
-				workflowsStore.currentWorkflowExecutions = [];
-			});
-			workflowsStore.setLastSuccessfulExecution = vi.fn((value) => {
-				workflowsStore.lastSuccessfulExecution = value;
-			});
 			const resetWorkflowSpy = workflowsStore.resetWorkflow as ReturnType<typeof vi.fn>;
 			uiStore.resetLastInteractedWith = vi.fn();
 			executionsStore.activeExecution = null;
@@ -4601,25 +4966,6 @@ describe('useCanvasOperations', () => {
 			// Spy on the getter — readonly wrapping prevents direct assignment, and
 			// createTestingPinia stubs setExecutionWaitingForWebhook so the action is a no-op.
 			vi.spyOn(executionStateStore, 'executionWaitingForWebhook', 'get').mockReturnValue(true);
-			workflowsStore.lastSuccessfulExecution = {} as IExecutionResponse;
-			workflowsStore.currentWorkflowExecutions = [
-				{
-					id: '1',
-					status: 'success',
-					mode: 'retry',
-					workflowId: 'workflow-id',
-					createdAt: new Date(),
-					startedAt: new Date(),
-				},
-				{
-					id: '2',
-					status: 'running',
-					mode: 'error',
-					workflowId: 'workflow-id',
-					createdAt: new Date(),
-					startedAt: new Date(),
-				},
-			];
 
 			const { resetWorkspace } = useCanvasOperations();
 
@@ -4642,13 +4988,45 @@ describe('useCanvasOperations', () => {
 			expect(resetExecutionStateSpy.mock.invocationCallOrder[0]).toBeLessThan(
 				resetWorkflowSpy.mock.invocationCallOrder[0],
 			);
-			expect(workflowsStore.currentWorkflowExecutions).toEqual([]);
-			expect(workflowsStore.lastSuccessfulExecution).toBeNull();
 			expect(uiStore.resetLastInteractedWith).toHaveBeenCalled();
 			expect(uiStore.markStateClean).toHaveBeenCalled();
 			expect(executionsStore.activeExecution).toBeNull();
 			expect(credentialsSpy).toHaveBeenCalledWith(false);
 			expect(credentialsUpdatedRef.value).toBe(false);
+		});
+
+		it('tears down the explicitly passed outgoing workflow, not the current id', () => {
+			const nodeCreatorStore = mockedStore(useNodeCreatorStore);
+			const workflowsStore = mockedStore(useWorkflowsStore);
+
+			nodeCreatorStore.setNodeCreatorState = vi.fn();
+			workflowsStore.removeTestWebhook = vi.fn();
+			workflowsStore.resetWorkflow = vi.fn();
+			workflowsStore.clearCurrentWorkflowExecutions = vi.fn();
+			workflowsStore.setLastSuccessfulExecution = vi.fn();
+			const resetWorkflowSpy = workflowsStore.resetWorkflow as ReturnType<typeof vi.fn>;
+
+			// The current id is already the INCOMING workflow (dispose-first flow); the
+			// OUTGOING id is passed explicitly and must be the one torn down.
+			workflowsStore.workflowId = 'incoming-id';
+			const outgoingExecutionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId('outgoing-id'),
+			);
+			vi.spyOn(outgoingExecutionStateStore, 'executionWaitingForWebhook', 'get').mockReturnValue(
+				true,
+			);
+
+			const { resetWorkspace } = useCanvasOperations();
+
+			resetWorkspace('outgoing-id');
+
+			expect(nodeCreatorStore.setNodeCreatorState).toHaveBeenCalledWith({
+				workflowId: 'outgoing-id',
+				createNodeActive: false,
+			});
+			expect(workflowsStore.removeTestWebhook).toHaveBeenCalledWith('outgoing-id');
+			expect(outgoingExecutionStateStore.resetExecutionState).toHaveBeenCalled();
+			expect(resetWorkflowSpy).toHaveBeenCalledWith('outgoing-id');
 		});
 
 		it('should not call removeTestWebhook if executionWaitingForWebhook is false', () => {
@@ -5107,6 +5485,118 @@ describe('useCanvasOperations', () => {
 			nodes: [], //buildImportNodes(),
 			connections: {},
 		};
+
+		it('should auto-select a credential for an imported node and toast its name', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+			getAutoSelectedCredentialMock.mockReturnValue({
+				credentialType: 'cred',
+				credential: { id: '1', name: 'credA' },
+			});
+
+			const nodes = [createTestNode({ name: 'Set', type: SET_NODE_TYPE })];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(
+				createTestWorkflowObject({ nodes, connections: {} }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
+
+			expect(result.nodes?.[0]?.credentials).toEqual({ cred: { id: '1', name: 'credA' } });
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'info',
+				title: 'Credentials auto-added',
+				message:
+					'We selected "credA" credentials for the "Set" node. Please check it\'s the right one.',
+			});
+		});
+
+		it('should show a generic toast when credentials are auto-selected for multiple nodes', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+			getAutoSelectedCredentialMock.mockReturnValue({
+				credentialType: 'cred',
+				credential: { id: '1', name: 'credA' },
+			});
+
+			const nodes = [
+				createTestNode({ id: '1', name: 'Set', type: SET_NODE_TYPE }),
+				createTestNode({ id: '2', name: 'Set 2', type: SET_NODE_TYPE }),
+			];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(
+				createTestWorkflowObject({ nodes, connections: {} }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
+
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				type: 'info',
+				title: 'Credentials auto-added',
+				message:
+					"We added existing credentials to the pasted node(s). Please check they're the right ones.",
+			});
+		});
+
+		it('should not toast when there is nothing to auto-select', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: SET_NODE_TYPE }) },
+			};
+			getAutoSelectedCredentialMock.mockReturnValue(undefined);
+
+			const nodes = [createTestNode({ name: 'Set', type: SET_NODE_TYPE })];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(
+				createTestWorkflowObject({ nodes, connections: {} }),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
+
+			expect(result.nodes?.[0]?.credentials).toBeUndefined();
+			expect(toast.showMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Credentials auto-added' }),
+			);
+		});
+
+		it('should not auto-select credentials for HTTP Request nodes', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[HTTP_REQUEST_NODE_TYPE]: { 1: mockNodeTypeDescription({ name: HTTP_REQUEST_NODE_TYPE }) },
+			};
+			getAutoSelectedCredentialMock.mockReturnValue({
+				credentialType: 'cred',
+				credential: { id: '1', name: 'credA' },
+			});
+
+			const nodes = [createTestNode({ name: 'HTTP Request', type: HTTP_REQUEST_NODE_TYPE })];
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue(
+				createTestWorkflowObject({
+					nodes,
+					connections: {},
+					nodeTypes: createMockNodeTypes({
+						[HTTP_REQUEST_NODE_TYPE]: mockLoadedNodeType(HTTP_REQUEST_NODE_TYPE),
+					}),
+				}),
+			);
+
+			const canvasOperations = useCanvasOperations();
+			const result = await canvasOperations.importWorkflowData({ nodes, connections: {} }, 'paste');
+
+			expect(getAutoSelectedCredentialMock).not.toHaveBeenCalled();
+			expect(result.nodes?.[0]?.credentials).toBeUndefined();
+			expect(toast.showMessage).not.toHaveBeenCalledWith(
+				expect.objectContaining({ title: 'Credentials auto-added' }),
+			);
+		});
 
 		it('should show an error and import nothing when data is not a valid workflow', async () => {
 			const toast = useToast();
@@ -5732,6 +6222,7 @@ describe('useCanvasOperations', () => {
 
 			expect(createGroupSpy).toHaveBeenCalledWith([newId1, newId2], 'My Group', {
 				markDirty: true,
+				startCollapsed: true,
 			});
 			expect(workflowDocumentStoreInstance.getNextDefaultName).not.toHaveBeenCalled();
 		});
@@ -5790,6 +6281,7 @@ describe('useCanvasOperations', () => {
 			expect(workflowDocumentStoreInstance.getNextDefaultName).toHaveBeenCalledWith('My Group');
 			expect(createGroupSpy).toHaveBeenCalledWith(expect.any(Array), 'My Group 2', {
 				markDirty: true,
+				startCollapsed: true,
 			});
 		});
 
@@ -5843,6 +6335,128 @@ describe('useCanvasOperations', () => {
 
 			expect(createGroupSpy).toHaveBeenCalledWith(result.nodeGroups?.[0].nodeIds, 'My Group', {
 				markDirty: false,
+				startCollapsed: true,
+			});
+		});
+
+		it('records imported node groups as undoable history within the import bulk', async () => {
+			const historyStore = mockedStore(useHistoryStore);
+			const workflowDataWithGroups = {
+				nodes: [
+					{
+						id: 'old-node-id-1',
+						name: 'Node 1',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'old-node-id-2',
+						name: 'Node 2',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [200, 0] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+				nodeGroups: [
+					{ id: 'group-1', name: 'My Group', nodeIds: ['old-node-id-1', 'old-node-id-2'] },
+				],
+			};
+
+			vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockImplementation(
+				(nodes, connections) => createTestWorkflowObject({ nodes, connections }),
+			);
+			vi.mocked(workflowDocumentStoreInstance.getNextDefaultName).mockImplementation(
+				(name) => name,
+			);
+			vi.mocked(workflowDocumentStoreInstance.createGroup).mockImplementation((nodeIds, name) => ({
+				id: 'imported-group-id',
+				nodeIds,
+				name,
+			}));
+
+			const canvasOperations = useCanvasOperations();
+			await canvasOperations.importWorkflowData(workflowDataWithGroups, 'paste', {
+				regenerateIds: true,
+			});
+
+			expect(historyStore.startRecordingUndo).toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalled();
+			const groupCommand = historyStore.pushCommandToUndo.mock.calls
+				.map(([command]) => command)
+				.find((command) => command instanceof AddNodeGroupCommand) as
+				| AddNodeGroupCommand
+				| undefined;
+			expect(groupCommand).toBeInstanceOf(AddNodeGroupCommand);
+			expect(groupCommand?.group.id).toBe('imported-group-id');
+			expect(groupCommand?.group.name).toBe('My Group');
+		});
+
+		describe('tag import', () => {
+			beforeEach(() => {
+				// Needed for addImportedNodesToWorkflow to run with an empty workflow.
+				vi.mocked(workflowDocumentStoreInstance.createWorkflowObject).mockReturnValue({
+					nodes: {},
+					connections: {},
+					connectionsBySourceNode: {},
+					renameNode: vi.fn(),
+				} as unknown as Workflow);
+			});
+
+			it('should complete the import and warn when the user cannot create tags', async () => {
+				const tagsStore = mockedStore(useTagsStore);
+				tagsStore.fetchAll.mockResolvedValue([]);
+				tagsStore.create.mockRejectedValue(new Error('Insufficient permissions to create tags'));
+
+				const toast = useToast();
+				const { importWorkflowData } = useCanvasOperations();
+
+				const result = await importWorkflowData(
+					{
+						name: 'Imported workflow',
+						nodes: [],
+						connections: {},
+						tags: [{ id: 't1', name: 'brand-new-tag' }] as never,
+					},
+					'file',
+					{ trackEvents: false },
+				);
+
+				// Import is not aborted: the workflow data (with its name) is returned, not `{}`.
+				expect(result).toMatchObject({ name: 'Imported workflow' });
+				// A permission failure is a non-blocking warning, not the import-failed error.
+				expect(toast.showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' }));
+				expect(toast.showError).not.toHaveBeenCalled();
+				// No tag could be created, so none are linked.
+				expect(workflowDocumentStoreInstance.addTags).toHaveBeenCalledWith([]);
+			});
+
+			it('should link created tags without warning when the user can create tags', async () => {
+				const tagsStore = mockedStore(useTagsStore);
+				tagsStore.fetchAll.mockResolvedValue([]);
+				tagsStore.create.mockResolvedValue({ id: 'new-1', name: 'brand-new-tag' });
+
+				const toast = useToast();
+				const { importWorkflowData } = useCanvasOperations();
+
+				const result = await importWorkflowData(
+					{
+						name: 'Imported workflow',
+						nodes: [],
+						connections: {},
+						tags: [{ id: 't1', name: 'brand-new-tag' }] as never,
+					},
+					'file',
+					{ trackEvents: false },
+				);
+
+				expect(result).toMatchObject({ name: 'Imported workflow' });
+				expect(toast.showToast).not.toHaveBeenCalled();
+				expect(toast.showError).not.toHaveBeenCalled();
+				expect(workflowDocumentStoreInstance.addTags).toHaveBeenCalledWith(['new-1']);
 			});
 		});
 	});
@@ -6768,6 +7382,9 @@ describe('useCanvasOperations', () => {
 							nodeId === previousNodeId ? newNodeId : nodeId,
 						);
 					});
+				vi.spyOn(workflowDocumentStore, 'getGroupById').mockImplementation((id) =>
+					id === group.id ? group : undefined,
+				);
 
 				vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockImplementation(
 					(name) => {
@@ -6836,6 +7453,20 @@ describe('useCanvasOperations', () => {
 					replacementNode.id,
 				);
 				expect(group.nodeIds).toEqual([sourceNode.id, replacementNode.id, nextNode.id]);
+
+				const groupCommand = historyStore.pushCommandToUndo.mock.calls
+					.map(([command]) => command)
+					.find((command) => command instanceof UpdateNodeGroupCommand) as
+					| UpdateNodeGroupCommand
+					| undefined;
+				expect(groupCommand).toBeInstanceOf(UpdateNodeGroupCommand);
+				expect(groupCommand?.before.nodeIds).toEqual([sourceNode.id, targetNode.id, nextNode.id]);
+				expect(groupCommand?.after.nodeIds).toEqual([
+					sourceNode.id,
+					replacementNode.id,
+					nextNode.id,
+				]);
+
 				expect(workflowDocumentStoreInstance.removeConnection).toHaveBeenCalledTimes(2);
 				expectConnectionRemoved(sourceNode, targetNode);
 				expectConnectionRemoved(targetNode, nextNode);

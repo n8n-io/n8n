@@ -2,6 +2,40 @@ import { assumeRole } from '@credentials/common/aws/utils';
 import type { AwsAssumeRoleCredentialsType } from '@credentials/common/aws/types';
 import { UserError } from 'n8n-workflow';
 
+// `assumeRole` now delegates STS to the AWS SDK's `fromTemporaryCredentials`.
+// Proxy is built from `@n8n/backend-network/proxy` + `@smithy/node-http-handler`.
+const { mockProvider, mockFromTemporaryCredentials } = vi.hoisted(() => {
+	const mockProvider = vi.fn().mockResolvedValue({
+		accessKeyId: 'ASIATEST',
+		secretAccessKey: 'SECRET',
+		sessionToken: 'TOKEN',
+	});
+	const mockFromTemporaryCredentials = vi.fn().mockReturnValue(mockProvider);
+	return { mockProvider, mockFromTemporaryCredentials };
+});
+
+vi.mock('@aws-sdk/credential-providers', () => ({
+	fromTemporaryCredentials: mockFromTemporaryCredentials,
+}));
+
+const { mockResolveProxyUrl, mockCreateHttpsProxyAgent } = vi.hoisted(() => ({
+	mockResolveProxyUrl: vi.fn().mockReturnValue(undefined),
+	mockCreateHttpsProxyAgent: vi.fn().mockReturnValue({ type: 'mock-https-agent' }),
+}));
+
+vi.mock('@n8n/backend-network/proxy', () => ({
+	resolveProxyUrl: mockResolveProxyUrl,
+	createHttpsProxyAgent: mockCreateHttpsProxyAgent,
+}));
+
+const { MockNodeHttpHandler } = vi.hoisted(() => ({
+	MockNodeHttpHandler: vi.fn(),
+}));
+
+vi.mock('@smithy/node-http-handler', () => ({
+	NodeHttpHandler: MockNodeHttpHandler,
+}));
+
 function baseCredentials(
 	overrides: Partial<AwsAssumeRoleCredentialsType> = {},
 ): AwsAssumeRoleCredentialsType {
@@ -37,82 +71,88 @@ describe('assumeRole() — centralized validation', () => {
 		);
 	});
 
-	it('throws when externalId is missing', async () => {
-		await expect(assumeRole(baseCredentials({ externalId: '' }), 'us-east-1')).rejects.toThrow(
-			UserError,
-		);
-		await expect(assumeRole(baseCredentials({ externalId: '' }), 'us-east-1')).rejects.toThrow(
-			'External ID is required when assuming a role.',
-		);
+	it('omits ExternalId from params when externalId is absent', async () => {
+		await assumeRole(baseCredentials({ externalId: '' }), 'us-east-1');
+		const sdkArg = mockFromTemporaryCredentials.mock.calls.at(-1)?.[0] as {
+			params: Record<string, unknown>;
+		};
+		expect(sdkArg.params).not.toHaveProperty('ExternalId');
 	});
 
-	it('throws when roleSessionName is missing', async () => {
-		await expect(assumeRole(baseCredentials({ roleSessionName: '' }), 'us-east-1')).rejects.toThrow(
-			UserError,
-		);
-		await expect(assumeRole(baseCredentials({ roleSessionName: '' }), 'us-east-1')).rejects.toThrow(
-			'Role Session Name is required when assuming a role.',
-		);
+	it('defaults RoleSessionName to n8n-session when roleSessionName is absent', async () => {
+		await assumeRole(baseCredentials({ roleSessionName: '' }), 'us-east-1');
+		const sdkArg = mockFromTemporaryCredentials.mock.calls.at(-1)?.[0] as {
+			params: { RoleSessionName: string };
+		};
+		expect(sdkArg.params.RoleSessionName).toBe('n8n-session');
 	});
 });
 
-// Mock global fetch so we can inspect dispatcher behavior without hitting the network.
-const fetchMock = jest.fn();
-beforeEach(() => {
-	fetchMock.mockReset();
-	// Return a minimal STS-success XML so assumeRole() completes.
-	fetchMock.mockResolvedValue({
-		ok: true,
-		text: async () =>
-			'<AssumeRoleResponse><AssumeRoleResult><Credentials>' +
-			'<AccessKeyId>ASIATEST</AccessKeyId>' +
-			'<SecretAccessKey>SECRET</SecretAccessKey>' +
-			'<SessionToken>TOKEN</SessionToken>' +
-			'</Credentials></AssumeRoleResult></AssumeRoleResponse>',
-	});
-	(globalThis as { fetch: unknown }).fetch = fetchMock as unknown as typeof fetch;
-});
-
-describe('assumeRole() — proxy-aware transport', () => {
-	const originalEnv = { ...process.env };
-	afterEach(() => {
-		process.env = { ...originalEnv };
+describe('assumeRole() — proxy-aware client', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mockResolveProxyUrl.mockReturnValue(undefined);
+		mockCreateHttpsProxyAgent.mockReturnValue({ type: 'mock-https-agent' });
+		mockProvider.mockResolvedValue({
+			accessKeyId: 'ASIATEST',
+			secretAccessKey: 'SECRET',
+			sessionToken: 'TOKEN',
+		});
+		mockFromTemporaryCredentials.mockReturnValue(mockProvider);
 	});
 
-	it('passes an undici ProxyAgent dispatcher when HTTPS_PROXY is set', async () => {
-		process.env.HTTPS_PROXY = 'http://proxy.example.com:3128';
-		delete process.env.NO_PROXY;
+	it('resolves the proxy URL against the concrete STS endpoint', async () => {
+		await assumeRole(baseCredentials(), 'us-east-1');
+
+		expect(mockResolveProxyUrl).toHaveBeenCalledWith('https://sts.us-east-1.amazonaws.com');
+	});
+
+	it('builds a NodeHttpHandler and passes it to the SDK when a proxy is configured', async () => {
+		const proxyAgent = { type: 'mock-https-agent' };
+		mockResolveProxyUrl.mockReturnValue('http://proxy.example.com:8080');
+		mockCreateHttpsProxyAgent.mockReturnValue(proxyAgent);
 
 		await assumeRole(baseCredentials(), 'us-east-1');
 
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		const [, init] = fetchMock.mock.calls[0] as [string, RequestInit & { dispatcher?: unknown }];
-		expect(init.dispatcher).toBeDefined();
-		expect((init.dispatcher as { constructor: { name: string } }).constructor.name).toBe(
-			'ProxyAgent',
+		expect(mockCreateHttpsProxyAgent).toHaveBeenCalledWith(
+			'https://sts.us-east-1.amazonaws.com',
+			'http://proxy.example.com:8080',
 		);
+		expect(MockNodeHttpHandler).toHaveBeenCalledWith({
+			httpAgent: proxyAgent,
+			httpsAgent: proxyAgent,
+		});
+
+		const sdkArg = mockFromTemporaryCredentials.mock.calls.at(-1)?.[0] as {
+			clientConfig: { requestHandler?: unknown };
+		};
+		expect(sdkArg.clientConfig.requestHandler).toBeDefined();
 	});
 
-	it('does not pass a dispatcher when no proxy env var resolves', async () => {
-		delete process.env.HTTPS_PROXY;
-		delete process.env.HTTP_PROXY;
-		delete process.env.NO_PROXY;
+	it('uses a plain timeout object (no NodeHttpHandler) when no proxy applies', async () => {
+		mockResolveProxyUrl.mockReturnValue(undefined);
 
 		await assumeRole(baseCredentials(), 'us-east-1');
 
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		const [, init] = fetchMock.mock.calls[0] as [string, RequestInit & { dispatcher?: unknown }];
-		expect(init.dispatcher).toBeUndefined();
+		expect(MockNodeHttpHandler).not.toHaveBeenCalled();
+		const sdkArg = mockFromTemporaryCredentials.mock.calls.at(-1)?.[0] as {
+			clientConfig: { requestHandler?: unknown; maxAttempts?: number };
+		};
+		expect(sdkArg.clientConfig.requestHandler).toEqual({
+			requestTimeout: 2000,
+			connectionTimeout: 2000,
+		});
+		expect(sdkArg.clientConfig.maxAttempts).toBe(1);
 	});
 
-	it('honors NO_PROXY for the STS host', async () => {
-		process.env.HTTPS_PROXY = 'http://proxy.example.com:3128';
-		process.env.NO_PROXY = '.amazonaws.com';
+	it('wraps SDK-level errors in UserError', async () => {
+		mockProvider.mockRejectedValue(
+			new Error('AccessDenied: User is not authorized to assume role'),
+		);
 
-		await assumeRole(baseCredentials(), 'us-east-1');
-
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		const [, init] = fetchMock.mock.calls[0] as [string, RequestInit & { dispatcher?: unknown }];
-		expect(init.dispatcher).toBeUndefined();
+		await expect(assumeRole(baseCredentials(), 'us-east-1')).rejects.toThrow(UserError);
+		await expect(assumeRole(baseCredentials(), 'us-east-1')).rejects.toThrow(
+			'STS AssumeRole failed: AccessDenied: User is not authorized to assume role',
+		);
 	});
 });

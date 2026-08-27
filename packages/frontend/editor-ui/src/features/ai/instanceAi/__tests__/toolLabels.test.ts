@@ -6,11 +6,21 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string) => {
 			const translations: Record<string, string> = {
+				'instanceAi.tools.read_config': 'Reading agent config',
+				'instanceAi.tools.resolve_integration': 'Adding integration',
+				'instanceAi.tools.build-agent': 'Building agent',
+				'instanceAi.tools.get_node_types': 'Reading node schema',
+				'instanceAi.tools.list_credentials': 'Inspecting credentials',
+				'instanceAi.tools.list_workflows': 'Listing workflows',
 				'instanceAi.tools.nodes': 'Search nodes',
 				'instanceAi.tools.executions': 'Run workflow',
 				'instanceAi.tools.workspace_execute_command': 'Running command',
 				'instanceAi.tools.workspace_execute_command.skill': 'Running skill script',
 				'instanceAi.tools.workspace_execute_command.skillScript': 'Running',
+				'instanceAi.tools.n8n-docs': 'Reading n8n docs',
+				'instanceAi.tools.n8n-docs.lookup': 'Reading n8n docs',
+				'instanceAi.tools.n8n-docs.search': 'Searching n8n docs',
+				'instanceAi.tools.n8n-docs.read': 'Opening n8n docs',
 				'instanceAi.tools.list_skills': 'Checking available skills',
 				'instanceAi.tools.load_skill': 'Opening skill',
 				'instanceAi.tools.load_skill.asset': 'Opening',
@@ -49,12 +59,16 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('complete-checkpoint')).toBe('circle-check');
 	});
 
-	test('returns share for delegate', () => {
-		expect(getToolIcon('delegate')).toBe('share');
+	test('returns default icon for removed delegate tool', () => {
+		expect(getToolIcon('delegate')).toBe('wrench');
 	});
 
 	test('returns share for tools ending with -with-agent', () => {
 		expect(getToolIcon('build-workflow-with-agent')).toBe('share');
+	});
+
+	test('returns share for resolve_integration', () => {
+		expect(getToolIcon('resolve_integration')).toBe('share');
 	});
 
 	test('returns table for data-table tools', () => {
@@ -66,6 +80,8 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('executions')).toBe('workflow');
 		expect(getToolIcon('nodes')).toBe('workflow');
 		expect(getToolIcon('templates')).toBe('workflow');
+		expect(getToolIcon('search_nodes')).toBe('workflow');
+		expect(getToolIcon('get_node_types')).toBe('workflow');
 		expect(getToolIcon('submit-workflow')).toBe('workflow');
 		expect(getToolIcon('materialize-node-type')).toBe('workflow');
 	});
@@ -80,7 +96,7 @@ describe('getToolIcon', () => {
 	});
 
 	test('treats removed plan tool as an ordinary unknown icon', () => {
-		expect(getToolIcon('plan')).toBe('settings');
+		expect(getToolIcon('plan')).toBe('wrench');
 	});
 
 	test('returns key-round for credential tools', () => {
@@ -98,18 +114,28 @@ describe('getToolIcon', () => {
 	});
 
 	test('returns book-open for skill tools', () => {
+		expect(getToolIcon('create_skills')).toBe('book-open');
 		expect(getToolIcon('list_skills')).toBe('book-open');
+		expect(getToolIcon('read_skill')).toBe('book-open');
+		expect(getToolIcon('update_skill')).toBe('book-open');
 		expect(getToolIcon('load_skill')).toBe('book-open');
 	});
 
-	test('returns settings as default', () => {
-		expect(getToolIcon('unknown-tool')).toBe('settings');
+	test('returns book-open for n8n docs tool', () => {
+		expect(getToolIcon('n8n-docs')).toBe('book-open');
+	});
+
+	test('returns wrench as default', () => {
+		expect(getToolIcon('unknown-tool')).toBe('wrench');
 	});
 });
 
 describe('useToolLabel', () => {
 	test('getToolLabel returns translated label when found', () => {
 		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('read_config')).toBe('Reading agent config');
+		expect(getToolLabel('resolve_integration')).toBe('Adding integration');
+		expect(getToolLabel('build-agent')).toBe('Building agent');
 		expect(getToolLabel('nodes')).toBe('Search nodes');
 		expect(getToolLabel('workspace_execute_command')).toBe('Running command');
 		expect(getToolLabel('list_skills')).toBe('Checking available skills');
@@ -128,6 +154,14 @@ describe('useToolLabel', () => {
 				filePath: 'scripts/import-rows.mjs',
 			}),
 		).toBe('Inspecting import rows script');
+	});
+
+	test('getToolLabel humanizes builder tools via i18n keys for the stable tool IDs', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('resolve_integration')).toBe('Adding integration');
+		expect(getToolLabel('get_node_types')).toBe('Reading node schema');
+		expect(getToolLabel('list_credentials')).toBe('Inspecting credentials');
+		expect(getToolLabel('list_workflows')).toBe('Listing workflows');
 	});
 
 	test('getToolLabel shows skill script commands cleanly', () => {
@@ -149,14 +183,22 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('unknown-tool')).toBe('unknown-tool');
 	});
 
+	test('getToolLabel returns action-specific n8n docs labels', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('n8n-docs')).toBe('Reading n8n docs');
+		expect(getToolLabel('n8n-docs', { action: 'lookup' })).toBe('Reading n8n docs');
+		expect(getToolLabel('n8n-docs', { action: 'search' })).toBe('Searching n8n docs');
+		expect(getToolLabel('n8n-docs', { action: 'read' })).toBe('Opening n8n docs');
+	});
+
 	test('getToggleLabel returns show data for regular tools', () => {
 		const { getToggleLabel } = useToolLabel();
 		expect(getToggleLabel(makeToolCall({ toolName: 'workflows' }))).toBe('Show data');
 	});
 
-	test('getToggleLabel returns show brief for delegate', () => {
+	test('getToggleLabel returns show data for removed delegate tool', () => {
 		const { getToggleLabel } = useToolLabel();
-		expect(getToggleLabel(makeToolCall({ toolName: 'delegate' }))).toBe('Show brief');
+		expect(getToggleLabel(makeToolCall({ toolName: 'delegate' }))).toBe('Show data');
 	});
 
 	test('getToggleLabel returns undefined for no-toggle tools', () => {
@@ -175,9 +217,9 @@ describe('useToolLabel', () => {
 		expect(getHideLabel(makeToolCall({ toolName: 'workflows' }))).toBe('Hide data');
 	});
 
-	test('getHideLabel returns hide brief for delegate', () => {
+	test('getHideLabel returns hide data for removed delegate tool', () => {
 		const { getHideLabel } = useToolLabel();
-		expect(getHideLabel(makeToolCall({ toolName: 'delegate' }))).toBe('Hide brief');
+		expect(getHideLabel(makeToolCall({ toolName: 'delegate' }))).toBe('Hide data');
 	});
 
 	test('getHideLabel returns undefined for no-toggle tools', () => {

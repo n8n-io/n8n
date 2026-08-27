@@ -1,11 +1,13 @@
 import type { IExecuteSingleFunctions, IHttpRequestOptions, INode } from 'n8n-workflow';
 
 import { validEmailAndPhonePreSendAction, isEmailValid, isPhoneValid } from '../GenericFunctions';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../GenericFunctions';
 
-jest.mock('../GenericFunctions', () => ({
-	...jest.requireActual('../GenericFunctions'),
-	isEmailValid: jest.fn(),
-	isPhoneValid: jest.fn(),
+vi.mock('../GenericFunctions', async () => ({
+	...(await vi.importActual<typeof _importType0>('../GenericFunctions')),
+	isEmailValid: vi.fn(),
+	isPhoneValid: vi.fn(),
 }));
 
 describe('validEmailAndPhonePreSendAction', () => {
@@ -13,7 +15,7 @@ describe('validEmailAndPhonePreSendAction', () => {
 
 	beforeEach(() => {
 		mockThis = {
-			getNode: jest.fn(
+			getNode: vi.fn(
 				() =>
 					({
 						id: 'mock-node-id',
@@ -26,12 +28,12 @@ describe('validEmailAndPhonePreSendAction', () => {
 			),
 		} as unknown as IExecuteSingleFunctions;
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return requestOptions unchanged if email and phone are valid', async () => {
-		(isEmailValid as jest.Mock).mockReturnValue(true);
-		(isPhoneValid as jest.Mock).mockReturnValue(true);
+		(isEmailValid as Mock).mockReturnValue(true);
+		(isPhoneValid as Mock).mockReturnValue(true);
 
 		const requestOptions: IHttpRequestOptions = {
 			url: 'https://example.com/api',

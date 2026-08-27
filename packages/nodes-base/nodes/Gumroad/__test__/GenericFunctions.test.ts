@@ -2,20 +2,21 @@ import type { IHookFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import { gumroadApiRequest } from '../GenericFunctions';
+import type { Mock } from 'vitest';
 
 describe('Gumroad GenericFunctions', () => {
 	const baseUrl = 'https://api.gumroad.com/v2';
 
 	const buildContext = (authentication: 'accessToken' | 'oAuth2') =>
 		({
-			getNodeParameter: jest.fn().mockImplementation((param: string) => {
+			getNodeParameter: vi.fn().mockImplementation((param: string) => {
 				if (param === 'authentication') return authentication;
 				return undefined;
 			}),
 			helpers: {
-				httpRequestWithAuthentication: jest.fn(),
+				httpRequestWithAuthentication: vi.fn(),
 			},
-			getNode: jest.fn().mockReturnValue({
+			getNode: vi.fn().mockReturnValue({
 				id: 'test-node-id',
 				name: 'Gumroad Trigger',
 				type: 'n8n-nodes-base.gumroadTrigger',
@@ -26,7 +27,7 @@ describe('Gumroad GenericFunctions', () => {
 	describe('gumroadApiRequest', () => {
 		it('should call httpRequestWithAuthentication with gumroadApi when authentication is accessToken', async () => {
 			const ctx = buildContext('accessToken');
-			(ctx.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValue({
+			(ctx.helpers.httpRequestWithAuthentication as Mock).mockResolvedValue({
 				resource_subscriptions: [],
 			});
 
@@ -45,7 +46,7 @@ describe('Gumroad GenericFunctions', () => {
 
 		it('should call httpRequestWithAuthentication with gumroadOAuth2Api when authentication is oAuth2', async () => {
 			const ctx = buildContext('oAuth2');
-			(ctx.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValue({
+			(ctx.helpers.httpRequestWithAuthentication as Mock).mockResolvedValue({
 				resource_subscriptions: [],
 			});
 
@@ -64,7 +65,7 @@ describe('Gumroad GenericFunctions', () => {
 
 		it('should pass body and query string through to the auth helper', async () => {
 			const ctx = buildContext('accessToken');
-			(ctx.helpers.httpRequestWithAuthentication as jest.Mock).mockResolvedValue({});
+			(ctx.helpers.httpRequestWithAuthentication as Mock).mockResolvedValue({});
 
 			await gumroadApiRequest.call(
 				ctx,
@@ -86,14 +87,14 @@ describe('Gumroad GenericFunctions', () => {
 
 		it('should default to accessToken when the authentication parameter is missing', async () => {
 			const ctx = {
-				getNodeParameter: jest.fn().mockReturnValue(undefined),
-				helpers: { httpRequestWithAuthentication: jest.fn().mockResolvedValue({}) },
-				getNode: jest.fn().mockReturnValue({ id: 'n', name: 'Gumroad Trigger' }),
+				getNodeParameter: vi.fn().mockReturnValue(undefined),
+				helpers: { httpRequestWithAuthentication: vi.fn().mockResolvedValue({}) },
+				getNode: vi.fn().mockReturnValue({ id: 'n', name: 'Gumroad Trigger' }),
 			} as unknown as IHookFunctions;
 
 			// getNodeParameter receives the third-arg fallback 'accessToken' from gumroadApiRequest,
 			// so even when the param isn't set on the node we route to the legacy credential.
-			(ctx.getNodeParameter as jest.Mock).mockImplementation(
+			(ctx.getNodeParameter as Mock).mockImplementation(
 				(_param: string, _index: number, fallback: string) => fallback,
 			);
 
@@ -107,7 +108,7 @@ describe('Gumroad GenericFunctions', () => {
 
 		it('should wrap upstream errors in NodeApiError', async () => {
 			const ctx = buildContext('accessToken');
-			(ctx.helpers.httpRequestWithAuthentication as jest.Mock).mockRejectedValue({
+			(ctx.helpers.httpRequestWithAuthentication as Mock).mockRejectedValue({
 				message: 'boom',
 			});
 

@@ -1,14 +1,13 @@
-import { createRenameDataTableTool } from '../../tools/data-table';
-
 import type { DataTableUserOperations } from '@/modules/data-table/data-table-proxy.service';
 
 import { createTelemetry, user } from './test-utils';
+import { createRenameDataTableTool } from '../../tools/data-table';
 
 const createMocks = (overrides?: { error?: Error }) => {
 	const dataTableOps = {
 		updateDataTable: overrides?.error
-			? jest.fn().mockRejectedValue(overrides.error)
-			: jest.fn().mockResolvedValue(undefined),
+			? vi.fn().mockRejectedValue(overrides.error)
+			: vi.fn().mockResolvedValue(undefined),
 	} as unknown as DataTableUserOperations;
 	const telemetry = createTelemetry();
 	return { dataTableOps, telemetry };

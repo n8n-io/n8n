@@ -8,7 +8,7 @@ import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useRBACStore } from '@n8n/stores/rbac.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 

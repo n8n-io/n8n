@@ -15,11 +15,12 @@ import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BaseCommand } from '../base-command';
-
 import { UM_FIX_INSTRUCTION } from '@/constants';
+import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
+
+import { BaseCommand } from '../base-command';
 
 function assertHasWorkflowsToImport(
 	workflows: unknown[],
@@ -100,6 +101,9 @@ const flagsSchema = z.object({
 	flagsSchema,
 })
 export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
+	// (De)activating imported workflows evaluates webhook parameters, which may be expressions
+	override needsExpressionEngine = true;
+
 	async run(): Promise<void> {
 		const { flags } = this;
 
@@ -152,6 +156,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 		});
 
 		this.reportSuccess(workflows.length);
+
+		Container.get(EventService).emit('server-cli-import', {
+			activeState: flags.activeState,
+			workflowCount: workflows.length,
+			separate: flags.separate,
+		});
 	}
 
 	private async checkRelations(workflows: IWorkflowBase[], projectId?: string, userId?: string) {

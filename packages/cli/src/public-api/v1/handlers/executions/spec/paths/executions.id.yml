@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getExecution
+  x-required-scope: execution:read
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
     - Execution
@@ -8,6 +9,12 @@ get:
   parameters:
     - $ref: '../schemas/parameters/executionId.yml'
     - $ref: '../schemas/parameters/includeData.yml'
+    - name: ignoreDataSizeLimit
+      in: query
+      description: Whether to return the full execution data even if it exceeds the configured size limit (EXECUTIONS_DATA_MAX_DISPLAY_SIZE). Oversized executions are otherwise returned without their data.
+      required: false
+      schema:
+        type: boolean
     - $ref: '../schemas/parameters/redactExecutionData.yml'
   responses:
     '200':
@@ -24,6 +31,7 @@ get:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 delete:
   x-eov-operation-id: deleteExecution
+  x-required-scope: execution:delete
   x-eov-operation-handler: v1/handlers/executions/executions.handler
   tags:
     - Execution

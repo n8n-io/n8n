@@ -28,7 +28,7 @@ const BASE_CONFIG: GatewayConfig = {
 	logLevel: 'info',
 	allowedOrigins: [],
 	filesystem: { dir: '/tmp' },
-	computer: { shell: { timeout: 30_000 } },
+	computer: { shell: { timeout: 30_000, dangerouslyDisableSandbox: false } },
 	browser: {
 		defaultBrowser: 'chrome',
 	},

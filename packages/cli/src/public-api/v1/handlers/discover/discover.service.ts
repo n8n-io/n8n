@@ -1,17 +1,28 @@
-import type { ApiKeyScope } from '@n8n/permissions';
-import path from 'path';
 import RefParser from '@apidevtools/json-schema-ref-parser';
+import type { ApiKeyScopeRequirement } from '@n8n/decorators';
+import type { ApiKeyScope } from '@n8n/permissions';
+import { isRecord } from '@n8n/utils/is-record';
+import path from 'path';
 
-import type { ScopeTaggedMiddleware } from '../../shared/middlewares/global.middleware';
+import {
+	apiKeyScopesSatisfy,
+	HTTP_METHODS,
+	resolvePublicApiRoutes,
+	scopeRequirementFromString,
+	scopesInRequirement,
+	toOpenApiPathTemplate,
+} from '../../../public-api-route-resolver';
+import { buildRequestBodyJsonSchema } from '../../openapi-gen/decorator-routes';
+import { extractScopeFromEovHandlerChain } from '../../shared/public-api-scope-lookup';
 
-const HTTP_METHODS = ['get', 'post', 'put', 'delete', 'patch'] as const;
+import '../../controllers';
 
 interface EndpointInfo {
 	method: string;
 	path: string;
 	operationId: string;
 	tag: string;
-	scope: ApiKeyScope | null;
+	scope: ApiKeyScopeRequirement | null;
 	requestSchema?: Record<string, unknown>;
 }
 
@@ -48,27 +59,6 @@ export interface DiscoverOptions {
 
 let cachedEndpointsPromise: Promise<EndpointInfo[]> | undefined;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isScopeTagged(value: unknown): value is ScopeTaggedMiddleware {
-	return typeof value === 'function' && '__apiKeyScope' in value;
-}
-
-/**
- * Extract the required ApiKeyScope from a handler's middleware chain
- * by looking for a middleware tagged with __apiKeyScope.
- */
-function extractScopeFromHandler(handlerChain: unknown[]): ApiKeyScope | null {
-	for (const middleware of handlerChain) {
-		if (isScopeTagged(middleware)) {
-			return middleware.__apiKeyScope;
-		}
-	}
-	return null;
-}
-
 /**
  * Extract the request body schema from an operation.
  * The spec is already fully dereferenced by RefParser.dereference().
@@ -86,17 +76,18 @@ function extractRequestSchema(
 }
 
 async function parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
-	if (!cachedEndpointsPromise) {
-		cachedEndpointsPromise = _parseEndpointsFromSpec();
-	}
+	cachedEndpointsPromise ??= buildAllEndpoints();
 	return await cachedEndpointsPromise;
 }
 
-async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
+async function buildAllEndpoints(): Promise<EndpointInfo[]> {
+	return [...(await buildEovEndpoints()), ...buildDecoratorEndpoints()];
+}
+
+async function buildEovEndpoints(): Promise<EndpointInfo[]> {
 	const specPath = path.join(__dirname, '..', '..', 'openapi.yml');
 	const publicApiRoot = path.join(__dirname, '..', '..', '..');
 
-	// Load and fully dereference the spec in one operation
 	const spec = await RefParser.dereference(specPath);
 
 	if (!isRecord(spec) || !isRecord(spec.paths)) return [];
@@ -110,6 +101,7 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 		for (const method of HTTP_METHODS) {
 			const operation = pathValue[method];
 			if (!isRecord(operation)) continue;
+			if (operation['x-decorator-routed'] === true) continue;
 
 			const operationId = operation['x-eov-operation-id'];
 			const handlerPath = operation['x-eov-operation-handler'];
@@ -121,9 +113,10 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 			let handlerModule = handlerCache.get(handlerPath);
 			if (!handlerModule) {
 				try {
-					const fullHandlerPath = path.join(publicApiRoot, handlerPath);
-					// eslint-disable-next-line @typescript-eslint/no-require-imports
-					const loaded = require(fullHandlerPath);
+					const fullHandlerPath = path.join(publicApiRoot, `${handlerPath}.js`);
+					const imported: unknown = await import(fullHandlerPath);
+					if (!isRecord(imported)) continue;
+					const loaded = isRecord(imported.default) ? imported.default : imported;
 					if (!isRecord(loaded)) continue;
 					handlerModule = loaded;
 					handlerCache.set(handlerPath, handlerModule);
@@ -134,18 +127,17 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 
 			const middlewareChain = handlerModule[operationId];
 			const scope = Array.isArray(middlewareChain)
-				? extractScopeFromHandler(middlewareChain)
-				: null;
-
-			const requestSchema = extractRequestSchema(operation);
+				? extractScopeFromEovHandlerChain(middlewareChain)
+				: undefined;
 
 			endpoints.push({
 				method: method.toUpperCase(),
 				path: `/api/v1${pathKey}`,
 				operationId,
 				tag,
-				scope,
-				requestSchema,
+				// eov middleware tags itself with a flat, possibly comma-joined scope string.
+				scope: scope ? scopeRequirementFromString(scope) : null,
+				requestSchema: extractRequestSchema(operation),
 			});
 		}
 	}
@@ -153,15 +145,36 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 	return endpoints;
 }
 
+function buildDecoratorEndpoints(): EndpointInfo[] {
+	return resolvePublicApiRoutes().map((route) => ({
+		method: route.method.toUpperCase(),
+		path: `/api/v1${toOpenApiPathTemplate(route.path)}`,
+		operationId: route.handlerName,
+		tag: route.tags?.[0] ?? 'Other',
+		scope: route.apiKeyScope ?? null,
+		requestSchema: buildRequestBodyJsonSchema(route),
+	}));
+}
+
 export async function buildDiscoverResponse(
 	callerScopes: ApiKeyScope[],
 	options?: DiscoverOptions,
 ): Promise<DiscoverResponse> {
 	const allEndpoints = await parseEndpointsFromSpec();
-	const scopeSet = new Set(callerScopes);
 	const includeSchemas = options?.includeSchemas === true;
 
-	const filtered = allEndpoints.filter((ep) => ep.scope === null || scopeSet.has(ep.scope));
+	// Same any/all matching the registry enforces, so /discover shows exactly what the caller may call.
+	const filtered = allEndpoints.filter(
+		(ep) => ep.scope === null || apiKeyScopesSatisfy(callerScopes, ep.scope),
+	);
+
+	/** The `read` of `tag:read`, one per scope the requirement names. */
+	const operationsOf = (scope: ApiKeyScopeRequirement | null): string[] =>
+		scope === null
+			? []
+			: scopesInRequirement(scope)
+					.map((s) => s.split(':')[1])
+					.filter((operation): operation is string => Boolean(operation));
 
 	const resources: Record<string, ResourceInfo> = {};
 
@@ -184,10 +197,10 @@ export async function buildDiscoverResponse(
 
 		resources[resourceKey].endpoints.push(entry);
 
-		// Extract operation name from scope (e.g. 'workflow:read' → 'read')
-		const operation = ep.scope?.split(':')[1];
-		if (operation && !resources[resourceKey].operations.includes(operation)) {
-			resources[resourceKey].operations.push(operation);
+		for (const operation of operationsOf(ep.scope)) {
+			if (!resources[resourceKey].operations.includes(operation)) {
+				resources[resourceKey].operations.push(operation);
+			}
 		}
 	}
 
@@ -202,13 +215,17 @@ export async function buildDiscoverResponse(
 	}
 
 	if (operationFilter) {
-		const scopeByOperationId = new Map(
-			filtered.map((f) => [f.operationId, f.scope?.split(':')[1]?.toLowerCase()]),
+		// A composite requirement contributes several operations, so match against all of them.
+		const operationsByOperationId = new Map(
+			filtered.map((f) => [
+				f.operationId,
+				new Set(operationsOf(f.scope).map((operation) => operation.toLowerCase())),
+			]),
 		);
 		const result: Record<string, ResourceInfo> = {};
 		for (const [key, info] of Object.entries(filteredResources)) {
-			const matchingEndpoints = info.endpoints.filter(
-				(ep) => scopeByOperationId.get(ep.operationId) === operationFilter,
+			const matchingEndpoints = info.endpoints.filter((ep) =>
+				operationsByOperationId.get(ep.operationId)?.has(operationFilter),
 			);
 			if (matchingEndpoints.length > 0) {
 				result[key] = {

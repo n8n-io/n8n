@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computed } from 'vue';
+import { computed, shallowRef } from 'vue';
 import { createTestNode } from '@/__tests__/mocks';
 import type { INodeUi } from '@/Interface';
 import type { INodeConnections } from 'n8n-workflow';
@@ -21,6 +21,9 @@ function createDeps(nodes: INodeUi[], connected = true): WorkflowDocumentNodesIs
 		allNodes: computed(() => nodes),
 		outgoingConnectionsByNodeName: connected ? hasConnections : noConnections,
 		incomingConnectionsByNodeName: noConnections,
+		nodesById: shallowRef(new Map(nodes.map((n) => [n.id, n]))),
+		onNodesChange: () => {},
+		nodeIssuesToString: () => [],
 	};
 }
 

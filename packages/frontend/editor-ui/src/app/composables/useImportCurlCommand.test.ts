@@ -6,7 +6,7 @@ import {
 
 const showToast = vi.fn();
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showToast }),
 }));
 
@@ -475,6 +475,19 @@ describe('useImportCurlCommand', () => {
 				{ name: 'param1', value: 'value1' },
 				{ name: 'param2', value: 'value2' },
 				{ name: 'param3', value: 'value3' },
+			]);
+		});
+
+		test('Should parse cURL command with repeated query parameter names', () => {
+			const curl = "curl 'https://example.com/api?type[]=foo&type[]=bar&type[]=baz&page=0'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.url).toBe('https://example.com/api');
+			expect(parameters.sendQuery).toBe(true);
+			expect(parameters.queryParameters?.parameters).toEqual([
+				{ name: 'type[]', value: 'foo' },
+				{ name: 'type[]', value: 'bar' },
+				{ name: 'type[]', value: 'baz' },
+				{ name: 'page', value: '0' },
 			]);
 		});
 

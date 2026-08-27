@@ -15,8 +15,11 @@ import {
 	FolderRepository,
 	ProjectRelationRepository,
 	ProjectRepository,
+	RoleMappingRuleRepository,
+	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -27,19 +30,20 @@ import {
 	type Scope,
 } from '@n8n/permissions';
 import { EntityNotFoundError } from '@n8n/typeorm';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { createFolder } from '@test-integration/db/folders';
 
 import {
+	createCredentials,
 	getCredentialById,
 	saveCredential,
 	shareCredentialWithProjects,
 } from './shared/db/credentials';
+import { createCustomRoleWithScopeSlugs } from './shared/db/roles';
 import { createChatUser, createMember, createOwner, createUser } from './shared/db/users';
 import * as utils from './shared/utils/';
-
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
-import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['project'],
@@ -54,13 +58,26 @@ const testServer = utils.setupTestServer({
 	},
 });
 
-// The `ActiveWorkflowRunner` keeps the event loop alive, which in turn leads to jest not shutting down cleanly.
+// The `ActiveWorkflowRunner` keeps the event loop alive, which in turn leads to vi not shutting down cleanly.
 // We don't need it for the tests here, so we can mock it and make the tests exit cleanly.
 mockInstance(ActiveWorkflowManager);
 
 beforeEach(async () => {
 	await testDb.truncate(['User', 'Project']);
 });
+
+const missingScopeBody = {
+	message: 'User is missing a scope required to perform this action',
+};
+
+async function linkWithCustomProjectScopes(
+	user: Awaited<ReturnType<typeof createUser>>,
+	project: Project,
+	scopeSlugs: string[],
+) {
+	const role = await createCustomRoleWithScopeSlugs(scopeSlugs, { roleType: 'project' });
+	await linkUserToProject(user, project, role.slug);
+}
 
 describe('GET /projects/', () => {
 	test('member should only get their own personal project and team projects they are a part of', async () => {
@@ -357,9 +374,10 @@ describe('Project members endpoints', () => {
 			savedConfig = { ...provisioningService.provisioningConfig };
 		});
 
-		afterEach(() => {
+		afterEach(async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig = { ...savedConfig };
+			await Container.get(RoleMappingRuleRepository).delete({});
 		});
 
 		test('should return 403 when SSO provider controls project roles', async () => {
@@ -387,6 +405,20 @@ describe('Project members endpoints', () => {
 			const project = await createTeamProject('Team Project', owner);
 			await linkUserToProject(member, project, 'project:viewer');
 
+			// Expression mapping only manages project roles when project-type rules exist.
+			const editorRole = await Container.get(RoleRepository).findOneOrFail({
+				where: { slug: 'project:editor' },
+			});
+			const ruleRepository = Container.get(RoleMappingRuleRepository);
+			const rule = ruleRepository.create({
+				expression: '{{ true }}',
+				role: editorRole,
+				type: 'project',
+				order: 0,
+			});
+			rule.projects = [project];
+			await ruleRepository.save(rule);
+
 			const ownerAgent = testServer.authAgentFor(owner);
 			await ownerAgent
 				.patch(`/projects/${project.id}/users/${member.id}`)
@@ -407,6 +439,77 @@ describe('Project members endpoints', () => {
 		expect(res.status).toBe(204);
 		const relations = await getProjectRelations({ projectId: project.id });
 		expect(relations.some((r) => r.userId === member.id)).toBe(false);
+	});
+
+	describe('project:update and project:manageMembers are independent', () => {
+		test('user with project:update but not project:manageMembers cannot add, change, or remove members', async () => {
+			const [actor, existingMember, invitee] = await Promise.all([
+				createUser(),
+				createUser(),
+				createUser(),
+			]);
+			const project = await createTeamProject();
+			await linkWithCustomProjectScopes(actor, project, ['project:read', 'project:update']);
+			await linkUserToProject(existingMember, project, 'project:viewer');
+
+			const agent = testServer.authAgentFor(actor);
+
+			const addResp = await agent.post(`/projects/${project.id}/users`).send({
+				relations: [{ userId: invitee.id, role: 'project:viewer' }],
+			});
+			expect(addResp.status).toBe(403);
+			expect(addResp.body).toMatchObject(missingScopeBody);
+
+			const patchResp = await agent
+				.patch(`/projects/${project.id}/users/${existingMember.id}`)
+				.send({ role: 'project:editor' });
+			expect(patchResp.status).toBe(403);
+			expect(patchResp.body).toMatchObject(missingScopeBody);
+
+			const deleteResp = await agent.delete(`/projects/${project.id}/users/${existingMember.id}`);
+			expect(deleteResp.status).toBe(403);
+			expect(deleteResp.body).toMatchObject(missingScopeBody);
+
+			const relations = await getProjectRelations({ projectId: project.id });
+			expect(relations).toHaveLength(2);
+			expect(relations.some((r) => r.userId === invitee.id)).toBe(false);
+			expect(
+				relations.some((r) => r.userId === existingMember.id && r.role.slug === 'project:viewer'),
+			).toBe(true);
+		});
+
+		test('user with project:manageMembers but not project:update can add, change, and remove members', async () => {
+			const [actor, existingMember, invitee] = await Promise.all([
+				createUser(),
+				createUser(),
+				createUser(),
+			]);
+			const project = await createTeamProject();
+			await linkWithCustomProjectScopes(actor, project, ['project:read', 'project:manageMembers']);
+			await linkUserToProject(existingMember, project, 'project:viewer');
+
+			const agent = testServer.authAgentFor(actor);
+
+			const addResp = await agent.post(`/projects/${project.id}/users`).send({
+				relations: [{ userId: invitee.id, role: 'project:viewer' }],
+			});
+			expect(addResp.status).toBe(201);
+
+			const patchResp = await agent
+				.patch(`/projects/${project.id}/users/${existingMember.id}`)
+				.send({ role: 'project:editor' });
+			expect(patchResp.status).toBe(204);
+
+			const deleteResp = await agent.delete(`/projects/${project.id}/users/${invitee.id}`);
+			expect(deleteResp.status).toBe(204);
+
+			const relations = await getProjectRelations({ projectId: project.id });
+			expect(relations).toHaveLength(2);
+			expect(relations.some((r) => r.userId === invitee.id)).toBe(false);
+			expect(
+				relations.some((r) => r.userId === existingMember.id && r.role.slug === 'project:editor'),
+			).toBe(true);
+		});
 	});
 });
 
@@ -778,6 +881,40 @@ describe('PATCH /projects/:projectId', () => {
 
 		const updatedProject = await findProject(teamProject.id);
 		expect(updatedProject.name).not.toEqual('New Name');
+	});
+
+	test('user with project:manageMembers but not project:update cannot edit team project name', async () => {
+		const actor = await createUser();
+		const teamProject = await createTeamProject();
+		await linkWithCustomProjectScopes(actor, teamProject, [
+			'project:read',
+			'project:manageMembers',
+		]);
+
+		const resp = await testServer
+			.authAgentFor(actor)
+			.patch(`/projects/${teamProject.id}`)
+			.send({ name: 'New Name' });
+		expect(resp.status).toBe(403);
+		expect(resp.body).toMatchObject(missingScopeBody);
+
+		const updatedProject = await findProject(teamProject.id);
+		expect(updatedProject.name).not.toEqual('New Name');
+	});
+
+	test('user with project:update but not project:manageMembers can still edit team project name', async () => {
+		const actor = await createUser();
+		const teamProject = await createTeamProject();
+		await linkWithCustomProjectScopes(actor, teamProject, ['project:read', 'project:update']);
+
+		const resp = await testServer
+			.authAgentFor(actor)
+			.patch(`/projects/${teamProject.id}`)
+			.send({ name: 'New Name' });
+		expect(resp.status).toBe(200);
+
+		const updatedProject = await findProject(teamProject.id);
+		expect(updatedProject.name).toEqual('New Name');
 	});
 
 	test('should not allow owners to edit personal project name', async () => {
@@ -1197,12 +1334,16 @@ describe('DELETE /project/:projectId', () => {
 		//
 
 		// Make sure the project and owned workflow and credential where deleted.
-		await expect(getWorkflowById(ownedWorkflow.id)).resolves.toBeNull();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: ownedWorkflow.id }),
+		).resolves.toBeNull();
 		await expect(getCredentialById(ownedCredential.id)).resolves.toBeNull();
 		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
 
 		// Make sure the shared workflow and credential were not deleted
-		await expect(getWorkflowById(sharedWorkflow1.id)).resolves.not.toBeNull();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: sharedWorkflow1.id }),
+		).resolves.not.toBeNull();
 		await expect(getCredentialById(sharedCredential.id)).resolves.not.toBeNull();
 
 		// Make sure the sharings for them have been deleted
@@ -1254,8 +1395,12 @@ describe('DELETE /project/:projectId', () => {
 		//
 
 		// Make sure the project and owned workflow and credential where deleted.
-		await expect(getWorkflowById(ownedWorkflow1.id)).resolves.toBeNull();
-		await expect(getWorkflowById(ownedWorkflow2.id)).resolves.toBeNull();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: ownedWorkflow1.id }),
+		).resolves.toBeNull();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: ownedWorkflow2.id }),
+		).resolves.toBeNull();
 		await expect(getCredentialById(ownedCredential.id)).resolves.toBeNull();
 		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
 
@@ -1407,7 +1552,9 @@ describe('DELETE /project/:projectId', () => {
 		await expect(findProject(projectToBeDeleted.id)).rejects.toThrowError(EntityNotFoundError);
 
 		// ownedWorkflow has not been deleted
-		await expect(getWorkflowById(ownedWorkflow.id)).resolves.toBeDefined();
+		await expect(
+			Container.get(WorkflowRepository).findOneBy({ id: ownedWorkflow.id }),
+		).resolves.toBeDefined();
 
 		// ownedCredential has not been deleted
 		await expect(getCredentialById(ownedCredential.id)).resolves.toBeDefined();
@@ -1463,6 +1610,52 @@ describe('DELETE /project/:projectId', () => {
 		expect(foldersInTargetProject.map((f) => f.name)).toEqual(
 			expect.arrayContaining(['folder1', 'folder1', 'folder2']),
 		);
+	});
+
+	test('does not migrate end-user credentials to a personal project', async () => {
+		//
+		// ARRANGE
+		//
+		const member = await createMember();
+		const projectToBeDeleted = await createTeamProject(undefined, member);
+		const personalProject = await getPersonalProject(member);
+
+		const endUserCredential = await createCredentials(
+			{ name: 'End-user credential', type: 'test', data: '', isResolvable: true },
+			projectToBeDeleted,
+		);
+		const ownedWorkflow = await createWorkflow({}, projectToBeDeleted);
+
+		//
+		// ACT
+		//
+		const response = await testServer
+			.authAgentFor(member)
+			.delete(`/projects/${projectToBeDeleted.id}`)
+			.query({ transferId: personalProject.id })
+			//
+			// ASSERT
+			//
+			.expect(400);
+
+		expect(response.body.message).toContain('"End-user credential"');
+
+		// the project is still there, with nothing migrated out of it
+		await expect(findProject(projectToBeDeleted.id)).resolves.toBeDefined();
+		await expect(
+			Container.get(SharedWorkflowRepository).findOneByOrFail({
+				workflowId: ownedWorkflow.id,
+				projectId: projectToBeDeleted.id,
+				role: 'workflow:owner',
+			}),
+		).resolves.toBeDefined();
+		await expect(
+			Container.get(SharedCredentialsRepository).findOneByOrFail({
+				credentialsId: endUserCredential.id,
+				projectId: projectToBeDeleted.id,
+				role: 'credential:owner',
+			}),
+		).resolves.toBeDefined();
 	});
 
 	// This test is testing behavior that is explicitly not enabled right now,

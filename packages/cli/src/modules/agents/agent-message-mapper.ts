@@ -12,6 +12,14 @@ export function contentPartToDto(part: MessageContent): AgentPersistedMessageCon
 	if ('state' in part && typeof part.state === 'string') dto.state = part.state;
 	if ('output' in part) dto.output = part.output;
 	if ('error' in part && typeof part.error === 'string') dto.error = part.error;
+	// File parts expose reference metadata only — never bytes. Parts without a
+	// fileRef (e.g. model-generated files) have nothing fetchable to expose.
+	if (part.type === 'file' && part.fileRef) {
+		dto.fileId = part.fileRef.id;
+		if (part.fileRef.fileName !== undefined) dto.fileName = part.fileRef.fileName;
+		if (part.mediaType !== undefined) dto.mimeType = part.mediaType;
+		if (part.fileRef.sizeBytes !== undefined) dto.sizeBytes = part.fileRef.sizeBytes;
+	}
 	return dto;
 }
 

@@ -14,7 +14,7 @@ export interface LoadPrebakedWorkspaceBundleOptions<TBundle> {
 	hashField: string;
 	schemaVersion: number;
 	resourceLabel: string;
-	logger?: Logger;
+	logger: Logger;
 	invalidManifestLogMessage: string;
 	staleManifestLogMessage: string;
 	staleManifestLogKeys: {
@@ -41,14 +41,14 @@ export async function loadPrebakedWorkspaceBundle<TBundle extends { files: Map<s
 		hashField: options.hashField,
 	});
 	if (!manifest) {
-		options.logger?.debug(options.invalidManifestLogMessage, {
+		options.logger.debug(options.invalidManifestLogMessage, {
 			manifestPath: options.manifestPath,
 		});
 		return undefined;
 	}
 
 	if (manifest.hash !== options.expectedHash) {
-		options.logger?.debug(options.staleManifestLogMessage, {
+		options.logger.debug(options.staleManifestLogMessage, {
 			manifestPath: options.manifestPath,
 			[options.staleManifestLogKeys.expected]: options.expectedHash,
 			[options.staleManifestLogKeys.actual]: manifest.hash,
@@ -74,14 +74,14 @@ export async function loadPrebakedWorkspaceBundle<TBundle extends { files: Map<s
 	);
 	const missingPath = existenceChecks.find((check) => !check.exists)?.path;
 	if (missingPath) {
-		options.logger?.debug('Ignoring incomplete prebaked workspace bundle', {
+		options.logger.debug('Ignoring incomplete prebaked workspace bundle', {
 			manifestPath: options.manifestPath,
 			missingPath,
 		});
 		return undefined;
 	}
 
-	options.logger?.debug(options.successLogMessage, options.successLogContext(bundle));
+	options.logger.debug(options.successLogMessage, options.successLogContext(bundle));
 	return bundle;
 }
 
@@ -90,7 +90,7 @@ export interface MaterializeWorkspaceBundleOptions<
 > {
 	workspace: WorkspaceFileTarget;
 	resourceLabel: string;
-	logger?: Logger;
+	logger: Logger;
 	loadPrebaked: () => Promise<TBundle | undefined>;
 	buildBundle: () => Promise<TBundle> | TBundle;
 	materializedLogMessage: string;
@@ -121,6 +121,6 @@ export async function materializeWorkspaceBundle<
 		});
 	}
 
-	options.logger?.debug(options.materializedLogMessage, options.materializedLogContext(bundle));
+	options.logger.debug(options.materializedLogMessage, options.materializedLogContext(bundle));
 	return bundle;
 }

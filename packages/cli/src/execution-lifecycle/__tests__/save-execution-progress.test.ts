@@ -1,8 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
 import { ErrorReporter } from 'n8n-core';
 import { createRunExecutionData, type ITaskData } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 
@@ -14,7 +14,7 @@ describe('saveExecutionProgress', () => {
 	const executionPersistence = mockInstance(ExecutionPersistence);
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	const workflowId = 'some-workflow-id';

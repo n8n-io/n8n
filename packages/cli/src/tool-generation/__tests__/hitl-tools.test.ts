@@ -183,7 +183,7 @@ describe('hitl-tools', () => {
 		});
 
 		it('should modify the execute method to ensure proper ai_tool logging', async () => {
-			const originalExecute = jest.fn();
+			const originalExecute = vi.fn();
 			fullNodeWrapper.execute = originalExecute;
 			const result = convertNodeToHitlTool(fullNodeWrapper);
 

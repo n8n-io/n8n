@@ -1,5 +1,6 @@
 import fc from 'fast-check';
 
+import { connectionsFromEdges, reachableMain } from './graph/graph-fixtures';
 import { getChildNodes } from '../src/common/get-child-nodes';
 import { getParentNodes } from '../src/common/get-parent-nodes';
 import { mapConnectionsByDestination } from '../src/common/map-connections-by-destination';
@@ -270,36 +271,8 @@ describe('getChildNodes', () => {
 describe('getChildNodes — properties (fast-check)', () => {
 	const Main = NodeConnectionTypes.Main;
 
-	/** Build source-indexed main connections from index-pair edges (all on output 0). */
-	const buildConnections = (edges: Array<[number, number]>): IConnections => {
-		const conns: IConnections = {};
-		for (const [from, to] of edges) {
-			const src = `n${from}`;
-			if (!conns[src]) conns[src] = {};
-			if (!conns[src][Main]) conns[src][Main] = [[]];
-			conns[src][Main][0]!.push({ node: `n${to}`, type: Main, index: 0 });
-		}
-		return conns;
-	};
-
-	/** Model oracle: main-reachable nodes from `start`, excluding `start` itself. */
-	const reachableMain = (conns: IConnections, start: string): Set<string> => {
-		const seen = new Set<string>();
-		const stack = [start];
-		while (stack.length) {
-			const node = stack.pop()!;
-			for (const output of conns[node]?.[Main] ?? []) {
-				for (const connection of output ?? []) {
-					if (!seen.has(connection.node)) {
-						seen.add(connection.node);
-						stack.push(connection.node);
-					}
-				}
-			}
-		}
-		seen.delete(start); // a node is never its own child, even via a cycle
-		return seen;
-	};
+	// `connectionsFromEdges` (index-pair graph builder) and `reachableMain` (model
+	// oracle) are shared with get-connected-nodes.test.ts via ./graph/graph-fixtures.
 
 	// Deliberately tiny, overlapping domains so paths collide (diamonds & cycles).
 	const graph = fc.integer({ min: 1, max: 5 }).chain((nodeCount) =>
@@ -323,7 +296,7 @@ describe('getChildNodes — properties (fast-check)', () => {
 	it('COMPLETE_AND_SOUND — result set equals the main-reachable set', () => {
 		fc.assert(
 			fc.property(graph, ({ edges, start }) => {
-				const conns = buildConnections(edges);
+				const conns = connectionsFromEdges(edges);
 				expect(new Set(getChildNodes(conns, `n${start}`))).toEqual(
 					reachableMain(conns, `n${start}`),
 				);
@@ -334,7 +307,7 @@ describe('getChildNodes — properties (fast-check)', () => {
 	it('NO_SELF_NO_DUPES — start is excluded and every node appears at most once', () => {
 		fc.assert(
 			fc.property(graph, ({ edges, start }) => {
-				const result = getChildNodes(buildConnections(edges), `n${start}`);
+				const result = getChildNodes(connectionsFromEdges(edges), `n${start}`);
 				expect(result).not.toContain(`n${start}`);
 				expect(new Set(result).size).toBe(result.length);
 			}),
@@ -344,7 +317,7 @@ describe('getChildNodes — properties (fast-check)', () => {
 	it('DEPTH_1_IS_DIRECT — depth 1 returns exactly the direct successors', () => {
 		fc.assert(
 			fc.property(graph, ({ edges, start }) => {
-				const conns = buildConnections(edges);
+				const conns = connectionsFromEdges(edges);
 				const direct = new Set(
 					(conns[`n${start}`]?.[Main] ?? []).flatMap((o) => (o ?? []).map((c) => c.node)),
 				);
@@ -357,7 +330,7 @@ describe('getChildNodes — properties (fast-check)', () => {
 	it('DEPTH_MONOTONIC — a deeper traversal never drops a node', () => {
 		fc.assert(
 			fc.property(graph, fc.integer({ min: 1, max: 5 }), ({ edges, start }, k) => {
-				const conns = buildConnections(edges);
+				const conns = connectionsFromEdges(edges);
 				const deeper = new Set(getChildNodes(conns, `n${start}`, Main, k + 1));
 				for (const node of getChildNodes(conns, `n${start}`, Main, k)) {
 					expect(deeper.has(node)).toBe(true);
@@ -369,7 +342,7 @@ describe('getChildNodes — properties (fast-check)', () => {
 	it('CHILD_PARENT_DUALITY — c is a child of s ⇔ s is a parent of c in the inverted graph', () => {
 		fc.assert(
 			fc.property(graph, ({ nodeCount, edges, start }) => {
-				const conns = buildConnections(edges);
+				const conns = connectionsFromEdges(edges);
 				const inverted = mapConnectionsByDestination(conns);
 				const children = new Set(getChildNodes(conns, `n${start}`));
 				for (let i = 0; i < nodeCount; i++) {

@@ -31,6 +31,7 @@ import {
 import { UnexpectedError } from './errors';
 import type { NodeApiError } from './errors/node-api.error';
 import { DEFAULT_EVALUATION_METRIC } from './evaluation-helpers';
+import { isExpression } from './expressions/expression-helpers';
 import type {
 	IConnection,
 	IConnections,
@@ -590,6 +591,16 @@ export function generateNodesGraph(
 				enabledDefault) as boolean;
 		} else if (node.type === MCP_CLIENT_TOOL_NODE_TYPE || node.type === MCP_CLIENT_NODE_TYPE) {
 			nodeItem.mcp_client_auth_method = (node.parameters?.authentication ?? 'none') as string;
+
+			const mcpServerUrl = (node.parameters?.endpointUrl ??
+				node.parameters?.sseEndpoint ??
+				'') as string;
+			if (!isExpression(mcpServerUrl)) {
+				const mcpServerDomainBase = getDomainBase(mcpServerUrl);
+				if (mcpServerDomainBase) {
+					nodeItem.mcp_server_domain_base = mcpServerDomainBase;
+				}
+			}
 		} else {
 			try {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);

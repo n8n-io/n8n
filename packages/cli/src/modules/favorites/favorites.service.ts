@@ -1,4 +1,4 @@
-import { Service } from '@n8n/di';
+import type { FavoriteResourceType } from '@n8n/api-types';
 import {
 	FolderRepository,
 	ProjectRepository,
@@ -7,18 +7,19 @@ import {
 	type Project,
 	type User,
 } from '@n8n/db';
+import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
 
-import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
-import type { FavoriteResourceType } from '@n8n/api-types';
-
-type ResourceMeta = { name: string; projectId: string };
+import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
+import type {
+	FavoriteResourceMeta as ResourceMeta,
+	ResolvedFavoriteResourceType,
+} from './favorite-resource-resolver.registry';
+import { FavoriteResourceResolverRegistry } from './favorite-resource-resolver.registry';
 
 type Favorite = { resourceId: string; resourceType: FavoriteResourceType };
 
@@ -47,8 +48,8 @@ export class FavoritesService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly dataTableRepository: DataTableRepository,
 		private readonly folderRepository: FolderRepository,
+		private readonly resourceResolvers: FavoriteResourceResolverRegistry,
 	) {}
 
 	async getEnrichedFavorites(user: User) {
@@ -60,16 +61,18 @@ export class FavoritesService {
 			project: idsOfType(favorites, 'project'),
 			dataTable: idsOfType(favorites, 'dataTable'),
 			folder: idsOfType(favorites, 'folder'),
+			agent: idsOfType(favorites, 'agent'),
 		};
 
 		const accessibleProjects = await this.projectRepository.getAccessibleProjects(user.id);
 		const accessibleProjectIds = new Set(accessibleProjects.map((p) => p.id));
 
-		const [workflowNames, projectNames, dataTableMeta, folderMeta] = await Promise.all([
+		const [workflowNames, projectNames, dataTableMeta, folderMeta, agentMeta] = await Promise.all([
 			this.enrichWorkflowFavorites(user, ids.workflow, accessibleProjectIds),
 			this.enrichProjectFavorites(user, ids.project, accessibleProjects),
-			this.enrichDataTableFavorites(user, ids.dataTable, accessibleProjectIds),
+			this.enrichResolvedFavorites(user, 'dataTable', ids.dataTable, accessibleProjectIds),
 			this.enrichFolderFavorites(user, ids.folder, accessibleProjectIds),
+			this.enrichResolvedFavorites(user, 'agent', ids.agent, accessibleProjectIds),
 		]);
 
 		return favorites.flatMap((fav) => {
@@ -82,6 +85,8 @@ export class FavoritesService {
 					return enrichWithMeta(fav, dataTableMeta.get(fav.resourceId));
 				case 'folder':
 					return enrichWithMeta(fav, folderMeta.get(fav.resourceId));
+				case 'agent':
+					return enrichWithMeta(fav, agentMeta.get(fav.resourceId));
 				default:
 					return [];
 			}
@@ -142,20 +147,26 @@ export class FavoritesService {
 		return result;
 	}
 
-	private async enrichDataTableFavorites(
+	/** Enriches favorites whose resource type is owned by another module, via its registered resolver. */
+	private async enrichResolvedFavorites(
 		user: User,
-		dataTableIds: string[],
+		resourceType: ResolvedFavoriteResourceType,
+		resourceIds: string[],
 		accessibleProjectIds: Set<string>,
 	): Promise<Map<string, ResourceMeta>> {
 		const result = new Map<string, ResourceMeta>();
-		if (dataTableIds.length === 0) return result;
+		if (resourceIds.length === 0) return result;
 
-		const hasGlobalAccess = hasGlobalScope(user, 'dataTable:read');
-		const dataTables = await this.dataTableRepository.find({ where: { id: In(dataTableIds) } });
+		// No resolver means the owning module is inactive: treat its favorites as missing resources
+		const resolver = this.resourceResolvers.get(resourceType);
+		if (!resolver) return result;
 
-		for (const dt of dataTables) {
-			if (hasGlobalAccess || accessibleProjectIds.has(dt.projectId)) {
-				result.set(dt.id, { name: dt.name, projectId: dt.projectId });
+		const hasGlobalAccess = hasGlobalScope(user, resolver.globalReadScope);
+		const meta = await resolver.findMeta(resourceIds);
+
+		for (const [id, resourceMeta] of meta) {
+			if (hasGlobalAccess || accessibleProjectIds.has(resourceMeta.projectId)) {
+				result.set(id, resourceMeta);
 			}
 		}
 		return result;
@@ -215,11 +226,12 @@ export class FavoritesService {
 			case 'project':
 				exists = await this.projectRepository.existsBy({ id: resourceId });
 				break;
-			case 'dataTable':
-				exists = await this.dataTableRepository.existsBy({ id: resourceId });
-				break;
 			case 'folder':
 				exists = await this.folderRepository.existsBy({ id: resourceId });
+				break;
+			case 'dataTable':
+			case 'agent':
+				exists = (await this.resourceResolvers.get(resourceType)?.exists(resourceId)) ?? false;
 				break;
 		}
 

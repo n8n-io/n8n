@@ -5,19 +5,19 @@ import Close from 'virtual:icons/mdi/close';
 
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import type { Segment } from '@/app/types/expressions';
-import type { INodeProperties } from 'n8n-workflow';
+import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { outputTheme } from './ExpressionEditorModal/theme';
 import ExpressionOutput from '@/features/shared/editors/components/InlineExpressionEditor/ExpressionOutput.vue';
 import VirtualSchema from '@/features/ndv/runData/components/VirtualSchema.vue';
 import OutputItemSelect from '@/features/shared/editors/components/InlineExpressionEditor/OutputItemSelect.vue';
 import { useI18n } from '@n8n/i18n';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 
@@ -28,11 +28,12 @@ import { ElDialog } from 'element-plus';
 import {
 	N8nIcon,
 	N8nInput,
-	N8nRadioButtons,
+	N8nSegmentControl,
 	N8nResizeWrapper,
 	N8nText,
 	type ResizeData,
 } from '@n8n/design-system';
+import { useStyles } from '@n8n/composables/useStyles';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
@@ -44,6 +45,7 @@ type Props = {
 	eventSource?: string;
 	redactValues?: boolean;
 	isReadOnly?: boolean;
+	additionalExpressionData?: IDataObject;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -51,6 +53,7 @@ const props = withDefaults(defineProps<Props>(), {
 	dialogVisible: false,
 	redactValues: false,
 	isReadOnly: false,
+	additionalExpressionData: () => ({}),
 });
 const emit = defineEmits<{
 	'update:model-value': [value: string];
@@ -58,8 +61,13 @@ const emit = defineEmits<{
 }>();
 
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const { APP_Z_INDEXES } = useStyles();
+
+const lastSuccessfulExecution = computed(
+	() => workflowExecutionStateStore.value.lastSuccessfulExecution,
+);
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
@@ -162,6 +170,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 		:class="$style.modal"
 		:model-value="dialogVisible"
 		:before-close="closeDialog"
+		:z-index="APP_Z_INDEXES.MODALS"
 	>
 		<button :class="$style.close" @click="closeDialog">
 			<Close height="18" width="18" />
@@ -193,7 +202,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						:nodes="parentNodes.length > 0 ? parentNodes : rootNodesParents"
 						:mapping-enabled="!isReadOnly"
 						:connection-type="NodeConnectionTypes.Main"
-						:preview-execution="workflowsStore.lastSuccessfulExecution"
+						:preview-execution="lastSuccessfulExecution"
 						pane-type="input"
 					/>
 				</div>
@@ -219,6 +228,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 								:model-value="modelValue"
 								:is-read-only="isReadOnly"
 								:path="path"
+								:additional-data="additionalExpressionData"
 								:class="[
 									$style.editor,
 									{
@@ -240,7 +250,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						</N8nText>
 						<div :class="$style.headerControls">
 							<OutputItemSelect />
-							<N8nRadioButtons
+							<N8nSegmentControl
 								v-model="outputRenderMode"
 								size="small"
 								:options="[

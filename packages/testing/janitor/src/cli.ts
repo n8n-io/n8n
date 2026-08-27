@@ -8,7 +8,7 @@
  *   janitor impact                         # Show impact of changes
  *   janitor tcr                            # TCR workflow
  *   janitor affected-packages              # List workspace packages affected by changed files
- *   janitor scope                          # Compute per-package jest/vitest scope list
+ *   janitor scope                          # Compute per-package vitest scope list
  *   janitor --help                         # Show help
  *
  * The `affected-packages` and `scope` subcommands are workspace-wide utilities
@@ -22,6 +22,9 @@ import {
 	distributeShards,
 	selectTests,
 	changedRuntimeDepsFromManifests,
+	changedOverrideTargets,
+	isBackendConfig,
+	isTsconfig,
 } from '@n8n/test-impact';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -78,8 +81,8 @@ import {
 	formatMethodUsageIndexJSON,
 } from './core/method-usage-analyzer.js';
 import { createProject } from './core/project-loader.js';
-import { readLockfileImporters } from './core/read-lockfile-importers.js';
-import { readManifestDiffs } from './core/read-manifest-diffs.js';
+import { readLockfileImporters, readRuntimeClosure } from './core/read-lockfile-importers.js';
+import { isManifest, readFileDiffs } from './core/read-manifest-diffs.js';
 import { toJSON, toConsole } from './core/reporter.js';
 import { filterToFailedSpecs } from './core/retry-filter.js';
 import { computeScope, formatScope } from './core/scope-analyzer.js';
@@ -610,10 +613,41 @@ function readChangedFiles(options: CliOptions): string[] | null {
 	const env = process.env.CHANGED_FILES;
 	if (flag === undefined && env === undefined) return null;
 	const raw = flag ?? env ?? '';
-	return raw
+	const files = raw
 		.split(/[\n,]+/)
 		.map((s) => s.trim())
 		.filter((s) => s.length > 0);
+	// An empty value is "no signal", not "nothing changed". ci-filter emits an
+	// empty list on huge change sets (too large to pass through env/argv); a [] return
+	// would SKIP every package — a false green — so collapse it to null (run full).
+	return files.length > 0 ? files : null;
+}
+
+/** Read a package's own name from its package.json, or undefined if unreadable. */
+function readPackageName(packageDir: string): string | undefined {
+	try {
+		const pkg = JSON.parse(fs.readFileSync(path.join(packageDir, 'package.json'), 'utf-8')) as {
+			name?: unknown;
+		};
+		return typeof pkg.name === 'string' ? pkg.name : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Resolve the affected-package set for scoping by recomputing from
+ * CHANGED_FILES. Never let a graph-analysis failure break scoping for every
+ * package — degrade to "no signal" (skip on no local changes).
+ */
+function resolveAffectedPackages(rootDir: string, changedFiles: string[] | null): string[] | null {
+	if (changedFiles === null) return null;
+	try {
+		return affectedPackages({ rootDir, changedFiles });
+	} catch (error) {
+		console.warn(`[janitor] Could not compute affected packages: ${(error as Error).message}`);
+		return null;
+	}
 }
 
 function runAffectedPackages(options: CliOptions): void {
@@ -625,35 +659,30 @@ function runAffectedPackages(options: CliOptions): void {
 }
 
 function runTestScopedCmd(options: CliOptions): void {
-	if (!options.runner) {
-		console.error('Error: --runner=jest|vitest is required');
-		process.exit(1);
-	}
 	const packageDir = options.packageDir ?? process.cwd();
+	const rootDir = findWorkspaceRoot(process.cwd());
 	const changedFiles = readChangedFiles(options);
 	const exitCode = runTestScoped({
-		runner: options.runner,
 		packageDir,
-		rootDir: findWorkspaceRoot(process.cwd()),
+		rootDir,
 		changedFiles,
+		packageName: readPackageName(packageDir),
+		affectedPackages: resolveAffectedPackages(rootDir, changedFiles),
 		passthroughArgs: options.passthroughArgs,
-		jestVariant: options.jestVariant,
 	});
 	process.exit(exitCode);
 }
 
 function runScope(options: CliOptions): void {
-	if (!options.runner) {
-		console.error('Error: --runner=jest|vitest is required');
-		process.exit(1);
-	}
-
+	const packageDir = options.packageDir ?? process.cwd();
+	const rootDir = findWorkspaceRoot(process.cwd());
+	const changedFiles = readChangedFiles(options);
 	const result = computeScope({
-		runner: options.runner,
-		packageDir: options.packageDir ?? process.cwd(),
-		changedFiles: readChangedFiles(options),
-		rootDir: findWorkspaceRoot(process.cwd()),
-		jestVariant: options.jestVariant,
+		packageDir,
+		changedFiles,
+		rootDir,
+		packageName: readPackageName(packageDir),
+		affectedPackages: resolveAffectedPackages(rootDir, changedFiles),
 	});
 	console.log(formatScope(result));
 }
@@ -691,23 +720,37 @@ function runMergeCoverage(options: CliOptions): void {
  *  around {@link selectTests}, where the fail-open safety contract lives. */
 function runSelect(options: CliOptions): void {
 	const changedFiles = readChangedFiles(options) ?? [];
-	// With a base ref, read each changed package.json before/after so the
-	// devDependency-only classifier can drop a devDep-only lockfile change.
-	// No base (local dev) → omit manifests → conservative (keep lockfile broad).
-	const manifests = options.baseRef ? readManifestDiffs(changedFiles, options.baseRef) : undefined;
+	// Content diffs feed the classifiers that need before/after to decide: the
+	// devDependency-only one (manifests), the resolution-key one (tsconfigs) and
+	// the changed-default one (configs). No base ref (local dev) → omit them all,
+	// which each classifier reads as "unproven" and keeps broad.
+	const diffs = (predicate: (file: string) => boolean) =>
+		options.baseRef ? readFileDiffs(changedFiles, options.baseRef, predicate) : undefined;
+	const manifests = diffs(isManifest);
 	// Only parse the (large) lockfile when a RUNTIME dependency actually changed —
 	// the only case the dep-graph selector (389) acts on. A devDep-only manifest
 	// change would parse it for nothing.
-	const lockfileImporters =
-		manifests && changedRuntimeDepsFromManifests(manifests).length > 0
-			? readLockfileImporters()
-			: undefined;
+	const runtimeDepsChanged = manifests
+		? changedRuntimeDepsFromManifests(manifests).length > 0
+		: false;
+	const lockfileImporters = runtimeDepsChanged ? readLockfileImporters() : undefined;
+	// The closure classifies override pins; a runtime-dep change already forces
+	// broad, so don't compute it then.
+	const overridesChanged =
+		!runtimeDepsChanged &&
+		Object.values(manifests ?? {}).some(({ before, after }) => {
+			const targets = changedOverrideTargets(before, after);
+			return targets === null || targets.length > 0;
+		});
 	const result = selectTests({
 		changedFiles,
 		mapFile: options.mapFile,
 		allSpecsFile: options.allSpecsFile,
 		manifests,
+		tsconfigs: diffs(isTsconfig),
+		configs: diffs(isBackendConfig),
 		lockfileImporters,
+		runtimeClosure: overridesChanged ? readRuntimeClosure() : undefined,
 	});
 	console.log(JSON.stringify(result));
 }

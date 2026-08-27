@@ -1,3 +1,4 @@
+import type { AgentJsonToolConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import { z } from 'zod';
 
@@ -51,8 +52,8 @@ describe('resolveNodeTool → tool name sanitization', () => {
 	});
 
 	it('executes the mirrored tool node when config stores the base node type', async () => {
-		const executeInline = jest.fn().mockResolvedValue({ status: 'success', data: [] });
-		const getByNameAndVersion = jest.fn().mockReturnValue({
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const getByNameAndVersion = vi.fn().mockReturnValue({
 			description: { description: 'HTTP Request Tool' },
 		});
 		Container.set(NodeTypes, { getByNameAndVersion } as unknown as NodeTypes);
@@ -101,7 +102,7 @@ describe('resolveNodeTool → tool name sanitization', () => {
 	});
 
 	it('passes node parameters through unchanged at execution time', async () => {
-		const executeInline = jest.fn().mockResolvedValue({ status: 'success', data: [] });
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
 		const tool = await resolveNodeTool(
 			{
 				...baseToolSchema,
@@ -131,11 +132,11 @@ describe('resolveNodeTool → tool name sanitization', () => {
 
 	it('uses the introspected supplyData schema directly', async () => {
 		const inputSchema = z.object({ query: z.string() });
-		const introspectSupplyDataToolSchema = jest.fn().mockResolvedValue(inputSchema);
+		const introspectSupplyDataToolSchema = vi.fn().mockResolvedValue(inputSchema);
 		Container.set(NodeTypes, {
-			getByNameAndVersion: jest.fn().mockReturnValue({
+			getByNameAndVersion: vi.fn().mockReturnValue({
 				description: { description: 'Search Wikipedia' },
-				supplyData: jest.fn(),
+				supplyData: vi.fn(),
 			}),
 		} as unknown as NodeTypes);
 
@@ -159,12 +160,12 @@ describe('resolveNodeTool → tool name sanitization', () => {
 	});
 
 	it('uses a string-compatible object schema when native string tool introspection returns null', async () => {
-		const executeInline = jest.fn().mockResolvedValue({ status: 'success', data: [] });
-		const introspectSupplyDataToolSchema = jest.fn().mockResolvedValue(null);
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const introspectSupplyDataToolSchema = vi.fn().mockResolvedValue(null);
 		Container.set(NodeTypes, {
-			getByNameAndVersion: jest.fn().mockReturnValue({
+			getByNameAndVersion: vi.fn().mockReturnValue({
 				description: { description: 'Think about something' },
-				supplyData: jest.fn(),
+				supplyData: vi.fn(),
 			}),
 		} as unknown as NodeTypes);
 
@@ -208,5 +209,90 @@ describe('resolveNodeTool → tool name sanitization', () => {
 				inputData: [{ json: { input: 'thinking about this problem' } }],
 			}),
 		);
+	});
+});
+
+describe('toExecutorCredentials (credential mapping at execution)', () => {
+	type NodeCredentials = Extract<AgentJsonToolConfig, { type: 'node' }>['node']['credentials'];
+
+	async function credentialDetailsFor(credentials: NodeCredentials) {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const tool = await resolveNodeTool(
+			{ ...baseToolSchema, node: { ...baseToolSchema.node, credentials } },
+			{ executor: { executeInline } as unknown as EphemeralNodeExecutor, projectId: 'p1' },
+		);
+		await tool.handler!({}, {} as never);
+		return (executeInline.mock.calls[0][0] as { credentialDetails?: unknown }).credentialDetails;
+	}
+
+	it('carries an n8n Connect managed credential through with a null id and the flag', async () => {
+		const details = await credentialDetailsFor({
+			slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+		});
+		expect(details).toEqual({
+			slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+		});
+	});
+
+	it('carries a real and a managed credential together in a mixed map', async () => {
+		const details = await credentialDetailsFor({
+			slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			httpBasicAuth: { id: 'cred-1', name: 'Prod' },
+		});
+		expect(details).toEqual({
+			slackApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			httpBasicAuth: { id: 'cred-1', name: 'Prod' },
+		});
+	});
+
+	it('drops an unpersisted slot that is neither a real credential nor managed', async () => {
+		const details = await credentialDetailsFor({ slackApi: { id: '', name: '' } });
+		expect(details).toBeUndefined();
+	});
+
+	it('passes undefined when the node has no credentials', async () => {
+		expect(await credentialDetailsFor(undefined)).toBeUndefined();
+	});
+});
+
+describe('resolveNodeTool → eval instrumentation', () => {
+	it('binds the sanitized tool name into the ephemeral execution when instrumented', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const instrumentToolAdditionalData = vi.fn();
+
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+			instrumentToolAdditionalData,
+		});
+		await tool.handler!({}, {} as never);
+
+		const request = executeInline.mock.calls[0][0] as {
+			nodeName?: string;
+			configureAdditionalData?: (additionalData: object) => void;
+		};
+		expect(request.nodeName).toBe('Google_Drive');
+		expect(request.configureAdditionalData).toBeDefined();
+
+		const additionalData = {};
+		request.configureAdditionalData!(additionalData);
+		expect(instrumentToolAdditionalData).toHaveBeenCalledWith(additionalData, {
+			toolName: 'Google_Drive',
+			toolKind: 'node',
+		});
+	});
+
+	it('passes neither override when not instrumented', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+
+		const tool = await resolveNodeTool(baseToolSchema, {
+			executor: { executeInline } as unknown as EphemeralNodeExecutor,
+			projectId: 'p1',
+		});
+		await tool.handler!({}, {} as never);
+
+		const request = executeInline.mock.calls[0][0] as Record<string, unknown>;
+		expect(request.nodeName).toBeUndefined();
+		expect(request.configureAdditionalData).toBeUndefined();
 	});
 });

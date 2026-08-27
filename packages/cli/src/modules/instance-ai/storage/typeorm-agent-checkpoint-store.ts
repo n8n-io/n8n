@@ -23,6 +23,7 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 		const existing = await this.checkpointRepo.findOne({ where: { key } });
 		if (existing) {
 			existing.runId = this.getRunId(key);
+			existing.hostRunId = state.persistence?.hostRunId ?? null;
 			existing.threadId = threadId;
 			existing.resourceId = state.persistence?.resourceId ?? null;
 			existing.state = state;
@@ -34,6 +35,7 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 		const checkpoint = this.checkpointRepo.create({
 			key,
 			runId: this.getRunId(key),
+			hostRunId: state.persistence?.hostRunId ?? null,
 			threadId,
 			resourceId: state.persistence?.resourceId ?? null,
 			state,
@@ -49,6 +51,10 @@ export class TypeORMAgentCheckpointStore implements CheckpointStore {
 			throw new UserError(EXPIRED_CHECKPOINT_MESSAGE);
 		}
 		return checkpoint.state;
+	}
+
+	async claimForResume(key: string, state: SerializableAgentState): Promise<boolean> {
+		return await this.checkpointRepo.claimSuspendedForResume(key, state);
 	}
 
 	async delete(key: string): Promise<void> {

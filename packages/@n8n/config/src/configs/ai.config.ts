@@ -23,6 +23,14 @@ export class AiConfig {
 	@Env('N8N_AI_ALLOW_SENDING_PARAMETER_VALUES')
 	allowSendingParameterValues: boolean = true;
 
+	/**
+	 * Maximum size in bytes of a single binary file (e.g. an image or PDF) that the
+	 * AI Agent node will pass through to a model. Files above this are rejected
+	 * before the request is sent. Default: 50 MB.
+	 */
+	@Env('N8N_AI_AGENT_MAX_PASSTHROUGH_BINARY_SIZE_BYTES')
+	maxAgentPassthroughBinarySizeBytes: number = 50 * 1024 * 1024;
+
 	get openAiDefaultHeaders(): Record<string, string> {
 		// eslint-disable-next-line @typescript-eslint/naming-convention
 		return { 'openai-platform': 'org-qkmJQuJ2WnvoIKMr2UJwIJkZ' };

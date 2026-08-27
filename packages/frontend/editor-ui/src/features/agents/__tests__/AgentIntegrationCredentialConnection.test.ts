@@ -19,6 +19,7 @@ const AgentCredentialSelectStub = {
 		'placeholder',
 		'credentialPermissions',
 		'disabled',
+		'size',
 	],
 	emits: ['create', 'update:modelValue'],
 	template: `
@@ -27,6 +28,7 @@ const AgentCredentialSelectStub = {
 			:data-test-id-prop="dataTestId"
 			:data-can-create="String(credentialPermissions.create)"
 			:data-disabled="String(!!disabled)"
+			:data-size="size"
 			:data-model-value="modelValue"
 			:data-options="credentials.map((credential) => credential.name).join('|')"
 		>
@@ -75,6 +77,7 @@ describe('AgentIntegrationCredentialConnection', () => {
 		const picker = wrapper.find('[data-testid="agent-credential-select-stub"]');
 		expect(picker.attributes('data-test-id-prop')).toBe('slack-credential-select');
 		expect(picker.attributes('data-can-create')).toBe('true');
+		expect(picker.attributes('data-size')).toBe('large');
 		expect(picker.attributes('data-model-value')).toBe('cred-1');
 		expect(wrapper.find('[data-testid="slack-edit-credential"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="slack-connect-button"]').exists()).toBe(true);

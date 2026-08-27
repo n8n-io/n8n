@@ -5,9 +5,9 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
-import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
-import { InstanceAiService } from './instance-ai.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
+import { InstanceAiService } from './instance-ai.service';
+import { InstanceAiThreadRepository } from './repositories/instance-ai-thread.repository';
 
 /**
  * Test-only endpoints for trace replay in Instance AI e2e tests.
@@ -55,7 +55,10 @@ export class InstanceAiTestController {
 		const user = await this.userRepo.findOneByOrFail({ id: payload.userId });
 		const personalProject = await this.projectRepo.getPersonalProjectForUserOrFail(user.id);
 
-		await this.memoryService.ensureThread(user.id, threadId, personalProject.id);
+		await this.memoryService.ensureThread(user.id, threadId, personalProject.id, {
+			source: 'playwright',
+			origin: 'internal',
+		});
 		return await this.instanceAiService.startStuckBackgroundTaskForTest(user, threadId);
 	}
 

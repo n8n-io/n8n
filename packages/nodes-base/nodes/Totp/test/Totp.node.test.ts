@@ -11,7 +11,7 @@ describe('Execute TOTP node', () => {
 	const TEST_LABEL = 'GitHub:john-doe';
 
 	beforeEach(() => {
-		jest.spyOn(Date, 'now').mockReturnValue(FIXED_TIMESTAMP);
+		vi.spyOn(Date, 'now').mockReturnValue(FIXED_TIMESTAMP);
 	});
 
 	// Pre-calculate expected token using the real OTPAuth library

@@ -1,23 +1,38 @@
+import { isAbortError } from '@n8n/agents';
+
 import { formatErrorForLog } from '../error-formatting';
 import type { Logger } from '../logger';
-import { readFileViaSandbox, writeFileViaSandbox, type SandboxWorkspace } from './sandbox-fs';
+import {
+	isTransientSandboxIoError,
+	readFileViaSandbox,
+	retryTransientSandboxIo,
+	writeFileViaSandbox,
+	type SandboxWorkspace,
+} from './sandbox-fs';
+import { isQuotaExhaustedError } from '../utils/quota-error';
 
 export interface WorkspaceFileTarget {
 	filesystem?: {
-		readFile?: (path: string, options?: { encoding?: 'utf-8' }) => Promise<string | Buffer>;
+		readFile?: (
+			path: string,
+			options?: { encoding?: 'utf-8'; abortSignal?: AbortSignal },
+		) => Promise<string | Buffer>;
 		writeFile: (
 			path: string,
 			content: string | Buffer,
-			options?: { recursive?: boolean },
+			options?: { recursive?: boolean; abortSignal?: AbortSignal },
 		) => Promise<void>;
 	};
 	sandbox?: SandboxWorkspace['sandbox'];
 }
 
 export interface WorkspaceFileOptions {
-	logger?: Logger;
+	logger: Logger;
 	/** Used in log and error messages, e.g. "Knowledge base file". */
 	resourceLabel?: string;
+	/** Base for the exponential retry backoff on transient write errors. Default 1s. */
+	retryBackoffBaseMs?: number;
+	abortSignal?: AbortSignal;
 }
 
 function resourceLabel(options?: WorkspaceFileOptions): string {
@@ -26,6 +41,12 @@ function resourceLabel(options?: WorkspaceFileOptions): string {
 
 function decodeWorkspaceFileContent(content: string | Buffer): string {
 	return Buffer.isBuffer(content) ? content.toString('utf-8') : content;
+}
+
+function selectWriteFailureCause(writeError: unknown, fallbackError: unknown): unknown {
+	if (isQuotaExhaustedError(writeError)) return writeError;
+	if (isQuotaExhaustedError(fallbackError)) return fallbackError;
+	return writeError;
 }
 
 /**
@@ -38,11 +59,30 @@ export async function readWorkspaceFile(
 	options?: WorkspaceFileOptions,
 ): Promise<string | null> {
 	const filesystem = workspace.filesystem;
-	if (filesystem?.readFile) {
+	const readFile = filesystem?.readFile;
+	if (filesystem && readFile) {
 		try {
-			return decodeWorkspaceFileContent(await filesystem.readFile(filePath, { encoding: 'utf-8' }));
+			return decodeWorkspaceFileContent(
+				await retryTransientSandboxIo(
+					// .call preserves the provider's `this` binding (e.g. LazyRuntimeFilesystem).
+					async () =>
+						await readFile.call(filesystem, filePath, {
+							encoding: 'utf-8',
+							abortSignal: options?.abortSignal,
+						}),
+					filePath,
+					options,
+				),
+			);
 		} catch (error) {
-			options?.logger?.debug(`${resourceLabel(options)} filesystem read missed`, {
+			// A provider failure is not a missing file — surface it instead of reporting null.
+			if (isTransientSandboxIoError(error)) {
+				throw new Error(
+					`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+					{ cause: error },
+				);
+			}
+			options?.logger.debug(`${resourceLabel(options)} filesystem read missed`, {
 				path: filePath,
 				error: formatErrorForLog(error),
 			});
@@ -53,9 +93,15 @@ export async function readWorkspaceFile(
 	if (!workspace.sandbox) return null;
 
 	try {
-		return await readFileViaSandbox(workspace, filePath);
+		return await readFileViaSandbox(workspace, filePath, options);
 	} catch (error) {
-		options?.logger?.debug(`${resourceLabel(options)} command read missed`, {
+		if (isTransientSandboxIoError(error)) {
+			throw new Error(
+				`Failed to read ${resourceLabel(options).toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+				{ cause: error },
+			);
+		}
+		options?.logger.debug(`${resourceLabel(options)} command read missed`, {
 			path: filePath,
 			error: formatErrorForLog(error),
 		});
@@ -75,31 +121,47 @@ export async function writeWorkspaceFile(
 ): Promise<void> {
 	const label = resourceLabel(options);
 
-	if (workspace.filesystem) {
+	const filesystem = workspace.filesystem;
+	if (filesystem) {
 		try {
-			await workspace.filesystem.writeFile(filePath, content, { recursive: true });
+			await retryTransientSandboxIo(
+				async () =>
+					await filesystem.writeFile(filePath, content, {
+						recursive: true,
+						abortSignal: options?.abortSignal,
+					}),
+				filePath,
+				options,
+			);
 			return;
 		} catch (error) {
+			if (isAbortError(error)) throw error;
 			try {
-				await writeFileViaSandbox(workspace, filePath, content);
-				options?.logger?.warn(`${label} filesystem write failed; used command fallback`, {
+				await writeFileViaSandbox(workspace, filePath, content, options);
+				options?.logger.warn(`${label} filesystem write failed; used command fallback`, {
 					path: filePath,
 					error: formatErrorForLog(error),
 				});
 				return;
 			} catch (fallbackError) {
+				if (isAbortError(fallbackError)) throw fallbackError;
+				// Preserve whichever path carries quota metadata so callers can
+				// classify the combined failure correctly.
 				throw new Error(
 					`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}; command fallback failed: ${formatErrorForLog(fallbackError)}`,
+					{ cause: selectWriteFailureCause(error, fallbackError) },
 				);
 			}
 		}
 	}
 
 	try {
-		await writeFileViaSandbox(workspace, filePath, content);
+		await writeFileViaSandbox(workspace, filePath, content, options);
 	} catch (error) {
+		if (isAbortError(error)) throw error;
 		throw new Error(
 			`Failed to write ${label.toLowerCase()} "${filePath}": ${formatErrorForLog(error)}`,
+			{ cause: error },
 		);
 	}
 }

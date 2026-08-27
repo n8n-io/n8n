@@ -1,18 +1,20 @@
 import * as copy from '../../../../v2/actions/file/copy.operation';
 import * as transport from '../../../../v2/transport';
 import { createMockExecuteFunction, driveNode } from '../helpers';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../../../v2/transport';
 
-jest.mock('../../../../v2/transport', () => {
-	const originalModule = jest.requireActual('../../../../v2/transport');
+vi.mock('../../../../v2/transport', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../../../v2/transport');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(async function () {
+		googleApiRequest: vi.fn(async function () {
 			return {};
 		}),
 	};
 });
 
-const googleApiRequestMock = transport.googleApiRequest as jest.Mock;
+const googleApiRequestMock = transport.googleApiRequest as Mock;
 
 const metadataQs = { fields: 'name', supportsAllDrives: true };
 

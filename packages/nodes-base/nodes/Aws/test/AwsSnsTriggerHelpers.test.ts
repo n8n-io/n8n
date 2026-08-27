@@ -10,15 +10,19 @@ import {
 	clearCertificateCache,
 	verifySignature,
 } from '../AwsSnsTriggerHelpers';
+import type { Mock } from 'vitest';
+import type * as _importType0 from 'crypto';
 
-jest.mock('crypto', () => ({
-	...jest.requireActual('crypto'),
-	createVerify: jest.fn(),
-	X509Certificate: jest.fn().mockImplementation(() => ({
-		publicKey: 'public-key',
-		validFrom: 'Jan 1 2020 GMT',
-		validTo: 'Jan 1 2100 GMT',
-	})),
+vi.mock('crypto', async () => ({
+	...(await vi.importActual<typeof _importType0>('crypto')),
+	createVerify: vi.fn(),
+	X509Certificate: vi.fn(function () {
+		return {
+			publicKey: 'public-key',
+			validFrom: 'Jan 1 2020 GMT',
+			validTo: 'Jan 1 2100 GMT',
+		};
+	}),
 }));
 
 describe('AwsSnsTriggerHelpers', () => {
@@ -40,22 +44,22 @@ describe('AwsSnsTriggerHelpers', () => {
 	};
 
 	let mockWebhookFunctions: IWebhookFunctions;
-	let update: jest.Mock;
-	let end: jest.Mock;
-	let verify: jest.Mock;
+	let update: Mock;
+	let end: Mock;
+	let verify: Mock;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		clearCertificateCache();
 
-		update = jest.fn().mockReturnThis();
-		end = jest.fn();
-		verify = jest.fn().mockReturnValue(true);
-		(createVerify as jest.Mock).mockReturnValue({ update, end, verify });
+		update = vi.fn().mockReturnThis();
+		end = vi.fn();
+		verify = vi.fn().mockReturnValue(true);
+		(createVerify as Mock).mockReturnValue({ update, end, verify });
 
 		mockWebhookFunctions = {
 			helpers: {
-				httpRequest: jest.fn().mockResolvedValue(certificate),
+				httpRequest: vi.fn().mockResolvedValue(certificate),
 			},
 		} as unknown as IWebhookFunctions;
 	});
@@ -260,20 +264,20 @@ describe('AwsSnsTriggerHelpers - integration with real crypto', () => {
 	function buildMockWebhookFunctions(certPem: string): IWebhookFunctions {
 		return {
 			helpers: {
-				httpRequest: jest.fn().mockResolvedValue(certPem),
+				httpRequest: vi.fn().mockResolvedValue(certPem),
 			},
 		} as unknown as IWebhookFunctions;
 	}
 
-	beforeEach(() => {
-		jest.restoreAllMocks();
+	beforeEach(async () => {
+		vi.restoreAllMocks();
 		clearCertificateCache();
 
-		const realCrypto = jest.requireActual('crypto');
-		(createVerify as jest.Mock).mockImplementation(realCrypto.createVerify);
-		(X509Certificate as unknown as jest.Mock).mockImplementation(
-			(pem: string) => new realCrypto.X509Certificate(pem),
-		);
+		const realCrypto = await vi.importActual<typeof _importType0>('crypto');
+		(createVerify as Mock).mockImplementation(realCrypto.createVerify);
+		(X509Certificate as unknown as Mock).mockImplementation(function (pem: string) {
+			return new realCrypto.X509Certificate(pem);
+		});
 	});
 
 	it('verifies a correctly signed Notification using real RSA', async () => {

@@ -1,8 +1,32 @@
 import type { BaseResource } from '@/Interface';
-import type { AgentJsonToolConfig, AgentSkill } from '@n8n/api-types';
+import type {
+	AgentJsonToolConfig,
+	AgentReasoningLevel,
+	AgentSkill,
+	AgentSkillReference,
+} from '@n8n/api-types';
 import type { Agent, ToolDescriptor, CustomToolEntry } from './agent.types';
 
-export type { ToolDescriptor, CustomToolEntry, AgentSkill };
+export type { ToolDescriptor, CustomToolEntry, AgentSkill, AgentSkillReference };
+
+export interface AgentContinueLoadedEvent {
+	sessionId: string;
+	count: number;
+}
+
+export interface AgentFixWithAssistantFailure {
+	toolCallId: string;
+	toolName: string;
+	toolDisplayName: string;
+	error: string;
+	startedAt?: number;
+	endedAt?: number;
+}
+
+export interface AgentFixWithAssistantEvent {
+	executionId: string;
+	failures: AgentFixWithAssistantFailure[];
+}
 
 /**
  * Agent resource type definition.
@@ -26,7 +50,6 @@ export interface AgentSchema {
 	model: { provider: string | null; name: string | null; raw?: string };
 	credential: string | null;
 	instructions: string | null;
-	description: string | null;
 	tools: ToolSchema[];
 	providerTools: ProviderToolSchema[];
 	memory: MemorySchema | null;
@@ -37,7 +60,7 @@ export interface AgentSchema {
 	checkpoint: 'memory' | null;
 	config: {
 		structuredOutput: { enabled: boolean; schemaSource: string | null };
-		thinking: ThinkingSchema | null;
+		reasoning: AgentReasoningLevel | null;
 		toolCallConcurrency: number | null;
 	};
 }
@@ -106,12 +129,6 @@ export interface TelemetrySchema {
 	source: string;
 }
 
-export interface ThinkingSchema {
-	provider: 'anthropic' | 'openai';
-	budgetTokens?: number;
-	reasoningEffort?: string;
-}
-
 export type WorkflowToolRef = AgentJsonToolConfig & { type: 'workflow' };
 
 export type {
@@ -122,4 +139,6 @@ export type {
 	AgentJsonConfig as AgentJsonConfigRef,
 	AgentJsonMcpServerConfig,
 	AgentJsonConfig,
+	AgentJsonVectorStoreConfig,
+	AgentVectorStoreProvider,
 } from '@n8n/api-types';

@@ -20,18 +20,16 @@ const asyncExec = promisify(exec);
 export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 	protected readonly name = 'runner:py';
 
-	protected readonly loggerScope = 'task-runner-py';
-
 	constructor(
-		readonly logger: Logger,
-		readonly runnerConfig: TaskRunnersConfig,
-		readonly authService: TaskBrokerAuthService,
-		readonly runnerLifecycleEvents: TaskRunnerLifecycleEvents,
+		logger: Logger,
+		runnerConfig: TaskRunnersConfig,
+		authService: TaskBrokerAuthService,
+		runnerLifecycleEvents: TaskRunnerLifecycleEvents,
 	) {
-		super(logger, runnerConfig, authService, runnerLifecycleEvents);
+		super('task-runner-py', logger, runnerConfig, authService, runnerLifecycleEvents);
 	}
 
-	async startProcess(grantToken: string, taskBrokerUri: string) {
+	startProcess(grantToken: string, taskBrokerUri: string, runnerId: string) {
 		const pythonDir = path.join(__dirname, '../../../@n8n/task-runner-python');
 		const venvPath = PyTaskRunnerProcess.getVenvPath();
 
@@ -43,6 +41,7 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 				HOME: process.env.HOME ?? process.env.USERPROFILE,
 
 				// runner
+				N8N_RUNNERS_ID: runnerId,
 				N8N_RUNNERS_GRANT_TOKEN: grantToken,
 				N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 				N8N_RUNNERS_MAX_PAYLOAD: this.runnerConfig.maxPayload.toString(),
@@ -53,6 +52,7 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 				// n8n
 				N8N_RUNNERS_STDLIB_ALLOW: process.env.N8N_RUNNERS_STDLIB_ALLOW,
 				N8N_RUNNERS_EXTERNAL_ALLOW: process.env.N8N_RUNNERS_EXTERNAL_ALLOW,
+				N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS: process.env.N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS,
 				N8N_RUNNERS_BUILTINS_DENY: process.env.N8N_RUNNERS_BUILTINS_DENY,
 				N8N_BLOCK_RUNNER_ENV_ACCESS: process.env.N8N_BLOCK_RUNNER_ENV_ACCESS,
 			}),

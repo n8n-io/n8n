@@ -1,3 +1,5 @@
+import { OutboundHttp } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
 import type {
 	IAllExecuteFunctions,
 	IExecuteData,
@@ -19,7 +21,6 @@ import type {
 import { callEvalMockHandler, normalizeLegacyRequest } from '@/execution-engine/eval-mock-helpers';
 
 import { httpRequestWithAuthentication, requestWithAuthentication } from './authentication';
-import { httpRequest } from './http-request';
 import { proxyRequestToAxios } from './legacy-request-adapter';
 import { refreshOAuth2Token, requestOAuth1, requestOAuth2 } from './oauth';
 import { requestWithAuthenticationPaginated } from './pagination';
@@ -84,8 +85,9 @@ export const getRequestHelperFunctions = (
 					requestOptions.headers as Record<string, string>,
 				);
 			}
-			return await httpRequest(requestOptions, additionalData.ssrfBridge);
+			return await Container.get(OutboundHttp).requests().request(requestOptions);
 		},
+		getSecureEgressFilter: () => additionalData.ssrfBridge,
 		async requestWithAuthenticationPaginated(
 			this: IExecuteFunctions,
 			requestOptions,
@@ -93,6 +95,7 @@ export const getRequestHelperFunctions = (
 			paginationOptions,
 			credentialsType,
 			additionalCredentialOptions,
+			sanitizedRequest,
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		): Promise<any[]> {
 			return await requestWithAuthenticationPaginated.call(
@@ -104,6 +107,7 @@ export const getRequestHelperFunctions = (
 				node,
 				credentialsType,
 				additionalCredentialOptions,
+				sanitizedRequest,
 			);
 		},
 		async httpRequestWithAuthentication(

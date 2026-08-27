@@ -29,6 +29,32 @@ export function isCredentialTypeClass(node: TSESTree.ClassDeclaration): boolean 
 	return implementsInterface(node, 'ICredentialType');
 }
 
+/** Matches this plugin's convention for identifying trigger nodes: class name ends with `Trigger`. */
+export function isTriggerNodeClass(node: TSESTree.ClassDeclaration): boolean {
+	return node.id?.name.endsWith('Trigger') ?? false;
+}
+
+function hasTriggerGroup(descriptionValue: TSESTree.ObjectExpression): boolean {
+	const groupArray = findArrayLiteralProperty(descriptionValue, 'group');
+	return (
+		groupArray?.elements.some(
+			(element) => element?.type === AST_NODE_TYPES.Literal && element.value === 'trigger',
+		) ?? false
+	);
+}
+
+/**
+ * `group` is the authoritative signal for "is this a trigger node" (also catches e.g. Cron,
+ * Webhook, versioned `*TriggerV1` classes); the name suffix is kept as a fallback for dynamic
+ * `group` values.
+ */
+export function isTriggerNode(
+	node: TSESTree.ClassDeclaration,
+	descriptionValue: TSESTree.ObjectExpression,
+): boolean {
+	return hasTriggerGroup(descriptionValue) || isTriggerNodeClass(node);
+}
+
 export function findClassProperty(
 	node: TSESTree.ClassDeclaration,
 	propertyName: string,

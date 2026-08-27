@@ -1,3 +1,5 @@
+import { UnexpectedError, UserError } from 'n8n-workflow';
+
 import { classifyHttpError } from '@/errors/http-error-classifier';
 import {
 	serializeInternalRestError,
@@ -5,8 +7,8 @@ import {
 } from '@/errors/http-error-serializers';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { toImportBlockedError } from '@/modules/n8n-packages/engine/import-blocked.error';
-import { UnexpectedError, UserError } from 'n8n-workflow';
 
 describe('http-error-serializers', () => {
 	it('serializePublicApiError: minimal message for ResponseError', () => {
@@ -44,6 +46,36 @@ describe('http-error-serializers', () => {
 				code: 400,
 				message: 'License activation requires EULA acceptance',
 				meta: { eulaUrl: 'https://n8n.io/legal/eula/' },
+			},
+		});
+	});
+
+	it('returns review details publicly while keeping editor-only validation metadata internal', () => {
+		const descriptor = classifyHttpError(
+			new WorkflowPublishBlockedError({
+				reason: 'changes_requested',
+				workflowReviewRequestId: 'review-1',
+			}),
+		);
+
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 409,
+			body: {
+				message: expect.stringContaining('requested changes'),
+				reason: 'changes_requested',
+				workflowReviewRequestId: 'review-1',
+			},
+		});
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 409,
+			body: {
+				code: 409,
+				message: expect.stringContaining('requested changes'),
+				meta: {
+					reason: 'changes_requested',
+					workflowReviewRequestId: 'review-1',
+					validationError: true,
+				},
 			},
 		});
 	});

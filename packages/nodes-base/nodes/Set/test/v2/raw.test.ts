@@ -69,7 +69,7 @@ describe('test Set2, rawMode/json Mode', () => {
 	};
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('fixed mode', () => {
@@ -85,8 +85,8 @@ describe('test Set2, rawMode/json Mode', () => {
 		};
 
 		it('should parse json with the jsonOutput in node parameter and compose a return item', async () => {
-			jest.spyOn(utils, 'parseJsonParameter');
-			jest.spyOn(utils, 'composeReturnItem');
+			vi.spyOn(utils, 'parseJsonParameter');
+			vi.spyOn(utils, 'composeReturnItem');
 
 			const result = await execute.call(fakeExecuteFunction, item, 0, options, rawData, node);
 
@@ -111,8 +111,8 @@ describe('test Set2, rawMode/json Mode', () => {
 		};
 
 		it('should parse json with resolved expression data and compose a return item', async () => {
-			const parseJsonSpy = jest.spyOn(utils, 'parseJsonParameter');
-			const resolveRawDataSpy = jest.spyOn(utils, 'resolveRawData');
+			const parseJsonSpy = vi.spyOn(utils, 'parseJsonParameter');
+			const resolveRawDataSpy = vi.spyOn(utils, 'resolveRawData');
 
 			const result = await execute.call(fakeExecuteFunction, item, 0, options, rawData, node);
 

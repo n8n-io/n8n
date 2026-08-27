@@ -147,3 +147,43 @@ describe('environments.store', () => {
 		});
 	});
 });
+
+describe('environments.store variablesAsObject precedence', () => {
+	let server: ReturnType<typeof setupServer>;
+
+	beforeAll(() => {
+		server = setupServer();
+
+		// Project variable is created before its global twin so the store array
+		// lists it first. Resolution must still let the project value win.
+		server.create('variable', {
+			id: '1',
+			key: 'CONFLICT',
+			value: 'projectValue',
+			project: { id: '1', name: 'Project 1' },
+		});
+
+		server.create('variable', {
+			id: '2',
+			key: 'CONFLICT',
+			value: 'globalValue',
+		});
+	});
+
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	afterAll(() => {
+		server.shutdown();
+	});
+
+	it('should let a project variable override a same-key global regardless of order', async () => {
+		const environmentsStore = useEnvironmentsStore();
+		await environmentsStore.fetchAllVariables();
+		const projectStore = useProjectsStore();
+		projectStore.setCurrentProject({ id: '1', name: 'Project 1' } as Project);
+
+		expect(environmentsStore.variablesAsObject).toEqual({ CONFLICT: 'projectValue' });
+	});
+});

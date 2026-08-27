@@ -643,14 +643,20 @@ class TaskExecutor:
             importlib,
             "import_module",
             _GuardedImport(
-                security_config, validate_module_import, _PRISTINE_IMPORT_MODULE
+                security_config,
+                validate_module_import,
+                _PRISTINE_IMPORT_MODULE,
+                trust_eligible=True,
             ),
         )
         setattr(
             importlib,
             "__import__",
             _GuardedImport(
-                security_config, validate_module_import, _PRISTINE_DUNDER_IMPORT
+                security_config,
+                validate_module_import,
+                _PRISTINE_DUNDER_IMPORT,
+                trust_eligible=True,
             ),
         )
 

@@ -16,9 +16,10 @@ import {
 	encodeBodyAsFormUrlEncoded,
 } from '../../helpers/utils';
 import { awsApiRequest } from '../../transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../transport', () => ({
-	awsApiRequest: jest.fn(),
+vi.mock('../../transport', () => ({
+	awsApiRequest: vi.fn(),
 }));
 
 describe('AWS IAM - Helper Functions', () => {
@@ -26,10 +27,10 @@ describe('AWS IAM - Helper Functions', () => {
 
 	beforeEach(() => {
 		mockNode = {
-			getNodeParameter: jest.fn(),
-			getNode: jest.fn(),
+			getNodeParameter: vi.fn(),
+			getNode: vi.fn(),
 			helpers: {
-				returnJsonArray: jest.fn((input: unknown[]) => input.map((i) => ({ json: i }))),
+				returnJsonArray: vi.fn((input: unknown[]) => input.map((i) => ({ json: i }))),
 			},
 		};
 	});
@@ -67,7 +68,7 @@ describe('AWS IAM - Helper Functions', () => {
 			const mockResponse = {
 				GetGroupResponse: { GetGroupResult: { Users: [{ UserName: 'user1' }] } },
 			};
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			(awsApiRequest as Mock).mockResolvedValue(mockResponse);
 
 			const result = await findUsersForGroup.call(mockNode, 'groupName');
 			expect(result).toEqual([{ UserName: 'user1' }]);
@@ -134,7 +135,7 @@ describe('AWS IAM - Helper Functions', () => {
 			});
 
 			const mockUsers = [{ UserName: 'user1' }];
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockUsers);
+			(awsApiRequest as Mock).mockResolvedValue(mockUsers);
 
 			const requestOptions = { headers: {}, url: '' };
 			const result = await deleteGroupMembers.call(mockNode, requestOptions);
@@ -184,7 +185,7 @@ describe('AWS IAM - Helper Functions', () => {
 				},
 			};
 
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			(awsApiRequest as Mock).mockResolvedValue(mockResponse);
 
 			await expect(validateUserPath.call(mockNode, { headers: {}, url: '' })).rejects.toThrowError(
 				NodeOperationError,
@@ -203,7 +204,7 @@ describe('AWS IAM - Helper Functions', () => {
 				},
 			};
 
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockResponse);
+			(awsApiRequest as Mock).mockResolvedValue(mockResponse);
 
 			const result = await validateUserPath.call(mockNode, requestOptions);
 			expect(result.body).toHaveProperty('PathPrefix', '/validPrefix/');
@@ -381,7 +382,7 @@ describe('AWS IAM - Helper Functions', () => {
 			};
 
 			const mockUsers = [{ UserName: 'user1' }];
-			(awsApiRequest as jest.Mock).mockResolvedValueOnce({
+			(awsApiRequest as Mock).mockResolvedValueOnce({
 				GetGroupResponse: { GetGroupResult: { Users: mockUsers } },
 			});
 
@@ -408,7 +409,7 @@ describe('AWS IAM - Helper Functions', () => {
 		it('should remove a user from all groups', async () => {
 			mockNode.getNodeParameter.mockReturnValue('user1');
 			const mockUserGroups = { results: [{ value: 'group1' }, { value: 'group2' }] };
-			(awsApiRequest as jest.Mock).mockResolvedValue(mockUserGroups);
+			(awsApiRequest as Mock).mockResolvedValue(mockUserGroups);
 
 			const requestOptions = { headers: {}, url: '' };
 			const result = await removeUserFromGroups.call(mockNode, requestOptions);

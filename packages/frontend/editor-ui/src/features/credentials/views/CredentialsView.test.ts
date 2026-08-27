@@ -5,7 +5,7 @@ import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsResponse } from '../credentials.types';
 import CredentialsView from './CredentialsView.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor, within, fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -164,7 +164,10 @@ describe('CredentialsView', () => {
 			projectsStore.currentProject = createTestProject({ scopes: ['credential:create'] });
 			const { rerender } = renderComponent();
 			await rerender({ credentialId: 'create' });
-			expect(uiStore.openModal).toHaveBeenCalledWith(CREDENTIAL_SELECT_MODAL_KEY);
+			expect(uiStore.openModalWithData).toHaveBeenCalledWith({
+				name: CREDENTIAL_SELECT_MODAL_KEY,
+				data: {},
+			});
 		});
 
 		it('should not show the modal on the route if the user has no scope to create credential in the project', async () => {
@@ -191,7 +194,7 @@ describe('CredentialsView', () => {
 			}));
 			const { rerender } = renderComponent();
 			await rerender({ credentialId: 'abc123' });
-			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('abc123');
+			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('abc123', expect.anything());
 		});
 
 		it('should not show the modal on the route if the user has no permission to read or update', async () => {
@@ -429,7 +432,7 @@ describe('CredentialsView', () => {
 				type: 'oAuth2Api',
 				createdAt: '2021-05-05T00:00:00Z',
 				updatedAt: '2021-05-05T00:00:00Z',
-				scopes: ['credential:update'],
+				scopes: ['credential:connect'],
 				isManaged: false,
 				isResolvable: true,
 				connectedByMe: false,
@@ -459,6 +462,21 @@ describe('CredentialsView', () => {
 			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
 			expect(queryByTestId('credential-card-connected')).not.toBeInTheDocument();
 			expect(getByTestId('card-badge')).toBeInTheDocument();
+		});
+
+		it('does not show the "Needs first setup" badge for private credentials with empty data', () => {
+			enableDynamicCredentials();
+			const credentialsStore = mockedStore(useCredentialsStore);
+			credentialsStore.allCredentials = [
+				buildPrivateUnconnectedCredential({
+					connectedByMe: true,
+					data: {} as unknown as string,
+				}),
+			];
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('resources-list-item').textContent).not.toContain('Needs first setup');
 		});
 
 		it('refetches credentials when the Connect button completes successfully', async () => {

@@ -3,18 +3,18 @@ import { mockInstance, getPersonalProject, testDb } from '@n8n/backend-test-util
 import type { CredentialsEntity, User } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import nock from 'nock';
+import { mock } from 'vitest-mock-extended';
 
-import * as utils from '../shared/utils';
+import { CredentialsHelper } from '@/credentials-helper';
+import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
+import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 import { DynamicCredentialResolverService } from '@/modules/dynamic-credentials.ee/services/credential-resolver.service';
 import { Telemetry } from '@/telemetry';
-import { saveCredential } from '../shared/db/credentials';
-import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
-import { CredentialsHelper } from '@/credentials-helper';
 
+import { saveCredential } from '../shared/db/credentials';
 import { createUser } from '../shared/db/users';
-import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
+import * as utils from '../shared/utils';
 
 mockInstance(Telemetry);
 

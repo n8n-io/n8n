@@ -21,8 +21,6 @@ import { Cipher } from 'n8n-core';
 import type { IDataObject } from 'n8n-workflow';
 import { jsonParse } from 'n8n-workflow';
 
-import { ExternalSecretsProviderRegistry } from './provider-registry.service';
-
 import {
 	CredentialDependencyService,
 	EXTERNAL_SECRET_PROVIDER_DEPENDENCY_TYPE,
@@ -33,6 +31,8 @@ import { EventService } from '@/events/event.service';
 import type { ProjectSummary } from '@/events/maps/relay.event-map';
 import { ExternalSecretsManager } from '@/modules/external-secrets.ee/external-secrets-manager.ee';
 import { RedactionService } from '@/modules/external-secrets.ee/redaction.service.ee';
+
+import { ExternalSecretsProviderRegistry } from './provider-registry.service';
 
 @Service()
 export class SecretsProvidersConnectionsService {

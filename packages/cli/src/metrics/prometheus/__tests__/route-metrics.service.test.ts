@@ -1,16 +1,17 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { EndpointsConfig, PrometheusMetricsConfig } from '@n8n/config';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
 import { PrometheusRouteMetricsService } from '../route-metrics.service';
 
-jest.mock('prom-client');
-jest.mock('express-prom-bundle', () =>
-	jest.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
-);
+vi.mock('prom-client');
+vi.mock('express-prom-bundle', () => ({
+	default: vi.fn(() => (_req: unknown, _res: unknown, next: () => void) => next()),
+}));
 
 describe('PrometheusRouteMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -31,7 +32,7 @@ describe('PrometheusRouteMetricsService', () => {
 	});
 	const app = mock<express.Application>();
 	let service: PrometheusRouteMetricsService;
-	let mockGaugeSet: jest.Mock;
+	let mockGaugeSet: Mock;
 
 	beforeEach(() => {
 		Object.assign(config, {
@@ -42,12 +43,12 @@ describe('PrometheusRouteMetricsService', () => {
 			includeApiStatusCodeLabel: false,
 		});
 		service = new PrometheusRouteMetricsService(config, endpointsConfig);
-		mockGaugeSet = jest.fn();
+		mockGaugeSet = vi.fn();
 		promClient.Gauge.prototype.set = mockGaugeSet;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('enabled', () => {
@@ -149,10 +150,10 @@ describe('PrometheusRouteMetricsService', () => {
 		it('should update last_activity gauge when the registered middleware is called', async () => {
 			service.init(app);
 
-			const middleware = jest.mocked(app.use).mock.calls[0][1];
+			const middleware = vi.mocked(app.use).mock.calls[0][1];
 			const req = mock<express.Request>();
 			const res = mock<express.Response>();
-			const next = jest.fn();
+			const next = vi.fn();
 
 			await middleware(req, res, next);
 

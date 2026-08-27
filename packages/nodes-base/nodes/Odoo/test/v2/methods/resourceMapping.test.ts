@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import {
@@ -9,8 +9,9 @@ import {
 	getOpportunityFields,
 } from '../../../v2/methods/resourceMapping';
 import * as transport from '../../../v2/transport';
+import type { Mock } from 'vitest';
 
-jest.mock('../../../v2/transport', () => ({ odooApiRequest: jest.fn() }));
+vi.mock('../../../v2/transport', () => ({ odooApiRequest: vi.fn() }));
 
 const SCHEMA = {
 	name: { string: 'Name', type: 'char', required: true, readonly: false },
@@ -39,10 +40,10 @@ describe('Odoo v2 — resourceMapping methods', () => {
 
 	beforeEach(() => {
 		ctx = mock<ILoadOptionsFunctions>();
-		(transport.odooApiRequest as jest.Mock).mockResolvedValue(SCHEMA);
+		(transport.odooApiRequest as Mock).mockResolvedValue(SCHEMA);
 	});
 
-	afterEach(() => jest.clearAllMocks());
+	afterEach(() => vi.clearAllMocks());
 
 	describe('getOdooFields', () => {
 		it('returns empty fields when customResource is not set', async () => {

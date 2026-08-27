@@ -264,6 +264,22 @@ export const optionsCollection: INodeProperties[] = [
 					'This property is a query tuning option to set the number of additional rows the underlying Oracle driver fetches during the internal initial statement execution phase of a query',
 			},
 			{
+				displayName: 'String OUT Bind Max Size',
+				name: 'stringOutBindMaxSize',
+				type: 'number',
+				default: 4000,
+				typeOptions: {
+					minValue: 1,
+				},
+				displayOptions: {
+					show: {
+						'/operation': ['execute'],
+					},
+				},
+				description:
+					'Maximum byte size for string OUT and IN-OUT bind parameters in execute statements',
+			},
+			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Output Columns',
 				name: 'outputColumns',

@@ -8,23 +8,23 @@ describe('LinearTriggerHelpers', () => {
 	const testSignature = createHmac('sha256', testSigningSecret).update(testBody).digest('hex');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Mock Date.now() to a fixed timestamp
-		jest.spyOn(Date, 'now').mockImplementation(() => 1700000000000);
+		vi.spyOn(Date, 'now').mockImplementation(() => 1700000000000);
 
 		mockWebhookFunctions = {
-			getCredentials: jest.fn(),
-			getRequestObject: jest.fn(),
-			getNodeParameter: jest.fn(),
-			getBodyData: jest.fn().mockReturnValue({ webhookTimestamp: 1700000000000 }),
-			getNode: jest.fn().mockReturnValue({ name: 'Linear Trigger' }),
+			getCredentials: vi.fn(),
+			getRequestObject: vi.fn(),
+			getNodeParameter: vi.fn(),
+			getBodyData: vi.fn().mockReturnValue({ webhookTimestamp: 1700000000000 }),
+			getNode: vi.fn().mockReturnValue({ name: 'Linear Trigger' }),
 		};
 
 		mockWebhookFunctions.getNodeParameter.mockReturnValue('apiToken');
 
 		mockWebhookFunctions.getRequestObject.mockReturnValue({
-			header: jest.fn().mockImplementation((header: string) => {
+			header: vi.fn().mockImplementation((header: string) => {
 				if (header === 'linear-signature') return testSignature;
 				return null;
 			}),
@@ -60,7 +60,7 @@ describe('LinearTriggerHelpers', () => {
 			});
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testBody,
 			});
 
@@ -75,7 +75,7 @@ describe('LinearTriggerHelpers', () => {
 			});
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockReturnValue(null),
+				header: vi.fn().mockReturnValue(null),
 				rawBody: testBody,
 			});
 
@@ -100,7 +100,7 @@ describe('LinearTriggerHelpers', () => {
 			});
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
-				header: jest.fn().mockImplementation((header: string) => {
+				header: vi.fn().mockImplementation((header: string) => {
 					if (header === 'linear-signature') return 'invalidsignature';
 					return null;
 				}),

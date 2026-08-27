@@ -1,14 +1,27 @@
 {
   "name": "@n8n/vitest-config",
-  "version": "1.14.0",
+  "version": "1.21.0",
   "type": "module",
   "peerDependencies": {
+    "@testing-library/jest-dom": "catalog:frontend",
+    "@testing-library/vue": "catalog:frontend",
     "vite": "catalog:",
     "vitest": "catalog:"
+  },
+  "peerDependenciesMeta": {
+    "@testing-library/jest-dom": {
+      "optional": true
+    },
+    "@testing-library/vue": {
+      "optional": true
+    }
   },
   "dependencies": {},
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@testing-library/jest-dom": "catalog:frontend",
+    "@testing-library/vue": "catalog:frontend",
+    "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:"
   },
@@ -26,6 +39,11 @@
       "import": "./dist/frontend.js",
       "require": "./dist/frontend.js",
       "types": "./dist/frontend.d.ts"
+    },
+    "./setup/frontend": {
+      "import": "./dist/setup/frontend.js",
+      "require": "./dist/setup/frontend.js",
+      "types": "./dist/setup/frontend.d.ts"
     },
     "./node": {
       "import": "./dist/node.js",

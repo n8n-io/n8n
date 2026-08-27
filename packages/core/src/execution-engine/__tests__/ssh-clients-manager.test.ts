@@ -40,6 +40,12 @@ afterEach(() => {
 	sshClientsManager.onShutdown();
 });
 
+it('should not keep the process alive for the stale-connection cleanup timer', () => {
+	const { cleanupTimer } = sshClientsManager as unknown as { cleanupTimer: NodeJS.Timeout };
+
+	expect(cleanupTimer.hasRef()).toBe(false);
+});
+
 describe('getClient', () => {
 	it('should create a new SSH client', async () => {
 		const client = await sshClientsManager.getClient(credentials);
@@ -108,6 +114,33 @@ describe('onShutdown', () => {
 
 		// ASSERT
 		expect(endSpy).toHaveBeenCalledTimes(1);
+	});
+
+	it('should not throw on process exit when constructed without a logger', () => {
+		// ARRANGE
+		const managerWithoutLogger = new SSHClientsManager(
+			mock({ idleTimeout }),
+			undefined as unknown as Logger,
+		);
+
+		// ACT & ASSERT
+		expect(() => managerWithoutLogger.onShutdown()).not.toThrow();
+	});
+
+	it('should deregister its exit handler on shutdown', async () => {
+		// ARRANGE
+		const before = process.listenerCount('exit');
+		const manager = new SSHClientsManager(
+			mock({ idleTimeout }),
+			mock<Logger>({ scoped: () => mock<Logger>() }),
+		);
+		expect(process.listenerCount('exit')).toBe(before + 1);
+
+		// ACT
+		manager.onShutdown();
+
+		// ASSERT
+		expect(process.listenerCount('exit')).toBe(before);
 	});
 });
 

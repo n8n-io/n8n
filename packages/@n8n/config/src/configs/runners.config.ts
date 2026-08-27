@@ -2,9 +2,9 @@ import { Time } from '@n8n/constants';
 import { z } from 'zod';
 
 import { Config, Env } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 const runnerModeSchema = z.enum(['internal', 'external']);
-const positiveIntSchema = z.number({ coerce: true }).int().positive();
 
 export type TaskRunnerMode = z.infer<typeof runnerModeSchema>;
 
@@ -61,6 +61,15 @@ export class TaskRunnersConfig {
 	 */
 	@Env('N8N_RUNNERS_TASK_REQUEST_TIMEOUT')
 	taskRequestTimeout: number = 60;
+
+	/**
+	 * How long (in seconds) the broker waits for a runner or requester to
+	 * acknowledge a matched task before abandoning the match.
+	 * Must be greater than 0.
+	 * Increase on infrastructure where runners are slow to respond.
+	 */
+	@Env('N8N_RUNNERS_TASK_ACCEPT_TIMEOUT')
+	taskAcceptTimeout: number = 2;
 
 	/** Interval in seconds between heartbeats from runner to broker; missing heartbeats abort the task (and restart the runner in internal mode). Must be > 0. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')

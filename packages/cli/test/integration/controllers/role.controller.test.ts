@@ -15,16 +15,18 @@ describe('RoleController', () => {
 	const testServer = setupTestServer({ endpointGroups: ['role'] });
 	let ownerAgent: SuperAgentTest;
 	let memberAgent: SuperAgentTest;
+	let ownerId: string;
 
 	beforeAll(async () => {
 		const owner = await createOwner();
 		const member = await createMember();
 		ownerAgent = testServer.authAgentFor(owner);
 		memberAgent = testServer.authAgentFor(member);
+		ownerId = owner.id;
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// Enable CUSTOM_ROLES license for all tests by default
 		testServer.license.enable('feat:customRoles');
 	});
@@ -744,6 +746,52 @@ describe('RoleController', () => {
 		});
 	});
 
+	describe('GET /roles/:slug/members', () => {
+		it('should require authentication', async () => {
+			//
+			// ACT & ASSERT
+			//
+			await testServer.authlessAgent.get('/roles/global:admin/members').expect(401);
+		});
+
+		it('should require role:read permission', async () => {
+			//
+			// ACT & ASSERT
+			//
+			await memberAgent.get('/roles/global:admin/members').expect(403);
+		});
+
+		it('should return the role members for a holder of role:read', async () => {
+			//
+			// ARRANGE
+			//
+			const mockResponse = {
+				members: [
+					{
+						userId: 'user-1',
+						firstName: 'Ada',
+						lastName: 'Lovelace',
+						email: 'ada@example.com',
+						role: 'global:admin',
+					},
+				],
+				total: 1,
+			};
+			roleService.getRoleMembers.mockResolvedValue(mockResponse);
+
+			//
+			// ACT
+			//
+			const response = await ownerAgent.get('/roles/global:admin/members').expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(response.body).toEqual({ data: mockResponse });
+			expect(roleService.getRoleMembers).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('POST /roles', () => {
 		it('should require authentication', async () => {
 			//
@@ -806,6 +854,41 @@ describe('RoleController', () => {
 			//
 			expect(response.body).toEqual({ data: mockCreatedRole });
 			// Parameter verification skipped - test framework issue
+			expect(roleService.createCustomRole).toHaveBeenCalledWith(createRoleDto);
+		});
+
+		it('should create a global custom role with valid data as owner', async () => {
+			//
+			// ARRANGE
+			//
+			const createRoleDto: CreateRoleDto = {
+				displayName: 'Custom Global Role',
+				description: 'A custom global role',
+				roleType: 'global',
+				scopes: ['workflow:read'],
+			};
+
+			const mockCreatedRole: Role = {
+				slug: 'global:custom-global-role',
+				displayName: createRoleDto.displayName,
+				description: createRoleDto.description ?? null,
+				systemRole: false,
+				roleType: createRoleDto.roleType,
+				scopes: createRoleDto.scopes,
+				licensed: true,
+			};
+
+			roleService.createCustomRole.mockResolvedValue(mockCreatedRole);
+
+			//
+			// ACT
+			//
+			const response = await ownerAgent.post('/roles').send(createRoleDto).expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(response.body).toEqual({ data: mockCreatedRole });
 			expect(roleService.createCustomRole).toHaveBeenCalledWith(createRoleDto);
 		});
 
@@ -915,8 +998,11 @@ describe('RoleController', () => {
 			// ASSERT
 			//
 			expect(response.body).toEqual({ data: mockUpdatedRole });
-			// Parameter verification skipped - test framework issue
-			expect(roleService.updateCustomRole).toHaveBeenCalledWith(roleSlug, updateRoleDto);
+			expect(roleService.updateCustomRole).toHaveBeenCalledWith({
+				slug: roleSlug,
+				newRole: updateRoleDto,
+				userId: expect.any(String),
+			});
 		});
 
 		it('should update only provided fields', async () => {
@@ -949,7 +1035,11 @@ describe('RoleController', () => {
 			// ASSERT
 			//
 			expect(response.body).toEqual({ data: mockUpdatedRole });
-			expect(roleService.updateCustomRole).toHaveBeenCalledWith(roleSlug, updateRoleDto);
+			expect(roleService.updateCustomRole).toHaveBeenCalledWith({
+				slug: roleSlug,
+				newRole: updateRoleDto,
+				userId: expect.any(String),
+			});
 		});
 
 		it('should handle service errors gracefully', async () => {
@@ -1045,6 +1135,79 @@ describe('RoleController', () => {
 			expect(response.body).toEqual({ data: mockDeletedRole });
 			// Parameter verification skipped - test framework issue
 			expect(roleService.removeCustomRole).toHaveBeenCalledTimes(1);
+		});
+
+		it('should forward the reassignRoleSlug query param to the service for an entitled caller', async () => {
+			//
+			// ARRANGE
+			//
+			const roleSlug = 'global:test-role';
+			const globalRole: Role = {
+				slug: roleSlug,
+				displayName: 'Deleted Role',
+				description: null,
+				systemRole: false,
+				roleType: 'global',
+				scopes: [],
+				licensed: true,
+			};
+			roleService.getRole.mockResolvedValue(globalRole);
+			roleService.removeCustomRole.mockResolvedValue(globalRole);
+
+			//
+			// ACT
+			//
+			await ownerAgent.delete(`/roles/${roleSlug}?reassignRoleSlug=global:member`).expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(roleService.removeCustomRole).toHaveBeenCalledWith({
+				slug: roleSlug,
+				reassignRoleSlug: 'global:member',
+				userId: ownerId,
+			});
+		});
+
+		it('should reject reassignment to the owner role', async () => {
+			//
+			// ACT & ASSERT — global:owner is not an assignable target (DTO validation)
+			//
+			await ownerAgent.delete('/roles/global:test-role?reassignRoleSlug=global:owner').expect(400);
+
+			expect(roleService.removeCustomRole).not.toHaveBeenCalled();
+		});
+
+		it('should ignore the reassignment target for project roles', async () => {
+			//
+			// ARRANGE
+			//
+			const roleSlug = 'project:test-role';
+			const projectRole: Role = {
+				slug: roleSlug,
+				displayName: 'Project Role',
+				description: null,
+				systemRole: false,
+				roleType: 'project',
+				scopes: ['workflow:read'],
+				licensed: true,
+			};
+			roleService.getRole.mockResolvedValue(projectRole);
+			roleService.removeCustomRole.mockResolvedValue(projectRole);
+
+			//
+			// ACT — reassignment is not supported for project roles, so the target is dropped
+			//
+			await ownerAgent.delete(`/roles/${roleSlug}?reassignRoleSlug=project:admin`).expect(200);
+
+			//
+			// ASSERT
+			//
+			expect(roleService.removeCustomRole).toHaveBeenCalledWith({
+				slug: roleSlug,
+				reassignRoleSlug: undefined,
+				userId: ownerId,
+			});
 		});
 
 		it('should handle service errors gracefully', async () => {

@@ -19,6 +19,10 @@ import {
 	createRemediation,
 	remainingPostSubmitRemediations,
 } from './remediation';
+import {
+	buildRemediationForVerification,
+	shouldVerifyBeforeSetup,
+} from './setup-verification-policy';
 import type {
 	AttemptRecord,
 	RemediationMetadata,
@@ -85,7 +89,9 @@ export function handleBuildOutcome(
 		MAX_POST_SUBMIT_REMEDIATION_SUBMITS - postSubmitRemediationSubmitsUsed,
 	);
 	const remediation = withRemainingSubmitFixes(outcome.remediation, remainingSubmitFixes);
-	applyRemediationToAttempt(attempt, remediation);
+	const shouldVerifyFirst = shouldVerifyBeforeSetup(outcome);
+	const effectiveRemediation = buildRemediationForVerification(outcome, remediation);
+	applyRemediationToAttempt(attempt, effectiveRemediation);
 
 	if (!outcome.submitted) {
 		const preSaveSubmitFailures = normalizedState.successfulSubmitSeen
@@ -97,8 +103,8 @@ export function handleBuildOutcome(
 		const postSubmitBudgetExhausted =
 			normalizedState.successfulSubmitSeen &&
 			postSubmitRemediationSubmitsUsed >= MAX_POST_SUBMIT_REMEDIATION_SUBMITS;
-		let terminalRemediation = remediation;
-		if (preSaveBudgetExhausted && remediation?.shouldEdit !== false) {
+		let terminalRemediation = effectiveRemediation;
+		if (preSaveBudgetExhausted && effectiveRemediation?.shouldEdit !== false) {
 			terminalRemediation = createRemediation({
 				category: 'blocked',
 				shouldEdit: false,
@@ -108,7 +114,7 @@ export function handleBuildOutcome(
 				guidance:
 					'The workflow could not be saved after three submit attempts. Stop editing and explain the blocker to the user.',
 			});
-		} else if (postSubmitBudgetExhausted && remediation?.shouldEdit !== false) {
+		} else if (postSubmitBudgetExhausted && effectiveRemediation?.shouldEdit !== false) {
 			terminalRemediation = createRemediation({
 				category: 'blocked',
 				shouldEdit: false,
@@ -129,8 +135,10 @@ export function handleBuildOutcome(
 			outcome.blockingReason ??
 			outcome.failureSignature ??
 			'Builder failed to submit workflow';
+		const sourceFilePath = outcome.sourceFilePath ?? normalizedState.sourceFilePath;
 		const nextState: WorkflowLoopState = {
 			...normalizedState,
+			...(sourceFilePath ? { sourceFilePath } : {}),
 			lastTaskId: outcome.taskId,
 			preSaveSubmitFailures,
 			postSubmitRemediationSubmitsUsed,
@@ -144,7 +152,13 @@ export function handleBuildOutcome(
 			action:
 				outcome.needsUserInput || terminalRemediation?.shouldEdit === false
 					? { type: 'blocked', reason }
-					: { type: 'continue_building', reason },
+					: nextState.sourceFilePath
+						? {
+								type: 'continue_building',
+								reason,
+								sourceFilePath: nextState.sourceFilePath,
+							}
+						: { type: 'continue_building', reason },
 			attempt,
 		};
 	}
@@ -157,9 +171,17 @@ export function handleBuildOutcome(
 			? outcome.mockedCredentialTypes
 			: undefined;
 	const hasUnresolvedPlaceholders = outcome.hasUnresolvedPlaceholders ?? undefined;
+	const sourceFilePath = outcome.sourceFilePath ?? normalizedState.sourceFilePath;
+	// Deliberately not carried over from the previous build: a credential added since then
+	// must still route setup, even if an earlier build had nothing but skipped ones left.
+	const setupSkippedByUser =
+		outcome.setupRequirement?.status === 'not_required' &&
+		outcome.setupRequirement.reason === 'skipped-by-user';
 	const updatedState: WorkflowLoopState = {
 		...normalizedState,
 		workflowId: outcome.workflowId ?? normalizedState.workflowId,
+		...(sourceFilePath ? { sourceFilePath } : {}),
+		setupSkippedByUser,
 		lastTaskId: outcome.taskId,
 		mockedCredentialTypes: mockedCredentialTypes ?? normalizedState.mockedCredentialTypes,
 		hasUnresolvedPlaceholders:
@@ -169,10 +191,10 @@ export function handleBuildOutcome(
 			? (normalizedState.preSaveSubmitFailures ?? 0)
 			: 0,
 		postSubmitRemediationSubmitsUsed,
-		lastRemediation: remediation,
+		lastRemediation: effectiveRemediation,
 	};
 
-	if (outcome.needsUserInput) {
+	if (outcome.needsUserInput && !shouldVerifyFirst) {
 		return {
 			state: { ...updatedState, phase: 'blocked', status: 'blocked' },
 			action: { type: 'blocked', reason: outcome.blockingReason ?? 'Needs user input' },
@@ -189,6 +211,7 @@ export function handleBuildOutcome(
 				summary: outcome.summary,
 				mockedCredentialTypes,
 				hasUnresolvedPlaceholders: updatedState.hasUnresolvedPlaceholders,
+				setupSkippedByUser: updatedState.setupSkippedByUser,
 			},
 			attempt,
 		};
@@ -266,6 +289,7 @@ export function handleVerificationVerdict(
 					summary: verdict.summary,
 					mockedCredentialTypes: normalizedState.mockedCredentialTypes,
 					hasUnresolvedPlaceholders: normalizedState.hasUnresolvedPlaceholders,
+					setupSkippedByUser: normalizedState.setupSkippedByUser,
 				},
 				attempt,
 			};
@@ -287,6 +311,7 @@ export function handleVerificationVerdict(
 					summary: verdict.summary,
 					mockedCredentialTypes: normalizedState.mockedCredentialTypes,
 					hasUnresolvedPlaceholders: normalizedState.hasUnresolvedPlaceholders,
+					setupSkippedByUser: normalizedState.setupSkippedByUser,
 				},
 				attempt,
 			};
@@ -329,6 +354,9 @@ export function handleVerificationVerdict(
 			return escalateToRepair(normalizedState, attempts, verdict, attempt, remediation, {
 				type: 'patch',
 				workflowId: verdict.workflowId,
+				...(normalizedState.sourceFilePath
+					? { sourceFilePath: normalizedState.sourceFilePath }
+					: {}),
 				failedNodeName: verdict.failedNodeName ?? 'unknown',
 				diagnosis: verdict.diagnosis ?? verdict.summary,
 				patch: verdict.patch,
@@ -351,6 +379,9 @@ export function handleVerificationVerdict(
 			return escalateToRepair(normalizedState, attempts, verdict, attempt, remediation, {
 				type: 'rebuild',
 				workflowId: verdict.workflowId,
+				...(normalizedState.sourceFilePath
+					? { sourceFilePath: normalizedState.sourceFilePath }
+					: {}),
 				failureDetails: failureDetails || verdict.summary,
 			});
 		}

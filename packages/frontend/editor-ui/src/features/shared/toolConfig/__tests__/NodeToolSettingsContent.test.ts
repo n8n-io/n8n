@@ -6,10 +6,14 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { ToolConfigCredentialSelectedKey } from '@/app/constants';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import NodeToolSettingsContent from '../NodeToolSettingsContent.vue';
 import { NodeHelpers, type INode, type INodeTypeDescription } from 'n8n-workflow';
 import { waitFor } from '@testing-library/vue';
+import { defineComponent, inject, type PropType } from 'vue';
 
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
@@ -155,10 +159,59 @@ describe('NodeToolSettingsContent', () => {
 		credentialsStore.allCredentials = [];
 		credentialsStore.setCredentials = vi.fn();
 		credentialsStore.fetchCredentialTypes = vi.fn().mockResolvedValue(undefined);
-		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue(undefined);
+		credentialsStore.fetchUsableCredentials = vi.fn().mockResolvedValue(undefined);
 		projectsStore.personalProject = { id: 'personal-project', name: 'Personal' } as never;
 		projectsStore.setCurrentProject = vi.fn();
 		projectsStore.fetchAndSetProject = vi.fn().mockResolvedValue(undefined);
+	});
+
+	it('should hide operations listed in hiddenOperations from the parameters form', () => {
+		const nodeTypeWithWaitingOperation: INodeTypeDescription = {
+			...MOCK_NODE_TYPE,
+			properties: [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [
+						{ name: 'Create', value: 'create' },
+						{ name: 'Send and Wait', value: 'sendAndWait' },
+					],
+					default: 'sendAndWait',
+					noDataExpression: true,
+				},
+			],
+		};
+		nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeWithWaitingOperation);
+
+		const renderWithParameterCapture = createComponentRenderer(NodeToolSettingsContent, {
+			global: {
+				stubs: {
+					ParameterInputList: {
+						template:
+							'<div data-test-id="parameter-input-list">{{ JSON.stringify(parameters) }}</div>',
+						props: ['parameters', 'nodeValues', 'isReadOnly', 'hideDelete', 'node', 'path'],
+					},
+					NodeCredentials: {
+						template: '<div data-test-id="node-credentials" />',
+						props: ['node', 'readonly', 'showAll', 'hideIssues'],
+					},
+				},
+			},
+		});
+
+		const { getAllByTestId } = renderWithParameterCapture({
+			props: {
+				initialNode: createMockNode({ parameters: {} }),
+				hiddenOperations: ['sendAndWait'],
+			},
+		});
+
+		const renderedParameters = getAllByTestId('parameter-input-list')
+			.map((element) => element.textContent ?? '')
+			.join('');
+		expect(renderedParameters).toContain('create');
+		expect(renderedParameters).not.toContain('sendAndWait');
 	});
 
 	it('should hide settings tab when there are no settings', () => {
@@ -200,6 +253,25 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		expect(getAllByTestId('parameter-input-list').length).toBeGreaterThan(0);
+	});
+
+	it('syncs parameter changes to the scoped NDV when enabled', async () => {
+		const initialNode = createMockNode();
+		const { rerender } = renderComponent({
+			props: { initialNode, syncNodeToNdv: true },
+		});
+		const toolNdvStore = useNDVStore(createWorkflowDocumentId('node-tool-workflow'));
+
+		expect(toolNdvStore.activeNode?.parameters).toEqual(initialNode.parameters);
+
+		const updatedNode = createMockNode({
+			parameters: { ...initialNode.parameters, nameField: 'updated-value' },
+		});
+		await rerender({ initialNode: updatedNode });
+
+		await waitFor(() =>
+			expect(toolNdvStore.activeNode?.parameters).toEqual(updatedNode.parameters),
+		);
 	});
 
 	it('should render NodeCredentials inside the parameters tab', () => {
@@ -272,7 +344,39 @@ describe('NodeToolSettingsContent', () => {
 
 		await waitFor(() => {
 			expect(credentialsStore.fetchCredentialTypes).toHaveBeenCalledWith(false);
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+				projectId: 'personal-project',
+			});
+		});
+	});
+
+	it('falls back to the personal project when the provided project id is empty', async () => {
+		// useAgentScopeProjectId resolves to '' before project state has loaded on
+		// first open; the empty string must not suppress the credential fetch.
+		renderComponent({
+			props: { initialNode: createMockNode(), projectId: '' },
+		});
+
+		await waitFor(() => {
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
+				projectId: 'personal-project',
+			});
+		});
+	});
+
+	it('loads the personal project when the id is empty and it is not yet available', async () => {
+		projectsStore.personalProject = null as never;
+		projectsStore.getPersonalProject = vi.fn().mockImplementation(() => {
+			projectsStore.personalProject = { id: 'personal-project', name: 'Personal' } as never;
+		});
+
+		renderComponent({
+			props: { initialNode: createMockNode(), projectId: '' },
+		});
+
+		await waitFor(() => {
+			expect(projectsStore.getPersonalProject).toHaveBeenCalled();
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
@@ -296,11 +400,13 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'personal-project',
 			});
 		});
+		// The refetch REPLACES the store on resolve; clearing it up front would
+		// blank every credential-driven control still visible behind the modal.
+		expect(credentialsStore.setCredentials).not.toHaveBeenCalledWith([]);
 	});
 
 	it('fetches workflow-scoped credentials for the provided project even when the shared store is already populated', async () => {
@@ -321,11 +427,11 @@ describe('NodeToolSettingsContent', () => {
 		});
 
 		await waitFor(() => {
-			expect(credentialsStore.setCredentials).toHaveBeenCalledWith([]);
-			expect(credentialsStore.fetchAllCredentialsForWorkflow).toHaveBeenCalledWith({
+			expect(credentialsStore.fetchUsableCredentials).toHaveBeenCalledWith({
 				projectId: 'team-project',
 			});
 		});
+		expect(credentialsStore.setCredentials).not.toHaveBeenCalledWith([]);
 	});
 
 	describe('makeUniqueName', () => {
@@ -421,6 +527,123 @@ describe('NodeToolSettingsContent', () => {
 			});
 
 			vi.restoreAllMocks();
+		});
+
+		it('applies credentials from ToolConfigCredentialSelectedKey onto the local node', async () => {
+			const httpLikeNodeType: INodeTypeDescription = {
+				...MOCK_NODE_TYPE,
+				properties: [
+					{
+						displayName: 'Name Field',
+						name: 'nameField',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Authentication',
+						name: 'authentication',
+						type: 'options',
+						options: [
+							{ name: 'None', value: 'none' },
+							{ name: 'Generic Credential Type', value: 'genericCredentialType' },
+						],
+						default: 'none',
+					},
+					{
+						displayName: 'Generic Auth Type',
+						name: 'genericAuthType',
+						type: 'credentialsSelect',
+						default: '',
+						displayOptions: {
+							show: { authentication: ['genericCredentialType'] },
+						},
+					},
+				],
+				// Non-empty credentials array is required for getNodeCredentialIssues to
+				// evaluate generic auth (HTTP Request declares httpSslAuth the same way).
+				credentials: [
+					{
+						name: 'httpSslAuth',
+						required: true,
+						displayOptions: { show: { provideSslCertificates: [true] } },
+					},
+				],
+			};
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(httpLikeNodeType);
+			credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue({
+				name: 'httpHeaderAuth',
+				displayName: 'Header Auth',
+			});
+
+			const toolName = 'HTTP Tool';
+			const ParameterInputListStub = defineComponent({
+				props: {
+					node: { type: Object as PropType<INode | null>, default: null },
+				},
+				setup() {
+					const onCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
+					return { onCredentialSelected };
+				},
+				template: `
+					<div data-test-id="parameter-input-list">
+						<slot />
+						<button
+							data-test-id="simulate-credential-selected"
+							@click="onCredentialSelected?.({
+								name: node?.name ?? '',
+								properties: {
+									credentials: { httpHeaderAuth: { id: 'cred-1', name: 'Darwin Webhook Auth' } },
+								},
+							})"
+						/>
+					</div>
+				`,
+			});
+
+			const renderWithCredentialSelect = createComponentRenderer(NodeToolSettingsContent, {
+				global: {
+					stubs: {
+						ParameterInputList: ParameterInputListStub,
+						NodeCredentials: {
+							template: '<div data-test-id="node-credentials" />',
+							props: ['node', 'readonly', 'showAll', 'hideIssues'],
+						},
+					},
+				},
+			});
+
+			const { emitted, getAllByTestId } = renderWithCredentialSelect({
+				props: {
+					initialNode: createMockNode({
+						name: toolName,
+						parameters: {
+							nameField: 'test',
+							authentication: 'genericCredentialType',
+							genericAuthType: 'httpHeaderAuth',
+						},
+					}),
+				},
+			});
+
+			await waitFor(() => {
+				const validEmissions = emitted('update:valid') as boolean[][];
+				expect(validEmissions.at(-1)?.[0]).toBe(false);
+			});
+
+			// Params + settings tabs each render ParameterInputList.
+			getAllByTestId('simulate-credential-selected')[0].click();
+
+			await waitFor(() => {
+				const validEmissions = emitted('update:valid') as boolean[][];
+				expect(validEmissions.at(-1)?.[0]).toBe(true);
+
+				const nodeEmissions = emitted('update:node') as INode[][];
+				const latestNode = nodeEmissions.at(-1)?.[0];
+				expect(latestNode?.credentials?.httpHeaderAuth).toEqual({
+					id: 'cred-1',
+					name: 'Darwin Webhook Auth',
+				});
+			});
 		});
 	});
 

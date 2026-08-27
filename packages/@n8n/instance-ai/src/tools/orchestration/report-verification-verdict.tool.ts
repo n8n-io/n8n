@@ -107,7 +107,7 @@ function defaultRemediationForVerdict(
 export function createReportVerificationVerdictTool(context: OrchestrationContext) {
 	return new Tool('report-verification-verdict')
 		.description(
-			'Report the result of verifying a workflow after building it. ' +
+			'Report the result of verifying a workflow after building it. Only call in checkpoint follow-up turns. ' +
 				'Call this after inspecting the persisted workflow, running it, and (optionally) debugging a failed execution. ' +
 				'Returns deterministic guidance on what to do next (done, rebuild, or blocked).',
 		)

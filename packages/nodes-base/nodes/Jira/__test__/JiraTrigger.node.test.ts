@@ -1,4 +1,3 @@
-import { mock, mockDeep } from 'jest-mock-extended';
 import type {
 	ICredentialDataDecryptedObject,
 	IDataObject,
@@ -6,23 +5,31 @@ import type {
 	INode,
 	IWebhookFunctions,
 } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { testWebhookTriggerNode } from '@test/nodes/TriggerHelpers';
+import { clearAtlassianCloudIdCache } from '@utils/atlassian';
 
-import { JiraTrigger } from '../JiraTrigger.node';
 import {
 	allEvents,
 	OAUTH2_WEBHOOK_REFRESH_INTERVAL_MS,
 	OAUTH2_WEBHOOK_EXPIRY_BUFFER_MS,
 	OAUTH2_SUPPORTED_WEBHOOK_EVENTS,
 } from '../GenericFunctions';
+import { JiraTrigger } from '../JiraTrigger.node';
 
 describe('JiraTrigger', () => {
 	describe('Webhook lifecycle', () => {
 		let staticData: IDataObject;
 
+		const OAUTH2_DOMAIN = 'https://test-oauth2.atlassian.net';
+		const OAUTH2_CLOUD_ID = 'test-cloud-id';
+		const mockCloudIdLookup = () =>
+			vi.fn().mockResolvedValueOnce([{ id: OAUTH2_CLOUD_ID, url: OAUTH2_DOMAIN }]);
+
 		beforeEach(() => {
 			staticData = {};
+			clearAtlassianCloudIdCache();
 		});
 
 		function mockHookFunctions(
@@ -37,9 +44,9 @@ describe('JiraTrigger', () => {
 
 			return mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['jira:issue_created'];
 					return {};
 				}),
@@ -54,7 +61,7 @@ describe('JiraTrigger', () => {
 		test('should register a webhook subscription on Jira 10', async () => {
 			const trigger = new JiraTrigger();
 
-			const mockExistsRequest = jest
+			const mockExistsRequest = vi
 				.fn()
 				.mockResolvedValueOnce({ versionNumbers: [10, 0, 1] })
 				.mockResolvedValueOnce([]);
@@ -75,7 +82,7 @@ describe('JiraTrigger', () => {
 			expect(staticData.endpoint).toBe('/jira-webhook/1.0/webhooks');
 			expect(exists).toBe(false);
 
-			const mockCreateRequest = jest.fn().mockResolvedValueOnce({ id: 1 });
+			const mockCreateRequest = vi.fn().mockResolvedValueOnce({ id: 1 });
 
 			const created = await trigger.webhookMethods.default?.create.call(
 				mockHookFunctions(mockCreateRequest),
@@ -98,7 +105,7 @@ describe('JiraTrigger', () => {
 			);
 			expect(created).toBe(true);
 
-			const mockDeleteRequest = jest.fn().mockResolvedValueOnce({});
+			const mockDeleteRequest = vi.fn().mockResolvedValueOnce({});
 			const deleted = await trigger.webhookMethods.default?.delete.call(
 				mockHookFunctions(mockDeleteRequest),
 			);
@@ -117,7 +124,7 @@ describe('JiraTrigger', () => {
 		test('should register a webhook subscription on Jira 9', async () => {
 			const trigger = new JiraTrigger();
 
-			const mockExistsRequest = jest
+			const mockExistsRequest = vi
 				.fn()
 				.mockResolvedValueOnce({ versionNumbers: [9, 0, 1] })
 				.mockResolvedValueOnce([]);
@@ -138,7 +145,7 @@ describe('JiraTrigger', () => {
 			expect(staticData.endpoint).toBe('/webhooks/1.0/webhook');
 			expect(exists).toBe(false);
 
-			const mockCreateRequest = jest.fn().mockResolvedValueOnce({ id: 1 });
+			const mockCreateRequest = vi.fn().mockResolvedValueOnce({ id: 1 });
 
 			const created = await trigger.webhookMethods.default?.create.call(
 				mockHookFunctions(mockCreateRequest),
@@ -161,7 +168,7 @@ describe('JiraTrigger', () => {
 			);
 			expect(created).toBe(true);
 
-			const mockDeleteRequest = jest.fn().mockResolvedValueOnce({});
+			const mockDeleteRequest = vi.fn().mockResolvedValueOnce({});
 			const deleted = await trigger.webhookMethods.default?.delete.call(
 				mockHookFunctions(mockDeleteRequest),
 			);
@@ -185,12 +192,13 @@ describe('JiraTrigger', () => {
 
 			function mockOAuth2HookFunctions(
 				mockRequest: IHookFunctions['helpers']['requestWithAuthentication'],
+				mockHttpRequest?: IHookFunctions['helpers']['httpRequestWithAuthentication'],
 			) {
 				return mockDeep<IHookFunctions>({
 					getWorkflowStaticData: () => staticData,
-					getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-					getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-					getNodeParameter: jest.fn((param: string) => {
+					getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+					getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+					getNodeParameter: vi.fn((param: string) => {
 						if (param === 'events') return ['comment_created'];
 						if (param === 'jiraVersion') return 'cloudOAuth2';
 						if (param === 'additionalFields') return { filter: 'project = TEST' };
@@ -198,29 +206,33 @@ describe('JiraTrigger', () => {
 					}),
 					getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 						({ domain }) as T,
-					helpers: { requestWithAuthentication: mockRequest },
+					helpers: {
+						requestWithAuthentication: mockRequest,
+						...(mockHttpRequest ? { httpRequestWithAuthentication: mockHttpRequest } : {}),
+					},
 				});
 			}
 
 			const baseApiUrl = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
 
-			// checkExists — GET /api/3/webhook
-			const mockExistsRequest = jest
+			// checkExists — the cloudId lookup, then GET /api/3/webhook
+			const mockCloudIdRequest = vi.fn().mockResolvedValueOnce(accessibleResources);
+			const mockExistsRequest = vi
 				.fn()
-				.mockResolvedValueOnce(accessibleResources) // getCloudId call
 				.mockResolvedValueOnce({ isLast: true, maxResults: 50, startAt: 0, total: 0, values: [] });
 
 			const exists = await trigger.webhookMethods.default?.checkExists.call(
-				mockOAuth2HookFunctions(mockExistsRequest),
+				mockOAuth2HookFunctions(mockExistsRequest, mockCloudIdRequest),
 			);
 
-			expect(mockExistsRequest).toHaveBeenCalledTimes(2);
-			expect(mockExistsRequest).toHaveBeenCalledWith(
+			expect(mockCloudIdRequest).toHaveBeenCalledTimes(1);
+			expect(mockCloudIdRequest).toHaveBeenCalledWith(
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({
-					uri: 'https://api.atlassian.com/oauth/token/accessible-resources',
+					url: 'https://api.atlassian.com/oauth/token/accessible-resources',
 				}),
 			);
+			expect(mockExistsRequest).toHaveBeenCalledTimes(1);
 			expect(mockExistsRequest).toHaveBeenCalledWith(
 				'jiraSoftwareCloudOAuth2Api',
 				expect.objectContaining({ uri: baseApiUrl, method: 'GET' }),
@@ -230,7 +242,7 @@ describe('JiraTrigger', () => {
 
 			// create — POST /api/3/webhook with Dynamic Webhooks body
 			// cloudId is now cached so no accessible-resources call
-			const mockCreateRequest = jest.fn().mockResolvedValueOnce({
+			const mockCreateRequest = vi.fn().mockResolvedValueOnce({
 				webhookRegistrationResult: [{ createdWebhookId: 1000 }],
 			});
 
@@ -254,7 +266,7 @@ describe('JiraTrigger', () => {
 			expect(staticData.webhookId).toBe('1000');
 
 			// delete — DELETE /api/3/webhook with body {webhookIds: [id]}
-			const mockDeleteRequest = jest.fn().mockResolvedValueOnce({});
+			const mockDeleteRequest = vi.fn().mockResolvedValueOnce({});
 
 			const deleted = await trigger.webhookMethods.default?.delete.call(
 				mockOAuth2HookFunctions(mockDeleteRequest),
@@ -274,13 +286,13 @@ describe('JiraTrigger', () => {
 
 		test('should refresh OAuth2 webhook in checkExists when near expiry', async () => {
 			const trigger = new JiraTrigger();
-			const cloudId = 'test-cloud-id'; // already cached from previous OAuth2 test
+			const cloudId = 'test-cloud-id';
 			const domain = 'https://test-oauth2.atlassian.net';
 			const baseApiUrl = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
 
 			const expiresAt = new Date(Date.now() + OAUTH2_WEBHOOK_EXPIRY_BUFFER_MS / 2).toISOString();
 
-			const mockRequest = jest
+			const mockRequest = vi
 				.fn()
 				// GET /api/3/webhook — returns a matching webhook near expiry
 				.mockResolvedValueOnce({
@@ -302,16 +314,19 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['comment_created'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					return {};
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: mockRequest },
+				helpers: {
+					requestWithAuthentication: mockRequest,
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			const exists = await trigger.webhookMethods.default?.checkExists.call(hookFns);
@@ -335,7 +350,7 @@ describe('JiraTrigger', () => {
 
 			const expiresAt = new Date(Date.now() + OAUTH2_WEBHOOK_EXPIRY_BUFFER_MS * 3).toISOString();
 
-			const mockRequest = jest.fn().mockResolvedValueOnce({
+			const mockRequest = vi.fn().mockResolvedValueOnce({
 				isLast: true,
 				maxResults: 50,
 				startAt: 0,
@@ -352,16 +367,19 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['comment_created'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					return {};
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: mockRequest },
+				helpers: {
+					requestWithAuthentication: mockRequest,
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			const exists = await trigger.webhookMethods.default?.checkExists.call(hookFns);
@@ -393,6 +411,9 @@ describe('JiraTrigger', () => {
 			webhookFns.getBodyData.mockReturnValue({});
 			webhookFns.getQueryData.mockReturnValue({});
 			webhookFns.getCredentials.mockResolvedValue({ domain } as ICredentialDataDecryptedObject);
+			webhookFns.helpers.httpRequestWithAuthentication.mockResolvedValueOnce([
+				{ id: cloudId, url: domain },
+			]);
 			// PUT /api/3/webhook/refresh
 			webhookFns.helpers.requestWithAuthentication.mockResolvedValueOnce({});
 			webhookFns.helpers.returnJsonArray.mockImplementation((data: IDataObject | IDataObject[]) => [
@@ -444,7 +465,7 @@ describe('JiraTrigger', () => {
 
 		test('should filter unsupported events when registering OAuth2 webhook', async () => {
 			const trigger = new JiraTrigger();
-			const domain = 'https://test-oauth2.atlassian.net'; // cloudId already cached
+			const domain = 'https://test-oauth2.atlassian.net';
 			const cloudId = 'test-cloud-id';
 			const baseApiUrl = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
 
@@ -459,15 +480,15 @@ describe('JiraTrigger', () => {
 
 			staticData.endpoint = '/api/3/webhook';
 
-			const mockRequest = jest.fn().mockResolvedValueOnce({
+			const mockRequest = vi.fn().mockResolvedValueOnce({
 				webhookRegistrationResult: [{ createdWebhookId: 5000 }],
 			});
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return selectedEvents;
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					if (param === 'additionalFields') return { filter: 'project = TEST' };
@@ -476,7 +497,10 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: mockRequest },
+				helpers: {
+					requestWithAuthentication: mockRequest,
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			await trigger.webhookMethods.default?.create.call(hookFns);
@@ -499,15 +523,15 @@ describe('JiraTrigger', () => {
 
 			staticData.endpoint = '/api/3/webhook';
 
-			const mockRequest = jest.fn().mockResolvedValueOnce({
+			const mockRequest = vi.fn().mockResolvedValueOnce({
 				webhookRegistrationResult: [{ createdWebhookId: 5001 }],
 			});
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['*'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					if (param === 'additionalFields') return { filter: 'project = TEST' };
@@ -516,7 +540,10 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: mockRequest },
+				helpers: {
+					requestWithAuthentication: mockRequest,
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			await trigger.webhookMethods.default?.create.call(hookFns);
@@ -532,7 +559,7 @@ describe('JiraTrigger', () => {
 
 			staticData.endpoint = '/api/3/webhook';
 
-			const mockRequest = jest
+			const mockRequest = vi
 				.fn()
 				// GET /api/2/project/search — paginated response
 				.mockResolvedValueOnce({
@@ -548,9 +575,9 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['jira:issue_created'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					if (param === 'additionalFields') return {};
@@ -559,7 +586,10 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: mockRequest },
+				helpers: {
+					requestWithAuthentication: mockRequest,
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			await trigger.webhookMethods.default?.create.call(hookFns);
@@ -576,9 +606,9 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['jira:issue_created'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					if (param === 'additionalFields') return {};
@@ -587,7 +617,10 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: jest.fn().mockResolvedValueOnce([]) },
+				helpers: {
+					requestWithAuthentication: vi.fn().mockResolvedValueOnce([]),
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			await expect(trigger.webhookMethods.default?.create.call(hookFns)).rejects.toThrow(
@@ -601,15 +634,15 @@ describe('JiraTrigger', () => {
 
 			staticData.endpoint = '/api/3/webhook';
 
-			const mockRequest = jest.fn().mockResolvedValueOnce({
+			const mockRequest = vi.fn().mockResolvedValueOnce({
 				webhookRegistrationResult: [{ createdWebhookId: 5003 }],
 			});
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['jira:issue_created'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					if (param === 'additionalFields') return { filter: 'project = MYPROJ' };
@@ -618,7 +651,10 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: mockRequest },
+				helpers: {
+					requestWithAuthentication: mockRequest,
+					httpRequestWithAuthentication: mockCloudIdLookup(),
+				},
 			});
 
 			await trigger.webhookMethods.default?.create.call(hookFns);
@@ -635,9 +671,9 @@ describe('JiraTrigger', () => {
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['board_created', 'user_deleted'];
 					if (param === 'jiraVersion') return 'cloudOAuth2';
 					if (param === 'additionalFields') return {};
@@ -646,7 +682,7 @@ describe('JiraTrigger', () => {
 				}),
 				getCredentials: async <T extends object = ICredentialDataDecryptedObject>() =>
 					({ domain }) as T,
-				helpers: { requestWithAuthentication: jest.fn() },
+				helpers: { requestWithAuthentication: vi.fn() },
 			});
 
 			await expect(trigger.webhookMethods.default?.create.call(hookFns)).rejects.toThrow(
@@ -665,16 +701,16 @@ describe('JiraTrigger', () => {
 				active: true,
 			};
 
-			const mockExistsRequest = jest
+			const mockExistsRequest = vi
 				.fn()
 				.mockResolvedValueOnce({ versionNumbers: [10, 0, 1] }) // serverInfo
 				.mockResolvedValueOnce([existingWebhook]); // GET webhooks
 
 			const hookFns = mockDeep<IHookFunctions>({
 				getWorkflowStaticData: () => staticData,
-				getNode: jest.fn(() => mock<INode>({ typeVersion: 1 })),
-				getNodeWebhookUrl: jest.fn(() => 'https://n8n.local/webhook/id'),
-				getNodeParameter: jest.fn((param: string) => {
+				getNode: vi.fn(() => mock<INode>({ typeVersion: 1 })),
+				getNodeWebhookUrl: vi.fn(() => 'https://n8n.local/webhook/id'),
+				getNodeParameter: vi.fn((param: string) => {
 					if (param === 'events') return ['*'];
 					return {};
 				}),
@@ -692,7 +728,7 @@ describe('JiraTrigger', () => {
 		test('should register a webhook subscription on Jira Cloud', async () => {
 			const trigger = new JiraTrigger();
 
-			const mockExistsRequest = jest
+			const mockExistsRequest = vi
 				.fn()
 				.mockResolvedValueOnce({ deploymentType: 'Cloud', versionNumbers: [1000, 0, 1] })
 				.mockResolvedValueOnce([]);
@@ -713,7 +749,7 @@ describe('JiraTrigger', () => {
 			expect(staticData.endpoint).toBe('/webhooks/1.0/webhook');
 			expect(exists).toBe(false);
 
-			const mockCreateRequest = jest.fn().mockResolvedValueOnce({ id: 1 });
+			const mockCreateRequest = vi.fn().mockResolvedValueOnce({ id: 1 });
 
 			const created = await trigger.webhookMethods.default?.create.call(
 				mockHookFunctions(mockCreateRequest),
@@ -736,7 +772,7 @@ describe('JiraTrigger', () => {
 			);
 			expect(created).toBe(true);
 
-			const mockDeleteRequest = jest.fn().mockResolvedValueOnce({});
+			const mockDeleteRequest = vi.fn().mockResolvedValueOnce({});
 			const deleted = await trigger.webhookMethods.default?.delete.call(
 				mockHookFunctions(mockDeleteRequest),
 			);

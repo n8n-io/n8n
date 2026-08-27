@@ -2,7 +2,7 @@ import { ref, computed } from 'vue';
 import { type RouteRecordNameGeneric, useRoute, useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { safeParseWorkflowStructure, WorkflowStructureValidationError } from 'n8n-workflow';
-import { useToast } from '@/app/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
@@ -16,13 +16,13 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useAITemplatesStarterCollectionStore } from '@/experiments/aiTemplatesStarterCollection/stores/aiTemplatesStarterCollection.store';
 import { useReadyToRunWorkflowsStore } from '@/experiments/readyToRunWorkflows/stores/readyToRunWorkflows.store';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useExecutionDebugging } from '@/features/execution/executions/composables/useExecutionDebugging';
 import { getSampleWorkflowByTemplateId } from '@/features/workflows/templates/utils/workflowSamples';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
@@ -113,7 +113,7 @@ export function useWorkflowInitialization() {
 			options = { projectId };
 		}
 
-		await credentialsStore.fetchAllCredentialsForWorkflow(options);
+		await credentialsStore.fetchUsableCredentials(options);
 	}
 
 	/**
@@ -171,7 +171,7 @@ export function useWorkflowInitialization() {
 
 		// Create document store for template workflow (empty tags initially)
 		// The workflow ID was set during the template import
-		const currentWorkflowId = workflowsStore.workflowId;
+		const currentWorkflowId = workflowId.value;
 		if (currentWorkflowId) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
@@ -191,7 +191,7 @@ export function useWorkflowInitialization() {
 		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
 		const executionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 		if (!executionStateStore.isInDebugMode) {
 			const executionId = route.params.executionId;
@@ -254,8 +254,11 @@ export function useWorkflowInitialization() {
 			);
 		}
 
+		// Capture the outgoing workflow id before disposal nulls the current document
+		// store, so teardown targets the workflow being left (not the route's next one).
+		const outgoingWorkflowId = currentWorkflowDocumentStore.value?.workflowId;
 		disposeCurrentWorkflowDocumentStore();
-		resetWorkspace();
+		resetWorkspace(outgoingWorkflowId);
 
 		if (builderStore.streaming) {
 			documentTitle.setDocumentTitle(data.name, 'AI_BUILDING');
@@ -293,8 +296,11 @@ export function useWorkflowInitialization() {
 	}
 
 	async function initializeWorkspaceForNewWorkflow() {
+		// Capture the outgoing workflow id before disposal nulls the current document
+		// store, so teardown targets the workflow being left (not the route's next one).
+		const outgoingWorkflowId = currentWorkflowDocumentStore.value?.workflowId;
 		disposeCurrentWorkflowDocumentStore();
-		resetWorkspace();
+		resetWorkspace(outgoingWorkflowId);
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
@@ -328,6 +334,7 @@ export function useWorkflowInitialization() {
 
 		const parentFolder = await fetchParentFolder(parentFolderId);
 		currentWorkflowDocumentStore.value?.setParentFolder(parentFolder);
+		currentWorkflowDocumentStore.value.setHydrated(true);
 
 		uiStore.nodeViewInitialized = true;
 		initializedWorkflowId.value = workflowId.value;
@@ -461,8 +468,11 @@ export function useWorkflowInitialization() {
 	}
 
 	function cleanup() {
+		// Capture the outgoing workflow id before disposal nulls the current document
+		// store, so teardown targets the workflow being left (not the route's next one).
+		const outgoingWorkflowId = currentWorkflowDocumentStore.value?.workflowId;
 		disposeCurrentWorkflowDocumentStore();
-		resetWorkspace();
+		resetWorkspace(outgoingWorkflowId);
 		uiStore.nodeViewInitialized = false;
 	}
 

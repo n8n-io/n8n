@@ -6,6 +6,7 @@ import {
 	isOriginAllowed,
 	isProtectedSettingsPath,
 	parseConfig,
+	resolvePermissionConfirmation,
 } from './config';
 
 describe('isProtectedSettingsPath', () => {
@@ -101,6 +102,26 @@ describe('parseConfig — allowedOrigins', () => {
 		process.env.N8N_GATEWAY_ALLOWED_ORIGINS = 'https://from-env.example.com';
 		const { config } = parseConfig([]);
 		expect(config.allowedOrigins).toEqual(['https://*.app.n8n.cloud']);
+	});
+});
+
+describe('resolvePermissionConfirmation', () => {
+	it('keeps instance mode for an n8n cloud origin', () => {
+		expect(resolvePermissionConfirmation('instance', 'https://foo.app.n8n.cloud')).toBe('instance');
+	});
+
+	it('forces client mode for localhost', () => {
+		expect(resolvePermissionConfirmation('instance', 'http://localhost:5678')).toBe('client');
+	});
+
+	it('forces client mode for a self-hosted origin', () => {
+		expect(resolvePermissionConfirmation('instance', 'https://self-hosted.example.com')).toBe(
+			'client',
+		);
+	});
+
+	it('respects explicit client mode for a cloud origin', () => {
+		expect(resolvePermissionConfirmation('client', 'https://foo.app.n8n.cloud')).toBe('client');
 	});
 });
 

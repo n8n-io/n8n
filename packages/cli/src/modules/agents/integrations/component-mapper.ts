@@ -61,6 +61,7 @@ type ChatSdk = Awaited<ReturnType<typeof loadChatSdk>>;
 export type ShortenCallback = (
 	actionId: string,
 	value: string,
+	label?: string,
 ) => Promise<{ id: string; value: string }>;
 
 /** Shared state threaded through per-component render helpers. */
@@ -117,7 +118,7 @@ export class ComponentMapper {
 			// For platforms with short callback limits (e.g. Telegram 64 bytes),
 			// replace the full id/value with a short lookup key.
 			if (shortenCallback) {
-				const shortened = await shortenCallback(id, value);
+				const shortened = await shortenCallback(id, value, label);
 				id = shortened.id;
 				value = shortened.value;
 			}
@@ -157,6 +158,9 @@ export class ComponentMapper {
 		const { component, children, buttons, makeButton } = ctx;
 		switch (component.type) {
 			case 'button':
+				// `label` is the canonical caption field, but models trained on real
+				// Slack Block Kit (where buttons carry `text`) frequently emit the
+				// caption under `text`. Fall back to it before the generic placeholder.
 				buttons.push(
 					await makeButton(
 						component.label ?? componentTextToString(component.text) ?? 'Action',

@@ -1,7 +1,8 @@
 import { computed, inject } from 'vue';
 
 import { EditorEnabledFeaturesKey, type EditorFeature } from '@/app/constants/injectionKeys';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSettingsStore } from '@n8n/stores/settings.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 /**
  * Per-editor host overrides for the current editor context.
@@ -13,6 +14,9 @@ import { useSettingsStore } from '@/app/stores/settings.store';
  * `readOnly` is a direct flag — `true` forces the canvas read-only. When no host
  * provides the key, AI features fall back to their store values and the canvas
  * is editable (`readOnly` is `false`).
+ * `executionSuccessToasts` / `executionErrorToasts` are direct flags too — each
+ * `true` (the default) shows that class of execution result toast; an explicit
+ * `false` from the host suppresses it.
  */
 export function useEditorContext() {
 	const settings = useSettingsStore();
@@ -31,6 +35,18 @@ export function useEditorContext() {
 				return settings.isAiBuilderEnabled === true;
 			case 'askAi':
 				return settings.isAskAiEnabled === true;
+			case 'instanceAi':
+				// Mirrors useInstanceAiAvailable() (the feature-layer gate) with
+				// app-layer primitives so this base composable imports no feature:
+				// the module is active, enabled, ready (or admin-fixable), and the
+				// user may message Instance AI.
+				return (
+					settings.isModuleActive('instance-ai') &&
+					settings.moduleSettings['instance-ai']?.enabled !== false &&
+					(settings.moduleSettings['instance-ai']?.setupCompleted === true ||
+						hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } })) &&
+					hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } })
+				);
 		}
 	};
 
@@ -41,6 +57,13 @@ export function useEditorContext() {
 		aiAssistant: featureEnabled('aiAssistant'),
 		aiBuilder: featureEnabled('aiBuilder'),
 		askAi: featureEnabled('askAi'),
+		instanceAi: featureEnabled('instanceAi'),
 		readOnly: computed(() => enabledFeatures?.value?.readOnly === true),
+		expandGroups: computed(() => enabledFeatures?.value?.expandGroups),
+		executionButtonType: computed(() => enabledFeatures?.value?.executionButtonType ?? 'primary'),
+		executionSuccessToasts: computed(
+			() => enabledFeatures?.value?.executionSuccessToasts !== false,
+		),
+		executionErrorToasts: computed(() => enabledFeatures?.value?.executionErrorToasts !== false),
 	};
 }

@@ -4,6 +4,16 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { ApiHelpers } from './api-helper';
 import { TestError } from '../Types';
 
+/**
+ * The OAuth endpoints are mounted under both the legacy `/mcp-oauth` paths
+ * (advertised in discovery, persisted by existing DCR clients) and the
+ * neutral `/oauth` aliases that future, non-MCP protected resources will
+ * advertise.
+ */
+export type OAuthEndpointBasePath = '/mcp-oauth' | '/oauth';
+
+const DEFAULT_ENDPOINT_BASE_PATH: OAuthEndpointBasePath = '/mcp-oauth';
+
 export interface PkcePair {
 	verifier: string;
 	challenge: string;
@@ -26,6 +36,8 @@ export interface OAuthTokens {
 	token_type: string;
 	expires_in: number;
 	refresh_token: string;
+	/** Space-delimited scopes the user granted on the consent screen (RFC 6749 §5.1). */
+	scope: string;
 }
 
 export interface AuthorizationFlowResult {
@@ -59,19 +71,30 @@ export class McpOAuthApiHelper {
 		return await this.api.request.get('/.well-known/oauth-authorization-server');
 	}
 
-	async getProtectedResourceMetadata(): Promise<APIResponse> {
-		return await this.api.request.get('/.well-known/oauth-protected-resource/mcp-server/http');
+	/**
+	 * Fetches protected-resource metadata (RFC 9728). Defaults to the instance MCP
+	 * server resource; pass a `resourcePath` (e.g. `mcp/<trigger-path>`) to fetch
+	 * the per-resource document for a specific protected resource such as an
+	 * `n8nOAuth2` MCP Trigger workflow.
+	 */
+	async getProtectedResourceMetadata(resourcePath = 'mcp-server/http'): Promise<APIResponse> {
+		const normalized = resourcePath.replace(/^\/+/, '');
+		return await this.api.request.get(`/.well-known/oauth-protected-resource/${normalized}`);
 	}
 
 	/** Dynamic client registration (RFC 7591). Unauthenticated. */
-	async registerClient(registration: OAuthClientRegistration): Promise<APIResponse> {
-		return await this.api.request.post('/mcp-oauth/register', { data: registration });
+	async registerClient(
+		registration: OAuthClientRegistration,
+		basePath: OAuthEndpointBasePath = DEFAULT_ENDPOINT_BASE_PATH,
+	): Promise<APIResponse> {
+		return await this.api.request.post(`${basePath}/register`, { data: registration });
 	}
 
 	async registerClientOrFail(
 		registration: OAuthClientRegistration,
+		basePath: OAuthEndpointBasePath = DEFAULT_ENDPOINT_BASE_PATH,
 	): Promise<RegisteredOAuthClient> {
-		const response = await this.registerClient(registration);
+		const response = await this.registerClient(registration, basePath);
 		if (response.status() !== 201) {
 			throw new TestError(
 				`Failed to register OAuth client: ${response.status()} ${await response.text()}`,
@@ -86,6 +109,7 @@ export class McpOAuthApiHelper {
 		challenge: string;
 		state?: string;
 		resource?: string;
+		basePath?: OAuthEndpointBasePath;
 	}): string {
 		const query = new URLSearchParams({
 			client_id: params.clientId,
@@ -96,7 +120,7 @@ export class McpOAuthApiHelper {
 			...(params.state && { state: params.state }),
 			...(params.resource && { resource: params.resource }),
 		});
-		return `/mcp-oauth/authorize?${query.toString()}`;
+		return `${params.basePath ?? DEFAULT_ENDPOINT_BASE_PATH}/authorize?${query.toString()}`;
 	}
 
 	/**
@@ -110,6 +134,7 @@ export class McpOAuthApiHelper {
 		challenge: string;
 		state?: string;
 		resource?: string;
+		basePath?: OAuthEndpointBasePath;
 	}): Promise<APIResponse> {
 		return await this.api.request.get(this.buildAuthorizeUrl(params), { maxRedirects: 0 });
 	}
@@ -119,17 +144,32 @@ export class McpOAuthApiHelper {
 		return await this.api.request.get('/rest/consent/details');
 	}
 
-	/** Requires a signed-in user and a pending OAuth session (see authorize). */
-	async approveConsent(approved: boolean): Promise<APIResponse> {
-		return await this.api.request.post('/rest/consent/approve', { data: { approved } });
+	/**
+	 * Requires a signed-in user and a pending OAuth session (see authorize).
+	 * Approvals must grant at least one scope; when none are given, everything
+	 * the consent details offer is granted — mirroring the consent UI default.
+	 */
+	async approveConsent(approved: boolean, scopes?: string[]): Promise<APIResponse> {
+		let grantedScopes = scopes;
+		if (approved && !grantedScopes) {
+			const details = await this.getConsentDetails();
+			if (details.ok()) {
+				const body = (await details.json()) as { data: { scopes?: string[] } };
+				const available = body.data.scopes ?? [];
+				if (available.length > 0) grantedScopes = available;
+			}
+		}
+		return await this.api.request.post('/rest/consent/approve', {
+			data: { approved, ...(grantedScopes && { scopes: grantedScopes }) },
+		});
 	}
 
 	/**
 	 * Approves or denies the pending consent and returns the redirect URL the
 	 * client would be sent back to (carrying either the code or the error).
 	 */
-	async submitConsentOrFail(approved: boolean): Promise<URL> {
-		const response = await this.approveConsent(approved);
+	async submitConsentOrFail(approved: boolean, scopes?: string[]): Promise<URL> {
+		const response = await this.approveConsent(approved, scopes);
 		if (!response.ok()) {
 			throw new TestError(
 				`Failed to submit consent: ${response.status()} ${await response.text()}`,
@@ -146,8 +186,9 @@ export class McpOAuthApiHelper {
 		codeVerifier: string;
 		redirectUri: string;
 		resource?: string;
+		basePath?: OAuthEndpointBasePath;
 	}): Promise<APIResponse> {
-		return await this.api.request.post('/mcp-oauth/token', {
+		return await this.api.request.post(`${params.basePath ?? DEFAULT_ENDPOINT_BASE_PATH}/token`, {
 			form: {
 				grant_type: 'authorization_code',
 				code: params.code,
@@ -165,6 +206,7 @@ export class McpOAuthApiHelper {
 		codeVerifier: string;
 		redirectUri: string;
 		resource?: string;
+		basePath?: OAuthEndpointBasePath;
 	}): Promise<OAuthTokens> {
 		const response = await this.exchangeAuthorizationCode(params);
 		if (!response.ok()) {
@@ -175,8 +217,12 @@ export class McpOAuthApiHelper {
 		return (await response.json()) as OAuthTokens;
 	}
 
-	async refreshToken(params: { refreshToken: string; clientId: string }): Promise<APIResponse> {
-		return await this.api.request.post('/mcp-oauth/token', {
+	async refreshToken(params: {
+		refreshToken: string;
+		clientId: string;
+		basePath?: OAuthEndpointBasePath;
+	}): Promise<APIResponse> {
+		return await this.api.request.post(`${params.basePath ?? DEFAULT_ENDPOINT_BASE_PATH}/token`, {
 			form: {
 				grant_type: 'refresh_token',
 				refresh_token: params.refreshToken,
@@ -189,8 +235,9 @@ export class McpOAuthApiHelper {
 		token: string;
 		clientId: string;
 		tokenTypeHint?: 'access_token' | 'refresh_token';
+		basePath?: OAuthEndpointBasePath;
 	}): Promise<APIResponse> {
-		return await this.api.request.post('/mcp-oauth/revoke', {
+		return await this.api.request.post(`${params.basePath ?? DEFAULT_ENDPOINT_BASE_PATH}/revoke`, {
 			form: {
 				token: params.token,
 				client_id: params.clientId,
@@ -206,23 +253,37 @@ export class McpOAuthApiHelper {
 	async completeAuthorizationCodeFlow(options?: {
 		clientName?: string;
 		redirectUri?: string;
+		basePath?: OAuthEndpointBasePath;
+		/**
+		 * RFC 8707 resource indicator. Scopes the token to a specific protected
+		 * resource (e.g. an `n8nOAuth2` MCP Trigger workflow's resource URL). When
+		 * omitted, the instance MCP server resource is used.
+		 */
+		resource?: string;
 	}): Promise<AuthorizationFlowResult> {
 		const redirectUri = options?.redirectUri ?? 'https://example.com/callback';
 		const state = randomBytes(16).toString('hex');
 		const pkce = this.createPkcePair();
+		const basePath = options?.basePath ?? DEFAULT_ENDPOINT_BASE_PATH;
+		const resource = options?.resource;
 
-		const client = await this.registerClientOrFail({
-			client_name: options?.clientName ?? 'n8n e2e OAuth client',
-			redirect_uris: [redirectUri],
-			grant_types: ['authorization_code', 'refresh_token'],
-			token_endpoint_auth_method: 'none',
-		});
+		const client = await this.registerClientOrFail(
+			{
+				client_name: options?.clientName ?? 'n8n e2e OAuth client',
+				redirect_uris: [redirectUri],
+				grant_types: ['authorization_code', 'refresh_token'],
+				token_endpoint_auth_method: 'none',
+			},
+			basePath,
+		);
 
 		const authorizeResponse = await this.authorize({
 			clientId: client.client_id,
 			redirectUri,
 			challenge: pkce.challenge,
 			state,
+			resource,
+			basePath,
 		});
 		if (authorizeResponse.status() !== 302) {
 			throw new TestError(
@@ -241,6 +302,8 @@ export class McpOAuthApiHelper {
 			clientId: client.client_id,
 			codeVerifier: pkce.verifier,
 			redirectUri,
+			resource,
+			basePath,
 		});
 
 		return { client, tokens, pkce, redirectUri, state };

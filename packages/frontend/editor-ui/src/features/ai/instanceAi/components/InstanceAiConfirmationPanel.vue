@@ -3,14 +3,16 @@ import { N8nButton, N8nCard, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { InstanceAiConfirmation } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { redactTelemetryProperties } from '@n8n/telemetry';
 import { computed, ref } from 'vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { isPendingItemFloating } from '../confirmationKinds';
 import { useToolLabel } from '../toolLabels';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
+import InstanceAiChannelSetup from './InstanceAiChannelSetup.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
@@ -22,12 +24,11 @@ interface Props {
 	/**
 	 * Where this panel is mounted. The component renders different subsets of
 	 * `pendingConfirmations` depending on this:
-	 * - `inline`: full-form confirmations rendered in the chat flow (questions,
-	 *   plan review, text, setup, credential, gateway resource-decision,
-	 *   continue).
-	 * - `floating`: single-click approvals and domain/web-search access, which
-	 *   replace the chat input slot. Only the oldest pending item is rendered
-	 *   at a time — no stacking.
+	 * - `inline`: full-form confirmations rendered in the chat flow (plan review,
+	 *   text, setup, credential, gateway resource-decision, continue).
+	 * - `floating`: questions, single-click approvals, and domain/web-search
+	 *   access, which replace the chat input slot. Only the oldest pending item
+	 *   is rendered at a time — no stacking.
 	 */
 	kind: 'inline' | 'floating';
 }
@@ -44,6 +45,7 @@ function getConfirmationType(conf: InstanceAiConfirmation): string {
 	if (conf.inputType) return conf.inputType;
 	if (conf.setupRequests?.length) return 'setup';
 	if (conf.credentialRequests?.length) return 'credential-setup';
+	if (conf.channelConfig) return 'channel-config';
 	return 'approval';
 }
 
@@ -73,7 +75,11 @@ function trackInputCompleted(
 		skipped_inputs: skippedInputs,
 		...extra,
 	};
-	telemetry.track('User finished providing input', eventProps);
+	// The inputs carry free text — what the user typed into a question card, and
+	// the agent's own description of the action it wants to take. This event
+	// reaches RudderStack *and* PostHog from the browser, so the backend
+	// redactor never sees it. The `*_id` keys are exempted by the scrubber.
+	telemetry.track('User finished providing input', redactTelemetryProperties(eventProps));
 }
 
 interface StandaloneChunk {
@@ -91,9 +97,8 @@ type ConfirmationChunk = FloatingChunk | StandaloneChunk;
 /**
  * Filter pending confirmations to those that belong in this panel mount.
  *
- * - `inline`: every non-floating item (questions/plan/text/setup/etc.) in
- *   chronological order — these forms coexist comfortably in the chat
- *   flow.
+ * - `inline`: every non-floating item (plan/text/setup/etc.) in chronological
+ *   order — these forms coexist comfortably in the chat flow.
  * - `floating`: only the **oldest** floating item. We intentionally do not
  *   stack: the floating panel replaces the chat input, and stacking would
  *   shove the input far up the screen. The user must resolve the visible
@@ -130,6 +135,9 @@ function isDestructive(item: PendingConfirmationItem): boolean {
  * English strings over the wire.
  */
 function buildApprovalTitle(item: PendingConfirmationItem): string {
+	if (item.toolCall.confirmation.targetApproval) {
+		return i18n.baseText('agents.chat.approval.title');
+	}
 	const { toolName, args } = item.toolCall;
 	const action = typeof args?.action === 'string' ? args.action : undefined;
 	const imperativeKey = (
@@ -152,6 +160,12 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
  * message includes a trailing explanation doesn't bloat the card.
  */
 function buildApprovalSubtitle(item: PendingConfirmationItem): string {
+	const targetApproval = item.toolCall.confirmation.targetApproval;
+	if (targetApproval) {
+		return i18n.baseText('agents.chat.approval.description', {
+			interpolate: { toolName: targetApproval.displayName ?? targetApproval.toolName },
+		});
+	}
 	const message = item.toolCall.confirmation.message ?? '';
 	const idx = message.indexOf('?');
 	return idx === -1 ? message : message.slice(0, idx + 1);
@@ -164,8 +178,15 @@ function buildApprovalSubtitle(item: PendingConfirmationItem): string {
  */
 function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 	const destructive = isDestructive(item);
+	const conf = item.toolCall.confirmation;
+	// Workflow edits must be scoped to a workflow ID — never offer a session grant
+	// that would collapse to a blanket tool key.
+	const alwaysAllowAvailable =
+		!destructive &&
+		!conf.targetApproval &&
+		thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
 	const options: ApprovalOption[] = [];
-	if (!destructive) {
+	if (alwaysAllowAvailable) {
 		options.push({
 			key: 'always-allow',
 			icon: 'check-check',
@@ -188,6 +209,16 @@ function buildApprovalOptions(item: PendingConfirmationItem): ApprovalOption[] {
 		testId: 'instance-ai-panel-confirm-deny',
 	});
 	return options;
+}
+
+function formatTargetApprovalArgs(conf: InstanceAiConfirmation): string {
+	const args = conf.targetApproval?.args;
+	if (args === undefined) return '';
+	try {
+		return JSON.stringify(args, null, 2) ?? String(args);
+	} catch {
+		return String(args);
+	}
 }
 
 function handleApprovalSelect(item: PendingConfirmationItem, key: string) {
@@ -223,10 +254,11 @@ async function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 		// behaviour. `confirmAction` already surfaces a toast on failure.
 		const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved });
 		if (!ok) return;
-		// "Always allow" is offered alongside Approve/Deny for non-destructive
-		// generic approvals; include it in the option set so telemetry reflects
-		// what the user actually chose between.
-		const alwaysAllowAvailable = !isDestructive(item);
+		// Match the options actually shown in `buildApprovalOptions`.
+		const alwaysAllowAvailable =
+			!isDestructive(item) &&
+			!conf.targetApproval &&
+			thread.canAlwaysAllow(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
 		trackInputCompleted(
 			conf,
 			[
@@ -256,9 +288,13 @@ async function handleAlwaysAllow(item: PendingConfirmationItem) {
 		// failed POST would otherwise hide the card while the backend keeps
 		// waiting, AND seed an auto-approve key the watcher would use to
 		// silently approve later matching confirmations.
-		const ok = await thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
+		const ok = await thread.confirmAction(conf.requestId, {
+			kind: 'approval',
+			approved: true,
+			scope: 'session',
+		});
 		if (!ok) return;
-		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {});
+		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
 		trackInputCompleted(
 			conf,
 			[
@@ -395,16 +431,30 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 <template>
 	<TransitionGroup name="confirmation-slide">
 		<template v-for="chunk in chunks" :key="chunk.item.toolCall.confirmation.requestId">
+			<!-- Structured questions replace the chat input like other floating confirmations. -->
+			<InstanceAiQuestions
+				v-if="
+					chunk.type === 'floating' &&
+					chunk.item.toolCall.confirmation.inputType === 'questions' &&
+					chunk.item.toolCall.confirmation.questions
+				"
+				:key="'q-' + chunk.item.toolCall.confirmation.requestId"
+				:questions="chunk.item.toolCall.confirmation.questions!"
+				:intro-message="chunk.item.toolCall.confirmation.introMessage"
+				@submit="(answers) => handleQuestionsSubmit(chunk.item.toolCall.confirmation, answers)"
+			/>
+
 			<!-- ============ Standalone items (no approval wrapper) ============ -->
-			<template v-if="chunk.type === 'standalone'">
+			<template v-else-if="chunk.type === 'standalone'">
 				<!-- Workflow setup -->
+				<!-- Threads are project-bound: fall back to the thread's project so a
+				     payload without projectId never degrades to the personal project. -->
 				<InstanceAiWorkflowSetup
 					v-if="chunk.item.toolCall.confirmation.setupRequests?.length"
 					:key="'setup-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
 					:workflow-id="chunk.item.toolCall.confirmation.workflowId"
 				/>
@@ -413,32 +463,18 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<InstanceAiCredentialSetup
 					v-else-if="chunk.item.toolCall.confirmation.credentialRequests?.length"
 					:key="'cred-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:credential-requests="chunk.item.toolCall.confirmation.credentialRequests!"
 					:message="chunk.item.toolCall.confirmation.message"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? thread.projectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
-				/>
-
-				<!-- Structured questions -->
-				<InstanceAiQuestions
-					v-else-if="
-						chunk.item.toolCall.confirmation.inputType === 'questions' &&
-						chunk.item.toolCall.confirmation.questions
-					"
-					:key="'q-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
-					:questions="chunk.item.toolCall.confirmation.questions!"
-					:intro-message="chunk.item.toolCall.confirmation.introMessage"
-					@submit="(answers) => handleQuestionsSubmit(chunk.item.toolCall.confirmation, answers)"
+					:require-user-selection="chunk.item.toolCall.confirmation.requireUserSelection"
 				/>
 
 				<!-- Plan review -->
 				<PlanReviewPanel
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'plan-review'"
 					:key="'plan-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					:planned-tasks="
 						chunk.item.toolCall.confirmation?.planItems ??
 						(chunk.item.toolCall.args?.tasks as PlannedTaskArg[] | undefined) ??
@@ -469,7 +505,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<div
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'text'"
 					:key="'text-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 				>
 					<N8nCard :class="$style.textCard">
 						<N8nText tag="div">{{ chunk.item.toolCall.confirmation!.message }}</N8nText>
@@ -506,7 +541,6 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 				<div
 					v-else-if="chunk.item.toolCall.confirmation.inputType === 'continue'"
 					:key="'continue-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 				>
 					<N8nCard :class="$style.textCard">
 						<N8nText tag="div">{{ chunk.item.toolCall.confirmation!.message }}</N8nText>
@@ -529,12 +563,21 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 						chunk.item.toolCall.confirmation.resourceDecision
 					"
 					:key="'rd-' + chunk.item.toolCall.confirmation.requestId"
-					:class="$style.confirmation"
 					data-test-id="instance-ai-gateway-confirmation-panel"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:resource="chunk.item.toolCall.confirmation.resourceDecision.resource"
 					:description="chunk.item.toolCall.confirmation.resourceDecision.description"
 					:options="chunk.item.toolCall.confirmation.resourceDecision.options"
+				/>
+
+				<!-- Chat-channel setup (agent-builder configure_channel) — presence-based -->
+				<InstanceAiChannelSetup
+					v-else-if="chunk.item.toolCall.confirmation.channelConfig"
+					:key="'channel-' + chunk.item.toolCall.confirmation.requestId"
+					:request-id="chunk.item.toolCall.confirmation.requestId"
+					:integration-type="chunk.item.toolCall.confirmation.channelConfig.integrationType"
+					:agent-id="chunk.item.toolCall.confirmation.channelConfig.agentId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? ''"
 				/>
 			</template>
 
@@ -572,6 +615,13 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 										{{ buildApprovalTitle(chunk.item) }}
 									</N8nText>
 									<ConfirmationPreview>{{ buildApprovalSubtitle(chunk.item) }}</ConfirmationPreview>
+									<ConfirmationPreview
+										v-if="formatTargetApprovalArgs(chunk.item.toolCall.confirmation)"
+										:class="$style.targetApprovalArgs"
+										data-test-id="instance-ai-target-approval-args"
+									>
+										{{ formatTargetApprovalArgs(chunk.item.toolCall.confirmation) }}
+									</ConfirmationPreview>
 								</div>
 
 								<ApprovalOptionList
@@ -588,18 +638,10 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 </template>
 
 <style lang="scss" module>
-.confirmation {
-	max-width: 90%;
-	width: 90%;
-}
-
 .root {
-	border: none;
-	border-radius: var(--radius--xl);
-	box-shadow:
-		var(--shadow--sm),
-		inset 0 0 0 1px light-dark(var(--color--black-alpha-100), var(--color--white-alpha-100));
+	border-radius: var(--radius--lg);
 	background-color: var(--background--surface);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 
 .floatingRoot {
@@ -620,11 +662,14 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 	}
 }
 
+.targetApprovalArgs {
+	white-space: pre-wrap;
+	word-break: break-word;
+}
+
 .approvalRow {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--sm);
 	font-size: var(--font-size--2xs);
 }
 
@@ -632,6 +677,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+	padding: var(--spacing--sm) var(--spacing--sm) 0;
 }
 
 .textInputRow {
@@ -648,7 +694,9 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 }
 
 .textCard {
+	border: 0;
 	background-color: var(--color--background--light-3);
+	box-shadow: var(--shadow--sm), var(--shadow--outline);
 }
 </style>
 

@@ -1,5 +1,6 @@
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as sharedUtils from '../../shared/utils';
@@ -8,8 +9,8 @@ import { McpClient } from '../McpClient.node';
 import { getToolParameters } from '../resourceMapping';
 
 describe('McpClient', () => {
-	const mapToNodeOperationError = vi.spyOn(sharedUtils, 'mapToNodeOperationError');
-	const connectMcpClientForCredential = vi.spyOn(sharedUtils, 'connectMcpClientForCredential');
+	let mapToNodeOperationError: MockInstance;
+	let connectMcpClientForCredential: MockInstance;
 	const executeFunctions = mockDeep<IExecuteFunctions>();
 	const client = mockDeep<Client>();
 	const defaultParams = {
@@ -24,6 +25,9 @@ describe('McpClient', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+
+		mapToNodeOperationError = vi.spyOn(sharedUtils, 'mapToNodeOperationError');
+		connectMcpClientForCredential = vi.spyOn(sharedUtils, 'connectMcpClientForCredential');
 
 		executeFunctions.getNode.mockReturnValue({
 			id: '123',

@@ -1,4 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import {
 	resolveReportDownloadUrl,
@@ -65,14 +66,14 @@ describe('SecurityScorecard GenericFunctions', () => {
 	});
 
 	describe('scorecardApiRequest', () => {
-		let request: jest.Mock;
+		let request: Mock;
 		let executeFunctions: IExecuteFunctions;
 
 		beforeEach(() => {
-			request = jest.fn().mockResolvedValue({ success: true });
+			request = vi.fn().mockResolvedValue({ success: true });
 			executeFunctions = {
-				getCredentials: jest.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
-				getNode: jest.fn().mockReturnValue({ name: 'SecurityScorecard' }),
+				getCredentials: vi.fn().mockResolvedValue({ apiKey: 'test-api-key' }),
+				getNode: vi.fn().mockReturnValue({ name: 'SecurityScorecard' }),
 				helpers: {
 					request,
 				},
@@ -101,12 +102,12 @@ describe('SecurityScorecard GenericFunctions', () => {
 
 	describe('download operation', () => {
 		it('should reject external report URLs before making a request', async () => {
-			const request = jest.fn();
+			const request = vi.fn();
 			const node = new SecurityScorecard();
 			const executeFunctions = {
-				getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-				getNode: jest.fn().mockReturnValue({ name: 'SecurityScorecard' }),
-				getNodeParameter: jest.fn((parameterName: string) => {
+				getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+				getNode: vi.fn().mockReturnValue({ name: 'SecurityScorecard' }),
+				getNodeParameter: vi.fn((parameterName: string) => {
 					if (parameterName === 'resource') return 'report';
 					if (parameterName === 'operation') return 'download';
 					if (parameterName === 'url') return 'https://example.com/report.pdf';

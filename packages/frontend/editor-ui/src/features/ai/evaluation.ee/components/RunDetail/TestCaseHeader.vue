@@ -88,16 +88,9 @@ const cyclingVerbKey = useCyclingVerb(isRunning);
 					{{ locale.baseText('evaluation.runDetail.testCase.cancelled') }}
 				</N8nText>
 			</template>
-			<template v-else-if="isFailed">
-				<N8nButton
-					variant="outline"
-					size="mini"
-					:label="locale.baseText('evaluation.runDetail.testCase.rerun')"
-					data-test-id="test-case-rerun-button"
-					@click.stop="emit('rerun')"
-				/>
-			</template>
 			<template v-else>
+				<!-- View link shows for any finished case (success or failed); the
+				rerun button is appended only when the case failed. -->
 				<N8nTooltip
 					v-if="executionId"
 					:content="locale.baseText('evaluation.runDetail.testCase.viewLink')"
@@ -114,6 +107,14 @@ const cyclingVerbKey = useCyclingVerb(isRunning);
 						<N8nIcon icon="external-link" size="small" />
 					</button>
 				</N8nTooltip>
+				<N8nButton
+					v-if="isFailed"
+					variant="outline"
+					size="mini"
+					:label="locale.baseText('evaluation.runDetail.testCase.rerun')"
+					data-test-id="test-case-rerun-button"
+					@click.stop="emit('rerun')"
+				/>
 			</template>
 		</div>
 	</div>

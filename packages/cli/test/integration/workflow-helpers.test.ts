@@ -2,9 +2,9 @@ import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { parse, stringify } from 'flatted';
-import { mock } from 'jest-mock-extended';
 import type { IRun, INode, ITaskData } from 'n8n-workflow';
 import { createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { createExecution } from '@test-integration/db/executions';

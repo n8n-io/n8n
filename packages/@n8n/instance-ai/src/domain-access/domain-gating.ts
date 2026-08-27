@@ -158,12 +158,12 @@ export function checkWebSearchAccess(options: {
  * Process the user's domain-level decision from resume data.
  * Updates the tracker state and returns whether the tool should proceed.
  */
-export function applyDomainAccessResume(options: {
+export async function applyDomainAccessResume(options: {
 	resumeData: { approved: boolean; domainAccessAction?: string };
 	host: string;
 	tracker?: DomainAccessTracker;
 	runId?: string;
-}): { proceed: boolean } {
+}): Promise<{ proceed: boolean }> {
 	const { resumeData, host, tracker, runId } = options;
 
 	if (!resumeData.approved) {
@@ -175,10 +175,10 @@ export function applyDomainAccessResume(options: {
 	if (tracker) {
 		switch (action) {
 			case 'allow_domain':
-				tracker.approveDomain(host);
+				await tracker.approveDomain(host);
 				break;
 			case 'allow_all':
-				tracker.approveAllDomains();
+				await tracker.approveAllDomains();
 				break;
 			case 'allow_once':
 			default:
@@ -200,11 +200,11 @@ export function applyDomainAccessResume(options: {
  *   - allow_domain → persistent (this thread)
  *   - allow_all   → persistent (no broader scope makes sense for search)
  */
-export function applyWebSearchAccessResume(options: {
+export async function applyWebSearchAccessResume(options: {
 	resumeData: { approved: boolean; domainAccessAction?: string };
 	tracker?: DomainAccessTracker;
 	runId?: string;
-}): { proceed: boolean } {
+}): Promise<{ proceed: boolean }> {
 	const { resumeData, tracker, runId } = options;
 
 	if (!resumeData.approved) {
@@ -217,7 +217,7 @@ export function applyWebSearchAccessResume(options: {
 		switch (action) {
 			case 'allow_domain':
 			case 'allow_all':
-				tracker.approveWebSearch();
+				await tracker.approveWebSearch();
 				break;
 			case 'allow_once':
 			default:

@@ -12,6 +12,11 @@ export const STICKY_NOTE_TYPE = 'n8n-nodes-base.stickyNote';
 export const SET_NODE_TYPE = 'n8n-nodes-base.set';
 export const AGENT_TYPE = '@n8n/n8n-nodes-langchain.agent';
 export const HTTP_REQUEST_TYPE = 'n8n-nodes-base.httpRequest';
+export const HTTP_REQUEST_TOOL_TYPE = 'n8n-nodes-base.httpRequestTool';
+/** The HTTP tool the builder actually attaches to an AI Agent — distinct from the
+ *  nodes-base tool variant above, with its own `parametersQuery.values[]` shape. */
+export const LANGCHAIN_HTTP_TOOL_TYPE = '@n8n/n8n-nodes-langchain.toolHttpRequest';
+export const GOOGLE_SHEETS_TYPE = 'n8n-nodes-base.googleSheets';
 
 // ---------------------------------------------------------------------------
 // Trigger detection

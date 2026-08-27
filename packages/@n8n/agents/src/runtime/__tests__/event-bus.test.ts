@@ -1,4 +1,4 @@
-import { AgentEventBus } from '../event-bus';
+import { AgentEventBus } from '../state/event-bus';
 
 describe('AgentEventBus', () => {
 	describe('resetAbort', () => {

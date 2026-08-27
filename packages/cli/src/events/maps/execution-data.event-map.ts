@@ -19,7 +19,9 @@ export type ExecutionDataEventMap = {
 	};
 	'execution-data-write': {
 		mode: ExecutionDataStorageLocation;
+		workflowId: string;
 		durationMs: number;
 		success: boolean;
+		jsonSizeBytes: number;
 	};
 };

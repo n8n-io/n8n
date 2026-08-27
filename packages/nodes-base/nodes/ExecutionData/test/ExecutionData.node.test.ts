@@ -1,5 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData, INode } from 'n8n-workflow';
 
 import { ExecutionData } from '../ExecutionData.node';
@@ -26,7 +26,7 @@ describe('ExecutionData Node', () => {
 			{ json: { item: 1, foo: null } },
 			{ json: { item: 1, foo: 'bar' } },
 		];
-		const setAllMock = jest.fn();
+		const setAllMock = vi.fn();
 		const executeFns = mock<IExecuteFunctions>({
 			customData: mock({ setAll: setAllMock }),
 			getInputData: () => mockInputData,

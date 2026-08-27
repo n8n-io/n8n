@@ -82,7 +82,7 @@ describe('LocalGatewayRegistry — per-user gateway isolation', () => {
 
 	describe('getPairingToken', () => {
 		it('returns the expiry time for an active pairing token', () => {
-			const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000);
+			const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000);
 			const token = registry.generatePairingToken('user-a');
 
 			expect(registry.getApiKeyExpiresAt('user-a', token)?.toISOString()).toBe(

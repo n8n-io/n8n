@@ -18,7 +18,7 @@ import { initGithub, getEventFromGithubEventPath } from '../github-helpers.mjs';
 export const SIZE_LIMIT = 1000;
 export const OVERRIDE_COMMAND = '/size-limit-override';
 
-export const EXCLUDE_PATTERNS = [
+export const TEST_PATTERNS = [
 	// Test files (by extension)
 	'**/*.test.ts',
 	'**/*.test.js',
@@ -38,11 +38,16 @@ export const EXCLUDE_PATTERNS = [
 	'**/__mocks__/**',
 	// Dedicated testing package
 	'packages/testing/**',
+];
+
+export const MISC_PATTERNS = [
 	// Lock file (can produce massive diffs on dependency changes)
 	'pnpm-lock.yaml',
 	'**/*.md',
-	'**/*.mdx'
+	'**/*.mdx',
 ];
+
+export const EXCLUDE_PATTERNS = [...TEST_PATTERNS, ...MISC_PATTERNS];
 
 const BOT_MARKER = '<!-- pr-size-check -->';
 
