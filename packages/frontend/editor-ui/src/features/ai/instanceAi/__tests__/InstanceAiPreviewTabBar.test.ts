@@ -85,10 +85,10 @@ async function openAgentTabContextMenu(container: HTMLElement, tabId = 'agent-1'
 }
 
 async function selectContextMenuItem(label: string) {
-	let menuItem: Element | null = null;
+	let menuItem: HTMLElement | null = null;
 	await waitFor(() => {
 		menuItem =
-			[...document.body.querySelectorAll('[role="menuitem"]')].find((item) =>
+			[...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) =>
 				item.textContent?.includes(label),
 			) ?? null;
 		expect(menuItem).not.toBeNull();
