@@ -55,6 +55,20 @@ describe('SystemTaskMetadata', () => {
 		expect(listener).toHaveBeenNthCalledWith(2, secondTaskClass);
 	});
 
+	it('should deliver a task class registered by the listener during replay only once', () => {
+		metadata.register(firstTaskClass);
+
+		const received: SystemTaskClass[] = [];
+		metadata.subscribe((taskClass) => {
+			received.push(taskClass);
+			if (taskClass === firstTaskClass) {
+				metadata.register(secondTaskClass);
+			}
+		});
+
+		expect(received).toEqual([firstTaskClass, secondTaskClass]);
+	});
+
 	it('should reject a second subscriber', () => {
 		metadata.subscribe(vi.fn());
 

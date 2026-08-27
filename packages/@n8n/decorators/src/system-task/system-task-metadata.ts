@@ -30,7 +30,7 @@ export class SystemTaskMetadata {
 		}
 
 		this.onRegister = listener;
-		for (const taskClass of this.taskClasses) {
+		for (const taskClass of [...this.taskClasses]) {
 			listener(taskClass);
 		}
 	}
