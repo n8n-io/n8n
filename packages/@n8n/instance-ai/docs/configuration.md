@@ -210,7 +210,7 @@ The same storage backend is used for:
 - Message history
 - Observational memory (observation log, cursors, and task locks)
 - Plan storage (thread-scoped in thread metadata)
-- Run snapshots and checkpoints (separate tables)
+- Checkpoints (separate table)
 
 ## Event Bus
 

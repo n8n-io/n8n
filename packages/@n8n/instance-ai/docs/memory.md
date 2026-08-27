@@ -26,8 +26,8 @@ SQLite instance n8n already uses, selected automatically from n8n's own database
 configuration.
 
 That backend holds message history, observational memory (observation log,
-cursors and task locks), plan state in thread metadata, and run snapshots and
-checkpoints in their own tables.
+cursors and task locks), plan state in thread metadata, and checkpoints in
+their own table.
 
 ### Tier 2: Observational Memory
 

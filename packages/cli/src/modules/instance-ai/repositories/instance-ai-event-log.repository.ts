@@ -111,8 +111,7 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	 *
 	 * Selects no `payload`, so it does not pay the JSON cost of the rows it
 	 * scans. The scan itself is bounded by the thread (PK-led); if it ever shows
-	 * up in a profile, a `(threadId, createdAt)` index is the next lever —
-	 * `instance_ai_run_snapshots` already carries the equivalent one.
+	 * up in a profile, a `(threadId, createdAt)` index is the next lever.
 	 */
 	async findRunIdsInWindow(
 		threadId: string,

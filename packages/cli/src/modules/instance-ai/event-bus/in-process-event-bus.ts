@@ -42,7 +42,7 @@ export class InProcessEventBus implements InstanceAiEventBus {
 	 * facts.
 	 */
 	publish(threadId: string, event: InstanceAiEvent): void {
-		// Stamp publish time once — replays (SSE reconnect, snapshot rebuilds)
+		// Stamp publish time once — replays (SSE reconnect, history folds)
 		// rely on it to reconstruct real timing instead of processing time, and
 		// persisted events must carry it too.
 		if (event.ts === undefined) {
