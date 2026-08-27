@@ -324,6 +324,34 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		);
 	});
 
+	it('should reject the opposite style option in toLocaleDateString/toLocaleTimeString', () => {
+		const data = { $json: {} };
+
+		// The in-sandbox TypeError is swallowed by the E() handler, so the
+		// expression yields undefined — same as the vm engine.
+		expect(
+			evaluator.evaluate(
+				'{{ new Date(0).toLocaleDateString("en-US", { timeStyle: "short" }) }}',
+				data,
+				caller,
+			),
+		).toBeUndefined();
+		expect(
+			evaluator.evaluate(
+				'{{ new Date(0).toLocaleTimeString("en-US", { dateStyle: "short" }) }}',
+				data,
+				caller,
+			),
+		).toBeUndefined();
+		expect(
+			evaluator.evaluate(
+				'{{ new Date(0).toLocaleString("en-US", { dateStyle: "short", timeStyle: "short", timeZone: "UTC" }) }}',
+				data,
+				caller,
+			),
+		).toBe('1/1/70, 12:00 AM');
+	});
+
 	it('should round-trip an invalid Date return value', () => {
 		const data = { $json: {} };
 

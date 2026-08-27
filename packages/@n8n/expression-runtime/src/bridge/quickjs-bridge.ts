@@ -798,10 +798,14 @@ export class QuickJsBridge implements RuntimeBridge {
 	}
 	var DATE_COMPONENTS = ['weekday', 'year', 'month', 'day'];
 	var TIME_COMPONENTS = ['dayPeriod', 'hour', 'minute', 'second', 'fractionalSecondDigits'];
-	// ToDateTimeOptions (ECMA-402 sec. 12): when options carry none of the
-	// method's required components (and no dateStyle/timeStyle), fill in the
-	// method's numeric defaults so e.g. toLocaleTimeString() shows a time.
-	function toDateTimeOptions(options, requiredKeys, addDate, addTime) {
+	// ToDateTimeOptions (ECMA-402 sec. 12): reject the style option the method
+	// doesn't cover (as V8 does), and when options carry none of the method's
+	// required components (and no dateStyle/timeStyle), fill in the method's
+	// numeric defaults so e.g. toLocaleTimeString() shows a time.
+	function toDateTimeOptions(options, requiredKeys, addDate, addTime, rejectedStyle) {
+		if (rejectedStyle && options && options[rejectedStyle] !== undefined) {
+			throw new TypeError('Invalid option : ' + rejectedStyle);
+		}
 		var merged = {};
 		for (var k in options || {}) merged[k] = options[k];
 		if (merged.dateStyle !== undefined || merged.timeStyle !== undefined) return merged;
@@ -815,10 +819,10 @@ export class QuickJsBridge implements RuntimeBridge {
 		return new DateTimeFormat(locales, toDateTimeOptions(options, ANY_COMPONENTS, true, true)).format(this);
 	};
 	Date.prototype.toLocaleDateString = function(locales, options) {
-		return new DateTimeFormat(locales, toDateTimeOptions(options, DATE_COMPONENTS, true, false)).format(this);
+		return new DateTimeFormat(locales, toDateTimeOptions(options, DATE_COMPONENTS, true, false, 'timeStyle')).format(this);
 	};
 	Date.prototype.toLocaleTimeString = function(locales, options) {
-		return new DateTimeFormat(locales, toDateTimeOptions(options, TIME_COMPONENTS, false, true)).format(this);
+		return new DateTimeFormat(locales, toDateTimeOptions(options, TIME_COMPONENTS, false, true, 'dateStyle')).format(this);
 	};
 })();
 `;
