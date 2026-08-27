@@ -975,5 +975,33 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			});
 			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 		});
+
+		it('adds another managed instance with the managed credential preselected', async () => {
+			const existing: AgentJsonToolRef = {
+				type: 'node',
+				name: 'Slack',
+				node: {
+					nodeType: SLACK.name,
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					credentials: { slackApi: { id: null, name: '', __aiGatewayManaged: true } },
+				},
+			};
+			const onConfirm = vi.fn();
+			render([existing], onConfirm);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitConnect(connected!);
+
+			// Activating a connected managed tool routes through the managed add
+			// path, so the new instance keeps the __aiGatewayManaged credential.
+			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+			expect(payload.name).toBe('agentToolConfigModal');
+			expect(payload.data.toolRef.node.credentials).toEqual({
+				slackApi: { id: null, name: '', __aiGatewayManaged: true },
+			});
+			expect(payload.data.existingToolNames).toContain(existing.name);
+		});
 	});
 });
