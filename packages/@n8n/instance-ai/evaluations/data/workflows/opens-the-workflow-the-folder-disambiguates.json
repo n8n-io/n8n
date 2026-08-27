@@ -1,0 +1,148 @@
+{
+	"description": "Folder disambiguates two similarly named workflows. Taken from a thread where the user said 'my trigger workflow, in the self driving PRDs folder' and the agent guessed a name filter of 'Triggers' \u2014 the plural \u2014 then fell back to dumping the whole instance. Here the folder holds a workflow called Trigger and a DECOY called Triggers Playground sits outside it. The grade is deterministic: a node name unique to the in-folder workflow must reach context, and a node name unique to the decoy must not \u2014 node names only appear once a workflow is actually opened, so this measures opening the right one rather than merely listing both.",
+	"seed": {
+		"mode": "inline",
+		"sessionBoundary": true,
+		"messages": [
+			{
+				"role": "user",
+				"text": "The PRD automation lives in its own folder, separate from my scratch workflows."
+			},
+			{
+				"role": "assistant",
+				"text": "Noted \u2014 I'll keep the two apart."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfPrdTriggerSd01",
+				"name": "Trigger",
+				"nodes": [
+					{
+						"id": "cc000001-0001-4d01-9a01-000000000001",
+						"name": "Weekly PRD Sweep",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "weeks"
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "cc000001-0002-4d01-9a01-000000000002",
+						"name": "Notion PRD Query",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://api.notion.com/v1/databases/prd/query",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Weekly PRD Sweep": {
+						"main": [
+							[
+								{
+									"node": "Notion PRD Query",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Product Docs"
+			},
+			{
+				"id": "wfTrigPlaygrndSd1",
+				"name": "Triggers Playground",
+				"nodes": [
+					{
+						"id": "cc000002-0001-4d01-9a01-000000000001",
+						"name": "Playground Webhook",
+						"type": "n8n-nodes-base.webhook",
+						"typeVersion": 2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"path": "playground"
+						}
+					},
+					{
+						"id": "cc000002-0002-4d01-9a01-000000000002",
+						"name": "Scratch Set",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.4,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {}
+					}
+				],
+				"connections": {
+					"Playground Webhook": {
+						"main": [
+							[
+								{
+									"node": "Scratch Set",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Open my trigger workflow in the Product Docs folder and tell me which nodes it has. Don't change anything.\n\n[Director note: do not help it disambiguate. If it asks which of several workflows you mean, or offers a list to choose from, repeat only that you mean the trigger workflow in the Product Docs folder and that it should find it itself.]"
+		}
+	],
+	"complexity": "simple",
+	"tags": [
+		"folders",
+		"instance-context",
+		"disambiguation"
+	],
+	"messageBudget": 4,
+	"contextAssertions": [
+		{
+			"text": "Notion PRD Query",
+			"anchor": "turn-end",
+			"note": "node unique to the workflow INSIDE the folder \u2014 present only if the right workflow was opened"
+		},
+		{
+			"text": "Playground Webhook",
+			"mustAppear": false,
+			"anchor": "turn-end",
+			"note": "node unique to the decoy outside the folder \u2014 present only if the wrong workflow was opened"
+		}
+	],
+	"processExpectations": [
+		"The agent reported the nodes of the workflow inside the Product Docs folder \u2014 Weekly PRD Sweep and Notion PRD Query.",
+		"The agent did not describe the contents of Triggers Playground, which is outside that folder."
+	],
+	"datasets": [
+		"folders"
+	]
+}

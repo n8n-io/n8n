@@ -29,6 +29,10 @@ const SeedWorkflowSchema = z.object({
 	name: z.string().min(1),
 	nodes: z.array(z.record(z.unknown())),
 	connections: z.record(z.unknown()),
+	/** Slash-separated folder to place the workflow in (`Clients/Acme`), created on
+	 *  restore. Omit for the project root. Lets a case state folder MEMBERSHIP
+	 *  rather than implying it through shared name prefixes. */
+	folder: z.string().min(1).optional(),
 });
 
 const SeedDataTableSchema = z.object({

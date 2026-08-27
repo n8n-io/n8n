@@ -7,12 +7,18 @@ import {
 import { ModuleRegistry } from '@n8n/backend-common';
 import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { jsonParse, type IConnections, type INode } from 'n8n-workflow';
+import { jsonParse, PROJECT_ROOT, type IConnections, type INode } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { License } from '@/license';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { FolderService } from '@/services/folder.service';
+
+/** Substring name matches to sift for an exact one. A parent with more than
+ *  this many similarly-named children is not a seeding scenario. */
+const SEED_FOLDER_LOOKUP_LIMIT = 50;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -61,6 +67,8 @@ export class EvalThreadRestoreService {
 		private readonly workflowRepo: WorkflowRepository,
 		private readonly sharedWorkflowRepo: SharedWorkflowRepository,
 		private readonly dataTableService: DataTableService,
+		private readonly folderService: FolderService,
+		private readonly license: License,
 	) {}
 
 	/**
@@ -230,9 +238,15 @@ export class EvalThreadRestoreService {
 		dataTableIdMap: Map<string, string> = new Map(),
 	): Promise<string[]> {
 		const created: string[] = [];
+		// Created before any workflow so a failure part-way leaves no workflow
+		// pointing at a folder the rollback then removes.
+		const folderIds = await this.ensureSeedFolders(workflows, projectId);
 		try {
 			for (const workflow of workflows) {
-				if (await this.createWorkflowPinnedToId(workflow, projectId, dataTableIdMap)) {
+				const folderId = workflow.folder ? folderIds.get(workflow.folder) : undefined;
+				if (
+					await this.createWorkflowPinnedToId(workflow, projectId, dataTableIdMap, folderId)
+				) {
 					created.push(workflow.id);
 				}
 			}
@@ -241,6 +255,90 @@ export class EvalThreadRestoreService {
 			throw error;
 		}
 		return created;
+	}
+
+	/**
+	 * Create every folder path the seed declares, and map each declared path to the
+	 * folder its last segment became. Nested paths create each ancestor once, so
+	 * `Clients/Acme` and `Clients/Globex` share one `Clients`.
+	 *
+	 * IDEMPOTENT — a segment that already exists at that parent is reused, never
+	 * duplicated. This matters more than it looks: unlike workflow names, folder
+	 * names are NOT uniquified per run (a case's prose names the folder the way the
+	 * user did), so `--iterations 5` would otherwise leave five folders called
+	 * `logsearch` and the folder the case is about would resolve as ambiguous.
+	 *
+	 * Folders are NOT rolled back with the workflows. They are empty containers in
+	 * a disposable eval project, and deleting one is the destructive operation of
+	 * the two — a rollback that removed a folder another concurrently-restoring
+	 * case had just placed workflows in would fail that case instead.
+	 */
+	private async ensureSeedFolders(
+		workflows: InstanceAiEvalSeedWorkflow[],
+		projectId: string,
+	): Promise<Map<string, string>> {
+		const paths = [
+			...new Set(workflows.flatMap((workflow) => (workflow.folder ? [workflow.folder] : []))),
+		];
+		if (paths.length === 0) return new Map();
+
+		if (!this.license.isLicensed('feat:folders')) {
+			// Loud: a case that declares folders and silently gets a flat project would
+			// grade the agent on an instance that does not match what the case says.
+			throw new BadRequestError(
+				'Seeding workflows into folders requires the folders feature to be licensed on this instance',
+			);
+		}
+
+		// Keyed by the path walked so far, so an ancestor shared by two declared
+		// paths is resolved once.
+		const byPath = new Map<string, string>();
+		for (const path of paths) {
+			const segments = path.split('/').filter((segment) => segment.trim() !== '');
+			let parentFolderId: string | undefined;
+			let walked = '';
+			for (const segment of segments) {
+				walked = walked === '' ? segment : `${walked}/${segment}`;
+				const known = byPath.get(walked);
+				if (known) {
+					parentFolderId = known;
+					continue;
+				}
+				const resolved =
+					(await this.findFolderByName(segment, projectId, parentFolderId)) ??
+					(
+						await this.folderService.createFolder(
+							{ name: segment, parentFolderId },
+							projectId,
+						)
+					).id;
+				byPath.set(walked, resolved);
+				parentFolderId = resolved;
+			}
+		}
+
+		return new Map(
+			paths.flatMap((path) => {
+				const id = byPath.get(path);
+				return id ? [[path, id] as const] : [];
+			}),
+		);
+	}
+
+	/** An existing folder with this EXACT name under this parent, if any. The
+	 *  repository's name filter is a substring LIKE, so the exact comparison is
+	 *  done here — `Acme` must not reuse `Acme-Archive`. */
+	private async findFolderByName(
+		name: string,
+		projectId: string,
+		parentFolderId: string | undefined,
+	): Promise<string | undefined> {
+		const [candidates] = await this.folderService.getManyAndCount(projectId, {
+			filter: { name, parentFolderId: parentFolderId ?? PROJECT_ROOT },
+			select: { name: true },
+			take: SEED_FOLDER_LOOKUP_LIMIT,
+		});
+		return candidates.find((folder) => folder.name === name)?.id;
 	}
 
 	/** Best-effort delete (rollback of a failed restore). */
@@ -264,6 +362,7 @@ export class EvalThreadRestoreService {
 		workflow: InstanceAiEvalSeedWorkflow,
 		projectId: string,
 		dataTableIdMap: Map<string, string>,
+		parentFolderId?: string,
 	): Promise<boolean> {
 		const remapDataTableIds = (value: unknown): unknown =>
 			this.remapDataTableIds(value, dataTableIdMap);
@@ -305,6 +404,7 @@ export class EvalThreadRestoreService {
 				connections,
 				active: false,
 				versionId: randomUUID(),
+				...(parentFolderId ? { parentFolder: { id: parentFolderId } } : {}),
 			}),
 		);
 		if (!owningProject) {

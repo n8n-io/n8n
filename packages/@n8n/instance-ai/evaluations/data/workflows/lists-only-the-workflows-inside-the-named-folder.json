@@ -1,0 +1,286 @@
+{
+	"description": "Folder inventory. The user asks what is inside a folder they name. The three workflows actually IN the folder share no word with the folder's name, and two workflows that DO share a word with it sit outside at the project root \u2014 so a workflow-NAME filter on the folder name returns precisely the wrong set, which is the substitution seen in real threads (a folder request became `query: <folder name>`). Graded on the answer, not on a build: the agent is told not to change anything. Turns green only when folder membership can be read rather than guessed.",
+	"seed": {
+		"mode": "inline",
+		"sessionBoundary": true,
+		"messages": [
+			{
+				"role": "user",
+				"text": "I've been tidying this instance up into folders."
+			},
+			{
+				"role": "assistant",
+				"text": "Good \u2014 folders make a growing instance much easier to navigate."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfIntakeFormSd01",
+				"name": "Intake Form Handler",
+				"nodes": [
+					{
+						"id": "aa000001-0001-4d01-9a01-000000000001",
+						"name": "Intake Webhook",
+						"type": "n8n-nodes-base.webhook",
+						"typeVersion": 2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"path": "intake"
+						}
+					},
+					{
+						"id": "aa000001-0002-4d01-9a01-000000000002",
+						"name": "Normalise Fields",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.4,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {}
+					}
+				],
+				"connections": {
+					"Intake Webhook": {
+						"main": [
+							[
+								{
+									"node": "Normalise Fields",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Client Onboarding"
+			},
+			{
+				"id": "wfWelcomePackSd01",
+				"name": "Welcome Pack Sender",
+				"nodes": [
+					{
+						"id": "aa000002-0001-4d01-9a01-000000000001",
+						"name": "Daily Send",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 9
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "aa000002-0002-4d01-9a01-000000000002",
+						"name": "Post Welcome Pack",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://api.example.com/v1/welcome-pack",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Daily Send": {
+						"main": [
+							[
+								{
+									"node": "Post Welcome Pack",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Client Onboarding"
+			},
+			{
+				"id": "wfKickoffSchedSd01",
+				"name": "Kickoff Call Scheduler",
+				"nodes": [
+					{
+						"id": "aa000003-0001-4d01-9a01-000000000001",
+						"name": "Kickoff Trigger",
+						"type": "n8n-nodes-base.executeWorkflowTrigger",
+						"typeVersion": 1.1,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {}
+					},
+					{
+						"id": "aa000003-0002-4d01-9a01-000000000002",
+						"name": "Book Kickoff Slot",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://api.example.com/v1/calendar/slots",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Kickoff Trigger": {
+						"main": [
+							[
+								{
+									"node": "Book Kickoff Slot",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Client Onboarding"
+			},
+			{
+				"id": "wfClientDigestSd1",
+				"name": "Client Onboarding Digest",
+				"nodes": [
+					{
+						"id": "aa000004-0001-4d01-9a01-000000000001",
+						"name": "Weekly Digest",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "weeks"
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "aa000004-0002-4d01-9a01-000000000002",
+						"name": "Send Digest",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://api.example.com/v1/digest",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Weekly Digest": {
+						"main": [
+							[
+								{
+									"node": "Send Digest",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			},
+			{
+				"id": "wfOnboardAuditSd1",
+				"name": "Onboarding Audit Log",
+				"nodes": [
+					{
+						"id": "aa000005-0001-4d01-9a01-000000000001",
+						"name": "Audit Trigger",
+						"type": "n8n-nodes-base.executeWorkflowTrigger",
+						"typeVersion": 1.1,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {}
+					},
+					{
+						"id": "aa000005-0002-4d01-9a01-000000000002",
+						"name": "Append Audit Row",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://api.example.com/v1/audit",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Audit Trigger": {
+						"main": [
+							[
+								{
+									"node": "Append Audit Row",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "What's in my Client Onboarding folder? Just list the workflows that are in it \u2014 don't build or change anything.\n\n[Director note: if the agent asks which folder or which workflows you mean, tell it only that the folder is called Client Onboarding and that it should look it up itself. Never list the workflows for it.]"
+		}
+	],
+	"complexity": "simple",
+	"tags": [
+		"folders",
+		"instance-context",
+		"retrieval"
+	],
+	"messageBudget": 4,
+	"contextAssertions": [
+		{
+			"text": "Kickoff Call Scheduler",
+			"anchor": "turn-end",
+			"note": "a folder member whose name shares no word with the folder \u2014 reachable only by reading membership"
+		}
+	],
+	"processExpectations": [
+		"The agent listed the folder's contents as exactly three workflows: Intake Form Handler, Welcome Pack Sender and Kickoff Call Scheduler.",
+		"The agent did not present Client Onboarding Digest or Onboarding Audit Log as being inside the folder. Those two live at the project root and only share a word with the folder's name.",
+		"The agent did not claim the folder was empty, missing, or unreadable."
+	],
+	"datasets": [
+		"folders"
+	]
+}

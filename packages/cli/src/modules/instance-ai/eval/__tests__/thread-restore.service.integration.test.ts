@@ -3,9 +3,11 @@ import type { Project } from '@n8n/db';
 import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { License } from '@/license';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
+import { FolderService } from '@/services/folder.service';
 
 import { EvalThreadRestoreService } from '../thread-restore.service';
 
@@ -37,6 +39,8 @@ describe('EvalThreadRestoreService.restoreDataTables (seed rows)', () => {
 			Container.get(WorkflowRepository),
 			Container.get(SharedWorkflowRepository),
 			dataTableService,
+			Container.get(FolderService),
+			Container.get(License),
 		);
 	});
 
@@ -115,6 +119,8 @@ describe('EvalThreadRestoreService.reseedDataTableRows', () => {
 			Container.get(WorkflowRepository),
 			Container.get(SharedWorkflowRepository),
 			dataTableService,
+			Container.get(FolderService),
+			Container.get(License),
 		);
 	});
 

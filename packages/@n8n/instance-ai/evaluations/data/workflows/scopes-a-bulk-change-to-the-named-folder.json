@@ -1,0 +1,236 @@
+{
+	"description": "Scope of a bulk folder operation. From a thread that opened by dumping the whole instance (limit 100, instance scope) to find one folder's 15 workflows. Here three workflows are in the Acme Clinic folder under names that do NOT contain 'Acme Clinic', and one workflow that DOES contain it sits outside \u2014 so a name filter on the folder name returns exactly one workflow, and the wrong one. The turn asks for the target list before any edit, so the scope is graded directly instead of inferred from what got modified.",
+	"seed": {
+		"mode": "inline",
+		"sessionBoundary": true,
+		"messages": [
+			{
+				"role": "user",
+				"text": "I imported a set of clinic workflows and put them all in one folder."
+			},
+			{
+				"role": "assistant",
+				"text": "Understood."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfMissedCallSd01",
+				"name": "Missed Call Recovery",
+				"nodes": [
+					{
+						"id": "dd000001-0001-4d01-9a01-000000000001",
+						"name": "Missed Call Hook",
+						"type": "n8n-nodes-base.webhook",
+						"typeVersion": 2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"path": "missed-call"
+						}
+					},
+					{
+						"id": "dd000001-0002-4d01-9a01-000000000002",
+						"name": "Send SMS",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://api.example.com/v1/sms",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Missed Call Hook": {
+						"main": [
+							[
+								{
+									"node": "Send SMS",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Acme Clinic"
+			},
+			{
+				"id": "wfApptRemindSd01",
+				"name": "Appointment Reminders",
+				"nodes": [
+					{
+						"id": "dd000002-0001-4d01-9a01-000000000001",
+						"name": "Daily Reminder Run",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 8
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "dd000002-0002-4d01-9a01-000000000002",
+						"name": "Send Reminder SMS",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://api.example.com/v1/sms",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Daily Reminder Run": {
+						"main": [
+							[
+								{
+									"node": "Send Reminder SMS",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Acme Clinic"
+			},
+			{
+				"id": "wfPostVisitSd001",
+				"name": "Post Visit Followup",
+				"nodes": [
+					{
+						"id": "dd000003-0001-4d01-9a01-000000000001",
+						"name": "Followup Trigger",
+						"type": "n8n-nodes-base.executeWorkflowTrigger",
+						"typeVersion": 1.1,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {}
+					},
+					{
+						"id": "dd000003-0002-4d01-9a01-000000000002",
+						"name": "Send Followup SMS",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://api.example.com/v1/sms",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Followup Trigger": {
+						"main": [
+							[
+								{
+									"node": "Send Followup SMS",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Acme Clinic"
+			},
+			{
+				"id": "wfClinicSandbxSd1",
+				"name": "Acme Clinic Sandbox",
+				"nodes": [
+					{
+						"id": "dd000004-0001-4d01-9a01-000000000001",
+						"name": "Sandbox Hook",
+						"type": "n8n-nodes-base.webhook",
+						"typeVersion": 2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"path": "sandbox"
+						}
+					},
+					{
+						"id": "dd000004-0002-4d01-9a01-000000000002",
+						"name": "Scratch Step",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.4,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {}
+					}
+				],
+				"connections": {
+					"Sandbox Hook": {
+						"main": [
+							[
+								{
+									"node": "Scratch Step",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every workflow in my Acme Clinic folder needs its SMS step swapped for WhatsApp. Before you touch anything, tell me exactly which workflows you would change and wait for my go-ahead.\n\n[Director note: do NOT approve anything and do not name any workflow. If the agent asks you to confirm the list or to pick from options, say only that it should work out the folder's contents itself. If it proposes a list, reply that you'll review it later.]"
+		}
+	],
+	"complexity": "medium",
+	"tags": [
+		"folders",
+		"instance-context",
+		"scope"
+	],
+	"messageBudget": 4,
+	"contextAssertions": [
+		{
+			"text": "Post Visit Followup",
+			"anchor": "turn-end",
+			"note": "in-folder member whose name lacks the folder's name \u2014 only membership reads it"
+		}
+	],
+	"processExpectations": [
+		"The agent named exactly three workflows as the ones it would change: Missed Call Recovery, Appointment Reminders and Post Visit Followup.",
+		"The agent did not include Acme Clinic Sandbox in the list of workflows to change \u2014 it sits outside the folder and only shares the folder's name.",
+		"The agent did not modify, build, or publish any workflow before the user gave a go-ahead."
+	],
+	"datasets": [
+		"folders"
+	]
+}

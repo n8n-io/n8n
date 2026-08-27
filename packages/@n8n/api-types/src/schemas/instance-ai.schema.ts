@@ -2269,6 +2269,15 @@ const instanceAiEvalSeedWorkflowSchema = z.object({
 	name: z.string().min(1).max(255),
 	nodes: z.array(z.record(z.unknown())).max(500),
 	connections: z.record(z.unknown()),
+	/**
+	 * Slash-separated folder path to place the workflow in, created on restore if
+	 * absent (`Clients/Acme` makes both). Omit to leave it at the project root.
+	 *
+	 * Needed because folder membership is the thing under test in the folder cases:
+	 * without it a case can only express "workflows whose names share a prefix",
+	 * which is precisely the wrong signal the agent was already reading.
+	 */
+	folder: z.string().min(1).max(255).optional(),
 });
 
 export type InstanceAiEvalSeedWorkflow = z.infer<typeof instanceAiEvalSeedWorkflowSchema>;

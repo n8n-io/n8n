@@ -4,9 +4,11 @@ import type { Project, SharedWorkflowRepository, WorkflowRepository } from '@n8n
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { License } from '@/license';
 import { AgentsService } from '@/modules/agents/agents.service';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { FolderService } from '@/services/folder.service';
 
 import { EvalThreadRestoreService } from '../thread-restore.service';
 
@@ -26,7 +28,15 @@ describe('EvalThreadRestoreService', () => {
 	const workflowRepo = mock<WorkflowRepository>();
 	const sharedWorkflowRepo = mock<SharedWorkflowRepository>();
 	const dataTableService = mock<DataTableService>();
-	const service = new EvalThreadRestoreService(workflowRepo, sharedWorkflowRepo, dataTableService);
+	const folderService = mock<FolderService>();
+	const license = mock<License>();
+	const service = new EvalThreadRestoreService(
+		workflowRepo,
+		sharedWorkflowRepo,
+		dataTableService,
+		folderService,
+		license,
+	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();

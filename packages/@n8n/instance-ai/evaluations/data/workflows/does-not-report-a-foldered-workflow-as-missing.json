@@ -1,0 +1,167 @@
+{
+	"description": "Estate-existence claim, from a real thread where the agent told the user a query/search layer was 'not built yet' while two search workflows had existed in the named folder for weeks; the user had to correct it by pointing at the folder. Neither workflow's name contains the folder's name, so answering correctly requires reading folder membership. The failure being measured is a confident false claim about the user's OWN instance, which is worse than an unhelpful answer \u2014 so the expectations grade the claim, not the effort.",
+	"seed": {
+		"mode": "inline",
+		"sessionBoundary": true,
+		"messages": [
+			{
+				"role": "user",
+				"text": "I keep all the log-analysis automation for this project together in one folder."
+			},
+			{
+				"role": "assistant",
+				"text": "Understood."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfLogIngestSd001",
+				"name": "Log Ingest Pipeline",
+				"nodes": [
+					{
+						"id": "bb000001-0001-4d01-9a01-000000000001",
+						"name": "Hourly Ingest",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "hours"
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "bb000001-0002-4d01-9a01-000000000002",
+						"name": "Embed And Upsert",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://api.example.com/v1/vectors/upsert",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Hourly Ingest": {
+						"main": [
+							[
+								{
+									"node": "Embed And Upsert",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "logsearch"
+			},
+			{
+				"id": "wfSemanticSrchSd1",
+				"name": "Semantic Log Search",
+				"nodes": [
+					{
+						"id": "bb000002-0001-4d01-9a01-000000000001",
+						"name": "Search Request",
+						"type": "n8n-nodes-base.executeWorkflowTrigger",
+						"typeVersion": 1.1,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {}
+					},
+					{
+						"id": "bb000002-0002-4d01-9a01-000000000002",
+						"name": "Query Vector Index",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://api.example.com/v1/vectors/query",
+							"options": {}
+						}
+					},
+					{
+						"id": "bb000002-0003-4d01-9a01-000000000003",
+						"name": "Rank And Filter",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.4,
+						"position": [
+							440,
+							0
+						],
+						"parameters": {}
+					}
+				],
+				"connections": {
+					"Search Request": {
+						"main": [
+							[
+								{
+									"node": "Query Vector Index",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Query Vector Index": {
+						"main": [
+							[
+								{
+									"node": "Rank And Filter",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "logsearch"
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Quick question before I plan next week \u2014 in my logsearch folder, do I still need to build the semantic search / query side, or is that already covered? Don't build anything, just tell me what's there.\n\n[Director note: you genuinely do not remember what you built. If the agent asks you to confirm what exists, or asks for workflow names, refuse and tell it to check the instance itself. Never name a workflow.]"
+		}
+	],
+	"complexity": "simple",
+	"tags": [
+		"folders",
+		"instance-context",
+		"hallucination"
+	],
+	"messageBudget": 4,
+	"contextAssertions": [
+		{
+			"text": "Semantic Log Search",
+			"anchor": "turn-end",
+			"note": "the workflow the real thread wrongly reported as missing; must be retrieved before answering"
+		}
+	],
+	"processExpectations": [
+		"The agent answered that the semantic search / query side already exists, and named Semantic Log Search as the workflow providing it.",
+		"The agent did NOT state or imply that the search or query layer is missing, not built yet, or a gap to fill.",
+		"The agent grounded the answer in what it actually read from the instance, rather than asking the user to confirm what they already have."
+	],
+	"datasets": [
+		"folders"
+	]
+}
