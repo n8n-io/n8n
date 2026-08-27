@@ -424,18 +424,29 @@ describe('useInstanceAiMcpStore', () => {
 	});
 
 	describe('handleToolCallFailed', () => {
-		it('revalidates a known connection and deduplicates in-flight checks', async () => {
+		it('starts a fresh check when a connection check is already in flight', async () => {
 			store.connections = [{ ...makeConnection(), status: 'connected' }];
-			const request = createDeferred<InstanceAiMcpConnectionToolsResponse>();
-			mockFetchMcpConnectionTools.mockReturnValue(request.promise);
+			const initialRequest = createDeferred<InstanceAiMcpConnectionToolsResponse>();
+			const failureCheck = createDeferred<InstanceAiMcpConnectionToolsResponse>();
+			mockFetchMcpConnectionTools
+				.mockReturnValueOnce(initialRequest.promise)
+				.mockReturnValueOnce(failureCheck.promise);
+			const initialFetch = store.fetchConnectionTools('conn-1');
 
-			store.handleToolCallFailed('unknown-connection');
-			store.handleToolCallFailed('conn-1');
 			store.handleToolCallFailed('conn-1');
 
-			expect(mockFetchMcpConnectionTools).toHaveBeenCalledTimes(1);
-			request.resolve({ id: 'conn-1', status: 'connected', tools: [] });
-			await vi.waitFor(() => expect(store.connections[0].status).toBe('connected'));
+			expect(mockFetchMcpConnectionTools).toHaveBeenCalledTimes(2);
+			initialRequest.resolve({ id: 'conn-1', status: 'connected', tools: [] });
+			await initialFetch;
+			expect(store.connections[0].status).toBe('connecting');
+
+			failureCheck.resolve({
+				id: 'conn-1',
+				status: 'disconnected',
+				tools: [],
+				failureReason: 'server_unavailable',
+			});
+			await vi.waitFor(() => expect(store.connections[0].status).toBe('disconnected'));
 		});
 	});
 

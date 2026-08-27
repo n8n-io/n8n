@@ -197,7 +197,6 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 
 	function handleToolCallFailed(id: string): void {
 		if (!connections.value.some((connection) => connection.id === id)) return;
-		if (inFlightConnectionToolsById.has(id)) return;
 		void fetchConnectionTools(id);
 	}
 
