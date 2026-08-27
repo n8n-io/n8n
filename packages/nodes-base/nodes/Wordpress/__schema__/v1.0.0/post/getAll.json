@@ -174,6 +174,12 @@
                 "type": "integer"
             }
         },
+        "class_list": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        },
         "comment_status": {
             "type": "string"
         },
@@ -270,7 +276,245 @@
         },
         "type": {
             "type": "string"
+        },
+        "yoast_head": {
+            "type": "string"
+        },
+        "yoast_head_json": {
+            "type": "object",
+            "properties": {
+                "article_modified_time": {
+                    "type": "string"
+                },
+                "article_published_time": {
+                    "type": "string"
+                },
+                "author": {
+                    "type": "string"
+                },
+                "canonical": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "og_description": {
+                    "type": "string"
+                },
+                "og_image": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "height": {
+                                "type": "integer"
+                            },
+                            "type": {
+                                "type": "string"
+                            },
+                            "url": {
+                                "type": "string"
+                            },
+                            "width": {
+                                "type": "integer"
+                            }
+                        }
+                    }
+                },
+                "og_locale": {
+                    "type": "string"
+                },
+                "og_site_name": {
+                    "type": "string"
+                },
+                "og_title": {
+                    "type": "string"
+                },
+                "og_type": {
+                    "type": "string"
+                },
+                "og_url": {
+                    "type": "string"
+                },
+                "robots": {
+                    "type": "object",
+                    "properties": {
+                        "follow": {
+                            "type": "string"
+                        },
+                        "index": {
+                            "type": "string"
+                        },
+                        "max-image-preview": {
+                            "type": "string"
+                        },
+                        "max-snippet": {
+                            "type": "string"
+                        },
+                        "max-video-preview": {
+                            "type": "string"
+                        }
+                    }
+                },
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "@context": {
+                            "type": "string"
+                        },
+                        "@graph": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "@id": {
+                                        "type": "string"
+                                    },
+                                    "alternateName": {
+                                        "type": "string"
+                                    },
+                                    "author": {
+                                        "type": "object",
+                                        "properties": {
+                                            "@id": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "breadcrumb": {
+                                        "type": "object",
+                                        "properties": {
+                                            "@id": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "caption": {
+                                        "type": "string"
+                                    },
+                                    "contentUrl": {
+                                        "type": "string"
+                                    },
+                                    "dateModified": {
+                                        "type": "string"
+                                    },
+                                    "datePublished": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": "string"
+                                    },
+                                    "height": {
+                                        "type": "integer"
+                                    },
+                                    "image": {
+                                        "type": "object",
+                                        "properties": {
+                                            "@id": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "inLanguage": {
+                                        "type": "string"
+                                    },
+                                    "isPartOf": {
+                                        "type": "object",
+                                        "properties": {
+                                            "@id": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "itemListElement": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "@type": {
+                                                    "type": "string"
+                                                },
+                                                "item": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "position": {
+                                                    "type": "integer"
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "potentialAction": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "@type": {
+                                                    "type": "string"
+                                                },
+                                                "query-input": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "@type": {
+                                                            "type": "string"
+                                                        },
+                                                        "valueName": {
+                                                            "type": "string"
+                                                        },
+                                                        "valueRequired": {
+                                                            "type": "boolean"
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "primaryImageOfPage": {
+                                        "type": "object",
+                                        "properties": {
+                                            "@id": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    },
+                                    "thumbnailUrl": {
+                                        "type": "string"
+                                    },
+                                    "url": {
+                                        "type": "string"
+                                    },
+                                    "width": {
+                                        "type": "integer"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "title": {
+                    "type": "string"
+                },
+                "twitter_card": {
+                    "type": "string"
+                },
+                "twitter_misc": {
+                    "type": "object",
+                    "properties": {
+                        "زمان تقریبی برای خواندن": {
+                            "type": "string"
+                        },
+                        "نوشته‌شده بدست": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
         }
     },
-    "version": 4
+    "version": 5
 }
