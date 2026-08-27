@@ -76,6 +76,7 @@ describe('ImportService', () => {
 			userRepository,
 			mockWorkflowService,
 			mockPolicyEnforcementService,
+			sharedWorkflowRepository,
 		);
 	});
 
@@ -532,6 +533,33 @@ describe('ImportService', () => {
 			// The batch completes for every workflow regardless of the violation.
 			await expect(getWorkflowById(clean.id)).resolves.toBeDefined();
 			await expect(getWorkflowById(flagged.id)).resolves.toBeDefined();
+		});
+
+		test('evaluates an existing workflow against its own project, not the batch projectId', async () => {
+			const member = await createMember();
+			const memberPersonalProject = await getPersonalProject(member);
+			const existingWorkflow = await createWorkflow(undefined, member);
+
+			const workflowToReimport = await getWorkflowById(existingWorkflow.id);
+			if (!workflowToReimport) expect.fail('Expected to find workflow');
+
+			// Simulates the flagless CLI invocation, where `projectId` defaults to the
+			// importing user's own project regardless of who actually owns the workflow.
+			await importService.importWorkflows(
+				[workflowToReimport],
+				ownerPersonalProject.id,
+				owner.id,
+				{},
+			);
+
+			expect(mockPolicyEnforcementService.evaluateContentImport).toHaveBeenCalledWith({
+				workflow: {
+					id: workflowToReimport.id,
+					name: workflowToReimport.name,
+					nodes: workflowToReimport.nodes,
+				},
+				projectId: memberPersonalProject.id,
+			});
 		});
 
 		test('does not fail the import when evaluateContentImport throws', async () => {

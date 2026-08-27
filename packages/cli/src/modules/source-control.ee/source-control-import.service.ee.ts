@@ -1,6 +1,5 @@
 import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { ContentImportContext } from '@n8n/decorators';
 import type {
 	FindOptionsWhere,
 	Folder,
@@ -51,6 +50,7 @@ import { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { isValidColumnName, isValidDataTableId } from '@/modules/data-table/utils/sql-utils';
 import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { evaluateContentImportSafely } from '@/policy/evaluate-content-import-safely';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { isUniqueConstraintError } from '@/response-helper';
 import { TagService } from '@/services/tag.service';
@@ -899,23 +899,20 @@ export class SourceControlImportService {
 			(w) => w.workflowId === id && w.role === 'workflow:owner',
 		);
 
-		// Resolved once and reused, so ownership sync and the policy context below always agree.
-		const targetOwnerProject = await this.resolveTargetOwnerProject(owner, personalProject);
-
-		await this.syncResourceOwnership({
+		const targetOwnerProject = await this.syncResourceOwnership({
 			resourceId: id,
 			remoteOwner: owner,
 			localOwner,
 			fallbackProject: personalProject,
 			repository: this.sharedWorkflowRepository,
-			targetOwnerProject,
 		});
 
 		// Advisory only — never blocks the pull, per contentImport being `evaluate`, not `enforce`.
-		const policyViolations = await this.evaluateContentImportSafely({
-			workflow: { id, name: importedWorkflow.name, nodes },
-			projectId: targetOwnerProject.id,
-		});
+		const policyViolations = await evaluateContentImportSafely(
+			this.policyEnforcementService,
+			{ workflow: { id, name: importedWorkflow.name, nodes }, projectId: targetOwnerProject.id },
+			this.logger,
+		);
 
 		// Now publish the workflow if needed (after history is saved)
 		if (shouldPublishAfterImport) {
@@ -935,26 +932,6 @@ export class SourceControlImportService {
 			}),
 			...(policyViolations.length && { policyViolations }),
 		};
-	}
-
-	/**
-	 * `evaluateContentImport` is advisory and documented to never throw, but a pull must never
-	 * fail because of policy regardless — so an unexpected error here is swallowed and treated
-	 * as no violations rather than aborting the pull.
-	 */
-	private async evaluateContentImportSafely(context: ContentImportContext) {
-		try {
-			const { violations } = await this.policyEnforcementService.evaluateContentImport(context);
-			return violations;
-		} catch (error) {
-			this.logger.warn(
-				`Failed to evaluate content-import policy for workflow ${context.workflow.id}`,
-				{
-					error: ensureError(error),
-				},
-			);
-			return [];
-		}
 	}
 
 	private async parseWorkflowFromFile(file: string): Promise<IWorkflowToImport> {
@@ -1987,7 +1964,7 @@ export class SourceControlImportService {
 		repository: SharedWorkflowRepository | SharedCredentialsRepository;
 		transactionManager?: EntityManager;
 		targetOwnerProject?: Project;
-	}): Promise<void> {
+	}): Promise<Project> {
 		targetOwnerProject ??= await this.resolveTargetOwnerProject(remoteOwner, fallbackProject);
 
 		const trx = transactionManager ?? this.workflowRepository.manager;
@@ -2000,6 +1977,8 @@ export class SourceControlImportService {
 
 		// Set new ownership
 		await repository.makeOwner([resourceId], targetOwnerProject.id, trx);
+
+		return targetOwnerProject;
 	}
 
 	private async resolveTargetOwnerProject(

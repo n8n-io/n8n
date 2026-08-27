@@ -1,6 +1,11 @@
 import type { Mock } from 'vitest';
 import { safeJoinPath, type Logger } from '@n8n/backend-common';
-import type { CredentialsRepository, TagRepository, UserRepository } from '@n8n/db';
+import type {
+	CredentialsRepository,
+	SharedWorkflowRepository,
+	TagRepository,
+	UserRepository,
+} from '@n8n/db';
 import { type DataSource, type EntityManager } from '@n8n/typeorm';
 import { readdir, readFile } from 'fs/promises';
 import { mock } from 'vitest-mock-extended';
@@ -49,6 +54,7 @@ describe('ImportService', () => {
 	let mockUserRepository: UserRepository;
 	let mockWorkflowService: WorkflowService;
 	let mockPolicyEnforcementService: PolicyEnforcementService;
+	let mockSharedWorkflowRepository: SharedWorkflowRepository;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -67,6 +73,10 @@ describe('ImportService', () => {
 		mockPolicyEnforcementService.evaluateContentImport = vi
 			.fn()
 			.mockResolvedValue({ violations: [] });
+		mockSharedWorkflowRepository = mock<SharedWorkflowRepository>();
+		mockSharedWorkflowRepository.findOwnerProjectsByWorkflowIds = vi
+			.fn()
+			.mockResolvedValue(new Map());
 
 		// Set up cipher mock
 		mockCipher.decryptV2 = vi.fn(async (data: string) =>
@@ -121,6 +131,7 @@ describe('ImportService', () => {
 			mockUserRepository,
 			mockWorkflowService,
 			mockPolicyEnforcementService,
+			mockSharedWorkflowRepository,
 		);
 	});
 

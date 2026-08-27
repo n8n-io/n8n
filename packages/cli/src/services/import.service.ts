@@ -5,6 +5,7 @@ import {
 	Project,
 	WorkflowEntity,
 	SharedWorkflow,
+	SharedWorkflowRepository,
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
@@ -30,6 +31,7 @@ import {
 	toTableName,
 } from '@/modules/data-table/utils/sql-utils';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import { evaluateContentImportSafely } from '@/policy/evaluate-content-import-safely';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { decompressFolder } from '@/utils/compression.util';
 import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
@@ -83,6 +85,7 @@ export class ImportService {
 		private readonly userRepository: UserRepository,
 		private readonly workflowService: WorkflowService,
 		private readonly policyEnforcementService: PolicyEnforcementService,
+		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 	) {}
 
 	async initRecords() {
@@ -112,6 +115,8 @@ export class ImportService {
 		const existingWorkflowIds = new Set<string>();
 		const activeVersionIdByWorkflow = new Map<string, string>();
 
+		let existingOwnerProjects = new Map<string, Project>();
+
 		if (workflowIds.length > 0) {
 			const existingWorkflows = await dbManager.find(WorkflowEntity, {
 				where: { id: In(workflowIds) },
@@ -124,6 +129,11 @@ export class ImportService {
 					activeVersionIdByWorkflow.set(id, activeVersionId);
 				}
 			}
+
+			// An existing workflow's policy scope is its own project, not `projectId` — that
+			// param is where a brand-new workflow lands, and re-importing never moves ownership.
+			existingOwnerProjects =
+				await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
 		}
 
 		const violations: WorkflowImportViolations[] = [];
@@ -145,12 +155,23 @@ export class ImportService {
 			}
 
 			// Advisory only — never blocks the import, per contentImport being `evaluate`, not `enforce`.
-			const decision = await this.evaluateContentImportSafely(workflow, projectId);
-			if (decision.violations.length) {
+			// Use the workflow's own project when it already has one — re-importing never moves it.
+			const evaluationProjectId = workflow.id
+				? (existingOwnerProjects.get(workflow.id)?.id ?? projectId)
+				: projectId;
+			const workflowViolations = await evaluateContentImportSafely(
+				this.policyEnforcementService,
+				{
+					workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
+					projectId: evaluationProjectId,
+				},
+				this.logger,
+			);
+			if (workflowViolations.length) {
 				violations.push({
 					workflowId: workflow.id ?? null,
 					name: workflow.name,
-					violations: decision.violations,
+					violations: workflowViolations,
 				});
 			}
 
@@ -250,28 +271,6 @@ export class ImportService {
 		}
 
 		return { violations };
-	}
-
-	/**
-	 * `evaluateContentImport` is advisory and documented to never throw, but a batch import
-	 * must never fail because of policy regardless — so an unexpected error here is swallowed
-	 * and treated as no violations rather than aborting the import.
-	 */
-	private async evaluateContentImportSafely(
-		workflow: IWorkflowWithVersionMetadata,
-		projectId: string,
-	) {
-		try {
-			return await this.policyEnforcementService.evaluateContentImport({
-				workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
-				projectId,
-			});
-		} catch (error) {
-			this.logger.warn(`Failed to evaluate content-import policy for "${workflow.name}"`, {
-				error: ensureError(error),
-			});
-			return { violations: [] };
-		}
 	}
 
 	/**
