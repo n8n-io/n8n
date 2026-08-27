@@ -81,7 +81,22 @@ export type PublicationResult =
 	 * The published version advanced and some triggers are running, but others
 	 * failed to register. The record is marked `partial_success` and the workflow
 	 * stays published (no auto-unpublish); per-trigger detail is in `triggerStatuses`.
+	 * `teardownFailures` carries abandoned external webhook deregistrations from
+	 * the remove phase (which ran before the version advanced), as on `completed`.
 	 */
-	| { type: 'partial'; triggerStatuses: TriggerPublicationStatus[] }
-	/** The publication failed; the record is failed and the error is reported. */
-	| { type: 'failed'; error: Error; triggerStatuses?: TriggerPublicationStatus[] };
+	| {
+			type: 'partial';
+			triggerStatuses: TriggerPublicationStatus[];
+			teardownFailures?: TriggerTeardownFailure[];
+	  }
+	/**
+	 * The publication failed; the record is failed and the error is reported.
+	 * `teardownFailures` as on `partial`: the remove phase already ran, so its
+	 * abandoned deregistrations must still be surfaced.
+	 */
+	| {
+			type: 'failed';
+			error: Error;
+			triggerStatuses?: TriggerPublicationStatus[];
+			teardownFailures?: TriggerTeardownFailure[];
+	  };

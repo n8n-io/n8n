@@ -89,6 +89,9 @@ export class PublicationStatusReporter {
 			}
 
 			case 'failed': {
+				// The record's failure stays the activation error; the abandoned
+				// deregistrations (whose teardown already ran) get their own report.
+				this.surfaceTeardownFailures(result.teardownFailures);
 				const { triggerStatuses } = result;
 				await this.outboxRepository.manager.transaction(async (trx) => {
 					if (triggerStatuses) {
@@ -106,6 +109,8 @@ export class PublicationStatusReporter {
 			}
 
 			case 'partial': {
+				// As on 'failed': the stored/pushed message stays about activation.
+				this.surfaceTeardownFailures(result.teardownFailures);
 				await this.reportPartial(record, result.triggerStatuses);
 				return;
 			}

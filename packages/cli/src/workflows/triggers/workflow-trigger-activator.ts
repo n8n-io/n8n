@@ -670,22 +670,28 @@ export class WorkflowTriggerActivator {
 		nodeIds: Set<INode['id']>,
 		abort: TriggerOperationAbort,
 	): Promise<TriggerTeardownFailure[]> {
-		const failures: TriggerTeardownFailure[] = [];
+		// Keyed by node: a node can expose several webhooks, but failures are
+		// reported (and counted against the node metrics) per node, keeping the
+		// first error.
+		const failuresByNode = new Map<string, TriggerTeardownFailure>();
+
+		// Local rows first: deleting a node's `webhook_entity` rows is what
+		// stops n8n routing (and executing) its webhooks, so it must not wait
+		// on external deregistration — a slow or failing third party would
+		// otherwise keep the workflow executing. The names come from the
+		// version's nodes, not from webhook discovery: discovery evaluates
+		// webhook expressions and can throw, and a discovery failure must not
+		// leave routing live. The external call below needs only the in-memory
+		// workflow + webhookData, never the row; clearing rows for nodes
+		// without webhooks is a no-op.
+		const targetNodeNames = Object.values(workflow.nodes)
+			.filter((node) => nodeIds.has(node.id))
+			.map((node) => node.name);
+		await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(workflow.id, targetNodeNames);
 
 		await workflow.expression.acquireIsolate();
 		try {
 			const webhooks = this.getWebhookTriggersForNodeIds(workflow, additionalData, nodeIds);
-
-			// Local rows first: deleting a node's `webhook_entity` rows is what
-			// stops n8n routing (and executing) its webhooks, so it must not wait
-			// on external deregistration — a slow or failing third party would
-			// otherwise keep the workflow executing. The external call below needs
-			// only the in-memory workflow + webhookData, never the row.
-			const targetNodeNames = [...new Set(webhooks.map((webhookData) => webhookData.node))];
-			await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
-				workflow.id,
-				targetNodeNames,
-			);
 
 			const deregistrationResults = await Promise.allSettled(
 				webhooks.map(
@@ -713,7 +719,7 @@ export class WorkflowTriggerActivator {
 						nodeName,
 						error: error.message,
 					});
-					failures.push({ nodeName, error });
+					if (!failuresByNode.has(nodeName)) failuresByNode.set(nodeName, { nodeName, error });
 				}
 			}
 		} finally {
@@ -722,7 +728,7 @@ export class WorkflowTriggerActivator {
 
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
-		return failures;
+		return [...failuresByNode.values()];
 	}
 
 	/**

@@ -680,6 +680,44 @@ describe('WorkflowPublicationApplier', () => {
 		expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
 	});
 
+	test('carries external teardown failures on a partial activation outcome', async () => {
+		// The teardown ran (and the version advanced) before activation classified
+		// the result: the abandoned deregistration must survive the classification
+		// so the reporter can still surface it.
+		setTriggerSets(
+			[triggerNode('a'), triggerNode('removed')],
+			[triggerNode('a'), triggerNode('b')],
+		);
+		const teardownFailure = { nodeName: 'removed', error: new Error('remote unreachable') };
+		workflowTriggerActivator.deactivate.mockResolvedValue({
+			externalTeardownFailures: [teardownFailure],
+		});
+		workflowTriggerActivator.activate.mockResolvedValue({
+			activated: ['a'],
+			failures: [{ nodeId: 'b', nodeName: 'b', error: new Error('third-party unavailable') }],
+		});
+
+		const result = await applier.apply(makeRecord(), abort);
+
+		expect(result).toMatchObject({ type: 'partial', teardownFailures: [teardownFailure] });
+	});
+
+	test('carries external teardown failures when adding triggers throws', async () => {
+		setTriggerSets(
+			[triggerNode('a'), triggerNode('removed')],
+			[triggerNode('a'), triggerNode('b')],
+		);
+		const teardownFailure = { nodeName: 'removed', error: new Error('remote unreachable') };
+		workflowTriggerActivator.deactivate.mockResolvedValue({
+			externalTeardownFailures: [teardownFailure],
+		});
+		workflowTriggerActivator.activate.mockRejectedValue(new Error('registration failed'));
+
+		const result = await applier.apply(makeRecord(), abort);
+
+		expect(result).toMatchObject({ type: 'failed', teardownFailures: [teardownFailure] });
+	});
+
 	test('returns partial when a deterministic failure coexists with an activated trigger', async () => {
 		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
 		const error = new WebhookPathTakenError('b');

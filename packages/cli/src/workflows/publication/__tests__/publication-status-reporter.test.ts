@@ -146,6 +146,56 @@ describe('PublicationStatusReporter', () => {
 			);
 		});
 
+		test('partial reports the abandoned deregistrations alongside the activation failures', async () => {
+			await reporter.report(makeRecord(), {
+				type: 'partial',
+				triggerStatuses: [
+					{ nodeId: 'a', nodeName: 'Schedule', status: 'activated', triggerKind: 'in-memory' },
+					{
+						nodeId: 'b',
+						nodeName: 'Broken',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: 'boom',
+					},
+				],
+				teardownFailures: [failure],
+			});
+
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
+				}),
+				{ shouldBeLogged: true },
+			);
+			expect(outboxRepository.markPartialSuccess).toHaveBeenCalled();
+		});
+
+		test('failed reports the abandoned deregistrations alongside the activation error', async () => {
+			const activationError = new Error('registration failed');
+			await reporter.report(makeRecord(), {
+				type: 'failed',
+				error: activationError,
+				teardownFailures: [failure],
+			});
+
+			expect(errorReporter.error).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'External webhook deregistration failed for: "Trello Trigger": remote unreachable',
+				}),
+				{ shouldBeLogged: true },
+			);
+			// The activation error stays the record's failure and its own report.
+			expect(errorReporter.error).toHaveBeenCalledWith(activationError, { shouldBeLogged: true });
+			expect(outboxRepository.markFailed).toHaveBeenCalledWith(
+				1,
+				'registration failed',
+				entityManager,
+			);
+		});
+
 		test('completed still completes the record and reports, keeping the activation push', async () => {
 			await reporter.report(makeRecord(), {
 				type: 'completed',

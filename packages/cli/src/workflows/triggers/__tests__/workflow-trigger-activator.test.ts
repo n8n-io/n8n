@@ -558,6 +558,37 @@ describe('WorkflowTriggerActivator', () => {
 				'Webhook',
 			]);
 		});
+
+		test('deletes local webhook rows even when webhook discovery throws', async () => {
+			// Discovery evaluates webhook expressions and can throw deterministically;
+			// row deletion is derived from the version's nodes instead, so routing
+			// stops even when discovery never yields a webhook to deregister.
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			webhookTriggerRegistrar.getWebhookTriggers.mockImplementation(() => {
+				throw new Error('discovery failed');
+			});
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
+
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+
+			await expect(
+				activator.deactivate(
+					mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+					{ nodes: [node('webhook-node', 'webhook', { name: 'Webhook' })], connections: {} },
+					new Set(['webhook-node']),
+					abort,
+				),
+			).rejects.toThrow('discovery failed');
+
+			expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
+				'Webhook',
+			]);
+		});
 	});
 
 	describe('deactivate teardown failures', () => {
@@ -693,6 +724,40 @@ describe('WorkflowTriggerActivator', () => {
 
 			expect(externalTeardownFailures).toEqual([]);
 			expect(webhookTriggerRegistrar.deregister).toHaveBeenCalledTimes(2);
+		});
+
+		test('reports a node with multiple failing webhooks as a single teardown failure', async () => {
+			// Failures are per node, not per webhook: metrics subtract the failure
+			// count from the node count, and the reporter names failed nodes — a
+			// multi-webhook node must not be counted (or named) twice.
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([
+				mock<IWebhookData>({ node: 'Webhook', path: 'one' }),
+				mock<IWebhookData>({ node: 'Webhook', path: 'two' }),
+			]);
+			webhookTriggerRegistrar.deregister.mockRejectedValue(new Error('remote unreachable'));
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
+
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+
+			const { externalTeardownFailures } = await activator.deactivate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{ nodes: [node('webhook-node', 'webhook', { name: 'Webhook' })], connections: {} },
+				new Set(['webhook-node']),
+				abort,
+			);
+
+			expect(externalTeardownFailures).toEqual([
+				{
+					nodeName: 'Webhook',
+					error: expect.objectContaining({ message: 'remote unreachable' }),
+				},
+			]);
 		});
 
 		test('gives up on a transient external failure after exhausting the retry budget', async () => {

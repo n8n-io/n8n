@@ -192,8 +192,12 @@ export class WorkflowPublicationApplier {
 			({ externalTeardownFailures: teardownFailures } =
 				await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort));
 		}
+		// Whatever the activation outcome, the remove phase already ran (and the
+		// version advances below), so its abandoned external deregistrations must
+		// ride along for the reporter to surface.
 		const withTeardownFailures = (result: PublicationResult): PublicationResult =>
-			result.type === 'completed' && teardownFailures.length > 0
+			(result.type === 'completed' || result.type === 'partial' || result.type === 'failed') &&
+			teardownFailures.length > 0
 				? { ...result, teardownFailures }
 				: result;
 
@@ -219,7 +223,7 @@ export class WorkflowPublicationApplier {
 				await this.workflowTriggerActivator.updateTriggerCount(workflow, newVersion);
 			}
 		} catch (e) {
-			return { type: 'failed', error: ensureError(e) };
+			return withTeardownFailures({ type: 'failed', error: ensureError(e) });
 		}
 
 		return withTeardownFailures({
