@@ -2,8 +2,8 @@ import type { LicenseState } from '@n8n/backend-common';
 import type {
 	User,
 	WorkflowHistory,
+	WorkflowReviewInboxRepository,
 	WorkflowReviewRequest,
-	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestWorkflowDetailRow,
 	WorkflowReviewRequestWorkflowRepository,
@@ -62,7 +62,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const authorizationService = mock<WorkflowReviewAuthorizationService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
-	const requestRepository = mock<WorkflowReviewRequestRepository>();
+	const inboxRepository = mock<WorkflowReviewInboxRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const participantResolver = mock<WorkflowReviewParticipantResolver>();
 	const licenseState = mock<LicenseState>();
@@ -71,7 +71,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 		authorizationService,
 		workflowHistoryService,
-		requestRepository,
+		inboxRepository,
 		workflowRepository,
 		participantResolver,
 	);
@@ -170,11 +170,20 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail).not.toHaveProperty('workflowVersionId');
 		});
 
+		// A covered workflow is removed along with the workflow itself, so a closed
+		// review — history of a deleted workflow — can legitimately cover none
+		it('returns a closed review with no workflows when its workflow was deleted', async () => {
+			mockGate([], reviewRequest({ state: 'closed' }));
+
+			const detail = await service.getDetail(requester, requestId);
+
+			expect(detail.state).toBe('closed');
+			expect(detail.workflows).toEqual([]);
+		});
+
 		// An open review can transiently cover no workflow when a delete orphaned
 		// it and the sweep hasn't closed it yet — it stays readable until then
 		it('returns an open review with no workflows when its workflow was deleted', async () => {
-			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
-
 			const detail = await service.getDetail(requester, requestId);
 
 			expect(detail.state).toBe('open');
@@ -250,6 +259,21 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 			expect(detail.viewerCanDecide).toBe(false);
 			expect(detail.viewerDecisionIneligibilityReason).toBe('missing_permission');
 			expect(detail.viewerCanComment).toBe(false);
+		});
+
+		it('passes the closed review and its empty coverage to the eligibility check', async () => {
+			mockGate([], reviewRequest({ state: 'closed' }));
+
+			await service.getDetail(requester, requestId);
+
+			expect(authorizationService.resolveViewerEligibility).toHaveBeenCalledWith(
+				requester,
+				expect.objectContaining({
+					request: expect.objectContaining({ state: 'closed' }),
+					workflowRows: [],
+					readableWorkflowRows: [],
+				}),
+			);
 		});
 	});
 

@@ -1,8 +1,16 @@
-import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import {
+	createWorkflow,
+	createWorkflowWithHistory,
+	setActiveVersion,
+	testDb,
+} from '@n8n/backend-test-utils';
 import {
 	type PollerCursor,
 	PollerStateRepository,
+	ScheduledJobRepository,
+	ScheduledTaskRepository,
 	TransactionRunner,
+	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -240,6 +248,82 @@ describe('PollerStateRepository', () => {
 			).rejects.toThrow('execution insert failed');
 
 			expect(await repository.findCursor(workflowId, 'node-1')).toEqual({ lastItemId: 'a' });
+		});
+
+		// Deactivation deprovisions the node's scheduled jobs; the running task row
+		// must cascade away with its job so the lease fence rejects any commit a
+		// still-running poll attempts afterwards (e.g. a mid-poll emit).
+		describe('fence after the job was deprovisioned', () => {
+			let jobRepository: ScheduledJobRepository;
+			let taskRepository: ScheduledTaskRepository;
+
+			beforeAll(() => {
+				jobRepository = Container.get(ScheduledJobRepository);
+				taskRepository = Container.get(ScheduledTaskRepository);
+			});
+
+			beforeEach(async () => {
+				await testDb.truncate(['ScheduledTask', 'ScheduledJob']);
+			});
+
+			it('rejects the advance once deprovisioning cascaded the running task away', async () => {
+				// scheduled_job.workflowId FKs to workflow_published_version, which itself
+				// FKs to workflow_history, so a job insert needs all three rows in place.
+				const published = await createWorkflowWithHistory({});
+				await setActiveVersion(published.id, published.versionId);
+				await Container.get(WorkflowPublishedVersionRepository).setPublishedVersion(
+					published.id,
+					published.versionId,
+				);
+
+				const job = await jobRepository.save(
+					jobRepository.create({
+						name: 'poll-node-1',
+						workflowId: published.id,
+						nodeId: 'node-1',
+						taskType: 'pollTrigger',
+						payload: {},
+						kind: 'interval',
+						intervalSeconds: 60,
+						enabled: true,
+						nextRunAt: new Date('2026-01-01T00:00:00.000Z'),
+						maxAttempts: 1,
+					}),
+				);
+				const task = await taskRepository.save(
+					taskRepository.create({
+						jobId: job.id,
+						taskType: 'pollTrigger',
+						payload: {},
+						scheduledFor: new Date('2026-06-01T00:00:00.000Z'),
+						runAt: new Date('2026-06-01T00:00:00.000Z'),
+						status: 'running',
+						attempts: 1,
+						maxAttempts: 1,
+						leaseEpoch: 1,
+						leaseExpiresAt: new Date(Date.now() + 60_000),
+					}),
+				);
+				const fence = { taskId: task.id, leaseEpoch: 1 };
+				await seed('node-1', { lastItemId: 'a' }, published.id);
+
+				// While the poll holds its lease, the fenced advance lands.
+				await expect(
+					repository.advanceCursor(published.id, 'node-1', { lastItemId: 'b' }, {}, fence),
+				).resolves.toBe(true);
+
+				// The same call deactivation's deprovision makes.
+				await jobRepository.deleteByWorkflowNode(jobRepository.manager, published.id, 'node-1');
+
+				// The running task row is gone with its job, not orphaned.
+				await expect(taskRepository.findOneBy({ id: task.id })).resolves.toBeNull();
+
+				// A late commit from the still-running poll is fenced out, cursor untouched.
+				await expect(
+					repository.advanceCursor(published.id, 'node-1', { lastItemId: 'c' }, {}, fence),
+				).resolves.toBe(false);
+				expect(await repository.findCursor(published.id, 'node-1')).toEqual({ lastItemId: 'b' });
+			});
 		});
 
 		it('does not touch the stored failure counters', async () => {

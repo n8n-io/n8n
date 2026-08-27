@@ -1,7 +1,7 @@
 import { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { InboxVisibility, User, WorkflowReviewRequest } from '@n8n/db';
-import { WorkflowReviewRequestRepository, WorkflowReviewRequestWorkflowRepository } from '@n8n/db';
+import { WorkflowReviewInboxRepository, WorkflowReviewRequestWorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
@@ -19,7 +19,7 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 	const workflowReviewPolicyService = mockInstance(WorkflowReviewPolicyService);
 	const authorizationService = mock<WorkflowReviewAuthorizationService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
-	const workflowReviewRequestRepository = mockInstance(WorkflowReviewRequestRepository);
+	const workflowReviewInboxRepository = mockInstance(WorkflowReviewInboxRepository);
 	const workflowReviewRequestWorkflowRepository = mockInstance(
 		WorkflowReviewRequestWorkflowRepository,
 	);
@@ -47,7 +47,7 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 			new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 			authorizationService,
 			workflowHistoryService,
-			workflowReviewRequestRepository,
+			workflowReviewInboxRepository,
 			workflowReviewRequestWorkflowRepository,
 			participantResolver,
 		);
@@ -87,14 +87,14 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 				updatedAt: new Date('2024-01-01T00:00:00.000Z'),
 			}),
 		];
-		workflowReviewRequestRepository.findManyForInbox.mockResolvedValue(rows);
+		workflowReviewInboxRepository.findRequests.mockResolvedValue(rows);
 		workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
 			new Map([['req-2', { workflowName: 'Linked workflow', workflowVersionId: 'ver-2' }]]),
 		);
 
 		const result = await service.listForInbox(user, { limit: 1 });
 
-		expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith({
+		expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith({
 			visibility: involvedVisibility,
 			state: 'open',
 			limit: 2,
@@ -115,7 +115,7 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 
 	it('decodes the incoming cursor into a keyset boundary', async () => {
 		mockVisibility();
-		workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([]);
+		workflowReviewInboxRepository.findRequests.mockResolvedValue([]);
 		workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
 			new Map(),
 		);
@@ -123,7 +123,7 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 
 		await service.listForInbox(user, { limit: 15, cursor });
 
-		expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith(
+		expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith(
 			expect.objectContaining({
 				cursor: { createdAt: new Date('2024-01-02T00:00:00.000Z'), id: 'req-2' },
 			}),
@@ -141,7 +141,7 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 
 	describe('category', () => {
 		beforeEach(() => {
-			workflowReviewRequestRepository.findManyForInbox.mockResolvedValue([]);
+			workflowReviewInboxRepository.findRequests.mockResolvedValue([]);
 			workflowReviewRequestWorkflowRepository.findLinkedWorkflowsByRequestIds.mockResolvedValue(
 				new Map(),
 			);
@@ -154,7 +154,7 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 
 				await service.listForInbox(user, { limit: 15, category });
 
-				expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith(
+				expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith(
 					expect.objectContaining({ category: { userId: 'user-1', category } }),
 				);
 			},
@@ -166,7 +166,7 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 
 			await service.listForInbox(otherUser, { limit: 15, category: 'authored' });
 
-			expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith(
+			expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith(
 				expect.objectContaining({ category: { userId: 'user-2', category: 'authored' } }),
 			);
 		});
@@ -176,7 +176,7 @@ describe('WorkflowReviewInboxService.listForInbox', () => {
 
 			await service.listForInbox(user, { limit: 15 });
 
-			expect(workflowReviewRequestRepository.findManyForInbox).toHaveBeenCalledWith(
+			expect(workflowReviewInboxRepository.findRequests).toHaveBeenCalledWith(
 				expect.objectContaining({ category: undefined }),
 			);
 		});
