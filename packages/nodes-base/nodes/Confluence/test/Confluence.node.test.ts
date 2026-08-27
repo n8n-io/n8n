@@ -35,13 +35,17 @@ describe('Confluence Node', () => {
 		// Delete sorts first alphabetically; the default must stay non-destructive
 		expect(operationProperty('attachment')?.default).toBe('getMany');
 		expect(operationOptions('page')).toEqual([
+			expect.objectContaining({ value: 'addComment' }),
+			expect.objectContaining({ value: 'addLabels' }),
 			expect.objectContaining({ value: 'append' }),
 			expect.objectContaining({ value: 'create' }),
 			expect.objectContaining({ value: 'delete' }),
+			expect.objectContaining({ value: 'deleteComment' }),
 			expect.objectContaining({ value: 'get' }),
 			expect.objectContaining({ value: 'getComments' }),
 			expect.objectContaining({ value: 'getLabels' }),
 			expect.objectContaining({ value: 'getManyByLabel' }),
+			expect.objectContaining({ value: 'removeLabel' }),
 			expect.objectContaining({ value: 'update' }),
 		]);
 		expect(operationOptions('search')).toEqual([expect.objectContaining({ value: 'query' })]);
@@ -62,6 +66,16 @@ describe('Confluence Node', () => {
 
 		const limit = forGetLabels.find((p) => p.name === 'limit');
 		expect(limit?.displayOptions?.show?.returnAll).toEqual([false]);
+	});
+
+	it('should render the label operations own fields', () => {
+		const fieldsFor = (operation: string) =>
+			node.description.properties
+				.filter((p) => (p.displayOptions?.show?.operation ?? []).includes(operation))
+				.map((p) => p.name);
+
+		expect(fieldsFor('addLabels')).toEqual(['space', 'page', 'labels']);
+		expect(fieldsFor('removeLabel')).toEqual(['space', 'page', 'labelName']);
 	});
 
 	it('should reference the confluenceCloudOAuth2Api credential by name', () => {
