@@ -1,10 +1,14 @@
-import { readFile } from 'node:fs/promises';
-import * as path from 'node:path';
-
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
-import type { ErrorSentinel } from '../runtime/lazy-proxy';
-import { bridgeMessageSchema } from './bridge-messages';
+import {
+	dispatchHostCall,
+	getArrayElement,
+	getValueAtPath,
+	isErrorSentinel,
+	readRuntimeBundle,
+	reconstructError,
+	serializeError,
+} from './host-functions';
 
 // Lazy-loaded quickjs-emscripten — avoids loading WASM when the barrel
 // file is statically imported (e.g. for error classes). The module is
@@ -18,8 +22,6 @@ async function getQuickJSModule(): Promise<QuickJSModule> {
 	}
 	return _quickjs;
 }
-
-const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
 
 // ============================================================================
 // Sentinel helpers
@@ -77,14 +79,6 @@ function isSetSentinel(value: unknown): value is { __isSet: true; __values: unkn
 		typeof value === 'object' &&
 		value !== null &&
 		(value as Record<string, unknown>).__isSet === true
-	);
-}
-
-function isErrorSentinel(value: unknown): value is ErrorSentinel {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		(value as Record<string, unknown>).__isError === true
 	);
 }
 
@@ -206,50 +200,6 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 }
 
 /**
- * Serialize an error into a transferable metadata object.
- *
- * Host-side callbacks (getValueAtPath, etc.) catch errors and return this
- * sentinel instead of letting the error cross the boundary (which strips
- * custom class identity and properties). The in-context proxy detects
- * __isError and throws the sentinel; the host reconstructs a real Error
- * after it round-trips back (see execute() / reconstructError).
- */
-function serializeError(err: unknown): ErrorSentinel {
-	if (err instanceof Error) {
-		const extra = Object.fromEntries(
-			Object.entries(err).filter(([key]) => key !== 'name' && key !== 'message' && key !== 'stack'),
-		);
-		return {
-			__isError: true,
-			name: err.name,
-			message: err.message,
-			stack: err.stack,
-			extra,
-		};
-	}
-	return { __isError: true, name: 'Error', message: String(err), extra: {} };
-}
-
-/**
- * Read the runtime IIFE bundle by walking up from `__dirname` until
- * `dist/bundle/runtime.iife.js` is found. Walking up (rather than a fixed
- * relative path) works from either compiled output dir — `dist/cjs/bridge/`
- * and `dist/esm/bridge/` sit at different depths from the bundle.
- */
-async function readRuntimeBundle(): Promise<string> {
-	let dir = __dirname;
-	while (dir !== path.dirname(dir)) {
-		try {
-			return await readFile(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
-		} catch {}
-		dir = path.dirname(dir);
-	}
-	throw new Error(
-		`Could not find runtime bundle (${BUNDLE_RELATIVE_PATH}) in any parent of ${__dirname}`,
-	);
-}
-
-/**
  * Convert a host JavaScript value to a JSON string suitable for round-tripping
  * into QuickJS via evalCode. Handles undefined (not valid JSON) by returning
  * the string "undefined".
@@ -268,182 +218,6 @@ function hostValueToJson(value: unknown): string {
 		return JSON.stringify(wrapSpecialValuesForGuest(value));
 	} catch {
 		return 'undefined';
-	}
-}
-
-/**
- * Navigate data object by path and return metadata or primitive value.
- * Mirrors the IsolatedVmBridge getValueAtPath callback so QuickJS
- * matches isolated-vm semantics, including special-cased $/$item navigation.
- */
-function getValueAtPath(data: Record<string, unknown>, pathArr: string[]): unknown {
-	let value: unknown = data;
-	let startIndex = 0;
-	const itemFn = (data as Record<string, unknown>).$item;
-	if (pathArr.length >= 2 && pathArr[0] === '$item' && typeof itemFn === 'function') {
-		const itemIndex = parseInt(pathArr[1], 10);
-		if (!isNaN(itemIndex)) {
-			value = (itemFn as (i: number) => unknown)(itemIndex);
-			startIndex = 2;
-		}
-	} else {
-		const dollarFn = (data as Record<string, unknown>).$;
-		if (pathArr.length >= 2 && pathArr[0] === '$' && typeof dollarFn === 'function') {
-			value = (dollarFn as (name: string) => unknown)(pathArr[1]);
-			startIndex = 2;
-		}
-	}
-	for (let i = startIndex; i < pathArr.length; i++) {
-		value = (value as Record<string, unknown>)?.[pathArr[i]];
-		if (value === undefined || value === null) {
-			return value;
-		}
-	}
-
-	// Functions must never cross the boundary — resolve them as undefined,
-	// matching IsolatedVmBridge (invariant: __tests__/host-fn-shadowing.test.ts).
-	if (typeof value === 'function') {
-		return undefined;
-	}
-
-	if (Array.isArray(value)) {
-		return {
-			__isArray: true,
-			__length: value.length,
-			__data: null,
-		};
-	}
-
-	// Dates have no enumerable own keys; pass through instead of
-	// marshaling as an empty object.
-	if (value instanceof Date) {
-		return value;
-	}
-
-	if (value !== null && typeof value === 'object') {
-		return {
-			__isObject: true,
-			__keys: Object.keys(value),
-		};
-	}
-
-	return value;
-}
-
-function getArrayElement(data: Record<string, unknown>, pathArr: string[], index: number): unknown {
-	let arr: unknown = data;
-	let startIndex = 0;
-	const itemFn = (data as Record<string, unknown>).$item;
-	if (pathArr.length >= 2 && pathArr[0] === '$item' && typeof itemFn === 'function') {
-		const itemIndex = parseInt(pathArr[1], 10);
-		if (!isNaN(itemIndex)) {
-			arr = (itemFn as (i: number) => unknown)(itemIndex);
-			startIndex = 2;
-		}
-	} else {
-		const dollarFn = (data as Record<string, unknown>).$;
-		if (pathArr.length >= 2 && pathArr[0] === '$' && typeof dollarFn === 'function') {
-			arr = (dollarFn as (name: string) => unknown)(pathArr[1]);
-			startIndex = 2;
-		}
-	}
-	for (let i = startIndex; i < pathArr.length; i++) {
-		arr = (arr as Record<string, unknown>)?.[pathArr[i]];
-		if (arr === undefined || arr === null) {
-			return undefined;
-		}
-	}
-
-	if (!Array.isArray(arr)) {
-		return undefined;
-	}
-
-	// Reject non-integer / negative indices so a crafted "index" can't read off
-	// the prototype chain. Mirrors IsolatedVmBridge.getArrayElement.
-	if (!Number.isInteger(index) || index < 0) {
-		return undefined;
-	}
-
-	const element = arr[index];
-
-	// Functions must never cross the boundary — resolve as undefined, matching
-	// getValueAtPath and IsolatedVmBridge (invariant: host-fn-shadowing.test.ts).
-	if (typeof element === 'function') {
-		return undefined;
-	}
-
-	// Dates have no enumerable own keys; pass through instead of
-	// marshaling as an empty object.
-	if (element instanceof Date) {
-		return element;
-	}
-
-	if (element !== null && typeof element === 'object') {
-		if (Array.isArray(element)) {
-			return {
-				__isArray: true,
-				__length: element.length,
-				__data: null,
-			};
-		}
-		return {
-			__isObject: true,
-			__keys: Object.keys(element),
-		};
-	}
-
-	return element;
-}
-
-/**
- * Host-side dispatcher for the typed-RPC `callHost` channel.
- *
- * Mirrors IsolatedVmBridge's dispatcher — see isolated-vm-bridge.ts for the
- * per-message rationale. The two copies are kept in sync at compile time:
- * the `never` check in the default case fails to compile when a new schema
- * lands in bridge-messages.ts without a matching case here.
- */
-function dispatchHostCall(rawMsg: unknown, data: WorkflowData): unknown {
-	const msg = bridgeMessageSchema.parse(rawMsg);
-	switch (msg.type) {
-		case 'getNodeFirst':
-			return data.$?.(msg.nodeName)?.first?.(msg.branchIndex, msg.runIndex);
-		case 'getNodeLast':
-			return data.$?.(msg.nodeName)?.last?.(msg.branchIndex, msg.runIndex);
-		case 'getNodeAll':
-			return data.$?.(msg.nodeName)?.all?.(msg.branchIndex, msg.runIndex);
-		case 'getInputFirst':
-			return data.$input?.first?.();
-		case 'getInputLast':
-			return data.$input?.last?.();
-		case 'getInputAll':
-			return data.$input?.all?.();
-		case 'getItems':
-			return data.$items?.(msg.nodeName, msg.outputIndex, msg.runIndex);
-		case 'fromAi':
-			return data.$fromAI?.(msg.name, msg.description, msg.valueType, msg.defaultValue);
-		case 'getNodePairedItem':
-			return data.$?.(msg.nodeName)?.pairedItem?.(msg.itemIndex);
-		case 'getNodeItemMatching':
-			return data.$?.(msg.nodeName)?.itemMatching?.(msg.itemIndex);
-		case 'getNodeItem':
-			// `.item` is a host getter — accessing it invokes the resolver.
-			return data.$?.(msg.nodeName)?.item;
-		case 'evaluateExpression':
-			return data.$evaluateExpression?.(msg.expression, msg.itemIndex);
-		case 'getPairedItem':
-			return data.$getPairedItem?.(
-				msg.destinationNodeName,
-				msg.incomingSourceData,
-				msg.initialPairedItem,
-			);
-		default: {
-			// Unreachable at runtime — zod rejects unknown `type` values before
-			// the switch. The `never` assignment is the compile-time guard.
-			const exhaustive: never = msg;
-			void exhaustive;
-			throw new Error('Unhandled bridge message');
-		}
 	}
 }
 
@@ -1218,7 +992,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			const result = unwrapSentinels(rawResult);
 
 			if (isErrorSentinel(result)) {
-				throw this.reconstructError(result);
+				throw reconstructError(result);
 			}
 
 			this.logger.debug('[QuickJsBridge] Expression executed successfully');
@@ -1252,18 +1026,6 @@ export class QuickJsBridge implements RuntimeBridge {
 				handle.dispose();
 			}
 		}
-	}
-
-	private reconstructError(data: ErrorSentinel): Error {
-		const error = new Error(data.message);
-		error.name = data.name || 'Error';
-		if (data.stack) {
-			error.stack = data.stack;
-		}
-		if (data.extra) {
-			Object.assign(error, data.extra);
-		}
-		return error;
 	}
 
 	private evalCodeOrThrow(code: string, label: string): unknown {

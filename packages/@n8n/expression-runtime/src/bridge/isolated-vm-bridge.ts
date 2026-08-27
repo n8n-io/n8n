@@ -1,10 +1,15 @@
 import type ivm from 'isolated-vm';
-import { readFile } from 'node:fs/promises';
-import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
-import type { ErrorSentinel } from '../runtime/lazy-proxy';
-import { bridgeMessageSchema, type BridgeMessage } from './bridge-messages';
+import {
+	dispatchHostCall,
+	getArrayElement,
+	getValueAtPath,
+	isErrorSentinel,
+	readRuntimeBundle,
+	reconstructError,
+	serializeError,
+} from './host-functions';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -18,62 +23,6 @@ function getIvm(): IsolatedVm {
 		_ivm = require('isolated-vm') as IsolatedVm;
 	}
 	return _ivm;
-}
-
-const BUNDLE_RELATIVE_PATH = path.join('dist', 'bundle', 'runtime.iife.js');
-
-/** Check if a value is an error sentinel returned by serializeError. */
-function isErrorSentinel(value: unknown): value is ErrorSentinel {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		(value as Record<string, unknown>).__isError === true
-	);
-}
-
-/**
- * Serialize an error into a transferable metadata object.
- *
- * Host-side callbacks (getValueAtPath, etc.) catch errors and return this
- * sentinel instead of letting the error cross the isolate boundary (which
- * strips custom class identity and properties). The isolate-side proxy
- * detects __isError and reconstructs a proper Error to throw.
- */
-function serializeError(err: unknown): ErrorSentinel {
-	if (err instanceof Error) {
-		const extra = Object.fromEntries(
-			Object.entries(err).filter(([key]) => key !== 'name' && key !== 'message' && key !== 'stack'),
-		);
-		return {
-			__isError: true,
-			name: err.name,
-			message: err.message,
-			stack: err.stack,
-			extra,
-		};
-	}
-	return { __isError: true, name: 'Error', message: String(err), extra: {} };
-}
-
-/**
- * Read the runtime IIFE bundle by walking up from `__dirname` until
- * `dist/bundle/runtime.iife.js` is found.
- *
- * This works regardless of where the compiled output lives:
- *   - `src/bridge/`               (vitest running against source)
- *   - `dist/cjs/bridge/`          (CJS build)
- */
-async function readRuntimeBundle(): Promise<string> {
-	let dir = __dirname;
-	while (dir !== path.dirname(dir)) {
-		try {
-			return await readFile(path.join(dir, BUNDLE_RELATIVE_PATH), 'utf-8');
-		} catch {}
-		dir = path.dirname(dir);
-	}
-	throw new Error(
-		`Could not find runtime bundle (${BUNDLE_RELATIVE_PATH}) in any parent of ${__dirname}`,
-	);
 }
 
 /**
@@ -279,81 +228,17 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	/**
 	 * Create an ivm.Callback for getting value/metadata at a path.
 	 *
-	 * Used by createDeepLazyProxy when accessing properties. Returns metadata
-	 * markers for arrays and objects, or the primitive value directly.
-	 *
-	 * Function-typed values are returned as `undefined` — every callable on
-	 * the host data surface (`$('Foo').first()`, `$items()`, `$fromAI()`,
-	 * `$evaluateExpression()`, `$getPairedItem()`) is wired in-isolate via
-	 * the typed-RPC dispatcher (`callHost`). No expression form should
-	 * reach a function through this path.
+	 * Thin wrapper around the shared getValueAtPath (see host-functions.ts
+	 * for navigation and guard semantics); errors are caught and returned
+	 * as sentinels instead of crossing the isolate boundary.
 	 *
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
 	private createGetValueAtPathRef(data: WorkflowData): ivm.Callback {
-		return new (getIvm().Callback)((path: string[]) => {
+		return new (getIvm().Callback)((pathArr: string[]) => {
 			try {
-				// Navigate to value
-				// Special-case: paths starting with ['$item', index] call data.$item(index)
-				// to get the sub-proxy for that item, then continue navigating the rest.
-				let value: unknown = data;
-				let startIndex = 0;
-				const itemFn = (data as Record<string, unknown>).$item;
-				if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
-					const itemIndex = parseInt(path[1], 10);
-					if (!isNaN(itemIndex)) {
-						value = (itemFn as (i: number) => unknown)(itemIndex);
-						startIndex = 2;
-					}
-				} else {
-					const dollarFn = (data as Record<string, unknown>).$;
-					if (path.length >= 2 && path[0] === '$' && typeof dollarFn === 'function') {
-						value = (dollarFn as (name: string) => unknown)(path[1]);
-						startIndex = 2;
-					}
-				}
-				for (let i = startIndex; i < path.length; i++) {
-					value = (value as Record<string, unknown>)?.[path[i]];
-					if (value === undefined || value === null) {
-						return value;
-					}
-				}
-
-				// Functions are not reachable via the lazy-proxy data path —
-				// every callable on the host data surface routes through the
-				// typed-RPC dispatcher. Return undefined so any residual
-				// access surfaces as missing rather than as a stale metadata
-				// marker the runtime no longer knows how to interpret.
-				if (typeof value === 'function') {
-					return undefined;
-				}
-
-				// Handle arrays - always lazy, only transfer length
-				if (Array.isArray(value)) {
-					return {
-						__isArray: true,
-						__length: value.length,
-						__data: null,
-					};
-				}
-
-				// Dates have no enumerable own keys; pass through instead of
-				// marshaling as an empty object.
-				if (value instanceof Date) {
-					return value;
-				}
-
-				// Handle objects - return metadata with keys
-				if (value !== null && typeof value === 'object') {
-					return {
-						__isObject: true,
-						__keys: Object.keys(value),
-					};
-				}
-
-				// Primitive value
-				return value;
+				return getValueAtPath(data, pathArr);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -363,81 +248,17 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	/**
 	 * Create an ivm.Callback for getting array elements at an index.
 	 *
-	 * Used by array proxy when accessing numeric indices.
+	 * Thin wrapper around the shared getArrayElement (see host-functions.ts
+	 * for navigation and guard semantics); errors are caught and returned
+	 * as sentinels instead of crossing the isolate boundary.
 	 *
 	 * @param data - Current workflow data to use for callback responses
 	 * @private
 	 */
 	private createGetArrayElementRef(data: WorkflowData): ivm.Callback {
-		return new (getIvm().Callback)((path: string[], index: number) => {
+		return new (getIvm().Callback)((pathArr: string[], index: number) => {
 			try {
-				// Navigate to array
-				// Special-case: paths starting with ['$item', index] call data.$item(index)
-				let arr: unknown = data;
-				let startIndex = 0;
-				const itemFn = (data as Record<string, unknown>).$item;
-				if (path.length >= 2 && path[0] === '$item' && typeof itemFn === 'function') {
-					const itemIndex = parseInt(path[1], 10);
-					if (!isNaN(itemIndex)) {
-						arr = (itemFn as (i: number) => unknown)(itemIndex);
-						startIndex = 2;
-					}
-				} else {
-					const dollarFn = (data as Record<string, unknown>).$;
-					if (path.length >= 2 && path[0] === '$' && typeof dollarFn === 'function') {
-						arr = (dollarFn as (name: string) => unknown)(path[1]);
-						startIndex = 2;
-					}
-				}
-				for (let i = startIndex; i < path.length; i++) {
-					arr = (arr as Record<string, unknown>)?.[path[i]];
-					if (arr === undefined || arr === null) {
-						return undefined;
-					}
-				}
-
-				if (!Array.isArray(arr)) {
-					return undefined;
-				}
-
-				// Only genuine array indices are reachable; anything else (e.g.
-				// 'constructor', '__lookupGetter__') would read off the prototype
-				// chain and could leak a host function reference across the boundary.
-				if (!Number.isInteger(index) || index < 0) {
-					return undefined;
-				}
-
-				const element = arr[index];
-
-				// Functions are never reachable through the data surface — mirror the
-				// guard in getValueAtPath so a host callable can't cross the boundary.
-				if (typeof element === 'function') {
-					return undefined;
-				}
-
-				// Dates have no enumerable own keys; pass through instead of
-				// marshaling as an empty object.
-				if (element instanceof Date) {
-					return element;
-				}
-
-				// If element is object/array, return metadata
-				if (element !== null && typeof element === 'object') {
-					if (Array.isArray(element)) {
-						return {
-							__isArray: true,
-							__length: element.length,
-							__data: null,
-						};
-					}
-					return {
-						__isObject: true,
-						__keys: Object.keys(element),
-					};
-				}
-
-				// Primitive element
-				return element;
+				return getArrayElement(data, pathArr, index);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -445,28 +266,18 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	}
 
 	/**
-	 * Create the single typed-RPC dispatcher.
+	 * Create the ivm.Callback for the typed-RPC `callHost` channel.
 	 *
-	 * The isolate sends one envelope per typed RPC invocation:
-	 *   `callHost({ type: 'getNodeFirst', nodeName, branchIndex?, runIndex? })`
+	 * Thin wrapper around the shared dispatchHostCall (see host-functions.ts
+	 * for envelope validation and per-message rationale); errors — including
+	 * zod parse failures — are caught and returned as sentinels instead of
+	 * crossing the isolate boundary.
 	 *
-	 * Inputs cross a trust boundary, so the dispatcher parses every envelope
-	 * with the host-side zod schema (`bridgeMessageSchema`) before any
-	 * dispatch happens. Anything that deviates from the declared shape —
-	 * unknown `type`, missing required fields, extra unexpected fields,
-	 * wrong field types — fails the parse and an error sentinel is returned
-	 * to the caller.
-	 *
-	 * After parsing, `switch (msg.type)` dispatches to a private handler with
-	 * a fully narrowed message type. The operation set is exactly the cases
-	 * in this switch; the `type` field selects a static branch in source,
-	 * not a property lookup on a runtime object.
-	 *
-	 * Return-value note: handlers must return plain, structured-clone-able
-	 * data. Results cross into the isolate through an ivm.Callback, which copies
-	 * them via the structured-clone algorithm — return JSON-shaped values, not
-	 * isolated-vm objects (`Reference`/`ExternalCopy`) or other non-cloneable
-	 * values.
+	 * Return-value note: the dispatcher returns plain, structured-clone-able
+	 * data. Results cross into the isolate through an ivm.Callback, which
+	 * copies them via the structured-clone algorithm — JSON-shaped values,
+	 * not isolated-vm objects (`Reference`/`ExternalCopy`) or other
+	 * non-cloneable values.
 	 *
 	 * @param data - Current workflow data
 	 * @private
@@ -474,227 +285,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private createCallHostRef(data: WorkflowData): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
-				const msg = bridgeMessageSchema.parse(rawMsg);
-				switch (msg.type) {
-					case 'getNodeFirst':
-						return this.handleGetNodeFirst(msg, data);
-					case 'getNodeLast':
-						return this.handleGetNodeLast(msg, data);
-					case 'getNodeAll':
-						return this.handleGetNodeAll(msg, data);
-					case 'getInputFirst':
-						return this.handleGetInputFirst(data);
-					case 'getInputLast':
-						return this.handleGetInputLast(data);
-					case 'getInputAll':
-						return this.handleGetInputAll(data);
-					case 'getItems':
-						return this.handleGetItems(msg, data);
-					case 'fromAi':
-						return this.handleFromAi(msg, data);
-					case 'getNodePairedItem':
-						return this.handleGetNodePairedItem(msg, data);
-					case 'getNodeItemMatching':
-						return this.handleGetNodeItemMatching(msg, data);
-					case 'getNodeItem':
-						return this.handleGetNodeItem(msg, data);
-					case 'evaluateExpression':
-						return this.handleEvaluateExpression(msg, data);
-					case 'getPairedItem':
-						return this.handleGetPairedItem(msg, data);
-					default: {
-						// Unreachable at runtime — zod rejects unknown `type` values
-						// before the switch. The `never` assignment is the compile-time
-						// guard: a new schema added to `bridgeMessageSchema` without a
-						// matching case here becomes a type error.
-						const exhaustive: never = msg;
-						void exhaustive;
-						throw new Error('Unhandled bridge message');
-					}
-				}
+				return dispatchHostCall(rawMsg, data);
 			} catch (err) {
 				return serializeError(err);
 			}
 		});
-	}
-
-	/**
-	 * Handlers for the `$('Foo').{first,last,all}` typed RPCs.
-	 *
-	 * Each handler reads a fixed literal property name off the host-side node
-	 * proxy — the isolate cannot influence which property is dereferenced.
-	 * Eliminating `data.$` as a host-callable entirely would require reaching
-	 * the `WorkflowDataProxy` internals (e.g. `getNodeExecutionOrPinnedData`)
-	 * rather than the public `$()` API; that's a follow-up.
-	 *
-	 * `data.$` is a host-wired function (`WorkflowDataProxy`'s `$`). If it
-	 * ever isn't, optional chaining short-circuits to `undefined` — the same
-	 * observable result the runtime's `E()` handler produces from any thrown
-	 * error here.
-	 *
-	 * @private
-	 */
-	private handleGetNodeFirst(
-		msg: Extract<BridgeMessage, { type: 'getNodeFirst' }>,
-		data: WorkflowData,
-	): unknown {
-		return data.$?.(msg.nodeName)?.first?.(msg.branchIndex, msg.runIndex);
-	}
-
-	private handleGetNodeLast(
-		msg: Extract<BridgeMessage, { type: 'getNodeLast' }>,
-		data: WorkflowData,
-	): unknown {
-		return data.$?.(msg.nodeName)?.last?.(msg.branchIndex, msg.runIndex);
-	}
-
-	private handleGetNodeAll(
-		msg: Extract<BridgeMessage, { type: 'getNodeAll' }>,
-		data: WorkflowData,
-	): unknown {
-		return data.$?.(msg.nodeName)?.all?.(msg.branchIndex, msg.runIndex);
-	}
-
-	/**
-	 * Handlers for the `$input.{first,last,all}` typed RPCs.
-	 *
-	 * Each reads a fixed literal property name off `data.$input` (the host's
-	 * `WorkflowDataProxy` input proxy). The host enforces zero arguments on
-	 * these methods — the schemas have no fields besides `type`, so the
-	 * isolate cannot pass anything that would trigger the "should have no
-	 * arguments" error path on the host side.
-	 *
-	 * @private
-	 */
-	private handleGetInputFirst(data: WorkflowData): unknown {
-		return data.$input?.first?.();
-	}
-
-	private handleGetInputLast(data: WorkflowData): unknown {
-		return data.$input?.last?.();
-	}
-
-	private handleGetInputAll(data: WorkflowData): unknown {
-		return data.$input?.all?.();
-	}
-
-	/**
-	 * Handler for `$items(nodeName?, outputIndex?, runIndex?)` — the
-	 * global accessor for a node's execution data. Reads the literal
-	 * `$items` property off `data` (host-wired by `WorkflowDataProxy`)
-	 * and forwards the validated args verbatim. The host applies its own
-	 * defaults when fields are `undefined`.
-	 *
-	 * @private
-	 */
-	private handleGetItems(
-		msg: Extract<BridgeMessage, { type: 'getItems' }>,
-		data: WorkflowData,
-	): unknown {
-		return data.$items?.(msg.nodeName, msg.outputIndex, msg.runIndex);
-	}
-
-	/**
-	 * Handler for `$fromAI(name, description?, type?, defaultValue?)` and its
-	 * `$fromAi` / `$fromai` aliases. Reads the literal `$fromAI` property
-	 * off `data` (host-wired) and forwards the args. The host validates
-	 * `name` (required + regex) and applies its own resolution / fallback
-	 * logic, so empty / invalid names surface as the host's structured
-	 * `ExpressionError` rather than a generic zod parse error.
-	 *
-	 * Note: `msg.valueType` maps to the host's third positional parameter
-	 * (`_type` in `WorkflowDataProxy.handleFromAi`). The bridge protocol
-	 * renames it to avoid collision with the `type` discriminator on the
-	 * envelope — the host parameter currently goes unused, but if it ever
-	 * gains a name (`type`), this mapping should stay explicit.
-	 *
-	 * @private
-	 */
-	private handleFromAi(
-		msg: Extract<BridgeMessage, { type: 'fromAi' }>,
-		data: WorkflowData,
-	): unknown {
-		return data.$fromAI?.(msg.name, msg.description, msg.valueType, msg.defaultValue);
-	}
-
-	/**
-	 * Handlers for the `$('Foo').pairedItem(itemIndex?)` / `.itemMatching(...)` /
-	 * `.item` cluster. Three separate typed RPCs, each reading exactly one
-	 * literal property off the host node proxy.
-	 *
-	 * The split is load-bearing: the host's `pairedItemMethod` closure
-	 * captures which property name the proxy `get` trap saw, and uses
-	 * that to pick the right error message (e.g. "Missing item index for
-	 * .itemMatching()") and to decide between method-call vs getter
-	 * semantics for `.item`. Reading the matching property here lets
-	 * those host-side branches fire exactly as they do in the legacy
-	 * engine; no in-isolate validation needed.
-	 *
-	 * @private
-	 */
-	private handleGetNodePairedItem(
-		msg: Extract<BridgeMessage, { type: 'getNodePairedItem' }>,
-		data: WorkflowData,
-	): unknown {
-		return data.$?.(msg.nodeName)?.pairedItem?.(msg.itemIndex);
-	}
-
-	private handleGetNodeItemMatching(
-		msg: Extract<BridgeMessage, { type: 'getNodeItemMatching' }>,
-		data: WorkflowData,
-	): unknown {
-		return data.$?.(msg.nodeName)?.itemMatching?.(msg.itemIndex);
-	}
-
-	private handleGetNodeItem(
-		msg: Extract<BridgeMessage, { type: 'getNodeItem' }>,
-		data: WorkflowData,
-	): unknown {
-		// `.item` is a host getter — accessing it invokes the resolver and
-		// returns the value immediately. Optional chaining only short-
-		// circuits on null/undefined; the getter still fires on access.
-		return data.$?.(msg.nodeName)?.item;
-	}
-
-	/**
-	 * Handler for `$evaluateExpression(expression, itemIndex?)`. Forwards
-	 * the string to the host's nested-evaluation helper, which re-enters
-	 * the expression engine on the inner expression. Under the VM engine
-	 * this round-trips through the bridge again on a fresh evaluation
-	 * cycle, which is the same shape the legacy engine supports.
-	 *
-	 * @private
-	 */
-	private handleEvaluateExpression(
-		msg: Extract<BridgeMessage, { type: 'evaluateExpression' }>,
-		data: WorkflowData,
-	): unknown {
-		return data.$evaluateExpression?.(msg.expression, msg.itemIndex);
-	}
-
-	/**
-	 * Handler for `$getPairedItem(destinationNodeName, incomingSourceData,
-	 * initialPairedItem)`. Forwards directly to the host binding, which
-	 * walks the paired-item ancestry chain back to the named upstream node
-	 * and returns the matching execution item.
-	 *
-	 * The two trailing host parameters — `usedMethodName` and
-	 * `nodeBeforeLast` — are deliberately not part of the wire protocol:
-	 * the host's default for `usedMethodName` is already `$getPairedItem`,
-	 * and `nodeBeforeLast` is an internal recursion argument the host sets
-	 * during traversal.
-	 *
-	 * @private
-	 */
-	private handleGetPairedItem(
-		msg: Extract<BridgeMessage, { type: 'getPairedItem' }>,
-		data: WorkflowData,
-	): unknown {
-		return data.$getPairedItem?.(
-			msg.destinationNodeName,
-			msg.incomingSourceData,
-			msg.initialPairedItem,
-		);
 	}
 
 	/**
@@ -777,7 +372,7 @@ try {
 			);
 
 			if (isErrorSentinel(result)) {
-				throw this.reconstructError(result);
+				throw reconstructError(result);
 			}
 
 			this.logger.debug('[IsolatedVmBridge] Expression executed successfully');
@@ -807,27 +402,6 @@ try {
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		}
-	}
-
-	/**
-	 * Reconstruct an error from serialized isolate data.
-	 *
-	 * Maps error names back to their host-side classes and restores
-	 * custom properties that would otherwise be lost crossing the boundary.
-	 */
-	private reconstructError(data: ErrorSentinel): Error {
-		const error = new Error(data.message);
-		error.name = data.name || 'Error';
-		if (data.stack) {
-			error.stack = data.stack;
-		}
-
-		// Restore custom properties transferred via copy: true
-		if (data.extra) {
-			Object.assign(error, data.extra);
-		}
-
-		return error;
 	}
 
 	/**
