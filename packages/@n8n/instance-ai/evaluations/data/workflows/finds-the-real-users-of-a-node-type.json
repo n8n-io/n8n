@@ -1,0 +1,297 @@
+{
+	"description": "Node usage composed with folder scope, over a structure whose names mislead. Inside one folder, three workflows use the Postgres node and none says so in its name; two more have Postgres in the NAME and do not use the node at all. A name filter returns exactly the wrong two; reading all five to check is the expensive alternative this measures against. Answering needs BOTH capabilities at once \u2014 the folder bounds the set, the dependency index says which members actually contain the node. Folder-scoped rather than instance-wide on purpose: the eval instance is shared, so an instance-wide count is not a fact a case can assert.",
+	"seed": {
+		"mode": "inline",
+		"sessionBoundary": true,
+		"messages": [
+			{
+				"role": "user",
+				"text": "This project has grown a lot over the last year."
+			},
+			{
+				"role": "assistant",
+				"text": "Understood."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfLedgerSyncN01",
+				"name": "Ledger Sync",
+				"nodes": [
+					{
+						"id": "ee000001-0001-4d01-9a01-000000000001",
+						"name": "Nightly Ledger",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 7
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "ee000001-0002-4d01-9a01-000000000002",
+						"name": "Write Ledger Rows",
+						"type": "n8n-nodes-base.postgres",
+						"typeVersion": 2.5,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"operation": "insert",
+							"table": "ledger"
+						}
+					}
+				],
+				"connections": {
+					"Nightly Ledger": {
+						"main": [
+							[
+								{
+									"node": "Write Ledger Rows",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Data Platform"
+			},
+			{
+				"id": "wfChurnReportN01",
+				"name": "Churn Report",
+				"nodes": [
+					{
+						"id": "ee000002-0001-4d01-9a01-000000000001",
+						"name": "Weekly Churn",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 7
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "ee000002-0002-4d01-9a01-000000000002",
+						"name": "Read Churn Rows",
+						"type": "n8n-nodes-base.postgres",
+						"typeVersion": 2.5,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"operation": "select",
+							"table": "churn"
+						}
+					}
+				],
+				"connections": {
+					"Weekly Churn": {
+						"main": [
+							[
+								{
+									"node": "Read Churn Rows",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Data Platform"
+			},
+			{
+				"id": "wfSeatAuditN0001",
+				"name": "Seat Audit",
+				"nodes": [
+					{
+						"id": "ee000003-0001-4d01-9a01-000000000001",
+						"name": "Audit Trigger",
+						"type": "n8n-nodes-base.executeWorkflowTrigger",
+						"typeVersion": 1.1,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {}
+					},
+					{
+						"id": "ee000003-0002-4d01-9a01-000000000002",
+						"name": "Read Seats",
+						"type": "n8n-nodes-base.postgres",
+						"typeVersion": 2.5,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"operation": "select",
+							"table": "seats"
+						}
+					}
+				],
+				"connections": {
+					"Audit Trigger": {
+						"main": [
+							[
+								{
+									"node": "Read Seats",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Data Platform"
+			},
+			{
+				"id": "wfPgMigrDocsN01",
+				"name": "Postgres Migration Notes",
+				"nodes": [
+					{
+						"id": "ee000004-0001-4d01-9a01-000000000001",
+						"name": "Docs Trigger",
+						"type": "n8n-nodes-base.executeWorkflowTrigger",
+						"typeVersion": 1.1,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {}
+					},
+					{
+						"id": "ee000004-0002-4d01-9a01-000000000002",
+						"name": "Format Notes",
+						"type": "n8n-nodes-base.set",
+						"typeVersion": 3.4,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {}
+					}
+				],
+				"connections": {
+					"Docs Trigger": {
+						"main": [
+							[
+								{
+									"node": "Format Notes",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Data Platform"
+			},
+			{
+				"id": "wfPgHealthPingN1",
+				"name": "Postgres Health Ping",
+				"nodes": [
+					{
+						"id": "ee000005-0001-4d01-9a01-000000000001",
+						"name": "Ping Schedule",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 7
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "ee000005-0002-4d01-9a01-000000000002",
+						"name": "Call Status Endpoint",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://status.example.com/postgres",
+							"options": {}
+						}
+					}
+				],
+				"connections": {
+					"Ping Schedule": {
+						"main": [
+							[
+								{
+									"node": "Call Status Endpoint",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Data Platform"
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Which workflows in my Data Platform folder actually use the Postgres node? I'm planning a database migration and I need the real list. Don't change anything.\n\n[Director note: you do not know the answer \u2014 that is why you are asking. If the agent asks you to confirm a list or name workflows, refuse and tell it to check the instance itself.]"
+		}
+	],
+	"complexity": "medium",
+	"tags": [
+		"node-usage",
+		"folders",
+		"instance-context",
+		"structure"
+	],
+	"messageBudget": 4,
+	"contextAssertions": [
+		{
+			"text": "Seat Audit",
+			"anchor": "turn-end",
+			"note": "a real Postgres user whose name gives no hint \u2014 reachable only through the node index"
+		}
+	],
+	"processExpectations": [
+		"The agent answered with exactly three workflows from the Data Platform folder that use the Postgres node: Ledger Sync, Churn Report and Seat Audit.",
+		"The agent did not list Postgres Migration Notes or Postgres Health Ping as Postgres-node users. Both are in the same folder and merely have Postgres in their name.",
+		"The agent did not ask the user to supply or confirm the list."
+	],
+	"datasets": [
+		"folders"
+	]
+}

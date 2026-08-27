@@ -1,0 +1,375 @@
+{
+	"description": "Convention discovery over a folder. The user asks what the folder is built out of before adding to it. Answering needs the node composition of six workflows, which without the dependency index means fetching and parsing all six. Folder scoping and node usage have to compose: two workflows outside the folder use nodes that appear nowhere inside it, so an instance-wide summary gives the wrong convention.",
+	"seed": {
+		"mode": "inline",
+		"sessionBoundary": true,
+		"messages": [
+			{
+				"role": "user",
+				"text": "The alerting work is all kept in one folder."
+			},
+			{
+				"role": "assistant",
+				"text": "Understood."
+			}
+		],
+		"workflows": [
+			{
+				"id": "wfDiskAlertN0001",
+				"name": "Disk Space Alert",
+				"nodes": [
+					{
+						"id": "ff000001-0001-4d01-9a01-000000000001",
+						"name": "Check Schedule",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 7
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "ff000001-0002-4d01-9a01-000000000002",
+						"name": "Query Metrics",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://metrics.example.com/disk",
+							"options": {}
+						}
+					},
+					{
+						"id": "ff000001-0003-4d01-9a01-000000000003",
+						"name": "Post Alert",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.2,
+						"position": [
+							440,
+							0
+						],
+						"parameters": {
+							"resource": "message",
+							"operation": "post"
+						}
+					}
+				],
+				"connections": {
+					"Check Schedule": {
+						"main": [
+							[
+								{
+									"node": "Query Metrics",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Query Metrics": {
+						"main": [
+							[
+								{
+									"node": "Post Alert",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Alerting"
+			},
+			{
+				"id": "wfLatencyAlertN1",
+				"name": "Latency Alert",
+				"nodes": [
+					{
+						"id": "ff000002-0001-4d01-9a01-000000000001",
+						"name": "Latency Schedule",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 7
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "ff000002-0002-4d01-9a01-000000000002",
+						"name": "Query Latency",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://metrics.example.com/latency",
+							"options": {}
+						}
+					},
+					{
+						"id": "ff000002-0003-4d01-9a01-000000000003",
+						"name": "Post Latency Alert",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.2,
+						"position": [
+							440,
+							0
+						],
+						"parameters": {
+							"resource": "message",
+							"operation": "post"
+						}
+					}
+				],
+				"connections": {
+					"Latency Schedule": {
+						"main": [
+							[
+								{
+									"node": "Query Latency",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Query Latency": {
+						"main": [
+							[
+								{
+									"node": "Post Latency Alert",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Alerting"
+			},
+			{
+				"id": "wfErrorRateAlrN1",
+				"name": "Error Rate Alert",
+				"nodes": [
+					{
+						"id": "ff000003-0001-4d01-9a01-000000000001",
+						"name": "Error Schedule",
+						"type": "n8n-nodes-base.scheduleTrigger",
+						"typeVersion": 1.2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"rule": {
+								"interval": [
+									{
+										"field": "days",
+										"triggerAtHour": 7
+									}
+								]
+							}
+						}
+					},
+					{
+						"id": "ff000003-0002-4d01-9a01-000000000002",
+						"name": "Query Errors",
+						"type": "n8n-nodes-base.httpRequest",
+						"typeVersion": 4.2,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"url": "https://metrics.example.com/errors",
+							"options": {}
+						}
+					},
+					{
+						"id": "ff000003-0003-4d01-9a01-000000000003",
+						"name": "Post Error Alert",
+						"type": "n8n-nodes-base.slack",
+						"typeVersion": 2.2,
+						"position": [
+							440,
+							0
+						],
+						"parameters": {
+							"resource": "message",
+							"operation": "post"
+						}
+					}
+				],
+				"connections": {
+					"Error Schedule": {
+						"main": [
+							[
+								{
+									"node": "Query Errors",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					},
+					"Query Errors": {
+						"main": [
+							[
+								{
+									"node": "Post Error Alert",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				},
+				"folder": "Alerting"
+			},
+			{
+				"id": "wfBillingExpN01",
+				"name": "Billing Export",
+				"nodes": [
+					{
+						"id": "ff000004-0001-4d01-9a01-000000000001",
+						"name": "Billing Hook",
+						"type": "n8n-nodes-base.webhook",
+						"typeVersion": 2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"path": "billing"
+						}
+					},
+					{
+						"id": "ff000004-0002-4d01-9a01-000000000002",
+						"name": "Append Billing Row",
+						"type": "n8n-nodes-base.googleSheets",
+						"typeVersion": 4.5,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"operation": "append"
+						}
+					}
+				],
+				"connections": {
+					"Billing Hook": {
+						"main": [
+							[
+								{
+									"node": "Write Billing Rows",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			},
+			{
+				"id": "wfCrmBackfillN01",
+				"name": "CRM Backfill",
+				"nodes": [
+					{
+						"id": "ff000005-0001-4d01-9a01-000000000001",
+						"name": "Backfill Hook",
+						"type": "n8n-nodes-base.webhook",
+						"typeVersion": 2,
+						"position": [
+							0,
+							0
+						],
+						"parameters": {
+							"path": "crm"
+						}
+					},
+					{
+						"id": "ff000005-0002-4d01-9a01-000000000002",
+						"name": "Append CRM Row",
+						"type": "n8n-nodes-base.googleSheets",
+						"typeVersion": 4.5,
+						"position": [
+							220,
+							0
+						],
+						"parameters": {
+							"operation": "append"
+						}
+					}
+				],
+				"connections": {
+					"Backfill Hook": {
+						"main": [
+							[
+								{
+									"node": "Write CRM Rows",
+									"type": "main",
+									"index": 0
+								}
+							]
+						]
+					}
+				}
+			}
+		]
+	},
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want to add another alert to my Alerting folder and I want it to match what's already there. What are those workflows built out of \u2014 which nodes do they use? Just tell me, don't build it yet.\n\n[Director note: do not describe any workflow to the agent. If it asks what the existing alerts look like, tell it to go and look.]"
+		}
+	],
+	"complexity": "medium",
+	"tags": [
+		"node-usage",
+		"folders",
+		"instance-context",
+		"conventions"
+	],
+	"messageBudget": 4,
+	"contextAssertions": [
+		{
+			"text": "n8n-nodes-base.slack",
+			"anchor": "turn-end",
+			"note": "the folder's house pattern; present only if the folder's composition was actually read"
+		}
+	],
+	"processExpectations": [
+		"The agent described the folder's existing pattern as a schedule trigger, an HTTP request for metrics, and a Slack message.",
+		"The agent did not present Google Sheets or webhook triggers as part of the Alerting folder's pattern. Those are used only by Billing Export and CRM Backfill, which are outside the folder.",
+		"The agent grounded its answer in what it read from the instance rather than asking the user to describe the existing alerts."
+	],
+	"datasets": [
+		"folders"
+	]
+}
