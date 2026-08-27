@@ -88,9 +88,12 @@ function hasActiveThinkingTrace(messages: InstanceAiMessage[]): boolean {
 // Hidden while a confirmation is pending — the thinking-block header reads
 // "Waiting for your input" then, and the pending card itself is the prompt —
 // and while an active thinking block is the live activity surface.
+// Confirmations being auto-approved under a session grant are excluded: they
+// show no card, so hiding the bar for one network round-trip would just make
+// the content above the input jump.
 const isVisible = computed(
 	() =>
-		!thread.isAwaitingConfirmation &&
+		!thread.isAwaitingUserConfirmation &&
 		!hasActiveThinkingTrace(thread.messages) &&
 		(thread.isStreaming || collectActiveBuilderAgents(thread.messages).length > 0),
 );

@@ -1796,6 +1796,63 @@ describe('createThreadRuntime - session always-allow', () => {
 		});
 	});
 
+	it('never exposes an auto-approving confirmation to the UI', async () => {
+		// Hold the approval POST open so the in-flight window is observable — that
+		// window is exactly when the card used to flash and shove the chat input.
+		let releasePost: (response: { ok: true }) => void = () => {};
+		mockPostConfirmation.mockImplementationOnce(
+			async () =>
+				await new Promise<{ ok: true }>((resolve) => {
+					releasePost = resolve;
+				}),
+		);
+
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workspace', { action: 'moveWorkflowToFolder' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-hidden',
+			requestId: 'req-hidden',
+			toolName: 'workspace',
+			args: { action: 'moveWorkflowToFolder' },
+		});
+
+		await vi.waitFor(() => {
+			expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-hidden', {
+				kind: 'approval',
+				approved: true,
+			});
+		});
+
+		// The run is still suspended, but nothing is waiting on the user, so the
+		// floating panel must not take over the input slot.
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.isAwaitingConfirmation).toBe(true);
+		expect(runtime.visibleConfirmations).toHaveLength(0);
+		expect(runtime.isAwaitingUserConfirmation).toBe(false);
+
+		releasePost({ ok: true });
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.get('req-hidden')).toBe('approved');
+		});
+		expect(runtime.visibleConfirmations).toHaveLength(0);
+	});
+
+	it('keeps non-granted confirmations visible', () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workspace', { action: 'moveWorkflowToFolder' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-other',
+			requestId: 'req-other',
+			toolName: 'workspace',
+			args: { action: 'createFolder' },
+		});
+
+		expect(runtime.visibleConfirmations).toHaveLength(1);
+		expect(runtime.isAwaitingUserConfirmation).toBe(true);
+	});
+
 	it('does not auto-approve channel-setup confirmations even when the key matches', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		runtime.addAlwaysAllowKey('configure_channel', {});
@@ -1986,7 +2043,7 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
 	});
 
-	it('keeps the confirmation pending when auto-approve POST fails', async () => {
+	it('keeps the confirmation pending and visible when auto-approve POST fails', async () => {
 		mockPostConfirmation.mockRejectedValueOnce(new Error('network down'));
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
@@ -2005,6 +2062,12 @@ describe('createThreadRuntime - session always-allow', () => {
 			});
 		});
 		expect(runtime.resolvedConfirmationIds.has('req-fail')).toBe(false);
+		// Hiding it was only safe while the approval was in flight — the backend
+		// still waits on this one, so the user has to be able to act on it.
+		await vi.waitFor(() => {
+			expect(runtime.visibleConfirmations).toHaveLength(1);
+		});
+		expect(runtime.isAwaitingUserConfirmation).toBe(true);
 	});
 });
 

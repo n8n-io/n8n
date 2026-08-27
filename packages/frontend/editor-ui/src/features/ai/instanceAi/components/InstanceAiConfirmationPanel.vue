@@ -96,6 +96,8 @@ type ConfirmationChunk = FloatingChunk | StandaloneChunk;
 
 /**
  * Filter pending confirmations to those that belong in this panel mount.
+ * Works off `visibleConfirmations`, so cards a session "Always allow" grant is
+ * auto-approving in the background are never rendered at all.
  *
  * - `inline`: every non-floating item (plan/text/setup/etc.) in chronological
  *   order — these forms coexist comfortably in the chat flow.
@@ -107,14 +109,14 @@ type ConfirmationChunk = FloatingChunk | StandaloneChunk;
 const chunks = computed((): ConfirmationChunk[] => {
 	if (props.kind === 'inline') {
 		const result: ConfirmationChunk[] = [];
-		for (const item of thread.pendingConfirmations) {
+		for (const item of thread.visibleConfirmations) {
 			if (isPendingItemFloating(item)) continue;
 			result.push({ type: 'standalone', item });
 		}
 		return result;
 	}
 
-	for (const item of thread.pendingConfirmations) {
+	for (const item of thread.visibleConfirmations) {
 		if (!isPendingItemFloating(item)) continue;
 		return [{ type: 'floating', item }];
 	}

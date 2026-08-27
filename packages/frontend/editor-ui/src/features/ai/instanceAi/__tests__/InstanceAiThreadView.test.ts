@@ -497,6 +497,7 @@ describe('InstanceAiThreadView', () => {
 			isStreaming: false,
 			isSendingMessage: false,
 			isAwaitingConfirmation: false,
+			isAwaitingUserConfirmation: false,
 			isHydratingThread: false,
 			amendContext: null,
 			activePlanEdit: null,
@@ -509,6 +510,7 @@ describe('InstanceAiThreadView', () => {
 			feedbackByResponseId: {},
 			rateableResponseId: null,
 			pendingConfirmations: [],
+			visibleConfirmations: [],
 			resolvedConfirmationIds: new Map(),
 			debugEvents: [],
 			loadHistoricalMessages: vi.fn().mockResolvedValue('applied'),
@@ -1451,7 +1453,7 @@ describe('InstanceAiThreadView', () => {
 	});
 
 	it('swaps the chat input for the floating panel when a generic approval is pending', () => {
-		thread.pendingConfirmations = [
+		const pending = [
 			{
 				messageId: 'msg-floating',
 				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
@@ -1465,6 +1467,8 @@ describe('InstanceAiThreadView', () => {
 				},
 			},
 		] as unknown as ThreadRuntime['pendingConfirmations'];
+		thread.pendingConfirmations = pending;
+		thread.visibleConfirmations = pending;
 
 		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
@@ -1472,8 +1476,35 @@ describe('InstanceAiThreadView', () => {
 		expect(queryByTestId('instance-ai-input-stub')).toBeNull();
 	});
 
-	it('swaps the chat input for the floating panel when questions are pending', () => {
+	// A confirmation covered by a session "Always allow" grant is auto-approved
+	// in the background and never reaches `visibleConfirmations`. Swapping the
+	// input out for a card that instantly disappears jumped the whole dock.
+	it('keeps the chat input in place while a session-granted approval auto-resolves', () => {
 		thread.pendingConfirmations = [
+			{
+				messageId: 'msg-auto',
+				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
+				toolCall: {
+					toolCallId: 'tc-auto',
+					toolName: 'workspace',
+					args: { action: 'moveWorkflowToFolder' },
+					isLoading: true,
+					confirmationStatus: 'pending',
+					confirmation: { requestId: 'req-auto', severity: 'info', message: 'Move?' },
+				},
+			},
+		] as unknown as ThreadRuntime['pendingConfirmations'];
+		thread.visibleConfirmations = [] as unknown as ThreadRuntime['visibleConfirmations'];
+		thread.isAwaitingConfirmation = true;
+
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(getByTestId('instance-ai-input-stub')).toBeTruthy();
+		expect(queryByTestId('instance-ai-confirmation-panel-floating')).toBeNull();
+	});
+
+	it('swaps the chat input for the floating panel when questions are pending', () => {
+		const pending = [
 			{
 				messageId: 'msg-questions',
 				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
@@ -1493,6 +1524,8 @@ describe('InstanceAiThreadView', () => {
 				},
 			},
 		] as unknown as ThreadRuntime['pendingConfirmations'];
+		thread.pendingConfirmations = pending;
+		thread.visibleConfirmations = pending;
 
 		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 

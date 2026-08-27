@@ -689,11 +689,43 @@ export function createThreadRuntime(
 		return true;
 	}
 
-	// In-flight guard for the auto-approve watcher. We can't rely on
+	// In-flight guard for the auto-approve watcher, and the source of truth for
+	// keeping those confirmations off screen while they resolve. We can't rely on
 	// `resolvedConfirmationIds` to skip duplicates here because we only mark
 	// resolved *after* `confirmAction` succeeds — otherwise a failed request
 	// would hide the card while the backend still waits for approval.
-	const autoApproveInFlight = new Set<string>();
+	const autoApproveInFlight = ref<Set<string>>(new Set());
+
+	function setAutoApproveInFlight(requestId: string, inFlight: boolean): void {
+		const next = new Set(autoApproveInFlight.value);
+		if (inFlight) next.add(requestId);
+		else next.delete(requestId);
+		autoApproveInFlight.value = next;
+	}
+
+	/**
+	 * Pending confirmations the user actually has to resolve. Excludes cards the
+	 * auto-approve watcher is resolving in the background under a session
+	 * "Always allow" grant: the floating panel takes over the chat-input slot, so
+	 * rendering a card that immediately auto-approves swaps the input out and
+	 * back in, jumping the whole dock. The watcher marks the request before it
+	 * awaits, so the card is filtered out in the flush it arrives in and never
+	 * paints. A failed approval POST unmarks it, so a card the backend is still
+	 * waiting on becomes actionable again instead of staying invisible.
+	 */
+	const visibleConfirmations = computed(() =>
+		pendingConfirmations.value.filter(
+			(item) => !autoApproveInFlight.value.has(item.toolCall.confirmation.requestId),
+		),
+	);
+
+	/**
+	 * True while a confirmation is waiting on the *user*. Drives presentation that
+	 * would otherwise flicker during a background auto-approval (status bar,
+	 * thinking-block header). Run-level gating stays on `isAwaitingConfirmation`,
+	 * which is still true for auto-approved cards — the run is genuinely paused.
+	 */
+	const isAwaitingUserConfirmation = computed(() => visibleConfirmations.value.length > 0);
 
 	watch(
 		pendingConfirmations,
@@ -702,7 +734,7 @@ export function createThreadRuntime(
 			for (const item of items) {
 				const conf = item.toolCall.confirmation;
 				if (resolvedConfirmationIds.has(conf.requestId)) continue;
-				if (autoApproveInFlight.has(conf.requestId)) continue;
+				if (autoApproveInFlight.value.has(conf.requestId)) continue;
 				if (!isGenericApprovalEligible(item)) continue;
 				const key = buildAlwaysAllowKey(
 					item.toolCall.toolName,
@@ -711,7 +743,9 @@ export function createThreadRuntime(
 				);
 				if (key === null || !sessionAlwaysAllowKeys.value.has(key)) continue;
 
-				autoApproveInFlight.add(conf.requestId);
+				// Marked synchronously — before the first await — so the card is
+				// excluded from `visibleConfirmations` in this same flush.
+				setAutoApproveInFlight(conf.requestId, true);
 				try {
 					const ok = await confirmAction(conf.requestId, { kind: 'approval', approved: true });
 					if (!ok) continue;
@@ -737,7 +771,7 @@ export function createThreadRuntime(
 						}),
 					);
 				} finally {
-					autoApproveInFlight.delete(conf.requestId);
+					setAutoApproveInFlight(conf.requestId, false);
 				}
 			}
 		},
@@ -999,6 +1033,7 @@ export function createThreadRuntime(
 		resetFeedback();
 		resolvedConfirmationIds.clear();
 		sessionAlwaysAllowKeys.value = new Set();
+		autoApproveInFlight.value = new Set();
 		runStateByGroupId.clear();
 		groupIdByRunId.clear();
 		lastEventId.value = undefined;
@@ -1384,7 +1419,9 @@ export function createThreadRuntime(
 		currentTasks,
 		contextualSuggestion,
 		pendingConfirmations,
+		visibleConfirmations,
 		isAwaitingConfirmation,
+		isAwaitingUserConfirmation,
 
 		// actions
 		setPendingHandoff,
