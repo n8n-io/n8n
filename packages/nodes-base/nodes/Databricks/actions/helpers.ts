@@ -1,7 +1,32 @@
 import { UserError } from 'n8n-workflow';
-import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions, IHttpRequestOptions, ILoadOptionsFunctions } from 'n8n-workflow';
+
+import { databricksUserAgent } from '../constants';
 
 import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
+
+/**
+ * Single egress point for the Databricks API, so every request carries the
+ * partner User-Agent. Enforced by eslint-user-agent-restriction.mjs.
+ *
+ * Takes `context` explicitly rather than the house `this`-binding style because
+ * some callers (e.g. `fetchResourcesInSchema` in methods/listSearch.ts) are plain
+ * functions with no `this`.
+ */
+export async function databricksApiRequest(
+	context: IExecuteFunctions | ILoadOptionsFunctions,
+	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	options: IHttpRequestOptions,
+): ReturnType<IExecuteFunctions['helpers']['httpRequestWithAuthentication']> {
+	return await context.helpers.httpRequestWithAuthentication.call(context, credentialType, {
+		...options,
+		headers: {
+			...options.headers,
+			// Last, so a caller cannot override it
+			'User-Agent': databricksUserAgent(context.getNode().typeVersion),
+		},
+	});
+}
 
 export function getActiveCredentialType(
 	context: IExecuteFunctions | ILoadOptionsFunctions,

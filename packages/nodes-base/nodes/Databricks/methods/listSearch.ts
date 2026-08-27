@@ -1,6 +1,11 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
-import { extractResourceLocatorValue, getActiveCredentialType, getHost } from '../actions/helpers';
+import {
+	databricksApiRequest,
+	extractResourceLocatorValue,
+	getActiveCredentialType,
+	getHost,
+} from '../actions/helpers';
 
 export async function getWarehouses(
 	this: ILoadOptionsFunctions,
@@ -9,7 +14,7 @@ export async function getWarehouses(
 	const credentialType = getActiveCredentialType(this);
 	const host = await getHost(this, credentialType);
 
-	const response = (await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+	const response = (await databricksApiRequest(this, credentialType, {
 		method: 'GET',
 		url: `${host}/api/2.0/sql/warehouses`,
 		headers: { Accept: 'application/json' },
@@ -39,7 +44,7 @@ export async function getEndpoints(
 	const credentialType = getActiveCredentialType(this);
 	const host = await getHost(this, credentialType);
 
-	const response = (await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+	const response = (await databricksApiRequest(this, credentialType, {
 		method: 'GET',
 		url: `${host}/api/2.0/serving-endpoints`,
 		headers: { Accept: 'application/json' },
@@ -93,7 +98,7 @@ export async function getCatalogs(
 	const credentialType = getActiveCredentialType(this);
 	const host = await getHost(this, credentialType);
 
-	const response = (await this.helpers.httpRequestWithAuthentication.call(this, credentialType, {
+	const response = (await databricksApiRequest(this, credentialType, {
 		method: 'GET',
 		url: `${host}/api/2.1/unity-catalog/catalogs`,
 		headers: { Accept: 'application/json' },
@@ -137,16 +142,12 @@ export async function getSchemas(
 	}
 
 	try {
-		const schemasResponse = (await this.helpers.httpRequestWithAuthentication.call(
-			this,
-			credentialType,
-			{
-				method: 'GET',
-				url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${selectedCatalog}`,
-				headers: { Accept: 'application/json' },
-				json: true,
-			},
-		)) as { schemas?: Array<{ name: string }> };
+		const schemasResponse = (await databricksApiRequest(this, credentialType, {
+			method: 'GET',
+			url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${selectedCatalog}`,
+			headers: { Accept: 'application/json' },
+			json: true,
+		})) as { schemas?: Array<{ name: string }> };
 
 		const schemas = schemasResponse.schemas ?? [];
 
@@ -178,16 +179,12 @@ async function fetchResourcesInSchema<T extends { name: string }>(
 	schemaName: string,
 	responseKey: string,
 ): Promise<T[]> {
-	const response = (await context.helpers.httpRequestWithAuthentication.call(
-		context,
-		credentialType,
-		{
-			method: 'GET',
-			url: `${host}${apiPath}?catalog_name=${catalogName}&schema_name=${schemaName}`,
-			headers: { Accept: 'application/json' },
-			json: true,
-		},
-	)) as Record<string, T[] | undefined>;
+	const response = (await databricksApiRequest(context, credentialType, {
+		method: 'GET',
+		url: `${host}${apiPath}?catalog_name=${catalogName}&schema_name=${schemaName}`,
+		headers: { Accept: 'application/json' },
+		json: true,
+	})) as Record<string, T[] | undefined>;
 	return response[responseKey] ?? [];
 }
 
