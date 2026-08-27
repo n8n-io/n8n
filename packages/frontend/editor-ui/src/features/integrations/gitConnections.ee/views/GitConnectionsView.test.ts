@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
-import type { GitConnection } from '../gitConnections.api';
+import type { GitConnection, GitConnectionSummary } from '../gitConnections.api';
 import GitConnectionsView from './GitConnectionsView.vue';
 
 const backend = vi.hoisted(() => {
@@ -375,7 +375,10 @@ describe('GitConnectionsView', () => {
 	});
 
 	it('offers a retry instead of the empty state when the list cannot be loaded', async () => {
-		api.fetchGitConnections.mockRejectedValueOnce(new Error('Request failed'));
+		const retry = Promise.withResolvers<GitConnectionSummary[]>();
+		api.fetchGitConnections
+			.mockRejectedValueOnce(new Error('Request failed'))
+			.mockImplementationOnce(async () => await retry.promise);
 		renderView();
 
 		const errorState = await screen.findByTestId('git-connections-load-error');
@@ -384,7 +387,9 @@ describe('GitConnectionsView', () => {
 
 		backend.connections.push(sshConnection());
 		await userEvent.click(within(errorState).getByRole('button'));
+		expect(screen.queryByTestId('git-connections-add')).not.toBeInTheDocument();
 
+		retry.resolve(backend.connections);
 		expect(await screen.findByTestId('git-connection-row')).toHaveTextContent('Production');
 	});
 });

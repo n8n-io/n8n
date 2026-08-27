@@ -35,7 +35,8 @@ const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
 
 const connections = ref<GitConnectionSummary[]>([]);
-const isLoading = ref(true);
+const isInitialLoading = ref(true);
+const isFetching = ref(false);
 const loadError = ref(false);
 const dialogOpen = ref(false);
 const editingId = ref<string | undefined>(undefined);
@@ -46,7 +47,7 @@ const page = useTemplateRef<{ $el?: HTMLElement }>('page');
 
 // The backend accepts a single connection and treats it as the instance
 // connection. This relaxes once project-level connections land.
-const canAddConnection = computed(() => connections.value.length === 0);
+const canAddConnection = computed(() => !isFetching.value && connections.value.length === 0);
 
 function describe(connection: GitConnectionSummary) {
 	const provider = i18n.baseText('settings.gitConnections.connectorRow.provider');
@@ -62,7 +63,8 @@ let pendingLoad: Promise<void> = Promise.resolve();
 async function load() {
 	// Only the first load shows the skeleton; a refetch keeps the list mounted so
 	// the dialog still has something to restore focus to.
-	isLoading.value = !hasLoaded;
+	isInitialLoading.value = !hasLoaded;
+	isFetching.value = true;
 	loadError.value = false;
 	try {
 		connections.value = await fetchGitConnections(rootStore.publicApiContext);
@@ -71,7 +73,8 @@ async function load() {
 		connections.value = [];
 		toast.showError(error, i18n.baseText('settings.gitConnections.error.title'));
 	} finally {
-		isLoading.value = false;
+		isInitialLoading.value = false;
+		isFetching.value = false;
 		hasLoaded = true;
 	}
 }
@@ -158,7 +161,7 @@ async function onDelete(id: string) {
 			:title="i18n.baseText('settings.gitConnections.connectors.title')"
 			:description="i18n.baseText('settings.gitConnections.connectors.description')"
 		>
-			<N8nLoading2 v-if="isLoading" :rows="2" :shrink-last="false" />
+			<N8nLoading2 v-if="isInitialLoading" :rows="2" :shrink-last="false" />
 			<N8nEmptyState
 				v-else-if="loadError"
 				:heading="i18n.baseText('settings.gitConnections.error.title')"
