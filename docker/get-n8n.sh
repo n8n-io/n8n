@@ -354,7 +354,7 @@ compose() {
 check_rate_limit() {
 	grep -qiE 'toomanyrequests|rate ?limit' "$1" || return 0
 	rm -f "$1"
-	STEP="rate-limit"
+	STEP="docker-hub-rate-limit"
 	fail "Docker Hub pull rate limit reached — your configuration in ${N8N_DIR} is
   unaffected. Wait about an hour, then start n8n with:
     docker compose -f ${N8N_DIR}/compose.yml up -d
@@ -417,9 +417,9 @@ do_upgrade() {
 	fi
 
 	say "Pulling images..."
-	STEP="pull"
+	STEP="image-pull"
 	compose_pull
-	STEP="start"
+	STEP="container-start"
 	compose_checked up -d --quiet-pull
 	ok "Restarted with n8n ${target}"
 }
@@ -470,7 +470,7 @@ main() {
 	if [ -f "${N8N_DIR}/compose.yml" ] || [ -f "${N8N_DIR}/.env" ]; then
 		if [ "$UPGRADE" -eq 1 ]; then
 			do_upgrade
-			STEP="health"
+			STEP="n8n-readiness-timeout"
 			wait_for_n8n || fail "n8n did not become ready — check 'docker compose -f ${N8N_DIR}/compose.yml logs n8n'."
 			print_summary
 			exit 0
@@ -500,7 +500,7 @@ main() {
 
 	INSTALL_VERSION="${REQUESTED_VERSION:-$(resolve_n8n_version)}"
 	mkdir -p "${N8N_DIR}"
-	STEP="compose-download"
+	STEP="stack-definition-download"
 	write_compose
 	STEP=""
 	ok "Created ${N8N_DIR}/compose.yml"
@@ -517,12 +517,12 @@ main() {
 	fi
 
 	say "Pulling images (this can take a few minutes on first run)..."
-	STEP="pull"
+	STEP="image-pull"
 	compose_pull
-	STEP="start"
+	STEP="container-start"
 	compose_checked up -d --quiet-pull
 	ok "Started n8n ${INSTALL_VERSION} and sandbox services"
-	STEP="health"
+	STEP="n8n-readiness-timeout"
 	wait_for_n8n || fail "n8n did not become ready — check 'docker compose -f ${N8N_DIR}/compose.yml logs n8n'."
 	print_summary
 }
