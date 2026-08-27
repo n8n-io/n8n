@@ -271,6 +271,18 @@ function pickIconUrl(icons: McpRegistryIcon[]): Themed<string> | undefined {
 	return preferredIcon(icons)?.src;
 }
 
+function withRemoteDefaults(
+	properties: INodeProperties[],
+	transport: 'httpStreamable' | 'sse',
+	endpointUrl: string,
+): INodeProperties[] {
+	return properties.map((property) => {
+		if (property.name === 'endpointUrl') return { ...property, default: endpointUrl };
+		if (property.name === 'serverTransport') return { ...property, default: transport };
+		return property;
+	});
+}
+
 /**
  * Registry MCP server → service-specific credential type depending on auth type for the server
  */
@@ -331,6 +343,11 @@ export function serverToNodeDescription(
 			description.codex.resources = { primaryDocumentation: [{ url: server.websiteUrl }] };
 		}
 	}
+	description.properties = withRemoteDefaults(
+		description.properties,
+		connection.transport,
+		connection.endpointUrl,
+	);
 	const authenticationProperty = getAuthenticationProperty(server, isKnownCredentialType);
 	if (authenticationProperty) {
 		description.properties = [authenticationProperty, ...description.properties];

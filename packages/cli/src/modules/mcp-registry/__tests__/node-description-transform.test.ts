@@ -31,6 +31,12 @@ const baseDescription: INodeTypeDescription = {
 	credentials: [{ name: 'mcpOAuth2Api', required: true }],
 	properties: [
 		{
+			displayName: 'Endpoint URL',
+			name: 'endpointUrl',
+			type: 'hidden',
+			default: '',
+		},
+		{
 			displayName: 'Server Transport',
 			name: 'serverTransport',
 			type: 'hidden',
@@ -67,6 +73,9 @@ describe('serverToNodeDescription', () => {
 			version: 1,
 		});
 		expect(description?.hidden).toBeUndefined();
+		expect(description?.properties.find((p) => p.name === 'endpointUrl')?.default).toBe(
+			'https://mcp.notion.com/mcp',
+		);
 	});
 
 	it('prefers streamable-http when both remotes are available', () => {
@@ -81,7 +90,7 @@ describe('serverToNodeDescription', () => {
 		expect(serverTransport?.default).toBe('httpStreamable');
 	});
 
-	it('does not persist the runtime transport in the node description', () => {
+	it('fills the remote transport when only SSE is available', () => {
 		const sseOnlyServer: McpRegistryServer = {
 			...notionMockServer,
 			remotes: [{ type: 'sse', url: 'https://mcp.notion.com/sse' }],
@@ -95,7 +104,7 @@ describe('serverToNodeDescription', () => {
 
 		const serverTransport = description?.properties.find((p) => p.name === 'serverTransport');
 
-		expect(serverTransport?.default).toBe('httpStreamable');
+		expect(serverTransport?.default).toBe('sse');
 	});
 
 	it('returns null when no supported remote is available', () => {
@@ -315,6 +324,12 @@ describe('serverToNodeDescription', () => {
   "name": "notion",
   "outputs": [],
   "properties": [
+    {
+      "default": "https://mcp.notion.com/mcp",
+      "displayName": "Endpoint URL",
+      "name": "endpointUrl",
+      "type": "hidden",
+    },
     {
       "default": "httpStreamable",
       "displayName": "Server Transport",
