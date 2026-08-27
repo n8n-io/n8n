@@ -174,15 +174,15 @@ const projectLocation = computed(() => {
 			>
 				<ProjectIcon :icon="badgeIcon" :border-less="true" size="mini" />
 				<RouterLink v-if="projectLocation" :to="projectLocation">
-					<span v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
+					<N8nText step="xs" bold v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
 				</RouterLink>
 				<span v-else v-n8n-truncate:20="badgeText" :class="$style.nowrap" />
+				<slot />
 			</N8nBadge>
 			<template #content>
 				{{ badgeTooltip }}
 			</template>
 		</N8nTooltip>
-		<slot />
 
 		<N8nTooltip v-if="global" placement="top">
 			<div
@@ -220,25 +220,7 @@ const projectLocation = computed(() => {
 </template>
 
 <style lang="scss" module>
-.wrapper {
-	display: flex;
-	align-items: center;
-	border: var(--border);
-	border-radius: var(--radius);
-
-	&.no-border {
-		border: none;
-	}
-}
-
 .badge {
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background-color: var(--color--background--light-3);
-	border-color: var(--color--foreground);
-
-	z-index: 1;
-	position: relative;
-	height: 23px;
 	:global(.n8n-text),
 	a {
 		color: var(--color--text);
@@ -248,7 +230,9 @@ const projectLocation = computed(() => {
 .projectBadge {
 	& > span {
 		display: flex;
-		gap: var(--spacing--3xs);
+		gap: var(--n8n-badge--gap);
+		justify-content: center;
+		align-items: center;
 	}
 }
 

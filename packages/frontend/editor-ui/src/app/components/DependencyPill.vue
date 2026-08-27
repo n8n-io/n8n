@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import { N8nBadge, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nBadge, N8nTooltip } from '@n8n/design-system';
 import { N8nDropdownMenu } from '@n8n/design-system';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useDependencies } from '@/app/composables/useDependencies';
@@ -108,12 +108,8 @@ async function onDropdownToggle(open: boolean) {
 			@update:model-value="onDropdownToggle"
 		>
 			<template #trigger>
-				<!-- We use a custom border to align color with the other related badges -->
-				<N8nBadge variant="outline" :class="$style.badge">
-					<span :class="$style.badgeText">
-						<N8nIcon icon="link" size="small" />
-						{{ effectiveCount }}
-					</span>
+				<N8nBadge variant="outline" :clickable="true" leading-icon="link">
+					{{ effectiveCount }}
 				</N8nBadge>
 			</template>
 			<template v-if="hasHiddenDeps" #footer>
@@ -131,30 +127,6 @@ async function onDropdownToggle(open: boolean) {
 </template>
 
 <style lang="scss" module>
-.badge {
-	cursor: pointer;
-	border: var(--border);
-	border-radius: var(--radius);
-
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	color: var(--color--text);
-
-	&:hover {
-		background-color: var(--background--hover);
-	}
-
-	:global([aria-expanded='true']) & {
-		background-color: var(--background--active);
-	}
-}
-
-.badgeText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	line-height: calc(var(--font-size--sm) + 1px);
-}
-
 .hiddenNotice {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-top: var(--border);
