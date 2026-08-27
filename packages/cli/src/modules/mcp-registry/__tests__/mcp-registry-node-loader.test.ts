@@ -48,8 +48,9 @@ const baseDescription: INodeTypeDescription = {
 };
 
 function createBaseNodeClass() {
-	const baseInstance: INodeType = {
+	const baseInstance: INodeType & { setRegistryRuntime: ReturnType<typeof vi.fn> } = {
 		description: baseDescription,
+		setRegistryRuntime: vi.fn(),
 		methods: {
 			loadOptions: {
 				getTools: vi.fn(),
@@ -107,7 +108,7 @@ describe('McpRegistryNodeLoader', () => {
 
 	describe('loadAll', () => {
 		it('populates `types`, `known`, registers synthetic nodes and credentials for each supported server', async () => {
-			const { loadNodesAndCredentials, sourcePath } = createLoadNodesAndCredentials();
+			const { loadNodesAndCredentials, baseNode, sourcePath } = createLoadNodesAndCredentials();
 			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
 			loader.setServers([notionMockServer]);
 
@@ -141,6 +142,10 @@ describe('McpRegistryNodeLoader', () => {
 				extends: ['mcpOAuth2Api'],
 				supportedNodes: ['notion'],
 			});
+			expect(
+				(baseNode as typeof baseNode & { setRegistryRuntime: ReturnType<typeof vi.fn> })
+					.setRegistryRuntime,
+			).toHaveBeenCalledOnce();
 		});
 
 		it('inherits prototype methods from the base node class on synthetic nodes', async () => {

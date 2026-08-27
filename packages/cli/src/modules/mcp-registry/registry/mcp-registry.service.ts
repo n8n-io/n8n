@@ -3,6 +3,7 @@ import { Time } from '@n8n/constants';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
+import type { McpRegistryConnection } from 'n8n-workflow';
 
 import { inE2ETests } from '@/constants';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -21,6 +22,7 @@ import {
 import type { McpRegistryServer } from './mcp-registry.types';
 import { toEntity, fromEntity } from './mcp-registry.types';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
+import { resolveMcpRegistryConnection } from '../mcp-registry-connection';
 
 type RefreshReason = 'startup' | 'leader-takeover' | 'interval';
 
@@ -125,6 +127,14 @@ export class McpRegistryService {
 	async resolveBySlugs(slugs: string[]): Promise<McpRegistrySearchResult[]> {
 		const servers = await this.getBySlugs(slugs);
 		return listMcpRegistryServers(servers.filter((server) => server.status === 'active'));
+	}
+
+	async getConnection(nodeTypeName: string): Promise<McpRegistryConnection | undefined> {
+		for (const server of await this.getAll({ includeDeprecated: true })) {
+			const connection = resolveMcpRegistryConnection(server);
+			if (connection?.nodeTypeName === nodeTypeName) return connection;
+		}
+		return undefined;
 	}
 
 	private startPeriodicRefresh(): void {

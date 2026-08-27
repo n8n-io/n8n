@@ -12,7 +12,10 @@ import {
 	type IVersionedNodeType,
 	type KnownNodesAndCredentials,
 	type LoadedClass,
+	type McpRegistryConnection,
 	type NodeLoader,
+	type PrepareMcpRegistryConnectionInput,
+	type PrepareMcpRegistryConnectionResult,
 } from 'n8n-workflow';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -25,7 +28,26 @@ import {
 	serverToNodeDescription,
 	type IsKnownCredentialType,
 } from './node-description-transform';
+import {
+	prepareMcpRegistryConnection,
+	resolveMcpRegistryConnection,
+} from './mcp-registry-connection';
 import type { McpRegistryServer } from './registry/mcp-registry.types';
+
+export interface McpRegistryRuntime {
+	resolveConnection(nodeTypeName: string): McpRegistryConnection | undefined;
+	prepareConnection(input: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult;
+}
+
+type McpRegistryBaseNode = INodeType & {
+	setRegistryRuntime(runtime: McpRegistryRuntime): void;
+};
+
+function supportsRegistryRuntime(
+	node: INodeType | IVersionedNodeType,
+): node is McpRegistryBaseNode {
+	return 'setRegistryRuntime' in node && typeof node.setRegistryRuntime === 'function';
+}
 
 /**
  * Synthetic node loader: turns each registry server into a node type, all
@@ -67,6 +89,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 
 		const { type: baseNode, sourcePath } = baseLoaded;
 		const { description: baseDescription } = NodeHelpers.getVersionedNodeType(baseNode);
+		const connections = new Map<string, McpRegistryConnection>();
 
 		const isKnownCredentialType: IsKnownCredentialType = (name) =>
 			Object.hasOwn(this.loadNodesAndCredentials.knownCredentials, name);
@@ -79,6 +102,9 @@ export class McpRegistryNodeLoader implements NodeLoader {
 			);
 			const credentialDescription = serverToCredentialDescription(server, isKnownCredentialType);
 			if (!nodeDescription || !credentialDescription) continue;
+			const connection = resolveMcpRegistryConnection(server);
+			if (!connection) continue;
+			connections.set(connection.nodeTypeName, connection);
 
 			const bareName = camelCase(server.slug);
 
@@ -103,6 +129,13 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				extends: credentialDescription.extends,
 				supportedNodes: [bareName],
 			};
+		}
+
+		if (supportsRegistryRuntime(baseNode)) {
+			baseNode.setRegistryRuntime({
+				resolveConnection: (nodeTypeName) => connections.get(nodeTypeName),
+				prepareConnection: prepareMcpRegistryConnection,
+			});
 		}
 	}
 
