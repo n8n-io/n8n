@@ -500,6 +500,7 @@ describe('InstanceAiMcpRegistryService', () => {
 
 				expect(result.url).toBe('https://linear.example.com/mcp');
 				await expect(result.fetch?.(result.url)).resolves.toBeDefined();
+				await expect(result.fetch?.('https://other.example.com/mcp')).rejects.toThrow();
 				expect(proxyFetchMock).toHaveBeenCalledOnce();
 			},
 		);

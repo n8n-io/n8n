@@ -25,6 +25,7 @@ export interface PrepareMcpRegistryConnectionInput {
 	connection: McpRegistryConnection;
 	credentialType: McpOAuth2CredentialType;
 	credentialData: ICredentialDataDecryptedObject;
+	headers?: Record<string, string>;
 }
 
 export type PrepareMcpRegistryConnectionResult =
@@ -39,7 +40,7 @@ export type PrepareMcpRegistryConnectionResult =
 	| {
 			ok: false;
 			error: {
-				code: 'missing_access_token' | 'unsupported_credential';
+				code: 'missing_access_token' | 'unsupported_credential' | 'not_registered';
 				message: string;
 			};
 	  };
@@ -78,12 +79,14 @@ export function getMcpAuthHeaders(
 		const accessToken = isRecord(tokenData)
 			? (tokenData.access_token ?? tokenData.accessToken)
 			: undefined;
-		return typeof accessToken === 'string' ? { authorization: `Bearer ${accessToken}` } : {};
+		return typeof accessToken === 'string' && accessToken.length > 0
+			? { ['Authorization']: `Bearer ${accessToken}` }
+			: {};
 	}
 
 	if (authentication === 'bearerAuth') {
 		return typeof credentialData.token === 'string' && credentialData.token.length > 0
-			? { authorization: `Bearer ${credentialData.token}` }
+			? { ['Authorization']: `Bearer ${credentialData.token}` }
 			: {};
 	}
 

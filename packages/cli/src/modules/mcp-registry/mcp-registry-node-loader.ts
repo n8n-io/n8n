@@ -66,6 +66,8 @@ export class McpRegistryNodeLoader implements NodeLoader {
 
 	private servers: McpRegistryServer[] = [];
 
+	private connections = new Map<string, McpRegistryConnection>();
+
 	constructor(
 		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly logger: Logger,
@@ -84,7 +86,6 @@ export class McpRegistryNodeLoader implements NodeLoader {
 
 		const { type: baseNode, sourcePath } = baseLoaded;
 		const { description: baseDescription } = NodeHelpers.getVersionedNodeType(baseNode);
-		const connections = new Map<string, McpRegistryConnection>();
 
 		const credentialTypes = this.getCredentialTypes();
 		const isKnownCredentialType: IsKnownCredentialType = (name) =>
@@ -106,7 +107,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 			const supportedCredentialTypes = new Set(
 				nodeDescription.credentials?.map(({ name }) => name) ?? [],
 			);
-			connections.set(connection.nodeTypeName, {
+			this.connections.set(connection.nodeTypeName, {
 				...connection,
 				credentialBindings: connection.credentialBindings.filter(({ credentialType }) =>
 					supportedCredentialTypes.has(credentialType),
@@ -141,7 +142,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		if (supportsRegistryRuntime(baseNode)) {
 			baseNode.setRegistryRuntime({
 				resolveConnection: (nodeTypeName, selector) => {
-					const connection = connections.get(nodeTypeName);
+					const connection = this.connections.get(nodeTypeName);
 					if (!connection) return undefined;
 					const binding =
 						connection.credentialBindings.length === 1
@@ -152,6 +153,10 @@ export class McpRegistryNodeLoader implements NodeLoader {
 				prepareConnection: prepareMcpRegistryConnection,
 			});
 		}
+	}
+
+	getConnection(nodeTypeName: string): McpRegistryConnection | undefined {
+		return this.connections.get(nodeTypeName);
 	}
 
 	getNode(nodeType: string): LoadedClass<INodeType | IVersionedNodeType> {
@@ -171,6 +176,7 @@ export class McpRegistryNodeLoader implements NodeLoader {
 		this.types = { nodes: [], credentials: [] };
 		this.nodeTypes = {};
 		this.credentialTypes = {};
+		this.connections.clear();
 		this.typesReleased = true;
 	}
 

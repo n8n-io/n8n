@@ -409,4 +409,29 @@ describe('McpRegistryClientTool', () => {
 			await expect(node.execute.call(ctx)).rejects.toThrow('No MCP credential found');
 		});
 	});
+
+	describe('prepareConnection', () => {
+		it('reports not_registered when the registry runtime is missing', () => {
+			new McpRegistryClientTool().setRegistryRuntime(undefined);
+
+			expect(
+				McpRegistryClientTool.prepareConnection({
+					connection: {
+						nodeTypeName: '@n8n/mcp-registry.notion',
+						credentialType: 'someServiceMcpOAuth2Api',
+						endpointUrl: 'https://mcp.notion.com/mcp',
+						endpointHostname: 'mcp.notion.com',
+						transport: 'httpStreamable',
+					},
+					credentialData: { oauthTokenData: { access_token: 'token' } },
+				}),
+			).toEqual({
+				ok: false,
+				error: {
+					code: 'not_registered',
+					message: 'MCP registry connection is not registered',
+				},
+			});
+		});
+	});
 });

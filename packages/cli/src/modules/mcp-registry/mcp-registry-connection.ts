@@ -62,15 +62,6 @@ export function resolveMcpRegistryConnection(
 
 	try {
 		const endpoint = new URL(remote.url);
-		if (
-			endpoint.protocol !== 'https:' ||
-			!endpoint.hostname ||
-			endpoint.username ||
-			endpoint.password
-		) {
-			return null;
-		}
-
 		return {
 			nodeTypeName: `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}`,
 			endpointUrl: endpoint.toString(),
@@ -90,6 +81,7 @@ export function prepareMcpRegistryConnection({
 	connection,
 	credentialType,
 	credentialData,
+	headers: preparedHeaders,
 }: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult {
 	if (!connection.credentialBindings.some((binding) => binding.credentialType === credentialType)) {
 		return {
@@ -100,8 +92,11 @@ export function prepareMcpRegistryConnection({
 			},
 		};
 	}
-	const headers = getMcpAuthHeaders(credentialType, credentialData);
-	if (!headers.authorization) {
+
+	const headers = preparedHeaders ?? getMcpAuthHeaders(credentialType, credentialData);
+	const authorization = new Headers(headers).get('authorization')?.trim();
+	const [scheme, accessToken] = authorization?.split(/\s+/, 2) ?? [];
+	if (scheme?.toLowerCase() !== 'bearer' || !accessToken) {
 		return {
 			ok: false,
 			error: {
