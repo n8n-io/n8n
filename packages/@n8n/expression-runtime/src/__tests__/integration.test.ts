@@ -351,6 +351,74 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		).toBe('1/1/70, 12:00 AM');
 	});
 
+	it('should support unbound Intl format and construction-time options snapshot', () => {
+		const data = { $json: {} };
+
+		// V8 exposes format as a bound-function getter, so it must work unbound.
+		expect(
+			evaluator.evaluate(
+				'{{ [new Date(0), new Date(86400000)].map(new Intl.DateTimeFormat("en-US", { timeZone: "UTC" }).format).join("|") }}',
+				data,
+				caller,
+			),
+		).toBe('1/1/1970|1/2/1970');
+
+		// V8 snapshots options at construction; later mutation must not change output.
+		expect(
+			evaluator.evaluate(
+				'{{ (() => { var o = { minimumFractionDigits: 2, maximumFractionDigits: 2 }; var nf = new Intl.NumberFormat("en-US", o); o.minimumFractionDigits = 5; o.maximumFractionDigits = 5; return nf.format(1); })() }}',
+				data,
+				caller,
+			),
+		).toBe('1.00');
+	});
+
+	it('should delegate Collator, PluralRules, DisplayNames and Intl statics to host Intl', () => {
+		const data = { $json: {} };
+
+		expect(evaluator.evaluate('{{ new Intl.PluralRules("en-US").select(1) }}', data, caller)).toBe(
+			'one',
+		);
+		expect(
+			evaluator.evaluate('{{ new Intl.Collator("en-US").compare("a", "b") }}', data, caller),
+		).toBe(-1);
+		expect(
+			evaluator.evaluate(
+				'{{ new Intl.DisplayNames(["en"], { type: "region" }).of("DE") }}',
+				data,
+				caller,
+			),
+		).toBe('Germany');
+		expect(evaluator.evaluate('{{ Intl.getCanonicalLocales("EN-us")[0] }}', data, caller)).toBe(
+			'en-US',
+		);
+		expect(
+			evaluator.evaluate(
+				'{{ Intl.supportedValuesOf("calendar").includes("gregory") }}',
+				data,
+				caller,
+			),
+		).toBe(true);
+	});
+
+	it('should expose real Intl.Locale properties including weekInfo', () => {
+		const data = { $json: {} };
+
+		expect(evaluator.evaluate('{{ new Intl.Locale("de-DE").language }}', data, caller)).toBe('de');
+		expect(evaluator.evaluate('{{ new Intl.Locale("de-DE").baseName }}', data, caller)).toBe(
+			'de-DE',
+		);
+		// Luxon reads getWeekInfo() where present, the weekInfo getter otherwise —
+		// both engines report ISO first day 1 (Monday) for de-DE.
+		expect(
+			evaluator.evaluate(
+				'{{ (l => ("getWeekInfo" in l ? l.getWeekInfo() : l.weekInfo).firstDay)(new Intl.Locale("de-DE")) }}',
+				data,
+				caller,
+			),
+		).toBe(1);
+	});
+
 	it('should round-trip an invalid Date return value', () => {
 		const data = { $json: {} };
 

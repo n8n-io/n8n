@@ -4,6 +4,7 @@ import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
+import { LruCache } from '../evaluator/lru-cache';
 import { bridgeMessageSchema } from './bridge-messages';
 
 // Lazy-loaded quickjs-emscripten — avoids loading WASM when the barrel
@@ -447,6 +448,137 @@ function dispatchHostCall(rawMsg: unknown, data: WorkflowData): unknown {
 	}
 }
 
+// ============================================================================
+// Intl host delegation
+//
+// QuickJS ships without ECMA-402, so the guest's Intl API is a set of thin
+// wrapper classes that delegate to the host's native Intl via the single
+// `__intl(ctorName, op, locales, options, ...args)` callback. The table below
+// maps constructor name → how to construct the host object and which ops the
+// guest may invoke on it. Anything not in the table is rejected.
+// ============================================================================
+
+type IntlLocales = string | string[] | undefined;
+
+/** Formatter args arrive as dumped guest values; DateTimeFormat dates travel as timestamps. */
+function toDateArg(ts: unknown): Date {
+	return typeof ts === 'number' ? new Date(ts) : new Date();
+}
+
+interface IntlDispatchEntry {
+	create: (locales: IntlLocales, options: unknown) => unknown;
+	supportedLocalesOf?: (locales: IntlLocales) => string[];
+	ops: Record<string, (instance: unknown, args: unknown[]) => unknown>;
+}
+
+/**
+ * Snapshot the properties Luxon and user code read from Intl.Locale into a
+ * plain object the guest copies onto its wrapper instance. weekInfo moved
+ * from a getter to getWeekInfo() across V8 versions — read both shapes.
+ */
+function dumpLocale(loc: Intl.Locale): Record<string, unknown> {
+	const withWeekInfo = loc as Intl.Locale & { weekInfo?: unknown; getWeekInfo?: () => unknown };
+	return {
+		tag: loc.toString(),
+		baseName: loc.baseName,
+		language: loc.language,
+		script: loc.script,
+		region: loc.region,
+		calendar: loc.calendar,
+		caseFirst: loc.caseFirst,
+		collation: loc.collation,
+		hourCycle: loc.hourCycle,
+		numberingSystem: loc.numberingSystem,
+		numeric: loc.numeric,
+		weekInfo: withWeekInfo.getWeekInfo?.() ?? withWeekInfo.weekInfo,
+	};
+}
+
+const INTL_DISPATCH: Record<string, IntlDispatchEntry> = {
+	DateTimeFormat: {
+		create: (locales, options) =>
+			new Intl.DateTimeFormat(locales, options as Intl.DateTimeFormatOptions | undefined),
+		supportedLocalesOf: (locales) => Intl.DateTimeFormat.supportedLocalesOf(locales ?? []),
+		ops: {
+			format: (fmt, args) => (fmt as Intl.DateTimeFormat).format(toDateArg(args[0])),
+			formatToParts: (fmt, args) => (fmt as Intl.DateTimeFormat).formatToParts(toDateArg(args[0])),
+			resolvedOptions: (fmt) => (fmt as Intl.DateTimeFormat).resolvedOptions(),
+		},
+	},
+	NumberFormat: {
+		create: (locales, options) =>
+			new Intl.NumberFormat(locales, options as Intl.NumberFormatOptions | undefined),
+		supportedLocalesOf: (locales) => Intl.NumberFormat.supportedLocalesOf(locales ?? []),
+		ops: {
+			format: (fmt, args) => (fmt as Intl.NumberFormat).format(args[0] as number),
+			formatToParts: (fmt, args) => (fmt as Intl.NumberFormat).formatToParts(args[0] as number),
+			resolvedOptions: (fmt) => (fmt as Intl.NumberFormat).resolvedOptions(),
+		},
+	},
+	RelativeTimeFormat: {
+		create: (locales, options) =>
+			new Intl.RelativeTimeFormat(locales, options as Intl.RelativeTimeFormatOptions | undefined),
+		supportedLocalesOf: (locales) => Intl.RelativeTimeFormat.supportedLocalesOf(locales ?? []),
+		ops: {
+			format: (fmt, args) =>
+				(fmt as Intl.RelativeTimeFormat).format(
+					args[0] as number,
+					args[1] as Intl.RelativeTimeFormatUnit,
+				),
+			formatToParts: (fmt, args) =>
+				(fmt as Intl.RelativeTimeFormat).formatToParts(
+					args[0] as number,
+					args[1] as Intl.RelativeTimeFormatUnit,
+				),
+			resolvedOptions: (fmt) => (fmt as Intl.RelativeTimeFormat).resolvedOptions(),
+		},
+	},
+	ListFormat: {
+		create: (locales, options) =>
+			new Intl.ListFormat(locales, options as Intl.ListFormatOptions | undefined),
+		supportedLocalesOf: (locales) => Intl.ListFormat.supportedLocalesOf(locales ?? []),
+		ops: {
+			format: (fmt, args) => (fmt as Intl.ListFormat).format(args[0] as string[]),
+			formatToParts: (fmt, args) => (fmt as Intl.ListFormat).formatToParts(args[0] as string[]),
+			resolvedOptions: (fmt) => (fmt as Intl.ListFormat).resolvedOptions(),
+		},
+	},
+	Collator: {
+		create: (locales, options) =>
+			new Intl.Collator(locales, options as Intl.CollatorOptions | undefined),
+		supportedLocalesOf: (locales) => Intl.Collator.supportedLocalesOf(locales ?? []),
+		ops: {
+			compare: (col, args) => (col as Intl.Collator).compare(args[0] as string, args[1] as string),
+			resolvedOptions: (col) => (col as Intl.Collator).resolvedOptions(),
+		},
+	},
+	PluralRules: {
+		create: (locales, options) =>
+			new Intl.PluralRules(locales, options as Intl.PluralRulesOptions | undefined),
+		supportedLocalesOf: (locales) => Intl.PluralRules.supportedLocalesOf(locales ?? []),
+		ops: {
+			select: (pr, args) => (pr as Intl.PluralRules).select(args[0] as number),
+			resolvedOptions: (pr) => (pr as Intl.PluralRules).resolvedOptions(),
+		},
+	},
+	DisplayNames: {
+		create: (locales, options) =>
+			new Intl.DisplayNames(locales as string | string[], options as Intl.DisplayNamesOptions),
+		supportedLocalesOf: (locales) => Intl.DisplayNames.supportedLocalesOf(locales ?? []),
+		ops: {
+			of: (dn, args) => (dn as Intl.DisplayNames).of(args[0] as string),
+			resolvedOptions: (dn) => (dn as Intl.DisplayNames).resolvedOptions(),
+		},
+	},
+	Locale: {
+		create: (locales, options) =>
+			new Intl.Locale(locales as string, options as Intl.LocaleOptions | undefined),
+		ops: {
+			dump: (loc) => dumpLocale(loc as Intl.Locale),
+		},
+	},
+};
+
 /**
  * QuickJsBridge - Runtime bridge using quickjs-emscripten for expression evaluation.
  *
@@ -471,6 +603,12 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	// Long-lived host-callback handles (Intl polyfills) — disposed on dispose()
 	private intlHandles: Array<import('quickjs-emscripten').QuickJSHandle> = [];
+
+	// Memoized host Intl formatters keyed by ctor + locales + options.
+	// Construction dominates per-call cost (~39µs for a DateTimeFormat vs ~1µs
+	// for format on an existing one). Capped because locales/options are
+	// user-influenced — unbounded, this would be a memory leak by user input.
+	private intlFormatterCache = new LruCache<string, unknown>(200);
 
 	// Wall-clock deadlines of the execute() calls currently in flight, outer to
 	// inner. execute() can re-enter (e.g. $evaluateExpression), and the runtime
@@ -556,153 +694,38 @@ export class QuickJsBridge implements RuntimeBridge {
 	/**
 	 * Inject a polyfill for the Intl API.
 	 *
-	 * QuickJS doesn't include Intl, but Luxon (bundled in the runtime) uses
-	 * Intl.DateTimeFormat, Intl.NumberFormat, Intl.RelativeTimeFormat, and
-	 * Intl.ListFormat extensively. Rather than shimming all of this in pure JS,
-	 * we register host callback functions that delegate to Node.js's real Intl
-	 * implementation, then build lightweight JS wrapper classes that call them.
+	 * QuickJS doesn't include Intl, but Luxon (bundled in the runtime) and user
+	 * expressions use it extensively. Rather than shimming ECMA-402 in pure JS,
+	 * we register a single `__intl` host callback that dispatches to Node.js's
+	 * real Intl implementation (see INTL_DISPATCH), then build lightweight JS
+	 * wrapper classes that call it.
 	 */
 	private injectIntlPolyfill(): void {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		const vm = this.vm;
 
-		const dtfFn = vm.newFunction('__intl_dtf', (...handles) => {
+		const intlFn = vm.newFunction('__intl', (...handles) => {
 			const args = handles.map((h) => vm.dump(h));
-			const op = args[0] as string;
-			const locales = args[1] as string | string[] | undefined;
-			const options = args[2] as Intl.DateTimeFormatOptions | undefined;
-
 			try {
-				if (op === 'resolvedOptions') {
-					const fmt = new Intl.DateTimeFormat(locales, options);
-					return this.hostValueToQuickJSHandle(fmt.resolvedOptions());
-				}
-				if (op === 'format') {
-					const fmt = new Intl.DateTimeFormat(locales, options);
-					const ts = args[3] as number | undefined;
-					const date = ts !== undefined ? new Date(ts) : new Date();
-					return this.hostValueToQuickJSHandle(fmt.format(date));
-				}
-				if (op === 'formatToParts') {
-					const fmt = new Intl.DateTimeFormat(locales, options);
-					const ts = args[3] as number | undefined;
-					const date = ts !== undefined ? new Date(ts) : new Date();
-					return this.hostValueToQuickJSHandle(fmt.formatToParts(date));
-				}
-				if (op === 'supportedLocalesOf') {
-					return this.hostValueToQuickJSHandle(
-						Intl.DateTimeFormat.supportedLocalesOf(locales ?? []),
-					);
-				}
+				return this.hostValueToQuickJSHandle(
+					this.dispatchIntl(
+						args[0] as string,
+						args[1] as string,
+						args[2] as IntlLocales,
+						args[3],
+						args.slice(4),
+					),
+				);
 			} catch (err) {
 				return this.hostValueToQuickJSHandle({
 					__intlError: true,
 					message: err instanceof Error ? err.message : String(err),
 				});
 			}
-			return vm.undefined;
 		});
-		vm.setProp(vm.global, '__intl_dtf', dtfFn);
-		this.intlHandles.push(dtfFn);
-
-		const nfFn = vm.newFunction('__intl_nf', (...handles) => {
-			const args = handles.map((h) => vm.dump(h));
-			const op = args[0] as string;
-			const locales = args[1] as string | string[] | undefined;
-			const options = args[2] as Intl.NumberFormatOptions | undefined;
-
-			try {
-				if (op === 'resolvedOptions') {
-					const fmt = new Intl.NumberFormat(locales, options);
-					return this.hostValueToQuickJSHandle(fmt.resolvedOptions());
-				}
-				if (op === 'format') {
-					const fmt = new Intl.NumberFormat(locales, options);
-					const num = args[3] as number;
-					return this.hostValueToQuickJSHandle(fmt.format(num));
-				}
-				if (op === 'formatToParts') {
-					const fmt = new Intl.NumberFormat(locales, options);
-					const num = args[3] as number;
-					return this.hostValueToQuickJSHandle(fmt.formatToParts(num));
-				}
-			} catch (err) {
-				return this.hostValueToQuickJSHandle({
-					__intlError: true,
-					message: err instanceof Error ? err.message : String(err),
-				});
-			}
-			return vm.undefined;
-		});
-		vm.setProp(vm.global, '__intl_nf', nfFn);
-		this.intlHandles.push(nfFn);
-
-		const rtfFn = vm.newFunction('__intl_rtf', (...handles) => {
-			const args = handles.map((h) => vm.dump(h));
-			const op = args[0] as string;
-			const locales = args[1] as string | string[] | undefined;
-			const options = args[2] as Intl.RelativeTimeFormatOptions | undefined;
-
-			try {
-				if (op === 'resolvedOptions') {
-					const fmt = new Intl.RelativeTimeFormat(locales, options);
-					return this.hostValueToQuickJSHandle(fmt.resolvedOptions());
-				}
-				if (op === 'format') {
-					const fmt = new Intl.RelativeTimeFormat(locales, options);
-					const value = args[3] as number;
-					const unit = args[4] as Intl.RelativeTimeFormatUnit;
-					return this.hostValueToQuickJSHandle(fmt.format(value, unit));
-				}
-				if (op === 'formatToParts') {
-					const fmt = new Intl.RelativeTimeFormat(locales, options);
-					const value = args[3] as number;
-					const unit = args[4] as Intl.RelativeTimeFormatUnit;
-					return this.hostValueToQuickJSHandle(fmt.formatToParts(value, unit));
-				}
-			} catch (err) {
-				return this.hostValueToQuickJSHandle({
-					__intlError: true,
-					message: err instanceof Error ? err.message : String(err),
-				});
-			}
-			return vm.undefined;
-		});
-		vm.setProp(vm.global, '__intl_rtf', rtfFn);
-		this.intlHandles.push(rtfFn);
-
-		const lfFn = vm.newFunction('__intl_lf', (...handles) => {
-			const args = handles.map((h) => vm.dump(h));
-			const op = args[0] as string;
-			const locales = args[1] as string | string[] | undefined;
-			const options = args[2] as Intl.ListFormatOptions | undefined;
-
-			try {
-				if (op === 'format') {
-					const fmt = new Intl.ListFormat(locales, options);
-					const list = args[3] as string[];
-					return this.hostValueToQuickJSHandle(fmt.format(list));
-				}
-				if (op === 'formatToParts') {
-					const fmt = new Intl.ListFormat(locales, options);
-					const list = args[3] as string[];
-					return this.hostValueToQuickJSHandle(fmt.formatToParts(list));
-				}
-				if (op === 'resolvedOptions') {
-					const fmt = new Intl.ListFormat(locales, options);
-					return this.hostValueToQuickJSHandle(fmt.resolvedOptions());
-				}
-			} catch (err) {
-				return this.hostValueToQuickJSHandle({
-					__intlError: true,
-					message: err instanceof Error ? err.message : String(err),
-				});
-			}
-			return vm.undefined;
-		});
-		vm.setProp(vm.global, '__intl_lf', lfFn);
-		this.intlHandles.push(lfFn);
+		vm.setProp(vm.global, '__intl', intlFn);
+		this.intlHandles.push(intlFn);
 
 		const shimCode = `
 (function() {
@@ -713,73 +736,107 @@ export class QuickJsBridge implements RuntimeBridge {
 		return result;
 	}
 
-	function DateTimeFormat(locales, options) {
-		this._locales = locales;
-		this._options = options || {};
+	// Shallow-copy locales/options at construction — V8 snapshots them when a
+	// formatter is created, so mutating them afterwards must not change output.
+	// The stable snapshot also keys the host-side formatter memo.
+	function snapshotOptions(options) {
+		if (options === null || options === undefined) return undefined;
+		var copy = {};
+		for (var k in options) copy[k] = options[k];
+		return copy;
 	}
-	DateTimeFormat.prototype.resolvedOptions = function() {
-		return checkError(__intl_dtf('resolvedOptions', this._locales, this._options));
-	};
-	DateTimeFormat.prototype.format = function(date) {
-		var ts = date instanceof Date ? date.getTime() : (typeof date === 'number' ? date : Date.now());
-		return checkError(__intl_dtf('format', this._locales, this._options, ts));
-	};
-	DateTimeFormat.prototype.formatToParts = function(date) {
-		var ts = date instanceof Date ? date.getTime() : (typeof date === 'number' ? date : Date.now());
-		return checkError(__intl_dtf('formatToParts', this._locales, this._options, ts));
-	};
-	DateTimeFormat.supportedLocalesOf = function(locales) {
-		return checkError(__intl_dtf('supportedLocalesOf', locales));
-	};
+	function snapshotLocales(locales) {
+		return Array.isArray(locales) ? locales.slice() : locales;
+	}
 
-	function NumberFormat(locales, options) {
-		this._locales = locales;
-		this._options = options || {};
+	function callIntl(inst, ctorName, op, args, transform) {
+		var callArgs = [ctorName, op, inst._locales, inst._options];
+		var i = 0;
+		if (transform) {
+			callArgs.push(transform(args[0]));
+			i = 1;
+		}
+		for (; i < args.length; i++) callArgs.push(args[i]);
+		return checkError(__intl.apply(null, callArgs));
 	}
-	NumberFormat.prototype.resolvedOptions = function() {
-		return checkError(__intl_nf('resolvedOptions', this._locales, this._options));
-	};
-	NumberFormat.prototype.format = function(num) {
-		return checkError(__intl_nf('format', this._locales, this._options, num));
-	};
-	NumberFormat.prototype.formatToParts = function(num) {
-		return checkError(__intl_nf('formatToParts', this._locales, this._options, num));
-	};
 
-	function RelativeTimeFormat(locales, options) {
-		this._locales = locales;
-		this._options = options || {};
+	// Build a wrapper class that delegates each op to the host dispatcher.
+	// \`ops\` maps op name → optional first-arg transform. \`boundOp\` is also
+	// installed as an instance function: V8 models format/compare as
+	// bound-function getters, so e.g. dates.map(dtf.format) must work unbound.
+	function makeWrapper(ctorName, ops, boundOp) {
+		function Wrapper(locales, options) {
+			this._locales = snapshotLocales(locales);
+			this._options = snapshotOptions(options);
+			if (boundOp) {
+				var self = this;
+				this[boundOp] = function () {
+					return callIntl(self, ctorName, boundOp, arguments, ops[boundOp]);
+				};
+			}
+		}
+		var opNames = Object.keys(ops);
+		for (var i = 0; i < opNames.length; i++) {
+			(function (op) {
+				Wrapper.prototype[op] = function () {
+					return callIntl(this, ctorName, op, arguments, ops[op]);
+				};
+			})(opNames[i]);
+		}
+		Wrapper.supportedLocalesOf = function (locales) {
+			return checkError(__intl(ctorName, 'supportedLocalesOf', locales));
+		};
+		return Wrapper;
 	}
-	RelativeTimeFormat.prototype.resolvedOptions = function() {
-		return checkError(__intl_rtf('resolvedOptions', this._locales, this._options));
-	};
-	RelativeTimeFormat.prototype.format = function(value, unit) {
-		return checkError(__intl_rtf('format', this._locales, this._options, value, unit));
-	};
-	RelativeTimeFormat.prototype.formatToParts = function(value, unit) {
-		return checkError(__intl_rtf('formatToParts', this._locales, this._options, value, unit));
-	};
 
-	function ListFormat(locales, options) {
-		this._locales = locales;
-		this._options = options || {};
+	// DateTimeFormat dates travel as timestamps — guest Dates don't survive vm.dump().
+	function toTs(date) {
+		return date instanceof Date ? date.getTime() : (typeof date === 'number' ? date : Date.now());
 	}
-	ListFormat.prototype.format = function(list) {
-		return checkError(__intl_lf('format', this._locales, this._options, list));
-	};
-	ListFormat.prototype.formatToParts = function(list) {
-		return checkError(__intl_lf('formatToParts', this._locales, this._options, list));
-	};
-	ListFormat.prototype.resolvedOptions = function() {
-		return checkError(__intl_lf('resolvedOptions', this._locales, this._options));
-	};
+
+	var DateTimeFormat = makeWrapper('DateTimeFormat', { format: toTs, formatToParts: toTs, resolvedOptions: null }, 'format');
+	var NumberFormat = makeWrapper('NumberFormat', { format: null, formatToParts: null, resolvedOptions: null }, 'format');
+	var RelativeTimeFormat = makeWrapper('RelativeTimeFormat', { format: null, formatToParts: null, resolvedOptions: null }, null);
+	var ListFormat = makeWrapper('ListFormat', { format: null, formatToParts: null, resolvedOptions: null }, null);
+	var Collator = makeWrapper('Collator', { compare: null, resolvedOptions: null }, 'compare');
+	var PluralRules = makeWrapper('PluralRules', { select: null, resolvedOptions: null }, null);
+	var DisplayNames = makeWrapper('DisplayNames', { of: null, resolvedOptions: null }, null);
+
+	// Host-backed Intl.Locale: the host dumps the locale's properties once at
+	// construction. Luxon feature-detects week support via ('weekInfo' in
+	// Intl.Locale.prototype || 'getWeekInfo' in Intl.Locale.prototype) and
+	// prefers getWeekInfo() — expose both, like current V8.
+	function Locale(tag, options) {
+		var dumped = checkError(__intl('Locale', 'dump', tag, snapshotOptions(options)));
+		var keys = Object.keys(dumped);
+		for (var i = 0; i < keys.length; i++) {
+			var k = keys[i];
+			if (k === 'weekInfo') this._weekInfo = dumped[k];
+			else if (k === 'tag') this._tag = dumped[k];
+			else this[k] = dumped[k];
+		}
+	}
+	Object.defineProperty(Locale.prototype, 'weekInfo', {
+		get: function () { return this._weekInfo; },
+	});
+	Locale.prototype.getWeekInfo = function () { return this._weekInfo; };
+	Locale.prototype.toString = function () { return this._tag; };
 
 	globalThis.Intl = {
 		DateTimeFormat: DateTimeFormat,
 		NumberFormat: NumberFormat,
 		RelativeTimeFormat: RelativeTimeFormat,
 		ListFormat: ListFormat,
-		Locale: function Locale(tag) { this.baseName = tag; this.language = tag.split('-')[0]; }
+		Collator: Collator,
+		PluralRules: PluralRules,
+		DisplayNames: DisplayNames,
+		Locale: Locale,
+		getCanonicalLocales: function (locales) {
+			return checkError(__intl('Intl', 'getCanonicalLocales', locales));
+		},
+		supportedValuesOf: function (key) {
+			return checkError(__intl('Intl', 'supportedValuesOf', undefined, undefined, key));
+		},
 	};
 
 	// QuickJS's built-in toLocale* methods are locale-unaware (no ECMA-402) and
@@ -838,6 +895,47 @@ export class QuickJsBridge implements RuntimeBridge {
 		result.value.dispose();
 
 		this.logger.debug('[QuickJsBridge] Intl polyfill injected');
+	}
+
+	/**
+	 * Host side of the guest's `__intl(ctorName, op, locales, options, ...args)`
+	 * callback. Resolves the constructor and op against INTL_DISPATCH (rejecting
+	 * anything not in the table) and memoizes constructed formatters.
+	 */
+	private dispatchIntl(
+		ctorName: string,
+		op: string,
+		locales: IntlLocales,
+		options: unknown,
+		args: unknown[],
+	): unknown {
+		// Pure static Intl functions — no constructed instance involved.
+		if (ctorName === 'Intl') {
+			if (op === 'getCanonicalLocales') return Intl.getCanonicalLocales(locales);
+			if (op === 'supportedValuesOf') {
+				return Intl.supportedValuesOf(args[0] as Parameters<typeof Intl.supportedValuesOf>[0]);
+			}
+			throw new TypeError(`Unsupported Intl operation: ${op}`);
+		}
+		const entry = INTL_DISPATCH[ctorName];
+		if (!entry) throw new TypeError(`Unsupported Intl constructor: ${ctorName}`);
+		if (op === 'supportedLocalesOf') {
+			if (!entry.supportedLocalesOf) {
+				throw new TypeError(`Intl.${ctorName} has no supportedLocalesOf`);
+			}
+			return entry.supportedLocalesOf(locales);
+		}
+		const opFn = entry.ops[op];
+		if (!opFn) throw new TypeError(`Unsupported Intl.${ctorName} operation: ${op}`);
+		// Guest wrappers snapshot options at construction, so the JSON key is
+		// stable across calls on the same wrapper instance.
+		const key = `${ctorName} ${JSON.stringify(locales) ?? ''} ${JSON.stringify(options) ?? ''}`;
+		let instance = this.intlFormatterCache.get(key);
+		if (instance === undefined) {
+			instance = entry.create(locales, options);
+			this.intlFormatterCache.set(key, instance);
+		}
+		return opFn(instance, args);
 	}
 
 	/**
