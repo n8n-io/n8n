@@ -905,5 +905,99 @@ describe('WorkflowCompilerService', () => {
 			expect(assignedValue).toContain('$("__eval_trigger")');
 			expect(assignedValue).not.toContain('$("Old Eval Trigger")');
 		});
+
+		it('leaves expressions untouched when two real nodes both feed the entry node (ambiguous upstream)', () => {
+			// UserTrigger and SecondTrigger both feed Agent directly — there's no
+			// single "the user's upstream node" to rewrite `$(...)` references from.
+			const workflow: IWorkflowBase = {
+				...baseWorkflow(),
+				connections: {
+					UserTrigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					SecondTrigger: { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+				},
+				nodes: [
+					...baseWorkflow().nodes,
+					{
+						id: 'n-second-trigger',
+						name: 'SecondTrigger',
+						type: 'n8n-nodes-base.manualTrigger',
+						typeVersion: 1,
+						position: [0, 400],
+						parameters: {},
+					},
+				],
+			} as unknown as IWorkflowBase;
+
+			const config = baseConfig();
+			config.metrics = [
+				{
+					id: 'm-expr',
+					name: 'Matches dataset',
+					type: 'expression',
+					config: {
+						expression: '={{ $("UserTrigger").item.json.expectedAnswer === $json.output }}',
+						outputType: 'boolean',
+					},
+				},
+			];
+
+			const compiled = compiler.compile(workflow, config);
+			const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-expr')!;
+			const assignedValue = (metric.parameters.metrics as { assignments: Array<{ value: string }> })
+				.assignments[0].value;
+
+			expect(assignedValue).toContain('$("UserTrigger")');
+		});
+
+		it('leaves expressions untouched when two pre-existing EvaluationTriggers both feed the entry node (ambiguous)', () => {
+			// Two old EvaluationTriggers converge on Agent with no other (kept) node
+			// feeding it — still ambiguous which one's references should be rewritten.
+			const workflow: IWorkflowBase = {
+				...baseWorkflow(),
+				connections: {
+					'Old Eval Trigger A': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+					'Old Eval Trigger B': { main: [[{ node: 'Agent', type: 'main', index: 0 }]] },
+				},
+				nodes: [
+					baseWorkflow().nodes.find((n) => n.name === 'Agent')!,
+					{
+						id: 'n-old-trigger-a',
+						name: 'Old Eval Trigger A',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.6,
+						position: [0, 200],
+						parameters: {},
+					},
+					{
+						id: 'n-old-trigger-b',
+						name: 'Old Eval Trigger B',
+						type: EVALUATION_TRIGGER_NODE_TYPE,
+						typeVersion: 4.6,
+						position: [0, 400],
+						parameters: {},
+					},
+				],
+			} as unknown as IWorkflowBase;
+
+			const config = baseConfig();
+			config.metrics = [
+				{
+					id: 'm-expr',
+					name: 'Matches dataset',
+					type: 'expression',
+					config: {
+						expression: '={{ $("Old Eval Trigger A").item.json.expectedAnswer === $json.output }}',
+						outputType: 'boolean',
+					},
+				},
+			];
+
+			const compiled = compiler.compile(workflow, config);
+			const metric = compiled.nodes.find((n) => n.name === '__eval_metric_m-expr')!;
+			const assignedValue = (metric.parameters.metrics as { assignments: Array<{ value: string }> })
+				.assignments[0].value;
+
+			expect(assignedValue).toContain('$("Old Eval Trigger A")');
+		});
 	});
 });

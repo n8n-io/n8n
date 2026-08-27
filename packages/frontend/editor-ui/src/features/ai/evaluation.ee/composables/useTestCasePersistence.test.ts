@@ -36,6 +36,13 @@ const { mocks } = vi.hoisted(() => ({
 		// nodeTypesStore
 		isTriggerNode: vi.fn((_type: string) => false),
 
+		// getParentNodes overrides, keyed by node name — lets individual tests
+		// shape the graph resolveSlice() walks without touching the "AI Agent"
+		// default used by most tests. `ancestorsOf` backs the depth-less call
+		// (full ancestor chain); `parentsByNode` backs the depth:1 call.
+		ancestorsOf: {} as Record<string, string[]>,
+		parentsByNode: {} as Record<string, string[]>,
+
 		// rootStore
 		restApiContext: { baseUrl: 'http://n8n', pushRef: 'push-ref' } as unknown,
 
@@ -214,10 +221,12 @@ vi.mock('@/app/stores/focusPanel.store', () => ({
 // intercept. resolveSlice uses isTriggerNode; we control that through mocks.
 vi.mock('n8n-workflow', () => ({
 	getParentNodes: vi.fn((_byDest, name, _type, depth) => {
+		if (depth === undefined) {
+			return mocks.ancestorsOf[name] ?? (name === 'AI Agent' ? ['Trigger'] : []);
+		}
 		// For the trigger-finding tests: AI Agent's parent is "Trigger".
-		if (name === 'AI Agent' && depth === undefined) return ['Trigger'];
 		if (name === 'AI Agent' && depth === 1) return ['Trigger'];
-		return [];
+		return mocks.parentsByNode[name] ?? [];
 	}),
 	mapConnectionsByDestination: vi.fn(() => ({})),
 	EVALUATION_TRIGGER_NODE_TYPE: 'n8n-nodes-base.evaluationTrigger',
@@ -302,6 +311,8 @@ describe('useTestCasePersistence', () => {
 		mocks.startNodeName = '';
 		mocks.endNodeName = '';
 		mocks.fieldNames = ['input'];
+		mocks.ancestorsOf = {};
+		mocks.parentsByNode = {};
 		mocks.setActiveRow.mockReset();
 		mocks.setActiveRunId.mockReset();
 		// `ensureDataTable` now reads the created column's id (for rollback), so the
@@ -681,6 +692,84 @@ describe('useTestCasePersistence', () => {
 			// Config remains intact — no rollback on dispatch failures
 			expect(mocks.deleteEvaluationConfig).not.toHaveBeenCalled();
 			expect(mocks.showError).toHaveBeenCalled();
+		});
+	});
+
+	// -----------------------------------------------------------------------
+	// resolveSlice() integration (TRUST-407 upstream-ambiguity handling) —
+	// exercised indirectly through persistAndRunCase since resolveSlice()
+	// isn't exported on its own.
+	// -----------------------------------------------------------------------
+
+	describe('resolveSlice via persistAndRunCase', () => {
+		it('fails to trace the AI node when its upstream is ambiguous (single-AI-node mode)', async () => {
+			setupHappyPath();
+			mocks.activeRowIndex = 2;
+			mocks.activeRowId = 99;
+			mocks.updateDataTableRowsApi = vi.fn().mockResolvedValue([{ id: 99 }]);
+			mocks.allNodes = [
+				{ name: 'AI Agent', type: 'ai' },
+				{ name: 'Trigger A', type: 'trigger' },
+				{ name: 'Trigger B', type: 'trigger' },
+			];
+			mocks.ancestorsOf['AI Agent'] = ['Trigger A', 'Trigger B'];
+			mocks.parentsByNode['AI Agent'] = ['Trigger A', 'Trigger B'];
+
+			const { persistAndRunCase } = useTestCasePersistence();
+			const result = await persistAndRunCase('run_again');
+
+			expect(result).toBe(false);
+			expect(mocks.showError).toHaveBeenCalledWith(
+				expect.objectContaining({ message: expect.stringContaining("Couldn't trace") }),
+				expect.anything(),
+			);
+			expect(mocks.buildEvaluationConfigDto).not.toHaveBeenCalled();
+		});
+
+		it('resolves the slice upstream node in slice mode', async () => {
+			setupHappyPath();
+			mocks.activeRowIndex = 2;
+			mocks.activeRowId = 99;
+			mocks.updateDataTableRowsApi = vi.fn().mockResolvedValue([{ id: 99 }]);
+			mocks.isSliceMode = true;
+			mocks.startNodeName = 'Start Node';
+			mocks.endNodeName = 'End Node';
+			mocks.parentsByNode['Start Node'] = ['Trigger'];
+
+			const { persistAndRunCase } = useTestCasePersistence();
+			const result = await persistAndRunCase('run_again');
+
+			expect(result).toBe(true);
+			expect(mocks.buildEvaluationConfigDto).toHaveBeenCalledWith(
+				expect.objectContaining({
+					upstreamNodeName: 'Trigger',
+					startNodeName: 'Start Node',
+					endNodeName: 'End Node',
+				}),
+			);
+		});
+
+		it('fails when the slice start node has more than one upstream node', async () => {
+			setupHappyPath();
+			mocks.activeRowIndex = 2;
+			mocks.activeRowId = 99;
+			mocks.updateDataTableRowsApi = vi.fn().mockResolvedValue([{ id: 99 }]);
+			mocks.isSliceMode = true;
+			mocks.startNodeName = 'Start Node';
+			mocks.endNodeName = 'End Node';
+			mocks.parentsByNode['Start Node'] = ['Trigger A', 'Trigger B'];
+
+			const { persistAndRunCase } = useTestCasePersistence();
+			const result = await persistAndRunCase('run_again');
+
+			expect(result).toBe(false);
+			expect(mocks.showError).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.stringContaining('must have exactly one upstream node'),
+				}),
+				expect.anything(),
+			);
+			expect(mocks.buildEvaluationConfigDto).not.toHaveBeenCalled();
 		});
 	});
 
