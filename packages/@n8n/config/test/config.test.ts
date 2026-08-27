@@ -483,6 +483,7 @@ describe('GlobalConfig', () => {
 			maxAttempts: 5,
 			misfireGraceSeconds: 60,
 			durableCursorsEnabled: false,
+			enabledForSystemTasks: false,
 		},
 		evaluation: {
 			collectionsEnabled: false,
