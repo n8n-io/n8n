@@ -1,0 +1,23 @@
+packages/cli/src/metrics/prometheus/scheduler-metrics.service.ts
+  s_5a66d7c43a80a3::t_c91dd47b3a7f55 283-286
+packages/@n8n/scheduler/src/observability/metrics.ts
+  ai_agent 40-41,57
+packages/@n8n/scheduler/src/observability/attributes.ts
+  ai_agent 29-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "54abf9f4b8805836a6fa66e0769941a9462dfb64",
+  "prompts": {},
+  "sessions": {
+    "s_5a66d7c43a80a3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28595c3b-b93f-45d3-a3cc-11ae56a011fe",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
