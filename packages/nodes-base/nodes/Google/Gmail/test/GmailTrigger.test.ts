@@ -1840,6 +1840,27 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['C']);
 		});
 
+		it('should not paginate on versions before 1.4', async () => {
+			// Pagination is scoped to v1.4+: older versions have no pendingMessageIds
+			// machinery, so following the token there would change their behavior.
+			// Only one list page is mocked — a second list request fails the poll,
+			// and the assertions below catch the resulting empty response.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': { lastTimeChecked: 1000000 },
+			};
+
+			mockLabels();
+			mockList(listPage(['1'], 'token-1'));
+			mockGet('1', 2_000_000_000_000);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.3, parameters: { simple: true } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1']);
+		});
+
 		it('should give up holding and advance when the tracked-id bound is exceeded', async () => {
 			const initialTimestamp = 1000000;
 			// The boundary set already holds MAX_TRACKED_BACKLOG_IDS ids, so the valve
