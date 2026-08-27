@@ -139,6 +139,15 @@ export interface StepStore {
 	): Promise<Record<string, StepSummary>>;
 
 	/**
+	 * Every step of the execution, at every iteration.
+	 *
+	 * For the v1 shim, which resolves expressions against whatever the execution
+	 * has produced so far and cannot know in advance which steps a given
+	 * expression names. TODO(CAT-3017): load selectively instead.
+	 */
+	loadAllSteps(executionId: string): Promise<StepRecord[]>;
+
+	/**
 	 * How many of the execution's steps have settled (completed, failed,
 	 * skipped, or cancelled). Rows are unique per `(node, iteration)`, only exist
 	 * for reachable nodes, and never unsettle, so comparing this against the

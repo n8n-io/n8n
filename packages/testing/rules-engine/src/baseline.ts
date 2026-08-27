@@ -15,9 +15,9 @@ export interface BaselineEntry {
 
 export interface BaselineFile {
 	version: number;
-	generated: string;
-	totalViolations: number;
 	violations: Record<string, BaselineEntry[]>;
+	/** Size of the merged set, for the CLI summary. Not persisted — see `saveBaseline`. */
+	totalViolations?: number;
 }
 
 function hashViolation(violation: Violation, rootDir: string): string {
@@ -87,16 +87,17 @@ export function generateBaseline(
 		}
 	}
 
-	return {
-		version: BASELINE_VERSION,
-		generated: new Date().toISOString(),
-		totalViolations: seen.size,
-		violations,
-	};
+	return { version: BASELINE_VERSION, totalViolations: seen.size, violations };
 }
 
+/**
+ * Persist only the fields that are read back. A write timestamp and a running total are
+ * derived data, but they sit at the top of the file, so two branches that both refreshed
+ * the baseline conflict there on every merge even when their entries merge cleanly.
+ */
 export function saveBaseline(baseline: BaselineFile, filePath: string): void {
-	fs.writeFileSync(filePath, JSON.stringify(baseline, null, '\t') + '\n');
+	const { version, violations } = baseline;
+	fs.writeFileSync(filePath, JSON.stringify({ version, violations }, null, '\t') + '\n');
 }
 
 function isInBaseline(violation: Violation, baseline: BaselineFile, rootDir: string): boolean {
