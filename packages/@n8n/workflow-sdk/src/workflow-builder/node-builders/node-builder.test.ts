@@ -395,6 +395,13 @@ describe('Node Builder', () => {
 			expect(JSON.stringify({ cred: c })).toBe('{"cred":{"id":"cred-123","name":"Slack Bot"}}');
 		});
 
+		it('should serialize managed credentials with a null id', () => {
+			const c = newCredential('n8n credits', { managed: true });
+			expect(deepCopy({ cred: c })).toEqual({
+				cred: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
+			});
+		});
+
 		it('should work in node credentials config (placeholder, no id)', () => {
 			const n = node({
 				type: 'n8n-nodes-base.slack',

@@ -196,8 +196,8 @@ describe('parseWorkflowCode', () => {
 		};
 
 		const code = generateWorkflowCode(originalJson);
-		// The managed slot must survive as the managed form, not a bare placeholder.
 		expect(code).toContain("newCredential('n8n credits', { managed: true })");
+		expect(code).not.toContain("newCredential('n8n credits')");
 
 		const parsedJson = parseWorkflowCode(code);
 		const node = parsedJson.nodes.find((n) => n.name === 'Generate Joke');

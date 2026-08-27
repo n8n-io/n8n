@@ -45,8 +45,7 @@ export function formatCredentials(credentials: unknown): string {
 		const id = value.id;
 
 		if (typeof name === 'string') {
-			// n8n credits (managed) have a null id — emit the managed form so the
-			// slot survives the round-trip instead of degrading to a placeholder.
+			// Preserve managed credentials across codegen round-trips.
 			if (id === null && value.__aiGatewayManaged === true) {
 				return `${formatKey(key)}: newCredential('${escapeString(name)}', { managed: true })`;
 			}

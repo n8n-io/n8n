@@ -11,7 +11,6 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import {
-	AI_GATEWAY_MANAGED_TAG,
 	GENERIC_AUTH_CREDENTIAL_TYPES,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
 	type InstanceAiCredentialFlow,
@@ -28,6 +27,7 @@ import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useThread } from '../instanceAi.store';
 import { useInstanceAiCredentialHelp } from '../composables/useInstanceAiCredentialHelp';
 import { useBrowserUseConnection } from '../composables/useBrowserUseConnection';
+import { AI_GATEWAY_MANAGED_TAG } from '../constants';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 type CredentialSetupChoice = 'ai' | 'manual';
@@ -368,13 +368,12 @@ function syntheticNodeUi(req: InstanceAiCredentialRequest): INodeUi {
 	} as INodeUi;
 }
 
-/** The node.credentials NodeCredentials should render for the current selection. */
+/** Credentials passed to NodeCredentials for the current selection. */
 function selectedCredentialsForNode(
 	req: InstanceAiCredentialRequest,
 	selectedId: string | null,
 ): INodeUi['credentials'] {
-	// n8n credits (AI Gateway managed) has no stored record — rebuild its slot so
-	// the picker reflects it as selected, mirroring WorkflowSetupSectionBody.
+	// Recreate the managed slot. n8n credits has no stored credential record.
 	if (selectedId === AI_GATEWAY_MANAGED_TAG) {
 		return { [req.credentialType]: { id: null, name: '', __aiGatewayManaged: true } };
 	}
@@ -396,8 +395,7 @@ function onCredentialSelected(
 	const credentialData = updateInfo.properties.credentials?.[credentialType];
 	let selection: string | null = null;
 	if (credentialData && typeof credentialData !== 'string') {
-		// The n8n credits (AI Gateway managed) option emits `{ id: null, __aiGatewayManaged: true }`
-		// rather than a real id — map it to the sentinel tag so it registers as a selection.
+		// The managed option emits a null id. Store the sentinel tag.
 		selection =
 			credentialData.__aiGatewayManaged === true
 				? AI_GATEWAY_MANAGED_TAG

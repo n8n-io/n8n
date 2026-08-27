@@ -1258,8 +1258,7 @@ class NewCredentialImpl implements NewCredentialValue {
 		| { id: string; name: string }
 		| { id: null; name: string; __aiGatewayManaged: true }
 		| undefined {
-		// n8n credits: a null-id managed slot the setup/apply path resolves against
-		// the AI Gateway, never a stored credential id.
+		// Managed credentials serialize as null-id slots.
 		if (this.managed) {
 			return { id: null, name: this.name, __aiGatewayManaged: true };
 		}
@@ -1280,7 +1279,7 @@ class NewCredentialImpl implements NewCredentialValue {
  * (serializes to `{ id, name }` in JSON).
  *
  * @param name - Display name for the credential (e.g., 'My Slack Bot')
- * @param id - Optional ID of an existing credential to link
+ * @param idOrOptions - Existing credential ID, or managed credential options
  * @returns A credential marker
  *
  * @example
@@ -1293,7 +1292,7 @@ class NewCredentialImpl implements NewCredentialValue {
  * credentials: { slackApi: newCredential('My Slack Bot') }
  * // → {} (omitted from JSON)
  *
- * // n8n credits (AI Gateway managed — no API key, resolved by setup)
+ * // Managed n8n credits
  * credentials: { openAiApi: newCredential('n8n credits', { managed: true }) }
  * // → { id: null, name: 'n8n credits', __aiGatewayManaged: true }
  * ```

@@ -5,20 +5,20 @@ import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import type { ICredentialType } from 'n8n-workflow';
-import { AI_GATEWAY_MANAGED_TAG, type InstanceAiCredentialRequest } from '@n8n/api-types';
+import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
-import { useAiGateway } from '@/app/composables/useAiGateway';
+import { AI_GATEWAY_MANAGED_TAG } from '../constants';
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: vi.fn() }),
 }));
 
-// Resolve the n8n credits label so the el-select trigger shows a readable value.
+// Give the select a stable label.
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
 	useI18n: () => ({
@@ -35,7 +35,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 	}),
 }));
 
-// Enable the AI gateway so the n8n credits option renders, mirroring NodeCredentials.test.ts.
+// Enable the n8n credits option.
 vi.mock('@/app/composables/useAiGateway', () => ({
 	useAiGateway: vi.fn(() => ({
 		isEnabled: ref(true),
@@ -80,7 +80,7 @@ const usableCreds = [existingCred, existingCred2];
 const renderComponent = createThreadComponentRenderer(InstanceAiCredentialSetup);
 
 function makeRequest(): InstanceAiCredentialRequest[] {
-	// Two existing credentials → nothing auto-selects on init.
+	// Two credentials prevent auto-selection on init.
 	return [
 		{
 			credentialType: 'openAiApi',
@@ -90,11 +90,10 @@ function makeRequest(): InstanceAiCredentialRequest[] {
 	];
 }
 
-describe('InstanceAiCredentialSetup — n8n credits (real NodeCredentials)', () => {
+describe('InstanceAiCredentialSetup - n8n credits with NodeCredentials', () => {
 	let thread: ThreadRuntime;
 
 	beforeEach(() => {
-		void useAiGateway;
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		const store = useInstanceAiStore();
@@ -103,7 +102,7 @@ describe('InstanceAiCredentialSetup — n8n credits (real NodeCredentials)', () 
 		const credentialsStore = useCredentialsStore();
 		credentialsStore.state.credentialTypes = { openAiApi: openAiApiCredType };
 		credentialsStore.state.credentials = { 'cred-1': existingCred, 'cred-2': existingCred2 };
-		// Direct assignment (store getter isn't spy-able); `as` is fine in test code.
+		// The store getter cannot be spied on directly.
 		credentialsStore.getCredentialById = ((id: string) =>
 			id === 'cred-2' ? existingCred2 : existingCred) as typeof credentialsStore.getCredentialById;
 		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
@@ -138,16 +137,13 @@ describe('InstanceAiCredentialSetup — n8n credits (real NodeCredentials)', () 
 		const continueBtn = screen.getByTestId('instance-ai-credential-continue-button');
 		const select = screen.getByTestId('node-credentials-select');
 
-		// Open the dropdown and pick n8n credits.
 		await userEvent.click(select);
 		const creditsOption = await screen.findByTestId('node-credentials-select-item-n8n-credits');
 		await userEvent.click(creditsOption);
 
-		// Display reflects the managed selection: the trigger shows the wallet icon
-		// (selectedCredentialIcon returns 'wallet' only when the slot is managed).
+		// The wallet icon shows the managed selection.
 		expect(select.querySelector('[data-icon="wallet"]')).not.toBeNull();
 
-		// Continue is enabled and submitting sends the managed tag.
 		expect(continueBtn).not.toBeDisabled();
 		await userEvent.click(continueBtn);
 		expect(confirmSpy).toHaveBeenCalledWith('req-1', {

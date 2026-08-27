@@ -76,8 +76,8 @@ describe('workflows get-as-code integration', () => {
 
 		expect(result.error).toBeUndefined();
 		expect(result.code).not.toBe('');
-		expect(result.code).toContain("newCredential('n8n credits')");
-		expect(result.code).not.toContain("newCredential('n8n credits',");
+		expect(result.code).toContain("newCredential('n8n credits', { managed: true })");
+		expect(result.code).not.toContain("newCredential('n8n credits', 'null')");
 		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
 			workflowVersionId: 'v-current',
 			workflowChecksum: 'checksum-current',

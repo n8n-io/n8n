@@ -620,15 +620,8 @@ export class InstanceAiAdapterService {
 		const redactParameters = !allowSendingParameterValues;
 
 		/**
-		 * Instance AI writes bypass the REST controller, so the editor write lock
-		 * has to be honoured here — otherwise the agent silently overwrites the work
-		 * of *another* user editing the workflow on the canvas right now.
-		 *
-		 * A lock held by the SAME user is their own editor session: a write they
-		 * triggered themselves via Instance AI (e.g. applying an n8n-credits
-		 * selection) is their own intent, and open editors reconcile it via
-		 * notifyWorkflowUpdated, so it must not be blocked. Only a different user's
-		 * lock blocks the write.
+		 * Instance AI writes bypass the REST controller. Block writes only when
+		 * another user holds the editor lock.
 		 */
 		const assertNotLockedByEditor = async (workflowId: string) => {
 			const lock = await collaborationService.getWriteLock(user.id, workflowId);
