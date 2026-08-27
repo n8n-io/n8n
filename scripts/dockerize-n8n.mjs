@@ -144,6 +144,11 @@ const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
 const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
 // Opt-in: only cloud deploys the distroless runners image, so local builds skip it.
 const withDistroless = process.env.DOCKER_BUILD_DISTROLESS === 'true';
+// The pc CI variant pins the n8n base images; runners have no such variant.
+const baseImageArgs = [
+	process.env.BUILDER_IMAGE && `BUILDER_IMAGE=${process.env.BUILDER_IMAGE}`,
+	process.env.RUNTIME_IMAGE && `RUNTIME_IMAGE=${process.env.RUNTIME_IMAGE}`,
+].filter(Boolean);
 // Keep in sync with NODE_VERSION in .github/workflows/docker-build-push.yml,
 // which is what the published images are actually built with.
 const nodeVersion = process.env.NODE_VERSION || '26.7.0';
@@ -196,6 +201,8 @@ async function main() {
 	echo(`INFO: Platform: ${platform}`);
 	if (noCache) echo(chalk.yellow('INFO: Docker layer cache disabled (DOCKER_BUILD_NO_CACHE=true)'));
 	if (withBaseImage) echo(chalk.yellow('INFO: Building base image first (DOCKER_BUILD_BASE_IMAGE=true)'));
+	if (baseImageArgs.length > 0)
+		echo(chalk.yellow(`INFO: Base image overrides: ${baseImageArgs.join(', ')}`));
 	echo(chalk.gray('-'.repeat(47)));
 
 	await checkPrerequisites();
@@ -215,7 +222,7 @@ async function main() {
 		name: 'n8n',
 		dockerfilePath: config.n8n.dockerfilePath,
 		fullImageName: config.n8n.fullImageName,
-		buildArgs: nodeVersionArgs,
+		buildArgs: [...nodeVersionArgs, ...baseImageArgs],
 	});
 
 	const runnersBuildTime = await buildDockerImage({
