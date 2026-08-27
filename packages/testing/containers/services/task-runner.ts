@@ -43,9 +43,7 @@ export const taskRunner: Service<TaskRunnerResult> = {
 				.withExposedPorts(5680)
 				.withEnvironment({
 					N8N_RUNNERS_AUTH_TOKEN: 'test',
-					// The stack's readiness gate reads the launchers' broker registration
-					// from this container's log, which the launcher prints only at debug.
-					N8N_RUNNERS_LAUNCHER_LOG_LEVEL: 'debug',
+					N8N_RUNNERS_LAUNCHER_LOG_LEVEL: 'debug', // Broker registration is logged at debug, and the stack waits on it
 					N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 					N8N_RUNNERS_MAX_CONCURRENCY: '5',
 					N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: '0', // Disabled in tests to prevent cold-start delays
@@ -56,8 +54,7 @@ export const taskRunner: Service<TaskRunnerResult> = {
 					'com.docker.compose.service': 'task-runner',
 				})
 				.withName(`${projectName}-task-runner`)
-				// Not reused across runs: the launchers hold a connection to the broker of
-				// the stack that started them, and do not register with a new one.
+				// Not reused: a launcher stays bound to the broker of the stack that started it
 				.withLogConsumer(consumer)
 				.start();
 

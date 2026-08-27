@@ -224,8 +224,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			return meta?.n8nFilesToMount ?? [];
 		});
 
-		// A registration that counts for this run can only happen once the instances
-		// are up, so this is the earliest log line the readiness gate below may accept.
+		// Earliest log line the readiness gate below may accept
 		const n8nStartedAtSeconds = Math.floor(Date.now() / 1000);
 		const n8nStartupStart = performance.now();
 		const n8nResult = await createN8NInstances({
