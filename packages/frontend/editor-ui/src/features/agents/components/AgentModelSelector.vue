@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, useTemplateRef } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import {
 	N8nAiModelSelectorDropdown,
 	useDropdownSearch,
@@ -18,6 +18,7 @@ import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import ModelSelectorTriggerIcon from './model-selector/ModelSelectorTriggerIcon.vue';
 import ModelSelectorItemLeadingIcon from './model-selector/ModelSelectorItemLeadingIcon.vue';
 import { buildMenuItemId, parseMenuItemId } from './model-selector/menuItemId';
+import { useModelCatalog } from '../composables/useModelCatalog';
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
 	AGENT_MODEL_PROVIDERS,
@@ -81,6 +82,15 @@ const credentialsStore = useCredentialsStore();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 const aiGateway = useAiGateway();
+const { ensureLoaded, getDefaultModelForPicker, getVerificationStatus } = useModelCatalog();
+const pendingDefaultCredential = ref<{
+	provider: AgentModelProvider;
+	credentialId: string;
+} | null>(null);
+const forceModelOptionsDisabled = ref(false);
+const isResolvingDefaultModel = computed(
+	() => pendingDefaultCredential.value !== null || forceModelOptionsDisabled.value,
+);
 
 const aiGatewayBalancePill = computed(() => {
 	const balance = aiGateway.balance.value;
@@ -214,7 +224,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		id: buildMenuItemId(provider, 'select', credential.id),
 		label: credential.name,
 		disabled: false,
-		checked: selectedProviderCredentialId === credential.id,
+		checked: selectedModel?.provider === provider && selectedProviderCredentialId === credential.id,
 		keepOpen: true,
 		data: { provider },
 	}));
@@ -301,10 +311,11 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		? models.map<MenuItem>((model) => ({
 				id: buildMenuItemId(provider, 'model', model.model),
 				label: truncateBeforeLast(model.name, MAX_MODEL_NAME_CHARS),
-				disabled: false,
+				disabled: isResolvingDefaultModel.value,
 				checked: selectedModel?.provider === provider && selectedModel.model === model.model,
 				data: {
 					provider,
+					loading: isResolvingDefaultModel.value,
 					description: model.description ?? undefined,
 					descriptionTooltipTeleported: false,
 					fullName: `${model.name} ${model.model}`,
@@ -470,7 +481,49 @@ const filteredMenu = computed(() => {
 	});
 });
 
-function openNewCredential(credentialType: string) {
+function selectCredentialAndResolveDefaultModel(
+	provider: AgentModelProvider,
+	credentialId: string,
+) {
+	void ensureLoaded(projectId);
+	emit('selectCredential', provider, credentialId);
+	pendingDefaultCredential.value = { provider, credentialId };
+}
+
+function getPendingDefaultModelResolution() {
+	const pending = pendingDefaultCredential.value;
+	if (!pending) return null;
+
+	const pendingCredentials: AgentCredentialsByProvider = {
+		...(credentials ?? {}),
+		[pending.provider]: pending.credentialId,
+	};
+	const defaultModel = getDefaultModelForPicker(pendingCredentials, pending.provider);
+	const status = getVerificationStatus(projectId, pending.provider, pending.credentialId);
+	return { pending, defaultModel, status };
+}
+
+function handleDefaultModelResolution(result: ReturnType<typeof getPendingDefaultModelResolution>) {
+	if (!result || result.status === 'idle' || result.status === 'loading') return;
+	if (
+		pendingDefaultCredential.value?.provider !== result.pending.provider ||
+		pendingDefaultCredential.value.credentialId !== result.pending.credentialId
+	) {
+		return;
+	}
+
+	pendingDefaultCredential.value = null;
+	if (result.status === 'resolved' && result.defaultModel) {
+		emit('change', {
+			provider: result.defaultModel.provider,
+			model: result.defaultModel.model,
+		});
+	}
+}
+
+watch(getPendingDefaultModelResolution, handleDefaultModelResolution);
+
+function openNewCredential(provider: AgentModelProvider, credentialType: string) {
 	if (!disabled && canCreateCredentials.value) {
 		uiStore.openNewCredential(
 			credentialType,
@@ -482,6 +535,9 @@ function openNewCredential(credentialType: string) {
 			undefined,
 			{
 				hideAskAssistant: true,
+				onCredentialCreated: function selectCreatedCredential(credential) {
+					selectCredentialAndResolveDefaultModel(provider, credential.id);
+				},
 				...(credentialModalAppendToBody ? { appendToBody: true } : {}),
 			},
 		);
@@ -497,19 +553,19 @@ async function onSelect(id: string) {
 
 	if (action === 'configure') {
 		emit('configureCredential', providerId);
-		openNewCredential(value);
+		openNewCredential(providerId, value);
 		return;
 	}
 
 	if (action === 'select') {
-		emit('selectCredential', providerId, value);
+		selectCredentialAndResolveDefaultModel(providerId, value);
 		return;
 	}
 
 	if (action === 'n8nConnect') {
 		// Radio-style: selecting n8n credits always picks the managed tag. There's no
 		// toggle-off — you switch away by choosing another credential.
-		emit('selectCredential', providerId, AI_GATEWAY_MANAGED_TAG);
+		selectCredentialAndResolveDefaultModel(providerId, AI_GATEWAY_MANAGED_TAG);
 		return;
 	}
 
@@ -523,20 +579,27 @@ async function onSelect(id: string) {
 
 		if (!credential) return;
 
-		emit('selectCredential', providerId, credential.id);
-		emit('change', { provider: providerId, model: value });
+		selectCredentialAndResolveDefaultModel(providerId, credential.id);
 		return;
 	}
 
 	if (action === 'model') {
+		pendingDefaultCredential.value = null;
 		emit('change', { provider: providerId, model: value });
 	}
 }
 
+function openDropdown() {
+	if (!disabled) dropdownRef.value?.open();
+}
+
+function setModelOptionsDisabled(disabled: boolean) {
+	if (import.meta.env.DEV) forceModelOptionsDisabled.value = disabled;
+}
+
 defineExpose({
-	open: () => {
-		if (!disabled) dropdownRef.value?.open();
-	},
+	open: openDropdown,
+	setModelOptionsDisabled,
 });
 </script>
 
@@ -544,6 +607,7 @@ defineExpose({
 	<N8nAiModelSelectorDropdown
 		ref="dropdownRef"
 		:items="filteredMenu"
+		:is-loading="isLoading || isResolvingDefaultModel"
 		:selected-label="selectedLabel"
 		:selected-credential-name="selectedCredentialName"
 		:credentials-missing="isCredentialsMissing"

@@ -1331,15 +1331,14 @@ function createNodeAdapterServiceForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
-		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[33],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[35],
+		>[34],
 		nodeCatalogService,
 	);
 
@@ -1697,15 +1696,14 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
-		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[33],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[35],
+		>[34],
 	);
 
 	const adapter = service.createContext(mockUser, {
@@ -2028,15 +2026,14 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
-		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[33],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 		mockCollaborationService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[35],
+		>[34],
 	);
 
 	const boundProjectId =
@@ -3157,15 +3154,14 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		mockRoleService as unknown as RoleService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
-		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[33],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[35],
+		>[34],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -3425,15 +3421,14 @@ function createRunAdapterForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
-		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[33],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[35],
+		>[34],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -4081,7 +4076,7 @@ function createAdapterWithGatewayMock(
 		}),
 	};
 	const args = Array.from(
-		{ length: 35 },
+		{ length: 34 },
 		() => ({}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[number],
 	);
 	args[0] = {
@@ -4115,12 +4110,12 @@ function createAdapterWithGatewayMock(
 	args[29] = (overrides?.telemetry ?? {
 		track: vi.fn(),
 	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29];
-	args[32] = mock<OutboundHttp>() as unknown as ConstructorParameters<
+	args[31] = mock<OutboundHttp>() as unknown as ConstructorParameters<
+		typeof InstanceAiAdapterService
+	>[31];
+	args[32] = aiGatewayService as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService
 	>[32];
-	args[33] = aiGatewayService as unknown as ConstructorParameters<
-		typeof InstanceAiAdapterService
-	>[33];
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
 	);

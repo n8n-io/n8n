@@ -29,6 +29,7 @@ export interface StepExecutionContext {
 	stepId: string;
 	workflowId: string;
 	mode: ExecutionMode;
+	iteration: number;
 }
 
 /** A single step handed to an executor. */
