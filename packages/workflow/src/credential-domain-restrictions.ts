@@ -162,20 +162,30 @@ export function assertUrlAllowed(options: {
 	throw node ? new NodeOperationError(node, message) : new UserError(message);
 }
 
-/** Returns the allowlist for forwarding to per-hop redirect checks; `undefined` means allow-all. */
+/**
+ * Returns the allowlist for forwarding to per-hop redirect checks; `undefined` means allow-all.
+ *
+ * `'none'` blocks the caller outright, unless `credentialOwnedSurface` says the URL comes from
+ * a node definition rather than from the user — set that only for such callers, never for a
+ * URL that arrives as request input.
+ */
 export function getCredentialAllowedDomains(options: {
 	node: INode;
 	credentialData: ICredentialDataDecryptedObject;
 	surface?: string;
+	credentialOwnedSurface?: boolean;
 }): string | undefined {
-	const { node, credentialData, surface = DEFAULT_SURFACE } = options;
+	const { node, credentialData, surface = DEFAULT_SURFACE, credentialOwnedSurface } = options;
 	const mode = readMode(credentialData);
 
 	if (mode === 'none') {
-		throw new NodeOperationError(
-			node,
-			`This credential is configured to prevent use within an ${surface} node`,
-		);
+		if (!credentialOwnedSurface) {
+			throw new NodeOperationError(
+				node,
+				`This credential is configured to prevent use within an ${surface} node`,
+			);
+		}
+		return undefined;
 	}
 
 	if (mode === 'domains') {

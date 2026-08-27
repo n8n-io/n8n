@@ -227,8 +227,13 @@ export class RoutingNode {
 				itemContext[itemIndex].requestData.options.timeout = 300_000;
 			}
 
+			// A declarative node's URL comes from its own routing, not from the user.
 			const allowedDomains = credentials
-				? getCredentialAllowedDomains({ node, credentialData: credentials })
+				? getCredentialAllowedDomains({
+						node,
+						credentialData: credentials,
+						credentialOwnedSurface: true,
+					})
 				: undefined;
 			if (allowedDomains) {
 				itemContext[itemIndex].requestData.options.allowedDomains = allowedDomains;

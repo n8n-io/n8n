@@ -278,6 +278,74 @@ describe('getCredentialAllowedDomains', () => {
 			}),
 		).toThrow('No allowed domains specified');
 	});
+
+	describe('credentialOwnedSurface', () => {
+		const noneCredential = { allowedHttpRequestDomains: 'none' };
+
+		it("leaves 'none' unrestricted for a credential-owned surface", () => {
+			expect(
+				getCredentialAllowedDomains({
+					node,
+					credentialData: noneCredential,
+					credentialOwnedSurface: true,
+				}),
+			).toBeUndefined();
+		});
+
+		it.each([
+			['explicitly false', false],
+			['undefined', undefined],
+		])(
+			"still blocks 'none' when credentialOwnedSurface is %s",
+			(_label, credentialOwnedSurface) => {
+				expect(() =>
+					getCredentialAllowedDomains({
+						node,
+						credentialData: noneCredential,
+						credentialOwnedSurface,
+					}),
+				).toThrow('This credential is configured to prevent use within an HTTP Request node');
+			},
+		);
+
+		it("still blocks 'none' when the flag is omitted entirely", () => {
+			expect(() => getCredentialAllowedDomains({ node, credentialData: noneCredential })).toThrow(
+				'This credential is configured to prevent use within an HTTP Request node',
+			);
+		});
+
+		it("still enforces the 'domains' allowlist on a credential-owned surface", () => {
+			expect(
+				getCredentialAllowedDomains({
+					node,
+					credentialData: {
+						allowedHttpRequestDomains: 'domains',
+						allowedDomains: 'api.example.com',
+					},
+					credentialOwnedSurface: true,
+				}),
+			).toBe('api.example.com');
+		});
+
+		it("still rejects an empty 'domains' allowlist on a credential-owned surface", () => {
+			expect(() =>
+				getCredentialAllowedDomains({
+					node,
+					credentialData: { allowedHttpRequestDomains: 'domains', allowedDomains: '  ' },
+					credentialOwnedSurface: true,
+				}),
+			).toThrow('No allowed domains specified');
+		});
+
+		it.each([
+			["'all'", { allowedHttpRequestDomains: 'all' }],
+			['an absent mode', {}],
+		])('returns undefined for %s on a credential-owned surface', (_label, credentialData) => {
+			expect(
+				getCredentialAllowedDomains({ node, credentialData, credentialOwnedSurface: true }),
+			).toBeUndefined();
+		});
+	});
 });
 
 describe('assertUrlAllowed', () => {
