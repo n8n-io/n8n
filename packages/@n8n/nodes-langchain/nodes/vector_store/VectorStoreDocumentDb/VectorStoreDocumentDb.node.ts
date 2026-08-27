@@ -2,9 +2,15 @@ import { Document as LangChainDocument } from '@langchain/core/documents';
 import type { EmbeddingsInterface } from '@langchain/core/embeddings';
 import { VectorStore } from '@langchain/core/vectorstores';
 import { createVectorStoreNode, metadataFilterField } from '@n8n/ai-utilities';
-import { ObjectId, type Document as DatabaseDocument, type Filter, type MongoClient } from 'mongodb';
+import {
+	ObjectId,
+	type Document as DatabaseDocument,
+	type Filter,
+	type MongoClient,
+} from 'mongodb';
 import {
 	NodeOperationError,
+	UnexpectedError,
 	type IDataObject,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
@@ -76,21 +82,21 @@ export class DocumentDbVectorStore extends VectorStore {
 		options?: { ids?: string[] },
 	): Promise<void> {
 		if (vectors.length !== documents.length) {
-			throw new Error('The number of vectors must match the number of documents');
+			throw new UnexpectedError('The number of vectors must match the number of documents');
 		}
 		if (documents.length === 0) return;
 
 		const databaseDocuments = documents.map((document, index) => ({
-				[this.contentField]: document.pageContent,
-				[this.embeddingField]: vectors[index],
-				[this.metadataField]: document.metadata,
-			}));
+			[this.contentField]: document.pageContent,
+			[this.embeddingField]: vectors[index],
+			[this.metadataField]: document.metadata,
+		}));
 
 		if (options?.ids) {
 			await this.collection.bulkWrite(
 				databaseDocuments.map((document, index) => {
 					const id = options.ids?.[index];
-					if (!id) throw new Error('A document ID is required for each vector update');
+					if (!id) throw new UnexpectedError('A document ID is required for each vector update');
 					return {
 						replaceOne: {
 							filter: { _id: ObjectId.isValid(id) ? new ObjectId(id) : id },
@@ -142,9 +148,7 @@ export class DocumentDbVectorStore extends VectorStore {
 						? result[this.metadataField]
 						: {},
 			}),
-			typeof result._documentDbVectorScore === 'number'
-				? result._documentDbVectorScore
-				: 0,
+			typeof result._documentDbVectorScore === 'number' ? result._documentDbVectorScore : 0,
 		]);
 	}
 }
@@ -180,7 +184,7 @@ async function createClient(context: FunctionsContext): Promise<{
 	client: MongoClient;
 	databaseName: string;
 }> {
-	const credentials = await context.getCredentials('documentDb');
+	const credentials = await context.getCredentials('documentDbApi');
 	const node = context.getNode();
 	const { connectionString, database } = validateAndResolveDocumentDatabaseCredentials(
 		node,
@@ -321,7 +325,7 @@ export class VectorStoreDocumentDb extends createVectorStoreNode<DocumentDbVecto
 		description: 'Work with vector data in DocumentDB',
 		icon: 'file:documentdb.png',
 		docsUrl: 'https://documentdb.io/docs/',
-		credentials: [{ name: 'documentDb', required: true }],
+		credentials: [{ name: 'documentDbApi', required: true }],
 		operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
 	},
 	methods: { listSearch: { documentDbCollectionSearch: getDocumentDbCollections } },
@@ -348,27 +352,30 @@ export class VectorStoreDocumentDb extends createVectorStoreNode<DocumentDbVecto
 	},
 	async getVectorStoreClient(context, filter, embeddings, itemIndex) {
 		const { client, databaseName } = await createClient(context);
-		const metadataField = getParameter(context, METADATA_FIELD, itemIndex);
-		const options = context.getNodeParameter('options', itemIndex, {}) as IDataObject;
-		const namespace = typeof options.namespace === 'string' ? options.namespace : '';
-		const namespaceFilter = namespace
-			? { [`${metadataField}.namespace`]: namespace }
-			: undefined;
+		try {
+			const metadataField = getParameter(context, METADATA_FIELD, itemIndex);
+			const options = context.getNodeParameter('options', itemIndex, {}) as IDataObject;
+			const namespace = typeof options.namespace === 'string' ? options.namespace : '';
+			const namespaceFilter = namespace ? { [`${metadataField}.namespace`]: namespace } : undefined;
 
-		return new DocumentDbVectorStore(embeddings, {
-			client,
-			databaseName,
-			collectionName: getParameter(context, DOCUMENTDB_COLLECTION, itemIndex),
-			embeddingField: getParameter(context, EMBEDDING_FIELD, itemIndex),
-			contentField: getParameter(context, CONTENT_FIELD, itemIndex),
-			metadataField,
-			filter: mergeFilters(
-				filter,
-				getOption<IDataObject>(context, PRE_FILTER, itemIndex),
-				namespaceFilter,
-			),
-			postFilterPipeline: getOption<IDataObject[]>(context, POST_FILTER_PIPELINE, itemIndex),
-		});
+			return new DocumentDbVectorStore(embeddings, {
+				client,
+				databaseName,
+				collectionName: getParameter(context, DOCUMENTDB_COLLECTION, itemIndex),
+				embeddingField: getParameter(context, EMBEDDING_FIELD, itemIndex),
+				contentField: getParameter(context, CONTENT_FIELD, itemIndex),
+				metadataField,
+				filter: mergeFilters(
+					filter,
+					getOption<IDataObject>(context, PRE_FILTER, itemIndex),
+					namespaceFilter,
+				),
+				postFilterPipeline: getOption<IDataObject[]>(context, POST_FILTER_PIPELINE, itemIndex),
+			});
+		} catch (error) {
+			await client.close().catch(() => {});
+			throw error;
+		}
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		const store = await this.getVectorStoreClient(context, undefined, embeddings, itemIndex);
@@ -382,7 +389,7 @@ export class VectorStoreDocumentDb extends createVectorStoreNode<DocumentDbVecto
 								pageContent: document.pageContent,
 								metadata: { ...document.metadata, namespace },
 							}),
-						)
+					)
 				: documents;
 			await store.addDocuments(documentsWithNamespace);
 		} finally {

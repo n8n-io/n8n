@@ -51,7 +51,7 @@ export class DocumentDb implements INodeType {
 		usableAsTool: true,
 		credentials: [
 			{
-				name: 'documentDb',
+				name: 'documentDbApi',
 				required: true,
 				testedBy: 'documentDbCredentialTest',
 			},
@@ -106,9 +106,12 @@ export class DocumentDb implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = await this.getCredentials('documentDb');
+		const credentials = await this.getCredentials('documentDbApi');
 		const node = this.getNode();
-		const { database, connectionString } = validateAndResolveDocumentDatabaseCredentials(node, credentials);
+		const { database, connectionString } = validateAndResolveDocumentDatabaseCredentials(
+			node,
+			credentials,
+		);
 		const nodeVersion = node.typeVersion;
 		const sanitizeErrorMessage = (error: unknown) =>
 			sanitizeDocumentDatabaseUriInMessage(error, connectionString);
@@ -826,7 +829,6 @@ export class DocumentDb implements INodeType {
 					}
 				}
 			}
-
 		} catch (error) {
 			const sanitizedMessage = sanitizeErrorMessage(error);
 			if (error instanceof Error && sanitizedMessage === error.message) throw error;

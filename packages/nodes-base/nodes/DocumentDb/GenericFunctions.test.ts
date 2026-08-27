@@ -8,6 +8,7 @@ import {
 	prepareItems,
 	sanitizeDocumentDatabaseUriInMessage,
 	serializeDocumentDatabaseItems,
+	stringifyObjectIDs,
 } from './GenericFunctions';
 
 const mockNode = { name: 'DocumentDB', type: 'n8n-nodes-base.documentDb' } as INode;
@@ -24,7 +25,7 @@ describe('DocumentDB Node: Generic Functions', () => {
 				port: 27017,
 			});
 
-			expect(connectionString).toBe('mongodb://user: password @localhost:27017');
+			expect(connectionString).toBe('mongodb://user:%20password%20@localhost:27017');
 		});
 
 		it('keeps values without surrounding whitespace unchanged', () => {
@@ -38,6 +39,21 @@ describe('DocumentDB Node: Generic Functions', () => {
 			});
 
 			expect(connectionString).toBe('mongodb://user:password@localhost:27017');
+		});
+
+		it('percent-encodes URI-reserved characters in the username and password', () => {
+			const connectionString = buildParameterizedConnString({
+				configurationType: 'values',
+				host: 'localhost',
+				database: 'database',
+				user: 'user@example.com',
+				password: 'p@ss:word/with spaces',
+				port: 27017,
+			});
+
+			expect(connectionString).toBe(
+				'mongodb://user%40example.com:p%40ss%3Aword%2Fwith%20spaces@localhost:27017',
+			);
 		});
 	});
 
@@ -247,22 +263,33 @@ describe('DocumentDB Node: Generic Functions', () => {
 				expect(() => prepareItems(args)).toThrow();
 			});
 
-			it('drops items where useDotNotation would resolve the updateKey to a non-scalar', () => {
-				// The data-filter step in prepareItems uses bracket access on the dotted key,
-				// so items whose dot path resolves to an object are excluded before the map loop
-				// runs. No operator-shaped value reaches the driver.
+			it('throws when a dotted updateKey resolves to a non-scalar', () => {
 				const items = [{ json: { user: { id: { $gt: 1 } }, value: 'x' } }];
 				const args = {
 					items,
 					fields: ['value'],
 					updateKey: 'user.id',
 					useDotNotation: true,
+					isUpdate: true,
 					node: mockNode,
 				};
 
-				const result = prepareItems(args);
+				expect(() => prepareItems(args)).toThrow(/must be a string, number, boolean, or date/);
+			});
 
-				expect(result).toEqual([]);
+			it('resolves a scalar dotted updateKey', () => {
+				const items = [{ json: { user: { id: 'user-1' }, value: 'x' } }];
+
+				const result = prepareItems({
+					items,
+					fields: ['value'],
+					updateKey: 'user.id',
+					useDotNotation: true,
+					isUpdate: true,
+					node: mockNode,
+				});
+
+				expect(result).toEqual([{ 'user.id': 'user-1', value: 'x' }]);
 			});
 
 			it('passes a string updateKey value through unchanged even when its content looks like JSON', () => {
@@ -312,6 +339,22 @@ describe('DocumentDB Node: Generic Functions', () => {
 				node: mockNode,
 			});
 			expect(result).toEqual([{ 'user.name': 'John' }, { 'user.name': 'Jane' }]);
+		});
+	});
+
+	describe('stringifyObjectIDs', () => {
+		it('stringifies ObjectIds stored in item JSON', () => {
+			const objectId = new ObjectId('507f1f77bcf86cd799439011');
+			const items = [{ json: { _id: objectId, id: objectId } }];
+
+			expect(stringifyObjectIDs(items)).toEqual([
+				{
+					json: {
+						_id: '507f1f77bcf86cd799439011',
+						id: '507f1f77bcf86cd799439011',
+					},
+				},
+			]);
 		});
 	});
 

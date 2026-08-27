@@ -50,7 +50,7 @@ function buildWorkflow({
 						typeVersion: 1.2,
 						position: [1260, 360],
 						credentials: {
-							documentDb: {
+							documentDbApi: {
 								id: 'mongodb://localhost:10260',
 								name: 'Connection String',
 							},

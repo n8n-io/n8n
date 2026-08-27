@@ -7,6 +7,7 @@ describe('DocumentDbChatMessageHistory', () => {
 	const toArray = vi.fn();
 	const sort = vi.fn(() => ({ toArray }));
 	const collection = {
+		createIndex: vi.fn(),
 		find: vi.fn(() => ({ sort })),
 		insertOne: vi.fn(),
 		deleteMany: vi.fn(),
@@ -18,6 +19,14 @@ describe('DocumentDbChatMessageHistory', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it('creates an index for session message lookups', async () => {
+		const history = new DocumentDbChatMessageHistory(collection, 'session-1');
+
+		await history.ensureIndex();
+
+		expect(collection.createIndex).toHaveBeenCalledWith({ sessionId: 1, createdAt: 1 });
 	});
 
 	it('stores messages for the current session', async () => {

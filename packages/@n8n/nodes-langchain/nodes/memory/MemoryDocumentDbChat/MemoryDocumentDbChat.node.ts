@@ -1,6 +1,9 @@
 import { BaseListChatMessageHistory } from '@langchain/core/chat_history';
 import type { BaseMessage, StoredMessage } from '@langchain/core/messages';
-import { mapChatMessagesToStoredMessages, mapStoredMessagesToChatMessages } from '@langchain/core/messages';
+import {
+	mapChatMessagesToStoredMessages,
+	mapStoredMessagesToChatMessages,
+} from '@langchain/core/messages';
 import { BufferWindowMemory } from '@langchain/classic/memory';
 import { getConnectionHintNoticeField, logWrapper } from '@n8n/ai-utilities';
 import { getSessionId } from '@utils/helpers';
@@ -53,6 +56,10 @@ export class DocumentDbChatMessageHistory extends BaseListChatMessageHistory {
 		return mapStoredMessagesToChatMessages(documents.map(({ message }) => message));
 	}
 
+	async ensureIndex(): Promise<void> {
+		await this.collection.createIndex({ sessionId: 1, createdAt: 1 });
+	}
+
 	async addMessage(message: BaseMessage): Promise<void> {
 		const [storedMessage] = mapChatMessagesToStoredMessages([message]);
 		if (!storedMessage) return;
@@ -82,7 +89,7 @@ export class MemoryDocumentDbChat implements INodeType {
 		},
 		credentials: [
 			{
-				name: 'documentDb',
+				name: 'documentDbApi',
 				required: true,
 			},
 		],
@@ -126,7 +133,7 @@ export class MemoryDocumentDbChat implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials('documentDb');
+		const credentials = await this.getCredentials('documentDbApi');
 		const node = this.getNode();
 		const { connectionString, database } = validateAndResolveDocumentDatabaseCredentials(
 			node,
@@ -150,15 +157,12 @@ export class MemoryDocumentDbChat implements INodeType {
 
 		let client: MongoClient | undefined;
 		try {
-			client = await connectDocumentDatabaseClient(
-				connectionString,
-				node.typeVersion,
-				credentials,
-			);
+			client = await connectDocumentDatabaseClient(connectionString, node.typeVersion, credentials);
 			const collection = client
 				.db(resolvedDatabaseName)
 				.collection<DocumentDbChatMessage>(collectionName);
 			const chatHistory = new DocumentDbChatMessageHistory(collection, sessionId);
+			await chatHistory.ensureIndex();
 			const memory = new BufferWindowMemory({
 				memoryKey: 'chat_history',
 				chatHistory,

@@ -1,7 +1,7 @@
 import type { ICredentialType, Icon, INodeProperties } from 'n8n-workflow';
 
-export class DocumentDb implements ICredentialType {
-	name = 'documentDb';
+export class DocumentDbApi implements ICredentialType {
+	name = 'documentDbApi';
 
 	displayName = 'DocumentDB';
 

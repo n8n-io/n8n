@@ -41,12 +41,14 @@ export function buildParameterizedConnString(
 ): string {
 	const user = (credentials.user ?? '').trim();
 	const host = (credentials.host ?? '').trim();
+	const encodedUser = encodeURIComponent(user);
+	const encodedPassword = encodeURIComponent(credentials.password);
 
 	if (credentials.port) {
-		return `mongodb://${user}:${credentials.password}@${host}:${credentials.port}`;
+		return `mongodb://${encodedUser}:${encodedPassword}@${host}:${credentials.port}`;
 	}
 
-	return `mongodb+srv://${user}:${credentials.password}@${host}`;
+	return `mongodb+srv://${encodedUser}:${encodedPassword}@${host}`;
 }
 
 export function buildDocumentDatabaseConnectionParams(
@@ -63,7 +65,10 @@ export function buildDocumentDatabaseConnectionParams(
 			};
 		}
 
-		throw new NodeOperationError(node, 'Cannot override credentials: valid connection string not provided');
+		throw new NodeOperationError(
+			node,
+			'Cannot override credentials: valid connection string not provided',
+		);
 	}
 
 	return {
@@ -116,7 +121,10 @@ export function prepareItems({
 		if (!fields.includes(updateKey)) {
 			fields.push(updateKey);
 		}
-		data = items.filter((item) => item.json[updateKey] !== undefined);
+		data = items.filter((item) => {
+			const value = useDotNotation ? get(item.json, updateKey) : item.json[updateKey];
+			return value !== undefined;
+		});
 	}
 
 	return data.map(({ json }, itemIndex) => {
@@ -166,11 +174,11 @@ export function prepareFields(fields: string) {
 
 export function stringifyObjectIDs(items: INodeExecutionData[]) {
 	items.forEach((item) => {
-		if (item._id instanceof ObjectId) {
-			item.json._id = item._id.toString();
+		if (item.json._id instanceof ObjectId) {
+			item.json._id = item.json._id.toString();
 		}
-		if (item.id instanceof ObjectId) {
-			item.json.id = item.id.toString();
+		if (item.json.id instanceof ObjectId) {
+			item.json.id = item.json.id.toString();
 		}
 	});
 

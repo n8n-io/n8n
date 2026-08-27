@@ -111,7 +111,7 @@
       "dist/credentials/DiscordWebhookApi.credentials.js",
       "dist/credentials/DiscourseApi.credentials.js",
       "dist/credentials/DisqusApi.credentials.js",
-      "dist/credentials/DocumentDb.credentials.js",
+      "dist/credentials/DocumentDbApi.credentials.js",
       "dist/credentials/DriftApi.credentials.js",
       "dist/credentials/DriftOAuth2Api.credentials.js",
       "dist/credentials/DropboxApi.credentials.js",
