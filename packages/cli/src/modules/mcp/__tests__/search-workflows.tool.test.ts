@@ -107,6 +107,7 @@ describe('search-workflows MCP tool', () => {
 					triggerCount: 1,
 					availableInMCP: true,
 					tags: [],
+					folder: null,
 				},
 				{
 					id: 'b',
@@ -118,6 +119,7 @@ describe('search-workflows MCP tool', () => {
 					triggerCount: 1,
 					availableInMCP: true,
 					tags: [],
+					folder: null,
 				},
 			]);
 		});
@@ -277,6 +279,7 @@ describe('search-workflows MCP tool', () => {
 				triggerCount: 0,
 				availableInMCP: true,
 				tags: [],
+				folder: null,
 				resource: 'workflow', // unknown field surfaced by the data layer
 			};
 

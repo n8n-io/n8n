@@ -216,6 +216,15 @@ export const workflowDetailsOutputSchema = z.object({
 			tags: z.array(tagSchema),
 			meta: workflowMetaSchema.optional().describe(FULL_DETAIL_ONLY_NOTE),
 			parentFolderId: z.string().nullable(),
+			folder: z
+				.object({
+					id: z.string().describe('The ID of the containing folder'),
+					name: z.string().describe('The name of the containing folder'),
+				})
+				.nullable()
+				.describe(
+					'The folder this workflow is in, or null at the project root. Carries the name so the folder can be reported to the user without a second lookup; use search_folders for its full path.',
+				),
 			description: z.string().optional().describe('The description of the workflow'),
 			scopes: z.array(z.string()).describe('User permissions for this workflow'),
 			canExecute: z.boolean().describe('Whether the user has permission to execute this workflow'),

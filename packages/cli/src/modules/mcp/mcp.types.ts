@@ -92,6 +92,17 @@ export type SearchWorkflowsParams = {
 	projectId?: string;
 	tags?: string[];
 	sortBy?: SearchWorkflowsSortBy;
+	folderId?: string;
+	recursive?: boolean;
+	nodeTypes?: string[];
+};
+
+/** A workflow's containing folder, with its name path from the project root —
+ *  the same `path` shape `search_folders` returns, so the two are comparable. */
+export type SearchWorkflowsFolder = {
+	id: string;
+	name: string;
+	path: string[];
 };
 
 export type SearchWorkflowsItem = {
@@ -104,11 +115,17 @@ export type SearchWorkflowsItem = {
 	triggerCount: number | null;
 	availableInMCP: boolean;
 	tags: Array<{ id: string; name: string }>;
+	/** Null when the workflow sits at the project root. */
+	folder: SearchWorkflowsFolder | null;
 };
 
 export type SearchWorkflowsResult = {
 	data: SearchWorkflowsItem[];
 	count: number;
+	/** Set when a requested `folderId` could not be resolved. The results are then
+	 *  NOT folder-scoped, so a caller must not describe them as the folder's
+	 *  contents — see the tool's output schema. */
+	error?: string;
 };
 
 export type WorkflowDetailsResult = z.infer<WorkflowDetailsOutputSchema>;

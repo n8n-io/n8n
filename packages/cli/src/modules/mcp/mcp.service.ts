@@ -430,6 +430,9 @@ export class McpService {
 			user,
 			this.workflowService,
 			this.telemetry,
+			// Only when folders are licensed: without it a `folderId` filter reports
+			// that folders are unavailable rather than quietly returning every workflow.
+			this.licenseState.isFoldersLicensed() ? this.folderFinderService : undefined,
 		);
 		registerIfAllowed(workflowSearchTool);
 

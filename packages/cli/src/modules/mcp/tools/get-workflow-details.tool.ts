@@ -253,6 +253,9 @@ export async function getWorkflowDetails(
 		settings: workflow.settings ?? null,
 		tags: toTagSummary(workflow.tags),
 		parentFolderId: workflow.parentFolder?.id ?? null,
+		folder: workflow.parentFolder
+			? { id: workflow.parentFolder.id, name: workflow.parentFolder.name }
+			: null,
 		description: workflow.description ?? undefined,
 		scopes,
 		canExecute,
