@@ -132,8 +132,12 @@ export class ImportService {
 
 			// An existing workflow's policy scope is its own project, not `projectId` — that
 			// param is where a brand-new workflow lands, and re-importing never moves ownership.
-			existingOwnerProjects =
-				await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+			// Skipped when nothing would read it — a feature that is merely absent must not cost
+			// an extra query.
+			if (this.policyEnforcementService.hasChecksFor('contentImport')) {
+				existingOwnerProjects =
+					await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds(workflowIds);
+			}
 		}
 
 		const violations: WorkflowImportViolations[] = [];

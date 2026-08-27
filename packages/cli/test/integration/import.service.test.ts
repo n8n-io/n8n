@@ -63,6 +63,7 @@ describe('ImportService', () => {
 		mockWorkflowService = mock<WorkflowService>();
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 		mockPolicyEnforcementService = mock<PolicyEnforcementService>();
+		mockPolicyEnforcementService.hasChecksFor.mockReturnValue(true);
 		mockPolicyEnforcementService.evaluateContentImport.mockResolvedValue({ violations: [] });
 
 		importService = new ImportService(

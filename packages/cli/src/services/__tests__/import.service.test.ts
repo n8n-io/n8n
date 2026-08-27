@@ -70,6 +70,7 @@ describe('ImportService', () => {
 		mockUserRepository = mock<UserRepository>();
 		mockWorkflowService = mock<WorkflowService>();
 		mockPolicyEnforcementService = mock<PolicyEnforcementService>();
+		mockPolicyEnforcementService.hasChecksFor = vi.fn().mockReturnValue(true);
 		mockPolicyEnforcementService.evaluateContentImport = vi
 			.fn()
 			.mockResolvedValue({ violations: [] });

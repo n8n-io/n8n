@@ -15,6 +15,10 @@ export async function evaluateContentImportSafely(
 	context: ContentImportContext,
 	logger: Logger,
 ): Promise<PolicyViolation[]> {
+	// A feature that is merely absent must not cost anything — same guard as
+	// PolicyLifecycleHandler.onWorkflowExecuteBefore for `workflowStart`.
+	if (!policyEnforcementService.hasChecksFor('contentImport')) return [];
+
 	try {
 		const { violations, checkErrors } =
 			await policyEnforcementService.evaluateContentImport(context);

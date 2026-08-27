@@ -85,6 +85,7 @@ describe('SourceControlImportService', () => {
 	const dataTableDDLService = mock<DataTableDDLService>();
 	const redactionEnforcementService = mock<RedactionEnforcementService>();
 	const policyEnforcementService = mock<PolicyEnforcementService>();
+	policyEnforcementService.hasChecksFor.mockReturnValue(true);
 	policyEnforcementService.evaluateContentImport.mockResolvedValue({ violations: [] });
 	const dataTableSizeValidator = mock<DataTableSizeValidator>();
 	const activeWorkflowManager = mock<ActiveWorkflowManager>();

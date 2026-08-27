@@ -628,6 +628,7 @@ describe('auto-close on source-control pull', () => {
 			mock(), // dataTableDDLService
 			mock(), // redactionEnforcementService
 			mock<PolicyEnforcementService>({
+				hasChecksFor: () => true,
 				evaluateContentImport: async () => ({ violations: [] }),
 			}), // policyEnforcementService
 			mock(), // dataTableSizeValidator

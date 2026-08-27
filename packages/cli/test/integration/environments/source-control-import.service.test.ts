@@ -100,6 +100,7 @@ describe('SourceControlImportService', () => {
 		sourceControlContextFactory = Container.get(SourceControlContextFactory);
 		sourceControlScopedService = Container.get(SourceControlScopedService);
 		mockPolicyEnforcementService = mock<PolicyEnforcementService>();
+		mockPolicyEnforcementService.hasChecksFor.mockReturnValue(true);
 		mockPolicyEnforcementService.evaluateContentImport.mockResolvedValue({ violations: [] });
 		service = new SourceControlImportService(
 			mock(),
