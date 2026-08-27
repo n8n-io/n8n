@@ -78,7 +78,7 @@ const Wrapper = defineComponent({
 
 const renderComponent = createComponentRenderer(Wrapper);
 
-async function openAgentTabContextMenu(container: HTMLElement, tabId = 'agent-1') {
+async function openAgentTabContextMenu(container: Element, tabId = 'agent-1') {
 	const agentTabTrigger = container.querySelector<HTMLElement>(`[data-tab-id="${tabId}"]`);
 	expect(agentTabTrigger).not.toBeNull();
 	await fireEvent.contextMenu(agentTabTrigger!);

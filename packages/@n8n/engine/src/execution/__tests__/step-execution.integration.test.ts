@@ -129,6 +129,7 @@ describe('step execution (integration)', () => {
 			stepId: step?.id,
 			workflowId: 'wf-1',
 			mode: 'production',
+			iteration: 0,
 		});
 	});
 

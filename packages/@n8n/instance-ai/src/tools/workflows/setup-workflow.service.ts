@@ -7,8 +7,8 @@
  */
 import {
 	AI_GATEWAY_MANAGED_TAG,
-	GENERIC_AUTH_CREDENTIAL_TYPES,
 	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	shouldAutoResolveCredential,
 	type InstanceAiCredentialSetupHint,
 } from '@n8n/api-types';
 import { findPlaceholderDetails } from '@n8n/utils/placeholder';
@@ -502,11 +502,11 @@ async function resolveCredentialState(
 	// Neither does a type the user asked to create fresh — answering that with a
 	// stored credential is the contradiction this flag exists to prevent.
 	if (
-		!isAutoApplied &&
 		!prefersNewCredential &&
-		!GENERIC_AUTH_CREDENTIAL_TYPES.has(credentialType)
+		!hasExistingOnNode &&
+		shouldAutoResolveCredential(credentialType, existingCredentials.length)
 	) {
-		isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
+		isAutoApplied = true;
 	}
 
 	const credToTest =
@@ -1156,7 +1156,7 @@ async function trackCredentialAssignment(
 		// when it is the user's only one for a service-scoped type. Generic auth
 		// never auto-applies — the type alone does not identify a service.
 		const soleByokAutoApplied =
-			!isGateway && stored.length === 1 && !GENERIC_AUTH_CREDENTIAL_TYPES.has(opts.credType);
+			!isGateway && shouldAutoResolveCredential(opts.credType, stored.length);
 		if (isGateway ? stored.length === 0 : soleByokAutoApplied) source = 'instance-ai-auto';
 	}
 	context.trackTelemetry('Node credential assigned', {
