@@ -7,6 +7,7 @@ import { mock } from 'vitest-mock-extended';
 import type { EventService } from '@/events/event.service';
 import type { NodeTypes } from '@/node-types';
 import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
+import { TaskRequestTimeoutError } from '@/task-runners/errors/task-request-timeout.error';
 import type { Task } from '@/task-runners/task-managers/task-requester';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 
@@ -177,6 +178,64 @@ describe('TaskRequester', () => {
 
 			await expect(pending).rejects.toBeInstanceOf(TaskCancelledError);
 			expect(capturedRejection).toBeInstanceOf(TaskCancelledError);
+		});
+	});
+
+	describe('requestExpired', () => {
+		it('rejects with TaskRequestTimeoutError including workflow/execution/node IDs and reports them', async () => {
+			const requestId = 'requestId';
+			const workflowId = 'workflowId';
+			const executionId = 'executionId';
+			const nodeId = 'nodeId';
+			const taskType = 'javascript';
+
+			mockGlobalConfig.deployment = { type: 'default' } as GlobalConfig['deployment'];
+			mockTaskRunnersConfig.taskRequestTimeout = 60;
+
+			let capturedRejection: unknown;
+			const pending = new Promise((_, reject) => {
+				instance.requestAcceptRejects.set(requestId, {
+					accept: vi.fn(),
+					reject: (reason) => {
+						capturedRejection = reason;
+						reject(reason);
+					},
+					requestedAt: Date.now() - 5_000,
+					workflowId,
+					executionId,
+					nodeId,
+					taskType,
+				});
+			});
+
+			instance.requestExpired(requestId);
+
+			await expect(pending).rejects.toBeInstanceOf(TaskRequestTimeoutError);
+			expect(capturedRejection).toBeInstanceOf(TaskRequestTimeoutError);
+			expect((capturedRejection as TaskRequestTimeoutError).extra).toMatchObject({
+				requestId,
+				workflowId,
+				executionId,
+				nodeId,
+				taskType,
+				elapsedSeconds: expect.any(Number),
+			});
+			expect((capturedRejection as TaskRequestTimeoutError).shouldReport).toBe(true);
+			expect((capturedRejection as TaskRequestTimeoutError).level).toBe('error');
+			expect(mockErrorReporter.error).toHaveBeenCalledWith(
+				capturedRejection,
+				expect.objectContaining({
+					executionId,
+					extra: expect.objectContaining({
+						timeout: 60,
+						deploymentType: 'default',
+					}),
+					tags: {
+						issue: 'task-runners-timeouts',
+					},
+				}),
+			);
+			expect(instance.requestAcceptRejects.has(requestId)).toBe(false);
 		});
 	});
 });
