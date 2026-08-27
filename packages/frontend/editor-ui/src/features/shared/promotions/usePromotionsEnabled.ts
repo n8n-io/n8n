@@ -3,10 +3,8 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 /**
- * Gates every workflow-promotion surface: the git-connections settings page today,
- * Promote actions later. True only when the `git-connections` backend module is
- * active — it is skipped without the `feat:gitConnections` license — *and* the
- * `N8N_ENV_FEAT_PROMOTIONS` rollout flag is on.
+ * Gates all workflow-promotion surfaces. Enabled only when the `git-connections`
+ * module is active and the `N8N_ENV_FEAT_PROMOTIONS` rollout flag is on.
  */
 export const usePromotionsEnabled = () => {
 	const settingsStore = useSettingsStore();

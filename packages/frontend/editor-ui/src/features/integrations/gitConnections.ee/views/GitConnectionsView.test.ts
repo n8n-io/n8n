@@ -302,7 +302,7 @@ describe('GitConnectionsView', () => {
 		renderView();
 
 		const dialog = await openEditDialog(await screen.findByTestId('git-connection-row'));
-		expect(screen.getByTestId('git-connections-add')).not.toHaveAttribute('role', 'button');
+		expect(screen.queryByTestId('git-connections-add')).not.toBeInTheDocument();
 
 		await userEvent.click(within(dialog).getByTestId('git-connection-delete-button'));
 

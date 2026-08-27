@@ -10,7 +10,6 @@ import {
 	N8nSettingsRowConfigure,
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
-	N8nTooltip,
 	useMessage,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -191,28 +190,23 @@ async function onDelete(id: string) {
 					</N8nSettingsRowGroup>
 				</div>
 
-				<N8nTooltip
-					:disabled="canAddConnection"
-					:content="i18n.baseText('settings.gitConnections.addConnector.limitReached')"
-				>
-					<N8nSettingsRowGroup :class="{ [$style.unavailable]: !canAddConnection }">
-						<N8nSettingsRow
-							ref="addRow"
-							:clickable="canAddConnection"
-							:title="i18n.baseText('settings.gitConnections.addConnector')"
-							:description="i18n.baseText('settings.gitConnections.addConnector.description')"
-							data-test-id="git-connections-add"
-							@click="openCreateDialog"
-						>
-							<template #visual>
-								<N8nIcon icon="plus" color="text-dark" :size="20" />
-							</template>
-							<template #action>
-								<N8nIcon icon="chevron-right" color="text-light" size="small" />
-							</template>
-						</N8nSettingsRow>
-					</N8nSettingsRowGroup>
-				</N8nTooltip>
+				<N8nSettingsRowGroup v-if="canAddConnection">
+					<N8nSettingsRow
+						ref="addRow"
+						clickable
+						:title="i18n.baseText('settings.gitConnections.addConnector')"
+						:description="i18n.baseText('settings.gitConnections.addConnector.description')"
+						data-test-id="git-connections-add"
+						@click="openCreateDialog"
+					>
+						<template #visual>
+							<N8nIcon icon="plus" color="text-dark" :size="20" />
+						</template>
+						<template #action>
+							<N8nIcon icon="chevron-right" color="text-light" size="small" />
+						</template>
+					</N8nSettingsRow>
+				</N8nSettingsRowGroup>
 			</template>
 		</N8nSettingsSection>
 
@@ -244,7 +238,4 @@ async function onDelete(id: string) {
 	gap: var(--spacing--xs);
 }
 
-.unavailable {
-	opacity: 0.5;
-}
 </style>

@@ -352,9 +352,6 @@ async function submit() {
 					:disabled="isLoading"
 					data-test-id="git-connection-branch-input"
 				/>
-				<N8nText v-if="isEdit" size="small" color="text-light">
-					{{ i18n.baseText('settings.gitConnections.form.branchName.hint') }}
-				</N8nText>
 			</N8nInputLabel>
 
 			<N8nInputLabel
@@ -370,11 +367,11 @@ async function submit() {
 				>
 					<N8nOption
 						value="ssh"
-						:label="i18n.baseText('settings.gitConnections.connectionType.ssh')"
+						label="SSH"
 					/>
 					<N8nOption
 						value="https"
-						:label="i18n.baseText('settings.gitConnections.connectionType.https')"
+						label="HTTPS"
 					/>
 				</N8nSelect>
 			</N8nInputLabel>
