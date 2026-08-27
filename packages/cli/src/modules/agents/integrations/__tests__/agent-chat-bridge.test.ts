@@ -1041,6 +1041,125 @@ describe('AgentChatBridge — consumeStream', () => {
 			// of the reset.
 			expect(messageContextStore.unbindSession).toHaveBeenCalledWith('agent-1:thread-1');
 		});
+
+		it('reports an error instead of confirming success when unbinding the task session fails', async () => {
+			mockCache();
+			const { bot, handlers } = makeBot();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue(null);
+			messageContextStore.unbindSession.mockRejectedValue(new Error('db unavailable'));
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+				messageContextStore,
+			);
+			const thread = makeThread('thread-1');
+
+			await handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			expect(thread.post).not.toHaveBeenCalledWith(expect.stringContaining('new session'));
+			expect(thread.post).toHaveBeenCalledWith(GENERIC_ERROR_MESSAGE);
+
+			// Nothing was left half-applied: the next message resolves to the
+			// original (unrotated) thread id, as if /new had never been sent.
+			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1' }),
+					}),
+				}),
+			);
+		});
+
+		it('unbinds and rotates as one unit — a message racing a reset of a bound thread never lands back on the bound task session', async () => {
+			mockCache();
+			const { bot, handlers } = makeBot();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			// Models the real store: bound until unbindSession's write actually
+			// lands, exactly as `IntegrationMessageContextService` would behave.
+			let bound = true;
+			messageContextStore.resolveSession.mockImplementation(async () =>
+				bound ? { threadId: 'task-1-uuid', resourceId: 'task:task-1' } : null,
+			);
+			// Holds the reset inside its critical section (unbind is called first,
+			// see resetSession) until the test releases it, so the concurrent
+			// message below is provably attempting to run while the reset is
+			// still in flight, not just racing on incidental scheduling.
+			let releaseUnbind!: () => void;
+			const unbindGate = new Promise<void>((resolve) => {
+				releaseUnbind = resolve;
+			});
+			let unbindStarted = false;
+			messageContextStore.unbindSession.mockImplementation(async () => {
+				unbindStarted = true;
+				await unbindGate;
+				bound = false;
+			});
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+				messageContextStore,
+			);
+			const thread = makeThread('thread-1');
+
+			const resetPromise = handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+			await vi.waitFor(() => expect(unbindStarted).toBe(true));
+
+			// Started while the reset is still gated inside its lock, with the
+			// binding still (correctly) in place. If the reset's two steps
+			// weren't one critical section, this could resolve the rotated
+			// generation while resolveSession still finds the stale binding
+			// underneath it and gets redirected into the task's old memory.
+			const messagePromise = handlers.mention!(thread, {
+				text: 'hi',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			// Drain every currently-pending microtask (no timers are involved
+			// anywhere in this path, so this is fully deterministic) without
+			// releasing the gate yet. If unbind+rotate weren't one critical
+			// section, nothing here would still be blocking the concurrent
+			// message, and it would already have called resolveSession — while
+			// the binding is still in place — by this point.
+			for (let i = 0; i < 20; i++) await Promise.resolve();
+			expect(messageContextStore.resolveSession).not.toHaveBeenCalled();
+
+			releaseUnbind();
+			await Promise.all([resetPromise, messagePromise]);
+
+			// Only resolvable after the lock released — i.e. after both the
+			// unbind and the generation rotation had already landed — so this
+			// runs on the fresh rotated session, never redirected to the task's.
+			expect(agentExecutor.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({
+					memory: expect.objectContaining({
+						threadId: expect.objectContaining({ id: 'agent-1:thread-1#1' }),
+						resourceId: expect.not.stringContaining('task:'),
+					}),
+				}),
+			);
+		});
 	});
 
 	describe('resumeInAgentThread', () => {

@@ -434,11 +434,11 @@ export class AgentChatBridge {
 	 * see {@link resetSession} — before this is ever called).
 	 */
 	private async resolveActiveThreadId(thread: Thread): Promise<InternalThread> {
+		const baseId = this.baseThreadId(thread);
 		const idleTimeoutMinutes = this.integration.settings?.sessionIdleTimeoutMinutes ?? null;
-		const { id } = await this.bumpSessionGeneration(
-			this.baseThreadId(thread),
-			false,
-			idleTimeoutMinutes,
+		const id = await this.withSessionLock(
+			baseId,
+			async () => await this.computeGeneration(baseId, false, idleTimeoutMinutes),
 		);
 		return toInternalThreadId(id);
 	}
@@ -461,16 +461,42 @@ export class AgentChatBridge {
 		return true;
 	}
 
-	/** Rotates to a brand-new session for `thread` and confirms it there. */
+	/**
+	 * Rotates to a brand-new session for `thread` and confirms it there.
+	 * Unbinding a task-run session (see {@link resolveSession} in
+	 * `executeAndStream`) and rotating the generation happen inside the same
+	 * critical section, in that order, as one unit:
+	 * - Same critical section: splitting them would let a concurrent message
+	 *   land in between and read the just-rotated generation while the old
+	 *   binding is still in place (or the reverse), running against the
+	 *   task's old memory either way.
+	 * - Unbind first: nothing here swallows its error, so a failed unbind
+	 *   aborts before the generation is ever touched — leaving a clean
+	 *   "nothing happened" instead of a half-applied reset — and propagates to
+	 *   the caller's existing catch instead of confirming success.
+	 */
 	private async resetSession(thread: Thread): Promise<void> {
 		const baseId = this.baseThreadId(thread);
-		await this.bumpSessionGeneration(baseId, true, null);
-		// A task-run send may have bound this thread to continue as its own
-		// session (see resolveSession in executeAndStream) — that binding
-		// ignores rotation, so without clearing it the next message would still
-		// be redirected back into the bound task's thread and its memory.
-		await this.messageContextBridge.unbindSession(baseId);
+		await this.withSessionLock(baseId, async () => {
+			await this.messageContextBridge.unbindSession(baseId);
+			await this.computeGeneration(baseId, true, null);
+		});
 		await thread.post('🔄 Started a new session.');
+	}
+
+	/**
+	 * Runs `fn` while holding the per-thread session lock for `baseId`. Every
+	 * read and write of that thread's rotation/binding state must happen
+	 * inside this — the lock is what makes an explicit `/new` and a
+	 * concurrent idle-triggered rotation (or unbind) mutually exclusive
+	 * instead of racing on stale reads.
+	 */
+	private async withSessionLock<T>(baseId: string, fn: () => Promise<T>): Promise<T> {
+		return await Container.get(LockService).withLease(
+			LockNamespace.KNOWN_LOCKS,
+			this.sessionGenerationCacheKey(baseId),
+			fn,
+		);
 	}
 
 	/**
@@ -480,7 +506,8 @@ export class AgentChatBridge {
 	 * generation pointer lives in the shared cache (not the
 	 * `AgentExecutionThread` table) so a `/new` reset — which never runs an
 	 * agent turn, and so never creates a thread row — still takes effect on the
-	 * very next unrelated message.
+	 * very next unrelated message. Must be called from inside
+	 * {@link withSessionLock} for `baseId` — see there for why.
 	 *
 	 * An idle-elapsed thread that still has a run parked on it is never
 	 * rotated: the suspension is keyed on the exact thread id, so rotating
@@ -488,44 +515,36 @@ export class AgentChatBridge {
 	 * user's reply resolve it. `/new` overrides this — abandoning a pending
 	 * suspension is the user's own explicit call there.
 	 */
-	private async bumpSessionGeneration(
+	private async computeGeneration(
 		baseId: string,
 		forceRotate: boolean,
 		idleTimeoutMinutes: number | null,
-	): Promise<{ id: string }> {
+	): Promise<string> {
 		const cache = Container.get(CacheService);
 		const key = this.sessionGenerationCacheKey(baseId);
+		const state = await cache.get<SessionGenerationState>(key);
+		if (!forceRotate && !state && !idleTimeoutMinutes) return baseId;
 
-		// An explicit /new and a same-thread message that just went idle (or
-		// simply the first message after one) can race on this
-		// read-modify-write. Everything has to happen under one lock — including
-		// the "nothing to do" check — or a read that ran before a concurrent
-		// write commits can return stale state and silently undo it.
-		return await Container.get(LockService).withLease(LockNamespace.KNOWN_LOCKS, key, async () => {
-			const state = await cache.get<SessionGenerationState>(key);
-			if (!forceRotate && !state && !idleTimeoutMinutes) return { id: baseId };
+		const now = Date.now();
+		const currentGeneration = state?.generation ?? 0;
+		const idleExpired =
+			!forceRotate &&
+			idleTimeoutMinutes !== null &&
+			state !== undefined &&
+			now - state.lastActivityAt > idleTimeoutMinutes * 60_000;
+		const currentId = currentGeneration === 0 ? baseId : `${baseId}#${currentGeneration}`;
+		const rotate = forceRotate || (idleExpired && !(await this.hasOpenSuspension(currentId)));
+		const generation = rotate ? currentGeneration + 1 : currentGeneration;
 
-			const now = Date.now();
-			const currentGeneration = state?.generation ?? 0;
-			const idleExpired =
-				!forceRotate &&
-				idleTimeoutMinutes !== null &&
-				state !== undefined &&
-				now - state.lastActivityAt > idleTimeoutMinutes * 60_000;
-			const currentId = currentGeneration === 0 ? baseId : `${baseId}#${currentGeneration}`;
-			const rotate = forceRotate || (idleExpired && !(await this.hasOpenSuspension(currentId)));
-			const generation = rotate ? currentGeneration + 1 : currentGeneration;
-
-			// Only persist when it matters: a rotation just happened (so the next
-			// call sees it), or the idle timeout is actively configured (so
-			// lastActivityAt keeps sliding forward for the *next* expiry check).
-			// Otherwise this thread has never been touched by either mechanism, or
-			// the timeout was turned off after an earlier reset — nothing to track.
-			if (rotate || idleTimeoutMinutes !== null) {
-				await cache.set(key, { generation, lastActivityAt: now }, SESSION_GENERATION_TTL_MS);
-			}
-			return { id: generation === 0 ? baseId : `${baseId}#${generation}` };
-		});
+		// Only persist when it matters: a rotation just happened (so the next
+		// call sees it), or the idle timeout is actively configured (so
+		// lastActivityAt keeps sliding forward for the *next* expiry check).
+		// Otherwise this thread has never been touched by either mechanism, or
+		// the timeout was turned off after an earlier reset — nothing to track.
+		if (rotate || idleTimeoutMinutes !== null) {
+			await cache.set(key, { generation, lastActivityAt: now }, SESSION_GENERATION_TTL_MS);
+		}
+		return generation === 0 ? baseId : `${baseId}#${generation}`;
 	}
 
 	private async hasOpenSuspension(threadId: string): Promise<boolean> {

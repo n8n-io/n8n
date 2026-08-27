@@ -105,19 +105,14 @@ export class AgentChatMessageContextBridge {
 	/**
 	 * Clears a task-run binding on `threadId` (see {@link resolveSession}), so
 	 * a fresh session actually starts fresh instead of the next message being
-	 * redirected back into the bound task's thread and its memory.
+	 * redirected back into the bound task's thread and its memory. Deliberately
+	 * does not catch: unlike a lookup, a failed unbind must not be reported as
+	 * a successful reset — the caller needs the rejection to abort before
+	 * confirming anything to the user.
 	 */
 	async unbindSession(threadId: string): Promise<void> {
 		if (!this.messageContextStore) return;
-		try {
-			await this.messageContextStore.unbindSession(threadId);
-		} catch (error) {
-			this.logger.warn('[AgentChatBridge] Failed to unbind session', {
-				agentId: this.agentId,
-				threadId,
-				error: error instanceof Error ? error.message : String(error),
-			});
-		}
+		await this.messageContextStore.unbindSession(threadId);
 	}
 
 	private async getPreviousContext(
