@@ -872,6 +872,19 @@ describe('seed project names', () => {
 		).toBe(false);
 	});
 
+	// n8n's projectNameSchema allows at most 255. Past that the create call 400s
+	// mid-run, and the harness reports a 400 as a licensing/quota problem.
+	it("rejects a name over n8n's own 255-character limit", () => {
+		expect(
+			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: 'F'.repeat(256) }] })
+				.success,
+		).toBe(false);
+		expect(
+			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: 'F'.repeat(255) }] })
+				.success,
+		).toBe(true);
+	});
+
 	it('accepts the trimmed form', () => {
 		expect(
 			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: 'Foobar' }] }).success,

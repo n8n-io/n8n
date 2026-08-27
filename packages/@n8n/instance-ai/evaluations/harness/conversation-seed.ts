@@ -45,6 +45,10 @@ const SeedProjectSchema = z.object({
 	name: z
 		.string()
 		.min(1)
+		// n8n's own `projectNameSchema` cap. Enforced here so an over-long name fails at
+		// case load rather than mid-run, where the create call returns a 400 that
+		// `createTeamProject` reports as a licensing/quota problem.
+		.max(255)
 		.refine((name) => name.trim() === name, { message: 'project name must be trimmed' }),
 });
 
