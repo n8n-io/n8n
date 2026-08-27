@@ -7,6 +7,7 @@ import {
 	WorkflowPublishedVersionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import { v4 as uuid } from 'uuid';
 
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
@@ -137,5 +138,97 @@ describe('scheduled job owner teardown', () => {
 		});
 
 		expect(await jobRepo.findOneBy({ id: job.id })).toBeNull();
+	});
+
+	it('refuses to provision an owner type with no liveness resolver, writing nothing', async () => {
+		await expect(
+			provisioner.provision({
+				owner: { ownerType: 'unregistered-kind', ownerId: 'subject-1', ownerMemberId: null },
+				taskType: TASK_TYPE,
+				payload: {},
+				desired: [
+					{
+						name: 'unregistered-kind:0',
+						schedule: { kind: 'interval', intervalSeconds: 60 },
+						firstRunAt: new Date(),
+					},
+				],
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+			}),
+		).rejects.toThrow('no registered liveness resolver');
+
+		expect(await jobRepo.countBy({ ownerType: 'unregistered-kind' })).toBe(0);
+	});
+
+	it('lifts a quarantine the sweep left behind when the owner provisions again', async () => {
+		// The recovery path for a teardown that never ran. The sweep disabled the jobs
+		// of a workflow it believed gone, then the workflow publishes again. Without
+		// this the trigger stays silently dead until the next sweep.
+		const workflow = await publishWorkflow();
+		const nodeId = uuid();
+		const desired = [
+			{
+				name: `${workflow.id}:${nodeId}:0`,
+				schedule: { kind: 'interval', intervalSeconds: 3600 } as const,
+				firstRunAt: new Date(Date.now() + 3600_000),
+			},
+		];
+		const provisionOnce = async () =>
+			await provisioner.provision({
+				owner: owner.member(workflow.id, nodeId),
+				taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+				payload: { workflowId: workflow.id, nodeId },
+				desired,
+				misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+			});
+
+		const { inserted } = await provisionOnce();
+		const jobId = inserted[0].id;
+		await jobRepo.quarantineByOwnerIds(
+			'workflow',
+			[workflow.id],
+			new Date(),
+			new Date(Date.now() + 60_000),
+		);
+		expect(await jobRepo.findOneByOrFail({ id: jobId })).toMatchObject({
+			enabled: false,
+			nextRunAt: null,
+		});
+
+		// Same schedule as before. Only the quarantine changed, so an unchanged plan
+		// has to be enough to bring it back.
+		await provisionOnce();
+
+		const revived = await jobRepo.findOneByOrFail({ id: jobId });
+		expect(revived).toMatchObject({ enabled: true, orphanedAt: null });
+		expect(revived.nextRunAt).not.toBeNull();
+	});
+
+	it('provisions a workflow owner, whose type the workflow owner module claims', async () => {
+		const workflow = await publishWorkflow();
+		const nodeId = uuid();
+
+		const summary = await provisioner.provision({
+			owner: owner.member(workflow.id, nodeId),
+			taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+			payload: { workflowId: workflow.id, nodeId },
+			desired: [
+				{
+					name: `${workflow.id}:${nodeId}:0`,
+					schedule: { kind: 'interval', intervalSeconds: 3600 },
+					firstRunAt: new Date(Date.now() + 3600_000),
+				},
+			],
+			misfirePolicy: ScheduledJobMisfirePolicy.Skip,
+		});
+
+		expect(summary.inserted).toHaveLength(1);
+		const stored = await jobRepo.findOneByOrFail({ id: summary.inserted[0].id });
+		expect(stored).toMatchObject({
+			ownerType: 'workflow',
+			ownerId: workflow.id,
+			ownerMemberId: nodeId,
+			orphanedAt: null,
+		});
 	});
 });
