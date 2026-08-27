@@ -227,12 +227,16 @@ export class RoutingNode {
 				itemContext[itemIndex].requestData.options.timeout = 300_000;
 			}
 
-			// A declarative node's URL comes from its own routing, not from the user.
+			// A declarative node's URL comes from its own routing, not from the user. Prefer
+			// `baseURL`: some nodes declare none and route absolutely, but a per-operation `url`
+			// can interpolate a node parameter, which the user does control.
+			const { baseURL, url: routedUrl } = itemContext[itemIndex].requestData.options;
 			const allowedDomains = credentials
 				? getCredentialAllowedDomains({
 						node,
 						credentialData: credentials,
 						credentialOwnedSurface: true,
+						nodeEndpointUrl: baseURL || routedUrl,
 					})
 				: undefined;
 			if (allowedDomains) {

