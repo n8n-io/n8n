@@ -613,6 +613,31 @@ describe('SourceControlService', () => {
 			});
 		});
 
+		it('logs violations, check errors and publishing errors for a workflow with no matching status entry, without throwing', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			// No matching SourceControlledFile for 'workflow-missing' in the status result.
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([
+				{
+					id: 'workflow-missing',
+					name: 'workflow-missing.json',
+					publishingError: 'Workflow review is open',
+					publishingErrorDetails: {
+						reason: 'review_pending',
+						workflowReviewRequestId: 'review-1',
+					},
+					policyViolations: [
+						{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+					],
+					checkErrors: [{ checkId: 'test.check', correlationId: 'corr-1' }],
+				},
+			]);
+
+			await expect(
+				sourceControlService.pullWorkfolder(user, { force: true, autoPublish: 'none' }),
+			).resolves.not.toThrow();
+		});
+
 		it('does not filter locally created credentials', async () => {
 			// ARRANGE
 			const user = mock<User>();

@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
-import { ImportService } from '@/services/import.service';
+import { ImportService, type WorkflowImportViolations } from '@/services/import.service';
 
 import { BaseCommand } from '../base-command';
 
@@ -158,20 +158,7 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			{ activeState: flags.activeState },
 		);
 
-		for (const { name, violations: workflowViolations, checkErrors } of violations) {
-			if (workflowViolations.length) {
-				this.logger.warn(
-					`Workflow "${name}" has ${workflowViolations.length} content-import policy violation(s)`,
-					{ violations: workflowViolations },
-				);
-			}
-			if (checkErrors.length) {
-				this.logger.warn(
-					`Workflow "${name}" has ${checkErrors.length} content-import policy check(s) that failed to run`,
-					{ checkErrors },
-				);
-			}
-		}
+		this.logContentImportViolations(violations);
 
 		this.reportSuccess(workflows.length);
 
@@ -233,6 +220,23 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 	private reportSuccess(total: number) {
 		this.logger.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
+	}
+
+	private logContentImportViolations(violations: WorkflowImportViolations[]) {
+		for (const { name, violations: workflowViolations, checkErrors } of violations) {
+			if (workflowViolations.length) {
+				this.logger.warn(
+					`Workflow "${name}" has ${workflowViolations.length} content-import policy violation(s)`,
+					{ violations: workflowViolations },
+				);
+			}
+			if (checkErrors.length) {
+				this.logger.warn(
+					`Workflow "${name}" has ${checkErrors.length} content-import policy check(s) that failed to run`,
+					{ checkErrors },
+				);
+			}
+		}
 	}
 
 	private async getWorkflowOwner(workflowId: WorkflowId) {

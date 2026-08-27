@@ -565,7 +565,9 @@ describe('ImportService', () => {
 
 		test('surfaces a failed check alongside violations, without failing the import', async () => {
 			const checkFailure = { checkId: 'test.check', correlationId: 'corr-1' };
-			const workflowToImport = newWorkflow({ id: uuid(), name: 'Flaky' });
+			// No explicit id: still unassigned when evaluateContentImport runs, exercising the
+			// "(new)" fallback in the failed-check log message.
+			const workflowToImport = newWorkflow({ name: 'Flaky' });
 			mockPolicyEnforcementService.evaluateContentImport.mockResolvedValueOnce({
 				violations: [],
 				checkErrors: [checkFailure],
@@ -580,7 +582,7 @@ describe('ImportService', () => {
 
 			expect(result.violations).toStrictEqual([
 				{
-					workflowId: workflowToImport.id,
+					workflowId: null,
 					name: 'Flaky',
 					violations: [],
 					checkErrors: [checkFailure],
