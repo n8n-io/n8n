@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { LockNamespace, LockAcquisitionTimeoutError, LockService } from '@n8n/backend-common';
-import { removeEmptyBody, type SsrfBridge } from '@n8n/backend-network';
+import { isFormDataInstance, removeEmptyBody, type SsrfBridge } from '@n8n/backend-network';
 import type {
 	ClientOAuth2Options,
 	ClientOAuth2RequestObject,
@@ -15,6 +15,7 @@ import type {
 } from '@n8n/client-oauth2';
 import { AuthError, ClientOAuth2, resolveClientAuthOptions } from '@n8n/client-oauth2';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { AxiosError } from 'axios';
 import { createHmac } from 'crypto';
 import get from 'lodash/get';
@@ -39,6 +40,7 @@ import {
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
+import { Stream } from 'stream';
 
 import type { IResponseError } from '@/interfaces';
 
@@ -332,6 +334,51 @@ function resolveTokenExpiredStatusCode(
 	return credentials?.tokenExpiredStatusCode ?? oAuth2Options?.tokenExpiredStatusCode ?? 401;
 }
 
+function isSingleUseValue(value: unknown): boolean {
+	return isFormDataInstance(value) || value instanceof Stream;
+}
+
+function hasMultipartContentType(headers: unknown): boolean {
+	if (!isRecord(headers)) return false;
+	return Object.entries(headers).some(
+		([name, value]) =>
+			name.toLowerCase() === 'content-type' &&
+			typeof value === 'string' &&
+			value.includes('multipart/form-data'),
+	);
+}
+
+// Mirrors createFormDataObject's traversal: fields may be arrays and {value, options} tuples
+function descriptorContainsSingleUseValue(descriptor: unknown): boolean {
+	if (!isRecord(descriptor)) return false;
+	return Object.values(descriptor).some((field) => {
+		const items = Array.isArray(field) ? field : [field];
+		return items.some(
+			(item) => isSingleUseValue(item) || (isRecord(item) && isSingleUseValue(item.value)),
+		);
+	});
+}
+
+/**
+ * Whether the request body is drained by sending it once: form-data instances
+ * and stream values cannot be resent, so replaying them makes the retried
+ * request advertise a body it never delivers and hang until timeout.
+ * A plain `formData` descriptor is rebuilt per send and stays replayable
+ * unless one of its field values is itself a stream.
+ */
+function hasSingleUseBody(requestOptions: {
+	body?: unknown;
+	formData?: unknown;
+	headers?: unknown;
+}): boolean {
+	const { body, formData, headers } = requestOptions;
+	if (isSingleUseValue(body) || isSingleUseValue(formData)) return true;
+	if (descriptorContainsSingleUseValue(formData)) return true;
+	// Under an explicit multipart content-type the legacy transport also merges
+	// `body` fields into the form payload, so their streams are drained too
+	return hasMultipartContentType(headers) && descriptorContainsSingleUseValue(body);
+}
+
 /** @deprecated make these requests using httpRequestWithAuthentication */
 export async function requestOAuth2(
 	this: IAllExecuteFunctions,
@@ -447,8 +494,18 @@ export async function requestOAuth2(
 
 	const retryWithNewToken = async (
 		makeRequest: (opts: ClientOAuth2RequestObject) => Promise<any>,
+		// Not `() => never`: the legacy caller resolves with the original response
+		// under `simple: false` instead of throwing
+		surfaceOriginalError: () => unknown,
 	) => {
+		// Refresh even when the request cannot be resent, so the next run starts with a valid token
 		const newToken = await refreshOrFetchToken(refreshCtx);
+		if (hasSingleUseBody(requestOptions)) {
+			this.logger.warn(
+				`OAuth2 request for credential type "${credentialsType}" was not retried after the token refresh: its multipart/stream body was consumed by the first attempt and cannot be sent again. Surfacing the original response instead.`,
+			);
+			return surfaceOriginalError();
+		}
 		const refreshedRequestOptions = newToken.sign(requestOptions as ClientOAuth2RequestObject);
 		refreshedRequestOptions.headers = refreshedRequestOptions.headers ?? {};
 		if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
@@ -462,7 +519,12 @@ export async function requestOAuth2(
 	if (isN8nRequest) {
 		return await this.helpers.httpRequest(newRequestOptions).catch(async (error: AxiosError) => {
 			if (!shouldSkipTokenRefresh && error.response?.status === tokenExpiredStatusCode) {
-				return await retryWithNewToken(async (opts) => await this.helpers.httpRequest(opts));
+				return await retryWithNewToken(
+					async (opts) => await this.helpers.httpRequest(opts),
+					() => {
+						throw error;
+					},
+				);
 			}
 			throw error;
 		});
@@ -486,6 +548,18 @@ export async function requestOAuth2(
 			if (!shouldSkipTokenRefresh && error.statusCode === tokenExpiredStatusCode) {
 				return await retryWithNewToken(
 					async (opts) => await this.helpers.request(opts as IRequestOptions),
+					() => {
+						// Under simple:false the "error" is the full 401 response thrown above;
+						// hand it back resolved, matching what the caller gets without a retry
+						if (
+							'simple' in requestOptions &&
+							requestOptions.simple === false &&
+							requestOptions.resolveWithFullResponse === true
+						) {
+							return error;
+						}
+						throw error;
+					},
 				);
 			}
 			throw error;
