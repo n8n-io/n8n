@@ -128,4 +128,18 @@ jobs:
           # App token: reading org team membership is beyond GITHUB_TOKEN.
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PULL_REQUEST_NUMBER: ${{ inputs.pr_number || '' }}
-        run: node .github/owners/required-reviews.mjs
+          STATUS_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+        run: |
+          # Bootstrap: the checkout is the trusted base branch. Until the
+          # enforcement script exists there, there is no policy to enforce.
+          if [ ! -f .github/owners/required-reviews.mjs ]; then
+            echo "No enforcement script on the base branch; nothing to enforce."
+            if [ -n "$STATUS_SHA" ]; then
+              gh api "repos/${GITHUB_REPOSITORY}/statuses/${STATUS_SHA}" \
+                -f state=success \
+                -f context='Required Reviews' \
+                -f description='Owners enforcement is not on the base branch yet'
+            fi
+            exit 0
+          fi
+          node .github/owners/required-reviews.mjs
