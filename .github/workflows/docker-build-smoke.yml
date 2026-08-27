@@ -13,7 +13,7 @@ env:
   # Node. dockerize-n8n.mjs reads this env for the image builds. Keep in sync with
   # NODE_VERSION in docker-build-push.yml, which is what the published images use.
   NODE_VERSION: '26.7.0'
-  # Also build the distroless runners image (what cloud deploys) and exec-check
+  # Also build the distroless runners image and exec-check
   # both runners images' interpreters, so a broken runtime assembly (e.g. a
   # missing shared library after a Node bump) fails at PR time. The smoke
   # script derives the images to check from this same flag.
