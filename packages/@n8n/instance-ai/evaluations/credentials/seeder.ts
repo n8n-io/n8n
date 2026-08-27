@@ -138,7 +138,12 @@ export async function createOneCredential(
 	credentialType: string,
 	name: string | undefined,
 	usedNames: Map<string, number>,
-	options?: { logger?: EvalLogger; setupHint?: InstanceAiCredentialSetupHint },
+	options?: {
+		logger?: EvalLogger;
+		setupHint?: InstanceAiCredentialSetupHint;
+		/** Seed with no field values, modelling a credential the user saved empty. */
+		blank?: boolean;
+	},
 ): Promise<CreatedCredential> {
 	if (credentialType === 'httpTemplatedCustomAuth') {
 		return await createTemplatedCustomAuthCredential(client, name, usedNames, options);
@@ -158,12 +163,14 @@ export async function createOneCredential(
 
 	const envToken = template.envVar ? process.env[template.envVar] : undefined;
 	const token = envToken ?? PLACEHOLDER_TOKEN;
-	options?.logger?.verbose(`  Creating credential ${resolvedName} (${credentialType})`);
+	options?.logger?.verbose(
+		`  Creating credential ${resolvedName} (${credentialType})${options.blank ? ' [blank]' : ''}`,
+	);
 	// No retry: a credential POST isn't idempotent, so retrying after a lost response would orphan a duplicate we never capture for cleanup.
 	const { id } = await client.createCredential(
 		resolvedName,
 		credentialType,
-		template.buildData(token),
+		options?.blank ? {} : template.buildData(token),
 	);
 	return { id, name: resolvedName, type: credentialType };
 }
@@ -253,7 +260,10 @@ export async function createDeclaredCredentials(
 	const nameCounts = options?.nameCounts ?? new Map<string, number>();
 
 	for (const decl of declared) {
-		const cred = await createOneCredential(client, decl.type, decl.name, nameCounts, { logger });
+		const cred = await createOneCredential(client, decl.type, decl.name, nameCounts, {
+			logger,
+			...(decl.blank ? { blank: true } : {}),
+		});
 		options?.onCreated?.(cred.id);
 		created.push(cred);
 	}
