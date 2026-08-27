@@ -134,7 +134,7 @@ const projectHandlers: ProjectHandlers = {
 		async (req, res) => {
 			const { offset = 0, limit = 100 } = req.query;
 
-			const [projects, count] = await Container.get(ProjectService).getProjectsAndCount({
+			const { projects, count } = await Container.get(ProjectService).getProjectsAndCount({
 				offset,
 				limit,
 			});
@@ -166,7 +166,7 @@ const projectHandlers: ProjectHandlers = {
 				throw new NotFoundError(`Could not find project with ID "${projectId}"`);
 			}
 
-			const [relations, count] = await projectService.getProjectMembersAndCount(projectId, {
+			const { members, count } = await projectService.getProjectMembersAndCount(projectId, {
 				offset,
 				limit,
 			});
@@ -179,7 +179,7 @@ const projectHandlers: ProjectHandlers = {
 				'createdAt',
 				'updatedAt',
 			] as const;
-			const data = relations.map((relation) => ({
+			const data = members.map((relation) => ({
 				...pick(relation.user, memberFields),
 				role: relation.role?.slug ?? null,
 			}));

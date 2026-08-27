@@ -73,7 +73,7 @@ describe('ProjectService', () => {
 			const result = await projectService.getAccessibleProjectsAndCount(adminUser, options);
 
 			expect(projectRepository.findAllProjectsAndCount).toHaveBeenCalledWith(options);
-			expect(result).toEqual(expected);
+			expect(result).toEqual({ projects: expected[0], count: expected[1] });
 		});
 
 		it('should call getAccessibleProjectsAndCount for non-admin users', async () => {
@@ -91,7 +91,7 @@ describe('ProjectService', () => {
 				'member-user',
 				options,
 			);
-			expect(result).toEqual(expected);
+			expect(result).toEqual({ projects: expected[0], count: expected[1] });
 		});
 	});
 

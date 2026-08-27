@@ -51,7 +51,7 @@ export class ProjectController {
 		res: Response,
 		@Query payload: ListProjectsQueryDto,
 	) {
-		const [data, count] = await this.projectsService.getAccessibleProjectsAndCount(
+		const { projects, count } = await this.projectsService.getAccessibleProjectsAndCount(
 			req.user,
 			payload,
 		);
@@ -60,10 +60,10 @@ export class ProjectController {
 		// with role and scopes enriched per project.
 		// Otherwise return a bare array for backward compatibility with existing callers.
 		if (payload.take !== undefined || payload.skip !== undefined) {
-			const enriched = await this.projectsService.addUserScopes(req.user, data);
+			const enriched = await this.projectsService.addUserScopes(req.user, projects);
 			return res.json({ count, data: enriched });
 		}
-		return data;
+		return projects;
 	}
 
 	@Get('/count')
@@ -83,11 +83,11 @@ export class ProjectController {
 		res: Response,
 		@Query payload: ListProjectsQueryDto,
 	) {
-		const [data, count] = await this.projectsService.getShareableProjectsAndCount(
+		const { projects, count } = await this.projectsService.getShareableProjectsAndCount(
 			req.user,
 			payload,
 		);
-		const enriched = await this.projectsService.addUserScopes(req.user, data);
+		const enriched = await this.projectsService.addUserScopes(req.user, projects);
 		return res.json({ count, data: enriched });
 	}
 

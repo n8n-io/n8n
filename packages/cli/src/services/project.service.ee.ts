@@ -371,11 +371,11 @@ export class ProjectService {
 	async getAccessibleProjectsAndCount(
 		user: User,
 		options: ProjectListOptions,
-	): Promise<[Project[], number]> {
-		if (hasGlobalScope(user, 'project:read')) {
-			return await this.projectRepository.findAllProjectsAndCount(options);
-		}
-		return await this.projectRepository.getAccessibleProjectsAndCount(user.id, options);
+	): Promise<{ projects: Project[]; count: number }> {
+		const [projects, count] = hasGlobalScope(user, 'project:read')
+			? await this.projectRepository.findAllProjectsAndCount(options)
+			: await this.projectRepository.getAccessibleProjectsAndCount(user.id, options);
+		return { projects, count };
 	}
 
 	// Returns the projects a caller can pick as share targets, including peer
@@ -385,11 +385,11 @@ export class ProjectService {
 	async getShareableProjectsAndCount(
 		user: User,
 		options: ProjectListOptions,
-	): Promise<[Project[], number]> {
-		if (hasGlobalScope(user, 'project:read')) {
-			return await this.projectRepository.findAllProjectsAndCount(options);
-		}
-		return await this.projectRepository.getShareableProjectsAndCount(user.id, options);
+	): Promise<{ projects: Project[]; count: number }> {
+		const [projects, count] = hasGlobalScope(user, 'project:read')
+			? await this.projectRepository.findAllProjectsAndCount(options)
+			: await this.projectRepository.getShareableProjectsAndCount(user.id, options);
+		return { projects, count };
 	}
 
 	async getProjectsAndCount({
@@ -398,8 +398,12 @@ export class ProjectService {
 	}: {
 		offset: number;
 		limit: number;
-	}): Promise<[Project[], number]> {
-		return await this.projectRepository.findAndCount({ skip: offset, take: limit });
+	}): Promise<{ projects: Project[]; count: number }> {
+		const [projects, count] = await this.projectRepository.findAndCount({
+			skip: offset,
+			take: limit,
+		});
+		return { projects, count };
 	}
 
 	async getPersonalProjectOwners(projectIds: string[]): Promise<ProjectRelation[]> {
@@ -927,13 +931,14 @@ export class ProjectService {
 	async getProjectMembersAndCount(
 		projectId: string,
 		{ offset, limit }: { offset: number; limit: number },
-	): Promise<[ProjectRelation[], number]> {
-		return await this.projectRelationRepository.findAndCount({
+	): Promise<{ members: ProjectRelation[]; count: number }> {
+		const [members, count] = await this.projectRelationRepository.findAndCount({
 			where: { projectId },
 			relations: { user: true, role: true },
 			skip: offset,
 			take: limit,
 		});
+		return { members, count };
 	}
 
 	async getProjectScopesForUser(user: User, projectId: string): Promise<Scope[]> {

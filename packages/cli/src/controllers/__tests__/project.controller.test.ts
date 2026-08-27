@@ -46,7 +46,10 @@ describe('ProjectController', () => {
 				{ id: 'p1', name: 'Project 1' },
 				{ id: 'p2', name: 'Project 2' },
 			];
-			(projectsService.getAccessibleProjectsAndCount as Mock).mockResolvedValue([projects, 2]);
+			(projectsService.getAccessibleProjectsAndCount as Mock).mockResolvedValue({
+				projects,
+				count: 2,
+			});
 			(projectsService.addUserScopes as Mock).mockResolvedValue(projects);
 
 			const res = makeRes();
@@ -61,7 +64,10 @@ describe('ProjectController', () => {
 
 		it('returns bare array when no pagination params given', async () => {
 			const projects = [{ id: 'p1', name: 'Project 1' }];
-			(projectsService.getAccessibleProjectsAndCount as Mock).mockResolvedValue([projects, 1]);
+			(projectsService.getAccessibleProjectsAndCount as Mock).mockResolvedValue({
+				projects,
+				count: 1,
+			});
 
 			const res = makeRes();
 			// Simulate DTO-parsed output: when no query params are provided,
@@ -88,7 +94,10 @@ describe('ProjectController', () => {
 				role: 'global:member',
 				scopes: ['user:list'],
 			}));
-			(projectsService.getShareableProjectsAndCount as Mock).mockResolvedValue([projects, 2]);
+			(projectsService.getShareableProjectsAndCount as Mock).mockResolvedValue({
+				projects,
+				count: 2,
+			});
 			(projectsService.addUserScopes as Mock).mockResolvedValue(enriched);
 
 			const res = makeRes();
@@ -102,7 +111,10 @@ describe('ProjectController', () => {
 		});
 
 		it('always returns the { count, data } envelope (no bare-array path)', async () => {
-			(projectsService.getShareableProjectsAndCount as Mock).mockResolvedValue([[], 0]);
+			(projectsService.getShareableProjectsAndCount as Mock).mockResolvedValue({
+				projects: [],
+				count: 0,
+			});
 			(projectsService.addUserScopes as Mock).mockResolvedValue([]);
 
 			const res = makeRes();
