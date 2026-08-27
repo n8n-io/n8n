@@ -25,6 +25,9 @@ function formatCompactPem(pem: string, isPublic: boolean): string | undefined {
  * by collapsing whitespace and wrapping the body at 64 chars. Multi-block PEM
  * chains are returned unchanged.
  *
+ * Input that is not a single-line PEM block is returned unchanged, so a plain
+ * secret (e.g. a key passphrase) passed here by mistake is not corrupted.
+ *
  * @param pem - The PEM-encoded block to format.
  * @param isPublic - When true, match `PUBLIC KEY` labels instead of the default `PRIVATE KEY` / `CERTIFICATE`.
  * @returns The formatted PEM block.
@@ -34,7 +37,9 @@ export function formatPemBlock(pem: string, isPublic = false): string {
 	if (isPublic) {
 		regex = /(PUBLIC KEY)/;
 	}
-	if (!pem || /\n/.test(pem)) {
+	// The fallback formatter below would collapse a non-PEM value's whitespace
+	// into newlines, corrupting plain secrets such as key passphrases.
+	if (!pem || /\n/.test(pem) || !pem.includes('-----BEGIN ')) {
 		return pem;
 	}
 	const compactPem = formatCompactPem(pem, isPublic);
