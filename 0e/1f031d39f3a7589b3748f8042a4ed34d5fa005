@@ -1,0 +1,36 @@
+packages/cli/src/controllers/__tests__/project.controller.test.ts
+  s_cc728b598484e1::t_43e52b986df76a 97-100
+  s_cc728b598484e1::t_c9c61f17905607 67-70
+  s_cc728b598484e1::t_9225d2957eb749 114-117
+  s_cc728b598484e1::t_0cb538fc6cbd3e 49-52
+packages/cli/src/services/project.service.ee.ts
+  s_cc728b598484e1::t_a755242044b3b5 374-378
+  s_cc728b598484e1::t_fb7a3a72933831 388-392
+  s_cc728b598484e1::t_7ac3d776a00fb5 934-935,941
+  s_cc728b598484e1::t_3be5e1ebaa2939 401-406
+packages/cli/src/controllers/project.controller.ts
+  s_cc728b598484e1::t_da2a5aced07467 54,63,66
+  s_cc728b598484e1::t_64c483db131b1f 86,90
+packages/cli/src/public-api/v1/handlers/projects/projects.handler.ts
+  s_cc728b598484e1::t_d88ac952cf3cf4 169,182
+  s_cc728b598484e1::t_6302e8e74f1934 137
+packages/cli/src/services/__tests__/project.service.ee.test.ts
+  s_cc728b598484e1::t_ece5fd42a8b0bf 76
+  s_cc728b598484e1::t_c46b9f0afee320 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0e1f031d39f3a7589b3748f8042a4ed34d5fa005",
+  "prompts": {},
+  "sessions": {
+    "s_cc728b598484e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e67a9c6-e181-4e1f-895c-e5e45bed4238",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}
