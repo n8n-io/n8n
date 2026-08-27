@@ -1,0 +1,23 @@
+packages/testing/playwright/scripts/run-local-isolated.mjs
+  s_e3871487385c65::t_b7082d7cbed0ba 176-187
+  s_e3871487385c65::t_5ecb70c2860a18 120-121
+packages/testing/playwright/tests/e2e/instance-ai/speed-bench.spec.ts
+  s_e3871487385c65::t_82269a82878cba 1-101
+  s_e3871487385c65::t_8bea966c8593c7 102-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "274b4ecd14a394179115ea8a7eaee8e135b61efa",
+  "prompts": {},
+  "sessions": {
+    "s_e3871487385c65": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c17d9d5-b7da-44ad-9918-075b80e0f086",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
