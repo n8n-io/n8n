@@ -22,6 +22,27 @@ when the conversation already targets an Agent and the user is continuing that
 build. Do not rerun intent recognition for routine Agent edits or extensions.
 Use `build-agent` only for Agent artifacts.
 
+When the conversation opens from an existing Agent in the editor and the user
+asks to change its configuration or capabilities, that is an agent-anchored
+request — target that Agent and call `build-agent`. Do not reroute to
+`workflow-builder`, and do not spawn a workflow to satisfy a capability change
+on the Agent.
+
+## Supported channels & unsupported requests
+
+`list_agent_capabilities` returns every chat channel n8n Agents support, each
+with `capabilities`, `useIntegrationWhen`, and `useNodeToolWhen`. It is the
+authoritative source the orchestrator can read before building; a channel
+absent from its result is unsupported for agents.
+
+When the user asks for a channel that is not supported (e.g. WhatsApp,
+Microsoft Teams), do not forward it to the builder as a channel to configure
+and do not improvise a workflow substitute. Explain the channel is unsupported
+for agents, offer the supported alternatives, and ask which to use — or whether
+the user wants a workflow path after the limitation is stated. Only forward a
+channel to `build-agent` once it is a supported type or the user has chosen an
+alternative.
+
 ## Faithful handoff
 
 Treat `message` as a faithful handoff of the user's request, not an Agent build

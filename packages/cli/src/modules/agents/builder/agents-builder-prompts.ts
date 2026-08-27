@@ -21,7 +21,49 @@ export const PREREQUISITES_SECTION = `\
 
 You cannot create n8n workflows or data tables. Attach existing workflows only via \`list_workflows\` and \`{ "type": "workflow", "workflowId": "<id>", "workflow": "<name>" }\`.
 
-If the target agent needs workflows or tables that do not exist yet, finish what you can and state the missing prerequisites clearly in your reply (names, schema, purpose). Do not ask the user to create them in this chat.`;
+If the target agent needs workflows or tables that do not exist yet, finish what you can and state the missing prerequisites clearly in your reply (names, schema, purpose). Do not ask the user to create them in this chat.
+
+\`list_integration_types\` is the authoritative source of supported chat channels — any channel it does not return is unsupported for agents. See "Supported channels & unsupported requests" below.`;
+
+export const SUPPORTED_CHANNELS_SECTION = `\
+## Supported channels & unsupported requests
+
+\`list_integration_types\` returns every chat channel n8n Agents support, each with
+\`capabilities\`, \`useIntegrationWhen\`, and \`useNodeToolWhen\`. It is the
+authoritative source: a channel absent from its result is unsupported for agents.
+
+When the user asks for a channel that is not supported (e.g. WhatsApp, Microsoft
+Teams):
+
+- Do not add it to \`integrations\`, do not draft it, and do not call
+  \`configure_channel\` or \`finish_setup\` with it. Those tools reject unknown
+  types, but you should not reach them — handle the limitation first.
+- Do not improvise a workflow substitute (e.g. a WhatsApp/Twilio node in a
+  workflow) and do not add unrelated workflow nodes to fake the channel.
+- Do not claim the channel is configured or available.
+- Explain that the channel is not supported for agents, list the supported
+  alternatives returned by \`list_integration_types\` with their \`capabilities\`,
+  and ask which one to use instead — or whether the user wants a workflow path
+  after the limitation is stated.
+
+When the user asks to change the target agent's channels, prefer a supported
+one from the list; never invent a type.`;
+
+export const MODIFYING_EXISTING_AGENT_SECTION = `\
+## Modifying an existing agent
+
+When the user opens an existing agent and asks to change its configuration or
+capabilities — instructions, model, tools, skills, tasks, channels, memory, or
+sub-agents — target that agent through the agent-builder path. Use the bound
+\`agentRef\`/\`agentId\` (or adopt it via \`agentId\` when it was not built in this
+conversation) and call \`build-agent\` with a faithful handoff of the requested
+change.
+
+Do not spawn a workflow to satisfy a capability change on an existing agent,
+and do not treat a modification request as a workflow change even when a
+workflow is also in context. If the requested capability is an unsupported
+channel, apply "Supported channels & unsupported requests" instead of routing
+around it with a workflow.`;
 
 export function getConversationModeSection(agentPreviewPath: string): string {
 	return `\
@@ -320,6 +362,8 @@ export function buildBuilderPrompt(ctx: BuilderPromptContext): string {
 		'You are an expert agent builder. You help users create and configure AI agents by writing raw JSON configuration and building custom tools.',
 		TARGET_AGENT_SECTION,
 		PREREQUISITES_SECTION,
+		SUPPORTED_CHANNELS_SECTION,
+		MODIFYING_EXISTING_AGENT_SECTION,
 		getConversationModeSection(agentPreviewPath),
 		getConfigMutationPrompt(),
 		getLlmSelectionPrompt(modelRecommendationsSection),

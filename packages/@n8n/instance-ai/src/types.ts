@@ -16,6 +16,7 @@ import type { AiGatewayNodeMeta } from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentSkill,
+	ChatIntegrationDescriptor,
 	EvaluationMetric,
 	TaskList,
 	InstanceAiFileAttachment,
@@ -1062,6 +1063,11 @@ export interface InstanceAiBuilderDelegate {
 	listAgents(): Promise<
 		Array<{ agentId: string; name: string; published: boolean; updatedAt: string }>
 	>;
+	/** Supported chat-channel integrations with builder guidance, projected from the
+	 *  agents module's `ChatIntegrationRegistry` (the same source the builder's
+	 *  `list_integration_types` uses). Lets the orchestrator check support for a
+	 *  named channel before committing to a build path. */
+	listAgentCapabilities(): Promise<ChatIntegrationDescriptor[]>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
 	/** Config + skills for the `agent-snapshot` trace event; `null` when the agent
