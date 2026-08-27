@@ -110,6 +110,8 @@ beforeAll(async () => {
 		workflowPublicationNotifier,
 		mock(), // scheduleTriggerJobRegistrar
 		mock(), // pollTriggerJobRegistrar
+		mock(), // workflowScheduledJobOwner
+		mock(), // durableJobProvisioner
 		workflowPublishedVersionRepository,
 		Container.get(WorkflowHookContextService), // workflowHookContextService
 		workflowPublishGuard,
