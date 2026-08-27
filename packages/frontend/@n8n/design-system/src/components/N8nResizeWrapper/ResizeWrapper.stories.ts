@@ -96,3 +96,17 @@ Resize.args = {
 		'bottomRight',
 	],
 };
+
+export const LineIndicator = Template.bind({});
+LineIndicator.args = {
+	...Resize.args,
+	handleIndicator: 'line',
+	supportedDirections: ['right', 'top', 'bottom', 'left'],
+};
+
+export const GripIndicator = Template.bind({});
+GripIndicator.args = {
+	...Resize.args,
+	handleIndicator: 'grip',
+	supportedDirections: ['right', 'top', 'bottom', 'left'],
+};
