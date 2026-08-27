@@ -90,18 +90,6 @@ export class McpRegistryClientTool implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Endpoint URL',
-				name: 'endpointUrl',
-				type: 'hidden',
-				default: '',
-			},
-			{
-				displayName: 'Server Transport',
-				name: 'serverTransport',
-				type: 'hidden',
-				default: 'httpStreamable',
-			},
-			{
 				displayName: 'Tools to Include',
 				name: 'include',
 				type: 'options',

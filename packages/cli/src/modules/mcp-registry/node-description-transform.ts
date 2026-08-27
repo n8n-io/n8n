@@ -8,11 +8,9 @@ import type {
 } from 'n8n-workflow';
 
 import {
+	getMcpRegistryCredentialTypeName,
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
-} from './mcp-registry.constants';
-import {
-	getMcpRegistryCredentialTypeName,
 	resolveMcpRegistryConnection,
 } from './mcp-registry-connection';
 import {
@@ -27,7 +25,7 @@ export {
 	MCP_BASE_OAUTH2_CREDENTIAL_NAME,
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
-} from './mcp-registry.constants';
+} from './mcp-registry-connection';
 export { getMcpRegistryCredentialTypeName } from './mcp-registry-connection';
 
 /**
