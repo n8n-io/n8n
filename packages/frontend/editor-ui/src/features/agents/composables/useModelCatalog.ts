@@ -33,6 +33,7 @@ const verifiedDefaultModelsByKey = ref<Record<string, string | null>>({});
 // "couldn't load" rather than "no models available".
 const unavailableByKey = ref<Record<string, boolean>>({});
 const verifiedFetchesInFlight = new Set<string>();
+const verificationStatusByKey = ref<Record<string, 'loading' | 'resolved' | 'failed'>>({});
 
 function createEmptyModelsResponse(): AgentModelsByProvider {
 	const response: AgentModelsByProvider = {};
@@ -114,6 +115,7 @@ export function useModelCatalog() {
 		if (key in verifiedModelsByKey.value || verifiedFetchesInFlight.has(key)) return;
 
 		verifiedFetchesInFlight.add(key);
+		verificationStatusByKey.value = { ...verificationStatusByKey.value, [key]: 'loading' };
 		getProviderModels(rootStore.restApiContext, projectId, provider, providerCredentialId)
 			.then((result) => {
 				verifiedModelsByKey.value = {
@@ -125,13 +127,29 @@ export function useModelCatalog() {
 					[key]: result.defaultModelId ?? null,
 				};
 				unavailableByKey.value = { ...unavailableByKey.value, [key]: result.unavailable === true };
+				verificationStatusByKey.value = {
+					...verificationStatusByKey.value,
+					[key]: 'resolved',
+				};
 			})
 			.catch(() => {
 				verifiedModelsByKey.value = { ...verifiedModelsByKey.value, [key]: null };
+				verificationStatusByKey.value = {
+					...verificationStatusByKey.value,
+					[key]: 'failed',
+				};
 			})
 			.finally(() => {
 				verifiedFetchesInFlight.delete(key);
 			});
+	}
+
+	function getVerificationStatus(
+		projectId: string,
+		provider: AgentModelProvider,
+		credentialId: string,
+	): 'idle' | 'loading' | 'resolved' | 'failed' {
+		return verificationStatusByKey.value[`${projectId}|${provider}|${credentialId}`] ?? 'idle';
 	}
 
 	function getModelsForPicker(
@@ -194,6 +212,7 @@ export function useModelCatalog() {
 		catalog,
 		isLoading,
 		ensureLoaded,
+		getVerificationStatus,
 		getModelsForProvider,
 		getModelsForPicker,
 		getDefaultModelForPicker,

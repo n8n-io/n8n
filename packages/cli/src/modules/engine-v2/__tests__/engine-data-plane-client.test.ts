@@ -98,7 +98,7 @@ describe('EngineDataPlaneClient', () => {
 		});
 
 		it('opts out of SSRF protection for the n8n-controlled engine host', () => {
-			expect(clientOptions?.ssrf).toBe('disabled');
+			expect(clientOptions?.useDefaultSsrfPolicy).toBe('unsafe');
 		});
 
 		it('sends an identity token the engine accepts, proving the caller is the instance id', () => {

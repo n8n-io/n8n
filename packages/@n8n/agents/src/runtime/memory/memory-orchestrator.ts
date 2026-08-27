@@ -14,7 +14,7 @@ import { runObservationLogReflector } from './observation-log-reflector';
 import { renderObservationLog } from './observation-log-renderer';
 import { hasObservationLogStore, hasObservationLogTaskLockStore } from './observation-log-store';
 import { ScopedMemoryTaskRunner } from './scoped-memory-task-runner';
-import { stripOrphanedToolMessages } from './strip-orphaned-tool-messages';
+import { settleOrphanedToolMessages } from './strip-orphaned-tool-messages';
 import type {
 	AgentExecutionCounter,
 	BuiltMemory,
@@ -155,7 +155,9 @@ export class MemoryOrchestrator {
 			const memMessages = await this.loadHistoryMessages(options.persistence, telemetry);
 
 			if (memMessages.length > 0) {
-				list.addHistory(stripOrphanedToolMessages(memMessages));
+				// Settle (not strip) so an abandoned suspension stays visible as an
+				// explicit "never completed" record instead of vanishing (INS-1223).
+				list.addHistory(settleOrphanedToolMessages(memMessages));
 			}
 		}
 
@@ -262,8 +264,8 @@ export class MemoryOrchestrator {
 	 * / title jobs that `saveToMemory` schedules; those stay at end-of-turn. Idempotent
 	 * with the end-of-turn save: ids are stable across serialize/deserialize, so both
 	 * writes target the same rows and TypeORM upserts (pending tool-call → resolved in
-	 * place). A still-pending tool-call left by an abort is stripped on the next load
-	 * (`stripOrphanedToolMessages`), so persisting an incomplete turn can't malform history.
+	 * place). A still-pending tool-call left by an abort is settled on the next load
+	 * (`settleOrphanedToolMessages`), so persisting an incomplete turn can't malform history.
 	 */
 	async persistTurnDelta(
 		list: AgentMessageList,
