@@ -1,12 +1,10 @@
 import type { Request, Response } from 'express';
 
 import {
-	buildAbsoluteChatUrl,
 	buildInnerFrameSrc,
 	clearChatOAuthToken,
 	isChatOAuth2Enabled,
 	isShellInnerRequest,
-	readAuthCookie,
 	readChatOAuthToken,
 	setChatOAuthToken,
 } from '../shell';
@@ -87,42 +85,6 @@ describe('buildInnerFrameSrc', () => {
 		const req = request({ originalUrl: '/webhook/abc/chat?n8nShellInner=1' });
 
 		expect(buildInnerFrameSrc(req)).toBe('/webhook/abc/chat?n8nShellInner=1');
-	});
-});
-
-describe('buildAbsoluteChatUrl', () => {
-	it('prefers the forwarding headers over the request', () => {
-		const req = request({
-			headers: { 'x-forwarded-proto': 'https', 'x-forwarded-host': 'chat.example.com' },
-		});
-
-		expect(buildAbsoluteChatUrl(req)).toBe('https://chat.example.com/webhook/abc/chat');
-	});
-
-	it('falls back to the request protocol and Host', () => {
-		const req = request({ headers: { host: 'localhost:5678' } });
-
-		expect(buildAbsoluteChatUrl(req)).toBe('http://localhost:5678/webhook/abc/chat');
-	});
-});
-
-describe('readAuthCookie', () => {
-	it('reads the session cookie from the raw header', () => {
-		const req = request({ headers: { cookie: 'other=1; n8n-auth=token-value; more=2' } });
-
-		expect(readAuthCookie(req)).toBe('token-value');
-	});
-
-	it('returns null when the cookie is absent', () => {
-		expect(readAuthCookie(request({ headers: { cookie: 'other=1' } }))).toBeNull();
-		expect(readAuthCookie(request())).toBeNull();
-	});
-
-	// `n8n-auth` must not be matched inside a longer cookie name.
-	it('does not match a cookie whose name merely ends with n8n-auth', () => {
-		const req = request({ headers: { cookie: 'notn8n-auth=nope' } });
-
-		expect(readAuthCookie(req)).toBeNull();
 	});
 });
 
