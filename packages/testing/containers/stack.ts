@@ -9,10 +9,10 @@ import {
 } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import type { LoadBalancerResult } from './services/load-balancer';
-import type { TaskRunnerResult } from './services/task-runner';
 import type { N8NStartupDiagnostics } from './services/n8n';
 import { createN8NInstances, N8NStartupError } from './services/n8n';
 import { helperFactories, services } from './services/registry';
+import type { TaskRunnerResult } from './services/task-runner';
 import type {
 	FileToMount,
 	HelperContext,
