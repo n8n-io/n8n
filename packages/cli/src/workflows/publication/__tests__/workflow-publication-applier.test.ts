@@ -123,7 +123,7 @@ describe('WorkflowPublicationApplier', () => {
 		workflowTriggerActivator.getUnregisteredNonWebhookTriggerNodeIds.mockReturnValue(new Set());
 		workflowTriggerActivator.getNodesWithUnregisteredWebhooks.mockResolvedValue(new Set());
 		workflowTriggerActivator.activate.mockResolvedValue({ activated: [], failures: [] });
-		workflowTriggerActivator.deactivate.mockResolvedValue(undefined);
+		workflowTriggerActivator.deactivate.mockResolvedValue({ externalTeardownFailures: [] });
 		workflowTriggerActivator.updateTriggerCount.mockResolvedValue(undefined);
 		// The test nodes are scheduleTrigger nodes, so default every node to 'in-memory'.
 		workflowTriggerActivator.getTriggerKinds.mockImplementation(
@@ -206,6 +206,28 @@ describe('WorkflowPublicationApplier', () => {
 				'wf-1',
 			);
 			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		});
+
+		test('completes as unpublished carrying external teardown failures, still removing the mapping', async () => {
+			// Local routing already stopped inside `deactivate` (rows deleted before
+			// any external call), so an abandoned external deregistration must not
+			// keep the mapping alive — that would make the reconciler re-enqueue the
+			// unpublish forever and block deleting the workflow.
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(
+				makePublishedVersion(oldVersion),
+			);
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([triggerNode('a')]);
+			const failure = { nodeName: 'a', error: new Error('remote unreachable') };
+			workflowTriggerActivator.deactivate.mockResolvedValue({
+				externalTeardownFailures: [failure],
+			});
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({ type: 'unpublished', teardownFailures: [failure] });
+			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
+				'wf-1',
+			);
 		});
 
 		test('propagates a teardown failure and leaves the mapping in place', async () => {
@@ -531,6 +553,7 @@ describe('WorkflowPublicationApplier', () => {
 		const callOrder: string[] = [];
 		workflowTriggerActivator.deactivate.mockImplementation(async () => {
 			callOrder.push('remove');
+			return { externalTeardownFailures: [] };
 		});
 		workflowPublishedVersionRepository.setPublishedVersion.mockImplementation(async () => {
 			callOrder.push('advance');
@@ -571,6 +594,30 @@ describe('WorkflowPublicationApplier', () => {
 		// straight after, so the empty window never serves a stale version, all
 		// before the new triggers are added.
 		expect(callOrder).toEqual(['remove', 'invalidate', 'advance', 'refresh', 'add']);
+	});
+
+	test('completes carrying external teardown failures from removed triggers, still advancing', async () => {
+		setTriggerSets([triggerNode('a'), triggerNode('b')], [triggerNode('a')]);
+		const failure = { nodeName: 'b', error: new Error('remote unreachable') };
+		workflowTriggerActivator.deactivate.mockResolvedValue({
+			externalTeardownFailures: [failure],
+		});
+
+		const result = await applier.apply(makeRecord(), abort);
+
+		// The new version must not be blocked by a third party refusing to release
+		// an old trigger: the publication completes and the failures ride along.
+		expect(result).toEqual({
+			type: 'completed',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated', triggerKind: 'in-memory' },
+			],
+			teardownFailures: [failure],
+		});
+		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+		);
 	});
 
 	test('propagates without advancing when removing triggers throws', async () => {
@@ -803,6 +850,7 @@ describe('WorkflowPublicationApplier', () => {
 			const controller = new AbortController();
 			workflowTriggerActivator.deactivate.mockImplementation(async () => {
 				controller.abort(new Error('deadline'));
+				return { externalTeardownFailures: [] };
 			});
 
 			const result = await applier.apply(makeRecord(), {

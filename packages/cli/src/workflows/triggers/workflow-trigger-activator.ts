@@ -8,6 +8,7 @@ import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	INode,
 	IWebhookData,
@@ -27,7 +28,11 @@ import {
 } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
-import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
+import {
+	TRIGGER_ACTIVATION_MAX_ATTEMPTS,
+	TRIGGER_TEARDOWN_MAX_ATTEMPTS,
+	TRIGGER_TEARDOWN_RETRY_INITIAL_DELAY_MS,
+} from '@/constants';
 import { EventService } from '@/events/event.service';
 import type {
 	PublicationOperationResult,
@@ -99,6 +104,23 @@ export type TriggerActivationFailure = {
 	nodeId: INode['id'];
 	nodeName: string;
 	error: Error;
+};
+
+/**
+ * A webhook node whose external deregistration kept failing during teardown.
+ * Local routing has already stopped (the node's `webhook_entity` rows are
+ * deleted before any external call), so this only means an orphaned
+ * third-party subscription may remain — the caller surfaces it instead of
+ * failing the operation.
+ */
+export type TriggerTeardownFailure = {
+	nodeName: string;
+	error: Error;
+};
+
+/** The result of deactivating a set of trigger nodes. */
+export type TriggerDeactivationOutcome = {
+	externalTeardownFailures: TriggerTeardownFailure[];
 };
 
 /**
@@ -378,20 +400,34 @@ export class WorkflowTriggerActivator {
 	 * Deregisters only the given trigger nodes (webhook and non-webhook) of the
 	 * given workflow version, leaving the rest active. The caller passes the
 	 * currently published version so the right webhooks are deregistered.
+	 *
+	 * The two teardown surfaces fail differently, because they differ in what
+	 * a failure leaves live:
+	 *
+	 * - A non-webhook trigger whose close fails stays tracked and possibly live
+	 *   in memory, so its failure rejects — the record must be retried until
+	 *   the local state is truly down.
+	 * - A webhook's external deregistration failure leaves only third-party
+	 *   garbage: local routing already stopped when the node's rows were
+	 *   deleted (before any external call). Such failures resolve into
+	 *   `externalTeardownFailures` for the caller to surface — retrying the
+	 *   operation forever would block the publication on a third party.
 	 */
 	async deactivate(
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
 		abort: TriggerOperationAbort,
-	) {
-		if (nodeIds.size === 0) return;
+	): Promise<TriggerDeactivationOutcome> {
+		if (nodeIds.size === 0) return { externalTeardownFailures: [] };
 
 		const startedAt = Date.now();
 		try {
-			await this.deactivateInternal(dbWorkflow, version, nodeIds, abort);
+			const outcome = await this.deactivateInternal(dbWorkflow, version, nodeIds, abort);
+			const failed = outcome.externalTeardownFailures.length;
 			this.emitTriggerOperation('deactivate', 'success', startedAt);
-			this.emitTriggerNodeOperations('deactivate', nodeIds.size, 0);
+			this.emitTriggerNodeOperations('deactivate', nodeIds.size - failed, failed);
+			return outcome;
 		} catch (error) {
 			this.emitTriggerOperation('deactivate', 'failure', startedAt);
 			this.emitTriggerNodeOperations('deactivate', 0, nodeIds.size);
@@ -404,8 +440,8 @@ export class WorkflowTriggerActivator {
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
 		abort: TriggerOperationAbort,
-	) {
-		await this.tracing.startSpan(
+	): Promise<TriggerDeactivationOutcome> {
+		return await this.tracing.startSpan(
 			{
 				name: 'Trigger deactivation',
 				op: 'publication.trigger.deactivate',
@@ -425,13 +461,17 @@ export class WorkflowTriggerActivator {
 
 				// The non-webhook phase doesn't touch the expression isolate that the
 				// webhook deregister acquires, so the two phases can overlap.
-				const phaseResults = await Promise.allSettled([
+				const [webhookPhase, nonWebhookPhase] = await Promise.allSettled([
 					this.deregisterWebhookTriggers(workflow, additionalData, nodeIds, abort),
 					this.deregisterNonWebhookTriggers(dbWorkflow.id, workflow, nodeIds, abort),
 				]);
-				this.throwRejectedPhaseError(phaseResults);
+				this.throwRejectedPhaseError([webhookPhase, nonWebhookPhase]);
 
 				span.setStatus({ code: SpanStatus.ok });
+
+				return {
+					externalTeardownFailures: webhookPhase.status === 'fulfilled' ? webhookPhase.value : [],
+				};
 			},
 		);
 	}
@@ -629,68 +669,88 @@ export class WorkflowTriggerActivator {
 		additionalData: IWorkflowExecuteAdditionalData,
 		nodeIds: Set<INode['id']>,
 		abort: TriggerOperationAbort,
-	) {
-		const removedNodeNames: string[] = [];
-		let firstFailure: Error | undefined;
+	): Promise<TriggerTeardownFailure[]> {
+		const failures: TriggerTeardownFailure[] = [];
 
 		await workflow.expression.acquireIsolate();
 		try {
 			const webhooks = this.getWebhookTriggersForNodeIds(workflow, additionalData, nodeIds);
 
+			// Local rows first: deleting a node's `webhook_entity` rows is what
+			// stops n8n routing (and executing) its webhooks, so it must not wait
+			// on external deregistration — a slow or failing third party would
+			// otherwise keep the workflow executing. The external call below needs
+			// only the in-memory workflow + webhookData, never the row.
+			const targetNodeNames = [...new Set(webhooks.map((webhookData) => webhookData.node))];
+			await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(
+				workflow.id,
+				targetNodeNames,
+			);
+
 			const deregistrationResults = await Promise.allSettled(
 				webhooks.map(
 					async (webhookData) =>
-						await raceAbort(
-							this.webhookTriggerRegistrar.deregister({ workflow, webhookData }),
-							abort,
-						),
+						await this.deregisterExternalWebhookWithRetry(workflow, webhookData, abort),
 				),
 			);
 
-			// Row cleanup is per node, so only a node whose EVERY webhook
-			// deregistered may be cleared: a failed or abandoned webhook's row is
-			// the only record left for deregistering it externally later.
-			const pendingWebhooksByNode = new Map<string, number>();
-			for (const webhookData of webhooks) {
-				pendingWebhooksByNode.set(
-					webhookData.node,
-					(pendingWebhooksByNode.get(webhookData.node) ?? 0) + 1,
-				);
-			}
-			deregistrationResults.forEach((result, index) => {
-				if (result.status === 'rejected') {
-					const error = ensureError(result.reason);
-					if (this.shouldAbandonFailedTeardown(error)) {
-						// The webhook counts as removed, so its row is cleared below
-						// instead of retained.
-						this.logger.warn('Abandoned webhook whose deregistration can never succeed', {
-							workflowId: workflow.id,
-							nodeName: webhooks[index].node,
-							error: error.message,
-						});
-					} else {
-						firstFailure ??= error;
-						return;
-					}
-				}
+			for (const [index, result] of deregistrationResults.entries()) {
+				if (result.status !== 'rejected') continue;
+				const error = ensureError(result.reason);
+				// An abort is not a teardown outcome: it must fail the operation so
+				// the record is retried for the external cleanup it interrupted.
+				if (abort.signal.aborted) throw error;
 				const nodeName = webhooks[index].node;
-				const pending = (pendingWebhooksByNode.get(nodeName) ?? 0) - 1;
-				pendingWebhooksByNode.set(nodeName, pending);
-				if (pending === 0) removedNodeNames.push(nodeName);
-			});
+				if (this.shouldAbandonFailedTeardown(error)) {
+					this.logger.warn('Abandoned webhook whose deregistration can never succeed', {
+						workflowId: workflow.id,
+						nodeName,
+						error: error.message,
+					});
+				} else {
+					this.logger.warn('Abandoned webhook whose external deregistration kept failing', {
+						workflowId: workflow.id,
+						nodeName,
+						error: error.message,
+					});
+					failures.push({ nodeName, error });
+				}
+			}
 		} finally {
 			await workflow.expression.releaseIsolate();
 		}
 
-		// Clear rows for the nodes that fully deregistered even when another
-		// node's teardown failed or was abandoned, so their `webhook_entity` rows
-		// don't outlive the deregistration.
-		await this.webhookTriggerRegistrar.clearWorkflowWebhooksForNodes(workflow.id, removedNodeNames);
-		if (firstFailure) throw firstFailure;
-
 		await this.workflowStaticDataService.saveStaticData(workflow);
 
-		return removedNodeNames;
+		return failures;
+	}
+
+	/**
+	 * Externally deregisters one webhook, retrying a plausibly transient
+	 * failure (e.g. an unreachable third party) with short exponential backoff
+	 * before giving up. A failure that can never succeed (see
+	 * {@link shouldAbandonFailedTeardown}) and an abort are not retried. The
+	 * `sleep` rejects with the abort reason as soon as the signal fires, so an
+	 * abandoned retry never sleeps out its backoff.
+	 */
+	private async deregisterExternalWebhookWithRetry(
+		workflow: Workflow,
+		webhookData: IWebhookData,
+		abort: TriggerOperationAbort,
+	): Promise<void> {
+		for (let attempt = 0; ; attempt++) {
+			try {
+				await raceAbort(this.webhookTriggerRegistrar.deregister({ workflow, webhookData }), abort);
+				return;
+			} catch (error) {
+				const isLastAttempt = attempt >= TRIGGER_TEARDOWN_MAX_ATTEMPTS - 1;
+				if (this.shouldAbandonFailedTeardown(error) || isLastAttempt || abort.signal.aborted) {
+					throw error;
+				}
+
+				await sleep(TRIGGER_TEARDOWN_RETRY_INITIAL_DELAY_MS * 2 ** attempt, abort.signal);
+			}
+		}
 	}
 
 	private getWebhookTriggersForNodeIds(

@@ -29,6 +29,7 @@ import {
 	type TriggerActivationFailure,
 	type TriggerActivationOutcome,
 	type TriggerOperationAbort,
+	type TriggerTeardownFailure,
 } from '@/workflows/triggers/workflow-trigger-activator';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
@@ -180,13 +181,21 @@ export class WorkflowPublicationApplier {
 		abort.signal.throwIfAborted();
 
 		// Must happen BEFORE advancing the version, using the currently published
-		// version so the right webhooks are deregistered. A retryable teardown
-		// failure bubbles up so the version is not advanced; one that can never
-		// succeed (a UserError) is abandoned inside `deactivate`, since retrying
-		// it would block this publication forever.
+		// version so the right webhooks are deregistered. Teardown is best-effort
+		// for external webhook state (local routing stops first inside
+		// `deactivate`): abandoned external deregistrations ride along on the
+		// result rather than blocking the new version behind a third party. Only
+		// a failure that leaves local trigger state possibly live (a non-webhook
+		// close failure, or an abort) bubbles up so the version is not advanced.
+		let teardownFailures: TriggerTeardownFailure[] = [];
 		if (toRemove.size > 0 && oldVersion) {
-			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort);
+			({ externalTeardownFailures: teardownFailures } =
+				await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort));
 		}
+		const withTeardownFailures = (result: PublicationResult): PublicationResult =>
+			result.type === 'completed' && teardownFailures.length > 0
+				? { ...result, teardownFailures }
+				: result;
 
 		await this.advancePublishedVersion(record);
 
@@ -201,7 +210,9 @@ export class WorkflowPublicationApplier {
 					activationMode,
 					abort,
 				);
-				return this.classifyActivationOutcome(outcome, desiredTriggerNodes, triggerKinds);
+				return withTeardownFailures(
+					this.classifyActivationOutcome(outcome, desiredTriggerNodes, triggerKinds),
+				);
 			}
 
 			if (toRemove.size > 0) {
@@ -211,13 +222,13 @@ export class WorkflowPublicationApplier {
 			return { type: 'failed', error: ensureError(e) };
 		}
 
-		return {
+		return withTeardownFailures({
 			type: 'completed',
 			triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
 				activated: [],
 				failures: [],
 			}),
-		};
+		});
 	}
 
 	/**
@@ -245,12 +256,14 @@ export class WorkflowPublicationApplier {
 	 * successful `unpublished` to support idempotent retries — the reporter then
 	 * clears any trigger-status rows left behind by an interrupted unpublish.
 	 *
-	 * A teardown failure bubbles up (the consumer turns it into a `failed` result)
-	 * so the mapping is only removed once teardown has succeeded. A teardown
-	 * failure that can never succeed on retry (e.g. a webhook's delete hook
-	 * needs a credential that was deleted) is abandoned inside `deactivate`
-	 * rather than surfaced — the mapping is what the reconciler treats as drift,
-	 * so such a failure would otherwise re-enqueue this unpublish forever.
+	 * Only a teardown failure that leaves local trigger state possibly live (a
+	 * non-webhook close failure, or an abort) bubbles up — the consumer turns it
+	 * into a `failed` result and the mapping stays for the retry. A webhook's
+	 * external deregistration failure does not: local routing already stopped
+	 * inside `deactivate` (rows deleted before any external call), so the
+	 * unpublish completes with the abandoned nodes in `teardownFailures`.
+	 * Keeping the mapping for external garbage would make the reconciler
+	 * re-enqueue this unpublish forever and block deleting the workflow.
 	 */
 	private async unpublish(
 		workflow: WorkflowEntity,
@@ -265,9 +278,11 @@ export class WorkflowPublicationApplier {
 			this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion).map((node) => node.id),
 		);
 
+		let teardownFailures: TriggerTeardownFailure[] = [];
 		if (oldVersion && toRemove.size > 0) {
 			abort.signal.throwIfAborted();
-			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort);
+			({ externalTeardownFailures: teardownFailures } =
+				await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove, abort));
 		}
 
 		// Invalidate before the mapping is removed, so reads fall through to the
@@ -276,7 +291,9 @@ export class WorkflowPublicationApplier {
 		await this.workflowPublishedDataService.invalidateCache(record.workflowId);
 		await this.workflowPublishedVersionRepository.removePublishedVersion(record.workflowId);
 
-		return { type: 'unpublished' };
+		return teardownFailures.length > 0
+			? { type: 'unpublished', teardownFailures }
+			: { type: 'unpublished' };
 	}
 
 	/**
