@@ -143,13 +143,13 @@ describe('N8nMenuItem', () => {
 			expect(menuItem.textContent).not.toContain('Hidden Label');
 		});
 
-		it('should not render PreviewTag when compact is true', () => {
+		it('should not render PreviewBadge when compact is true', () => {
 			const { html } = render(N8nMenuItem, {
 				props: {
 					item: createMenuItem({ preview: true }),
 					compact: true,
 				},
-				global: { stubs: { ...stubs, PreviewTag: true } },
+				global: { stubs: { ...stubs, PreviewBadge: true } },
 			});
 			expect(html()).not.toContain('preview-tag');
 		});
@@ -206,22 +206,22 @@ describe('N8nMenuItem', () => {
 	});
 
 	describe('preview prop', () => {
-		it('should render PreviewTag when preview is true', () => {
+		it('should render PreviewBadge when preview is true', () => {
 			const { html } = render(N8nMenuItem, {
 				props: {
 					item: createMenuItem({ preview: true }),
 				},
-				global: { stubs: { ...stubs, PreviewTag: true } },
+				global: { stubs: { ...stubs, PreviewBadge: true } },
 			});
 			expect(html()).toContain('preview-tag-stub');
 		});
 
-		it('should not render PreviewTag when preview is false', () => {
+		it('should not render PreviewBadge when preview is false', () => {
 			const { html } = render(N8nMenuItem, {
 				props: {
 					item: createMenuItem({ preview: false }),
 				},
-				global: { stubs: { ...stubs, PreviewTag: true } },
+				global: { stubs: { ...stubs, PreviewBadge: true } },
 			});
 			expect(html()).not.toContain('preview-tag-stub');
 		});

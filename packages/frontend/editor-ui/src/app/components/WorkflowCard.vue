@@ -863,6 +863,7 @@ const tags = computed(
 
 .cardBadge {
 	background-color: var(--color--background--light-3);
+	border-radius: var(--radius--full);
 }
 
 .cardBadge.with-breadcrumbs {

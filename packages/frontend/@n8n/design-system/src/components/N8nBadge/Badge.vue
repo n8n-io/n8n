@@ -38,9 +38,8 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 </script>
 
 <template>
-	<Primitive
-		:as="props.clickable ? 'button' : 'span'"
-		:type="props.clickable ? 'button' : undefined"
+	<span
+		:role="props.clickable ? 'button' : undefined"
 		:disabled="props.disabled"
 		:class="[$style.badge, $style[variant], $style[size], { [$style.clickable]: props.clickable }]"
 	>
@@ -50,16 +49,18 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 			:icon="props.leadingIcon"
 			:size="effectiveIconSize"
 		/>
+		<slot name="leading" />
 		<N8nText :class="$style.label" :step="effectiveTextSize" bold>
 			<slot></slot>
 		</N8nText>
+		<slot name="trailing" />
 		<N8nIcon
 			v-if="props.trailingIcon"
 			:class="$style.trailingIcon"
 			:icon="props.trailingIcon"
 			:size="effectiveIconSize"
 		/>
-	</Primitive>
+	</span>
 </template>
 
 <style lang="scss" module>
@@ -68,7 +69,6 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 .badge {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
 	white-space: nowrap;
 	border-radius: var(--radius--full);
 	user-select: none;
@@ -79,12 +79,14 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	--n8n-badge--border-color: var(--n8n-badge--background);
 	--n8n-badge--text-color: var(--text-color--subtle);
 	--n8n-badge--height: var(--height--sm);
-	--n8n-badge--padding: 0 var(--spacing--2xs);
+	--n8n-badge--padding: var(--spacing--2xs);
+	--n8n-badge--gap: var(--spacing--4xs);
 
+	gap: var(--n8n-badge--gap);
 	background-color: var(--n8n-badge--background);
 	border: 1px solid var(--n8n-badge--border-color);
 	height: var(--n8n-badge--height);
-	padding: var(--n8n-badge--padding);
+	padding-inline: var(--n8n-badge--padding);
 	color: var(--n8n-badge--text-color);
 }
 
@@ -120,27 +122,27 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 
 .xsmall {
 	--n8n-badge--height: var(--height--xs);
-	--n8n-badge--padding: 0 var(--spacing--3xs);
+	--n8n-badge--padding: var(--spacing--2xs);
 }
 
 .small {
 	--n8n-badge--height: var(--height--sm);
-	--n8n-badge--padding: 0 var(--spacing--2xs);
+	--n8n-badge--padding: var(--spacing--2xs);
 }
 
 .medium {
 	--n8n-badge--height: var(--height--md);
-	--n8n-badge--padding: 0 var(--spacing--xs);
+	--n8n-badge--padding: var(--spacing--xs);
 }
 
 .large {
 	--n8n-badge--height: var(--height--lg);
-	--n8n-badge--padding: 0 var(--spacing--sm);
+	--n8n-badge--padding: var(--spacing--sm);
 }
 
 .xlarge {
 	--n8n-badge--height: var(--height--xl);
-	--n8n-badge--padding: 0 var(--spacing--sm);
+	--n8n-badge--padding: var(--spacing--sm);
 }
 
 .primary {
@@ -193,10 +195,10 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	opacity: 0.9;
 }
 .leadingIcon + .label {
-	margin-inline-end: var(--spacing--5xs);
+	margin-inline-end: calc(var(--n8n-badge--padding) * 0.2);
 }
 
 .label + .trailingIcon {
-	margin-inline-start: var(--spacing--5xs);
+	margin-inline-start: calc(var(--n8n-badge--padding) * 0.2);
 }
 </style>
