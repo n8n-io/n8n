@@ -48,6 +48,8 @@ const ObservationalMemoryConfigSchema = z.object({
 	renderTokenBudget: z.number().int().min(1).optional(),
 	observationLogTailLimit: z.number().int().min(1).optional(),
 	lockTtlMs: z.number().int().min(0).optional(),
+	// Temporary opt-in for mid-run observation (AGENT-191); removed by AGENT-228.
+	midRunObservation: z.boolean().optional(),
 });
 
 const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [

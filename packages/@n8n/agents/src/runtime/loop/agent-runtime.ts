@@ -447,6 +447,10 @@ export class AgentRuntime {
 			await this.ensureModelCost();
 
 			await this.memory.setListObservationLogMemory(list, state.persistence);
+			// The mask boundary is runtime-only state: re-derive it from the
+			// persisted cursor so a run that compacted mid-run before suspending
+			// does not resume with the full pre-compaction window.
+			await this.memory.applyObservationMask(list, state.persistence);
 
 			if (method === 'generate') {
 				const sink = new GenerateSink(this.createRunServices());
@@ -573,6 +577,7 @@ export class AgentRuntime {
 
 			await this.ensureModelCost();
 			await this.memory.setListObservationLogMemory(list, state.persistence);
+			await this.memory.applyObservationMask(list, state.persistence);
 
 			return {
 				runId: this.runId,
@@ -946,6 +951,10 @@ export class AgentRuntime {
 
 			// Emit TurnEnd after all tool calls in this iteration are processed
 			this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(list.responseDelta()));
+
+			// Clean loop boundary: all tool calls settled. Opt-in mid-run
+			// observation may compact the LLM window here before the next call.
+			await this.memory.maybeObserveMidRun(list, options);
 
 			// Step boundary reached with nothing pending: durably checkpoint so a
 			// crash before the next model call loses only the in-flight step.

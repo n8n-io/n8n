@@ -12,9 +12,18 @@ import type {
 } from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
 import { stringifyError } from '../loop/runtime-helpers';
+import { compareKeyset } from '../memory/memory-store';
 import { stripOrphanedToolMessages } from '../memory/strip-orphaned-tool-messages';
 
 export type { SerializedMessageList };
+
+/**
+ * Synthetic user message prepended to the LLM window when observation masking
+ * leaves it empty or starting with a non-user message. Built per `forLlm` call —
+ * never added to the list, persisted, or serialized.
+ */
+export const OBSERVATION_CONTINUATION_REMINDER =
+	'<system-reminder>Earlier conversation was compacted into the observation log in your system prompt. Continue the task naturally from where the log leaves off. Do not repeat work the log records as completed, and do not mention this compaction or your memory to the user.</system-reminder>';
 
 export type LlmContext = {
 	system: SystemModelMessage | SystemModelMessage[];
@@ -94,6 +103,14 @@ export class AgentMessageList {
 	private responseSet = new Set<AgentDbMessage>();
 
 	private lastCreatedAt: number = 0;
+
+	/**
+	 * Observation-cursor keyset boundary. When set, messages at or before it are
+	 * hidden from the LLM window (`forLlm`) but remain in `all` for turnDelta /
+	 * responseDelta / serialize. Runtime-only — not serialized; resume paths
+	 * re-derive it from the persisted cursor.
+	 */
+	private observationMaskBoundary: { createdAt: Date; id: string } | undefined;
 
 	/**
 	 * Normalize an AgentMessage into an AgentDbMessage and push it onto `this.all`,
@@ -308,6 +325,14 @@ export class AgentMessageList {
 		instructionProviderOptions?: ProviderOptions,
 		volatileInstructions?: string,
 	): LlmContext {
+		const messages = toAiMessages(
+			filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages())),
+		);
+		// A masked window may be empty or start mid-exchange; anchor it with a
+		// synthetic user message so the model call stays valid.
+		if (this.observationMaskBoundary && messages[0]?.role !== 'user') {
+			messages.unshift({ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER });
+		}
 		return {
 			system: buildSystemMessages(
 				baseInstructions,
@@ -316,8 +341,30 @@ export class AgentMessageList {
 				volatileInstructions,
 				this.mcpConnectionNote,
 			),
-			messages: toAiMessages(filterLlmMessages(stripOrphanedToolMessages(this.all))),
+			messages,
 		};
+	}
+
+	/**
+	 * Hide messages at or before the observation cursor from the LLM window.
+	 * Later calls overwrite the boundary (cursors only move forward).
+	 */
+	maskObservedMessages(cursor: { lastObservedAt: Date; lastObservedMessageId: string }): void {
+		this.observationMaskBoundary = {
+			createdAt: cursor.lastObservedAt,
+			id: cursor.lastObservedMessageId,
+		};
+	}
+
+	/** Messages visible to the LLM: everything after the observation mask boundary. */
+	llmVisibleMessages(): AgentDbMessage[] {
+		const boundary = this.observationMaskBoundary;
+		if (!boundary) return this.all;
+		return this.all.filter((m) => {
+			// createdAt can be an ISO string after a checkpoint JSON round-trip
+			const createdAt = m.createdAt instanceof Date ? m.createdAt : new Date(m.createdAt);
+			return compareKeyset({ createdAt, id: m.id }, boundary) > 0;
+		});
 	}
 
 	/**

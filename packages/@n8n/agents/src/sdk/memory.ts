@@ -50,6 +50,7 @@ export function resolveObservationalMemoryConfig(
 		renderTokenBudget: config.renderTokenBudget ?? DEFAULT_OBSERVATION_LOG_RENDER_TOKEN_BUDGET,
 		observationLogTailLimit: config.observationLogTailLimit ?? DEFAULT_OBSERVATION_LOG_TAIL_LIMIT,
 		lockTtlMs: config.lockTtlMs ?? DEFAULT_OBSERVATION_LOG_LOCK_TTL_MS,
+		midRunObservation: config.midRunObservation ?? false,
 		observe: config.observe ?? createObservationLogObserveFn(observerModel),
 		reflect: config.reflect ?? createObservationLogReflectFn(reflectorModel),
 	};

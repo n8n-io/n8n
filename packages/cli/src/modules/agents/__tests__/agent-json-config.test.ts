@@ -121,6 +121,7 @@ describe('AgentJsonConfigSchema — memory.observationalMemory', () => {
 					renderTokenBudget: 8_000,
 					observationLogTailLimit: 20,
 					lockTtlMs: 30_000,
+					midRunObservation: true,
 				},
 			},
 		});

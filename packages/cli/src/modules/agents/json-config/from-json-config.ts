@@ -562,6 +562,9 @@ async function applyMemoryFromConfig(
 			...(observationalMemory?.lockTtlMs !== undefined && {
 				lockTtlMs: observationalMemory.lockTtlMs,
 			}),
+			...(observationalMemory?.midRunObservation !== undefined && {
+				midRunObservation: observationalMemory.midRunObservation,
+			}),
 		});
 	}
 

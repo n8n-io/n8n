@@ -18,6 +18,7 @@ import type { BuiltTelemetry } from '../../types/telemetry';
 import { Workspace, getToolResultRunDirectory } from '../../workspace';
 import { AgentRuntime } from '../loop/agent-runtime';
 import { InMemoryMemory } from '../memory/memory-store';
+import { OBSERVATION_CONTINUATION_REMINDER } from '../model/message-list';
 import { AgentEventBus } from '../state/event-bus';
 import { StaleResumeError } from '../state/run-state';
 import {
@@ -6519,6 +6520,153 @@ describe('AgentRuntime — observation log jobs', () => {
 				message: 'Episodic memory indexing task failed',
 			}),
 		]);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Mid-run observation (AGENT-191, behind midRunObservation)
+// ---------------------------------------------------------------------------
+
+describe('AgentRuntime — mid-run observation', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	const OBSERVE_TEXT = '* CRITICAL (14:30) Mid-run observation captured.';
+	const PERSISTENCE = { threadId: 'thread-1', resourceId: 'resource-1' };
+
+	type CapturedModelCall = {
+		instructions: { content: string } | Array<{ content: string }>;
+		messages: Array<{ role: string; content: unknown }>;
+	};
+
+	function capturedCall(index: number): CapturedModelCall {
+		return generateText.mock.calls[index][0] as CapturedModelCall;
+	}
+
+	function flattenInstructions(instructions: CapturedModelCall['instructions']): string {
+		return Array.isArray(instructions)
+			? instructions.map((entry) => entry.content).join('')
+			: instructions.content;
+	}
+
+	function makeStepTool(): BuiltTool {
+		return {
+			name: 'do_step',
+			description: 'Perform a step',
+			inputSchema: z.object({ step: z.number() }),
+			handler: async () => await Promise.resolve({ done: true }),
+		};
+	}
+
+	function buildMidRunRuntime(
+		memory: InMemoryMemory,
+		midRunObservation: boolean,
+		extra?: { tools?: BuiltTool[]; checkpointStorage?: CheckpointStore },
+	): AgentRuntime {
+		return new AgentRuntime({
+			name: 'mid-run-agent',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			memory,
+			tools: extra?.tools ?? [makeStepTool()],
+			...(extra?.checkpointStorage ? { checkpointStorage: extra.checkpointStorage } : {}),
+			observationalMemory: {
+				midRunObservation,
+				observerThresholdTokens: 1,
+				observationLogTailLimit: 20,
+				observe: async () => await Promise.resolve(OBSERVE_TEXT),
+			},
+		});
+	}
+
+	it('compacts the live prompt after crossing the budget mid-run', async () => {
+		const memory = new InMemoryMemory();
+		const runtime = buildMidRunRuntime(memory, true);
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-2', 'do_step', { step: 2 }))
+			.mockResolvedValueOnce(makeGenerateSuccess('all done'));
+
+		const result = await runtime.generate('start work', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		expect(generateText).toHaveBeenCalledTimes(3);
+		expect(JSON.stringify(capturedCall(0).messages)).toContain('start work');
+
+		// After the first boundary's compaction the prompt is just the reminder,
+		// and the refreshed system prompt carries the observation.
+		const second = capturedCall(1);
+		expect(second.messages).toEqual([{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER }]);
+		expect(flattenInstructions(second.instructions)).toContain('Mid-run observation captured.');
+
+		// The caller still receives the full response set of the turn.
+		expect(result.messages).toHaveLength(3);
+		expect(JSON.stringify(result.messages)).toContain('all done');
+
+		const observations = await memory.getActiveObservationLog({
+			observationScopeId: 'thread-1',
+		});
+		expect(observations.length).toBeGreaterThanOrEqual(1);
+		expect(await memory.getCursor('thread-1')).not.toBeNull();
+	});
+
+	it('leaves prompts untouched when the flag is off', async () => {
+		const memory = new InMemoryMemory();
+		const runtime = buildMidRunRuntime(memory, false);
+		generateText
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-2', 'do_step', { step: 2 }))
+			.mockResolvedValueOnce(makeGenerateSuccess('all done'));
+
+		await runtime.generate('start work', { persistence: PERSISTENCE });
+		await runtime.dispose();
+
+		const messageCounts = generateText.mock.calls.map(
+			(call) => (call[0] as CapturedModelCall).messages.length,
+		);
+		expect(messageCounts).toEqual([...messageCounts].sort((a, b) => a - b));
+		for (let i = 0; i < generateText.mock.calls.length; i++) {
+			const serialized = JSON.stringify(capturedCall(i).messages);
+			expect(serialized).toContain('start work');
+			expect(serialized).not.toContain(OBSERVATION_CONTINUATION_REMINDER);
+		}
+	});
+
+	it('re-derives the mask from the cursor when resuming a suspended run', async () => {
+		const memory = new InMemoryMemory();
+		const checkpointStore = makeClaimingCheckpointStore();
+		const tools = [makeStepTool(), makeInterruptibleTool()];
+
+		const runtime = buildMidRunRuntime(memory, true, { tools, checkpointStorage: checkpointStore });
+		generateText
+			// Iteration 1 crosses the budget and compacts before iteration 2.
+			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-step', 'do_step', { step: 1 }))
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCall('tc-approve', 'approve', { question: 'go on?' }),
+			);
+
+		const first = await runtime.generate('start work', { persistence: PERSISTENCE });
+		const suspension = first.pendingSuspend?.[0];
+		if (!suspension) throw new Error('Expected the run to suspend on the approve tool');
+
+		const resumed = buildMidRunRuntime(memory, true, { tools, checkpointStorage: checkpointStore });
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('continued'));
+		await resumed.resume(
+			'generate',
+			{ approved: true },
+			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
+		);
+		await resumed.dispose();
+		await runtime.dispose();
+
+		const resumeCall = capturedCall(2);
+		expect(JSON.stringify(resumeCall.messages)).not.toContain('start work');
+		expect(resumeCall.messages[0]).toEqual({
+			role: 'user',
+			content: OBSERVATION_CONTINUATION_REMINDER,
+		});
 	});
 });
 
