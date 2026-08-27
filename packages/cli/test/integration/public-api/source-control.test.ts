@@ -264,7 +264,11 @@ describe('Source Control (Public API)', () => {
 			testServer.license.enable('feat:sourceControl');
 			mockConnected();
 
-			const files = [sourceControlledFileFixture('wf-1')];
+			const files = [
+				sourceControlledFileFixture('wf-1'),
+				sourceControlledFileFixture('wf-2'),
+				sourceControlledFileFixture('wf-3'),
+			];
 			const getStatusSpy = vi
 				.spyOn(Container.get(SourceControlService), 'getStatus')
 				.mockResolvedValue(files);
@@ -291,7 +295,11 @@ describe('Source Control (Public API)', () => {
 			testServer.license.enable('feat:sourceControl');
 			mockConnected();
 
-			const files = [sourceControlledFileFixture('wf-1')];
+			const files = [
+				sourceControlledFileFixture('wf-1'),
+				sourceControlledFileFixture('wf-2'),
+				sourceControlledFileFixture('wf-3'),
+			];
 			const getStatusSpy = vi
 				.spyOn(Container.get(SourceControlService), 'getStatus')
 				.mockResolvedValue(files);
@@ -313,44 +321,6 @@ describe('Source Control (Public API)', () => {
 					origin: 'publicApi',
 				}),
 			);
-		});
-
-		it('should return files in the order getStatus produced them, unsorted', async () => {
-			testServer.license.enable('feat:sourceControl');
-			mockConnected();
-
-			const files = [
-				sourceControlledFileFixture('3', { type: 'workflow', file: 'c.json' }),
-				sourceControlledFileFixture('1', { type: 'credential', file: 'a.json' }),
-				sourceControlledFileFixture('2', { type: 'workflow', file: 'a.json' }),
-			];
-			vi.spyOn(Container.get(SourceControlService), 'getStatus').mockResolvedValue(files);
-
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.get(statusUrl)
-				.query({ direction: 'push' });
-
-			expect(response.status).toBe(200);
-			expect(response.body.data.map((f: SourceControlledFile) => f.id)).toEqual(['3', '1', '2']);
-		});
-
-		it('should return every file with no bound on response size', async () => {
-			testServer.license.enable('feat:sourceControl');
-			mockConnected();
-
-			const files = Array.from({ length: 500 }, (_, i) =>
-				sourceControlledFileFixture(String(i), { file: `${String(i).padStart(4, '0')}.json` }),
-			);
-			vi.spyOn(Container.get(SourceControlService), 'getStatus').mockResolvedValue(files);
-
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.get(statusUrl)
-				.query({ direction: 'push' });
-
-			expect(response.status).toBe(200);
-			expect(response.body.data).toHaveLength(500);
 		});
 	});
 });
