@@ -13,9 +13,8 @@ import {
 	type KnownNodesAndCredentials,
 	type LoadedClass,
 	type McpRegistryConnection,
+	type McpRegistryRuntime,
 	type NodeLoader,
-	type PrepareMcpRegistryConnectionInput,
-	type PrepareMcpRegistryConnectionResult,
 } from 'n8n-workflow';
 
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -33,11 +32,6 @@ import {
 	resolveMcpRegistryConnection,
 } from './mcp-registry-connection';
 import type { McpRegistryServer } from './registry/mcp-registry.types';
-
-export interface McpRegistryRuntime {
-	resolveConnection(nodeTypeName: string): McpRegistryConnection | undefined;
-	prepareConnection(input: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult;
-}
 
 type McpRegistryBaseNode = INodeType & {
 	setRegistryRuntime(runtime: McpRegistryRuntime): void;

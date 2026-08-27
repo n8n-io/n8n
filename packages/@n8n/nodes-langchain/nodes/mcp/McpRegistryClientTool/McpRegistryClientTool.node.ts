@@ -8,6 +8,7 @@ import {
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
 	type McpRegistryConnection,
+	type McpRegistryRuntime,
 	type PrepareMcpRegistryConnectionInput,
 	type PrepareMcpRegistryConnectionResult,
 	type SupplyData,
@@ -29,14 +30,7 @@ import type { McpAuthenticationOption } from '../shared/types';
  * This class is the shared runtime for all of them
  */
 export class McpRegistryClientTool implements INodeType {
-	private static registryRuntime:
-		| {
-				resolveConnection(nodeTypeName: string): McpRegistryConnection | undefined;
-				prepareConnection(
-					input: PrepareMcpRegistryConnectionInput,
-				): PrepareMcpRegistryConnectionResult;
-		  }
-		| undefined;
+	private static registryRuntime: McpRegistryRuntime | undefined;
 
 	setRegistryRuntime(runtime: typeof McpRegistryClientTool.registryRuntime): void {
 		McpRegistryClientTool.registryRuntime = runtime;
