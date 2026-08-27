@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { LICENSE_FEATURES } from '@n8n/constants';
+import { HTML_NONCE_PLACEHOLDER, LICENSE_FEATURES } from '@n8n/constants';
 import {
 	AuthRolesService,
 	DeploymentKeyRepository,
@@ -163,8 +163,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		let scriptsString = '';
 		if (hooksUrls) {
+			// The placeholder takes the request's nonce, so `script-src` allows these scripts.
 			scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
-				return `${acc}<script src="${curr}"></script>`;
+				return `${acc}<script nonce="${HTML_NONCE_PLACEHOLDER}" src="${curr}"></script>`;
 			}, '');
 		}
 
