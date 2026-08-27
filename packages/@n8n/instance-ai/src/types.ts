@@ -24,7 +24,7 @@ import type {
 	McpToolCallRequest,
 	McpToolCallResult,
 } from '@n8n/api-types';
-import type { OutputSchemaLookup, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { OutputSchemaLookup, PythonImportPolicy, WorkflowJSON } from '@n8n/workflow-sdk';
 import type {
 	GenericValue,
 	INodeInputConfiguration,
@@ -1169,6 +1169,12 @@ export interface InstanceAiContext {
 	/** Human-readable hints about licensed features that are NOT available on this instance.
 	 *  Injected into the system prompt so the agent can explain why certain capabilities are missing. */
 	licenseHints?: string[];
+	/** What a Python Code node on this instance is allowed to import, derived from
+	 *  `N8N_RUNNERS_STDLIB_ALLOW` / `N8N_RUNNERS_EXTERNAL_ALLOW`. Drives the system-prompt
+	 *  section and the build-time import check, so the builder is told this instance's real
+	 *  policy instead of the conservative default. Absent in package-only / test contexts,
+	 *  where callers must assume nothing is importable. */
+	pythonImportPolicy?: PythonImportPolicy;
 	/** Domain access tracker for HITL gating of fetch-url and similar tools. */
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */

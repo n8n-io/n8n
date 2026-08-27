@@ -5,6 +5,47 @@ import { lintIssue, type SourceLintIssue } from '../types';
 const NETWORK_MODULES = new Set(['requests', 'urllib', 'httpx', 'aiohttp', 'http']);
 
 /**
+ * What the Python runner executing this code will let the code import, mirroring
+ * `N8N_RUNNERS_STDLIB_ALLOW` / `N8N_RUNNERS_EXTERNAL_ALLOW`. Both default to empty,
+ * so with no policy supplied every import is treated as disallowed.
+ */
+export interface PythonImportPolicy {
+	/** Allowlisted standard-library modules. `['*']` means all; empty means none. */
+	stdlib: string[];
+	/** Allowlisted external packages. `['*']` means all; empty means none. */
+	external: string[];
+	/**
+	 * Whether this reflects the runner that will actually execute the code. False in
+	 * external runner mode, where the runner's environment may differ from n8n's.
+	 */
+	authoritative: boolean;
+}
+
+/**
+ * Whether the policy leaves any import unverifiable. Telling a standard-library
+ * module from an external package needs Python's own `sys.stdlib_module_names`,
+ * which is not available here — so a wildcard in either list makes the check
+ * unsound and we skip it, exactly as the runner's own analyzer short-circuits.
+ */
+function policyIsUnverifiable(policy: PythonImportPolicy): boolean {
+	return policy.stdlib.includes('*') || policy.external.includes('*');
+}
+
+/** Modules the policy permits, in the order an operator would recognise them. */
+function allowedModules(policy: PythonImportPolicy): string[] {
+	return [...policy.stdlib, ...policy.external];
+}
+
+/** Renders the allowlist clause shared by the import message. */
+function describePolicy(policy: PythonImportPolicy | undefined): string {
+	const allowed = policy ? allowedModules(policy) : [];
+	if (allowed.length === 0) {
+		return 'this deployment allowlists no imports at all (N8N_RUNNERS_STDLIB_ALLOW and N8N_RUNNERS_EXTERNAL_ALLOW are both empty)';
+	}
+	return `this deployment allowlists only ${allowed.join(', ')}`;
+}
+
+/**
  * Names the native Python runner never defines. `_(…)` is the Pyodide-only
  * cross-node accessor and `$…` is JavaScript Code-node syntax; both raise
  * NameError. The runner's only globals are `_items`, `_item` and `print`.
@@ -73,9 +114,24 @@ function wrongModeAccessor(pythonCode: string, mode?: CodeExecutionMode): string
 	return new RegExp(String.raw`(?<![\w.$])${wrong}\b`).test(pythonCode) ? wrong : undefined;
 }
 
+/**
+ * Modules the runner will reject. Relative specifiers are always rejected; anything
+ * else survives only by being named in the policy. With no policy the caller cannot
+ * see the runner's configuration, so the safe reading — and the default everywhere —
+ * is that nothing is allowed.
+ */
+function disallowedImports(modules: string[], policy?: PythonImportPolicy): string[] {
+	if (!policy) return modules;
+	if (policyIsUnverifiable(policy)) return modules.filter((module) => module.startsWith('.'));
+	const allowed = new Set(allowedModules(policy));
+	return modules.filter((module) => module.startsWith('.') || !allowed.has(module));
+}
+
 export interface LintPythonCodeOptions {
 	mode?: CodeExecutionMode;
 	nodeName?: string;
+	/** The executing runner's import policy. Omit when unknown — nothing is assumed allowed. */
+	importPolicy?: PythonImportPolicy;
 }
 
 /**
@@ -90,7 +146,10 @@ export function lintPythonCode(
 	const code = stripComments(pythonCode);
 	const roots = importedRootModules(code);
 	const networkModules = [...roots].filter((module) => NETWORK_MODULES.has(module));
-	const otherModules = [...roots].filter((module) => !NETWORK_MODULES.has(module));
+	const otherModules = disallowedImports(
+		[...roots].filter((module) => !NETWORK_MODULES.has(module)),
+		options.importPolicy,
+	);
 
 	const issues: SourceLintIssue[] = [];
 	const namePrefix = options.nodeName ? `'${options.nodeName}' ` : '';
@@ -115,11 +174,9 @@ export function lintPythonCode(
 			lintIssue({
 				code: 'CODE_NODE_PYTHON_IMPORT',
 				message:
-					`${namePrefix}Code node imports ${otherModules.join(', ')}, but the native Python runner ` +
-					'blocks every import that the deployment has not allowlisted — N8N_RUNNERS_STDLIB_ALLOW for ' +
-					'standard-library modules, N8N_RUNNERS_EXTERNAL_ALLOW for packages — and both are empty by ' +
-					'default. Relative imports are rejected outright. Rewrite using builtins and str/list/dict ' +
-					'methods, or switch the node to JavaScript.',
+					`${namePrefix}Code node imports ${otherModules.join(', ')}, which the native Python runner ` +
+					`will reject: ${describePolicy(options.importPolicy)}, and relative imports are rejected ` +
+					'outright. Rewrite using builtins and str/list/dict methods, or switch the node to JavaScript.',
 				lintTarget: 'pythonCode',
 				nodeName: options.nodeName,
 				parameterPath: 'pythonCode',

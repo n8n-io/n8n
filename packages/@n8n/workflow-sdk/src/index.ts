@@ -173,6 +173,15 @@ export {
 	type CollectedValidationIssue,
 } from './validation';
 
+// Code-node source lint — the host re-runs the Python rules with the executing
+// runner's real import policy, which the sandbox CLI cannot see.
+export {
+	lintPythonCode,
+	type PythonImportPolicy,
+	type SourceLintIssue,
+	type CodeExecutionMode,
+} from './lint';
+
 // Code generation
 export { generateWorkflowCode } from './codegen/index';
 export {

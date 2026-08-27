@@ -502,9 +502,13 @@ every reported error and warning before calling `build-workflow`.
 - Avoid code node where possible, use n8n nodes that help do the same thing.
   If it makes it simpler, go ahead and use code node.
 - Write Code nodes in JavaScript unless the user explicitly asks for Python.
-  `language: 'pythonNative'` runs a locked-down runner that rejects every
-  `import` by default and defines only `_items` (all-items mode), `_item`
-  (per-item mode) and `print()` — no `_('Node Name')`, `_input` or `$` helpers.
+  `language: 'pythonNative'` runs a locked-down runner that defines only `_items`
+  (all-items mode), `_item` (per-item mode) and `print()` — no `_('Node Name')`,
+  `_input` or `$` helpers. Its imports are allowlisted per deployment and the
+  allowlist is empty by default: write import-free Python unless the **Python
+  Code Nodes** section of your system prompt says this instance allows more.
+  `build-workflow` re-checks the code against the real allowlist and reports
+  anything the runner would reject.
 - SDK builder code is a restricted subset of TypeScript that builds a static
   graph; it is not a Code node and does not run. Build strings with template
   literals; do runtime joining, aggregation, or transforms in a Code node or

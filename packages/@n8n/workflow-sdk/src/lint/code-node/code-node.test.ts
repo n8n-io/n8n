@@ -174,6 +174,51 @@ describe('lintPythonCode — native runner constraints', () => {
 		]);
 	});
 
+	it('allows a module the deployment allowlisted', () => {
+		const policy = { stdlib: ['re', 'json'], external: [], authoritative: true };
+		expect(lintPythonCode('import re\nreturn []', { importPolicy: policy })).toEqual([]);
+	});
+
+	it('still flags a module outside the allowlist, and names what is allowed', () => {
+		const policy = { stdlib: ['re'], external: [], authoritative: true };
+		const issues = lintPythonCode('import re\nimport math\nreturn []', { importPolicy: policy });
+		expect(issues.map((i) => i.code)).toEqual(['CODE_NODE_PYTHON_IMPORT']);
+		expect(issues[0].message).toContain('math');
+		expect(issues[0].message).not.toContain('imports re,');
+		expect(issues[0].message).toContain('re');
+	});
+
+	it('allows an external package the deployment allowlisted', () => {
+		const policy = { stdlib: [], external: ['pandas'], authoritative: true };
+		expect(lintPythonCode('import pandas\nreturn []', { importPolicy: policy })).toEqual([]);
+	});
+
+	it('skips the import check when an allowlist is a wildcard', () => {
+		const policy = { stdlib: ['*'], external: [], authoritative: true };
+		expect(lintPythonCode('import re\nimport math', { importPolicy: policy })).toEqual([]);
+	});
+
+	it('still flags relative imports even when modules are allowlisted', () => {
+		const policy = { stdlib: ['re'], external: [], authoritative: true };
+		expect(
+			lintPythonCode('from . import helpers', { importPolicy: policy }).map((i) => i.code),
+		).toEqual(['CODE_NODE_PYTHON_IMPORT']);
+	});
+
+	it('still reports a network import even when it is allowlisted', () => {
+		const policy = { stdlib: ['urllib'], external: [], authoritative: true };
+		expect(lintPythonCode('import urllib', { importPolicy: policy }).map((i) => i.code)).toEqual([
+			'CODE_NODE_NETWORK_CALL',
+		]);
+	});
+
+	it('flags every import when the policy allowlists nothing', () => {
+		const policy = { stdlib: [], external: [], authoritative: true };
+		const issues = lintPythonCode('import re', { importPolicy: policy });
+		expect(issues.map((i) => i.code)).toEqual(['CODE_NODE_PYTHON_IMPORT']);
+		expect(issues[0].message).toContain('allowlists no imports');
+	});
+
 	it('names both allowlists rather than assuming the module is stdlib', () => {
 		const issues = lintPythonCode('import pandas\nreturn []');
 		expect(issues[0].message).toContain('N8N_RUNNERS_STDLIB_ALLOW');

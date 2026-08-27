@@ -1,3 +1,4 @@
+import type { PythonImportPolicy } from '@n8n/workflow-sdk';
 import { DateTime } from 'luxon';
 
 import { getComputerUsePrompt } from './computer-use-prompt';
@@ -23,6 +24,8 @@ interface SystemPromptOptions {
 	projectId?: string;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
 	workspaceRoot?: string;
+	/** What a Python Code node may import on this instance. Omit when unknown. */
+	pythonImportPolicy?: PythonImportPolicy;
 }
 
 export function getDateTimeSection(timeZone?: string): string {
@@ -104,6 +107,50 @@ ${licenseHints.map((hint) => `- ${hint}`).join('\n')}
 `;
 }
 
+/**
+ * What a Python Code node may import here. The allowlist is per-deployment and
+ * empty by default, so a generic "no imports" rule is wrong on an instance that
+ * configured one, and a generic "imports work" rule is wrong everywhere else —
+ * the builder needs this instance's actual policy before it writes any Python.
+ */
+function getPythonCodeSection(policy?: PythonImportPolicy): string {
+	if (!policy) return '';
+
+	const wildcard = policy.stdlib.includes('*') || policy.external.includes('*');
+	const allowed = [...policy.stdlib, ...policy.external].filter((name) => name !== '*');
+
+	let importRule: string;
+	if (policy.stdlib.includes('*') && policy.external.includes('*')) {
+		importRule =
+			'This instance allows **any standard-library module and any installed package** to be imported.';
+	} else if (wildcard) {
+		const which = policy.stdlib.includes('*')
+			? 'any standard-library module'
+			: 'any installed package';
+		const rest = allowed.length > 0 ? `, plus ${allowed.join(', ')}` : '';
+		importRule = `This instance allows **${which}**${rest} to be imported. Nothing else is importable.`;
+	} else if (allowed.length > 0) {
+		importRule = `This instance allows **only these imports**: ${allowed.join(', ')}. Every other import — standard library or package — fails at run time, and relative imports always fail.`;
+	} else {
+		importRule =
+			'This instance **allows no imports at all** — the allowlists are empty, so `import re`, `import json`, `import datetime` and every package fail at run time with "Import of ... is disallowed". Write import-free Python using builtins and str/list/dict methods, or use JavaScript when the task genuinely needs a library.';
+	}
+
+	const modeCaveat = policy.authoritative
+		? ''
+		: "\n- This instance runs task runners in **external runner mode**, so n8n cannot confirm the runner's configuration — the allowlist above is what n8n is configured with, and the runner may differ. If an import fails at run time despite the list above, rewrite the code without it rather than telling the user it should have worked.";
+
+	return `
+## Python Code Nodes
+
+Applies to a Code node with \`language: 'pythonNative'\`. It runs in a locked-down sandbox, not a normal Python process.
+
+- ${importRule}
+- The runner defines exactly three globals: \`_items\` (in \`runOnceForAllItems\` mode), \`_item\` (in \`runOnceForEachItem\` mode) and \`print()\`. Reading the accessor belonging to the other mode raises NameError, and there are no cross-node helpers — \`_('Node Name')\`, \`_input\`, \`_json\`, \`_today\`, \`_jmespath\` and \`$\`-prefixed JavaScript helpers are all undefined. Take data from the connected upstream node only.
+- There is no network access, whatever the import policy allows. Use an HTTP Request node and process its output here.${modeCaveat}
+`;
+}
+
 function getReadOnlySection(branchReadOnly?: boolean): string {
 	if (!branchReadOnly) return '';
 	return `
@@ -138,6 +185,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		branchReadOnly,
 		projectId,
 		workspaceRoot,
+		pythonImportPolicy,
 	} = options;
 
 	return `You are the n8n Instance Agent — a helpful AI assistant embedded in an n8n instance. Your job is to understand the user's request and load one or more skills to help them achieve their goal. Once a skill is loaded, learn it in depth before continuing. You are also encouraged to call skills at any point in the conversation if it will help you achieve the user's goal. Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. A single turn may need more than one skill when routing requires it. Tool descriptions carry any load-before-call gates (\`load_skill\` / \`load_tool\`).
@@ -185,6 +233,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 ${UNTRUSTED_CONTENT_DOCTRINE}
 
 ${getComputerUsePrompt({ browserAvailable, localGateway })}
+${getPythonCodeSection(pythonImportPolicy)}
 ${getLicenseLimitationsSection(licenseHints)}
 ${getReadOnlySection(branchReadOnly)}`;
 }

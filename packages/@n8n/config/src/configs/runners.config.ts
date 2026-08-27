@@ -88,4 +88,24 @@ export class TaskRunnersConfig {
 	 */
 	@Env('N8N_RUNNERS_INSECURE_MODE')
 	insecureMode: boolean = false;
+
+	/**
+	 * Comma-separated standard-library modules a Python Code node may import, or `*`
+	 * for all. Empty (the default) forbids every standard-library import.
+	 *
+	 * Consumed by the Python runner. n8n reads it too, so it can tell the workflow
+	 * builder what the code it writes is allowed to import — accurate in `internal`
+	 * mode, where n8n passes its own environment to the runner it spawns, but only a
+	 * best guess in `external` mode, where the runner is configured separately.
+	 */
+	@Env('N8N_RUNNERS_STDLIB_ALLOW')
+	stdlibAllow: string = '';
+
+	/**
+	 * Comma-separated external packages a Python Code node may import, or `*` for all.
+	 * Empty (the default) forbids every third-party import. Same caveats as
+	 * {@link stdlibAllow}.
+	 */
+	@Env('N8N_RUNNERS_EXTERNAL_ALLOW')
+	externalAllow: string = '';
 }

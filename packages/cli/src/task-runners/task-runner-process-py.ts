@@ -49,9 +49,10 @@ export class PyTaskRunnerProcess extends TaskRunnerProcessBase {
 				N8N_RUNNERS_TASK_TIMEOUT: this.runnerConfig.taskTimeout.toString(),
 				N8N_RUNNERS_HEARTBEAT_INTERVAL: this.runnerConfig.heartbeatInterval.toString(),
 
-				// n8n
-				N8N_RUNNERS_STDLIB_ALLOW: process.env.N8N_RUNNERS_STDLIB_ALLOW,
-				N8N_RUNNERS_EXTERNAL_ALLOW: process.env.N8N_RUNNERS_EXTERNAL_ALLOW,
+				// n8n — read through config so the value n8n reports to the workflow
+				// builder is the same one the runner enforces.
+				N8N_RUNNERS_STDLIB_ALLOW: this.runnerConfig.stdlibAllow,
+				N8N_RUNNERS_EXTERNAL_ALLOW: this.runnerConfig.externalAllow,
 				N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS: process.env.N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS,
 				N8N_RUNNERS_BUILTINS_DENY: process.env.N8N_RUNNERS_BUILTINS_DENY,
 				N8N_BLOCK_RUNNER_ENV_ACCESS: process.env.N8N_BLOCK_RUNNER_ENV_ACCESS,
