@@ -76,6 +76,14 @@ export interface WorkflowSummary {
 	 * workflow belongs to.
 	 */
 	project?: { id: string; name: string };
+	/**
+	 * Containing folder, absent when the workflow sits at the project root.
+	 * `path` is slash-joined from the root (`Clients/Acme`), so a folder the user
+	 * names by path is matchable without a second lookup — the row a listing
+	 * already returns answers "which folder is this in", which previously had no
+	 * answer at all and was inferred from name prefixes.
+	 */
+	folder?: { id: string; name: string; path: string };
 }
 
 export interface WorkflowDetail extends WorkflowSummary {
@@ -302,6 +310,22 @@ export interface WorkflowListResult {
 	 * from the full inventory.
 	 */
 	totalInScope: number;
+	/**
+	 * Set when a `folderPath`/`folderId` was requested but could not be resolved
+	 * to exactly one folder. The listing is then NOT folder-scoped, so the caller
+	 * has to be told rather than handed a silently wider set — the failure this
+	 * whole field exists for is a folder request degrading into a name guess.
+	 */
+	folderResolution?: FolderResolutionFailure;
+}
+
+/** Why a requested folder did not resolve, plus the folders that do exist so the
+ *  caller can pick one instead of guessing again. */
+export interface FolderResolutionFailure {
+	requested: string;
+	reason: 'not-found' | 'ambiguous' | 'unsupported';
+	/** Candidate folder paths in scope, capped — enough to choose from, not an inventory. */
+	candidates: string[];
 }
 
 export interface InstanceAiWorkflowService {
@@ -317,6 +341,19 @@ export interface InstanceAiWorkflowService {
 		 * access. Writes stay locked to the thread's bound project regardless.
 		 */
 		projectId?: string;
+		/** Folder id to scope to, when the caller already has one from a listing. */
+		folderId?: string;
+		/**
+		 * Folder named the way a user names it — `logsearch`, `personal/logsearch`,
+		 * `Clients/Acme`. Matched case-insensitively against full paths first, then
+		 * against leaf names. Resolves to `folderId`; if it cannot, the result
+		 * carries `folderResolution` and stays unscoped rather than falling back to
+		 * a name filter.
+		 */
+		folderPath?: string;
+		/** Include workflows in nested subfolders. Default true — a user naming a
+		 *  folder means its contents, and n8n folders nest. */
+		recursive?: boolean;
 	}): Promise<WorkflowListResult>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).

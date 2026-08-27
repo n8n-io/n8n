@@ -11,13 +11,14 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import { WorkflowSaveConflictError } from '../errors/workflow-save-conflict.error';
-import type { InstanceAiContext } from '../types';
+import type { FolderResolutionFailure, InstanceAiContext } from '../types';
 import {
 	findSetupHintProblems,
 	INVALID_SETUP_HINT_MESSAGE,
 	setupHintField,
 	TEMPLATABLE_PLAIN_AUTH_TYPES,
 } from './credentials.tool';
+import { isFolderContextEnabled } from '../utils/folder-context-enabled';
 import { formatTimestamp } from '../utils/format-timestamp';
 import {
 	getObservedWorkflowChecksum,
@@ -73,7 +74,28 @@ const listAction = z.object({
 		.string()
 		.optional()
 		.describe(
-			'Substring filter on the workflow NAME only — it does not match node types, descriptions, or what a workflow does. Omit it whenever you need the actual inventory (what exists here, project status, what to do next): a name-filtered list is not the set of workflows in scope. Use it only when the user named a workflow, or to locate one you already know exists.',
+			'Substring filter on the workflow NAME only — it does not match node types, descriptions, or what a workflow does. Omit it whenever you need the actual inventory (what exists here, project status, what to do next): a name-filtered list is not the set of workflows in scope. Use it only when the user named a workflow, or to locate one you already know exists.' +
+				(isFolderContextEnabled()
+					? ' If the user named a FOLDER, use `folderPath` — folder membership is not a name prefix, and guessing it here silently returns the wrong set.'
+					: ''),
+		),
+	folderPath: z
+		.string()
+		.optional()
+		.describe(
+			'List the workflows inside a folder, named the way the user named it — "logsearch", "personal/logsearch", "Clients/Acme". This is the ONLY correct way to answer "what is in folder X": folder membership is stored, not encoded in workflow names, so a `query` prefix both misses members named differently and picks up non-members that share the prefix. Matched case-insensitively on the full path, then on the folder name. If it does not resolve, the result says so and lists the real folders — never assume the returned set is the folder.',
+		),
+	folderId: z
+		.string()
+		.optional()
+		.describe(
+			'Folder ID, when a previous listing already gave you one (each workflow row carries its `folder`). Prefer `folderPath` when working from what the user said.',
+		),
+	recursive: z
+		.boolean()
+		.optional()
+		.describe(
+			'Whether a folder listing includes nested subfolders. Defaults to true, which is what a user naming a folder means. Set false only to inspect one level.',
 		),
 	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
 	status: z
@@ -89,6 +111,17 @@ const listAction = z.object({
 			"Which project(s) to search. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.",
 		),
 	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
+});
+
+/** `list` without any way to address a folder — the shape the agent saw before
+ *  folder context existed. Registered instead of `listAction` when the capability
+ *  is off, so both arms of a measurement run off one binary and the off arm has to
+ *  fall back to a name guess rather than being told folders exist but are unusable.
+ *  `Input` is still derived from the full `listAction`, so handlers keep their types. */
+const listActionWithoutFolderScope = listAction.omit({
+	folderPath: true,
+	folderId: true,
+	recursive: true,
 });
 
 const getAction = z.object({
@@ -391,7 +424,7 @@ function getSupportedWorkflowActionSchemas(
 	const hasVersions = !!context.workflowService.listVersions;
 
 	return {
-		list: listAction,
+		list: isFolderContextEnabled() ? listAction : listActionWithoutFolderScope,
 		get: getAction,
 		...(surface !== 'orchestrator' ? { 'get-json': getJsonAction } : {}),
 		'get-as-code': getAsCodeAction,
@@ -463,17 +496,27 @@ async function resolveWorkflowName(
 }
 
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
-	const { workflows, total, totalInScope } = await context.workflowService.list({
-		limit: input.limit,
-		query: input.query,
-		...(input.status ? { status: input.status } : {}),
-		...(input.scope ? { scope: input.scope } : {}),
-		...(input.projectId ? { projectId: input.projectId } : {}),
-	});
+	const { workflows, total, totalInScope, folderResolution } =
+		await context.workflowService.list({
+			limit: input.limit,
+			query: input.query,
+			...(input.status ? { status: input.status } : {}),
+			...(input.scope ? { scope: input.scope } : {}),
+			...(input.projectId ? { projectId: input.projectId } : {}),
+			...(input.folderId ? { folderId: input.folderId } : {}),
+			...(input.folderPath ? { folderPath: input.folderPath } : {}),
+			...(input.recursive !== undefined ? { recursive: input.recursive } : {}),
+		});
 
 	// A partial list must never read as the complete inventory: guessed name
 	// filters used to silently hide the rest of a project's workflows.
 	const notes: string[] = [];
+	// First, and loudest: an unresolved folder means the rows below are NOT the
+	// folder the caller asked for. Reported before any other note, because acting
+	// on a wider set as if it were the folder is the failure this field exists for.
+	if (folderResolution) {
+		notes.push(formatFolderResolutionNote(folderResolution));
+	}
 	if (input.query !== undefined && totalInScope > total) {
 		notes.push(
 			`Name filter "${input.query}" matched ${total} of ${totalInScope} workflows in scope — ${totalInScope - total} are hidden. This is NOT the full set: re-run without \`query\` before answering anything about what exists here.`,
@@ -501,8 +544,28 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 		workflows,
 		total,
 		totalInScope,
+		...(folderResolution ? { folderResolution } : {}),
 		...(notes.length > 0 ? { note: notes.join(' ') } : {}),
 	};
+}
+
+/** Turn a failed folder lookup into an instruction, not just a status. The agent's
+ *  default recovery here is to retry as a name filter, which is exactly the
+ *  behaviour that produced wrong folder inventories — so the note has to name the
+ *  correct next move and say plainly that these rows are not the folder. */
+function formatFolderResolutionNote(failure: FolderResolutionFailure): string {
+	const candidates =
+		failure.candidates.length > 0
+			? ` Folders that do exist in scope: ${failure.candidates.map((path) => `"${path}"`).join(', ')}.`
+			: ' No folders exist in scope.';
+	if (failure.reason === 'unsupported') {
+		return `Folders are not available on this instance, so "${failure.requested}" could not be resolved and these results are NOT folder-scoped. Ask the user which workflows they mean rather than inferring folder membership from names.`;
+	}
+	const lead =
+		failure.reason === 'ambiguous'
+			? `"${failure.requested}" matches more than one folder`
+			: `No folder matches "${failure.requested}"`;
+	return `${lead}, so these results are NOT folder-scoped — do not describe them as the contents of that folder.${candidates} Re-run \`list\` with an exact \`folderPath\` from that list, or ask the user which folder they mean. Do NOT substitute a \`query\` name filter: folder membership is not a name prefix.`;
 }
 
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {

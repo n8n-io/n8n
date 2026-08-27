@@ -20,6 +20,7 @@ import {
 	SharedWorkflowRepository,
 	WorkflowEntity,
 	WorkflowRepository,
+	FolderRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type {
@@ -36,6 +37,7 @@ import type {
 	DataTableSummary,
 	DataTableColumnInfo,
 	WorkflowSummary,
+	FolderResolutionFailure,
 	WorkflowDetail,
 	WorkflowNode,
 	WorkflowVersionSummary,
@@ -75,6 +77,7 @@ import {
 	WorkflowSaveConflictError,
 	WorkflowNotFoundError,
 	WorkflowEditorLockedError,
+	isFolderContextEnabled,
 } from '@n8n/instance-ai';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { LessThan } from '@n8n/typeorm';
@@ -287,6 +290,9 @@ export class InstanceAiAdapterService {
 		// DI (by type, not position) always provides it in a running instance.
 		private readonly evaluationConfigService?: EvaluationConfigService,
 		private readonly llmJudgeProviderRegistry?: LlmJudgeProviderRegistry,
+		// Appended rather than grouped with `folderService`: existing tests construct
+		// this service positionally, so inserting mid-list renames every later index.
+		private readonly folderRepository?: FolderRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -613,6 +619,9 @@ export class InstanceAiAdapterService {
 			allowSendingParameterValues,
 			telemetry,
 			collaborationService,
+			folderService,
+			folderRepository,
+			projectService,
 		} = this;
 		const logger = this.logger;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('workflows');
@@ -647,6 +656,63 @@ export class InstanceAiAdapterService {
 			}
 		};
 
+		/**
+		 * Every folder the user can read in the requested scope, keyed by id, with a
+		 * slash-joined path. Needed only to RESOLVE a folder the caller named (and to
+		 * expand its subtree) — attribution alone uses the much cheaper
+		 * `readFolderPaths` below, so an ordinary listing does not pay for a scan of
+		 * every project's folders.
+		 *
+		 * Returns undefined when folders are unlicensed: the caller must then report
+		 * that a folder request could not be honoured rather than quietly widening.
+		 */
+		const readFoldersInScope = async (
+			targetProjectId: string | undefined,
+		): Promise<Map<string, FolderInScope> | undefined> => {
+			if (!license.isLicensed('feat:folders')) return undefined;
+
+			const projectIds = targetProjectId
+				? [targetProjectId]
+				: (await projectService.getAccessibleProjects(user)).map((project) => project.id);
+
+			const folders = new Map<string, FolderInScope>();
+			for (const projectId of projectIds) {
+				const [rows] = await folderService.getManyAndCount(projectId, {
+					take: FOLDER_SCAN_LIMIT,
+					// `updatedAt` is not read, but the default sort orders by it, and a
+					// custom select plus `take` plus the `parentFolder` join makes TypeORM
+					// paginate through a DISTINCT subquery — which fails at the database
+					// with `no such column: distinctAlias.folder_updatedAt` if the ordering
+					// column was not selected.
+					select: { name: true, path: true, parentFolder: true, updatedAt: true },
+				});
+				for (const row of rows) {
+					// `path` is the segment array from the root; join it so a user-authored
+					// "personal/logsearch" is comparable without re-walking parents.
+					const path = Array.isArray(row.path) ? row.path.join('/') : row.name;
+					folders.set(row.id, {
+						id: row.id,
+						name: row.name,
+						path,
+						parentFolderId: readParentFolderId(row),
+					});
+				}
+			}
+			return folders;
+		};
+
+		/**
+		 * Root-relative paths for exactly the folders a page of rows landed in — one
+		 * recursive CTE for the whole page, and nothing at all when the page has no
+		 * foldered workflows. This is what keeps folder attribution free enough to be
+		 * unconditional; a full folder scan per listing would not be.
+		 */
+		const readFolderPaths = async (folderIds: string[]): Promise<Map<string, string>> => {
+			if (folderIds.length === 0 || !folderRepository) return new Map();
+			const segments = await folderRepository.getFolderPathsToRoot(folderIds);
+			return new Map([...segments.entries()].map(([id, path]) => [id, path.join('/')] as const));
+		};
+
 		return {
 			async list(options) {
 				// An explicit projectId targets one project; otherwise the thread's own
@@ -657,13 +723,51 @@ export class InstanceAiAdapterService {
 				// `resolveBoundProjectId` and stay locked to the bound project.
 				const targetProjectId =
 					options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined);
+
+				// Scanning every folder in scope is only worth it to resolve a name the
+				// caller supplied; attribution on the returned rows is enriched from the
+				// rows themselves further down.
+				const foldersVisible = isFolderContextEnabled();
+				const wantsFolderScope =
+					foldersVisible && Boolean(options?.folderId ?? options?.folderPath);
+				const foldersInScope = wantsFolderScope
+					? await readFoldersInScope(targetProjectId)
+					: undefined;
+
+				let folderResolution: FolderResolutionFailure | undefined;
+				let resolvedFolderId: string | undefined;
+				if (wantsFolderScope) {
+					const requested = options?.folderPath ?? options?.folderId ?? '';
+					const resolved = resolveRequestedFolder(
+						{ folderId: options?.folderId, folderPath: options?.folderPath },
+						foldersInScope,
+					);
+					if ('folderId' in resolved) {
+						resolvedFolderId = resolved.folderId;
+					} else {
+						folderResolution = { requested, ...resolved };
+					}
+				}
+
 				const scopeFilter = {
 					...(options?.status === 'all' ? {} : { isArchived: options?.status === 'archived' }),
 					...(targetProjectId ? { projectId: targetProjectId } : {}),
 				};
+				// Expanded here, not left to the repository: only the workflows-and-folders
+				// query path expands `parentFolderId` into its subtree, and this listing
+				// uses the plain one — where it is an exact match. Relying on the
+				// repository would silently return only the folder's top level.
+				const folderIds =
+					resolvedFolderId === undefined
+						? undefined
+						: options?.recursive === false
+							? [resolvedFolderId]
+							: collectFolderSubtree(resolvedFolderId, foldersInScope);
+
 				const filter = {
 					...scopeFilter,
 					...(options?.query ? { query: options.query } : {}),
+					...(folderIds ? { parentFolderIds: folderIds } : {}),
 				};
 
 				const { workflows, count } = await workflowService.getMany(user, {
@@ -683,24 +787,44 @@ export class InstanceAiAdapterService {
 				// would repeat the same project on every row.
 				const attributeProjects = targetProjectId === undefined;
 
+				const rows = workflows.filter((wf): wf is WorkflowEntity => 'versionId' in wf);
+				// The repository's default select already joined `parentFolder`; only the
+				// root-relative path needs a lookup, and only for the folders on this page.
+				const folderPaths = foldersVisible
+					? await readFolderPaths([
+							...new Set(rows.flatMap((wf) => wf.parentFolder?.id ?? [])),
+						])
+					: new Map<string, string>();
+
 				return {
-					workflows: workflows
-						.filter((wf): wf is WorkflowEntity => 'versionId' in wf)
-						.map((wf): WorkflowSummary => {
-							const project = attributeProjects ? readHomeProject(wf) : undefined;
-							return {
-								id: wf.id,
-								name: wf.name,
-								versionId: wf.versionId,
-								activeVersionId: wf.activeVersionId ?? null,
-								isArchived: wf.isArchived,
-								createdAt: wf.createdAt.toISOString(),
-								updatedAt: wf.updatedAt.toISOString(),
-								...(project ? { project } : {}),
-							};
-						}),
+					workflows: rows.map((wf): WorkflowSummary => {
+						const project = attributeProjects ? readHomeProject(wf) : undefined;
+						// Joined all along, and until now discarded here — which is why a
+						// listing could not say which folder anything was in.
+						const folder = foldersVisible && wf.parentFolder
+							? {
+									id: wf.parentFolder.id,
+									name: wf.parentFolder.name,
+									// A path lookup that came back empty still leaves a usable
+									// answer: the folder's own name is its path when it is a root.
+									path: folderPaths.get(wf.parentFolder.id) ?? wf.parentFolder.name,
+								}
+							: undefined;
+						return {
+							id: wf.id,
+							name: wf.name,
+							versionId: wf.versionId,
+							activeVersionId: wf.activeVersionId ?? null,
+							isArchived: wf.isArchived,
+							createdAt: wf.createdAt.toISOString(),
+							updatedAt: wf.updatedAt.toISOString(),
+							...(project ? { project } : {}),
+							...(folder ? { folder } : {}),
+						};
+					}),
 					total: count,
 					totalInScope,
+					...(folderResolution ? { folderResolution } : {}),
 				};
 			},
 
@@ -3895,6 +4019,135 @@ function readHomeProject(workflow: object): { id: string; name: string } | undef
 	if (typeof id !== 'string' || typeof name !== 'string') return undefined;
 
 	return { id, name };
+}
+
+/** How many folders one project contributes to a resolution scan. Folders are an
+ *  organizational layer, not a corpus — a project past this many is not a case
+ *  where guessing harder helps, and the miss is reported rather than hidden. */
+const FOLDER_SCAN_LIMIT = 200;
+
+/** Folder paths offered back on a failed lookup — enough to choose from without
+ *  turning an error into an inventory dump. */
+const FOLDER_CANDIDATE_LIMIT = 20;
+
+type FolderInScope = {
+	id: string;
+	name: string;
+	path: string;
+	parentFolderId: string | null;
+};
+
+/** Read the parent id off a listed folder. Selected via `parentFolder`, which the
+ *  service returns as a relation rather than a flat column, so read both shapes
+ *  defensively — a row without either is a root folder. */
+function readParentFolderId(folder: object): string | null {
+	const relation = Reflect.get(folder, 'parentFolder');
+	if (typeof relation === 'object' && relation !== null) {
+		const id = Reflect.get(relation, 'id');
+		if (typeof id === 'string') return id;
+	}
+	const flat = Reflect.get(folder, 'parentFolderId');
+	return typeof flat === 'string' ? flat : null;
+}
+
+/**
+ * The folder plus every folder nested under it, by walking parent links rather
+ * than by path prefix — a folder name may itself contain a slash, which would
+ * make `startsWith(path + '/')` match a sibling.
+ *
+ * Falls back to the folder alone when the scope map is missing, so an unlicensed
+ * or unreadable folder set narrows to one level instead of silently widening.
+ */
+export function collectFolderSubtree(
+	folderId: string,
+	foldersInScope: Map<string, FolderInScope> | undefined,
+): string[] {
+	if (!foldersInScope) return [folderId];
+
+	const childrenByParent = new Map<string, string[]>();
+	for (const folder of foldersInScope.values()) {
+		if (folder.parentFolderId === null) continue;
+		const siblings = childrenByParent.get(folder.parentFolderId) ?? [];
+		siblings.push(folder.id);
+		childrenByParent.set(folder.parentFolderId, siblings);
+	}
+
+	const subtree: string[] = [];
+	const queue = [folderId];
+	const seen = new Set(queue);
+	while (queue.length > 0) {
+		const current = queue.shift();
+		if (current === undefined) break;
+		subtree.push(current);
+		for (const child of childrenByParent.get(current) ?? []) {
+			// A cycle is not reachable through the UI, but a malformed parent link
+			// would otherwise hang the request rather than return a wrong answer.
+			if (seen.has(child)) continue;
+			seen.add(child);
+			queue.push(child);
+		}
+	}
+	return subtree;
+}
+
+/**
+ * Resolve a folder the caller named to exactly one folder id.
+ *
+ * Deliberately strict and staged: exact path, then exact folder name, then a
+ * path suffix. It never falls back to a fuzzy or partial match, because the
+ * failure this exists to remove is a folder request quietly becoming a wider set
+ * — an unresolved name has to come back as unresolved, with the real folders
+ * listed, so the caller asks instead of inferring membership from workflow names.
+ *
+ * A user's path often includes the PROJECT ("personal/logsearch"), which is not part
+ * of a folder path, so the last segment is tried against folder names too.
+ */
+export function resolveRequestedFolder(
+	requested: { folderId?: string; folderPath?: string },
+	foldersInScope: Map<string, FolderInScope> | undefined,
+): { folderId: string } | Omit<FolderResolutionFailure, 'requested'> {
+	if (!foldersInScope) return { reason: 'unsupported', candidates: [] };
+
+	const folders = [...foldersInScope.values()];
+	const candidates = folders
+		.map((folder) => folder.path)
+		.sort()
+		.slice(0, FOLDER_CANDIDATE_LIMIT);
+
+	if (requested.folderId) {
+		return foldersInScope.has(requested.folderId)
+			? { folderId: requested.folderId }
+			: { reason: 'not-found', candidates };
+	}
+
+	const normalize = (value: string) => value.trim().replace(/^\/+|\/+$/g, '').toLowerCase();
+	const target = normalize(requested.folderPath ?? '');
+	if (target === '') return { reason: 'not-found', candidates };
+	const leaf = target.split('/').at(-1) ?? target;
+
+	const stages: Array<(folder: FolderInScope) => boolean> = [
+		(folder) => normalize(folder.path) === target,
+		(folder) => normalize(folder.name) === target,
+		(folder) => normalize(folder.name) === leaf,
+		// Suffix, on a segment boundary: "acme" must not match "acme-archive".
+		(folder) => normalize(folder.path).endsWith(`/${target}`),
+	];
+
+	for (const matches of stages) {
+		const hits = folders.filter(matches);
+		if (hits.length === 1) return { folderId: hits[0].id };
+		if (hits.length > 1) {
+			return {
+				reason: 'ambiguous',
+				candidates: hits
+					.map((folder) => folder.path)
+					.sort()
+					.slice(0, FOLDER_CANDIDATE_LIMIT),
+			};
+		}
+	}
+
+	return { reason: 'not-found', candidates };
 }
 
 function hasCredentialId(value: unknown): boolean {
