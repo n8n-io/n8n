@@ -148,6 +148,31 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		});
 	}
 
+	/**
+	 * Resolve the LangSmith root-run anchor for a responseId (UI sends
+	 * `messageGroupId ?? runId`). The ids ride on the run-start fact; prefer the
+	 * earliest run-start in the message group so feedback attaches to the
+	 * `message_turn` root run, falling back to the run whose id matches.
+	 */
+	async findLangsmithAnchor(
+		threadId: string,
+		responseId: string,
+	): Promise<{ langsmithRunId: string; langsmithTraceId: string } | undefined> {
+		const rows = await this.find({
+			where: { threadId, type: 'run-start' },
+			order: { seq: 'ASC' },
+		});
+		const starts = rows.map((r) => this.toEvent(r));
+		const byGroup = starts.find(
+			(e) => e.type === 'run-start' && e.payload.messageGroupId === responseId,
+		);
+		const anchor = byGroup ?? starts.find((e) => e.runId === responseId);
+		if (anchor?.type !== 'run-start') return undefined;
+		const { langsmithRunId, langsmithTraceId } = anchor.payload;
+		if (!langsmithRunId || !langsmithTraceId) return undefined;
+		return { langsmithRunId, langsmithTraceId };
+	}
+
 	/** Timestamp of the run's most recent durable fact (sweep liveness proxy). */
 	async lastFactAt(threadId: string, runId: string): Promise<Date | null> {
 		const row = await this.createQueryBuilder('e')
