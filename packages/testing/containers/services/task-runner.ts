@@ -43,6 +43,8 @@ export const taskRunner: Service<TaskRunnerResult> = {
 				.withExposedPorts(5680)
 				.withEnvironment({
 					N8N_RUNNERS_AUTH_TOKEN: 'test',
+					// The stack's readiness gate reads the launchers' broker registration
+					// from this container's log, which the launcher prints only at debug.
 					N8N_RUNNERS_LAUNCHER_LOG_LEVEL: 'debug',
 					N8N_RUNNERS_TASK_BROKER_URI: taskBrokerUri,
 					N8N_RUNNERS_MAX_CONCURRENCY: '5',

@@ -5,7 +5,7 @@ import { Network } from 'testcontainers';
 import {
 	createElapsedLogger,
 	pollContainerHttpEndpoint,
-	waitForContainerLogMessage,
+	waitForContainerLogMessages,
 } from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import type { LoadBalancerResult } from './services/load-balancer';
@@ -255,17 +255,17 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		}
 
 		// The runner container starts before the instance whose broker it dials, so it
-		// can only register once that instance is up. Both launchers must have
+		// can only register once that instance is up. Each launcher must have
 		// registered before a test executes code, otherwise the first execution races
 		// the registration. Which instance owns the broker varies by topology, so the
-		// runner's own log is the one place the signal is observable.
+		// runner's own log is the one place the signal is observable. Match each
+		// launcher separately, so one launcher reconnecting cannot stand in for the other.
 		const taskRunnerResult = serviceResults.taskRunner as TaskRunnerResult | undefined;
 		if (taskRunnerResult) {
-			await waitForContainerLogMessage(
-				taskRunnerResult.container,
-				/Received message `broker:runnerregistered`/,
-				2,
-			);
+			await waitForContainerLogMessages(taskRunnerResult.container, [
+				/\[launcher:js\].*Received message `broker:runnerregistered`/,
+				/\[launcher:py\].*Received message `broker:runnerregistered`/,
+			]);
 			log('Task runners registered with broker');
 		}
 

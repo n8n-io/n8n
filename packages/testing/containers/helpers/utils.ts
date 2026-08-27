@@ -108,31 +108,31 @@ export async function pollContainerHttpEndpoint(
 }
 
 /**
- * Waits until a container's logs contain `pattern` at least `occurrences` times.
- * Reads the log stream from the beginning, so a message emitted before the call
- * still counts. Throws on timeout, since callers use this to establish a
- * precondition rather than to observe one.
+ * Waits until a container's logs have matched every pattern in `patterns` at
+ * least once. Reads the log stream from the beginning, so a message emitted
+ * before the call still counts; container names are unique per stack, so a
+ * stream never carries lines from an earlier run. Throws on timeout, since
+ * callers use this to establish a precondition rather than to observe one.
  *
  * @param container The started container.
- * @param pattern The pattern to look for in the container's logs.
- * @param occurrences How many matching lines to wait for (default: 1).
+ * @param patterns The patterns to look for. Each must match at least one line.
  * @param timeoutMs Total timeout in milliseconds (default: 60,000ms).
  */
-export async function waitForContainerLogMessage(
+export async function waitForContainerLogMessages(
 	container: StartedTestContainer,
-	pattern: RegExp,
-	occurrences: number = 1,
+	patterns: RegExp[],
 	timeoutMs: number = 60000,
 ): Promise<void> {
 	const stream = await container.logs({ since: 0 });
-	let seen = 0;
+	const pending = new Set(patterns);
 
 	try {
 		await new Promise<void>((resolve, reject) => {
 			const timer = setTimeout(() => {
+				const missing = [...pending].map(String).join(', ');
 				reject(
 					new Error(
-						`Container ${container.getName()} did not log ${occurrences}x ${String(pattern)} within ${timeoutMs / 1000} seconds (saw ${seen})`,
+						`Container ${container.getName()} did not log ${missing} within ${timeoutMs / 1000} seconds`,
 					),
 				);
 			}, timeoutMs);
@@ -143,9 +143,17 @@ export async function waitForContainerLogMessage(
 				else resolve();
 			};
 
+			let partialLine = '';
 			stream.on('data', (chunk: Buffer | string) => {
-				for (const line of chunk.toString().split('\n')) {
-					if (pattern.test(line) && ++seen >= occurrences) {
+				// A chunk can split a line, so hold the trailing fragment back until
+				// the rest of it arrives.
+				const lines = (partialLine + chunk.toString()).split('\n');
+				partialLine = lines.pop() ?? '';
+				for (const line of lines) {
+					for (const pattern of pending) {
+						if (pattern.test(line)) pending.delete(pattern);
+					}
+					if (pending.size === 0) {
 						finish();
 						return;
 					}
