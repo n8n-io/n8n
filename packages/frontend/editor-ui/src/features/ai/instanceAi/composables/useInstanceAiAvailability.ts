@@ -31,6 +31,13 @@ export function useInstanceAiAvailable(): ComputedRef<boolean> {
  * that opens a thread — the turn would be sent to an instance with no model.
  * Entry points that start a conversation (or advertise one to another surface)
  * check this instead.
+ *
+ * This tracks `setupCompleted` (model, sandbox, and a web-search decision), not
+ * the model alone, because `InstanceAiView` renders onboarding in place of the
+ * thread until all three are settled: a hand-off on a model-only instance would
+ * send its turn and then land the user on the wizard anyway. The chat endpoint
+ * asks the narrower question (`isModelConfigured`) on purpose — it is a backstop
+ * that refuses only what cannot work, not the setup policy.
  */
 export function useInstanceAiReady(): ComputedRef<boolean> {
 	const settingsStore = useSettingsStore();
