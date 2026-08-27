@@ -376,7 +376,11 @@ describe('ActiveExecutions', () => {
 
 			activeExecutions.resolveExecutionResponsePromise(executionId);
 
-			expect(responsePromise.resolve).toHaveBeenCalledWith(EXECUTION_ENDED_WITHOUT_RESPONSE);
+			// Identity, not equality: `webhook-helpers` recognises the sentinel by reference,
+			// so any other empty object would be treated as a real, empty response.
+			expect(vi.mocked(responsePromise.resolve).mock.calls[0][0]).toBe(
+				EXECUTION_ENDED_WITHOUT_RESPONSE,
+			);
 		});
 
 		test('Should leave a waiting execution alone, so it can still respond on resume', async () => {
