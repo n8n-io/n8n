@@ -36,22 +36,32 @@ export class AgentWorkspaceService {
 		principalHash: AgentSandboxPrincipalHash,
 	): Promise<Workspace> {
 		this.agentSandboxRuntimeService.assertSandboxConfiguration(projectId, agentId);
+		// The sandbox boots lazily on first filesystem/command use, so workspace-root
+		// creation and tool-result reconciliation run in the filesystem init hook
+		// (once per filesystem instance, after the sandbox is ready) instead of eagerly here.
 		const runtime = await this.agentSandboxRuntimeService.acquireWorkspaceSandbox(
 			projectId,
 			agentId,
 			principalHash,
+			{
+				onFilesystemInit: async ({ filesystem }) => {
+					await filesystem.mkdir(runtime.workspaceRoot, { recursive: true });
+					this.reconcileToolResultsInBackground(
+						runtime.cacheKey,
+						projectId,
+						agentId,
+						principalHash,
+						createScopedWorkspace(
+							new Workspace({ filesystem, sandbox: runtime.sandbox }),
+							runtime.workspaceRoot,
+						),
+					);
+				},
+			},
 		);
-		await runtime.filesystem.mkdir(runtime.workspaceRoot, { recursive: true });
 		const workspace = createScopedWorkspace(
 			new Workspace({ filesystem: runtime.filesystem, sandbox: runtime.sandbox }),
 			runtime.workspaceRoot,
-		);
-		this.reconcileToolResultsInBackground(
-			runtime.cacheKey,
-			projectId,
-			agentId,
-			principalHash,
-			workspace,
 		);
 		const getTools = workspace.getTools.bind(workspace);
 		workspace.getTools = () =>
