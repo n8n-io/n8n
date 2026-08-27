@@ -159,7 +159,8 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(workQueue.publish).not.toHaveBeenCalled();
 	});
 
-	it('rejects a graph with back-edges with 501, creating nothing', async () => {
+	it('rejects a back-edge to a node that cannot loop with 400, creating nothing', async () => {
+		// only a batch node knows how to advance a loop, so this can never run
 		const response = await request(url)
 			.post('/api/workflow-executions')
 			.set(authHeader())
@@ -173,6 +174,39 @@ describe('POST /api/workflow-executions (integration)', () => {
 					edges: [
 						{ from: 'trigger', to: 'a' },
 						{ from: 'a', to: 'trigger', isBackEdge: true },
+					],
+				},
+			});
+
+		expect(response.status).toBe(400);
+		expect((response.body as { error: string }).error).toBe('invalid_graph');
+		expect(workQueue.publish).not.toHaveBeenCalled();
+	});
+
+	it('rejects a nested loop with 501, creating nothing', async () => {
+		// coherent, but the engine does not run it yet
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send({
+				workflowId: 'wf-1',
+				graph: {
+					nodes: [
+						{ id: 'trigger', name: 'T', type: 'trigger' },
+						{ id: 'outer', name: 'Outer', type: 'batch', config: { batchSize: 1 } },
+						{ id: 'inner', name: 'Inner', type: 'batch', config: { batchSize: 1 } },
+						{ id: 'x', name: 'X', type: 'v1-node' },
+						{ id: 'tail', name: 'Tail', type: 'v1-node' },
+						{ id: 'done', name: 'Done', type: 'v1-node' },
+					],
+					edges: [
+						{ from: 'trigger', to: 'outer' },
+						{ from: 'outer', to: 'inner', outputIndex: 1 },
+						{ from: 'inner', to: 'x', outputIndex: 1 },
+						{ from: 'x', to: 'inner', isBackEdge: true },
+						{ from: 'inner', to: 'tail', outputIndex: 0 },
+						{ from: 'tail', to: 'outer', isBackEdge: true },
+						{ from: 'outer', to: 'done', outputIndex: 0 },
 					],
 				},
 			});

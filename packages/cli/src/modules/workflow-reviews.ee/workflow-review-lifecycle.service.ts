@@ -10,18 +10,19 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { CollaborationService } from '@/collaboration/collaboration.service';
 import { EventService } from '@/events/event.service';
 import type { WorkflowMutationHooks } from '@/workflows/workflow-mutation-hooks-proxy.service';
 
-/** What `beforeWorkflowDeleted` captured, keyed by the workflow about to be deleted. */
+import { WorkflowReviewStateNotifier } from './workflow-review-state-notifier.service';
+
+/** Review data captured before a workflow is deleted, keyed by workflow ID. */
 type PendingDeleteCapture = {
 	userId: string | null;
-	/** Open requests linked to the workflow at capture time. */
+	/** Requests that were open when the workflow was captured. */
 	requestIds: string[];
 };
 
-/** A request a cause-recording pass closed, with the actor to attribute the close telemetry to. */
+/** A closed request and the actor used for telemetry. */
 type ClosedRequest = { requestId: string; actorKind: 'user' | 'system'; userId: string | null };
 
 const CLOSE_TRIGGER_BY_ACTIVITY_TYPE = {
@@ -33,27 +34,14 @@ const CLOSE_TRIGGER_BY_ACTIVITY_TYPE = {
 	'workflow-archived' | 'workflow-moved' | 'workflow-deleted'
 >;
 
-/**
- * A delete that never completes leaves its capture behind; the map is bounded so those
- * leftovers cannot accumulate forever. Far above any real burst of parallel deletes.
- */
+/** Prevent failed deletes from leaving captures in memory indefinitely. */
 const MAX_PENDING_DELETE_CAPTURES = 1000;
 
 /**
- * Records workflow lifecycle events into the review activity feed and closes open review
- * requests once nothing reviewable remains: per-workflow cause entries (`workflow.archived`,
- * `workflow.deleted`, `workflow.moved`, `workflow.published`), plus a `review.closed` entry
- * whenever the close policy fires.
- *
- * The close policy, general from day one: when cause events are recorded for a request with
- * affected workflow set S, the request closes iff no linked workflow outside S is reviewable
- * (exists, not archived, still in the request's project). Today every request has one
- * workflow, so the policy always closes — but multi-workflow inherits a working policy.
- *
- * Deliberately not feature-gated beyond module load: the instance policy
- * toggle guards user actions, but a review left open while the policy is off
- * would still block publishing once the policy is re-enabled, so cleanup must
- * run regardless.
+ * Records workflow lifecycle events and closes requests that have no reviewable workflows.
+ * A workflow remains reviewable while it exists, is not archived, and stays in the request's
+ * project. Cleanup still runs when user actions are disabled so stale requests cannot later
+ * block publishing.
  */
 @Service()
 export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
@@ -65,7 +53,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 		private readonly workflowReviewRequestWorkflowRepository: WorkflowReviewRequestWorkflowRepository,
 		private readonly activityRepository: WorkflowReviewActivityRepository,
 		private readonly dbLockService: DbLockService,
-		private readonly collaborationService: CollaborationService,
+		private readonly stateNotifier: WorkflowReviewStateNotifier,
 		private readonly eventService: EventService,
 	) {}
 
@@ -79,11 +67,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 		await this.reconcileUnreviewableOpenRequests(workflowIds);
 	}
 
-	/**
-	 * Capture-only, and never throws: the delete may still fail after this, so writing
-	 * `workflow.deleted` (past tense, durable) here would fabricate history. A failed
-	 * capture degrades to the sweep, which closes without a cause entry.
-	 */
+	/** Capture request data before deletion without writing activity or blocking the delete. */
 	async beforeWorkflowDeleted(workflowId: string, userId: string | null): Promise<void> {
 		try {
 			const openRequests = await this.workflowReviewRequestRepository.findOpenRequestsForWorkflows(
@@ -91,7 +75,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 				{},
 			);
 
-			// Overwrite on re-capture: only the state right before the delete counts.
+			// Keep only the latest state captured before deletion.
 			this.pendingDeleteCaptures.delete(workflowId);
 			if (this.pendingDeleteCaptures.size >= MAX_PENDING_DELETE_CAPTURES) {
 				const oldest = this.pendingDeleteCaptures.keys().next().value;
@@ -110,8 +94,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 	}
 
 	async afterWorkflowsDeleted(workflowIds: string[]): Promise<void> {
-		// One request can lose several workflows of the same batch; group so its close
-		// policy is evaluated once, against the whole batch.
+		// Evaluate each request once when a batch deletes several linked workflows.
 		const capturesByRequestId = new Map<string, { workflowIds: string[]; userId: string | null }>();
 		for (const workflowId of workflowIds) {
 			const capture = this.pendingDeleteCaptures.get(workflowId);
@@ -132,17 +115,14 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 			await this.recordCapturedDeletions(capturesByRequestId, workflowIds);
 		}
 
-		// Backstop for whatever the capture path missed (capture failure, a crash between
-		// delete and this hook on an earlier delete): closes with `review.closed` only —
-		// the cause is unrecoverable after the cascade.
+		// Close requests missed by capture. Their deletion cause is no longer available.
 		await this.reconcileUnreviewableOpenRequests(workflowIds);
 	}
 
 	/**
-	 * Records `workflow.published` into every request — open or closed — whose pin matches the
-	 * published version exactly. Closed requests on purpose: the happy path is approval (which
-	 * closes) followed by auto-publish, and the timeline must complete. Post-commit and
-	 * log-only: a feed write must never fail the publish.
+	 * Records a publish when its version matches the request's pinned version. Closed requests
+	 * are included because approval closes the request before auto-publish. Activity failures
+	 * are logged without failing the completed publish.
 	 */
 	async afterWorkflowPublished(event: {
 		workflowId: string;
@@ -168,10 +148,8 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 				);
 			}
 
-			// A publish changes review-derived state (e.g. it clears the approved-but-
-			// unpublished banner), so canvas viewers get the same invalidation the other
-			// lifecycle paths send. Fire-and-forget, like the entries above: best-effort.
-			this.broadcastReviewStateChanged([event.workflowId]);
+			// Publishing can change review status shown in open editors.
+			this.stateNotifier.notify(event.workflowId);
 		} catch (error) {
 			this.logger.warn('Failed to record workflow publication in review activity', {
 				workflowId: event.workflowId,
@@ -182,21 +160,13 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 	}
 
 	/**
-	 * Closes every open review with no reviewable workflow left, whatever left it that way.
-	 * The sweep is global — one call covers the whole batch, and the ids are log context only.
-	 *
-	 * The per-mutation paths above cannot cover two cases. A delete whose capture was lost
-	 * strands reviews findable only as "open with nothing reviewable", never by workflow id.
-	 * And an archive or a move whose close rolled back stays committed, leaving a review its
-	 * own hook has already finished with — so the sweep runs after those hooks too, in its own
-	 * transaction, and repairs the strand on that mutation or on the next one.
-	 *
-	 * No broadcast: the reviews it closes are a rare inconsistency rather than a live edit, and
-	 * viewers heal on the next focus/reconnect refetch.
+	 * Closes any open request with no reviewable workflow left. This catches failed captures
+	 * and close operations that rolled back after the workflow mutation committed. It runs in
+	 * its own transaction and does not broadcast; viewers refetch on focus or reconnect.
 	 */
 	private async reconcileUnreviewableOpenRequests(workflowIds: string[]): Promise<void> {
 		try {
-			// No candidate ids: every open request is evaluated, not just those this mutation touched.
+			// Without candidate IDs, evaluate every open request.
 			const closedRequestIds = await this.dbLockService.withLockContext(
 				DbLock.WORKFLOW_REVIEW_MUTATION,
 				async (ctx) => await this.closeUnreviewable(ctx),
@@ -205,7 +175,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 			if (closedRequestIds.length === 0) return;
 
 			for (const requestId of closedRequestIds) {
-				// The sweep is the backstop, so it can recover neither the trigger nor an actor.
+				// The original cause and actor are unavailable at this point.
 				this.eventService.emit('workflow-review-closed', {
 					workflowReviewRequestId: requestId,
 					cause: { trigger: 'unknown', actorKind: 'system', userId: null },
@@ -217,8 +187,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 				closedRequestIds,
 			});
 		} catch (error) {
-			// The mutation has already committed; failing it now would be worse than a
-			// request that stays open until the next sweep closes it.
+			// The workflow mutation has committed, so only log cleanup failures.
 			this.logger.error(
 				'Failed to close open workflow review request(s) left on unreviewable workflows',
 				{ workflowIds, error },
@@ -226,11 +195,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 		}
 	}
 
-	/**
-	 * Archive/move path: for every open request linked to an affected workflow, write one
-	 * cause entry per affected link, then close the requests the close policy leaves with
-	 * nothing reviewable.
-	 */
+	/** Records archive or move activity, then closes requests with nothing reviewable left. */
 	private async recordCauseEventsAndApplyClosePolicy(
 		workflowIds: string[],
 		type: 'workflow.archived' | 'workflow.moved',
@@ -239,7 +204,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 		const actorKind = userId === null ? 'system' : 'user';
 
 		await this.recordCauseEventsAndClose(type, workflowIds, async (ctx) => {
-			// Under the lock, so the close can't race a concurrent decide/version sync.
+			// Read under the lock to avoid racing a decision or version update.
 			const openRequests = await this.workflowReviewRequestRepository.findOpenRequestsForWorkflows(
 				workflowIds,
 				ctx,
@@ -272,12 +237,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 		});
 	}
 
-	/**
-	 * Delete path: consumes what `beforeWorkflowDeleted` captured, now that the delete has
-	 * committed and the truth can be written. Batch-correct by construction — every deleted
-	 * workflow's rows are already gone, so the close policy cannot mistake a deleted batch-mate
-	 * for a still-reviewable workflow.
-	 */
+	/** Records captured deletions and evaluates each request after the full batch is deleted. */
 	private async recordCapturedDeletions(
 		capturesByRequestId: Map<string, { workflowIds: string[]; userId: string | null }>,
 		batchWorkflowIds: string[],
@@ -332,7 +292,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 			);
 
 			const trigger = CLOSE_TRIGGER_BY_ACTIVITY_TYPE[type];
-			// Ahead of the affected-ids guard below: the close is what is being reported.
+			// Report closures even when no workflow activity was added.
 			for (const { requestId, actorKind, userId } of closedRequests) {
 				this.eventService.emit('workflow-review-closed', {
 					workflowReviewRequestId: requestId,
@@ -347,7 +307,7 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 				workflowIds: affectedWorkflowIds,
 			});
 
-			this.broadcastReviewStateChanged(affectedWorkflowIds);
+			this.stateNotifier.notifyMany(affectedWorkflowIds);
 		} catch (error) {
 			this.logger.error('Failed to record workflow review cause event(s)', {
 				type,
@@ -358,13 +318,8 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 	}
 
 	/**
-	 * The one close transition, shared by the targeted paths and the reconciliation sweep: closes
-	 * every candidate the close policy leaves with no reviewable workflow, appending a
-	 * `review.closed` entry for each in the caller's transaction.
-	 *
-	 * Select-then-close-by-id runs under the caller's lock: a close that races a concurrent
-	 * approval would otherwise both explain the same close and overwrite what the approval wrote.
-	 * A `review.closed` write that fails rolls the whole close back, and the next sweep repairs it.
+	 * Closes candidates with no reviewable workflow and records each close in the same
+	 * transaction. The caller holds the lock to prevent conflicting closes or approvals.
 	 */
 	private async closeUnreviewable(
 		ctx: OperationContext,
@@ -391,16 +346,5 @@ export class WorkflowReviewLifecycleService implements WorkflowMutationHooks {
 		}
 
 		return closableRequestIds;
-	}
-
-	private broadcastReviewStateChanged(workflowIds: string[]): void {
-		for (const workflowId of workflowIds) {
-			// Fire-and-forget: viewers heal via focus/reconnect refetch.
-			this.collaborationService
-				.broadcastWorkflowReviewStateChanged(workflowId)
-				.catch((error) =>
-					this.logger.warn('Failed to broadcast review state change', { workflowId, error }),
-				);
-		}
 	}
 }

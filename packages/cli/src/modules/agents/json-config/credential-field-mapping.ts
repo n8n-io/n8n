@@ -36,6 +36,12 @@ const PROVIDER_CREDENTIAL_MAPPERS: Record<string, CredMapper> = {
 	openrouter: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 	// NvidiaApi.credentials.ts → apiKey, url (base URL)
 	nvidia: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
+	// MoonshotApi.credentials.ts → apiKey, url (hidden, derived from the region choice)
+	moonshotai: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
+	// MinimaxApi.credentials.ts → apiKey, url (hidden, region-derived, already ends in /v1)
+	minimax: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
+	// AlibabaCloudApi.credentials.ts → apiKey, url (hidden, region-derived bare host)
+	alibaba: (c) => ({ apiKey: c.apiKey, baseURL: c.url }),
 
 	// AzureOpenAiApi.credentials.ts            → apiKey, resourceName, apiVersion, endpoint
 	// AzureEntraCognitiveServicesOAuth2Api.credentials.ts → resourceName, apiVersion, endpoint

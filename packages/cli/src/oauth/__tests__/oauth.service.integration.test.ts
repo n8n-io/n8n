@@ -52,7 +52,7 @@ function buildService() {
 		mock<OAuthBrowserBindingService>(),
 		mock<EventService>(),
 		mock<CacheService>(),
-		new OutboundHttp(ssrf, mock<Logger>()),
+		new OutboundHttp(ssrf, mock<SsrfProtectionConfig>({ enabled: true }), mock<Logger>()),
 		ssrf,
 		mock<SsrfProtectionConfig>({ enabled: true }),
 	);
