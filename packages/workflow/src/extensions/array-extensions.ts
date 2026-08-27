@@ -39,28 +39,28 @@ function reverse(value: unknown[]): unknown[] {
 // expressions must not leak into workflow data.
 function sort(value: unknown[], extraArgs: unknown[]): unknown[] {
 	const [comparator] = extraArgs as [((a: unknown, b: unknown) => number)?];
-	return [...value].sort(comparator);
+	return value.slice().sort(comparator);
 }
 
 function splice(value: unknown[], extraArgs: unknown[]): unknown[] {
-	const copy = [...value];
+	const copy = value.slice();
 	return copy.splice(...(extraArgs as [number, number, ...unknown[]]));
 }
 
 function fill(value: unknown[], extraArgs: unknown[]): unknown[] {
-	return [...value].fill(...(extraArgs as [unknown, number?, number?]));
+	return value.slice().fill(...(extraArgs as [unknown, number?, number?]));
 }
 
 function copyWithin(value: unknown[], extraArgs: unknown[]): unknown[] {
-	return [...value].copyWithin(...(extraArgs as [number, number, number?]));
+	return value.slice().copyWithin(...(extraArgs as [number, number, number?]));
 }
 
 function shift(value: unknown[]): unknown {
-	return [...value].shift();
+	return value.slice().shift();
 }
 
 function unshift(value: unknown[], extraArgs: unknown[]): number {
-	return [...value].unshift(...extraArgs);
+	return value.slice().unshift(...extraArgs);
 }
 
 function pluck(value: unknown[], extraArgs: unknown[]): unknown[] {
