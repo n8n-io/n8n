@@ -35,6 +35,8 @@ import { RoleService } from './role.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import { UserManagementMailer } from '@/user-management/email';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -89,6 +91,8 @@ export class ProjectService {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly ownershipService: OwnershipService,
 		private readonly logger: Logger,
+		private readonly eventService: EventService,
+		private readonly userManagementMailer: UserManagementMailer,
 	) {}
 
 	private get workflowService() {
@@ -312,6 +316,14 @@ export class ProjectService {
 			const proxy = await this.connectionStatusProxy;
 			await proxy.cleanupOrphanedEntriesForUsers(memberUserIds);
 		}
+
+		this.eventService.emit('team-project-deleted', {
+			userId: user.id,
+			role: user.role.slug,
+			projectId,
+			removalType: migrateToProject !== undefined ? 'transfer' : 'delete',
+			targetProjectId: migrateToProject,
+		});
 	}
 
 	/**
@@ -504,12 +516,24 @@ export class ProjectService {
 	): Promise<Project> {
 		// This needs to be SERIALIZABLE otherwise the count would not block a
 		// concurrent transaction and we could insert multiple projects.
-		return await this.projectRepository.manager.transaction('SERIALIZABLE', async (trx) => {
-			return await this.createTeamProjectWithEntityManager(adminUser, data, trx, overrides);
+		const project = await this.projectRepository.manager.transaction(
+			'SERIALIZABLE',
+			async (trx) => {
+				return await this.createTeamProjectWithEntityManager(adminUser, data, trx, overrides);
+			},
+		);
+
+		this.eventService.emit('team-project-created', {
+			userId: adminUser.id,
+			role: adminUser.role.slug,
+			uiContext: data.uiContext,
 		});
+
+		return project;
 	}
 
 	async updateProject(
+		user: User,
 		projectId: string,
 		{ name, icon, description, customTelemetryTags }: UpdateProjectDto,
 	): Promise<void> {
@@ -527,6 +551,15 @@ export class ProjectService {
 
 		// Ensure OTel spans pick up the updated customTelemetryTags on the next execution.
 		await this.ownershipService.invalidateWorkflowProjectCacheForProject(projectId);
+
+		this.eventService.emit('team-project-updated', {
+			userId: user.id,
+			role: user.role.slug,
+			projectId,
+			...(customTelemetryTags !== undefined
+				? { otelProjectCustomTagsCount: customTelemetryTags.length }
+				: {}),
+		});
 	}
 
 	async getPersonalProject(user: User): Promise<Project | null> {
@@ -591,6 +624,29 @@ export class ProjectService {
 		return { project, newRelations };
 	}
 
+	private async notifyNewSharees(
+		sharer: User,
+		project: Project,
+		newSharees: Array<{ userId: string; role: AssignableProjectRole }>,
+	) {
+		if (newSharees.length === 0) return;
+		await this.userManagementMailer.notifyProjectShared({
+			sharer,
+			newSharees,
+			project: { id: project.id, name: project.name },
+		});
+	}
+
+	private async emitProjectMembersUpdated(user: User, projectId: string) {
+		const relations = await this.getProjectRelations(projectId);
+		this.eventService.emit('team-project-updated', {
+			userId: user.id,
+			role: user.role.slug,
+			members: relations.map((r) => ({ userId: r.userId, role: r.role.slug })),
+			projectId,
+		});
+	}
+
 	/**
 	 * Adds users to a team project with specified roles.
 	 *
@@ -598,6 +654,7 @@ export class ProjectService {
 	 * Throws if the relations contain `project:personalOwner`.
 	 */
 	async addUsersToProject(
+		user: User,
 		projectId: string,
 		relations: Array<{ userId: string; role: AssignableProjectRole }>,
 	) {
@@ -618,6 +675,9 @@ export class ProjectService {
 			throw new ForbiddenError("Can't add a personalOwner to a team project.");
 		}
 
+		const existingUserIds = new Set(project.projectRelations.map((pr) => pr.userId));
+		const newSharees = relations.filter((relation) => !existingUserIds.has(relation.userId));
+
 		await this.projectRelationRepository.save(
 			relations.map((relation) => ({
 				projectId,
@@ -625,6 +685,9 @@ export class ProjectService {
 				role: { slug: relation.role },
 			})),
 		);
+
+		await this.notifyNewSharees(user, project, newSharees);
+		await this.emitProjectMembersUpdated(user, projectId);
 	}
 
 	/**
@@ -634,6 +697,7 @@ export class ProjectService {
 	 * - Reports conflicts for users already in the project with a different role (no change)
 	 */
 	async addUsersWithConflictSemantics(
+		user: User,
 		projectId: string,
 		relations: Array<{ userId: string; role: AssignableProjectRole }>,
 	): Promise<{
@@ -685,6 +749,9 @@ export class ProjectService {
 			added.push(...toInsert);
 		}
 
+		await this.notifyNewSharees(user, project, added);
+		await this.emitProjectMembersUpdated(user, project.id);
+
 		return { project, added, conflicts };
 	}
 
@@ -718,7 +785,7 @@ export class ProjectService {
 		);
 	}
 
-	async deleteUserFromProject(projectId: string, userId: string) {
+	async deleteUserFromProject(user: User, projectId: string, userId: string) {
 		const project = await this.getTeamProjectWithRelations(projectId);
 
 		// Prevent project owner from being removed
@@ -732,9 +799,16 @@ export class ProjectService {
 			await em.delete(ProjectRelation, { projectId: project.id, userId });
 			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
 		});
+
+		await this.emitProjectMembersUpdated(user, projectId);
 	}
 
-	async changeUserRoleInProject(projectId: string, userId: string, role: AssignableProjectRole) {
+	async changeUserRoleInProject(
+		user: User,
+		projectId: string,
+		userId: string,
+		role: AssignableProjectRole,
+	) {
 		if (role === PROJECT_OWNER_ROLE_SLUG) {
 			throw new ForbiddenError('Personal owner cannot be added to a team project.');
 		}
@@ -764,6 +838,8 @@ export class ProjectService {
 			await em.update(ProjectRelation, { projectId, userId }, { role: { slug: role } });
 			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
 		});
+
+		await this.emitProjectMembersUpdated(user, projectId);
 	}
 
 	async pruneRelations(em: EntityManager, project: Project) {

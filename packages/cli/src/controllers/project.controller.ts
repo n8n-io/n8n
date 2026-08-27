@@ -26,7 +26,6 @@ import { Response } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectRequest } from '@/requests';
 import {
@@ -34,14 +33,11 @@ import {
 	TeamProjectOverQuotaError,
 	UnlicensedProjectRoleError,
 } from '@/services/project.service.ee';
-import { UserManagementMailer } from '@/user-management/email';
 
 @RestController('/projects')
 export class ProjectController {
 	constructor(
 		private readonly projectsService: ProjectService,
-		private readonly eventService: EventService,
-		private readonly userManagementMailer: UserManagementMailer,
 		private readonly provisioningService: ProvisioningService,
 	) {}
 
@@ -98,12 +94,6 @@ export class ProjectController {
 	async createProject(req: AuthenticatedRequest, _res: Response, @Body payload: CreateProjectDto) {
 		try {
 			const project = await this.projectsService.createTeamProject(req.user, payload);
-
-			this.eventService.emit('team-project-created', {
-				userId: req.user.id,
-				role: req.user.role.slug,
-				uiContext: payload.uiContext,
-			});
 
 			return {
 				...project,
@@ -189,15 +179,7 @@ export class ProjectController {
 		@Body payload: UpdateProjectDto,
 		@Param('projectId') projectId: string,
 	) {
-		await this.projectsService.updateProject(projectId, payload);
-		this.eventService.emit('team-project-updated', {
-			userId: req.user.id,
-			role: req.user.role.slug,
-			projectId,
-			...(payload.customTelemetryTags !== undefined
-				? { otelProjectCustomTagsCount: payload.customTelemetryTags.length }
-				: {}),
-		});
+		await this.projectsService.updateProject(req.user, projectId, payload);
 	}
 
 	/** Throws when project roles are provisioned automatically, so manual membership changes are disallowed. */
@@ -219,24 +201,11 @@ export class ProjectController {
 	) {
 		await this.assertProjectRolesNotManaged();
 		try {
-			const { added, conflicts, project } =
-				await this.projectsService.addUsersWithConflictSemantics(projectId, payload.relations);
-
-			if (added.length > 0) {
-				await this.userManagementMailer.notifyProjectShared({
-					sharer: req.user,
-					newSharees: added,
-					project: { id: project.id, name: project.name },
-				});
-			}
-
-			const relations = await this.projectsService.getProjectRelations(projectId);
-			this.eventService.emit('team-project-updated', {
-				userId: req.user.id,
-				role: req.user.role.slug,
-				members: relations.map((r) => ({ userId: r.userId, role: r.role.slug })),
+			const { added, conflicts } = await this.projectsService.addUsersWithConflictSemantics(
+				req.user,
 				projectId,
-			});
+				payload.relations,
+			);
 
 			// Response semantics:
 			// - If at least one user was added, return 201. When there are also conflicts, include them in the body.
@@ -266,14 +235,7 @@ export class ProjectController {
 		await this.assertProjectRolesNotManaged();
 
 		try {
-			await this.projectsService.changeUserRoleInProject(projectId, userId, body.role);
-			const relations = await this.projectsService.getProjectRelations(projectId);
-			this.eventService.emit('team-project-updated', {
-				userId: req.user.id,
-				role: req.user.role.slug,
-				members: relations.map((r) => ({ userId: r.userId, role: r.role.slug })),
-				projectId,
-			});
+			await this.projectsService.changeUserRoleInProject(req.user, projectId, userId, body.role);
 			return res.status(204).send();
 		} catch (e) {
 			if (e instanceof UnlicensedProjectRoleError) {
@@ -292,14 +254,7 @@ export class ProjectController {
 		@Param('userId') userId: string,
 	) {
 		await this.assertProjectRolesNotManaged();
-		await this.projectsService.deleteUserFromProject(projectId, userId);
-		const relations = await this.projectsService.getProjectRelations(projectId);
-		this.eventService.emit('team-project-updated', {
-			userId: req.user.id,
-			role: req.user.role.slug,
-			members: relations.map((r) => ({ userId: r.userId, role: r.role.slug })),
-			projectId,
-		});
+		await this.projectsService.deleteUserFromProject(req.user, projectId, userId);
 		return res.status(204).send();
 	}
 
@@ -313,14 +268,6 @@ export class ProjectController {
 	) {
 		await this.projectsService.deleteProject(req.user, projectId, {
 			migrateToProject: query.transferId,
-		});
-
-		this.eventService.emit('team-project-deleted', {
-			userId: req.user.id,
-			role: req.user.role.slug,
-			projectId,
-			removalType: query.transferId !== undefined ? 'transfer' : 'delete',
-			targetProjectId: query.transferId,
 		});
 	}
 }

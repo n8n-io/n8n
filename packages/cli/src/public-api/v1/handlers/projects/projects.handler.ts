@@ -20,7 +20,6 @@ import { encodeNextCursor } from '../../shared/services/pagination.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { PaginatedRequest } from '@/public-api/types';
 import { ProjectService } from '@/services/project.service.ee';
@@ -66,12 +65,6 @@ const projectHandlers: ProjectHandlers = {
 
 			const project = await projectService.createTeamProject(req.user, payload.data);
 
-			Container.get(EventService).emit('team-project-created', {
-				userId: req.user.id,
-				role: req.user.role.slug,
-				uiContext: payload.data.uiContext,
-			});
-
 			const scopes = await projectService.getProjectScopesForUser(req.user, project.id);
 
 			return res.status(201).json({ ...project, role: 'project:admin', scopes });
@@ -87,16 +80,7 @@ const projectHandlers: ProjectHandlers = {
 			}
 
 			const { projectId } = req.params;
-			await Container.get(ProjectService).updateProject(projectId, payload.data);
-
-			Container.get(EventService).emit('team-project-updated', {
-				userId: req.user.id,
-				role: req.user.role.slug,
-				projectId,
-				...(payload.data.customTelemetryTags !== undefined
-					? { otelProjectCustomTagsCount: payload.data.customTelemetryTags.length }
-					: {}),
-			});
+			await Container.get(ProjectService).updateProject(req.user, projectId, payload.data);
 
 			return res.status(204).send();
 		},
@@ -114,14 +98,6 @@ const projectHandlers: ProjectHandlers = {
 			const { transferId } = query.data;
 			await Container.get(ProjectService).deleteProject(req.user, projectId, {
 				migrateToProject: transferId,
-			});
-
-			Container.get(EventService).emit('team-project-deleted', {
-				userId: req.user.id,
-				role: req.user.role.slug,
-				projectId,
-				removalType: transferId !== undefined ? 'transfer' : 'delete',
-				targetProjectId: transferId,
 			});
 
 			return res.status(204).send();
@@ -206,6 +182,7 @@ const projectHandlers: ProjectHandlers = {
 			}
 
 			await Container.get(ProjectService).addUsersToProject(
+				req.user,
 				req.params.projectId,
 				payload.data.relations,
 			);
@@ -226,7 +203,12 @@ const projectHandlers: ProjectHandlers = {
 
 			const { projectId, userId } = req.params;
 			const { role } = payload.data;
-			await Container.get(ProjectService).changeUserRoleInProject(projectId, userId, role);
+			await Container.get(ProjectService).changeUserRoleInProject(
+				req.user,
+				projectId,
+				userId,
+				role,
+			);
 
 			return res.status(204).send();
 		},
@@ -239,7 +221,7 @@ const projectHandlers: ProjectHandlers = {
 
 			const { projectId, userId } = req.params;
 
-			await Container.get(ProjectService).deleteUserFromProject(projectId, userId);
+			await Container.get(ProjectService).deleteUserFromProject(req.user, projectId, userId);
 
 			return res.status(204).send();
 		},
