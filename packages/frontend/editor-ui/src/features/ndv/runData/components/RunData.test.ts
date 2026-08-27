@@ -1303,6 +1303,48 @@ describe('RunData', () => {
 				expect(getByTestId('node-error-view')).toBeInTheDocument();
 			});
 		});
+
+		const binaryItems: INodeExecutionData[] = [
+			{
+				json: {},
+				binary: {
+					data: {
+						fileName: 'test.pdf',
+						fileType: 'pdf',
+						mimeType: 'application/pdf',
+						data: '',
+					},
+				},
+			},
+		];
+
+		it('shows the binary data for the node that recorded it', async () => {
+			const { getByTestId } = render({
+				displayMode: 'binary',
+				paneType: 'output',
+				nodeId: 'executed-node',
+				executionNodes: [createTestNode({ id: 'executed-node', name: 'Test Node' }) as INodeUi],
+				defaultRunItems: binaryItems,
+			});
+
+			await waitFor(() => {
+				expect(getByTestId('ndv-binary-data_0')).toBeInTheDocument();
+			});
+		});
+
+		it('does not show the binary data on a different node that reuses the name', async () => {
+			const { queryByTestId } = render({
+				displayMode: 'binary',
+				paneType: 'output',
+				nodeId: 'added-after-the-run',
+				executionNodes: [createTestNode({ id: 'executed-node', name: 'Test Node' }) as INodeUi],
+				defaultRunItems: binaryItems,
+			});
+
+			await waitFor(() => {
+				expect(queryByTestId('ndv-binary-data_0')).not.toBeInTheDocument();
+			});
+		});
 	});
 
 	describe('schema view with mixed execution states', () => {

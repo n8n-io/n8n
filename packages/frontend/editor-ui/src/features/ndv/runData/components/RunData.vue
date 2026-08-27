@@ -546,12 +546,10 @@ const inputDataPage = computed(() => {
 });
 const jsonData = computed(() => executionDataToJson(inputData.value));
 const binaryData = computed(() => {
-	if (!node.value || currentNodeRunData.value === null) {
-		return [];
-	}
+	const runDataOfNode = currentNodeRunData.value?.[props.runIndex]?.data;
 
 	return nodeHelpers
-		.getBinaryData(workflowRunData.value, node.value.name, props.runIndex, currentOutputIndex.value)
+		.getBinaryData(runDataOfNode, currentOutputIndex.value)
 		.filter((data) => Boolean(data && Object.keys(data).length));
 });
 const inputHtml = computed(() => String(inputData.value[0]?.json?.html ?? ''));
