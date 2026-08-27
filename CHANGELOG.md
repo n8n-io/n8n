@@ -1,3 +1,12 @@
+## [2.37.2](https://github.com/n8n-io/n8n/compare/n8n@2.37.1...n8n@2.37.2) (2026-08-27)
+
+
+### Bug Fixes
+
+* Copy glibc into distroless runners image as a matched pair ([#37167](https://github.com/n8n-io/n8n/issues/37167)) ([d8de84b](https://github.com/n8n-io/n8n/commit/d8de84b09a2695df1f03c87d02d8850d487f1aed))
+* **core:** Stage libatomic into the distroless runners image ([#37125](https://github.com/n8n-io/n8n/issues/37125)) ([89c8edb](https://github.com/n8n-io/n8n/commit/89c8edbda6f7b0b6456b0a0ecd36ec7241e4ca57))
+
+
 ## [2.37.1](https://github.com/n8n-io/n8n/compare/n8n@2.37.0...n8n@2.37.1) (2026-08-25)
 
 
