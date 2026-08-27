@@ -73,6 +73,18 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 		return await this.count({ where: { parentThreadId, status: 'running' } });
 	}
 
+	/**
+	 * The running job of the thread holding this dedupe key, if any. Settling
+	 * clears the key, so a match is always a running job — and the lookup is
+	 * served by the partial unique index instead of the thread's full history.
+	 */
+	async findRunningByDedupeKey(
+		parentThreadId: string,
+		dedupeKey: string,
+	): Promise<AgentBackgroundJob | null> {
+		return await this.findOne({ where: { parentThreadId, dedupeKey } });
+	}
+
 	async findByParentThread(parentThreadId: string, ids?: string[]): Promise<AgentBackgroundJob[]> {
 		return await this.find({
 			where: ids?.length ? { parentThreadId, id: In(ids) } : { parentThreadId },

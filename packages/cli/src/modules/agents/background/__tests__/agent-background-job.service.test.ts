@@ -45,6 +45,7 @@ function setup() {
 	(logger.scoped as Mock).mockReturnValue(logger);
 
 	jobRepository.countRunningByParentThread.mockResolvedValue(0);
+	jobRepository.findRunningByDedupeKey.mockResolvedValue(null);
 	jobRepository.insertJob.mockResolvedValue({ inserted: true });
 	jobRepository.settleIfRunning.mockResolvedValue(true);
 	jobRepository.findByParentThread.mockResolvedValue([]);
@@ -99,12 +100,13 @@ describe('registerSubAgentJob', () => {
 	it('returns duplicate at the cap when a running job already holds the dedupe key', async () => {
 		const { service, jobRepository } = setup();
 		jobRepository.countRunningByParentThread.mockResolvedValue(MAX_RUNNING_JOBS_PER_THREAD);
-		jobRepository.findByParentThread.mockResolvedValue([
+		jobRepository.findRunningByDedupeKey.mockResolvedValue(
 			makeJob({ id: 'job-holder', dedupeKey: 'key-1' }),
-		]);
+		);
 
 		const receipt = await service.registerSubAgentJob({ ...registerParams, dedupeKey: 'key-1' });
 
+		expect(jobRepository.findRunningByDedupeKey).toHaveBeenCalledWith('thread-1', 'key-1');
 		expect(receipt).toEqual({ status: 'duplicate', existingJobId: 'job-holder' });
 		expect(jobRepository.insertJob).not.toHaveBeenCalled();
 	});
@@ -123,6 +125,24 @@ describe('registerSubAgentJob', () => {
 });
 
 describe('settle', () => {
+	it('drops the abort handle even when the settle write throws', async () => {
+		const { service, jobRepository, executionRepository } = setup();
+		jobRepository.settleIfRunning.mockRejectedValueOnce(new Error('db down'));
+		service.registerAbortController('job-1', new AbortController());
+
+		await expect(service.settle('job-1', { status: 'completed', result: 'done' })).rejects.toThrow(
+			'db down',
+		);
+
+		// A leaked handle would shield the row from orphan reconciliation:
+		// with the handle gone, listing consults the child execution status.
+		jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
+		await service.listForThread('thread-1');
+		expect(executionRepository.findLatestStatusesByThreadIds).toHaveBeenCalledWith([
+			'child-thread-1',
+		]);
+	});
+
 	it('drops the abort handle even when the row was already settled', async () => {
 		const { service, jobRepository } = setup();
 		jobRepository.settleIfRunning.mockResolvedValue(false);
@@ -184,6 +204,14 @@ describe('cancel', () => {
 		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith('job-1', { status: 'cancelled' });
 		expect(controller.signal.aborted).toBe(true);
 		expect(publisher.publishCommand).not.toHaveBeenCalled();
+	});
+
+	it('still reports cancelled when the pubsub relay fails — the row is already claimed', async () => {
+		const { service, jobRepository, publisher } = setup();
+		jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
+		publisher.publishCommand.mockRejectedValue(new Error('redis down'));
+
+		expect(await service.cancel('thread-1', 'job-1')).toBe('cancelled');
 	});
 
 	it('relays the abort via pubsub when the live handle is on another main', async () => {
@@ -250,6 +278,27 @@ describe('reconcile', () => {
 		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
 			'job-1',
 			expect.objectContaining({ status: 'failed', error: expect.stringContaining('Timed out') }),
+		);
+	});
+
+	it('still aborts a timed-out run and the rest of the batch when one settle write fails', async () => {
+		const { service, jobRepository } = setup();
+		const failing = makeJob({ id: 'job-1' });
+		const next = makeJob({ id: 'job-2', childThreadId: 'child-thread-2' });
+		jobRepository.findRunningPastTimeout.mockResolvedValue([failing, next]);
+		jobRepository.settleIfRunning.mockRejectedValueOnce(new Error('db blip'));
+		const failingController = new AbortController();
+		const nextController = new AbortController();
+		service.registerAbortController('job-1', failingController);
+		service.registerAbortController('job-2', nextController);
+
+		await service.reconcile();
+
+		expect(failingController.signal.aborted).toBe(true);
+		expect(nextController.signal.aborted).toBe(true);
+		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith(
+			'job-2',
+			expect.objectContaining({ status: 'failed' }),
 		);
 	});
 

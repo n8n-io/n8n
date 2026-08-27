@@ -70,8 +70,10 @@ export class AgentBackgroundJobService {
 			// An idempotent retry of a running job must still get its receipt back
 			// at the cap instead of a spurious limit-reached.
 			if (dedupeKey) {
-				const jobs = await this.jobRepository.findByParentThread(params.parentThreadId);
-				const holder = jobs.find((job) => job.status === 'running' && job.dedupeKey === dedupeKey);
+				const holder = await this.jobRepository.findRunningByDedupeKey(
+					params.parentThreadId,
+					dedupeKey,
+				);
 				if (holder) return { status: 'duplicate', existingJobId: holder.id };
 			}
 			return { status: 'limit-reached' };
@@ -89,9 +91,13 @@ export class AgentBackgroundJobService {
 	}
 
 	async settle(jobId: string, settlement: AgentBackgroundJobSettlement): Promise<boolean> {
-		const settled = await this.jobRepository.settleIfRunning(jobId, settlement);
-		this.abortControllers.delete(jobId);
-		return settled;
+		try {
+			return await this.jobRepository.settleIfRunning(jobId, settlement);
+		} finally {
+			// Drop the handle even when the write throws — a leaked entry would
+			// shield the still-running row from orphan reconciliation forever.
+			this.abortControllers.delete(jobId);
+		}
 	}
 
 	registerAbortController(jobId: string, controller: AbortController): void {
@@ -145,10 +151,16 @@ export class AgentBackgroundJobService {
 		} else {
 			// publishCommand is a no-op outside queue mode, where a foreign live
 			// handle cannot exist anyway — reconciliation covers crashed spawners.
-			await this.publisher.publishCommand({
-				command: 'cancel-agent-background-job',
-				payload: { jobId },
-			});
+			// The row is already claimed, so a failed relay must not surface as a
+			// tool error; the run then ends at its timeout instead of the abort.
+			try {
+				await this.publisher.publishCommand({
+					command: 'cancel-agent-background-job',
+					payload: { jobId },
+				});
+			} catch (error) {
+				this.logger.warn('Failed to relay background job cancellation', { jobId, error });
+			}
 		}
 		return 'cancelled';
 	}
@@ -180,12 +192,24 @@ export class AgentBackgroundJobService {
 			// order would race the aborted run's own settle write. Grab the handle
 			// before settle drops it from the map.
 			const controller = this.abortControllers.get(job.id);
-			const settled = await this.settle(job.id, {
-				status: 'failed',
-				error: `Timed out after ${Math.round(SUB_AGENT_BACKGROUND_TIMEOUT_MS / 60_000)} minutes`,
-			});
-			controller?.abort();
-			if (settled) this.logger.debug('Failed background job past its timeout', { jobId: job.id });
+			try {
+				const settled = await this.settle(job.id, {
+					status: 'failed',
+					error: `Timed out after ${Math.round(SUB_AGENT_BACKGROUND_TIMEOUT_MS / 60_000)} minutes`,
+				});
+				if (settled) {
+					this.logger.debug('Failed background job past its timeout', { jobId: job.id });
+				}
+			} catch (error) {
+				this.logger.error('Failed to settle background job past its timeout', {
+					jobId: job.id,
+					error,
+				});
+			} finally {
+				// The job is past its timeout either way — one failing settle write
+				// must not leave this run alive or starve the rest of the batch.
+				controller?.abort();
+			}
 		}
 	}
 
