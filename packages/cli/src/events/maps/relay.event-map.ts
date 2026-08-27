@@ -687,7 +687,7 @@ export type RelayEventMap = {
 		credConflicts: number;
 	};
 
-	'source-control-user-started-pull-public-api': {
+	'source-control-user-queried-status-pull-public-api': {
 		userId?: string;
 		workflowUpdates: number;
 		workflowConflicts: number;
@@ -713,7 +713,7 @@ export type RelayEventMap = {
 		variablesEligible: number;
 	};
 
-	'source-control-user-started-push-public-api': {
+	'source-control-user-queried-status-push-public-api': {
 		userId?: string;
 		workflowsEligible: number;
 		workflowsEligibleWithConflicts: number;

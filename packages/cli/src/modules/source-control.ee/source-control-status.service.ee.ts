@@ -206,7 +206,7 @@ export class SourceControlStatusService {
 			);
 			this.eventService.emit(
 				isPublicApi
-					? 'source-control-user-started-push-public-api'
+					? 'source-control-user-queried-status-push-public-api'
 					: 'source-control-user-started-push-ui',
 				trackingInformation,
 			);
@@ -217,7 +217,7 @@ export class SourceControlStatusService {
 			);
 			this.eventService.emit(
 				isPublicApi
-					? 'source-control-user-started-pull-public-api'
+					? 'source-control-user-queried-status-pull-public-api'
 					: 'source-control-user-started-pull-ui',
 				trackingInformation,
 			);

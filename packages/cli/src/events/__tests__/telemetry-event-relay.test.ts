@@ -378,16 +378,16 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `source-control-user-started-pull-public-api` event', () => {
-			const event: RelayEventMap['source-control-user-started-pull-public-api'] = {
+		it('should track on `source-control-user-queried-status-pull-public-api` event', () => {
+			const event: RelayEventMap['source-control-user-queried-status-pull-public-api'] = {
 				workflowUpdates: 5,
 				workflowConflicts: 2,
 				credConflicts: 1,
 			};
 
-			eventService.emit('source-control-user-started-pull-public-api', event);
+			eventService.emit('source-control-user-queried-status-pull-public-api', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User started pull via Public API', {
+			expect(telemetry.track).toHaveBeenCalledWith('User queried pull status via Public API', {
 				workflow_updates: 5,
 				workflow_conflicts: 2,
 				cred_conflicts: 1,
@@ -444,8 +444,8 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `source-control-user-started-push-public-api` event', () => {
-			const event: RelayEventMap['source-control-user-started-push-public-api'] = {
+		it('should track on `source-control-user-queried-status-push-public-api` event', () => {
+			const event: RelayEventMap['source-control-user-queried-status-push-public-api'] = {
 				userId: 'userId',
 				workflowsEligible: 10,
 				workflowsEligibleWithConflicts: 2,
@@ -454,9 +454,9 @@ describe('TelemetryEventRelay', () => {
 				variablesEligible: 3,
 			};
 
-			eventService.emit('source-control-user-started-push-public-api', event);
+			eventService.emit('source-control-user-queried-status-push-public-api', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User started push via Public API', {
+			expect(telemetry.track).toHaveBeenCalledWith('User queried push status via Public API', {
 				user_id: 'userId',
 				workflows_eligible: 10,
 				workflows_eligible_with_conflicts: 2,

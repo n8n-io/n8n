@@ -919,7 +919,7 @@ describe('getStatus', () => {
 			);
 		});
 
-		it('emits `source-control-user-started-push-public-api` when origin is `publicApi`', async () => {
+		it('emits `source-control-user-queried-status-push-public-api` when origin is `publicApi`', async () => {
 			await sourceControlStatusService.getStatus(user, {
 				direction: 'push',
 				verbose: false,
@@ -928,7 +928,7 @@ describe('getStatus', () => {
 			});
 
 			expect(eventService.emit).toHaveBeenCalledWith(
-				'source-control-user-started-push-public-api',
+				'source-control-user-queried-status-push-public-api',
 				expect.objectContaining({ userId: user.id }),
 			);
 			expect(eventService.emit).not.toHaveBeenCalledWith(
@@ -950,7 +950,7 @@ describe('getStatus', () => {
 			);
 		});
 
-		it('emits `source-control-user-started-pull-public-api` when origin is `publicApi`', async () => {
+		it('emits `source-control-user-queried-status-pull-public-api` when origin is `publicApi`', async () => {
 			await sourceControlStatusService.getStatus(user, {
 				direction: 'pull',
 				verbose: false,
@@ -959,7 +959,7 @@ describe('getStatus', () => {
 			});
 
 			expect(eventService.emit).toHaveBeenCalledWith(
-				'source-control-user-started-pull-public-api',
+				'source-control-user-queried-status-pull-public-api',
 				expect.objectContaining({ userId: user.id }),
 			);
 			expect(eventService.emit).not.toHaveBeenCalledWith(
