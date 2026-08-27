@@ -274,6 +274,23 @@ describe('InstanceAiTerminalOutcomeService — terminal outcome replay', () => {
 		);
 	});
 
+	it('leaves the outcome undelivered when the drain drops the published line', async () => {
+		const outcome = makeTerminalOutcome();
+		terminalOutcomeStorageMock.getUndelivered.mockResolvedValue([outcome]);
+		const { service, deps } = createService();
+		// The publish enqueues without throwing, but the line never reaches the
+		// log — the shape of a dropped drain batch.
+		deps.eventBus.publish.mockImplementation(() => {});
+
+		await service.replayUndeliveredTerminalOutcomes('thread-a');
+
+		expect(terminalOutcomeStorageMock.markDelivered).not.toHaveBeenCalled();
+		expect(deps.telemetry.track).not.toHaveBeenCalledWith(
+			'instance_ai_terminal_response_decision',
+			expect.anything(),
+		);
+	});
+
 	it('checks persisted outcomes on repeated replay calls', async () => {
 		const { service } = createService();
 
@@ -334,6 +351,24 @@ describe('InstanceAiTerminalOutcomeService — background outcome recording', ()
 		// The pending outcome is recovered on the next replay.
 		await service.replayUndeliveredTerminalOutcomes('thread-a');
 		expect(terminalOutcomeStorageMock.markDelivered).not.toHaveBeenCalled();
+	});
+
+	it('does not mark the outcome delivered when the drain drops the line', async () => {
+		const { service, deps } = createService();
+		deps.eventBus.publish.mockImplementation(() => {});
+
+		await service.recordBackgroundTerminalOutcome(makeTask());
+
+		expect(terminalOutcomeStorageMock.upsert).toHaveBeenCalledTimes(1);
+		expect(terminalOutcomeStorageMock.markDelivered).not.toHaveBeenCalled();
+		expect(deps.telemetry.track).toHaveBeenCalledWith(
+			'instance_ai_terminal_outcome_persistence_failure',
+			expect.objectContaining({ phase: 'event' }),
+		);
+		expect(deps.telemetry.track).not.toHaveBeenCalledWith(
+			'instance_ai_terminal_response_decision',
+			expect.anything(),
+		);
 	});
 });
 

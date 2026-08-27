@@ -340,21 +340,21 @@ export class InstanceAiTerminalOutcomeService {
 
 		for (const outcome of outcomes.values()) {
 			const responseId = getBackgroundOutcomeResponseId(outcome);
-			let published = false;
+			let delivery: 'published' | 'already-emitted' | 'dropped' = 'dropped';
 			try {
-				published = await this.publishTerminalOutcomeLine(outcome, responseId);
+				delivery = await this.publishTerminalOutcomeLine(outcome, responseId);
 			} catch (error) {
-				// Left undelivered on purpose: the next replay retries it.
 				this.logger.warn('Failed to replay Instance AI terminal outcome', {
 					threadId,
 					runId: outcome.runId,
 					taskId: outcome.taskId,
 					error: getErrorMessage(error),
 				});
-				continue;
 			}
+			// Left undelivered on purpose: the next replay retries it.
+			if (delivery === 'dropped') continue;
 
-			const action = published ? 'replay_event' : 'already-emitted';
+			const action = delivery === 'published' ? 'replay_event' : 'already-emitted';
 
 			if (persistedOutcomeIds.has(outcome.id)) {
 				await storage
@@ -382,14 +382,23 @@ export class InstanceAiTerminalOutcomeService {
 		}
 	}
 
+	/**
+	 * Publish the outcome line as a durable text-block and read it back.
+	 * `publish` only enqueues — the drain persists asynchronously and settles
+	 * flush waiters even when it had to drop a batch — so only the read-back
+	 * makes the line trustworthy as a delivery record. 'dropped' means it never
+	 * reached the log; the caller must leave the outcome undelivered so a later
+	 * replay retries it.
+	 */
 	private async publishTerminalOutcomeLine(
 		outcome: TerminalOutcome,
 		responseId: string,
-	): Promise<boolean> {
+	): Promise<'published' | 'already-emitted' | 'dropped'> {
+		const isOutcomeLine = (event: InstanceAiEvent) => event.responseId === responseId;
 		const alreadyPublished = (
 			await this.eventBus.getEventsForRun(outcome.threadId, outcome.runId)
-		).some((event) => event.responseId === responseId);
-		if (alreadyPublished) return false;
+		).some(isOutcomeLine);
+		if (alreadyPublished) return 'already-emitted';
 
 		this.eventBus.publish(outcome.threadId, {
 			type: 'text-block',
@@ -398,7 +407,12 @@ export class InstanceAiTerminalOutcomeService {
 			responseId,
 			payload: { text: outcome.userFacingMessage },
 		});
-		return true;
+		// The adapter's read settles the thread's drain before querying, so the
+		// block is either in the log by now or was dropped.
+		const durable = (await this.eventBus.getEventsForRun(outcome.threadId, outcome.runId)).some(
+			isOutcomeLine,
+		);
+		return durable ? 'published' : 'dropped';
 	}
 
 	async recordBackgroundTerminalOutcome(task: ManagedBackgroundTask): Promise<void> {
@@ -425,7 +439,29 @@ export class InstanceAiTerminalOutcomeService {
 		}
 
 		const responseId = getBackgroundOutcomeResponseId(outcome);
-		const published = await this.publishTerminalOutcomeLine(outcome, responseId);
+		let delivery: 'published' | 'already-emitted' | 'dropped' = 'dropped';
+		try {
+			delivery = await this.publishTerminalOutcomeLine(outcome, responseId);
+		} catch (error) {
+			this.logger.warn('Failed to publish Instance AI terminal outcome line', {
+				threadId: task.threadId,
+				runId: task.runId,
+				taskId: task.taskId,
+				error: getErrorMessage(error),
+			});
+		}
+		if (delivery === 'dropped') {
+			// Leave the outcome undelivered — the metadata row (or the pending-map
+			// entry when the upsert failed too) makes the next replay retry it.
+			this.telemetry.track('instance_ai_terminal_outcome_persistence_failure', {
+				thread_id: task.threadId,
+				run_id: task.runId,
+				task_id: task.taskId,
+				status: outcome.status,
+				phase: 'event',
+			});
+			return;
+		}
 
 		this.telemetry.track('instance_ai_terminal_response_decision', {
 			thread_id: task.threadId,
@@ -434,7 +470,7 @@ export class InstanceAiTerminalOutcomeService {
 			task_id: task.taskId,
 			source: 'background_outcome',
 			status: outcome.status,
-			action: published ? 'emit' : 'already-emitted',
+			action: delivery === 'published' ? 'emit' : 'already-emitted',
 			visibility_source: 'background-outcome',
 		});
 
