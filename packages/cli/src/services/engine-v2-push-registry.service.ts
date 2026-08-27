@@ -7,7 +7,7 @@ import { EngineV2PushSession } from '@/services/engine-v2-push-session';
 const SESSION_TTL_MS = 12 * Time.hours.toMilliseconds;
 
 /** Hard ceiling on the map, in case many runs stall inside the TTL. */
-const MAX_SESSIONS = 500;
+const MAX_SESSIONS = 1000;
 
 /**
  * Correlates a data-plane execution id with the editor session that started it.

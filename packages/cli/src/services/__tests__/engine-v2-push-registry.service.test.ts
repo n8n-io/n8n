@@ -107,7 +107,7 @@ describe('EngineV2PushRegistry', () => {
 
 		it('caps the number of sessions, dropping the least recently seen', () => {
 			vi.setSystemTime(new Date('2026-08-25T10:00:00.000Z'));
-			for (let i = 0; i < 500; i++) {
+			for (let i = 0; i < 1000; i++) {
 				registry.register(`exec-${i}`, { pushRef: `push-${i}`, workflowId: 'wf-1' });
 			}
 
@@ -115,11 +115,11 @@ describe('EngineV2PushRegistry', () => {
 			// Touching the oldest session makes the next one the eviction target.
 			expect(registry.get('exec-0')).toBeDefined();
 
-			registry.register('exec-500', { pushRef: 'push-500', workflowId: 'wf-1' });
+			registry.register('exec-1000', { pushRef: 'push-1000', workflowId: 'wf-1' });
 
 			expect(registry.get('exec-1')).toBeUndefined();
 			expect(registry.get('exec-0')).toBeDefined();
-			expect(registry.get('exec-500')).toBeDefined();
+			expect(registry.get('exec-1000')).toBeDefined();
 		});
 	});
 });
