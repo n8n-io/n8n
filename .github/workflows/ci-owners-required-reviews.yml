@@ -9,16 +9,21 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 # team ownership metadata beyond "request a review".
 #
 # Triggers
-#   - pull_request_target (opened/synchronize/reopened/ready_for_review):
-#     re-evaluates whenever the changeset can change. Runs with secrets for
-#     fork PRs too, and NEVER checks out or executes PR code — the scripts and
-#     the OWNERS file always come from the base branch, so a PR cannot lift its
-#     own review requirement.
+#   - pull_request (opened/synchronize/reopened/ready_for_review):
+#     re-evaluates whenever the changeset can change. Skipped for fork PRs
+#     (no secrets): their status stays "expected" — fail closed — until the
+#     first review event reports it.
 #   - pull_request_review (submitted/dismissed): re-evaluates when approvals
-#     change.
+#     change. A privileged event (base repo context, secrets), so it covers
+#     fork PRs too — and approvals can only change through review events.
 #   - merge_group: re-reports on the merge-queue head so a ruleset can require
 #     the status at queue time.
-#   - workflow_dispatch: manual re-check (e.g. after a team membership change).
+#   - workflow_dispatch: manual re-check (e.g. after a team membership change,
+#     or a fork PR push after an approval).
+#
+# The checkout below always pins the base branch, never the PR merge ref: the
+# scripts and the OWNERS file are trusted input, so a PR cannot lift its own
+# review requirement or reach the status-writing token.
 #
 # Output
 #   - A commit status named "Required Reviews" on the PR head SHA (or
@@ -28,9 +33,7 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 #     only fails on evaluation errors.
 
 on:
-  # Safe use of pull_request_target: no step checks out or executes PR code —
-  # the checkout below pins the trusted base branch.
-  pull_request_target: # zizmor: ignore[dangerous-triggers]
+  pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - master
@@ -58,11 +61,15 @@ concurrency:
 jobs:
   required-reviews:
     name: Check required reviews
-    # pull_request_review has no `branches` filter; the script also skips
-    # non-master bases, this just saves the runner.
+    # Fork PRs are skipped on pull_request (no secrets for the app token);
+    # pull_request_review covers them. pull_request_review has no `branches`
+    # filter; the script also skips non-master bases, this just saves the
+    # runner.
     if: >-
-      github.event_name != 'pull_request_review' ||
-      github.event.pull_request.base.ref == 'master'
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository) &&
+      (github.event_name != 'pull_request_review' ||
+       github.event.pull_request.base.ref == 'master')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

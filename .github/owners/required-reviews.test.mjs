@@ -57,7 +57,7 @@ const {
 describe('resolvePullRequestNumber', () => {
 	it('reads the PR number from pull_request payloads', () => {
 		assert.equal(
-			resolvePullRequestNumber('pull_request_target', { pull_request: { number: 42 } }, undefined),
+			resolvePullRequestNumber('pull_request', { pull_request: { number: 42 } }, undefined),
 			42,
 		);
 	});
@@ -161,7 +161,7 @@ describe('run', () => {
 	let setCommitStatus;
 
 	beforeEach(() => {
-		process.env.GITHUB_EVENT_NAME = 'pull_request_target';
+		process.env.GITHUB_EVENT_NAME = 'pull_request';
 		delete process.env.PULL_REQUEST_NUMBER;
 
 		eventImpl = () => ({ pull_request: { number: 42 } });
