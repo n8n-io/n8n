@@ -66,12 +66,7 @@ export function useCanvasMapping({
 	const i18n = useI18n();
 
 	function countNonCanceledIterations(tasks: ITaskData[] | null | undefined): number {
-		if (!tasks) return 0;
-		let count = 0;
-		for (const task of tasks) {
-			if (task.executionStatus !== 'canceled') count++;
-		}
-		return count;
+		return tasks?.filter((task) => task.executionStatus !== 'canceled').length ?? 0;
 	}
 
 	// Per-node execution projection feeding the group-status aggregation.
