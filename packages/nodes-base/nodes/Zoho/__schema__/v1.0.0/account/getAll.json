@@ -7,6 +7,9 @@
         "Account_Number": {
             "type": "string"
         },
+        "Customer_Domain": {
+            "type": "string"
+        },
         "id": {
             "type": "string"
         },
@@ -25,5 +28,5 @@
             }
         }
     },
-    "version": 4
+    "version": 5
 }
