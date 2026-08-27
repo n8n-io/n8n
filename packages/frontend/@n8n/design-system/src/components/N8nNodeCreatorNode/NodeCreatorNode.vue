@@ -6,7 +6,7 @@ import type { NodeCreatorTag } from '../../types/node-creator-node';
 import N8nActionPill from '../N8nActionPill/ActionPill.vue';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
-import PreviewTag from '../PreviewTag/PreviewTag.vue';
+import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
 
 export interface Props {
 	active?: boolean;
@@ -46,7 +46,12 @@ const { t } = useI18n();
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
-				<PreviewTag v-if="tag?.preview" size="small" :class="$style.previewTag" :text="tag.text" />
+				<PreviewBadge
+					v-if="tag?.preview"
+					size="small"
+					:class="$style.previewBadge"
+					:text="tag.text"
+				/>
 				<N8nActionPill
 					v-else-if="tag?.pill"
 					size="small"
@@ -103,7 +108,7 @@ const { t } = useI18n();
 .creatorNode:hover .panelIcon {
 	color: var(--action--arrow--color--hover, var(--color--text--tint-1));
 }
-.previewTag {
+.previewBadge {
 	margin-left: var(--spacing--2xs);
 }
 :root .tag {

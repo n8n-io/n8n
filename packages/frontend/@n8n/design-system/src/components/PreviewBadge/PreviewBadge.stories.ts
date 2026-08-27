@@ -1,10 +1,10 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
-import PreviewTag from './PreviewTag.vue';
+import PreviewBadge from './PreviewBadge.vue';
 
 export default {
-	title: 'Core/PreviewTag',
-	component: PreviewTag,
+	title: 'Core/PreviewBadge',
+	component: PreviewBadge,
 	argTypes: {
 		size: {
 			control: 'select',
@@ -17,9 +17,9 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
-		PreviewTag,
+		PreviewBadge,
 	},
-	template: '<PreviewTag v-bind="args" />',
+	template: '<PreviewBadge v-bind="args" />',
 });
 
 export const Small = Template.bind({});

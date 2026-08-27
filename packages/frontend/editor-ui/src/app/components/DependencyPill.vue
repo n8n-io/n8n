@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useRouter } from 'vue-router';
 import type { BaseTextKey } from '@n8n/i18n';
-import { N8nBadge, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nBadge, N8nTooltip } from '@n8n/design-system';
 import { N8nDropdownMenu, type DropdownMenuItemProps } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
 import { VIEWS } from '@/app/constants';
@@ -125,12 +125,10 @@ const menuItems = computed(() => {
 		if (deps.length === 0) continue;
 
 		const config = typeConfig[typeKey];
-		// Add a disabled "header" item as group label, with divider if not the first group
 		items.push({
 			id: `header-${typeKey}`,
 			label: i18n.baseText(config.labelKey),
-			icon: { type: 'icon', value: config.icon },
-			disabled: true,
+			header: true,
 			divided: items.length > 0,
 		});
 
@@ -217,69 +215,43 @@ async function onDropdownToggle(open: boolean) {
 </script>
 
 <template>
-	<N8nTooltip :content="tooltipText" placement="top" :show-after="300">
-		<N8nDropdownMenu
-			:items="menuItems"
-			placement="bottom-end"
-			:loading="isLoadingDetails"
-			:loading-item-count="1"
-			:searchable="showSearch"
-			extra-popper-class="dependency-pill-dropdown"
-			:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder')"
-			:max-height="280"
-			:data-test-id="dataTestId"
-			@select="onSelect"
-			@search="onSearch"
-			@update:model-value="onDropdownToggle"
-		>
-			<template #trigger>
-				<!-- We use a custom border to align color with the other related badges -->
-				<N8nBadge variant="outline" :class="$style.badge">
-					<span :class="$style.badgeText">
-						<N8nIcon icon="link" size="small" />
+	<N8nDropdownMenu
+		:items="menuItems"
+		placement="bottom-end"
+		:loading="isLoadingDetails"
+		:loading-item-count="1"
+		:searchable="showSearch"
+		extra-popper-class="dependency-pill-dropdown"
+		:search-placeholder="i18n.baseText('workflows.dependencies.search.placeholder')"
+		:max-height="280"
+		:data-test-id="dataTestId"
+		@select="onSelect"
+		@search="onSearch"
+		@update:model-value="onDropdownToggle"
+	>
+		<template #trigger>
+			<div>
+				<N8nTooltip :content="tooltipText" placement="top">
+					<N8nBadge variant="outline" :class="$style.badge" :clickable="true" leading-icon="link">
 						{{ effectiveCount }}
-					</span>
-				</N8nBadge>
-			</template>
-			<template v-if="hasHiddenDeps" #footer>
-				<div :class="$style.hiddenNotice">
-					{{
-						i18n.baseText('workflows.dependencies.hiddenNotice', {
-							adjustToNumber: depsResult!.inaccessibleCount,
-							interpolate: { count: String(depsResult!.inaccessibleCount) },
-						})
-					}}
-				</div>
-			</template>
-		</N8nDropdownMenu>
-	</N8nTooltip>
+					</N8nBadge>
+				</N8nTooltip>
+			</div>
+		</template>
+		<template v-if="hasHiddenDeps" #footer>
+			<div :class="$style.hiddenNotice">
+				{{
+					i18n.baseText('workflows.dependencies.hiddenNotice', {
+						adjustToNumber: depsResult!.inaccessibleCount,
+						interpolate: { count: String(depsResult!.inaccessibleCount) },
+					})
+				}}
+			</div>
+		</template>
+	</N8nDropdownMenu>
 </template>
 
 <style lang="scss" module>
-.badge {
-	cursor: pointer;
-	border: var(--border);
-	border-radius: var(--radius);
-
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	color: var(--color--text);
-
-	&:hover {
-		background-color: var(--background--hover);
-	}
-
-	:global([aria-expanded='true']) & {
-		background-color: var(--background--active);
-	}
-}
-
-.badgeText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	line-height: calc(var(--font-size--sm) + 1px);
-}
-
 .hiddenNotice {
 	padding: var(--spacing--4xs) var(--spacing--2xs);
 	border-top: var(--border);
@@ -287,11 +259,5 @@ async function onDropdownToggle(open: boolean) {
 	font-size: var(--font-size--3xs);
 	font-style: italic;
 	line-height: var(--line-height--lg);
-}
-</style>
-
-<style lang="scss">
-.dependency-pill-dropdown {
-	z-index: 1;
 }
 </style>

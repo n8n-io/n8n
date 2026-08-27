@@ -47,7 +47,7 @@ export default {
 	'codeBlock.copyFailed': "Couldn't copy code. Try again or copy it manually.",
 	'codeBlock.expand': 'Expand code',
 	'codeBlock.collapse': 'Collapse code',
-	'previewTag.preview': 'Preview',
+	'previewBadge.preview': 'Preview',
 	'askAssistantButton.askAssistant': 'n8n AI',
 	'assistantChat.builder.name': 'AI Builder',
 	'assistantChat.builder.generatingFinalWorkflow': 'Generating final workflow...',

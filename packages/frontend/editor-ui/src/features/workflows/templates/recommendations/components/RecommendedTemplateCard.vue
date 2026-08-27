@@ -7,7 +7,7 @@ import { useRecommendedTemplatesStore } from '../recommendedTemplates.store';
 import { useRouter } from 'vue-router';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nCard, N8nIcon, N8nTag, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nCard, N8nIcon, N8nText } from '@n8n/design-system';
 import {
 	keyFromCredentialTypeAndName,
 	normalizeTemplateNodeCredentials,
@@ -155,13 +155,13 @@ onBeforeUnmount(() => {
 				</span>
 			</div>
 			<div v-if="showDetails && template.categories?.length" :class="$style.categories">
-				<N8nTag
+				<N8nBadge
 					v-for="category in template.categories"
 					:key="category.id"
-					:text="category.name"
-					:clickable="false"
 					:class="$style.categoryTag"
-				/>
+				>
+					{{ category.name }}
+				</N8nBadge>
 			</div>
 			<div :class="$style.statItem">
 				<div :class="$style.statItemLeft">
@@ -268,9 +268,9 @@ onBeforeUnmount(() => {
 }
 
 .categoryTag {
-	--tag--height: var(--spacing--lg);
-	--tag--border-color: transparent;
-	--tag--padding: var(--spacing--4xs) var(--spacing--2xs);
+	--n8n-badge--height: var(--height--xs);
+	--n8n-badge--border-color: transparent;
+	--n8n-badge--padding: var(--spacing--4xs) var(--spacing--2xs);
 }
 
 .statItem {

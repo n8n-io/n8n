@@ -713,16 +713,12 @@ const tags = computed(
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
-				<div
-					v-else-if="isWorkflowPublished"
-					:class="$style.publishIndicator"
-					data-test-id="workflow-card-publish-indicator"
-				>
-					<span :class="$style.publishIndicatorDot" />
-					<N8nText size="small" color="text-base">{{
-						locale.baseText('workflows.published')
-					}}</N8nText>
-				</div>
+				<N8nBadge v-else-if="isWorkflowPublished" data-test-id="workflow-card-publish-indicator">
+					<template #leading>
+						<span :class="$style.publishIndicatorDot" />
+					</template>
+					{{ locale.baseText('workflows.published') }}
+				</N8nBadge>
 				<WorkflowCardMcpToggle
 					v-if="props.isWorkflowCardMcpToggleEnabled"
 					:workflow-id="data.id"
@@ -815,6 +811,7 @@ const tags = computed(
 
 .cardBadge {
 	background-color: var(--color--background--light-3);
+	border-radius: var(--radius--full);
 }
 
 .cardBadge.with-breadcrumbs {

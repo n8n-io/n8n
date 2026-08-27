@@ -76,6 +76,10 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['items', 'activatorIcon'],
 		emits: ['select'],
 	},
+	N8nBadge: {
+		props: ['leadingIcon'],
+		template: '<span><span :data-icon="leadingIcon" /><slot /></span>',
+	},
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
 	N8nCheckbox: {
 		props: ['modelValue', 'label'],

@@ -7,6 +7,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { BreakingChangeWorkflowIssue, BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
+	N8nBadge,
 	N8nButton,
 	N8nDataTableServer,
 	N8nIcon,
@@ -17,7 +18,6 @@ import {
 	N8nOption,
 	N8nSelect,
 	N8nSettingsLayout,
-	N8nTag,
 	N8nText,
 } from '@n8n/design-system';
 import type { TableHeader } from '@n8n/design-system';
@@ -261,14 +261,13 @@ const sortedWorkflows = computed(() => {
 				>
 					{{ state.ruleTitle }}
 					<SeverityTag :severity="state.ruleSeverity" />
-					<N8nTag
-						:text="
+					<N8nBadge>
+						{{
 							i18n.baseText('settings.migrationReport.detail.affectedTag', {
 								interpolate: { count: String(state.affectedWorkflows.length) },
 							})
-						"
-						:clickable="false"
-					/>
+						}}
+					</N8nBadge>
 				</N8nText>
 				<N8nText tag="p" color="text-base">
 					{{ state.ruleDescription }}{{ state.ruleDescription.endsWith('.') ? '' : '.' }}
