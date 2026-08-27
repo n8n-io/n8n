@@ -117,7 +117,6 @@ const IndicatorTemplate: StoryFn = (args) => ({
 			justifyContent: 'center',
 			background: 'var(--background--surface)',
 			border: 'var(--border)',
-			borderRadius: 'var(--radius--xs)',
 			color: 'var(--color--text--tint-1)',
 			fontFamily: 'var(--font-family)',
 			fontSize: 'var(--font-size--sm)',
