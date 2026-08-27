@@ -40,7 +40,12 @@ const CUSTOM_MODEL_DEFAULTS = [
 	},
 	{
 		match: 'glm-5.2',
-		reasoningEffort: 'medium',
+		reasoningEffort: 'low',
+		supportsStructuredOutputs: true,
+	},
+	{
+		match: 'glm-5.3',
+		reasoningEffort: 'low',
 		supportsStructuredOutputs: true,
 	},
 	{

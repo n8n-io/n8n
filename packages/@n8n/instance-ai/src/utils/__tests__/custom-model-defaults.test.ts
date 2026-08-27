@@ -17,9 +17,15 @@ describe('resolveCustomModelExperimentDefaults', () => {
 		});
 	});
 
-	it('maps GLM 5.2 models to medium effort', () => {
+	it('maps GLM 5.2 and 5.3 models to low effort', () => {
 		expect(resolveCustomModelExperimentDefaults('custom/zai-org/GLM-5.2-Fast')).toEqual({
-			reasoningEffort: 'medium',
+			reasoningEffort: 'low',
+			supportsStructuredOutputs: true,
+		});
+		expect(
+			resolveCustomModelExperimentDefaults('openrouter/z-ai/glm-5.3-flash:nitro'),
+		).toEqual({
+			reasoningEffort: 'low',
 			supportsStructuredOutputs: true,
 		});
 	});
