@@ -2359,22 +2359,6 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
-	it('ignores an LLM-supplied projectId and uses the bound project', async () => {
-		const { adapter, mockProjectRepository, mockSharedWorkflowRepository } =
-			createWorkflowAdapterForTests();
-
-		await adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
-			projectId: 'other-project-id',
-		});
-
-		expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
-		expect(mockSharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
-			['wf-new'],
-			'team-project-id',
-			expect.any(Object),
-		);
-	});
-
 	it('throws when the run has no bound project', async () => {
 		const { adapter } = createWorkflowAdapterForTests({ projectId: null });
 

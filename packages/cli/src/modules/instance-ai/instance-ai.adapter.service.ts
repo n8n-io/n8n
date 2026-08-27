@@ -915,10 +915,7 @@ export class InstanceAiAdapterService {
 				return execution?.data?.resultData?.runData ?? null;
 			},
 
-			async createFromWorkflowJSON(
-				json: WorkflowJSON,
-				options?: { projectId?: string; markAsAiTemporary?: boolean },
-			) {
+			async createFromWorkflowJSON(json: WorkflowJSON, options?: { markAsAiTemporary?: boolean }) {
 				assertNotReadOnly();
 				const projectId = await resolveBoundProjectId(['workflow:create']);
 
@@ -1036,7 +1033,7 @@ export class InstanceAiAdapterService {
 			async updateFromWorkflowJSON(
 				workflowId: string,
 				json: WorkflowJSON,
-				options?: { projectId?: string; expectedChecksum?: string },
+				options?: { expectedChecksum?: string },
 			) {
 				assertNotReadOnly();
 				await assertNotLockedByEditor(workflowId);
