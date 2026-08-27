@@ -2,9 +2,14 @@ import getPort from 'get-port';
 import type { StartedNetwork, StartedTestContainer, StoppedTestContainer } from 'testcontainers';
 import { Network } from 'testcontainers';
 
-import { createElapsedLogger, pollContainerHttpEndpoint } from './helpers/utils';
+import {
+	createElapsedLogger,
+	pollContainerHttpEndpoint,
+	waitForContainerLogMessage,
+} from './helpers/utils';
 import { waitForNetworkQuiet } from './network-stabilization';
 import type { LoadBalancerResult } from './services/load-balancer';
+import type { TaskRunnerResult } from './services/task-runner';
 import type { N8NStartupDiagnostics } from './services/n8n';
 import { createN8NInstances, N8NStartupError } from './services/n8n';
 import { helperFactories, services } from './services/registry';
@@ -247,6 +252,21 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		if (lbResult) {
 			await pollContainerHttpEndpoint(lbResult.container, '/healthz/readiness');
 			log('Load balancer ready');
+		}
+
+		// The runner container starts before the instance whose broker it dials, so it
+		// can only register once that instance is up. Both launchers must have
+		// registered before a test executes code, otherwise the first execution races
+		// the registration. Which instance owns the broker varies by topology, so the
+		// runner's own log is the one place the signal is observable.
+		const taskRunnerResult = serviceResults.taskRunner as TaskRunnerResult | undefined;
+		if (taskRunnerResult) {
+			await waitForContainerLogMessage(
+				taskRunnerResult.container,
+				/Received message `broker:runnerregistered`/,
+				2,
+			);
+			log('Task runners registered with broker');
 		}
 
 		ctx.baseUrl = baseUrl;

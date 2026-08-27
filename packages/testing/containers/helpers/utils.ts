@@ -106,3 +106,54 @@ export async function pollContainerHttpEndpoint(
 		} seconds. Proceeding with caution.`,
 	);
 }
+
+/**
+ * Waits until a container's logs contain `pattern` at least `occurrences` times.
+ * Reads the log stream from the beginning, so a message emitted before the call
+ * still counts. Throws on timeout, since callers use this to establish a
+ * precondition rather than to observe one.
+ *
+ * @param container The started container.
+ * @param pattern The pattern to look for in the container's logs.
+ * @param occurrences How many matching lines to wait for (default: 1).
+ * @param timeoutMs Total timeout in milliseconds (default: 60,000ms).
+ */
+export async function waitForContainerLogMessage(
+	container: StartedTestContainer,
+	pattern: RegExp,
+	occurrences: number = 1,
+	timeoutMs: number = 60000,
+): Promise<void> {
+	const stream = await container.logs({ since: 0 });
+	let seen = 0;
+
+	try {
+		await new Promise<void>((resolve, reject) => {
+			const timer = setTimeout(() => {
+				reject(
+					new Error(
+						`Container ${container.getName()} did not log ${occurrences}x ${String(pattern)} within ${timeoutMs / 1000} seconds (saw ${seen})`,
+					),
+				);
+			}, timeoutMs);
+
+			const finish = (error?: Error) => {
+				clearTimeout(timer);
+				if (error) reject(error);
+				else resolve();
+			};
+
+			stream.on('data', (chunk: Buffer | string) => {
+				for (const line of chunk.toString().split('\n')) {
+					if (pattern.test(line) && ++seen >= occurrences) {
+						finish();
+						return;
+					}
+				}
+			});
+			stream.on('error', finish);
+		});
+	} finally {
+		stream.destroy();
+	}
+}
