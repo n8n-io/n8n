@@ -175,12 +175,14 @@ export {
 
 // Code-node source lint — the host re-runs the Python rules with the executing
 // runner's real import policy, which the sandbox CLI cannot see.
-export {
-	lintPythonCode,
-	type PythonImportPolicy,
-	type SourceLintIssue,
-	type CodeExecutionMode,
-} from './lint';
+//
+// Deliberately imported from the leaf modules, not the `./lint` barrel: the barrel
+// reaches `lint-workflow-source` and `code-node/js`, which pull acorn and the SDK
+// AST interpreter into the root entry that every consumer of this package loads.
+// `code-node/python` needs only `lint/types`.
+export { lintPythonCode, type PythonImportPolicy } from './lint/code-node/python';
+export type { SourceLintIssue } from './lint/types';
+export type { CodeExecutionMode } from './lint/code-node/extract-snippets';
 
 // Code generation
 export { generateWorkflowCode } from './codegen/index';
