@@ -1,9 +1,17 @@
-import type { INode } from 'n8n-workflow';
+import type { INode, IUser } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
 const validOptions = ['notSupported', 'memory', 'manually'] as const;
 export type AuthenticationChatOption = 'none' | 'basicAuth' | 'n8nUserAuth';
 export type LoadPreviousSessionChatOption = (typeof validOptions)[number];
+
+/**
+ * Identity resolved server-side for the shell's sandboxed frame: who the visitor is,
+ * plus the AS token their messages carry (the frame has no origin, so it can send no
+ * cookie of its own). The two only ever arrive together — the frame can resolve
+ * neither for itself.
+ */
+export type ChatFrameIdentity = { visitor: IUser; authToken: string };
 
 function isValidLoadPreviousSessionOption(value: unknown): value is LoadPreviousSessionChatOption {
 	return typeof value === 'string' && (validOptions as readonly string[]).includes(value);

@@ -5,6 +5,8 @@ export interface VerifyToolInput {
 	workItemId?: string;
 	workflowId: string;
 	inputData?: Record<string, unknown>;
+	/** Trigger to start from; omitted means the adapter auto-detects one. */
+	triggerNodeName?: string;
 	timeout?: number;
 	includeData?: boolean;
 	maxDataChars?: number;

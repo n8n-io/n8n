@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
 import type { Project, WorkflowEntity } from '@n8n/db';
 import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -97,6 +98,7 @@ describe('TriggerExecutionContextFactory', () => {
 			ownershipService,
 			nodeTypes,
 			pollCursorService,
+			mock<GlobalConfig>({ scheduler: { pollTimeoutSeconds: 45, leaseDurationSeconds: 60 } }),
 		);
 	});
 
@@ -997,6 +999,69 @@ describe('TriggerExecutionContextFactory', () => {
 			expect(workflowExecutionService.runPolledWorkflow).toHaveBeenCalledTimes(2);
 			const cursors = workflowExecutionService.runPolledWorkflow.mock.calls.map((call) => call[5]);
 			expect(cursors).toEqual([{ lastItemId: 'fast' }, { lastItemId: 'slow' }]);
+		});
+
+		describe('getPollBudgetMs', () => {
+			const buildBudgetContext = (
+				pollTimeoutSeconds: number,
+				leaseDurationSeconds: number,
+				fence?: { taskId: string; leaseEpoch: number },
+			) => {
+				const globalConfig = mock<GlobalConfig>({
+					scheduler: { pollTimeoutSeconds, leaseDurationSeconds },
+				});
+				const budgetFactory = new TriggerExecutionContextFactory(
+					mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) }),
+					errorReporter,
+					activeExecutions,
+					eventService,
+					executionService,
+					workflowStaticDataService,
+					workflowExecutionService,
+					storageConfig,
+					workflowPublishedDataService,
+					scheduleTriggerJobRegistrar,
+					ownershipService,
+					nodeTypes,
+					pollCursorService,
+					globalConfig,
+				);
+				const getPollFunctions = budgetFactory.getExecutePollFunctions(
+					mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+					additionalData,
+					mode,
+					activation,
+					async () => mock<IWorkflowBase>({ id: 'wf-1', name: 'Test Workflow' }),
+					fence,
+				);
+				return getPollFunctions(workflow, node, additionalData, mode, activation);
+			};
+
+			const fence = { taskId: 'task-1', leaseEpoch: 1 };
+
+			// Budget = min(poll timeout, lease duration) minus a margin of
+			// max(20%, 5s), so a node that exhausts it still finishes its
+			// in-flight batch before the engine abandons the tick.
+			test.each([
+				{ pollTimeoutSeconds: 45, leaseDurationSeconds: 60, expected: 36_000 },
+				{ pollTimeoutSeconds: 100, leaseDurationSeconds: 60, expected: 48_000 },
+				// The margin never eats more than half the ceiling, so a tiny (but
+				// schema-valid) timeout still yields a positive budget.
+				{ pollTimeoutSeconds: 4, leaseDurationSeconds: 60, expected: 2_000 },
+			])(
+				'derives $expected ms from a $pollTimeoutSeconds s timeout under a $leaseDurationSeconds s lease',
+				({ pollTimeoutSeconds, leaseDurationSeconds, expected }) => {
+					const budgetContext = buildBudgetContext(pollTimeoutSeconds, leaseDurationSeconds, fence);
+					expect(budgetContext.getPollBudgetMs()).toBe(expected);
+				},
+			);
+
+			test('keeps the generous PollContext default for a poll that runs without a lease', () => {
+				// The legacy in-memory path has no poll timeout and no lease, so the
+				// scheduler-derived budget must not apply there.
+				const budgetContext = buildBudgetContext(45, 60);
+				expect(budgetContext.getPollBudgetMs()).toBe(300_000);
+			});
 		});
 
 		test('throws when the node reads its static data outside of a poll', () => {
