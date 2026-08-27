@@ -188,6 +188,7 @@ const loadValidateAttachments = lazyModule(
 export { MAX_STEPS } from './constants/max-steps';
 export { parseModelHeadersJson } from './utils/parse-model-headers';
 export { isFolderContextEnabled } from './utils/folder-context-enabled';
+export { isNodeUsageContextEnabled } from './utils/node-usage-context-enabled';
 export { resolveCustomModelExperimentDefaultsFromEnv } from './utils/custom-model-defaults';
 export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
 export { WorkflowNotFoundError } from './errors/workflow-not-found.error';

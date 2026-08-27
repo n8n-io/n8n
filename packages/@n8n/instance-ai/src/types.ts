@@ -319,6 +319,20 @@ export interface WorkflowListResult {
 	folderResolution?: FolderResolutionFailure;
 }
 
+export interface NodeUsageResult {
+	/** Node types in scope, most-used first. */
+	usage: Array<{ nodeType: string; workflowCount: number }>;
+	/** Workflows the histogram was computed over. */
+	workflowsScanned: number;
+	/**
+	 * Total workflows in scope. Greater than `workflowsScanned` means the scan hit
+	 * its cap and the counts are a floor, not a total — say so rather than
+	 * reporting them as complete.
+	 */
+	totalInScope: number;
+	folderResolution?: FolderResolutionFailure;
+}
+
 /** Why a requested folder did not resolve, plus the folders that do exist so the
  *  caller can pick one instead of guessing again. */
 export interface FolderResolutionFailure {
@@ -354,7 +368,26 @@ export interface InstanceAiWorkflowService {
 		/** Include workflows in nested subfolders. Default true — a user naming a
 		 *  folder means its contents, and n8n folders nest. */
 		recursive?: boolean;
+		/**
+		 * Keep only workflows containing at least one node of these types
+		 * (`n8n-nodes-base.slack`). Answered from the dependency index rather than
+		 * by reading graphs, so it costs one join instead of a fetch per workflow.
+		 */
+		nodeTypes?: string[];
 	}): Promise<WorkflowListResult>;
+	/**
+	 * Which node types the workflows in scope actually use, and how many workflows
+	 * use each. Present only where the dependency index is available.
+	 */
+	nodeUsage?(options?: {
+		projectId?: string;
+		scope?: 'project' | 'instance';
+		folderId?: string;
+		folderPath?: string;
+		recursive?: boolean;
+		/** Restrict the histogram to these node types instead of reporting all. */
+		nodeTypes?: string[];
+	}): Promise<NodeUsageResult>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
 	 *  Pass a versionId to get a past version's graph instead of the current draft. */

@@ -21,6 +21,7 @@ import {
 	WorkflowEntity,
 	WorkflowRepository,
 	FolderRepository,
+	WorkflowDependencyRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type {
@@ -293,6 +294,7 @@ export class InstanceAiAdapterService {
 		// Appended rather than grouped with `folderService`: existing tests construct
 		// this service positionally, so inserting mid-list renames every later index.
 		private readonly folderRepository?: FolderRepository,
+		private readonly workflowDependencyRepository?: WorkflowDependencyRepository,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -621,6 +623,7 @@ export class InstanceAiAdapterService {
 			collaborationService,
 			folderService,
 			folderRepository,
+			workflowDependencyRepository,
 			projectService,
 		} = this;
 		const logger = this.logger;
@@ -768,6 +771,9 @@ export class InstanceAiAdapterService {
 					...scopeFilter,
 					...(options?.query ? { query: options.query } : {}),
 					...(folderIds ? { parentFolderIds: folderIds } : {}),
+					// Resolved against the dependency index by the repository, so this
+					// answers "which workflows use X" without reading any graph.
+					...(options?.nodeTypes?.length ? { nodeTypes: options.nodeTypes } : {}),
 				};
 
 				const { workflows, count } = await workflowService.getMany(user, {
@@ -824,6 +830,70 @@ export class InstanceAiAdapterService {
 					}),
 					total: count,
 					totalInScope,
+					...(folderResolution ? { folderResolution } : {}),
+				};
+			},
+
+			async nodeUsage(options) {
+				const targetProjectId =
+					options?.projectId ?? (options?.scope !== 'instance' ? boundProjectId : undefined);
+
+				const wantsFolderScope = Boolean(options?.folderId ?? options?.folderPath);
+				const foldersInScope = wantsFolderScope
+					? await readFoldersInScope(targetProjectId)
+					: undefined;
+
+				let folderResolution: FolderResolutionFailure | undefined;
+				let resolvedFolderId: string | undefined;
+				if (wantsFolderScope) {
+					const resolved = resolveRequestedFolder(
+						{ folderId: options?.folderId, folderPath: options?.folderPath },
+						foldersInScope,
+					);
+					if ('folderId' in resolved) {
+						resolvedFolderId = resolved.folderId;
+					} else {
+						folderResolution = {
+							requested: options?.folderPath ?? options?.folderId ?? '',
+							...resolved,
+						};
+					}
+				}
+
+				const folderIds =
+					resolvedFolderId === undefined
+						? undefined
+						: options?.recursive === false
+							? [resolvedFolderId]
+							: collectFolderSubtree(resolvedFolderId, foldersInScope);
+
+				const filter = {
+					isArchived: false,
+					...(targetProjectId ? { projectId: targetProjectId } : {}),
+					...(folderIds ? { parentFolderIds: folderIds } : {}),
+				};
+
+				// Ids only: the histogram is computed in the index, and pulling graphs
+				// here would reintroduce exactly the cost this action removes.
+				const { workflows, count } = await workflowService.getMany(user, {
+					take: NODE_USAGE_SCAN_LIMIT,
+					filter,
+					select: { id: true },
+				});
+				const workflowIds = workflows.map((workflow) => workflow.id);
+
+				const counted = workflowDependencyRepository
+					? await workflowDependencyRepository.countWorkflowsByNodeType(workflowIds)
+					: [];
+				const requested = options?.nodeTypes;
+				const usage = requested?.length
+					? counted.filter((entry) => requested.includes(entry.nodeType))
+					: counted;
+
+				return {
+					usage,
+					workflowsScanned: workflowIds.length,
+					totalInScope: count,
 					...(folderResolution ? { folderResolution } : {}),
 				};
 			},
@@ -4025,6 +4095,10 @@ function readHomeProject(workflow: object): { id: string; name: string } | undef
  *  organizational layer, not a corpus — a project past this many is not a case
  *  where guessing harder helps, and the miss is reported rather than hidden. */
 const FOLDER_SCAN_LIMIT = 200;
+
+/** Workflows a single node-usage histogram is computed over. Past this the answer
+ *  is reported as a lower bound rather than silently truncated. */
+const NODE_USAGE_SCAN_LIMIT = 500;
 
 /** Folder paths offered back on a failed lookup — enough to choose from without
  *  turning an error into an inventory dump. */

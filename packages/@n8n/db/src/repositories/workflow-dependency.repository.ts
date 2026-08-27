@@ -44,6 +44,64 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		super(WorkflowDependency, dataSource.manager);
 	}
 	/**
+	 * How many of the given workflows use each node type, most-used first.
+	 *
+	 * Reads the draft rows (`publishedVersionId IS NULL`) so the answer describes
+	 * what the workflows currently contain rather than what was last published.
+	 * Counts DISTINCT workflows, not node instances: three HTTP Request nodes in
+	 * one workflow are one user of the node type, which is the question callers
+	 * are actually asking.
+	 *
+	 * The caller supplies the workflow ids it has already authorized, so this adds
+	 * no access checks of its own.
+	 */
+	async countWorkflowsByNodeType(
+		workflowIds: string[],
+	): Promise<Array<{ nodeType: string; workflowCount: number }>> {
+		if (workflowIds.length === 0) return [];
+
+		const rows = await this.createQueryBuilder('dep')
+			.select('dep.dependencyKey', 'nodeType')
+			.addSelect('COUNT(DISTINCT dep.workflowId)', 'workflowCount')
+			.where('dep.dependencyType = :depType', { depType: 'nodeType' })
+			.andWhere('dep.publishedVersionId IS NULL')
+			.andWhere('dep.workflowId IN (:...workflowIds)', { workflowIds })
+			.groupBy('dep.dependencyKey')
+			.orderBy('COUNT(DISTINCT dep.workflowId)', 'DESC')
+			.addOrderBy('dep.dependencyKey', 'ASC')
+			.getRawMany<{ nodeType: string; workflowCount: string | number }>();
+
+		// Aggregates come back as strings on some drivers.
+		return rows.map((row) => ({
+			nodeType: row.nodeType,
+			workflowCount: Number(row.workflowCount),
+		}));
+	}
+
+	/**
+	 * Which of the given workflows use each of the named node types.
+	 *
+	 * Same draft-row scoping as `countWorkflowsByNodeType`. Returned as pairs
+	 * rather than a map so the caller decides how to group them.
+	 */
+	async findWorkflowIdsByNodeType(
+		workflowIds: string[],
+		nodeTypes: string[],
+	): Promise<Array<{ nodeType: string; workflowId: string }>> {
+		if (workflowIds.length === 0 || nodeTypes.length === 0) return [];
+
+		return await this.createQueryBuilder('dep')
+			.select('dep.dependencyKey', 'nodeType')
+			.addSelect('dep.workflowId', 'workflowId')
+			.distinct(true)
+			.where('dep.dependencyType = :depType', { depType: 'nodeType' })
+			.andWhere('dep.publishedVersionId IS NULL')
+			.andWhere('dep.workflowId IN (:...workflowIds)', { workflowIds })
+			.andWhere('dep.dependencyKey IN (:...nodeTypes)', { nodeTypes })
+			.getRawMany<{ nodeType: string; workflowId: string }>();
+	}
+
+	/**
 	 * Replace the dependencies for a given workflow.
 	 * Uses the workflowVersionId to ensure consistency between the workflow and dependency tables.
 	 * @param workflowId the id of the workflow

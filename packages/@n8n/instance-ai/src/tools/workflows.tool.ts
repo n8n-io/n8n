@@ -20,6 +20,7 @@ import {
 } from './credentials.tool';
 import { isFolderContextEnabled } from '../utils/folder-context-enabled';
 import { formatTimestamp } from '../utils/format-timestamp';
+import { isNodeUsageContextEnabled } from '../utils/node-usage-context-enabled';
 import {
 	getObservedWorkflowChecksum,
 	rememberCurrentWorkflowChecksum,
@@ -64,6 +65,23 @@ import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 const PROJECT_ID_FIELD_DESCRIPTION =
 	'Project ID, obtainable from `workspace(action="list-projects")`. For `list`: read that one project instead of the default scope — use it for "what is in project X" rather than listing the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write. For `setup`: scope credential creation to that project.';
 
+// `list` and `node-usage` share these fields, and the schema sanitizer requires one
+// description per shared field, so each has to read correctly for both actions.
+const SCOPE_FIELD_DESCRIPTION =
+	"Which project(s) to read. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.";
+
+const FOLDER_PATH_FIELD_DESCRIPTION =
+	'Restrict to one folder, named the way the user named it — "logsearch", "personal/logsearch", "Clients/Acme". This is the ONLY correct way to address a folder: folder membership is stored, not encoded in workflow names, so a `query` prefix both misses members named differently and picks up non-members that share the prefix. Matched case-insensitively on the full path, then on the folder name. If it does not resolve, the result says so and lists the real folders — never assume the returned set is the folder.';
+
+const FOLDER_ID_FIELD_DESCRIPTION =
+	'Folder ID, when a previous listing already gave you one (each workflow row carries its `folder`). Prefer `folderPath` when working from what the user said.';
+
+const RECURSIVE_FIELD_DESCRIPTION =
+	'Whether a folder is read together with its nested subfolders. Defaults to true, which is what a user naming a folder means. Set false only to inspect one level.';
+
+const NODE_TYPES_FIELD_DESCRIPTION =
+	'Node types to match, e.g. ["n8n-nodes-base.slack"]. Answered from an index, so it costs one call however many workflows exist, and it matches the node a workflow actually contains rather than its name. For `list`: keep only workflows containing one of these. For `node-usage`: report only these types, which answers "is X used anywhere here" without pulling the whole histogram.';
+
 const listAction = z.object({
 	action: z
 		.literal('list')
@@ -79,24 +97,10 @@ const listAction = z.object({
 					? ' If the user named a FOLDER, use `folderPath` — folder membership is not a name prefix, and guessing it here silently returns the wrong set.'
 					: ''),
 		),
-	folderPath: z
-		.string()
-		.optional()
-		.describe(
-			'List the workflows inside a folder, named the way the user named it — "logsearch", "personal/logsearch", "Clients/Acme". This is the ONLY correct way to answer "what is in folder X": folder membership is stored, not encoded in workflow names, so a `query` prefix both misses members named differently and picks up non-members that share the prefix. Matched case-insensitively on the full path, then on the folder name. If it does not resolve, the result says so and lists the real folders — never assume the returned set is the folder.',
-		),
-	folderId: z
-		.string()
-		.optional()
-		.describe(
-			'Folder ID, when a previous listing already gave you one (each workflow row carries its `folder`). Prefer `folderPath` when working from what the user said.',
-		),
-	recursive: z
-		.boolean()
-		.optional()
-		.describe(
-			'Whether a folder listing includes nested subfolders. Defaults to true, which is what a user naming a folder means. Set false only to inspect one level.',
-		),
+	folderPath: z.string().optional().describe(FOLDER_PATH_FIELD_DESCRIPTION),
+	folderId: z.string().optional().describe(FOLDER_ID_FIELD_DESCRIPTION),
+	recursive: z.boolean().optional().describe(RECURSIVE_FIELD_DESCRIPTION),
+	nodeTypes: z.array(z.string()).optional().describe(NODE_TYPES_FIELD_DESCRIPTION),
 	limit: z.number().int().positive().max(100).optional().describe('Max results to return'),
 	status: z
 		.enum(['active', 'archived', 'all'])
@@ -104,13 +108,22 @@ const listAction = z.object({
 		.describe(
 			'Which workflows to list. Defaults to active; use archived to find workflows that can be restored.',
 		),
-	scope: z
-		.enum(['project', 'instance'])
-		.optional()
-		.describe(
-			"Which project(s) to search. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.",
-		),
+	scope: z.enum(['project', 'instance']).optional().describe(SCOPE_FIELD_DESCRIPTION),
 	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
+});
+
+const nodeUsageAction = z.object({
+	action: z
+		.literal('node-usage')
+		.describe(
+			'Which node types the workflows in scope actually use, and how many workflows use each, most-used first. Read this BEFORE reading workflows when the question is about what an instance, project or folder is built out of — conventions, which integrations are in play, whether something already exists. It answers from an index in one call, where the alternative is fetching every workflow and parsing its nodes.',
+		),
+	scope: z.enum(['project', 'instance']).optional().describe(SCOPE_FIELD_DESCRIPTION),
+	projectId: z.string().optional().describe(PROJECT_ID_FIELD_DESCRIPTION),
+	folderPath: z.string().optional().describe(FOLDER_PATH_FIELD_DESCRIPTION),
+	folderId: z.string().optional().describe(FOLDER_ID_FIELD_DESCRIPTION),
+	recursive: z.boolean().optional().describe(RECURSIVE_FIELD_DESCRIPTION),
+	nodeTypes: z.array(z.string()).optional().describe(NODE_TYPES_FIELD_DESCRIPTION),
 });
 
 /** `list` without any way to address a folder — the shape the agent saw before
@@ -123,6 +136,12 @@ const listActionWithoutFolderScope = listAction.omit({
 	folderId: true,
 	recursive: true,
 });
+
+/** `list` without the dependency-index filter, for the same measurement reason. */
+const listActionWithoutNodeTypes = listAction.omit({ nodeTypes: true });
+
+/** Neither capability — the shape the agent saw before any of this work. */
+const listActionWithoutEither = listActionWithoutFolderScope.omit({ nodeTypes: true });
 
 const getAction = z.object({
 	action: z
@@ -332,6 +351,7 @@ interface WorkflowToolContext {
 // regardless of which dynamic subset the schema actually includes.
 type Input =
 	| z.infer<typeof listAction>
+	| z.infer<typeof nodeUsageAction>
 	| z.infer<typeof getAction>
 	| z.infer<typeof getJsonAction>
 	| z.infer<typeof getAsCodeAction>
@@ -353,6 +373,7 @@ type PublishRollbackResult = {
 };
 export type WorkflowAction =
 	| 'list'
+	| 'node-usage'
 	| 'get'
 	| 'get-json'
 	| 'get-as-code'
@@ -380,6 +401,9 @@ type WorkflowsToolOptionsInput = WorkflowsToolOptions | 'full' | 'orchestrator';
 
 const WORKFLOW_ACTION_ORDER = [
 	'list',
+	// Next to `list` on purpose: it answers the same discovery question more
+	// cheaply, and ordering drives what the agent reads first in the tool schema.
+	'node-usage',
 	'get',
 	'get-json',
 	'get-as-code',
@@ -410,6 +434,7 @@ const WORKFLOW_ACTION_LABELS = {
 	'list-versions': 'list versions',
 	'restore-version': 'restore versions',
 	'update-version': 'update version metadata',
+	'node-usage': 'summarize node usage',
 } satisfies Record<WorkflowAction, string>;
 
 function normalizeOptions(options: WorkflowsToolOptionsInput = {}): WorkflowsToolOptions {
@@ -424,7 +449,12 @@ function getSupportedWorkflowActionSchemas(
 	const hasVersions = !!context.workflowService.listVersions;
 
 	return {
-		list: isFolderContextEnabled() ? listAction : listActionWithoutFolderScope,
+		list: pickListAction(),
+		// Absent when the adapter has no dependency index behind it, so the agent is
+		// never offered a summary it would get an error from.
+		...(context.workflowService.nodeUsage && isNodeUsageContextEnabled()
+			? { 'node-usage': nodeUsageAction }
+			: {}),
 		get: getAction,
 		...(surface !== 'orchestrator' ? { 'get-json': getJsonAction } : {}),
 		'get-as-code': getAsCodeAction,
@@ -443,6 +473,18 @@ function getSupportedWorkflowActionSchemas(
 			: {}),
 		...(hasNamedVersions ? { 'update-version': updateVersionAction } : {}),
 	};
+}
+
+/** The `list` shape for the capabilities this instance exposes. Each gate really
+ *  removes its fields rather than ignoring them, so an arm without a capability
+ *  is not merely told to avoid it. */
+function pickListAction() {
+	const folders = isFolderContextEnabled();
+	const nodeUsage = isNodeUsageContextEnabled();
+	if (folders && nodeUsage) return listAction;
+	if (folders) return listActionWithoutNodeTypes;
+	if (nodeUsage) return listActionWithoutFolderScope;
+	return listActionWithoutEither;
 }
 
 function getWorkflowActions(
@@ -506,6 +548,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 			...(input.folderId ? { folderId: input.folderId } : {}),
 			...(input.folderPath ? { folderPath: input.folderPath } : {}),
 			...(input.recursive !== undefined ? { recursive: input.recursive } : {}),
+			...(input.nodeTypes ? { nodeTypes: input.nodeTypes } : {}),
 		});
 
 	// A partial list must never read as the complete inventory: guessed name
@@ -543,6 +586,51 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 	return {
 		workflows,
 		total,
+		totalInScope,
+		...(folderResolution ? { folderResolution } : {}),
+		...(notes.length > 0 ? { note: notes.join(' ') } : {}),
+	};
+}
+
+async function handleNodeUsage(
+	context: InstanceAiContext,
+	input: Extract<Input, { action: 'node-usage' }>,
+) {
+	if (!context.workflowService.nodeUsage) {
+		return {
+			usage: [],
+			note: 'Node usage is not available on this instance. Read the workflows you need directly.',
+		};
+	}
+
+	const { usage, workflowsScanned, totalInScope, folderResolution } =
+		await context.workflowService.nodeUsage({
+			...(input.scope ? { scope: input.scope } : {}),
+			...(input.projectId ? { projectId: input.projectId } : {}),
+			...(input.folderId ? { folderId: input.folderId } : {}),
+			...(input.folderPath ? { folderPath: input.folderPath } : {}),
+			...(input.recursive !== undefined ? { recursive: input.recursive } : {}),
+			...(input.nodeTypes ? { nodeTypes: input.nodeTypes } : {}),
+		});
+
+	const notes: string[] = [];
+	if (folderResolution) notes.push(formatFolderResolutionNote(folderResolution));
+	// A capped scan reads as a complete answer unless it says otherwise, and the
+	// counts are the thing a caller would quote back to the user.
+	if (workflowsScanned < totalInScope) {
+		notes.push(
+			`Counted ${workflowsScanned} of ${totalInScope} workflows in scope — these counts are a lower bound, not a total. Narrow with \`folderPath\` or \`projectId\` for exact numbers.`,
+		);
+	}
+	if (usage.length === 0 && !folderResolution) {
+		notes.push(
+			'No node usage recorded for this scope. Either it holds no workflows, or they have not been indexed yet.',
+		);
+	}
+
+	return {
+		usage,
+		workflowsScanned,
 		totalInScope,
 		...(folderResolution ? { folderResolution } : {}),
 		...(notes.length > 0 ? { note: notes.join(' ') } : {}),
@@ -1723,6 +1811,8 @@ export function createWorkflowsTool(
 		.handler(async (input, ctx) => {
 			const workflowInput = input as Input;
 			switch (workflowInput.action) {
+				case 'node-usage':
+					return await handleNodeUsage(context, workflowInput);
 				case 'list':
 					return await handleList(context, workflowInput);
 				case 'get':
