@@ -32,6 +32,10 @@ const newJob = (name: string): NewScheduledJob => ({
 	misfireGraceSeconds: 60,
 });
 
+/** A row as the post-insert read-back returns it: id, name and the owner it belongs to. */
+const insertedRow = (id: number, name: string, owner = OWNER): ScheduledJob =>
+	({ id, name, ...owner }) as ScheduledJob;
+
 /** A chainable insert query-builder mock; `execute` is set per test. */
 const insertQb = () => ({
 	insert: vi.fn().mockReturnThis(),
@@ -169,8 +173,8 @@ describe('ScheduledJobRepository', () => {
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 			// Read-back deliberately out of input order to prove the result is reordered.
 			entityManager.find.mockResolvedValueOnce([
-				{ id: 20, name: 'wf:node:1' } as ScheduledJob,
-				{ id: 10, name: 'wf:node:0' } as ScheduledJob,
+				insertedRow(20, 'wf:node:1'),
+				insertedRow(10, 'wf:node:0'),
 			]);
 
 			const ids = await repository.insertMany(entityManager, jobs);
@@ -180,7 +184,7 @@ describe('ScheduledJobRepository', () => {
 			expect(qb.returning).not.toHaveBeenCalled();
 			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
 				where: { name: In(['wf:node:0', 'wf:node:1']) },
-				select: { id: true, name: true },
+				select: { id: true, name: true, ownerType: true, ownerId: true, ownerMemberId: true },
 			});
 			expect(ids).toEqual([10, 20]);
 		});
@@ -192,11 +196,8 @@ describe('ScheduledJobRepository', () => {
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 			// Read-back is chunked too; each chunk resolves only its own rows.
 			entityManager.find
-				.mockResolvedValueOnce([
-					{ id: 10, name: 'wf:node:0' } as ScheduledJob,
-					{ id: 20, name: 'wf:node:1' } as ScheduledJob,
-				])
-				.mockResolvedValueOnce([{ id: 30, name: 'wf:node:2' } as ScheduledJob]);
+				.mockResolvedValueOnce([insertedRow(10, 'wf:node:0'), insertedRow(20, 'wf:node:1')])
+				.mockResolvedValueOnce([insertedRow(30, 'wf:node:2')]);
 
 			// 3 jobs at 2/chunk -> two insert statements and two read-back queries.
 			const ids = await repository.insertMany(entityManager, jobs, 2);
@@ -206,11 +207,11 @@ describe('ScheduledJobRepository', () => {
 			expect(qb.values).toHaveBeenNthCalledWith(2, [jobs[2]]);
 			expect(entityManager.find).toHaveBeenNthCalledWith(1, ScheduledJob, {
 				where: { name: In(['wf:node:0', 'wf:node:1']) },
-				select: { id: true, name: true },
+				select: { id: true, name: true, ownerType: true, ownerId: true, ownerMemberId: true },
 			});
 			expect(entityManager.find).toHaveBeenNthCalledWith(2, ScheduledJob, {
 				where: { name: In(['wf:node:2']) },
-				select: { id: true, name: true },
+				select: { id: true, name: true, ownerType: true, ownerId: true, ownerMemberId: true },
 			});
 			expect(ids).toEqual([10, 20, 30]);
 		});
@@ -223,12 +224,8 @@ describe('ScheduledJobRepository', () => {
 			qb.execute.mockResolvedValue(undefined);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 			entityManager.find
-				.mockResolvedValueOnce(
-					jobs.slice(0, 500).map((job, i) => ({ id: i + 1, name: job.name }) as ScheduledJob),
-				)
-				.mockResolvedValueOnce(
-					jobs.slice(500).map((job, i) => ({ id: 501 + i, name: job.name }) as ScheduledJob),
-				);
+				.mockResolvedValueOnce(jobs.slice(0, 500).map((job, i) => insertedRow(i + 1, job.name)))
+				.mockResolvedValueOnce(jobs.slice(500).map((job, i) => insertedRow(501 + i, job.name)));
 
 			const ids = await repository.insertMany(entityManager, jobs, 10_000_000);
 
@@ -243,8 +240,8 @@ describe('ScheduledJobRepository', () => {
 			qb.execute.mockResolvedValue(undefined);
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 			entityManager.find.mockResolvedValueOnce([
-				{ id: 10, name: 'wf:node:0' } as ScheduledJob,
-				{ id: 20, name: 'wf:node:1' } as ScheduledJob,
+				insertedRow(10, 'wf:node:0'),
+				insertedRow(20, 'wf:node:1'),
 			]);
 
 			const ids = await postgresRepository.insertMany(entityManager, jobs);
@@ -252,7 +249,7 @@ describe('ScheduledJobRepository', () => {
 			expect(qb.returning).not.toHaveBeenCalled();
 			expect(entityManager.find).toHaveBeenCalledWith(ScheduledJob, {
 				where: { name: In(['wf:node:0', 'wf:node:1']) },
-				select: { id: true, name: true },
+				select: { id: true, name: true, ownerType: true, ownerId: true, ownerMemberId: true },
 			});
 			expect(ids).toEqual([10, 20]);
 		});
@@ -265,13 +262,29 @@ describe('ScheduledJobRepository', () => {
 			// `wf:node:1` was already held by another writer; orIgnore skipped our row,
 			// but the read-back still finds every input name (id 99 is the other writer's).
 			entityManager.find.mockResolvedValueOnce([
-				{ id: 10, name: 'wf:node:0' } as ScheduledJob,
-				{ id: 99, name: 'wf:node:1' } as ScheduledJob,
+				insertedRow(10, 'wf:node:0'),
+				insertedRow(99, 'wf:node:1'),
 			]);
 
 			const ids = await repository.insertMany(entityManager, jobs);
 
 			expect(ids).toEqual([10, 99]);
+		});
+
+		it('throws when the row holding a name belongs to another owner', async () => {
+			// Job names are scoped by convention, not by the schema. Returning the other
+			// owner's id would have this call reseed and reschedule their job.
+			const jobs = [newJob('wf:node:0')];
+			const qb = insertQb();
+			qb.execute.mockResolvedValue(undefined);
+			entityManager.createQueryBuilder.mockReturnValue(qb as never);
+			entityManager.find.mockResolvedValueOnce([
+				insertedRow(10, 'wf:node:0', { ...OWNER, ownerMemberId: 'other-node' }),
+			]);
+
+			await expect(repository.insertMany(entityManager, jobs)).rejects.toThrow(
+				'Scheduled job name is already taken by another owner',
+			);
 		});
 
 		it('throws when a name has no row after insert', async () => {
@@ -281,7 +294,7 @@ describe('ScheduledJobRepository', () => {
 			entityManager.createQueryBuilder.mockReturnValue(qb as never);
 			// A name unexpectedly missing from the read-back must fail loud rather than
 			// return a short array that would misalign the caller's index-based zip.
-			entityManager.find.mockResolvedValueOnce([{ id: 10, name: 'wf:node:0' } as ScheduledJob]);
+			entityManager.find.mockResolvedValueOnce([insertedRow(10, 'wf:node:0')]);
 
 			await expect(repository.insertMany(entityManager, jobs)).rejects.toThrow(UnexpectedError);
 		});
