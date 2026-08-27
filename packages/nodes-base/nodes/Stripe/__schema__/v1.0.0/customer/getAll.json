@@ -10,6 +10,9 @@
         "delinquent": {
             "type": "boolean"
         },
+        "discount": {
+            "type": "null"
+        },
         "id": {
             "type": "string"
         },
@@ -49,5 +52,5 @@
             "type": "null"
         }
     },
-    "version": 1
+    "version": 2
 }
