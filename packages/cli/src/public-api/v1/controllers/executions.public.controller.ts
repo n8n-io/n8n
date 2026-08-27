@@ -4,6 +4,7 @@ import {
 	ExecutionPublicDto,
 	GetExecutionQueryDto,
 	ListExecutionsQueryDto,
+	MAX_ITEMS_PER_PAGE,
 } from '@n8n/api-types';
 import { ExecutionsConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionBase, IExecutionResponse } from '@n8n/db';
@@ -66,6 +67,8 @@ export class ExecutionsPublicController {
 		let { limit } = query;
 		let lastId: string | undefined;
 
+		// A cursor is unsigned, so its contents are caller-supplied. The decoded limit is bounded the
+		// same way the query parameter is, and ignored when it is not a usable number.
 		// Legacy accepted an offset-form cursor too, ignoring its `lastId`.
 		if (query.cursor) {
 			try {
@@ -73,7 +76,9 @@ export class ExecutionsPublicController {
 				if ('lastId' in decoded) {
 					lastId = decoded.lastId;
 				}
-				limit = decoded.limit;
+				if (Number.isInteger(decoded.limit)) {
+					limit = Math.min(Math.max(decoded.limit, 0), MAX_ITEMS_PER_PAGE);
+				}
 			} catch {
 				throw new BadRequestError('An invalid cursor was provided');
 			}

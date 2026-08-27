@@ -13,9 +13,10 @@ export class ListExecutionsQueryDto extends Z.class({
 	status: z.enum(ExecutionStatusList).optional(),
 	workflowId: z.string().optional(),
 	projectId: z.string().optional(),
-	// `.datetime()` reproduces the legacy `format: date-time` check, which answered 400.
-	startedAfter: z.string().datetime().optional(),
-	startedBefore: z.string().datetime().optional(),
+	// `{ offset: true }` matches the legacy `format: date-time` check exactly: it accepts `Z` and a
+	// numeric offset, and rejects a value with no timezone.
+	startedAfter: z.string().datetime({ offset: true }).optional(),
+	startedBefore: z.string().datetime({ offset: true }).optional(),
 	// `limit` only. Spreading the schema would expose `offset`, which is not a public query param.
 	limit: publicApiPaginationSchema.limit,
 	cursor: z.string().optional(),

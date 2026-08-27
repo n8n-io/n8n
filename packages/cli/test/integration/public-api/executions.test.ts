@@ -523,6 +523,21 @@ describe('GET /executions', () => {
 		}
 	});
 
+	test('should ignore a forged cursor limit instead of querying with it', async () => {
+		const workflow = await createWorkflow({}, owner);
+		await createSuccessfulExecution(workflow);
+
+		const forge = (limit: unknown) =>
+			Buffer.from(JSON.stringify({ lastId: '0', limit })).toString('base64');
+
+		for (const limit of ['abc', -1, 9999, null]) {
+			const response = await authOwnerAgent.get('/executions').query({ cursor: forge(limit) });
+
+			expect(response.statusCode).toBe(200);
+			expect(response.body.data.length).toBeLessThanOrEqual(250);
+		}
+	});
+
 	test('should return 400 for an invalid cursor', async () => {
 		const response = await authOwnerAgent.get('/executions').query({ cursor: 'not-a-cursor' });
 
@@ -863,6 +878,23 @@ describe('GET /executions', () => {
 			expect(response.body.data.map((execution: ExecutionEntity) => execution.id)).toEqual([
 				matching.id,
 			]);
+		});
+
+		test('should accept an RFC3339 value with a numeric timezone offset', async () => {
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: '2020-07-01T00:00:00+02:00',
+				startedBefore: '2020-09-01T00:00:00-05:00',
+			});
+
+			expect(response.statusCode).toBe(200);
+		});
+
+		test('should return 400 for a value with no timezone', async () => {
+			const response = await authOwnerAgent.get('/executions').query({
+				startedAfter: '2020-07-01T00:00:00',
+			});
+
+			expect(response.statusCode).toBe(400);
 		});
 
 		test('should return 400 for a malformed startedAfter value', async () => {
