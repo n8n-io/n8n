@@ -506,26 +506,29 @@ describe('runtime', () => {
 			expect(manager.size).toBe(2);
 		});
 
-		it('closes and evicts the cached client on execution cancellation', async () => {
-			vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
-			vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
-			const close = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
+		it.each(['onExecutionCancellation', 'onExecutionFinish'] as const)(
+			'closes and evicts the cached client on %s',
+			async (hookName) => {
+				vi.spyOn(Client.prototype, 'connect').mockResolvedValue();
+				vi.spyOn(Client.prototype, 'listTools').mockResolvedValue({ tools: [sampleTool] });
+				vi.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: [] });
+				const close = vi.spyOn(Client.prototype, 'close').mockResolvedValue();
 
-			let cancel: () => void = () => {};
-			const ctx = createCachedCtx('exec-1', {
-				onExecutionCancellation: vi.fn((handler: () => void) => {
-					cancel = handler;
-				}),
-			});
+				let fire: () => void = () => {};
+				const ctx = createCachedCtx('exec-1', {
+					[hookName]: vi.fn((handler: () => void) => {
+						fire = handler;
+					}),
+				});
 
-			await executeMcpTool(ctx, () => baseConfig, { enableSessionCache: true });
-			expect(manager.size).toBe(1);
+				await executeMcpTool(ctx, () => baseConfig, { enableSessionCache: true });
+				expect(manager.size).toBe(1);
 
-			cancel();
-			expect(close).toHaveBeenCalledTimes(1);
-			expect(manager.size).toBe(0);
-		});
+				fire();
+				expect(close).toHaveBeenCalledTimes(1);
+				expect(manager.size).toBe(0);
+			},
+		);
 	});
 
 	describe('loadMcpToolOptions', () => {

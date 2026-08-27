@@ -5,16 +5,14 @@
  * based on task complexity.
  */
 export const MAX_STEPS = {
-	/** Main orchestrator — coordinates all other agents and handles direct tool calls. */
+	/** Main orchestrator — coordinates tools and planned-task follow-ups. */
 	ORCHESTRATOR: 100,
-	/** Browser automation sub-agent — needs many steps for multi-page flows. */
+	/** Legacy limit retained for compatibility; browser work runs in the orchestrator. */
 	BROWSER: 300,
-	/** Workflow builder sub-agent — complex multi-tool build/verify loops. */
+	/** Legacy limit retained for compatibility; workflow builds run in the orchestrator. */
 	BUILDER: 60,
-	/** Eval setup sub-agent — reads workflow, creates DataTable, patches eval nodes + validates. */
+	/** Eval setup background agent — patches eval nodes into an existing workflow. */
 	EVAL_SETUP: 30,
-	/** Research sub-agent — web search and synthesis. */
+	/** Legacy limit retained for compatibility; research runs in the orchestrator. */
 	RESEARCH: 25,
-	/** Generic delegate fallback when no specific limit is configured. */
-	DELEGATE_FALLBACK: 10,
 } as const;

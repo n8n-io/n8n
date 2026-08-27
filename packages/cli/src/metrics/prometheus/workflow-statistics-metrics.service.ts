@@ -2,33 +2,23 @@ import { PrometheusMetricsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { jsonParse } from 'n8n-workflow';
 import promClient from 'prom-client';
 
 import { CacheService } from '@/services/cache/cache.service';
 
 import type { PrometheusMetricsCollector } from './base';
+import { CachedMetricQuery } from './cached-metric-query';
 
 type LicenseMetrics = Awaited<ReturnType<LicenseMetricsRepository['getLicenseRenewalMetrics']>>;
 
 /**
  * Tracks workflow and instance statistics as Gauges (executions, users, workflows, credentials).
- * Values are cached — first in Redis/persistent cache, then in-memory for scrape deduplication —
- * to avoid repeated DB hits per scrape cycle. Cache TTL is controlled by
+ * Values are cached to avoid repeated DB hits per scrape cycle, and concurrent gauge collects
+ * within a scrape are coalesced to a single query. Cache TTL is controlled by
  * `endpoints.metrics.workflowStatisticsInterval`.
  */
 @Service()
 export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMetricsCollector {
-	/** Shared in-memory cache to deduplicate DB calls within a single scrape cycle. */
-	private workflowStatisticsCache: {
-		data: LicenseMetrics;
-		timestamp: number;
-		ttl: number;
-	} | null = null;
-
-	/** Coalesces concurrent collect() calls so only one DB/Redis fetch runs at a time. */
-	private inFlightRequest: Promise<LicenseMetrics> | null = null;
-
 	constructor(
 		private readonly config: PrometheusMetricsConfig,
 		private readonly cacheService: CacheService,
@@ -41,6 +31,12 @@ export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMet
 
 	init() {
 		const cacheTtl = this.config.workflowStatisticsInterval * Time.seconds.toMilliseconds;
+		const query = new CachedMetricQuery<LicenseMetrics>({
+			cacheService: this.cacheService,
+			cacheKey: 'metrics:workflow-statistics:shared:v2',
+			ttlMs: cacheTtl,
+			query: async () => await this.licenseMetricsRepository.getLicenseRenewalMetrics(),
+		});
 
 		const metricsConfig = [
 			{
@@ -81,7 +77,7 @@ export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMet
 		];
 
 		metricsConfig.forEach((config) => {
-			this.createWorkflowStatisticsGauge(config.name, config.help, config.getValue, cacheTtl);
+			this.createWorkflowStatisticsGauge(config.name, config.help, config.getValue, query);
 		});
 	}
 
@@ -89,61 +85,14 @@ export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMet
 		metricName: string,
 		help: string,
 		getMetricValue: (metrics: LicenseMetrics) => number,
-		cacheTtl: number,
+		query: CachedMetricQuery<LicenseMetrics>,
 	): promClient.Gauge {
-		const fetchMetrics = async () => await this.getWorkflowStatistics(cacheTtl);
 		return new promClient.Gauge({
 			name: `${this.config.prefix}${metricName}`,
 			help,
 			async collect() {
-				this.set(getMetricValue(await fetchMetrics()));
+				this.set(getMetricValue(await query.get()));
 			},
 		});
-	}
-
-	private async getWorkflowStatistics(cacheTtl: number): Promise<LicenseMetrics> {
-		const now = Date.now();
-
-		if (
-			this.workflowStatisticsCache &&
-			now - this.workflowStatisticsCache.timestamp < this.workflowStatisticsCache.ttl
-		) {
-			return this.workflowStatisticsCache.data;
-		}
-
-		this.inFlightRequest ??= this.fetchAndCacheMetrics(cacheTtl).finally(() => {
-			this.inFlightRequest = null;
-		});
-
-		return await this.inFlightRequest;
-	}
-
-	private async fetchAndCacheMetrics(cacheTtl: number): Promise<LicenseMetrics> {
-		const now = Date.now();
-		const fullCacheKey = 'metrics:workflow-statistics:shared';
-		const cachedValue = await this.cacheService.get(fullCacheKey);
-
-		if (typeof cachedValue === 'string') {
-			const parsedValue = jsonParse(cachedValue, { fallbackValue: undefined });
-			if (parsedValue !== undefined) {
-				this.workflowStatisticsCache = {
-					data: parsedValue,
-					timestamp: now,
-					ttl: 1_000, // 1 second — enough to dedupe within a single scrape
-				};
-				return parsedValue;
-			}
-		}
-
-		const metrics = await this.licenseMetricsRepository.getLicenseRenewalMetrics();
-		await this.cacheService.set(fullCacheKey, JSON.stringify(metrics), cacheTtl);
-
-		this.workflowStatisticsCache = {
-			data: metrics,
-			timestamp: now,
-			ttl: 1_000, // 1 second — in-memory cache is only for scrape deduplication
-		};
-
-		return metrics;
 	}
 }

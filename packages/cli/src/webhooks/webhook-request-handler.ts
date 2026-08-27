@@ -1,7 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type express from 'express';
-import { ensureError, type IHttpRequestMethods } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { type IHttpRequestMethods } from 'n8n-workflow';
 import { Readable } from 'stream';
 import { finished } from 'stream/promises';
 

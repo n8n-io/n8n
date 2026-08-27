@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "instance_ai_checkpoints" ("key" varchar(255) PRIMARY KEY NOT NULL, "runId" varchar(255), "threadId" varchar NOT NULL, "resourceId" varchar(255), "state" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "expiredAt" datetime(3), CONSTRAINT "instance_ai_checkpoints_state_tombstone_check" CHECK (("expiredAt" IS NOT NULL AND "state" IS NULL) OR "expiredAt" IS NULL), CONSTRAINT "FK_2b23f3f24a70bebb990203b011e" FOREIGN KEY ("threadId") REFERENCES "instance_ai_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "instance_ai_checkpoints" ("key" varchar(255) PRIMARY KEY NOT NULL, "runId" varchar(255), "threadId" varchar NOT NULL, "resourceId" varchar(255), "state" text, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "expiredAt" datetime(3), "hostRunId" VARCHAR(64), CONSTRAINT "instance_ai_checkpoints_state_tombstone_check" CHECK (("expiredAt" IS NOT NULL AND "state" IS NULL) OR "expiredAt" IS NULL), CONSTRAINT "FK_2b23f3f24a70bebb990203b011e" FOREIGN KEY ("threadId") REFERENCES "instance_ai_threads" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -17,6 +17,7 @@ CREATE TABLE "instance_ai_checkpoints" ("key" varchar(255) PRIMARY KEY NOT NULL,
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | expiredAt | datetime(3) |  | true |  |  |  |
+| hostRunId | VARCHAR(64) |  | true |  |  |  |
 | key | varchar(255) |  | false | [instance_ai_pending_confirmations](instance_ai_pending_confirmations.md) |  |  |
 | resourceId | varchar(255) |  | true |  |  |  |
 | runId | varchar(255) |  | true |  |  |  |
@@ -53,6 +54,7 @@ erDiagram
 "instance_ai_checkpoints" {
   datetime_3_ createdAt
   datetime_3_ expiredAt
+  VARCHAR_64_ hostRunId
   varchar_255_ key PK
   varchar_255_ resourceId
   varchar_255_ runId

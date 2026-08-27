@@ -19,7 +19,7 @@ const result: any = await agent.stream(msg);
 const data = response as ExecutionResult;
 
 // INSTEAD — use the type system
-const result: StreamResult<InstanceAiEvent> = await agent.stream(msg);
+const result: StreamResult = await agent.stream(msg);
 const data: ExecutionResult = parseExecutionResult(response);
 ```
 
@@ -29,12 +29,12 @@ const data: ExecutionResult = parseExecutionResult(response);
 
 ### Zod schemas are the source of truth
 
-Every tool has an input schema (what the LLM sends) and an output schema
-(what the tool returns). `@n8n/agents` uses these schemas to generate tool
-descriptions for the LLM, validate inputs at runtime, and type-check the
-execute function. If the TypeScript type and the Zod schema are defined
-separately, they drift — the LLM sees one contract, the code enforces
-another, and bugs hide until production.
+Every tool has an input schema for what the LLM sends. A tool can also have an
+output schema when it returns one stable shape. `@n8n/agents` uses the input
+schema to describe tools to the LLM and validate input at runtime. Input and
+optional output schemas type-check the handler. If the TypeScript type and the
+Zod schema are defined separately, they drift. The LLM sees one contract, the
+code enforces another, and bugs hide until production.
 
 ```typescript
 // NEVER — separate schema and type that can drift
@@ -42,11 +42,12 @@ interface ListWorkflowsInput { query?: string; limit?: number; }
 const schema = z.object({ query: z.string().optional(), limit: z.number().optional() });
 
 // INSTEAD — infer the type from the schema
-const listWorkflowsInputSchema = z.object({
+const listWorkflowsActionSchema = z.object({
+  action: z.literal('list'),
   query: z.string().optional(),
   limit: z.number().int().min(1).max(100).default(50),
 });
-type ListWorkflowsInput = z.infer<typeof listWorkflowsInputSchema>;
+type ListWorkflowsInput = z.infer<typeof listWorkflowsActionSchema>;
 ```
 
 This applies to tool schemas, event payloads, API request/response bodies,
@@ -112,16 +113,15 @@ it('should stream tool-call event when agent uses a tool', async () => {
   const events = await collectEvents(agent.stream('list my workflows'));
   const toolCall = events.find(e => e.type === 'tool-call');
   expect(toolCall).toBeDefined();
-  expect(toolCall!.payload.toolName).toBe('list-workflows');
+  expect(toolCall!.payload.toolName).toBe('workflows');
 });
 ```
 
 ### Test the contract, not the internals
 
-The clean interface boundary (ADR-002) makes each layer testable in
-isolation. Verify the contract at each boundary — not the wiring between
-them. Tools can be tested without `@n8n/agents`, the reducer without SSE, adapters
-without the agent.
+The clean interface boundary makes each layer testable in isolation. Verify the
+contract at each boundary — not the wiring between them. Tools can be tested
+without `@n8n/agents`, the reducer without SSE, adapters without the agent.
 
 For each tool, test:
 - Valid input → expected output shape
@@ -143,8 +143,8 @@ hardest to debug after the fact.
 
 ```typescript
 it('should handle run-finish after connection drop and reconnect', ...);
-it('should not lose events when sub-agent completes during page reload', ...);
-it('should reject delegate with MCP tool names', ...);
+it('should not lose events when a background agent completes during page reload', ...);
+it('should reject MCP tool names in orchestrator tool sets', ...);
 it('should not leak credentials in tool-call args for credential tools', ...);
 ```
 
@@ -177,6 +177,7 @@ One canonical location per concept, everything else imports or references it.
 | Concept | Source of truth | Consumers |
 |---|---|---|
 | Event types | `@n8n/api-types` TypeScript unions | Backend, frontend, docs |
+| Tool ids | `src/tools/tool-ids.ts` | Agent, tests, docs |
 | Tool schemas | Zod schemas in `src/tools/` | Agent, tests, docs |
 | Plan schema | Zod schema in `src/tools/orchestration/` | Agent, frontend, docs |
 | Config vars | `@n8n/config` class | Backend, docs |
@@ -207,35 +208,41 @@ shared part into `@n8n/api-types` or a shared utility.
 
 ### Tool definitions
 
-`@n8n/agents` uses Zod schemas for both runtime validation and LLM tool
-descriptions. The `.describe()` strings on schema fields become the
-parameter descriptions the LLM sees when deciding how to call a tool.
-Missing or vague descriptions lead to bad tool calls. The `outputSchema`
-lets `@n8n/agents` validate return values and gives the LLM structured expectations.
+`@n8n/agents` uses input Zod schemas for runtime validation and LLM tool
+descriptions. The `.describe()` strings on input schema fields become the
+parameter descriptions that the LLM sees. Missing or vague descriptions lead
+to bad tool calls. Use an output schema to type-check the handler when a tool
+has one stable output shape. Consolidated tools with different output shapes
+can omit it.
 
-- Always define both `inputSchema` and `outputSchema`
+- Always define an input schema
+- Define an output schema when all actions share one stable output shape
 - Use `.describe()` on Zod fields — these are the LLM's parameter docs
 - Capture service context via closure in the factory function, not globals
-- Keep `execute` focused — delegate to service methods, no business logic
+- Keep the handler focused — delegate to service methods, no business logic
   in tools
 
 ```typescript
-export function createListWorkflowsTool(context: InstanceAiContext) {
-  return createTool({
-    id: 'list-workflows',
-    description: 'List workflows accessible to the current user.',
-    inputSchema: z.object({
-      query: z.string().optional().describe('Filter workflows by name'),
-      limit: z.number().int().min(1).max(100).default(50).describe('Max results'),
-    }),
-    outputSchema: z.object({
-      workflows: z.array(workflowSummarySchema),
-    }),
-    execute: async ({ query, limit }) => {
-      const workflows = await context.workflowService.list({ query, limit });
-      return { workflows };
-    },
-  });
+// Domain tools are action-based: one tool, a discriminated union of actions.
+const listAction = z.object({
+  action: z.literal('list'),
+  query: z.string().optional().describe('Filter workflows by name'),
+  limit: z.number().int().min(1).max(100).default(50).describe('Max results'),
+});
+
+export function createWorkflowsTool(context: InstanceAiContext) {
+  return new Tool(DOMAIN_TOOL_IDS.WORKFLOWS)
+    .description('Read and manage workflows.')
+    .input(z.discriminatedUnion('action', [listAction, /* ...other actions */]))
+    .handler(async (input) => {
+      // `input` is narrowed by `action`, so each branch is type-checked
+      if (input.action === 'list') {
+        const { workflows } = await context.workflowService.list(input);
+        return { workflows };
+      }
+      // ...
+    })
+    .build();
 }
 ```
 
@@ -245,7 +252,7 @@ The memory system is thread-scoped. Writing observations from a sub-agent
 corrupts the orchestrator's context, and manually summarizing tool results
 fights with the Observer doing the same thing.
 
-- Never read/write memory from sub-agents — they're stateless by design
+- Do not share orchestrator observational memory with background agents
 - Let observational memory handle compression — don't manually summarize
 
 ### Agent creation
@@ -255,7 +262,7 @@ agents across requests risks serving wrong permissions. Sub-agents with the
 full tool set can call tools the orchestrator didn't intend — the minimal
 tool set is both a security boundary and context optimization.
 
-- Agent per request (ADR-003) — don't cache agent instances
+- Agent per request — don't cache agent instances
 - Pass all context via the factory function — no ambient globals
 - Sub-agents get the minimum tool set needed
 
@@ -263,7 +270,7 @@ tool set is both a security boundary and context optimization.
 
 ### Right level of abstraction
 
-The clean interface boundary (ADR-002) keeps the agent core free of n8n
+The clean interface boundary keeps the agent core free of n8n
 dependencies — testable in isolation and potentially reusable outside n8n.
 Skipping a layer breaks testability. Adding an unnecessary layer adds
 indirection without value.

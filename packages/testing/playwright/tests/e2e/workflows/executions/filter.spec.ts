@@ -62,8 +62,10 @@ test.describe(
 			await expect(n8n.executions.getFilterBadge()).toBeVisible();
 			await expect(n8n.executions.getFilterResetButton()).toBeVisible();
 
-			const resetRequestPromise = n8n.page.waitForResponse((response) =>
-				response.url().includes('/rest/executions?filter='),
+			const resetRequestPromise = n8n.page.waitForResponse(
+				(response) =>
+					response.url().includes('/rest/executions?filter=') &&
+					!response.url().includes('success'),
 			);
 
 			await n8n.executions.resetFilter();

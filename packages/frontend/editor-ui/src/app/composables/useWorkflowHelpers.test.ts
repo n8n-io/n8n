@@ -1,6 +1,10 @@
 import type { IWorkflowDb } from '@/Interface';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
-import { resolveParameter, useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import {
+	resolveParameter,
+	resolveRequiredParameters,
+	useWorkflowHelpers,
+} from '@/app/composables/useWorkflowHelpers';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -10,7 +14,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
-import type { AssignmentCollectionValue, IConnections, IRunData } from 'n8n-workflow';
+import type {
+	AssignmentCollectionValue,
+	IConnections,
+	INodeProperties,
+	IRunData,
+} from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
 import { SET_NODE_TYPE, SLACK_TRIGGER_NODE_TYPE } from '../constants';
@@ -1310,5 +1319,85 @@ describe(resolveParameter, () => {
 
 			expect(result?.params).toBeDefined();
 		});
+	});
+});
+
+describe('resolveRequiredParameters', () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
+	const createParameter = (loadOptionsDependsOn: string[]): INodeProperties => ({
+		displayName: 'Fallback Output',
+		name: 'fallbackOutput',
+		type: 'options',
+		default: 'none',
+		typeOptions: { loadOptionsDependsOn },
+	});
+
+	const createResolveContext = () => {
+		const workflowData = createTestWorkflow({
+			nodes: [createTestNode({ name: 'Switch' })],
+		});
+		const workflowDocumentStore = useWorkflowDocumentStore(
+			createWorkflowDocumentId(workflowData.id),
+		);
+		workflowDocumentStore.hydrate(workflowData);
+
+		return {
+			workflowDocumentId: workflowDocumentStore.documentId,
+			opts: {
+				localResolve: true as const,
+				nodeName: 'Switch',
+				additionalKeys: {},
+			},
+		};
+	};
+
+	it('should preserve structure and resolve available leaves when an optional expression fails', async () => {
+		const { workflowDocumentId, opts } = createResolveContext();
+
+		const result = await resolveRequiredParameters(
+			createParameter(['rules.values']),
+			{
+				rules: {
+					values: [
+						{
+							conditions: {
+								leftValue: '={{ $json.missing.toUpperCase() }}',
+								rightValue: '={{ 2 + 2 }}',
+							},
+							outputKey: 'Matched',
+						},
+					],
+				},
+			},
+			workflowDocumentId,
+			opts,
+		);
+
+		expect(result).toEqual({
+			rules: {
+				values: [
+					{
+						conditions: { leftValue: null, rightValue: 4 },
+						outputKey: 'Matched',
+					},
+				],
+			},
+		});
+	});
+
+	it('should reject when a required parameter cannot be resolved', async () => {
+		const { workflowDocumentId, opts } = createResolveContext();
+
+		await expect(
+			resolveRequiredParameters(
+				createParameter(['rules']),
+				{ rules: '={{ $json.missing.toUpperCase() }}' },
+				workflowDocumentId,
+				opts,
+			),
+		).rejects.toThrow();
 	});
 });

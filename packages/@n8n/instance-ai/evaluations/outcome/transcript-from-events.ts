@@ -9,7 +9,7 @@
 import type { InstanceAiConfirmRequest } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
-import { redactSecrets, redactSecretsInText } from '../harness/redact';
+import { redactSecrets, redactSecretsInText, redactSecretsInTextDeep } from '../harness/redact';
 import type {
 	AskUserAnswer,
 	AskUserQuestion,
@@ -87,6 +87,8 @@ function splitEventsByUserTurn(
 
 function extractUserTurnText(event: CapturedEvent): string | undefined {
 	const payload = getRecord(event.data, 'payload');
+	// Raw here — buildTurn content-scrubs every user message at the shared
+	// boundary, covering this path and the legacy fallback alike.
 	return payload ? getString(payload, 'text') : undefined;
 }
 
@@ -111,7 +113,9 @@ function buildTurn(
 
 	const flushText = () => {
 		if (textBuffer.length > 0) {
-			steps.push({ kind: 'agent-text', text: textBuffer });
+			// Agent narration can echo a token verbatim (e.g. from a tool result) —
+			// content-scrub before the text lands in the persisted transcript.
+			steps.push({ kind: 'agent-text', text: redactSecretsInText(textBuffer) });
 			textBuffer = '';
 		}
 	};
@@ -144,7 +148,14 @@ function buildTurn(
 	}
 
 	flushText();
-	return { userMessage, steps };
+	// The transcript leaves the machine via eval-results.json — content-scrub
+	// the user message HERE, the boundary both capture paths share (the
+	// marker path's extracted turn text AND the legacy fallback's raw
+	// opening/follow-up messages).
+	return {
+		userMessage: userMessage === undefined ? undefined : redactSecretsInText(userMessage),
+		steps,
+	};
 }
 
 interface ToolOutcome {
@@ -164,8 +175,9 @@ function collectToolOutcomes(events: CapturedEvent[]): Map<string, ToolOutcome> 
 			// Flat string, so content-scrub (key-based redaction can't reach an inline token).
 			map.set(callId, { error: redactSecretsInText(getString(payload, 'error') ?? 'tool error') });
 		} else {
-			// Redact secret-shaped keys before the result reaches the report/judge.
-			map.set(callId, { result: redactSecrets(payload.result) });
+			// Redact secret-shaped keys, then content-scrub string leaves — a token
+			// inlined in a value under a benign key survives the key-based pass.
+			map.set(callId, { result: redactSecretsInTextDeep(redactSecrets(payload.result)) });
 		}
 	}
 	return map;
@@ -200,7 +212,10 @@ function interpretToolCall(
 		toolName,
 		toolCallId: callId,
 		args:
-			Object.keys(args).length > 0 ? (redactSecrets(args) as Record<string, unknown>) : undefined,
+			Object.keys(args).length > 0
+				? // Key-based pass, then a content pass over string leaves (see collectToolOutcomes).
+					(redactSecretsInTextDeep(redactSecrets(args)) as Record<string, unknown>)
+				: undefined,
 		result,
 		error: outcome?.error,
 	};
@@ -267,12 +282,28 @@ export function extractSetupWizardOutcome(result: Record<string, unknown>): Tool
 	const completed = Array.isArray(result.completedNodes)
 		? extractCompletedNodes(result.completedNodes)
 		: [];
-	const skipped = Array.isArray(result.skippedNodes)
-		? extractSkippedNodes(result.skippedNodes)
+	// `skippedNodes` was this list's name before it split into "still unconfigured" and
+	// "declined by the user"; traces and seeded fixtures recorded then still carry it.
+	const stillNeedingSetupRaw = Array.isArray(result.nodesStillNeedingSetup)
+		? result.nodesStillNeedingSetup
+		: Array.isArray(result.skippedNodes)
+			? result.skippedNodes
+			: undefined;
+	const stillNeedingSetup = stillNeedingSetupRaw ? extractSkippedNodes(stillNeedingSetupRaw) : [];
+	const skippedByUser = Array.isArray(result.skippedByUser)
+		? extractSkippedNodes(result.skippedByUser)
 		: [];
-	if (completed.length === 0 && skipped.length === 0) return null;
+	if (completed.length === 0 && stillNeedingSetup.length === 0 && skippedByUser.length === 0) {
+		return null;
+	}
 	const reason = typeof result.reason === 'string' ? result.reason : undefined;
-	return { kind: 'setup-wizard', completedNodes: completed, skippedNodes: skipped, reason };
+	return {
+		kind: 'setup-wizard',
+		completedNodes: completed,
+		nodesStillNeedingSetup: stillNeedingSetup,
+		...(skippedByUser.length > 0 ? { skippedByUser } : {}),
+		reason,
+	};
 }
 
 /**

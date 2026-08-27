@@ -1,6 +1,8 @@
 export type GristCredentials = {
-	apiKey: string;
-	planType: 'free' | 'paid' | 'selfHosted';
+	apiKey?: string;
+	url?: string;
+	// Legacy API-key credential fields, superseded by `url` (no credential migration exists,
+	// so these are still read as a fallback for connections created before the unified field).
 	customSubdomain?: string;
 	selfHostedUrl?: string;
 };
@@ -38,6 +40,13 @@ export type GristCreateRowPayload = {
 export type GristUpdateRowPayload = {
 	records: Array<{
 		id: number;
+		fields: { [key: string]: any };
+	}>;
+};
+
+export type GristUpsertRowPayload = {
+	records: Array<{
+		require: { [key: string]: any };
 		fields: { [key: string]: any };
 	}>;
 };

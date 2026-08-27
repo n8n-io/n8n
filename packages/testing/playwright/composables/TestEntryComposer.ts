@@ -42,7 +42,7 @@ export class TestEntryComposer {
 		const response = await this.n8n.api.projects.createProject();
 
 		const projectId = response.id;
-		await this.n8n.page.goto(`workflow/new?projectId=${projectId}`);
+		await this.n8n.navigate.toWorkflow('new', { projectId });
 		await this.n8n.canvas.waitForBlankCanvasReady();
 		return projectId;
 	}
@@ -60,7 +60,7 @@ export class TestEntryComposer {
 	 */
 	async fromImportedWorkflow(workflowFile: string) {
 		const workflowImportResult = await this.n8n.api.workflows.importWorkflowFromFile(workflowFile);
-		await this.n8n.page.goto(`workflow/${workflowImportResult.workflowId}`);
+		await this.n8n.navigate.toWorkflow(workflowImportResult.workflowId);
 		// Wait for the canvas loading overlay to clear and the imported nodes to
 		// render before returning, so tests don't interact with a canvas that is
 		// still covered by the full-screen loader.

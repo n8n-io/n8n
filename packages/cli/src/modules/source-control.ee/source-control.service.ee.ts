@@ -579,12 +579,15 @@ export class SourceControlService {
 			statusResult.filter((item) => item.type === 'workflow').map((item) => [item.id, item]),
 		);
 
-		for (const { id, publishingError } of workflowImportResults) {
-			if (!publishingError) continue;
+		for (const { id, publishingError, publishingErrorDetails } of workflowImportResults) {
+			if (!publishingError && !publishingErrorDetails) continue;
 
 			const statusItem = statusByWorkflowId.get(id);
 			if (statusItem) {
 				statusItem.publishingError = publishingError;
+				if (publishingErrorDetails) {
+					statusItem.publishingErrorDetails = publishingErrorDetails;
+				}
 			}
 		}
 
@@ -616,10 +619,21 @@ export class SourceControlService {
 
 		const dataTableCandidates = getNonDeletedResources(statusResult, 'datatable');
 		if (dataTableCandidates.length > 0) {
-			await this.sourceControlImportService.importDataTablesFromWorkFolder(
-				dataTableCandidates,
-				user.id,
-			);
+			const dataTableImportResult =
+				await this.sourceControlImportService.importDataTablesFromWorkFolder(
+					dataTableCandidates,
+					user.id,
+				);
+
+			// Surface reconciliation failures as conflicts on the pull result, not
+			// just in the logs
+			for (const failure of dataTableImportResult?.reconciliationFailures ?? []) {
+				for (const item of statusResult) {
+					if (item.type === 'datatable' && item.id === failure.id) {
+						item.conflict = true;
+					}
+				}
+			}
 		}
 		const dataTablesToBeDeleted = getDeletedResources(statusResult, 'datatable');
 		await this.sourceControlImportService.deleteDataTablesNotInWorkFolder(dataTablesToBeDeleted);

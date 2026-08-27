@@ -22,6 +22,8 @@ export type WorkflowListFilters = {
 	parentWorkflowId?: string;
 };
 
+const ALL_PROJECTS_KEY = '__all_projects__';
+
 export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	const rootStore = useRootStore();
 
@@ -29,6 +31,9 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	const totalWorkflowCount = ref(0);
 	const workflowsById = ref<Record<string, IWorkflowDb>>({});
 	const activeWorkflows = ref<string[]>([]);
+	// Set once fetchAllWorkflows resolves — distinguishes "no workflows" from "not fetched yet"
+	const allWorkflowsFetched = ref(false);
+	const allWorkflowsFetchedByProjectKey = ref<Record<string, true>>({});
 
 	// Computed
 	const allWorkflows = computed(() =>
@@ -72,6 +77,21 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 				...updates,
 			};
 		}
+	}
+
+	function getAllWorkflowsFetchedKey(projectId?: string) {
+		return projectId ?? ALL_PROJECTS_KEY;
+	}
+
+	function markAllWorkflowsFetched(projectId?: string) {
+		allWorkflowsFetchedByProjectKey.value = {
+			...allWorkflowsFetchedByProjectKey.value,
+			[getAllWorkflowsFetchedKey(projectId)]: true,
+		};
+	}
+
+	function hasFetchedAllWorkflows(projectId?: string) {
+		return Boolean(allWorkflowsFetchedByProjectKey.value[getAllWorkflowsFetchedKey(projectId)]);
 	}
 
 	// Methods - Active Workflows Cache
@@ -206,6 +226,8 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 	async function fetchAllWorkflows(projectId?: string): Promise<IWorkflowDb[]> {
 		const workflows = await searchWorkflows({ projectId });
 		setWorkflows(workflows);
+		allWorkflowsFetched.value = true;
+		markAllWorkflowsFetched(projectId);
 		return workflows;
 	}
 
@@ -279,6 +301,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		totalWorkflowCount,
 		workflowsById,
 		activeWorkflows,
+		allWorkflowsFetched,
 
 		// Computed
 		allWorkflows,
@@ -291,6 +314,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		addWorkflow,
 		removeWorkflow,
 		updateWorkflowInCache,
+		hasFetchedAllWorkflows,
 		setWorkflowActiveInCache,
 		setWorkflowInactiveInCache,
 

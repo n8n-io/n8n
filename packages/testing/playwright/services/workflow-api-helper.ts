@@ -209,6 +209,15 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
+	/**
+	 * Like {@link getWorkflow}, but returns the raw response instead of throwing
+	 * on a non-2xx status — for asserting a specific status code (e.g. the `403`
+	 * a member gets when fetching a workflow they can't access).
+	 */
+	async getWorkflowRaw(workflowId: string): Promise<APIResponse> {
+		return await this.api.request.get(`/rest/workflows/${workflowId}`);
+	}
+
 	async transfer(workflowId: string, destinationProjectId: string) {
 		const response = await this.api.request.put(`/rest/workflows/${workflowId}/transfer`, {
 			data: { destinationProjectId },
@@ -329,6 +338,7 @@ export class WorkflowApiHelper {
 			webhookPrefix?: string;
 			idLength?: number;
 			makeUnique?: boolean;
+			projectId?: string;
 			transform?: (workflow: Partial<IWorkflowBase>) => Partial<IWorkflowBase>;
 		},
 	): Promise<WorkflowImportResult> {
@@ -346,7 +356,12 @@ export class WorkflowApiHelper {
 
 	async importWorkflowFromDefinition(
 		workflowDefinition: Partial<IWorkflowBase>,
-		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
+		options?: {
+			webhookPrefix?: string;
+			idLength?: number;
+			makeUnique?: boolean;
+			projectId?: string;
+		},
 	): Promise<WorkflowImportResult> {
 		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);
 

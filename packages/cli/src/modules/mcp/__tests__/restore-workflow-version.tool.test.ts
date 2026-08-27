@@ -111,6 +111,47 @@ describe('restore-workflow-version MCP tool', () => {
 			expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
 		});
 
+		test('names the new version after the restored version', async () => {
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
+			(workflowHistoryService.getVersion as Mock).mockResolvedValue(
+				createWorkflowHistoryVersion({
+					workflowId: 'wf-1',
+					versionId: 'v1',
+					nodes: versionNodes,
+					name: 'Added Slack alert',
+					createdAt: new Date('2024-01-01T00:00:00.000Z'),
+				}),
+			);
+			(workflowService.update as Mock).mockResolvedValue({ id: 'wf-1', versionId: 'v2' });
+
+			const tool = buildTool();
+			await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
+
+			expect((workflowService.update as Mock).mock.calls[0][3]).toMatchObject({
+				versionName: 'Restored "Added Slack alert"',
+				versionDescription: 'Restored to version v1 (created 2024-01-01T00:00:00.000Z)',
+			});
+		});
+
+		test('falls back to the version id when the restored version is unnamed', async () => {
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
+			(workflowHistoryService.getVersion as Mock).mockResolvedValue(
+				createWorkflowHistoryVersion({
+					workflowId: 'wf-1',
+					versionId: 'abcdef1234567890',
+					nodes: versionNodes,
+				}),
+			);
+			(workflowService.update as Mock).mockResolvedValue({ id: 'wf-1', versionId: 'v2' });
+
+			const tool = buildTool();
+			await tool.handler({ workflowId: 'wf-1', versionId: 'abcdef1234567890' }, callContext);
+
+			expect((workflowService.update as Mock).mock.calls[0][3]).toMatchObject({
+				versionName: 'Restored version abcdef12',
+			});
+		});
+
 		test('clears the current node groups when restoring a version that had none', async () => {
 			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(createWorkflow());
 			(workflowHistoryService.getVersion as Mock).mockResolvedValue(

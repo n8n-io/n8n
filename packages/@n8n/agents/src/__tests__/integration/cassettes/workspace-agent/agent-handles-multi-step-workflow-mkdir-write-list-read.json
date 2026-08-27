@@ -9,7 +9,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "You are a file manager. Follow the user's instructions step by step using workspace tools. Available: workspace_mkdir, workspace_write_file, workspace_list_files, workspace_read_file. Be concise.\n\nFake sandbox for executing commands.\n\nIn-memory filesystem. All file paths are relative to /mem."
+					"text": "<built_in_rules>\n- When a tool result is offloaded, inspect it with workspace_read_tool_result before answering. Continue through relevant JSON Pointers and nextOffset pages until you have enough evidence for the user request. Do not read the entire result when the remaining content cannot affect the answer.\n</built_in_rules>\n\nYou are a file manager. Follow the user's instructions step by step using workspace tools. Available: workspace_mkdir, workspace_write_file, workspace_list_files, workspace_read_file. Be concise.\n\nFake sandbox for executing commands.\n\nIn-memory filesystem. All file paths are relative to /mem."
 				}
 			],
 			"messages": [
@@ -46,32 +46,50 @@
 					}
 				},
 				{
-					"name": "workspace_str_replace_file",
-					"description": "Replace one exact, unique text match in a workspace file without rewriting the whole file.",
+					"name": "workspace_read_tool_result",
+					"description": "Inspect an oversized tool result stored in the workspace. Start with view=describe, then use view=json with relevant JSON Pointers and nextOffset values. Continue until you have enough evidence for the user request; do not assume the first page is complete when hasMore is true.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to edit"
+								"description": "Exact path from an oversized tool-result envelope"
 							},
-							"old_str": {
+							"view": {
 								"type": "string",
-								"description": "Exact text to replace. Must match exactly and be unique."
+								"enum": ["describe", "json"],
+								"description": "Inspect the selected value shape, or read a bounded JSON value"
 							},
-							"new_str": {
+							"pointer": {
 								"type": "string",
-								"description": "Replacement text to write in place of old_str."
+								"description": "RFC 6901 JSON Pointer. Omit or use an empty string for the root value."
+							},
+							"offset": {
+								"type": "integer",
+								"minimum": 0,
+								"description": "String character or container child offset"
+							},
+							"maxChars": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 20000,
+								"description": "Maximum characters to return from a selected JSON string"
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 100,
+								"description": "Maximum object or array children to return"
 							}
 						},
-						"required": ["path", "old_str", "new_str"],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				},
 				{
-					"name": "workspace_batch_str_replace_file",
-					"description": "Apply multiple exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
+					"name": "workspace_str_replace_file",
+					"description": "Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -96,6 +114,7 @@
 									"required": ["old_str", "new_str"],
 									"additionalProperties": false
 								},
+								"minItems": 1,
 								"description": "Ordered exact string replacements applied atomically."
 							}
 						},
@@ -356,31 +375,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01THJykzWVWx78MewWzrAVHt\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll complete these tasks step by step.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01R9zhWUpwRhznYHmNLem1cA\",\"name\":\"workspace_mkdir\",\"input\":{\"path\":\"/app\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01MsePqh1S7mN2kqBvC4PKTX\",\"name\":\"workspace_write_file\",\"input\":{\"path\":\"/app/config.ts\",\"content\":\"export default {}\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2628,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":126,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCwbJSG8Qg3Xcr8Mdqs\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll help you with these tasks. Let me execute them step by step.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01Kdm2JzfcvU22C5apQxbmUz\",\"name\":\"workspace_mkdir\",\"input\":{\"path\":\"/app\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01KjtGG2kqE7oS3bpc8FEJF5\",\"name\":\"workspace_write_file\",\"input\":{\"path\":\"/app/config.ts\",\"content\":\"export default {}\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2864,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":133,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:25Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:58Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:25Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:58Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:24Z",
+			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:57Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:25Z",
+			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:58Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a1037256291c5a90-VIE",
+			"cf-ray": "a2a55d75dc275ac3-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:20:31 GMT",
-			"request-id": "req_011CcLBTJGzVr8Af5KjWQ9EC",
+			"date": "Thu, 13 Aug 2026 05:36:58 GMT",
+			"request-id": "req_011CdzCwZvLdpPMTgGkq1o33",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=xq8wtEDmz0mdWiTRHg5CGNhdpdGncxj9Xi_UdMU_Tls-1782217224.670412-1.0.1.1-ayEUbXKlr.dA8XjcgGa9xfhV67DvjIHfrVnMQkXWMt4; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-54e648f80902f73ee2e6d0674ddeed86-291b4e52929218e3-01",
+			"traceresponse": "00-0763083be5a01f7a6495059febeffb6e-074fdd45ff1c532e-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -396,7 +414,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "You are a file manager. Follow the user's instructions step by step using workspace tools. Available: workspace_mkdir, workspace_write_file, workspace_list_files, workspace_read_file. Be concise.\n\nFake sandbox for executing commands.\n\nIn-memory filesystem. All file paths are relative to /mem."
+					"text": "<built_in_rules>\n- When a tool result is offloaded, inspect it with workspace_read_tool_result before answering. Continue through relevant JSON Pointers and nextOffset pages until you have enough evidence for the user request. Do not read the entire result when the remaining content cannot affect the answer.\n</built_in_rules>\n\nYou are a file manager. Follow the user's instructions step by step using workspace tools. Available: workspace_mkdir, workspace_write_file, workspace_list_files, workspace_read_file. Be concise.\n\nFake sandbox for executing commands.\n\nIn-memory filesystem. All file paths are relative to /mem."
 				}
 			],
 			"messages": [
@@ -414,11 +432,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "I'll complete these tasks step by step."
+							"text": "I'll help you with these tasks. Let me execute them step by step."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01R9zhWUpwRhznYHmNLem1cA",
+							"id": "toolu_01Kdm2JzfcvU22C5apQxbmUz",
 							"name": "workspace_mkdir",
 							"input": {
 								"path": "/app"
@@ -429,7 +447,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01MsePqh1S7mN2kqBvC4PKTX",
+							"id": "toolu_01KjtGG2kqE7oS3bpc8FEJF5",
 							"name": "workspace_write_file",
 							"input": {
 								"path": "/app/config.ts",
@@ -446,12 +464,12 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01R9zhWUpwRhznYHmNLem1cA",
+							"tool_use_id": "toolu_01Kdm2JzfcvU22C5apQxbmUz",
 							"content": "{\"success\":true}"
 						},
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01MsePqh1S7mN2kqBvC4PKTX",
+							"tool_use_id": "toolu_01KjtGG2kqE7oS3bpc8FEJF5",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -480,32 +498,50 @@
 					}
 				},
 				{
-					"name": "workspace_str_replace_file",
-					"description": "Replace one exact, unique text match in a workspace file without rewriting the whole file.",
+					"name": "workspace_read_tool_result",
+					"description": "Inspect an oversized tool result stored in the workspace. Start with view=describe, then use view=json with relevant JSON Pointers and nextOffset values. Continue until you have enough evidence for the user request; do not assume the first page is complete when hasMore is true.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to edit"
+								"description": "Exact path from an oversized tool-result envelope"
 							},
-							"old_str": {
+							"view": {
 								"type": "string",
-								"description": "Exact text to replace. Must match exactly and be unique."
+								"enum": ["describe", "json"],
+								"description": "Inspect the selected value shape, or read a bounded JSON value"
 							},
-							"new_str": {
+							"pointer": {
 								"type": "string",
-								"description": "Replacement text to write in place of old_str."
+								"description": "RFC 6901 JSON Pointer. Omit or use an empty string for the root value."
+							},
+							"offset": {
+								"type": "integer",
+								"minimum": 0,
+								"description": "String character or container child offset"
+							},
+							"maxChars": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 20000,
+								"description": "Maximum characters to return from a selected JSON string"
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 100,
+								"description": "Maximum object or array children to return"
 							}
 						},
-						"required": ["path", "old_str", "new_str"],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				},
 				{
-					"name": "workspace_batch_str_replace_file",
-					"description": "Apply multiple exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
+					"name": "workspace_str_replace_file",
+					"description": "Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -530,6 +566,7 @@
 									"required": ["old_str", "new_str"],
 									"additionalProperties": false
 								},
+								"minItems": 1,
 								"description": "Ordered exact string replacements applied atomically."
 							}
 						},
@@ -790,31 +827,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01KSJSMH1n3HsVBmFUYphQhr\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now let me list the files and read the config file:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01QcTgc4Xz6b9QsBKSKx62jd\",\"name\":\"workspace_list_files\",\"input\":{\"path\":\"/app\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01S4nNXMXYH9i5FqNEWwtphy\",\"name\":\"workspace_read_file\",\"input\":{\"path\":\"/app/config.ts\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2827,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":112,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCwgEqyT69jXZMUZwr1\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now let me list the files and read the config file:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01UWmHmjeCfvtj9Pagmf8c8w\",\"name\":\"workspace_list_files\",\"input\":{\"path\":\"/app\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01EAhG6VHkDp4kKfHyx33nhf\",\"name\":\"workspace_read_file\",\"input\":{\"path\":\"/app/config.ts\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3070,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":112,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:32Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:36:59Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:32Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:36:59Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:31Z",
+			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:58Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:32Z",
+			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:36:59Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a10372806d4d5a90-VIE",
+			"cf-ray": "a2a55d7e9a455ac3-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:20:32 GMT",
-			"request-id": "req_011CcLBToAJtUwsAPY1bv262",
+			"date": "Thu, 13 Aug 2026 05:36:59 GMT",
+			"request-id": "req_011CdzCwfjLLqgJpEayNEzLi",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=iRZvbHSjdn9wG6f6yfNbS.u0XFgwiCUIf6oJn1c4CGk-1782217231.4247003-1.0.1.1-.TWqA59Yn_MyLawI5VrhVXUmjAiv1iKeVU0FyIBjvuE; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-de8f64df26378be89391b47e34ddc1e5-71df3527dac488e4-01",
+			"traceresponse": "00-811dd8d88f0f5228d247eba8645965d7-2dd4531cfa96b7e3-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -830,7 +866,7 @@
 			"system": [
 				{
 					"type": "text",
-					"text": "You are a file manager. Follow the user's instructions step by step using workspace tools. Available: workspace_mkdir, workspace_write_file, workspace_list_files, workspace_read_file. Be concise.\n\nFake sandbox for executing commands.\n\nIn-memory filesystem. All file paths are relative to /mem."
+					"text": "<built_in_rules>\n- When a tool result is offloaded, inspect it with workspace_read_tool_result before answering. Continue through relevant JSON Pointers and nextOffset pages until you have enough evidence for the user request. Do not read the entire result when the remaining content cannot affect the answer.\n</built_in_rules>\n\nYou are a file manager. Follow the user's instructions step by step using workspace tools. Available: workspace_mkdir, workspace_write_file, workspace_list_files, workspace_read_file. Be concise.\n\nFake sandbox for executing commands.\n\nIn-memory filesystem. All file paths are relative to /mem."
 				}
 			],
 			"messages": [
@@ -848,11 +884,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "I'll complete these tasks step by step."
+							"text": "I'll help you with these tasks. Let me execute them step by step."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01R9zhWUpwRhznYHmNLem1cA",
+							"id": "toolu_01Kdm2JzfcvU22C5apQxbmUz",
 							"name": "workspace_mkdir",
 							"input": {
 								"path": "/app"
@@ -863,7 +899,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01MsePqh1S7mN2kqBvC4PKTX",
+							"id": "toolu_01KjtGG2kqE7oS3bpc8FEJF5",
 							"name": "workspace_write_file",
 							"input": {
 								"path": "/app/config.ts",
@@ -880,12 +916,12 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01R9zhWUpwRhznYHmNLem1cA",
+							"tool_use_id": "toolu_01Kdm2JzfcvU22C5apQxbmUz",
 							"content": "{\"success\":true}"
 						},
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01MsePqh1S7mN2kqBvC4PKTX",
+							"tool_use_id": "toolu_01KjtGG2kqE7oS3bpc8FEJF5",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -899,7 +935,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01QcTgc4Xz6b9QsBKSKx62jd",
+							"id": "toolu_01UWmHmjeCfvtj9Pagmf8c8w",
 							"name": "workspace_list_files",
 							"input": {
 								"path": "/app"
@@ -910,7 +946,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01S4nNXMXYH9i5FqNEWwtphy",
+							"id": "toolu_01EAhG6VHkDp4kKfHyx33nhf",
 							"name": "workspace_read_file",
 							"input": {
 								"path": "/app/config.ts"
@@ -926,12 +962,12 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01QcTgc4Xz6b9QsBKSKx62jd",
+							"tool_use_id": "toolu_01UWmHmjeCfvtj9Pagmf8c8w",
 							"content": "{\"entries\":[{\"name\":\"config.ts\",\"type\":\"file\"}]}"
 						},
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01S4nNXMXYH9i5FqNEWwtphy",
+							"tool_use_id": "toolu_01EAhG6VHkDp4kKfHyx33nhf",
 							"content": "{\"content\":\"export default {}\"}"
 						}
 					]
@@ -960,32 +996,50 @@
 					}
 				},
 				{
-					"name": "workspace_str_replace_file",
-					"description": "Replace one exact, unique text match in a workspace file without rewriting the whole file.",
+					"name": "workspace_read_tool_result",
+					"description": "Inspect an oversized tool result stored in the workspace. Start with view=describe, then use view=json with relevant JSON Pointers and nextOffset values. Continue until you have enough evidence for the user request; do not assume the first page is complete when hasMore is true.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
 							"path": {
 								"type": "string",
-								"description": "Path to the file to edit"
+								"description": "Exact path from an oversized tool-result envelope"
 							},
-							"old_str": {
+							"view": {
 								"type": "string",
-								"description": "Exact text to replace. Must match exactly and be unique."
+								"enum": ["describe", "json"],
+								"description": "Inspect the selected value shape, or read a bounded JSON value"
 							},
-							"new_str": {
+							"pointer": {
 								"type": "string",
-								"description": "Replacement text to write in place of old_str."
+								"description": "RFC 6901 JSON Pointer. Omit or use an empty string for the root value."
+							},
+							"offset": {
+								"type": "integer",
+								"minimum": 0,
+								"description": "String character or container child offset"
+							},
+							"maxChars": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 20000,
+								"description": "Maximum characters to return from a selected JSON string"
+							},
+							"limit": {
+								"type": "integer",
+								"minimum": 1,
+								"maximum": 100,
+								"description": "Maximum object or array children to return"
 							}
 						},
-						"required": ["path", "old_str", "new_str"],
+						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
 				},
 				{
-					"name": "workspace_batch_str_replace_file",
-					"description": "Apply multiple exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
+					"name": "workspace_str_replace_file",
+					"description": "Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -1010,6 +1064,7 @@
 									"required": ["old_str", "new_str"],
 									"additionalProperties": false
 								},
+								"minItems": 1,
 								"description": "Ordered exact string replacements applied atomically."
 							}
 						},
@@ -1270,31 +1325,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_019mNAk7ZhJNLKZ5DuopWiPG\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Done! Here's what I completed:\\n\\n1. ✅ Created directory `/app`\\n2. ✅ Wrote `export default {}` to `/app/config.ts`\\n3. ✅ Files in `/app`: `config.ts`\\n4. ✅ Contents of `/app/config.ts`: `export default {}`\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3029,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":83,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011CdzCwmHTXw7Z6DXv5BHhW\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Perfect! All tasks completed:\\n\\n1. ✅ Created directory `/app`\\n2. ✅ Wrote `\\\"export default {}\\\"` to `/app/config.ts`\\n3. ✅ Files in `/app`: `config.ts`\\n4. ✅ Contents of `/app/config.ts`: `export default {}`\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3272,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":83,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:33Z",
+			"anthropic-ratelimit-input-tokens-remaining": "9998000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-08-13T05:37:00Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:34Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-08-13T05:37:00Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:33Z",
+			"anthropic-ratelimit-requests-reset": "2026-08-13T05:36:59Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:33Z",
+			"anthropic-ratelimit-tokens-remaining": "11998000",
+			"anthropic-ratelimit-tokens-reset": "2026-08-13T05:37:00Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a1037289acce5a90-VIE",
+			"cf-ray": "a2a55d853ec25ac3-VIE",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:20:35 GMT",
-			"request-id": "req_011CcLBTubkhycLHAnLJDHeE",
+			"date": "Thu, 13 Aug 2026 05:37:00 GMT",
+			"request-id": "req_011CdzCwkV62qc7vwwpkCTQ6",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=JDOoVJE7Uz_SLJ8TNK0D306u1fgPQ0IA2Z5fLY3.C34-1782217232.9114723-1.0.1.1-I9s13yRO7XPEVffwuiRGgGVDeIbn6z9w_RHiRYYpFk8; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-b03a9834b7b9a98ecf4d2b4bcadfa217-3eacb54093b5f6ce-01",
+			"traceresponse": "00-6ab9f6e7fd5b6818fe5aee49378c8b15-f12ec9900d19d681-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

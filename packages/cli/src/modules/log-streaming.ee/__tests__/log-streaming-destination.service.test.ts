@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,7 +12,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { EventDestinationsRepository } from '../database/repositories/event-destination.repository';
 import { messageEventBusDestinationFromDb } from '../destinations/message-event-bus-destination-from-db';
-import type { MessageEventBusDestinationWebhook } from '../destinations/message-event-bus-destination-webhook.ee';
+import { MessageEventBusDestinationWebhook } from '../destinations/message-event-bus-destination-webhook.ee';
 import { LogStreamingDestinationService } from '../log-streaming-destination.service';
 
 vi.mock('../destinations/message-event-bus-destination-from-db');
@@ -157,6 +158,60 @@ describe('LogStreamingDestinationService', () => {
 			await service.addDestination(destination, false);
 
 			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		// Uses a real destination (not a mock) so the actual serialize() output is what
+		// reaches the repository — this is the payload persisted to the DB.
+		it('should persist the configured circuit breaker options to the database', async () => {
+			const id = '12345678-1234-1234-1234-123456789abc';
+			const circuitBreaker = { maxFailures: 7, failureWindow: 30000 };
+			const destination = new MessageEventBusDestinationWebhook(
+				eventBus,
+				{
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					id,
+					label: 'Test',
+					url: 'http://example.com',
+					circuitBreaker,
+				},
+				outboundHttp,
+			);
+
+			eventDestinationsRepository.upsert.mockResolvedValue({} as any);
+
+			await service.addDestination(destination, false);
+
+			const data = eventDestinationsRepository.upsert.mock.calls[0][0] as {
+				id: string;
+				destination: MessageEventBusDestinationOptions;
+			};
+			expect(data.id).toBe(id);
+			// Stored verbatim: exactly the configured subset, no defaults injected, no `timeout` key
+			expect(data.destination.circuitBreaker).toEqual(circuitBreaker);
+		});
+
+		it('should not persist circuit breaker options when none configured', async () => {
+			const id = '12345678-1234-1234-1234-123456789abc';
+			const destination = new MessageEventBusDestinationWebhook(
+				eventBus,
+				{
+					__type: MessageEventBusDestinationTypeNames.webhook,
+					id,
+					label: 'Test',
+					url: 'http://example.com',
+				},
+				outboundHttp,
+			);
+
+			eventDestinationsRepository.upsert.mockResolvedValue({} as any);
+
+			await service.addDestination(destination, false);
+
+			const data = eventDestinationsRepository.upsert.mock.calls[0][0] as {
+				id: string;
+				destination: MessageEventBusDestinationOptions;
+			};
+			expect(data.destination.circuitBreaker).toBeUndefined();
 		});
 	});
 

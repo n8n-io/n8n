@@ -92,10 +92,29 @@ export class DeprecationService {
 			checkValue: (value?: string) => value === undefined,
 		},
 		{
+			envVar: 'N8N_EXPRESSION_ENGINE',
+			message:
+				'The `legacy` expression engine runs expressions without isolation, is no longer considered secure, and will be removed in a future version. Remove this environment variable to use the default `vm` engine.',
+			checkValue: (value?: string) => value === 'legacy',
+		},
+		{
 			envVar: 'N8N_DEFAULT_BINARY_DATA_MODE',
 			message:
 				'In-memory binary data storage (`default` mode) will be removed in a future version. Switch to `filesystem`, `s3`, or `database`.',
 			checkValue: (value?: string) => value === 'default',
+		},
+		{
+			envVar: 'N8N_WORKFLOW_TAGS_DISABLED',
+			message:
+				'Disabling workflow tags is deprecated. Tags will always be enabled in a future version and this environment variable will be removed, so the tags feature will become visible again after upgrading.',
+			checkValue: (value?: string) =>
+				value !== undefined && ['true', '1'].includes(value.toLowerCase()),
+		},
+		{
+			envVar: 'N8N_OUTBOUND_PROXY_MODE',
+			message:
+				'This variable exists only for backward compatibility and will be removed in a future version. Remove it and list every internal endpoint that must be reached directly in NO_PROXY. Until that is in place, `main-only` keeps the historical behavior where only the main process routes its default outbound HTTP through the proxy environment variables (HTTP_PROXY, HTTPS_PROXY, ALL_PROXY, NO_PROXY).',
+			checkValue: (value?: string) => value === 'main-only',
 		},
 		{
 			envVar: 'EXECUTIONS_PROCESS',

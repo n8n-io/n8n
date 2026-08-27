@@ -7,8 +7,11 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
+import { Container } from '@n8n/di';
+import type { MockInstance } from 'vitest';
 
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Telemetry } from '@/telemetry';
 import {
 	createMemberWithApiKey,
@@ -791,6 +794,36 @@ describe('Projects in Public API', () => {
 					'Your instance is not licensed to use role "project:viewer".',
 				);
 			});
+
+			describe('when project roles are managed', () => {
+				let managedSpy: MockInstance;
+				beforeEach(() => {
+					managedSpy = vi
+						.spyOn(Container.get(ProvisioningService), 'isProjectRoleManaged')
+						.mockResolvedValue(true);
+				});
+				afterEach(() => managedSpy.mockRestore());
+
+				it('returns 403 and leaves membership unchanged', async () => {
+					const owner = await createOwnerWithApiKey();
+					const project = await createTeamProject('shared-project', owner);
+					const member = await createMember();
+					const before = await getAllProjectRelations({ projectId: project.id });
+
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.post(`/projects/${project.id}/users`)
+						.send({ relations: [{ userId: member.id, role: 'project:viewer' }] });
+
+					expect(response.status).toBe(403);
+					expect(response.body).toHaveProperty(
+						'message',
+						'Project roles are managed automatically and cannot be changed manually',
+					);
+					const after = await getAllProjectRelations({ projectId: project.id });
+					expect(after.length).toEqual(before.length);
+				});
+			});
 		});
 	});
 
@@ -912,6 +945,35 @@ describe('Projects in Public API', () => {
 					`Could not find project with ID: ${project.id}`,
 				);
 			});
+
+			describe('when project roles are managed', () => {
+				let managedSpy: MockInstance;
+				beforeEach(() => {
+					managedSpy = vi
+						.spyOn(Container.get(ProvisioningService), 'isProjectRoleManaged')
+						.mockResolvedValue(true);
+				});
+				afterEach(() => managedSpy.mockRestore());
+
+				it('returns 403 and leaves the role unchanged', async () => {
+					const owner = await createOwnerWithApiKey();
+					const project = await createTeamProject('shared-project', owner);
+					const member = await createMember();
+					await linkUserToProject(member, project, 'project:viewer');
+
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.patch(`/projects/${project.id}/users/${member.id}`)
+						.send({ role: 'project:editor' });
+
+					expect(response.status).toBe(403);
+					expect(response.body).toHaveProperty(
+						'message',
+						'Project roles are managed automatically and cannot be changed manually',
+					);
+					expect(await getProjectRoleForUser(project.id, member.id)).toBe('project:viewer');
+				});
+			});
 		});
 	});
 
@@ -1028,6 +1090,36 @@ describe('Projects in Public API', () => {
 
 				expect(projectAfter.length).toEqual(1);
 				expect(projectAfter[0].userId).toEqual(owner.id);
+			});
+
+			describe('when project roles are managed', () => {
+				let managedSpy: MockInstance;
+				beforeEach(() => {
+					managedSpy = vi
+						.spyOn(Container.get(ProvisioningService), 'isProjectRoleManaged')
+						.mockResolvedValue(true);
+				});
+				afterEach(() => managedSpy.mockRestore());
+
+				it('returns 403 and leaves membership unchanged', async () => {
+					const owner = await createOwnerWithApiKey();
+					const project = await createTeamProject('shared-project', owner);
+					const member = await createMember();
+					await linkUserToProject(member, project, 'project:viewer');
+					const before = await getAllProjectRelations({ projectId: project.id });
+
+					const response = await testServer
+						.publicApiAgentFor(owner)
+						.delete(`/projects/${project.id}/users/${member.id}`);
+
+					expect(response.status).toBe(403);
+					expect(response.body).toHaveProperty(
+						'message',
+						'Project roles are managed automatically and cannot be changed manually',
+					);
+					const after = await getAllProjectRelations({ projectId: project.id });
+					expect(after.length).toEqual(before.length);
+				});
 			});
 		});
 	});

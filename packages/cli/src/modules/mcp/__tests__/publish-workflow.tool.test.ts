@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid';
 import type { Mock } from 'vitest';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -248,6 +249,48 @@ describe('publish-workflow MCP tool', () => {
 		});
 
 		describe('error handling', () => {
+			test.each([
+				['review_pending', 'review-1'],
+				['changes_requested', 'review-2'],
+			] as const)(
+				'returns the review details when publication is blocked by %s',
+				async (reason, workflowReviewRequestId) => {
+					const workflow = createWorkflow({ settings: { availableInMCP: true } });
+					(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+					(workflowService.activateWorkflow as Mock).mockRejectedValue(
+						new WorkflowPublishBlockedError({ reason, workflowReviewRequestId }),
+					);
+
+					const tool = createPublishWorkflowTool(
+						user,
+						workflowFinderService,
+						workflowService,
+						telemetry,
+						collaborationService,
+					);
+
+					const result = await tool.handler(
+						{ workflowId: 'wf-1', versionId: undefined },
+						{} as Parameters<typeof tool.handler>[1],
+					);
+
+					expect(result.structuredContent).toEqual({
+						success: false,
+						workflowId: 'wf-1',
+						activeVersionId: null,
+						error: expect.any(String),
+						reason,
+						workflowReviewRequestId,
+					});
+					expect(telemetry.track).toHaveBeenCalledWith(
+						'User called mcp tool',
+						expect.objectContaining({
+							results: expect.objectContaining({ error_reason: reason }),
+						}),
+					);
+				},
+			);
+
 			test('handles WorkflowService errors gracefully', async () => {
 				const workflow = createWorkflow({ settings: { availableInMCP: true } });
 				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
@@ -268,7 +311,7 @@ describe('publish-workflow MCP tool', () => {
 					{} as Parameters<typeof tool.handler>[1],
 				);
 
-				expect(result.structuredContent).toMatchObject({
+				expect(result.structuredContent).toEqual({
 					success: false,
 					workflowId: 'wf-1',
 					activeVersionId: null,

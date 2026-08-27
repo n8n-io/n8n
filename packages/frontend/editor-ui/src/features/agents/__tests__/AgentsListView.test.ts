@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AgentResource } from '../types';
 
 import AgentsListView from '../views/AgentsListView.vue';
+import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
 
 const mocks = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
@@ -43,7 +44,8 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	}),
 }));
 
-vi.mock('@/features/execution/insights/insights.store', () => ({
+vi.mock('@/features/execution/insights', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/features/execution/insights')>()),
 	useInsightsStore: () => ({
 		isSummaryEnabled: false,
 		weeklySummary: { isLoading: false, state: null },
@@ -126,7 +128,7 @@ const mountView = async () => {
 			stubs: {
 				ProjectHeader: { template: '<div><slot /></div>' },
 				InsightsSummary: true,
-				N8nActionBox: { template: '<div />' },
+				N8nEmptyState: { template: '<div />' },
 			},
 		},
 	});
@@ -296,5 +298,28 @@ describe('AgentsListView — overview page', () => {
 			expect.objectContaining({ filter: { query: 'Support' } }),
 		);
 		expect(mocks.listAgentsPage).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentsListView — create agent', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		mocks.routeProjectId = 'project-1';
+	});
+
+	it('routes create-agent clicks to Instance AI with the project context', async () => {
+		mocks.listAgentsPage.mockResolvedValueOnce({ count: 0, data: [] });
+		const wrapper = await mountView();
+
+		const vm = wrapper.vm as unknown as { onCreateAgentClick: () => void };
+		vm.onCreateAgentClick();
+
+		// The same minted id is reported with the click and carried into the route,
+		// so the "clicked" and "created" events can be joined on it.
+		const [, mintedAgentId] = mocks.trackClickedNewAgent.mock.calls[0] as [string, string];
+		expect(mocks.trackClickedNewAgent).toHaveBeenCalledWith('button', expect.any(String));
+		expect(mocks.routerPush).toHaveBeenCalledWith(
+			instanceAiCreateAgentRoute('project-1', mintedAgentId),
+		);
 	});
 });

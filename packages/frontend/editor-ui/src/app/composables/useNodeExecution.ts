@@ -1,7 +1,7 @@
 import { computed, ref, toValue, type ComputedRef, type MaybeRef } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { IconName } from '@n8n/design-system';
 
 import {
 	AI_TRANSFORM_CODE_GENERATED_FOR_PROMPT,
@@ -21,8 +21,8 @@ import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useMessage } from '@/app/composables/useMessage';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useEditorContext } from '@/app/composables/useEditorContext';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -439,9 +439,10 @@ export function useNodeExecution(
 	}
 
 	async function stopExecution(): Promise<void> {
-		if (isListening.value) {
+		// While the run waits for a test webhook there is no execution to stop.
+		if (workflowExecutionStateStore.value.executionWaitingForWebhook) {
 			await stopWaitingForWebhook();
-		} else if (isListeningForWorkflowEvents.value) {
+		} else {
 			await stopCurrentExecution();
 		}
 	}

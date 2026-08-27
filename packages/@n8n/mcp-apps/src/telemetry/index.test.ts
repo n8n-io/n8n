@@ -78,7 +78,7 @@ describe('McpAppTelemetry', () => {
 				'Test event',
 				{
 					apiKey: '[REDACTED]',
-					error_message: '[REDACTED]',
+					error_message: 'Authorization: [REDACTED]',
 					instance_id: 'instance-123',
 					version_cli: '1.2.3',
 				},

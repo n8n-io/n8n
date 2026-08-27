@@ -16,9 +16,10 @@ import {
 	type SearchKnowledgeMatch,
 	type SearchKnowledgeRequest,
 } from './agent-knowledge-retrieval';
-import { KNOWLEDGE_FILES_DIR } from './agent-knowledge-storage';
+import { assertKnowledgePathSegment, type AgentKnowledgePaths } from './agent-knowledge-storage';
 
 const COMMAND_TIMEOUT_SECONDS = 20;
+export const MIRROR_SYNC_TIMEOUT_SECONDS = 120;
 const SEARCH_OUTPUT_TRUNCATED_MARKER = '__N8N_SEARCH_OUTPUT_TRUNCATED__';
 const READ_OUTPUT_TRUNCATED_MARKER = '__N8N_READ_OUTPUT_TRUNCATED__';
 const SEARCH_JSON_EVENT_OVERHEAD_CHARS = 1_500;
@@ -74,7 +75,9 @@ export function buildSearchKnowledgeCommand(
 ): string {
 	const outputMode = request.output_mode ?? 'content';
 	const resultLimit = (request.head_limit ?? DEFAULT_SEARCH_TEXT_LIMIT) + 1;
-	const targets = scopedFiles.map((file) => quoteShellArg(`./${file}`));
+	// No scoped files means an unscoped `path` — search every mirrored file.
+	const targets =
+		scopedFiles.length > 0 ? scopedFiles.map((file) => quoteShellArg(`./${file}`)) : ['.'];
 	const baseCommand = [
 		'timeout',
 		String(COMMAND_TIMEOUT_SECONDS),
@@ -82,6 +85,10 @@ export function buildSearchKnowledgeCommand(
 		...(request['-i'] === false ? [] : ['--ignore-case']),
 		'--color=never',
 		'--hidden',
+		// Extracted PDF text can contain stray NUL bytes, which make rg treat
+		// the file as binary and silently skip it. Everything in the knowledge
+		// dir is text by construction, so force text mode.
+		'--text',
 	];
 
 	if (outputMode === 'files_with_matches') {
@@ -101,8 +108,6 @@ export function buildSearchKnowledgeCommand(
 			...baseCommand,
 			'--count-matches',
 			'--with-filename',
-			'--field-match-separator',
-			quoteShellArg('\t'),
 			'-e',
 			quoteShellArg(request.pattern),
 			'--',
@@ -292,7 +297,10 @@ export function parseRipgrepCountOutput(
 			break;
 		}
 
-		const separatorIndex = line.lastIndexOf('\t');
+		// `--count-matches` output is always `path:count` — rg does not apply
+		// `--field-match-separator` to count lines. The last colon is the
+		// separator even when the file name itself contains colons.
+		const separatorIndex = line.lastIndexOf(':');
 		if (separatorIndex === -1) {
 			incomplete = true;
 			continue;
@@ -466,13 +474,7 @@ function decodeRipgrepJsonData(value: RipgrepEncodedText): string | undefined {
 }
 
 function normalizeRipgrepPath(filePath: string): string {
-	if (filePath.startsWith(`${KNOWLEDGE_FILES_DIR}/`)) {
-		return filePath.slice(KNOWLEDGE_FILES_DIR.length + 1);
-	}
-	if (filePath.startsWith('./')) {
-		return filePath.slice(2);
-	}
-	return filePath;
+	return filePath.startsWith('./') ? filePath.slice(2) : filePath;
 }
 
 function stripTrailingNewline(text: string): string {
@@ -541,11 +543,58 @@ function buildAwkPipeline(command: string, script: string): string {
 	].join('; ');
 }
 
-export function buildScopedKnowledgeShellCommand(command: string): string {
+export function buildScopedKnowledgeShellCommand(
+	command: string,
+	paths: AgentKnowledgePaths,
+): string {
 	const scopedCommand = [
-		`[ -d ${quoteShellArg(KNOWLEDGE_FILES_DIR)} ] || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
-		`cd ${quoteShellArg(KNOWLEDGE_FILES_DIR)} || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
+		`[ -d ${quoteShellArg(paths.filesDir)} ] || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
+		`cd ${quoteShellArg(paths.filesDir)} || exit ${KNOWLEDGE_FILES_DIR_UNAVAILABLE_EXIT_CODE}`,
 		`{ ${command}; }`,
 	].join('; ');
 	return `bash -o pipefail -c ${quoteShellArg(scopedCommand)}`;
+}
+
+/**
+ * Finalizes a mirror sync: moves `toCopy` names from their already-uploaded
+ * per-sync staging path into place, removes `toDelete` names, and rewrites the
+ * manifest to `manifestFiles`. The staging + `mv` sequence means a search
+ * running concurrently never sees a partially-written file.
+ */
+export function buildMirrorFinalizeCommand(
+	toCopy: string[],
+	toDelete: string[],
+	manifestFiles: Array<Pick<AgentKnowledgeFileReference, 'file' | 'fileId'>>,
+	paths: AgentKnowledgePaths,
+	stagingId: string,
+): string {
+	for (const name of [...toCopy, ...toDelete, ...manifestFiles.map((file) => file.file)]) {
+		assertKnowledgePathSegment(name, 'knowledge mirror file name');
+	}
+	assertKnowledgePathSegment(stagingId, 'knowledge mirror staging ID');
+
+	const commands = [`mkdir -p ${paths.filesDir}`];
+
+	for (const name of toCopy) {
+		const tmpPath = quoteShellArg(`${paths.stagingDir}/${stagingId}/${name}`);
+		const finalPath = quoteShellArg(`${paths.filesDir}/${name}`);
+		commands.push(`mv ${tmpPath} ${finalPath}`);
+	}
+
+	if (toDelete.length > 0) {
+		const targets = toDelete.map((name) => quoteShellArg(`${paths.filesDir}/${name}`));
+		commands.push(`rm -f ${targets.join(' ')}`);
+	}
+
+	const manifestBody =
+		manifestFiles.length > 0
+			? `${manifestFiles.map(({ file, fileId }) => `${fileId}\t${file}`).join('\n')}\n`
+			: '';
+	const stagedManifest = `${paths.manifest}.${stagingId}.tmp`;
+	commands.push(
+		`printf '%s' ${quoteShellArg(manifestBody)} > ${stagedManifest}`,
+		`mv ${stagedManifest} ${paths.manifest}`,
+	);
+
+	return `timeout ${MIRROR_SYNC_TIMEOUT_SECONDS} bash -o pipefail -c ${quoteShellArg(commands.join(' && '))}`;
 }

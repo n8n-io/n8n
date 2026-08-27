@@ -13,7 +13,6 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { AgentHistory } from '../entities/agent-history.entity';
 import type { Agent } from '../entities/agent.entity';
-import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { AgentHistoryRepository } from '../repositories/agent-history.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -36,8 +35,8 @@ export class SubAgentSourceResolver {
 	) {}
 
 	/**
-	 * Resolve a saved n8n agent (its current draft, or a pinned published
-	 * version) into a runnable config plus its tool/skill assets.
+	 * Resolve a saved n8n agent (its current published version, or a pinned
+	 * specific version) into a runnable config plus its tool/skill assets.
 	 */
 	async resolveForRuntime(
 		source: SubAgentSource,
@@ -77,18 +76,23 @@ export class SubAgentSourceResolver {
 			};
 		}
 
-		const config = composeJsonConfig(agent);
-		if (!config) {
-			throw new UserError(`Agent "${source.agentId}" has no config`);
+		// No pinned version: resolve the child's current published version at
+		// delegation time, not its draft. Reading `agent.activeVersion` fresh
+		// (rather than trusting a version baked into the parent's cached
+		// runtime) means a re-publish of the child takes effect on the very
+		// next delegation, without needing to clear the parent's cache.
+		const publishedVersion = agent.activeVersion;
+		if (!agent.activeVersionId || !publishedVersion?.schema) {
+			throw new UserError(`Sub-agent "${source.agentId}" is not published`);
 		}
 
 		return {
 			source: {
 				sourceId: source.agentId,
-				versionId: agent.versionId ?? undefined,
-				config: this.toRunnableConfig(config),
+				versionId: agent.activeVersionId,
+				config: this.toRunnableConfig(publishedVersion.schema),
 			},
-			...getAgentRuntimeAssets(agent),
+			...getAgentRuntimeAssets(publishedVersion),
 		};
 	}
 

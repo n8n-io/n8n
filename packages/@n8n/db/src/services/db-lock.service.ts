@@ -5,6 +5,9 @@ import { DataSource, QueryFailedError } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { OperationalError } from 'n8n-workflow';
 
+import type { OperationContext } from './transaction';
+import { TypeOrmTransaction } from './typeorm-transaction';
+
 /**
  * Centrally managed advisory lock IDs. Every Postgres advisory lock
  * used in the application MUST be registered here to prevent collisions.
@@ -12,11 +15,25 @@ import { OperationalError } from 'n8n-workflow';
 export const enum DbLock {
 	AUTH_ROLES_SYNC = 1001,
 	TRUSTED_KEY_REFRESH = 1002,
+	WORKFLOW_STATISTICS_ROLLUP = 1003,
+	WORKFLOW_REVIEW_MUTATION = 1004,
+	MIGRATIONS = 1005,
+	EVAL_COLLECTION_RERUN = 1006,
+	INSTANCE_AI_SETTINGS = 1007,
 	/** Reserved for integration tests — never use in production code */
 	TEST = 9999,
 }
 
 type ReleaseFn = () => void;
+
+/**
+ * `timeoutMs` and `waitIndefinitely` are mutually exclusive — passing both is
+ * a compile-time error.
+ */
+type WithLockOptions = { subKey?: number } & (
+	| { timeoutMs?: number; waitIndefinitely?: never }
+	| { timeoutMs?: never; waitIndefinitely?: boolean }
+);
 
 /**
  * Opaque ownership token created on lock acquisition. The release function
@@ -30,6 +47,10 @@ interface LockState {
 	held: OwnerToken | null;
 	queue: Array<(token: OwnerToken) => void>;
 }
+
+/** Shared key derivation so SQLite mutexes scope by subKey like Postgres locks do */
+const lockKey = (lockId: number, subKey?: number) =>
+	subKey === undefined ? `${lockId}` : `${lockId}:${subKey}`;
 
 /**
  * Provides serialized execution of critical sections across concurrent
@@ -79,7 +100,7 @@ interface LockState {
  */
 @Service()
 export class DbLockService {
-	private readonly locks = new Map<number, LockState>();
+	private readonly locks = new Map<string, LockState>();
 
 	constructor(
 		private readonly dataSource: DataSource,
@@ -94,17 +115,27 @@ export class DbLockService {
 	 * or rolls back. Concurrent callers block until the lock is available.
 	 *
 	 * @param options.timeoutMs - Maximum time in milliseconds to wait for the lock.
-	 *   If not provided, waits indefinitely.
+	 *   If not provided, the wait is implicitly capped by the connection's
+	 *   `statement_timeout` on Postgres.
+	 * @param options.waitIndefinitely - Wait for the lock with no upper bound and
+	 *   keep the lock transaction alive however long `fn` takes. Mutually
+	 *   exclusive with `timeoutMs`. On SQLite the in-process mutex already waits
+	 *   indefinitely without `timeoutMs`.
+	 * @param options.subKey - Optional int32 second lock key (Postgres two-int
+	 *   advisory lock form), e.g. to scope a lock ID per tenant schema. Scopes
+	 *   the SQLite in-process mutex the same way.
 	 */
 	async withLock<T>(
 		lockId: DbLock,
-		fn: (tx: EntityManager) => Promise<T>,
-		options?: { timeoutMs?: number },
+		fn: (tx: EntityManager, ctx: OperationContext) => Promise<T>,
+		options?: WithLockOptions,
 	): Promise<T> {
 		if (this.databaseConfig.type !== 'postgresdb') {
-			const release = await this.acquireLock(lockId, options?.timeoutMs);
+			const release = await this.acquireLock(lockId, options?.timeoutMs, options?.subKey);
 			try {
-				return await this.dataSource.manager.transaction(async (tx) => await fn(tx));
+				return await this.dataSource.manager.transaction(
+					async (tx) => await fn(tx, { trx: new TypeOrmTransaction(tx) }),
+				);
 			} finally {
 				release();
 			}
@@ -115,31 +146,60 @@ export class DbLockService {
 				// SET doesn't support parameterized queries ($1) in Postgres.
 				// Number() coercion is safe here since timeoutMs is typed as number.
 				await tx.query(`SET LOCAL lock_timeout = '${Number(options.timeoutMs)}'`);
+			} else if (options?.waitIndefinitely) {
+				// A blocked lock acquisition is a single statement, so no statement or
+				// lock timeout may kill the wait, and no idle timeout may reap this
+				// transaction while it idles holding the lock.
+				await tx.query('SET LOCAL statement_timeout = 0');
+				await tx.query('SET LOCAL lock_timeout = 0');
+				await tx.query('SET LOCAL idle_in_transaction_session_timeout = 0');
 			}
+			const lockKeys = options?.subKey === undefined ? [lockId] : [lockId, options.subKey];
 			try {
-				await tx.query('SELECT pg_advisory_xact_lock($1)', [lockId]);
+				await tx.query(
+					lockKeys.length === 1
+						? 'SELECT pg_advisory_xact_lock($1)'
+						: 'SELECT pg_advisory_xact_lock($1, $2)',
+					lockKeys,
+				);
 			} catch (error) {
 				if (error instanceof QueryFailedError && error.message.includes('lock timeout')) {
 					throw new OperationalError(
-						`Timed out waiting for DbLock ${lockId} after ${options?.timeoutMs}ms`,
+						`Timed out waiting for DbLock ${lockKeys.join(':')} after ${options?.timeoutMs}ms`,
 						{ cause: error },
 					);
 				}
 				throw error;
 			}
-			return await fn(tx);
+			return await fn(tx, { trx: new TypeOrmTransaction(tx) });
 		});
+	}
+
+	async withLockContext<T>(
+		lockId: DbLock,
+		fn: (ctx: OperationContext) => Promise<T>,
+		options?: { timeoutMs?: number },
+	): Promise<T> {
+		return await this.withLock(lockId, async (_manager, ctx) => await fn(ctx), options);
 	}
 
 	/**
 	 * Execute `fn` inside a database transaction, but only if the advisory
 	 * lock (Postgres) or in-process mutex (SQLite) can be acquired immediately.
+	 * A blocked caller returns at once instead of camping on a pool connection.
 	 *
+	 * @param options.subKey - Optional int32 second lock key (Postgres two-int
+	 *   advisory lock form) to scope the lock, e.g. per entity. Scopes the SQLite
+	 *   in-process mutex the same way.
 	 * @throws {OperationalError} if the lock is already held by another process
 	 */
-	async tryWithLock<T>(lockId: DbLock, fn: (tx: EntityManager) => Promise<T>): Promise<T> {
+	async tryWithLock<T>(
+		lockId: DbLock,
+		fn: (tx: EntityManager) => Promise<T>,
+		options?: { subKey?: number },
+	): Promise<T> {
 		if (this.databaseConfig.type !== 'postgresdb') {
-			const release = this.tryAcquireLock(lockId);
+			const release = this.tryAcquireLock(lockId, options?.subKey);
 			try {
 				return await this.dataSource.manager.transaction(async (tx) => await fn(tx));
 			} finally {
@@ -148,12 +208,17 @@ export class DbLockService {
 		}
 
 		return await this.dataSource.manager.transaction(async (tx) => {
+			const lockKeys = options?.subKey === undefined ? [lockId] : [lockId, options.subKey];
 			const result: Array<{ pg_try_advisory_xact_lock: boolean }> = await tx.query(
-				'SELECT pg_try_advisory_xact_lock($1)',
-				[lockId],
+				lockKeys.length === 1
+					? 'SELECT pg_try_advisory_xact_lock($1)'
+					: 'SELECT pg_try_advisory_xact_lock($1, $2)',
+				lockKeys,
 			);
 			if (!result[0].pg_try_advisory_xact_lock) {
-				throw new OperationalError(`DbLock ${lockId} is already held by another process`);
+				throw new OperationalError(
+					`DbLock ${lockKey(lockId, options?.subKey)} is already held by another process`,
+				);
 			}
 			return await fn(tx);
 		});
@@ -163,8 +228,12 @@ export class DbLockService {
 	 * Acquire the in-process lock, blocking until available.
 	 * Returns a one-shot release function bound to this specific acquisition.
 	 */
-	private async acquireLock(lockId: number, timeoutMs?: number): Promise<ReleaseFn> {
-		const lockState = this.getOrCreateLockState(lockId);
+	private async acquireLock(
+		lockId: number,
+		timeoutMs?: number,
+		subKey?: number,
+	): Promise<ReleaseFn> {
+		const lockState = this.getOrCreateLockState(lockId, subKey);
 
 		if (!lockState.held) {
 			const token: OwnerToken = {} as OwnerToken;
@@ -197,7 +266,9 @@ export class DbLockService {
 						lockState.queue.splice(idx, 1);
 					}
 					reject(
-						new OperationalError(`Timed out waiting for DbLock ${lockId} after ${timeoutMs}ms`),
+						new OperationalError(
+							`Timed out waiting for DbLock ${lockKey(lockId, subKey)} after ${timeoutMs}ms`,
+						),
 					);
 				}, timeoutMs);
 			}
@@ -212,8 +283,8 @@ export class DbLockService {
 	 *
 	 * @throws {OperationalError} if the lock is already held
 	 */
-	private tryAcquireLock(lockId: number): ReleaseFn {
-		const lockState = this.getOrCreateLockState(lockId);
+	private tryAcquireLock(lockId: number, subKey?: number): ReleaseFn {
+		const lockState = this.getOrCreateLockState(lockId, subKey);
 
 		if (!lockState.held) {
 			const token: OwnerToken = {} as OwnerToken;
@@ -221,7 +292,9 @@ export class DbLockService {
 			return this.createReleaseFn(lockState, token);
 		}
 
-		throw new OperationalError(`DbLock ${lockId} is already held by another process`);
+		throw new OperationalError(
+			`DbLock ${lockKey(lockId, subKey)} is already held by another process`,
+		);
 	}
 
 	/**
@@ -252,11 +325,12 @@ export class DbLockService {
 		};
 	}
 
-	private getOrCreateLockState(lockId: number): LockState {
-		let lockState = this.locks.get(lockId);
+	private getOrCreateLockState(lockId: number, subKey?: number): LockState {
+		const key = lockKey(lockId, subKey);
+		let lockState = this.locks.get(key);
 		if (!lockState) {
 			lockState = { held: null, queue: [] };
-			this.locks.set(lockId, lockState);
+			this.locks.set(key, lockState);
 		}
 		return lockState;
 	}

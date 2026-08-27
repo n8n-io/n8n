@@ -12,7 +12,7 @@ import type {
 	INodeInputConfiguration,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { useDebounce } from '@/app/composables/useDebounce';
+import { useDebounce } from '@n8n/composables/useDebounce';
 import { OnClickOutside } from '@vueuse/components';
 import { useI18n } from '@n8n/i18n';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';

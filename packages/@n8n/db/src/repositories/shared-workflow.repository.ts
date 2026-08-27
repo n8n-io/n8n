@@ -5,7 +5,7 @@ import {
 	type Scope,
 	type WorkflowSharingRole,
 } from '@n8n/permissions';
-import { DataSource, Repository, In, Not } from '@n8n/typeorm';
+import { DataSource, In, Not } from '@n8n/typeorm';
 import type {
 	EntityManager,
 	FindManyOptions,
@@ -13,13 +13,16 @@ import type {
 	SelectQueryBuilder,
 } from '@n8n/typeorm';
 
+import { BaseRepository } from './base-repository';
 import type { User } from '../entities';
 import { Project, ProjectRelation, SharedWorkflow } from '../entities';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
+import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
-export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
-	constructor(dataSource: DataSource) {
-		super(SharedWorkflow, dataSource.manager);
+export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(SharedWorkflow, dataSource.manager, transactionRunner);
 	}
 
 	async getSharedWorkflowIds(workflowIds: string[]) {
@@ -33,13 +36,36 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 	}
 
 	async findByWorkflowIds(workflowIds: string[]) {
-		return await this.find({
-			where: {
-				role: 'workflow:owner',
-				workflowId: In(workflowIds),
-			},
-			relations: { project: { projectRelations: { user: true, role: true } } },
-		});
+		const rows = new Map<string, SharedWorkflow>();
+
+		for (const chunk of chunkIds(workflowIds)) {
+			const found = await this.find({
+				where: {
+					role: 'workflow:owner',
+					workflowId: In(chunk),
+				},
+				relations: { project: { projectRelations: { user: true, role: true } } },
+			});
+			for (const row of found) rows.set(row.workflowId, row);
+		}
+
+		return [...rows.values()];
+	}
+
+	/** Owner project of each workflow, keyed by workflow id. */
+	async findOwnerProjectsByWorkflowIds(workflowIds: string[]): Promise<Map<string, Project>> {
+		const ownerRows: SharedWorkflow[] = [];
+
+		for (const chunk of chunkIds(workflowIds)) {
+			ownerRows.push(
+				...(await this.find({
+					where: { workflowId: In(chunk), role: 'workflow:owner' },
+					relations: { project: true },
+				})),
+			);
+		}
+
+		return new Map(ownerRows.map(({ workflowId, project }) => [workflowId, project]));
 	}
 
 	async findSharingRole(
@@ -126,9 +152,14 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 		return [...new Set(projectIds)];
 	}
 
-	async getWorkflowOwningProject(workflowId: string) {
+	/**
+	 * Pass `ctx` when calling from inside a transaction — the read then runs on that
+	 * transaction's connection instead of checking out a second one, which would
+	 * deadlock a single-connection pool.
+	 */
+	async getWorkflowOwningProject(workflowId: string, ctx: OperationContext = {}) {
 		return (
-			await this.findOne({
+			await this.managerFor(ctx).findOne(SharedWorkflow, {
 				where: { workflowId, role: 'workflow:owner' },
 				relations: { project: true },
 			})

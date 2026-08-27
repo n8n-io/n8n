@@ -7,6 +7,7 @@ import type {
 
 import { updateDisplayOptions } from '@utils/utilities';
 
+import { stampItemIndexOnError } from '../../../../GenericFunctions';
 import type { ExcelResponse } from '../../helpers/interfaces';
 import { checkRange, prepareOutput } from '../../helpers/utils';
 import { microsoftApiRequest } from '../../transport';
@@ -159,6 +160,9 @@ export async function execute(
 					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/range(address='${range}')`,
 					{},
 					qs,
+					undefined,
+					undefined,
+					i,
 				);
 			} else {
 				responseData = await microsoftApiRequest.call(
@@ -167,6 +171,9 @@ export async function execute(
 					`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/usedRange`,
 					{},
 					qs,
+					undefined,
+					undefined,
+					i,
 				);
 			}
 
@@ -199,7 +206,8 @@ export async function execute(
 				returnData.push(...executionErrorData);
 				continue;
 			}
-			throw error;
+			// A NodeError from the transport may be missing the itemIndex, add it
+			throw stampItemIndexOnError(error, i);
 		}
 	}
 

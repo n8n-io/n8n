@@ -1,12 +1,15 @@
 // lang-tracer test-case provider; `casesFromExportedFiles` is split from the network
 // call so the normalize + validate contract is unit-testable without a server.
 
+import { isRecord } from '@n8n/utils/is-record';
+
 import { LangTracerClient, type ExportedSuite } from './client';
 import { resolveLangTracerConfig } from './config';
 import { normalizeExportedCase } from './normalize';
-import { parseSubstringList, type WorkflowTestCaseWithFile } from '../data/workflows';
-import { WorkflowTestCaseSchema } from '../data/workflows/schema';
+import { type WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
+import { EvalTestCaseSchema } from '../harness/schema';
+import { parseSubstringList } from '../utils/get-json-files';
 
 export interface LangTracerLoadOptions {
 	/** Suite slug or numeric id. */
@@ -16,6 +19,20 @@ export interface LangTracerLoadOptions {
 	tier?: string;
 	logger: EvalLogger;
 }
+
+/**
+ * Seeding keys this schema no longer accepts, and what replaced them. Checked on
+ * the RAW export body because `normalizeExportedCase` whitelists to the schema's
+ * keys: a removed key is STRIPPED, so a hosted case still carrying one would run
+ * UNSEEDED rather than fail — silently grading a seeded case as if it were a
+ * build-from-scratch. Every removal needs an entry here (#35074 added the first).
+ */
+const REMOVED_SEED_KEYS: Record<string, string> = {
+	seedFile: 'carry the seed in the case body as `seed: { mode: "inline", … }`',
+	conversationSeed: 'now `seed: { mode: "inline", messages, workflows, dataTables }`',
+	priorConversation: 'now `seed: { mode: "inline", messages: [{ role, text }, …] }`',
+	seedThread: 'now `seed: { mode: "replay", threadId, … }`',
+};
 
 /** Normalize + validate an `export_suite` payload into n8n test cases (same
  *  filter/exclude/tier selection as the disk loader); failures are aggregated so
@@ -29,7 +46,18 @@ export function casesFromExportedFiles(
 
 	for (const [filename, raw] of Object.entries(files)) {
 		const fileSlug = filename.replace(/\.json$/i, '');
-		const parsed = WorkflowTestCaseSchema.safeParse(normalizeExportedCase(raw));
+		const removed = isRecord(raw)
+			? Object.entries(REMOVED_SEED_KEYS).filter(([key]) => raw[key] !== undefined)
+			: [];
+		if (removed.length > 0) {
+			errors.push(
+				`${filename}:\n${removed
+					.map(([key, hint]) => `  - ${key}: no longer supported — ${hint}`)
+					.join('\n')}`,
+			);
+			continue;
+		}
+		const parsed = EvalTestCaseSchema.safeParse(normalizeExportedCase(raw));
 		if (!parsed.success) {
 			const issues = parsed.error.issues
 				.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)

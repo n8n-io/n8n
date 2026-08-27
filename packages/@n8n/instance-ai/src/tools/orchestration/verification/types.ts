@@ -1,10 +1,12 @@
-import type { OrchestrationContext } from '../../../types';
+import type { ExecutionNodeError, OrchestrationContext } from '../../../types';
 import type { RemediationMetadata } from '../../../workflow-loop/workflow-loop-state';
 
 export interface VerifyToolInput {
 	workItemId?: string;
 	workflowId: string;
 	inputData?: Record<string, unknown>;
+	/** Trigger to start from; omitted means the adapter auto-detects one. */
+	triggerNodeName?: string;
 	timeout?: number;
 	includeData?: boolean;
 	maxDataChars?: number;
@@ -40,6 +42,7 @@ export interface VerifyBuiltWorkflowOutput {
 	simulatedNodes?: Array<{ nodeName: string; reason: string }>;
 	simulationNote?: string;
 	lastNodeExecuted?: string;
+	nodeErrors?: ExecutionNodeError[];
 	nodesNotReached?: string[];
 	coverageNote?: string;
 	data?: Record<string, unknown>;

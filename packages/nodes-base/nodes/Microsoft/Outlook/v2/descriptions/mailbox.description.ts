@@ -17,7 +17,10 @@ export const mailboxRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'id', value: '' },
 	required: true,
-	description: 'The mailbox the Service Principal should act on',
+	// Shared with the trigger: the action node evaluates this per input item; the
+	// trigger resolves it once per poll.
+	description:
+		'The mailbox the Service Principal should act on. In the action node this is evaluated per input item (an expression can target a different mailbox per item); the trigger resolves it once.',
 	modes: [
 		{
 			displayName: 'By ID',

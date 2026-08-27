@@ -15,7 +15,13 @@ const IS_DEV = !!process.env.N8N_EDITOR_URL;
 
 const MACBOOK_WINDOW_SIZE = { width: 1536, height: 960 };
 
-const USER_FOLDER = path.join(os.tmpdir(), `n8n-main-${Date.now()}`);
+// Sticky across processes: workers re-import this config, and Date.now()
+// would give each of them a different path than the one the webServer got.
+// Only workers honor the inherited value; the main process always mints a
+// fresh folder so a stale shell-exported variable can't leak in.
+const USER_FOLDER =
+	(process.env.TEST_WORKER_INDEX !== undefined ? process.env.N8N_TEST_USER_FOLDER : undefined) ??
+	path.join(os.tmpdir(), `n8n-main-${Date.now()}`);
 
 // Helper to get environment variables from N8N_TEST_ENV
 const getTestEnv = () => {
@@ -52,6 +58,16 @@ const webServer: PlaywrightTestConfig['webServer'] = [];
 const SKIP_WEB_SERVER = process.env.PLAYWRIGHT_SKIP_WEBSERVER === 'true';
 
 if (BACKEND_URL && !SKIP_WEB_SERVER) {
+	// Expose the user folder to specs (the dev-server smoke asserts the sqlite DB
+	// is created inside it). Only meaningful when this run starts the backend
+	// itself; a reused server writes to wherever it was already pointed.
+	// N8N_TEST_ENV may override N8N_USER_FOLDER (spread below wins), so export
+	// the folder the backend will actually use.
+	if (IS_DEV) {
+		const envUserFolder: unknown = getTestEnv().N8N_USER_FOLDER;
+		process.env.N8N_TEST_USER_FOLDER =
+			typeof envUserFolder === 'string' ? envUserFolder : USER_FOLDER;
+	}
 	webServer.push({
 		command: 'cd .. && pnpm start',
 		url: `${BACKEND_URL}/favicon.ico`,
@@ -71,15 +87,20 @@ if (BACKEND_URL && !SKIP_WEB_SERVER) {
 	});
 }
 
-if (FRONTEND_URL) {
+// Gate on N8N_EDITOR_URL: FRONTEND_URL alone falls back to N8N_BASE_URL. Invoke vite via
+// pnpm, not turbo — turbo detaches tasks into process groups Playwright's tree-kill misses.
+if (IS_DEV && FRONTEND_URL) {
 	webServer.push({
-		command: 'cd .. && pnpm dev:fe:editor',
+		command: 'pnpm --filter=n8n-editor-ui dev',
 		url: `${FRONTEND_URL}/favicon.ico`,
 		timeout: 30000,
 		reuseExistingServer: IS_DEV ? false : true,
 		env: {
 			E2E_TESTS: 'true',
-			N8N_PORT: getPortFromUrl(FRONTEND_URL),
+			// The dev frontend derives its backend URL (BASE_PATH + REST base)
+			// from N8N_PORT, so pass the backend's port, not the frontend's.
+			...(BACKEND_URL ? { N8N_PORT: getPortFromUrl(BACKEND_URL) } : {}),
+			N8N_EDITOR_PORT: getPortFromUrl(FRONTEND_URL),
 			...getTestEnv(),
 		},
 	});

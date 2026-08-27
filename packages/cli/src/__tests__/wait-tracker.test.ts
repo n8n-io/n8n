@@ -1,18 +1,13 @@
-import type { Mock } from 'vitest';
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import type { IWorkflowBase, IRun, INode, IExecuteData, ITaskData } from 'n8n-workflow';
-import {
-	createDeferredPromise,
-	createRunExecutionData,
-	UnexpectedError,
-	WAIT_INDEFINITELY,
-} from 'n8n-workflow';
-import type { MockInstance } from 'vitest';
+import { createRunExecutionData, UnexpectedError, WAIT_INDEFINITELY } from 'n8n-workflow';
+import type { Mock, MockInstance } from 'vitest';
 import { mock, captor } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -167,7 +162,7 @@ describe('WaitTracker', () => {
 				},
 				false,
 				false,
-				execution.id,
+				{ executionId: execution.id, expectedStatus: 'waiting' },
 			);
 		});
 
@@ -190,7 +185,7 @@ describe('WaitTracker', () => {
 				}),
 				false,
 				false,
-				execution.id,
+				{ executionId: execution.id, expectedStatus: 'waiting' },
 			);
 		});
 
@@ -269,7 +264,7 @@ describe('WaitTracker', () => {
 					},
 					false,
 					false,
-					execution.id,
+					{ executionId: execution.id, expectedStatus: 'waiting' },
 				);
 
 				// ACT 1
@@ -290,7 +285,7 @@ describe('WaitTracker', () => {
 					},
 					false,
 					false,
-					parentExecution.id,
+					{ executionId: parentExecution.id, expectedStatus: 'waiting' },
 				);
 			});
 
@@ -339,7 +334,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					parentExecution.id,
+					{ executionId: parentExecution.id, expectedStatus: 'waiting' },
 				);
 			});
 
@@ -416,13 +411,10 @@ describe('WaitTracker', () => {
 
 				// ASSERT 1
 				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-				expect(workflowRunner.run).toHaveBeenNthCalledWith(
-					1,
-					expect.any(Object),
-					false,
-					false,
-					execution.id,
-				);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(1, expect.any(Object), false, false, {
+					executionId: execution.id,
+					expectedStatus: 'waiting',
+				});
 
 				// ACT 2
 				subExecutionPromise.resolve(subworkflowResults);
@@ -459,13 +451,10 @@ describe('WaitTracker', () => {
 
 				// Verify parent was resumed
 				expect(workflowRunner.run).toHaveBeenCalledTimes(2);
-				expect(workflowRunner.run).toHaveBeenNthCalledWith(
-					2,
-					expect.any(Object),
-					false,
-					false,
-					parentExecution.id,
-				);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(2, expect.any(Object), false, false, {
+					executionId: parentExecution.id,
+					expectedStatus: 'waiting',
+				});
 			});
 
 			it('should not resume parent execution if it has already finished', async () => {
@@ -536,7 +525,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					childExecution.id,
+					{ executionId: childExecution.id, expectedStatus: 'waiting' },
 				);
 			});
 
@@ -563,7 +552,7 @@ describe('WaitTracker', () => {
 					}),
 					false,
 					false,
-					execution.id,
+					{ executionId: execution.id, expectedStatus: 'waiting' },
 				);
 
 				// ACT 2 - Child execution goes into waiting state
@@ -669,13 +658,10 @@ describe('WaitTracker', () => {
 					// run() is called once for the sub-workflow, then once per parent resume attempt.
 					// The second call is the first parent attempt; all attempts fail, so run() is called 4 times total
 					// (sub-workflow + the 3 exhausted retries) and the final failure is logged rather than lost
-					expect(workflowRunner.run).toHaveBeenNthCalledWith(
-						2,
-						expect.any(Object),
-						false,
-						false,
-						parentExecution.id,
-					);
+					expect(workflowRunner.run).toHaveBeenNthCalledWith(2, expect.any(Object), false, false, {
+						executionId: parentExecution.id,
+						expectedStatus: 'waiting',
+					});
 					expect(workflowRunner.run).toHaveBeenCalledTimes(4);
 					expect(logger.error).toHaveBeenCalled();
 				});
@@ -700,12 +686,10 @@ describe('WaitTracker', () => {
 					// Parent ultimately resumed (subworkflow + failed parent resume attempt + successful retry = 3 runs),
 					// and because it recovered, nothing is logged as an error
 					expect(workflowRunner.run).toHaveBeenCalledTimes(3);
-					expect(workflowRunner.run).toHaveBeenLastCalledWith(
-						expect.any(Object),
-						false,
-						false,
-						parentExecution.id,
-					);
+					expect(workflowRunner.run).toHaveBeenLastCalledWith(expect.any(Object), false, false, {
+						executionId: parentExecution.id,
+						expectedStatus: 'waiting',
+					});
 					expect(logger.error).not.toHaveBeenCalled();
 				});
 

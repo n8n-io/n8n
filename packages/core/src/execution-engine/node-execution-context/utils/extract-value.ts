@@ -8,6 +8,7 @@ import {
 	WorkflowOperationError,
 	executeFilter,
 	isFilterValue,
+	safeRegex,
 	type INode,
 	type INodeParameters,
 	type INodeProperties,
@@ -23,58 +24,27 @@ function findPropertyFromParameterName(
 	node: INode,
 	nodeParameters: INodeParameters,
 ): INodePropertyOptions | INodeProperties | INodePropertyCollection {
-	let property: INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined;
-	const paramParts = parameterName.split('.');
-	let currentParamPath = '';
-
-	const findProp = (
-		name: string,
-		options: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>,
-	): INodePropertyOptions | INodeProperties | INodePropertyCollection | undefined => {
-		return options.find(
-			(i) =>
-				i.name === name &&
-				NodeHelpers.displayParameterPath(
-					nodeParameters,
-					i,
-					currentParamPath,
-					node,
-					nodeType.description,
-				),
-		);
-	};
-
-	for (const p of paramParts) {
-		const param = p.split('[')[0];
-		if (!property) {
-			property = findProp(param, nodeType.description.properties);
-		} else if ('options' in property && property.options) {
-			property = findProp(param, property.options);
-			currentParamPath += `.${param}`;
-		} else if ('values' in property) {
-			property = findProp(param, property.values);
-			currentParamPath += `.${param}`;
-		} else {
-			throw new UserError('Could not find property', { extra: { parameterName } });
-		}
-		if (!property) {
-			throw new UserError('Could not find property', { extra: { parameterName } });
-		}
-	}
+	const property = NodeHelpers.findDisplayedProperty(
+		parameterName,
+		nodeType.description.properties,
+		nodeParameters,
+		node,
+		nodeType.description,
+	);
 	if (!property) {
 		throw new UserError('Could not find property', { extra: { parameterName } });
 	}
-
 	return property;
 }
 
 function executeRegexExtractValue(
 	value: string,
-	regex: RegExp,
+	regex: string,
+	flags: string | undefined,
 	parameterName: string,
 	parameterDisplayName: string,
 ): NodeParameterValueType | object {
-	const extracted = regex.exec(value);
+	const extracted = safeRegex.exec(regex, value, flags);
 	if (!extracted) {
 		throw new WorkflowOperationError(
 			`ERROR: ${parameterDisplayName} parameter's value is invalid. This is likely because the URL entered is incorrect`,
@@ -82,10 +52,18 @@ function executeRegexExtractValue(
 	}
 	if (extracted.length < 2 || extracted.length > 2) {
 		throw new WorkflowOperationError(
-			`Property "${parameterName}" has an invalid extractValue regex "${regex.source}". extractValue expects exactly one group to be returned.`,
+			`Property "${parameterName}" has an invalid extractValue regex "${regex}". extractValue expects exactly one group to be returned.`,
 		);
 	}
 	return extracted[1];
+}
+
+function regexPatternAndFlags(regex: string | RegExp): {
+	pattern: string;
+	flags: string | undefined;
+} {
+	if (typeof regex === 'string') return { pattern: regex, flags: undefined };
+	return { pattern: regex.source, flags: regex.flags };
 }
 
 function extractValueRLC(
@@ -126,8 +104,8 @@ function extractValueRLC(
 		});
 	}
 
-	const regex = new RegExp(modeProp.extractValue.regex);
-	return executeRegexExtractValue(value.value, regex, parameterName, property.displayName);
+	const { pattern, flags } = regexPatternAndFlags(modeProp.extractValue.regex);
+	return executeRegexExtractValue(value.value, pattern, flags, parameterName, property.displayName);
 }
 
 function extractValueFilter(
@@ -180,8 +158,8 @@ function extractValueOther(
 		});
 	}
 
-	const regex = new RegExp(property.extractValue.regex);
-	return executeRegexExtractValue(value, regex, parameterName, property.displayName);
+	const { pattern, flags } = regexPatternAndFlags(property.extractValue.regex);
+	return executeRegexExtractValue(value, pattern, flags, parameterName, property.displayName);
 }
 
 export function extractValue(

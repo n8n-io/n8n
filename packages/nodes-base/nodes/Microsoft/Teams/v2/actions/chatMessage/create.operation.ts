@@ -4,7 +4,7 @@ import { updateDisplayOptions } from '@utils/utilities';
 
 import { chatRLC } from '../../descriptions';
 import { prepareMessage } from '../../helpers/utils';
-import { microsoftApiRequest, SP_HIDE } from '../../transport';
+import { buildTeamsPath, microsoftApiRequest, SP_HIDE } from '../../transport';
 import { throwIfChatUnsupported } from './sharedGuard';
 
 const properties: INodeProperties[] = [
@@ -91,7 +91,10 @@ export async function execute(this: IExecuteFunctions, i: number, instanceId: st
 		instanceId,
 	);
 
-	// OAuth2-only path (chatMessage is hidden + guarded under SP by throwIfChatUnsupported
-	// above), so `chatId` is interpolated raw without buildTeamsPath by design.
-	return await microsoftApiRequest.call(this, 'POST', `/v1.0/chats/${chatId}/messages`, body);
+	return await microsoftApiRequest.call(
+		this,
+		'POST',
+		buildTeamsPath.call(this, ['/v1.0/chats/', { id: chatId }, '/messages']),
+		body,
+	);
 }

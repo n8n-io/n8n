@@ -1,8 +1,9 @@
-import type { BaseChatMemory } from '@langchain/community/dist/memory/chat_memory';
+import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import { ZepMemory } from '@langchain/community/memory/zep';
 import { ZepCloudMemory } from '@langchain/community/memory/zep_cloud';
 import type { InputValues, MemoryVariables } from '@langchain/core/memory';
 import type { BaseMessage } from '@langchain/core/messages';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
 	type ISupplyDataFunctions,
@@ -13,7 +14,6 @@ import {
 } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
 	expressionSessionKeyProperty,
@@ -38,7 +38,7 @@ export class MemoryZep implements INodeType {
 		displayName: 'Zep',
 		name: 'memoryZep',
 		hidden: true,
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
+
 		icon: 'file:zep.png',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4],

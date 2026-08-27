@@ -1,8 +1,10 @@
 <script lang="ts" setup>
 import { computed, onScopeDispose, provide, ref, watch } from 'vue';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
+import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
+import { deriveServiceName } from '@/features/credentials/templatedAuth.utils';
 import FreeAiCreditsCallout from '@/app/components/FreeAiCreditsCallout.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -20,7 +22,9 @@ import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 import type { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupContext } from '../composables/useWorkflowSetupContext';
+import { useInstanceAiCredentialHelp } from '../../composables/useInstanceAiCredentialHelp';
 import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
+import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 
 const props = defineProps<{
 	section: WorkflowSetupSection;
@@ -54,6 +58,36 @@ const selectedCredentials = computed<INodeUi['credentials']>(() => {
 	return cred ? { [type]: { id: cred.id, name: cred.name } } : {};
 });
 
+const hasTemplatedHint = computed(
+	() => credentialType.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE && !!props.section.setupHint,
+);
+
+// Templated Custom Auth is one type shared by every service, so NodeCredentials'
+// most-recent-from-store auto-select could silently pick another service's key —
+// selection must come from the user or a freshly created credential.
+const isTemplatedType = computed(
+	() => credentialType.value === TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+);
+
+// Ask-AI opens a NEW help thread in a new tab: this thread's run is suspended
+// on the setup card, so appending here would derail it.
+const instanceAiCredentialHelpFactory = useInstanceAiCredentialHelp({
+	source: 'credential_edit',
+	projectId: () => ctx.projectId.value,
+	serviceName: () => deriveServiceName(props.section.setupHint),
+});
+const instanceAiCredentialHelp = computed(() => instanceAiCredentialHelpFactory());
+
+// The type-derived selector label would read "Credential for Templated Custom
+// Auth" — name the service from the recipe instead ("fal.ai API Key credentials").
+const credentialsFieldLabel = computed(() => {
+	if (!hasTemplatedHint.value) return undefined;
+	const name = deriveServiceName(props.section.setupHint);
+	return name
+		? i18n.baseText('instanceAi.credential.fieldLabel', { interpolate: { name } })
+		: undefined;
+});
+
 const targetNodeNames = computed(() =>
 	props.section.credentialTargetNodes.map((node) => node.name),
 );
@@ -75,12 +109,34 @@ const parameterDefinitions = computed<INodeProperties[]>(() => {
 	return nodeType.value.properties.filter((property) => names.has(property.name));
 });
 
-const revealedIssues = ref(new Set<string>());
+const assignmentCollectionEditableValueIndices = computed<Record<string, number[]>>(() => {
+	const result: Record<string, number[]> = {};
+	for (const parameter of parameterDefinitions.value) {
+		if (parameter.type !== 'assignmentCollection') continue;
+
+		const indices = new Set<number>();
+		const placeholderDetails = findPlaceholderDetails(
+			props.section.node.parameters[parameter.name],
+		);
+		for (const detail of placeholderDetails) {
+			if (detail.path[0] !== 'assignments' || detail.path[2] !== 'value') continue;
+			const match = /^\[(\d+)\]$/.exec(detail.path[1] ?? '');
+			if (match?.[1]) indices.add(Number.parseInt(match[1], 10));
+		}
+		result[parameter.name] = [...indices];
+	}
+	return result;
+});
+
+// Reveal validation for the setup-flagged parameters up front, so a required
+// field the builder left unset (e.g. an empty resource locator) shows why the
+// step is blocked instead of only surfacing after the user edits it.
+const revealedIssues = ref(new Set<string>(props.section.parameterNames));
 
 watch(
 	() => props.section.id,
 	() => {
-		revealedIssues.value = new Set();
+		revealedIssues.value = new Set(props.section.parameterNames);
 	},
 );
 
@@ -180,7 +236,11 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			:project-id="ctx.projectId.value"
 			standalone
 			hide-issues
-			hide-ask-assistant
+			:instance-ai-credential-help="instanceAiCredentialHelp"
+			:skip-auto-select="isTemplatedType || section.preferNewCredential === true"
+			:prefer-new-credential="section.preferNewCredential === true"
+			:credential-setup-hint="section.setupHint"
+			:credentials-field-label="credentialsFieldLabel"
 			@credential-selected="onCredentialSelected"
 		>
 			<template v-if="section.credentialTargetNodes.length > 1" #label-postfix>
@@ -212,6 +272,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 				:remove-first-parameter-margin="true"
 				:remove-last-parameter-margin="true"
 				:options-overrides="{ hideExpressionSelector: true, hideFocusPanelButton: true }"
+				:assignment-collection-editable-value-indices="assignmentCollectionEditableValueIndices"
 				@value-changed="onParameterValueChanged"
 				@parameter-blur="revealParameterIssues"
 			/>

@@ -133,6 +133,42 @@ describe('AssignmentCollection.vue', () => {
 		expect(getInput(within(assignments[1]).getByTestId('assignment-value'))).toHaveValue('value2');
 	});
 
+	it('keeps source assignments unchanged while editing restricted values', async () => {
+		const sourceValue: AssignmentCollectionValue = {
+			assignments: [
+				{
+					name: 'teamId',
+					value: '<__PLACEHOLDER_VALUE__Linear team ID__>',
+					type: 'string',
+				} as AssignmentValue,
+			],
+		};
+
+		const { findByTestId, queryByTestId } = renderComponent({
+			props: {
+				value: sourceValue,
+				editableValueIndices: [0],
+			},
+		});
+
+		const assignment = await findByTestId('assignment');
+		const valueInput = getInput(within(assignment).getByTestId('assignment-value'));
+		await userEvent.type(valueInput, 'team-1');
+		await fireEvent.blur(valueInput);
+
+		expect(sourceValue).toEqual({
+			assignments: [
+				{
+					name: 'teamId',
+					value: '<__PLACEHOLDER_VALUE__Linear team ID__>',
+					type: 'string',
+				},
+			],
+		});
+		expect(within(assignment).queryByTestId('assignment-remove')).not.toBeInTheDocument();
+		expect(queryByTestId('assignment-collection-drop-area')).not.toBeInTheDocument();
+	});
+
 	it('renders empty state properly', async () => {
 		const { getByTestId, queryByTestId } = renderComponent();
 		expect(getByTestId('assignment-collection-fields')).toBeInTheDocument();

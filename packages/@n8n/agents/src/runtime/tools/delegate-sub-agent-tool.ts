@@ -1,24 +1,39 @@
+import { isRecord } from '@n8n/utils/is-record';
+import type { JSONSchema7 } from 'json-schema';
 import { z } from 'zod';
 
 import { withSdkOwnedBuiltInMetadata } from './sdk-owned-tool';
 import {
+	assertSubAgentTaskPath,
 	createChildSubAgentTaskPath,
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	type SubAgentTaskPath,
 	type SubAgentTaskPathPolicy,
 } from './sub-agent-task-path';
+import { isAbortError } from '../../sdk/abort';
 import { filterLlmMessages } from '../../sdk/message';
 import { Tool } from '../../sdk/tool';
 import { AgentEvent } from '../../types/runtime/event';
+import type { ForwardedChildChunk } from '../../types/runtime/event';
 import type {
 	AgentExecutionCounter,
 	FinishReason,
 	GenerateResult,
 	ModelConfig,
+	StreamChunk,
 	TokenUsage,
 } from '../../types/sdk/agent';
 import type { AgentMessage } from '../../types/sdk/message';
-import type { BuiltProviderTool, BuiltTool, ToolContext } from '../../types/sdk/tool';
+import type {
+	BuiltProviderTool,
+	BuiltTool,
+	InterruptibleToolContext,
+	ToolCancellationContext,
+	ToolContext,
+} from '../../types/sdk/tool';
+import type { BuiltTelemetry } from '../../types/telemetry';
+import type { JSONObject, JSONValue } from '../../types/utils/json';
+import { withoutMessageCount } from '../loop/execution-counter';
 
 export const DELEGATE_SUB_AGENT_TOOL_NAME = 'delegate_subagent';
 export const INLINE_SUB_AGENT_ID = 'inline';
@@ -30,6 +45,17 @@ export const INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY = 'inlineDelegateSubAge
 export const SUB_AGENT_TASK_DIFFICULTIES = ['low', 'medium', 'high'] as const;
 const SubAgentTaskDifficultySchema = z.enum(SUB_AGENT_TASK_DIFFICULTIES);
 export type SubAgentTaskDifficulty = z.infer<typeof SubAgentTaskDifficultySchema>;
+
+const jsonValueSchema: z.ZodType<JSONValue> = z.lazy(() =>
+	z.union([
+		z.string(),
+		z.number(),
+		z.boolean(),
+		z.null(),
+		z.array(jsonValueSchema),
+		z.record(z.string(), jsonValueSchema),
+	]),
+);
 
 // Model-facing input: the arguments the LLM fills in when it calls the tool.
 // The `.describe(...)` text is what the model reads, so keep it task-oriented.
@@ -61,7 +87,7 @@ const delegateSubAgentInputSchema = z.object({
 // returned object (not this schema) is what is actually sent back to the model,
 // so this is kept in sync with DelegateSubAgentToolOutput by hand.
 const delegateSubAgentOutputSchema = z.object({
-	status: z.enum(['completed', 'failed', 'suspended']),
+	status: z.enum(['completed', 'failed', 'suspended', 'cancelled']),
 	taskPath: z.string().optional(),
 	runId: z.string().optional(),
 	threadId: z.string().optional(),
@@ -78,6 +104,7 @@ const delegateSubAgentOutputSchema = z.object({
 		.optional(),
 	finishReason: z.string().optional(),
 	error: z.string().optional(),
+	resumeContext: jsonValueSchema.optional(),
 	pendingSuspend: z
 		.array(
 			z.object({
@@ -91,6 +118,28 @@ const delegateSubAgentOutputSchema = z.object({
 		)
 		.optional(),
 });
+
+const delegateSubAgentContinuationSchema = z.object({
+	runId: z.string(),
+	toolCallId: z.string(),
+	taskPath: z.string(),
+	subAgentId: z.string(),
+	childCount: z.number().int().nonnegative(),
+	threadId: z.string().optional(),
+	resumeContext: jsonValueSchema.optional(),
+});
+
+const delegateSubAgentSuspendSchema = z.unknown();
+const delegateSubAgentResumeSchema = z.unknown();
+
+export type DelegateSubAgentContinuation = z.infer<typeof delegateSubAgentContinuationSchema>;
+
+export function parseDelegateSubAgentContinuation(
+	value: unknown,
+): DelegateSubAgentContinuation | undefined {
+	const parsed = delegateSubAgentContinuationSchema.safeParse(value);
+	return parsed.success ? parsed.data : undefined;
+}
 
 /** The arguments the LLM provides when calling delegate_subagent. */
 export type DelegateSubAgentInput = z.infer<typeof delegateSubAgentInputSchema>;
@@ -120,6 +169,8 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 	parentThreadId?: string;
 	/** Parent's episodic-memory resource id (`ctx.persistence.resourceId`). */
 	parentResourceId?: string;
+	/** Opaque host metadata from the parent's persistence scope. */
+	parentHostMetadata?: JSONObject;
 	/** Parent's tool-call id that triggered this delegation. */
 	parentToolCallId?: string;
 	/**
@@ -129,6 +180,13 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 	parentAbortSignal?: AbortSignal;
 	/** Parent aggregate execution counter (`ctx.executionCounter`) for inline child accounting. */
 	parentExecutionCounter?: AgentExecutionCounter;
+	/**
+	 * Parent's live, resolved telemetry (`ctx.parentTelemetry`). Hosts derive the
+	 * child's own telemetry from this (see `deriveSubAgentTelemetry`) so the
+	 * sub-agent shares the parent's tracer and nests under the parent's
+	 * delegate-tool-call span instead of starting a separate root trace.
+	 */
+	parentTelemetry?: BuiltTelemetry;
 	/** How many siblings the parent already spawned before this one (0-based). */
 	childCount: number;
 	/** Effective policy for this delegation. */
@@ -137,7 +195,7 @@ export interface DelegateSubAgentRequest extends DelegateSubAgentInput {
 
 /** The result a delegation returns to the parent model and to lifecycle events. */
 export interface DelegateSubAgentToolOutput {
-	status: 'completed' | 'failed' | 'suspended';
+	status: 'completed' | 'failed' | 'suspended' | 'cancelled';
 	/** Echoed back so consumers can correlate the result with the delegation. */
 	taskPath?: SubAgentTaskPath;
 	/** The child run's id, when the executor produced one. */
@@ -158,19 +216,12 @@ export interface DelegateSubAgentToolOutput {
 	finishReason?: FinishReason;
 	/** Present when status is 'failed'. */
 	error?: string;
+	/** Host-owned, serializable context required to reconstruct this exact child. */
+	resumeContext?: JSONValue;
 	/** Present when status is 'suspended' — child run paused awaiting tool resume. */
 	pendingSuspend?: GenerateResult['pendingSuspend'];
 }
 
-/**
- * Options for the `delegate_subagent` tool.
- *
- * You supply `runSubAgent` — the host callback that actually runs the child for
- * a delegation and returns its result. Everything else (input/output schema,
- * system prompt, task-path bookkeeping, parallelism policy, and the
- * `subagent-started` / `-completed` lifecycle events) is owned by
- * the tool.
- */
 /**
  * Helpers passed to a host `runSubAgent` callback so the host can route
  * `subAgentId: "inline"` while reusing the SDK inline child runner implementation.
@@ -178,6 +229,57 @@ export interface DelegateSubAgentToolOutput {
 export interface DelegateSubAgentRunnerHelpers {
 	/** Run a one-off inline child using the parent agent's inherited local/deferred tool set. */
 	runInlineSubAgent: (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput>;
+	/**
+	 * Forward a child stream chunk into the parent run's event bus (allowlisted
+	 * types only, with a per-delegation character budget). No-op when the
+	 * parent tool call id is missing.
+	 */
+	emitChunk: (chunk: StreamChunk) => void;
+}
+
+/** Cap on forwarded text+reasoning characters per delegation. */
+const SUB_AGENT_FORWARD_CHAR_BUDGET = 20_000;
+
+const FORWARDED_CHILD_CHUNK_TYPES = new Set<ForwardedChildChunk['type']>([
+	'text-delta',
+	'reasoning-start',
+	'reasoning-delta',
+	'reasoning-end',
+	'tool-input-start',
+	'tool-execution-start',
+	'tool-execution-end',
+]);
+
+function isForwardedChildChunk(chunk: StreamChunk): chunk is ForwardedChildChunk {
+	return FORWARDED_CHILD_CHUNK_TYPES.has(chunk.type as ForwardedChildChunk['type']);
+}
+
+function createEmitChunkHelper(
+	ctx: ToolContext,
+	request: DelegateSubAgentRequest,
+): (chunk: StreamChunk) => void {
+	let forwardedChars = 0;
+	return (chunk) => {
+		if (request.parentToolCallId === undefined) return;
+		if (!isForwardedChildChunk(chunk)) return;
+
+		let forwarded: ForwardedChildChunk = chunk;
+		if (chunk.type === 'text-delta' || chunk.type === 'reasoning-delta') {
+			// Trim rather than pass through whole: a single provider delta can be
+			// arbitrarily large, and forwarding it intact would blow the budget.
+			const remaining = SUB_AGENT_FORWARD_CHAR_BUDGET - forwardedChars;
+			if (remaining <= 0) return;
+			const delta = chunk.delta.slice(0, remaining);
+			forwardedChars += delta.length;
+			forwarded = { ...chunk, delta };
+		}
+
+		ctx.emitEvent?.({
+			type: AgentEvent.SubAgentChunk,
+			...subAgentLifecycleBase(request),
+			chunk: forwarded,
+		});
+	};
 }
 
 export type InlineSubAgentProviderToolsResolver = (
@@ -189,7 +291,39 @@ export type DelegateSubAgentRunner = (
 	helpers: DelegateSubAgentRunnerHelpers,
 ) => Promise<DelegateSubAgentToolOutput>;
 
+export interface DelegateSubAgentResumeRequest extends DelegateSubAgentRequest {
+	childRunId: string;
+	childToolCallId: string;
+	childThreadId?: string;
+	resumeContext?: JSONValue;
+	resumeData: unknown;
+}
+
+export type DelegateSubAgentResumeRunner = (
+	request: DelegateSubAgentResumeRequest,
+	helpers: DelegateSubAgentRunnerHelpers,
+) => Promise<DelegateSubAgentToolOutput>;
+
+export interface DelegateSubAgentCancelRequest extends DelegateSubAgentRequest {
+	childRunId: string;
+	childToolCallId: string;
+	childThreadId?: string;
+	resumeContext?: JSONValue;
+	reason: string;
+}
+
+export type DelegateSubAgentCancelRunner = (
+	request: DelegateSubAgentCancelRequest,
+	helpers: DelegateSubAgentRunnerHelpers,
+) => Promise<void>;
+
 export interface CreateDelegateSubAgentToolOptions {
+	/** Model-facing tool name. Defaults to {@link DELEGATE_SUB_AGENT_TOOL_NAME}; the default description and system instruction adapt to it. */
+	name?: string;
+	/** Model-facing tool description. Anything other than a non-blank string falls back to the built-in text. */
+	description?: string | null;
+	/** System-prompt delegation guidance. Anything other than a non-blank string falls back to the built-in guidance. */
+	systemInstruction?: string | null;
 	/**
 	 * Sub-agents the model may choose between. Listed in the system prompt; the
 	 * model selects one by passing its id as `subAgentId`.
@@ -215,11 +349,85 @@ export interface CreateDelegateSubAgentToolOptions {
 	 * `helpers.runInlineSubAgent` for inline work.
 	 */
 	runSubAgent?: DelegateSubAgentRunner;
+	/** Resume a child checkpoint previously cascaded through this delegate tool. */
+	resumeSubAgent?: DelegateSubAgentResumeRunner;
+	/** Return true only when a thrown child-resume error is safe to retry. */
+	shouldRetrySubAgentResumeError?: (error: unknown) => boolean;
+	/** Clean up a child checkpoint when the parent cancels the suspended delegation. */
+	cancelSubAgent?: DelegateSubAgentCancelRunner;
 
 	toModelOutput?: (output: z.infer<typeof delegateSubAgentOutputSchema>) => unknown;
 }
 
 export type DelegateSubAgentToolMetadata = CreateDelegateSubAgentToolOptions;
+
+function resolveDelegateSubAgentPolicy(
+	policy: DelegateSubAgentPolicy | undefined,
+	toolName: string,
+): DelegateSubAgentPolicy {
+	const resolvedPolicy = {
+		...policy,
+		maxChildren: policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN,
+	};
+
+	if (
+		!Number.isFinite(resolvedPolicy.maxChildren) ||
+		!Number.isInteger(resolvedPolicy.maxChildren)
+	) {
+		throw new Error(`${toolName} policy.maxChildren must be a finite positive integer`);
+	}
+
+	if (resolvedPolicy.maxChildren < 1) {
+		throw new Error(`${toolName} policy.maxChildren must be at least 1`);
+	}
+
+	return resolvedPolicy;
+}
+
+const DELEGATE_SUB_AGENT_TOOL_NAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/;
+
+function resolveDelegateSubAgentToolName(name: string | undefined): string {
+	if (name === undefined) return DELEGATE_SUB_AGENT_TOOL_NAME;
+	if (!DELEGATE_SUB_AGENT_TOOL_NAME_PATTERN.test(name)) {
+		throw new Error(
+			`Invalid delegate sub-agent tool name "${name}": must start with a letter and contain only letters, digits, underscores, and hyphens (max 64 characters)`,
+		);
+	}
+	return name;
+}
+
+const DEFAULT_DELEGATE_SUB_AGENT_DESCRIPTION =
+	'Delegate a bounded, self-contained subtask to a focused child agent that runs in an isolated context and returns only a concise final result. ' +
+	'Use it for reasoning-heavy subtasks, context-flooding investigations, or independent workstreams inside a larger deliverable. ' +
+	'Do not use it for trivial work, single tool calls, mechanical steps, tasks that need hidden conversation context, or pass-through delegation of the entire user request.';
+
+function resolveDelegateSubAgentDescription(options: CreateDelegateSubAgentToolOptions): string {
+	const { description } = options;
+	if (typeof description === 'string' && description.trim().length > 0) return description;
+
+	return DEFAULT_DELEGATE_SUB_AGENT_DESCRIPTION;
+}
+
+function resolveDelegateSubAgentSystemInstruction(
+	options: CreateDelegateSubAgentToolOptions,
+	toolName: string,
+	inlineProviderToolInstruction: string,
+): string {
+	const { systemInstruction } = options;
+	if (typeof systemInstruction === 'string' && systemInstruction.trim().length > 0) {
+		return systemInstruction;
+	}
+
+	return [
+		`${toolName} runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: "inline" to run a one-off inline child that inherits your local and deferred tools after safety filtering. ${inlineProviderToolInstruction} The child cannot see this conversation or your memory, so everything it needs must be in the call.`,
+		'Use a configured subagent ID only when one is listed and its name and useWhen guidance fit the subtask better than a generic inline child.',
+		...formatAvailableSubAgents(options.availableSubAgents),
+		...formatDelegationPolicyInstructions(options.policy, toolName),
+		`WHEN TO USE ${toolName}:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.`,
+		`WHEN NOT TO USE ${toolName}:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.`,
+		`HOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your local and deferred tools after safety filtering. ${inlineProviderToolInstruction}\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.`,
+	].join('\n');
+}
 
 /**
  * Build the generic `delegate_subagent` tool — lets a parent agent hand a
@@ -238,71 +446,68 @@ export type DelegateSubAgentToolMetadata = CreateDelegateSubAgentToolOptions;
  *     policy: { maxChildren: 10 },
  *   }));
  */
-function resolveDelegateSubAgentPolicy(
-	policy: DelegateSubAgentPolicy | undefined,
-): DelegateSubAgentPolicy {
-	const resolvedPolicy = {
-		...policy,
-		maxChildren: policy?.maxChildren ?? DEFAULT_SUB_AGENT_MAX_CHILDREN,
-	};
-
-	if (
-		!Number.isFinite(resolvedPolicy.maxChildren) ||
-		!Number.isInteger(resolvedPolicy.maxChildren)
-	) {
-		throw new Error('delegate_subagent policy.maxChildren must be a finite positive integer');
-	}
-
-	if (resolvedPolicy.maxChildren < 1) {
-		throw new Error('delegate_subagent policy.maxChildren must be at least 1');
-	}
-
-	return resolvedPolicy;
-}
-
 export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOptions = {}) {
 	// Per-parent child path index for stable task paths (/root/name_0, /root/name_1, ...).
 	const childPathIndexes = new Map<string, number>();
+	const toolName = resolveDelegateSubAgentToolName(options.name);
 	const resolvedOptions: CreateDelegateSubAgentToolOptions = {
 		...options,
-		policy: resolveDelegateSubAgentPolicy(options.policy),
+		policy: resolveDelegateSubAgentPolicy(options.policy, toolName),
 	};
+	if (
+		(resolvedOptions.resumeSubAgent === undefined) !==
+		(resolvedOptions.cancelSubAgent === undefined)
+	) {
+		throw new Error(
+			`${toolName} requires resumeSubAgent and cancelSubAgent to be configured together`,
+		);
+	}
 	const inlineProviderToolInstruction = resolvedOptions.resolveInlineSubAgentProviderTools
 		? "Provider-defined tools are loaded for the inline child's selected model provider."
 		: 'Inline children do not inherit provider-defined tools.';
 
-	const tool = new Tool(DELEGATE_SUB_AGENT_TOOL_NAME)
-		.description(
-			'Delegate a bounded, self-contained subtask to a focused child agent that runs in an isolated context and returns only a concise final result. ' +
-				'Use it for reasoning-heavy subtasks, context-flooding investigations, or independent workstreams inside a larger deliverable. ' +
-				'Do not use it for trivial work, single tool calls, mechanical steps, tasks that need hidden conversation context, or pass-through delegation of the entire user request.',
-		)
+	const toolBuilder = new Tool(toolName)
+		.description(resolveDelegateSubAgentDescription(resolvedOptions))
 		.systemInstruction(
-			[
-				`delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: "inline" to run a one-off inline child that inherits your local and deferred tools after safety filtering. ${inlineProviderToolInstruction} The child cannot see this conversation or your memory, so everything it needs must be in the call.`,
-				'Use a configured subagent ID only when one is listed and its name and useWhen guidance fit the subtask better than a generic inline child.',
-				...formatAvailableSubAgents(resolvedOptions.availableSubAgents),
-				...formatDelegationPolicyInstructions(resolvedOptions.policy),
-				'WHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.',
-				'WHEN NOT TO USE delegate_subagent:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.',
-				`HOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your local and deferred tools after safety filtering. ${inlineProviderToolInstruction}\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.`,
-			].join('\n'),
+			resolveDelegateSubAgentSystemInstruction(
+				resolvedOptions,
+				toolName,
+				inlineProviderToolInstruction,
+			),
 		)
 		.input(delegateSubAgentInputSchema)
-		.output(delegateSubAgentOutputSchema)
-		.handler(
-			async (input, ctx) =>
-				await handleDelegateSubAgent(input, ctx, resolvedOptions, childPathIndexes),
-		)
-		.toModelOutput((output) => {
-			return resolvedOptions.toModelOutput ? resolvedOptions.toModelOutput(output) : output;
-		})
-		.build();
+		.output(delegateSubAgentOutputSchema);
+	const handler = async (
+		input: DelegateSubAgentInput,
+		ctx: ToolContext | InterruptibleToolContext,
+	) => await handleDelegateSubAgent(input, ctx, resolvedOptions, childPathIndexes);
+	const toModelOutput = (output: z.infer<typeof delegateSubAgentOutputSchema>) =>
+		resolvedOptions.toModelOutput ? resolvedOptions.toModelOutput(output) : output;
+	const tool = resolvedOptions.resumeSubAgent
+		? toolBuilder
+				.suspend(delegateSubAgentSuspendSchema)
+				.resume(delegateSubAgentResumeSchema)
+				.handler(handler)
+				.toModelOutput(toModelOutput)
+				.build()
+		: toolBuilder.handler(handler).toModelOutput(toModelOutput).build();
 	return withSdkOwnedBuiltInMetadata({
 		...tool,
+		...(resolvedOptions.cancelSubAgent !== undefined
+			? {
+					onCancellation: async (rawInput: unknown, ctx: ToolCancellationContext) => {
+						const parsedInput = delegateSubAgentInputSchema.safeParse(rawInput);
+						if (!parsedInput.success) {
+							throw new Error('Delegated child input is missing or invalid');
+						}
+						await cancelDelegatedSubAgent(parsedInput.data, ctx, resolvedOptions, childPathIndexes);
+					},
+				}
+			: {}),
 		metadata: {
 			...tool.metadata,
 			[INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY]: {
+				...(resolvedOptions.name !== undefined ? { name: resolvedOptions.name } : {}),
 				...(resolvedOptions.availableSubAgents !== undefined
 					? { availableSubAgents: resolvedOptions.availableSubAgents }
 					: {}),
@@ -324,6 +529,21 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 				...(resolvedOptions.runSubAgent !== undefined
 					? { runSubAgent: resolvedOptions.runSubAgent }
 					: {}),
+				...(resolvedOptions.resumeSubAgent !== undefined
+					? { resumeSubAgent: resolvedOptions.resumeSubAgent }
+					: {}),
+				...(resolvedOptions.shouldRetrySubAgentResumeError !== undefined
+					? { shouldRetrySubAgentResumeError: resolvedOptions.shouldRetrySubAgentResumeError }
+					: {}),
+				...(resolvedOptions.cancelSubAgent !== undefined
+					? { cancelSubAgent: resolvedOptions.cancelSubAgent }
+					: {}),
+				...(resolvedOptions.systemInstruction !== undefined
+					? { systemInstruction: resolvedOptions.systemInstruction }
+					: {}),
+				...(resolvedOptions.description !== undefined
+					? { description: resolvedOptions.description }
+					: {}),
 				...(resolvedOptions.toModelOutput !== undefined
 					? { toModelOutput: resolvedOptions.toModelOutput }
 					: {}),
@@ -333,11 +553,16 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 }
 
 export function getInlineDelegateSubAgentToolOptions(
-	tool: BuiltTool,
+	tool: Pick<BuiltTool, 'metadata'>,
 ): DelegateSubAgentToolMetadata | undefined {
 	const value = tool.metadata?.[INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY];
 	if (typeof value !== 'object' || value === null) return undefined;
 	return value as DelegateSubAgentToolMetadata;
+}
+
+/** Whether a tool is a delegate sub-agent tool built by {@link createDelegateSubAgentTool}, regardless of its configured name. */
+export function isDelegateSubAgentTool(tool: Pick<BuiltTool, 'name' | 'metadata'>): boolean {
+	return getInlineDelegateSubAgentToolOptions(tool) !== undefined;
 }
 
 function formatAvailableSubAgents(
@@ -354,7 +579,10 @@ function formatAvailableSubAgents(
 	];
 }
 
-function formatDelegationPolicyInstructions(policy: DelegateSubAgentPolicy | undefined): string[] {
+function formatDelegationPolicyInstructions(
+	policy: DelegateSubAgentPolicy | undefined,
+	toolName: string,
+): string[] {
 	if (policy?.maxChildren === undefined) return [];
 
 	const runLabel = policy.maxChildren === 1 ? 'run' : 'runs';
@@ -363,7 +591,7 @@ function formatDelegationPolicyInstructions(policy: DelegateSubAgentPolicy | und
 			'DELEGATION PARALLELISM:',
 			`- Up to ${policy.maxChildren} child sub-agent ${runLabel} can execute at the same time.`,
 			'- This limits parallelism, not the total number of delegated tasks.',
-			'- If more independent workstreams are useful, you may issue more delegate_subagent calls; the runtime will run them in batches.',
+			`- If more independent workstreams are useful, you may issue more ${toolName} calls; the runtime will run them in batches.`,
 		].join('\n'),
 	];
 }
@@ -372,13 +600,14 @@ function formatDelegationPolicyInstructions(policy: DelegateSubAgentPolicy | und
  * Tool handler: assign the child's task path,
  * assemble the {@link DelegateSubAgentRequest} from the model input plus the
  * parent tool context, then run the child via the host `runSubAgent` callback
- * while emitting started/progress/completed lifecycle events. Any error is
+ * while emitting started/progress/completed lifecycle events. A failure is
  * converted into a `status: 'failed'` output (never thrown) so one failed
- * delegation can't abort the parent's run.
+ * delegation can't abort the parent's run; an abort is rethrown, because a
+ * cancelled run must end the parent too.
  */
 async function handleDelegateSubAgent(
 	input: DelegateSubAgentInput,
-	ctx: ToolContext,
+	ctx: ToolContext | InterruptibleToolContext,
 	options: CreateDelegateSubAgentToolOptions,
 	childPathIndexes: Map<string, number>,
 ): Promise<DelegateSubAgentToolOutput> {
@@ -386,65 +615,236 @@ async function handleDelegateSubAgent(
 	let request: DelegateSubAgentRequest | undefined;
 	let startedAt: number | undefined;
 	try {
+		if (
+			options.resumeSubAgent !== undefined &&
+			isInterruptibleToolContext(ctx) &&
+			ctx.continuation !== undefined
+		) {
+			const restored = restoreDelegateRequest(
+				input,
+				ctx,
+				ctx.continuation,
+				options.policy,
+				childPathIndexes,
+			);
+			const { checkpoint } = restored;
+			taskPath = checkpoint.taskPath;
+			request = restored.request;
+			startedAt = Date.now();
+			emitSubAgentStarted(ctx, request, startedAt);
+			let output: DelegateSubAgentToolOutput;
+			try {
+				output = await options.resumeSubAgent(
+					{
+						...request,
+						...getChildCheckpointTarget(checkpoint),
+						resumeData: ctx.resumeData,
+					},
+					createRunnerHelpers(ctx, request, options.name),
+				);
+			} catch (error) {
+				if (ctx.abortSignal?.aborted || isAbortError(error)) throw error;
+				if (options.shouldRetrySubAgentResumeError?.(error) === false) throw error;
+				return await ctx.suspend(ctx.suspendPayload);
+			}
+			emitSubAgentCompleted(ctx, request, output, startedAt);
+			if (output.status === 'suspended') {
+				return await cascadeChildSuspension(ctx, request, output);
+			}
+			return output;
+		}
+
 		const childPathIndexKey = getChildPathIndexKey(ctx);
 		const childPathIndex = childPathIndexes.get(childPathIndexKey) ?? 0;
 
 		taskPath = createChildSubAgentTaskPath(input.taskName, childPathIndex);
 		childPathIndexes.set(childPathIndexKey, childPathIndex + 1);
 
-		request = {
-			...input,
-			taskPath,
-			childCount: childPathIndex,
-			...(ctx.runId !== undefined ? { parentRunId: ctx.runId } : {}),
-			...(ctx.persistence?.threadId !== undefined
-				? { parentThreadId: ctx.persistence.threadId }
-				: {}),
-			...(ctx.persistence?.resourceId !== undefined
-				? { parentResourceId: ctx.persistence.resourceId }
-				: {}),
-			...(ctx.abortSignal !== undefined ? { parentAbortSignal: ctx.abortSignal } : {}),
-			...(ctx.toolCallId !== undefined ? { parentToolCallId: ctx.toolCallId } : {}),
-			...(ctx.executionCounter !== undefined
-				? { parentExecutionCounter: ctx.executionCounter }
-				: {}),
-			...(options.policy !== undefined ? { policy: options.policy } : {}),
-		};
+		request = createDelegateSubAgentRequest(input, ctx, taskPath, childPathIndex, options.policy);
 
 		startedAt = Date.now();
 		emitSubAgentStarted(ctx, request, startedAt);
+		const toolName = options.name ?? DELEGATE_SUB_AGENT_TOOL_NAME;
 		if (!options.runSubAgent) {
 			throw new Error(
-				'delegate_subagent was registered without a runSubAgent callback, and no host runner was provided. Register it on an Agent (for inline delegation) or pass runSubAgent.',
+				`${toolName} was registered without a runSubAgent callback, and no host runner was provided. Register it on an Agent (for inline delegation) or pass runSubAgent.`,
 			);
 		}
-		const output = await options.runSubAgent(request, {
-			runInlineSubAgent: () => {
-				throw new Error(
-					'delegate_subagent host runner does not support inline delegation without helpers.runInlineSubAgent from an Agent build.',
-				);
-			},
-		});
+		const output = await options.runSubAgent(
+			request,
+			createRunnerHelpers(ctx, request, options.name),
+		);
 		emitSubAgentCompleted(ctx, request, output, startedAt);
+		if (
+			output.status === 'suspended' &&
+			options.resumeSubAgent !== undefined &&
+			isInterruptibleToolContext(ctx)
+		) {
+			return await cascadeChildSuspension(ctx, request, output);
+		}
 		return output;
 	} catch (error) {
-		if (request !== undefined && startedAt !== undefined) {
-			const failedOutput: DelegateSubAgentToolOutput = {
-				status: 'failed',
-				...(taskPath !== undefined ? { taskPath } : {}),
-				answer: '',
-				error: stringifyUnknown(error),
-			};
-			emitSubAgentCompleted(ctx, request, failedOutput, startedAt);
-			return failedOutput;
-		}
-		return {
-			status: 'failed',
+		// When the parent has a signal it is the authority: `isAbortError` also
+		// matches by message text, and an unrelated child error must not be
+		// mistaken for a cancellation and kill the parent run.
+		const aborted = ctx.abortSignal ? ctx.abortSignal.aborted : isAbortError(error);
+		const output: DelegateSubAgentToolOutput = {
+			status: aborted ? 'cancelled' : 'failed',
 			...(taskPath !== undefined ? { taskPath } : {}),
 			answer: '',
-			error: error instanceof Error ? error.message : String(error),
+			...(aborted ? {} : { error: stringifyUnknown(error) }),
 		};
+		if (request !== undefined && startedAt !== undefined) {
+			emitSubAgentCompleted(ctx, request, output, startedAt);
+		}
+		if (aborted) throw error;
+		return output;
 	}
+}
+
+function createDelegateSubAgentRequest(
+	input: DelegateSubAgentInput,
+	ctx: ToolContext,
+	taskPath: SubAgentTaskPath,
+	childCount: number,
+	policy?: DelegateSubAgentPolicy,
+): DelegateSubAgentRequest {
+	return {
+		...input,
+		taskPath,
+		childCount,
+		...(ctx.runId !== undefined ? { parentRunId: ctx.runId } : {}),
+		...(ctx.persistence?.threadId !== undefined
+			? { parentThreadId: ctx.persistence.threadId }
+			: {}),
+		...(ctx.persistence?.resourceId !== undefined
+			? { parentResourceId: ctx.persistence.resourceId }
+			: {}),
+		...(ctx.persistence?.hostMetadata !== undefined
+			? { parentHostMetadata: ctx.persistence.hostMetadata }
+			: {}),
+		...(ctx.abortSignal !== undefined ? { parentAbortSignal: ctx.abortSignal } : {}),
+		...(ctx.toolCallId !== undefined ? { parentToolCallId: ctx.toolCallId } : {}),
+		...(ctx.executionCounter !== undefined
+			? { parentExecutionCounter: withoutMessageCount(ctx.executionCounter) }
+			: {}),
+		...(ctx.parentTelemetry !== undefined ? { parentTelemetry: ctx.parentTelemetry } : {}),
+		...(policy !== undefined ? { policy } : {}),
+	};
+}
+
+function isJsonSchemaObject(value: unknown): value is JSONSchema7 {
+	return isRecord(value);
+}
+
+async function cancelDelegatedSubAgent(
+	input: DelegateSubAgentInput,
+	ctx: ToolCancellationContext,
+	options: CreateDelegateSubAgentToolOptions,
+	childPathIndexes: Map<string, number>,
+): Promise<void> {
+	if (options.cancelSubAgent === undefined || ctx.continuation === undefined) return;
+	const { checkpoint, request } = restoreDelegateRequest(
+		input,
+		ctx,
+		ctx.continuation,
+		options.policy,
+		childPathIndexes,
+	);
+	await options.cancelSubAgent(
+		{
+			...request,
+			...getChildCheckpointTarget(checkpoint),
+			reason: ctx.cancellation.message,
+		},
+		createRunnerHelpers(ctx, request, options.name),
+	);
+}
+
+function restoreDelegateRequest(
+	input: DelegateSubAgentInput,
+	ctx: ToolContext,
+	continuation: JSONValue,
+	policy: DelegateSubAgentPolicy | undefined,
+	childPathIndexes: Map<string, number>,
+): {
+	checkpoint: DelegateSubAgentContinuation & { taskPath: SubAgentTaskPath };
+	request: DelegateSubAgentRequest;
+} {
+	const checkpoint = parseDelegateSubAgentContinuation(continuation);
+	if (!checkpoint) {
+		throw new Error('Delegated child checkpoint metadata is missing or invalid');
+	}
+	if (checkpoint.subAgentId !== input.subAgentId) {
+		throw new Error('Delegated child checkpoint does not match the selected sub-agent');
+	}
+	const { taskPath } = checkpoint;
+	assertSubAgentTaskPath(taskPath);
+	const key = getChildPathIndexKey(ctx);
+	childPathIndexes.set(key, Math.max(childPathIndexes.get(key) ?? 0, checkpoint.childCount + 1));
+	const request = createDelegateSubAgentRequest(
+		input,
+		ctx,
+		taskPath,
+		checkpoint.childCount,
+		policy,
+	);
+	return { checkpoint: { ...checkpoint, taskPath }, request };
+}
+
+function getChildCheckpointTarget(checkpoint: DelegateSubAgentContinuation) {
+	return {
+		childRunId: checkpoint.runId,
+		childToolCallId: checkpoint.toolCallId,
+		...(checkpoint.threadId !== undefined ? { childThreadId: checkpoint.threadId } : {}),
+		...(checkpoint.resumeContext !== undefined ? { resumeContext: checkpoint.resumeContext } : {}),
+	};
+}
+
+function createRunnerHelpers(
+	ctx: ToolContext | InterruptibleToolContext,
+	request: DelegateSubAgentRequest,
+	configuredToolName?: string,
+): DelegateSubAgentRunnerHelpers {
+	const toolName = configuredToolName ?? DELEGATE_SUB_AGENT_TOOL_NAME;
+	return {
+		runInlineSubAgent: () => {
+			throw new Error(
+				`${toolName} host runner does not support inline delegation without helpers.runInlineSubAgent from an Agent build.`,
+			);
+		},
+		emitChunk: createEmitChunkHelper(ctx, request),
+	};
+}
+
+function isInterruptibleToolContext(
+	ctx: ToolContext | InterruptibleToolContext,
+): ctx is InterruptibleToolContext {
+	return 'suspend' in ctx;
+}
+
+async function cascadeChildSuspension(
+	ctx: InterruptibleToolContext,
+	request: DelegateSubAgentRequest,
+	output: DelegateSubAgentToolOutput,
+): Promise<never> {
+	const suspension = output.pendingSuspend?.[0];
+	if (!suspension || !isJsonSchemaObject(suspension.resumeSchema)) {
+		throw new Error(DELEGATED_CHILD_SUSPEND_UNSUPPORTED_MESSAGE);
+	}
+
+	return await ctx.suspend(suspension.suspendPayload, {
+		resumeSchema: suspension.resumeSchema,
+		continuation: {
+			runId: suspension.runId,
+			toolCallId: suspension.toolCallId,
+			taskPath: request.taskPath,
+			subAgentId: request.subAgentId,
+			childCount: request.childCount,
+			...(output.threadId !== undefined ? { threadId: output.threadId } : {}),
+			...(output.resumeContext !== undefined ? { resumeContext: output.resumeContext } : {}),
+		},
+	});
 }
 
 function emitSubAgentStarted(
@@ -560,7 +960,9 @@ function resolveDelegateSubAgentStatus(
 	result: GenerateResult,
 ): DelegateSubAgentToolOutput['status'] {
 	if (result.finishReason === 'error' || result.error !== undefined) {
-		return 'failed';
+		// An aborted child sets its state to `cancelled` but still reports an
+		// error, so the state decides which of the two this really was.
+		return result.getState().status === 'cancelled' ? 'cancelled' : 'failed';
 	}
 	if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
 		return 'suspended';

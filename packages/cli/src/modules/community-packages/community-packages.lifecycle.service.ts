@@ -2,7 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import { ensureError, jsonParse, type PublicInstalledPackage } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse, type PublicInstalledPackage } from 'n8n-workflow';
 
 import {
 	RESPONSE_ERROR_MESSAGES,
@@ -90,20 +91,12 @@ export class CommunityPackagesLifecycleService {
 			}
 		}
 
-		let packages = this.communityPackagesService.matchPackagesWithUpdates(
+		const packages = this.communityPackagesService.matchPackagesWithUpdates(
 			installedPackages,
 			pendingUpdates,
 		);
 
-		try {
-			if (this.communityPackagesService.hasMissingPackages) {
-				packages = this.communityPackagesService.matchMissingPackages(packages);
-			}
-		} catch {
-			// Ignore errors when matching missing packages
-		}
-
-		return packages;
+		return this.communityPackagesService.withLoadStatus(packages);
 	}
 
 	async install(
@@ -152,10 +145,11 @@ export class CommunityPackagesLifecycleService {
 			throw new BadRequestError(templateMessage);
 		}
 
-		const isInstalled = await this.communityPackagesService.isPackageInstalled(parsed.packageName);
-		const hasLoaded = this.communityPackagesService.hasPackageLoaded(name);
+		const existingPackage = await this.communityPackagesService.findInstalledPackage(
+			parsed.packageName,
+		);
 
-		if (isInstalled && hasLoaded) {
+		if (existingPackage && this.communityPackagesService.isPackageLoaded(existingPackage)) {
 			const alreadyMessage =
 				presentation === 'ui'
 					? [
@@ -202,8 +196,6 @@ export class CommunityPackagesLifecycleService {
 				error instanceof Error ? isCommunityPackageInstallClientError(error) : false;
 			throw new (clientError ? BadRequestError : InternalServerError)(message);
 		}
-
-		if (!hasLoaded) this.communityPackagesService.removePackageFromMissingList(name);
 
 		installedPackage.installedNodes.forEach((node) => {
 			this.push.broadcast({

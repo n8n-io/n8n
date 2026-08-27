@@ -7,7 +7,7 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Cluster, Redis } from 'ioredis';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { createHash, randomUUID } from 'node:crypto';
 
 import { RedisClientService } from '@/services/redis-client.service';

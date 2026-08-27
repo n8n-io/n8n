@@ -2,15 +2,16 @@ import { describe, it, expect, vi } from 'vitest';
 import { defineComponent, h } from 'vue';
 import { fireEvent } from '@testing-library/vue';
 import { TabsRoot } from 'reka-ui';
+import { readFileSync } from 'node:fs';
 import { createComponentRenderer } from '@/__tests__/render';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import type { ArtifactTab } from '../useCanvasPreview';
 
-vi.mock('@/app/composables/useClipboard', () => ({
+vi.mock('@n8n/composables/useClipboard', () => ({
 	useClipboard: () => ({ copy: vi.fn() }),
 }));
 
-vi.mock('@/app/composables/useToast', () => ({
+vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage: vi.fn() }),
 }));
 
@@ -37,6 +38,7 @@ const Wrapper = defineComponent({
 		tabs: { type: Array as () => ArtifactTab[], required: true },
 		activeTabId: { type: String, default: undefined },
 		isExpanded: { type: Boolean, default: false },
+		isExpandDisabled: { type: Boolean, default: false },
 		previewToggleLabel: { type: String, default: undefined },
 	},
 	emits: ['togglePreview', 'toggleExpanded'],
@@ -47,6 +49,7 @@ const Wrapper = defineComponent({
 					tabs: props.tabs,
 					activeTabId: props.activeTabId,
 					isExpanded: props.isExpanded,
+					isExpandDisabled: props.isExpandDisabled,
 					previewToggleLabel: props.previewToggleLabel,
 					onTogglePreview: () => emit('togglePreview'),
 					onToggleExpanded: () => emit('toggleExpanded'),
@@ -132,5 +135,26 @@ describe('InstanceAiPreviewTabBar', () => {
 
 		expect(collapseButton).not.toBeNull();
 		expect(collapseButton).toHaveAttribute('aria-label', 'Collapse panel');
+	});
+
+	it('disables the size toggle when the host layout controls panel width', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: { tabs: [workflowTab], activeTabId: 'wf-1', isExpandDisabled: true },
+		});
+		const expandToggle = getByTestId('instance-ai-preview-expand-toggle');
+
+		expect(expandToggle).toBeDisabled();
+		expect(expandToggle).not.toHaveAttribute('title');
+		await fireEvent.click(expandToggle);
+		expect(emitted().toggleExpanded).toBeUndefined();
+	});
+
+	it('does not fade the left edge of artifact tabs', () => {
+		const source = readFileSync(
+			'src/features/ai/instanceAi/components/InstanceAiPreviewTabBar.vue',
+			'utf8',
+		);
+
+		expect(source).not.toContain('--left--fade');
 	});
 });

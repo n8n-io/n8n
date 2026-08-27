@@ -453,7 +453,7 @@ describe('executeNpmCommand', () => {
 
 		const importFreshModule = async () => {
 			vi.resetModules();
-			return await import('../npm-utils');
+			return await import('../npm-utils.js');
 		};
 
 		beforeEach(() => {
@@ -651,7 +651,7 @@ describe('verifyIntegrity', () => {
 		const promise = verifyIntegrity(packageName, version, registryUrl, integrity);
 		await expect(promise).rejects.toThrow(UnexpectedError);
 		await expect(promise).rejects.toThrow(
-			'Checksum verification failed. Try restarting n8n and attempting the installation again.',
+			'Failed to verify package checksum. Try restarting n8n and attempting the installation again.',
 		);
 	});
 
@@ -665,7 +665,7 @@ describe('verifyIntegrity', () => {
 		const promise = verifyIntegrity(packageName, version, registryUrl, integrity);
 		await expect(promise).rejects.toThrow(UnexpectedError);
 		await expect(promise).rejects.toThrow(
-			'Checksum verification failed. Please check your network connection and try again.',
+			'Failed to verify package checksum: The registry is temporarily unreachable. Please try again later.',
 		);
 	});
 
@@ -679,7 +679,7 @@ describe('verifyIntegrity', () => {
 		const promise = verifyIntegrity(packageName, version, registryUrl, integrity);
 		await expect(promise).rejects.toThrow(UnexpectedError);
 		await expect(promise).rejects.toThrow(
-			'Checksum verification failed. Please check your network connection and try again.',
+			'Failed to verify package checksum: The registry is temporarily unreachable. Please try again later.',
 		);
 	});
 
@@ -727,7 +727,7 @@ describe('verifyIntegrity', () => {
 			const promise = verifyIntegrity(packageName, version, registryUrl, integrity);
 			await expect(promise).rejects.toThrow(UnexpectedError);
 			await expect(promise).rejects.toThrow(
-				'Checksum verification failed. Try restarting n8n and attempting the installation again.',
+				'Failed to verify package checksum. Try restarting n8n and attempting the installation again.',
 			);
 
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
@@ -772,7 +772,7 @@ describe('verifyIntegrity', () => {
 			const promise = verifyIntegrity(packageName, version, registryUrl, integrity);
 			await expect(promise).rejects.toThrow(UnexpectedError);
 			await expect(promise).rejects.toThrow(
-				'Checksum verification failed. Please check your network connection and try again.',
+				'Failed to verify package checksum: The registry is temporarily unreachable. Please try again later.',
 			);
 
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
@@ -790,7 +790,7 @@ describe('verifyIntegrity', () => {
 			const promise = verifyIntegrity(packageName, version, registryUrl, integrity);
 			await expect(promise).rejects.toThrow(UnexpectedError);
 			await expect(promise).rejects.toThrow(
-				'Checksum verification failed. Please check your network connection and try again.',
+				'Failed to verify package checksum: The registry is temporarily unreachable. Please try again later.',
 			);
 
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);
@@ -806,7 +806,7 @@ describe('verifyIntegrity', () => {
 			const promise = verifyIntegrity(packageName, version, registryUrl, integrity);
 			await expect(promise).rejects.toThrow(UnexpectedError);
 			await expect(promise).rejects.toThrow(
-				'Checksum verification failed. Try restarting n8n and attempting the installation again.',
+				'Failed to verify package checksum. Try restarting n8n and attempting the installation again.',
 			);
 
 			expect(mockAsyncExec).toHaveBeenCalledTimes(1);

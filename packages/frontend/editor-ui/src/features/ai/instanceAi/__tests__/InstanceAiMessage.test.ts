@@ -163,6 +163,58 @@ describe('InstanceAiMessage', () => {
 		expect(pre?.textContent).toContain('plain text error details');
 	});
 
+	it('should render a dedicated out-of-credits message when the error code is quota_exhausted', () => {
+		const { getByTestId, getByText, queryByText } = renderComponent({
+			props: {
+				message: makeMessage({
+					agentTree: makeAgentTree({
+						status: 'error',
+						error: 'Have reached end of quota',
+						errorDetails: { code: 'quota_exhausted', statusCode: 403 },
+					}),
+				}),
+			},
+		});
+
+		expect(getByTestId('instance-ai-out-of-credits')).toBeInTheDocument();
+		expect(getByText("You've run out of AI credits")).toBeInTheDocument();
+		// Raw provider text and status code are hidden for the tailored state.
+		expect(queryByText('Have reached end of quota')).not.toBeInTheDocument();
+		expect(queryByText('403')).not.toBeInTheDocument();
+	});
+
+	it('should offer an upgrade action in the out-of-credits state', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				message: makeMessage({
+					agentTree: makeAgentTree({
+						status: 'error',
+						error: 'Have reached end of quota',
+						errorDetails: { code: 'quota_exhausted' },
+					}),
+				}),
+			},
+		});
+
+		expect(getByTestId('instance-ai-out-of-credits-upgrade')).toBeInTheDocument();
+	});
+
+	it('should not hide technical details for non-quota errors', () => {
+		const { container } = renderComponent({
+			props: {
+				message: makeMessage({
+					agentTree: makeAgentTree({
+						status: 'error',
+						error: 'API error',
+						errorDetails: { technicalDetails: 'plain text error details' },
+					}),
+				}),
+			},
+		});
+
+		expect(container.querySelector('pre')?.textContent).toContain('plain text error details');
+	});
+
 	it('should show blinking cursor when streaming with no content and no agentTree', () => {
 		const { container } = renderComponent({
 			props: {
@@ -205,5 +257,42 @@ describe('InstanceAiMessage', () => {
 		});
 
 		expect(getByTestId('agent-activity-tree')).toBeInTheDocument();
+	});
+
+	it('should attribute the stop to the user when cancelled by the user', () => {
+		const { getByTestId, getByText } = renderComponent({
+			props: {
+				message: makeMessage({
+					agentTree: makeAgentTree({ status: 'cancelled', cancellationReason: 'user' }),
+				}),
+			},
+		});
+
+		expect(getByTestId('instance-ai-run-cancelled')).toBeInTheDocument();
+		expect(getByText('You stopped this run')).toBeInTheDocument();
+	});
+
+	it('should label a timed-out run distinctly', () => {
+		const { getByText } = renderComponent({
+			props: {
+				message: makeMessage({
+					agentTree: makeAgentTree({ status: 'cancelled', cancellationReason: 'timeout' }),
+				}),
+			},
+		});
+
+		expect(getByText('Run timed out')).toBeInTheDocument();
+	});
+
+	it('should NOT show the stopped indicator for a completed run', () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				message: makeMessage({
+					agentTree: makeAgentTree({ status: 'completed' }),
+				}),
+			},
+		});
+
+		expect(queryByTestId('instance-ai-run-cancelled')).not.toBeInTheDocument();
 	});
 });

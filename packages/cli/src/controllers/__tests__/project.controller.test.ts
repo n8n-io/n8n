@@ -164,6 +164,7 @@ describe('ProjectController', () => {
 		const projectId = 'p1';
 		const payload = { relations: [{ userId: 'u2', role: 'project:viewer' as const }] };
 
+		provisioningService.isProjectRoleManaged.mockResolvedValue(false);
 		(projectsService.addUsersWithConflictSemantics as Mock).mockResolvedValue({
 			project: { id: projectId, name: 'Project' },
 			added: payload.relations,
@@ -181,6 +182,10 @@ describe('ProjectController', () => {
 		await controller.addProjectUsers(req, res, projectId, payload as any);
 
 		// Assert
+		expect(projectsService.addUsersWithConflictSemantics).toHaveBeenCalledWith(
+			projectId,
+			payload.relations,
+		);
 		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
 			userId: 'actor-user',
 			role: 'global:owner',
@@ -231,6 +236,7 @@ describe('ProjectController', () => {
 	it('emits team-project-updated on deleteProjectUser and returns 204', async () => {
 		// Arrange
 		const projectId = 'p3';
+		provisioningService.isProjectRoleManaged.mockResolvedValue(false);
 		(projectsService.getProjectRelations as Mock).mockResolvedValue([
 			{ userId: 'u1', role: { slug: 'project:admin' } },
 			{ userId: 'u3', role: { slug: 'project:viewer' } },
@@ -242,6 +248,7 @@ describe('ProjectController', () => {
 		await controller.deleteProjectUser(req, res, projectId, 'u2');
 
 		// Assert
+		expect(projectsService.deleteUserFromProject).toHaveBeenCalledWith(projectId, 'u2');
 		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
 			userId: 'actor-user',
 			role: 'global:owner',
@@ -306,6 +313,73 @@ describe('ProjectController', () => {
 				{ userId: 'u5', role: 'project:viewer' },
 			],
 			projectId,
+		});
+	});
+
+	describe('managed project roles', () => {
+		it('blocks addProjectUsers when project roles are managed', async () => {
+			provisioningService.isProjectRoleManaged.mockResolvedValue(true);
+
+			const res = makeRes();
+
+			await expect(
+				controller.addProjectUsers(req, res, 'p1', {
+					relations: [{ userId: 'u2', role: 'project:viewer' }],
+				} as any),
+			).rejects.toThrow('Project roles are managed automatically');
+
+			expect(projectsService.addUsersWithConflictSemantics).not.toHaveBeenCalled();
+			expect(userManagementMailer.notifyProjectShared).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('blocks changeProjectUserRole when project roles are managed', async () => {
+			provisioningService.isProjectRoleManaged.mockResolvedValue(true);
+
+			const res = makeRes();
+
+			await expect(
+				controller.changeProjectUserRole(req, res, 'p2', 'u2', {
+					role: 'project:editor',
+				} as any),
+			).rejects.toThrow('Project roles are managed automatically');
+
+			expect(projectsService.changeUserRoleInProject).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('blocks deleteProjectUser when project roles are managed', async () => {
+			provisioningService.isProjectRoleManaged.mockResolvedValue(true);
+
+			const res = makeRes();
+
+			await expect(controller.deleteProjectUser(req, res, 'p3', 'u2')).rejects.toThrow(
+				'Project roles are managed automatically',
+			);
+
+			expect(projectsService.deleteUserFromProject).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it.each([true, false])('exposes rolesManaged=%s on getProject', async (managed) => {
+			provisioningService.isProjectRoleManaged.mockResolvedValue(managed);
+			(projectsService.getProject as Mock).mockResolvedValue({
+				id: 'p1',
+				name: 'Project',
+				icon: null,
+				type: 'team',
+				description: null,
+				customTelemetryTags: [],
+			});
+			(projectsService.getProjectRelations as Mock).mockResolvedValue([]);
+
+			const scopedReq = {
+				user: { id: 'actor-user', role: { slug: 'global:owner', scopes: [] } },
+			} as unknown as AuthenticatedRequest;
+
+			const result = await controller.getProject(scopedReq, makeRes(), 'p1');
+
+			expect(result.rolesManaged).toBe(managed);
 		});
 	});
 });

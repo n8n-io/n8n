@@ -1,8 +1,9 @@
+import { Logger } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { OnePasswordProvider } from '../one-password';
-import type { OnePasswordContext } from '../one-password';
+import { OnePasswordProvider, type OnePasswordContext } from '../one-password';
 
 const mockListVaults = vi.fn();
 const mockListItems = vi.fn();
@@ -17,10 +18,14 @@ vi.mock('@1password/connect', () => ({
 }));
 
 describe('OnePasswordProvider', () => {
-	const provider = new OnePasswordProvider();
+	const logger = mockInstance(Logger);
+	logger.scoped.mockReturnValue(logger);
+	let provider: OnePasswordProvider;
 
-	afterEach(() => {
+	beforeEach(() => {
 		vi.clearAllMocks();
+		logger.scoped.mockReturnValue(logger);
+		provider = new OnePasswordProvider(logger);
 	});
 
 	describe('init validation', () => {
@@ -28,6 +33,15 @@ describe('OnePasswordProvider', () => {
 			const settings = { serverUrl: '', accessToken: 'test-token' };
 			await expect(provider.init(mock<OnePasswordContext>({ settings }))).rejects.toThrow(
 				UserError,
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to initialize 1Password provider',
+				expect.objectContaining({
+					providerName: 'onePassword',
+					providerDisplayName: '1Password',
+					operation: 'initialize',
+					errorName: expect.any(String),
+				}),
 			);
 		});
 
@@ -80,11 +94,26 @@ describe('OnePasswordProvider', () => {
 				}),
 			);
 
-			mockListVaults.mockRejectedValue(new Error('Unauthorized'));
+			mockListVaults.mockRejectedValue(
+				Object.assign(new Error('Unauthorized'), {
+					response: { status: 401 },
+				}),
+			);
 
 			await provider.connect();
 
 			expect(provider.state).toBe('error');
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to connect 1Password provider',
+				expect.objectContaining({
+					providerName: 'onePassword',
+					providerDisplayName: '1Password',
+					operation: 'connect',
+					errorName: 'Error',
+					statusCode: 401,
+					serverUrl: 'http://localhost:8080',
+				}),
+			);
 		});
 	});
 
@@ -115,10 +144,24 @@ describe('OnePasswordProvider', () => {
 			mockListVaults.mockResolvedValue([]);
 			await provider.connect();
 
-			mockListVaults.mockRejectedValue(new Error('Connection refused'));
+			mockListVaults.mockRejectedValue(
+				Object.assign(new Error('Connection refused'), { code: 'ECONNREFUSED' }),
+			);
 			const result = await provider.test();
 
 			expect(result).toEqual([false, 'Connection refused']);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'1Password provider test failed',
+				expect.objectContaining({
+					providerName: 'onePassword',
+					providerDisplayName: '1Password',
+					operation: 'test',
+					errorName: 'Error',
+					errorCode: 'ECONNREFUSED',
+					endpoint: 'vaults',
+					serverUrl: 'http://localhost:8080',
+				}),
+			);
 		});
 	});
 
@@ -270,6 +313,24 @@ describe('OnePasswordProvider', () => {
 			await provider.update();
 
 			expect(provider.hasSecret('Empty Fields')).toBe(false);
+		});
+
+		it('should log and rethrow update failures', async () => {
+			mockListVaults.mockRejectedValue(new Error('Service unavailable'));
+
+			await expect(provider.update()).rejects.toThrow('Service unavailable');
+
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to update 1Password provider secrets',
+				expect.objectContaining({
+					providerName: 'onePassword',
+					providerDisplayName: '1Password',
+					operation: 'update',
+					errorName: 'Error',
+					endpoint: 'secrets',
+					serverUrl: 'http://localhost:8080',
+				}),
+			);
 		});
 	});
 

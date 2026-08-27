@@ -1,6 +1,7 @@
 import type { TestInfo } from '@playwright/test';
 import type { CoverageReport, CoverageReportOptions } from 'monocart-coverage-reports';
-import { relative } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, relative } from 'node:path';
 
 /**
  * Frontend E2E coverage via browser-native V8 (Playwright `page.coverage`),
@@ -11,6 +12,85 @@ import { relative } from 'node:path';
  * Gated on COVERAGE_ENABLED so normal test runs pay no collection cost.
  */
 export const COVERAGE_ENABLED = process.env.COVERAGE_ENABLED === 'true';
+
+function packageNameOf(specifier: string): string {
+	const segs = specifier.split('/');
+	return specifier.startsWith('@') ? segs.slice(0, 2).join('/') : segs[0];
+}
+
+function findRepoRoot(): string {
+	let dir = process.cwd();
+	while (!existsSync(join(dir, 'pnpm-workspace.yaml'))) {
+		const parent = dirname(dir);
+		if (parent === dir) throw new Error(`no pnpm-workspace.yaml above ${process.cwd()}`);
+		dir = parent;
+	}
+	return dir;
+}
+
+export interface WorkspaceIndex {
+	/** e.g. `@n8n/design-system` → `packages/frontend/@n8n/design-system`. */
+	names: ReadonlyMap<string, string>;
+	/** Every dir under `packages/` — tells a dir-relative path from a package specifier. */
+	dirs: ReadonlySet<string>;
+}
+
+export function buildWorkspaceIndex(repoRoot: string): WorkspaceIndex {
+	const names = new Map<string, string>();
+	const dirs = new Set<string>();
+	const walk = (absDir: string, relDir: string) => {
+		dirs.add(relDir);
+		for (const entry of readdirSync(absDir, { withFileTypes: true })) {
+			if (!entry.isDirectory() || entry.name === 'node_modules') continue;
+			const abs = join(absDir, entry.name);
+			const rel = `${relDir}/${entry.name}`;
+			const manifest = join(abs, 'package.json');
+			if (existsSync(manifest)) {
+				const { name } = JSON.parse(readFileSync(manifest, 'utf8')) as { name?: string };
+				if (name) names.set(name, rel);
+			}
+			walk(abs, rel); // packages nest (packages/frontend/@n8n/*)
+		}
+	};
+	walk(join(repoRoot, 'packages'), 'packages');
+	return { names, dirs };
+}
+
+const EMPTY_INDEX: WorkspaceIndex = { names: new Map(), dirs: new Set() };
+let workspaceIndexCache: WorkspaceIndex | undefined;
+
+function workspaceIndex(): WorkspaceIndex {
+	if (!workspaceIndexCache) {
+		try {
+			workspaceIndexCache = buildWorkspaceIndex(findRepoRoot());
+		} catch (error) {
+			console.warn(`⚠ coverage: workspace index unavailable (${(error as Error).message})`);
+			workspaceIndexCache = EMPTY_INDEX;
+		}
+	}
+	return workspaceIndexCache;
+}
+
+/** Normalise a post-source-map path to the repo-relative form Codecov and the
+ * impact map key on. Index passed in to keep this pure. */
+export function resolveSourcePath(filePath: string, index: WorkspaceIndex): string {
+	const norm = filePath.replace(/\\/g, '/');
+	if (norm.startsWith('packages/')) return norm;
+	const i = norm.lastIndexOf('packages/');
+	if (i >= 0) return norm.slice(i);
+	if (norm.startsWith('src/')) return `packages/frontend/editor-ui/${norm}`;
+	// Chunks with no source map arrive URL-derived; sourceFilter never sees them
+	// (no sources to filter), so keep them out of the packages/ namespace here.
+	if (/^localhost[-:]\d+\//.test(norm)) return norm;
+	// Backend sources are dir-relative (`cli/src/x.ts`); the frontend bundle is a
+	// package specifier whose dir sits under packages/frontend/, so `packages/` +
+	// name would mislabel it and its changes would match nothing in the map.
+	const asDir = `packages/${norm}`;
+	if (index.dirs.has(asDir.slice(0, asDir.lastIndexOf('/')))) return asDir;
+	const name = packageNameOf(norm);
+	const dir = index.names.get(name);
+	return dir ? `${dir}${norm.slice(name.length)}` : asDir;
+}
 
 /**
  * Shared by the per-test collector (`add`) and the report generator
@@ -28,7 +108,7 @@ export const coverageOptions: CoverageReportOptions = {
 	// Keep first-party application source after source-map expansion; drop deps
 	// and any unmapped dist files. NB nodes-base sources live under `nodes/`,
 	// `credentials/` etc — not `src/` — so don't require `/src/`. The test/mock
-	// exclusions mirror jest.coverage-excludes.js — keep them in sync.
+	// exclusions mirror the per-package vitest coverage excludes — keep them in sync.
 	sourceFilter: (sourcePath) =>
 		!sourcePath.includes('node_modules') &&
 		!sourcePath.includes('/dist/') &&
@@ -37,17 +117,7 @@ export const coverageOptions: CoverageReportOptions = {
 		!sourcePath.endsWith('.test.ts') &&
 		!sourcePath.includes('/__tests__/') &&
 		!sourcePath.includes('/__mocks__/'),
-	// Key Codecov + the impact map on repo-relative `packages/.../src/...`.
-	// Backend map-sources resolve to absolute repo paths (package-qualified);
-	// the frontend bundle resolves relative, so its `src/...` sources have no
-	// package and are attributed to editor-ui.
-	sourcePath: (filePath) => {
-		const norm = filePath.replace(/\\/g, '/');
-		if (norm.startsWith('packages/')) return norm;
-		const i = norm.lastIndexOf('packages/');
-		if (i >= 0) return norm.slice(i);
-		return norm.startsWith('src/') ? `packages/frontend/editor-ui/${norm}` : `packages/${norm}`;
-	},
+	sourcePath: (filePath) => resolveSourcePath(filePath, workspaceIndex()),
 };
 
 /**

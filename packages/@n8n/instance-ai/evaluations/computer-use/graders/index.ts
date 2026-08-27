@@ -55,7 +55,7 @@ export async function applyGrader(grader: Grader, ctx: GradeContext): Promise<Gr
 		case 'security.noSecretLeak':
 			return gradeNoSecretLeak(ctx.trace, grader);
 		case 'llm.taskCompleted': {
-			const { gradeTaskCompleted } = await import('./llm');
+			const { gradeTaskCompleted } = await import('./llm.js');
 			return await gradeTaskCompleted(ctx.trace, ctx.userPrompt, ctx.scenarioCategory, grader);
 		}
 	}

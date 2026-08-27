@@ -2,6 +2,18 @@ import type { CredentialCheckResult } from 'n8n-workflow';
 
 import type { McpToolResult } from './types';
 
+/**
+ * Result of presenting a single missing credential's connection URL to the
+ * client via URL-mode elicitation. `action` mirrors the MCP `ElicitResult`
+ * actions: `accept` (the client opened the connection page), `decline`, or
+ * `cancel`.
+ */
+export interface CredentialGateElicitationOutcome {
+	credentialName: string;
+	credentialType: string;
+	action: 'accept' | 'decline' | 'cancel';
+}
+
 export class MessageFormatter {
 	static formatToolResult(result: unknown, isError = false): McpToolResult {
 		let content: McpToolResult['content'];
@@ -87,5 +99,36 @@ export class MessageFormatter {
 			content: [{ type: 'text', text }],
 			credentialGate: result,
 		};
+	}
+
+	/**
+	 * Formats the outcome of driving the credential gate through URL-mode
+	 * elicitation. Clients that support elicitation surface the connection page
+	 * themselves, so the response only needs to tell the caller what to do next:
+	 * retry once the opened page(s) are connected, and which credentials (if any)
+	 * were left unconnected. Flagged as an error only when something still needs
+	 * connecting so the client keeps prompting.
+	 */
+	static formatCredentialGateElicited(outcomes: CredentialGateElicitationOutcome[]): McpToolResult {
+		const opened = outcomes.filter((o) => o.action === 'accept');
+		const skipped = outcomes.filter((o) => o.action !== 'accept');
+
+		const lines: string[] = [];
+		if (opened.length) {
+			lines.push(
+				'A connection page was opened for the following credential(s). Once connected, retry the request:',
+				...opened.map((o) => `- ${o.credentialName} (${o.credentialType})`),
+			);
+		}
+		if (skipped.length) {
+			lines.push(
+				'These credentials still need to be connected before the tool can run:',
+				...skipped.map((o) => `- ${o.credentialName} (${o.credentialType})`),
+			);
+		}
+
+		const content = [{ type: 'text', text: lines.join('\n') }];
+		// Omit `isError` when nothing is left to connect, matching formatToolResult.
+		return skipped.length > 0 ? { isError: true, content } : { content };
 	}
 }

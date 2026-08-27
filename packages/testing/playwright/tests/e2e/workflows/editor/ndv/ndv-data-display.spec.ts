@@ -60,8 +60,7 @@ test.describe(
 					await expect(n8n.ndv.outputPanel.getSchemaItem(key)).toBeVisible();
 				}
 
-				const objectValueItem = n8n.ndv.outputPanel.getSchemaItem('objectValue');
-				await objectValueItem.locator('.toggle').click();
+				await n8n.ndv.outputPanel.getSchemaItemToggle('objectValue').click();
 
 				for (const key of expandedObjectProps) {
 					await expect(n8n.ndv.outputPanel.getSchemaItem(key)).not.toBeInViewport();
@@ -159,6 +158,7 @@ test.describe(
 				await n8n.canvas.clickZoomToFitButton();
 				await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 					'Workflow executed successfully',
+					{ timeout: 15000 },
 				);
 				await n8n.canvas.openNode('Set3');
 

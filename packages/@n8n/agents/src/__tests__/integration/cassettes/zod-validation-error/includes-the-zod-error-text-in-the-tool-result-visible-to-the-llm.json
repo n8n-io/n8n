@@ -127,7 +127,7 @@
 						{
 							"type": "tool_result",
 							"tool_use_id": "toolu_01J4prxB28Ksk13jkhDsHkMd",
-							"content": "Invalid input for tool find_user: Type validation failed: Value: {\"age\":150}.\nError message: [\n  {\n    \"code\": \"too_big\",\n    \"maximum\": 99,\n    \"type\": \"number\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"age must be at most 99\",\n    \"path\": [\n      \"age\"\n    ]\n  }\n]",
+							"content": "AI_InvalidToolInputError: Invalid input for tool find_user: AI_TypeValidationError: Type validation failed: Value: {\"age\":150}.\nError message: [\n  {\n    \"code\": \"too_big\",\n    \"maximum\": 99,\n    \"type\": \"number\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"age must be at most 99\",\n    \"path\": [\n      \"age\"\n    ]\n  }\n]",
 							"is_error": true
 						}
 					]
@@ -237,7 +237,7 @@
 						{
 							"type": "tool_result",
 							"tool_use_id": "toolu_01J4prxB28Ksk13jkhDsHkMd",
-							"content": "Invalid input for tool find_user: Type validation failed: Value: {\"age\":150}.\nError message: [\n  {\n    \"code\": \"too_big\",\n    \"maximum\": 99,\n    \"type\": \"number\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"age must be at most 99\",\n    \"path\": [\n      \"age\"\n    ]\n  }\n]",
+							"content": "AI_InvalidToolInputError: Invalid input for tool find_user: AI_TypeValidationError: Type validation failed: Value: {\"age\":150}.\nError message: [\n  {\n    \"code\": \"too_big\",\n    \"maximum\": 99,\n    \"type\": \"number\",\n    \"inclusive\": true,\n    \"exact\": false,\n    \"message\": \"age must be at most 99\",\n    \"path\": [\n      \"age\"\n    ]\n  }\n]",
 							"is_error": true
 						}
 					]

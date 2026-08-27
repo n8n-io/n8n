@@ -6,7 +6,14 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "installed_nodes" ("name"	char(200) NOT NULL,"type"	char(200) NOT NULL,"latestVersion"	INTEGER DEFAULT 1,"package"	char(214) NOT NULL,PRIMARY KEY("name"),FOREIGN KEY("package") REFERENCES "installed_packages"("packageName") ON DELETE CASCADE ON UPDATE CASCADE)
+CREATE TABLE "installed_nodes" (
+				"name" char(200) NOT NULL,
+				"type" char(200) NOT NULL,
+				"latestVersion" REAL DEFAULT 1,
+				"package" char(214) NOT NULL,
+				PRIMARY KEY ("name"),
+				FOREIGN KEY ("package") REFERENCES "installed_packages" ("packageName") ON DELETE CASCADE ON UPDATE CASCADE
+			)
 ```
 
 </details>
@@ -15,7 +22,7 @@ CREATE TABLE "installed_nodes" ("name"	char(200) NOT NULL,"type"	char(200) NOT N
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
-| latestVersion | INTEGER | 1 | true |  |  |  |
+| latestVersion | REAL | 1 | true |  |  |  |
 | name | char(200) |  | false |  |  |  |
 | package | char(214) |  | false |  | [installed_packages](installed_packages.md) |  |
 | type | char(200) |  | false |  |  |  |
@@ -42,7 +49,7 @@ erDiagram
 "installed_nodes" }o--|| "installed_packages" : "FOREIGN KEY (package) REFERENCES installed_packages (packageName) ON UPDATE CASCADE ON DELETE CASCADE MATCH NONE"
 
 "installed_nodes" {
-  INTEGER latestVersion
+  REAL latestVersion
   char_200_ name PK
   char_214_ package FK
   char_200_ type

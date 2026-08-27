@@ -3,6 +3,7 @@ const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot, sandboxFsMockState 
 		packWorkspaceSdkMockState: {
 			isEnabled: false,
 			packWorkspaceSdk: vi.fn(),
+			packSandboxLinkedWorkspacePackages: vi.fn(),
 		},
 		resolveMockWorkspaceRoot: async (workspace: {
 			filesystem?: { basePath?: string };
@@ -34,6 +35,7 @@ const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot, sandboxFsMockState 
 vi.mock('../pack-workspace-sdk', () => ({
 	isLinkWorkspaceSdkEnabled: () => packWorkspaceSdkMockState.isEnabled,
 	packWorkspaceSdk: packWorkspaceSdkMockState.packWorkspaceSdk,
+	packSandboxLinkedWorkspacePackages: packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages,
 }));
 
 vi.mock('@n8n/agents/sandbox', async (importOriginal) => {
@@ -55,6 +57,8 @@ vi.mock('../sandbox-fs', () => ({
 			throw new Error(`Failed to write file ${path}: ${result.stderr}`);
 		}
 	},
+	retryTransientSandboxIo: async (op: () => Promise<unknown>) => await op(),
+	isTransientSandboxIoError: () => false,
 	escapeSingleQuotes: (value: string) => value.replace(/'/g, "'\\''"),
 }));
 
@@ -102,7 +106,7 @@ function createSetupContext(
 			listSearchable: vi.fn().mockResolvedValue([]),
 		},
 		workflowService: {
-			list: vi.fn().mockResolvedValue([]),
+			list: vi.fn().mockResolvedValue({ workflows: [], total: 0, totalInScope: 0 }),
 			get: vi.fn(),
 		},
 		...(templatesBundle
@@ -190,21 +194,25 @@ function loadSetupSandboxWorkspaceWithFsMocks(
 }
 
 async function loadLinkWorkspaceSdkWithMocks(
-	packWorkspaceSdk: Mock,
+	packSandboxLinkedWorkspacePackages: Mock,
 	runInSandbox: RunInSandboxMock,
 ): Promise<LinkWorkspaceSdkIfEnabled> {
 	packWorkspaceSdkMockState.isEnabled = true;
-	packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
-	packWorkspaceSdkMockState.packWorkspaceSdk.mockImplementation(packWorkspaceSdk);
+	packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages.mockReset();
+	packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages.mockImplementation(
+		packSandboxLinkedWorkspacePackages,
+	);
 	vi.resetModules();
 	vi.doMock('../sandbox-fs', () => ({
 		runInSandbox,
 		readFileViaSandbox: vi.fn(),
 		writeFileViaSandbox: vi.fn(),
+		retryTransientSandboxIo: async (op: () => Promise<unknown>) => await op(),
+		isTransientSandboxIoError: () => false,
 		escapeSingleQuotes: (value: string) => value.replace(/'/g, "'\\''"),
 	}));
 
-	const sandboxSetup = (await import('../sandbox-setup')) as {
+	const sandboxSetup = (await import('../sandbox-setup.js')) as {
 		linkWorkspaceSdkIfEnabled: LinkWorkspaceSdkIfEnabled;
 	};
 
@@ -229,7 +237,7 @@ async function loadSandboxPackageJson(linkSdk: boolean): Promise<{
 		delete process.env.N8N_INSTANCE_AI_SANDBOX_LINK_SDK;
 	}
 
-	const sandboxSetup = await import('../sandbox-setup');
+	const sandboxSetup = await import('../sandbox-setup.js');
 	const packageJson = sandboxSetup.PACKAGE_JSON;
 
 	return jsonParse<{
@@ -440,10 +448,10 @@ describe('setupSandboxWorkspace', () => {
 		>(async () => {});
 		const context = createSetupContext();
 		const workflowService = context.workflowService as unknown as {
-			list: Mock<(...args: [{ limit: number }]) => Promise<Array<{ id: string }>>>;
+			list: Mock<(...args: [{ limit: number }]) => Promise<{ workflows: Array<{ id: string }> }>>;
 			get: Mock<(...args: [string]) => Promise<Record<string, unknown>>>;
 		};
-		workflowService.list.mockResolvedValue([{ id: '../escape' }]);
+		workflowService.list.mockResolvedValue({ workflows: [{ id: '../escape' }] });
 		workflowService.get.mockResolvedValue({ id: '../escape' });
 
 		await expect(
@@ -557,14 +565,36 @@ describe('setupSandboxWorkspace', () => {
 		);
 	});
 
-	it('retries packing the workspace SDK after a null pack result', async () => {
-		const tarball = Buffer.from('sdk');
-		const packWorkspaceSdk = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({
-			filename: 'workflow-sdk.tgz',
-			tarball,
-			version: '1.0.0',
-			sdkPath: '/host/sdk',
-		});
+	it('retries packing linked workspace packages after a null pack result', async () => {
+		const utilsTarball = Buffer.from('utils');
+		const workflowTarball = Buffer.from('workflow');
+		const sdkTarball = Buffer.from('sdk');
+		const packSandboxLinkedWorkspacePackages = vi
+			.fn()
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce([
+				{
+					filename: 'n8n-utils.tgz',
+					tarball: utilsTarball,
+					version: '1.41.0',
+					packageName: '@n8n/utils',
+					packagePath: '/host/utils',
+				},
+				{
+					filename: 'n8n-workflow.tgz',
+					tarball: workflowTarball,
+					version: '2.32.0',
+					packageName: 'n8n-workflow',
+					packagePath: '/host/workflow',
+				},
+				{
+					filename: 'workflow-sdk.tgz',
+					tarball: sdkTarball,
+					version: '1.0.0',
+					packageName: '@n8n/workflow-sdk',
+					packagePath: '/host/sdk',
+				},
+			]);
 		const runInSandbox: RunInSandboxMock =
 			vi.fn<
 				(
@@ -573,7 +603,7 @@ describe('setupSandboxWorkspace', () => {
 			>();
 		runInSandbox.mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
 		const linkWorkspaceSdkIfEnabled = await loadLinkWorkspaceSdkWithMocks(
-			packWorkspaceSdk,
+			packSandboxLinkedWorkspacePackages,
 			runInSandbox,
 		);
 		const writeFile = vi.fn<(...args: [string, Buffer, { recursive?: boolean }?]) => Promise<void>>(
@@ -595,14 +625,27 @@ describe('setupSandboxWorkspace', () => {
 
 		const logger = { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
 		await expect(linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger)).rejects.toThrow(
-			'workspace SDK could not be packed',
+			'workspace packages could not be packed',
 		);
 		await linkWorkspaceSdkIfEnabled(workspace, '/workspace', logger);
 
-		expect(packWorkspaceSdk).toHaveBeenCalledTimes(2);
-		expect(writeFile).toHaveBeenCalledWith('/workspace/workflow-sdk.tgz', tarball, {
+		expect(packSandboxLinkedWorkspacePackages).toHaveBeenCalledTimes(2);
+		expect(writeFile).toHaveBeenCalledWith('/workspace/n8n-utils.tgz', utilsTarball, {
 			recursive: true,
 		});
+		expect(writeFile).toHaveBeenCalledWith('/workspace/n8n-workflow.tgz', workflowTarball, {
+			recursive: true,
+		});
+		expect(writeFile).toHaveBeenCalledWith('/workspace/workflow-sdk.tgz', sdkTarball, {
+			recursive: true,
+		});
+		expect(runInSandbox).toHaveBeenCalledWith(
+			workspace,
+			expect.stringContaining(
+				"npm install '/workspace/n8n-utils.tgz' '/workspace/n8n-workflow.tgz' '/workspace/workflow-sdk.tgz'",
+			),
+			'/workspace',
+		);
 	});
 });
 describe('formatNodeCatalogLine', () => {
@@ -613,7 +656,7 @@ describe('formatNodeCatalogLine', () => {
 		packWorkspaceSdkMockState.isEnabled = false;
 		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 		vi.resetModules();
-		({ formatNodeCatalogLine } = await import('../sandbox-setup'));
+		({ formatNodeCatalogLine } = await import('../sandbox-setup.js'));
 	});
 
 	it('should format a basic node with a string version', () => {

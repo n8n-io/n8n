@@ -10,6 +10,7 @@
 | name | varchar(128) |  | false |  |  |  |
 | objective | text |  | false |  |  | User-authored instruction sent to the agent when this task runs |
 | taskId | varchar(32) |  | false |  |  | Stable task ID referenced from the published agent JSON config |
+| timezone | varchar(64) |  | true |  |  | IANA timezone the cron is evaluated in; null falls back to the instance timezone |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | versionId | varchar(36) |  | false |  | [public.agent_history](public.agent_history.md) | Published agent_history version this task snapshot belongs to |
 
@@ -48,6 +49,7 @@ erDiagram
   varchar_128_ name
   text objective
   varchar_32_ taskId
+  varchar_64_ timezone
   timestamp_3__with_time_zone updatedAt
   varchar_36_ versionId FK
 }

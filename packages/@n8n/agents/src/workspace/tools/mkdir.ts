@@ -18,8 +18,11 @@ export function createMkdirTool(filesystem: WorkspaceFilesystem): BuiltTool {
 				success: z.boolean().describe('Whether the directory was created'),
 			}),
 		)
-		.handler(async (input) => {
-			await filesystem.mkdir(input.path, { recursive: input.recursive });
+		.handler(async (input, ctx) => {
+			await filesystem.mkdir(input.path, {
+				recursive: input.recursive,
+				abortSignal: ctx.abortSignal,
+			});
 			return { success: true };
 		})
 		.build();

@@ -188,7 +188,7 @@ describe('AgentMessageList — forLlm observation memory', () => {
 		expect(prompt).toContain('* CRITICAL (14:30) User wants the SDK to stay unopinionated.');
 	});
 
-	it('places observation memory in a separate system message with its own cache breakpoint', () => {
+	it('places observation memory in a separate, uncached system message so only instructions carry the cache breakpoint', () => {
 		const observationLog = [
 			'<observations>',
 			'* CRITICAL (14:30) User wants the SDK to stay unopinionated.',
@@ -208,11 +208,12 @@ describe('AgentMessageList — forLlm observation memory', () => {
 			content: 'Base instructions',
 			providerOptions: cacheOptions,
 		});
-		expect(system[1]).toMatchObject({
+		// The observation message changes on nearly every call, so it must never
+		// be marked — doing so would just pay the cache-write premium for no read.
+		expect(system[1]).toEqual({
 			role: 'system',
-			providerOptions: cacheOptions,
+			content: expect.stringContaining('<observations>') as unknown as string,
 		});
-		expect(system[1]?.content).toContain('<observations>');
 		expect(system[1]?.content).not.toContain('Base instructions');
 	});
 
@@ -235,6 +236,98 @@ describe('AgentMessageList — forLlm observation memory', () => {
 				}),
 			]),
 		);
+	});
+});
+
+describe('buildSystemMessages — volatile tool-instruction fragments', () => {
+	it('places volatile instructions in an uncached second message when observation memory is absent', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			undefined,
+			undefined,
+			'<built_in_rules>\n- Newly loaded tool rule.\n</built_in_rules>',
+		);
+
+		expect(Array.isArray(system)).toBe(true);
+		if (!Array.isArray(system)) throw new Error('Expected split system messages');
+		expect(system).toHaveLength(2);
+		expect(system[0]).toEqual({ role: 'system', content: 'Base instructions' });
+		expect(system[1]?.content).toContain('Newly loaded tool rule.');
+		expect(system[1]?.providerOptions).toBeUndefined();
+		// The cached instructions message must stay byte-identical regardless of
+		// what volatile content exists — this is the whole point of the split.
+		expect(system[0]?.content).toBe('Base instructions');
+	});
+
+	it('combines volatile instructions and observation memory in the same uncached message', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			'<observations>\n* Some memory.\n</observations>',
+			undefined,
+			'<built_in_rules>\n- Newly loaded tool rule.\n</built_in_rules>',
+		);
+
+		expect(Array.isArray(system)).toBe(true);
+		if (!Array.isArray(system)) throw new Error('Expected split system messages');
+		expect(system).toHaveLength(2);
+		expect(system[1]?.content).toContain('Newly loaded tool rule.');
+		expect(system[1]?.content).toContain('Some memory.');
+	});
+
+	it('keeps the single-message shape when neither observation memory nor volatile instructions are present', () => {
+		const system = buildSystemMessages('Base instructions', undefined, undefined, undefined);
+
+		expect(Array.isArray(system)).toBe(false);
+		expect(system).toEqual({ role: 'system', content: 'Base instructions' });
+	});
+
+	it('folds the mcp-connection note into the uncached volatile message, leaving cached base instructions unchanged', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			undefined,
+			undefined,
+			undefined,
+			'<mcp-connection-status>\n- dead: fetch failed\n</mcp-connection-status>',
+		);
+
+		expect(Array.isArray(system)).toBe(true);
+		if (!Array.isArray(system)) throw new Error('Expected split system messages');
+		expect(system).toHaveLength(2);
+		// Cached prefix must stay byte-identical regardless of volatile content.
+		expect(system[0]?.content).toBe('Base instructions');
+		expect(system[1]?.content).toContain('mcp-connection-status');
+		expect(system[1]?.content).toContain('dead');
+		expect(system[1]?.providerOptions).toBeUndefined();
+	});
+
+	it('combines the mcp-connection note with observation memory and volatile instructions in one uncached message', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			'<observations>\n* Some memory.\n</observations>',
+			undefined,
+			'<built_in_rules>\n- Newly loaded tool rule.\n</built_in_rules>',
+			'<mcp-connection-status>\n- dead: fetch failed\n</mcp-connection-status>',
+		);
+
+		expect(Array.isArray(system)).toBe(true);
+		if (!Array.isArray(system)) throw new Error('Expected split system messages');
+		expect(system[0]?.content).toBe('Base instructions');
+		expect(system[1]?.content).toContain('Newly loaded tool rule.');
+		expect(system[1]?.content).toContain('Some memory.');
+		expect(system[1]?.content).toContain('mcp-connection-status');
+	});
+
+	it('keeps the single-message shape when the mcp-connection note is absent', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+		);
+
+		expect(Array.isArray(system)).toBe(false);
+		expect(system).toEqual({ role: 'system', content: 'Base instructions' });
 	});
 });
 
@@ -420,5 +513,39 @@ describe('AgentMessageList — setToolCallError', () => {
 		expect((block as ContentToolCall & { state: 'rejected' }).error).toBe('Error: boom');
 		// output should be gone
 		expect((block as unknown as { output?: unknown }).output).toBeUndefined();
+	});
+});
+
+describe('AgentMessageList — markToolCallSuspended', () => {
+	it('stamps suspension info on a pending tool-call block', () => {
+		const list = new AgentMessageList();
+		list.addResponse([makePendingToolCallMsg('id-1')]);
+
+		list.markToolCallSuspended('id-1', { message: 'Edit My Workflow (ID: abc)?', requestId: 'r1' });
+
+		const host = list
+			.turnDelta()
+			.find((m) => 'content' in m && m.content.some((c) => c.type === 'tool-call')) as Message;
+		const block = host.content.find((c) => c.type === 'tool-call') as ContentToolCall & {
+			state: 'pending';
+		};
+		expect(block.state).toBe('pending');
+		expect(block.suspension).toEqual({ message: 'Edit My Workflow (ID: abc)?', requestId: 'r1' });
+	});
+
+	it('is a no-op for settled blocks and unknown ids', () => {
+		const list = new AgentMessageList();
+		list.addResponse([makePendingToolCallMsg('id-1')]);
+		list.setToolCallResult('id-1', { ok: true });
+
+		list.markToolCallSuspended('id-1', { message: 'stale' });
+		list.markToolCallSuspended('missing', { message: 'stale' });
+
+		const host = list
+			.turnDelta()
+			.find((m) => 'content' in m && m.content.some((c) => c.type === 'tool-call')) as Message;
+		const block = host.content.find((c) => c.type === 'tool-call') as ContentToolCall;
+		expect(block.state).toBe('resolved');
+		expect('suspension' in block).toBe(false);
 	});
 });

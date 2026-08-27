@@ -112,12 +112,14 @@ describe('Linear recorded integration replay', () => {
 				target: { threadId: 'linear:ISSUE_1:c:COMMENT_SOURCE:s:AGENT_SESSION_1' },
 			});
 
+			// Strip the chat-turn reply expectation: a text-only respond is only
+			// allowed outside chat-triggered turns (e.g. task runs).
 			const result = await ctx.actionExecutor.execute({
 				descriptor: ctx.descriptor,
 				action: 'respond',
 				input: { message: { text: 'Action response' } },
 				awaitResponse: false,
-				currentMessageContext: context,
+				currentMessageContext: { ...context!, replyExpectation: undefined },
 			});
 
 			expect(result).toMatchObject({

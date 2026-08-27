@@ -13,7 +13,9 @@ import type { OrchestrationContext } from '../types';
 const updateChecklistAction = z.object({
 	action: z
 		.literal('update-checklist')
-		.describe('Write or update a visible task checklist for multi-step work'),
+		.describe(
+			'Write or update a lightweight visible checklist for multi-step work that does not need scheduler-driven execution. For coordinated background tasks, use create-tasks instead.',
+		),
 	tasks: taskListSchema.shape.tasks,
 });
 
@@ -93,7 +95,9 @@ async function handleCorrectTask(
 
 export function createTaskControlTool(context: OrchestrationContext) {
 	return new Tool('task-control')
-		.description('Manage tasks and background work.')
+		.description(
+			'Manage tasks and background work. Use action="update-checklist" only for lightweight visible checklists that do not need scheduler-driven execution; for coordinated background tasks use create-tasks instead.',
+		)
 		.input(inputSchema)
 		.handler(async (input: Input) => {
 			switch (input.action) {

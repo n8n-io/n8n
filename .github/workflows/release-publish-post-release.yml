@@ -49,6 +49,18 @@ jobs:
       version: ${{ inputs.new_stable_version }}
       release-channel: stable
 
+  promote-backport-labels:
+    name: Promote backport labels
+    if: |
+      inputs.release_type != 'rc' &&
+      inputs.bump == 'minor'
+    uses: ./.github/workflows/release-promote-backport-labels.yml
+    secrets:
+      N8N_ASSISTANT_APP_ID: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+      N8N_ASSISTANT_PRIVATE_KEY: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+    with:
+      version: ${{ inputs.version }}
+
   promote-previous-minor-github-release-to-latest:
     name: Promote previous minor Github Release to latest
     if: |
@@ -68,9 +80,12 @@ jobs:
 
   ensure-correct-latest-version-on-npm:
     name: Ensure correct latest version on npm
+    # Also runs on beta patches: standalone packages pin `latest` to the newest
+    # beta, so every beta publish needs a re-pin, not just stable promotions.
     if: |
       inputs.bump == 'minor' ||
-      (inputs.track == 'stable' && inputs.release_type != 'rc')
+      (inputs.track == 'stable' && inputs.release_type != 'rc') ||
+      (inputs.track == 'beta' && inputs.release_type != 'rc')
     uses: ./.github/workflows/release-set-stable-npm-packages-to-latest.yml
     secrets: inherit
 

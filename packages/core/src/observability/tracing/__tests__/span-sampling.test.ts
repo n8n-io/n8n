@@ -255,16 +255,27 @@ describe('shouldIgnoreIncomingRequest', () => {
 		'/rest/telemetry/proxy/v1/track?foo=bar',
 		'/healthz',
 		'/healthz/readiness',
+		'/rest/instance-ai/events/abc-123',
+		'/mcp-server/http',
+		'/mcp-server/http?x=1',
+		'/mcp',
+		'/mcp/some/webhook',
+		'/mcp-test/some/webhook',
 	])('ignores noise path %s', (path) => {
 		expect(shouldIgnoreIncomingRequest(path)).toBe(true);
 	});
 
-	it.each(['/rest/workflows', '/rest/phony', '/', '/healthcheck'])(
-		'keeps signal-bearing path %s',
-		(path) => {
-			expect(shouldIgnoreIncomingRequest(path)).toBe(false);
-		},
-	);
+	it.each([
+		'/rest/workflows',
+		'/rest/phony',
+		'/',
+		'/healthcheck',
+		'/mcp-oauth/authorize', // real auth traffic must stay traced
+		'/rest/instance-ai/threads', // non-events instance-ai routes
+		'/mcpx', // no boundary match
+	])('keeps signal-bearing path %s', (path) => {
+		expect(shouldIgnoreIncomingRequest(path)).toBe(false);
+	});
 });
 
 describe('shouldIgnoreOutgoingRequest', () => {

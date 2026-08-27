@@ -18,9 +18,13 @@ export function useRouteWorkflowId(): ComputedRef<string> {
 	const route = useRoute();
 
 	return computed(() => {
-		if (route.name === VIEWS.DEMO || route.name === VIEWS.DEMO_DIFF) return 'demo';
+		// `route` is undefined outside a router context (e.g. a consumer that
+		// instantiates without one). Guard so the fallback yields '' instead of
+		// throwing — matching the crash-proof behaviour of the store read this
+		// composable replaced.
+		if (route?.name === VIEWS.DEMO || route?.name === VIEWS.DEMO_DIFF) return 'demo';
 
-		const workflowId = route.params.workflowId;
+		const workflowId = route?.params?.workflowId;
 		return (Array.isArray(workflowId) ? workflowId[0] : workflowId) ?? '';
 	});
 }

@@ -5,12 +5,12 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WHATS_NEW_MODAL_KEY, VERSIONS_MODAL_KEY } from '@/app/constants';
-import { useVersionsStore } from '@/app/stores/versions.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { useVersionsStore } from '@n8n/stores/versions.store';
+import { useUsersStore } from '@n8n/stores/users.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 
 import WhatsNewModal from './WhatsNewModal.vue';
-import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => {
@@ -22,7 +22,7 @@ vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	};
 });
 
-vi.mock('@/app/composables/useTelemetry', () => {
+vi.mock('@n8n/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {
@@ -62,7 +62,7 @@ describe('WhatsNewModal', () => {
 	beforeEach(() => {
 		createTestingPinia();
 		uiStore = mockedStore(useUIStore);
-		uiStore.modalsById = {
+		uiStore.modalStateById = {
 			[WHATS_NEW_MODAL_KEY]: {
 				open: true,
 			},
@@ -149,6 +149,25 @@ describe('WhatsNewModal', () => {
 		expect(getByTestId('whats-new-item-1')).toMatchSnapshot();
 		expect(queryByTestId('whats-new-modal-update-button')).not.toBeInTheDocument();
 		expect(queryByTestId('whats-new-modal-next-versions-link')).not.toBeInTheDocument();
+	});
+
+	it('should render a close button that dismisses the modal', async () => {
+		const { getByTestId, getByRole } = renderComponent({
+			props: {
+				data: {
+					articleId: 1,
+				},
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('whatsNew-modal')).toBeInTheDocument());
+
+		const closeButton = getByRole('button', { name: 'Close this dialog' });
+		expect(closeButton).toBeInTheDocument();
+
+		await userEvent.click(closeButton);
+
+		expect(uiStore.closeModal).toHaveBeenCalledWith(WHATS_NEW_MODAL_KEY);
 	});
 
 	it('should render with update button enabled', async () => {

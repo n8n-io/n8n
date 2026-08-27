@@ -1,7 +1,7 @@
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 import { mockDeep } from 'vitest-mock-extended';
 import { NodeOperationError } from 'n8n-workflow';
-import type { ITriggerFunctions } from 'n8n-workflow';
+import type { IRun, ITriggerFunctions } from 'n8n-workflow';
 
 import { AmqpTrigger } from './AmqpTrigger.node';
 
@@ -106,7 +106,7 @@ describe('AMQP Trigger Node', () => {
 		});
 
 		await expect(manualTriggerFunction?.()).rejects.toThrow(
-			'Aborted because no message received within 15 seconds',
+			'Aborted because no message was received within 15 seconds',
 		);
 		timeoutSpy.mockRestore();
 	});
@@ -157,16 +157,18 @@ describe('AMQP Trigger Node', () => {
 
 		await trigger.trigger.call(triggerFunctions);
 
+		const addCreditSpy = vi.fn();
 		eventHandlers['message']({
 			message: { body: 'invalid json {', message_id: 1 },
 			receiver: {
-				has_credit: vi.fn().mockReturnValue(true),
+				add_credit: addCreditSpy,
 			},
 		});
 
-		await new Promise((resolve) => setTimeout(resolve, 10));
+		await new Promise((resolve) => setTimeout(resolve, 30));
 
 		expect(saveFailedExecution).toHaveBeenCalledWith(expect.any(NodeOperationError));
+		expect(addCreditSpy).toHaveBeenCalledWith(1);
 	});
 
 	it('should handle errors in manual mode and reject the promise', async () => {
@@ -271,14 +273,14 @@ describe('AMQP Trigger Node', () => {
 		eventHandlers['message']({
 			message,
 			receiver: {
-				has_credit: vi.fn().mockReturnValue(true),
+				add_credit: vi.fn(),
 			},
 		});
 
 		expect(emit).toHaveBeenCalled();
 	});
 
-	it('should add credit when receiver has no credit', async () => {
+	it('should release 1 credit after a message completes', async () => {
 		const addCreditSpy = vi.fn();
 		await testTriggerNode(AmqpTrigger, {
 			mode: 'trigger',
@@ -292,18 +294,183 @@ describe('AMQP Trigger Node', () => {
 		});
 
 		vi.useFakeTimers();
-		const message = { body: 'hello', message_id: 1 };
-		eventHandlers['message']({
-			message,
-			receiver: {
-				has_credit: vi.fn().mockReturnValue(false),
-				add_credit: addCreditSpy,
-			},
-		});
+		await Promise.resolve(
+			eventHandlers['message']({
+				message: { body: 'hello', message_id: 1 },
+				receiver: { add_credit: addCreditSpy },
+			}),
+		);
 
 		vi.advanceTimersByTime(10);
 		vi.useRealTimers();
 
-		expect(addCreditSpy).toHaveBeenCalledWith(100);
+		expect(addCreditSpy).toHaveBeenCalledTimes(1);
+		expect(addCreditSpy).toHaveBeenCalledWith(1);
+	});
+
+	it('should release 1 credit per completed message when multiple are in flight', async () => {
+		const addCreditSpy = vi.fn();
+		await testTriggerNode(AmqpTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					sink: 'queue://test',
+					options: { pullMessagesNumber: 3 },
+				},
+			},
+			credential: { hostname: 'localhost', port: 5672 },
+		});
+
+		vi.useFakeTimers();
+		const receiver = { add_credit: addCreditSpy };
+		await Promise.all(
+			[1, 2, 3].map(async (id) => {
+				await Promise.resolve(
+					eventHandlers['message']({ message: { body: 'hello', message_id: id }, receiver }),
+				);
+			}),
+		);
+
+		vi.advanceTimersByTime(15);
+		vi.useRealTimers();
+
+		const totalCreditsGranted = addCreditSpy.mock.calls.reduce(
+			(sum: number, [credits]) => sum + (credits as number),
+			0,
+		);
+		expect(totalCreditsGranted).toBe(3);
+	});
+
+	it('should not release credit before the execution finishes when parallelProcessing is false', async () => {
+		const addCreditSpy = vi.fn();
+		const { emit } = await testTriggerNode(AmqpTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					sink: 'queue://test',
+					options: { parallelProcessing: false },
+				},
+			},
+			credential: { hostname: 'localhost', port: 5672 },
+		});
+
+		vi.useFakeTimers();
+		const handlerPromise = eventHandlers['message']({
+			message: { body: 'hello', message_id: 1 },
+			receiver: { add_credit: addCreditSpy },
+		});
+
+		await vi.advanceTimersByTimeAsync(100);
+		expect(addCreditSpy).not.toHaveBeenCalled();
+
+		emit.mock.calls[0][2]?.resolve({} as IRun);
+		await Promise.resolve(handlerPromise);
+
+		await vi.advanceTimersByTimeAsync(15);
+		vi.useRealTimers();
+		expect(addCreditSpy).toHaveBeenCalledWith(1);
+	});
+
+	it('should grant only the free slots when the receiver reopens after a reconnect', async () => {
+		const addCreditSpy = vi.fn();
+		await testTriggerNode(AmqpTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					sink: 'queue://test',
+					options: { pullMessagesNumber: 3, sleepTime: 5 },
+				},
+			},
+			credential: { hostname: 'localhost', port: 5672 },
+		});
+
+		const receiver = { add_credit: addCreditSpy };
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
+
+		vi.useFakeTimers();
+		await Promise.resolve(
+			eventHandlers['message']({ message: { body: 'a', message_id: 1 }, receiver }),
+		);
+		await Promise.resolve(
+			eventHandlers['message']({ message: { body: 'b', message_id: 2 }, receiver }),
+		);
+
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenLastCalledWith(1);
+
+		vi.advanceTimersByTime(10);
+		vi.useRealTimers();
+
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
+	});
+
+	it('should not release credit for executions that finish while the link is down', async () => {
+		const addCreditSpy = vi.fn();
+		await testTriggerNode(AmqpTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					sink: 'queue://test',
+					options: { pullMessagesNumber: 3, sleepTime: 5 },
+				},
+			},
+			credential: { hostname: 'localhost', port: 5672 },
+		});
+
+		const receiver = { add_credit: addCreditSpy };
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
+
+		vi.useFakeTimers();
+		await Promise.resolve(
+			eventHandlers['message']({ message: { body: 'a', message_id: 1 }, receiver }),
+		);
+		await Promise.resolve(
+			eventHandlers['message']({ message: { body: 'b', message_id: 2 }, receiver }),
+		);
+
+		eventHandlers['disconnected']({});
+		addCreditSpy.mockClear();
+
+		// both executions finish while disconnected: slots are freed but no credit is added
+		vi.advanceTimersByTime(10);
+		vi.useRealTimers();
+		expect(addCreditSpy).not.toHaveBeenCalled();
+
+		// the reopened receiver grants all free slots, restoring the full window
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenCalledTimes(1);
+		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
+	});
+
+	it('should resume releasing credit per completion after the receiver reopens', async () => {
+		const addCreditSpy = vi.fn();
+		await testTriggerNode(AmqpTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					sink: 'queue://test',
+					options: { pullMessagesNumber: 3, sleepTime: 5 },
+				},
+			},
+			credential: { hostname: 'localhost', port: 5672 },
+		});
+
+		const receiver = { add_credit: addCreditSpy };
+		eventHandlers['disconnected']({});
+		eventHandlers['receiver_open']({ receiver });
+		expect(addCreditSpy).toHaveBeenLastCalledWith(3);
+
+		vi.useFakeTimers();
+		await Promise.resolve(
+			eventHandlers['message']({ message: { body: 'a', message_id: 1 }, receiver }),
+		);
+		addCreditSpy.mockClear();
+
+		vi.advanceTimersByTime(10);
+		vi.useRealTimers();
+		expect(addCreditSpy).toHaveBeenCalledWith(1);
 	});
 });

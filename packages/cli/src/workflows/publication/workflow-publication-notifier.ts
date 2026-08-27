@@ -45,7 +45,7 @@ export class WorkflowPublicationNotifier {
 	 */
 	private async wakeLocalConsumer(): Promise<void> {
 		const { WorkflowPublicationOutboxConsumer } = await import(
-			'./workflow-publication-outbox-consumer'
+			'./workflow-publication-outbox-consumer.js'
 		);
 		await Container.get(WorkflowPublicationOutboxConsumer).wakeUp();
 	}

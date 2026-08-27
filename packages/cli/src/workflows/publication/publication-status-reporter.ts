@@ -1,3 +1,4 @@
+import type { WorkflowPublicationStatusMessage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	WorkflowPublicationOutbox,
@@ -5,11 +6,13 @@ import {
 	WorkflowPublicationTriggerStatusRepository,
 	type TriggerStatusRow,
 } from '@n8n/db';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { Push } from '@/push';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type {
 	FailedTriggerPublicationStatus,
 	PublicationResult,
@@ -23,6 +26,12 @@ import type {
  * its side effects: persisting per-trigger status rows, clearing legacy activation
  * errors on success, and pushing publication status to the UI.
  */
+const SKIP_LOG_MESSAGE: Record<PublicationSkipReason, string> = {
+	'workflow-not-found': 'Workflow not found',
+	'node-ids-healed': 'Version was healed and republished; its own record applies it',
+	superseded: 'Version was superseded by a concurrent publication',
+};
+
 @Service()
 export class PublicationStatusReporter {
 	constructor(
@@ -31,6 +40,7 @@ export class PublicationStatusReporter {
 		private readonly outboxRepository: WorkflowPublicationOutboxRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly push: Push,
+		private readonly publisher: Publisher,
 		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
@@ -40,7 +50,7 @@ export class PublicationStatusReporter {
 		switch (result.type) {
 			case 'completed': {
 				await this.complete(record, this.toRows(record, result.triggerStatuses));
-				this.push.broadcast({
+				this.pushStatus({
 					type: 'workflowActivated',
 					data: { workflowId: record.workflowId, activeVersionId: record.publishedVersionId },
 				});
@@ -49,7 +59,7 @@ export class PublicationStatusReporter {
 
 			case 'unpublished': {
 				await this.complete(record, /*triggerStatuses=*/ []);
-				this.push.broadcast({
+				this.pushStatus({
 					type: 'workflowDeactivated',
 					data: { workflowId: record.workflowId },
 				});
@@ -103,9 +113,6 @@ export class PublicationStatusReporter {
 	 * surviving triggers running. Marks the outbox record `partial_success`,
 	 * full-replaces the workflow's per-trigger status rows, and pushes the
 	 * per-node failure detail to connected clients. The workflow is not unpublished.
-	 *
-	 * The push is leader-local for now; multi-main pubsub routing is tracked as
-	 * follow-up work (see CAT-3423).
 	 */
 	private async reportPartial(
 		record: WorkflowPublicationOutbox,
@@ -131,7 +138,7 @@ export class PublicationStatusReporter {
 			await this.outboxRepository.markPartialSuccess(record.id, errorMessage, trx);
 		});
 
-		this.push.broadcast({
+		this.pushStatus({
 			type: 'workflowPartiallyActivated',
 			data: {
 				workflowId: record.workflowId,
@@ -155,6 +162,7 @@ export class PublicationStatusReporter {
 			nodeId: triggerStatus.nodeId,
 			versionId: record.publishedVersionId,
 			status: triggerStatus.status,
+			triggerKind: triggerStatus.triggerKind,
 			errorMessage: triggerStatus.status === 'failed' ? triggerStatus.errorMessage : null,
 		}));
 	}
@@ -168,12 +176,32 @@ export class PublicationStatusReporter {
 		return `Some triggers failed to activate: ${detail}`;
 	}
 
-	/** Broadcasts a failed-to-activate status to connected clients (leader-local). */
+	/** Pushes a failed-to-activate status to clients connected to any main. */
 	private pushFailedToActivate(workflowId: string, errorMessage: string): void {
-		this.push.broadcast({
+		this.pushStatus({
 			type: 'workflowFailedToActivate',
 			data: { workflowId, errorMessage },
 		});
+	}
+
+	/**
+	 * Pushes a publication status to locally connected clients and relays it to
+	 * the other main instances, whose clients would otherwise only learn of the
+	 * status from polling: the reporter runs on the leader (the outbox consumer
+	 * is leader-only), but clients may be connected to a follower. The relay is
+	 * fire-and-forget so a pubsub failure never fails the terminal-status report.
+	 */
+	private pushStatus(pushMsg: WorkflowPublicationStatusMessage): void {
+		this.push.broadcast(pushMsg);
+		void this.publisher
+			.publishCommand({ command: 'display-workflow-publication-status', payload: pushMsg })
+			.catch((error) => this.errorReporter.error(error, { shouldBeLogged: true }));
+	}
+
+	/** Displays a publication status relayed by the leader (see {@link pushStatus}). */
+	@OnPubSubEvent('display-workflow-publication-status', { instanceType: 'main' })
+	handleDisplayWorkflowPublicationStatus(pushMsg: WorkflowPublicationStatusMessage): void {
+		this.push.broadcast(pushMsg);
 	}
 
 	/**
@@ -200,11 +228,6 @@ export class PublicationStatusReporter {
 	private logSkip(record: WorkflowPublicationOutbox, reason: PublicationSkipReason): void {
 		const context = { workflowId: record.workflowId, outboxId: record.id };
 
-		if (reason === 'workflow-not-found') {
-			this.logger.warn('Workflow not found, marking outbox record as completed', context);
-			return;
-		}
-
-		this.logger.debug('Workflow is no longer active, marking outbox record as completed', context);
+		this.logger.warn(`${SKIP_LOG_MESSAGE[reason]}, marking outbox record as completed`, context);
 	}
 }

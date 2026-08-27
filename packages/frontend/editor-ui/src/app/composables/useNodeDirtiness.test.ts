@@ -391,28 +391,6 @@ describe(useNodeDirtiness, () => {
 		});
 	});
 
-	describe('renaming a node', () => {
-		it.todo('should preserve the dirtiness', async () => {
-			useNodeTypesStore().setNodeTypes(defaultNodeDescriptions);
-
-			setupTestWorkflow('a🚨✅ -> b✅ -> c✅');
-
-			canvasOperations.deleteNodes([workflowDocumentStore.nodesByName.b.id], {
-				trackHistory: true,
-			}); // 'a' becomes new parent of 'c'
-
-			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
-				c: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
-			});
-
-			await canvasOperations.renameNode('c', 'd', { trackHistory: true });
-
-			expect(useNodeDirtiness(TEST_DOCUMENT_ID).dirtinessByName.value).toEqual({
-				d: CanvasNodeDirtiness.INCOMING_CONNECTIONS_UPDATED,
-			});
-		});
-	});
-
 	/**
 	 * Setup test data in the workflow store using given diagram.
 	 *

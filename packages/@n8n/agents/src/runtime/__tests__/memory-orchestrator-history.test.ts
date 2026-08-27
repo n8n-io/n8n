@@ -1,9 +1,11 @@
+import { builtTelemetry, fakeSpan, fakeTracer } from './support/fake-tracer';
 import type { AgentDbMessage } from '../../types/sdk/message';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
+import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 
 const THREAD_ID = 'thread-1';
 const RESOURCE_ID = 'user-1';
@@ -24,7 +26,12 @@ function buildOrchestrator(store: InMemoryMemory): MemoryOrchestrator {
 		memory: store,
 		observationalMemory: {},
 	} as unknown as AgentRuntimeConfig;
-	return new MemoryOrchestrator(config, new BackgroundTaskTracker(), new AgentEventBus());
+	return new MemoryOrchestrator(
+		config,
+		new BackgroundTaskTracker(),
+		new AgentEventBus(),
+		new RuntimeTelemetry(config),
+	);
 }
 
 describe('MemoryOrchestrator.loadHistoryMessages with observational memory', () => {
@@ -91,5 +98,75 @@ describe('MemoryOrchestrator.loadHistoryMessages with observational memory', () 
 		});
 
 		expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+	});
+});
+
+describe('MemoryOrchestrator.loadHistoryMessages telemetry', () => {
+	it('opens a query_memory span with session/owner attributes and post-hoc ids', async () => {
+		const store = new InMemoryMemory();
+		const m1 = message('m1', 'first', new Date(2026, 4, 12, 14, 30));
+		const m2 = message('m2', 'second', new Date(2026, 4, 12, 14, 31));
+		await seedThread(store, [m1, m2]);
+
+		const span = fakeSpan();
+		const tracer = fakeTracer(span);
+		const telemetry = builtTelemetry({ tracer });
+		// buildOrchestrator()'s config has no `name`, and loadHistoryMessages
+		// uses config.name for gen_ai.agent.name — build a named config directly
+		// so that attribute is a real string, matching production (Agent.build()
+		// always sets `name`).
+		const config = {
+			name: 'my-agent',
+			memory: store,
+			observationalMemory: {},
+		} as unknown as AgentRuntimeConfig;
+		const orchestrator = new MemoryOrchestrator(
+			config,
+			new BackgroundTaskTracker(),
+			new AgentEventBus(),
+			new RuntimeTelemetry(config),
+		);
+
+		const loaded = await orchestrator.loadHistoryMessages(
+			{ threadId: THREAD_ID, resourceId: RESOURCE_ID },
+			telemetry,
+		);
+
+		expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2']);
+		expect(tracer.startActiveSpan).toHaveBeenCalledTimes(1);
+		const [name, options] = tracer.startActiveSpan.mock.calls[0];
+		expect(name).toBe('query_memory');
+		expect((options as { attributes: Record<string, unknown> }).attributes).toMatchObject({
+			'gen_ai.operation.name': 'query_memory',
+			'gen_ai.agent.name': 'my-agent',
+			'gen_ai.memory.types': ['session'],
+			'gen_ai.memory.owners': [RESOURCE_ID],
+			'gen_ai.memory.store.types': ['in_memory'],
+		});
+		expect(span.setAttributes).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'gen_ai.memory.ids': ['m1', 'm2'],
+				'gen_ai.memory.operations': ['query_memory', 'query_memory'],
+			}),
+		);
+	});
+
+	it('does not call describe() on the memory backend when telemetry is undefined', async () => {
+		// Regression guard: a third-party BuiltMemory implementation is not
+		// required to implement describe() (it's only otherwise used for schema
+		// persistence) — memory access must stay telemetry-free by default.
+		const store = new InMemoryMemory();
+		await seedThread(store, [message('m1', 'first', new Date(2026, 4, 12, 14, 30))]);
+		const describeSpy = vi.spyOn(store, 'describe').mockImplementation(() => {
+			throw new Error('Method not implemented.');
+		});
+
+		const loaded = await buildOrchestrator(store).loadHistoryMessages({
+			threadId: THREAD_ID,
+			resourceId: RESOURCE_ID,
+		});
+
+		expect(loaded.map((m) => m.id)).toEqual(['m1']);
+		expect(describeSpy).not.toHaveBeenCalled();
 	});
 });

@@ -11,16 +11,25 @@ import type {
 	INodeType,
 	INodeTypes,
 	ICredentialDataDecryptedObject,
+	ExecuteAgentInvocationContext,
 	WorkflowExpression,
+	IWorkflowBase,
 } from 'n8n-workflow';
-import { UnexpectedError, ExpressionError, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	UnexpectedError,
+	ExpressionError,
+	NodeConnectionTypes,
+	CONSOLE_OUTPUT_REDACTED_MESSAGE,
+} from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
+import { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
 import { describeCommonTests } from './shared-tests';
 import { ExecuteContext } from '../execute-context';
 import * as validateUtil from '../utils/validate-value-against-schema';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 describe('ExecuteContext', () => {
 	const testCredentialType = 'testCredential';
@@ -177,6 +186,7 @@ describe('ExecuteContext', () => {
 
 			expect(() => executeContext.getNodeParameter('testParameter', 0)).toThrow(error);
 			expect(error.context.parameter).toEqual('testParameter');
+			expect({ ...error }).toEqual(expect.objectContaining({ cause: 'testValue' }));
 		});
 
 		it('should handle expression errors on Set nodes (Ticket #PAY-684)', () => {
@@ -441,6 +451,40 @@ describe('ExecuteContext', () => {
 			[closeFn],
 			abortSignal,
 		);
+		const createStreamingAgentContext = (
+			contextRunIndex = runIndex,
+			contextInputData = inputData,
+		) => {
+			const hooks = new ExecutionLifecycleHooks('manual', 'exec-1', mock<IWorkflowBase>());
+			const sendChunkHandler = vi.fn();
+			hooks.addHandler('sendChunk', sendChunkHandler);
+			const executeAgentMock = vi.fn().mockResolvedValue({ response: 'ok' });
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({
+				hooks,
+				rootExecutionMode: undefined,
+				streamingEnabled: true,
+			});
+			additionalData.executeAgent =
+				executeAgentMock as IWorkflowExecuteAdditionalData['executeAgent'];
+
+			return {
+				context: new ExecuteContext(
+					agentWorkflow,
+					node,
+					additionalData,
+					'manual',
+					runExecutionData,
+					contextRunIndex,
+					connectionInputData,
+					contextInputData,
+					executeData,
+					[closeFn],
+					abortSignal,
+				),
+				executeAgentMock,
+				sendChunkHandler,
+			};
+		};
 
 		it('passes the workflow context to additionalData.executeAgent', async () => {
 			agentAdditionalData.executeAgent = vi
@@ -455,10 +499,10 @@ describe('ExecuteContext', () => {
 			);
 
 			expect(agentAdditionalData.executeAgent).toHaveBeenCalledWith(
-				'agent-1',
+				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				agentAdditionalData,
 				'manual',
 				undefined,
@@ -466,16 +510,86 @@ describe('ExecuteContext', () => {
 					workflowId: 'wf-id',
 					workflowName: 'My workflow',
 					callingNodeName: node.name,
+					callingNodeId: node.id,
 					inputData: [{ json: { test: 'data' } }],
 					inputDataScope: 'item',
 					exposeWorkflowData: false,
+					hasCallerSessionId: false,
 					nodes: [
 						{ name: node.name, type: node.type },
 						{ name: 'Webhook', type: 'n8n-nodes-base.webhook' },
 					],
 					runExecutionData,
 				},
+				{
+					nodeId: node.id,
+					nodeName: node.name,
+					runIndex,
+					itemIndex: 0,
+				},
 			);
+		});
+
+		it('passes a response chunk callback when workflow streaming is available', async () => {
+			const { context, executeAgentMock, sendChunkHandler } = createStreamingAgentContext(2, {
+				main: [[{ json: { idx: 0 } }, { json: { idx: 1 } }]],
+			});
+
+			await context.executeAgent({ agentId: 'agent-1' }, 'hello', 'exec-1', 1);
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
+
+			expect(invocationContext).toMatchObject({
+				nodeId: node.id,
+				nodeName: node.name,
+				runIndex: 2,
+				itemIndex: 1,
+				sendResponseChunk: expect.any(Function),
+			});
+
+			await invocationContext.sendResponseChunk?.('item', 'partial');
+
+			expect(sendChunkHandler).toHaveBeenCalledWith({
+				type: 'item',
+				content: 'partial',
+				metadata: {
+					nodeId: node.id,
+					nodeName: node.name,
+					runIndex: 2,
+					itemIndex: 1,
+					timestamp: expect.any(Number),
+				},
+			});
+		});
+
+		it('omits the response chunk callback when structured output is configured', async () => {
+			const { context, executeAgentMock } = createStreamingAgentContext();
+
+			await context.executeAgent(
+				{ agentId: 'agent-1', outputSchema: { type: 'object' } },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
+			expect(invocationContext).not.toHaveProperty('sendResponseChunk');
+		});
+
+		it('omits the response chunk callback when agent streaming is disabled', async () => {
+			const { context, executeAgentMock } = createStreamingAgentContext();
+
+			await context.executeAgent(
+				{ agentId: 'agent-1', enableStreaming: false },
+				'hello',
+				'exec-1',
+				0,
+			);
+
+			const invocationContext = executeAgentMock.mock
+				.calls[0]?.[8] as ExecuteAgentInvocationContext;
+			expect(invocationContext).not.toHaveProperty('sendResponseChunk');
 		});
 
 		it('passes all input items when inputDataScope is all', async () => {
@@ -491,10 +605,10 @@ describe('ExecuteContext', () => {
 			);
 
 			expect(agentAdditionalData.executeAgent).toHaveBeenCalledWith(
-				'agent-1',
+				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				agentAdditionalData,
 				'manual',
 				undefined,
@@ -503,6 +617,7 @@ describe('ExecuteContext', () => {
 					inputDataScope: 'all',
 					exposeWorkflowData: true,
 				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -539,14 +654,15 @@ describe('ExecuteContext', () => {
 			);
 
 			expect(twoItemAdditionalData.executeAgent).toHaveBeenCalledWith(
-				'agent-1',
+				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-1',
+				expect.stringMatching(UUID_PATTERN),
 				twoItemAdditionalData,
 				'manual',
 				undefined,
 				expect.objectContaining({ inputData: [{ json: { idx: 1 } }], inputDataScope: 'item' }),
+				expect.objectContaining({ itemIndex: 1, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -583,10 +699,10 @@ describe('ExecuteContext', () => {
 			);
 
 			expect(twoItemAdditionalData.executeAgent).toHaveBeenCalledWith(
-				'agent-1',
+				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				twoItemAdditionalData,
 				'manual',
 				undefined,
@@ -594,6 +710,7 @@ describe('ExecuteContext', () => {
 					inputData: [{ json: { idx: 0 } }, { json: { idx: 1 } }],
 					inputDataScope: 'all',
 				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -630,10 +747,10 @@ describe('ExecuteContext', () => {
 			);
 
 			expect(multiBranchAdditionalData.executeAgent).toHaveBeenCalledWith(
-				'agent-1',
+				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-0',
+				expect.stringMatching(UUID_PATTERN),
 				multiBranchAdditionalData,
 				'manual',
 				undefined,
@@ -641,6 +758,7 @@ describe('ExecuteContext', () => {
 					inputData: [{ json: { branch: 0 } }, { json: { branch: 2 } }],
 					inputDataScope: 'all',
 				}),
+				expect.objectContaining({ itemIndex: 0, nodeId: node.id, runIndex }),
 			);
 		});
 
@@ -677,15 +795,107 @@ describe('ExecuteContext', () => {
 			);
 
 			expect(outOfRangeAdditionalData.executeAgent).toHaveBeenCalledWith(
-				'agent-1',
+				{ agentId: 'agent-1' },
 				'hello',
 				'exec-1',
-				'exec-1-5',
+				expect.stringMatching(UUID_PATTERN),
 				outOfRangeAdditionalData,
 				'manual',
 				undefined,
 				expect.objectContaining({ inputData: [], inputDataScope: 'item' }),
+				expect.objectContaining({ itemIndex: 5, nodeId: node.id, runIndex }),
 			);
+		});
+	});
+
+	describe('console output redaction', () => {
+		const makeContext = (mode: WorkflowExecuteMode, runData: IRunExecutionData) =>
+			new ExecuteContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				runData,
+				runIndex,
+				connectionInputData,
+				inputData,
+				executeData,
+				[closeFn],
+				abortSignal,
+			);
+
+		const runDataWith = (production: boolean, manual: boolean) =>
+			({
+				executionData: {
+					runtimeData: { redaction: { version: 2, production, manual } },
+				},
+			}) as unknown as IRunExecutionData;
+
+		beforeEach(() => {
+			additionalData.sendDataToUI = vi.fn();
+		});
+
+		it('replaces manual console messages with the redaction marker when the manual channel redacts', () => {
+			const context = makeContext('manual', runDataWith(true, true));
+			context.sendMessageToUI('secret-payload', { secret: true });
+
+			expect(additionalData.sendDataToUI).toHaveBeenCalledWith('sendConsoleMessage', {
+				source: `[Node: "${node.name}"]`,
+				messages: [CONSOLE_OUTPUT_REDACTED_MESSAGE],
+			});
+		});
+
+		it('passes manual console messages through unchanged when no channel redacts', () => {
+			const context = makeContext('manual', runDataWith(false, false));
+			context.sendMessageToUI('hello', 42);
+
+			expect(additionalData.sendDataToUI).toHaveBeenCalledWith('sendConsoleMessage', {
+				source: `[Node: "${node.name}"]`,
+				messages: ['hello', 42],
+			});
+		});
+
+		it('fails closed when resolving the policy throws', () => {
+			const throwingRunData = {
+				get executionData(): never {
+					throw new Error('boom');
+				},
+			} as unknown as IRunExecutionData;
+			const context = makeContext('manual', throwingRunData);
+
+			expect(context.isConsoleOutputRedacted()).toBe(true);
+		});
+
+		describe('production stdout gating', () => {
+			let logSpy: ReturnType<typeof vi.spyOn>;
+
+			beforeEach(() => {
+				process.env.CODE_ENABLE_STDOUT = 'true';
+				logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+			});
+
+			afterEach(() => {
+				delete process.env.CODE_ENABLE_STDOUT;
+				logSpy.mockRestore();
+			});
+
+			it('replaces production console output with the marker when the production channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(true, false));
+				context.logNodeOutput('secret-payload');
+
+				expect(logSpy).toHaveBeenCalledWith(
+					expect.stringContaining('[Workflow'),
+					CONSOLE_OUTPUT_REDACTED_MESSAGE,
+				);
+				expect(logSpy).not.toHaveBeenCalledWith(expect.anything(), 'secret-payload');
+			});
+
+			it('passes production console output through unchanged when no channel redacts', () => {
+				const context = makeContext('trigger', runDataWith(false, false));
+				context.logNodeOutput('hello');
+
+				expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('[Workflow'), 'hello');
+			});
 		});
 	});
 });

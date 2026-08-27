@@ -4,14 +4,17 @@ import type { GlobalConfig } from '@n8n/config';
 import {
 	type CredentialsEntity,
 	type CredentialsRepository,
+	type DbConnection,
 	type IWorkflowDb,
 	type ProjectRelationRepository,
 	type SharedWorkflowRepository,
 	type WorkflowEntity,
 	type WorkflowRepository,
 	GLOBAL_OWNER_ROLE,
+	In,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
 	createErrorExecutionData,
@@ -63,7 +66,22 @@ describe('TelemetryEventRelay', () => {
 		diagnostics: {
 			enabled: true,
 		},
+		versionNotifications: {
+			enabled: true,
+		},
+		executions: {
+			mode: 'regular',
+			timeout: -1,
+			maxTimeout: 3600,
+			saveDataOnError: 'all',
+			saveDataOnSuccess: 'all',
+			saveExecutionProgress: false,
+			saveDataManualExecutions: true,
+			pruneData: true,
+			pruneDataMaxAge: 336,
+		},
 		endpoints: {
+			disableProductionWebhooksOnMainProcess: false,
 			metrics: {
 				enable: true,
 				includeDefaultMetrics: true,
@@ -86,6 +104,7 @@ describe('TelemetryEventRelay', () => {
 			batchSize: 234,
 			optimizingTimeWindowHours: 400,
 			trimmingTimeWindowDays: 600,
+			trimOnStartUp: false,
 		},
 		host: 'localhost',
 		generic: {
@@ -116,6 +135,15 @@ describe('TelemetryEventRelay', () => {
 		database: {
 			type: 'sqlite',
 		},
+		instanceAi: {
+			sandboxEnabled: false,
+			sandboxProvider: 'n8n-sandbox',
+			braveSearchApiKey: '',
+			searxngUrl: '',
+			model: 'anthropic/claude-sonnet-4',
+			modelApiKey: '',
+			modelUrl: '',
+		},
 		instanceSettingsLoader: getDefaultInstanceSettingsLoaderConfig(),
 	});
 	const binaryDataConfig = mock<BinaryDataConfig>({
@@ -129,6 +157,7 @@ describe('TelemetryEventRelay', () => {
 	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
 	const dynamicCredentialsProxy = mock<DynamicCredentialsProxy>();
+	const dbConnection = mock<DbConnection>();
 	const eventService = new EventService();
 
 	let telemetryEventRelay: TelemetryEventRelay;
@@ -148,6 +177,7 @@ describe('TelemetryEventRelay', () => {
 			projectRelationRepository,
 			credentialsRepository,
 			dynamicCredentialsProxy,
+			dbConnection,
 		);
 
 		await telemetryEventRelay.init();
@@ -179,6 +209,7 @@ describe('TelemetryEventRelay', () => {
 				projectRelationRepository,
 				credentialsRepository,
 				dynamicCredentialsProxy,
+				dbConnection,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
@@ -205,6 +236,7 @@ describe('TelemetryEventRelay', () => {
 				projectRelationRepository,
 				credentialsRepository,
 				dynamicCredentialsProxy,
+				dbConnection,
 			);
 			// @ts-expect-error Private method
 			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
@@ -954,6 +986,8 @@ describe('TelemetryEventRelay', () => {
 				projectId: 'project123',
 				projectType: 'personal',
 				isDynamic: false,
+				supportsManagedAuth: true,
+				usesManagedAuth: true,
 			};
 
 			eventService.emit('credentials-created', event);
@@ -968,6 +1002,8 @@ describe('TelemetryEventRelay', () => {
 				is_private: false,
 				uses_external_secrets: false,
 				jwe_enabled: false,
+				credential_supports_managed_auth: true,
+				credential_uses_managed_auth: true,
 			});
 		});
 
@@ -1024,6 +1060,8 @@ describe('TelemetryEventRelay', () => {
 				is_private: true,
 				uses_external_secrets: false,
 				jwe_enabled: false,
+				credential_supports_managed_auth: false,
+				credential_uses_managed_auth: false,
 			});
 		});
 
@@ -1050,6 +1088,35 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should track on `credentials-probed` event', () => {
+			const event: RelayEventMap['credentials-probed'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				credentialId: 'cred123',
+				outcome: 'rejected',
+			};
+
+			eventService.emit('credentials-probed', event);
+
+			const payload = {
+				user_id: 'user123',
+				credential_id: 'cred123',
+				outcome: 'rejected',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_PROBED_CREDENTIAL,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.CREDENTIALS.USER_PROBED_CREDENTIAL.getValidationError(payload),
+			).toBeNull();
+		});
+
 		it('should track on `private-credential-created` event', () => {
 			const event: RelayEventMap['private-credential-created'] = {
 				user: {
@@ -1067,7 +1134,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-created', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User created private credential', {
+			expect(telemetry.track).toHaveBeenCalledWith('User created end-user credential', {
 				user_id: 'user123',
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'gmailOAuth2',
@@ -1092,7 +1159,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-toggled-to-private', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User made credential private', {
+			expect(telemetry.track).toHaveBeenCalledWith('User made credential end-user', {
 				user_id: 'user123',
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'gmailOAuth2',
@@ -1115,7 +1182,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-toggled-to-static', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User made credential static', {
+			expect(telemetry.track).toHaveBeenCalledWith('User made credential fixed', {
 				user_id: 'user123',
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'gmailOAuth2',
@@ -1138,7 +1205,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('private-credential-deleted', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User deleted private credential', {
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted end-user credential', {
 				user_id: 'user123',
 				user_role: GLOBAL_OWNER_ROLE.slug,
 				credential_type: 'gmailOAuth2',
@@ -1151,15 +1218,19 @@ describe('TelemetryEventRelay', () => {
 				user: { id: 'user123' },
 				credentialId: 'cred123',
 				credentialType: 'gmailOAuth2',
+				supportsManagedAuth: true,
+				usesManagedAuth: true,
 			};
 
 			eventService.emit('private-credential-user-connected', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User connected to private credential', {
+			expect(telemetry.track).toHaveBeenCalledWith('User connected to end-user credential', {
 				user_id: 'user123',
 				user_role: undefined,
 				credential_type: 'gmailOAuth2',
 				credential_id: 'cred123',
+				credential_supports_managed_auth: true,
+				credential_uses_managed_auth: true,
 			});
 		});
 	});
@@ -1438,7 +1509,7 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `workflow-activated` event with source', () => {
+		it('should track on `workflow-activated` event with source', async () => {
 			const event: RelayEventMap['workflow-activated'] = {
 				user: {
 					id: 'user123',
@@ -1460,15 +1531,19 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('workflow-activated', event);
 
+			await flushPromises();
+
 			expect(telemetry.track).toHaveBeenCalledWith('User activated workflow', {
 				user_id: 'user123',
 				workflow_id: 'workflow123',
 				public_api: true,
 				source: 'api',
+				private_credentials_count: 0,
+				private_credential_types: [],
 			});
 		});
 
-		it('should default source to ui on `workflow-activated` event', () => {
+		it('should default source to ui on `workflow-activated` event', async () => {
 			const event: RelayEventMap['workflow-activated'] = {
 				user: {
 					id: 'user123',
@@ -1489,11 +1564,15 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('workflow-activated', event);
 
+			await flushPromises();
+
 			expect(telemetry.track).toHaveBeenCalledWith('User activated workflow', {
 				user_id: 'user123',
 				workflow_id: 'workflow123',
 				public_api: false,
 				source: 'ui',
+				private_credentials_count: 0,
+				private_credential_types: [],
 			});
 		});
 
@@ -1648,11 +1727,13 @@ describe('TelemetryEventRelay', () => {
 				user_id: 'user123',
 				version_cli: N8N_VERSION,
 				workflow_id: 'workflow123',
-				used_private_credentials: false,
+				used_end_user_credentials: false,
+				end_user_credentials_attempted_count: 0,
+				end_user_credentials_resolved_count: 0,
 			});
 		});
 
-		it('should set `used_private_credentials` when a private credential resolution was attempted but failed', async () => {
+		it('should set `used_end_user_credentials` when an end-user credential resolution was attempted but failed', async () => {
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mock<IWorkflowDb>({
 					id: 'workflow123',
@@ -1679,7 +1760,49 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
-				expect.objectContaining({ used_private_credentials: true }),
+				expect.objectContaining({
+					used_end_user_credentials: true,
+					end_user_credentials_attempted_count: 1,
+					end_user_credentials_resolved_count: 0,
+				}),
+			);
+		});
+
+		it('should count attempted vs resolved end-user credentials and the effective resolver', async () => {
+			dynamicCredentialsProxy.getEffectiveResolverId.mockReturnValueOnce('system-n8n');
+
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+				}),
+				userId: 'user123',
+				executionId: 'execution123',
+				runData: {
+					data: {
+						resultData: {
+							runData: {
+								Slack: [{ attemptedDynamicCredentials: true, usedDynamicCredentials: true }],
+								// Attempted but not resolved (e.g. running user has not connected).
+								Notion: [{ attemptedDynamicCredentials: true }],
+							},
+						},
+					},
+				} as unknown as IRun,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					used_end_user_credentials: true,
+					end_user_credentials_attempted_count: 2,
+					end_user_credentials_resolved_count: 1,
+					credential_resolver_id: 'system-n8n',
+				}),
 			);
 		});
 
@@ -1721,6 +1844,8 @@ describe('TelemetryEventRelay', () => {
 				ai_builder_assisted: false,
 				identity_extractor_changed: false,
 				redaction_policy: undefined,
+				private_credentials_count: 0,
+				private_credential_types: [],
 				otel_workflow_custom_tags_count: 0,
 				otel_nodes_with_custom_tags_count: 0,
 				otel_node_custom_tags_count: 0,
@@ -1846,6 +1971,8 @@ describe('TelemetryEventRelay', () => {
 				credential_resolver_id: 'resolver-123',
 				identity_extractor_changed: false,
 				redaction_policy: undefined,
+				private_credentials_count: 0,
+				private_credential_types: [],
 				otel_workflow_custom_tags_count: 0,
 				otel_nodes_with_custom_tags_count: 0,
 				otel_node_custom_tags_count: 0,
@@ -1888,6 +2015,180 @@ describe('TelemetryEventRelay', () => {
 				'User saved workflow',
 				expect.objectContaining({
 					credential_resolver_id: 'system-resolver',
+				}),
+			);
+		});
+
+		it('should report private credential usage on `workflow-saved` event', async () => {
+			licenseState.isDynamicCredentialsLicensed.mockReturnValueOnce(true);
+			credentialsRepository.find.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' }),
+				mock<CredentialsEntity>({ id: 'cred-2', type: 'notionApi' }),
+			]);
+
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					connections: {},
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Slack',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { slackApi: { id: 'cred-1', name: 'Slack account' } },
+						},
+						{
+							id: 'node-2',
+							name: 'Notion',
+							type: 'n8n-nodes-base.notion',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { notionApi: { id: 'cred-2', name: 'Notion account' } },
+						},
+					],
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			await flushPromises();
+
+			expect(credentialsRepository.find).toHaveBeenCalledWith({
+				where: { id: In(['cred-1', 'cred-2']), isResolvable: true },
+				select: ['id', 'type'],
+			});
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User saved workflow',
+				expect.objectContaining({
+					private_credentials_count: 2,
+					private_credential_types: ['slackApi', 'notionApi'],
+				}),
+			);
+		});
+
+		it('should report private credential usage on `workflow-activated` event', async () => {
+			licenseState.isDynamicCredentialsLicensed.mockReturnValueOnce(true);
+			credentialsRepository.find.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' }),
+			]);
+
+			const event: RelayEventMap['workflow-activated'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflowId: 'workflow123',
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					connections: {},
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Slack',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { slackApi: { id: 'cred-1', name: 'Slack account' } },
+						},
+					],
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-activated', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User activated workflow',
+				expect.objectContaining({
+					private_credentials_count: 1,
+					private_credential_types: ['slackApi'],
+				}),
+			);
+		});
+
+		it('should count each private credential but de-duplicate types when several share a type', async () => {
+			licenseState.isDynamicCredentialsLicensed.mockReturnValueOnce(true);
+			credentialsRepository.find.mockResolvedValueOnce([
+				mock<CredentialsEntity>({ id: 'cred-1', type: 'slackApi' }),
+				mock<CredentialsEntity>({ id: 'cred-2', type: 'slackApi' }),
+				mock<CredentialsEntity>({ id: 'cred-3', type: 'notionApi' }),
+			]);
+
+			const event: RelayEventMap['workflow-saved'] = {
+				user: {
+					id: 'user123',
+					email: 'user@example.com',
+					firstName: 'John',
+					lastName: 'Doe',
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+				},
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					connections: {},
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Slack 1',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { slackApi: { id: 'cred-1', name: 'Slack account 1' } },
+						},
+						{
+							id: 'node-2',
+							name: 'Slack 2',
+							type: 'n8n-nodes-base.slack',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { slackApi: { id: 'cred-2', name: 'Slack account 2' } },
+						},
+						{
+							id: 'node-3',
+							name: 'Notion',
+							type: 'n8n-nodes-base.notion',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+							credentials: { notionApi: { id: 'cred-3', name: 'Notion account' } },
+						},
+					],
+				}),
+				publicApi: false,
+			};
+
+			eventService.emit('workflow-saved', event);
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User saved workflow',
+				expect.objectContaining({
+					// Three credentials, but only two distinct types.
+					private_credentials_count: 3,
+					private_credential_types: ['slackApi', 'notionApi'],
 				}),
 			);
 		});
@@ -1976,7 +2277,7 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `n8n-package-imported` event with params and counts', () => {
 			const event: RelayEventMap['n8n-package-imported'] = {
 				user: { id: 'user123' },
-				projectId: 'project123',
+				projectIds: ['project123'],
 				folderId: 'folder123',
 				workflowIds: ['wf1', 'wf2', 'wf3'],
 				options: {
@@ -1985,6 +2286,18 @@ describe('TelemetryEventRelay', () => {
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
 					workflowPublishingPolicy: 'preserve-published-state',
+					missingNodeTypeMode: 'fail',
+					projectConflictPolicy: 'merge',
+					folderConflictPolicy: 'merge',
+					overwriteDeletionPolicy: 'archive',
+					dataTableMatchingMode: 'by-id',
+					dataTableMissingMode: 'create',
+					dataTableSchemaConflictPolicy: 'keep-existing',
+					variableMissingMode: 'create-stub',
+					variableConflictPolicy: 'overwrite',
+					variableParentPolicy: 'global',
+					tagMissingMode: 'create',
+					tagConflictPolicy: 'rename',
 				},
 				packageSourceId: 'source-instance-1',
 				packageVersion: '1',
@@ -1998,11 +2311,37 @@ describe('TelemetryEventRelay', () => {
 						created: 2,
 						updated: 1,
 						skipped: 1,
+						archived: 3,
+						deleted: 2,
+					},
+					folders: {
+						removed: 1,
 					},
 					credentials: {
 						matched: 2,
 						created: 1,
 						requirements: 3,
+					},
+					dataTables: {
+						matched: 1,
+						created: 1,
+						requirements: 2,
+					},
+					variables: {
+						matched: 1,
+						missing: 1,
+						created: 3,
+						stubbed: 2,
+						updated: 4,
+						requirements: 2,
+					},
+					tags: {
+						matched: 6,
+						created: 7,
+						renamed: 8,
+						reconciled: 11,
+						skipped: 9,
+						requirements: 10,
 					},
 				},
 			};
@@ -2016,22 +2355,59 @@ describe('TelemetryEventRelay', () => {
 				credential_matching_mode: 'id-only',
 				credential_missing_mode: 'must-preexist',
 				workflow_publishing_policy: 'preserve-published-state',
+				missing_node_type_mode: 'fail',
+				project_conflict_policy: 'merge',
+				folder_conflict_policy: 'merge',
+				overwrite_deletion_policy: 'archive',
+				data_table_matching_mode: 'by-id',
+				data_table_missing_mode: 'create',
+				data_table_schema_conflict_policy: 'keep-existing',
+				variable_missing_mode: 'create-stub',
+				variable_conflict_policy: 'overwrite',
+				variable_parent_policy: 'global',
+				tag_missing_mode: 'create',
+				tag_conflict_policy: 'rename',
 				workflows_created: 2,
 				workflows_updated: 1,
 				workflows_skipped: 1,
+				workflows_archived: 3,
+				workflows_deleted: 2,
+				folders_removed: 1,
 				credentials_matched: 2,
 				credentials_created: 1,
 				credentials_required: 3,
+				data_tables_matched: 1,
+				data_tables_created: 1,
+				data_tables_required: 2,
+				variables_matched: 1,
+				variables_missing: 1,
+				variables_with_value_created: 3,
+				variables_stubs_created: 2,
+				variables_updated: 4,
+				variables_required: 2,
+				tags_matched: 6,
+				tags_created: 7,
+				tags_renamed: 8,
+				tags_reconciled: 11,
+				tags_skipped: 9,
+				tags_required: 10,
 			});
 		});
 
-		it('should track on `n8n-package-exported` event with entity counts', () => {
+		it('should track on `n8n-package-exported` event with entity counts only, not ids', () => {
 			const event: RelayEventMap['n8n-package-exported'] = {
 				user: { id: 'user123' },
+				workflowIds: ['wf1', 'wf2', 'wf3'],
+				projectIds: ['proj1'],
 				counts: {
 					workflows: 3,
+					folders: 1,
 					credentials: 2,
+					dataTables: 1,
+					variables: 4,
+					tags: 2,
 				},
+				credentialExportPolicy: 'expression-values-only',
 			};
 
 			eventService.emit('n8n-package-exported', event);
@@ -2039,7 +2415,45 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User exported n8n package', {
 				user_id: 'user123',
 				workflow_count: 3,
+				folder_count: 1,
 				credential_count: 2,
+				data_table_count: 1,
+				variable_count: 4,
+				tag_count: 2,
+				credential_export_policy: 'expression-values-only',
+			});
+		});
+
+		it('should track on `n8n-package-export-failed` event with entity counts and reason only, not ids', () => {
+			const event: RelayEventMap['n8n-package-export-failed'] = {
+				user: { id: 'user123' },
+				reason: 'access-denied',
+				workflowIds: ['wf1', 'wf2'],
+			};
+
+			eventService.emit('n8n-package-export-failed', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User package export failed', {
+				user_id: 'user123',
+				reason: 'access-denied',
+				workflow_count: 2,
+				folder_count: 0,
+				project_count: 0,
+			});
+		});
+
+		it('should track on `n8n-package-import-failed` event with reason only, no project/folder ids', () => {
+			const event: RelayEventMap['n8n-package-import-failed'] = {
+				user: { id: 'user123' },
+				reason: 'blocked',
+				projectId: 'proj1',
+			};
+
+			eventService.emit('n8n-package-import-failed', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User package import failed', {
+				user_id: 'user123',
+				reason: 'blocked',
 			});
 		});
 	});
@@ -2241,6 +2655,11 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('lifecycle events', () => {
+		beforeEach(() => {
+			dbConnection.getDbVersion.mockResolvedValue(null);
+			license.getPlanName.mockReturnValue('Community');
+		});
+
 		it('should track on `server-started` event', async () => {
 			const firstWorkflow = mock<WorkflowEntity>({ createdAt: new Date() });
 			workflowRepository.findOne.mockResolvedValue(firstWorkflow);
@@ -2311,7 +2730,7 @@ describe('TelemetryEventRelay', () => {
 				}),
 			);
 			expect(telemetry.track).toHaveBeenCalledWith(
-				'Instance started',
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({
 					earliest_workflow_created: firstWorkflow.createdAt,
 					settings_managed_by_env_vars: {
@@ -2342,6 +2761,58 @@ describe('TelemetryEventRelay', () => {
 			);
 		});
 
+		it('should report the database version on `server-started` event', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			dbConnection.getDbVersion.mockResolvedValue('16.11');
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+				expect.objectContaining({ db_type: 'sqlite', db_version: '16.11' }),
+			);
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.objectContaining({ db_type: 'sqlite', db_version: '16.11' }),
+			);
+			expect(telemetry.groupIdentify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					traits: expect.objectContaining({ db_type: 'sqlite', db_version: '16.11' }),
+				}),
+			);
+		});
+
+		it('should emit a payload that satisfies the registry schema', async () => {
+			workflowRepository.findOne.mockResolvedValue(mock<WorkflowEntity>({ createdAt: new Date() }));
+			dbConnection.getDbVersion.mockResolvedValue('17.6');
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			const startupEvent = telemetry.track.mock.calls.find(
+				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+			);
+			expect(
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED.getValidationError(startupEvent?.[1]),
+			).toBeNull();
+		});
+
+		it('should report a `null` database version when it cannot be determined', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			dbConnection.getDbVersion.mockResolvedValue(null);
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+				expect.objectContaining({ db_type: 'sqlite', db_version: null }),
+			);
+		});
+
 		it('should track instance settings env management on `server-started` event', async () => {
 			workflowRepository.findOne.mockResolvedValue(null);
 			Object.assign(globalConfig.instanceSettingsLoader, {
@@ -2358,7 +2829,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				'Instance started',
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({
 					settings_managed_by_env_vars: {
 						owner_managed_by_env: true,
@@ -2409,7 +2880,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			const startupEvent = telemetry.track.mock.calls.find(
-				([eventName]) => eventName === 'Instance started',
+				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 			);
 			expect(startupEvent).toBeDefined();
 			if (!startupEvent) throw new Error('Expected Instance started telemetry event');
@@ -2437,7 +2908,7 @@ describe('TelemetryEventRelay', () => {
 			await flushPromises();
 
 			expect(telemetry.track).toHaveBeenCalledWith(
-				'Instance started',
+				TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
 				expect.objectContaining({
 					otel: {
 						enabled: true,
@@ -2452,6 +2923,46 @@ describe('TelemetryEventRelay', () => {
 					}),
 				}),
 			);
+		});
+
+		it('should track instance AI sandbox and search configuration on `server-started` event', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			Object.assign(globalConfig.instanceAi, {
+				sandboxEnabled: true,
+				sandboxProvider: 'daytona',
+				braveSearchApiKey: 'some-api-key',
+				searxngUrl: '',
+			});
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			const startupEvent = telemetry.track.mock.calls.find(
+				([event]) => (event as unknown) === TELEMETRY_EVENT.INSTANCE.INSTANCE_STARTED,
+			);
+			expect(startupEvent).toBeDefined();
+			expect(startupEvent?.[1]).toEqual(
+				expect.objectContaining({
+					instance_ai: {
+						sandbox_enabled: true,
+						sandbox_provider: 'daytona',
+						search_brave_set: true,
+						search_searxng_set: false,
+						model_env_set: false,
+						model_id: 'anthropic/claude-sonnet-4',
+					},
+				}),
+			);
+			// Key values must never leave the instance — only set/unset booleans
+			expect(JSON.stringify(startupEvent?.[1])).not.toContain('some-api-key');
+
+			Object.assign(globalConfig.instanceAi, {
+				sandboxEnabled: false,
+				sandboxProvider: 'n8n-sandbox',
+				braveSearchApiKey: '',
+				searxngUrl: '',
+			});
 		});
 
 		it('should track on `session-started` event', () => {
@@ -3262,6 +3773,159 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('workflow review events', () => {
+		it('should track a workflow submitted for review, with how many reviewers were asked', () => {
+			eventService.emit('workflow-review-requested', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				projectId: 'project-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+				reviewerCount: 2,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				project_id: 'project-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-1',
+				reviewer_count: 2,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_REQUESTED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_REQUESTED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a review re-pinned to another version', () => {
+			eventService.emit('workflow-review-version-updated', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-2',
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-2',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_UPDATED_WORKFLOW_VERSION_UNDER_REVIEW.getValidationError(
+					payload,
+				),
+			).toBeNull();
+		});
+
+		it('should track an approval, when the review opened, and who was entitled to decide', () => {
+			eventService.emit('workflow-review-decided', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: 'ver-1',
+				decision: 'approved',
+				decidedVia: 'assigned-reviewer',
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: 'ver-1',
+				decision: 'approved',
+				decided_via: 'assigned-reviewer',
+				review_created_at: '2026-01-01T10:00:00.000Z',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a change request decided by an admin on a review whose version was pruned', () => {
+			eventService.emit('workflow-review-decided', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+				workflowId: 'wf-1',
+				workflowVersionId: null,
+				decision: 'changes_requested',
+				decidedVia: 'admin-override',
+				reviewCreatedAt: new Date('2026-01-01T10:00:00.000Z'),
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+				workflow_id: 'wf-1',
+				workflow_version_id: null,
+				decision: 'changes_requested',
+				decided_via: 'admin-override',
+				review_created_at: '2026-01-01T10:00:00.000Z',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_DECIDED_WORKFLOW_REVIEW.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a review closed with no trigger recorded, never the acting user', () => {
+			eventService.emit('workflow-review-closed', {
+				workflowReviewRequestId: 'review-1',
+				cause: { trigger: 'unknown', actorKind: 'system', userId: null },
+			});
+
+			const payload = {
+				workflow_review_request_id: 'review-1',
+				cause_trigger: 'unknown',
+				cause_actor_kind: 'system',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.WORKFLOW_REVIEW_CLOSED.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a comment on a review, never its body', () => {
+			eventService.emit('workflow-review-comment-created', {
+				user: { id: 'user123' },
+				workflowReviewRequestId: 'review-1',
+			});
+
+			const payload = {
+				user_id: 'user123',
+				workflow_review_request_id: 'review-1',
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_COMMENTED_ON_WORKFLOW_REVIEW,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_COMMENTED_ON_WORKFLOW_REVIEW.getValidationError(
+					payload,
+				),
+			).toBeNull();
+		});
+	});
+
 	describe('instance AI MCP events', () => {
 		it('tracks on `instance-ai-mcp-registry-connection-created`', () => {
 			eventService.emit('instance-ai-mcp-registry-connection-created', {
@@ -3357,6 +4021,45 @@ describe('TelemetryEventRelay', () => {
 			expect(typeof result.major).toBe('number');
 			expect(typeof result.minor).toBe('number');
 			expect(typeof result.patch).toBe('number');
+		});
+	});
+
+	describe('HITL events', () => {
+		it('should track on `hitl-response-actioned` event', () => {
+			const event: RelayEventMap['hitl-response-actioned'] = {
+				nodeType: 'n8n-nodes-base.slack',
+				approved: true,
+				authorized: false,
+				executionId: 'exec1',
+				workflowId: 'wf1',
+			};
+
+			eventService.emit('hitl-response-actioned', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Advanced HITL response actioned', {
+				node_type: 'n8n-nodes-base.slack',
+				is_approved: true,
+				is_authorized: false,
+			});
+		});
+	});
+
+	describe('runner events', () => {
+		it('should track on `runner-disconnected` event', () => {
+			const event: RelayEventMap['runner-disconnected'] = {
+				reason: 'failed-heartbeat-check',
+				mode: 'internal',
+			};
+
+			eventService.emit('runner-disconnected', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED,
+				{
+					reason: 'failed-heartbeat-check',
+					mode: 'internal',
+				},
+			);
 		});
 	});
 });

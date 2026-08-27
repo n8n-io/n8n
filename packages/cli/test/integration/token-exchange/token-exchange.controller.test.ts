@@ -43,6 +43,7 @@ function makeExternalJwt(
 		exp: number;
 		jti: string;
 		email: string;
+		email_verified: boolean;
 		given_name: string;
 		family_name: string;
 		role: string;
@@ -58,6 +59,7 @@ function makeExternalJwt(
 			iat: now,
 			exp: now + 300,
 			jti: randomUUID(),
+			email_verified: true,
 			...overrides,
 		},
 		privateKey,

@@ -1,12 +1,14 @@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
+	getExternalSecretPreview,
 	isExpression as isExpressionUtil,
 	stringifyExpressionResult,
 } from '@/app/utils/expressions';
 
 import debounce from 'lodash/debounce';
-import { createResultError, createResultOk, type IDataObject, type Result } from 'n8n-workflow';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
+import { type IDataObject } from 'n8n-workflow';
 import {
 	computed,
 	onMounted,
@@ -107,11 +109,22 @@ export function useResolvedExpression({
 			if (currentInvocation !== updateExpressionInvocation) return;
 
 			resolvedExpression.value = resolved.ok ? resolved.result : null;
-			resolvedExpressionString.value = stringifyExpressionResult(
-				resolved,
-				workflowDocumentStore.value.getPinDataSnapshot(),
-				hasRunData.value,
-			);
+			const expressionString = toValue(expression);
+			const secretPreview =
+				resolved.ok &&
+				resolved.result === undefined &&
+				toValue(isForCredential) &&
+				typeof expressionString === 'string'
+					? getExternalSecretPreview(expressionString, toValue(additionalData)?.$secrets)
+					: undefined;
+
+			resolvedExpressionString.value =
+				secretPreview?.text ??
+				stringifyExpressionResult(
+					resolved,
+					workflowDocumentStore.value.getPinDataSnapshot(),
+					hasRunData.value,
+				);
 		} else {
 			resolvedExpression.value = null;
 			resolvedExpressionString.value = '';

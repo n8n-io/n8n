@@ -883,6 +883,16 @@ describe('Workflow Builder', () => {
 			expect(json.settings?.timezone).toBe('America/New_York');
 			expect(json.settings?.executionTimeout).toBe(3600);
 		});
+
+		it('should serialize workflow-level error workflow settings', () => {
+			const wf = workflow('test-id', 'Test Workflow').settings({
+				errorWorkflow: 'error-handler-123',
+			});
+
+			const json = wf.toJSON();
+
+			expect(json.settings?.errorWorkflow).toBe('error-handler-123');
+		});
 	});
 
 	describe('.getNode()', () => {

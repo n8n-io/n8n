@@ -125,6 +125,15 @@ export function renameColumnQuery(
 	return `ALTER TABLE ${quotedTableName} RENAME COLUMN ${quotedOldName} TO ${quotedNewName}`;
 }
 
+export function renameTableQuery(
+	oldTableName: DataTableUserTableName,
+	newTableName: DataTableUserTableName,
+	dbType: DataSourceOptions['type'],
+): string {
+	// `ALTER TABLE ... RENAME TO` is valid on both SQLite and Postgres
+	return `ALTER TABLE ${quoteIdentifier(oldTableName, dbType)} RENAME TO ${quoteIdentifier(newTableName, dbType)}`;
+}
+
 export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
 	switch (dbType) {
 		case 'postgres':

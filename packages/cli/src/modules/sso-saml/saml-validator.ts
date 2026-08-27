@@ -57,24 +57,24 @@ export class SamlValidator {
 
 	// dynamically load schema files
 	private async loadSchemas(): Promise<void> {
-		this.xmlProtocol = (await import('./schema/saml-schema-protocol-2.0.xsd')).xmlFileInfo;
-		this.xmlMetadata = (await import('./schema/saml-schema-metadata-2.0.xsd')).xmlFileInfo;
+		this.xmlProtocol = (await import('./schema/saml-schema-protocol-2.0.xsd.js')).xmlFileInfo;
+		this.xmlMetadata = (await import('./schema/saml-schema-metadata-2.0.xsd.js')).xmlFileInfo;
 		this.preload = (
 			await Promise.all([
 				// SAML
-				import('./schema/saml-schema-assertion-2.0.xsd'),
-				import('./schema/xmldsig-core-schema.xsd'),
-				import('./schema/xenc-schema.xsd'),
-				import('./schema/xml.xsd'),
+				import('./schema/saml-schema-assertion-2.0.xsd.js'),
+				import('./schema/xmldsig-core-schema.xsd.js'),
+				import('./schema/xenc-schema.xsd.js'),
+				import('./schema/xml.xsd.js'),
 
 				// WS-Federation
-				import('./schema/ws-federation.xsd'),
-				import('./schema/oasis-200401-wss-wssecurity-secext-1.0.xsd'),
-				import('./schema/oasis-200401-wss-wssecurity-utility-1.0.xsd'),
-				import('./schema/ws-addr.xsd'),
-				import('./schema/metadata-exchange.xsd'),
-				import('./schema/ws-securitypolicy-1.2.xsd'),
-				import('./schema/ws-authorization.xsd'),
+				import('./schema/ws-federation.xsd.js'),
+				import('./schema/oasis-200401-wss-wssecurity-secext-1.0.xsd.js'),
+				import('./schema/oasis-200401-wss-wssecurity-utility-1.0.xsd.js'),
+				import('./schema/ws-addr.xsd.js'),
+				import('./schema/metadata-exchange.xsd.js'),
+				import('./schema/ws-securitypolicy-1.2.xsd.js'),
+				import('./schema/ws-authorization.xsd.js'),
 			])
 		).map((m) => m.xmlFileInfo);
 	}

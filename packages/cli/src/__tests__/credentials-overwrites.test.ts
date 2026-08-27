@@ -186,6 +186,74 @@ describe('CredentialsOverwrites', () => {
 
 				expect(result).toEqual({ password: 'pass' });
 			});
+
+			it('should still apply overwrites to an extending type when only its parent is in the skip list', () => {
+				// The skip list is exact-name: a skip entry on 'parent' must not change how
+				// 'test' (which extends 'parent') is treated, even when 'test' has a
+				// customized field. This allows skipping a base type without affecting
+				// the concrete types that inherit its overwrite.
+				globalConfig.credentials.overwrite.skipTypes = [
+					'parent',
+				] as unknown as CommaSeparatedStringArray<string>;
+
+				const result = credentialsOverwrites.applyOverwrite('test', {
+					username: 'custom-user',
+					password: '',
+				});
+
+				expect(result).toEqual({ username: 'custom-user', password: 'pass' });
+			});
+		});
+	});
+
+	describe('supportsManagedAuth', () => {
+		it('should return true when an overwrite is configured for the type', () => {
+			expect(credentialsOverwrites.supportsManagedAuth('test')).toBe(true);
+		});
+
+		it('should return true for a base type that has its own overwrite', () => {
+			credentialTypes.getParentTypes.calledWith('parent').mockReturnValue([]);
+			expect(credentialsOverwrites.supportsManagedAuth('parent')).toBe(true);
+		});
+
+		it('should return false when no overwrite is configured for the type', () => {
+			credentialTypes.getParentTypes.mockReturnValueOnce([]);
+			expect(credentialsOverwrites.supportsManagedAuth('unknownCredential')).toBe(false);
+		});
+	});
+
+	describe('usesManagedAuth', () => {
+		it('should return true when an overwritten field is left empty', () => {
+			expect(
+				credentialsOverwrites.usesManagedAuth('test', { username: '', password: 'pass' }),
+			).toBe(true);
+		});
+
+		it('should return false when the user supplied all overwritten fields', () => {
+			expect(
+				credentialsOverwrites.usesManagedAuth('test', {
+					username: 'own-user',
+					password: 'own-pass',
+				}),
+			).toBe(false);
+		});
+
+		it('should return false when no overwrite is configured for the type', () => {
+			credentialTypes.getParentTypes.mockReturnValueOnce([]);
+			expect(credentialsOverwrites.usesManagedAuth('unknownCredential', { username: 'user' })).toBe(
+				false,
+			);
+		});
+
+		it('should return false for a skip-list type when the user customized an overwritten field', () => {
+			// applyOverwrite skips injection entirely here, so the credential is not managed
+			globalConfig.credentials.overwrite.skipTypes = [
+				'test',
+			] as unknown as CommaSeparatedStringArray<string>;
+
+			expect(
+				credentialsOverwrites.usesManagedAuth('test', { username: 'custom-user', password: '' }),
+			).toBe(false);
 		});
 	});
 
@@ -266,7 +334,7 @@ describe('CredentialsOverwrites', () => {
 			});
 
 			// Mock Publisher service - need to import the class first
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			publisherMock = { publishCommand: vi.fn() };
 			mockInstance(Publisher, publisherMock);
 
@@ -531,7 +599,7 @@ describe('CredentialsOverwrites', () => {
 			});
 
 			// Mock Publisher service
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			publisherMock = { publishCommand: vi.fn() };
 			mockInstance(Publisher, publisherMock);
 
@@ -579,16 +647,15 @@ describe('CredentialsOverwrites', () => {
 				settingsRepository.findByKey.mockResolvedValue(settingData);
 				cipher.decryptV2.mockResolvedValue(JSON.stringify(overwriteData));
 
-				// Mock the reloadFrontendService to avoid circular dependency issues
-				const mockReloadFrontendService = vi.fn();
-				(pubsubCredentialsOverwrites as any).reloadFrontendService = mockReloadFrontendService;
+				const mockReloadHandler = vi.fn();
+				pubsubCredentialsOverwrites.registerReloadHandler(mockReloadHandler);
 
 				await pubsubCredentialsOverwrites.reloadOverwriteCredentials();
 
 				expect(settingsRepository.findByKey).toHaveBeenCalledWith('credentialsOverwrite');
 				expect(cipher.decryptV2).toHaveBeenCalledWith('encrypted-data');
 				expect(pubsubCredentialsOverwrites.getAll()).toEqual(overwriteData);
-				expect(mockReloadFrontendService).toHaveBeenCalled();
+				expect(mockReloadHandler).toHaveBeenCalled();
 			});
 
 			it('should handle database loading errors gracefully', async () => {
@@ -647,9 +714,7 @@ describe('CredentialsOverwrites', () => {
 				});
 				cipher.decryptV2.mockResolvedValue(JSON.stringify(overwriteData));
 
-				// Mock the reloadFrontendService
-				const mockReloadFrontendService = vi.fn();
-				(pubsubCredentialsOverwrites as any).reloadFrontendService = mockReloadFrontendService;
+				pubsubCredentialsOverwrites.registerReloadHandler(vi.fn());
 
 				// Start first reload
 				const firstReload = pubsubCredentialsOverwrites.reloadOverwriteCredentials();
@@ -706,9 +771,7 @@ describe('CredentialsOverwrites', () => {
 				settingsRepository.findByKey.mockResolvedValue(settingData);
 				cipher.decryptV2.mockResolvedValue(JSON.stringify(overwriteData));
 
-				// Mock the reloadFrontendService
-				const mockReloadFrontendService = vi.fn();
-				(pubsubCredentialsOverwrites as any).reloadFrontendService = mockReloadFrontendService;
+				pubsubCredentialsOverwrites.registerReloadHandler(vi.fn());
 
 				await expect(
 					pubsubCredentialsOverwrites.reloadOverwriteCredentials(),
@@ -824,33 +887,29 @@ describe('CredentialsOverwrites', () => {
 			vi.restoreAllMocks();
 		});
 
-		describe('reloadFrontendService via setData', () => {
+		describe('reload handler via setData', () => {
+			let reloadHandler: Mock;
+
 			beforeEach(() => {
-				// Mock the reloadFrontendService method directly to test through setData
-				vi.spyOn(frontendCredentialsOverwrites as any, 'reloadFrontendService').mockResolvedValue(
-					undefined,
-				);
+				reloadHandler = vi.fn().mockResolvedValue(undefined);
+				frontendCredentialsOverwrites.registerReloadHandler(reloadHandler);
 			});
 
-			it('should call reloadFrontendService when reloadFrontend is true', async () => {
+			it('should call the reload handler when reloadFrontend is true', async () => {
 				const testData = { test: { username: 'frontendUser' } };
-				const reloadSpy = frontendCredentialsOverwrites['reloadFrontendService'] as Mock;
 
 				await frontendCredentialsOverwrites.setData(testData, false, true);
 
-				// Verify reloadFrontendService was called
-				expect(reloadSpy).toHaveBeenCalledTimes(1);
+				expect(reloadHandler).toHaveBeenCalledTimes(1);
 				expect(frontendCredentialsOverwrites.getAll()).toEqual(testData);
 			});
 
-			it('should skip reloadFrontendService when reloadFrontend is false', async () => {
+			it('should skip the reload handler when reloadFrontend is false', async () => {
 				const testData = { test: { username: 'noReloadUser' } };
-				const reloadSpy = frontendCredentialsOverwrites['reloadFrontendService'] as Mock;
 
 				await frontendCredentialsOverwrites.setData(testData, false, false);
 
-				// Verify reloadFrontendService was NOT called
-				expect(reloadSpy).not.toHaveBeenCalled();
+				expect(reloadHandler).not.toHaveBeenCalled();
 				expect(frontendCredentialsOverwrites.getAll()).toEqual(testData);
 			});
 
@@ -921,7 +980,7 @@ describe('CredentialsOverwrites', () => {
 			});
 
 			// Mock Publisher service
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
+			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
 			publisherMock = { publishCommand: vi.fn() };
 			mockInstance(Publisher, publisherMock);
 
@@ -1142,6 +1201,109 @@ describe('CredentialsOverwrites', () => {
 
 			// Verify database operations were not attempted
 			expect(settingsRepository.findByKey).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('isManagedOAuthType', () => {
+		const oauthCredentialType = mock<ICredentialType>({
+			name: 'notionOAuth2Api',
+			extends: ['oAuth2Api'],
+		});
+		const baseOAuth2Type = mock<ICredentialType>({ name: 'oAuth2Api', extends: undefined });
+		const oauth1CredentialType = mock<ICredentialType>({
+			name: 'trelloOAuth1Api',
+			extends: ['oAuth1Api'],
+		});
+		const baseOAuth1Type = mock<ICredentialType>({ name: 'oAuth1Api', extends: undefined });
+		const apiKeyCredentialType = mock<ICredentialType>({ name: 'notionApi', extends: undefined });
+
+		const createInstance = async (data: ICredentialsOverwrite) => {
+			globalConfig.credentials.overwrite.data = JSON.stringify(data);
+			const instance = new CredentialsOverwrites(
+				globalConfig,
+				credentialTypes,
+				logger,
+				mock(),
+				mock(),
+			);
+			await instance.init();
+			return instance;
+		};
+
+		beforeEach(() => {
+			credentialTypes.recognizes.mockReturnValue(true);
+			credentialTypes.getByName.mockImplementation((name) => {
+				if (name === 'notionOAuth2Api') return oauthCredentialType;
+				if (name === 'oAuth2Api') return baseOAuth2Type;
+				if (name === 'trelloOAuth1Api') return oauth1CredentialType;
+				if (name === 'oAuth1Api') return baseOAuth1Type;
+				if (name === 'notionApi') return apiKeyCredentialType;
+				throw new UnrecognizedCredentialTypeError(name);
+			});
+			credentialTypes.getParentTypes.mockImplementation((name) => {
+				if (name === 'notionOAuth2Api') return ['oAuth2Api'];
+				if (name === 'trelloOAuth1Api') return ['oAuth1Api'];
+				return [];
+			});
+		});
+
+		it('returns true for an OAuth type whose clientId and clientSecret are overwritten', async () => {
+			const instance = await createInstance({
+				notionOAuth2Api: { clientId: 'client-id', clientSecret: 'client-secret' },
+			});
+
+			expect(instance.isManagedOAuthType('notionOAuth2Api')).toBe(true);
+		});
+
+		it('returns true for an OAuth1 type whose consumerKey and consumerSecret are overwritten', async () => {
+			const instance = await createInstance({
+				trelloOAuth1Api: { consumerKey: 'consumer-key', consumerSecret: 'consumer-secret' },
+			});
+
+			expect(instance.isManagedOAuthType('trelloOAuth1Api')).toBe(true);
+		});
+
+		it('returns false for an OAuth1 type overwritten with the OAuth2 client fields', async () => {
+			// clientId/clientSecret are meaningless for OAuth1; only consumerKey/consumerSecret count.
+			const instance = await createInstance({
+				trelloOAuth1Api: { clientId: 'client-id', clientSecret: 'client-secret' },
+			});
+
+			expect(instance.isManagedOAuthType('trelloOAuth1Api')).toBe(false);
+		});
+
+		it('returns false for a non-OAuth type even when overwritten', async () => {
+			const instance = await createInstance({
+				notionApi: { apiKey: 'key' },
+			});
+
+			expect(instance.isManagedOAuthType('notionApi')).toBe(false);
+		});
+
+		it('returns false when the client pair is not fully overwritten', async () => {
+			const instance = await createInstance({
+				notionOAuth2Api: { clientId: 'client-id' },
+			});
+
+			expect(instance.isManagedOAuthType('notionOAuth2Api')).toBe(false);
+		});
+
+		it('returns false for skip-list types', async () => {
+			globalConfig.credentials.overwrite.skipTypes = [
+				'notionOAuth2Api',
+			] as unknown as CommaSeparatedStringArray<string>;
+			const instance = await createInstance({
+				notionOAuth2Api: { clientId: 'client-id', clientSecret: 'client-secret' },
+			});
+
+			expect(instance.isManagedOAuthType('notionOAuth2Api')).toBe(false);
+		});
+
+		it('returns false for unrecognized types', async () => {
+			const instance = await createInstance({});
+			credentialTypes.recognizes.mockReturnValue(false);
+
+			expect(instance.isManagedOAuthType('somethingUnknown')).toBe(false);
 		});
 	});
 });

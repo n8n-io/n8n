@@ -7,16 +7,18 @@ import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction
 @BackendModule({ name: 'redaction', instanceTypes: ['main'] })
 export class RedactionModule implements ModuleInterface {
 	async init() {
-		await import('./redaction-context-hook');
+		await import('./redaction-context-hook.js');
 
 		// Importing the service here registers its @OnPubSubEvent handler with the
 		// pubsub metadata before PubSubRegistry.init() wires up the listeners.
 		// The decorator runs at class-evaluation (import) time, so the import
 		// side-effect alone is sufficient — the registry instantiates the handler
 		// lazily on event receipt, so we must not eagerly resolve it here.
-		await import('./instance-redaction-enforcement.service');
+		await import('./instance-redaction-enforcement.service.js');
 
-		const { ExecutionRedactionService } = await import('./executions/execution-redaction.service');
+		const { ExecutionRedactionService } = await import(
+			'./executions/execution-redaction.service.js'
+		);
 		const executionRedactionService = Container.get(ExecutionRedactionService);
 		await executionRedactionService.init();
 

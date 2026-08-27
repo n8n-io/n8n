@@ -38,8 +38,7 @@
 						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
-					},
-					"eager_input_streaming": true
+					}
 				}
 			],
 			"tool_choice": {
@@ -49,34 +48,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013cd56df6fda30107eef5f81ee39ac096bbbce6f481b7dd88a26b4aa4263b24c72251e8eedda97aa1dcaff5e19082514da75ebc6f2e6fbe1fbbebbefe4e00d6a62ad02bd1713e49e84a3834c9060ad19d09d4560d07042549f81cda030192a60902a5166d8ce859c96eda3f671bb13778e93384e200299853bfc84c749f76c80fecc16bdaf77697ede1f96bdebd38b4b88362a4104cea86010de4b4f4287b2a9d1849a807dfb1e812763b943e18d06a64ba596268fd725ea141bc60c4948e56b5b59a397da96c4c94c517b6027ef3b11a422cd91a70e0549a3793322aefd0e45b6cb57e7860268732cd009c58f8bc7f10fde24dff456119892d64def8e22f0e86e648a9c243a60103a9309978526eb2b7481389fa00106da101737422a31560855d50a5f7570808b792f7bc9c7caa4d3ed53df1232af93e1ed82edba3f905de691318a971eebc98773c9e3e468f2f1f2e7a0df1f14bd7e71914f4feced87b71e22d0a20879192a24e45752cd53433b80cdaad056a502dd55854c3a4c6949ea8193957ab241a205c108bb7867a8483ccd7b1ed2e0bdb03ca0590cee87377a156c852329d4dc080ca0da3380d908aca07c04ac3582432aeca17843b7040b55ecd6c53f8237826a05e5098d1afb9c448d5d43f2fc852f157df272d177edf9f0d39761bf3b1c0c88e4d89ee6297dfe63d1bffadc92dfd3f5ff81e391bc03b03d633a1caf366ccf481adbf5ba3b96ecb8b5fe61d8cab0e18435468d277d7da37ef161affedecbbef11427715c6d67bcad83eb3e7834887b7b46a3cd81090000"
+			"1f8b0800000000000013c5564d6fdb300cbdf757183c3bad5d34e9aa5b8b7e0c5b37a0c33a0c5b0641b1d9c48d2ca9129d2508fcdf07257162a7e9d66e1dec9b1e49f33dd2a2891354c4821c9d1343e48e84a5bd549060c11c68661018348c1056676073c8758a1218245214297646221b179da34eb773181d76e3288a21842cf5ef70431ec5ef7e9ac155213e74af2797b3fbe3649a7f8e079f20dcca0421582d3d209ccb1c09e5d3265a112a02f6fd47088eb4e11685d30a982aa45c410e1f0a540936c0144964d2555851b1cf942988931ea372c07a278721242219214f2c0acab4e24d8fa8b25b14e953b62ad6274033c21cad90bc9b3ff6df58e3d1b6b50c411754878e8f4270682759829c32b4c0c057261536f545567768bd703e440d0c94262e262293622011ca320882726f0f97dd5e55920fa44ec6bb7bbec3659125c5e9526bddeea5aee2486bc90b8755dffdb9e0517c7ef3fe6a687b747d7bfad6dc8cdd9b2f93597a05212891fbb8142512f2bb4c2e427d3180cd4b5f5429bdd8758634b398d05252f56ca4994c0db7b404e041784a7e8a92c4efe52f5c1af297c886d4b27bf74eabb5b31196322117203080dd7c5be132ef8381b265128246fd46555ae6c3823e1c506e0e369cdaaed03e35be9ab6f94ca90fe592d1d3b3449b3f8d126d6a3c9ea1eee5f3297ef97cfa3aec3d7cbb3517279767e7337571fab1f760e3b37f9b4fafd7aef8ef264ecb04fc9811346a9d47dfff031a17a9edd62c26cd9a52cb64ccc1609f5677fbb5ee755c5755ed8f3bf5348c50e3dfd8f0eaf7f6997b5ef9ff16bdadcd2c8ea2f2b1da5d25abdb60ddfc5f7a6d44b5840b0000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:56Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:12Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:56Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:12Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:56Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:12Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:56Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:12Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a10371a49d7d5ba3-VIE",
+			"cf-ray": "a154f7aaad485aa9-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Tue, 23 Jun 2026 12:20:04 GMT",
-			"request-id": "req_011CcLBRCo2VLNpYESwXPuZH",
+			"date": "Fri, 03 Jul 2026 09:47:13 GMT",
+			"request-id": "req_011CceurrZoG7SVMD4DdKXQg",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=HAo3geS.sqbJgFRZfr6vedE5uCQs3.JVXn0jn7HyQ98-1782217196.2516236-1.0.1.1-G6hqSGkux30yxWy66A7n3qGRMxjL5f0HMGMWxoxAdM0; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-356f19a6d997d1dc8b50ea526316a497-062e9041cb7df153-01",
+			"traceresponse": "00-2bfabdf0bead4448366298657d81832b-0c7218d16c2ddfb7-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -111,7 +109,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_014gEWzRNNRmFNmUhk6pxD3s",
+							"id": "toolu_01DQKGgr6tLUAHpQks8VvydG",
 							"name": "delete_file",
 							"input": {
 								"path": "/tmp/a.txt"
@@ -122,7 +120,7 @@
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01ApMYKPYNAYRRttibp8hctL",
+							"id": "toolu_01Xg6qZUpE9FBDynEAN6qr1B",
 							"name": "delete_file",
 							"input": {
 								"path": "/tmp/b.txt"
@@ -138,12 +136,12 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_014gEWzRNNRmFNmUhk6pxD3s",
+							"tool_use_id": "toolu_01DQKGgr6tLUAHpQks8VvydG",
 							"content": "{\"deleted\":true,\"path\":\"/tmp/a.txt\"}"
 						},
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01ApMYKPYNAYRRttibp8hctL",
+							"tool_use_id": "toolu_01Xg6qZUpE9FBDynEAN6qr1B",
 							"content": "{\"deleted\":true,\"path\":\"/tmp/b.txt\"}"
 						}
 					]
@@ -164,8 +162,7 @@
 						"required": ["path"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
-					},
-					"eager_input_streaming": true
+					}
 				}
 			],
 			"tool_choice": {
@@ -175,34 +172,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013bd54c18ed33010bdf72bcc9c93dda44ba5c537f686b82010428245961b4f1b53c7ceda93aa6595afe0cad7f125c84dc326dd14f6b2f812e5bd67cf7b636b708b9638ab3004b94611487a9a294992b37ba07d8dc0614442d2ff03bf87ca2934c0a130b2519896526f9af465ba48e7d97c9167590e096815cf086b91e5af8abb9bef6fe79ff1fdee355e7dccdf7dfae654d48c2b4102de9908c81074206963d9c259424bc0bf7c4d2090ab8547199c056e1b638e50c0bb066d81235021496d428f35bd7b6deb8604b90dda00fcfafa2a814216258ac2a324edac182bb29ef728d539aedf1b0b605d62855e1ab1a81eeb1fd8bc3c65db045c4343284f20a0dfea020569f4c021364649af628fed0a7dcc2dd6e880837524e4566a239706a16dd9c36a6733ec2efdd850b134aed84c5ffd84e4504de1ae8b3ce463e2e33ec25d141e3e1ca07d54bbd6767d528c4104e19c3f8586e4dffd1d24237f1d32f6f5477674f7a1290a0c019ed2a46733f182bd61a5dc220b9d9b5563cc9e293448a8d8d251c956da60e0b73665bf7efe609754d597f28276c4d25e37e296a7dcadbd7154c698ff3d5de7bd0bb844b4cc63e5b6a8d8cabb8a51892cec03617531b884f3efd4d5ff7aa6ae1e589c38b19f68938147240c028e660ea055821a6fe1c993a77dbed173322b16593b1577aa75430ed878b5b3d96fdb21a1d520060000"
+			"1f8b0800000000000013bd54cb6edb3010bcfb2bd8bdf42225721a03298fbdf471288a16018a3601b112d796608a54c9956023d057f4daafeb9714b2acc452eca697541742334bcecc92586ac8b2142585802b5281d1f34c23a31477c0db8a40c2888468f8077907a5d364404266b0d614e758acebf8325ec417c9c5629e247388a0d0dd1961a592f9bbeb8f9fde567efbf9db87d765b874d75fd76809a2891244e09de9000ca1088cb693cd9c65b20cf2fb6d04815da53c617016a4ad8dd943817ed464331a819a180b1306ac1edc17b6aa59b15b930d20afae5e4590619693ca3c2117ceaa714532f09e509fe286bd9d00553995e4d1a845f9b8fe819de753b68dc0d57c08cd2308e49b2223c5057990d03546a3d75d8fed927c975badc88104eb58618385c1d410b4ad78f8dad98cfa4bdf3754a5c665ebe3577fa464a7a669d3473ee4bbc4fb7d4c9bae70b7488076a45b1576351112d08170ca9b26c3f8776fbb9291b71e197bba2fdb3bfb526719853031f89fc45f88f72f1b12a1f7b0ac8dd90a4d8698b4481de76259180af2c6c6e2f7af9fe29ccbea1ccf78c3221eea465c3ae56eec1bc739b44fdefdb345ec23881c1b122991159e4ad790164bef4ac13989b00d4ce5d9bdc9d3cfd3554fbd4e571d187c74de30c68e861d9170106e346880ac565c7b0bff3c6edae79b379301b148da53918f35ef90837ed71f5298a61a0d060000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:04Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:13Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:04Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:13Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:04Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:13Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:04Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:13Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a10371d77b665ba3-VIE",
+			"cf-ray": "a154f7b0ea415aa9-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Tue, 23 Jun 2026 12:20:05 GMT",
-			"request-id": "req_011CcLBRodH7Ancappv4dbMK",
+			"date": "Fri, 03 Jul 2026 09:47:14 GMT",
+			"request-id": "req_011CceurvrGDN9UoZKuJeUkL",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=vhq0BdyFhq0i4eZXplHBCFndUPmnO9MtZ9deGKnyD3s-1782217204.401093-1.0.1.1-v3hHkKb4S0MEe805rf7K3AL3fdhsHYgRi93y2lg.DPc; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-500a861c2918c3740f2affccaa156bad-95832ba221ed3a8f-01",
+			"traceresponse": "00-eba3eefdf46aac0a1735a3c185f4fc47-ffc2817f20fe462f-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"

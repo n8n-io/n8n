@@ -20,7 +20,9 @@ function ok(text: string): McpToolCallResult {
 }
 
 function fakeServer(tools: McpTool[], result: McpToolCallResult) {
-	const callTool = vi.fn(async (_req: McpToolCallRequest) => result);
+	const callTool = vi.fn(
+		async (_req: McpToolCallRequest, _options?: { abortSignal?: AbortSignal }) => result,
+	);
 	const getToolsByCategory = vi.fn((category: string) =>
 		tools.filter((t) => t.annotations?.category === category),
 	);
@@ -69,6 +71,16 @@ describe('CompositeLocalMcpServer', () => {
 		expect(result).toEqual(ok('from-b'));
 		expect(b.callTool).toHaveBeenCalledTimes(1);
 		expect(a.callTool).not.toHaveBeenCalled();
+	});
+
+	it('forwards abortSignal options to the owning server', async () => {
+		const a = fakeServer([tool('x')], ok('from-a'));
+		const composite = new CompositeLocalMcpServer([a.server]);
+		const abortSignal = new AbortController().signal;
+
+		await composite.callTool({ name: 'x', arguments: {} }, { abortSignal });
+
+		expect(a.callTool).toHaveBeenCalledWith({ name: 'x', arguments: {} }, { abortSignal });
 	});
 
 	it('routes a duplicated tool name to the last server that declared it', async () => {

@@ -77,4 +77,47 @@ describe('synthesizeNodeTypeDef', () => {
 		expect(content).toContain('linearMcpOAuth2Api');
 		expect(content).toContain('export');
 	});
+
+	describe('expression (dynamic) connections', () => {
+		it('synthesizes a community node with constant expression connections', () => {
+			const description: INodeTypeDescription = {
+				...baseDescription,
+				name: 'n8n-nodes-firecrawl.firecrawl',
+				displayName: 'Firecrawl',
+				inputs: '={{["main"]}}',
+				outputs: '={{["main"]}}',
+				properties: [{ displayName: 'URL', name: 'url', type: 'string', default: '' }],
+			};
+
+			const content = synthesizeNodeTypeDef(description);
+
+			expect(content).toContain('export');
+			expect(content).toContain('url');
+		});
+
+		it('synthesizes a node with parameter-dependent expression inputs', () => {
+			const description: INodeTypeDescription = {
+				...baseDescription,
+				name: 'n8n-nodes-custom.customAgent',
+				displayName: 'Custom Agent',
+				inputs: '={{ [{ type: "main" }, { type: "ai_languageModel", required: true }] }}',
+				outputs: ['main'],
+				properties: [{ displayName: 'Prompt', name: 'prompt', type: 'string', default: '' }],
+			};
+
+			const content = synthesizeNodeTypeDef(description);
+
+			expect(content).toContain('export');
+			expect(content).toContain('prompt');
+		});
+
+		it('throws for a malformed description', () => {
+			const description = {
+				...baseDescription,
+				group: 'transform',
+			} as unknown as INodeTypeDescription;
+
+			expect(() => synthesizeNodeTypeDef(description)).toThrow('Cannot synthesize type definition');
+		});
+	});
 });

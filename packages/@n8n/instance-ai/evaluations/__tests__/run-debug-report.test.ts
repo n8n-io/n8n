@@ -67,13 +67,13 @@ describe('run debug report', () => {
 		expect(getTestCaseAnchorId(result, 0)).toBe('tc-slack-notifier');
 	});
 
-	it('labels a seedThread case (no authored conversation) without throwing', () => {
+	it('labels a replay-seeded case (no authored conversation) without throwing', () => {
 		const seedCase: WorkflowTestCase = {
 			complexity: 'simple',
 			tags: ['seeded'],
 			executionScenarios: [{ name: 's', description: 'd', dataSetup: '', successCriteria: 'ok' }],
 			datasets: ['seeded'],
-			seedThread: { threadId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' },
+			seed: { mode: 'replay' as const, threadId: 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee' },
 		};
 		const html = generateRunDebugReport([
 			resultWithRunDebug(

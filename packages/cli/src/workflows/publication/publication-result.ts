@@ -6,14 +6,27 @@
 export type PublicationSkipReason =
 	/** The workflow row no longer exists. */
 	| 'workflow-not-found'
-	/** The workflow is no longer active, so there are no triggers to reconcile. */
-	| 'workflow-inactive';
+	/**
+	 * The version carried duplicate or missing node ids; a corrected
+	 * system-authored version was published instead, and that publish enqueued
+	 * the record that applies it.
+	 */
+	| 'node-ids-healed'
+	/**
+	 * The version carried duplicate or missing node ids, but a concurrent
+	 * publish or unpublish won the race against the corrected version; whatever
+	 * won enqueued its own record.
+	 */
+	| 'superseded';
+
+import type { WorkflowPublicationTriggerKind } from '@n8n/db';
 
 /** A trigger that activated successfully; carries no error. */
 type ActivatedTriggerPublicationStatus = {
 	nodeId: string;
 	nodeName: string;
 	status: 'activated';
+	triggerKind: WorkflowPublicationTriggerKind;
 };
 
 /** A trigger that failed to activate; always carries the failure message. */
@@ -21,6 +34,7 @@ export type FailedTriggerPublicationStatus = {
 	nodeId: string;
 	nodeName: string;
 	status: 'failed';
+	triggerKind: WorkflowPublicationTriggerKind;
 	errorMessage: string;
 };
 

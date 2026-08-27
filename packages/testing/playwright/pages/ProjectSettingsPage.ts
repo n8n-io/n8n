@@ -2,8 +2,11 @@ import type { Locator } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { ProjectHeader } from './components/ProjectHeader';
 
 export class ProjectSettingsPage extends BasePage {
+	readonly projectHeader = new ProjectHeader(this.page);
+
 	async goto(projectId: string) {
 		await this.page.goto(`/projects/${projectId}/settings`);
 	}
@@ -93,7 +96,7 @@ export class ProjectSettingsPage extends BasePage {
 	}
 
 	getTitle() {
-		return this.page.getByTestId('project-name');
+		return this.projectHeader.getProjectName();
 	}
 
 	// Robust value assertions on inner form controls
@@ -126,6 +129,10 @@ export class ProjectSettingsPage extends BasePage {
 	// Icon picker methods
 	getIconPickerButton() {
 		return this.page.getByTestId('icon-picker-button');
+	}
+
+	getIconPickerIcon() {
+		return this.getIconPickerButton().locator('svg');
 	}
 
 	async clickIconPickerButton() {

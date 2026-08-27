@@ -3,11 +3,6 @@ import os from 'node:os';
 import path from 'node:path';
 import picocolors from 'picocolors';
 
-import { createSymlink, ensureFolder } from '../../utils/filesystem';
-import { detectPackageManager } from '../../utils/package-manager';
-import { getCommandHeader, onCancel } from '../../utils/prompts';
-import { validateNodeName } from '../../utils/validation';
-import { copyStaticFiles } from '../build';
 import {
 	buildHelpText,
 	type CommandConfig,
@@ -16,6 +11,11 @@ import {
 	readPackageName,
 	runCommands,
 } from './utils';
+import { createSymlink, ensureFolder } from '../../utils/filesystem';
+import { detectPackageManager } from '../../utils/package-manager';
+import { getCommandHeader, onCancel } from '../../utils/prompts';
+import { validateNodeName } from '../../utils/validation';
+import { copyStaticFiles } from '../build';
 
 export default class Dev extends Command {
 	static override description = 'Run n8n with the node and rebuild on changes for live preview';

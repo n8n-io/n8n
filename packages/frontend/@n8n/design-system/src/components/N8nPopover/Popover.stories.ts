@@ -65,7 +65,7 @@ const Template: StoryFn = (args) => ({
 		<div style="padding: 50px;">
 			<N8nPopover v-model:open="isOpen" v-bind="args">
 				<template #trigger>
-					<N8nButton type="primary">Open Form</N8nButton>
+					<N8nButton>Open Form</N8nButton>
 				</template>
 				<template #content="{ close }">
 					<div style="display: flex; flex-direction: column; gap: 12px; padding: var(--spacing--sm);">
@@ -82,8 +82,8 @@ const Template: StoryFn = (args) => ({
 							type="email"
 						/>
 						<div style="display: flex; gap: 8px; margin-top: 8px;">
-							<N8nButton size="small" type="primary">Save</N8nButton>
-							<N8nButton size="small" type="secondary" @click="close">Cancel</N8nButton>
+							<N8nButton size="small">Save</N8nButton>
+							<N8nButton size="small" @click="close">Cancel</N8nButton>
 						</div>
 					</div>
 				</template>
@@ -109,7 +109,7 @@ const ScrollableTemplate: StoryFn = (args) => ({
 		<div style="padding: 50px;">
 			<N8nPopover v-model:open="isOpen" v-bind="args">
 				<template #trigger>
-					<N8nButton type="primary">Open Scrollable Menu</N8nButton>
+					<N8nButton>Open Scrollable Menu</N8nButton>
 				</template>
 				<template #content="{ close }">
 					<div style="display: flex; flex-direction: column; gap: 8px; padding: var(--spacing--sm);">
@@ -204,7 +204,7 @@ const AlignmentVariantsTemplate: StoryFn = (args) => ({
 						:align="align"
 					>
 						<template #trigger>
-							<N8nButton type="primary">{{ align }}</N8nButton>
+							<N8nButton>{{ align }}</N8nButton>
 						</template>
 						<template #content>
 							<div style="padding: var(--spacing--sm); min-width: 160px; text-transform: capitalize;">

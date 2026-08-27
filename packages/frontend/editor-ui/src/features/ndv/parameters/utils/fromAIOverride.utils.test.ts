@@ -7,7 +7,10 @@ import {
 	isFromAIOverrideValue,
 	makeOverrideValue,
 	parseOverrides,
+	reconcileFromAIKeys,
+	reconcileNodeFromAIKeys,
 } from './fromAIOverride.utils';
+import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import type { INodeTypeDescription, NodePropertyTypes } from 'n8n-workflow';
 
 const getNodeType = vi.fn();
@@ -333,5 +336,187 @@ describe('buildUniqueName', () => {
 	])('should build a unique name with %s', (_description, path, expected) => {
 		const context = makeContext('value', path);
 		expect(buildUniqueName(context)).toEqual(expected);
+	});
+});
+
+const AUTO_GENERATED_MARKER = '/*n8n-auto-generated-fromAI-override*/';
+const makeOverrideExpression = (key: string, desc = '', type = 'string') =>
+	`={{ ${AUTO_GENERATED_MARKER} $fromAI('${key}', \`${desc}\`, '${type}') }}`;
+
+describe('reconcileFromAIKeys', () => {
+	const override = makeOverrideExpression;
+	const fieldValueField = [
+		{ name: 'fieldValue', displayName: 'Field Value', type: 'string' as NodePropertyTypes },
+	];
+
+	it('reindexes colliding auto-generated keys to match row position', () => {
+		const rows = [
+			{ fieldValue: override('Field_Value', 'desc A') },
+			{ fieldValue: override('Field_Value', 'desc B') },
+		];
+
+		const result = reconcileFromAIKeys(rows, 'parameters.fieldsUi.fieldValues', fieldValueField);
+
+		expect(result[0].fieldValue).toContain("$fromAI('fieldValues0_Field_Value'");
+		expect(result[0].fieldValue).toContain('desc A');
+		expect(result[1].fieldValue).toContain("$fromAI('fieldValues1_Field_Value'");
+		expect(result[1].fieldValue).toContain('desc B');
+	});
+
+	it('leaves hand-edited (non-marker) $fromAI and plain values untouched', () => {
+		const rows = [
+			{ fieldValue: "={{ $fromAI('Field_Value', `hand written`, 'string') }}" },
+			{ fieldValue: 'a plain static value' },
+		];
+
+		const result = reconcileFromAIKeys(rows, 'parameters.fieldsUi.fieldValues', fieldValueField);
+
+		expect(result[0]).toEqual(rows[0]);
+		expect(result[1]).toEqual(rows[1]);
+	});
+
+	it('is idempotent: already-correct keys are returned unchanged', () => {
+		const rows = [
+			{ fieldValue: override('fieldValues0_Field_Value', 'desc A') },
+			{ fieldValue: override('fieldValues1_Field_Value', 'desc B') },
+		];
+
+		const result = reconcileFromAIKeys(rows, 'parameters.fieldsUi.fieldValues', fieldValueField);
+
+		expect(result[0]).toEqual(rows[0]);
+		expect(result[1]).toEqual(rows[1]);
+	});
+
+	it('preserves the description byte-for-byte (including backslashes) when reindexing', () => {
+		const stored = buildValueFromOverride(
+			{
+				type: 'fromAI',
+				extraProps: fromAIExtraProps,
+				extraPropValues: { description: 'match C:\\Users and \\d+' },
+			},
+			makeContext('', 'parameters.fieldsUi.fieldValues[0].fieldValue', 'string', {
+				displayName: 'Field Value',
+			}),
+			true,
+		);
+		const rows = [{ fieldValue: stored }, { fieldValue: stored }];
+
+		const result = reconcileFromAIKeys(rows, 'parameters.fieldsUi.fieldValues', fieldValueField);
+
+		// row 0 keeps index 0 → key + description unchanged
+		expect(result[0].fieldValue).toBe(stored);
+		// row 1 only its key changes; the description bytes are untouched
+		expect(result[1].fieldValue).toBe(stored.replace('fieldValues0', 'fieldValues1'));
+	});
+
+	it('preserves a description containing a backtick when reindexing', () => {
+		const stored = buildValueFromOverride(
+			{
+				type: 'fromAI',
+				extraProps: fromAIExtraProps,
+				extraPropValues: { description: 'use the `code` node' },
+			},
+			makeContext('', 'parameters.fieldsUi.fieldValues[0].fieldValue', 'string', {
+				displayName: 'Field Value',
+			}),
+			true,
+		);
+		const rows = [{ fieldValue: stored }, { fieldValue: stored }];
+
+		const result = reconcileFromAIKeys(rows, 'parameters.fieldsUi.fieldValues', fieldValueField);
+
+		expect(result[0].fieldValue).toBe(stored);
+		expect(result[1].fieldValue).toBe(stored.replace('fieldValues0', 'fieldValues1'));
+	});
+
+	it('changes only the key, preserving the stored type and description', () => {
+		const rows = [{ fieldValue: override('Field_Value', 'a count', 'number') }];
+
+		const result = reconcileFromAIKeys(rows, 'parameters.fieldsUi.fieldValues', fieldValueField);
+
+		expect(result[0].fieldValue).toBe(override('fieldValues0_Field_Value', 'a count', 'number'));
+	});
+
+	it('reconciles multiple override fields within a row independently', () => {
+		const rows = [{ first: override('First', 'd1'), second: override('Second', 'd2') }];
+
+		const result = reconcileFromAIKeys(rows, 'parameters.list', [
+			{ name: 'first', displayName: 'First', type: 'string' as NodePropertyTypes },
+			{ name: 'second', displayName: 'Second', type: 'string' as NodePropertyTypes },
+		]);
+
+		expect(result[0].first).toContain("$fromAI('list0_First'");
+		expect(result[0].second).toContain("$fromAI('list0_Second'");
+	});
+});
+
+describe('reconcileNodeFromAIKeys', () => {
+	const override = makeOverrideExpression;
+
+	it('reconciles override keys inside a fixedCollection list', () => {
+		const properties: INodeProperties[] = [
+			{
+				displayName: 'Fields',
+				name: 'fieldsUi',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						displayName: 'Field',
+						name: 'fieldValues',
+						values: [
+							{ displayName: 'Field Value', name: 'fieldValue', type: 'string', default: '' },
+						],
+					},
+				],
+			},
+		];
+		const nodeParameters: INodeParameters = {
+			fieldsUi: {
+				fieldValues: [
+					{ fieldValue: override('Field_Value', 'A') },
+					{ fieldValue: override('Field_Value', 'B') },
+				],
+			},
+		};
+
+		const result = reconcileNodeFromAIKeys(properties, nodeParameters);
+		const rows = (result.fieldsUi as { fieldValues: INodeParameters[] }).fieldValues;
+
+		expect(rows[0].fieldValue).toContain("$fromAI('fieldValues0_Field_Value'");
+		expect(rows[1].fieldValue).toContain("$fromAI('fieldValues1_Field_Value'");
+	});
+
+	it('reconciles override keys inside a multipleValues collection', () => {
+		const properties: INodeProperties[] = [
+			{
+				displayName: 'Items',
+				name: 'items',
+				type: 'collection',
+				typeOptions: { multipleValues: true },
+				default: {},
+				options: [{ displayName: 'Value', name: 'value', type: 'string', default: '' }],
+			},
+		];
+		const nodeParameters: INodeParameters = {
+			items: [{ value: override('Value', 'A') }, { value: override('Value', 'B') }],
+		};
+
+		const result = reconcileNodeFromAIKeys(properties, nodeParameters);
+		const rows = result.items as INodeParameters[];
+
+		expect(rows[0].value).toContain("$fromAI('items0_Value'");
+		expect(rows[1].value).toContain("$fromAI('items1_Value'");
+	});
+
+	it('leaves non-list parameters untouched', () => {
+		const properties: INodeProperties[] = [
+			{ displayName: 'Name', name: 'name', type: 'string', default: '' },
+		];
+		const nodeParameters: INodeParameters = { name: override('Field_Value', 'A') };
+
+		const result = reconcileNodeFromAIKeys(properties, nodeParameters);
+
+		expect(result.name).toBe(nodeParameters.name);
 	});
 });

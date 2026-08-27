@@ -2,7 +2,8 @@ import { ApiKey, ApiKeyRepository, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
-import { ApiKeyAudience, ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { ApiKeyAudience } from 'n8n-workflow';
 
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { JwtService } from '@/services/jwt.service';
@@ -74,7 +75,10 @@ export class McpServerApiKeyService {
 				return {
 					user: tokenGrant.actor ?? tokenGrant.subject,
 					actor: tokenGrant.actor,
-					authType: 'api_key',
+					// Every non-OAuth bearer token the strategy chain admits is reported
+					// as `api_key`, token-exchange scoped JWTs included. The distinction
+					// between them is not surfaced to telemetry or log streaming.
+					caller: { authType: 'api_key' },
 				};
 			}
 

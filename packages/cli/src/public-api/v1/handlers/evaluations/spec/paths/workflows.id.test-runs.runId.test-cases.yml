@@ -1,0 +1,26 @@
+get:
+  x-eov-operation-id: getTestCases
+  x-required-scope: testRun:read
+  x-eov-operation-handler: v1/handlers/evaluations/evaluations.handler
+  tags:
+    - Evaluation
+  summary: Retrieve test run cases
+  description: Retrieve the per-case results of an evaluation test run.
+  parameters:
+    - $ref: '../schemas/parameters/testRunWorkflowId.yml'
+    - $ref: '../schemas/parameters/testRunId.yml'
+    - $ref: '../../../../shared/spec/parameters/limit.yml'
+    - $ref: '../../../../shared/spec/parameters/cursor.yml'
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/testCaseExecutionList.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

@@ -4,7 +4,12 @@ import type { ModelMessage, SystemModelMessage } from 'ai';
 import { toAiMessages } from './messages';
 import { filterLlmMessages, getCreatedAt } from '../../sdk/message';
 import type { SerializedMessageList } from '../../types/runtime/message-list';
-import type { AgentDbMessage, AgentMessage, ContentToolCall } from '../../types/sdk/message';
+import type {
+	AgentDbMessage,
+	AgentMessage,
+	ContentToolCall,
+	ToolCallSuspensionInfo,
+} from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
 import { stringifyError } from '../loop/runtime-helpers';
 import { stripOrphanedToolMessages } from '../memory/strip-orphaned-tool-messages';
@@ -17,22 +22,31 @@ export type LlmContext = {
 };
 
 /**
- * Build the system message(s) for an LLM call. When observation-log memory is
- * present, instructions and observations are sent as separate system messages
- * so prompt-cache breakpoints on the static instructions are not invalidated
- * when observations grow append-only.
+ * Build the system message(s) for an LLM call. `baseInstructions` is always
+ * the cached, stable message. Observation-log memory and volatile
+ * tool-instruction fragments (from deferred tools loaded mid-conversation)
+ * are both kept out of it and folded into a second, uncached system message
+ * instead — either would otherwise change the bytes under the instruction
+ * cache breakpoint (and OpenAI's automatic prefix cache) on nearly every
+ * call, for no future read.
  */
 export function buildSystemMessages(
 	baseInstructions: string,
 	observationLogMemory: string | undefined,
 	instructionProviderOptions?: ProviderOptions,
+	volatileInstructions?: string,
+	mcpConnectionNote?: string,
 ): SystemModelMessage | SystemModelMessage[] {
-	const trimmedObservations = observationLogMemory?.trim();
 	const cacheOptions = instructionProviderOptions
 		? { providerOptions: instructionProviderOptions }
 		: {};
+	const volatileSections = [
+		volatileInstructions?.trim(),
+		mcpConnectionNote?.trim(),
+		observationLogMemory?.trim(),
+	].filter((s): s is string => Boolean(s));
 
-	if (!trimmedObservations) {
+	if (volatileSections.length === 0) {
 		return {
 			role: 'system',
 			content: baseInstructions,
@@ -48,8 +62,7 @@ export function buildSystemMessages(
 		},
 		{
 			role: 'system',
-			content: `\n\n${trimmedObservations}`,
-			...cacheOptions,
+			content: `\n\n${volatileSections.join('\n\n')}`,
 		},
 	];
 }
@@ -146,6 +159,14 @@ export class AgentMessageList {
 	observationLogMemory: string | undefined;
 
 	/**
+	 * Short, model-facing note about MCP servers that failed to connect for
+	 * this run, so the agent can mention them to the user when relevant. Set
+	 * by `runAgentLoop` from `AgentRuntimeConfig.mcpConnectionFailures`. Folded
+	 * into the uncached volatile system message — never persisted to memory.
+	 */
+	mcpConnectionNote: string | undefined;
+
+	/**
 	 * Bump the monotonic clock so subsequent live messages are timestamped strictly
 	 * after the given moment. Used to keep new live messages ordered after activity
 	 * the resource-filtered history does not reflect (e.g. resources sharing a
@@ -239,6 +260,20 @@ export class AgentMessageList {
 		return host;
 	}
 
+	/**
+	 * Record on a pending tool-call block what confirmation the user was shown
+	 * (HITL suspension). No-op when the toolCallId is unknown or the block is
+	 * already settled. Lets a later history load of an abandoned suspension
+	 * explain the unanswered confirmation instead of silently dropping it.
+	 */
+	markToolCallSuspended(toolCallId: string, suspension: ToolCallSuspensionInfo): void {
+		const host = this.findToolCallHost(toolCallId);
+		if (!host) return;
+		const block = this.findToolCallBlock(host, toolCallId);
+		if (!block || block.state !== 'pending') return;
+		block.suspension = suspension;
+	}
+
 	private findToolCallHost(toolCallId: string): AgentDbMessage | undefined {
 		// Start from the last message and go backwards to find the host message
 		for (let i = this.all.length - 1; i >= 0; i--) {
@@ -263,16 +298,23 @@ export class AgentMessageList {
 
 	/**
 	 * Full LLM context for a generateText / streamText call.
-	 * Returns the system prompt separately (observation-log memory in its own
-	 * system message when present) and conversation messages stripped via
+	 * Returns the system prompt separately (observation-log memory and any
+	 * volatile tool-instruction fragments in their own uncached system
+	 * message when present) and conversation messages stripped via
 	 * filterLlmMessages.
 	 */
-	forLlm(baseInstructions: string, instructionProviderOptions?: ProviderOptions): LlmContext {
+	forLlm(
+		baseInstructions: string,
+		instructionProviderOptions?: ProviderOptions,
+		volatileInstructions?: string,
+	): LlmContext {
 		return {
 			system: buildSystemMessages(
 				baseInstructions,
 				this.observationLogMemory,
 				instructionProviderOptions,
+				volatileInstructions,
+				this.mcpConnectionNote,
 			),
 			messages: toAiMessages(filterLlmMessages(stripOrphanedToolMessages(this.all))),
 		};
@@ -300,6 +342,11 @@ export class AgentMessageList {
 	 */
 	inputDelta(): AgentDbMessage[] {
 		return this.all.filter((m) => this.inputSet.has(m));
+	}
+
+	/** All messages currently in the list, as live references. */
+	messages(): readonly AgentDbMessage[] {
+		return this.all;
 	}
 
 	serialize(): SerializedMessageList {

@@ -1,5 +1,5 @@
 name: 'Release: Create Experiment PR'
-run-name: 'Release: Create Experiment Release PR'
+run-name: 'Release: Create Experiment Release PR (${{ inputs.commits }})'
 
 on:
   workflow_dispatch:

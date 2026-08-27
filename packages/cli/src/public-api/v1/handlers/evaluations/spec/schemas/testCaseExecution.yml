@@ -1,0 +1,42 @@
+type: object
+properties:
+  id:
+    type: string
+    example: 1a2b3c4d5e6f7080
+  status:
+    type: string
+    enum: ['new', 'running', 'evaluation_running', 'success', 'error', 'warning', 'cancelled']
+  runAt:
+    type: string
+    format: date-time
+    nullable: true
+  completedAt:
+    type: string
+    format: date-time
+    nullable: true
+  metrics:
+    type: object
+    nullable: true
+    additionalProperties: true
+    description: Metrics produced by this test case.
+  errorCode:
+    type: string
+    nullable: true
+  errorDetails:
+    type: object
+    nullable: true
+    additionalProperties: true
+  inputs:
+    type: object
+    nullable: true
+    additionalProperties: true
+    description: Input data for this test case.
+  outputs:
+    type: object
+    nullable: true
+    additionalProperties: true
+    description: Output data produced by this test case.
+  executionId:
+    type: string
+    nullable: true
+    description: ID of the underlying workflow execution, if still retained.

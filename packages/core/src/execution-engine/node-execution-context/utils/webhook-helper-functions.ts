@@ -7,7 +7,7 @@ import type {
 	IWorkflowDataProxyAdditionalKeys,
 	IWebhookDescription,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, resolveWebhookDescriptionField } from 'n8n-workflow';
 
 /** Returns the full webhook description of the webhook with the given name */
 export function getWebhookDescription(
@@ -45,25 +45,37 @@ export function getNodeWebhookUrl(
 	let baseUrl: string;
 	if (webhookDescription.nodeType === 'mcp') {
 		baseUrl = isTest === true ? additionalData.mcpTestBaseUrl : additionalData.mcpBaseUrl;
+	} else if (webhookDescription.nodeType === 'form') {
+		baseUrl = isTest === true ? additionalData.formTestBaseUrl : additionalData.formBaseUrl;
 	} else {
 		baseUrl = isTest === true ? additionalData.webhookTestBaseUrl : additionalData.webhookBaseUrl;
 	}
 
-	const path = workflow.expression.getSimpleParameterValue(
-		node,
-		webhookDescription.path,
-		mode,
-		additionalKeys,
-	);
-	if (path === undefined) return;
+	// Prefer the field's native resolver (see `webhookDescriptionFields` in
+	// n8n-workflow) so static-parameter nodes never engage the expression engine.
+	const nativePath = resolveWebhookDescriptionField(node, webhookDescription, 'path');
+	const path = nativePath.resolved
+		? nativePath.value
+		: workflow.expression.getSimpleParameterValue(
+				node,
+				webhookDescription.path,
+				mode,
+				additionalKeys,
+			);
+	if (path === undefined || path === null) return;
 
-	const isFullPath: boolean = workflow.expression.getSimpleParameterValue(
-		node,
-		webhookDescription.isFullPath,
-		mode,
-		additionalKeys,
-		undefined,
-		false,
+	const nativeIsFullPath = resolveWebhookDescriptionField(node, webhookDescription, 'isFullPath');
+	const isFullPath = (
+		nativeIsFullPath.resolved
+			? nativeIsFullPath.value
+			: workflow.expression.getSimpleParameterValue(
+					node,
+					webhookDescription.isFullPath,
+					mode,
+					additionalKeys,
+					undefined,
+					false,
+				)
 	) as boolean;
 	return NodeHelpers.getNodeWebhookUrl(baseUrl, workflow.id, node, path.toString(), isFullPath);
 }

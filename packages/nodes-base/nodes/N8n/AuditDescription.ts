@@ -6,7 +6,7 @@ export const auditOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		default: 'get',
+		default: 'generate',
 		displayOptions: {
 			show: {
 				resource: ['audit'],

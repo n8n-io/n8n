@@ -49,7 +49,7 @@ const { saveAsMock, mockTelemetryTrack } = vi.hoisted(() => ({
 vi.mock('file-saver', () => ({
 	saveAs: saveAsMock,
 }));
-vi.mock('@/app/composables/useTelemetry', () => ({
+vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTelemetryTrack,
 	}),

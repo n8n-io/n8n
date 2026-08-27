@@ -310,6 +310,33 @@ describe('DbConnectionMonitor', () => {
 			expect(pool.connect).not.toHaveBeenCalled();
 		});
 
+		it('should still schedule the next ping if data source is not initialized', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = false;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const scheduleNextPingSpy = vi.spyOn(monitor as any, 'scheduleNextPing');
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(pool.connect).not.toHaveBeenCalled();
+			expect(scheduleNextPingSpy).toHaveBeenCalled();
+		});
+
+		it('should still schedule the next ping while recovery is in progress', async () => {
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			// @ts-expect-error private property
+			monitor.recovering = true;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const scheduleNextPingSpy = vi.spyOn(monitor as any, 'scheduleNextPing');
+
+			// @ts-expect-error private property
+			await monitor.ping();
+
+			expect(scheduleNextPingSpy).toHaveBeenCalled();
+		});
+
 		it('should not query if monitor is stopped', async () => {
 			// @ts-expect-error readonly property
 			dataSource.isInitialized = true;
@@ -366,6 +393,45 @@ describe('DbConnectionMonitor', () => {
 			await monitor.ping();
 
 			expect(recoverSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not trigger recovery for non-Postgres datasources after consecutive failures', async () => {
+			// Sqlite is a local file: a timed-out ping means a saturated pool, not a lost connection.
+			const sqliteDataSource = mockDeep<DataSource>({ options: { type: 'sqlite-pooled' } });
+			// @ts-expect-error readonly property
+			sqliteDataSource.isInitialized = true;
+			sqliteDataSource.query.mockRejectedValue(new Error('Database connection timed out'));
+			const sqliteMonitor = new DbConnectionMonitor(
+				sqliteDataSource,
+				onConnectedChange,
+				databaseConfig,
+				logger,
+				errorReporter,
+				dbConnectionMetrics,
+			);
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			vi.spyOn(sqliteMonitor as any, 'scheduleNextPing').mockImplementation(() => {});
+			const recoverSpy = vi
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				.spyOn(sqliteMonitor as any, 'recoverDataSource')
+				.mockResolvedValue(undefined);
+
+			// @ts-expect-error private property
+			await sqliteMonitor.ping();
+			// @ts-expect-error private property
+			await sqliteMonitor.ping();
+			// @ts-expect-error private property
+			await sqliteMonitor.ping();
+			// @ts-expect-error private property
+			await sqliteMonitor.ping();
+
+			expect(recoverSpy).not.toHaveBeenCalled();
+			// Readiness state still tracks the failure.
+			expect(onConnectedChange).toHaveBeenLastCalledWith(false);
+			// The failure log shows a plain count, not a "/threshold" that implies a teardown.
+			expect(logger.warn).toHaveBeenLastCalledWith(
+				expect.stringContaining('Database ping failed (4):'),
+			);
 		});
 
 		it('should report and recover from an unexpected throw inside recoverDataSource', async () => {
@@ -439,6 +505,40 @@ describe('DbConnectionMonitor', () => {
 			}
 		});
 
+		it('should resume pinging after a tick lands while the data source is uninitialized', async () => {
+			vi.useFakeTimers();
+			try {
+				const scheduledMonitor = new DbConnectionMonitor(
+					dataSource,
+					onConnectedChange,
+					mock<DatabaseConfig>({ pingIntervalSeconds: 1, pingTimeoutMs: 5_000 }),
+					logger,
+					errorReporter,
+					dbConnectionMetrics,
+				);
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const pingSpy = vi.spyOn(scheduledMonitor as any, 'ping');
+
+				// @ts-expect-error readonly property
+				dataSource.isInitialized = false;
+				// @ts-expect-error private property
+				scheduledMonitor.scheduleNextPing();
+				await vi.advanceTimersByTimeAsync(1000);
+
+				expect(pingSpy).toHaveBeenCalledTimes(1);
+
+				// Recovery finished: the loop must still be ticking.
+				// @ts-expect-error readonly property
+				dataSource.isInitialized = true;
+				await vi.advanceTimersByTimeAsync(1000);
+
+				expect(pingSpy).toHaveBeenCalledTimes(2);
+				expect(pool.connect).toHaveBeenCalled();
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('should not schedule another ping after stop', () => {
 			vi.useFakeTimers();
 			try {
@@ -505,6 +605,26 @@ describe('DbConnectionMonitor', () => {
 
 			expect(dataSource.destroy).not.toHaveBeenCalled();
 			expect(dataSource.initialize).not.toHaveBeenCalled();
+		});
+
+		it('should be a no-op for non-Postgres datasources', async () => {
+			const sqliteDataSource = mockDeep<DataSource>({ options: { type: 'sqlite-pooled' } });
+			// @ts-expect-error readonly property
+			sqliteDataSource.isInitialized = true;
+			const sqliteMonitor = new DbConnectionMonitor(
+				sqliteDataSource,
+				onConnectedChange,
+				databaseConfig,
+				logger,
+				errorReporter,
+				dbConnectionMetrics,
+			);
+
+			// @ts-expect-error private property
+			await sqliteMonitor.recoverDataSource();
+
+			expect(sqliteDataSource.destroy).not.toHaveBeenCalled();
+			expect(sqliteDataSource.initialize).not.toHaveBeenCalled();
 		});
 
 		it('should back off between failed recovery attempts and eventually succeed', async () => {
@@ -796,6 +916,226 @@ describe('DbConnectionMonitor', () => {
 			expect(stopResolved).toBe(true);
 			// The post-destroy `if (this.stopped) break;` prevents reinitialization.
 			expect(dataSource.initialize).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('recoverDataSource destroy timeout (Postgres)', () => {
+		// When a frozen backend leaves `pool.end()` (inside `destroy()`) unable to drain,
+		// the monitor must bound `destroy()` and force-close the pool so recovery can rebuild it.
+		type StreamShape = { destroy: Mock };
+		type ClientShape = { release: Mock; connection: { stream: StreamShape } };
+		type PoolShape = {
+			_clients: ClientShape[];
+			on: Mock;
+		};
+		type DriverShape = {
+			master: PoolShape | undefined;
+			obtainMasterConnection: Mock;
+			disconnect: Mock;
+		};
+
+		const buildPgMonitor = (destroyTimeoutMs = 10_000) =>
+			new DbConnectionMonitor(
+				dataSource,
+				onConnectedChange,
+				mock<DatabaseConfig>({
+					pingTimeoutMs: 5_000,
+					pingMaxFailuresBeforeRecovery: 3,
+					minRecoveryBackoffMs: 1_000,
+					maxRecoveryBackoffMs: 30_000,
+					connectionAcquisitionTimeoutMs: 30_000,
+					postgresdb: mock<DatabaseConfig['postgresdb']>({ destroyTimeoutMs }),
+				}),
+				logger,
+				errorReporter,
+				dbConnectionMetrics,
+			);
+
+		// One un-drained client whose drain resolves only once it is both released with an
+		// error and has its socket destroyed, mirroring pg-pool where neither step alone
+		// unblocks `pool.end()`. So the test goes red if either step is dropped.
+		//
+		// `destroy()` delegates to `driver.disconnect()` and only clears `isInitialized`
+		// once that resolves, exactly like TypeORM's `DataSource.destroy()`. The monitor
+		// bounds the disconnect, so a fixture that skipped it would not exercise the fix.
+		const setupFrozenPool = () => {
+			let resolveDrain!: () => void;
+			const drainPromise = new Promise<void>((resolve) => (resolveDrain = resolve));
+			let releasedWithError = false;
+			let socketDestroyed = false;
+			const settleIfForceClosed = () => {
+				if (releasedWithError && socketDestroyed) resolveDrain();
+			};
+			const stream: StreamShape = {
+				destroy: vi.fn(() => {
+					socketDestroyed = true;
+					settleIfForceClosed();
+				}),
+			};
+			const client: ClientShape = {
+				release: vi.fn((error?: Error) => {
+					if (error) releasedWithError = true;
+					settleIfForceClosed();
+				}),
+				connection: { stream },
+			};
+			const driver: DriverShape = {
+				master: { _clients: [client], on: vi.fn() },
+				obtainMasterConnection: vi.fn().mockResolvedValue(undefined),
+				disconnect: vi.fn(async () => {
+					await drainPromise;
+					driver.master = undefined;
+				}),
+			};
+			(dataSource as unknown as { driver: DriverShape }).driver = driver;
+			// @ts-expect-error readonly property
+			dataSource.isInitialized = true;
+			dataSource.destroy.mockImplementation(async () => {
+				// Reads the property at call time, so it picks up the monitor's wrapper.
+				await driver.disconnect();
+				// @ts-expect-error readonly property
+				dataSource.isInitialized = false;
+			});
+			dataSource.initialize.mockImplementation(async () => {
+				// @ts-expect-error readonly property
+				dataSource.isInitialized = true;
+				return dataSource;
+			});
+			return { stream, client, driver, resolveDrain };
+		};
+
+		it('should force-close the pool and continue recovery when destroy() exceeds the timeout', async () => {
+			const pgMonitor = buildPgMonitor(10_000);
+			const { stream, client } = setupFrozenPool();
+			// @ts-expect-error private property
+			pgMonitor.connected = false;
+			// Fire the timeout immediately so it wins the race against `destroy()`.
+			mockedSetTimeoutP.mockResolvedValueOnce(undefined);
+
+			// @ts-expect-error private property
+			await pgMonitor.recoverDataSource();
+
+			// Timeout fired: the client was force-released and its socket destroyed, so the
+			// stuck `destroy()` resolved and recovery rebuilt the pool.
+			expect(client.release).toHaveBeenCalledTimes(1);
+			expect(client.release).toHaveBeenCalledWith(expect.any(Error));
+			expect(stream.destroy).toHaveBeenCalledTimes(1);
+			expect(dataSource.initialize).toHaveBeenCalledTimes(1);
+			expect(onConnectedChange).toHaveBeenLastCalledWith(true);
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('force-clos'));
+			// @ts-expect-error private property
+			expect(pgMonitor.recovering).toBe(false);
+		});
+
+		it('should not force-close the pool when destroy() resolves before the timeout', async () => {
+			const pgMonitor = buildPgMonitor(10_000);
+			const { stream, client, resolveDrain } = setupFrozenPool();
+			// The drain completes on its own here, before the never-resolving timeout.
+			resolveDrain();
+			// @ts-expect-error private property
+			pgMonitor.connected = false;
+
+			// @ts-expect-error private property
+			await pgMonitor.recoverDataSource();
+
+			expect(client.release).not.toHaveBeenCalled();
+			expect(stream.destroy).not.toHaveBeenCalled();
+			expect(dataSource.initialize).toHaveBeenCalledTimes(1);
+			expect(onConnectedChange).toHaveBeenLastCalledWith(true);
+		});
+
+		it('should wait indefinitely for destroy() when the destroy timeout is 0', async () => {
+			const pgMonitor = buildPgMonitor(0);
+			const { stream, client } = setupFrozenPool();
+			// `destroy()` never resolves and the timeout is disabled, so recovery stays parked.
+			dataSource.destroy.mockReturnValue(new Promise<void>(() => {}));
+
+			// @ts-expect-error private property
+			const recovery = pgMonitor.recoverDataSource();
+			await flushMicrotasks();
+
+			expect(client.release).not.toHaveBeenCalled();
+			expect(stream.destroy).not.toHaveBeenCalled();
+			expect(dataSource.initialize).not.toHaveBeenCalled();
+
+			// Unwind the parked recovery so the test doesn't leak it.
+			void pgMonitor.stop();
+			void recovery;
+		});
+
+		it('should abandon a teardown that force-closing cannot unblock, and still recover', async () => {
+			const pgMonitor = buildPgMonitor(10_000);
+			const { client, driver } = setupFrozenPool();
+			// The drain stays wedged even after force-close, so both bounds have to fire.
+			driver.disconnect.mockReturnValue(new Promise<void>(() => {}));
+			// @ts-expect-error private property
+			pgMonitor.connected = false;
+			mockedSetTimeoutP.mockResolvedValueOnce(undefined).mockResolvedValueOnce(undefined);
+
+			// @ts-expect-error private property
+			await pgMonitor.recoverDataSource();
+
+			// Force-close was still attempted, then the teardown was abandoned so the pool
+			// could be rebuilt instead of pinning recovery at attempt 1 forever.
+			expect(client.release).toHaveBeenCalledWith(expect.any(Error));
+			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('abandoning the pool'));
+			expect(dataSource.initialize).toHaveBeenCalledTimes(1);
+			expect(onConnectedChange).toHaveBeenLastCalledWith(true);
+			// @ts-expect-error private property
+			expect(pgMonitor.recovering).toBe(false);
+		});
+
+		it('should leave the rebuilt connection alone when an abandoned teardown settles later', async () => {
+			const pgMonitor = buildPgMonitor(10_000);
+			const { driver } = setupFrozenPool();
+			let settleAbandonedDrain!: () => void;
+			driver.disconnect.mockReturnValue(
+				new Promise<void>((resolve) => (settleAbandonedDrain = resolve)),
+			);
+			mockedSetTimeoutP.mockResolvedValueOnce(undefined).mockResolvedValueOnce(undefined);
+
+			// @ts-expect-error private property
+			await pgMonitor.recoverDataSource();
+			expect(dataSource.isInitialized).toBe(true);
+
+			// The drain finally completes minutes later. It was bound at the driver, so it
+			// cannot reach `destroy()`'s `isInitialized = false` on the rebuilt connection.
+			settleAbandonedDrain();
+			await flushMicrotasks();
+
+			expect(dataSource.isInitialized).toBe(true);
+			expect(dataSource.initialize).toHaveBeenCalledTimes(1);
+			expect(dataSource.destroy).toHaveBeenCalledTimes(1);
+		});
+
+		it('should recover rather than retry forever when the teardown rejects', async () => {
+			const pgMonitor = buildPgMonitor(10_000);
+			const { driver } = setupFrozenPool();
+			// e.g. TypeORM's ConnectionIsNotSetError once `driver.master` is already gone.
+			driver.disconnect.mockRejectedValue(new Error('Connection is not established'));
+			// @ts-expect-error private property
+			pgMonitor.connected = false;
+
+			// @ts-expect-error private property
+			await pgMonitor.recoverDataSource();
+
+			// Previously the rejection propagated, `isInitialized` stayed set, and every
+			// retry re-ran the same failing teardown without ever reaching initialize().
+			expect(dataSource.destroy).toHaveBeenCalledTimes(1);
+			expect(dataSource.initialize).toHaveBeenCalledTimes(1);
+			expect(onConnectedChange).toHaveBeenLastCalledWith(true);
+		});
+
+		it('should restore the original disconnect after tearing down', async () => {
+			const pgMonitor = buildPgMonitor(10_000);
+			const { driver, resolveDrain } = setupFrozenPool();
+			const originalDisconnect = driver.disconnect;
+			resolveDrain();
+
+			// @ts-expect-error private property
+			await pgMonitor.recoverDataSource();
+
+			expect(driver.disconnect).toBe(originalDisconnect);
 		});
 	});
 

@@ -1,4 +1,5 @@
 import {
+	AgentEvent,
 	getInlineDelegateSubAgentToolOptions,
 	INLINE_SUB_AGENT_ID,
 	type CredentialProvider,
@@ -8,7 +9,14 @@ import {
 import type { SubAgentSource } from '@n8n/api-types';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
+import { OperationalError, UserError } from 'n8n-workflow';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import {
+	encodeAgentSandboxHostMetadata,
+	hashAgentSandboxPrincipal,
+} from '../../agent-sandbox-principal';
 import {
 	createN8nDelegateSubAgentTool,
 	formatSubAgentToolOutput,
@@ -19,7 +27,6 @@ import type {
 } from '../sub-agent-foreground-runner';
 
 const projectId = 'project-1';
-const userId = 'user-1';
 
 const source: SubAgentSource = {
 	agentId: 'agent-2',
@@ -67,20 +74,25 @@ describe('createN8nDelegateSubAgentTool', () => {
 		credentialProvider = mock<CredentialProvider>();
 	});
 
-	it('forwards resolveInlineSubAgentProviderTools into delegate tool metadata', () => {
+	it('forwards inline sub-agent runtime options into delegate tool metadata', () => {
 		const resolveInlineSubAgentProviderTools = vi.fn().mockReturnValue([]);
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
+			runType: 'production',
 			resolveInlineSubAgentProviderTools,
 		});
 
-		expect(getInlineDelegateSubAgentToolOptions(tool)?.resolveInlineSubAgentProviderTools).toBe(
+		const inlineOptions = getInlineDelegateSubAgentToolOptions(tool);
+		expect(inlineOptions?.resolveInlineSubAgentProviderTools).toBe(
 			resolveInlineSubAgentProviderTools,
 		);
+		expect(inlineOptions?.shouldRetrySubAgentResumeError?.(new OperationalError('temporary'))).toBe(
+			true,
+		);
+		expect(inlineOptions?.shouldRetrySubAgentResumeError?.(new UserError('terminal'))).toBe(false);
 	});
 
 	it('forwards inlineSubAgentModelsByDifficulty into delegate tool metadata', () => {
@@ -94,8 +106,8 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
+			runType: 'production',
 			inlineSubAgentModelsByDifficulty,
 		});
 
@@ -105,12 +117,17 @@ describe('createN8nDelegateSubAgentTool', () => {
 	});
 
 	it('builds a delegate tool that calls the foreground runner with a configured source', async () => {
+		const executionCounter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
+			runType: 'production',
 			policy: { maxChildren: 2 },
 		});
 
@@ -126,6 +143,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 				{
 					runId: 'parent-run-1',
 					toolCallId: 'tool-call-1',
+					executionCounter,
 				},
 			),
 		).resolves.toMatchObject({
@@ -148,26 +166,31 @@ describe('createN8nDelegateSubAgentTool', () => {
 			},
 			expect.objectContaining({
 				projectId,
-				userId,
 				credentialProvider,
+				executionCounter: expect.any(Object),
 			}),
 		);
 	});
 
-	it('forwards the parent persistence thread id and resource id to the runner', async () => {
+	it('forwards the parent persistence scope to the runner', async () => {
+		const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await tool.handler?.(
 			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
 			{
 				runId: 'parent-run-1',
-				persistence: { threadId: 'parent-thread-1', resourceId: 'resource-1' },
+				persistence: {
+					threadId: 'parent-thread-1',
+					resourceId: 'resource-1',
+					hostMetadata: encodeAgentSandboxHostMetadata({ projectId, principalHash }),
+				},
 			},
 		);
 
@@ -175,9 +198,54 @@ describe('createN8nDelegateSubAgentTool', () => {
 			expect.objectContaining({
 				parentThreadId: 'parent-thread-1',
 				parentResourceId: 'resource-1',
+				parentSandboxPrincipalHash: principalHash,
 			}),
 			expect.any(Object),
 		);
+	});
+
+	it('forwards the parent telemetry from the tool context to the foreground runner', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+		const parentTelemetry = {
+			enabled: true,
+			recordInputs: true,
+			recordOutputs: true,
+			integrations: [],
+			functionId: 'parent-agent',
+		};
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{ runId: 'parent-run-1', parentTelemetry },
+		);
+
+		expect(runner.runForeground).toHaveBeenCalledWith(
+			expect.any(Object),
+			expect.objectContaining({ telemetry: parentTelemetry }),
+		);
+	});
+
+	it('omits telemetry from the runner context when the parent run has none', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{ runId: 'parent-run-1' },
+		);
+
+		expect(runner.runForeground.mock.calls[0]?.[1]).not.toHaveProperty('telemetry');
 	});
 
 	it('selects a configured n8n agent source by subAgentId', async () => {
@@ -195,8 +263,8 @@ describe('createN8nDelegateSubAgentTool', () => {
 				},
 			],
 			projectId,
-			userId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await tool.handler?.(
@@ -218,8 +286,8 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await expect(
@@ -246,8 +314,8 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
+			runType: 'production',
 		});
 		const runSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.runSubAgent;
 		expect(runSubAgent).toBeDefined();
@@ -261,7 +329,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 					taskPath: '/root/research_api_0',
 					childCount: 0,
 				},
-				{ runInlineSubAgent },
+				{ runInlineSubAgent, emitChunk: () => undefined },
 			),
 		).resolves.toMatchObject({
 			status: 'completed',
@@ -283,8 +351,8 @@ describe('createN8nDelegateSubAgentTool', () => {
 			runner,
 			sourcesById: { 'agent-2': source },
 			projectId,
-			userId,
 			credentialProvider,
+			runType: 'production',
 		});
 
 		await expect(
@@ -300,6 +368,137 @@ describe('createN8nDelegateSubAgentTool', () => {
 				'delegate_subagent host runner does not support inline delegation without helpers.runInlineSubAgent from an Agent build.',
 		});
 		expect(runner.runForeground).not.toHaveBeenCalled();
+	});
+
+	it('routes a configured child resume to the exact persisted checkpoint', async () => {
+		runner.resumeForeground.mockResolvedValue(foregroundResult);
+		const parentExecutionCounter = {
+			incrementMessageCount: vi.fn(),
+			incrementToolCallCount: vi.fn(),
+			incrementTokenCount: vi.fn(),
+		};
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+		const resumeSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.resumeSubAgent;
+		expect(resumeSubAgent).toBeDefined();
+		const request = {
+			subAgentId: 'agent-2',
+			taskName: 'Research API',
+			goal: 'Find behavior.',
+			taskPath: '/root/research_api_0' as const,
+			childCount: 0,
+			childRunId: 'child-run-1',
+			childToolCallId: 'child-tool-call-1',
+			childThreadId: 'child-thread-1',
+			resumeData: { approved: true },
+			resumeContext: { agentId: 'agent-2', versionId: 'version-7' },
+			parentThreadId: 'parent-thread-1',
+			parentExecutionCounter,
+		};
+
+		await expect(
+			resumeSubAgent?.(request, { runInlineSubAgent: vi.fn(), emitChunk: vi.fn() }),
+		).resolves.toMatchObject({
+			status: 'completed',
+			taskPath: '/root/research_api_0',
+			runId: 'child-run-1',
+		});
+		expect(runner.resumeForeground).toHaveBeenCalledWith(
+			request,
+			expect.objectContaining({ executionCounter: parentExecutionCounter }),
+		);
+	});
+
+	it.each([
+		{
+			name: 'expired checkpoint',
+			error: new UserError('This action has expired and cannot be resumed'),
+		},
+		{
+			name: 'missing pinned version',
+			error: new NotFoundError('Version "version-7" not found for agent "agent-2"'),
+		},
+	])('finishes a configured child resume when the $name error is terminal', async ({ error }) => {
+		runner.resumeForeground.mockRejectedValue(error);
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+		const suspend = vi.fn().mockResolvedValue(undefined);
+		const emitEvent = vi.fn();
+
+		const result = await tool.handler?.(
+			{ subAgentId: 'agent-2', taskName: 'Research API', goal: 'Find behavior.' },
+			{
+				runId: 'parent-run-1',
+				toolCallId: 'parent-tool-call-1',
+				resumeData: { approved: true },
+				suspendPayload: { type: 'approval', toolName: 'http_request', args: {} },
+				continuation: {
+					runId: 'child-run-1',
+					toolCallId: 'child-tool-call-1',
+					taskPath: '/root/research_api_0',
+					subAgentId: 'agent-2',
+					childCount: 0,
+					threadId: 'child-thread-1',
+					resumeContext: { agentId: 'agent-2', versionId: 'version-7' },
+				},
+				suspend,
+				emitEvent,
+			},
+		);
+
+		expect(result).toMatchObject({
+			status: 'failed',
+			taskPath: '/root/research_api_0',
+			answer: '',
+			error: error.message,
+		});
+		expect(suspend).not.toHaveBeenCalled();
+		expect(emitEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: AgentEvent.SubAgentCompleted,
+				status: 'failed',
+				taskPath: '/root/research_api_0',
+				error: error.message,
+			}),
+		);
+	});
+
+	it('routes configured child cancellation without resuming the child', async () => {
+		const tool = createN8nDelegateSubAgentTool({
+			runner,
+			sourcesById: { 'agent-2': source },
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+		const cancelSubAgent = getInlineDelegateSubAgentToolOptions(tool)?.cancelSubAgent;
+		expect(cancelSubAgent).toBeDefined();
+		const request = {
+			subAgentId: 'agent-2',
+			taskName: 'Research API',
+			goal: 'Find behavior.',
+			taskPath: '/root/research_api_0' as const,
+			childCount: 0,
+			childRunId: 'child-run-1',
+			childToolCallId: 'child-tool-call-1',
+			resumeContext: { agentId: 'agent-2', versionId: 'version-7' },
+			reason: 'take another approach',
+		};
+
+		await cancelSubAgent?.(request, { runInlineSubAgent: vi.fn(), emitChunk: vi.fn() });
+
+		expect(runner.cancelForeground).toHaveBeenCalledWith(request);
+		expect(runner.resumeForeground).not.toHaveBeenCalled();
 	});
 });
 

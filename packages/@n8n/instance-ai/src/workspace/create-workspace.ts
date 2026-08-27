@@ -106,13 +106,48 @@ export async function createSandbox(
 		snapshot: snapshot ?? '(none — building from image)',
 		source: config.snapshot ? 'override' : isProxyMode ? 'n8n-version' : 'image-only',
 	});
+
+	// The sandbox proxy can't serve image-build context uploads, so proxy mode is snapshot-only.
+	if (isProxyMode) {
+		if (!snapshot) {
+			const error = new Error(
+				`No Instance AI sandbox snapshot is available for this n8n version (${config.n8nVersion ?? 'unknown'}) and sandbox images cannot be built through the sandbox proxy`,
+			);
+			// Error-level on purpose: every proxied build for this version is down until fixed.
+			options.errorReporter?.error(error, { tags: { component: 'instance-ai-snapshot' } });
+			throw error;
+		}
+		const sharedConfig = toSharedDaytonaSandboxConfig(config);
+		delete sharedConfig.image;
+		try {
+			return await createSharedSandbox(
+				{
+					...sharedConfig,
+					snapshot,
+				},
+				{
+					logger: options.logger,
+					errorReporter: options.errorReporter,
+				},
+			);
+		} catch (error) {
+			// Error-level on purpose: every proxied build for this version is down until fixed.
+			options.errorReporter?.error(
+				new Error(`Instance AI sandbox snapshot "${snapshot}" is missing or unusable`, {
+					cause: error,
+				}),
+				{ tags: { component: 'instance-ai-snapshot' } },
+			);
+			throw error;
+		}
+	}
+
 	const image = await snapshotManager.ensureImage();
 
 	return await createSharedSandbox(
 		{
 			...toSharedDaytonaSandboxConfig(config),
 			image,
-			...(snapshot ? { snapshot } : {}),
 		},
 		{
 			logger: options.logger,

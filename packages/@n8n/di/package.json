@@ -1,6 +1,6 @@
 {
   "name": "@n8n/di",
-  "version": "0.14.0",
+  "version": "0.16.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -28,6 +28,7 @@
   "devDependencies": {
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "typescript": "catalog:typescript",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "@n8n/typescript-config": "workspace:*"

@@ -1,7 +1,7 @@
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { readdirSync, readFileSync } from 'fs';
 import type {
 	IDataObject,
-	IDeferredPromise,
 	INodeType,
 	INodeTypes,
 	IRun,

@@ -18,6 +18,8 @@ export class SSEPush extends AbstractPush<Connection> {
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
 		res.setHeader('Cache-Control', 'no-cache');
 		res.setHeader('Connection', 'keep-alive');
+		res.setHeader('Incremental', '?1');
+		res.setHeader('X-Accel-Buffering', 'no');
 		res.writeHead(200);
 		res.write(':ok\n\n');
 		res.flush();

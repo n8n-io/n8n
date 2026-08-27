@@ -1,10 +1,10 @@
 import {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_BYTES,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
 	agentSkillSchema,
-	CreateAgentSkillDto,
-	UpdateAgentSkillDto,
-} from '../dto';
+} from '../agent-skill.schema';
+import { CreateAgentSkillDto, UpdateAgentSkillDto } from '../dto';
 
 describe('agent skill DTOs', () => {
 	const validSkill = {
@@ -68,6 +68,24 @@ describe('agent skill DTOs', () => {
 						content: '# Guide 2',
 					},
 				],
+			}).success,
+		).toBe(false);
+	});
+
+	it('measures the instructions limit in UTF-8 bytes, not UTF-16 code units', () => {
+		expect(
+			agentSkillSchema.safeParse({
+				...validSkill,
+				instructions: 'x'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH),
+			}).success,
+		).toBe(true);
+
+		// '€' is 1 code unit but 3 UTF-8 bytes, so this exceeds the byte cap
+		// while staying well under it in .length terms.
+		expect(
+			agentSkillSchema.safeParse({
+				...validSkill,
+				instructions: '€'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH / 3 + 1),
 			}).success,
 		).toBe(false);
 	});

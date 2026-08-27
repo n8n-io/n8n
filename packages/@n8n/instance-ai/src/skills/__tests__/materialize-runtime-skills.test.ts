@@ -22,6 +22,15 @@ import {
 } from '../materialize-runtime-skills';
 import { loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
 
+/** Extract the text body from the content-block form of a load_skill success result. */
+function skillLoadText(output: unknown): string {
+	const record = output as { type?: string; value?: Array<{ type: string; text: string }> };
+	if (record?.type !== 'content' || !Array.isArray(record.value)) {
+		throw new Error(`Expected content-form skill load output, got: ${JSON.stringify(output)}`);
+	}
+	return record.value.map((part) => part.text).join('\n');
+}
+
 function createMockWorkspace() {
 	const writes = new Map<string, string>();
 	const writeFile = vi.fn(async (path: string, content: string | Buffer) => {
@@ -221,21 +230,10 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const loadTool = createSkillLoadTool(materialized.source);
 		const result = await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
 
-		expect(result).toMatchObject({
-			success: true,
-			skillId: 'data-table-manager',
-			name: 'data-table-manager',
-			skillDir: `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`,
-		});
-		if (
-			!result ||
-			typeof result !== 'object' ||
-			!('content' in result) ||
-			typeof result.content !== 'string'
-		) {
-			throw new Error('Expected load_skill to return materialized skill content');
-		}
-		expect(result.content).toContain('references/data-table-playbook.md');
+		const text = skillLoadText(result);
+		expect(text).toContain('[Skill: "data-table-manager"]');
+		expect(text).toContain(`${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`);
+		expect(text).toContain('references/data-table-playbook.md');
 	});
 
 	it('materializes skills into the workspace before load_skill reads them', async () => {
@@ -255,12 +253,9 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 
 		expect(executeCommand).toHaveBeenCalledTimes(1);
 		expect(writes.get(skillPath)).toContain('data-tables');
-		expect(result).toMatchObject({
-			success: true,
-			skillId: 'data-table-manager',
-			path: skillPath,
-			skillDir,
-		});
+		const text = skillLoadText(result);
+		expect(text).toContain('[Skill: "data-table-manager"]');
+		expect(text).toContain(skillPath);
 
 		await loadTool.handler?.({ skillId: 'data-table-manager' }, {});
 
@@ -290,12 +285,9 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		expect(executeCommand).toHaveBeenCalledTimes(1);
 		expect(writeFile).not.toHaveBeenCalled();
 		expect(writes.get(skillPath)).toContain('data-tables');
-		expect(result).toMatchObject({
-			success: true,
-			skillId: 'data-table-manager',
-			path: skillPath,
-			skillDir,
-		});
+		const text = skillLoadText(result);
+		expect(text).toContain('[Skill: "data-table-manager"]');
+		expect(text).toContain(skillPath);
 	});
 
 	it('falls back to live materialization when the prebaked manifest is stale', async () => {

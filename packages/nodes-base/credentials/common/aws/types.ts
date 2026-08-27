@@ -10,6 +10,8 @@ export type AwsCredentialsTypeBase = {
 	sqsEndpoint?: string;
 	s3Endpoint?: string;
 	ssmEndpoint?: string;
+	bedrockEndpoint?: string;
+	bedrockRuntimeEndpoint?: string;
 };
 
 export type AwsIamCredentialsType = AwsCredentialsTypeBase & {

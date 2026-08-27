@@ -8,6 +8,7 @@ import type {
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
+import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
@@ -27,6 +28,7 @@ describe('EnterpriseCredentialsService', () => {
 	const externalSecretsConfig = mock<ExternalSecretsConfig>();
 	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
 	const licenseState = mock<LicenseState>();
+	const connectionStatusProxy = mock<CredentialConnectionStatusProxy>();
 
 	const service = new EnterpriseCredentialsService(
 		sharedCredentialsRepository,
@@ -38,10 +40,29 @@ describe('EnterpriseCredentialsService', () => {
 		externalSecretsConfig,
 		externalSecretsProviderAccessCheckService,
 		licenseState,
+		connectionStatusProxy,
 	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+	});
+
+	describe('shareWithProjects', () => {
+		it('rejects credentials that are not available to workflows', async () => {
+			const manager = {
+				exists: vi.fn().mockResolvedValue(false),
+				find: vi.fn(),
+				save: vi.fn(),
+			};
+
+			// @ts-expect-error - Mocking manager for testing
+			sharedCredentialsRepository.manager = manager;
+
+			await expect(
+				service.shareWithProjects(mock<User>(), 'credential-id', ['project-id']),
+			).rejects.toThrow('Credential not found');
+			expect(manager.find).not.toHaveBeenCalled();
+		});
 	});
 
 	/**
@@ -192,6 +213,39 @@ describe('EnterpriseCredentialsService', () => {
 				).not.toHaveBeenCalled();
 			});
 		});
+
+		describe('per-user connection reconciliation', () => {
+			beforeEach(() => {
+				// keep the external-secrets branch out of the way
+				externalSecretsConfig.externalSecretsForProjects = false;
+			});
+
+			it('reconciles connections for every project that shared the credential', async () => {
+				const sharee = mock<SharedCredentials>({
+					credentialsId: credentialId,
+					projectId: 'shared-project-id',
+					role: 'credential:user',
+				});
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(
+					mock<CredentialsEntity>({
+						id: credentialId,
+						name: 'Test Credential',
+						type: 'testApi',
+						data: 'encrypted-data',
+						shared: [ownerSharing, sharee],
+					}),
+				);
+				const trx = mockTransactionManager();
+
+				await service.transferOne(user, credentialId, destinationProjectId);
+
+				expect(connectionStatusProxy.cleanupOrphanedEntriesForProjects).toHaveBeenCalledWith(
+					credentialId,
+					[sourceProjectId, 'shared-project-id'],
+					trx,
+				);
+			});
+		});
 	});
 
 	describe('getOneForUser', () => {
@@ -229,6 +283,7 @@ describe('EnterpriseCredentialsService', () => {
 				credentialId,
 				user,
 				['credential:connect'],
+				{ includeInstanceCredentials: true },
 			);
 			expect(result).toHaveProperty('data', redacted);
 		});
@@ -261,6 +316,7 @@ describe('EnterpriseCredentialsService', () => {
 				credentialId,
 				user,
 				['credential:connect'],
+				{ includeInstanceCredentials: true },
 			);
 			expect(result).not.toHaveProperty('data');
 		});

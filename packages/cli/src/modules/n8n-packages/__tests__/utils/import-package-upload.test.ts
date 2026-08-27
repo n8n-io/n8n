@@ -105,7 +105,7 @@ describe('resolveImportPackageUpload', () => {
 				files: [makeFile('package', packageBuffer)],
 				body: {
 					folderId: 'fld-1',
-					credentialBindings: '{"source":"target"}',
+					bindings: '{"credentials":{"source":"target"}}',
 					workflowConflictPolicy: 'skip',
 					package: '',
 				},

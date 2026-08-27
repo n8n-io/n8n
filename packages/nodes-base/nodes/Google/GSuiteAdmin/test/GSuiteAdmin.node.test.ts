@@ -642,6 +642,48 @@ describe('GSuiteAdmin Node - user:update logic', () => {
 		});
 	});
 
+	it('should include suspended set to false in update operation', async () => {
+		const mockCall = vi.fn().mockResolvedValue({ id: 'user-id-123', suspended: false });
+		(googleApiRequest as Mock).mockImplementation(mockCall);
+
+		const mockContext = {
+			getNode: () => ({ name: 'GSuiteAdmin' }),
+			getNodeParameter: vi.fn((paramName: string) => {
+				switch (paramName) {
+					case 'resource':
+						return 'user';
+					case 'operation':
+						return 'update';
+					case 'userId':
+						return 'user-id-123';
+					case 'updateFields':
+						return {
+							suspendUi: false,
+						};
+					default:
+						return undefined;
+				}
+			}),
+			helpers: {
+				returnJsonArray: (data: unknown) => [data],
+				constructExecutionMetaData: (data: unknown) => data,
+			},
+			continueOnFail: () => false,
+			getInputData: () => [{ json: {} }],
+		} as unknown as IExecuteFunctions;
+
+		await new GSuiteAdmin().execute.call(mockContext);
+
+		expect(mockCall).toHaveBeenCalledWith(
+			'PUT',
+			'/directory/v1/users/user-id-123',
+			{
+				suspended: false,
+			},
+			{},
+		);
+	});
+
 	it('should include password and changePasswordAtNextLogin in update operation', async () => {
 		const mockCall = vi.fn().mockResolvedValue({ id: 'user-id-456', success: true });
 		(googleApiRequest as Mock).mockImplementation(mockCall);

@@ -26,6 +26,7 @@ import {
 	extractAIInputTypesFromBuilderHint,
 	narrowDisplayOptionsByDisabled,
 } from './generate-types';
+import { checkConditions } from '../validation/display-options';
 
 // =============================================================================
 // Constants
@@ -57,8 +58,8 @@ const ICON_ZOD_SCHEMA =
 	"z.object({ type: z.union([z.literal('icon'), z.literal('emoji')]), value: z.string() })";
 
 /**
- * Runtime shape for `type: 'workflowSelector'` properties.
- * The UI hardcodes two modes (`list` and `id`). Stored as an
+ * Runtime shape for `type: 'workflowSelector'` and `type: 'agentSelector'` properties.
+ * Both hardcode two modes (`list` and `id`). Stored as an
  * `INodeParameterResourceLocator` object, or as an `={{...}}` expression
  * string when the user enters an expression.
  */
@@ -75,6 +76,7 @@ const GENERIC_AUTH_TYPE_VALUES = [
 	'httpHeaderAuth',
 	'httpQueryAuth',
 	'httpCustomAuth',
+	'httpTemplatedCustomAuth',
 	'oAuth1Api',
 	'oAuth2Api',
 ] as const;
@@ -538,6 +540,7 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty, allowExpression: 
 			return ICON_ZOD_SCHEMA;
 
 		case 'workflowSelector':
+		case 'agentSelector':
 			return WORKFLOW_SELECTOR_ZOD_SCHEMA;
 
 		case 'hidden':
@@ -761,6 +764,7 @@ function mapPropertyToZodSchemaInner(prop: NodeProperty, allowExpression: boolea
 			return ICON_ZOD_SCHEMA;
 
 		case 'workflowSelector':
+		case 'agentSelector':
 			return WORKFLOW_SELECTOR_ZOD_SCHEMA;
 
 		case 'hidden':
@@ -1511,6 +1515,32 @@ export function generateSchemaIndexFile(node: NodeTypeDescription, versions: num
 	return lines.join('\n');
 }
 
+/**
+ * Resolve the default of the `operation` property that applies to `resource`.
+ *
+ * Nodes commonly declare one `operation` property per resource, each gated by
+ * `displayOptions.show.resource` and carrying its own default. Picking the first
+ * `operation` property regardless of resource applies one resource's default to
+ * all of them, which rejects valid configs that omit `operation` (the editor
+ * strips values equal to the default on save).
+ */
+function findOperationDefaultForResource(
+	node: NodeTypeDescription,
+	resource: string,
+): NodeProperty['default'] {
+	const operationProps = node.properties.filter((p) => p.name === 'operation');
+
+	const scoped = operationProps.find((p) => {
+		const shown = p.displayOptions?.show?.resource;
+		return shown !== undefined && checkConditions(shown, [resource]);
+	});
+	if (scoped) return scoped.default;
+
+	// Nodes with a single resource-agnostic `operation` property have no
+	// resource condition to match against.
+	return operationProps.find((p) => p.displayOptions?.show?.resource === undefined)?.default;
+}
+
 // =============================================================================
 // Split Version Schema Generation (for nodes with resource/operation discriminators)
 // =============================================================================
@@ -1688,9 +1718,14 @@ export function generateDiscriminatorSchemaFile(
 	// Add discriminator fields as literals (with defaults if they have matching defaults)
 	for (const [key, value] of Object.entries(combo)) {
 		if (value !== undefined) {
-			// Check if this discriminator has a matching default value in node properties
-			const discProp = node.properties?.find((p) => p.name === key);
-			const hasMatchingDefault = discProp?.default === value;
+			// Check if this discriminator has a matching default value in node properties.
+			// `operation` is resolved against the combo's resource, since nodes declare one
+			// `operation` property per resource.
+			const defaultValue =
+				key === 'operation' && combo.resource !== undefined
+					? findOperationDefaultForResource(node, combo.resource)
+					: node.properties?.find((p) => p.name === key)?.default;
+			const hasMatchingDefault = defaultValue === value;
 
 			if (hasMatchingDefault) {
 				// Accept undefined and default to the expected value
@@ -1777,8 +1812,7 @@ export function generateResourceIndexSchemaFile(
 	lines.push('');
 
 	// Find default for 'operation' discriminator
-	const operationProp = node.properties.find((p) => p.name === 'operation');
-	const operationDefault = operationProp?.default;
+	const operationDefault = findOperationDefaultForResource(node, resource);
 
 	// Export factory function via module.exports - receives all helpers and passes them through
 	lines.push('module.exports = function getSchema(helpers) {');

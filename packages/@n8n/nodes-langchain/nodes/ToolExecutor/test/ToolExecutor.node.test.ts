@@ -25,10 +25,10 @@ describe('ToolExecutor Node', async () => {
 	let mockExecuteFunction: Mocked<IExecuteFunctions>;
 
 	const { processHitlResponses, buildResponseMetadata } = vi.mocked(
-		await import('@utils/agent-execution'),
+		await import('@utils/agent-execution/index.js'),
 	);
 	const { hasGatedToolNodeName, extractHitlMetadata } = vi.mocked(
-		await import('@utils/agent-execution/createEngineRequests'),
+		await import('@utils/agent-execution/createEngineRequests.js'),
 	);
 
 	const mockProcessHitlResponses = vi.mocked(processHitlResponses);
