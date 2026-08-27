@@ -1,4 +1,4 @@
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 
 /** Opt-in: with the flag off the hosted chat page renders as a single document, as before. */
 export function isChatOAuth2Enabled(): boolean {
@@ -54,4 +54,69 @@ export function buildAbsoluteChatUrl(req: Request): string {
 export function readAuthCookie(req: Request): string | null {
 	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-auth=([^;]+)/);
 	return match ? match[1].trim() : null;
+}
+
+// Carries the AS access token across the single same-site redirect from the AS
+// callback to the clean inner-frame URL, so `code`/`state` never reach the
+// author-shaped chat widget. The token is otherwise already embedded in the
+// frame's HTML (sent back as `x-auth-token` on every message), so this cookie
+// is not a new exposure.
+const CHAT_OAUTH_COOKIE_NAME = 'n8n-chat-oauth';
+
+/**
+ * Derive `secure` from the request scheme (honouring x-forwarded-proto) rather
+ * than config, so the cookie is actually sent back over http in dev while
+ * staying Secure over https.
+ */
+function isSecureRequest(req: Request): boolean {
+	const forwardedProto = req.headers['x-forwarded-proto'];
+	// A proxy chain sends this as a comma-separated list (closest proxy first), and
+	// Node normalises a repeated header into an array — handle both, and take only
+	// the first hop so a later "http" in the chain can't mask an https client leg.
+	const firstValue = Array.isArray(forwardedProto) ? forwardedProto[0] : forwardedProto;
+	const proto = firstValue?.split(',')[0]?.trim() || req.protocol;
+	return proto === 'https';
+}
+
+function chatOAuthCookieOptions(req: Request, resourceUrl: string) {
+	return {
+		httpOnly: true,
+		sameSite: 'lax' as const, // must be Lax: sent on our own top-level redirect → GET
+		secure: isSecureRequest(req),
+		path: new URL(resourceUrl).pathname,
+	};
+}
+
+export function setChatOAuthToken(
+	res: Response,
+	req: Request,
+	resourceUrl: string,
+	token: string,
+): void {
+	res.cookie(CHAT_OAUTH_COOKIE_NAME, token, {
+		...chatOAuthCookieOptions(req, resourceUrl),
+		maxAge: 60_000, // one redirect hop; short by design
+	});
+}
+
+/**
+ * Decode a cookie value, or `null` when it isn't valid percent-encoding. A
+ * value we can't read is treated as no cookie at all rather than throwing out
+ * of the request.
+ */
+function decodeCookieValue(value: string): string | null {
+	try {
+		return decodeURIComponent(value.trim());
+	} catch {
+		return null;
+	}
+}
+
+export function readChatOAuthToken(req: Request): string | null {
+	const match = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-chat-oauth=([^;]+)/);
+	return match ? decodeCookieValue(match[1]) : null;
+}
+
+export function clearChatOAuthToken(res: Response, req: Request, resourceUrl: string): void {
+	res.clearCookie(CHAT_OAUTH_COOKIE_NAME, chatOAuthCookieOptions(req, resourceUrl));
 }

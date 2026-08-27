@@ -16,6 +16,7 @@ import type { CollaborationService } from '@/collaboration/collaboration.service
 import type { EventService } from '@/events/event.service';
 
 import { WorkflowReviewLifecycleService } from '../workflow-review-lifecycle.service';
+import { WorkflowReviewStateNotifier } from '../workflow-review-state-notifier.service';
 
 describe('WorkflowReviewLifecycleService', () => {
 	const logger = mock<Logger>();
@@ -25,7 +26,7 @@ describe('WorkflowReviewLifecycleService', () => {
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
 	const eventService = mock<EventService>();
-	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
+	/** Transaction context used inside the lock. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
 
 	let service: WorkflowReviewLifecycleService;
@@ -41,14 +42,14 @@ describe('WorkflowReviewLifecycleService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		// Captures live on the instance; a fresh service isolates the delete tests.
+		// Use a fresh service so delete captures do not leak between tests.
 		service = new WorkflowReviewLifecycleService(
 			logger,
 			requestRepository,
 			requestWorkflowRepository,
 			activityRepository,
 			dbLockService,
-			collaborationService,
+			new WorkflowReviewStateNotifier(logger, collaborationService),
 			eventService,
 		);
 		dbLockService.withLockContext.mockImplementation(async (_id, fn) => await fn(ctx));
@@ -92,7 +93,7 @@ describe('WorkflowReviewLifecycleService', () => {
 				},
 				ctx,
 			);
-			// The close policy is evaluated for the linked request, then it is bulk-closed by id.
+			// Evaluate the linked request, then close it by ID.
 			expect(requestRepository.findUnreviewableOpenRequestIds).toHaveBeenCalledWith(ctx, ['req-1']);
 			expect(requestRepository.closeRequests).toHaveBeenCalledWith(['req-1'], ctx);
 			expect(
@@ -132,7 +133,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
 				{ request: openRequest(), links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
 			]);
-			// The request still covers something reviewable, so the policy closes nothing.
+			// Keep the request open while it has a reviewable workflow.
 			requestRepository.findUnreviewableOpenRequestIds.mockResolvedValue([]);
 
 			await service.afterWorkflowArchived('wf-1', 'user-9');
@@ -167,13 +168,12 @@ describe('WorkflowReviewLifecycleService', () => {
 			expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
 		});
 
-		// The close is already committed by the time it is reported, so a listener that
-		// throws can neither fail the archive nor skip the sweep that follows it.
+		// Reporting happens after commit, so listener failures cannot undo the archive.
 		it('archives anyway when reporting the close throws, and still runs the sweep', async () => {
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([
 				{ request: openRequest(), links: [{ workflowId: 'wf-1', workflowVersionId: 'wfv-1' }] },
 			]);
-			// Sweep (no candidate ids) strands req-9 too.
+			// Reconciliation also finds req-9.
 			requestRepository.findUnreviewableOpenRequestIds.mockImplementation(
 				async (_ctx, ids) => ids ?? ['req-9'],
 			);
@@ -184,7 +184,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			await expect(service.afterWorkflowArchived('wf-1', 'user-9')).resolves.toBeUndefined();
 
 			expect(logger.error).toHaveBeenCalled();
-			// The sweep still closed what the mutation stranded, after the targeted close.
+			// Reconciliation still closes requests missed by the targeted pass.
 			expect(requestRepository.closeRequests).toHaveBeenCalledWith(['req-9'], ctx);
 		});
 	});
@@ -219,7 +219,7 @@ describe('WorkflowReviewLifecycleService', () => {
 				}),
 				ctx,
 			);
-			// Both requests are evaluated together and closed in one bulk update.
+			// Close both requests in one update.
 			expect(requestRepository.closeRequests).toHaveBeenCalledWith(['req-1', 'req-2'], ctx);
 			expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledTimes(3);
 			expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-1');
@@ -263,8 +263,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
-		// The delete has not happened yet and must not be aborted by review bookkeeping;
-		// a lost capture degrades to the sweep, which closes without a cause entry.
+		// Review bookkeeping must not block deletion. Reconciliation handles missed captures.
 		it('never throws from the capture, even when the repository fails', async () => {
 			requestRepository.findOpenRequestsForWorkflows.mockRejectedValue(new Error('db down'));
 
@@ -331,7 +330,7 @@ describe('WorkflowReviewLifecycleService', () => {
 				}),
 				ctx,
 			);
-			// The request is evaluated once by its id against current state, so it closes exactly once.
+			// Evaluate and close the request once.
 			expect(requestRepository.findUnreviewableOpenRequestIds).toHaveBeenCalledWith(ctx, ['req-1']);
 			expect(
 				activityRepository.createActivity.mock.calls.filter(
@@ -393,7 +392,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			);
 		});
 
-		// The delete already committed, so there is nothing left to abort.
+		// The delete is already committed and cannot be undone here.
 		it('swallows repository errors after a delete', async () => {
 			requestRepository.findUnreviewableOpenRequestIds.mockRejectedValue(new Error('db down'));
 
@@ -453,7 +452,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			).toHaveBeenCalledExactlyOnceWith('wf-1');
 		});
 
-		// The publication stands whatever happens to its feed entry.
+		// Activity failure does not undo the publish.
 		it('only warns when the recorder fails, never throws to the publish caller', async () => {
 			requestWorkflowRepository.findRequestIdsPinnedToVersion.mockRejectedValue(
 				new Error('db down'),
@@ -470,7 +469,7 @@ describe('WorkflowReviewLifecycleService', () => {
 	describe('reconciliation sweep', () => {
 		it('closes the requests the mutation stranded and explains each of them', async () => {
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([]);
-			// Global sweep (no candidate ids) strands req-9 and req-10.
+			// Reconciliation finds req-9 and req-10.
 			requestRepository.findUnreviewableOpenRequestIds.mockImplementation(
 				async (_ctx, ids) => ids ?? ['req-9', 'req-10'],
 			);
@@ -488,7 +487,7 @@ describe('WorkflowReviewLifecycleService', () => {
 					},
 					ctx,
 				);
-				// The sweep is the backstop: it recovers neither the trigger nor an actor.
+				// The original cause and actor are unavailable.
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-review-closed', {
 					workflowReviewRequestId: requestId,
 					cause: { trigger: 'unknown', actorKind: 'system', userId: null },
@@ -511,8 +510,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
-		// The close and its explanation share one transaction, so an unwritable entry rolls the
-		// close back and the next sweep picks the review up again.
+		// Activity and closing share a transaction, so both roll back on failure.
 		it('leaves a review it cannot explain to the next sweep', async () => {
 			requestRepository.findUnreviewableOpenRequestIds.mockResolvedValue(['req-9']);
 			activityRepository.createActivity.mockRejectedValue(new Error('db down'));
@@ -525,8 +523,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 
-		// An archive or a move whose close rolled back stays committed, so the sweep has to run
-		// there too — the targeted close is done with the review by then.
+		// Reconciliation retries closes that rolled back after an archive or move committed.
 		it('runs after the targeted close on archive, and again on transfer', async () => {
 			requestRepository.findOpenRequestsForWorkflows.mockResolvedValue([]);
 			requestRepository.findUnreviewableOpenRequestIds.mockImplementation(
@@ -543,8 +540,7 @@ describe('WorkflowReviewLifecycleService', () => {
 			expect(eventService.emit).toHaveBeenCalledTimes(2);
 		});
 
-		// A close that rolled back is exactly what the sweep is there to repair, so a throwing
-		// targeted close must not skip it.
+		// A failed targeted close must not skip reconciliation.
 		it('still runs when the targeted close on archive failed', async () => {
 			requestRepository.findOpenRequestsForWorkflows.mockRejectedValue(new Error('db down'));
 			requestRepository.findUnreviewableOpenRequestIds.mockImplementation(
@@ -582,7 +578,7 @@ describe('WorkflowReviewLifecycleService', () => {
 
 		await expect(service.afterWorkflowArchived('wf-1', 'user-9')).resolves.toBeUndefined();
 
-		// Let the fire-and-forget rejection settle before asserting.
+		// Wait for the rejected notification to be logged.
 		await new Promise(process.nextTick);
 		expect(logger.warn).toHaveBeenCalled();
 		expect(logger.error).not.toHaveBeenCalled();
