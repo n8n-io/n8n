@@ -683,9 +683,7 @@ describe('createPage inside the shell frame', () => {
 
 	const inner = createPage({
 		...params,
-		shellInner: true,
-		authToken: 'signed.jwt.token',
-		visitor,
+		frameIdentity: { visitor, authToken: 'signed.jwt.token' },
 	});
 
 	it('stands in for localStorage before the widget loads', () => {
@@ -707,12 +705,13 @@ describe('createPage inside the shell frame', () => {
 		expect(inner).toContain('\'x-auth-token\': "signed.jwt.token",');
 	});
 
+	// Not merely skipped at runtime: the bootstrap is never emitted, so there is no
+	// path from this document to a login endpoint it couldn't reach or a sign-in page it
+	// couldn't render.
 	it('takes the visitor from the server instead of fetching the login endpoint', () => {
-		expect(inner).toContain('const injectedVisitor = {"id":"user-1"');
-		expect(inner).toContain('if (injectedVisitor) {');
-		expect(inner.indexOf('if (injectedVisitor) {')).toBeLessThan(
-			inner.indexOf("fetch('/rest/login'"),
-		);
+		expect(inner).toContain('const metadata = { user: {"id":"user-1"');
+		expect(inner).not.toContain("fetch('/rest/login'");
+		expect(inner).not.toContain("'/signin?redirect='");
 	});
 
 	it('still renders the author own styling', () => {
@@ -729,12 +728,25 @@ describe('createPage inside the shell frame', () => {
 			expect(plain).toContain('const injectedVisitor = null;');
 		});
 
-		// The token and the visitor only ever belong to the sandboxed render.
-		it('ignores a token or visitor passed without the inner flag', () => {
-			const stray = createPage({ ...params, authToken: 'signed.jwt.token', visitor });
-
-			expect(stray).toContain('const injectedVisitor = null;');
-			expect(stray).not.toContain('x-auth-token');
+		// The client-side bootstrap is what the flag-off n8nUserAuth render still relies on.
+		it('keeps the login bootstrap the flag-off render depends on', () => {
+			expect(plain).toContain("fetch('/rest/login'");
+			expect(plain).toContain("'/signin?redirect='");
 		});
+	});
+
+	// A frame render holding half an identity would silently serve an anonymous chat where
+	// the single-document path redirects to sign-in, and the frame can resolve neither half
+	// for itself. Both fields are required together, so that state can't be expressed —
+	// this fails the build rather than the run if the shape ever loosens.
+	it('cannot represent a frame render missing half its identity', () => {
+		type FrameIdentity = Parameters<typeof createPage>[0]['frameIdentity'];
+
+		// @ts-expect-error the visitor and their token only ever travel together
+		const withoutVisitor: FrameIdentity = { authToken: 'signed.jwt.token' };
+		// @ts-expect-error ...in both directions
+		const withoutToken: FrameIdentity = { visitor };
+
+		expect([withoutVisitor, withoutToken]).toHaveLength(2);
 	});
 });

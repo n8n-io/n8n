@@ -7,6 +7,7 @@ import { ResponseError } from '@/errors/response-errors/abstract/response.error'
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
@@ -19,6 +20,11 @@ const handleError = (error: unknown) => {
 		throw new NotFoundError(error.message);
 	}
 	if (error instanceof ResponseError) {
+		throw error;
+	}
+	// Carries its own 403 and the structured violations, neither of which survives being
+	// rewrapped as a bad request.
+	if (error instanceof PolicyViolationError) {
 		throw error;
 	}
 	if (error instanceof Error) {
