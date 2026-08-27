@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 
+import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
 import { EngineV2Module } from '../engine-v2.module';
 import { EngineV2Runtime } from '../engine-v2.runtime';
@@ -14,6 +15,7 @@ describe('EngineV2Module', () => {
 	let engineConfig: EngineConfig;
 	let runtime: EngineV2Runtime;
 	let client: EngineDataPlaneClient;
+	let controlPlaneServer: EngineControlPlaneServer;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -22,6 +24,7 @@ describe('EngineV2Module', () => {
 		engineConfig = mockInstance(EngineConfig, { authSecret: '' });
 		runtime = mockInstance(EngineV2Runtime);
 		client = mockInstance(EngineDataPlaneClient);
+		controlPlaneServer = mockInstance(EngineControlPlaneServer);
 		Container.set(EngineDataPlaneProxyService, new EngineDataPlaneProxyService());
 
 		module = new EngineV2Module();
@@ -52,6 +55,15 @@ describe('EngineV2Module', () => {
 			expect(client.startExecution).toHaveBeenCalledWith(request);
 		});
 
+		it('starts the control plane server before the engine, so a report always lands', async () => {
+			await module.init();
+
+			expect(controlPlaneServer.start).toHaveBeenCalled();
+			expect(vi.mocked(controlPlaneServer.start).mock.invocationCallOrder[0]).toBeLessThan(
+				vi.mocked(runtime.init).mock.invocationCallOrder[0],
+			);
+		});
+
 		it('generates a secret when unset', async () => {
 			await module.init();
 
@@ -72,6 +84,15 @@ describe('EngineV2Module', () => {
 			await module.shutdown();
 
 			expect(runtime.shutdown).toHaveBeenCalled();
+		});
+
+		it('stops the control plane server after the engine, so a final flush still lands', async () => {
+			await module.shutdown();
+
+			expect(controlPlaneServer.stop).toHaveBeenCalled();
+			expect(vi.mocked(controlPlaneServer.stop).mock.invocationCallOrder[0]).toBeGreaterThan(
+				vi.mocked(runtime.shutdown).mock.invocationCallOrder[0],
+			);
 		});
 	});
 });
