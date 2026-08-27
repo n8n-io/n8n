@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 
 import { PaymentRequiredError } from '@/errors/response-errors/payment-required.error';
 
-type Pagination = { offset?: number; limit?: number };
+type Pagination = { offset: number; limit: number };
 
 /**
  * Read-side service for evaluation test runs and their cases. Public API

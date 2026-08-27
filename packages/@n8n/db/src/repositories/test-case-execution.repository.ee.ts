@@ -46,7 +46,7 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 	 */
 	async getManyByTestRunId(
 		testRunId: string,
-		{ offset, limit }: { offset?: number; limit?: number } = {},
+		{ offset, limit }: { offset: number; limit: number },
 	) {
 		return await this.find({
 			where: { testRun: { id: testRunId } },

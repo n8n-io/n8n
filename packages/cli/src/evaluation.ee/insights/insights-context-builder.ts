@@ -185,6 +185,7 @@ export class InsightsContextBuilder {
 		testRunId: string,
 	): Promise<Map<number, { metrics: Record<string, number | boolean> | null; outputs: unknown }>> {
 		const cases = await this.testCaseExecutionRepo.getManyByTestRunId(testRunId, {
+			offset: 0,
 			limit: CASE_FETCH_LIMIT,
 		});
 		const byIndex = new Map<
@@ -243,6 +244,7 @@ export class InsightsContextBuilder {
 		version: InsightsContextVersion,
 	): Promise<InsightsContextCase[]> {
 		const versionCases = await this.testCaseExecutionRepo.getManyByTestRunId(version.testRunId, {
+			offset: 0,
 			limit: CASE_FETCH_LIMIT,
 		});
 
