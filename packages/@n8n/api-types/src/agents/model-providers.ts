@@ -15,6 +15,7 @@ export const AGENT_MODEL_PROVIDERS = [
 	'moonshotai',
 	'alibaba',
 	'minimax',
+	'volcengine',
 ] as const;
 
 /** Canonical `provider/model-name` validation shared by API schemas and editor parsing. */
@@ -52,6 +53,7 @@ export const AGENT_MODEL_PROVIDER_CREDENTIAL_TYPES = {
 	moonshotai: ['moonshotApi'],
 	alibaba: ['alibabaCloudApi'],
 	minimax: ['minimaxApi'],
+	volcengine: ['volcengineApi'],
 } as const satisfies Record<AgentModelProvider, readonly [string, ...string[]]>;
 
 /** Credential types for a provider prefix, or `[]` when it is not a model provider. */
