@@ -1,0 +1,42 @@
+packages/nodes-base/nodes/Kafka/v2/transport/index.ts
+  s_79c0473179aa3d::t_7e86c0d41818bb 2
+  s_79c0473179aa3d::t_533c191287b4fc 5-11
+packages/nodes-base/nodes/Kafka/test/mocks/confluent-kafka.ts
+  s_79c0473179aa3d::t_080957c4d725ed 240,18-27,30,34-41,43-44,58,60-61,137-144,146-147,149-155,157,165-187,190-192,194-198,215-216,241-246,252-259,261,265,132,135-136,228,250-251
+  s_79c0473179aa3d::t_e58f7b47ec2fc0 14-17
+  s_79c0473179aa3d::t_7cec10d101ad56 28-29
+  s_79c0473179aa3d::t_036dd39384976f 42,145,148,193,199-206,212,214,223,131
+  s_79c0473179aa3d::t_bd1d12f954a6ef 158-164
+  s_79c0473179aa3d::t_5e9b820f958dda 188-189
+  s_79c0473179aa3d::t_d980808c50ab6e 207-211
+packages/nodes-base/nodes/Kafka/test/v2/kafka.integration.test.ts
+  s_79c0473179aa3d::t_edafa884e4a46b 1-6,14-17,20-35,38,40-50,57-79,81-95,104-122,124-183,444-475,477-507,277-278,301,306,312,320,324,331-332,412,416-417,420-421,423-424,433-434,438,440,442-443
+  s_79c0473179aa3d::t_a80680de23cebb 7-13
+  s_79c0473179aa3d::t_67ba30ab7a1f33 18
+  s_79c0473179aa3d::t_7664206cc6ace7 37,39
+  s_79c0473179aa3d::t_a61986d55d4825 51-56
+  s_79c0473179aa3d::t_4543f8d5da7ee3 80
+  s_79c0473179aa3d::t_cbc7625e181618 96-103
+  s_79c0473179aa3d::t_36ffc3a97a8a66 123,476
+  s_79c0473179aa3d::t_15e5bea00cdfbf 184-212,214,222-262,333-358,360-387,389-391,395-401,276,314-316,319,429-432,441
+  s_79c0473179aa3d::t_fcb6b851f4fc65 213,215-221
+  s_79c0473179aa3d::t_604e47bb66fe66 359
+  s_79c0473179aa3d::t_19e5149f33bd2a 388,392-394
+  s_79c0473179aa3d::t_0032584e2eee31 402-404
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7ecee7ec0f31a46259f552df9a8ce7ce48264bd0",
+  "prompts": {},
+  "sessions": {
+    "s_79c0473179aa3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae8df3ca-df5d-48ee-a98f-0afbfab05c51",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

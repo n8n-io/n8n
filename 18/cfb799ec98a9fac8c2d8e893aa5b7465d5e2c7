@@ -1,0 +1,19 @@
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_aeecfe178a9b3d::t_5dfd4cdeb504cb 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "18cfb799ec98a9fac8c2d8e893aa5b7465d5e2c7",
+  "prompts": {},
+  "sessions": {
+    "s_aeecfe178a9b3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1c3abc3-6b2a-413e-a33c-2c784b044f11",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
