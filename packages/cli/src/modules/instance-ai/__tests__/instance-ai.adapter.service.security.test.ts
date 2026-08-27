@@ -93,7 +93,12 @@ const userHasScopesMock = vi.mocked(userHasScopes);
 // ---------------------------------------------------------------------------
 
 const logger = mock<Logger>();
-const globalConfig = mock<GlobalConfig>({ ai: { allowSendingParameterValues: true } });
+// `taskRunners` has to be spelled out: the constructor parses the allowlist strings,
+// and an auto-mocked branch hands back a proxy rather than a string.
+const globalConfig = mock<GlobalConfig>({
+	ai: { allowSendingParameterValues: true },
+	taskRunners: { stdlibAllow: '', externalAllow: '', mode: 'internal' },
+});
 const workflowService = mock<WorkflowService>();
 const workflowFinderService = mock<WorkflowFinderService>();
 const workflowRepository = mock<WorkflowRepository>();
