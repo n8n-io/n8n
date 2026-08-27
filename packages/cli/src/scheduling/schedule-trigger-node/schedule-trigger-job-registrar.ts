@@ -9,6 +9,7 @@ import type { Cron, INode, SchedulingFunctions, Workflow } from 'n8n-workflow';
 import { SCHEDULE_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
+import { WorkflowScheduledJobOwner } from '../workflow-scheduled-job-owner';
 import type { ScheduleTriggerTaskPayload } from './schedule-trigger-task';
 import { SCHEDULE_TRIGGER_TASK_TYPE } from './schedule-trigger-task';
 
@@ -93,8 +94,9 @@ export interface ScheduleTriggerCollectionSession {
  *
  * Durable jobs track the *published* state of a workflow, not this instance's leadership:
  * rows are written on activation and deleted on deactivation ({@link remove})
- * or by FK cascade when the published version goes away;
- * never on leader stepdown or shutdown, which tear down only in-memory state.
+ * or when the published version goes away; never on leader stepdown or
+ * shutdown, which tear down only in-memory state. Nothing in the database
+ * removes them, so each of those paths deletes them explicitly.
  */
 @Service()
 export class ScheduleTriggerJobRegistrar {
@@ -115,6 +117,7 @@ export class ScheduleTriggerJobRegistrar {
 		globalConfig: GlobalConfig,
 		workflowsConfig: WorkflowsConfig,
 		private readonly jobProvisioner: DurableJobProvisioner,
+		private readonly owner: WorkflowScheduledJobOwner,
 	) {
 		this.intercepting =
 			globalConfig.scheduler.enabled && workflowsConfig.useWorkflowPublicationService;
@@ -322,15 +325,14 @@ export class ScheduleTriggerJobRegistrar {
 		const payload: ScheduleTriggerTaskPayload = { workflowId, nodeId };
 		// `skip` matches the legacy engine, which never runs a missed occurrence
 		// late. Running late is a per-node opt-in (see `resolveMisfirePolicy`).
-		const summary = await this.jobProvisioner.provision(
-			workflowId,
-			nodeId,
-			SCHEDULE_TRIGGER_TASK_TYPE,
-			{ ...payload },
+		const summary = await this.jobProvisioner.provision({
+			owner: this.owner.member(workflowId, nodeId),
+			taskType: SCHEDULE_TRIGGER_TASK_TYPE,
+			payload: { ...payload },
 			desired,
 			misfirePolicy,
 			misfireGraceSeconds,
-		);
+		});
 
 		this.logger.debug('Provisioned durable schedules for trigger node', {
 			workflowId,
@@ -353,7 +355,7 @@ export class ScheduleTriggerJobRegistrar {
 	 * @param nodeId The Schedule Trigger node those jobs belong to.
 	 */
 	async remove(workflowId: string, nodeId: string): Promise<void> {
-		await this.jobProvisioner.deprovision(workflowId, nodeId);
+		await this.jobProvisioner.deprovisionOwnerMember(this.owner.member(workflowId, nodeId));
 	}
 
 	/**
@@ -368,7 +370,10 @@ export class ScheduleTriggerJobRegistrar {
 	 * @param workflowId The deactivating workflow whose durable jobs to delete.
 	 */
 	async removeWorkflow(workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionWorkflow(workflowId, SCHEDULE_TRIGGER_TASK_TYPE);
+		await this.jobProvisioner.deprovisionOwnerTaskType(
+			this.owner.ref(workflowId),
+			SCHEDULE_TRIGGER_TASK_TYPE,
+		);
 	}
 
 	/**
@@ -384,9 +389,9 @@ export class ScheduleTriggerJobRegistrar {
 	 * @param workflowId The deactivating workflow whose durable jobs to delete.
 	 */
 	async removeWorkflowInTransaction(manager: EntityManager, workflowId: string): Promise<void> {
-		await this.jobProvisioner.deprovisionWorkflowInTransaction(
+		await this.jobProvisioner.deprovisionOwnerTaskTypeInTransaction(
 			manager,
-			workflowId,
+			this.owner.ref(workflowId),
 			SCHEDULE_TRIGGER_TASK_TYPE,
 		);
 	}
