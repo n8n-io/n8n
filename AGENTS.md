@@ -237,7 +237,7 @@ a new import (or an inline `eslint-disable` of the rule) fails CI.
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- Always use `design-system-rules` skill in reviews
+- Always use the `design-system` skill in reviews
 
 ### Testing Guidelines
 - **Always work from within the package directory** when running tests

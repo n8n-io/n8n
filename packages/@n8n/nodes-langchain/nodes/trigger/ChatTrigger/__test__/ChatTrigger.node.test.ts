@@ -6,11 +6,17 @@ import { mock } from 'vitest-mock-extended';
 
 import { ChatTrigger } from '../ChatTrigger.node';
 import { ChatTriggerAuthorizationError } from '../error';
-import { validateAuth } from '../GenericFunctions';
+import {
+	establishChatSessionIdentity,
+	resolveInnerFrameIdentity,
+	validateAuth,
+} from '../GenericFunctions';
 import type { LoadPreviousSessionChatOption } from '../types';
 
 vi.mock('../GenericFunctions', () => ({
 	validateAuth: vi.fn(),
+	establishChatSessionIdentity: vi.fn(),
+	resolveInnerFrameIdentity: vi.fn(),
 }));
 
 const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
@@ -159,6 +165,22 @@ describe('ChatTrigger Node', () => {
 				default: 'none',
 				builderHint: {
 					propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
+				},
+			});
+		});
+	});
+
+	describe('requireExecuteAccess property', () => {
+		it('exposes the toggle, off by default and scoped to n8nUserAuth hosted chat', () => {
+			const requireExecuteParam = chatTrigger.description.properties.find(
+				(property) => property.name === 'requireExecuteAccess',
+			);
+
+			expect(requireExecuteParam).toMatchObject({
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: { authentication: ['n8nUserAuth'], mode: ['hostedChat'], public: [true] },
 				},
 			});
 		});
@@ -417,18 +439,20 @@ describe('ChatTrigger Node', () => {
 
 		const renderedPage = () => vi.mocked(mockResponse.send).mock.calls.at(-1)?.[0] as string;
 
-		beforeEach(() => {
-			// `generateChatUserAuthToken` needs the instance's hmac secret; everything
-			// else in the node still wants the chat config.
-			vi.mocked(Container.get).mockImplementation(((token: unknown) =>
-				token === ChatTriggerConfig
-					? chatTriggerConfig
-					: { hmacSignatureSecret: 'test-secret' }) as never);
+		// Every body and header this request produced, so a `/signin` anywhere in the
+		// response — a redirect Location as much as a rendered page — shows up.
+		const everySentResponse = () =>
+			JSON.stringify([
+				vi.mocked(mockResponse.send).mock.calls,
+				vi.mocked(mockResponse.writeHead).mock.calls,
+				vi.mocked(mockResponse.setHeader).mock.calls,
+			]);
 
+		beforeEach(() => {
 			mockContext.getWebhookName.mockReturnValue('setup');
 			mockContext.getNodeWebhookUrl.mockReturnValue('http://localhost:5678/webhook/abc/chat');
+			mockContext.getWebhookResourceUrl.mockReturnValue('http://localhost:5678/webhook/abc/chat');
 			mockContext.getInstanceId.mockReturnValue('instance-1');
-			mockContext.validateCookieAuth.mockResolvedValue(visitor);
 			mockContext.getNode.mockReturnValue({
 				id: 'node-1',
 				name: 'Chat Trigger',
@@ -436,11 +460,15 @@ describe('ChatTrigger Node', () => {
 				typeVersion: 1.4,
 				webhookId: 'webhook-1',
 			} as never);
+			vi.mocked(establishChatSessionIdentity).mockResolvedValue(true);
+			vi.mocked(resolveInnerFrameIdentity).mockResolvedValue({
+				visitor,
+				authToken: 'as-token',
+			});
 
 			mockRequest.headers = {
 				'x-forwarded-proto': 'http',
 				host: 'localhost:5678',
-				cookie: 'n8n-auth=session-token',
 			};
 			mockRequest.query = {};
 			mockRequest.originalUrl = '/webhook/abc/chat';
@@ -473,7 +501,6 @@ describe('ChatTrigger Node', () => {
 			mockRequest.headers = {
 				'x-forwarded-proto': 'http',
 				host: 'localhost:5678',
-				cookie: 'n8n-auth=session-token',
 				'sec-fetch-dest': 'iframe',
 			};
 
@@ -489,6 +516,35 @@ describe('ChatTrigger Node', () => {
 			expect(renderedPage()).toContain("'x-auth-token'");
 		});
 
+		// The AS handshake must run on the outer, top-level document (real cookies) and
+		// never on the sandboxed frame's own request — a redirect to sign-in/consent from
+		// inside that opaque-origin frame would render editor-ui inside it and crash.
+		it('does not render the shell while the outer AS handshake is still in flight', async () => {
+			vi.mocked(establishChatSessionIdentity).mockResolvedValue(false);
+
+			const result = await renderSetupPage();
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockResponse.send).not.toHaveBeenCalled();
+			expect(resolveInnerFrameIdentity).not.toHaveBeenCalled();
+		});
+
+		it("fails the frame's own request instead of starting a new OAuth flow when the one-hop cookie is missing", async () => {
+			mockRequest.query = { n8nShellInner: '1' };
+			mockRequest.headers = {
+				'x-forwarded-proto': 'http',
+				host: 'localhost:5678',
+				'sec-fetch-dest': 'iframe',
+			};
+			vi.mocked(resolveInnerFrameIdentity).mockResolvedValue(null);
+
+			const result = await renderSetupPage();
+
+			expect(result).toEqual({ noWebhookResponse: true });
+			expect(mockResponse.status).toHaveBeenCalledWith(401);
+			expect(establishChatSessionIdentity).not.toHaveBeenCalled();
+		});
+
 		// Honouring the flag on a top-level navigation would let a visitor skip the
 		// trusted document, and with it the connect UI that lives there.
 		it('still renders the shell for a hand-typed inner URL', async () => {
@@ -496,7 +552,6 @@ describe('ChatTrigger Node', () => {
 			mockRequest.headers = {
 				'x-forwarded-proto': 'http',
 				host: 'localhost:5678',
-				cookie: 'n8n-auth=session-token',
 				'sec-fetch-dest': 'document',
 			};
 
@@ -506,17 +561,21 @@ describe('ChatTrigger Node', () => {
 			expect(renderedPage()).not.toContain('createChat');
 		});
 
-		it('sends an unauthenticated visitor to sign in', async () => {
+		// The page used to bounce a visitor with no editor session to `/signin` before the
+		// AS ever saw them, which defeated the whole point of end-user credentials for
+		// external visitors. The flow authenticates them instead.
+		it('begins the OAuth2 flow for a visitor with no session', async () => {
 			mockRequest.headers = { 'x-forwarded-proto': 'http', host: 'localhost:5678' };
-			mockContext.validateCookieAuth.mockRejectedValue(new Error('nope'));
 
 			const result = await renderSetupPage();
 
 			expect(result).toEqual({ noWebhookResponse: true });
-			expect(mockResponse.writeHead).toHaveBeenCalledWith(302, {
-				Location: '/signin?redirect=http%3A%2F%2Flocalhost%3A5678%2Fwebhook%2Fabc%2Fchat',
-			});
-			expect(mockResponse.send).not.toHaveBeenCalled();
+			expect(establishChatSessionIdentity).toHaveBeenCalledWith(
+				mockContext,
+				'http://localhost:5678/webhook/abc/chat',
+			);
+			expect(mockContext.validateCookieAuth).not.toHaveBeenCalled();
+			expect(everySentResponse()).not.toContain('/signin');
 		});
 
 		it('renders the page unsplit when the flag is off', async () => {
@@ -525,6 +584,7 @@ describe('ChatTrigger Node', () => {
 			await renderSetupPage();
 
 			expect(mockResponse.setHeader).not.toHaveBeenCalled();
+			expect(establishChatSessionIdentity).not.toHaveBeenCalled();
 			expect(renderedPage()).toContain('createChat');
 			expect(renderedPage()).not.toContain('n8nShellInner');
 		});
@@ -535,6 +595,7 @@ describe('ChatTrigger Node', () => {
 				await renderSetupPage(authentication);
 
 				expect(mockResponse.setHeader).not.toHaveBeenCalled();
+				expect(establishChatSessionIdentity).not.toHaveBeenCalled();
 				expect(renderedPage()).toContain('createChat');
 				expect(renderedPage()).not.toContain('n8nShellInner');
 			},

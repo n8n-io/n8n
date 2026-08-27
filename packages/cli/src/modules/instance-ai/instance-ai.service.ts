@@ -165,6 +165,8 @@ import {
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
 	cleanStoredUserMessage,
 	withCurrentDateTime,
+	withProjectContext,
+	getProjectContextSection,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
 import { InstanceAiMcpRegistryService } from './mcp';
@@ -3959,10 +3961,17 @@ export class InstanceAiService {
 			const messageWithContext = [contextResourcesBlock, handoffContextBlock, messageBody]
 				.filter(Boolean)
 				.join('\n\n');
+			// The bound project's NAME rides turn for the same reason as the clock: it is per-thread,
+			// so putting it in the cached system prefix would break caching.
+			const projectSection = await this.resolveProjectContextSection(context);
+			const messageWithProject = projectSection
+				? withProjectContext(messageWithContext, projectSection)
+				: messageWithContext;
+
 			// Carry "now" on the per-turn input, not the cached system prefix, so the prefix stays cacheable.
 			// Wrapped so the parser strips it from the displayed user message on history reload.
 			const fullMessage = withCurrentDateTime(
-				messageWithContext,
+				messageWithProject,
 				getDateTimeSection(timeZone ?? this.defaultTimeZone),
 			);
 
@@ -5049,6 +5058,49 @@ export class InstanceAiService {
 				error: getErrorMessage(error),
 			});
 			return null;
+		}
+	}
+
+	/**
+	 * The one-line "you are in project X" fact for the per-turn block, or undefined
+	 * when there is nothing useful to say (no bound project, no workspace adapter, a
+	 * project we can't read).
+	 *
+	 * Best-effort by design: this is a guardrail, not a precondition. A run that cannot
+	 * name its project should be a less-informed run, not a failed one - the write access is
+	 * locked to the bound project either way.
+	 */
+	private async resolveProjectContextSection(
+		context: InstanceAiContext,
+	): Promise<string | undefined> {
+		const projectId = context.projectId;
+		if (!projectId) return undefined;
+
+		// Read per turn, deliberately NOT cached. A cache keyed by project id has no
+		// invalidation path here, so a renamed project would have the agent naming the
+		// old name for the rest of the process's life — and naming the wrong project is
+		// the failure this block exists to prevent.
+		try {
+			const project = await context.workspaceService?.getProject?.(projectId);
+			if (project) return getProjectContextSection({ name: project.name, type: project.type });
+
+			this.logger.warn('Instance AI could not name the bound project for this turn', {
+				projectId,
+				reason: context.workspaceService?.getProject ? 'not-readable' : 'no-workspace-adapter',
+			});
+			return undefined;
+		} catch (error) {
+			this.logger.warn('Instance AI failed to resolve the bound project for this turn', {
+				projectId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			this.errorReporter.error(error, {
+				level: 'warning',
+				tags: { component: 'instance-ai-project-context' },
+				extra: { projectId },
+				shouldIsolate: true,
+			});
+			return undefined;
 		}
 	}
 

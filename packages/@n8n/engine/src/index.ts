@@ -2,11 +2,16 @@ export { createEngineRuntime } from './runtime';
 export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 
 export {
+	ACTION_TOKEN,
+	IDENTITY_TOKEN,
+	InvalidActionTokenError,
 	InvalidIdentityTokenError,
+	mintActionToken,
 	mintIdentityToken,
 	SharedSecretIdentityVerifier,
+	verifyActionToken,
 } from './auth';
-export type { AuthenticatedCaller, IdentityVerifier } from './auth';
+export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
 
 export type {
 	EngineErrorResponse,
@@ -14,6 +19,18 @@ export type {
 	ExecutionStepsResponse,
 	StepDetail,
 } from './server';
+
+// The publisher stays internal: no host constructs or swaps one.
+export {
+	MAX_LIFECYCLE_EVENTS_PER_BATCH,
+	lifecycleEventBatchSchema,
+	lifecycleEventSchema,
+} from './lifecycle-events';
+export type {
+	LifecycleEventCallback,
+	LifecycleEvent,
+	LifecycleEventBatch,
+} from './lifecycle-events';
 
 export type { JsonObject, JsonValue } from './common';
 

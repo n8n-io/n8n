@@ -53,7 +53,7 @@ on:
         default: 'e2e'
         type: string
       build-variant:
-        description: 'Build variant for docker-artifact mode. Must match the variant used by prepare-docker (standard or coverage).'
+        description: 'Build variant for docker-artifact mode. Must match the variant used by prepare-docker (standard, coverage, or pc).'
         required: false
         default: 'standard'
         type: string
