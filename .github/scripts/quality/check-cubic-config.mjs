@@ -105,12 +105,14 @@ function ruleFiles() {
  * @param {any} config - parsed cubic.yaml
  * @param {(path: string) => number} charsIn - characters in a linked file, -1 if missing
  * @param {string[]} [onDisk] - rule files that must each be linked by some agent
- * @returns {{ violations: string[], warnings: string[] }}
+ * @returns {{ violations: string[], warnings: string[], ruleLengths: Record<string, number> }}
  */
 export function checkConfig(config, charsIn, onDisk = []) {
 	const violations = [];
 	/** @type { string[] } */
 	const warnings = [];
+	/** @type { Record<string, number> } */
+	const ruleLengths = {}
 	const linked = new Set();
 
 	if (config?.version !== 1) {
@@ -120,7 +122,7 @@ export function checkConfig(config, charsIn, onDisk = []) {
 	const rules = config?.reviews?.custom_rules ?? [];
 	if (!Array.isArray(rules)) {
 		violations.push('`reviews.custom_rules` must be a list.');
-		return { violations, warnings };
+		return { violations, warnings, ruleLengths };
 	}
 
 	if (rules.length > MAX_CUBIC_AGENTS) {
@@ -167,6 +169,8 @@ export function checkConfig(config, charsIn, onDisk = []) {
 					`${MAX_RULE_CHARS.toLocaleString()}-character ceiling. Trim it before adding more.`,
 			);
 		}
+
+		ruleLengths[label] = total
 	});
 
 	for (const path of onDisk) {
@@ -175,7 +179,7 @@ export function checkConfig(config, charsIn, onDisk = []) {
 		}
 	}
 
-	return { violations, warnings };
+	return { violations, warnings, ruleLengths };
 }
 
 async function refreshSchema() {
@@ -195,14 +199,16 @@ async function main() {
 		return;
 	}
 
-	if (process.argv.includes('--show-rules')) {
-	}
-
 	const config = parse(readFileSync(join(REPO_ROOT, 'cubic.yaml'), 'utf8'));
 	const schema = JSON.parse(readFileSync(join(REPO_ROOT, SCHEMA_PATH), 'utf8'));
 
-	const { violations, warnings } = checkConfig(config, fileCharacters, ruleFiles());
+	const { violations, warnings, ruleLengths } = checkConfig(config, fileCharacters, ruleFiles());
 	violations.unshift(...schemaErrors(config, schema));
+
+	console.log("Rule sizes:")
+	for (const [label, ruleLength] of Object.entries(ruleLengths)) {
+		console.log(`	${label}: ${ruleLength} characters (${Math.floor(ruleLength / MAX_RULE_CHARS * 100)}%)`);
+	}
 
 	for (const warning of warnings) {
 		console.log(`::warning file=cubic.yaml::${warning}`);
