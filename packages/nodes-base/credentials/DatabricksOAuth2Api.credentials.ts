@@ -47,13 +47,29 @@ export class DatabricksOAuth2Api implements ICredentialType {
 		},
 		{
 			displayName:
-				'The default scopes needed for the node to work are already set. If you change them the node may not function correctly. For the Authorization Code (User) grant, <code>offline_access</code> is required to keep the connection alive past one hour — it is re-added automatically if removed.',
+				'The default scopes needed for the node to work are already set. If you change them the node may not function correctly.',
 			name: 'customScopesNotice',
 			type: 'notice',
 			default: '',
 			displayOptions: {
 				show: {
 					customScopes: [true],
+					grantType: ['clientCredentials'],
+				},
+			},
+		},
+		{
+			// Same name suffix pattern as the scopes fields: the extends-chain merge
+			// dedupes by name, so the per-grant notices need distinct names
+			displayName:
+				'The default scopes needed for the node to work are already set. If you change them the node may not function correctly. <code>offline_access</code> is required to keep the connection alive past one hour and is re-added automatically if removed.',
+			name: 'userCustomScopesNotice',
+			type: 'notice',
+			default: '',
+			displayOptions: {
+				show: {
+					customScopes: [true],
+					grantType: ['authorizationCode'],
 				},
 			},
 		},
