@@ -36,15 +36,16 @@ import type { RoleService } from '@/services/role.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
-
 import type { WorkflowReviewAuthorizationService } from '../workflow-review-authorization.service';
 
 import { WorkflowReviewFeatureGate } from '../workflow-review-feature-gate.service';
-import { WorkflowReviewRequestService } from '../workflow-review-request.service';
+import { WorkflowReviewRequestMutationGuard } from '../workflow-review-request-mutation-guard.service';
+import { WorkflowReviewRequestStatusService } from '../workflow-review-request-status.service';
+import { WorkflowReviewRequestSubmissionService } from '../workflow-review-request-submission.service';
+import { WorkflowReviewStateNotifier } from '../workflow-review-state-notifier.service';
 const user = mock<User>({ id: 'user-1' });
 
-/** Build a real `User` with `isPending` computed, as TypeORM does after load. */
+/** Build a loaded user with the computed pending state. */
 function loadedUser(fields: Partial<User> & { id: string; email: string }): User {
 	const loaded = Object.assign(new User(), { password: 'hashed', authIdentities: [], ...fields });
 	loaded.computeIsPending();
@@ -60,12 +61,12 @@ const dto: CreateWorkflowReviewRequestDto = {
 	reviewerUserIds: ['user-2'],
 };
 
-describe('WorkflowReviewRequestService', () => {
+describe('workflow review request services', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
 	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
-	/** The `workflow_entity` repository. `workflowRepository` below is the review's link table. */
+	/** Workflow entity repository; `workflowRepository` stores request links. */
 	const workflowEntityRepository = mock<WorkflowRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const requestRepository = mock<WorkflowReviewRequestRepository>();
@@ -78,20 +79,22 @@ describe('WorkflowReviewRequestService', () => {
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
 	const collaborationService = mock<CollaborationService>();
-	const workflowService = mock<WorkflowService>();
 	const authorizationService = mock<WorkflowReviewAuthorizationService>();
 	const logger = mock<Logger>();
 	const eventService = mock<EventService>();
-	/** The lock's context. Distinct from the root `{}` so tests can tell the two apart. */
+	/** Transaction context used inside the lock. */
 	const ctx: OperationContext = { trx: mock<Transaction>() };
 
-	const service = new WorkflowReviewRequestService(
-		logger,
-		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
+	const featureGate = new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService);
+	const mutationGuard = new WorkflowReviewRequestMutationGuard(
+		workflowEntityRepository,
+		sharedWorkflowRepository,
+	);
+	const submissionService = new WorkflowReviewRequestSubmissionService(
+		featureGate,
 		workflowFinderService,
 		workflowHistoryService,
 		workflowHistoryRepository,
-		workflowEntityRepository,
 		sharedWorkflowRepository,
 		requestRepository,
 		workflowRepository,
@@ -101,25 +104,31 @@ describe('WorkflowReviewRequestService', () => {
 		userRepository,
 		roleService,
 		dbLockService,
-		collaborationService,
-		workflowService,
-		authorizationService,
 		eventService,
+		mutationGuard,
+		new WorkflowReviewStateNotifier(logger, collaborationService),
+	);
+	const statusService = new WorkflowReviewRequestStatusService(
+		featureGate,
+		workflowFinderService,
+		requestRepository,
+		userRepository,
+		authorizationService,
 	);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
 		authorizationService.resolveOpenableRequestIds.mockResolvedValue(new Set());
 		licenseState.isWorkflowReviewsLicensed.mockReturnValue(true);
-		// Feature enabled by default; the disabled path is exercised explicitly.
+		// Enable the feature unless a test overrides it.
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: true });
-		// By default, run the critical section against the mocked transaction.
+		// Run locked work with the transaction context by default.
 		dbLockService.withLockContext.mockImplementation(async (_id, fn) => await fn(ctx));
 		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 	});
 
 	describe('create', () => {
-		// A reviewer is mandatory, so every create path resolves the eligible set.
+		// Provide the required eligible reviewer by default.
 		beforeEach(() => {
 			roleService.rolesWithScope.mockResolvedValue(['some-role']);
 			userRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue([
@@ -132,7 +141,7 @@ describe('WorkflowReviewRequestService', () => {
 				mock<WorkflowEntity>({ isArchived: false }),
 			);
 			workflowHistoryService.findVersion.mockResolvedValue(mock());
-			// The in-lock re-check reads archived state on the lock's own connection.
+			// The locked check reads the latest archived state.
 			workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: false });
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(
 				mock<Project>({ id: 'project-1' }),
@@ -151,7 +160,7 @@ describe('WorkflowReviewRequestService', () => {
 		it('throws when the instance policy is disabled, before any lookup or lock', async () => {
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
 
-			await expect(service.create(user, dto)).rejects.toThrow(ForbiddenError);
+			await expect(submissionService.create(user, dto)).rejects.toThrow(ForbiddenError);
 
 			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
 			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
@@ -175,7 +184,7 @@ describe('WorkflowReviewRequestService', () => {
 				}),
 			);
 
-			const result = await service.create(user, dto);
+			const result = await submissionService.create(user, dto);
 
 			expect(result.id).toBe('req-1');
 			expect(dbLockService.withLockContext).toHaveBeenCalledWith(
@@ -204,7 +213,7 @@ describe('WorkflowReviewRequestService', () => {
 		it('throws NotFoundError without acquiring a lock when the workflow cannot be found', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
-			await expect(service.create(user, dto)).rejects.toThrow(NotFoundError);
+			await expect(submissionService.create(user, dto)).rejects.toThrow(NotFoundError);
 
 			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
 				'workflow:publish',
@@ -217,7 +226,7 @@ describe('WorkflowReviewRequestService', () => {
 				mock<WorkflowEntity>({ isArchived: true }),
 			);
 
-			await expect(service.create(user, dto)).rejects.toThrow(BadRequestError);
+			await expect(submissionService.create(user, dto)).rejects.toThrow(BadRequestError);
 			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
@@ -227,7 +236,7 @@ describe('WorkflowReviewRequestService', () => {
 			);
 			workflowHistoryService.findVersion.mockResolvedValue(null);
 
-			await expect(service.create(user, dto)).rejects.toThrow(BadRequestError);
+			await expect(submissionService.create(user, dto)).rejects.toThrow(BadRequestError);
 			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
@@ -238,7 +247,7 @@ describe('WorkflowReviewRequestService', () => {
 			workflowHistoryService.findVersion.mockResolvedValue(mock());
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
 
-			await expect(service.create(user, dto)).rejects.toThrow(NotFoundError);
+			await expect(submissionService.create(user, dto)).rejects.toThrow(NotFoundError);
 			expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 		});
 
@@ -255,7 +264,7 @@ describe('WorkflowReviewRequestService', () => {
 				mock<WorkflowReviewRequest>({ id: 'existing-1' }),
 			);
 
-			const error = await service.create(user, dto).catch((e: unknown) => e);
+			const error = await submissionService.create(user, dto).catch((e: unknown) => e);
 			expect(error).toBeInstanceOf(ConflictError);
 			expect((error as ConflictError).meta).toEqual({ workflowReviewRequestId: 'existing-1' });
 
@@ -268,7 +277,7 @@ describe('WorkflowReviewRequestService', () => {
 			mockSuccessfulCreatePath();
 			workflowEntityRepository.findArchivedState.mockResolvedValue({ isArchived: true });
 
-			const creation = service.create(user, dto);
+			const creation = submissionService.create(user, dto);
 			await expect(creation).rejects.toThrow(BadRequestError);
 			await expect(creation).rejects.toThrow(
 				"The workflow 'wf-1' is archived and cannot be submitted for review",
@@ -283,17 +292,31 @@ describe('WorkflowReviewRequestService', () => {
 			mockSuccessfulCreatePath();
 			workflowEntityRepository.findArchivedState.mockResolvedValue(null);
 
-			await expect(service.create(user, dto)).rejects.toThrow(NotFoundError);
+			await expect(submissionService.create(user, dto)).rejects.toThrow(NotFoundError);
 
 			expect(requestRepository.createRequest).not.toHaveBeenCalled();
 			expect(workflowRepository.createWorkflowRow).not.toHaveBeenCalled();
 		});
 
-		// A read that checks out a second connection here deadlocks a single-connection pool.
+		it('rejects a workflow whose owner disappears between the pre-lock check and the lock', async () => {
+			mockSuccessfulCreatePath();
+			sharedWorkflowRepository.getWorkflowOwningProject
+				.mockResolvedValueOnce(mock<Project>({ id: 'project-1' }))
+				.mockResolvedValueOnce(undefined);
+
+			const creation = submissionService.create(user, dto);
+			await expect(creation).rejects.toThrow(NotFoundError);
+			await expect(creation).rejects.toThrow('Could not find workflow');
+
+			expect(dbLockService.withLockContext).toHaveBeenCalled();
+			expect(requestRepository.createRequest).not.toHaveBeenCalled();
+		});
+
+		// Both reads must use the lock transaction.
 		it('runs both in-lock re-check reads on the lock transaction', async () => {
 			mockSuccessfulCreatePath();
 
-			await service.create(user, dto);
+			await submissionService.create(user, dto);
 
 			expect(workflowEntityRepository.findArchivedState).toHaveBeenCalledWith('wf-1', ctx);
 			expect(sharedWorkflowRepository.getWorkflowOwningProject).toHaveBeenLastCalledWith(
@@ -308,7 +331,7 @@ describe('WorkflowReviewRequestService', () => {
 				.mockResolvedValueOnce(mock<Project>({ id: 'project-1' }))
 				.mockResolvedValueOnce(mock<Project>({ id: 'project-2' }));
 
-			await expect(service.create(user, dto)).rejects.toThrow(ConflictError);
+			await expect(submissionService.create(user, dto)).rejects.toThrow(ConflictError);
 
 			expect(dbLockService.withLockContext).toHaveBeenCalled();
 			expect(requestRepository.createRequest).not.toHaveBeenCalled();
@@ -326,7 +349,7 @@ describe('WorkflowReviewRequestService', () => {
 				mockSuccessfulCreatePath();
 				mockEligibleReviewers('user-2', 'user-3');
 
-				await service.create(user, {
+				await submissionService.create(user, {
 					...dto,
 					reviewerUserIds: ['user-2', 'user-2', 'user-3'],
 				});
@@ -340,9 +363,9 @@ describe('WorkflowReviewRequestService', () => {
 			it('rejects self-assignment before checking eligibility or taking the lock', async () => {
 				mockSuccessfulCreatePath();
 
-				await expect(service.create(user, { ...dto, reviewerUserIds: ['user-1'] })).rejects.toThrow(
-					BadRequestError,
-				);
+				await expect(
+					submissionService.create(user, { ...dto, reviewerUserIds: ['user-1'] }),
+				).rejects.toThrow(BadRequestError);
 
 				expect(userRepository.findEligibleByProjectOrGlobalRoles).not.toHaveBeenCalled();
 				expect(dbLockService.withLockContext).not.toHaveBeenCalled();
@@ -353,7 +376,7 @@ describe('WorkflowReviewRequestService', () => {
 				mockEligibleReviewers('user-2');
 
 				await expect(
-					service.create(user, { ...dto, reviewerUserIds: ['user-2', 'user-99'] }),
+					submissionService.create(user, { ...dto, reviewerUserIds: ['user-2', 'user-99'] }),
 				).rejects.toThrow('These users are not eligible to review this workflow: user-99');
 
 				expect(dbLockService.withLockContext).not.toHaveBeenCalled();
@@ -366,13 +389,12 @@ describe('WorkflowReviewRequestService', () => {
 					loadedUser({ id: 'user-2', email: 'user-2@n8n.io', password: null }),
 				]);
 
-				await expect(service.create(user, { ...dto, reviewerUserIds: ['user-2'] })).rejects.toThrow(
-					BadRequestError,
-				);
+				await expect(
+					submissionService.create(user, { ...dto, reviewerUserIds: ['user-2'] }),
+				).rejects.toThrow(BadRequestError);
 			});
 
-			// The DTO rejects an empty list, but the service must not silently create a
-			// reviewerless review if it is ever called past that boundary.
+			// The service still validates this if DTO validation is bypassed.
 			it.each<[string, string[] | undefined]>([
 				['omitted', undefined],
 				['empty', []],
@@ -380,7 +402,10 @@ describe('WorkflowReviewRequestService', () => {
 				mockSuccessfulCreatePath();
 
 				await expect(
-					service.create(user, { ...dto, reviewerUserIds } as CreateWorkflowReviewRequestDto),
+					submissionService.create(user, {
+						...dto,
+						reviewerUserIds,
+					} as CreateWorkflowReviewRequestDto),
 				).rejects.toThrow(BadRequestError);
 
 				expect(dbLockService.withLockContext).not.toHaveBeenCalled();
@@ -397,7 +422,7 @@ describe('WorkflowReviewRequestService', () => {
 			it('names the pinned version in the same transaction as the request', async () => {
 				mockSuccessfulCreatePath();
 
-				await service.create(user, namedDto('  Release candidate  '));
+				await submissionService.create(user, namedDto('  Release candidate  '));
 
 				expect(workflowHistoryRepository.updateVersionMetadata).toHaveBeenCalledWith(
 					{
@@ -413,7 +438,7 @@ describe('WorkflowReviewRequestService', () => {
 			it('writes a trimmed version description alongside the name', async () => {
 				mockSuccessfulCreatePath();
 
-				await service.create(user, {
+				await submissionService.create(user, {
 					...dto,
 					workflows: [{ ...dto.workflows[0], workflowVersionDescription: '  What changed  ' }],
 				});
@@ -427,7 +452,7 @@ describe('WorkflowReviewRequestService', () => {
 			it('clears the version description when an empty string is sent', async () => {
 				mockSuccessfulCreatePath();
 
-				await service.create(user, {
+				await submissionService.create(user, {
 					...dto,
 					workflows: [{ ...dto.workflows[0], workflowVersionDescription: '   ' }],
 				});
@@ -444,7 +469,7 @@ describe('WorkflowReviewRequestService', () => {
 					mock<WorkflowReviewRequest>({ id: 'existing-1' }),
 				);
 
-				await expect(service.create(user, namedDto('Release candidate'))).rejects.toThrow(
+				await expect(submissionService.create(user, namedDto('Release candidate'))).rejects.toThrow(
 					ConflictError,
 				);
 
@@ -455,7 +480,7 @@ describe('WorkflowReviewRequestService', () => {
 				mockSuccessfulCreatePath();
 				workflowHistoryRepository.updateVersionMetadata.mockResolvedValue(0);
 
-				await expect(service.create(user, namedDto('Release candidate'))).rejects.toThrow(
+				await expect(submissionService.create(user, namedDto('Release candidate'))).rejects.toThrow(
 					BadRequestError,
 				);
 			});
@@ -474,7 +499,7 @@ describe('WorkflowReviewRequestService', () => {
 					expect(lockResolved).toBe(true);
 				});
 
-				await service.create(user, dto);
+				await submissionService.create(user, dto);
 
 				expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledTimes(1);
 				expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith(
@@ -496,7 +521,7 @@ describe('WorkflowReviewRequestService', () => {
 					mock<WorkflowReviewRequest>({ id: 'existing-1' }),
 				);
 
-				await expect(service.create(user, dto)).rejects.toThrow(ConflictError);
+				await expect(submissionService.create(user, dto)).rejects.toThrow(ConflictError);
 
 				expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
 				expect(eventService.emit).not.toHaveBeenCalled();
@@ -508,10 +533,10 @@ describe('WorkflowReviewRequestService', () => {
 					new Error('push down'),
 				);
 
-				const result = await service.create(user, dto);
+				const result = await submissionService.create(user, dto);
 				expect(result.id).toBe('req-1');
 
-				// Let the fire-and-forget rejection handler run.
+				// Wait for the rejected notification to be logged.
 				await new Promise(process.nextTick);
 				expect(logger.warn).toHaveBeenCalledWith(
 					'Failed to broadcast review state change',
@@ -539,7 +564,9 @@ describe('WorkflowReviewRequestService', () => {
 		it('throws NotFoundError when the user lacks publish access to the workflow', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
-			await expect(service.getEligibleReviewers(user, query)).rejects.toThrow(NotFoundError);
+			await expect(submissionService.getEligibleReviewers(user, query)).rejects.toThrow(
+				NotFoundError,
+			);
 
 			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
 				'workflow:publish',
@@ -551,7 +578,9 @@ describe('WorkflowReviewRequestService', () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 			sharedWorkflowRepository.getWorkflowOwningProject.mockResolvedValue(undefined);
 
-			await expect(service.getEligibleReviewers(user, query)).rejects.toThrow(NotFoundError);
+			await expect(submissionService.getEligibleReviewers(user, query)).rejects.toThrow(
+				NotFoundError,
+			);
 		});
 
 		it('does not misclassify an SSO user without a password as pending', async () => {
@@ -565,7 +594,7 @@ describe('WorkflowReviewRequestService', () => {
 				}),
 			]);
 
-			const result = await service.getEligibleReviewers(user, query);
+			const result = await submissionService.getEligibleReviewers(user, query);
 
 			expect(result.data).toEqual([
 				{ id: 'user-sso', email: 'sso@n8n.io', firstName: null, lastName: null },
@@ -614,7 +643,7 @@ describe('WorkflowReviewRequestService', () => {
 		it('throws NotFoundError when the user has no read access to the workflow', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
-			await expect(service.list(user, query)).rejects.toThrow(NotFoundError);
+			await expect(statusService.list(user, query)).rejects.toThrow(NotFoundError);
 
 			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
 				'workflow:read',
@@ -625,7 +654,7 @@ describe('WorkflowReviewRequestService', () => {
 		it('throws when the instance policy is disabled, before any lookup', async () => {
 			workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
 
-			await expect(service.list(user, query)).rejects.toThrow(ForbiddenError);
+			await expect(statusService.list(user, query)).rejects.toThrow(ForbiddenError);
 
 			expect(workflowFinderService.findWorkflowForUser).not.toHaveBeenCalled();
 			expect(requestRepository.findRequestsForWorkflow).not.toHaveBeenCalled();
@@ -635,7 +664,7 @@ describe('WorkflowReviewRequestService', () => {
 			mockLatestReview({ decision: 'changes_requested' });
 			userRepository.findManyByIds.mockResolvedValue([reviewer]);
 
-			const { count, data } = await service.list(user, query);
+			const { count, data } = await statusService.list(user, query);
 
 			expect(userRepository.findManyByIds).toHaveBeenCalledWith(['user-2']);
 			expect(count).toBe(1);
@@ -663,7 +692,7 @@ describe('WorkflowReviewRequestService', () => {
 		it('carries the pinned version name through to the response', async () => {
 			mockLatestReview({ workflowVersionName: 'Release candidate' });
 
-			const { data } = await service.list(user, query);
+			const { data } = await statusService.list(user, query);
 
 			expect(data[0]).toMatchObject({ workflowVersionName: 'Release candidate' });
 		});
@@ -672,7 +701,7 @@ describe('WorkflowReviewRequestService', () => {
 			mockLatestReview({ decision: 'changes_requested' });
 			userRepository.findManyByIds.mockResolvedValue([]);
 
-			const { data } = await service.list(user, query);
+			const { data } = await statusService.list(user, query);
 
 			expect(data[0]?.decisionBy).toBeNull();
 		});
@@ -680,7 +709,7 @@ describe('WorkflowReviewRequestService', () => {
 		it('resolves no actor when the decision records none', async () => {
 			mockLatestReview({ decision: 'changes_requested', updatedById: null });
 
-			const { data } = await service.list(user, query);
+			const { data } = await statusService.list(user, query);
 
 			expect(userRepository.findManyByIds).not.toHaveBeenCalled();
 			expect(data[0]?.decisionBy).toBeNull();
@@ -689,7 +718,7 @@ describe('WorkflowReviewRequestService', () => {
 		it('names no actor for an approved review', async () => {
 			mockLatestReview({ state: 'closed', decision: 'approved' });
 
-			const { data } = await service.list(user, query);
+			const { data } = await statusService.list(user, query);
 
 			expect(data[0]).toMatchObject({ decisionBy: null });
 			expect(userRepository.findManyByIds).not.toHaveBeenCalled();
@@ -699,7 +728,7 @@ describe('WorkflowReviewRequestService', () => {
 			mockLatestReview();
 			authorizationService.resolveOpenableRequestIds.mockResolvedValue(new Set(['req-1']));
 
-			const { data } = await service.list(user, query);
+			const { data } = await statusService.list(user, query);
 
 			expect(authorizationService.resolveOpenableRequestIds).toHaveBeenCalledWith(user, [
 				expect.objectContaining({ id: 'req-1', projectId: 'proj-1' }),
@@ -710,7 +739,7 @@ describe('WorkflowReviewRequestService', () => {
 		it('derives no decision actor for a pending review', async () => {
 			mockLatestReview();
 
-			const { data } = await service.list(user, query);
+			const { data } = await statusService.list(user, query);
 
 			expect(userRepository.findManyByIds).not.toHaveBeenCalled();
 			expect(data[0]).toMatchObject({ decisionBy: null });
@@ -741,7 +770,7 @@ describe('WorkflowReviewRequestService', () => {
 				reviewer,
 				loadedUser({ id: 'user-3', email: 'other@example.com' }),
 			]);
-			const { data } = await service.list(user, query);
+			const { data } = await statusService.list(user, query);
 
 			expect(userRepository.findManyByIds).toHaveBeenCalledTimes(1);
 			expect(userRepository.findManyByIds).toHaveBeenCalledWith(['user-2', 'user-3']);
