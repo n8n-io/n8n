@@ -375,6 +375,7 @@ export class FrontendService {
 			},
 			askAi: {
 				enabled: false,
+				setup: false,
 			},
 			aiBuilder: {
 				enabled: false,
@@ -576,6 +577,8 @@ export class FrontendService {
 
 		if (isAskAiEnabled) {
 			this.settings.askAi.enabled = isAskAiEnabled;
+			// Ask AI requests always go through the AI proxy, which needs a base URL to reach.
+			this.settings.askAi.setup = !!this.globalConfig.aiAssistant.baseUrl;
 		}
 
 		if (isAiCreditsEnabled) {

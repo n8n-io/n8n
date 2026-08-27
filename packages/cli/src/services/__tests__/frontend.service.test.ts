@@ -236,6 +236,7 @@ describe('FrontendService', () => {
 		globalConfig.diagnostics.enabled = false;
 		globalConfig.aiAssistant.baseUrl = '';
 		globalConfig.aiGateway.enabled = false;
+		license.isAskAiEnabled.mockReturnValue(false);
 		licenseState.isAiGatewayLicensed.mockReturnValue(false);
 		licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(false);
 	});
@@ -294,6 +295,25 @@ describe('FrontendService', () => {
 			const settings = await service.getSettings();
 
 			expect(settings.aiGateway?.enabled).toBe(true);
+		});
+
+		it('should report Ask AI as not set up when the AI proxy base URL is missing', async () => {
+			license.isAskAiEnabled.mockReturnValue(true);
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.askAi).toEqual({ enabled: true, setup: false });
+		});
+
+		it('should report Ask AI as set up when the AI proxy base URL is configured', async () => {
+			license.isAskAiEnabled.mockReturnValue(true);
+			globalConfig.aiAssistant.baseUrl = 'https://ai-assistant.n8n.io';
+			const { service } = createMockService();
+
+			const settings = await service.getSettings();
+
+			expect(settings.askAi).toEqual({ enabled: true, setup: true });
 		});
 
 		it('should keep the AI Gateway disabled when configured but not licensed', async () => {

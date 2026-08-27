@@ -199,6 +199,8 @@ export interface FrontendSettings {
 	};
 	askAi: {
 		enabled: boolean;
+		/** Whether the AI proxy Ask AI requests are routed through is configured. */
+		setup: boolean;
 	};
 	aiBuilder: {
 		enabled: boolean;

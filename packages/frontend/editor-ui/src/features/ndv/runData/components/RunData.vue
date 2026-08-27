@@ -49,12 +49,14 @@ import JsonEditor from '@/features/shared/editors/components/JsonEditor/JsonEdit
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import RunDataPinButton from './RunDataPinButton.vue';
+import GenerateMockDataHeader from './GenerateMockDataHeader.vue';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useI18n } from '@n8n/i18n';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useNodeType } from '@/app/composables/useNodeType';
 import type { PinDataSource, UnpinDataSource } from '@/app/composables/usePinnedData';
 import { usePinnedData } from '@/app/composables/usePinnedData';
+import { useGenerateMockData } from '@/features/ndv/runData/composables/useGenerateMockData';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { dataPinningEventBus } from '@/app/event-bus';
@@ -262,6 +264,13 @@ const pinnedData = usePinnedData(node, {
 	runIndex: props.runIndex,
 	displayMode: props.displayMode,
 });
+const {
+	mode: generateMockDataMode,
+	scenarioText: generateMockDataScenarioText,
+	isGenerating: isGeneratingMockData,
+	isGenerateMockDataEnabled,
+	generate: generateMockData,
+} = useGenerateMockData(node);
 const { isSubNodeType } = useNodeType({
 	node,
 });
@@ -1075,6 +1084,15 @@ async function onClickSaveEdit() {
 	onExitEditMode({ type: 'save' });
 }
 
+async function onGenerateMockData() {
+	const items = await generateMockData();
+	if (!items) {
+		return;
+	}
+
+	ndvStore.value.setOutputPanelEditModeValue(JSON.stringify(items, null, 2));
+}
+
 function onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
 	telemetry.track('User closed ndv edit state', {
 		node_type: activeNode.value?.type,
@@ -1836,6 +1854,15 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
+				<GenerateMockDataHeader
+					v-if="isGenerateMockDataEnabled"
+					:mode="generateMockDataMode"
+					:scenario-text="generateMockDataScenarioText"
+					:is-generating="isGeneratingMockData"
+					@update:mode="generateMockDataMode = $event"
+					@update:scenario-text="generateMockDataScenarioText = $event"
+					@generate="onGenerateMockData"
+				/>
 				<N8nText v-if="previousExecutionDataUsedInEditMode" class="mb-2xs" size="small"
 					>{{ i18n.baseText('runData.pinData.insertedExecutionData') }}
 				</N8nText>
