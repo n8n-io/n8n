@@ -290,6 +290,25 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(evaluator.evaluate('{{ 0/0 }}', data, caller)).toBeNaN();
 	});
 
+	it('should honor locale and options in toLocaleString/toLocaleTimeString', () => {
+		const data = { $json: { n: 1234.5, iso: '2024-01-15T10:30:00.000Z' } };
+
+		expect(
+			evaluator.evaluate(
+				'{{ $json.n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}',
+				data,
+				caller,
+			),
+		).toBe('1,234.50');
+		expect(
+			evaluator.evaluate(
+				'{{ new Date($json.iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "UTC" }) }}',
+				data,
+				caller,
+			),
+		).toBe('10:30 AM');
+	});
+
 	it('should round-trip an invalid Date return value', () => {
 		const data = { $json: {} };
 
