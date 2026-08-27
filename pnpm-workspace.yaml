@@ -23,13 +23,19 @@ updateNotifier: false
 loglevel: warn
 packageImportMethod: clone-or-copy
 
-minimumReleaseAge: 4320
+minimumReleaseAge: 2880
+# Blacksmith's path to Cloudflare AMS intermittently stalls a single connection
+# for tens of seconds while aggregate throughput stays at ~1Gbit/s. The 60s
+# default turns those stalls into failed installs; a probe caught the same
+# request completing at 39.6s on one runner and aborting at exactly 60.0s on
+# another. See https://github.com/n8n-io/n8n/actions/runs/32991441403
+fetchTimeout: 300000
 
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
   # Fresh Claude model IDs (e.g. Opus 5) ship in @ai-sdk/anthropic patches; allow
-  # installing before the 3-day minimumReleaseAge so agents/evals aren't stuck on
+  # installing before the 2-day minimumReleaseAge so agents/evals aren't stuck on
   # the unknown-model 4096 max_tokens default.
   - '@ai-sdk/anthropic'
   # Security patch (Aikido) newer than the minimumReleaseAge window; allow it in.
@@ -46,6 +52,7 @@ packages:
   - packages/testing/**
 
 catalog:
+  '@ai-sdk/alibaba': ^2.0.32
   '@ai-sdk/amazon-bedrock': ^5.0.31
   '@ai-sdk/anthropic': ^4.0.32
   '@ai-sdk/azure': ^4.0.21
@@ -55,7 +62,9 @@ catalog:
   '@ai-sdk/google': ^4.0.24
   '@ai-sdk/google-vertex': ^5.0.47
   '@ai-sdk/groq': ^4.0.13
+  '@ai-sdk/minimax': ^3.0.15
   '@ai-sdk/mistral': ^4.0.14
+  '@ai-sdk/moonshotai': ^3.0.35
   '@ai-sdk/openai': ^4.0.20
   '@ai-sdk/openai-compatible': ^3.0.14
   '@ai-sdk/otel': ^1.0.66

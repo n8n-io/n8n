@@ -371,6 +371,83 @@ describe('WorkflowReviewRequestRepository', () => {
 		});
 	});
 
+	describe('findUnreviewableOpenRequestIds', () => {
+		let queryBuilder: Mocked<SelectQueryBuilder<WorkflowReviewRequest>>;
+
+		beforeEach(() => {
+			queryBuilder = mock<SelectQueryBuilder<WorkflowReviewRequest>>();
+			queryBuilder.select.mockReturnThis();
+			queryBuilder.addSelect.mockReturnThis();
+			queryBuilder.leftJoin.mockReturnThis();
+			queryBuilder.where.mockReturnThis();
+			queryBuilder.andWhere.mockReturnThis();
+			queryBuilder.getRawMany.mockResolvedValue([]);
+			(entityManager.createQueryBuilder as Mock).mockReturnValue(queryBuilder);
+		});
+
+		it('returns a request only when none of its linked workflows is reviewable', async () => {
+			queryBuilder.getRawMany.mockResolvedValue([
+				// A missing owner row is broken data, not evidence that the workflow moved.
+				{
+					requestId: 'req-no-owner',
+					requestProjectId: 'proj-1',
+					linkedWorkflowId: 'wf-1',
+					isArchived: false,
+					owningProjectId: null,
+				},
+				{
+					requestId: 'req-orphan',
+					requestProjectId: 'proj-1',
+					linkedWorkflowId: null,
+					isArchived: null,
+					owningProjectId: null,
+				},
+				{
+					requestId: 'req-mixed',
+					requestProjectId: 'proj-1',
+					linkedWorkflowId: 'wf-2',
+					isArchived: true,
+					owningProjectId: 'proj-1',
+				},
+				{
+					requestId: 'req-mixed',
+					requestProjectId: 'proj-1',
+					linkedWorkflowId: 'wf-3',
+					isArchived: false,
+					owningProjectId: 'proj-1',
+				},
+			]);
+
+			expect(await repo.findUnreviewableOpenRequestIds({})).toEqual(['req-orphan']);
+			expect(queryBuilder.andWhere).not.toHaveBeenCalled();
+
+			await repo.findUnreviewableOpenRequestIds({}, ['req-1', 'req-2']);
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('review.id IN (:...candidateRequestIds)', {
+				candidateRequestIds: ['req-1', 'req-2'],
+			});
+
+			(entityManager.createQueryBuilder as Mock).mockClear();
+			expect(await repo.findUnreviewableOpenRequestIds({}, [])).toEqual([]);
+			expect(entityManager.createQueryBuilder).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('closeRequests', () => {
+		it('bulk-closes the given requests, clearing the closing user and bumping updatedAt', async () => {
+			await repo.closeRequests(['req-1', 'req-2'], {});
+
+			expect(entityManager.update).toHaveBeenCalledWith(WorkflowReviewRequest, ['req-1', 'req-2'], {
+				state: 'closed',
+				closedById: null,
+				updatedAt: expect.any(Date),
+			});
+
+			entityManager.update.mockClear();
+			await repo.closeRequests([], {});
+			expect(entityManager.update).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('findById', () => {
 		it("reads through the context's transaction manager", async () => {
 			const transactionManager = mock<EntityManager>();

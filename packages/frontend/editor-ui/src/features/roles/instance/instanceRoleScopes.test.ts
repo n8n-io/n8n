@@ -7,8 +7,10 @@ import {
 	getOptionState,
 	getEscalationWarningKey,
 	isOptionImplied,
+	isOptionMandatory,
 	resolveOptionState,
 	toggleOptionInGroup,
+	withMandatoryInstanceScopes,
 } from './instanceRoleScopes';
 
 const ALL_SCOPES_SET = new Set<string>(ALL_SCOPES as string[]);
@@ -81,7 +83,13 @@ describe('instanceRoleScopes config', () => {
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.tag)).toEqual(['Manage']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.role)).toEqual(['Manage project roles', 'Manage']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.project)).toEqual(['Create']);
-			expect(Object.keys(INSTANCE_SCOPE_GROUPS.settings)).toEqual(['Manage']);
+			expect(Object.keys(INSTANCE_SCOPE_GROUPS.settings)).toEqual([
+				'Manage',
+				'Mcp use',
+				'Mcp manage',
+				'AiAssistant use',
+				'AiAssistant manage',
+			]);
 		});
 	});
 });
@@ -236,6 +244,10 @@ describe('getEscalationWarningKey', () => {
 	it('returns undefined for role when only the non-escalating role:read scope is present', () => {
 		expect(getEscalationWarningKey('role', ['role:read'])).toBeUndefined();
 	});
+
+	it('returns undefined for user when only the non-escalating View scope (user:list) is present', () => {
+		expect(getEscalationWarningKey('user', ['user:list'])).toBeUndefined();
+	});
 });
 
 describe('toggleOptionInGroup', () => {
@@ -292,5 +304,85 @@ describe('toggleOptionInGroup', () => {
 		const input = [...manageAll.scopes];
 		toggleOptionInGroup(input, manageAll, apiKeyGroup.options);
 		expect(input).toEqual([...manageAll.scopes]);
+	});
+
+	describe('settings "Manage all settings" acts as a select-all over MCP/AI Assistant', () => {
+		const settingsGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'settings')!;
+		const manageAllSettings = settingsGroup.options.find((o) => o.key === 'Manage')!;
+		const mcpUse = settingsGroup.options.find((o) => o.key === 'Mcp use')!;
+		const mcpManage = settingsGroup.options.find((o) => o.key === 'Mcp manage')!;
+		const aiAssistantUse = settingsGroup.options.find((o) => o.key === 'AiAssistant use')!;
+		const aiAssistantManage = settingsGroup.options.find((o) => o.key === 'AiAssistant manage')!;
+
+		it('checking "Manage all settings" checks MCP and AI Assistant use/manage too', () => {
+			const scopes = toggleOptionInGroup([], manageAllSettings, settingsGroup.options);
+			expect(getOptionState(scopes, mcpUse.scopes)).toBe('checked');
+			expect(getOptionState(scopes, mcpManage.scopes)).toBe('checked');
+			expect(getOptionState(scopes, aiAssistantUse.scopes)).toBe('checked');
+			expect(getOptionState(scopes, aiAssistantManage.scopes)).toBe('checked');
+		});
+
+		it('all four MCP/AI Assistant options stay independently toggleable while "Manage all settings" is checked (none implied/disabled by it)', () => {
+			// Unlike apiKey's "Manage own"/"Manage all" tiering, none of these four
+			// are superseded by another option in this group — "Manage all settings"
+			// checks them via plain scope-superset arithmetic, not implication, so
+			// unchecking any one of the four must stay a single, direct click.
+			const scopes = toggleOptionInGroup([], manageAllSettings, settingsGroup.options);
+			expect(isOptionImplied(mcpUse, settingsGroup.options, scopes)).toBe(false);
+			expect(isOptionImplied(mcpManage, settingsGroup.options, scopes)).toBe(false);
+			expect(isOptionImplied(aiAssistantUse, settingsGroup.options, scopes)).toBe(false);
+			expect(isOptionImplied(aiAssistantManage, settingsGroup.options, scopes)).toBe(false);
+		});
+
+		it('unchecking "Mcp manage" while "Manage all settings" is checked drops it out of the checked state', () => {
+			const fullyChecked = toggleOptionInGroup([], manageAllSettings, settingsGroup.options);
+			const afterUncheck = toggleOptionInGroup(fullyChecked, mcpManage, settingsGroup.options);
+			expect(resolveOptionState(manageAllSettings, settingsGroup.options, afterUncheck)).not.toBe(
+				'checked',
+			);
+			// The rest of the "Manage all settings" bundle survives the uncheck.
+			expect(afterUncheck).toContain('securitySettings:manage');
+		});
+
+		it('unchecking "AiAssistant use" while "Manage all settings" is checked drops it out of the checked state', () => {
+			const fullyChecked = toggleOptionInGroup([], manageAllSettings, settingsGroup.options);
+			const afterUncheck = toggleOptionInGroup(fullyChecked, aiAssistantUse, settingsGroup.options);
+			expect(resolveOptionState(manageAllSettings, settingsGroup.options, afterUncheck)).not.toBe(
+				'checked',
+			);
+		});
+	});
+});
+
+describe('mandatory instance options', () => {
+	const userGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'user')!;
+	const userView = userGroup.options.find((o) => o.key === 'View')!;
+	const userManage = userGroup.options.find((o) => o.key === 'Manage')!;
+
+	it('flags "Users: View" as mandatory and every other option as not', () => {
+		expect(isOptionMandatory('user', userView)).toBe(true);
+		expect(isOptionMandatory('user', userManage)).toBe(false);
+
+		for (const group of INSTANCE_SCOPE_GROUP_LIST) {
+			for (const option of group.options) {
+				if (group.resource === 'user' && option.key === 'View') continue;
+				expect(isOptionMandatory(group.resource, option)).toBe(false);
+			}
+		}
+	});
+
+	it('withMandatoryInstanceScopes adds "Users: View" scopes to an empty list', () => {
+		expect(new Set(withMandatoryInstanceScopes([]))).toEqual(new Set(userView.scopes));
+	});
+
+	it('withMandatoryInstanceScopes does not duplicate scopes already present', () => {
+		const withDuplicate = withMandatoryInstanceScopes(['user:list', 'tag:read']);
+		expect(withDuplicate.filter((s) => s === 'user:list')).toHaveLength(1);
+		expect(withDuplicate).toEqual(expect.arrayContaining(['user:list', 'tag:read']));
+	});
+
+	it('withMandatoryInstanceScopes preserves unrelated scopes untouched', () => {
+		const result = withMandatoryInstanceScopes(['tag:read', 'tag:list']);
+		expect(result).toEqual(expect.arrayContaining(['tag:read', 'tag:list', ...userView.scopes]));
 	});
 });

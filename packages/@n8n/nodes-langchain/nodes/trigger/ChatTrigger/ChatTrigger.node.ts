@@ -27,9 +27,12 @@ import * as a from 'node:assert';
 import { ChatTriggerConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
-import { generateChatUserAuthToken } from './auth-token';
 import { cssVariables } from './constants';
-import { validateAuth } from './GenericFunctions';
+import {
+	establishChatSessionIdentity,
+	resolveInnerFrameIdentity,
+	validateAuth,
+} from './GenericFunctions';
 import {
 	buildAbsoluteChatUrl,
 	buildInnerFrameSrc,
@@ -925,25 +928,35 @@ export class ChatTrigger extends Node {
 				if (isChatOAuth2Enabled() && authentication === 'n8nUserAuth') {
 					shellInner = isShellInnerRequest(req);
 
-					// The frame can't fetch `/rest/login` for itself, so resolve the visitor here.
-					// Same-site either way: the frame's first GET is issued by the shell, before
-					// any opaque document exists.
-					const authCookie = readAuthCookie(req);
-					if (authCookie) {
-						try {
-							visitor = await ctx.validateCookieAuth(authCookie);
-						} catch {}
-					}
-
-					if (!visitor) {
-						res.writeHead(302, {
-							Location: `/signin?redirect=${encodeURIComponent(buildAbsoluteChatUrl(req))}`,
-						});
-						res.end();
-						return { noWebhookResponse: true };
+					const resourceUrl = ctx.getWebhookResourceUrl('default');
+					if (!resourceUrl) {
+						throw new NodeOperationError(ctx.getNode(), 'Default webhook url not set');
 					}
 
 					if (!shellInner) {
+						// Outer shell: gates page access on the live session, then runs the AS
+						// handshake here — a normal top-level document with real cookies, unlike
+						// the sandboxed, opaque-origin frame this shell is about to create.
+						const authCookie = readAuthCookie(req);
+						if (authCookie) {
+							try {
+								visitor = await ctx.validateCookieAuth(authCookie);
+							} catch {}
+						}
+
+						if (!visitor) {
+							res.writeHead(302, {
+								Location: `/signin?redirect=${encodeURIComponent(buildAbsoluteChatUrl(req))}`,
+							});
+							res.end();
+							return { noWebhookResponse: true };
+						}
+
+						const ready = await establishChatSessionIdentity(ctx, resourceUrl);
+						if (!ready) {
+							return { noWebhookResponse: true };
+						}
+
 						res.setHeader('Content-Security-Policy', "frame-ancestors 'none'");
 						res
 							.status(200)
@@ -952,11 +965,22 @@ export class ChatTrigger extends Node {
 						return { noWebhookResponse: true };
 					}
 
+					// Inner frame: pick up the AS token the outer shell already obtained, via the
+					// one-hop cookie. Never runs the OAuth2 handshake itself — this opaque-origin
+					// document can't receive the AS's session-cookie check, so a redirect to
+					// sign-in/consent would render editor-ui inside the sandboxed frame.
+					const identity = await resolveInnerFrameIdentity(ctx, resourceUrl);
+					if (!identity) {
+						res.status(401).send('Session expired. Please reload the page.');
+						res.end();
+						return { noWebhookResponse: true };
+					}
+					visitor = identity.visitor;
+					authToken = identity.authToken;
+
 					// By header as well as by the iframe's attribute, so the document has no
 					// origin even if the attribute is ever stripped.
 					res.setHeader('Content-Security-Policy', `sandbox ${CHAT_FRAME_SANDBOX}`);
-					// Cookies aren't sent from an opaque origin; messages carry this instead.
-					authToken = generateChatUserAuthToken(ctx.getNode(), visitor);
 				}
 
 				const page = createPage({
