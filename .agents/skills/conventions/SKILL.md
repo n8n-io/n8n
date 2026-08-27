@@ -40,6 +40,7 @@ throw new UnexpectedError('message', { extra: { context } });
 - Dependency injection via `@n8n/di`
 - Config via `@n8n/config`
 - Zod schemas for validation
+- Pagination args: `offset` + `limit` (never TypeORM `skip`/`take` on services)
 
 **Testing:**
 - Vitest (unit), Playwright (E2E)
