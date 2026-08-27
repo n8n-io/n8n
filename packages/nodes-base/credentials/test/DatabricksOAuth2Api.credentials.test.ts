@@ -58,20 +58,21 @@ describe('DatabricksOAuth2Api Credential', () => {
 		});
 
 		const evaluate = (customScopes: boolean, scopes: string, grantType: string) => {
-			// Mirrors the expression above so scope combinations are checked as values,
-			// not only as an opaque string. The grant picks its own field, so `scopes`
-			// stands in for enabledScopes or userEnabledScopes accordingly.
-			const $self = { customScopes, enabledScopes: scopes, userEnabledScopes: scopes, grantType };
-			return $self.customScopes
-				? $self.grantType === 'authorizationCode'
-					? ($self.userEnabledScopes.trim() || 'all-apis') +
-						($self.userEnabledScopes.trim().split(' ').includes('offline_access')
-							? ''
-							: ' offline_access')
-					: $self.enabledScopes.trim() || 'all-apis'
-				: $self.grantType === 'authorizationCode'
-					? 'all-apis offline_access'
-					: 'all-apis';
+			// Evaluates the credential's real default expression, not a transcription
+			// of it, so a regression in the formula fails this table directly. The
+			// grant picks its own field, so `scopes` stands in for enabledScopes or
+			// userEnabledScopes accordingly.
+			const expression = (field?.default as string).replace(/^=\{\{/, '').replace(/\}\}$/, '');
+			// eslint-disable-next-line @typescript-eslint/no-implied-eval
+			const evalScope = new Function('$self', `return (${expression});`) as (
+				$self: Record<string, unknown>,
+			) => string;
+			return evalScope({
+				customScopes,
+				enabledScopes: scopes,
+				userEnabledScopes: scopes,
+				grantType,
+			});
 		};
 
 		it.each([
@@ -102,10 +103,18 @@ describe('DatabricksOAuth2Api Credential', () => {
 			expect(field?.default).toBe(false);
 		});
 
-		it('should only show the offline_access notice with customScopes on', () => {
-			expect(property('customScopesNotice')?.displayOptions).toEqual({
-				show: { customScopes: [true] },
+		it.each([
+			['customScopesNotice', 'clientCredentials'],
+			['userCustomScopesNotice', 'authorizationCode'],
+		])('should only show %s with customScopes on for %s', (name, grantType) => {
+			expect(property(name)?.displayOptions).toEqual({
+				show: { customScopes: [true], grantType: [grantType] },
 			});
+		});
+
+		it('should mention offline_access only in the authorization code notice', () => {
+			expect(property('customScopesNotice')?.displayName).not.toContain('offline_access');
+			expect(property('userCustomScopesNotice')?.displayName).toContain('offline_access');
 		});
 
 		// One differently-named scopes field per grant type: a default can't depend
