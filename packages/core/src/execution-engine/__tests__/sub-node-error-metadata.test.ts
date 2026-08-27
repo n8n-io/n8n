@@ -151,12 +151,36 @@ const toolWithSetupNodeType: INodeType = {
 	},
 };
 
+/** A tool that invokes a tool of its own, so both nesting levels get real runs. */
+const toolWithNestedToolNodeType: INodeType = {
+	description: {
+		displayName: 'Test Nesting Tool',
+		name: 'testToolWithNestedTool',
+		group: ['transform'],
+		version: 1,
+		description: 'A test tool that invokes another tool',
+		defaults: { name: 'Test Nesting Tool' },
+		inputs: [{ type: NodeConnectionTypes.AiTool }],
+		outputs: [NodeConnectionTypes.AiTool],
+		properties: [],
+	},
+	async execute(this: IExecuteFunctions) {
+		const tools = (await this.getInputConnectionData(NodeConnectionTypes.AiTool, 0)) as Array<{
+			invoke: (args: object) => Promise<unknown>;
+		}>;
+		// No catch: the inner failure must surface on this tool's own run too
+		for (const tool of tools) await tool.invoke({});
+		return [[{ json: { response: 'ok' } }]];
+	},
+};
+
 const nodeTypeData: INodeTypeData = {
 	'test.trigger': { type: triggerNodeType, sourcePath: '' },
 	'test.agent': { type: agentNodeType, sourcePath: '' },
 	'test.model': { type: modelNodeType, sourcePath: '' },
 	'test.toolPlain': { type: toolPlainNodeType, sourcePath: '' },
 	'test.toolWithSetup': { type: toolWithSetupNodeType, sourcePath: '' },
+	'test.toolWithNestedTool': { type: toolWithNestedToolNodeType, sourcePath: '' },
 };
 
 function node(name: string, type: string, parameters: INodeParameters = {}): INode {
@@ -191,6 +215,9 @@ const TASKDATA_MISSING = 'Taskdata missing at the end of an execution';
 
 /** What `makeHandleToolInvocation` reports on the tool's own run when its model fails. */
 const TOOL_INVOCATION_ERROR = 'Error in sub-node Tool Model\n\nDetails: Invalid API key';
+
+/** Same, for the nested-invocation case, where the failing model sits two tools deep. */
+const NESTED_TOOL_INVOCATION_ERROR = 'Error in sub-node Inner Model\n\nDetails: Invalid API key';
 
 type RunSummary = { status?: string; error?: string; subRun?: unknown };
 
@@ -455,6 +482,99 @@ describe('sub-node error metadata', () => {
 			expect(stagedMetadata(result)).toEqual({});
 			expect(sourceOf(result, 'Inner Model')).toEqual([
 				{ previousNode: 'Inner Store', previousNodeRun: 0 },
+			]);
+			expect(orphanReports()).toEqual([]);
+		});
+
+		test('stages nothing for the failing tool and leaves its sibling intact', async () => {
+			const result = await runWorkflow(
+				[
+					node('Trigger', 'test.trigger'),
+					node('Agent', 'test.agent', { toolInvocations: 1 }),
+					node('Model', 'test.model'),
+					node('Tool', 'test.toolPlain'),
+					node('Tool Model', 'test.model', { failSupplyData: true }),
+					node('Other Tool', 'test.toolPlain'),
+					node('Other Tool Model', 'test.model'),
+				],
+				{
+					...connect('Trigger', 'Agent'),
+					...connect('Model', 'Agent', NodeConnectionTypes.AiLanguageModel),
+					...connect('Tool', 'Agent', NodeConnectionTypes.AiTool),
+					...connect('Other Tool', 'Agent', NodeConnectionTypes.AiTool),
+					...connect('Tool Model', 'Tool', NodeConnectionTypes.AiLanguageModel),
+					...connect('Other Tool Model', 'Other Tool', NodeConnectionTypes.AiLanguageModel),
+				},
+			);
+
+			expect(result.status).toBe('success');
+			expect(savedExecution(result)).toEqual({
+				Trigger: [{ status: 'success', error: undefined, subRun: undefined }],
+				Agent: [{ status: 'success', error: undefined, subRun: undefined }],
+				Tool: [
+					{
+						status: 'error',
+						error: TOOL_INVOCATION_ERROR,
+						subRun: [{ node: 'Tool', runIndex: 0 }],
+					},
+				],
+				'Tool Model': [
+					{ status: undefined, error: undefined, subRun: undefined },
+					{ status: 'error', error: 'Invalid API key', subRun: undefined },
+				],
+				// The healthy sibling is untouched by its neighbour's failure
+				'Other Tool': [
+					{ status: 'success', error: undefined, subRun: [{ node: 'Other Tool', runIndex: 0 }] },
+				],
+			});
+			expect(orphanReports()).toEqual([]);
+		});
+
+		test('stages nothing when a tool invokes a tool whose model fails', async () => {
+			const result = await runWorkflow(
+				[
+					node('Trigger', 'test.trigger'),
+					node('Agent', 'test.agent', { toolInvocations: 1 }),
+					node('Model', 'test.model'),
+					node('Outer Tool', 'test.toolWithNestedTool'),
+					node('Inner Tool', 'test.toolPlain'),
+					node('Inner Model', 'test.model', { failSupplyData: true }),
+				],
+				{
+					...connect('Trigger', 'Agent'),
+					...connect('Model', 'Agent', NodeConnectionTypes.AiLanguageModel),
+					...connect('Outer Tool', 'Agent', NodeConnectionTypes.AiTool),
+					...connect('Inner Tool', 'Outer Tool', NodeConnectionTypes.AiTool),
+					...connect('Inner Model', 'Inner Tool', NodeConnectionTypes.AiLanguageModel),
+				},
+			);
+
+			expect(result.status).toBe('success');
+			// Both tools are invoked, so both have a real run of their own to attach to
+			expect(savedExecution(result)).toEqual({
+				Trigger: [{ status: 'success', error: undefined, subRun: undefined }],
+				Agent: [{ status: 'success', error: undefined, subRun: undefined }],
+				'Outer Tool': [
+					{
+						status: 'error',
+						error: NESTED_TOOL_INVOCATION_ERROR,
+						subRun: [{ node: 'Outer Tool', runIndex: 0 }],
+					},
+				],
+				'Inner Tool': [
+					{
+						status: 'error',
+						error: NESTED_TOOL_INVOCATION_ERROR,
+						subRun: [{ node: 'Inner Tool', runIndex: 0 }],
+					},
+				],
+				'Inner Model': [
+					{ status: undefined, error: undefined, subRun: undefined },
+					{ status: 'error', error: 'Invalid API key', subRun: undefined },
+				],
+			});
+			expect(sourceOf(result, 'Inner Model', 1)).toEqual([
+				{ previousNode: 'Inner Tool', previousNodeRun: 0 },
 			]);
 			expect(orphanReports()).toEqual([]);
 		});
