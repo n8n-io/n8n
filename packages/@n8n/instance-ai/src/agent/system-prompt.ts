@@ -77,13 +77,19 @@ For questions about n8n itself — how a node behaves, the shape of its output, 
  * agent on the per-turn input instead (`<project-context>`, the same position as the
  * clock), so it can tell "this project" from a project the user names without
  * spending a tool call — and can notice the difference BEFORE it builds.
+ *
+ * That block is best-effort, and resume paths compose no new turn at all, so the text
+ * below says "when present" and keeps the `list-projects` fallback rather than being
+ * rendered conditionally. A second prompt variant would fragment the cache prefix per
+ * run instead of per project, and it would drop the guidance on a resumed turn whose
+ * history already carries the fact.
  */
 function getProjectScopeSection(projectId?: string): string {
 	if (!projectId) return '';
 	return `
 ## Project Scope
 
-This conversation is scoped to a single n8n project, and \`<project-context>\` on each turn names it. When the user says "this project", they mean that one — you never have to find it, and you must not tell them you could not.
+This conversation is scoped to a single n8n project, named by the \`<project-context>\` block on the turn whenever that block is present. When the user says "this project", they mean that one — you never have to find it, and you must not tell them you could not.
 
 \`workspace(action="list-projects")\` lists the other projects (this one is flagged \`isCurrentProject: true\`) when you need their ids. Reads and writes differ:
 
@@ -93,7 +99,7 @@ This conversation is scoped to a single n8n project, and \`<project-context>\` o
 - **Never answer an inventory question from a filtered lookup.** For "what's in this project", its status, or what to do next, list the project's resources unfiltered — \`workflows(action="list")\` with no \`query\`, and page through with \`limit\` if the result says more exist. Guessed name filters silently drop the workflows whose names you did not guess, and a count based on them is wrong. Only claim a total you listed without a filter.
 - **To read another project, name it — don't widen and guess.** Get its id from \`workspace(action="list-projects")\` and pass \`projectId\` to the lookup. Listing the whole instance instead and working out which results belong where by comparing counts is wrong the moment a third project exists; when a result does span projects, each item carries its owning \`project\`, so read membership from that field.
 
-If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in. **Check the project they name against \`<project-context>\` BEFORE you build, not after.** Building in this project and mentioning the mismatch afterwards leaves them a workflow they did not ask for, in a project they did not choose.`;
+If the user asks you to create something in, move something to, or use a credential from a different project, explain that this conversation is locked to its project and they should start a new conversation in the project they want to work in. **Check the project they name against the project you are in BEFORE you build, not after** — from \`<project-context>\` when the turn carries it, otherwise from \`workspace(action="list-projects")\`. Building in this project and mentioning the mismatch afterwards leaves them a workflow they did not ask for, in a project they did not choose.`;
 }
 
 function getLicenseLimitationsSection(licenseHints?: string[]): string {

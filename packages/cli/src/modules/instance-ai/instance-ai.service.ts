@@ -5088,9 +5088,30 @@ export class InstanceAiService {
 		// is not worth that.
 		try {
 			const project = await context.workspaceService?.getProject?.(projectId);
-			if (!project) return undefined;
-			return getProjectContextSection({ name: project.name, type: project.type });
-		} catch {
+			if (project) return getProjectContextSection({ name: project.name, type: project.type });
+
+			// Logged, not reported: a null here means the bound project is not readable by
+			// this user, which the next write surfaces properly through `assertProjectScope`.
+			// Sentry would collect the same permission situation once per turn.
+			this.logger.warn('Instance AI could not name the bound project for this turn', {
+				projectId,
+				reason: context.workspaceService?.getProject ? 'not-readable' : 'no-workspace-adapter',
+			});
+			return undefined;
+		} catch (error) {
+			// A throw is different: nothing in the expected flow raises here, so this is
+			// the guardrail silently reverting to the behaviour that let a build report a
+			// project it had not written to. Warning level — the turn still runs.
+			this.logger.warn('Instance AI failed to resolve the bound project for this turn', {
+				projectId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			this.errorReporter.error(error, {
+				level: 'warning',
+				tags: { component: 'instance-ai-project-context' },
+				extra: { projectId },
+				shouldIsolate: true,
+			});
 			return undefined;
 		}
 	}
