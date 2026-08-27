@@ -1,11 +1,14 @@
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 
 import {
 	buildAbsoluteChatUrl,
 	buildInnerFrameSrc,
+	clearChatOAuthToken,
 	isChatOAuth2Enabled,
 	isShellInnerRequest,
 	readAuthCookie,
+	readChatOAuthToken,
+	setChatOAuthToken,
 } from '../shell';
 
 const request = (overrides: Partial<Request> = {}) =>
@@ -120,5 +123,115 @@ describe('readAuthCookie', () => {
 		const req = request({ headers: { cookie: 'notn8n-auth=nope' } });
 
 		expect(readAuthCookie(req)).toBeNull();
+	});
+});
+
+describe('chat OAuth2 one-hop cookie', () => {
+	const resourceUrl = 'http://localhost:5678/webhook/abc/chat';
+
+	const response = () =>
+		({
+			cookie: vi.fn(),
+			clearCookie: vi.fn(),
+		}) as unknown as Response;
+
+	it('sets the cookie scoped to the resource path, httpOnly and short-lived', () => {
+		const req = request({ headers: { host: 'localhost:5678' }, protocol: 'http' });
+		const res = response();
+
+		setChatOAuthToken(res, req, resourceUrl, 'as-token');
+
+		expect(res.cookie).toHaveBeenCalledWith('n8n-chat-oauth', 'as-token', {
+			httpOnly: true,
+			sameSite: 'lax',
+			secure: false,
+			path: '/webhook/abc/chat',
+			maxAge: 60_000,
+		});
+	});
+
+	it('marks the cookie secure over https (honouring x-forwarded-proto)', () => {
+		const req = request({ headers: { 'x-forwarded-proto': 'https' }, protocol: 'http' });
+		const res = response();
+
+		setChatOAuthToken(res, req, resourceUrl, 'as-token');
+
+		expect(res.cookie).toHaveBeenCalledWith(
+			'n8n-chat-oauth',
+			'as-token',
+			expect.objectContaining({ secure: true }),
+		);
+	});
+
+	// A multi-hop proxy chain sends the closest proxy's scheme first (e.g. the
+	// external request was https, an internal hop back to the app is http) —
+	// only that first value decides whether the client's own leg was secure.
+	it('marks the cookie secure from the first hop of a comma-separated proxy chain', () => {
+		const req = request({
+			headers: { 'x-forwarded-proto': 'https, http' },
+			protocol: 'http',
+		});
+		const res = response();
+
+		setChatOAuthToken(res, req, resourceUrl, 'as-token');
+
+		expect(res.cookie).toHaveBeenCalledWith(
+			'n8n-chat-oauth',
+			'as-token',
+			expect.objectContaining({ secure: true }),
+		);
+	});
+
+	it('marks the cookie secure from the first hop when the header repeats as an array', () => {
+		const req = request({
+			headers: { 'x-forwarded-proto': ['https', 'http'] },
+			protocol: 'http',
+		});
+		const res = response();
+
+		setChatOAuthToken(res, req, resourceUrl, 'as-token');
+
+		expect(res.cookie).toHaveBeenCalledWith(
+			'n8n-chat-oauth',
+			'as-token',
+			expect.objectContaining({ secure: true }),
+		);
+	});
+
+	it('reads the cookie back from the raw header', () => {
+		const req = request({ headers: { cookie: 'other=1; n8n-chat-oauth=as-token; more=2' } });
+
+		expect(readChatOAuthToken(req)).toBe('as-token');
+	});
+
+	it('returns null when the cookie is absent', () => {
+		expect(readChatOAuthToken(request({ headers: { cookie: 'other=1' } }))).toBeNull();
+		expect(readChatOAuthToken(request())).toBeNull();
+	});
+
+	it('decodes a percent-encoded value', () => {
+		const req = request({ headers: { cookie: 'n8n-chat-oauth=a%2Fb' } });
+
+		expect(readChatOAuthToken(req)).toBe('a/b');
+	});
+
+	it('treats an undecodable value as no cookie', () => {
+		const req = request({ headers: { cookie: 'n8n-chat-oauth=%' } });
+
+		expect(readChatOAuthToken(req)).toBeNull();
+	});
+
+	it('clears the cookie scoped to the same path', () => {
+		const req = request({ headers: { host: 'localhost:5678' }, protocol: 'http' });
+		const res = response();
+
+		clearChatOAuthToken(res, req, resourceUrl);
+
+		expect(res.clearCookie).toHaveBeenCalledWith('n8n-chat-oauth', {
+			httpOnly: true,
+			sameSite: 'lax',
+			secure: false,
+			path: '/webhook/abc/chat',
+		});
 	});
 });

@@ -709,7 +709,7 @@ export class SamlService {
 		try {
 			const response = await this.outboundHttp
 				.requests({
-					ssrf: 'disabled', // The metadata URL is admin-configured and may point at an internal IdP, so SSRF protection is disabled.
+					useDefaultSsrfPolicy: 'unsafe', // The metadata URL is admin-configured and may point at an internal IdP, so SSRF protection is disabled.
 				})
 				.request({
 					url,

@@ -7,7 +7,7 @@
  * picks mocked nodes up and pins them with generated fixtures at verify time.
  */
 
-import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '@n8n/api-types';
+import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE, shouldAutoResolveCredential } from '@n8n/api-types';
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import {
@@ -482,8 +482,8 @@ export async function resolveCredentials(
 			const credentialsForType = availableCredentials?.get(key);
 			if (
 				!wantsNewCredential &&
-				credentialsForType?.length === 1 &&
-				!GENERIC_AUTH_CREDENTIAL_TYPES.has(key)
+				credentialsForType &&
+				shouldAutoResolveCredential(key, credentialsForType.length)
 			) {
 				const [credential] = credentialsForType;
 				creds[key] = { id: credential.id, name: credential.name };
