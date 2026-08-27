@@ -183,6 +183,7 @@ export class AgentsModule implements ModuleInterface {
 		const { AgentMessageEntity } = await import('./entities/agent-message.entity.js');
 		const { AgentExecutionThread } = await import('./entities/agent-execution-thread.entity.js');
 		const { AgentExecution } = await import('./entities/agent-execution.entity.js');
+		const { AgentBackgroundJob } = await import('./entities/agent-background-job.entity.js');
 		const { AgentHistory } = await import('./entities/agent-history.entity.js');
 		const { AgentCredentialDependency } = await import(
 			'./entities/agent-credential-dependency.entity.js'
@@ -220,6 +221,7 @@ export class AgentsModule implements ModuleInterface {
 			AgentMessageEntity,
 			AgentExecutionThread,
 			AgentExecution,
+			AgentBackgroundJob,
 			AgentHistory,
 			AgentCredentialDependency,
 			AgentTask,

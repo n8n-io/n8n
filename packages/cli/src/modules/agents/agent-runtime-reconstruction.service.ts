@@ -25,6 +25,7 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
@@ -78,7 +79,7 @@ import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
-import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
+import { SubAgentRunner } from './sub-agents/sub-agent-runner';
 import { buildToolRegistry, type ToolRegistry } from './tool-registry';
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
@@ -736,6 +737,20 @@ export class AgentRuntimeReconstructionService {
 				instrumentation,
 			});
 			this.attachWriteTodosTool(agent, agentId);
+
+			if (Container.get(AgentsConfig).backgroundTasksEnabled) {
+				await this.attachBackgroundJobTools({
+					agent,
+					parentAgentId: parentAgentIdForDelegation,
+					projectId,
+					credentialProvider,
+					runType,
+					workflowToolExecutionMode,
+					delegation: subAgentDelegation,
+					user,
+					instrumentation,
+				});
+			}
 		}
 
 		// Inline agents get no checkpoint storage: `agent_checkpoints.agentId`
@@ -785,7 +800,7 @@ export class AgentRuntimeReconstructionService {
 		);
 		agent.tool(
 			createN8nDelegateSubAgentTool({
-				runner: Container.get(SubAgentForegroundRunner),
+				runner: Container.get(SubAgentRunner),
 				...delegation,
 				projectId,
 				parentAgentId,
@@ -829,6 +844,52 @@ export class AgentRuntimeReconstructionService {
 	private attachWriteTodosTool(agent: RuntimeAgent, agentId: string): void {
 		agent.tool(createWriteTodosTool());
 		this.logger.debug('Injected write_todos tool', { agentId });
+	}
+
+	private async attachBackgroundJobTools(params: {
+		agent: RuntimeAgent;
+		parentAgentId: string;
+		projectId: string;
+		credentialProvider: CredentialProvider;
+		runType: AgentRunTelemetryType;
+		workflowToolExecutionMode: WorkflowToolExecutionMode;
+		delegation: SubAgentDelegationConfig;
+		user?: User;
+		instrumentation?: AgentRuntimeInstrumentation;
+	}): Promise<void> {
+		const { agent, parentAgentId, projectId, delegation, ...runContext } = params;
+		const {
+			createSpawnBackgroundSubAgentTool,
+			createCheckBackgroundJobsTool,
+			createCancelBackgroundJobTool,
+		} = await import('./background/background-job-tools.js');
+		const { AgentBackgroundJobService } = await import(
+			'./background/agent-background-job.service.js'
+		);
+		const { SubAgentBackgroundRunner } = await import(
+			'./background/sub-agent-background-runner.js'
+		);
+		const jobService = Container.get(AgentBackgroundJobService);
+
+		// check/cancel attach regardless of the roster — jobs of other kinds
+		// (waiting workflow executions) exist without configured sub-agents.
+		agent.tool(createCheckBackgroundJobsTool(jobService));
+		agent.tool(createCancelBackgroundJobTool(jobService));
+
+		if (delegation.availableSubAgents.length > 0) {
+			agent.tool(
+				createSpawnBackgroundSubAgentTool({
+					jobService,
+					backgroundRunner: Container.get(SubAgentBackgroundRunner),
+					sourcesById: delegation.sourcesById,
+					availableSubAgents: delegation.availableSubAgents,
+					projectId,
+					parentAgentId,
+					runContext,
+				}),
+			);
+		}
+		this.logger.debug('Injected background job tools', { agentId: parentAgentId });
 	}
 
 	private buildSubAgentPolicy(config: AgentJsonConfig): SubAgentRunPolicy {

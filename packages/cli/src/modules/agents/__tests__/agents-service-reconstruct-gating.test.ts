@@ -47,7 +47,7 @@ import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import { SubAgentForegroundRunner } from '../sub-agents/sub-agent-foreground-runner';
+import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 
 // Mock buildFromJson so reconstruction doesn't try to actually build an agent.
 const builtAgent = mock<agents.Agent>();
@@ -70,7 +70,7 @@ vi.mock('../json-config/mcp-client-factory', () => ({
 }));
 
 beforeEach(() => {
-	Container.set(SubAgentForegroundRunner, mock<SubAgentForegroundRunner>());
+	Container.set(SubAgentRunner, mock<SubAgentRunner>());
 });
 
 function getInjectedToolNames(): string[] {
@@ -509,8 +509,8 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 		'passes the %s workflow execution mode to configured sub-agents',
 		async (workflowToolExecutionMode) => {
 			const credentialProvider = mock<CredentialProvider>();
-			const foregroundRunner = mock<SubAgentForegroundRunner>();
-			foregroundRunner.runForeground.mockResolvedValue({
+			const foregroundRunner = mock<SubAgentRunner>();
+			foregroundRunner.run.mockResolvedValue({
 				taskPath: '/root/research_api_0',
 				threadId: 'child-thread-1',
 				status: 'completed',
@@ -520,7 +520,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 					getState: () => mock<agents.SerializableAgentState>(),
 				},
 			});
-			Container.set(SubAgentForegroundRunner, foregroundRunner);
+			Container.set(SubAgentRunner, foregroundRunner);
 			const agentRepository = mock<AgentRepository>();
 			agentRepository.findByIdAndProjectId.mockResolvedValue({
 				id: 'agent-2',
@@ -555,7 +555,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — sub-a
 					{ runId: 'parent-run-1' },
 				),
 			).resolves.toMatchObject({ status: 'completed' });
-			expect(foregroundRunner.runForeground).toHaveBeenCalledWith(
+			expect(foregroundRunner.run).toHaveBeenCalledWith(
 				expect.any(Object),
 				expect.objectContaining({ workflowToolExecutionMode }),
 			);

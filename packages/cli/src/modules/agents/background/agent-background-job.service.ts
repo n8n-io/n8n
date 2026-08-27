@@ -1,0 +1,185 @@
+import { Logger } from '@n8n/backend-common';
+import { Service } from '@n8n/di';
+
+import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
+import {
+	AgentBackgroundJobRepository,
+	type AgentBackgroundJobSettlement,
+	type NewAgentBackgroundJob,
+} from '../repositories/agent-background-job.repository';
+import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
+
+export const MAX_RUNNING_JOBS_PER_THREAD = 5;
+export const SUB_AGENT_BACKGROUND_TIMEOUT_MS = 30 * 60 * 1000;
+
+export type BackgroundJobReceipt =
+	| { status: 'started'; jobId: string }
+	| { status: 'limit-reached' }
+	| { status: 'duplicate'; existingJobId: string };
+
+export type BackgroundJobView = Pick<
+	AgentBackgroundJob,
+	'id' | 'kind' | 'title' | 'status' | 'result' | 'error' | 'createdAt' | 'timeoutAt' | 'settledAt'
+>;
+
+/**
+ * Registry of durable background jobs dispatched by top-level agents. The job
+ * row is the receipt handed to the model and the single source of truth for
+ * status checks — nothing the check tool depends on lives in memory. The
+ * in-process abort map only carries live cancellation handles.
+ */
+@Service()
+export class AgentBackgroundJobService {
+	private readonly abortControllers = new Map<string, AbortController>();
+
+	constructor(
+		private readonly jobRepository: AgentBackgroundJobRepository,
+		private readonly executionRepository: AgentExecutionRepository,
+		private readonly logger: Logger,
+	) {
+		this.logger = this.logger.scoped('agents');
+	}
+
+	/**
+	 * Register a sub-agent job. The receipt statuses follow the spawn contract:
+	 * `limit-reached` when the thread already has the maximum running jobs,
+	 * `duplicate` when the dedupe key is already held by a running job, else
+	 * `started`.
+	 */
+	async registerSubAgentJob(
+		params: Pick<
+			NewAgentBackgroundJob,
+			'id' | 'parentAgentId' | 'parentThreadId' | 'projectId' | 'title' | 'subAgentId'
+		> &
+			Required<Pick<NewAgentBackgroundJob, 'childThreadId'>> &
+			Pick<NewAgentBackgroundJob, 'dedupeKey'>,
+	): Promise<BackgroundJobReceipt> {
+		// ponytail: count-then-insert can briefly admit one job over the cap under
+		// concurrent spawns; the limit is advisory. Wrap in a transaction if it
+		// ever needs to be exact.
+		const running = await this.jobRepository.countRunningByParentThread(params.parentThreadId);
+		if (running >= MAX_RUNNING_JOBS_PER_THREAD) return { status: 'limit-reached' };
+
+		const outcome = await this.jobRepository.insertJob({
+			...params,
+			kind: 'subagent',
+			timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
+		});
+		if (!outcome.inserted) return { status: 'duplicate', existingJobId: outcome.existing.id };
+
+		return { status: 'started', jobId: params.id };
+	}
+
+	async settle(jobId: string, settlement: AgentBackgroundJobSettlement): Promise<boolean> {
+		const settled = await this.jobRepository.settleIfRunning(jobId, settlement);
+		this.abortControllers.delete(jobId);
+		return settled;
+	}
+
+	registerAbortController(jobId: string, controller: AbortController): void {
+		this.abortControllers.set(jobId, controller);
+	}
+
+	/**
+	 * Jobs of the given thread, with running rows reconciled first so the model
+	 * gets a truthful answer instead of a forever-running job when the settle
+	 * never ran (crash, restart).
+	 */
+	async listForThread(parentThreadId: string, ids?: string[]): Promise<BackgroundJobView[]> {
+		let jobs = await this.jobRepository.findByParentThread(parentThreadId, ids);
+
+		const reconciled = await this.failOrphanedSubAgentJobs(jobs);
+		if (reconciled) jobs = await this.jobRepository.findByParentThread(parentThreadId, ids);
+
+		return jobs.map((job) => ({
+			id: job.id,
+			kind: job.kind,
+			title: job.title,
+			status: job.status,
+			result: job.result,
+			error: job.error,
+			createdAt: job.createdAt,
+			timeoutAt: job.timeoutAt,
+			settledAt: job.settledAt,
+		}));
+	}
+
+	/**
+	 * Claim the row as cancelled, then abort the live handle when this process
+	 * holds it.
+	 *
+	 * ponytail: on a different main than the spawner there is no live handle —
+	 * the row flips to cancelled but the child keeps running until its own
+	 * timeout, and its settle write loses to the claim. Upgrade path: a pubsub
+	 * cancel broadcast.
+	 */
+	async cancel(
+		parentThreadId: string,
+		jobId: string,
+	): Promise<'cancelled' | 'not-found' | 'already-settled'> {
+		const [job] = await this.jobRepository.findByParentThread(parentThreadId, [jobId]);
+		if (!job) return 'not-found';
+
+		const claimed = await this.jobRepository.settleIfRunning(jobId, { status: 'cancelled' });
+		if (!claimed) return 'already-settled';
+
+		this.abortControllers.get(jobId)?.abort();
+		this.abortControllers.delete(jobId);
+		return 'cancelled';
+	}
+
+	/**
+	 * Resolve job rows that no live process will ever settle. Called from the
+	 * interrupted-execution sweep; every write goes through the guarded settle,
+	 * so overlapping sweeps on multiple mains converge on the first writer.
+	 */
+	async reconcile(): Promise<void> {
+		await this.failJobsPastTimeout();
+		await this.failOrphanedSubAgentJobs(await this.jobRepository.findRunningJobs('subagent'));
+	}
+
+	private async failJobsPastTimeout(): Promise<void> {
+		const timedOut = await this.jobRepository.findRunningPastTimeout(new Date());
+		for (const job of timedOut) {
+			this.abortControllers.get(job.id)?.abort();
+			const settled = await this.settle(job.id, {
+				status: 'failed',
+				error: `Timed out after ${Math.round(SUB_AGENT_BACKGROUND_TIMEOUT_MS / 60_000)} minutes`,
+			});
+			if (settled) this.logger.debug('Failed background job past its timeout', { jobId: job.id });
+		}
+	}
+
+	/**
+	 * Fail running sub-agent jobs whose child execution already ended in
+	 * `interrupted` or `error` while no live handle exists in this process —
+	 * the spawning process died before settling. Early detection; the timeout
+	 * would also catch these. Returns whether any row was settled.
+	 */
+	private async failOrphanedSubAgentJobs(jobs: AgentBackgroundJob[]): Promise<boolean> {
+		const orphans = jobs.flatMap((job) =>
+			job.kind === 'subagent' &&
+			job.status === 'running' &&
+			job.childThreadId !== null &&
+			!this.abortControllers.has(job.id)
+				? [{ job, childThreadId: job.childThreadId }]
+				: [],
+		);
+		if (orphans.length === 0) return false;
+
+		const statuses = await this.executionRepository.findLatestStatusesByThreadIds(
+			orphans.map(({ childThreadId }) => childThreadId),
+		);
+		let settledAny = false;
+		for (const { job, childThreadId } of orphans) {
+			const childStatus = statuses.get(childThreadId);
+			if (childStatus !== 'interrupted' && childStatus !== 'error') continue;
+			const settled = await this.settle(job.id, {
+				status: 'failed',
+				error: `Sub-agent run ended with status "${childStatus}" and its result was not recovered`,
+			});
+			settledAny ||= settled;
+		}
+		return settledAny;
+	}
+}

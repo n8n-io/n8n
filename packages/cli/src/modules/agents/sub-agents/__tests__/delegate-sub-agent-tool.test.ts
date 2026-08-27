@@ -21,10 +21,7 @@ import {
 	createN8nDelegateSubAgentTool,
 	formatSubAgentToolOutput,
 } from '../delegate-sub-agent-tool';
-import type {
-	SubAgentForegroundResult,
-	SubAgentForegroundRunner,
-} from '../sub-agent-foreground-runner';
+import type { SubAgentRunResult, SubAgentRunner } from '../sub-agent-runner';
 
 const projectId = 'project-1';
 
@@ -56,7 +53,7 @@ const generateResult: GenerateResult = {
 	},
 };
 
-const foregroundResult: SubAgentForegroundResult = {
+const foregroundResult: SubAgentRunResult = {
 	taskPath: '/root/research_api_0',
 	threadId: 'child-thread-1',
 	status: 'completed',
@@ -64,13 +61,13 @@ const foregroundResult: SubAgentForegroundResult = {
 };
 
 describe('createN8nDelegateSubAgentTool', () => {
-	let runner: Mocked<SubAgentForegroundRunner>;
+	let runner: Mocked<SubAgentRunner>;
 	let credentialProvider: Mocked<CredentialProvider>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		runner = mock<SubAgentForegroundRunner>();
-		runner.runForeground.mockResolvedValue(foregroundResult);
+		runner = mock<SubAgentRunner>();
+		runner.run.mockResolvedValue(foregroundResult);
 		credentialProvider = mock<CredentialProvider>();
 	});
 
@@ -154,13 +151,12 @@ describe('createN8nDelegateSubAgentTool', () => {
 			answer: 'Preamble\nChild answer',
 		});
 
-		expect(runner.runForeground).toHaveBeenCalledWith(
+		expect(runner.run).toHaveBeenCalledWith(
 			{
 				goal: 'Find the API behavior.',
 				context: 'Focus on auth endpoints.',
 				expectedOutput: 'A short summary.',
 				source,
-				executionMode: 'foreground',
 				policy: { maxChildren: 2 },
 				taskPath: '/root/research_api_0',
 			},
@@ -194,7 +190,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			},
 		);
 
-		expect(runner.runForeground).toHaveBeenCalledWith(
+		expect(runner.run).toHaveBeenCalledWith(
 			expect.objectContaining({
 				parentThreadId: 'parent-thread-1',
 				parentResourceId: 'resource-1',
@@ -225,7 +221,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			{ runId: 'parent-run-1', parentTelemetry },
 		);
 
-		expect(runner.runForeground).toHaveBeenCalledWith(
+		expect(runner.run).toHaveBeenCalledWith(
 			expect.any(Object),
 			expect.objectContaining({ telemetry: parentTelemetry }),
 		);
@@ -245,7 +241,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			{ runId: 'parent-run-1' },
 		);
 
-		expect(runner.runForeground.mock.calls[0]?.[1]).not.toHaveProperty('telemetry');
+		expect(runner.run.mock.calls[0]?.[1]).not.toHaveProperty('telemetry');
 	});
 
 	it('selects a configured n8n agent source by subAgentId', async () => {
@@ -272,7 +268,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			{ runId: 'parent-run-1' },
 		);
 
-		expect(runner.runForeground).toHaveBeenCalledWith(
+		expect(runner.run).toHaveBeenCalledWith(
 			expect.objectContaining({
 				source: selectedSource,
 			}),
@@ -281,7 +277,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 	});
 
 	it('returns a failed tool output when the foreground runner throws', async () => {
-		runner.runForeground.mockRejectedValue(new Error('child failed'));
+		runner.run.mockRejectedValue(new Error('child failed'));
 		const tool = createN8nDelegateSubAgentTool({
 			runner,
 			sourcesById: { 'agent-2': source },
@@ -343,7 +339,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 				goal: 'Find behavior.',
 			}),
 		);
-		expect(runner.runForeground).not.toHaveBeenCalled();
+		expect(runner.run).not.toHaveBeenCalled();
 	});
 
 	it('requires Agent inline helpers when inline is invoked through the tool handler directly', async () => {
@@ -367,7 +363,7 @@ describe('createN8nDelegateSubAgentTool', () => {
 			error:
 				'delegate_subagent host runner does not support inline delegation without helpers.runInlineSubAgent from an Agent build.',
 		});
-		expect(runner.runForeground).not.toHaveBeenCalled();
+		expect(runner.run).not.toHaveBeenCalled();
 	});
 
 	it('routes a configured child resume to the exact persisted checkpoint', async () => {
