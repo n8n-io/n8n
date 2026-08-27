@@ -16,6 +16,19 @@ const INVISIBLE_RENDER_HINTS = new Set(['data-table', 'eval-setup']);
  *  beyond it, it is likely the final answer and renders outside the block. */
 const TAIL_NARRATION_MAX_LENGTH = 200;
 
+/**
+ * How long the transcript must stay quiet before the activity indicator shows.
+ *
+ * Short silences are normal — the tail of a streamed answer, a run wrapping up
+ * after its last token — and calling those "Thinking" is noise on every reply.
+ * A real stall is an order of magnitude longer: a provider that buffers tool
+ * calls goes quiet for 10s on a 4.5KB write and ~53s on a 20KB one (INS-1224).
+ *
+ * A threshold rather than a signal, because the client cannot tell the two
+ * apart on its own; the server knowing it is mid-generation would replace this.
+ */
+export const ACTIVITY_INDICATOR_DELAY_MS = 5_000;
+
 type TextEntry = Extract<InstanceAiTimelineEntry, { type: 'text' }>;
 
 /**
