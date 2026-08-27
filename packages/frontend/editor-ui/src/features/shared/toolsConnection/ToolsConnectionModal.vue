@@ -17,6 +17,7 @@ import { DEBOUNCE_TIME } from '@/app/constants/durations';
 import ToolRow from './ToolRow.vue';
 import ToolDetailView from './ToolDetailView.vue';
 import ToolSettingsView from './ToolSettingsView.vue';
+import SuggestToolFooter from './SuggestToolFooter.vue';
 import {
 	CATEGORY_BY_KIND,
 	hasToolConnection,
@@ -89,6 +90,36 @@ const activeCategory = ref<ToolCategoryKey>(props.categories[0] ?? 'connected');
 
 const searchInputRef = useTemplateRef('searchInputRef');
 const scrollerRef = useTemplateRef('scrollerRef');
+const listWrapperRef = useTemplateRef<HTMLElement>('listWrapperRef');
+const hasReachedListEnd = ref(false);
+const isAdjustingFooter = ref(false);
+
+function updateListEndState(element?: HTMLElement) {
+	const scrollElement =
+		element ?? listWrapperRef.value?.querySelector<HTMLElement>('.recycle-scroller-wrapper');
+
+	if (!scrollElement || isAdjustingFooter.value) return;
+	const isAtEnd =
+		scrollElement.scrollHeight - scrollElement.scrollTop <= scrollElement.clientHeight + 1;
+
+	if (isAtEnd === hasReachedListEnd.value) return;
+	hasReachedListEnd.value = isAtEnd;
+	if (!isAtEnd) return;
+
+	// Showing the footer reduces the viewport height. Pin the resized list to its
+	// new end before accepting another scroll calculation.
+	isAdjustingFooter.value = true;
+	void nextTick(() => {
+		scrollerRef.value?.scrollTo(Number.MAX_SAFE_INTEGER);
+		isAdjustingFooter.value = false;
+	});
+}
+
+function handleListScroll(event: Event) {
+	if (event.currentTarget instanceof HTMLElement) {
+		updateListEndState(event.currentTarget);
+	}
+}
 
 function focusSearchInput() {
 	void nextTick(() => {
@@ -114,13 +145,16 @@ watch(
 		focusSearchInput();
 		await nextTick();
 		scrollerRef.value?.scrollTo(savedScrollTop.value);
+		updateListEndState();
 	},
 );
 
-onMounted(() => {
+onMounted(async () => {
 	if (props.open) {
 		focusSearchInput();
 	}
+	await nextTick();
+	updateListEndState();
 });
 
 const hasActiveSearch = computed(() => debouncedSearchQuery.value.length > 0);
@@ -182,11 +216,17 @@ function tabCount(category: ToolCategoryKey): string {
 	return count > MAX_DISPLAYED_COUNT ? `${MAX_DISPLAYED_COUNT}+` : String(count);
 }
 
+const filteredItems = computed(() => itemsForCategory(activeCategory.value).filter(matchesQuery));
+
 const flattenedRows = computed<FlattenedRow[]>(() =>
-	itemsForCategory(activeCategory.value)
-		.filter(matchesQuery)
-		.map((item) => ({ key: `item:${item.id}`, item })),
+	filteredItems.value.map((item) => ({ key: `item:${item.id}`, item })),
 );
+
+watch(filteredItems, async () => {
+	hasReachedListEnd.value = false;
+	await nextTick();
+	updateListEndState();
+});
 
 /** Categories only worth a tab once they hold something. */
 const HIDE_WHEN_EMPTY: ToolCategoryKey[] = ['community'];
@@ -252,7 +292,7 @@ watch(visibleCategories, (categories) => {
 	}
 });
 
-const isListEmpty = computed(() => flattenedRows.value.length === 0);
+const isListEmpty = computed(() => filteredItems.value.length === 0);
 const emptyMessage = computed(() => {
 	if (hasActiveSearch.value) {
 		return i18n.baseText('tools.connection.empty.noResults', {
@@ -382,13 +422,14 @@ function handleOpenChange(value: boolean) {
 				<div v-if="isListEmpty" :class="$style.empty" data-test-id="tools-connection-empty">
 					<N8nText color="text-light">{{ emptyMessage }}</N8nText>
 				</div>
-				<div v-else :class="$style.listWrapper">
+				<div v-else ref="listWrapperRef" :class="$style.listWrapper">
 					<N8nRecycleScroller
 						ref="scrollerRef"
 						:items="flattenedRows"
 						:item-size="ITEM_HEIGHT"
 						item-key="key"
 						:class="$style.scroller"
+						@scroll.passive="handleListScroll"
 					>
 						<template #default="{ item: row }">
 							<ToolRow
@@ -406,6 +447,10 @@ function handleOpenChange(value: boolean) {
 						</template>
 					</N8nRecycleScroller>
 				</div>
+				<SuggestToolFooter
+					v-if="isListEmpty || hasReachedListEnd"
+					:class="$style.suggestionFooter"
+				/>
 			</template>
 		</div>
 	</N8nDialog>
@@ -480,14 +525,10 @@ function handleOpenChange(value: boolean) {
 	min-width: 0;
 }
 
-// Runs past the dialog's own bottom padding so the list ends at the dialog
-// edge instead of floating above it; rows stay inside the horizontal padding,
-// clear of the rounded corners.
 .listWrapper {
 	flex: 1 1 0;
 	min-height: 0;
 	overflow: hidden;
-	margin-bottom: calc(-1 * var(--spacing--lg));
 }
 
 .scroller {
@@ -496,10 +537,15 @@ function handleOpenChange(value: boolean) {
 }
 
 .empty {
+	flex: 1 1 0;
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	padding: var(--spacing--xl);
 	min-height: 200px;
+}
+
+.suggestionFooter {
+	margin-bottom: calc(-1 * var(--spacing--lg));
 }
 </style>

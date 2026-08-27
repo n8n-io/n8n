@@ -7,6 +7,7 @@ import {
 	AI_UNCATEGORIZED_CATEGORY,
 	DEBOUNCE_TIME,
 	HUMAN_IN_THE_LOOP_CATEGORY,
+	AI_CATEGORY_MCP_NODES,
 	REGULAR_NODE_CREATOR_VIEW,
 	TRIGGER_NODE_CREATOR_VIEW,
 } from '@/app/constants';
@@ -32,6 +33,7 @@ import ActionsRenderer from '../Modes/ActionsMode.vue';
 import AgentsRenderer from '../Modes/AgentsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
 import SearchBar from './SearchBar.vue';
+import SuggestToolFooter from '@/features/shared/toolsConnection/SuggestToolFooter.vue';
 
 import CommunityNodeDetails from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDetails.vue';
 import CommunityNodeDocsLink from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDocsLink.vue';
@@ -51,6 +53,7 @@ const nodeCreatorStore = useNodeCreatorStore();
 const { isAdminOrOwner } = useUsersStore();
 
 const activeViewStack = computed(() => useViewStacks().activeViewStack);
+const isMcpCategory = computed(() => activeViewStack.value.subcategory === AI_CATEGORY_MCP_NODES);
 
 const communityNodeDetails = computed(() => activeViewStack.value.communityNodeDetails);
 
@@ -312,7 +315,7 @@ function onBackButton() {
 			<CommunityNodeDetails v-if="communityNodeDetails" />
 			<CommunityNodeInfo v-if="communityNodeDetails && !isActionsMode" />
 
-			<div :class="$style.renderedItems">
+			<div :class="[$style.renderedItems, { [$style.hasSuggestionFooter]: isMcpCategory }]">
 				<N8nNotice
 					v-if="activeViewStack.info && !activeViewStack.search"
 					:class="$style.info"
@@ -327,6 +330,7 @@ function onBackButton() {
 
 				<!-- Nodes Mode -->
 				<NodesRenderer v-else :root-view="nodeCreatorView" v-bind="$attrs" />
+				<SuggestToolFooter v-if="isMcpCategory" />
 			</div>
 
 			<CommunityNodeFooter
@@ -388,6 +392,14 @@ function onBackButton() {
 	flex-direction: column;
 	scrollbar-width: none; /* Firefox 64 */
 	padding-bottom: var(--spacing--xl);
+
+	&.hasSuggestionFooter {
+		flex: 1 1 0;
+		height: auto;
+		min-height: 0;
+		padding-bottom: 0;
+	}
+
 	&::-webkit-scrollbar {
 		display: none;
 	}
