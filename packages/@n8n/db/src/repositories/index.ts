@@ -85,10 +85,14 @@ export {
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {
 	WorkflowReviewRequestRepository,
-	type InboxCursor,
-	type InboxVisibility,
 	type WorkflowReviewRequestForWorkflowRow,
 } from './workflow-review-request.repository';
+export { WorkflowReviewLifecycleRepository } from './workflow-review-lifecycle.repository';
+export {
+	WorkflowReviewInboxRepository,
+	type InboxCursor,
+	type InboxVisibility,
+} from './workflow-review-inbox.repository';
 export {
 	WorkflowReviewRequestWorkflowRepository,
 	type WorkflowReviewRequestLinkedWorkflow,
