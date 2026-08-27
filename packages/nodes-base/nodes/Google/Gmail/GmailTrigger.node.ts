@@ -410,11 +410,15 @@ export class GmailTrigger implements INodeType {
 			const pendingIds = nodeStaticData.pendingMessageIds ?? [];
 			if (shouldLimitMessages && pendingIds.length > 0) {
 				const idsToFetch = pendingIds.slice(0, budget);
-				nodeStaticData.pendingMessageIds = pendingIds.slice(budget);
 				const fetchQs = buildFetchQs();
 
-				for (const id of idsToFetch) {
+				for (const [index, id] of idsToFetch.entries()) {
 					await fetchAndProcessMessage(id, fetchQs);
+					// An id leaves the stored queue only after its fetch succeeded. A
+					// mid-drain throw is swallowed by the catch below, and pending ids sit
+					// behind an already-advanced cursor — removing them up front would
+					// lose the unfetched ones for good.
+					nodeStaticData.pendingMessageIds = pendingIds.slice(index + 1);
 				}
 
 				budget -= idsToFetch.length;
@@ -432,7 +436,7 @@ export class GmailTrigger implements INodeType {
 				}
 
 				// If we still have pending IDs, don't list new messages yet.
-				if (nodeStaticData.pendingMessageIds.length > 0) {
+				if ((nodeStaticData.pendingMessageIds?.length ?? 0) > 0) {
 					if (simple && responseData.length > 0) {
 						responseData = this.helpers.returnJsonArray(
 							await simplifyOutput.call(

@@ -1642,6 +1642,12 @@ describe('GmailTrigger', () => {
 				.query(true)
 				.reply(200, createMessage({ id, internalDate: String(internalDateMs) }));
 
+		const mockGetError = (id: string) =>
+			nock(baseUrl)
+				.get(`/gmail/v1/users/me/messages/${id}`)
+				.query(true)
+				.reply(500, { error: 'transient' });
+
 		it('should follow nextPageToken and deliver messages from all pages', async () => {
 			const workflowStaticData: Record<string, Record<string, unknown>> = {
 				'Gmail Trigger': { lastTimeChecked: 1000000 },
@@ -1787,6 +1793,39 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
 			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(
 				expect.arrayContaining(['X', 'P1']),
+			);
+		});
+
+		it('should keep unfetched pending ids when a drain fetch fails', async () => {
+			// A transient error mid-drain is swallowed by poll()'s catch. An id
+			// removed from the stored queue before its fetch would be lost for good:
+			// pending ids sit behind an already-advanced cursor, so no re-list ever
+			// finds them again.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: 6_000_000_000,
+					pendingMessageIds: ['1', '2', '3'],
+				},
+			};
+
+			mockLabels();
+			mockGet('1', 1_000_000_000_000);
+			mockGetError('2');
+			// No mock for '3': the throw on '2' must stop the drain before it.
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				workflowStaticData,
+			});
+
+			// Only the message fetched before the error is delivered...
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1']);
+			// ...and exactly the unfetched ids stay queued for the next poll.
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['2', '3']);
+			// The delivered id must leave the queue and join the boundary set,
+			// or the next poll would deliver it twice.
+			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(
+				expect.arrayContaining(['1']),
 			);
 		});
 
