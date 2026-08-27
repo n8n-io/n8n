@@ -203,6 +203,19 @@ export function sanitizeOffloadedToolResultsForMemory(
 				if (block.state === 'resolved' && isOffloadedToolResult(block.output)) {
 					return { ...block, output: { ...EXPIRED_OFFLOADED_TOOL_RESULT } };
 				}
+				if (block.state === 'resolved' && isContentToolResultOutput(block.output)) {
+					return {
+						...block,
+						output: toJsonValue({
+							type: 'content',
+							value: block.output.value.map((part) =>
+								part.type === 'text' && isSerializedOffloadedToolResult(part.text)
+									? { ...part, text: EXPIRED_OFFLOADED_TOOL_RESULT_JSON }
+									: part,
+							),
+						}),
+					};
+				}
 				if (block.state === 'rejected' && isSerializedOffloadedToolResult(block.error)) {
 					return { ...block, error: EXPIRED_OFFLOADED_TOOL_RESULT_JSON };
 				}
