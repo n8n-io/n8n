@@ -849,6 +849,9 @@ export class AgentRuntime {
 			});
 			const finalized = await finishToolBatch(batch, pendingLoopContext.toolMap, iterationCount);
 			if (finalized.suspended) return finalized.result;
+			// The resumed batch is a clean boundary too: its tool results are new
+			// content no earlier boundary saw, so check before the next model call.
+			await this.memory.maybeObserveMidRun(list, options);
 		}
 
 		for (; iterationCount < maxIterations; iterationCount++) {

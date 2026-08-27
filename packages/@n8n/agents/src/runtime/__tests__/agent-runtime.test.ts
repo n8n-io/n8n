@@ -6644,6 +6644,42 @@ describe('AgentRuntime — mid-run observation', () => {
 			content: OBSERVATION_CONTINUATION_REMINDER,
 		});
 	});
+
+	it('observes at the resume boundary when the resumed tool results cross the budget', async () => {
+		const memory = new InMemoryMemory();
+		const checkpointStore = makeClaimingCheckpointStore();
+		const tools = [makeStepTool(), makeInterruptibleTool()];
+
+		const runtime = buildMidRunRuntime(memory, { tools, checkpointStorage: checkpointStore });
+		// Suspends on the very first iteration, so no boundary check has run and
+		// no cursor exists when the run parks.
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCall('tc-approve', 'approve', { question: 'go on?' }),
+		);
+		const first = await runtime.generate('start work', { persistence: PERSISTENCE });
+		const suspension = first.pendingSuspend?.[0];
+		if (!suspension) throw new Error('Expected the run to suspend on the approve tool');
+		expect(await memory.getCursor('thread-1')).toBeNull();
+
+		const resumed = buildMidRunRuntime(memory, { tools, checkpointStorage: checkpointStore });
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('continued'));
+		await resumed.resume(
+			'generate',
+			{ approved: true },
+			{ runId: suspension.runId, toolCallId: suspension.toolCallId },
+		);
+		await resumed.dispose();
+		await runtime.dispose();
+
+		// The first post-resume model call already sees the compacted window:
+		// the resumed tool results were observed before reaching the model.
+		const resumeCall = capturedCall(1);
+		expect(resumeCall.messages).toEqual([
+			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
+		]);
+		expect(flattenInstructions(resumeCall.instructions)).toContain('Mid-run observation captured.');
+		expect(await memory.getCursor('thread-1')).not.toBeNull();
+	});
 });
 
 // ---------------------------------------------------------------------------
