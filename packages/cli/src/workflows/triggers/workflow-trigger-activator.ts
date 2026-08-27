@@ -738,6 +738,15 @@ export class WorkflowTriggerActivator {
 	 * {@link shouldAbandonFailedTeardown}) and an abort are not retried. The
 	 * `sleep` rejects with the abort reason as soon as the signal fires, so an
 	 * abandoned retry never sleeps out its backoff.
+	 *
+	 * Everything else is deliberately treated as retryable, including failures
+	 * that may turn out permanent: node `delete()` errors are heterogeneous
+	 * across integrations and carry no reliable transient/permanent signal
+	 * (e.g. a 429 is retryable while a 403 is not, and many errors carry no
+	 * status at all). Misclassifying a transient failure as permanent orphans
+	 * an external subscription that one retry would have cleaned up, while the
+	 * cost of retrying a permanent failure is a few bounded seconds inside the
+	 * record's abort deadline.
 	 */
 	private async deregisterExternalWebhookWithRetry(
 		workflow: Workflow,

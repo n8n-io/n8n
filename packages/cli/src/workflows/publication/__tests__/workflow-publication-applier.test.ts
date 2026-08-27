@@ -718,6 +718,25 @@ describe('WorkflowPublicationApplier', () => {
 		expect(result).toMatchObject({ type: 'failed', teardownFailures: [teardownFailure] });
 	});
 
+	test('carries external teardown failures when advancing the version throws', async () => {
+		// The teardown (and its abandoned deregistrations) already happened;
+		// an advance failure must not throw past them and lose the report.
+		setTriggerSets([triggerNode('a'), triggerNode('removed')], [triggerNode('a')]);
+		const teardownFailure = { nodeName: 'removed', error: new Error('remote unreachable') };
+		workflowTriggerActivator.deactivate.mockResolvedValue({
+			externalTeardownFailures: [teardownFailure],
+		});
+		workflowPublishedVersionRepository.setPublishedVersion.mockRejectedValue(new Error('db down'));
+
+		const result = await applier.apply(makeRecord(), abort);
+
+		expect(result).toMatchObject({
+			type: 'failed',
+			error: expect.objectContaining({ message: 'db down' }),
+			teardownFailures: [teardownFailure],
+		});
+	});
+
 	test('returns partial when a deterministic failure coexists with an activated trigger', async () => {
 		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
 		const error = new WebhookPathTakenError('b');

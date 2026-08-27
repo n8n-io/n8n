@@ -201,9 +201,12 @@ export class WorkflowPublicationApplier {
 				? { ...result, teardownFailures }
 				: result;
 
-		await this.advancePublishedVersion(record);
-
+		// Inside the try: once teardown has run, any failure — advancing the
+		// version included — must return a `failed` result (not throw) so the
+		// teardown failures collected above still reach the reporter.
 		try {
+			await this.advancePublishedVersion(record);
+
 			abort.signal.throwIfAborted();
 			if (toAdd.size > 0) {
 				const activationMode = this.resolveActivationMode(record, oldVersion);
