@@ -137,4 +137,54 @@ describe('Expression — array proxy semantics (engine parity)', () => {
 			expect(json.arr).toEqual(['Mango', 'Apple', 'Kiwi', 'Orange']);
 		});
 	});
+
+	// Direct writes on $json data. Both engines apply the write within the
+	// evaluation; they intentionally diverge on persistence: the vm engine's
+	// proxies are copy-on-write scoped to a single evaluation, while the legacy
+	// engine writes through to the underlying workflow data (long-standing
+	// behaviour for non-scripting nodes, where data is not augmented).
+	describe('direct writes on $json data', () => {
+		const isVm = process.env.N8N_EXPRESSION_ENGINE !== 'legacy';
+
+		it('index assignment is visible to a later read in the same evaluation', () => {
+			const json = { arr: ['a', 'b', 'c'] };
+			expect(evaluate('={{ (() => { $json.arr[0] = "X"; return $json.arr[0]; })() }}', json)).toBe(
+				'X',
+			);
+			expect(json.arr).toEqual(isVm ? ['a', 'b', 'c'] : ['X', 'b', 'c']);
+		});
+
+		it('existing object-key assignment is visible to a later read', () => {
+			const json = { user: { name: 'Alice', email: 'a@x' } };
+			expect(
+				evaluate('={{ (() => { $json.user.name = "Zed"; return $json.user.name; })() }}', json),
+			).toBe('Zed');
+			expect(json.user.name).toBe(isVm ? 'Alice' : 'Zed');
+		});
+
+		it('delete removes the key for the rest of the evaluation', () => {
+			const json = { user: { name: 'Alice', email: 'a@x' } };
+			expect(
+				evaluate(
+					'={{ (() => { delete $json.user.email; return $json.user.email === undefined; })() }}',
+					json,
+				),
+			).toBe(true);
+			expect('email' in json.user).toBe(isVm);
+		});
+
+		it('push() updates length within the evaluation', () => {
+			const json = { arr: ['a', 'b', 'c'] };
+			expect(
+				evaluate('={{ (() => { $json.arr.push("d"); return $json.arr.length; })() }}', json),
+			).toBe(4);
+			expect(json.arr.length).toBe(isVm ? 3 : 4);
+		});
+
+		it('writes do not leak into a subsequent evaluation on the vm engine', () => {
+			const json = { arr: ['a', 'b', 'c'] };
+			evaluate('={{ (() => { $json.arr[0] = "X"; return $json.arr[0]; })() }}', json);
+			expect(evaluate('={{ $json.arr[0] }}', json)).toBe(isVm ? 'a' : 'X');
+		});
+	});
 });
