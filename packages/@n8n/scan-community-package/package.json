@@ -18,9 +18,6 @@
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@typescript-eslint/parser": "^8.35.0",
     "eslint-plugin-n8n-nodes-base": "catalog:",
-    "http-proxy-agent": "catalog:",
-    "https-proxy-agent": "catalog:",
-    "proxy-from-env": "catalog:",
     "semver": "catalog:",
     "typescript": "catalog:typescript",
     "tmp": "0.2.4"
