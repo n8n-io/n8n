@@ -127,6 +127,42 @@ describe('Confluence router', () => {
 		]);
 	});
 
+	it('dispatches page:addComment and returns the created comment', async () => {
+		apiRequest.mockResolvedValue({ id: '555', pageId: '1' });
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'addComment',
+				page: { mode: 'id', value: '1' },
+				bodyFormat: 'plainText',
+				bodyPlainText: 'Nice page',
+				parentCommentId: '',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/api/v2/footer-comments', {
+			pageId: '1',
+			body: { representation: 'storage', value: '<p>Nice page</p>' },
+		});
+		expect(result).toEqual([[{ json: { id: '555', pageId: '1' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('dispatches page:deleteComment and returns the deletion report', async () => {
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'deleteComment',
+				commentId: '555',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/footer-comments/555');
+		expect(result).toEqual([
+			[{ json: { deleted: true, commentId: '555' }, pairedItem: { item: 0 } }],
+		]);
+	});
+
 	it('dispatches page:delete and returns the deletion report', async () => {
 		const result = await router.call(
 			mockExecuteCtx({
@@ -179,6 +215,33 @@ describe('Confluence router', () => {
 			[
 				{ json: { id: '1' }, pairedItem: { item: 0 } },
 				{ json: { id: '2' }, pairedItem: { item: 0 } },
+			],
+		]);
+	});
+
+	it('dispatches page:getComments and fans the comments out into one item each', async () => {
+		apiRequest.mockResolvedValue({ results: [{ id: '900' }, { id: '901' }] });
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'getComments',
+				page: { mode: 'id', value: '1' },
+				returnAll: false,
+				limit: 50,
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'/wiki/api/v2/pages/1/footer-comments',
+			{},
+			{ 'body-format': 'storage', limit: 50 },
+		);
+		expect(result).toEqual([
+			[
+				{ json: { id: '900' }, pairedItem: { item: 0 } },
+				{ json: { id: '901' }, pairedItem: { item: 0 } },
 			],
 		]);
 	});
