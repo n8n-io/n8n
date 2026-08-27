@@ -463,7 +463,13 @@ export class AgentChatBridge {
 
 	/** Rotates to a brand-new session for `thread` and confirms it there. */
 	private async resetSession(thread: Thread): Promise<void> {
-		await this.bumpSessionGeneration(this.baseThreadId(thread), true, null);
+		const baseId = this.baseThreadId(thread);
+		await this.bumpSessionGeneration(baseId, true, null);
+		// A task-run send may have bound this thread to continue as its own
+		// session (see resolveSession in executeAndStream) — that binding
+		// ignores rotation, so without clearing it the next message would still
+		// be redirected back into the bound task's thread and its memory.
+		await this.messageContextBridge.unbindSession(baseId);
 		await thread.post('🔄 Started a new session.');
 	}
 
@@ -490,17 +496,15 @@ export class AgentChatBridge {
 		const cache = Container.get(CacheService);
 		const key = this.sessionGenerationCacheKey(baseId);
 
-		// Fast path, unlocked: nothing to rotate and nothing has ever been
-		// tracked for this thread — the common case for every channel where the
-		// feature is unused. Re-checked under the lock below before any write.
-		const precheck = await cache.get<SessionGenerationState>(key);
-		if (!forceRotate && !precheck && !idleTimeoutMinutes) return { id: baseId };
-
-		// An explicit /new and a same-thread message that just went idle can
-		// race on this read-modify-write; without a lock, whichever write lands
-		// last wins even if it read stale state, silently undoing the other.
+		// An explicit /new and a same-thread message that just went idle (or
+		// simply the first message after one) can race on this
+		// read-modify-write. Everything has to happen under one lock — including
+		// the "nothing to do" check — or a read that ran before a concurrent
+		// write commits can return stale state and silently undo it.
 		return await Container.get(LockService).withLease(LockNamespace.KNOWN_LOCKS, key, async () => {
 			const state = await cache.get<SessionGenerationState>(key);
+			if (!forceRotate && !state && !idleTimeoutMinutes) return { id: baseId };
+
 			const now = Date.now();
 			const currentGeneration = state?.generation ?? 0;
 			const idleExpired =

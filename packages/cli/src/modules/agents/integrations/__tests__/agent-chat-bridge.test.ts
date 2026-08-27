@@ -1008,6 +1008,39 @@ describe('AgentChatBridge — consumeStream', () => {
 			// must use that same base id, not whatever generation (#2) is active.
 			expect(messageContextStore.resolveSession).toHaveBeenCalledWith('agent-1:thread-1');
 		});
+
+		it('/new clears a bound task session so the next message actually starts fresh', async () => {
+			mockCache();
+			const { bot, handlers } = makeBot();
+			const messageContextStore = mock<IntegrationMessageContextService>();
+			messageContextStore.getLatest.mockResolvedValue(null);
+			messageContextStore.resolveSession.mockResolvedValue({
+				threadId: 'task-1-uuid',
+				resourceId: 'task:task-1',
+			});
+			const agentExecutor = makeAgentExecutor([finishChunk]);
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				integrationWithIdleTimeout(null),
+				messageContextStore,
+			);
+			const thread = makeThread('thread-1');
+
+			await handlers.mention!(thread, {
+				text: '/new',
+				author: { userId: 'u1', userName: 'user1' },
+			});
+
+			// Without clearing the binding, the very next message would still be
+			// redirected into the bound task's thread and its memory regardless
+			// of the reset.
+			expect(messageContextStore.unbindSession).toHaveBeenCalledWith('agent-1:thread-1');
+		});
 	});
 
 	describe('resumeInAgentThread', () => {
