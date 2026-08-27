@@ -84,11 +84,7 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
 const isPreviewDisabled = computed(() => !props.isPreviewOpen && props.agent?.isRunnable !== true);
-const previewLabel = computed(() =>
-	props.isPreviewOpen
-		? i18n.baseText('agents.builder.preview.close.ariaLabel' as BaseTextKey)
-		: i18n.baseText('agents.builder.preview.button' as BaseTextKey),
-);
+const previewLabel = computed(() => i18n.baseText('agents.builder.preview.button' as BaseTextKey));
 const previewDisabledTooltip = computed(() =>
 	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
 );
@@ -246,12 +242,15 @@ function onMenuSelect(id: string) {
 					:model-value="props.isPreviewOpen"
 					variant="ghost"
 					size="medium"
-					icon="play"
+					icon="message-circle"
+					:icon-only="false"
 					:label="previewLabel"
 					:disabled="isPreviewDisabled"
+					:show-tooltip="false"
 					data-testid="agent-header-preview-btn"
 					@click="onPreviewClick"
-				/>
+					>{{ previewLabel }}</N8nToggle
+				>
 			</AgentValidationTooltip>
 			<AgentPublishButton
 				:agent="agent"

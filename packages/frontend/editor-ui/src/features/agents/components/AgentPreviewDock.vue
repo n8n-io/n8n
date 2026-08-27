@@ -9,13 +9,15 @@ import {
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, useTemplateRef, watch } from 'vue';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { computed, nextTick, useTemplateRef, watch, ref } from 'vue';
+import { useStorage } from '@vueuse/core';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
+
 import type {
 	AgentContinueLoadedEvent,
 	AgentFixWithAssistantEvent,
@@ -24,6 +26,11 @@ import type {
 } from '../types';
 import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
+import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
+import AgentSessionTimelinePanel from './AgentSessionTimelinePanel.vue';
+
+type DockBody = 'chat' | 'timeline';
+const dockView = ref<DockBody>('chat');
 
 interface SessionOption {
 	id: string;
@@ -35,6 +42,11 @@ interface SessionOption {
 
 interface SessionOptionData {
 	when?: string;
+}
+
+enum PreviewLayout {
+	Docked = 'docked',
+	Fullpage = 'fullpage',
 }
 
 const props = defineProps<{
@@ -73,6 +85,10 @@ const {
 } = useAgentSessionLangSmithExport();
 const previewChatPage =
 	useTemplateRef<InstanceType<typeof AgentPreviewChatPage>>('previewChatPage');
+const storedLayout = useStorage<string>('N8N_AGENT_PREVIEW_LAYOUT', PreviewLayout.Docked);
+const layout = computed<PreviewLayout>(() =>
+	storedLayout.value === PreviewLayout.Fullpage ? PreviewLayout.Fullpage : PreviewLayout.Docked,
+);
 
 const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, SessionOptionData>>>(
 	() =>
@@ -86,7 +102,15 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 
 function viewTrace() {
 	if (!props.hasSession || !props.effectiveSessionId) return;
+	if (layout.value === PreviewLayout.Fullpage) {
+		dockView.value = 'timeline';
+		return;
+	}
 	emit('view-trace');
+}
+
+function showChat() {
+	dockView.value = 'chat';
 }
 
 function exportSession() {
@@ -99,6 +123,7 @@ function exportSession() {
 }
 
 function createNewSession() {
+	showChat();
 	emit('new-session');
 }
 
@@ -106,9 +131,27 @@ function close() {
 	emit('close');
 }
 
+function getConversationMarkdown() {
+	return previewChatPage.value?.getConversationMarkdown() ?? '';
+}
+
+function toggleFullWidth() {
+	storedLayout.value =
+		layout.value === PreviewLayout.Fullpage ? PreviewLayout.Docked : PreviewLayout.Fullpage;
+}
+
 function isFocusWithinDock() {
 	return dock.value?.contains(document.activeElement) === true;
 }
+
+watch(
+	[layout, () => props.isOpen, () => props.hasSession],
+	function resetDockView([nextLayout, isOpen, hasSession]) {
+		if (nextLayout !== PreviewLayout.Fullpage || !isOpen || !hasSession) {
+			showChat();
+		}
+	},
+);
 
 watch(
 	[() => props.isOpen, () => props.initialized, () => props.effectiveSessionId],
@@ -138,9 +181,10 @@ useKeybindings({
 		:aria-label="i18n.baseText('agents.builder.preview.button')"
 		:aria-hidden="!props.isOpen"
 		:inert="!props.isOpen"
+		:data-preview-layout="layout"
 		data-testid="agent-preview-dock"
 	>
-		<div :class="$style.dockInner">
+		<div :class="[$style.dockInner, { [$style.fullpage]: layout === PreviewLayout.Fullpage }]">
 			<header :class="$style.header" data-testid="agent-preview-dock-header">
 				<N8nDropdownMenu
 					:items="sessionDropdownOptions"
@@ -180,12 +224,19 @@ useKeybindings({
 				<div :class="$style.actions">
 					<N8nTooltip
 						v-if="props.hasSession && props.effectiveSessionId"
-						:content="i18n.baseText('agents.builder.preview.viewSession')"
+						:content="
+							i18n.baseText(
+								dockView === 'chat'
+									? 'agents.builder.preview.viewSession'
+									: ('agents.builder.preview.showChat' as BaseTextKey),
+							)
+						"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
 						data-testid="agent-preview-view-session-tooltip"
 					>
 						<N8nIconButton
+							v-if="dockView === 'chat'"
 							icon="list-tree"
 							variant="ghost"
 							size="small"
@@ -193,6 +244,16 @@ useKeybindings({
 							:aria-label="i18n.baseText('agents.builder.preview.viewSession')"
 							data-testid="agent-preview-view-session-btn"
 							@click="viewTrace"
+						/>
+						<N8nIconButton
+							v-else
+							icon="message-circle"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:aria-label="i18n.baseText('agents.builder.preview.showChat' as BaseTextKey)"
+							data-testid="agent-preview-show-chat-btn"
+							@click="showChat"
 						/>
 					</N8nTooltip>
 
@@ -230,10 +291,21 @@ useKeybindings({
 							@click="createNewSession"
 						/>
 					</KeyboardShortcutTooltip>
+
+					<AgentPreviewMoreMenu
+						:project-id="props.projectId"
+						:agent-id="props.agentId"
+						:effective-session-id="props.effectiveSessionId"
+						:has-session="props.hasSession"
+						:is-full-width="layout === PreviewLayout.Fullpage"
+						:get-conversation-markdown="getConversationMarkdown"
+						@toggle-full-width="toggleFullWidth"
+					/>
 				</div>
 			</header>
 
 			<AgentPreviewChatPage
+				v-show="dockView === 'chat'"
 				ref="previewChatPage"
 				:initialized="props.initialized"
 				:project-id="props.projectId"
@@ -248,6 +320,13 @@ useKeybindings({
 				@continue-loaded="emit('continue-loaded', $event)"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
+			/>
+			<AgentSessionTimelinePanel
+				v-if="dockView === 'timeline' && props.effectiveSessionId"
+				:project-id="props.projectId"
+				:agent-id="props.agentId"
+				:thread-id="props.effectiveSessionId"
+				data-testid="agent-preview-session-timeline"
 			/>
 		</div>
 	</aside>
@@ -265,6 +344,10 @@ useKeybindings({
 	min-height: 0;
 	z-index: 1;
 	pointer-events: none;
+
+	&:has(.fullpage) {
+		width: 100%;
+	}
 }
 
 .dockInner {
@@ -289,6 +372,10 @@ useKeybindings({
 		transition: none;
 		will-change: auto;
 	}
+}
+.fullpage {
+	width: 100%;
+	border-left: 0;
 }
 
 .header {
