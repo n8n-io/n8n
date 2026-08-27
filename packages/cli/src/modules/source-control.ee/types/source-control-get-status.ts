@@ -60,8 +60,6 @@ export class SourceControlGetStatus {
 	@IsOptional()
 	verbose: boolean;
 
-	@IsString()
-	@IsOptional()
 	origin?: 'ui' | 'publicApi';
 
 	constructor(values: {
