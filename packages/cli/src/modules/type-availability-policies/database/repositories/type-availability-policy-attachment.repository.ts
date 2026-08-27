@@ -95,14 +95,14 @@ export class TypeAvailabilityPolicyAttachmentRepository extends BaseRepository<T
 	 * transaction as the write, so a concurrent policy edit can't slip past it.
 	 *
 	 * Missing rows are reported here too, rather than surfacing as an opaque FK violation.
+	 * The scope is checked even when the new list is empty, so clearing the attachments of
+	 * a scope that does not exist fails the same way attaching to it would.
 	 */
 	private async assertAttachableToScope(
 		scopeId: string,
 		attachments: readonly AttachmentSlot[],
 		tx: EntityManager,
 	): Promise<void> {
-		if (attachments.length === 0) return;
-
 		const scope = await tx.findOne(TypeAvailabilityPolicyScope, {
 			select: { id: true, kind: true },
 			where: { id: scopeId },
@@ -110,6 +110,8 @@ export class TypeAvailabilityPolicyAttachmentRepository extends BaseRepository<T
 		if (!scope) {
 			throw new UserError('Cannot attach policies to an unknown scope', { extra: { scopeId } });
 		}
+
+		if (attachments.length === 0) return;
 
 		const policyIds = attachments.map((a) => a.policyId);
 		const policies = await tx.find(TypeAvailabilityPolicy, {

@@ -47,6 +47,12 @@ export class TypeAvailabilityPolicyRepository extends BaseRepository<TypeAvailab
 	 *
 	 * Unchanged content is a no-op that leaves `version` alone, so an env-bootstrap upsert
 	 * repeated on every main during a rolling restart doesn't invalidate caches.
+	 *
+	 * The bump is computed by the database rather than from the row read above: two
+	 * overlapping edits would otherwise both write `read version + 1`, losing a bump and
+	 * with it the cache invalidation that version signals. Last writer still wins on the
+	 * rules themselves — rejecting a caller's stale version needs an expected version from
+	 * the client, which only the API layer can supply.
 	 */
 	async updateRules(
 		id: string,
@@ -59,11 +65,10 @@ export class TypeAvailabilityPolicyRepository extends BaseRepository<TypeAvailab
 			if (!policy) return null;
 			if (rulesEqual(policy.rules, rules)) return policy;
 
-			policy.rules = [...rules];
-			policy.version += 1;
-			policy.updatedBy = updatedBy;
+			await tx.update(TypeAvailabilityPolicy, { id }, { rules: [...rules], updatedBy });
+			await tx.increment(TypeAvailabilityPolicy, { id }, 'version', 1);
 
-			return await tx.save(TypeAvailabilityPolicy, policy);
+			return await tx.findOneBy(TypeAvailabilityPolicy, { id });
 		});
 	}
 

@@ -49,6 +49,13 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 		return await this.managerFor(ctx).save(TypeAvailabilityPolicyScope, scope);
 	}
 
+	/**
+	 * Sets the scope's default action, bumping `version` unless nothing changed.
+	 *
+	 * As with policy rules, the bump is computed by the database — a default-action edit
+	 * racing an attachment change would otherwise write the same version twice, and the
+	 * second change would inherit the first one's cache key.
+	 */
 	async updateDefaultAction(
 		id: string,
 		defaultAction: PolicyAction,
@@ -60,11 +67,10 @@ export class TypeAvailabilityPolicyScopeRepository extends BaseRepository<TypeAv
 			if (!scope) return null;
 			if (scope.defaultAction === defaultAction) return scope;
 
-			scope.defaultAction = defaultAction;
-			scope.version += 1;
-			scope.updatedBy = updatedBy;
+			await tx.update(TypeAvailabilityPolicyScope, { id }, { defaultAction, updatedBy });
+			await tx.increment(TypeAvailabilityPolicyScope, { id }, 'version', 1);
 
-			return await tx.save(TypeAvailabilityPolicyScope, scope);
+			return await tx.findOneBy(TypeAvailabilityPolicyScope, { id });
 		});
 	}
 

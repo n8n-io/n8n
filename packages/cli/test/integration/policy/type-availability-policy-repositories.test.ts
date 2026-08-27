@@ -116,6 +116,17 @@ describe('type availability policy repositories', () => {
 			expect(updated?.version).toBe(2);
 		});
 
+		it('bumps the version once per change, and never reuses one', async () => {
+			const policy = await createPolicy([DENY_SLACK]);
+
+			await policyRepo.updateRules(policy.id, [ALLOW_BASE], 'user-2', ROOT);
+			await policyRepo.updateRules(policy.id, [DENY_SLACK], 'user-3', ROOT);
+			const third = await policyRepo.updateRules(policy.id, [ALLOW_BASE, DENY_SLACK], 'u', ROOT);
+
+			expect(third?.version).toBe(4);
+			expect(third?.rules).toEqual([ALLOW_BASE, DENY_SLACK]);
+		});
+
 		it('returns null when updating a policy that does not exist', async () => {
 			expect(await policyRepo.updateRules('missing', [ALLOW_BASE], 'user-1', ROOT)).toBeNull();
 		});
@@ -396,6 +407,26 @@ describe('type availability policy repositories', () => {
 					ROOT,
 				),
 			).rejects.toThrow('Cannot attach policies to an unknown scope');
+		});
+
+		it('reports an unknown scope even when the new list is empty', async () => {
+			await expect(
+				attachmentRepo.replaceAttachmentsForScope('does-not-exist', [], ROOT),
+			).rejects.toThrow('Cannot attach policies to an unknown scope');
+		});
+
+		it('clears the attachments of a scope that does exist', async () => {
+			const scope = await createInstanceScope();
+			const policy = await createPolicy();
+			await attachmentRepo.replaceAttachmentsForScope(
+				scope.id,
+				[{ policyId: policy.id, priority: 0, isFloor: false }],
+				ROOT,
+			);
+
+			await attachmentRepo.replaceAttachmentsForScope(scope.id, [], ROOT);
+
+			expect(await attachmentRepo.listAttachmentsForScope(scope.id, ROOT)).toEqual([]);
 		});
 
 		it('lists every scope a policy is attached to', async () => {
