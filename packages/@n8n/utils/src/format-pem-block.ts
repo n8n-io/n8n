@@ -17,9 +17,14 @@ function formatCompactPem(pem: string, isPublic: boolean): string | undefined {
 		? normalizedBody
 				.replace(/:\s+/g, ':')
 				.replace(/\s+/g, '\n')
-				// A legacy encrypted key needs a blank line between its headers and the
-				// body; without it OpenSSL 3 has no decoder that matches the block.
-				.replace(/^((?:(?:Proc-Type|DEK-Info):\S+\n)+)/, '$1\n')
+				// Restore RFC 1421 shape for a legacy encrypted key's headers. Both halves
+				// are load-bearing: OpenSSL 3 matches no decoder without the blank line
+				// before the body, and ssh2 reads the DEK-Info value at a fixed offset that
+				// assumes a single space after the colon.
+				.replace(
+					/^(?:(?:Proc-Type|DEK-Info):\S+\n)+/,
+					(headers) => `${headers.replace(/^(Proc-Type|DEK-Info):/gm, '$1: ')}\n`,
+				)
 		: (normalizedBody.match(new RegExp(`.{1,${PEM_BODY_LINE_LENGTH}}`, 'g')) ?? []).join('\n');
 
 	return `-----BEGIN ${label}-----\n${formattedBody}\n-----END ${label}-----`;
