@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Microsoft/Excel/MicrosoftExcel.node.ts
+  s_be6d12de03f718::t_6e59a064ab05ea 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "7b6a52357b73b53c166350d819a3359fe705062a",
+  "prompts": {},
+  "sessions": {
+    "s_be6d12de03f718": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e840698b-e5eb-4103-8068-58943bcae715",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
