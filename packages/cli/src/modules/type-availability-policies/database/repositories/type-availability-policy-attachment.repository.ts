@@ -91,8 +91,12 @@ export class TypeAvailabilityPolicyAttachmentRepository extends BaseRepository<T
 	 * carries neither, and the migration DSL has no composite foreign key to tie them
 	 * together. A mismatch would attach cleanly and then match nothing at evaluation time,
 	 * so the scope would silently stop enforcing what it appears to enforce. This is the
-	 * only write path for attachments, so the invariant is enforced here — inside the same
-	 * transaction as the write, so a concurrent policy edit can't slip past it.
+	 * only write path for attachments, so the invariant is enforced here.
+	 *
+	 * What the check reads stays true until the insert not because it shares a transaction
+	 * with it — at READ COMMITTED a concurrent commit is still visible to a later statement
+	 * — but because `kind` is write-once (no method updates it) and the foreign key stops
+	 * the policy being deleted out from under the insert.
 	 *
 	 * Missing rows are reported here too, rather than surfacing as an opaque FK violation.
 	 * The scope is checked even when the new list is empty, so clearing the attachments of
