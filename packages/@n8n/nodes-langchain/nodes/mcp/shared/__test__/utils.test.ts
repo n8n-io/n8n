@@ -647,13 +647,7 @@ describe('utils', () => {
 				const call = mockedProxyFetch.mock.calls[0];
 
 				expect(call[0]).toBe('https://example.com/mcp');
-				expect(call[1]).toEqual(
-					expect.objectContaining({
-						headers: expect.objectContaining({
-							Authorization: 'Bearer my-token',
-						}),
-					}),
-				);
+				expect(new Headers(call[1]?.headers).get('authorization')).toBe('Bearer my-token');
 			});
 
 			it('should preserve SDK headers passed as Headers instance', async () => {
@@ -681,12 +675,7 @@ describe('utils', () => {
 
 				const [, callOpts] = mockedProxyFetch.mock.calls[0];
 
-				// @ts-expect-error - Mocking
-				expect(callOpts.headers).toEqual(
-					expect.objectContaining({
-						accept: expect.any(String),
-					}),
-				);
+				expect(new Headers(callOpts?.headers).get('accept')).toBe('text/event-stream');
 			});
 
 			it('should retry on 401 response with refreshed headers', async () => {

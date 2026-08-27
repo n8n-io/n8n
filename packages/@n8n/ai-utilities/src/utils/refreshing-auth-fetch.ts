@@ -69,7 +69,10 @@ export function createRefreshingAuthFetch({
 
 		if (!assertAllowedUrl) return await authedFetch(input, init);
 
-		return await fetchFollowingRedirects(authedFetch, input, init, {
+		// `fetchFollowingRedirects` accepts `string | URL`. `Request` objects are
+		// unwrapped to their URL so the redirect loop can carry a stable input.
+		const startUrl = input instanceof Request ? input.url : input;
+		return await fetchFollowingRedirects(authedFetch, startUrl, init, {
 			onBeforeHop: assertAllowedUrl,
 		});
 	};
