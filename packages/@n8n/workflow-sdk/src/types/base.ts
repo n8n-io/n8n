@@ -1286,7 +1286,10 @@ export type StickyFn = (
 
 export type PlaceholderFn = (hint: string) => string;
 
-export type NewCredentialFn = (name: string, id?: string) => NewCredentialValue;
+export type NewCredentialFn = (
+	name: string,
+	idOrOptions?: string | { managed?: boolean },
+) => NewCredentialValue;
 
 export type IfElseFn = (
 	branches: [

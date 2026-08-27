@@ -9,11 +9,12 @@
 export const WORKFLOW_RULES = `Follow these rules strictly when generating workflows:
 
 1. **Always use newCredential() for authentication**
-   - When a node needs credentials, always use \`newCredential('Name')\` in the credentials config
+   - When a node needs credentials, use \`newCredential('Name')\` in the credentials config
    - NEVER use placeholder strings, fake API keys, or hardcoded auth values
    - Never synthesize credential IDs. Do not invent raw IDs such as \`WHATSAPP_CREDENTIAL_ID\`, \`mock-gmail-oauth2\`, or any \`mock-*\` value
    - If \`availableCredentials\` is provided, treat it as an allow-list: copy an existing credential ID exactly or use \`newCredential('Name')\` without an ID
    - Example: \`credentials: { slackApi: newCredential('Slack Bot') }\`
+   - For managed n8n credits, keep the managed form: \`newCredential('n8n credits', { managed: true })\`
    - The credential type must match what the node expects
 
 2. **Trust empty item lists — don't synthesize fake items**
