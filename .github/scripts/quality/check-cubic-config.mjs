@@ -17,7 +17,7 @@
  *   1 – config has at least one violation
  */
 
-import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv from 'ajv/dist/2020.js';
@@ -43,12 +43,16 @@ export const SCHEMA_URL = 'https://www.cubic.dev/schema/cubic-repository-config.
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
 /**
+ * Characters, not bytes — cubic's ceiling is a character count, and a byte count
+ * overstates it for any non-ASCII content (an em dash is 3 bytes, one character).
+ * `.length` counts UTF-16 code units, matching how the description is measured.
+ *
  * @param {string} path - repo-relative
- * @returns {number} size in bytes, or -1 when the path does not resolve
+ * @returns {number} character count, or -1 when the path does not resolve
  */
-function fileSize(path) {
+export function fileCharacters(path) {
 	try {
-		return statSync(join(REPO_ROOT, path)).size;
+		return readFileSync(join(REPO_ROOT, path), 'utf8').length;
 	} catch {
 		return -1;
 	}
@@ -98,13 +102,14 @@ function ruleFiles() {
 }
 
 /**
- * @param {unknown} config - parsed cubic.yaml
- * @param {(path: string) => number} sizeOf
+ * @param {any} config - parsed cubic.yaml
+ * @param {(path: string) => number} charsIn - characters in a linked file, -1 if missing
  * @param {string[]} [onDisk] - rule files that must each be linked by some agent
  * @returns {{ violations: string[], warnings: string[] }}
  */
-export function checkConfig(config, sizeOf, onDisk = []) {
+export function checkConfig(config, charsIn, onDisk = []) {
 	const violations = [];
+	/** @type { string[] } */
 	const warnings = [];
 	const linked = new Set();
 
@@ -143,12 +148,12 @@ export function checkConfig(config, sizeOf, onDisk = []) {
 		let total = description.length;
 		for (const path of filePaths) {
 			linked.add(path);
-			const size = sizeOf(path);
-			if (size < 0) {
+			const chars = charsIn(path);
+			if (chars < 0) {
 				violations.push(`${label} links \`${path}\`, which does not exist.`);
 				continue;
 			}
-			total += size;
+			total += chars;
 		}
 
 		if (total > MAX_RULE_CHARS) {
@@ -190,10 +195,13 @@ async function main() {
 		return;
 	}
 
+	if (process.argv.includes('--show-rules')) {
+	}
+
 	const config = parse(readFileSync(join(REPO_ROOT, 'cubic.yaml'), 'utf8'));
 	const schema = JSON.parse(readFileSync(join(REPO_ROOT, SCHEMA_PATH), 'utf8'));
 
-	const { violations, warnings } = checkConfig(config, fileSize, ruleFiles());
+	const { violations, warnings } = checkConfig(config, fileCharacters, ruleFiles());
 	violations.unshift(...schemaErrors(config, schema));
 
 	for (const warning of warnings) {

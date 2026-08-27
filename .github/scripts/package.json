@@ -28,6 +28,7 @@
     "yaml": "^2.8.3"
   },
   "devDependencies": {
+    "@types/node": "^26.3.0",
     "conventional-changelog-angular": "8.3.0"
   }
 }

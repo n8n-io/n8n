@@ -1,18 +1,19 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { before, describe, it } from 'node:test';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, relative } from 'node:path';
+import { after, before, describe, it } from 'node:test';
 
 /**
  * Run with:
  * node --test .github/scripts/quality/check-cubic-config.test.mjs
  */
 
-let checkConfig, schemaErrors, MAX_CUBIC_AGENTS, MAX_RULE_CHARS, WARN_RATIO;
+let checkConfig, fileCharacters, schemaErrors, MAX_CUBIC_AGENTS, MAX_RULE_CHARS, WARN_RATIO;
 let schema;
 before(async () => {
-	({ checkConfig, schemaErrors, MAX_CUBIC_AGENTS, MAX_RULE_CHARS, WARN_RATIO } = await import(
-		'./check-cubic-config.mjs'
-	));
+	({ checkConfig, fileCharacters, schemaErrors, MAX_CUBIC_AGENTS, MAX_RULE_CHARS, WARN_RATIO } =
+		await import('./check-cubic-config.mjs'));
 	schema = JSON.parse(readFileSync(new URL('./cubic-config.schema.json', import.meta.url), 'utf8'));
 });
 
@@ -65,7 +66,7 @@ describe('checkConfig', () => {
 		assert.match(violations[0], /"Frontend" links `\.agents\/gone\.md`, which does not exist/);
 	});
 
-	it('counts linked file size toward the character ceiling', () => {
+	it('counts linked file length toward the character ceiling', () => {
 		const rules = [{ name: 'Big', description: 'a'.repeat(9_000), file_paths: ['doc.md'] }];
 
 		assert.deepEqual(
@@ -76,6 +77,14 @@ describe('checkConfig', () => {
 		const violations = violationsOf(config(rules), () => 2_000);
 		assert.equal(violations.length, 1);
 		assert.match(violations[0], /"Big" is 11,000 characters/);
+	});
+
+	it('measures a description in characters, not UTF-8 bytes', () => {
+		// Each em dash is 3 bytes but one character. By bytes this is 12,000 and
+		// would fail; by characters it is 4,000 and fits.
+		const rules = [{ name: 'Dashes', description: '—'.repeat(4_000) }];
+
+		assert.deepEqual(violationsOf(config(rules), emptyFiles), []);
 	});
 
 	it('flags a rule with neither a description nor linked files', () => {
@@ -192,5 +201,37 @@ describe('schemaErrors', () => {
 	it('requires a version', () => {
 		const errors = schemaErrors({ reviews: {} }, schema);
 		assert.ok(errors.some((e) => e.includes('version')));
+	});
+});
+
+describe('fileCharacters', () => {
+	const REPO_ROOT = new URL('../../..', import.meta.url).pathname;
+	let dir;
+
+	before(() => {
+		dir = mkdtempSync(join(tmpdir(), 'cubic-chars-'));
+	});
+	after(() => rmSync(dir, { recursive: true, force: true }));
+
+	/** @param {string} name @param {string} content */
+	const write = (name, content) => {
+		const abs = join(dir, name);
+		writeFileSync(abs, content, 'utf8');
+		return relative(REPO_ROOT, abs);
+	};
+
+	it('counts characters, not UTF-8 bytes', () => {
+		// 100 em dashes: 300 bytes, 100 characters. statSync().size would say 300.
+		const path = write('dashes.md', '—'.repeat(100));
+		assert.equal(fileCharacters(path), 100);
+	});
+
+	it('counts ASCII unchanged, where bytes and characters agree', () => {
+		const path = write('ascii.md', 'a'.repeat(100));
+		assert.equal(fileCharacters(path), 100);
+	});
+
+	it('returns -1 for a path that does not resolve', () => {
+		assert.equal(fileCharacters('.agents/review-rules/does-not-exist.md'), -1);
 	});
 });
