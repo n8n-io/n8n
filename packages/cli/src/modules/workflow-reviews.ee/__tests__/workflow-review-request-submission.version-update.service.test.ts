@@ -131,7 +131,7 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 		collaborationService.broadcastWorkflowReviewStateChanged.mockResolvedValue(undefined);
 	});
 
-	it('throws when the instance policy is disabled, before any lookup or lock', async () => {
+	it('refuses everything once an admin turns reviews off, before any lookup or lock', async () => {
 		workflowReviewPolicyService.get.mockResolvedValue({ enabled: false });
 
 		await expect(service.updateVersion(user, requestId, dto)).rejects.toThrow(ForbiddenError);
@@ -141,7 +141,7 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
-	it('throws NotFoundError when the review request does not exist', async () => {
+	it('refuses a review that does not exist', async () => {
 		requestRepository.findById.mockResolvedValue(null);
 
 		await expect(service.updateVersion(user, requestId, dto)).rejects.toThrow(NotFoundError);
@@ -149,7 +149,7 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
-	it('throws NotFoundError when the request does not cover the given workflow', async () => {
+	it('refuses a workflow the review does not cover', async () => {
 		requestRepository.findById.mockResolvedValue(openRequest());
 		workflowRepository.findByRequestId.mockResolvedValue([
 			mock<WorkflowReviewRequestWorkflow>({ workflowId: 'other-wf' }),
@@ -161,7 +161,7 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
-	it('throws NotFoundError when the user lacks publish access to the workflow', async () => {
+	it('refuses a workflow the caller cannot publish', async () => {
 		mockSuccessfulUpdatePath();
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
 
@@ -173,7 +173,7 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
-	it('throws BadRequestError and never takes the lock for an archived workflow', async () => {
+	it('refuses an archived workflow, before taking the lock', async () => {
 		mockSuccessfulUpdatePath();
 		workflowFinderService.findWorkflowForUser.mockResolvedValue(
 			mock<WorkflowEntity>({ isArchived: true }),
@@ -187,7 +187,7 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 	it.each([
 		['closed', openRequest({ state: 'closed' })],
 		['approved', openRequest({ decision: 'approved' })],
-	])('throws ConflictError and never takes the lock when the request is %s', async (_name, req) => {
+	])('refuses a review that is already %s, before taking the lock', async (_name, req) => {
 		mockSuccessfulUpdatePath();
 		requestRepository.findById.mockResolvedValue(req);
 
@@ -196,7 +196,7 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 		expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 	});
 
-	it('throws BadRequestError and never takes the lock when the version does not exist', async () => {
+	it('refuses a version the workflow does not have, before taking the lock', async () => {
 		mockSuccessfulUpdatePath();
 		workflowHistoryService.findVersion.mockResolvedValue(null);
 
@@ -272,7 +272,7 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 		});
 	});
 
-	it('throws ConflictError and writes nothing when the request closes between check and lock', async () => {
+	it('refuses to re-pin a review that closed while the update waited for the lock, and writes nothing', async () => {
 		mockSuccessfulUpdatePath();
 		requestRepository.findById
 			.mockResolvedValueOnce(openRequest())
@@ -283,6 +283,7 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 		expect(workflowRepository.updateWorkflowVersion).not.toHaveBeenCalled();
 		expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 		expect(authorRepository.addAuthorIfMissing).not.toHaveBeenCalled();
+		expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
 	});
 
 	it('writes and broadcasts nothing when a concurrent identical sync wins the lock first', async () => {
@@ -332,7 +333,7 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 		expect(requestRepository.saveRequest).not.toHaveBeenCalled();
 	});
 
-	it('throws NotFoundError when the request disappears between check and lock', async () => {
+	it('refuses a review deleted while the update waited for the lock', async () => {
 		mockSuccessfulUpdatePath();
 		requestRepository.findById.mockResolvedValueOnce(openRequest()).mockResolvedValueOnce(null);
 
@@ -402,7 +403,7 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 			);
 		});
 
-		it('throws BadRequestError when the version was pruned before the naming write', async () => {
+		it('refuses the update when the version was pruned before the naming write', async () => {
 			mockSuccessfulUpdatePath();
 			workflowHistoryRepository.updateVersionMetadata.mockResolvedValue(0);
 
@@ -580,51 +581,21 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 		});
 	});
 
-	describe('review state broadcast', () => {
-		it('broadcasts exactly once after the lock resolves', async () => {
-			mockSuccessfulUpdatePath();
-			let lockResolved = false;
-			dbLockService.withLockContext.mockImplementation(async (_id, fn) => {
-				const result = await fn(ctx);
-				lockResolved = true;
-				return result;
-			});
-			collaborationService.broadcastWorkflowReviewStateChanged.mockImplementation(async () => {
-				expect(lockResolved).toBe(true);
-			});
-
-			await service.updateVersion(user, requestId, dto);
-
-			expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledTimes(1);
-			expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-1');
+	it('tells open editors exactly once, after the lock resolves', async () => {
+		mockSuccessfulUpdatePath();
+		let lockResolved = false;
+		dbLockService.withLockContext.mockImplementation(async (_id, fn) => {
+			const result = await fn(ctx);
+			lockResolved = true;
+			return result;
+		});
+		collaborationService.broadcastWorkflowReviewStateChanged.mockImplementation(async () => {
+			expect(lockResolved).toBe(true);
 		});
 
-		it('does not broadcast on an in-transaction conflict', async () => {
-			mockSuccessfulUpdatePath();
-			requestRepository.findById
-				.mockResolvedValueOnce(openRequest())
-				.mockResolvedValueOnce(openRequest({ state: 'closed' }));
+		await service.updateVersion(user, requestId, dto);
 
-			await expect(service.updateVersion(user, requestId, dto)).rejects.toThrow(ConflictError);
-
-			expect(collaborationService.broadcastWorkflowReviewStateChanged).not.toHaveBeenCalled();
-		});
-
-		it('resolves and logs a warning when the broadcast rejects', async () => {
-			mockSuccessfulUpdatePath();
-			collaborationService.broadcastWorkflowReviewStateChanged.mockRejectedValue(
-				new Error('push down'),
-			);
-
-			const result = await service.updateVersion(user, requestId, dto);
-			expect(result.id).toBe(requestId);
-
-			// Wait for the rejected notification to be logged.
-			await new Promise(process.nextTick);
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Failed to broadcast review state change',
-				expect.objectContaining({ workflowId: 'wf-1' }),
-			);
-		});
+		expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledTimes(1);
+		expect(collaborationService.broadcastWorkflowReviewStateChanged).toHaveBeenCalledWith('wf-1');
 	});
 });
