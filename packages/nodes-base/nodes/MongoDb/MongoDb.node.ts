@@ -6,7 +6,6 @@ import type {
 	UpdateOptions,
 	Sort,
 	MongoClient,
-	WriteError,
 } from 'mongodb';
 import { MongoBulkWriteError, ObjectId } from 'mongodb';
 import { NodeConnectionTypes, NodeOperationError, UserError } from 'n8n-workflow';
@@ -121,12 +120,11 @@ async function executeBulkUpdate(
 		} catch (error) {
 			if (!continueOnFail) throw error;
 
-			// writeErrors carry the op's position within this bulkWrite call
+			// writeErrors carry the op's position within this bulkWrite call.
+			// The driver types this as OneOrMore<WriteError>, so normalise to an array.
 			const failedOpIndexes = new Map<number, string>();
 			if (error instanceof MongoBulkWriteError) {
-				const writeErrors: readonly WriteError[] = Array.isArray(error.writeErrors)
-					? error.writeErrors
-					: [error.writeErrors];
+				const writeErrors = [error.writeErrors].flat();
 				for (const writeError of writeErrors) {
 					failedOpIndexes.set(writeError.index, writeError.errmsg ?? error.message);
 				}
