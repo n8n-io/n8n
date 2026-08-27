@@ -299,12 +299,6 @@ export interface ObservationalMemoryConfig {
 	observationLogTailLimit?: number;
 	/** Lease duration for scoped background memory task locks. */
 	lockTtlMs?: number;
-	/**
-	 * Opt-in: trigger the Observer mid-run at agent-loop boundaries and compact
-	 * the live prompt. Temporary flag — removed by AGENT-228 when mid-run
-	 * observation becomes the default. Default: false.
-	 */
-	midRunObservation?: boolean;
 	/** Policy callback that turns transcript deltas into markdown observations. */
 	observe?: ObservationLogObserveFn;
 	/** Policy callback that returns drop/merge instructions for the active observation log. */

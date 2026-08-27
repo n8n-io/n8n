@@ -24,33 +24,42 @@ function runOptions(): RunOptions & ExecutionOptions {
 	return { persistence: { threadId: THREAD_ID, resourceId: RESOURCE_ID } };
 }
 
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+	let resolve!: (value: T) => void;
+	const promise = new Promise<T>((res) => {
+		resolve = res;
+	});
+	return { promise, resolve };
+}
+
 function buildOrchestrator(
 	store: InMemoryMemory,
 	observationalMemory: ObservationalMemoryConfig,
-): MemoryOrchestrator {
+): { orchestrator: MemoryOrchestrator; tracker: BackgroundTaskTracker } {
 	const config = {
 		name: 'mid-run-agent',
 		memory: store,
 		observationalMemory,
 	} as unknown as AgentRuntimeConfig;
+	const tracker = new BackgroundTaskTracker();
 	// Character-count token counter keeps budget thresholds deterministic.
-	return new MemoryOrchestrator(
+	const orchestrator = new MemoryOrchestrator(
 		config,
-		new BackgroundTaskTracker(),
+		tracker,
 		new AgentEventBus(),
 		new RuntimeTelemetry(config),
 		async (text) => await Promise.resolve(text.length),
 	);
+	return { orchestrator, tracker };
 }
 
 describe('MemoryOrchestrator.maybeObserveMidRun', () => {
-	it('does nothing below the token budget', async () => {
+	it('does nothing below the soft threshold', async () => {
 		const store = new InMemoryMemory();
 		const observe = vi.fn(
 			async () => await Promise.resolve('* CRITICAL (14:30) Should not appear.'),
 		);
-		const orchestrator = buildOrchestrator(store, {
-			midRunObservation: true,
+		const { orchestrator } = buildOrchestrator(store, {
 			observerThresholdTokens: 100_000,
 			observe,
 			observationLogTailLimit: 20,
@@ -67,8 +76,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 
 	it('persists the turn, writes observations, advances the cursor, and masks the window on crossing', async () => {
 		const store = new InMemoryMemory();
-		const orchestrator = buildOrchestrator(store, {
-			midRunObservation: true,
+		const { orchestrator } = buildOrchestrator(store, {
 			observerThresholdTokens: 10,
 			observe: async () =>
 				await Promise.resolve('* CRITICAL (14:30) User set up mid-run observation.'),
@@ -97,30 +105,9 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		expect(list.observationLogMemory).toContain('User set up mid-run observation.');
 	});
 
-	it('is a no-op when the flag is off, even far above the threshold', async () => {
-		const store = new InMemoryMemory();
-		const observe = vi.fn(
-			async () => await Promise.resolve('* CRITICAL (14:30) Should not appear.'),
-		);
-		const orchestrator = buildOrchestrator(store, {
-			observerThresholdTokens: 1,
-			observe,
-			observationLogTailLimit: 20,
-		});
-		const list = new AgentMessageList();
-		list.addInput([userMsg('a very long message far beyond the tiny threshold')]);
-
-		await orchestrator.maybeObserveMidRun(list, runOptions());
-
-		expect(observe).not.toHaveBeenCalled();
-		expect(await store.getMessagesForObservationScope(THREAD_ID)).toHaveLength(0);
-		expect(list.forLlm('base').messages).toHaveLength(1);
-	});
-
 	it('leaves the window unmasked when the observer fails', async () => {
 		const store = new InMemoryMemory();
-		const orchestrator = buildOrchestrator(store, {
-			midRunObservation: true,
+		const { orchestrator } = buildOrchestrator(store, {
 			observerThresholdTokens: 10,
 			observe: async () => await Promise.reject(new Error('observer exploded')),
 			observationLogTailLimit: 20,
@@ -143,8 +130,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		const observe = vi.fn(
 			async () => await Promise.resolve('* CRITICAL (14:30) Should not appear.'),
 		);
-		const orchestrator = buildOrchestrator(store, {
-			midRunObservation: true,
+		const { orchestrator } = buildOrchestrator(store, {
 			observerThresholdTokens: 10,
 			observe,
 			observationLogTailLimit: 20,
@@ -164,8 +150,7 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		const observe = vi.fn(
 			async () => await Promise.resolve('* IMPORTANT (14:31) Progress recorded.'),
 		);
-		const orchestrator = buildOrchestrator(store, {
-			midRunObservation: true,
+		const { orchestrator } = buildOrchestrator(store, {
 			observerThresholdTokens: 30,
 			observe,
 			observationLogTailLimit: 20,
@@ -184,5 +169,107 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		await orchestrator.maybeObserveMidRun(list, runOptions());
 		expect(observe).toHaveBeenCalledTimes(2);
 		expect(await store.getActiveObservationLog({ observationScopeId: THREAD_ID })).toHaveLength(2);
+	});
+
+	// The per-message transcript adds a `[timestamp] role:` header (~33 chars for
+	// user, ~38 for assistant), so with a character-count token counter a
+	// 750-char message lands at ~783 tokens: inside the soft band [700, 1000)
+	// of a 1000-token hard threshold, and two such messages cross the hard one.
+
+	it('schedules the observer in the background at the soft threshold and activates at a later boundary', async () => {
+		const store = new InMemoryMemory();
+		const d = deferred<string>();
+		const observe = vi.fn(async () => await d.promise);
+		const { orchestrator, tracker } = buildOrchestrator(store, {
+			observerThresholdTokens: 1000,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('x'.repeat(750))]);
+
+		// Soft crossing persists the turn and schedules in the background —
+		// the boundary call returns while the observer is still pending.
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+		expect(await store.getMessagesForObservationScope(THREAD_ID)).toHaveLength(1);
+		expect(list.forLlm('base').messages).toHaveLength(1);
+		await vi.waitFor(() => expect(observe).toHaveBeenCalledTimes(1));
+
+		// While the task is in flight, later boundaries do not schedule another.
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+		expect(observe).toHaveBeenCalledTimes(1);
+
+		d.resolve('* CRITICAL (14:30) Background observation.');
+		await tracker.flush();
+
+		// The next boundary activates the settled result without a new observer run.
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+		expect(observe).toHaveBeenCalledTimes(1);
+		expect(list.forLlm('base').messages).toEqual([
+			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
+		]);
+		expect(list.observationLogMemory).toContain('Background observation.');
+		expect(await store.getCursor(THREAD_ID)).not.toBeNull();
+	});
+
+	it('joins the in-flight observer when the hard threshold is crossed', async () => {
+		const store = new InMemoryMemory();
+		const d = deferred<string>();
+		const observe = vi.fn(async () => await d.promise);
+		const { orchestrator } = buildOrchestrator(store, {
+			observerThresholdTokens: 1000,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('x'.repeat(750))]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+		await vi.waitFor(() => expect(observe).toHaveBeenCalledTimes(1));
+
+		// New messages push the budget past the hard threshold mid-flight.
+		list.addResponse([assistantMsg('y'.repeat(750))]);
+		const boundary = orchestrator.maybeObserveMidRun(list, runOptions());
+		d.resolve('* CRITICAL (14:30) First chunk observed.');
+		await boundary;
+
+		// Joined the in-flight result instead of running a second observer: the
+		// cursor covers only the first message, so the second stays visible.
+		expect(observe).toHaveBeenCalledTimes(1);
+		const visible = list.forLlm('base').messages;
+		expect(visible).toHaveLength(2);
+		expect(visible[0]).toEqual({ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER });
+		expect(JSON.stringify(visible[1])).toContain('y'.repeat(750));
+	});
+
+	it('falls back to synchronous observation at the hard threshold after a failed background task', async () => {
+		const store = new InMemoryMemory();
+		const observe = vi
+			.fn(async () => await Promise.resolve('* CRITICAL (14:30) Recovered.'))
+			.mockRejectedValueOnce(new Error('observer exploded'));
+		const { orchestrator, tracker } = buildOrchestrator(store, {
+			observerThresholdTokens: 1000,
+			observe,
+			observationLogTailLimit: 20,
+		});
+		const list = new AgentMessageList();
+		list.addInput([userMsg('x'.repeat(750))]);
+
+		// Background task settles as failed; the window stays untouched.
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+		await tracker.flush();
+		expect(list.forLlm('base').messages).toHaveLength(1);
+
+		// Hard crossing clears the failed result and observes synchronously.
+		list.addResponse([assistantMsg('y'.repeat(750))]);
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		expect(observe).toHaveBeenCalledTimes(2);
+		expect(list.forLlm('base').messages).toEqual([
+			{ role: 'user', content: OBSERVATION_CONTINUATION_REMINDER },
+		]);
+		expect(await store.getActiveObservationLog({ observationScopeId: THREAD_ID })).toHaveLength(1);
+		const cursor = await store.getCursor(THREAD_ID);
+		expect(cursor?.lastObservedMessageId).toBe(list.messages().at(-1)?.id);
 	});
 });

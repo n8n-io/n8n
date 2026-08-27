@@ -102,7 +102,6 @@ describe('buildFromJson()', () => {
 						reflectorThresholdTokens?: number;
 						observationLogTailLimit?: number;
 						lockTtlMs?: number;
-						midRunObservation?: boolean;
 						observe?: unknown;
 						reflect?: unknown;
 					};
@@ -981,7 +980,6 @@ describe('buildFromJson()', () => {
 					renderTokenBudget: 4_000,
 					observationLogTailLimit: 10,
 					lockTtlMs: 5_000,
-					midRunObservation: true,
 				},
 			},
 		});
@@ -1006,7 +1004,6 @@ describe('buildFromJson()', () => {
 			reflectorThresholdTokens: 12_000,
 			observationLogTailLimit: 10,
 			lockTtlMs: 5_000,
-			midRunObservation: true,
 		});
 		expect(getMemoryConfig(agent)?.observationalMemory?.observe).toBeUndefined();
 		expect(getMemoryConfig(agent)?.observationalMemory?.reflect).toBeUndefined();

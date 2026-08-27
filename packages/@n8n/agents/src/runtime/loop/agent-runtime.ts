@@ -952,8 +952,8 @@ export class AgentRuntime {
 			// Emit TurnEnd after all tool calls in this iteration are processed
 			this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(list.responseDelta()));
 
-			// Clean loop boundary: all tool calls settled. Opt-in mid-run
-			// observation may compact the LLM window here before the next call.
+			// Clean loop boundary: all tool calls settled. Mid-run observation
+			// may compact the LLM window here before the next call.
 			await this.memory.maybeObserveMidRun(list, options);
 
 			// Step boundary reached with nothing pending: durably checkpoint so a

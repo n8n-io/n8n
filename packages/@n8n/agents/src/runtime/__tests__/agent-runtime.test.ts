@@ -6524,7 +6524,7 @@ describe('AgentRuntime — observation log jobs', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Mid-run observation (AGENT-191, behind midRunObservation)
+// Mid-run observation (AGENT-191 / AGENT-228)
 // ---------------------------------------------------------------------------
 
 describe('AgentRuntime — mid-run observation', () => {
@@ -6562,7 +6562,6 @@ describe('AgentRuntime — mid-run observation', () => {
 
 	function buildMidRunRuntime(
 		memory: InMemoryMemory,
-		midRunObservation: boolean,
 		extra?: { tools?: BuiltTool[]; checkpointStorage?: CheckpointStore },
 	): AgentRuntime {
 		return new AgentRuntime({
@@ -6573,7 +6572,6 @@ describe('AgentRuntime — mid-run observation', () => {
 			tools: extra?.tools ?? [makeStepTool()],
 			...(extra?.checkpointStorage ? { checkpointStorage: extra.checkpointStorage } : {}),
 			observationalMemory: {
-				midRunObservation,
 				observerThresholdTokens: 1,
 				observationLogTailLimit: 20,
 				observe: async () => await Promise.resolve(OBSERVE_TEXT),
@@ -6583,7 +6581,7 @@ describe('AgentRuntime — mid-run observation', () => {
 
 	it('compacts the live prompt after crossing the budget mid-run', async () => {
 		const memory = new InMemoryMemory();
-		const runtime = buildMidRunRuntime(memory, true);
+		const runtime = buildMidRunRuntime(memory);
 		generateText
 			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
 			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-2', 'do_step', { step: 2 }))
@@ -6612,34 +6610,12 @@ describe('AgentRuntime — mid-run observation', () => {
 		expect(await memory.getCursor('thread-1')).not.toBeNull();
 	});
 
-	it('leaves prompts untouched when the flag is off', async () => {
-		const memory = new InMemoryMemory();
-		const runtime = buildMidRunRuntime(memory, false);
-		generateText
-			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'do_step', { step: 1 }))
-			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-2', 'do_step', { step: 2 }))
-			.mockResolvedValueOnce(makeGenerateSuccess('all done'));
-
-		await runtime.generate('start work', { persistence: PERSISTENCE });
-		await runtime.dispose();
-
-		const messageCounts = generateText.mock.calls.map(
-			(call) => (call[0] as CapturedModelCall).messages.length,
-		);
-		expect(messageCounts).toEqual([...messageCounts].sort((a, b) => a - b));
-		for (let i = 0; i < generateText.mock.calls.length; i++) {
-			const serialized = JSON.stringify(capturedCall(i).messages);
-			expect(serialized).toContain('start work');
-			expect(serialized).not.toContain(OBSERVATION_CONTINUATION_REMINDER);
-		}
-	});
-
 	it('re-derives the mask from the cursor when resuming a suspended run', async () => {
 		const memory = new InMemoryMemory();
 		const checkpointStore = makeClaimingCheckpointStore();
 		const tools = [makeStepTool(), makeInterruptibleTool()];
 
-		const runtime = buildMidRunRuntime(memory, true, { tools, checkpointStorage: checkpointStore });
+		const runtime = buildMidRunRuntime(memory, { tools, checkpointStorage: checkpointStore });
 		generateText
 			// Iteration 1 crosses the budget and compacts before iteration 2.
 			.mockResolvedValueOnce(makeGenerateWithToolCall('tc-step', 'do_step', { step: 1 }))
@@ -6651,7 +6627,7 @@ describe('AgentRuntime — mid-run observation', () => {
 		const suspension = first.pendingSuspend?.[0];
 		if (!suspension) throw new Error('Expected the run to suspend on the approve tool');
 
-		const resumed = buildMidRunRuntime(memory, true, { tools, checkpointStorage: checkpointStore });
+		const resumed = buildMidRunRuntime(memory, { tools, checkpointStorage: checkpointStore });
 		generateText.mockResolvedValueOnce(makeGenerateSuccess('continued'));
 		await resumed.resume(
 			'generate',

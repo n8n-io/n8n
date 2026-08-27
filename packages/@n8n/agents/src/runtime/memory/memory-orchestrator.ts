@@ -15,7 +15,11 @@ import {
 import { runObservationLogReflector } from './observation-log-reflector';
 import { renderObservationLog } from './observation-log-renderer';
 import { hasObservationLogStore, hasObservationLogTaskLockStore } from './observation-log-store';
-import { ScopedMemoryTaskRunner, type ScopedMemoryTaskHandle } from './scoped-memory-task-runner';
+import {
+	ScopedMemoryTaskRunner,
+	type ScopedMemoryTaskHandle,
+	type ScopedMemoryTaskResult,
+} from './scoped-memory-task-runner';
 import { settleOrphanedToolMessages } from './strip-orphaned-tool-messages';
 import type {
 	AgentExecutionCounter,
@@ -42,6 +46,8 @@ import {
 import { sanitizeOffloadedToolResultsForMemory } from '../tools/tool-result-guard';
 
 const DEFAULT_MEMORY_TASK_LOCK_TTL_MS = 30_000;
+/** Fraction of observerThresholdTokens at which the mid-run observer starts in the background. */
+const MID_RUN_SOFT_THRESHOLD_RATIO = 0.7;
 const logger = createFilteredLogger();
 
 function hasFunctionProperty<K extends PropertyKey>(
@@ -49,6 +55,19 @@ function hasFunctionProperty<K extends PropertyKey>(
 	property: K,
 ): value is Record<K, (...args: never[]) => unknown> {
 	return property in value && typeof Reflect.get(value, property) === 'function';
+}
+
+interface MidRunObserverTask {
+	handle: ScopedMemoryTaskHandle<RunObservationLogObserverResult>;
+	result?: ScopedMemoryTaskResult<RunObservationLogObserverResult>;
+}
+
+function didAdvanceCursor(
+	result: ScopedMemoryTaskResult<RunObservationLogObserverResult>,
+): boolean {
+	return (
+		result.status === 'completed' && result.value.status === 'ran' && result.value.cursorAdvanced
+	);
 }
 
 function hasObservationLogObserverMemory(
@@ -79,6 +98,9 @@ export class MemoryOrchestrator {
 	 * cached by message id so the boundary check never re-encodes messages.
 	 */
 	private midRunTokenCounts = new Map<string, number>();
+
+	/** In-flight background mid-run observer task; `result` set on settlement. */
+	private midRunObserverTask: MidRunObserverTask | undefined;
 
 	constructor(
 		private readonly config: AgentRuntimeConfig,
@@ -344,25 +366,99 @@ export class MemoryOrchestrator {
 	}
 
 	/**
-	 * Mid-run observation (behind `observationalMemory.midRunObservation`):
-	 * called at clean loop boundaries. When the unobserved-transcript token
-	 * budget crosses `observerThresholdTokens`, persist the turn-so-far (the
-	 * Observer reads from the store), run the Observer synchronously through
-	 * the scoped task runner, then mask the observed messages out of the LLM
-	 * window and refresh the injected observation log. Best-effort: a skipped
-	 * (lock held) or failed observer run leaves the window untouched and never
-	 * fails the run — the budget stays high and the next boundary retries.
+	 * Mid-run observation, called at clean loop boundaries. When the
+	 * unobserved-transcript token budget crosses a soft threshold
+	 * (`MID_RUN_SOFT_THRESHOLD_RATIO` x `observerThresholdTokens`), persist the
+	 * turn-so-far (the Observer reads from the store) and start the Observer as
+	 * a background task without blocking the loop. A later boundary activates
+	 * the settled result cheaply: mask the observed messages out of the LLM
+	 * window and refresh the injected observation log — no LLM call. Only when
+	 * the budget reaches the hard threshold (`observerThresholdTokens`) does the
+	 * loop block: it joins the in-flight task, or falls back to a synchronous
+	 * Observer run. Best-effort: a skipped (lock held) or failed observer run
+	 * leaves the window untouched and never fails the run — the budget stays
+	 * high and the next boundary retries.
 	 */
 	async maybeObserveMidRun(
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
 		const { memory, observationalMemory } = this.config;
-		if (!observationalMemory?.midRunObservation) return;
 		if (!memory || !options?.persistence || !hasObservationLogObserverMemory(memory)) return;
-		const observerThresholdTokens = observationalMemory.observerThresholdTokens;
-		if (!observationalMemory.observe || observerThresholdTokens === undefined) return;
+		const observerThresholdTokens = observationalMemory?.observerThresholdTokens;
+		if (!observationalMemory?.observe || observerThresholdTokens === undefined) return;
 
+		// Phase 1: activate a settled background result first — cheap, resets
+		// the budget for the threshold checks below. A failed or skipped task
+		// just clears; the soft or hard path below retries.
+		if (this.midRunObserverTask?.result) {
+			const { result } = this.midRunObserverTask;
+			this.midRunObserverTask = undefined;
+			if (didAdvanceCursor(result)) {
+				await this.activateObservations(list, options.persistence);
+			}
+		}
+
+		const budget = await this.estimateVisibleBudget(list);
+		const softThresholdTokens = Math.max(
+			1,
+			Math.floor(observerThresholdTokens * MID_RUN_SOFT_THRESHOLD_RATIO),
+		);
+		if (budget < softThresholdTokens) return;
+
+		const telemetry = this.runtimeTelemetry.resolve(options);
+
+		// Phase 2: hard threshold — the window must not grow past it. Join the
+		// in-flight task if any; if still over (or none / failed), observe
+		// synchronously.
+		if (budget >= observerThresholdTokens) {
+			logger.debug('Mid-run observation hit the hard threshold', {
+				threadId: options.persistence.threadId,
+				budget,
+				observerThresholdTokens,
+				observerInFlight: Boolean(this.midRunObserverTask),
+			});
+			if (this.midRunObserverTask) {
+				const result = await this.midRunObserverTask.handle.done;
+				this.midRunObserverTask = undefined;
+				if (didAdvanceCursor(result)) {
+					await this.activateObservations(list, options.persistence);
+					if ((await this.estimateVisibleBudget(list)) < observerThresholdTokens) return;
+				}
+			}
+			await this.persistTurnDelta(list, options);
+			const handle = this.scheduleObserverTask(
+				options.persistence,
+				options.executionCounter,
+				telemetry,
+			);
+			if (!handle) return;
+			const result = await handle.done;
+			if (!didAdvanceCursor(result)) return;
+			await this.activateObservations(list, options.persistence);
+			return;
+		}
+
+		// Phase 3: soft threshold — start the observer in the background; never
+		// blocks the loop. One in-flight task at a time.
+		if (this.midRunObserverTask) return;
+		await this.persistTurnDelta(list, options);
+		const handle = this.scheduleObserverTask(
+			options.persistence,
+			options.executionCounter,
+			telemetry,
+			softThresholdTokens,
+		);
+		if (!handle) return;
+		const entry: MidRunObserverTask = { handle };
+		void handle.done.then((result) => {
+			entry.result = result;
+		});
+		this.midRunObserverTask = entry;
+	}
+
+	/** Sum cached per-message observer-transcript token estimates for the visible window. */
+	private async estimateVisibleBudget(list: AgentMessageList): Promise<number> {
 		const visible = list.llmVisibleMessages();
 		for (const message of visible) {
 			if (!this.midRunTokenCounts.has(message.id)) {
@@ -372,26 +468,20 @@ export class MemoryOrchestrator {
 				);
 			}
 		}
-		const budget = visible.reduce((sum, m) => sum + (this.midRunTokenCounts.get(m.id) ?? 0), 0);
-		if (budget < observerThresholdTokens) return;
+		return visible.reduce((sum, m) => sum + (this.midRunTokenCounts.get(m.id) ?? 0), 0);
+	}
 
-		await this.persistTurnDelta(list, options);
-
-		const telemetry = this.runtimeTelemetry.resolve(options);
-		const handle = this.scheduleObserverTask(
-			options.persistence,
-			options.executionCounter,
-			telemetry,
-		);
-		if (!handle) return;
-		const result = await handle.done;
-		if (result.status !== 'completed') return;
-		if (result.value.status !== 'ran' || !result.value.cursorAdvanced) return;
-
-		const cursor = await memory.getCursor(options.persistence.threadId);
+	/** Mask the window up to the persisted cursor and refresh the injected log. No LLM call. */
+	private async activateObservations(
+		list: AgentMessageList,
+		persistence: AgentPersistenceOptions,
+	): Promise<void> {
+		const memory = this.config.memory;
+		if (!memory || !hasObservationLogObserverMemory(memory)) return;
+		const cursor = await memory.getCursor(persistence.threadId);
 		if (!cursor) return;
 		list.maskObservedMessages(cursor);
-		await this.setListObservationLogMemory(list, options.persistence);
+		await this.setListObservationLogMemory(list, persistence);
 	}
 
 	/**
@@ -406,7 +496,7 @@ export class MemoryOrchestrator {
 		persistence: AgentPersistenceOptions | undefined,
 	): Promise<void> {
 		const { memory, observationalMemory } = this.config;
-		if (!observationalMemory?.midRunObservation) return;
+		if (!observationalMemory) return;
 		if (!memory || !persistence || !hasObservationLogObserverMemory(memory)) return;
 		const cursor = await memory.getCursor(persistence.threadId);
 		if (!cursor) return;
@@ -423,6 +513,7 @@ export class MemoryOrchestrator {
 		persistence: AgentPersistenceOptions,
 		executionCounter?: AgentExecutionCounter,
 		telemetry?: BuiltTelemetry,
+		effectiveThresholdTokens?: number,
 	): ScopedMemoryTaskHandle<RunObservationLogObserverResult> | undefined {
 		const { memory, observationalMemory } = this.config;
 		if (!memory || !observationalMemory || !hasObservationLogObserverMemory(memory)) {
@@ -440,7 +531,10 @@ export class MemoryOrchestrator {
 				await runObservationLogObserver({
 					memory,
 					...scope,
-					observerThresholdTokens,
+					// The observer re-checks its delta against this threshold; a
+					// soft-threshold background run must pass the soft value or the
+					// re-check would skip it as below-threshold.
+					observerThresholdTokens: effectiveThresholdTokens ?? observerThresholdTokens,
 					observationLogTailLimit: observationalMemory.observationLogTailLimit ?? 0,
 					observe,
 					tokenCounter: this.tokenCounter,
