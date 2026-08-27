@@ -599,7 +599,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						category: 'blocked',
 						shouldEdit: false,
 						reason: 'user_denied',
-						guidance: 'The user denied permission to edit this workflow.',
+						guidance:
+							'The user declined the save approval card — nothing was saved. Do not re-issue ' +
+							'the same save unprompted: acknowledge the denial, tell the user what remains ' +
+							'unsaved, and ask how they want to proceed.',
 					});
 					trackWorkflowSourceBuild(context, {
 						result: 'denied',
