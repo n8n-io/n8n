@@ -1,10 +1,10 @@
 import { camelCase } from 'change-case';
-import { getMcpAuthHeaders } from 'n8n-workflow';
-import type {
-	McpOAuth2CredentialType,
-	McpRegistryConnection,
-	PrepareMcpRegistryConnectionInput,
-	PrepareMcpRegistryConnectionResult,
+import {
+	getMcpAuthHeaders,
+	type McpOAuth2CredentialType,
+	type McpRegistryConnection,
+	type PrepareMcpRegistryConnectionInput,
+	type PrepareMcpRegistryConnectionResult,
 } from 'n8n-workflow';
 
 import type { McpRegistryServer } from './registry/mcp-registry.types';
