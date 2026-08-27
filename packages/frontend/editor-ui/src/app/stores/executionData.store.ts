@@ -188,10 +188,9 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 		// per-entry projections below — collapses id → node resolution from
 		// O(N) per lookup to O(1).
 		const executionNodeById = computed(() => {
-			const map = new Map<string, INode>();
-			const nodes = execution.value?.workflowData?.nodes;
-			if (nodes) for (const n of nodes) map.set(n.id, n);
-			return map;
+			const snapshotNodes = execution.value?.workflowData?.nodes ?? [];
+			const kvPairs = snapshotNodes.map((n) => [n.id, n] as const);
+			return new Map(kvPairs);
 		});
 
 		function getExecutionNodeById(nodeId: string): INode | undefined {
