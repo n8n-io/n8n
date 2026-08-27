@@ -55,6 +55,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'page:get':
 					responseData = await page.get.execute.call(this, i);
 					break;
+				case 'page:getComments':
+					responseData = await page.getComments.execute.call(this, i);
+					break;
 				case 'page:getLabels':
 					responseData = await page.getLabels.execute.call(this, i);
 					break;
