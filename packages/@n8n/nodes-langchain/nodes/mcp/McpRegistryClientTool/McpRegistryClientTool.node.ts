@@ -49,7 +49,7 @@ export class McpRegistryClientTool implements INodeType {
 			this.registryRuntime?.prepareConnection(input) ?? {
 				ok: false,
 				error: {
-					code: 'missing_access_token',
+					code: 'not_registered',
 					message: 'MCP registry connection is not registered',
 				},
 			}

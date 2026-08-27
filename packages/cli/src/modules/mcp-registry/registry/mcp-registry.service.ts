@@ -22,7 +22,6 @@ import {
 import type { McpRegistryServer } from './mcp-registry.types';
 import { toEntity, fromEntity } from './mcp-registry.types';
 import { MCP_REGISTRY_PACKAGE_NAME } from '../node-description-transform';
-import { resolveMcpRegistryConnection } from '../mcp-registry-connection';
 
 type RefreshReason = 'startup' | 'leader-takeover' | 'interval';
 
@@ -130,11 +129,9 @@ export class McpRegistryService {
 	}
 
 	async getConnection(nodeTypeName: string): Promise<McpRegistryConnection | undefined> {
-		for (const server of await this.getAll({ includeDeprecated: true })) {
-			const connection = resolveMcpRegistryConnection(server);
-			if (connection?.nodeTypeName === nodeTypeName) return connection;
-		}
-		return undefined;
+		const loader = this.loadNodesAndCredentials.loaders[MCP_REGISTRY_PACKAGE_NAME];
+		if (!(loader instanceof McpRegistryNodeLoader)) return undefined;
+		return loader.getConnection(nodeTypeName);
 	}
 
 	private startPeriodicRefresh(): void {

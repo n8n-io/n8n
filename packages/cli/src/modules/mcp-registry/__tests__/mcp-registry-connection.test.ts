@@ -1,6 +1,10 @@
 import type { McpRegistryConnection } from 'n8n-workflow';
 
-import { prepareMcpRegistryConnection } from '../mcp-registry-connection';
+import {
+	prepareMcpRegistryConnection,
+	resolveMcpRegistryConnection,
+} from '../mcp-registry-connection';
+import { notionMockServer } from '../registry/mock-servers';
 
 const connection: McpRegistryConnection = {
 	nodeTypeName: '@n8n/mcp-registry.example',
@@ -9,6 +13,31 @@ const connection: McpRegistryConnection = {
 	endpointHostname: 'example.com',
 	transport: 'httpStreamable',
 };
+
+describe('resolveMcpRegistryConnection', () => {
+	it('resolves http remotes and remotes that include userinfo', () => {
+		const result = resolveMcpRegistryConnection({
+			...notionMockServer,
+			remotes: [{ type: 'streamable-http', url: 'http://user:pass@localhost:8080/mcp' }],
+		});
+
+		expect(result).toMatchObject({
+			nodeTypeName: '@n8n/mcp-registry.notion',
+			endpointUrl: 'http://user:pass@localhost:8080/mcp',
+			endpointHostname: 'localhost',
+			transport: 'httpStreamable',
+		});
+	});
+
+	it('returns null when the remote URL is invalid', () => {
+		expect(
+			resolveMcpRegistryConnection({
+				...notionMockServer,
+				remotes: [{ type: 'streamable-http', url: 'not a url' }],
+			}),
+		).toBeNull();
+	});
+});
 
 describe('prepareMcpRegistryConnection', () => {
 	it('rejects an empty access token', () => {

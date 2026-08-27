@@ -28,7 +28,7 @@ export type PrepareMcpRegistryConnectionResult =
 	| {
 			ok: false;
 			error: {
-				code: 'missing_access_token';
+				code: 'missing_access_token' | 'not_registered';
 				message: string;
 			};
 	  };

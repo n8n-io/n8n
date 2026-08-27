@@ -30,15 +30,6 @@ export function resolveMcpRegistryConnection(
 
 	try {
 		const endpoint = new URL(remote.url);
-		if (
-			endpoint.protocol !== 'https:' ||
-			!endpoint.hostname ||
-			endpoint.username ||
-			endpoint.password
-		) {
-			return null;
-		}
-
 		return {
 			nodeTypeName: `${MCP_REGISTRY_PACKAGE_NAME}.${camelCase(server.slug)}`,
 			credentialType: getMcpRegistryCredentialTypeName(server),

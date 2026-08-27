@@ -146,6 +146,12 @@ describe('McpRegistryNodeLoader', () => {
 				(baseNode as typeof baseNode & { setRegistryRuntime: ReturnType<typeof vi.fn> })
 					.setRegistryRuntime,
 			).toHaveBeenCalledOnce();
+			expect(loader.getConnection('@n8n/mcp-registry.notion')).toMatchObject({
+				nodeTypeName: '@n8n/mcp-registry.notion',
+				endpointUrl: 'https://mcp.notion.com/mcp',
+				endpointHostname: 'mcp.notion.com',
+				transport: 'httpStreamable',
+			});
 		});
 
 		it('inherits prototype methods from the base node class on synthetic nodes', async () => {
@@ -390,6 +396,7 @@ describe('McpRegistryNodeLoader', () => {
 			expect(loader.types.credentials).toEqual([]);
 			expect(loader.known.nodes).toEqual({});
 			expect(loader.known.credentials).toEqual({});
+			expect(loader.getConnection('@n8n/mcp-registry.notion')).toBeUndefined();
 			expect(() => loader.getNode('notion')).toThrow(UnrecognizedNodeTypeError);
 			expect(() => loader.getCredential('notionMcpOAuth2Api')).toThrow(
 				UnrecognizedCredentialTypeError,
