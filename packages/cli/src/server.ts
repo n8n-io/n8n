@@ -1,5 +1,4 @@
 import { inDevelopment, inProduction, ModuleRegistry } from '@n8n/backend-common';
-import { installGlobalProxyAgent } from '@n8n/backend-network';
 import { SecurityConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
@@ -458,8 +457,6 @@ export class Server extends AbstractServer {
 		} else {
 			this.app.use('/', express.static(staticCacheDir, cacheOptions));
 		}
-
-		installGlobalProxyAgent();
 	}
 
 	/** Authenticates every request that can reach a type file, whether or not the editor is served. */
