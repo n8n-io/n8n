@@ -253,6 +253,21 @@ describe('SubAgentForegroundRunner', () => {
 		);
 	});
 
+	it.each([
+		{ runType: 'test' as const, usePublishedVersion: false },
+		{ runType: 'production' as const, usePublishedVersion: true },
+	])(
+		'resolves the child draft for test runs and the published version for production ($runType)',
+		async ({ runType, usePublishedVersion }) => {
+			await runner.runForeground(spawnRequest, { projectId, credentialProvider, runType });
+
+			expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(spawnRequest.source, {
+				projectId,
+				usePublishedVersion,
+			});
+		},
+	);
+
 	it.each(['integrated', 'manual'] as const)(
 		'reconstructs child workflow tools with the parent %s execution mode',
 		async (workflowToolExecutionMode) => {
@@ -556,7 +571,7 @@ describe('SubAgentForegroundRunner', () => {
 
 		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
 			{ agentId: 'agent-1' },
-			{ projectId },
+			{ projectId, usePublishedVersion: true },
 		);
 		expect(childAgent.resume).toHaveBeenCalledWith(
 			'stream',
@@ -619,7 +634,7 @@ describe('SubAgentForegroundRunner', () => {
 
 		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
 			{ agentId: parentAgentId },
-			{ projectId },
+			{ projectId, usePublishedVersion: true },
 		);
 		expect(result.threadId).toBe('child-thread-1');
 		expect(checkpointStorage.delete).toHaveBeenCalledWith('child-run-1', parentAgentId);
@@ -646,7 +661,7 @@ describe('SubAgentForegroundRunner', () => {
 
 		expect(sourceResolver.resolveForRuntime).toHaveBeenCalledWith(
 			{ agentId: 'agent-1', versionId: 'version-7' },
-			{ projectId },
+			{ projectId, usePublishedVersion: true },
 		);
 	});
 

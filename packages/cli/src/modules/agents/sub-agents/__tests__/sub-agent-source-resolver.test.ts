@@ -53,6 +53,7 @@ function makeAgentHistory(overrides: Partial<AgentHistory> = {}): AgentHistory {
 function makeAgent(overrides: Partial<Agent> = {}): Agent {
 	return {
 		id: agentId,
+		name: 'Helper Agent',
 		projectId,
 		versionId,
 		schema: runnableConfig,
@@ -109,6 +110,60 @@ describe('SubAgentSourceResolver', () => {
 				config: runnableConfig,
 			},
 		});
+	});
+
+	it('pins a resumed version over the currently published one in production runs', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ activeVersion: makeAgentHistory({ versionId: 'version-newer' }) }),
+		);
+		agentHistoryRepository.findByVersionAndAgentId.mockResolvedValue(makeAgentHistory());
+
+		await expect(
+			resolver.resolveForRuntime({ agentId, versionId }, { projectId, usePublishedVersion: true }),
+		).resolves.toMatchObject({
+			source: { sourceId: agentId, versionId },
+		});
+	});
+
+	it('resolves the published version with its assets for production runs', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({
+				schema: { ...runnableConfig, instructions: 'Use the current draft.' },
+				activeVersion: makeAgentHistory({
+					schema: { ...runnableConfig, instructions: 'Use the published snapshot.' },
+					tools: {
+						published_tool: {
+							code: 'return "published";',
+							descriptor: { ...customToolDescriptor, name: 'published_tool' },
+						},
+					},
+				}),
+			}),
+		);
+
+		const result = await resolver.resolveForRuntime(
+			{ agentId },
+			{ projectId, usePublishedVersion: true },
+		);
+
+		expect(result.source).toEqual({
+			sourceId: agentId,
+			versionId,
+			config: { ...runnableConfig, instructions: 'Use the published snapshot.' },
+		});
+		expect(result.toolCodeByName).toEqual({ published_tool: 'return "published";' });
+	});
+
+	it('rejects a never-published sub-agent in production runs', async () => {
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			makeAgent({ activeVersionId: null, activeVersion: null }),
+		);
+
+		await expect(
+			resolver.resolveForRuntime({ agentId }, { projectId, usePublishedVersion: true }),
+		).rejects.toThrow(
+			'Sub-agent "Helper Agent" is not published. Publish it before delegating to it in a production run.',
+		);
 	});
 
 	it('resolves runtime assets from the draft, not the published version', async () => {

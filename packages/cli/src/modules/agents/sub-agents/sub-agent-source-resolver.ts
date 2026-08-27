@@ -18,6 +18,12 @@ import { AgentRepository } from '../repositories/agent.repository';
 
 export interface ResolveSubAgentSourceContext {
 	projectId: string;
+	/**
+	 * Resolve the published version instead of the current draft. Set for
+	 * production runs, mirroring how sub-workflows and "Message an Agent"
+	 * resolve referenced entities.
+	 */
+	usePublishedVersion?: boolean;
 }
 
 export interface ResolvedSubAgentRuntimeSource {
@@ -35,8 +41,9 @@ export class SubAgentSourceResolver {
 	) {}
 
 	/**
-	 * Resolve a saved n8n agent's current draft, or a pinned historical version,
-	 * into a runnable config plus its tool/skill assets.
+	 * Resolve a saved n8n agent into a runnable config plus its tool/skill
+	 * assets: a pinned historical version (resumes), the published version
+	 * (production runs), or the current draft (test runs).
 	 */
 	async resolveForRuntime(
 		source: SubAgentSource,
@@ -73,6 +80,24 @@ export class SubAgentSourceResolver {
 					config: this.toRunnableConfig(version.schema),
 				},
 				...getAgentRuntimeAssets(version),
+			};
+		}
+
+		if (context.usePublishedVersion) {
+			const activeVersion = agent.activeVersion;
+			if (!activeVersion?.schema) {
+				throw new UserError(
+					`Sub-agent "${agent.name}" is not published. Publish it before delegating to it in a production run.`,
+				);
+			}
+
+			return {
+				source: {
+					sourceId: source.agentId,
+					versionId: activeVersion.versionId,
+					config: this.toRunnableConfig(activeVersion.schema),
+				},
+				...getAgentRuntimeAssets(activeVersion),
 			};
 		}
 

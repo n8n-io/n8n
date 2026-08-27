@@ -83,6 +83,10 @@ Example patch flow:
 
 ## Rules
 
+- Saved subagents run their current draft in Preview/test runs and their
+  published version in production runs. Delegating to a never-published agent
+  fails in production, so tell the user to publish saved subagents the target
+  agent relies on before production use.
 - If the resumed values include text that is not one of the listed agent ids,
   do not persist it as an agent id; ask a follow-up.
 - \`useWhen\` is relationship-specific routing guidance owned by this parent

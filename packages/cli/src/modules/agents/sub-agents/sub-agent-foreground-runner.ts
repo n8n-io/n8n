@@ -174,9 +174,12 @@ export class SubAgentForegroundRunner {
 		operation: ForegroundOperation,
 		context: SubAgentForegroundRunContext,
 	): Promise<SubAgentForegroundResult> {
+		// Same versioning model as sub-workflows and "Message an Agent": test runs
+		// resolve the child's current draft, production runs its published version.
+		// A resume carries the pinned versionId it started with, which wins either way.
 		const runtimeSource = await this.sourceResolver.resolveForRuntime(
 			operation.type === 'run' ? operation.request.source : operation.source,
-			{ projectId: context.projectId },
+			{ projectId: context.projectId, usePublishedVersion: context.runType === 'production' },
 		);
 
 		// A delegated run uses the same fresh id for SDK memory and its session record.
