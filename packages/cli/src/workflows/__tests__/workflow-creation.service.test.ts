@@ -1,10 +1,10 @@
 import type { Logger, LicenseState } from '@n8n/backend-common';
-import type { ProjectRepository, Role, User } from '@n8n/db';
+import type { Folder, Project, ProjectRepository, Role, User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { CredentialsService } from '@/credentials/credentials.service';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -15,6 +15,7 @@ import type { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { ProjectService } from '@/services/project.service.ee';
+import type { FolderService } from '@/services/folder.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
@@ -31,11 +32,12 @@ describe('WorkflowCreationService', () => {
 	const userHasScopesMock = vi.mocked(userHasScopes);
 
 	let workflowCreationService: WorkflowCreationService;
-	let credentialsServiceMock: MockProxy<CredentialsService>;
+	let credentialsFinderServiceMock: MockProxy<CredentialsFinderService>;
 	let enterpriseWorkflowServiceMock: MockProxy<EnterpriseWorkflowService>;
 	let licenseStateMock: MockProxy<LicenseState>;
 	let projectServiceMock: MockProxy<ProjectService>;
 	let projectRepositoryMock: MockProxy<ProjectRepository>;
+	let folderServiceMock: MockProxy<FolderService>;
 	let workflowValidationServiceMock: MockProxy<WorkflowValidationService>;
 	let instanceRedactionEnforcementServiceMock: MockProxy<InstanceRedactionEnforcementService>;
 	let workflowHistoryServiceMock: MockProxy<WorkflowHistoryService>;
@@ -50,11 +52,12 @@ describe('WorkflowCreationService', () => {
 		vi.clearAllMocks();
 
 		loggerMock = mock<Logger>();
-		credentialsServiceMock = mock<CredentialsService>();
+		credentialsFinderServiceMock = mock<CredentialsFinderService>();
 		enterpriseWorkflowServiceMock = mock<EnterpriseWorkflowService>();
 		licenseStateMock = mock<LicenseState>();
 		projectServiceMock = mock<ProjectService>();
 		projectRepositoryMock = mock<ProjectRepository>();
+		folderServiceMock = mock<FolderService>();
 		workflowValidationServiceMock = mock<WorkflowValidationService>();
 		instanceRedactionEnforcementServiceMock = mock<InstanceRedactionEnforcementService>();
 		workflowHistoryServiceMock = mock<WorkflowHistoryService>();
@@ -63,6 +66,10 @@ describe('WorkflowCreationService', () => {
 		workflowHookContextServiceMock = mock<WorkflowHookContextService>();
 		workflowValidationServiceMock.validateCredentialNodeRestrictions.mockReturnValue({
 			isValid: true,
+		});
+		enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
+			ids: new Set(),
+			hasUnresolved: false,
 		});
 
 		// Default: no active floor. Tests opt into a floor explicitly.
@@ -88,8 +95,8 @@ describe('WorkflowCreationService', () => {
 			licenseStateMock,
 			projectRepositoryMock,
 			mock(), // tagRepository
-			credentialsServiceMock,
-			mock(), // folderService
+			credentialsFinderServiceMock,
+			folderServiceMock,
 			enterpriseWorkflowServiceMock,
 			mock<NodeTypes>(),
 			workflowValidationServiceMock,
@@ -98,6 +105,43 @@ describe('WorkflowCreationService', () => {
 			mcpSettingsService,
 			policyEnforcementServiceMock,
 		);
+	});
+
+	describe('prepareBatchContext()', () => {
+		it('resolves import-wide reads once and folders by unique id', async () => {
+			const user = mock<User>();
+			const project = { id: 'project-1' } as Project;
+			const folder = { id: 'folder-1', homeProject: project } as Folder;
+			projectServiceMock.getProjectWithScope.mockResolvedValue(project);
+			folderServiceMock.getFoldersByIds.mockResolvedValue([folder]);
+			credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+			mcpSettingsService.getAutoExposeNewWorkflows.mockResolvedValue(false);
+			enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
+				ids: new Set(['source-credential']),
+				hasUnresolved: false,
+			});
+
+			const context = await workflowCreationService.prepareBatchContext(
+				user,
+				project.id,
+				['folder-1', 'folder-1'],
+				[makeWorkflow(), makeWorkflow()],
+				new Map([['source-credential', 'target-credential']]),
+			);
+
+			expect(projectServiceMock.getProjectWithScope).toHaveBeenCalledTimes(1);
+			expect(folderServiceMock.getFoldersByIds).toHaveBeenCalledWith(['folder-1']);
+			expect(mcpSettingsService.getAutoExposeNewWorkflows).toHaveBeenCalledTimes(1);
+			expect(credentialsFinderServiceMock.findCredentialIdsWithScopeForUser).toHaveBeenCalledTimes(
+				1,
+			);
+			expect(credentialsFinderServiceMock.findCredentialIdsWithScopeForUser).toHaveBeenCalledWith(
+				[],
+				user,
+				['credential:read'],
+			);
+			expect(context.allowedCredentialIds).toEqual(new Set(['target-credential']));
+		});
 	});
 
 	function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
@@ -193,11 +237,17 @@ describe('WorkflowCreationService', () => {
 		});
 
 		describe('credential retrieval', () => {
-			it('should include global credentials when checking credential permissions', async () => {
+			it('should fetch only credential ids referenced by the workflow', async () => {
 				/**
 				 * Arrange
 				 */
-				credentialsServiceMock.getMany.mockResolvedValue([]);
+				enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
+					ids: new Set(['credential-1']),
+					hasUnresolved: false,
+				});
+				credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValue(
+					new Set(['credential-1']),
+				);
 				licenseStateMock.isSharingLicensed.mockReturnValue(true);
 				enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser.mockImplementation(() => {
 					throw new Error('Stopping for test');
@@ -217,9 +267,57 @@ describe('WorkflowCreationService', () => {
 				/**
 				 * Assert
 				 */
-				expect(credentialsServiceMock.getMany).toHaveBeenCalledWith(user, {
-					includeGlobal: true,
+				expect(credentialsFinderServiceMock.findCredentialIdsWithScopeForUser).toHaveBeenCalledWith(
+					['credential-1'],
+					user,
+					['credential:read'],
+				);
+			});
+
+			it('should skip credential lookup when the workflow references none', async () => {
+				licenseStateMock.isSharingLicensed.mockReturnValue(true);
+				enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser.mockImplementation(() => {
+					throw new Error('Stopping for test');
 				});
+				projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+
+				await expect(
+					workflowCreationService.createWorkflow(mock<User>(), new WorkflowEntity(), {
+						projectId: 'project-1',
+					}),
+				).rejects.toThrow();
+
+				expect(
+					credentialsFinderServiceMock.findCredentialIdsWithScopeForUser,
+				).not.toHaveBeenCalled();
+			});
+
+			it('should reject unresolved credential references', async () => {
+				const user = mock<User>();
+				const newWorkflow = new WorkflowEntity();
+				licenseStateMock.isSharingLicensed.mockReturnValue(true);
+				projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+				enterpriseWorkflowServiceMock.collectCredentialReferences.mockReturnValue({
+					ids: new Set(['credential-1']),
+					hasUnresolved: true,
+				});
+				credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValue(
+					new Set(['credential-1']),
+				);
+				enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser.mockImplementation(
+					(_workflow, allowedCredentialIds) => {
+						expect(allowedCredentialIds).toEqual(new Set());
+						throw new Error('Unresolved credential');
+					},
+				);
+
+				await expect(
+					workflowCreationService.createWorkflow(user, newWorkflow, {
+						projectId: 'project-1',
+					}),
+				).rejects.toThrow(
+					'The workflow you are trying to save contains credentials that are not shared with you',
+				);
 			});
 		});
 
@@ -227,7 +325,6 @@ describe('WorkflowCreationService', () => {
 			/**
 			 * Arrange
 			 */
-			credentialsServiceMock.getMany.mockResolvedValue([]);
 			licenseStateMock.isSharingLicensed.mockReturnValue(true);
 			enterpriseWorkflowServiceMock.validateCredentialPermissionsToUser.mockImplementation(() => {
 				throw new Error('User does not have access');

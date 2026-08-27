@@ -142,6 +142,8 @@ const rootDir = isInScriptsDir ? path.join(__dirname, '..') : __dirname;
 
 const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
 const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
+// Opt-in: only cloud deploys the distroless runners image, so local builds skip it.
+const withDistroless = process.env.DOCKER_BUILD_DISTROLESS === 'true';
 // The pc CI variant pins the n8n base images; runners have no such variant.
 const baseImageArgs = [
 	process.env.BUILDER_IMAGE && `BUILDER_IMAGE=${process.env.BUILDER_IMAGE}`,
@@ -175,6 +177,12 @@ const config = {
 		},
 		get fullImageName() {
 			return `${this.imageBaseName}:${this.imageTag}`;
+		},
+	},
+	runnersDistroless: {
+		dockerfilePath: path.join(rootDir, 'docker/images/runners/Dockerfile.distroless'),
+		get fullImageName() {
+			return `${config.runners.fullImageName}-distroless`;
 		},
 	},
 	buildContext: rootDir,
@@ -242,6 +250,21 @@ async function main() {
 			buildTime: runnersBuildTime,
 		},
 	];
+
+	if (withDistroless) {
+		const buildTime = await buildDockerImage({
+			name: 'runners-distroless',
+			dockerfilePath: config.runnersDistroless.dockerfilePath,
+			fullImageName: config.runnersDistroless.fullImageName,
+			buildArgs: nodeVersionArgs,
+		});
+		imageStats.push({
+			imageName: config.runnersDistroless.fullImageName,
+			platform,
+			size: await getImageSize(config.runnersDistroless.fullImageName),
+			buildTime,
+		});
+	}
 
 	// Write docker build manifest for telemetry collection
 	const dockerManifest = {

@@ -124,6 +124,18 @@ describe('confluenceApiRequest', () => {
 		);
 	});
 
+	it('sends an array body through as an array', async () => {
+		const body = [{ prefix: 'global', name: 'a' }];
+
+		await confluenceApiRequest.call(ctx, 'POST', '/wiki/rest/api/content/1/label', body);
+
+		expect(mockHttpRequestWithAuthentication).toHaveBeenNthCalledWith(
+			2,
+			'confluenceCloudOAuth2Api',
+			expect.objectContaining({ body: [{ prefix: 'global', name: 'a' }] }),
+		);
+	});
+
 	it('defaults body and qs to empty objects', async () => {
 		await confluenceApiRequest.call(ctx, 'GET', '/wiki/api/v2/pages');
 
