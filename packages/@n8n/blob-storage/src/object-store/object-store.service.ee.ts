@@ -56,8 +56,12 @@ export class ObjectStoreService {
 
 	/** This generates the config for the S3Client to make it work in all various auth configurations */
 	getClientConfig() {
-		const { host, bucket, protocol, credentials, maxAttempts } = this.s3Config;
-		const clientConfig: S3ClientConfig = {};
+		const { host, bucket, protocol, credentials, maxAttempts, connectionTimeoutMs } = this.s3Config;
+		const clientConfig: S3ClientConfig = {
+			// Passed as options rather than a handler instance so the SDK builds the
+			// handler with its own bundled version.
+			requestHandler: { connectionTimeout: connectionTimeoutMs },
+		};
 		const endpoint = host ? `${protocol}://${host}` : undefined;
 		if (endpoint) {
 			clientConfig.endpoint = endpoint;
@@ -77,6 +81,10 @@ export class ObjectStoreService {
 	}
 
 	async init() {
+		const { bucket, forcePathStyle } = this.s3Config;
+		this.logger.info(
+			`S3 binary storage configured: endpoint=${this.endpoint}, bucket=${this.bucket}, region=${bucket.region || 'none'}, forcePathStyle=${forcePathStyle}`,
+		);
 		await this.checkConnection();
 		this.setReady(true);
 	}
@@ -91,12 +99,23 @@ export class ObjectStoreService {
 	async checkConnection() {
 		if (this.isReady) return;
 
+		const { endpoint } = this;
+
 		try {
-			this.logger.debug('Checking connection to S3 bucket', { bucket: this.bucket });
+			this.logger.debug('Checking connection to S3 bucket', { bucket: this.bucket, endpoint });
 			const command = new HeadBucketCommand({ Bucket: this.bucket });
-			await this.s3Client.send(command);
+			// Without an abort signal this hangs indefinitely when the endpoint accepts
+			// the TCP connection but never completes the TLS handshake, which blocks
+			// the rest of startup. The signal bounds all retry attempts together.
+			await this.s3Client.send(command, {
+				abortSignal: AbortSignal.timeout(this.s3Config.connectionTimeoutMs),
+			});
 		} catch (e) {
-			this.handleS3Error(e);
+			const error = ensureError(e);
+			throw new UnexpectedError(
+				`Failed to connect to S3 at ${endpoint} (bucket: ${this.bucket}): ${error.message}. Check that N8N_EXTERNAL_STORAGE_S3_HOST includes the port, that N8N_EXTERNAL_STORAGE_S3_PROTOCOL matches the endpoint, and that the endpoint is reachable.`,
+				{ cause: error },
+			);
 		}
 	}
 
@@ -370,6 +389,12 @@ export class ObjectStoreService {
 		} catch (e) {
 			this.handleS3Error(e);
 		}
+	}
+
+	/** Resolved S3 endpoint, or a placeholder when falling back to the AWS default. */
+	private get endpoint() {
+		const { host, protocol } = this.s3Config;
+		return host ? `${protocol}://${host}` : 'the AWS default endpoint';
 	}
 
 	private handleS3Error(e: unknown): never {

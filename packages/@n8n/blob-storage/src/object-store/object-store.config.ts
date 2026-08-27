@@ -55,6 +55,13 @@ export class ObjectStoreConfig {
 	@Env('N8N_EXTERNAL_STORAGE_S3_MAX_ATTEMPTS')
 	maxAttempts: number = 3;
 
+	/**
+	 * Milliseconds to wait for the startup connection check to the S3 bucket before
+	 * giving up. Also bounds how long any S3 request may spend establishing a socket.
+	 */
+	@Env('N8N_EXTERNAL_STORAGE_S3_CONNECTION_TIMEOUT')
+	connectionTimeoutMs: number = 10_000;
+
 	@Nested
 	bucket: ObjectStoreBucketConfig = {} as ObjectStoreBucketConfig;
 
