@@ -3,8 +3,12 @@ vi.mock('@n8n/instance-ai', async () => {
 	const { WorkflowNotFoundError } = await import(
 		'../../../../../@n8n/instance-ai/src/errors/workflow-not-found.error.js'
 	);
+	const { isFolderContextEnabled } = await import(
+		'../../../../../@n8n/instance-ai/src/utils/folder-context-enabled.js'
+	);
 	return {
 		WorkflowNotFoundError,
+		isFolderContextEnabled,
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
 				s
