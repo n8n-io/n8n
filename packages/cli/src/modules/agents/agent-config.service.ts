@@ -230,9 +230,6 @@ export class AgentConfigService {
 			model: decomposedSchema.model,
 			instructions: decomposedSchema.instructions,
 			...(credentialProvided ? { credential: decomposedSchema.credential } : {}),
-			...(modelDeploymentNameProvided
-				? { modelDeploymentName: decomposedSchema.modelDeploymentName }
-				: {}),
 			...(personalisationProvided ? { personalisation: nextPersonalisation } : {}),
 			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
 			...(subAgentsProvided ? { subAgents: decomposedSchema.subAgents } : {}),
@@ -244,6 +241,15 @@ export class AgentConfigService {
 			...(mcpServersProvided ? { mcpServers: decomposedSchema.mcpServers } : {}),
 			...(vectorStoresProvided ? { vectorStores: decomposedSchema.vectorStores } : {}),
 		};
+
+		if (modelDeploymentNameProvided) {
+			const deploymentName = decomposedSchema.modelDeploymentName?.trim();
+			if (deploymentName) {
+				nextSchema.modelDeploymentName = deploymentName;
+			} else {
+				delete nextSchema.modelDeploymentName;
+			}
+		}
 
 		if (options?.clearOmittedOptionalFields) {
 			clearOmittedOptionalFields(nextSchema, validatedConfig);

@@ -262,6 +262,31 @@ describe('AgentValidationService — structured issues', () => {
 		expect(result).toEqual({ status: 'valid', issues: [] });
 	});
 
+	it('does not require a deployment name when Azure credential resolve fails', async () => {
+		const { service, agentRepository } = makeService();
+		const azureConfig: AgentJsonConfig = {
+			...runnableConfig,
+			model: 'azure-openai/gpt-4o',
+			credential: 'azure-main',
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent(azureConfig));
+
+		const credentialProvider = makeCredentialProvider(
+			[{ id: 'azure-main', type: 'azureOpenAiApi' }],
+			() => {
+				throw new Error('transient');
+			},
+		);
+
+		const result = await service.validateAgentConfiguration(agentId, projectId, credentialProvider);
+
+		expect(result.issues).not.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ code: 'missing_required', path: 'modelDeploymentName' }),
+			]),
+		);
+	});
+
 	it('flags a cross-provider mismatch between an Azure OpenAI credential and an OpenAI model', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(

@@ -52,6 +52,26 @@ describe('setupApiKeyAuthentication', () => {
 		expect(ctx.getCredentials).toHaveBeenCalledWith('testCredential');
 	});
 
+	it('should return a Foundry base URL when endpointType is foundry', async () => {
+		const mockCredentials = {
+			apiKey: 'test-api-key',
+			endpointType: 'foundry',
+			foundryEndpoint: 'https://test.services.ai.azure.com/openai/v1',
+		};
+
+		ctx.getCredentials = vi.fn().mockResolvedValue(mockCredentials);
+
+		const result = await setupApiKeyAuthentication.call(ctx, 'testCredential');
+
+		expect(result).toEqual({
+			azureOpenAIApiKey: 'test-api-key',
+			azureOpenAIApiInstanceName: '',
+			azureOpenAIApiVersion: '',
+			azureOpenAIEndpoint: 'https://test.services.ai.azure.com/openai/v1',
+			azureFoundryBaseURL: 'https://test.services.ai.azure.com/openai/v1',
+		});
+	});
+
 	it('should throw NodeOperationError when API key is missing', async () => {
 		// Arrange
 		const mockCredentials = {

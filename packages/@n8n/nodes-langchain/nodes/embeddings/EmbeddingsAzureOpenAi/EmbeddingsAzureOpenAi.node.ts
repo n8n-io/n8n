@@ -1,4 +1,4 @@
-import { AzureOpenAIEmbeddings } from '@langchain/openai';
+import { AzureOpenAIEmbeddings, OpenAIEmbeddings } from '@langchain/openai';
 import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 import {
 	NodeConnectionTypes,
@@ -123,9 +123,11 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 		this.logger.debug('Supply data for embeddings');
 		const credentials = await this.getCredentials<{
 			apiKey: string;
-			resourceName: string;
-			apiVersion: string;
+			resourceName?: string;
+			apiVersion?: string;
 			endpoint?: string;
+			endpointType?: 'classic' | 'foundry';
+			foundryEndpoint?: string;
 		}>('azureOpenAiApi');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
@@ -138,6 +140,25 @@ export class EmbeddingsAzureOpenAi implements INodeType {
 
 		if (options.timeout === -1) {
 			options.timeout = undefined;
+		}
+
+		if (credentials.endpointType === 'foundry') {
+			const foundryURL = credentials.foundryEndpoint;
+			const embeddings = new OpenAIEmbeddings({
+				apiKey: credentials.apiKey,
+				model: modelName,
+				configuration: {
+					baseURL: foundryURL,
+					fetchOptions: {
+						dispatcher: getProxyAgent(foundryURL ?? '', {}),
+					},
+				},
+				...options,
+			});
+
+			return {
+				response: logWrapper(embeddings, this),
+			};
 		}
 
 		const embeddings = new AzureOpenAIEmbeddings({

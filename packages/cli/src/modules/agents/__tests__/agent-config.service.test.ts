@@ -381,6 +381,26 @@ describe('AgentConfigService', () => {
 			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
 			expect(saved.schema?.modelDeploymentName).toBe('my-gpt4o-deployment');
 
+			// An explicit empty value is a clear (the builder sends "" when the
+			// user blanks the deployment-name field).
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, modelDeploymentName: '' },
+				user,
+				byUser,
+			);
+			saved = agentRepository.saveDraftFenced.mock.calls.at(-1)?.[0] as Agent;
+			expect(saved.schema).not.toHaveProperty('modelDeploymentName');
+
+			await service.updateConfig(
+				agentId,
+				projectId,
+				{ ...baseConfig, modelDeploymentName: 'my-gpt4o-deployment' },
+				user,
+				byUser,
+			);
+
 			// Full-replace callers remove it when omitted.
 			await service.updateConfig(agentId, projectId, { ...baseConfig }, user, {
 				clearOmittedOptionalFields: true,

@@ -1,4 +1,4 @@
-import { AzureOpenAIEmbeddings } from '@langchain/openai';
+import { AzureOpenAIEmbeddings, OpenAIEmbeddings } from '@langchain/openai';
 import { createMockExecuteFunction } from 'n8n-nodes-base/test/nodes/Helpers';
 import type { INode, ISupplyDataFunctions } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -97,6 +97,36 @@ describe('AzureOpenAIEmbeddings', () => {
 					},
 				}),
 			);
+		});
+
+		it('should use OpenAIEmbeddings against the Foundry base URL', async () => {
+			const mockContext = setupMockContext();
+			const MockedOpenAIEmbeddings = vi.mocked(OpenAIEmbeddings);
+
+			mockContext.getCredentials.mockResolvedValue({
+				apiKey: 'test-api-key',
+				endpointType: 'foundry',
+				foundryEndpoint: 'https://test.services.ai.azure.com/openai/v1',
+			});
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model') return 'text-embedding-3-large';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await embeddingsAzureOpenAi.supplyData.call(mockContext, 0);
+
+			expect(MockedOpenAIEmbeddings).toHaveBeenCalledWith(
+				expect.objectContaining({
+					apiKey: 'test-api-key',
+					model: 'text-embedding-3-large',
+					configuration: expect.objectContaining({
+						baseURL: 'https://test.services.ai.azure.com/openai/v1',
+					}),
+				}),
+			);
+			expect(MockedAzureOpenAIEmbeddings).not.toHaveBeenCalled();
 		});
 	});
 });

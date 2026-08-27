@@ -74,6 +74,12 @@ vi.mock('@n8n/design-system', () => ({
 			'<div v-bind="$attrs" data-testid="markdown-editor">{{ modelValue }} {{ placeholder }}</div>',
 	},
 	N8nText: { template: '<span><slot /></span>', props: ['tag', 'bold', 'size', 'color'] },
+	N8nInput: {
+		name: 'N8nInput',
+		props: ['modelValue', 'placeholder', 'disabled'],
+		emits: ['update:modelValue', 'focus', 'blur'],
+		template: '<input v-bind="$attrs" />',
+	},
 	N8nCallout: {
 		name: 'N8nCallout',
 		props: ['theme', 'slim', 'icon'],
@@ -93,6 +99,13 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@n8n/stores/users.store', () => ({
 	useUsersStore: () => ({ currentUserId: 'user-1' }),
+}));
+
+vi.mock('@/features/credentials/credentials.store', () => ({
+	useCredentialsStore: () => ({
+		getCredentialById: () => undefined,
+		getCredentialData: async () => undefined,
+	}),
 }));
 
 vi.mock('../composables/useAgentProjectId', () => ({

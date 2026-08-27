@@ -407,7 +407,9 @@ export class AgentValidationService {
 				endpointType = data?.endpointType;
 			} catch {
 				// A credential that can't be resolved here will already be reported
-				// elsewhere; don't let a transient resolve failure block publish.
+				// elsewhere; don't let a transient resolve failure block publish
+				// by assuming Classic and requiring a deployment name.
+				return;
 			}
 			if (endpointType !== 'foundry') {
 				issues.push(agentIssue('missing_required', 'modelDeploymentName'));

@@ -13,9 +13,11 @@ export async function setupApiKeyAuthentication(
 		// Get Azure OpenAI Config (Endpoint, Version, etc.)
 		const configCredentials = await this.getCredentials<{
 			apiKey?: string;
-			resourceName: string;
-			apiVersion: string;
+			resourceName?: string;
+			apiVersion?: string;
 			endpoint?: string;
+			endpointType?: 'classic' | 'foundry';
+			foundryEndpoint?: string;
 		}>(credentialName);
 
 		if (!configCredentials.apiKey) {
@@ -27,10 +29,26 @@ export async function setupApiKeyAuthentication(
 
 		this.logger.info('Using API Key authentication for Azure OpenAI.');
 
+		if (configCredentials.endpointType === 'foundry') {
+			if (!configCredentials.foundryEndpoint) {
+				throw new NodeOperationError(
+					this.getNode(),
+					'Foundry endpoint is missing in the selected Azure OpenAI API credential.',
+				);
+			}
+			return {
+				azureOpenAIApiKey: configCredentials.apiKey,
+				azureOpenAIApiInstanceName: '',
+				azureOpenAIApiVersion: '',
+				azureOpenAIEndpoint: configCredentials.foundryEndpoint,
+				azureFoundryBaseURL: configCredentials.foundryEndpoint,
+			};
+		}
+
 		return {
 			azureOpenAIApiKey: configCredentials.apiKey,
-			azureOpenAIApiInstanceName: configCredentials.resourceName,
-			azureOpenAIApiVersion: configCredentials.apiVersion,
+			azureOpenAIApiInstanceName: configCredentials.resourceName ?? '',
+			azureOpenAIApiVersion: configCredentials.apiVersion ?? '',
 			azureOpenAIEndpoint: configCredentials.endpoint,
 		};
 	} catch (error) {

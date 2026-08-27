@@ -205,13 +205,13 @@ watch(
 );
 
 const emitDeploymentNameDebounced = useDebounceFn((value: string) => {
-	emit('update:config', { modelDeploymentName: value || undefined });
+	emit('update:config', { modelDeploymentName: value });
 }, getDebounceTime(DEBOUNCE_TIME.API.HEAVY_OPERATION));
 
 function onDeploymentNameInput(value: string) {
 	deploymentName.value = value;
 	if (props.immediateUpdates) {
-		emit('update:config', { modelDeploymentName: value || undefined });
+		emit('update:config', { modelDeploymentName: value });
 		return;
 	}
 	void emitDeploymentNameDebounced(value);

@@ -569,6 +569,35 @@ describe('createModel', () => {
 				}),
 			).not.toThrow();
 		});
+
+		it('should throw if a classic endpoint is missing resourceName', () => {
+			expect(() =>
+				createModel({
+					id: 'azure-openai/gpt-4o',
+					apiKey: 'az-key',
+					endpointType: 'classic',
+				}),
+			).toThrow(/Invalid credentials for provider "azure-openai"[\s\S]*resourceName/);
+		});
+
+		it('should throw if resourceName is missing when endpointType is omitted', () => {
+			expect(() =>
+				createModel({
+					id: 'azure-openai/gpt-4o',
+					apiKey: 'az-key',
+				}),
+			).toThrow(/Invalid credentials for provider "azure-openai"[\s\S]*resourceName/);
+		});
+
+		it('should throw if a foundry endpoint is missing baseURL', () => {
+			expect(() =>
+				createModel({
+					id: 'azure-openai/gpt-4o',
+					apiKey: 'az-key',
+					endpointType: 'foundry',
+				}),
+			).toThrow(/Invalid credentials for provider "azure-openai"[\s\S]*baseURL/);
+		});
 	});
 
 	describe('aws-bedrock', () => {
