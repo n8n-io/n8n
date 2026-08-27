@@ -267,9 +267,7 @@ describe('InstanceAiToolsConnectionModalWrapper', () => {
 				title: 'Linear',
 				tagline: 'Linear MCP',
 				description: 'Linear MCP',
-				credentials: [
-					{ credentialType: 'mcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-				],
+				credentials: [{ credentialType: 'mcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 				tools: [],
 				icons: [],
 				isOfficial: true,

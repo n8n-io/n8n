@@ -81,9 +81,7 @@ const BRAVE_PAYLOAD = {
 	serverSlug: 'brave',
 	title: 'Brave',
 	tagline: 'Search the web',
-	usesCredentials: [
-		{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-	],
+	usesCredentials: [{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 };
 
 const BRAVE_CATALOG_ENTRY = {
@@ -95,9 +93,7 @@ const BRAVE_CATALOG_ENTRY = {
 	version: '1',
 	updatedAt: '2026-01-01',
 	icons: [],
-	credentials: [
-		{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-	],
+	credentials: [{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 	tools: [],
 	isOfficial: true,
 	status: 'active' as const,
@@ -416,9 +412,7 @@ describe('InstanceAiMcpConnectCard', () => {
 				serverSlug: 'duck',
 				title: 'Duck',
 				tagline: 'Search',
-				usesCredentials: [
-					{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-				],
+				usesCredentials: [{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 			};
 			mcpStoreMock.mockReturnValue(
 				makeMcpStore({
