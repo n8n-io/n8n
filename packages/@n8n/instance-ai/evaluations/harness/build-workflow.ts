@@ -655,10 +655,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const seededCredentialIds = createdCredentials.map((c) => c.id);
 		// `createDeclaredCredentials` returns one entry per `declaredCredentials`, in
 		// the same order — index-zip to find which seeded ids the case marked
-		// already-broken (`valid: false`) and must NOT bypass, so their real
-		// connection test runs and fails.
+		// already-broken (`valid: false`) or empty (`blank: true`) and must NOT
+		// bypass, so their real connection test runs and fails.
 		const bypassCredentialTestIds = createdCredentials
-			.filter((_, i) => declaredCredentials[i]?.valid !== false)
+			.filter((_, i) => declaredCredentials[i]?.valid !== false && !declaredCredentials[i]?.blank)
 			.map((c) => c.id);
 		try {
 			// A seeded credential models one the user already has connected, so its
