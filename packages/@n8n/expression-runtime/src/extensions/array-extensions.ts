@@ -34,6 +34,8 @@ function reverse(value: unknown[]): unknown[] {
 	return [...value].reverse();
 }
 
+// TODO(CAT-4266): reconsider this approach — copy-on-write proxy traps would
+// make these shims unnecessary.
 // Copy-first shims for native in-place mutators, like reverse(): the VM engine's
 // data proxies are read-only (the natives would throw), and mutations from
 // expressions must not leak into workflow data.
