@@ -36,7 +36,7 @@ describe('evaluateContentImportSafely', () => {
 		expect(result).toStrictEqual({ violations: [violation], checkErrors: [] });
 	});
 
-	it('returns and logs checkErrors alongside violations', async () => {
+	it('returns checkErrors alongside violations, without logging them itself', async () => {
 		policyEnforcementService.hasChecksFor.mockReturnValue(true);
 		const checkFailure = { checkId: 'test.check', correlationId: 'corr-1' };
 		policyEnforcementService.evaluateContentImport.mockResolvedValue({
@@ -47,30 +47,9 @@ describe('evaluateContentImportSafely', () => {
 		const result = await evaluateContentImportSafely(policyEnforcementService, context, logger);
 
 		expect(result).toStrictEqual({ violations: [], checkErrors: [checkFailure] });
-		expect(logger.warn).toHaveBeenCalledWith(
-			'1 content-import policy check(s) failed to run for workflow workflow-1',
-			{ checkErrors: [checkFailure] },
-		);
-	});
-
-	it('falls back to "(new)" in the log message for a workflow with no id yet', async () => {
-		policyEnforcementService.hasChecksFor.mockReturnValue(true);
-		const checkFailure = { checkId: 'test.check', correlationId: 'corr-1' };
-		policyEnforcementService.evaluateContentImport.mockResolvedValue({
-			violations: [],
-			checkErrors: [checkFailure],
-		});
-		const newWorkflowContext: ContentImportContext = {
-			workflow: { id: null, name: 'Brand New', nodes: [] },
-			projectId: 'project-1',
-		};
-
-		await evaluateContentImportSafely(policyEnforcementService, newWorkflowContext, logger);
-
-		expect(logger.warn).toHaveBeenCalledWith(
-			'1 content-import policy check(s) failed to run for workflow (new)',
-			{ checkErrors: [checkFailure] },
-		);
+		// Reporting is the caller's job — each call site already logs checkErrors itself, so
+		// logging them here too would print every failed check twice.
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('does not fail when evaluateContentImport throws, and logs the error', async () => {

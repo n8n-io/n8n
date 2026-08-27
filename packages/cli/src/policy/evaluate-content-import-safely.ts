@@ -31,13 +31,7 @@ export async function evaluateContentImportSafely(
 		const { violations, checkErrors = [] } =
 			await policyEnforcementService.evaluateContentImport(context);
 
-		if (checkErrors.length) {
-			logger.warn(
-				`${checkErrors.length} content-import policy check(s) failed to run for workflow ${context.workflow.id ?? '(new)'}`,
-				{ checkErrors },
-			);
-		}
-
+		// Reporting checkErrors (like violations) is the caller's call — it already logs both.
 		return { violations, checkErrors };
 	} catch (error) {
 		logger.warn(
