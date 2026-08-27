@@ -116,7 +116,9 @@ describe('type availability policy repositories', () => {
 			expect(updated?.version).toBe(2);
 		});
 
-		it('bumps the version once per change, and never reuses one', async () => {
+		// Sequential only — the overlapping case is covered by the unit test on the
+		// repository, since neither database lets this suite interleave two writers.
+		it('bumps the version once per change, and round-trips the rules each time', async () => {
 			const policy = await createPolicy([DENY_SLACK]);
 
 			await policyRepo.updateRules(policy.id, [ALLOW_BASE], 'user-2', ROOT);
