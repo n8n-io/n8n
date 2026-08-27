@@ -407,7 +407,11 @@ describe('credentials tool', () => {
 			);
 
 			expect((result as { credentials: unknown[] }).credentials).toEqual([
-				expect.objectContaining({ id: null, type: 'openAiApi', __aiGatewayManaged: true }),
+				expect.objectContaining({
+					id: '__AI_GATEWAY_MANAGED__',
+					type: 'openAiApi',
+					__aiGatewayManaged: true,
+				}),
 				{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
 			]);
 		});
@@ -527,7 +531,11 @@ describe('credentials tool', () => {
 			);
 
 			expect(result.credentials).toEqual([
-				expect.objectContaining({ id: null, type: 'openAiApi', __aiGatewayManaged: true }),
+				expect.objectContaining({
+					id: '__AI_GATEWAY_MANAGED__',
+					type: 'openAiApi',
+					__aiGatewayManaged: true,
+				}),
 			]);
 			expect(result.hint).toContain('googlePalmApi');
 		});

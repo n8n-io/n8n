@@ -7,7 +7,11 @@
  * picks mocked nodes up and pins them with generated fixtures at verify time.
  */
 
-import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE, shouldAutoResolveCredential } from '@n8n/api-types';
+import {
+	AI_GATEWAY_MANAGED_TAG,
+	TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE,
+	shouldAutoResolveCredential,
+} from '@n8n/api-types';
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 
 import {
@@ -451,6 +455,24 @@ export async function resolveCredentials(
 						continue;
 					}
 					await mockOrAttachGateway();
+					continue;
+				}
+				// n8n credits: the builder copied the managed tag as the credential id
+				// from the credentials list, exactly as it copies a stored credential's
+				// id. Attach n8n credits and keep it — ahead of the user's own credential
+				// (the mirror of keeping a stored id) — so an explicit "use n8n credits"
+				// lands even when a stored credential of the same type exists. Fall back
+				// to a supported sibling when the shown type isn't gateway-served.
+				if (getCredentialId(value) === AI_GATEWAY_MANAGED_TAG && !wantsNewCredential) {
+					if (!(await isGatewayCredentialType(key))) {
+						const managedSibling = await resolveSupportedSiblingType(node, key);
+						if (managedSibling) {
+							delete creds[key];
+							await attachGatewayCredential(managedSibling);
+							continue;
+						}
+					}
+					await attachGatewayCredential();
 					continue;
 				}
 				if (isKnownCredentialForType(value, key, availableCredentials)) {

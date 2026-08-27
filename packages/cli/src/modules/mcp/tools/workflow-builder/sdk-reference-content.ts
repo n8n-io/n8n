@@ -25,7 +25,7 @@ const CODING_GUIDELINES = `Rules:
 - Use exact parameter names and structures from the type definitions.
 - Use unique variable names — never reuse builder function names (e.g. \`node\`, \`trigger\`) as variable names
 - Use descriptive node names (Good: "Fetch Weather Data", "Check Temperature"; Bad: "HTTP Request", "Set", "If")
-- Credentials: \`credentials: { slackApi: newCredential('Slack Bot') }\` — type must match what the node expects. Keep managed n8n credits as \`newCredential('n8n credits', { managed: true })\`
+- Credentials: \`credentials: { slackApi: newCredential('Slack Bot') }\` — type must match what the node expects
 - Expressions: use \`expr()\` for any \`{{ }}\` syntax  — always use single or double quotes, NOT backtick template literals
   - e.g. \`expr('Hello {{ $json.name }}')\` or \`expr("{{ $('Node').item.json.field }}")\`
   - For multiline expressions, use string concatenation: \`expr('Line 1\\n' + 'Line 2 {{ $json.value }}')\`

@@ -1246,22 +1246,13 @@ class NewCredentialImpl implements NewCredentialValue {
 	readonly __newCredential = true as const;
 	readonly name: string;
 	readonly id?: string;
-	readonly managed: boolean;
 
-	constructor(name: string, id?: string, managed = false) {
+	constructor(name: string, id?: string) {
 		this.name = name;
 		this.id = id;
-		this.managed = managed;
 	}
 
-	toJSON():
-		| { id: string; name: string }
-		| { id: null; name: string; __aiGatewayManaged: true }
-		| undefined {
-		// Managed credentials serialize as null-id slots.
-		if (this.managed) {
-			return { id: null, name: this.name, __aiGatewayManaged: true };
-		}
+	toJSON(): { id: string; name: string } | undefined {
 		if (this.id !== undefined) {
 			return { id: this.id, name: this.name };
 		}
@@ -1279,7 +1270,7 @@ class NewCredentialImpl implements NewCredentialValue {
  * (serializes to `{ id, name }` in JSON).
  *
  * @param name - Display name for the credential (e.g., 'My Slack Bot')
- * @param idOrOptions - Existing credential ID, or managed credential options
+ * @param id - Optional ID of an existing credential to link
  * @returns A credential marker
  *
  * @example
@@ -1291,20 +1282,10 @@ class NewCredentialImpl implements NewCredentialValue {
  * // Placeholder (credential to be created)
  * credentials: { slackApi: newCredential('My Slack Bot') }
  * // → {} (omitted from JSON)
- *
- * // Managed n8n credits
- * credentials: { openAiApi: newCredential('n8n credits', { managed: true }) }
- * // → { id: null, name: 'n8n credits', __aiGatewayManaged: true }
  * ```
  */
-export function newCredential(
-	name: string,
-	idOrOptions?: string | { managed?: boolean },
-): NewCredentialValue {
-	if (typeof idOrOptions === 'object') {
-		return new NewCredentialImpl(name, undefined, idOrOptions.managed === true);
-	}
-	return new NewCredentialImpl(name, idOrOptions);
+export function newCredential(name: string, id?: string): NewCredentialValue {
+	return new NewCredentialImpl(name, id);
 }
 
 /**

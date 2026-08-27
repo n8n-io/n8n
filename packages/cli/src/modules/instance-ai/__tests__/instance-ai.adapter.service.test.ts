@@ -92,7 +92,7 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
 /** Collaboration stub that reports no editor write lock and records broadcasts. */
 function createMockCollaborationService() {
 	return {
-		getWriteLock: vi.fn().mockResolvedValue(null),
+		ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
 		broadcastWorkflowUpdate: vi.fn().mockResolvedValue(undefined),
 	};
 }
@@ -1255,6 +1255,7 @@ import { WorkflowNotFoundError } from '../../../../../@n8n/instance-ai/src/error
 import { WorkflowSaveConflictError } from '../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error';
 import type { WorkflowService } from '@/workflows/workflow.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { LockedError } from '@/errors/response-errors/locked.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { License } from '@/license';
 import type { RoleService } from '@/services/role.service';
@@ -2197,7 +2198,7 @@ describe('createWorkflowAdapter', () => {
 			},
 		});
 		const code = generateWorkflowCode(workflow);
-		expect(code).toContain("newCredential('n8n credits', { managed: true })");
+		expect(code).toContain("newCredential('n8n credits')");
 		expect(code).not.toContain("newCredential('n8n credits', 'null')");
 	});
 
@@ -2873,19 +2874,18 @@ describe('createWorkflowAdapter', () => {
 	});
 
 	describe('editor write lock', () => {
-		const lockWorkflowForAnotherUser = (
+		const lockWorkflow = (
 			mockCollaborationService: ReturnType<typeof createMockCollaborationService>,
 		) => {
-			mockCollaborationService.getWriteLock.mockResolvedValue({
-				clientId: 'client-2',
-				userId: 'user-2',
-			});
+			mockCollaborationService.ensureWorkflowEditable.mockRejectedValue(
+				new LockedError('Cannot modify workflow while it is being edited by a user in the editor.'),
+			);
 		};
 
-		it('reports another user editor lock as a WorkflowEditorLockedError', async () => {
+		it('reports a locked workflow as a WorkflowEditorLockedError instead of a response error', async () => {
 			const { adapter, mockCollaborationService, mockWorkflowService } =
 				createWorkflowAdapterForTests();
-			lockWorkflowForAnotherUser(mockCollaborationService);
+			lockWorkflow(mockCollaborationService);
 
 			await expect(
 				adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON),
@@ -2893,24 +2893,12 @@ describe('createWorkflowAdapter', () => {
 			expect(mockWorkflowService.update).not.toHaveBeenCalled();
 		});
 
-		it('allows a workflow write when the current user holds the editor lock', async () => {
-			const { adapter, mockCollaborationService, mockWorkflowService } =
-				createWorkflowAdapterForTests();
-			mockCollaborationService.getWriteLock.mockResolvedValue({
-				clientId: 'client-1',
-				userId: 'user-1',
-			});
-
-			await adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON);
-
-			expect(mockWorkflowService.update).toHaveBeenCalled();
-		});
-
 		it('refuses to write when the lock cannot be checked, without claiming a lock', async () => {
+			// Fail closed: an unreadable lock is no proof that nobody is editing.
 			const { adapter, mockCollaborationService, mockWorkflowService } =
 				createWorkflowAdapterForTests();
 			const lookupFailure = new Error('collaboration cache is unreachable');
-			mockCollaborationService.getWriteLock.mockRejectedValue(lookupFailure);
+			mockCollaborationService.ensureWorkflowEditable.mockRejectedValue(lookupFailure);
 
 			await expect(adapter.updateFromWorkflowJSON('wf-existing', minimalWorkflowJSON)).rejects.toBe(
 				lookupFailure,
@@ -2921,7 +2909,7 @@ describe('createWorkflowAdapter', () => {
 		it('refuses to unpublish a locked workflow', async () => {
 			const { adapter, mockCollaborationService, mockWorkflowService } =
 				createWorkflowAdapterForTests();
-			lockWorkflowForAnotherUser(mockCollaborationService);
+			lockWorkflow(mockCollaborationService);
 
 			await expect(adapter.unpublish('wf-1')).rejects.toThrow(WorkflowEditorLockedError);
 			expect(mockWorkflowService.deactivateWorkflow).not.toHaveBeenCalled();
@@ -2930,7 +2918,7 @@ describe('createWorkflowAdapter', () => {
 		it('refuses to restore a version of a locked workflow', async () => {
 			const { adapter, mockCollaborationService, mockWorkflowService } =
 				createWorkflowAdapterForTests();
-			lockWorkflowForAnotherUser(mockCollaborationService);
+			lockWorkflow(mockCollaborationService);
 
 			await expect(adapter.restoreVersion?.('wf-1', 'v-1')).rejects.toThrow(
 				WorkflowEditorLockedError,

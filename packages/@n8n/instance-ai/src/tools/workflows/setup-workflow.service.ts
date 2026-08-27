@@ -726,10 +726,16 @@ async function buildRequestForCredentialType(
 			typeof existingOnNode?.id === 'string' && existingOnNode.id !== ''
 				? existingOnNode.id
 				: undefined;
+		// An explicit "create/pick a new credential" request (preferNewCredentials)
+		// re-opens the card even for a node that already has a working credential —
+		// otherwise a settled node is filtered out and the caller gets "No nodes
+		// require setup", so the user can never change the credential (e.g. switch a
+		// stored key to n8n credits).
 		const isSettled =
-			isAiGatewayManagedCredential(existingOnNode) ||
-			(boundId !== undefined &&
-				existingCredentials.some((credential) => credential.id === boundId));
+			!prefersNewCredential &&
+			(isAiGatewayManagedCredential(existingOnNode) ||
+				(boundId !== undefined &&
+					existingCredentials.some((credential) => credential.id === boundId)));
 		credentialNeedsAction = !isSettled;
 	}
 	// Tracked apart from `needsAction` because the two answer different questions: a node with a

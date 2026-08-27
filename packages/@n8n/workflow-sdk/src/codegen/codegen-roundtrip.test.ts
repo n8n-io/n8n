@@ -175,39 +175,6 @@ describe('parseWorkflowCode', () => {
 		expect(parsedJson.connections['Manual Trigger'].main[0]![0].node).toBe('HTTP Request');
 	});
 
-	it('should round-trip an n8n credits (AI Gateway managed) credential', () => {
-		const originalJson: WorkflowJSON = {
-			id: 'managed-cred',
-			name: 'Managed Credential',
-			nodes: [
-				{
-					id: 'node-1',
-					name: 'Generate Joke',
-					type: '@n8n/n8n-nodes-langchain.openAi',
-					typeVersion: 2.3,
-					position: [0, 0],
-					parameters: { resource: 'text', operation: 'message' },
-					credentials: {
-						openAiApi: { id: null, name: 'n8n credits', __aiGatewayManaged: true },
-					},
-				},
-			],
-			connections: {},
-		};
-
-		const code = generateWorkflowCode(originalJson);
-		expect(code).toContain("newCredential('n8n credits', { managed: true })");
-		expect(code).not.toContain("newCredential('n8n credits')");
-
-		const parsedJson = parseWorkflowCode(code);
-		const node = parsedJson.nodes.find((n) => n.name === 'Generate Joke');
-		expect(node?.credentials?.openAiApi).toEqual({
-			id: null,
-			name: 'n8n credits',
-			__aiGatewayManaged: true,
-		});
-	});
-
 	it('should preserve node-level execution options when generating and parsing code', () => {
 		const originalJson: WorkflowJSON = {
 			id: 'debug-workflow',

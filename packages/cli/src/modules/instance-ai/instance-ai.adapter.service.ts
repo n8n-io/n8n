@@ -123,6 +123,7 @@ import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { LockedError } from '@/errors/response-errors/locked.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
@@ -620,13 +621,16 @@ export class InstanceAiAdapterService {
 		const redactParameters = !allowSendingParameterValues;
 
 		/**
-		 * Instance AI writes bypass the REST controller. Block writes only when
-		 * another user holds the editor lock.
+		 * Instance AI writes bypass the REST controller, so the editor write lock
+		 * has to be honoured here — otherwise the agent silently overwrites the
+		 * work of whoever is editing the workflow on the canvas right now.
 		 */
 		const assertNotLockedByEditor = async (workflowId: string) => {
-			const lock = await collaborationService.getWriteLock(user.id, workflowId);
-			if (lock && lock.userId !== user.id) {
-				throw new WorkflowEditorLockedError(workflowId);
+			try {
+				await collaborationService.ensureWorkflowEditable(workflowId);
+			} catch (error) {
+				if (error instanceof LockedError) throw new WorkflowEditorLockedError(workflowId);
+				throw error;
 			}
 		};
 

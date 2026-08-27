@@ -45,9 +45,9 @@ export function formatCredentials(credentials: unknown): string {
 		const id = value.id;
 
 		if (typeof name === 'string') {
-			// Preserve managed credentials across codegen round-trips.
+			// Managed credentials have no persisted ID, so emit the placeholder form.
 			if (id === null && value.__aiGatewayManaged === true) {
-				return `${formatKey(key)}: newCredential('${escapeString(name)}', { managed: true })`;
+				return `${formatKey(key)}: newCredential('${escapeString(name)}')`;
 			}
 			if (id === undefined) {
 				return `${formatKey(key)}: newCredential('${escapeString(name)}')`;

@@ -76,8 +76,6 @@ export interface NewCredentialValue {
 	readonly __newCredential: true;
 	readonly name: string;
 	readonly id?: string;
-	/** Managed credential marker for n8n credits. */
-	readonly managed?: boolean;
 }
 
 // =============================================================================
@@ -1286,10 +1284,7 @@ export type StickyFn = (
 
 export type PlaceholderFn = (hint: string) => string;
 
-export type NewCredentialFn = (
-	name: string,
-	idOrOptions?: string | { managed?: boolean },
-) => NewCredentialValue;
+export type NewCredentialFn = (name: string, id?: string) => NewCredentialValue;
 
 export type IfElseFn = (
 	branches: [
