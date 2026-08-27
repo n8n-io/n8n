@@ -168,8 +168,14 @@ runs:
     #  4. Everything is uploaded as an artifact by the next step, so the full log
     #     survives even when the live console stream is truncated by the runner.
     #
-    # `SAFE_CHAIN_LOGGING=verbose` surfaces safe-chain's proxy decisions, which
-    # are otherwise buffered (and lost on failure) while pnpm is in flight.
+    # SafeChain's proxy decisions go to a file rather than the console. They are
+    # emitted via `writeVerbose`, which always writes to `SAFE_CHAIN_LOG_FILE` but
+    # only reaches the console at `SAFE_CHAIN_LOGGING=verbose` — and there is one
+    # line per HTTP request, so verbose put ~9.5k `Finished proxying request to`
+    # lines in every install (60-76% of the whole job log). Omitting the variable
+    # leaves the console at safe-chain's `normal` default; the file keeps the full
+    # detail (its own default verbosity is `verbose`) and lands in the diagnostics
+    # dir that the next step uploads on install failure.
     - name: Install Dependencies
       if: ${{ inputs.install-command != '' }}
       id: install-deps
@@ -177,7 +183,8 @@ runs:
         INSTALL_COMMAND: ${{ inputs.install-command }}
         INSTALL_LOG: ${{ runner.temp }}/pnpm-install.log
         PNPM_DIAG_DIR: ${{ runner.temp }}/pnpm-diagnostics
-        SAFE_CHAIN_LOGGING: verbose
+        SAFE_CHAIN_LOG_FILE: ${{ runner.temp }}/pnpm-diagnostics/safe-chain.log
+        SAFE_CHAIN_LOG_FILE_FORMAT: plain
         GITHUB_TOKEN: ${{ github.token }}
       run: |
         # Stable, artifact-name-safe id for the upload step (written first so it

@@ -30,6 +30,7 @@ const SUB_MENU_MAX_HEIGHT = 'calc(var(--spacing--5xl) * 2)';
 
 const {
 	items,
+	isLoading = false,
 	selectedLabel,
 	selectedCredentialName,
 	credentialsMissing = false,
@@ -42,6 +43,8 @@ const {
 } = defineProps<{
 	/** Menu items to render in the dropdown. */
 	items: Array<AiModelSelectorMenuItem<TData>>;
+	/** Whether the dropdown is currently loading items. */
+	isLoading?: boolean;
 	/** Label for the currently selected model shown in the trigger. */
 	selectedLabel: string;
 	/** Credential name shown below the selected model, when available. */
@@ -130,8 +133,9 @@ defineExpose({
 						<N8nText bold truncate>
 							{{ truncateBeforeLast(selectedLabel, MAX_SELECTED_NAME_CHARS) }}
 						</N8nText>
+						<span v-if="isLoading" :class="$style.loading"></span>
 						<N8nBadge
-							v-if="credentialsMissing"
+							v-if="credentialsMissing && !isLoading"
 							theme="danger"
 							size="small"
 							:class="$style.credsBadge"
@@ -139,7 +143,7 @@ defineExpose({
 							{{ resolvedCredentialsMissingLabel }}
 						</N8nBadge>
 						<N8nText
-							v-else-if="selectedCredentialName"
+							v-else-if="selectedCredentialName && !isLoading"
 							bold
 							color="text-light"
 							:data-test-id="credentialDataTestId"
@@ -153,7 +157,7 @@ defineExpose({
 		</template>
 
 		<template #item-leading="{ item, ui }">
-			<slot name="item-leading" :item="item" :ui="ui" />
+			<slot name="item-leading" :item="item" :ui="{ class: ui.class }" />
 			<N8nIcon
 				v-if="!item.data && item.icon?.type === 'icon'"
 				:icon="item.icon.value"
@@ -183,9 +187,10 @@ defineExpose({
 				</div>
 			</template>
 			<div v-else :class="[$style.labelWithBadge, ui.class]">
-				<N8nText size="medium" :color="item.disabled ? 'text-xlight' : 'text-dark'">{{
-					item.label
-				}}</N8nText>
+				<span v-if="item.data?.loading" :class="$style.modelLoading" aria-hidden="true"></span>
+				<N8nText v-else size="medium" :color="item.disabled ? 'text-xlight' : 'text-dark'">
+					{{ item.label }}
+				</N8nText>
 				<N8nBadge
 					v-if="item.data?.badgeLabel"
 					:class="$style.badge"
@@ -220,6 +225,7 @@ defineExpose({
 
 <style lang="scss" module>
 @use '../../css/mixins/focus';
+@use '../../css/mixins/motion' as motion;
 
 .dropdownButton {
 	flex: 1;
@@ -342,5 +348,27 @@ defineExpose({
 .credsBadge {
 	flex-shrink: 0;
 	transform: translateY(-1px);
+}
+
+.loading {
+	flex-shrink: 0;
+	align-self: center;
+	width: calc(var(--height--3xl) * 2);
+	/** TODO (DS-339): N8nBadge doesnt have fixed height. This means height diff for loading skeleton causes layout jank. Remove the calc() when heights are added and matched in N8nBadge **/
+	height: calc(var(--height--2xs) - 2px);
+	border-radius: var(--radius);
+	background-color: var(--background--active);
+
+	@include motion.skeleton-pulse;
+}
+
+.modelLoading {
+	display: inline-block;
+	flex-shrink: 0;
+	width: calc(var(--height--3xl) * 2);
+	height: var(--height--3xs);
+	border-radius: var(--radius);
+	background-color: var(--background--active);
+	@include motion.skeleton-pulse;
 }
 </style>

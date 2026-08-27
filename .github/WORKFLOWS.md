@@ -245,9 +245,10 @@ parallelism). See the `--build-via-mcp` section in
 
 ### Other Manual Workflows
 
-| Workflow                  | Purpose                                                 |
-|---------------------------|---------------------------------------------------------|
-| `util-data-tooling.yml`   | SQLite/PostgreSQL export/import validation (manual)     |
+| Workflow                    | Purpose                                                 |
+|-----------------------------|---------------------------------------------------------|
+| `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
+| `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 
 ---
 
@@ -339,12 +340,42 @@ test-workflows-pr-comment.yml
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
+### Recovering a failed release
+
+If the pipeline publishes `n8n@X.Y.Z` to npm and then fails, that version is
+burned — npm versions are immutable. Recovery depends on how far it got:
+
+| Failure point | Recovery |
+|---|---|
+| Before `n8n` reached npm | **Re-run failed jobs** on the original run. Sub-packages publish before `n8n` and `pnpm publish -r` skips versions already on npm, so a retry is safe. |
+| After `n8n` reached npm | Dispatch **`release-recreate-failed-release.yml`** with `failed-version: X.Y.Z`. |
+
+`release-recreate-failed-release.yml` checks out `release/X.Y.Z`, bumps only the
+root and `packages/cli` versions to `X.Y.(Z+1)`, pushes `release/X.Y.(Z+1)` from
+the same commit, and opens an auto-merging `release-pr/X.Y.(Z+1)`. Merging it
+fires `release-publish.yml` as normal — `release-publish.yml` has no
+`workflow_dispatch`, so a release PR is the only way to re-drive it.
+
+Only those two `package.json` files move: the root version drives every publish
+output (git tag, Docker tags, GitHub Release, SBOM) and `packages/cli` drives
+the runtime `N8N_VERSION`. Every other package keeps its version, so the publish
+step skips the ones already on npm and publishes whichever ones the failed run
+never reached.
+
+It refuses to run unless `n8n@X.Y.Z` is on npm and `n8n@X.Y.(Z+1)` is not. That
+check fails closed: if the registry can't be reached, the run stops rather than
+guessing. Dispatch with `force: true` to skip it.
+
+The burned version stays on npm. Deprecate it by hand once the re-release is
+out: `npm deprecate n8n@X.Y.Z "Failed release, use X.Y.(Z+1)"`.
+
 ### Other Release Workflows
 
-| Workflow                         | Trigger            | Purpose                                        |
-|----------------------------------|--------------------|------------------------------------------------|
-| `release-standalone-package.yml` | Manual dispatch    | Release individual packages (@n8n/codemirror-lang, @n8n/create-node, etc.) |
-| `create-patch-release-branch.yml`| Manual dispatch    | Cherry-pick commits for patch releases         |
+| Workflow                                  | Trigger         | Purpose                                        |
+|-------------------------------------------|-----------------|------------------------------------------------|
+| `release-standalone-package.yml`           | Manual dispatch | Release individual packages (@n8n/codemirror-lang, @n8n/create-node, etc.) |
+| `release-create-patch-pr.yml`              | Manual dispatch | Open a patch release PR for one track          |
+| `release-recreate-failed-release.yml`      | Manual dispatch | Re-release a version whose publish failed after it reached npm |
 
 ---
 
@@ -503,6 +534,7 @@ Scripts in `.github/scripts/`:
 |-------------------------------|----------------------------|-------------------------|
 | `bump-versions.mjs`           | Calculate next version     | `release-create-pr.yml` |
 | `update-changelog.mjs`        | Generate CHANGELOG         | `release-create-pr.yml` |
+| `prepare-rerelease.mjs`       | Bump root + cli for a re-release | `release-recreate-failed-release.yml` |
 | `trim-fe-packageJson.js`      | Strip frontend devDeps     | `release-publish.yml`   |
 | `ensure-provenance-fields.mjs`| Add license/author fields  | `release-publish.yml`   |
 
@@ -521,6 +553,7 @@ Scripts in `.github/scripts/`:
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
+| `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
 
 ### Branch Replay Scripts
 
