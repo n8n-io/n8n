@@ -1,0 +1,25 @@
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_ae93d0f1bb3441::t_6c44d08632ec5c 252,255
+  s_ae93d0f1bb3441::t_a5695fb7d46f0f 247-250,253-254,256-257
+  s_ae93d0f1bb3441::t_58916b0136ba1e 251
+packages/cli/test/integration/scheduling/scheduled-job-owner-teardown.test.ts
+  s_ae93d0f1bb3441::t_81711814b754fb 162-205
+packages/@n8n/db/src/repositories/scheduled-job.repository.ts
+  s_ae93d0f1bb3441::t_78ba98e1a36159 3,422-434
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ea8832be95520e843bddec9a99aa165926cd78d8",
+  "prompts": {},
+  "sessions": {
+    "s_ae93d0f1bb3441": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e99223e9-ae53-41b4-a199-a83b6c795e8c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

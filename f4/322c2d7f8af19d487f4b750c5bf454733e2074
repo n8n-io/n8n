@@ -1,0 +1,50 @@
+packages/@n8n/engine/AGENTS.md
+  s_eb75dbc154cd6f::t_23720078b4a6c5 30,89,94
+packages/@n8n/engine/src/index.ts
+  s_eb75dbc154cd6f::t_23720078b4a6c5 55
+packages/@n8n/engine/src/execution/execution-query.service.ts
+  s_eb75dbc154cd6f::t_db3d3b7a421f66 9,13,18
+  s_eb75dbc154cd6f::t_23720078b4a6c5 1
+packages/@n8n/engine/src/runtime/create-engine-runtime.ts
+  s_eb75dbc154cd6f::t_23720078b4a6c5 66,79,85
+packages/@n8n/engine/src/execution/index.ts
+  s_eb75dbc154cd6f::t_23720078b4a6c5 19
+packages/@n8n/engine/src/database/__tests__/workflow-step-execution.integration.test.ts
+  s_eb75dbc154cd6f::t_db3d3b7a421f66 31,746,754,769
+  s_eb75dbc154cd6f::t_23720078b4a6c5 11,32,736,751,757
+packages/@n8n/engine/src/execution/execution-view-store.ts
+  s_eb75dbc154cd6f::t_23720078b4a6c5 55
+packages/@n8n/engine/src/database/index.ts
+  s_eb75dbc154cd6f::t_23720078b4a6c5 5
+packages/@n8n/engine/src/database/typeorm-execution-view-store.ts
+  s_eb75dbc154cd6f::t_23720078b4a6c5 6,9,12,19
+  s_eb75dbc154cd6f::t_60e103ebbf7c69 4
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  s_eb75dbc154cd6f::t_23720078b4a6c5 44,47
+packages/@n8n/engine/src/database/__tests__/workflow-execution.integration.test.ts
+  s_eb75dbc154cd6f::t_23720078b4a6c5 10,56,87
+  s_eb75dbc154cd6f::t_db3d3b7a421f66 68,73,88,94
+packages/@n8n/engine/src/database/create-stores.ts
+  s_eb75dbc154cd6f::t_23720078b4a6c5 15-16,25
+  s_eb75dbc154cd6f::t_60e103ebbf7c69 5,8
+packages/@n8n/engine/src/execution/__tests__/execution-query.service.test.ts
+  s_eb75dbc154cd6f::t_7a272b449b9bbc 7
+  s_eb75dbc154cd6f::t_db3d3b7a421f66 18,21,24,28,31,38-39,42
+  s_eb75dbc154cd6f::t_60e103ebbf7c69 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f4322c2d7f8af19d487f4b750c5bf454733e2074",
+  "prompts": {},
+  "sessions": {
+    "s_eb75dbc154cd6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0b9a8cb6-8a00-42f4-9f11-1987a820341a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
