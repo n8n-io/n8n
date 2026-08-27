@@ -43,6 +43,12 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'attachment:upload':
 					responseData = await attachment.upload.execute.call(this, i);
 					break;
+				case 'page:addComment':
+					responseData = await page.addComment.execute.call(this, i);
+					break;
+				case 'page:addLabels':
+					responseData = await page.addLabels.execute.call(this, i);
+					break;
 				case 'page:append':
 					responseData = await page.append.execute.call(this, i);
 					break;
@@ -52,14 +58,23 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 				case 'page:delete':
 					responseData = await page.delete.execute.call(this, i);
 					break;
+				case 'page:deleteComment':
+					responseData = await page.deleteComment.execute.call(this, i);
+					break;
 				case 'page:get':
 					responseData = await page.get.execute.call(this, i);
+					break;
+				case 'page:getComments':
+					responseData = await page.getComments.execute.call(this, i);
 					break;
 				case 'page:getLabels':
 					responseData = await page.getLabels.execute.call(this, i);
 					break;
 				case 'page:getManyByLabel':
 					responseData = await page.getManyByLabel.execute.call(this, i);
+					break;
+				case 'page:removeLabel':
+					responseData = await page.removeLabel.execute.call(this, i);
 					break;
 				case 'page:update':
 					responseData = await page.update.execute.call(this, i);

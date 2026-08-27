@@ -10,7 +10,11 @@ export interface NewExecutionRecord {
 	triggerOutputs: TriggerOutputs | null;
 }
 
-/** A full execution record. */
+/**
+ * What running an execution needs of its row. No timing: the execution path
+ * decides on `status`, never on when anything happened. The read path has its
+ * own view (`ExecutionView`).
+ */
 export interface ExecutionRecord {
 	id: string;
 	workflowId: string;

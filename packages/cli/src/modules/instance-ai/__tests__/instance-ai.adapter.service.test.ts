@@ -1290,6 +1290,8 @@ function createNodeAdapterServiceForTests(
 	options?: {
 		nodeCatalogService?: Mocked<NodeCatalogService>;
 		loadNodesAndCredentials?: Record<string, unknown>;
+		credentialsService?: Record<string, unknown>;
+		credentialsFinderService?: Record<string, unknown>;
 	},
 ) {
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
@@ -1313,8 +1315,12 @@ function createNodeAdapterServiceForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[5],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[6],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[7],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[8],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[9],
+		(options?.credentialsService ?? {}) as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[8],
+		(options?.credentialsFinderService ?? {}) as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[9],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[10],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
 		loadNodesAndCredentials as unknown as ConstructorParameters<
@@ -1345,15 +1351,14 @@ function createNodeAdapterServiceForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
-		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[33],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[35],
+		>[34],
 		nodeCatalogService,
 	);
 
@@ -1709,15 +1714,14 @@ function createDataTableAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
-		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[33],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[35],
+		>[34],
 	);
 
 	const adapter = service.createContext(mockUser, {
@@ -2038,15 +2042,14 @@ function createWorkflowAdapterForTests(overrides?: {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		mockAiBuilderTemporaryWorkflowRepository as unknown as AiBuilderTemporaryWorkflowRepository,
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
-		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[33],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 		mockCollaborationService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[35],
+		>[34],
 	);
 
 	const boundProjectId =
@@ -2356,22 +2359,6 @@ describe('createWorkflowAdapter', () => {
 			createWorkflowAdapterForTests();
 
 		await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
-
-		expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
-		expect(mockSharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
-			['wf-new'],
-			'team-project-id',
-			expect.any(Object),
-		);
-	});
-
-	it('ignores an LLM-supplied projectId and uses the bound project', async () => {
-		const { adapter, mockProjectRepository, mockSharedWorkflowRepository } =
-			createWorkflowAdapterForTests();
-
-		await adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
-			projectId: 'other-project-id',
-		});
 
 		expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
 		expect(mockSharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
@@ -3152,15 +3139,14 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		mockRoleService as unknown as RoleService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
-		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[33],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[35],
+		>[34],
 	);
 
 	const adapter = service.createContext(mockUser).executionService;
@@ -3420,15 +3406,14 @@ function createRunAdapterForTests(
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[28],
 		mockTelemetry as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[30],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
-		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
+		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		{ isEnabled: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[33],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[34],
+		>[32],
+		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
 		createMockCollaborationService() as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
-		>[35],
+		>[34],
 	);
 
 	const adapter = service.createContext(mockUser, { threadId: options?.threadId }).executionService;
@@ -4076,7 +4061,7 @@ function createAdapterWithGatewayMock(
 		}),
 	};
 	const args = Array.from(
-		{ length: 35 },
+		{ length: 34 },
 		() => ({}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[number],
 	);
 	args[0] = {
@@ -4108,12 +4093,12 @@ function createAdapterWithGatewayMock(
 	args[29] = (overrides?.telemetry ?? {
 		track: vi.fn(),
 	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29];
-	args[32] = mock<OutboundHttp>() as unknown as ConstructorParameters<
+	args[31] = mock<OutboundHttp>() as unknown as ConstructorParameters<
+		typeof InstanceAiAdapterService
+	>[31];
+	args[32] = aiGatewayService as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService
 	>[32];
-	args[33] = aiGatewayService as unknown as ConstructorParameters<
-		typeof InstanceAiAdapterService
-	>[33];
 	return new InstanceAiAdapterService(
 		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
 	);
@@ -4758,6 +4743,99 @@ describe('createContext — run model wiring', () => {
 });
 
 describe('createCredentialAdapter', () => {
+	describe('getCredentialFillState', () => {
+		/** An adapter over a credential type declaring `properties` and holding `data`. */
+		const adapterFor = (
+			properties: Array<Record<string, unknown>>,
+			data: Record<string, unknown>,
+		) =>
+			createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: {
+					getCredential: () => ({ type: { name: 'httpHeaderAuth', properties } }),
+					knownCredentials: { httpHeaderAuth: {} },
+				},
+				credentialsFinderService: {
+					findCredentialForUser: vi.fn().mockResolvedValue({
+						id: 'cred-1',
+						name: 'Header Auth account',
+						type: 'httpHeaderAuth',
+					}),
+				},
+				credentialsService: { decrypt: vi.fn().mockResolvedValue(data) },
+			}).credentialService;
+
+		const headerAuthProperties = [
+			{ name: 'name', type: 'string' },
+			{ name: 'value', type: 'string', typeOptions: { password: true } },
+			{ name: 'useCustomAuth', type: 'notice' },
+		];
+
+		it('reports blank when every declared value field is empty', async () => {
+			const credentialService = adapterFor(headerAuthProperties, { name: '', value: '' });
+
+			await expect(credentialService.getCredentialFillState!('cred-1')).resolves.toBe('blank');
+		});
+
+		it('reports filled when a declared value field carries a value', async () => {
+			const credentialService = adapterFor(headerAuthProperties, {
+				name: 'Authorization',
+				value: 'Bearer abc',
+			});
+
+			await expect(credentialService.getCredentialFillState!('cred-1')).resolves.toBe('filled');
+		});
+
+		it('reports blank when only a notice field is populated', async () => {
+			// A notice carries no credential data, so it must never read as filled.
+			const credentialService = adapterFor(headerAuthProperties, {
+				name: '',
+				value: '',
+				useCustomAuth: 'some copy',
+			});
+
+			await expect(credentialService.getCredentialFillState!('cred-1')).resolves.toBe('blank');
+		});
+
+		// Types like Templated Custom Auth keep their secrets in one structured field,
+		// so emptiness has to be judged inside the value, not just on the key.
+		it.each([
+			['an object with no entries', {}, 'blank'],
+			['an object with entries', { api_key: 'abc' }, 'filled'],
+			['an array with no entries', [], 'blank'],
+			['a JSON string with no entries', '{}', 'blank'],
+			['a JSON string with entries', '{"api_key":"abc"}', 'filled'],
+		])('judges a structured field holding %s', async (_label, placeholderValues, expected) => {
+			const credentialService = adapterFor(
+				[
+					{ name: 'placeholderValues', type: 'json' },
+					{ name: 'testUrl', type: 'string' },
+				],
+				{ placeholderValues, testUrl: '' },
+			);
+
+			await expect(credentialService.getCredentialFillState!('cred-1')).resolves.toBe(expected);
+		});
+
+		it('reports unknown when the type declares no value fields to judge', async () => {
+			const credentialService = adapterFor([{ name: 'notice', type: 'notice' }], {});
+
+			await expect(credentialService.getCredentialFillState!('cred-1')).resolves.toBe('unknown');
+		});
+
+		it('reports unknown when the credential is not readable by the user', async () => {
+			const credentialService = createNodeAdapterServiceForTests([], {
+				loadNodesAndCredentials: {
+					getCredential: () => ({ type: { name: 'httpHeaderAuth', properties: [] } }),
+					knownCredentials: {},
+				},
+				credentialsFinderService: { findCredentialForUser: vi.fn().mockResolvedValue(null) },
+				credentialsService: { decrypt: vi.fn() },
+			}).credentialService;
+
+			await expect(credentialService.getCredentialFillState!('cred-1')).resolves.toBe('unknown');
+		});
+	});
+
 	describe('isTestable', () => {
 		// A versioned node whose `testedBy` sits only on the versions named in `testedByOn`.
 		const loaderWithTestedByOn = (testedByOn: number[]) => {
