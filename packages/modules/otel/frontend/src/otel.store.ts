@@ -1,6 +1,7 @@
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { useRootStore } from '@n8n/stores/useRootStore';
+
 import { getOtelSettings, updateOtelSettings, sendOtelTestTrace } from './otel.api';
 import type { OtelSettings, OtelSettingsResponse } from './otel.api';
 import { OTEL_STORE } from './otel.constants';

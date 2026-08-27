@@ -1,5 +1,6 @@
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
+
 import { getOtelSettings, updateOtelSettings, sendOtelTestTrace } from './otel.api';
 import type { OtelSettingsResponse, OtelTestConnection } from './otel.api';
 
