@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	ActiveWorkflowTriggers,
 	SpanStatus,
@@ -165,7 +166,8 @@ export class NonWebhookTriggerRegistrar {
 	}
 
 	/**
-	 * Deregister one active, poll, or schedule trigger node from memory.
+	 * Deregister one active, poll, or schedule trigger node from memory, and drop
+	 * the durable jobs it provisioned.
 	 */
 	async deregister(workflowId: WorkflowId, nodeId: INode['id']) {
 		await this.tracing.startSpan(
@@ -178,12 +180,30 @@ export class NonWebhookTriggerRegistrar {
 				},
 			},
 			async (span) => {
-				await this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId]));
-				await this.scheduleTriggerJobRegistrar.remove(workflowId, nodeId);
-				await this.pollTriggerJobRegistrar.remove(workflowId, nodeId);
+				// The durable rows are database state the node no longer owns, and a close
+				// function that never settles is abandoned by the caller rather than
+				// retried, so their removal must not wait on the in-memory teardown.
+				const [inMemory, durable] = await Promise.allSettled([
+					this.activeWorkflowTriggers.removeTriggers(workflowId, new Set([nodeId])),
+					this.removeDurableJobs(workflowId, nodeId),
+				]);
+
+				// A durable failure wins: it must reach the caller for retry, while an
+				// in-memory failure may be abandoned as permanent.
+				if (durable.status === 'rejected') {
+					throw ensureError(durable.reason);
+				}
+				if (inMemory.status === 'rejected') {
+					throw ensureError(inMemory.reason);
+				}
 
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
+	}
+
+	private async removeDurableJobs(workflowId: WorkflowId, nodeId: INode['id']) {
+		await this.scheduleTriggerJobRegistrar.remove(workflowId, nodeId);
+		await this.pollTriggerJobRegistrar.remove(workflowId, nodeId);
 	}
 }
