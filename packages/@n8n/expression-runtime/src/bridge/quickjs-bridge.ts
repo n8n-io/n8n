@@ -781,6 +781,45 @@ export class QuickJsBridge implements RuntimeBridge {
 		ListFormat: ListFormat,
 		Locale: function Locale(tag) { this.baseName = tag; this.language = tag.split('-')[0]; }
 	};
+
+	// QuickJS's built-in toLocale* methods are locale-unaware (no ECMA-402) and
+	// ignore locales/options. Route them through the polyfill so they format on
+	// the host, like the spec routes them through NumberFormat/DateTimeFormat.
+	Number.prototype.toLocaleString = function(locales, options) {
+		return new NumberFormat(locales, options).format(Number(this));
+	};
+
+	function hasAny(options, keys) {
+		if (!options) return false;
+		for (var i = 0; i < keys.length; i++) {
+			if (options[keys[i]] !== undefined) return true;
+		}
+		return false;
+	}
+	var DATE_COMPONENTS = ['weekday', 'year', 'month', 'day'];
+	var TIME_COMPONENTS = ['dayPeriod', 'hour', 'minute', 'second', 'fractionalSecondDigits'];
+	// ToDateTimeOptions (ECMA-402 sec. 12): when options carry none of the
+	// method's required components (and no dateStyle/timeStyle), fill in the
+	// method's numeric defaults so e.g. toLocaleTimeString() shows a time.
+	function toDateTimeOptions(options, requiredKeys, addDate, addTime) {
+		var merged = {};
+		for (var k in options || {}) merged[k] = options[k];
+		if (merged.dateStyle !== undefined || merged.timeStyle !== undefined) return merged;
+		if (hasAny(options, requiredKeys)) return merged;
+		if (addDate) { merged.year = 'numeric'; merged.month = 'numeric'; merged.day = 'numeric'; }
+		if (addTime) { merged.hour = 'numeric'; merged.minute = 'numeric'; merged.second = 'numeric'; }
+		return merged;
+	}
+	var ANY_COMPONENTS = DATE_COMPONENTS.concat(TIME_COMPONENTS);
+	Date.prototype.toLocaleString = function(locales, options) {
+		return new DateTimeFormat(locales, toDateTimeOptions(options, ANY_COMPONENTS, true, true)).format(this);
+	};
+	Date.prototype.toLocaleDateString = function(locales, options) {
+		return new DateTimeFormat(locales, toDateTimeOptions(options, DATE_COMPONENTS, true, false)).format(this);
+	};
+	Date.prototype.toLocaleTimeString = function(locales, options) {
+		return new DateTimeFormat(locales, toDateTimeOptions(options, TIME_COMPONENTS, false, true)).format(this);
+	};
 })();
 `;
 
