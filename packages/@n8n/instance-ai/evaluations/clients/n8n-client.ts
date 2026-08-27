@@ -943,14 +943,14 @@ export class N8nClient {
 	}
 
 	/**
-	 * Create a team project. Used to seed the DECOY projects a project-scope case
+	 * Create a team project. Used to seed the extra projects a project-scope case
 	 * needs: a second project the eval user can see but whose writes are barred,
 	 * so `isCurrentProject` has something to distinguish the bound project from.
 	 *
 	 * Team projects are licensed AND quota'd (`@Licensed('feat:projectRole:admin')`
 	 * plus `quota:maxTeamProjects`, which defaults to 0), so this fails on an
 	 * unlicensed instance. The error is re-thrown with that hint rather than
-	 * swallowed: a case that silently ran without its decoy would grade the agent
+	 * swallowed: a case that silently ran without it would grade the agent
 	 * against a project list it never saw, and pass for the wrong reason.
 	 * POST /rest/projects
 	 */
@@ -984,7 +984,7 @@ export class N8nClient {
 
 	/**
 	 * List the team projects the authenticated user can see, so a run can evict a
-	 * crashed predecessor's leftover decoy before recreating it. Personal projects
+	 * crashed predecessor's leftover before recreating it. Personal projects
 	 * are filtered out — they're never seeded and must never be deleted.
 	 * GET /rest/projects
 	 */
@@ -998,7 +998,7 @@ export class N8nClient {
 	}
 
 	/**
-	 * Delete a project. Used to tear down seeded decoy projects after a run.
+	 * Delete a project. Used to tear down seeded projects after a run.
 	 * DELETE /rest/projects/:projectId
 	 */
 	async deleteProject(projectId: string): Promise<void> {

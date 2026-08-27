@@ -414,7 +414,7 @@ async function reconstructWithClient(
 			// A trace carries no agent artifacts yet; only authored seeds can seed one.
 			agents: [],
 			// Likewise no projects: a replayed thread ran in whatever project it ran in,
-			// and a decoy is a fixture an author declares, not something a trace records.
+			// and a seeded project is a fixture an author declares, not something a trace records.
 			projects: [],
 		},
 		liveTurn,

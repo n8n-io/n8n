@@ -141,7 +141,7 @@ describe('EvalTestCaseSchema', () => {
 	});
 
 	it('accepts a fixture-only inline seed that carries just a project', () => {
-		// The project-scope shape: a decoy project must exist on the instance, but the
+		// The project-scope shape: a seeded project must exist on the instance, but the
 		// conversation under test starts from scratch, so there is no history to seed.
 		const parsed = EvalTestCaseSchema.parse({
 			...validFixture(),

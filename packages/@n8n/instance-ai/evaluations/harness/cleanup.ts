@@ -164,7 +164,7 @@ export async function cleanupBuild(
 		}
 	}
 
-	// Decoy projects a seed created. Deleted last of the artifacts, so anything the
+	// Projects a seed created. Deleted last of the artifacts, so anything the
 	// run put inside one is already gone by its own path rather than vanishing with
 	// the project.
 	for (const id of build.createdProjectIds ?? []) {

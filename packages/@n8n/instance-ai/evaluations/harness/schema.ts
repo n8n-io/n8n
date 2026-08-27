@@ -66,7 +66,7 @@ const ExecutionScenarioSchema = z.object({
  *  Timestamps are normalized after expansion, so seeded history always presents
  *  in array order and never sorts after the live turn.
  *
- *  No `min(1)`: a fixture-only seed (a decoy project, no history) is legitimate, and
+ *  No `min(1)`: a fixture-only seed (a seeded project, no history) is legitimate, and
  *  the case-level refine is the single arbiter of a seed that carries nothing. A
  *  min here would also defeat the `.default([])` below — zod validates a substituted
  *  default like any other value. */
@@ -97,7 +97,7 @@ export const CaseSeedSchema = z.discriminatedUnion('mode', [
 	 *  which keeps its content out of the repo. Pairs with `conversation`, which
 	 *  supplies the live turn. */
 	/** `messages` defaults to empty so a seed can carry ONLY instance fixtures (the
-	 *  project-scope shape: a decoy project exists, but the conversation under test
+	 *  project-scope shape: a seeded project exists, but the conversation under test
 	 *  starts from scratch). Defaulted rather than optional so the inferred type
 	 *  stays `SeedMessage[]` and every consumer keeps reading `.length`. The arm
 	 *  stays a plain object — `discriminatedUnion` rejects a refined one — so the

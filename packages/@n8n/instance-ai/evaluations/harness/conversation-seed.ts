@@ -31,7 +31,7 @@ const SeedWorkflowSchema = z.object({
 	connections: z.record(z.unknown()),
 });
 
-/** A decoy project seeded before the live turn. Only the name is authored: the
+/** A project seeded before the live turn. Only the name is authored: the
  *  case references the project the way a user would (by name), and nothing in a
  *  seed's messages can refer to a project id, so there is no id to remap. */
 const SeedProjectSchema = z.object({
@@ -144,7 +144,7 @@ export const ConversationSeedSchema = z.object({
 	/** Provenance (thread id, instance, export time) — informational only. */
 	source: z.record(z.unknown()).optional(),
 	/** Native agent message log (user/assistant turns with resolved tool-call blocks).
-	 *  May be EMPTY: a seed can carry only instance fixtures (a decoy project) with no
+	 *  May be EMPTY: a seed can carry only instance fixtures (a seeded project) with no
 	 *  history at all. Emptiness is judged at the case level instead — a seed that
 	 *  carries nothing whatsoever is rejected there — because that is the only place
 	 *  that can see every slot at once. Kept permissive here so `remapSeedArtifactIds`

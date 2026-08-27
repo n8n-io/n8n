@@ -225,9 +225,9 @@ export interface BuildResult {
 	/** Agents restored by a seed — tracked here, not just in `artifactRefs`, so one
 	 *  the live turn never touched still gets cleaned up. */
 	createdAgentIds?: string[];
-	/** Decoy projects a seed created. Torn down in `cleanupBuild` rather than at the
+	/** Projects a seed created. Torn down in `cleanupBuild` rather than at the
 	 *  end of the build turn: deleting a project cascades to what lives in it, and if
-	 *  a regression ever did let the agent write into the decoy, an early delete would
+	 *  a regression ever did let the agent write into one, an early delete would
 	 *  destroy the workflow under grading and read as a build failure. */
 	createdProjectIds?: string[];
 	/** Maps each scenario seed table's declared NAME to the real id it was created
@@ -495,7 +495,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	let restoredWorkflowIds: string[] = [];
 	let restoredDataTableIds: string[] = [];
 	let restoredAgentIds: string[] = [];
-	/** Decoy projects this run created, torn down after it — instance-level, so they
+	/** Projects this run created, torn down after it — instance-level, so they
 	 *  outlive the thread and would otherwise pile up across runs. */
 	const seededProjectIds: string[] = [];
 	/** The agent the seeded history last targeted — graded and executed first. */
@@ -740,7 +740,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					logger,
 					config.laneTag,
 				);
-				// Decoy projects are instance-level, so they go through the project API
+				// Seeded projects are instance-level, so they go through the project API
 				// rather than `restore-thread` (which seeds into the thread's project).
 				// Created BEFORE the live turn so the agent's first `list-projects` already
 				// sees them.
@@ -1217,7 +1217,7 @@ async function evictLeftoverSeedWorkflows(
  * distinctive enough not to collide with real ones.
  *
  * Best-effort: a failure here is logged and the run continues, since a duplicate
- * decoy still leaves the case's premise (a visible project that isn't the bound
+ * duplicate still leaves the case's premise (a visible project that isn't the bound
  * one) intact.
  */
 async function evictLeftoverSeedProjects(

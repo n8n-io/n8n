@@ -200,7 +200,7 @@ describe('ConversationSeedSchema message envelope', () => {
 	});
 
 	// A message list may now be empty — a seed can carry only instance fixtures (a
-	// decoy project) and no history. What must never pass is a seed carrying NOTHING,
+	// seeded project) and no history. What must never pass is a seed carrying NOTHING,
 	// and that is judged at the case level (EvalTestCaseSchema), the only place that
 	// sees every slot at once.
 	it('allows an empty message list, for a fixture-only seed', () => {
@@ -817,14 +817,14 @@ describe('activeSeedAgentId', () => {
 	});
 });
 
-// A decoy project is what gives a project-scope case its premise: a project the
+// A seeded project is what gives a project-scope case its premise: a project the
 // agent can SEE but must not write to. It is the one seeded artifact carried
 // outside the id-remap blob, so it is also the one that can silently vanish.
 describe('seed projects', () => {
 	it('carries projects through the id remap', () => {
 		// The remap serializes only the id-bearing artifacts, so anything it does not
 		// re-attach comes back as the schema's `[]` default. A dropped project leaves
-		// the case running against a project list that never held the decoy — green
+		// the case running against a project list that never held it — green
 		// for the wrong reason, which is worse than a failure.
 		const seed: ConversationSeed = {
 			...makeSeed(),
