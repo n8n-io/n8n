@@ -19,6 +19,7 @@ import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialType,
+	IExecuteData,
 	IHttpRequestHelper,
 	IHttpRequestOptions,
 	INode,
@@ -50,6 +51,7 @@ import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 
 describe('CredentialsHelper', () => {
@@ -60,6 +62,7 @@ describe('CredentialsHelper', () => {
 	const licenseState = mock<LicenseState>();
 	const externalSecretsConfig = mock<ExternalSecretsConfig>();
 	const mockLogger = mock<any>();
+	const policyEnforcementService = mock<PolicyEnforcementService>();
 	// Use a real instance of DynamicCredentialsProxy so setResolverProvider works
 	const dynamicCredentialProxy = new DynamicCredentialsProxy(mockLogger);
 
@@ -81,6 +84,7 @@ describe('CredentialsHelper', () => {
 		licenseState,
 		externalSecretsConfig,
 		mock<AiGatewayService>(),
+		policyEnforcementService,
 	);
 
 	describe('getCredentials', () => {
@@ -179,6 +183,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
+				policyEnforcementService,
 			);
 
 			const result = await helper.applyDefaultsAndOverwrites(
@@ -232,6 +237,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
+				policyEnforcementService,
 			);
 
 			await expect(
@@ -275,6 +281,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
+				policyEnforcementService,
 			);
 			const externalSecretsProxy =
 				mock<NonNullable<IWorkflowExecuteAdditionalData['externalSecretsProxy']>>();
@@ -354,6 +361,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
+				policyEnforcementService,
 			);
 
 			// Region left at its default: neither `region` nor `url` was persisted.
@@ -413,6 +421,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
+				policyEnforcementService,
 			);
 
 			const result = await helper.applyDefaultsAndOverwrites(
@@ -455,6 +464,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
+				policyEnforcementService,
 			);
 
 		const registerType = (credentialType: ICredentialType) =>
@@ -1243,6 +1253,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				aiGatewayService,
+				policyEnforcementService,
 			);
 
 			const syntheticCred = { apiKey: 'mock-jwt', host: 'http://gateway/v1/gateway/google' };
@@ -1288,6 +1299,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				aiGatewayService,
+				policyEnforcementService,
 			);
 
 			const syntheticCred = { apiKey: 'mock-jwt', host: 'http://gateway/v1/gateway/google' };
@@ -1335,6 +1347,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				aiGatewayService,
+				policyEnforcementService,
 			);
 
 			const syntheticCred = {
@@ -1570,6 +1583,7 @@ describe('CredentialsHelper', () => {
 				licenseState,
 				externalSecretsConfig,
 				mock<AiGatewayService>(),
+				policyEnforcementService,
 			);
 
 			const result = await helperWithoutProvider.getDecrypted(
@@ -1830,6 +1844,7 @@ describe('CredentialsHelper', () => {
 				mock<LicenseState>(),
 				mock<ExternalSecretsConfig>(),
 				mock<AiGatewayService>(),
+				policyEnforcementService,
 			);
 
 		// The loader sets the class's `supportedNodes` to short names (e.g. "restrictedConsumer");
@@ -2382,6 +2397,140 @@ describe('CredentialsHelper', () => {
 				{ installationId: expressionText, accessToken: 'NEW_TOKEN' },
 			);
 			expect(result).toMatchObject({ accessToken: 'NEW_TOKEN' });
+		});
+	});
+
+	describe('getDecrypted - credentialDecrypt policy enforcement', () => {
+		const nodeCredentials: INodeCredentialsDetails = {
+			id: 'cred-policy',
+			name: 'Policy Test Credential',
+		};
+
+		const credentialEntity = {
+			id: 'cred-policy',
+			name: 'Policy Test Credential',
+			type: 'testApi',
+			data: cipher.encrypt({ apiKey: 'test' }),
+			isResolvable: false,
+			usageScope: 'project',
+		} as CredentialsEntity;
+
+		let helper: CredentialsHelper;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			credentialsRepository.findOneByOrFail.mockResolvedValue(credentialEntity);
+			policyEnforcementService.enforceCredentialDecrypt.mockResolvedValue(mock());
+			helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				mock(),
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+				policyEnforcementService,
+			);
+		});
+
+		test('calls enforceCredentialDecrypt with the credential, consumer and project context', async () => {
+			const executeData = {
+				node: {
+					name: 'Slack1',
+					type: 'n8n-nodes-base.slack',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+				data: {},
+				source: null,
+			} as IExecuteData;
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({ projectId: 'proj-1' });
+
+			await helper.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'testApi',
+				'manual',
+				executeData,
+				true,
+			);
+
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith({
+				credentialType: 'testApi',
+				credentialId: 'cred-policy',
+				consumer: { nodeType: 'n8n-nodes-base.slack' },
+				projectId: 'proj-1',
+			});
+		});
+
+		test('passes a null consumer when no node is asking, e.g. a credential test', async () => {
+			const additionalData = mock<IWorkflowExecuteAdditionalData>({ projectId: undefined });
+
+			await helper.getDecrypted(
+				additionalData,
+				nodeCredentials,
+				'testApi',
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(policyEnforcementService.enforceCredentialDecrypt).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ consumer: null, projectId: null }),
+			);
+		});
+
+		test('resolves the credential before enforcing the policy check', async () => {
+			const callOrder: string[] = [];
+			credentialsRepository.findOneByOrFail.mockImplementation(async () => {
+				callOrder.push('findOneByOrFail');
+				return credentialEntity;
+			});
+			policyEnforcementService.enforceCredentialDecrypt.mockImplementation(async () => {
+				callOrder.push('enforceCredentialDecrypt');
+				return await mock();
+			});
+
+			await helper.getDecrypted(
+				mock<IWorkflowExecuteAdditionalData>(),
+				nodeCredentials,
+				'testApi',
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(callOrder).toEqual(['findOneByOrFail', 'enforceCredentialDecrypt']);
+		});
+
+		test('blocks decryption when the policy check throws', async () => {
+			const violation = new Error('blocked by policy');
+			policyEnforcementService.enforceCredentialDecrypt.mockRejectedValueOnce(violation);
+
+			await expect(
+				helper.getDecrypted(
+					mock<IWorkflowExecuteAdditionalData>(),
+					nodeCredentials,
+					'testApi',
+					'manual',
+				),
+			).rejects.toThrow(violation);
+		});
+
+		test('decryption behavior is unchanged when the policy check clears', async () => {
+			const result = await helper.getDecrypted(
+				mock<IWorkflowExecuteAdditionalData>(),
+				nodeCredentials,
+				'testApi',
+				'manual',
+				undefined,
+				true,
+			);
+
+			expect(result).toEqual({ apiKey: 'test' });
 		});
 	});
 });
