@@ -173,6 +173,21 @@ describe('McpRegistryApiClient', () => {
 			});
 		});
 
+		it.each([
+			['a bare array', ['docs'], ['docs']],
+			['a data envelope', { data: ['docs'] }, ['docs']],
+			['an empty envelope', {}, undefined],
+			['a null envelope', { data: null }, undefined],
+			['a missing value', undefined, undefined],
+		])('should keep a server whose tags come back as %s', async (_, tags, expected) => {
+			mockPaginatedRequest.mockResolvedValue([{ ...notionMockServer, tags }]);
+
+			const result = await client.fetchAllServers();
+
+			expect(result).toHaveLength(1);
+			expect(result[0].tags).toEqual(expected);
+		});
+
 		it('should keep only OAuth2 credential options', async () => {
 			mockPaginatedRequest.mockResolvedValue([githubUsesCredentialsMockServer]);
 			vi.mocked(credentialTypes.getParentTypes).mockImplementation((credentialType) =>

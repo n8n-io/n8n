@@ -100,10 +100,13 @@ const mcpRegistryServerBaseSchema = z.object({
 	isOfficial: z.boolean(),
 	origin: z.literal('registry'),
 	status: z.enum(serverStatuses),
+	// The API returns either a bare array or a `{ data }` envelope, and omits
+	// `data` entirely when there are no tags. Anything stricter drops the whole
+	// server over optional metadata.
 	tags: z
-		.union([z.array(z.string()), z.object({ data: z.array(z.string()) })])
-		.optional()
-		.transform((value) => (value && !Array.isArray(value) ? value.data : value)),
+		.union([z.array(z.string()), z.object({ data: z.array(z.string()).nullish() })])
+		.nullish()
+		.transform((value) => (Array.isArray(value) ? value : (value?.data ?? undefined))),
 });
 
 const mcpRegistryServerAuthSchema = z.discriminatedUnion('authType', [

@@ -469,14 +469,14 @@ describe('InstanceAiMcpRegistryService', () => {
 		} as CredentialsEntity;
 
 		it.each([
-			['generated', syntheticOAuthServer(), syntheticCredential, 'none', undefined],
-			['native', makeRegistryServer('linear'), credential, 'none', undefined],
-			['generated', syntheticOAuthServer(), syntheticCredential, 'domains', 'other-host.test'],
-			['native', makeRegistryServer('linear'), credential, 'domains', 'other-host.test'],
-			['generated', syntheticOAuthServer(), syntheticCredential, 'all', undefined],
+			['generated', 'none', syntheticOAuthServer(), syntheticCredential, undefined],
+			['native', 'none', makeRegistryServer('linear'), credential, undefined],
+			['generated', 'domains', syntheticOAuthServer(), syntheticCredential, 'other-host.test'],
+			['native', 'domains', makeRegistryServer('linear'), credential, 'other-host.test'],
+			['generated', 'all', syntheticOAuthServer(), syntheticCredential, undefined],
 		])(
 			'pins %s credentials to the registry hostname in %s mode',
-			async (_, server, selectedCredential, allowedHttpRequestDomains, allowedDomains) => {
+			async (_, allowedHttpRequestDomains, server, selectedCredential, allowedDomains) => {
 				const {
 					service,
 					connectionRepository,
