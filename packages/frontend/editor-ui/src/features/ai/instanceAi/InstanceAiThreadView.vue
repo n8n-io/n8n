@@ -170,9 +170,13 @@ const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role
 
 // True when at least one pending confirmation should occupy the chat-input
 // slot (questions, generic approvals, or domain/web-search access). Drives
-// the swap between the input and the floating confirmation panel.
+// the swap between the input and the floating confirmation panel. Items a
+// session "Always allow" grant auto-approves are skipped — swapping the input
+// out for a card that disappears milliseconds later makes the input jump.
 const hasFloatingConfirmation = computed(() =>
-	thread.pendingConfirmations.some(isPendingItemFloating),
+	thread.pendingConfirmations.some(
+		(item) => isPendingItemFloating(item) && !thread.isAutoApproving(item),
+	),
 );
 
 // --- Fix-with-AI offer (failure data emitted by the artifact host) ---

@@ -695,6 +695,37 @@ export function createThreadRuntime(
 	// would hide the card while the backend still waits for approval.
 	const autoApproveInFlight = new Set<string>();
 
+	// Confirmations whose auto-approve POST failed. They stop being treated as
+	// auto-approving so the manual card comes back and the user can resolve the
+	// run instead of it hanging behind a hidden confirmation.
+	const autoApproveFailedIds = ref<Set<string>>(new Set());
+
+	function markAutoApproveFailed(requestId: string): void {
+		const next = new Set(autoApproveFailedIds.value);
+		next.add(requestId);
+		autoApproveFailedIds.value = next;
+	}
+
+	/**
+	 * True when a pending confirmation matches a session "Always allow" grant and
+	 * is therefore about to be resolved by the auto-approve watcher below. The UI
+	 * uses this to skip rendering the approval card altogether: the card would
+	 * otherwise appear for the duration of the confirm POST and then vanish,
+	 * shoving the chat input up and down.
+	 */
+	function isAutoApproving(item: PendingConfirmationItem): boolean {
+		if (sessionAlwaysAllowKeys.value.size === 0) return false;
+		const conf = item.toolCall.confirmation;
+		if (autoApproveFailedIds.value.has(conf.requestId)) return false;
+		if (!isGenericApprovalEligible(item)) return false;
+		const key = buildAlwaysAllowKey(
+			item.toolCall.toolName,
+			item.toolCall.args ?? {},
+			conf.workflowId,
+		);
+		return key !== null && sessionAlwaysAllowKeys.value.has(key);
+	}
+
 	watch(
 		pendingConfirmations,
 		async (items) => {
@@ -703,18 +734,16 @@ export function createThreadRuntime(
 				const conf = item.toolCall.confirmation;
 				if (resolvedConfirmationIds.has(conf.requestId)) continue;
 				if (autoApproveInFlight.has(conf.requestId)) continue;
-				if (!isGenericApprovalEligible(item)) continue;
-				const key = buildAlwaysAllowKey(
-					item.toolCall.toolName,
-					item.toolCall.args ?? {},
-					conf.workflowId,
-				);
-				if (key === null || !sessionAlwaysAllowKeys.value.has(key)) continue;
+				if (!isAutoApproving(item)) continue;
 
 				autoApproveInFlight.add(conf.requestId);
 				try {
 					const ok = await confirmAction(conf.requestId, { kind: 'approval', approved: true });
-					if (!ok) continue;
+					if (!ok) {
+						// Re-expose the card — the run is still waiting on the backend.
+						markAutoApproveFailed(conf.requestId);
+						continue;
+					}
 					resolveConfirmation(conf.requestId, 'approved');
 					// `conf.message` is the agent's own description of the action, so it
 					// quotes tool args and recipients — scrub before it leaves the browser.
@@ -999,6 +1028,7 @@ export function createThreadRuntime(
 		resetFeedback();
 		resolvedConfirmationIds.clear();
 		sessionAlwaysAllowKeys.value = new Set();
+		autoApproveFailedIds.value = new Set();
 		runStateByGroupId.clear();
 		groupIdByRunId.clear();
 		lastEventId.value = undefined;
@@ -1411,6 +1441,7 @@ export function createThreadRuntime(
 		resolveConfirmation,
 		addAlwaysAllowKey,
 		canAlwaysAllow,
+		isAutoApproving,
 		findToolCallByRequestId,
 		copyFullTrace,
 		submitFeedback,

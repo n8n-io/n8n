@@ -1796,6 +1796,56 @@ describe('createThreadRuntime - session always-allow', () => {
 		});
 	});
 
+	it('flags matching confirmations as auto-approving before the confirm POST resolves', async () => {
+		// The panel skips these items instead of rendering an approval card for the
+		// lifetime of the POST and then dropping it — that flash jumps the chat input.
+		let releaseConfirm: () => void = () => {};
+		mockPostConfirmation.mockImplementationOnce(
+			async () =>
+				await new Promise((resolve) => {
+					releaseConfirm = () => resolve({ ok: true });
+				}),
+		);
+
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-hidden',
+			requestId: 'req-hidden',
+			toolName: 'workflows',
+			args: { action: 'run' },
+		});
+
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.isAutoApproving(runtime.pendingConfirmations[0])).toBe(true);
+
+		await vi.waitFor(() => {
+			expect(mockPostConfirmation).toHaveBeenCalled();
+		});
+		// Still hidden while the request is in flight.
+		expect(runtime.isAutoApproving(runtime.pendingConfirmations[0])).toBe(true);
+
+		releaseConfirm();
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.get('req-hidden')).toBe('approved');
+		});
+	});
+
+	it('does not flag confirmations without a matching grant as auto-approving', () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-other',
+			requestId: 'req-other',
+			toolName: 'workflows',
+			args: { action: 'archive' },
+		});
+
+		expect(runtime.isAutoApproving(runtime.pendingConfirmations[0])).toBe(false);
+	});
+
 	it('does not auto-approve channel-setup confirmations even when the key matches', async () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		runtime.addAlwaysAllowKey('configure_channel', {});
@@ -2005,6 +2055,10 @@ describe('createThreadRuntime - session always-allow', () => {
 			});
 		});
 		expect(runtime.resolvedConfirmationIds.has('req-fail')).toBe(false);
+		// The card must come back so the user can resolve the still-waiting run.
+		await vi.waitFor(() => {
+			expect(runtime.isAutoApproving(runtime.pendingConfirmations[0])).toBe(false);
+		});
 	});
 });
 

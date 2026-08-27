@@ -99,10 +99,12 @@ type ConfirmationChunk = FloatingChunk | StandaloneChunk;
  *
  * - `inline`: every non-floating item (plan/text/setup/etc.) in chronological
  *   order — these forms coexist comfortably in the chat flow.
- * - `floating`: only the **oldest** floating item. We intentionally do not
- *   stack: the floating panel replaces the chat input, and stacking would
- *   shove the input far up the screen. The user must resolve the visible
- *   card before the next one appears.
+ * - `floating`: only the **oldest** floating item, and never one that a session
+ *   "Always allow" grant is about to auto-approve — rendering that card for the
+ *   lifetime of the confirm POST makes the chat input jump. We intentionally do
+ *   not stack: the floating panel replaces the chat input, and stacking would
+ *   shove the input far up the screen. The user must resolve the visible card
+ *   before the next one appears.
  */
 const chunks = computed((): ConfirmationChunk[] => {
 	if (props.kind === 'inline') {
@@ -116,6 +118,7 @@ const chunks = computed((): ConfirmationChunk[] => {
 
 	for (const item of thread.pendingConfirmations) {
 		if (!isPendingItemFloating(item)) continue;
+		if (thread.isAutoApproving(item)) continue;
 		return [{ type: 'floating', item }];
 	}
 	return [];

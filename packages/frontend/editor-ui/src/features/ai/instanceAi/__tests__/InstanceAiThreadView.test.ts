@@ -510,6 +510,7 @@ describe('InstanceAiThreadView', () => {
 			rateableResponseId: null,
 			pendingConfirmations: [],
 			resolvedConfirmationIds: new Map(),
+			isAutoApproving: vi.fn(() => false),
 			debugEvents: [],
 			loadHistoricalMessages: vi.fn().mockResolvedValue('applied'),
 			loadThreadStatus: vi.fn().mockResolvedValue(undefined),
@@ -1498,6 +1499,31 @@ describe('InstanceAiThreadView', () => {
 
 		expect(getByTestId('instance-ai-confirmation-panel-floating')).toBeTruthy();
 		expect(queryByTestId('instance-ai-input-stub')).toBeNull();
+	});
+
+	it('keeps the chat input in place for a confirmation the session grant auto-approves', () => {
+		// Swapping the input out for a card that auto-resolves milliseconds later
+		// made the input jump up and down during execution.
+		thread.pendingConfirmations = [
+			{
+				messageId: 'msg-auto',
+				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
+				toolCall: {
+					toolCallId: 'tc-auto',
+					toolName: 'workflows',
+					args: { action: 'run' },
+					isLoading: true,
+					confirmationStatus: 'pending',
+					confirmation: { requestId: 'req-auto', severity: 'info', message: 'Run?' },
+				},
+			},
+		] as unknown as ThreadRuntime['pendingConfirmations'];
+		thread.isAutoApproving = vi.fn(() => true);
+
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(getByTestId('instance-ai-input-stub')).toBeTruthy();
+		expect(queryByTestId('instance-ai-confirmation-panel-floating')).toBeNull();
 	});
 
 	it('connects the route thread when navigating to a known thread', async () => {

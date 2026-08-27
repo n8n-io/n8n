@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { nextTick } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
@@ -41,6 +42,14 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ instanceId: 'test-instance-id' }),
+}));
+
+// The runtime's auto-approve watcher POSTs directly through the API module (not
+// through the spied `thread.confirmAction`). Keep it pending so no test hits the
+// network; tests that need a decision spy on `thread.confirmAction` instead.
+vi.mock('../instanceAi.api', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../instanceAi.api')>()),
+	postConfirmation: vi.fn(async () => await new Promise(() => {})),
 }));
 
 vi.mock('../toolLabels', () => ({
@@ -486,6 +495,43 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					],
 				}),
 			);
+		});
+
+		it('renders nothing for a confirmation the session always-allow grant auto-approves', async () => {
+			// Regression: the card used to render for the lifetime of the auto-approve
+			// POST and then disappear, jumping the chat input it replaces.
+			thread.addAlwaysAllowKey('test-tool', { action: 'run' });
+			injectPendingConfirmation(
+				thread,
+				{
+					requestId: 'req-auto-hidden',
+					severity: 'info',
+					message: 'Run this workflow?',
+				},
+				{ action: 'run' },
+			);
+
+			const { queryByTestId } = renderComponent({ props: { kind: 'floating' } });
+			await nextTick();
+
+			expect(queryByTestId('instance-ai-confirmation-panel')).toBeNull();
+			expect(queryByTestId('instance-ai-panel-confirm-approve')).toBeNull();
+		});
+
+		it('still renders the card when the session grant does not cover the action', () => {
+			thread.addAlwaysAllowKey('test-tool', { action: 'run' });
+			injectPendingConfirmation(
+				thread,
+				{
+					requestId: 'req-not-granted',
+					severity: 'info',
+					message: 'Archive this workflow?',
+				},
+				{ action: 'archive' },
+			);
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			expect(getByTestId('instance-ai-confirmation-panel')).toBeVisible();
 		});
 
 		it('renders nothing when mounted as inline for a floating-eligible confirmation', () => {
