@@ -291,7 +291,8 @@ describe('GatewayClient.checkPermissions', () => {
 				resource: '/custom/path: ls',
 				description: 'Execute shell command: ls in /custom/path',
 			});
-			expect(session.check).toHaveBeenCalledWith('shell', '/custom/path: ls');
+			// Shell resources carry no kind — only browser tools set one.
+			expect(session.check).toHaveBeenCalledWith('shell', '/custom/path: ls', undefined);
 			expect(execute).not.toHaveBeenCalled();
 			expect(confirmResourceAccess).not.toHaveBeenCalled();
 		});

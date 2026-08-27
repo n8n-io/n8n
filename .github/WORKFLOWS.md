@@ -245,9 +245,10 @@ parallelism). See the `--build-via-mcp` section in
 
 ### Other Manual Workflows
 
-| Workflow                  | Purpose                                                 |
-|---------------------------|---------------------------------------------------------|
-| `util-data-tooling.yml`   | SQLite/PostgreSQL export/import validation (manual)     |
+| Workflow                    | Purpose                                                 |
+|-----------------------------|---------------------------------------------------------|
+| `util-data-tooling.yml`     | SQLite/PostgreSQL export/import validation (manual)     |
+| `util-probe-registry.yml`   | Diagnose slow npm metadata fetches (temporary)          |
 
 ---
 
@@ -415,9 +416,11 @@ to mechanical, tool-generated files (the pnpm lockfile, bot-maintained data file
 `MECHANICAL_PATHS` in `sync-master-to-3x.mjs`) are auto-resolved during the replay; the tree
 check then applies to every path except those files. On a real code conflict `3.x` is left
 untouched and a draft PR carrying the conflict markers (labeled `automation:v3-sync`, with
-mechanical files pre-resolved) is opened on `sync/master-to-3x`, requesting the
-breaking-commit authors as reviewers via `sync-conflict-owners.mjs`, posting to
-`#alerts-v3-sync` and pausing further syncs until it is resolved and merged normally.
+mechanical files pre-resolved) is opened on `sync/master-to-3x`, naming both ends of the
+conflict — the breaking-commit authors and the `master` commits that touched the same files
+— via `sync-conflict-owners.mjs`, posting to `#alerts-v3-sync` and pausing further syncs
+until it is resolved and merged normally. Delete/modify conflicts have no markers to carry,
+so they are resolved toward `3.x` and listed as an explicit decision in the PR body.
 `build-v3-nightly.yml` publishes `n8nio/n8n:v3-nightly[-<date>]` images from `3.x`
 by calling `docker-build-push.yml` with `ref: 3.x` + `date_tag`. On Mondays it also
 retags that run's n8n + runners manifests as a release candidate (by digest on GHCR, so
@@ -519,6 +522,7 @@ Scripts in `.github/scripts/`:
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
+| `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
 
 ### Branch Replay Scripts
 

@@ -1,5 +1,5 @@
 import type { Folder, User } from '@n8n/db';
-import { FolderRepository } from '@n8n/db';
+import { chunkIds, FolderRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import type { FindOptionsWhere } from '@n8n/typeorm';
@@ -22,11 +22,8 @@ export class FolderFinderService {
 
 	async findExistingFolderIds(folderIds: string[]): Promise<Set<string>> {
 		if (folderIds.length === 0) return new Set();
-		const folders = await this.folderRepository.find({
-			select: { id: true },
-			where: { id: In(folderIds) },
-		});
-		return new Set(folders.map(({ id }) => id));
+
+		return await this.folderRepository.findExistingIds(folderIds);
 	}
 
 	/**
@@ -74,9 +71,14 @@ export class FolderFinderService {
 
 		const accessWhere = await this.buildFolderReadWhere(user, scopes);
 
-		return await this.folderRepository.find({
-			where: { id: In(folderIds), ...accessWhere },
-		});
+		const folders = new Map<string, Folder>();
+		for (const chunk of chunkIds(folderIds)) {
+			const found = await this.folderRepository.find({
+				where: { id: In(chunk), ...accessWhere },
+			});
+			for (const folder of found) folders.set(folder.id, folder);
+		}
+		return [...folders.values()];
 	}
 
 	/**
