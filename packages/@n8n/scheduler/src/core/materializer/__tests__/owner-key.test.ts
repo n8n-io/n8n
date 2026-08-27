@@ -6,14 +6,11 @@ const owner = (ownerType: string, ownerId: string, ownerMemberId: string | null 
 	ownerMemberId,
 });
 
-const key = (ownerType: string, ownerId: string, ownerMemberId: string | null = null) =>
-	`${ownerType}\0${ownerId}\0${ownerMemberId ?? '\0'}`;
-
 describe('ownerKeyFor', () => {
 	it("groups a trigger node's rules under one key", () => {
 		const node = owner('workflow', 'wf-1', 'node-1');
 
-		expect(ownerKeyFor(node)).toBe(key('workflow', 'wf-1', 'node-1'));
+		expect(ownerKeyFor(node)).toBe('8:workflow4:wf-16:node-1');
 		expect(ownerKeyFor({ ...node })).toBe(ownerKeyFor(node));
 	});
 
@@ -21,7 +18,7 @@ describe('ownerKeyFor', () => {
 		const first = owner('system-task', 'system:prune-executions');
 		const second = owner('system-task', 'system:reconcile-owners');
 
-		expect(ownerKeyFor(first)).toBe(key('system-task', 'system:prune-executions'));
+		expect(ownerKeyFor(first)).toBe('11:system-task23:system:prune-executions-:');
 		expect(ownerKeyFor(first)).not.toBe(ownerKeyFor(second));
 	});
 
@@ -38,6 +35,17 @@ describe('ownerKeyFor', () => {
 		);
 		expect(ownerKeyFor(owner('workflow', 'wf-1', ''))).not.toBe(
 			ownerKeyFor(owner('workflow', 'wf-1', null)),
+		);
+	});
+
+	it('keeps the parts apart whatever they carry, separators and markers included', () => {
+		// A member id spelling the missing-member marker, and a part carrying the
+		// separator: neither may forge the boundary the length prefix pins.
+		expect(ownerKeyFor(owner('workflow', 'wf-1', '-'))).not.toBe(
+			ownerKeyFor(owner('workflow', 'wf-1', null)),
+		);
+		expect(ownerKeyFor(owner('workflow', 'wf-1:node', '1'))).not.toBe(
+			ownerKeyFor(owner('workflow', 'wf-1', 'node:1')),
 		);
 	});
 
@@ -70,22 +78,22 @@ describe('withOwnerKeys', () => {
 			{
 				id: 1,
 				...owner('workflow', 'wf-1', 'node-1'),
-				ownerKey: key('workflow', 'wf-1', 'node-1'),
+				ownerKey: '8:workflow4:wf-16:node-1',
 			},
 			{
 				id: 2,
 				...owner('workflow', 'wf-1', 'node-1'),
-				ownerKey: key('workflow', 'wf-1', 'node-1'),
+				ownerKey: '8:workflow4:wf-16:node-1',
 			},
 			{
 				id: 3,
 				...owner('workflow', 'wf-2', 'node-9'),
-				ownerKey: key('workflow', 'wf-2', 'node-9'),
+				ownerKey: '8:workflow4:wf-26:node-9',
 			},
 			{
 				id: 4,
 				...owner('system-task', 'system:prune-executions'),
-				ownerKey: key('system-task', 'system:prune-executions'),
+				ownerKey: '11:system-task23:system:prune-executions-:',
 			},
 		]);
 	});
