@@ -13,6 +13,8 @@ import { v4 as uuid } from 'uuid';
 
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 
+import { selfOwned, workflowOwned } from './shared/job-factory';
+
 describe('scheduler materialization', () => {
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
@@ -43,10 +45,12 @@ describe('scheduler materialization', () => {
 		batchSize: 10,
 	});
 
-	const createJob = async (overrides: Partial<ScheduledJob> = {}) =>
-		await jobRepo.save(
+	const createJob = async (overrides: Partial<ScheduledJob> = {}) => {
+		const name = `job-${++seq}`;
+		return await jobRepo.save(
 			jobRepo.create({
-				name: `job-${++seq}`,
+				name,
+				...selfOwned(name),
 				taskType: 'test',
 				payload: {},
 				kind: 'interval',
@@ -57,6 +61,7 @@ describe('scheduler materialization', () => {
 				...overrides,
 			}),
 		);
+	};
 
 	/** Compose a scheduler over the production storage bindings, with per-test tuning. */
 	const composeScheduler = (materializer?: SchedulerDeps['materializer']) =>
@@ -376,11 +381,11 @@ describe('scheduler materialization', () => {
 	describe('rules of one node under the owner-wide coalesce policy', () => {
 		let workflowId: string;
 		let nodeId: string;
+		let owner: ReturnType<typeof workflowOwned>;
 
 		const createRule = async () =>
 			await createJob({
-				workflowId,
-				nodeId,
+				...owner,
 				intervalSeconds: 3600,
 				misfirePolicy: 'coalesce_owner',
 				misfireGraceSeconds: 3600,
@@ -395,11 +400,12 @@ describe('scheduler materialization', () => {
 			);
 			workflowId = workflow.id;
 			nodeId = uuid();
+			owner = workflowOwned(workflowId, nodeId);
 		});
 
 		it('leaves one catch-up run pending and retires the occurrences it supersedes', async () => {
 			const rules = [await createRule(), await createRule(), await createRule()];
-			await jobRepo.backdateNextRunAt(workflowId, nodeId, 200);
+			await jobRepo.backdateNextRunAt(owner, 200);
 
 			const firstPass = await runMaterialization(0);
 			expect(firstPass).toMatchObject({ claimedJobs: 3, occurrences: 3 });
@@ -407,8 +413,8 @@ describe('scheduler materialization', () => {
 			expect(queued).toHaveLength(3);
 			expect(queued.every((task) => task.status === 'pending')).toBe(true);
 
-			await jobRepo.update({ workflowId, nodeId }, { misfireGraceSeconds: 30 });
-			await jobRepo.backdateNextRunAt(workflowId, nodeId, 100);
+			await jobRepo.update({ ...owner }, { misfireGraceSeconds: 30 });
+			await jobRepo.backdateNextRunAt(owner, 100);
 
 			const secondPass = await runMaterialization(0);
 
@@ -431,10 +437,33 @@ describe('scheduler materialization', () => {
 			expect(missedIds).toEqual(queued.map((task) => task.id).sort());
 		});
 
+		it('never groups self-owned jobs together, whatever their policy', async () => {
+			// A system task is its own owner, so unrelated system jobs cannot coalesce
+			// into one another's catch-up run even under the owner-wide policy.
+			const first = await createJob({
+				intervalSeconds: 3600,
+				misfirePolicy: 'coalesce_owner',
+				misfireGraceSeconds: 30,
+				nextRunAt: secondsFromNow(-100),
+			});
+			const second = await createJob({
+				intervalSeconds: 3600,
+				misfirePolicy: 'coalesce_owner',
+				misfireGraceSeconds: 30,
+				nextRunAt: secondsFromNow(-100),
+			});
+
+			const summary = await runMaterialization(0);
+
+			expect(summary).toMatchObject({ claimedJobs: 2, occurrences: 2 });
+			const pending = await taskRepo.find({ where: { status: 'pending' } });
+			expect(pending.map((task) => task.jobId).sort()).toEqual([first.id, second.id].sort());
+		});
+
 		it('advances every rule clock even though only one catch-up run was recorded', async () => {
 			const rules = [await createRule(), await createRule(), await createRule()];
-			await jobRepo.update({ workflowId, nodeId }, { misfireGraceSeconds: 30 });
-			await jobRepo.backdateNextRunAt(workflowId, nodeId, 100);
+			await jobRepo.update({ ...owner }, { misfireGraceSeconds: 30 });
+			await jobRepo.backdateNextRunAt(owner, 100);
 
 			await runMaterialization(0);
 
