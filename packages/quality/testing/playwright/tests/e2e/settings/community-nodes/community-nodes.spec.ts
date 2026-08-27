@@ -1,5 +1,10 @@
 import { test, expect } from '../../../../fixtures/base';
 
+// Unverified package installs are disabled by default; this spec covers the install flow
+test.use({
+	capability: { env: { N8N_UNVERIFIED_PACKAGES_ENABLED: 'true' } },
+});
+
 const MOCK_PACKAGE = {
 	createdAt: '2024-07-22T19:08:06.505Z',
 	updatedAt: '2024-07-22T19:08:06.505Z',
