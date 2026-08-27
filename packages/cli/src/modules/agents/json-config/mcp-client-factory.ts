@@ -125,7 +125,11 @@ export async function buildMcpClientForServer(
 			if (!connection || !credentialData || connection.credentialType !== server.authentication) {
 				throw new OperationalError('MCP registry connection could not be resolved');
 			}
-			const prepared = prepareMcpRegistryConnection({ connection, credentialData });
+			const prepared = prepareMcpRegistryConnection({
+				connection,
+				credentialData,
+				headers: initialHeaders,
+			});
 			if (!prepared.ok) throw new OperationalError(prepared.error.message);
 			initialHeaders = prepared.value.headers;
 			runtimeUrl = prepared.value.endpointUrl;

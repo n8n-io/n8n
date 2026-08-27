@@ -13,6 +13,10 @@ function mergeHeaders(requestHeaders: HeadersInit | undefined, authHeaders: Head
 	return merged;
 }
 
+function getInputHeaders(input: RequestInfo | URL, init?: RequestInit): HeadersInit | undefined {
+	return init?.headers ?? (input instanceof Request ? input.headers : undefined);
+}
+
 export function createRefreshingAuthFetch({
 	baseFetch,
 	initialHeaders,
@@ -46,9 +50,10 @@ export function createRefreshingAuthFetch({
 		): Promise<Response> => {
 			const requestAuthVersion = authVersion;
 			const execute = async () =>
-				await baseFetch(requestInput, {
+				await baseFetch(requestInput instanceof Request ? requestInput.clone() : requestInput, {
 					...requestInit,
-					headers: mergeHeaders(requestInit?.headers, authHeaders),
+					// Include auth headers for redirect requests too
+					headers: mergeHeaders(getInputHeaders(requestInput, requestInit), authHeaders),
 				});
 
 			const response = await execute();
@@ -62,8 +67,9 @@ export function createRefreshingAuthFetch({
 			return await execute();
 		};
 
-		const startUrl = input instanceof Request ? input.url : input;
-		return await fetchFollowingRedirects(authedFetch, startUrl, init, {
+		if (!assertAllowedUrl) return await authedFetch(input, init);
+
+		return await fetchFollowingRedirects(authedFetch, input, init, {
 			onBeforeHop: assertAllowedUrl,
 		});
 	};

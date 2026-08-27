@@ -54,9 +54,12 @@ export function resolveMcpRegistryConnection(
 export function prepareMcpRegistryConnection({
 	connection,
 	credentialData,
+	headers: preparedHeaders,
 }: PrepareMcpRegistryConnectionInput): PrepareMcpRegistryConnectionResult {
-	const headers = getMcpAuthHeaders(connection.credentialType, credentialData);
-	if (!headers.authorization) {
+	const headers = preparedHeaders ?? getMcpAuthHeaders(connection.credentialType, credentialData);
+	const authorization = new Headers(headers).get('authorization')?.trim();
+	const [scheme, accessToken] = authorization?.split(/\s+/, 2) ?? [];
+	if (scheme?.toLowerCase() !== 'bearer' || !accessToken) {
 		return {
 			ok: false,
 			error: {

@@ -362,6 +362,7 @@ export async function getAuthHeaders(
 			multipleHeadersAuth: 'httpMultipleHeadersAuth',
 		};
 		credentialType = credentialTypes[authentication];
+		if (!credentialType) return {};
 	}
 
 	const credentials = await ctx
@@ -374,7 +375,8 @@ export async function getAuthHeaders(
 		if (refreshedHeaders) return { headers: refreshedHeaders, credentials };
 	}
 
-	return { headers: getMcpAuthHeaders(authentication, credentials), credentials };
+	const headers = getMcpAuthHeaders(authentication, credentials);
+	return Object.keys(headers).length > 0 ? { headers, credentials } : { credentials };
 }
 
 /**
@@ -414,8 +416,11 @@ export async function tryRefreshOAuth2Token(
 		};
 	}
 
+	const headersWithoutAuthorization = Object.fromEntries(
+		Object.entries(headers).filter(([name]) => name.toLowerCase() !== 'authorization'),
+	);
 	return {
-		...headers,
+		...headersWithoutAuthorization,
 		Authorization: `Bearer ${access_token}`,
 	};
 }
@@ -454,6 +459,7 @@ export async function connectMcpClientForCredential(
 		const prepared = config.registryCredential.prepareConnection({
 			connection: config.registryCredential.connection,
 			credentialData: credentials,
+			headers,
 		});
 		if (!prepared.ok) {
 			throw new NodeOperationError(node, prepared.error.message);

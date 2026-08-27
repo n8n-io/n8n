@@ -405,6 +405,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			expect(result).toHaveLength(1);
 			proxyFetchMock.mockResolvedValue(new Response('ok'));
 			await expect(result[0].fetch?.('https://linear.example.com/mcp')).resolves.toBeDefined();
+			await expect(result[0].fetch?.('https://other.example.com/mcp')).rejects.toThrow();
 			expect(proxyFetchMock).toHaveBeenCalledOnce();
 		});
 
@@ -432,6 +433,7 @@ describe('InstanceAiMcpRegistryService', () => {
 			expect(result).toHaveLength(1);
 			proxyFetchMock.mockResolvedValue(new Response('ok'));
 			await expect(result[0].fetch?.('https://linear.example.com/mcp')).resolves.toBeDefined();
+			await expect(result[0].fetch?.('https://other.example.com/mcp')).rejects.toThrow();
 			expect(proxyFetchMock).toHaveBeenCalledOnce();
 		});
 
