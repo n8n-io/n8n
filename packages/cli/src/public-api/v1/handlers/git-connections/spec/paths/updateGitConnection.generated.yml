@@ -46,6 +46,8 @@ requestBody:
           password:
             type: string
             minLength: 1
+          requireBranchForPromotion:
+            type: boolean
 responses:
   '200':
     description: Operation successful.

@@ -46,6 +46,8 @@ responses:
                   baseCommit:
                     type: string
                     nullable: true
+                  requireBranchForPromotion:
+                    type: boolean
                   createdAt:
                     type: string
                     format: date-time
@@ -60,6 +62,7 @@ responses:
                   - connectionType
                   - keyGeneratorType
                   - baseCommit
+                  - requireBranchForPromotion
                   - createdAt
                   - updatedAt
             nextCursor:

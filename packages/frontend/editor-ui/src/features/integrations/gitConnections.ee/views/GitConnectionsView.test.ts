@@ -53,6 +53,7 @@ const sshConnection = (overrides: Partial<GitConnection> = {}): GitConnection =>
 	publicKey: 'ssh-ed25519 EXISTING-KEY',
 	keyGeneratorType: 'ed25519',
 	baseCommit: null,
+	requireBranchForPromotion: false,
 	createdAt: '2026-08-01T00:00:00.000Z',
 	updatedAt: '2026-08-01T00:00:00.000Z',
 	...overrides,
@@ -135,6 +136,7 @@ describe('GitConnectionsView', () => {
 			repositoryUrl: 'git@github.com:acme/workflows.git',
 			connectionType: 'ssh',
 			keyGeneratorType: 'ed25519',
+			requireBranchForPromotion: false,
 		});
 
 		expect(

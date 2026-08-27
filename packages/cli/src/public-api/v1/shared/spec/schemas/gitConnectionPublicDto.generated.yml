@@ -26,6 +26,8 @@ properties:
   baseCommit:
     type: string
     nullable: true
+  requireBranchForPromotion:
+    type: boolean
   createdAt:
     type: string
     format: date-time
@@ -41,5 +43,6 @@ required:
   - publicKey
   - keyGeneratorType
   - baseCommit
+  - requireBranchForPromotion
   - createdAt
   - updatedAt

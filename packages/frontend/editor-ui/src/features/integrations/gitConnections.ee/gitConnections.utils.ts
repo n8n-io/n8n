@@ -15,6 +15,7 @@ export type GitConnectionFormState = {
 	keyGeneratorType: GitKeyGeneratorType;
 	username: string;
 	password: string;
+	requireBranchForPromotion: boolean;
 };
 
 export function buildCreatePayload(form: GitConnectionFormState): CreateGitConnectionDto {
@@ -22,6 +23,7 @@ export function buildCreatePayload(form: GitConnectionFormState): CreateGitConne
 		name: form.name.trim(),
 		repositoryUrl: form.repositoryUrl.trim(),
 		connectionType: form.connectionType,
+		requireBranchForPromotion: form.requireBranchForPromotion,
 	};
 
 	const branchName = form.branchName.trim();
@@ -64,6 +66,10 @@ export function buildUpdatePayload(
 
 	if (form.connectionType !== current.connectionType) {
 		payload.connectionType = form.connectionType;
+	}
+
+	if (form.requireBranchForPromotion !== current.requireBranchForPromotion) {
+		payload.requireBranchForPromotion = form.requireBranchForPromotion;
 	}
 
 	if (form.connectionType === 'ssh') {

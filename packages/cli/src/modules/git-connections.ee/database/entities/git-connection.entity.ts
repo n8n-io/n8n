@@ -39,4 +39,8 @@ export class GitConnection extends WithTimestampsAndStringId {
 	/** Last commit successfully reconciled for this connection; the base for three-way reconciliation. */
 	@Column({ type: 'varchar', length: 64, nullable: true })
 	baseCommit: string | null;
+
+	/** When true, promotes land on a new branch for review instead of the target branch. */
+	@Column({ type: 'boolean', default: false })
+	requireBranchForPromotion: boolean;
 }

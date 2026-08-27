@@ -63,6 +63,7 @@ erDiagram
   varchar_128_ name
   TEXT publicKey
   TEXT repositoryUrl
+  boolean requireBranchForPromotion
   datetime_3_ updatedAt
 }
 "project" {

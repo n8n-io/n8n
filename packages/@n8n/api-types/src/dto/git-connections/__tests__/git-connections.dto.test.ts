@@ -54,4 +54,21 @@ describe('Git connection DTOs', () => {
 		expect(UpdateGitConnectionDto.safeParse({ name: 'Renamed' }).success).toBe(true);
 		expect(UpdateGitConnectionDto.safeParse({ branchName: null }).success).toBe(false);
 	});
+
+	it('accepts an optional requireBranchForPromotion flag on create and update', () => {
+		expect(
+			CreateGitConnectionDto.safeParse({
+				name: 'Deployments',
+				repositoryUrl: 'git@example.com:org/repo.git',
+				connectionType: 'ssh',
+				requireBranchForPromotion: true,
+			}).success,
+		).toBe(true);
+		expect(UpdateGitConnectionDto.safeParse({ requireBranchForPromotion: false }).success).toBe(
+			true,
+		);
+		expect(UpdateGitConnectionDto.safeParse({ requireBranchForPromotion: 'yes' }).success).toBe(
+			false,
+		);
+	});
 });

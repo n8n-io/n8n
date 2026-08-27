@@ -72,6 +72,29 @@ describe('Git connections in Public API', () => {
 		expect(await Container.get(GitConnectionRepository).findOneBy({ id })).toBeNull();
 	});
 
+	it('defaults requireBranchForPromotion to false and round-trips it through create, update, and read', async () => {
+		const agent = testServer.publicApiAgentFor(owner);
+		const created = await agent.post('/git-connections').send({
+			name: 'Deployments',
+			repositoryUrl: 'https://example.com/org/repo.git',
+			connectionType: 'https',
+			username: 'git-user',
+			password: 'secret',
+		});
+		expect(created.status).toBe(201);
+		expect(created.body.requireBranchForPromotion).toBe(false);
+		const id = created.body.id as string;
+
+		const updated = await agent
+			.put(`/git-connections/${id}`)
+			.send({ requireBranchForPromotion: true });
+		expect(updated.status, JSON.stringify(updated.body)).toBe(200);
+		expect(updated.body.requireBranchForPromotion).toBe(true);
+
+		const read = await agent.get(`/git-connections/${id}`);
+		expect(read.body.requireBranchForPromotion).toBe(true);
+	});
+
 	it('rejects a key without the source-control scope', async () => {
 		const unscopedOwner = await createOwnerWithApiKey({ scopes: ['tag:list'] });
 		const response = await testServer.publicApiAgentFor(unscopedOwner).get('/git-connections');

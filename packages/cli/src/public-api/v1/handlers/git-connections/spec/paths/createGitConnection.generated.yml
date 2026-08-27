@@ -41,6 +41,8 @@ requestBody:
           password:
             type: string
             minLength: 1
+          requireBranchForPromotion:
+            type: boolean
         required:
           - name
           - repositoryUrl

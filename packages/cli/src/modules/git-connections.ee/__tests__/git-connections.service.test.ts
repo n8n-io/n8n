@@ -56,6 +56,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		repositoryUrl: 'git@github.com:o/r.git',
 		branchName: 'main',
 		baseCommit: null,
+		requireBranchForPromotion: false,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	});
@@ -150,6 +151,27 @@ describe('GitConnectionsService (credential state machine)', () => {
 			).rejects.toThrow(BadRequestError);
 		});
 
+		it('defaults requireBranchForPromotion to false and persists it when set', async () => {
+			await service.create({
+				name: 'c',
+				repositoryUrl: 'git@github.com:o/r.git',
+				connectionType: 'ssh',
+			} as CreateGitConnectionDto);
+			expect((repository.save.mock.calls[0][0] as GitConnection).requireBranchForPromotion).toBe(
+				false,
+			);
+
+			await service.create({
+				name: 'c',
+				repositoryUrl: 'git@github.com:o/r.git',
+				connectionType: 'ssh',
+				requireBranchForPromotion: true,
+			} as CreateGitConnectionDto);
+			expect((repository.save.mock.calls[1][0] as GitConnection).requireBranchForPromotion).toBe(
+				true,
+			);
+		});
+
 		it('rejects keyGeneratorType on an https connection', async () => {
 			await expect(
 				service.create({
@@ -223,6 +245,16 @@ describe('GitConnectionsService (credential state machine)', () => {
 			repository.findOneBy.mockResolvedValue(sshEntity());
 			await service.update('1', { name: 'renamed' } as UpdateGitConnectionDto);
 
+			expect(gitService.resetWorkingCopy).not.toHaveBeenCalled();
+		});
+
+		it('persists requireBranchForPromotion without invalidating the working copy', async () => {
+			repository.findOneBy.mockResolvedValue(sshEntity());
+			await service.update('1', { requireBranchForPromotion: true } as UpdateGitConnectionDto);
+
+			expect((repository.save.mock.calls[0][0] as GitConnection).requireBranchForPromotion).toBe(
+				true,
+			);
 			expect(gitService.resetWorkingCopy).not.toHaveBeenCalled();
 		});
 	});

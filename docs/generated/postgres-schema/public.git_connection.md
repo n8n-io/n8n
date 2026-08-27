@@ -16,6 +16,7 @@
 | name | varchar(128) |  | false |  |  |  |
 | publicKey | text |  | true |  |  | SSH public key; set when connectionType is 'ssh', null for 'https'. |
 | repositoryUrl | text |  | false |  |  |  |
+| requireBranchForPromotion | boolean | false | false |  |  | When true, promotes land on a new branch for review instead of the target branch. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
 ## Constraints
@@ -32,6 +33,7 @@
 | git_connection_id_not_null | n | NOT NULL id |
 | git_connection_name_not_null | n | NOT NULL name |
 | git_connection_repositoryUrl_not_null | n | NOT NULL "repositoryUrl" |
+| git_connection_requireBranchForPromotion_not_null | n | NOT NULL "requireBranchForPromotion" |
 | git_connection_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
 ## Indexes
@@ -60,6 +62,7 @@ erDiagram
   varchar_128_ name
   text publicKey
   text repositoryUrl
+  boolean requireBranchForPromotion
   timestamp_3__with_time_zone updatedAt
 }
 "public.git_connection_project" {

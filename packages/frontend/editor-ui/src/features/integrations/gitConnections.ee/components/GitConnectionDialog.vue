@@ -13,6 +13,7 @@ import {
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
+	N8nSwitch,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
@@ -57,6 +58,7 @@ const form = reactive<GitConnectionFormState>({
 	keyGeneratorType: 'ed25519',
 	username: '',
 	password: '',
+	requireBranchForPromotion: false,
 });
 
 const step = ref<'type' | 'form' | 'key'>(props.connectionId === undefined ? 'type' : 'form');
@@ -157,6 +159,7 @@ onMounted(async () => {
 		form.branchName = connection.branchName ?? '';
 		form.connectionType = connection.connectionType;
 		form.keyGeneratorType = connection.keyGeneratorType ?? 'ed25519';
+		form.requireBranchForPromotion = connection.requireBranchForPromotion;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.gitConnections.toast.error.load'));
 		close();
@@ -455,6 +458,20 @@ async function submit() {
 				</N8nText>
 			</template>
 
+			<N8nInputLabel :label="i18n.baseText('settings.gitConnections.form.promotionSettings')">
+				<N8nSwitch
+					v-model="form.requireBranchForPromotion"
+					:label="i18n.baseText('settings.gitConnections.form.requireBranchForPromotion')"
+					:disabled="isLoading"
+					data-test-id="git-connection-require-branch-for-promotion-switch"
+				/>
+				<div :class="$style.hint">
+					<N8nText size="small" color="text-light">
+						{{ i18n.baseText('settings.gitConnections.form.requireBranchForPromotion.hint') }}
+					</N8nText>
+				</div>
+			</N8nInputLabel>
+
 			<N8nDialogFooter>
 				<N8nButton
 					v-if="connectionId"
@@ -514,6 +531,10 @@ async function submit() {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	margin-top: var(--spacing--xs);
+}
+
+.hint {
+	margin-top: var(--spacing--2xs);
 }
 
 .deleteButton {

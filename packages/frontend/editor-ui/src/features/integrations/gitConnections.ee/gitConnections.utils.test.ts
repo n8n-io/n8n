@@ -13,6 +13,7 @@ const form = (overrides: Partial<GitConnectionFormState> = {}): GitConnectionFor
 	keyGeneratorType: 'ed25519',
 	username: '',
 	password: '',
+	requireBranchForPromotion: false,
 	...overrides,
 });
 
@@ -25,6 +26,7 @@ const existing = (overrides: Partial<GitConnection> = {}): GitConnection => ({
 	publicKey: 'ssh-ed25519 AAAA',
 	keyGeneratorType: 'ed25519',
 	baseCommit: null,
+	requireBranchForPromotion: false,
 	createdAt: '2026-08-01T00:00:00.000Z',
 	updatedAt: '2026-08-01T00:00:00.000Z',
 	...overrides,
@@ -37,6 +39,7 @@ describe('buildCreatePayload', () => {
 			repositoryUrl: 'git@github.com:acme/workflows.git',
 			connectionType: 'ssh',
 			keyGeneratorType: 'rsa',
+			requireBranchForPromotion: false,
 		});
 	});
 
@@ -56,6 +59,13 @@ describe('buildCreatePayload', () => {
 			connectionType: 'https',
 			username: 'deploy-bot',
 			password: ' token-123 ',
+			requireBranchForPromotion: false,
+		});
+	});
+
+	it('sends requireBranchForPromotion when enabled', () => {
+		expect(buildCreatePayload(form({ requireBranchForPromotion: true }))).toMatchObject({
+			requireBranchForPromotion: true,
 		});
 	});
 
@@ -107,5 +117,20 @@ describe('buildUpdatePayload', () => {
 
 	it('treats a cleared branch as unchanged rather than removing it', () => {
 		expect(buildUpdatePayload(form({ branchName: '' }), existing())).toEqual({});
+	});
+
+	it('sends requireBranchForPromotion only when it changed', () => {
+		expect(
+			buildUpdatePayload(
+				form({ branchName: 'main', requireBranchForPromotion: true }),
+				existing({ requireBranchForPromotion: false }),
+			),
+		).toEqual({ requireBranchForPromotion: true });
+		expect(
+			buildUpdatePayload(
+				form({ branchName: 'main', requireBranchForPromotion: false }),
+				existing({ requireBranchForPromotion: false }),
+			),
+		).toEqual({});
 	});
 });

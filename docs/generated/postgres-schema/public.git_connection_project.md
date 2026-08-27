@@ -55,6 +55,7 @@ erDiagram
   varchar_128_ name
   text publicKey
   text repositoryUrl
+  boolean requireBranchForPromotion
   timestamp_3__with_time_zone updatedAt
 }
 "public.project" {
