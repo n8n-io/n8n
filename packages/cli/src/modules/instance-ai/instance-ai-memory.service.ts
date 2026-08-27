@@ -28,7 +28,6 @@ import { DurableLogMetrics } from './event-bus/durable-log-metrics';
 import {
 	collectConfirmationRequestIds,
 	markExpiredConfirmations,
-	messageParserStats,
 	parseStoredMessages,
 } from './message-parser';
 import { InstanceAiCheckpointRepository } from './repositories/instance-ai-checkpoint.repository';
@@ -41,15 +40,6 @@ export interface InstanceAiThreadLaunchMetadata {
 	source: InstanceAiThreadSource;
 	origin: InstanceAiThreadOrigin;
 	sourceContext?: Record<string, unknown>;
-}
-
-function isAgentMessageLike(value: unknown): value is AgentDbMessage {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		typeof (value as { id?: unknown }).id === 'string' &&
-		'role' in value
-	);
 }
 
 function isRestorableMessage(
@@ -148,32 +138,6 @@ function expandRunIdsToGroups(
 		for (const sibling of runsByGroup.get(groupId) ?? []) expanded.add(sibling);
 	}
 	return [...expanded];
-}
-
-function collectInFlightCheckpointMessages(checkpoints: InstanceAiCheckpoint[]): AgentDbMessage[] {
-	const merged: AgentDbMessage[] = [];
-	const seen = new Set<string>();
-	for (const checkpoint of checkpoints) {
-		const stateMessages = checkpoint.state?.messageList?.messages ?? [];
-		for (const candidate of stateMessages) {
-			if (!isAgentMessageLike(candidate) || seen.has(candidate.id)) continue;
-			seen.add(candidate.id);
-			merged.push({
-				...candidate,
-				createdAt:
-					candidate.createdAt instanceof Date ? candidate.createdAt : new Date(candidate.createdAt),
-			});
-		}
-	}
-	return merged;
-}
-
-function mergeMessagesById(stored: AgentDbMessage[], extras: AgentDbMessage[]): AgentDbMessage[] {
-	if (extras.length === 0) return stored;
-	const byId = new Map<string, AgentDbMessage>();
-	for (const message of stored) byId.set(message.id, message);
-	for (const message of extras) if (!byId.has(message.id)) byId.set(message.id, message);
-	return [...byId.values()].sort((a, b) => messageCreatedAtMs(a) - messageCreatedAtMs(b));
 }
 
 /** Runs with a `run-start` fact but no terminal `run-finish` in the log. */
@@ -434,8 +398,9 @@ export class InstanceAiMemoryService {
 		// Hydrate trees only for the page we are about to render.
 		const pageWindow = historyWindow(result.messages, page, result.newerBoundaryAt);
 
-		// Loaded once, shared by the fold's suspension carve-out and the
-		// in-flight message merge below.
+		// The fold's suspension carve-out: a HITL-suspended run legitimately has
+		// no run-finish, so its turn still folds (the confirmation card and the
+		// in-flight work are durable facts) instead of being skipped as in-flight.
 		const activeCheckpoints = await this.loadActiveCheckpoints(threadId);
 
 		// No window means an out-of-range older page: it has no message rows for
@@ -453,21 +418,7 @@ export class InstanceAiMemoryService {
 					options?.excludeMessageGroupIds,
 				);
 
-		// Surface the in-flight messages from any suspended checkpoint. The
-		// user's prompt is persisted to memory on receipt, but the intermediate
-		// assistant responses and pending tool-call from a turn suspended at HITL
-		// are only committed after the turn completes, so until then they live
-		// only inside the checkpoint blob. Without merging them in, a thread
-		// waiting on a confirmation renders without those in-flight artifacts
-		// after a page reload.
-		const checkpointMessages = collectInFlightCheckpointMessages(activeCheckpoints);
-		const storedMessages = mergeMessagesById(result.messages, checkpointMessages);
-
-		const fallbacksBefore = messageParserStats.fallbackActivations;
-		const messages = parseStoredMessages(storedMessages, snapshots);
-		this.durableLogMetrics.notifyParserFallbacks(
-			messageParserStats.fallbackActivations - fallbacksBefore,
-		);
+		const messages = parseStoredMessages(result.messages, snapshots);
 		await this.flagExpiredConfirmations(messages);
 
 		const projectId = await this.agentMemory.getThreadProjectId(threadId);

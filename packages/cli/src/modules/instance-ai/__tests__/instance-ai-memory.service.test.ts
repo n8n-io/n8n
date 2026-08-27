@@ -78,7 +78,7 @@ function installLogDouble(rows: LogRow[] = []): void {
 			logRows.filter((row) => runIds.includes(row.runId)),
 	);
 }
-const mockDurableLogMetrics = { recordFoldRead: vi.fn(), notifyParserFallbacks: vi.fn() };
+const mockDurableLogMetrics = { recordFoldRead: vi.fn() };
 
 function createService(options: { threadTtlDays?: number } = {}): InstanceAiMemoryService {
 	const mockConfig = {
@@ -130,50 +130,6 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 		mockListMessages.mockResolvedValue({ messages: [] });
 	});
 
-	it('should return parsed messages with flat tree when no snapshots exist', async () => {
-		mockListMessages.mockResolvedValue({
-			messages: [
-				{
-					id: 'msg-u',
-					role: 'user',
-					content: 'Hi',
-					createdAt: new Date('2026-01-01T00:00:00.000Z'),
-				},
-				{
-					id: 'msg-a',
-					role: 'assistant',
-					content: [
-						{ type: 'text', text: 'Here are your workflows' },
-						{
-							type: 'tool-call',
-							toolCallId: 'tc-1',
-							toolName: 'list-workflows',
-							input: {},
-							state: 'resolved',
-							output: { workflows: [] },
-						},
-					],
-					createdAt: new Date('2026-01-01T00:00:01.000Z'),
-				},
-			],
-		});
-		mockGetThread.mockResolvedValue({
-			id: 'thread-1',
-			title: 'Test',
-			metadata: {},
-		});
-
-		const service = createService();
-		const result = await service.getRichMessages('user-1', 'thread-1');
-
-		expect(result.messages).toHaveLength(2);
-		const assistant = result.messages[1];
-		expect(assistant.agentTree).toBeDefined();
-		expect(assistant.agentTree?.toolCalls).toHaveLength(1);
-		expect(assistant.agentTree?.toolCalls[0].toolName).toBe('list-workflows');
-		expect(assistant.agentTree?.toolCalls[0].isLoading).toBe(false);
-	});
-
 	it('should handle empty message list', async () => {
 		mockListMessages.mockResolvedValue({ messages: [] });
 		mockGetThread.mockResolvedValue({
@@ -186,95 +142,6 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 		const result = await service.getRichMessages('user-1', 'thread-1');
 
 		expect(result.messages).toEqual([]);
-	});
-
-	it('surfaces in-flight checkpoint messages not yet committed to memory', async () => {
-		// A turn that suspended at HITL never gets `saveToMemory` called by the
-		// SDK. The inbound user message is persisted on receipt, but the
-		// intermediate assistant messages (and any pending tool-call) live only
-		// in `state.messageList.messages` until the turn resumes and completes.
-		// The /messages endpoint should surface them so a page reload doesn't
-		// drop in-flight artifacts.
-		mockListMessages.mockResolvedValue({ messages: [] });
-		mockCheckpointRepository.findActiveByThreadId.mockResolvedValueOnce([
-			{
-				key: 'run_abc',
-				runId: 'run_abc',
-				threadId: 'thread-1',
-				expiredAt: null,
-				state: {
-					messageList: {
-						messages: [
-							{
-								id: 'cp-user-1',
-								role: 'user',
-								content: [{ type: 'text', text: 'execute my workflow' }],
-								createdAt: '2026-01-01T00:00:00.000Z',
-							},
-							{
-								id: 'cp-assistant-1',
-								role: 'assistant',
-								content: [{ type: 'text', text: 'On it!' }],
-								createdAt: '2026-01-01T00:00:01.000Z',
-							},
-						],
-					},
-				},
-				createdAt: new Date('2026-01-01T00:00:01.000Z'),
-				updatedAt: new Date('2026-01-01T00:00:01.000Z'),
-			},
-		]);
-
-		const service = createService();
-		const result = await service.getRichMessages('user-1', 'thread-1');
-
-		expect(result.messages).toHaveLength(2);
-		expect(result.messages[0]).toMatchObject({ id: 'cp-user-1', role: 'user' });
-		expect(result.messages[0].content).toBe('execute my workflow');
-		expect(result.messages[1]).toMatchObject({ id: 'cp-assistant-1', role: 'assistant' });
-	});
-
-	it('prefers stored messages over checkpoint duplicates with the same id', async () => {
-		// When a previously suspended turn resumes and commits its messages to
-		// memory, the same IDs appear in both places. The stored row wins so
-		// any post-suspension edits the SDK made (e.g. final tool outcomes)
-		// are not regressed by the stale checkpoint copy.
-		mockListMessages.mockResolvedValue({
-			messages: [
-				{
-					id: 'msg-1',
-					role: 'user',
-					content: [{ type: 'text', text: 'final version' }],
-					createdAt: new Date('2026-01-01T00:00:00.000Z'),
-				},
-			],
-		});
-		mockCheckpointRepository.findActiveByThreadId.mockResolvedValueOnce([
-			{
-				key: 'run_abc',
-				expiredAt: null,
-				state: {
-					messageList: {
-						messages: [
-							{
-								id: 'msg-1',
-								role: 'user',
-								content: [{ type: 'text', text: 'stale checkpoint copy' }],
-								createdAt: '2026-01-01T00:00:00.000Z',
-							},
-						],
-					},
-				},
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			},
-		]);
-
-		const service = createService();
-		const result = await service.getRichMessages('user-1', 'thread-1');
-
-		expect(result.messages).toHaveLength(1);
-		expect(result.messages[0].content).toBe('final version');
 	});
 
 	it('tolerates a missing or unreadable checkpoint store', async () => {
@@ -624,8 +491,9 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 
 	it('keeps folding a HITL-suspended run without a run-finish', async () => {
 		// A suspended run legitimately never wrote its run-finish, but its turn
-		// must keep rendering: the fold entry pairs with the checkpoint-surfaced
-		// assistant message. The suspension is recognized by the run's own
+		// must keep rendering: with no assistant rows committed yet, the folded
+		// entry surfaces as a standalone assistant message carrying the
+		// confirmation card. The suspension is recognized by the run's own
 		// checkpoint — the same predicate that spares it from the interrupted-run
 		// sweep.
 		mockListMessages.mockResolvedValue({ messages: [userMessage] });
@@ -636,19 +504,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 				hostRunId: 'run_susp',
 				threadId: 'thread-1',
 				expiredAt: null,
-				state: {
-					status: 'suspended',
-					messageList: {
-						messages: [
-							{
-								id: 'cp-assistant-1',
-								role: 'assistant',
-								content: [{ type: 'text', text: 'Confirm before I continue' }],
-								createdAt: '2026-01-01T00:00:01.000Z',
-							},
-						],
-					},
-				},
+				state: { status: 'suspended' },
 				createdAt: new Date('2026-01-01T00:00:01.000Z'),
 				updatedAt: new Date('2026-01-01T00:00:01.000Z'),
 			},
@@ -688,6 +544,7 @@ describe('InstanceAiMemoryService.getRichMessages — durable-log fold-on-read',
 
 		expect(result.messages).toHaveLength(2);
 		const assistant = result.messages[1];
+		expect(assistant.role).toBe('assistant');
 		expect(assistant.agentTree?.toolCalls[0]?.confirmation?.requestId).toBe('req-1');
 	});
 
