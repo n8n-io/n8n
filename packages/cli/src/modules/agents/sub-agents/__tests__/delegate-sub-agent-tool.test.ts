@@ -17,10 +17,8 @@ import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
-import {
-	createN8nDelegateSubAgentTool,
-	formatSubAgentToolOutput,
-} from '../delegate-sub-agent-tool';
+import { createN8nDelegateSubAgentTool } from '../delegate-sub-agent-tool';
+import { formatSubAgentToolOutput } from '../format-sub-agent-tool-output';
 import type { SubAgentRunResult, SubAgentRunner } from '../sub-agent-runner';
 
 const projectId = 'project-1';

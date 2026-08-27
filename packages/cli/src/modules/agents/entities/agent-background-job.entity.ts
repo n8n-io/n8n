@@ -15,6 +15,7 @@ export type AgentBackgroundJobStatus = 'running' | 'completed' | 'failed' | 'can
 @Index(['parentThreadId'])
 @Index(['childExecutionId'])
 @Index(['parentThreadId', 'dedupeKey'], { unique: true, where: '"dedupeKey" IS NOT NULL' })
+@Index(['timeoutAt'], { where: '"status" = \'running\'' })
 export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
 	kind: AgentBackgroundJobKind;

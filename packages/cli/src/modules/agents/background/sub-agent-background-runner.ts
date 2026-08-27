@@ -9,8 +9,13 @@ import {
 	SUB_AGENT_BACKGROUND_TIMEOUT_MS,
 	type BackgroundJobReceipt,
 } from './agent-background-job.service';
-import { formatSubAgentToolOutput } from '../sub-agents/delegate-sub-agent-tool';
-import { SubAgentRunner, type SubAgentRunContext } from '../sub-agents/sub-agent-runner';
+import type { AgentBackgroundJobSettlement } from '../repositories/agent-background-job.repository';
+import { formatSubAgentToolOutput } from '../sub-agents/format-sub-agent-tool-output';
+import {
+	SubAgentRunner,
+	type SubAgentRunContext,
+	type SubAgentRunResult,
+} from '../sub-agents/sub-agent-runner';
 
 export interface BackgroundSpawnRequest {
 	subAgentId: string;
@@ -54,6 +59,10 @@ export class SubAgentBackgroundRunner {
 			'credentialProvider' | 'runType' | 'workflowToolExecutionMode' | 'user' | 'instrumentation'
 		>,
 	): Promise<BackgroundJobReceipt> {
+		// Throws on an unusable task name — before the job row exists, so a bad
+		// name cannot leave a phantom `running` row holding a thread slot.
+		const taskPath = createChildSubAgentTaskPath(request.taskName, this.dispatchCounter++);
+
 		const jobId = uuid();
 		const childThreadId = uuid();
 
@@ -82,11 +91,15 @@ export class SubAgentBackgroundRunner {
 					status: 'failed',
 					error: `Timed out after ${Math.round(SUB_AGENT_BACKGROUND_TIMEOUT_MS / 60_000)} minutes`,
 				})
+				.catch((error: unknown) => {
+					// A rejection escaping this detached chain would surface as an
+					// unhandled rejection; the sweeper reconciles the row later.
+					this.logger.error('Failed to settle timed-out background job', { jobId, error });
+				})
 				.finally(() => abortController.abort());
 		}, SUB_AGENT_BACKGROUND_TIMEOUT_MS);
 		timeout.unref();
 
-		const taskPath = createChildSubAgentTaskPath(request.taskName, this.dispatchCounter++);
 		void this.runner
 			.run(
 				{
@@ -115,33 +128,47 @@ export class SubAgentBackgroundRunner {
 					abortSignal: abortController.signal,
 				},
 			)
-			.then(async (result) => {
-				const output = formatSubAgentToolOutput(result);
-				if (output.status === 'completed') {
-					await this.jobService.settle(jobId, { status: 'completed', result: output.answer });
-				} else if (output.status === 'suspended') {
-					// Background HITL is not supported yet: nobody can answer the child,
-					// so record why instead of leaving the job running forever.
-					await this.jobService.settle(jobId, {
-						status: 'failed',
-						error: 'Sub-agent suspended awaiting human input, which background runs do not support',
-					});
-				} else {
-					await this.jobService.settle(jobId, {
-						status: output.status === 'cancelled' ? 'cancelled' : 'failed',
-						error: output.error ?? null,
-					});
+			.then((result) => settlementFor(result))
+			.catch(
+				(error: unknown): AgentBackgroundJobSettlement => ({
+					status: 'failed',
+					error: error instanceof Error ? error.message : String(error),
+				}),
+			)
+			.then(async (settlement) => {
+				const settled = await this.jobService.settle(jobId, settlement);
+				if (settled && settlement.status === 'failed') {
+					this.logger.warn('Background sub-agent job failed', { jobId, error: settlement.error });
 				}
 			})
-			.catch(async (error: unknown) => {
-				const message = error instanceof Error ? error.message : String(error);
-				const settled = await this.jobService.settle(jobId, { status: 'failed', error: message });
-				if (settled) {
-					this.logger.warn('Background sub-agent job failed', { jobId, error: message });
-				}
+			.catch((error: unknown) => {
+				// Only the settle write itself can land here: don't overwrite the
+				// outcome (a completed answer must not become 'failed' over a DB
+				// blip) and don't let the rejection escape the detached chain —
+				// the sweeper reconciles the still-running row later.
+				this.logger.error('Failed to settle background sub-agent job', { jobId, error });
 			})
 			.finally(() => clearTimeout(timeout));
 
 		return receipt;
 	}
+}
+
+function settlementFor(result: SubAgentRunResult): AgentBackgroundJobSettlement {
+	const output = formatSubAgentToolOutput(result);
+	if (output.status === 'completed') {
+		return { status: 'completed', result: output.answer };
+	}
+	if (output.status === 'suspended') {
+		// Background HITL is not supported yet: nobody can answer the child,
+		// so record why instead of leaving the job running forever.
+		return {
+			status: 'failed',
+			error: 'Sub-agent suspended awaiting human input, which background runs do not support',
+		};
+	}
+	return {
+		status: output.status === 'cancelled' ? 'cancelled' : 'failed',
+		error: output.error ?? null,
+	};
 }

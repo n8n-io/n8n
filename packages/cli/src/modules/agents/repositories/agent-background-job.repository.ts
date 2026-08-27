@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, In, LessThan, Repository } from '@n8n/typeorm';
+import { OperationalError } from 'n8n-workflow';
 
 import {
 	AgentBackgroundJob,
@@ -37,28 +38,35 @@ export class AgentBackgroundJobRepository extends Repository<AgentBackgroundJob>
 	/**
 	 * Insert a job row as `running`. The unique `(parentThreadId, dedupeKey)`
 	 * index doubles as the single-flight gate: `orIgnore` (`ON CONFLICT DO
-	 * NOTHING` / `INSERT OR IGNORE`) lets a concurrent or earlier insert win
-	 * silently, and the winner row is read back by the unique key so the caller
-	 * can report the duplicate instead of erroring.
+	 * NOTHING` on both supported drivers) lets a concurrent or earlier insert
+	 * win silently, and the winner row is read back by the unique key so the
+	 * caller can report the duplicate instead of erroring.
+	 *
+	 * The second attempt covers the winner settling (which clears its dedupe
+	 * key, reopening the gate) between our ignored insert and the readback.
 	 */
 	async insertJob(job: NewAgentBackgroundJob): Promise<InsertJobOutcome> {
-		await this.createQueryBuilder()
-			.insert()
-			.into(AgentBackgroundJob)
-			.values({ ...job, status: 'running' })
-			.orIgnore()
-			.execute();
+		for (let attempt = 0; attempt < 2; attempt++) {
+			await this.createQueryBuilder()
+				.insert()
+				.into(AgentBackgroundJob)
+				.values({ ...job, status: 'running' })
+				.orIgnore()
+				.execute();
 
-		// Without a dedupe key nothing can conflict (the unique index skips NULLs).
-		if (!job.dedupeKey) return { inserted: true };
+			// Without a dedupe key nothing can conflict (the unique index skips NULLs).
+			if (!job.dedupeKey) return { inserted: true };
 
-		const inserted = await this.existsBy({ id: job.id });
-		if (inserted) return { inserted: true };
+			const inserted = await this.existsBy({ id: job.id });
+			if (inserted) return { inserted: true };
 
-		const existing = await this.findOneOrFail({
-			where: { parentThreadId: job.parentThreadId, dedupeKey: job.dedupeKey },
-		});
-		return { inserted: false, existing };
+			const existing = await this.findOne({
+				where: { parentThreadId: job.parentThreadId, dedupeKey: job.dedupeKey },
+			});
+			if (existing) return { inserted: false, existing };
+		}
+
+		throw new OperationalError('Failed to register background job amid concurrent updates');
 	}
 
 	async countRunningByParentThread(parentThreadId: string): Promise<number> {

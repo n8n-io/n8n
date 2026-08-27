@@ -1,6 +1,10 @@
 import type { CredentialProvider } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
+import {
+	encodeAgentSandboxHostMetadata,
+	hashAgentSandboxPrincipal,
+} from '../../agent-sandbox-principal';
 import type { AgentBackgroundJobService, BackgroundJobView } from '../agent-background-job.service';
 import {
 	createCancelBackgroundJobTool,
@@ -85,6 +89,74 @@ describe('spawn_background_subagent', () => {
 		expect(output).toMatchObject({ status: 'rejected', note: expect.stringContaining('sub-1') });
 		expect(backgroundRunner.spawn).not.toHaveBeenCalled();
 	});
+
+	it('forwards dedupeKey, context and expectedOutput to the spawn request', async () => {
+		const { backgroundRunner, options } = setup();
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		const tool = createSpawnBackgroundSubAgentTool(options);
+
+		await tool.handler!(
+			{
+				subAgentId: 'sub-1',
+				taskName: 'research',
+				goal: 'find things',
+				context: 'background info',
+				expectedOutput: 'a list',
+				dedupeKey: 'key-1',
+			},
+			{ persistence },
+		);
+
+		expect(backgroundRunner.spawn.mock.calls[0][0]).toMatchObject({
+			context: 'background info',
+			expectedOutput: 'a list',
+			dedupeKey: 'key-1',
+		});
+	});
+
+	it('forwards the sandbox principal only when the host scope matches the project', async () => {
+		const { backgroundRunner, options } = setup();
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		const tool = createSpawnBackgroundSubAgentTool(options);
+		const principalHash = hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' });
+		const input = { subAgentId: 'sub-1', taskName: 'research', goal: 'find things' };
+
+		await tool.handler!(input, {
+			persistence: {
+				...persistence,
+				hostMetadata: encodeAgentSandboxHostMetadata({ projectId: 'project-1', principalHash }),
+			},
+		});
+		expect(backgroundRunner.spawn.mock.calls[0][0]).toMatchObject({
+			parentSandboxPrincipalHash: principalHash,
+		});
+
+		await tool.handler!(input, {
+			persistence: {
+				...persistence,
+				hostMetadata: encodeAgentSandboxHostMetadata({ projectId: 'project-other', principalHash }),
+			},
+		});
+		expect(backgroundRunner.spawn.mock.calls[1][0]).not.toHaveProperty(
+			'parentSandboxPrincipalHash',
+		);
+	});
+
+	it.each([
+		{ receipt: { status: 'duplicate', existingJobId: 'job-9' } as const },
+		{ receipt: { status: 'limit-reached' } as const },
+	])('echoes a $receipt.status receipt in the tool output', async ({ receipt }) => {
+		const { backgroundRunner, options } = setup();
+		backgroundRunner.spawn.mockResolvedValue(receipt);
+		const tool = createSpawnBackgroundSubAgentTool(options);
+
+		const output = await tool.handler!(
+			{ subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
+			{ persistence },
+		);
+
+		expect(output).toMatchObject(receipt);
+	});
 });
 
 describe('check_background_jobs', () => {
@@ -122,6 +194,31 @@ describe('check_background_jobs', () => {
 		expect(output.jobs[0].result.length).toBeLessThan(10_000);
 		expect(output.jobs[0].result).toContain('truncated');
 	});
+
+	it('truncates oversized errors in the echo', async () => {
+		const { jobService, options } = setup();
+		jobService.listForThread.mockResolvedValue([
+			jobView({ status: 'failed', error: 'x'.repeat(10_000) }),
+		]);
+		const tool = createCheckBackgroundJobsTool(options.jobService);
+
+		const output = (await tool.handler!({}, { persistence })) as {
+			jobs: Array<{ error: string }>;
+		};
+
+		expect(output.jobs[0].error.length).toBeLessThan(10_000);
+		expect(output.jobs[0].error).toContain('truncated');
+	});
+
+	it('returns an empty listing when no persisted thread is active', async () => {
+		const { jobService, options } = setup();
+		const tool = createCheckBackgroundJobsTool(options.jobService);
+
+		const output = await tool.handler!({}, {});
+
+		expect(output).toMatchObject({ jobs: [], note: expect.stringContaining('No persisted') });
+		expect(jobService.listForThread).not.toHaveBeenCalled();
+	});
 });
 
 describe('cancel_background_job', () => {
@@ -134,5 +231,15 @@ describe('cancel_background_job', () => {
 
 		expect(jobService.cancel).toHaveBeenCalledWith('thread-1', 'job-1');
 		expect(output).toEqual({ status: 'cancelled' });
+	});
+
+	it('returns not-found without cancelling when no persisted thread is active', async () => {
+		const { jobService, options } = setup();
+		const tool = createCancelBackgroundJobTool(options.jobService);
+
+		const output = await tool.handler!({ jobId: 'job-1' }, {});
+
+		expect(output).toEqual({ status: 'not-found' });
+		expect(jobService.cancel).not.toHaveBeenCalled();
 	});
 });

@@ -58,14 +58,28 @@ export class AgentBackgroundJobService {
 			Required<Pick<NewAgentBackgroundJob, 'childThreadId'>> &
 			Pick<NewAgentBackgroundJob, 'dedupeKey'>,
 	): Promise<BackgroundJobReceipt> {
+		// '' would slip past the NULL-skipping dedupe index as a real key while
+		// the readback treats it as "no dedupe" — normalize it away.
+		const dedupeKey = params.dedupeKey || undefined;
+
 		// ponytail: count-then-insert can briefly admit one job over the cap under
 		// concurrent spawns; the limit is advisory. Wrap in a transaction if it
 		// ever needs to be exact.
 		const running = await this.jobRepository.countRunningByParentThread(params.parentThreadId);
-		if (running >= MAX_RUNNING_JOBS_PER_THREAD) return { status: 'limit-reached' };
+		if (running >= MAX_RUNNING_JOBS_PER_THREAD) {
+			// An idempotent retry of a running job must still get its receipt back
+			// at the cap instead of a spurious limit-reached.
+			if (dedupeKey) {
+				const jobs = await this.jobRepository.findByParentThread(params.parentThreadId);
+				const holder = jobs.find((job) => job.status === 'running' && job.dedupeKey === dedupeKey);
+				if (holder) return { status: 'duplicate', existingJobId: holder.id };
+			}
+			return { status: 'limit-reached' };
+		}
 
 		const outcome = await this.jobRepository.insertJob({
 			...params,
+			dedupeKey,
 			kind: 'subagent',
 			timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
 		});
@@ -162,11 +176,15 @@ export class AgentBackgroundJobService {
 	private async failJobsPastTimeout(): Promise<void> {
 		const timedOut = await this.jobRepository.findRunningPastTimeout(new Date());
 		for (const job of timedOut) {
-			this.abortControllers.get(job.id)?.abort();
+			// Settle first so the timeout is recorded as the reason — an abort-first
+			// order would race the aborted run's own settle write. Grab the handle
+			// before settle drops it from the map.
+			const controller = this.abortControllers.get(job.id);
 			const settled = await this.settle(job.id, {
 				status: 'failed',
 				error: `Timed out after ${Math.round(SUB_AGENT_BACKGROUND_TIMEOUT_MS / 60_000)} minutes`,
 			});
+			controller?.abort();
 			if (settled) this.logger.debug('Failed background job past its timeout', { jobId: job.id });
 		}
 	}

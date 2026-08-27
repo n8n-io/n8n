@@ -56,12 +56,21 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 		.input(
 			z.object({
 				subAgentId: z.string().describe('Id of a configured sub-agent from the roster'),
-				taskName: z.string().describe('Short label for the job, echoed in status checks'),
+				// min/max mirror the varchar(255) job columns — an oversized value
+				// would otherwise surface as a raw DB error, and '' would slip past
+				// the NULL-skipping dedupe index as a real key.
+				taskName: z
+					.string()
+					.min(1)
+					.max(255)
+					.describe('Short label for the job, echoed in status checks'),
 				goal: z.string().describe('What the sub-agent should accomplish'),
 				context: z.string().optional().describe('Background information the sub-agent needs'),
 				expectedOutput: z.string().optional().describe('Shape of the answer to return'),
 				dedupeKey: z
 					.string()
+					.min(1)
+					.max(255)
 					.optional()
 					.describe(
 						'Single-flight key: a spawn with a key already held by a running job of this ' +
@@ -149,7 +158,7 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 		)
 		.input(
 			z.object({
-				jobIds: z.array(z.string()).optional().describe('Limit the check to these job ids'),
+				jobIds: z.array(z.string()).max(50).optional().describe('Limit the check to these job ids'),
 			}),
 		)
 		.handler(async (input, ctx) => {
@@ -166,7 +175,7 @@ export function createCheckBackgroundJobsTool(jobService: AgentBackgroundJobServ
 					title: job.title,
 					status: job.status,
 					...(job.result !== null ? { result: truncateResult(job.result) } : {}),
-					...(job.error !== null ? { error: job.error } : {}),
+					...(job.error !== null ? { error: truncateResult(job.error) } : {}),
 					startedAt: job.createdAt.toISOString(),
 					...(job.timeoutAt !== null ? { timeoutAt: job.timeoutAt.toISOString() } : {}),
 				})),

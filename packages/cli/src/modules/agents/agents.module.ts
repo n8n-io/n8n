@@ -114,9 +114,9 @@ export class AgentsModule implements ModuleInterface {
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
 		if (instanceSettings.instanceType === 'main') {
-			// Loaded for its pubsub decorator: every main must be able to abort a
-			// background job it spawned when the cancel lands on a different main.
+			// Loaded for its pubsub decorator
 			await import('./background/agent-background-job.service.js');
+
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'
 			);
@@ -134,6 +134,7 @@ export class AgentsModule implements ModuleInterface {
 			);
 			this.interruptedExecutionSweepTimer.unref();
 		}
+
 		// Workers never receive inbound platform events: no webhook route, no polling
 		// loop. Holding channels there would connect adapters nothing reads and, now
 		// that startups are reported, publish status rows for a process that cannot
@@ -142,6 +143,9 @@ export class AgentsModule implements ModuleInterface {
 		if (instanceSettings.instanceType !== 'worker') {
 			channelReconciler.init();
 		}
+
+		// Tasks are leader-only: only the leader should run the cron and reconnect tasks on startup.
+		// TODO: migrate to the durable scheduler
 		if (instanceSettings.isLeader) {
 			void taskService.reconnectAll().catch((error) => {
 				logger.error('[Agents] Failed to reconnect tasks on startup', {

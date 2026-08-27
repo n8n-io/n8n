@@ -16,6 +16,7 @@ import {
 } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
+import { AgentsConfig } from '@n8n/config';
 import type { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -30,6 +31,8 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
+import { AgentBackgroundJobService } from '../background/agent-background-job.service';
+import { SubAgentBackgroundRunner } from '../background/sub-agent-background-runner';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
@@ -839,5 +842,79 @@ describe('AgentRuntimeReconstructionService.reconstructFromResolvedSource — su
 		expect(toolNames.filter((name) => name.endsWith('_action'))).toHaveLength(0);
 		expect(toolNames).not.toContain(DELEGATE_SUB_AGENT_TOOL_NAME);
 		expect(toolNames).not.toContain(WRITE_TODOS_TOOL_NAME);
+	});
+});
+
+describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — background job tools gating', () => {
+	const BACKGROUND_TOOL_NAMES = [
+		'spawn_background_subagent',
+		'check_background_jobs',
+		'cancel_background_job',
+	];
+	const subAgents = { agents: [{ agentId: 'agent-2', useWhen: 'Use for research tasks.' }] };
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		builtAgent.hasCheckpointStorage.mockReturnValue(true);
+		builtAgent.tool.mockClear();
+		Container.set(AgentBackgroundJobService, mock<AgentBackgroundJobService>());
+		Container.set(SubAgentBackgroundRunner, mock<SubAgentBackgroundRunner>());
+	});
+
+	afterEach(() => {
+		Container.get(AgentsConfig).backgroundTasksEnabled = false;
+	});
+
+	function setupWithRoster() {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue(
+			mock<Agent>({ id: 'agent-2', name: 'Researcher', activeVersionId: 'version-1' }),
+		);
+		return {
+			service: makeReconstructionService({ agentRepository }),
+			credentialProvider: mock<CredentialProvider>(),
+		};
+	}
+
+	it('injects no background tools when the flag is off', async () => {
+		const { service, credentialProvider } = setupWithRoster();
+
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity(undefined, { subAgents }),
+			credentialProvider,
+			'production',
+		);
+
+		const toolNames = getInjectedToolNames();
+		for (const name of BACKGROUND_TOOL_NAMES) expect(toolNames).not.toContain(name);
+	});
+
+	it('injects all three background tools when the flag is on and sub-agents are configured', async () => {
+		Container.get(AgentsConfig).backgroundTasksEnabled = true;
+		const { service, credentialProvider } = setupWithRoster();
+
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity(undefined, { subAgents }),
+			credentialProvider,
+			'production',
+		);
+
+		expect(getInjectedToolNames()).toEqual(expect.arrayContaining(BACKGROUND_TOOL_NAMES));
+	});
+
+	it('injects only check/cancel when the flag is on without configured sub-agents', async () => {
+		Container.get(AgentsConfig).backgroundTasksEnabled = true;
+		const service = makeReconstructionService();
+
+		await service.reconstructFromAgentEntity(
+			makeAgentEntity(),
+			mock<CredentialProvider>(),
+			'production',
+		);
+
+		const toolNames = getInjectedToolNames();
+		expect(toolNames).toContain('check_background_jobs');
+		expect(toolNames).toContain('cancel_background_job');
+		expect(toolNames).not.toContain('spawn_background_subagent');
 	});
 });

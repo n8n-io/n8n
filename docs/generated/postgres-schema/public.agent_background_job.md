@@ -49,6 +49,7 @@
 | IDX_3c78976c9ddd0e61d87c862642 | CREATE INDEX "IDX_3c78976c9ddd0e61d87c862642" ON public.agent_background_job USING btree ("childExecutionId") |
 | IDX_adfb96f4e2e8f163da2615cd57 | CREATE INDEX "IDX_adfb96f4e2e8f163da2615cd57" ON public.agent_background_job USING btree ("parentThreadId") |
 | IDX_agent_background_job_parentThreadId_dedupeKey | CREATE UNIQUE INDEX "IDX_agent_background_job_parentThreadId_dedupeKey" ON public.agent_background_job USING btree ("parentThreadId", "dedupeKey") WHERE ("dedupeKey" IS NOT NULL) |
+| IDX_agent_background_job_timeoutAt | CREATE INDEX "IDX_agent_background_job_timeoutAt" ON public.agent_background_job USING btree ("timeoutAt") WHERE ((status)::text = 'running'::text) |
 | PK_6e0db58281aa2b4c956dc0d58e9 | CREATE UNIQUE INDEX "PK_6e0db58281aa2b4c956dc0d58e9" ON public.agent_background_job USING btree (id) |
 
 ## Relations

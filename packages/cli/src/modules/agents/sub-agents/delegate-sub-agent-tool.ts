@@ -1,8 +1,6 @@
 import {
 	createDelegateSubAgentTool,
-	generateResultToDelegateSubAgentOutput,
 	INLINE_SUB_AGENT_ID,
-	type DelegateSubAgentToolOutput,
 	type InlineSubAgentProviderToolsResolver,
 	type ModelConfig,
 	type SubAgentTaskDifficulty,
@@ -13,7 +11,8 @@ import { OperationalError } from 'n8n-workflow';
 import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
-import type { SubAgentRunContext, SubAgentRunResult, SubAgentRunner } from './sub-agent-runner';
+import { formatSubAgentToolOutput } from './format-sub-agent-tool-output';
+import type { SubAgentRunContext, SubAgentRunner } from './sub-agent-runner';
 
 export interface CreateN8nDelegateSubAgentToolOptions extends SubAgentRunContext {
 	runner: SubAgentRunner;
@@ -156,18 +155,4 @@ function selectSubAgentSource(options: {
 	const { sourcesById, subAgentId } = options;
 	if (subAgentId === INLINE_SUB_AGENT_ID) return undefined;
 	return sourcesById?.[subAgentId];
-}
-
-export function formatSubAgentToolOutput(result: SubAgentRunResult): DelegateSubAgentToolOutput {
-	const output = generateResultToDelegateSubAgentOutput(
-		result.taskPath,
-		result.result,
-		result.threadId,
-	);
-	return {
-		...output,
-		...(output.status === 'suspended' && result.resumeContext !== undefined
-			? { resumeContext: result.resumeContext }
-			: {}),
-	};
 }

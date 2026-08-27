@@ -229,6 +229,27 @@ describe('SubAgentRunner', () => {
 		expect(startedAt.getTime()).toBe(finalizedRecord.startTime);
 	});
 
+	it('runs the child on a caller-supplied childThreadId instead of minting one', async () => {
+		// The seam a background dispatcher relies on: its durable job row points
+		// at this id, so orphan reconciliation only works if the run honors it.
+		const result = await runner.run(
+			{ ...spawnRequest, childThreadId: 'pre-minted-thread' },
+			{
+				projectId,
+				credentialProvider,
+				runType: 'production',
+			},
+		);
+
+		expect(result.threadId).toBe('pre-minted-thread');
+		expect(childAgent.stream).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({
+				persistence: expect.objectContaining({ threadId: 'pre-minted-thread' }),
+			}),
+		);
+	});
+
 	it('records the child turn with the parent run type, not its own published state', async () => {
 		const result = await runner.run(spawnRequest, {
 			projectId,

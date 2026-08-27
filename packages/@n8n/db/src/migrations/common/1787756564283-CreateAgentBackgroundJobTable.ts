@@ -68,6 +68,18 @@ export class CreateAgentBackgroundJobTable1787756564283 implements ReversibleMig
 			undefined,
 			'"dedupeKey" IS NOT NULL',
 		);
+
+		// Reconciliation sweeps every couple of minutes on every main, filtering
+		// on status = 'running' (and timeoutAt), while settled rows accumulate
+		// without retention. The partial index only ever holds the small running
+		// set, keeping the sweeps off the full table.
+		await createIndex(
+			'agent_background_job',
+			['timeoutAt'],
+			false,
+			undefined,
+			'"status" = \'running\'',
+		);
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {

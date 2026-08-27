@@ -58,8 +58,9 @@ function setup() {
 }
 
 async function flushDetachedRun() {
-	// The run is fire-and-forget; drain the microtask queue so its settle lands.
-	await new Promise(process.nextTick);
+	// The run is fire-and-forget; a macrotask boundary drains the whole nested
+	// microtask chain (nextTick would leave later reactions queued behind us).
+	await new Promise((resolve) => setImmediate(resolve));
 }
 
 describe('spawn', () => {
@@ -107,14 +108,43 @@ describe('spawn', () => {
 		expect(runContext.onChunk).toBeUndefined();
 	});
 
-	it('does not start a run when the receipt is limit-reached or duplicate', async () => {
+	it.each([
+		{ status: 'limit-reached' } as const,
+		{ status: 'duplicate', existingJobId: 'job-existing' } as const,
+	])('does not start a run when the receipt is $status', async (receiptFromService) => {
 		const { backgroundRunner, runner, jobService, context } = setup();
-		jobService.registerSubAgentJob.mockResolvedValue({ status: 'limit-reached' });
+		jobService.registerSubAgentJob.mockResolvedValue(receiptFromService);
 
 		const receipt = await backgroundRunner.spawn(request, context);
 
-		expect(receipt).toEqual({ status: 'limit-reached' });
+		expect(receipt).toEqual(receiptFromService);
 		expect(runner.run).not.toHaveBeenCalled();
+	});
+
+	it('rejects an unusable task name before any job row is registered', async () => {
+		const { backgroundRunner, runner, jobService, context } = setup();
+
+		await expect(backgroundRunner.spawn({ ...request, taskName: '!!!' }, context)).rejects.toThrow(
+			'alphanumeric',
+		);
+		expect(jobService.registerSubAgentJob).not.toHaveBeenCalled();
+		expect(runner.run).not.toHaveBeenCalled();
+	});
+
+	it('keeps a completed outcome when the settle write itself fails', async () => {
+		const { backgroundRunner, jobService, context } = setup();
+		jobService.settle.mockRejectedValue(new Error('db blip'));
+
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+
+		// The settle-write failure is contained; the outcome is never rewritten
+		// as failed over it — the row stays for the sweeper.
+		expect(jobService.settle).toHaveBeenCalledTimes(1);
+		expect(jobService.settle).toHaveBeenCalledWith(expect.any(String), {
+			status: 'completed',
+			result: 'the answer',
+		});
 	});
 
 	it('settles a suspended child as failed — background runs cannot answer HITL', async () => {
@@ -160,9 +190,7 @@ describe('spawn', () => {
 			runner.run.mockReturnValue(new Promise(() => {}));
 
 			await backgroundRunner.spawn(request, context);
-			vi.advanceTimersByTime(SUB_AGENT_BACKGROUND_TIMEOUT_MS);
-			vi.runAllTicks();
-			await Promise.resolve();
+			await vi.advanceTimersByTimeAsync(SUB_AGENT_BACKGROUND_TIMEOUT_MS);
 
 			expect(jobService.settle).toHaveBeenCalledWith(
 				expect.any(String),

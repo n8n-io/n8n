@@ -52,6 +52,7 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 | IDX_3c78976c9ddd0e61d87c862642 | CREATE INDEX "IDX_3c78976c9ddd0e61d87c862642" ON "agent_background_job" ("childExecutionId")  |
 | IDX_adfb96f4e2e8f163da2615cd57 | CREATE INDEX "IDX_adfb96f4e2e8f163da2615cd57" ON "agent_background_job" ("parentThreadId")  |
 | IDX_agent_background_job_parentThreadId_dedupeKey | CREATE UNIQUE INDEX "IDX_agent_background_job_parentThreadId_dedupeKey" ON "agent_background_job" ("parentThreadId", "dedupeKey") WHERE "dedupeKey" IS NOT NULL |
+| IDX_agent_background_job_timeoutAt | CREATE INDEX "IDX_agent_background_job_timeoutAt" ON "agent_background_job" ("timeoutAt") WHERE "status" = 'running' |
 | sqlite_autoindex_agent_background_job_1 | PRIMARY KEY (id) |
 
 ## Relations

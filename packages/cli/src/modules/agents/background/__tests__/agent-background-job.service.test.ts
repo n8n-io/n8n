@@ -96,6 +96,19 @@ describe('registerSubAgentJob', () => {
 		expect(jobRepository.insertJob).not.toHaveBeenCalled();
 	});
 
+	it('returns duplicate at the cap when a running job already holds the dedupe key', async () => {
+		const { service, jobRepository } = setup();
+		jobRepository.countRunningByParentThread.mockResolvedValue(MAX_RUNNING_JOBS_PER_THREAD);
+		jobRepository.findByParentThread.mockResolvedValue([
+			makeJob({ id: 'job-holder', dedupeKey: 'key-1' }),
+		]);
+
+		const receipt = await service.registerSubAgentJob({ ...registerParams, dedupeKey: 'key-1' });
+
+		expect(receipt).toEqual({ status: 'duplicate', existingJobId: 'job-holder' });
+		expect(jobRepository.insertJob).not.toHaveBeenCalled();
+	});
+
 	it('returns duplicate with the existing job id on a dedupe conflict', async () => {
 		const { service, jobRepository } = setup();
 		jobRepository.insertJob.mockResolvedValue({
