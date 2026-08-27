@@ -226,7 +226,7 @@ describe('MainSidebar', () => {
 			const { getByText, findByText } = renderComponent();
 
 			getByText('Settings').click();
-			const creditsItem = await findByText('n8n credits');
+			const creditsItem = await findByText('Gateway credits');
 			creditsItem.click();
 
 			expect(openTopUpMock).toHaveBeenCalledWith({ source: 'settings_page' });
