@@ -220,6 +220,19 @@ describe('thinkingToProviderOptions', () => {
 			moonshotai: { reasoningEffort: 'low' },
 		});
 	});
+
+	it('openrouter: maps reasoningEffort to providerOptions.openrouter', () => {
+		expect(
+			getProviderQuirks('openrouter').thinkingToProviderOptions?.(
+				{
+					reasoningEffort: 'medium',
+				},
+				'openrouter/z-ai/glm-5.3-flash:nitro',
+			),
+		).toEqual({
+			openrouter: { reasoningEffort: 'medium' },
+		});
+	});
 });
 
 describe('resolveDefaultMaxOutputTokens', () => {

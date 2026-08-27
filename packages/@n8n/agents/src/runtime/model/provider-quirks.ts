@@ -169,6 +169,7 @@ export const PROVIDER_QUIRKS: Partial<Record<ProviderId, ProviderQuirks>> = {
 	// custom/*: only forward an explicit effort — no provider-level default.
 	custom: reasoningEffortQuirk('custom'),
 	moonshotai: reasoningEffortQuirk('moonshotai'),
+	openrouter: reasoningEffortQuirk('openrouter'),
 };
 
 export function getProviderQuirks(providerId: string): ProviderQuirks {

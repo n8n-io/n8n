@@ -142,9 +142,32 @@ describe('applyAgentThinking', () => {
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 
-	it('skips OpenRouter models (thinking unsupported)', () => {
+	it('enables mapped low reasoning effort for proxied openrouter/moonshotai/kimi-k3', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'openrouter/moonshotai/kimi-k3');
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openrouter', {
+			reasoningEffort: 'low',
+		});
+	});
+
+	it('prefers N8N_INSTANCE_AI_REASONING_EFFORT for OpenRouter models', () => {
+		const previous = process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+		process.env.N8N_INSTANCE_AI_REASONING_EFFORT = 'medium';
+		try {
+			const agent = new Agent('test');
+			applyAgentThinking(agent, 'openrouter/z-ai/glm-5.3-flash:nitro');
+			expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openrouter', {
+				reasoningEffort: 'medium',
+			});
+		} finally {
+			if (previous === undefined) delete process.env.N8N_INSTANCE_AI_REASONING_EFFORT;
+			else process.env.N8N_INSTANCE_AI_REASONING_EFFORT = previous;
+		}
+	});
+
+	it('skips OpenRouter models without an env override or known-model map', () => {
+		const agent = new Agent('test');
+		applyAgentThinking(agent, 'openrouter/z-ai/glm-5.3-flash:nitro');
 		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 

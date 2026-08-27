@@ -131,7 +131,7 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 		attachments: NO_ATTACHMENTS,
 	},
 	openrouter: {
-		thinking: false,
+		thinking: 'reasoningEffort',
 		promptCaching: false,
 		webSearch: false,
 		providerTools: [],
