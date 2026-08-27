@@ -357,7 +357,7 @@ export async function getAuthHeaders(
 	if (isMcpOAuth2Authentication(authentication)) {
 		credentialType = authentication;
 	} else {
-		const credentialTypes = {
+		const credentialTypes: Record<string, string> = {
 			headerAuth: 'httpHeaderAuth',
 			bearerAuth: 'httpBearerAuth',
 			multipleHeadersAuth: 'httpMultipleHeadersAuth',

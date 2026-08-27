@@ -499,7 +499,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				const [result] = await service.getRegistryMcpServers(user);
 
 				expect(result.url).toBe('https://linear.example.com/mcp');
-				await expect(result.fetch?.(result.url)).resolves.toBeDefined();
+				await expect(result.fetch?.('https://linear.example.com/mcp')).resolves.toBeDefined();
 				await expect(result.fetch?.('https://other.example.com/mcp')).rejects.toThrow();
 				expect(proxyFetchMock).toHaveBeenCalledOnce();
 			},

@@ -801,27 +801,29 @@ describe('utils', () => {
 				ctx.helpers.refreshOAuth2Token.mockResolvedValue({
 					access_token: 'refreshed-token',
 				});
+				const credentialType = 'testMcpOAuth2Api' as const;
 				const connection = {
 					nodeTypeName: '@n8n/mcp-registry.test',
-					credentialType: 'testMcpOAuth2Api' as const,
 					endpointUrl: 'https://example.com/mcp',
 					endpointHostname: 'example.com',
 					transport: 'httpStreamable' as const,
+					credentialBindings: [{ credentialType, selector: 'oAuth2' }],
 				};
 				const prepareConnection = vi.fn((input: PrepareMcpRegistryConnectionInput) => ({
 					ok: true as const,
 					value: {
 						...connection,
+						credentialType,
 						headers: input.headers ?? {},
 						allowedDomains: connection.endpointHostname,
 					},
 				}));
 
 				await connectMcpClientForCredential(ctx, {
-					authentication: connection.credentialType,
+					authentication: credentialType,
 					serverTransport: transport,
 					endpointUrl: connection.endpointUrl,
-					registryCredential: { connection, prepareConnection },
+					registryCredential: { connection, credentialType, prepareConnection },
 					surface: 'MCP Client Tool',
 				});
 

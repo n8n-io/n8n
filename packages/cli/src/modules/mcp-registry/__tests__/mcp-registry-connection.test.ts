@@ -1,4 +1,4 @@
-import type { McpRegistryConnection } from 'n8n-workflow';
+import type { McpOAuth2CredentialType, McpRegistryConnection } from 'n8n-workflow';
 
 import {
 	prepareMcpRegistryConnection,
@@ -6,12 +6,14 @@ import {
 } from '../mcp-registry-connection';
 import { notionMockServer } from '../registry/mock-servers';
 
+const credentialType: McpOAuth2CredentialType = 'exampleMcpOAuth2Api';
+
 const connection: McpRegistryConnection = {
 	nodeTypeName: '@n8n/mcp-registry.example',
-	credentialType: 'exampleMcpOAuth2Api',
 	endpointUrl: 'https://example.com/mcp',
 	endpointHostname: 'example.com',
 	transport: 'httpStreamable',
+	credentialBindings: [{ credentialType, selector: 'oAuth2' }],
 };
 
 describe('resolveMcpRegistryConnection', () => {
@@ -43,6 +45,7 @@ describe('prepareMcpRegistryConnection', () => {
 	it('rejects an empty access token', () => {
 		const result = prepareMcpRegistryConnection({
 			connection,
+			credentialType,
 			credentialData: { oauthTokenData: { access_token: '' } },
 		});
 
@@ -55,9 +58,27 @@ describe('prepareMcpRegistryConnection', () => {
 		});
 	});
 
+	it('rejects a credential type the server does not bind', () => {
+		const result = prepareMcpRegistryConnection({
+			connection,
+			credentialType: 'otherMcpOAuth2Api',
+			credentialData: { oauthTokenData: { access_token: 'token' } },
+		});
+
+		expect(result).toEqual({
+			ok: false,
+			error: {
+				code: 'unsupported_credential',
+				message:
+					'Credential type "otherMcpOAuth2Api" is not supported by this MCP registry server',
+			},
+		});
+	});
+
 	it('uses already refreshed headers instead of stale credential data', () => {
 		const result = prepareMcpRegistryConnection({
 			connection,
+			credentialType,
 			credentialData: { oauthTokenData: { access_token: 'stale-token' } },
 			headers: { Authorization: 'Bearer refreshed-token' },
 		});
@@ -66,6 +87,7 @@ describe('prepareMcpRegistryConnection', () => {
 			ok: true,
 			value: {
 				...connection,
+				credentialType,
 				headers: { Authorization: 'Bearer refreshed-token' },
 				allowedDomains: 'example.com',
 			},

@@ -418,11 +418,14 @@ describe('McpRegistryClientTool', () => {
 				McpRegistryClientTool.prepareConnection({
 					connection: {
 						nodeTypeName: '@n8n/mcp-registry.notion',
-						credentialType: 'someServiceMcpOAuth2Api',
 						endpointUrl: 'https://mcp.notion.com/mcp',
 						endpointHostname: 'mcp.notion.com',
 						transport: 'httpStreamable',
+						credentialBindings: [
+							{ credentialType: 'someServiceMcpOAuth2Api', selector: 'oAuth2' },
+						],
 					},
+					credentialType: 'someServiceMcpOAuth2Api',
 					credentialData: { oauthTokenData: { access_token: 'token' } },
 				}),
 			).toEqual({
