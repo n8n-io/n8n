@@ -117,6 +117,8 @@ jobs:
               .github/scripts/**
               scripts/licenses/**
               scripts/mutation-health/**
+              cubic.yaml
+              .agents/review-rules/**
             performance:
               packages/testing/performance/**
               packages/workflow/src/**
