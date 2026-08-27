@@ -35,9 +35,11 @@ describe('Confluence Node', () => {
 		// Delete sorts first alphabetically; the default must stay non-destructive
 		expect(operationProperty('attachment')?.default).toBe('getMany');
 		expect(operationOptions('page')).toEqual([
+			expect.objectContaining({ value: 'addComment' }),
 			expect.objectContaining({ value: 'append' }),
 			expect.objectContaining({ value: 'create' }),
 			expect.objectContaining({ value: 'delete' }),
+			expect.objectContaining({ value: 'deleteComment' }),
 			expect.objectContaining({ value: 'get' }),
 			expect.objectContaining({ value: 'getComments' }),
 			expect.objectContaining({ value: 'getLabels' }),
