@@ -86,6 +86,38 @@ describe('POST /api/workflow-executions (integration)', () => {
 		expect(workQueue.publish).toHaveBeenCalledWith({ type: 'execution:enqueued', executionId });
 	});
 
+	it('uses a caller-minted execution id', async () => {
+		const executionId = '01998e5c-0000-7000-8000-000000000001';
+
+		const response = await request(url)
+			.post('/api/workflow-executions')
+			.set(authHeader())
+			.send({ workflowId: 'wf-1', graph: sampleGraph, executionId });
+
+		expect(response.status).toBe(201);
+		expect(response.body).toEqual({ executionId });
+
+		const repo = dataSource.getRepository(WorkflowExecution);
+		const row = await repo.findOneOrFail({ where: { id: executionId } });
+		expect(row.workflowId).toBe('wf-1');
+
+		expect(workQueue.publish).toHaveBeenCalledWith({ type: 'execution:enqueued', executionId });
+	});
+
+	// v4 included: the id has to be time-ordered.
+	it.each(['not-a-uuid', '9f1b7d0e-2c4a-4f8b-9d3e-6a5c1b2d3e4f'])(
+		'rejects the execution id %p with 400',
+		async (executionId) => {
+			const response = await request(url)
+				.post('/api/workflow-executions')
+				.set(authHeader())
+				.send({ workflowId: 'wf-1', graph: sampleGraph, executionId });
+
+			expect(response.status).toBe(400);
+			expect((response.body as { error: string }).error).toBe('invalid_request');
+		},
+	);
+
 	it('rejects an invalid body with 400', async () => {
 		const response = await request(url)
 			.post('/api/workflow-executions')

@@ -10,6 +10,11 @@ export interface StartExecutionRequest {
 	/** Trigger step's output slots, one entry per output. */
 	triggerOutputs?: TriggerOutputs | null;
 	mode?: ExecutionMode;
+	/**
+	 * Caller-minted id, so a caller can record state against the run before it
+	 * starts. The engine mints one when absent.
+	 */
+	executionId?: string;
 }
 
 export interface StartExecutionResult {
@@ -35,6 +40,7 @@ export class StartExecutionService {
 		}
 
 		const { id } = await this.executionStore.createExecution({
+			id: request.executionId,
 			workflowId: request.workflowId,
 			// admitted; a worker flips this to 'running' when it starts
 			status: 'queued',

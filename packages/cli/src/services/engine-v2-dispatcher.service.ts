@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import type { StepSlots, TriggerOutputs } from '@n8n/engine';
+import { generateId } from '@n8n/engine';
 import type {
 	INodeExecutionData,
 	IWorkflowBase,
@@ -27,7 +28,8 @@ const DEFAULT_MAIN_OUTPUT: INodeExecutionData[][] = [[{ json: {} }]];
  * not pick.
  *
  * No control-plane execution row is created: the data plane is the source of
- * truth, and the returned execution id is its UUID.
+ * truth for the run. Only the execution id is minted here, so the push session
+ * can be recorded before dispatch.
  */
 @Service()
 export class EngineV2Dispatcher {
@@ -53,7 +55,7 @@ export class EngineV2Dispatcher {
 		);
 	}
 
-	/** Returns the data plane's execution id. */
+	/** Returns the execution id this dispatch minted. */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
 		this.assertSupported(data);
 
@@ -68,24 +70,28 @@ export class EngineV2Dispatcher {
 		const graph = new V1WorkflowConverter().convert(this.selectTriggerSubgraph(data));
 		const triggerMain = this.triggerMainOutputs(data);
 
-		const { executionId } = await this.proxy.startExecution({
-			workflowId: workflowData.id,
-			graph,
-			triggerOutputs: this.toTriggerOutputs(triggerMain, toStepOutputs),
-			mode: 'manual',
-		});
-
-		// TODO(CAT-4255): the engine can publish lifecycle events before this line
-		// runs, and the relay drops them because no session exists yet. Let the
-		// control plane mint the execution id so this can register before dispatch.
+		const executionId = generateId();
 		this.registerPushSession(executionId, data, triggerMain);
+
+		try {
+			await this.proxy.startExecution({
+				executionId,
+				workflowId: workflowData.id,
+				graph,
+				triggerOutputs: this.toTriggerOutputs(triggerMain, toStepOutputs),
+				mode: 'manual',
+			});
+		} catch (error) {
+			this.pushRegistry.release(executionId);
+			throw error;
+		}
 
 		return executionId;
 	}
 
 	/**
 	 * Lifecycle events carry no session id, so the push ref is recorded here,
-	 * keyed by execution id, before any events can arrive.
+	 * keyed by execution id.
 	 */
 	private registerPushSession(
 		executionId: string,

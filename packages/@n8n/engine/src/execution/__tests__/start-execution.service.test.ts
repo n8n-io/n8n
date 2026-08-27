@@ -55,6 +55,32 @@ describe('StartExecutionService', () => {
 		});
 	});
 
+	it('persists and returns a caller-minted id', async () => {
+		const admittance: AdmittanceService = {
+			evaluate: vi.fn().mockResolvedValue({ accept: true }),
+		};
+		const store = makeStore({
+			createExecution: vi.fn().mockResolvedValue({ id: 'caller-id' }),
+		});
+		const queue = makeQueue();
+		const service = new StartExecutionService(admittance, store, queue);
+
+		const result = await service.start({
+			workflowId: 'wf-1',
+			graph: sampleGraph,
+			executionId: 'caller-id',
+		});
+
+		expect(result.executionId).toBe('caller-id');
+		expect(store.createExecution).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 'caller-id' }),
+		);
+		expect(queue.publish).toHaveBeenCalledWith({
+			type: 'execution:enqueued',
+			executionId: 'caller-id',
+		});
+	});
+
 	it('defaults mode to production and triggerOutputs to null', async () => {
 		const admittance: AdmittanceService = {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
@@ -66,7 +92,7 @@ describe('StartExecutionService', () => {
 		await service.start({ workflowId: 'wf-1', graph: sampleGraph });
 
 		expect(store.createExecution).toHaveBeenCalledWith(
-			expect.objectContaining({ mode: 'production', triggerOutputs: null }),
+			expect.objectContaining({ id: undefined, mode: 'production', triggerOutputs: null }),
 		);
 	});
 

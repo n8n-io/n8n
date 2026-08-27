@@ -1,8 +1,10 @@
 import type { WorkflowGraph } from '../graph';
 import type { ExecutionMode, ExecutionStatus, TriggerOutputs } from './execution.types';
 
-/** A new execution to persist. `id` and timestamps are assigned by the store. */
+/** A new execution to persist. Timestamps are assigned by the store. */
 export interface NewExecutionRecord {
+	/** Caller-minted id. The store mints one when absent. */
+	id?: string;
 	workflowId: string;
 	status: ExecutionStatus;
 	mode: ExecutionMode;
