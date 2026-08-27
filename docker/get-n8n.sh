@@ -38,8 +38,10 @@ REQUESTED_VERSION=""
 # the offer entirely.
 TELEMETRY_URL="https://nnrry.dataplane.rudderstack.com/v1/track"
 TELEMETRY_WRITE_KEY="3IDNZwfcE0lfjVDb0Y1wp8ZVGlg"
-# Set before each step that can fail; empty means "not an install failure"
-# (usage errors etc.) and no report is offered.
+# Set before steps whose failure could be on n8n's side (stack definition
+# download, image pulls, container start, health check). Failures of the
+# user's environment (no docker, port taken, ...) leave it empty and no
+# report is offered.
 STEP=""
 
 # Apply ANSI styling only when stdout is a terminal that supports it and the
@@ -153,7 +155,6 @@ parse_args() {
 }
 
 check_deps() {
-	STEP="docker-missing"
 	command -v docker >/dev/null 2>&1 || fail "Docker is not installed.
   Install it first:
     Linux / WSL:   curl -fsSL https://get.docker.com | sh
@@ -164,12 +165,10 @@ check_deps() {
   Podman, Colima and other Docker-compatible engines work too: install the
   'docker' CLI with the compose plugin and point DOCKER_HOST at their socket."
 
-	STEP="compose-missing"
 	docker compose version >/dev/null 2>&1 || fail "Docker Compose v2 plugin is not available.
   ('docker compose version' failed — the legacy 'docker-compose' binary is not supported.)
   See https://docs.docker.com/compose/install/"
 
-	STEP="daemon-down"
 	docker info >/dev/null 2>&1 || fail "The Docker daemon is not running (or DOCKER_HOST points at a dead socket).
   Start Docker (e.g. open Docker Desktop, or 'sudo systemctl start docker') and re-run.
   Podman/Colima users: make sure the machine/socket is running, e.g.
@@ -467,7 +466,6 @@ EOF
 main() {
 	parse_args "$@"
 	check_deps
-	STEP=""
 
 	if [ -f "${N8N_DIR}/compose.yml" ] || [ -f "${N8N_DIR}/.env" ]; then
 		if [ "$UPGRADE" -eq 1 ]; then
@@ -492,12 +490,10 @@ main() {
 	[ "$UPGRADE" -eq 0 ] || fail "no existing install found in ${N8N_DIR} — run without --upgrade to install."
 
 	if [ -d "${N8N_DIR}" ] && [ -n "$(ls -A "${N8N_DIR}")" ]; then
-		STEP="dir-not-empty"
 		fail "${N8N_DIR} exists and is not empty — refusing to write into it.
   Pick another directory with: N8N_DIR=./some-dir sh get-n8n.sh"
 	fi
 	if [ "$NO_START" -eq 0 ] && port_in_use; then
-		STEP="port-in-use"
 		fail "something is already listening on port ${N8N_PORT} — stop it first, or use --no-start
   and adjust the port mapping in ${N8N_DIR}/compose.yml before starting."
 	fi
