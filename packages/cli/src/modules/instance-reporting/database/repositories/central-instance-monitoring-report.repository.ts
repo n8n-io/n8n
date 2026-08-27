@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, MoreThanOrEqual, Repository } from '@n8n/typeorm';
+import { DataSource, IsNull, MoreThanOrEqual, Not, Repository } from '@n8n/typeorm';
 
 import type { InstanceReportDataPoint } from '../entities/central-instance-monitoring-report';
 import { CentralInstanceMonitoringReport } from '../entities/central-instance-monitoring-report';
@@ -27,6 +27,21 @@ export class CentralInstanceMonitoringReportRepository extends Repository<Centra
 		return await this.findOne({
 			where: { deliveredAt: IsNull(), createdAt: MoreThanOrEqual(startOfUtcDay(now)) },
 			order: { createdAt: 'DESC' },
+		});
+	}
+
+	/**
+	 * Whether a report generated on `now`'s UTC day already reached the receiver.
+	 *
+	 * This, rather than the fact that a timer fired, is what decides whether there
+	 * is anything to do: a restart or a leadership handover that straddles the
+	 * report time still finds the day unreported, and a duplicate fire finds it
+	 * done.
+	 */
+	async hasDeliveredToday(now: Date): Promise<boolean> {
+		return await this.existsBy({
+			createdAt: MoreThanOrEqual(startOfUtcDay(now)),
+			deliveredAt: Not(IsNull()),
 		});
 	}
 

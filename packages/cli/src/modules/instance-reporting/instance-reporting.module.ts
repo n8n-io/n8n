@@ -7,8 +7,8 @@ import { Container } from '@n8n/di';
  * receiver, once a day.
  *
  * Opt-in: not a default module, so it runs only when an operator lists it in
- * `N8N_ENABLED_MODULES`. Main-only, because the report goes out as a durable
- * scheduler job and the scheduler's loops run on mains.
+ * `N8N_ENABLED_MODULES`. Main-only, and within a multi-main deployment only the
+ * leader holds the timer, so a cluster reports once rather than once per main.
  *
  * Today the daily figure comes from the insights module, but that is an
  * implementation detail of `InstanceReportingService` rather than of the
@@ -18,9 +18,11 @@ import { Container } from '@n8n/di';
 @BackendModule({ name: 'instance-reporting', instanceTypes: ['main'] })
 export class InstanceReportingModule implements ModuleInterface {
 	async init() {
-		const { InstanceReportingService } = await import('./instance-reporting.service.js');
+		const { InstanceReportingScheduler } = await import(
+			'./instance-reporting-scheduler.service.js'
+		);
 
-		await Container.get(InstanceReportingService).init();
+		await Container.get(InstanceReportingScheduler).init();
 	}
 
 	async entities() {

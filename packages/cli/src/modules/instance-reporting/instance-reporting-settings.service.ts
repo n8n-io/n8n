@@ -53,10 +53,11 @@ export class InstanceReportingSettingsService {
 	 * first call and healing a time the current compaction interval has made
 	 * unsafe.
 	 *
-	 * Called from `scheduleDailyReport` at startup, which is the only moment the
-	 * answer can change: the compaction interval is an env var, so it takes a
-	 * restart to move, and the same call provisions the cron — setting and
-	 * schedule stay in step.
+	 * Called by `InstanceReportingScheduler` on every tick, not just once — cheap
+	 * (one settings read, most calls no-op) and it means the healing check runs
+	 * against the compaction interval's current value on every pass rather than
+	 * only at startup. The interval is an env var, so in practice it only ever
+	 * changes across a restart, but nothing here assumes that.
 	 */
 	async getReportTime(): Promise<string> {
 		const stored = await this.readReportTime();

@@ -155,7 +155,6 @@ describe('Start - AuthRolesService initialization', () => {
 			taskRunners: {},
 			expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },
-			scheduler: { enabled: false },
 		};
 		// @ts-expect-error - Accessing protected method for testing
 		start.initCrashJournal = vi.fn().mockResolvedValue(undefined);
@@ -212,7 +211,6 @@ describe('Start - AuthRolesService initialization', () => {
 				taskRunners: {},
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
-				scheduler: { enabled: false },
 			};
 
 			await start.init();
@@ -249,7 +247,6 @@ describe('Start - AuthRolesService initialization', () => {
 				taskRunners: {},
 				expressionEngine: { engine: 'legacy', poolSize: 1, maxCodeCacheSize: 1024 },
 				workflows: { useWorkflowPublicationService: false },
-				scheduler: { enabled: false },
 			};
 
 			await start.init();
@@ -363,7 +360,6 @@ describe('Start - AuthRolesService initialization', () => {
 			taskRunners: {},
 			expressionEngine: { engine: 'legacy' as const, poolSize: 1, maxCodeCacheSize: 1024 },
 			workflows: { useWorkflowPublicationService: false },
-			scheduler: { enabled: false },
 		};
 
 		beforeEach(() => {

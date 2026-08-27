@@ -77,6 +77,34 @@ describe('CentralInstanceMonitoringReportRepository', () => {
 		});
 	});
 
+	describe('hasDeliveredToday', () => {
+		test('is false when no report was generated yet', async () => {
+			await expect(repository.hasDeliveredToday(new Date())).resolves.toBe(false);
+		});
+
+		test("is false while today's report is still pending", async () => {
+			await repository.createPending(DATA_POINTS);
+
+			await expect(repository.hasDeliveredToday(new Date())).resolves.toBe(false);
+		});
+
+		test("is true once today's report was delivered", async () => {
+			const created = await repository.createPending(DATA_POINTS);
+			await repository.markDelivered(created.id, new Date());
+
+			await expect(repository.hasDeliveredToday(new Date())).resolves.toBe(true);
+		});
+
+		test("ignores an earlier day's delivered report", async () => {
+			const delivered = await repository.createPending(DATA_POINTS);
+			await repository.markDelivered(delivered.id, new Date());
+
+			const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+			await expect(repository.hasDeliveredToday(tomorrow)).resolves.toBe(false);
+		});
+	});
+
 	describe('markDelivered', () => {
 		test('stamps the delivery time, counts the attempt and clears any earlier error', async () => {
 			const { id } = await repository.createPending(DATA_POINTS);

@@ -1,109 +1,35 @@
-import { Logger, ModulesConfig } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
-import { ScheduledJobMisfirePolicy, Time } from '@n8n/constants';
+import { Logger } from '@n8n/backend-common';
+import { Time } from '@n8n/constants';
 import { LicenseMetricsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { CronSchedule } from '@n8n/scheduler';
 import { InstanceSettings } from 'n8n-core';
-import type { CronExpression } from 'n8n-workflow';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { InsightsService } from '@/modules/insights/insights.service';
-import { DurableScheduler } from '@/scheduling/durable-scheduler';
-import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { OwnershipService } from '@/services/ownership.service';
 
 import type { InstanceReportDataPoint } from './database/entities/central-instance-monitoring-report';
-import { InstanceReportTaskHandler } from './instance-report-task-handler';
 import { CentralInstanceMonitoringReportRepository } from './database/repositories/central-instance-monitoring-report.repository';
-import { InstanceReportingSettingsService } from './instance-reporting-settings.service';
 import { InstanceReportingConfig } from './instance-reporting.config';
-import {
-	INSTANCE_REPORT_JOB_NAME,
-	INSTANCE_REPORT_TASK_TYPE,
-	INSTANCE_REPORTS_PATH,
-} from './instance-reporting.constants';
+import { INSTANCE_REPORTS_PATH } from './instance-reporting.constants';
 
+/**
+ * Measures and delivers one instance report. *When* that happens is
+ * {@link InstanceReportingScheduler}'s concern.
+ */
 @Service()
 export class InstanceReportingService {
 	constructor(
 		private readonly config: InstanceReportingConfig,
-		private readonly settingsService: InstanceReportingSettingsService,
 		private readonly reportRepository: CentralInstanceMonitoringReportRepository,
-		private readonly provisioner: DurableJobProvisioner,
-		private readonly scheduler: DurableScheduler,
 		private readonly insightsService: InsightsService,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly ownershipService: OwnershipService,
 		private readonly licenseMetricsRepository: LicenseMetricsRepository,
-		private readonly globalConfig: GlobalConfig,
-		private readonly modulesConfig: ModulesConfig,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('instance-reporting');
-	}
-
-	/**
-	 * Register the task handler and provision the daily job.
-	 *
-	 * Runs from the module entrypoint, which the registry calls before
-	 * `DurableScheduler.start()`, so the handler is in place by the time the
-	 * scheduler's loops begin.
-	 */
-	async init(): Promise<void> {
-		// The daily report runs as a durable scheduler job, so without the scheduler
-		// nothing would ever fire. Fail loudly rather than silently never reporting.
-		if (!this.globalConfig.scheduler.enabled) {
-			throw new UserError(
-				'The `instance-reporting` module requires the durable scheduler, which is off. Set N8N_SCHEDULER_ENABLED=true or remove `instance-reporting` from N8N_ENABLED_MODULES.',
-			);
-		}
-
-		// The daily figure is read from insights, so the reporter cannot run without it.
-		if (this.modulesConfig.disabledModules.includes('insights')) {
-			throw new UserError(
-				'The `instance-reporting` module requires the `insights` module, but it is listed in N8N_DISABLED_MODULES. Remove `insights` from N8N_DISABLED_MODULES or remove `instance-reporting` from N8N_ENABLED_MODULES.',
-			);
-		}
-
-		if (!this.config.instanceReportingBaseUrl) {
-			this.logger.warn(
-				'Instance reporting is enabled but N8N_INSTANCE_REPORTING_BASE_URL is unset, so no reports will be sent',
-			);
-			return;
-		}
-
-		const handler = new InstanceReportTaskHandler(this);
-		this.scheduler.registerTaskHandler(handler.taskType, handler);
-		await this.scheduleDailyReport();
-	}
-
-	/**
-	 * Provision the durable job that fires one report per day, at this instance's
-	 * persisted time. Idempotent: re-provisioning an unchanged schedule is a no-op,
-	 * so this runs on every boot.
-	 */
-	async scheduleDailyReport(): Promise<void> {
-		const reportTime = await this.settingsService.getReportTime();
-		const [hour, minute] = reportTime.split(':');
-
-		await this.provisioner.provisionSystemJob(
-			INSTANCE_REPORT_JOB_NAME,
-			INSTANCE_REPORT_TASK_TYPE,
-			{},
-			{
-				kind: 'cron',
-				// Six fields, seconds first.
-				cronExpression: `0 ${minute} ${hour} * * *` as CronExpression,
-				timezone: 'UTC',
-			} satisfies CronSchedule,
-			// A backlog from downtime collapses into one late run reporting yesterday,
-			// rather than one run per missed day that would each report the same day.
-			ScheduledJobMisfirePolicy.Coalesce,
-		);
-
-		this.logger.debug('Scheduled the daily instance report', { reportTime });
 	}
 
 	/**

@@ -1,26 +1,16 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { ModulesConfig } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
-import { ScheduledJobMisfirePolicy } from '@n8n/constants';
 import type { LicenseMetricsRepository, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
-import { jsonParse, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 import type { Mocked, MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import type { InsightsService } from '@/modules/insights/insights.service';
-import type { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
-import type { DurableScheduler } from '@/scheduling/durable-scheduler';
 import type { OwnershipService } from '@/services/ownership.service';
 
 import type { CentralInstanceMonitoringReport } from '../database/entities/central-instance-monitoring-report';
 import type { CentralInstanceMonitoringReportRepository } from '../database/repositories/central-instance-monitoring-report.repository';
-import type { InstanceReportingSettingsService } from '../instance-reporting-settings.service';
 import { InstanceReportingConfig } from '../instance-reporting.config';
-import {
-	INSTANCE_REPORT_JOB_NAME,
-	INSTANCE_REPORT_TASK_TYPE,
-} from '../instance-reporting.constants';
 import { InstanceReportingService } from '../instance-reporting.service';
 
 vi.mock('@/constants', async (importOriginal) => ({
@@ -83,27 +73,16 @@ function makeReport(
 
 interface Harness {
 	service: InstanceReportingService;
-	settingsService: Mocked<InstanceReportingSettingsService>;
 	reportRepository: Mocked<CentralInstanceMonitoringReportRepository>;
-	provisioner: Mocked<DurableJobProvisioner>;
-	scheduler: Mocked<DurableScheduler>;
 	insightsService: Mocked<InsightsService>;
-	globalConfig: GlobalConfig;
-	modulesConfig: ModulesConfig;
 }
 
 function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
-	const settingsService = mock<InstanceReportingSettingsService>();
-	settingsService.getReportTime.mockResolvedValue('07:42');
-
 	const reportRepository = mock<CentralInstanceMonitoringReportRepository>();
 	reportRepository.findTodaysPending.mockResolvedValue(null);
 	reportRepository.createPending.mockImplementation(async (dataPoints) =>
 		makeReport({ dataPoints }),
 	);
-
-	const provisioner = mock<DurableJobProvisioner>();
-	const scheduler = mock<DurableScheduler>();
 
 	const insightsService = mock<InsightsService>();
 	insightsService.getInsightsSummary.mockResolvedValue(SUMMARY_MOCK);
@@ -114,107 +93,20 @@ function makeHarness(config: InstanceReportingConfig = makeConfig()): Harness {
 	const licenseMetricsRepository = mock<LicenseMetricsRepository>();
 	licenseMetricsRepository.getLicenseRenewalMetrics.mockResolvedValue(LICENSE_METRICS_MOCK);
 
-	const globalConfig = mock<GlobalConfig>({ scheduler: { enabled: true } });
-	const modulesConfig = mock<ModulesConfig>({ disabledModules: [] });
-
 	const service = new InstanceReportingService(
 		config,
-		settingsService,
 		reportRepository,
-		provisioner,
-		scheduler,
 		insightsService,
 		mock<InstanceSettings>({ instanceId: 'abc123' }),
 		ownershipService,
 		licenseMetricsRepository,
-		globalConfig,
-		modulesConfig,
 		mockLogger(),
 	);
 
-	return {
-		service,
-		settingsService,
-		reportRepository,
-		provisioner,
-		scheduler,
-		insightsService,
-		globalConfig,
-		modulesConfig,
-	};
+	return { service, reportRepository, insightsService };
 }
 
 describe('InstanceReportingService', () => {
-	describe('init', () => {
-		test('fails when the durable scheduler is off', async () => {
-			const { service, globalConfig } = makeHarness();
-			Object.assign(globalConfig, { scheduler: { enabled: false } });
-
-			await expect(service.init()).rejects.toThrow(UserError);
-		});
-
-		test('fails when the insights module is disabled', async () => {
-			const { service, modulesConfig } = makeHarness();
-			Object.assign(modulesConfig, { disabledModules: ['insights'] });
-
-			await expect(service.init()).rejects.toThrow(UserError);
-		});
-
-		test('warns and does nothing when no base URL is configured', async () => {
-			const { service, scheduler, provisioner } = makeHarness(
-				makeConfig({ instanceReportingBaseUrl: '' }),
-			);
-
-			await service.init();
-
-			expect(scheduler.registerTaskHandler).not.toHaveBeenCalled();
-			expect(provisioner.provisionSystemJob).not.toHaveBeenCalled();
-		});
-
-		test('registers the task handler and provisions the daily job', async () => {
-			const { service, scheduler, provisioner } = makeHarness();
-
-			await service.init();
-
-			expect(scheduler.registerTaskHandler).toHaveBeenCalledWith(
-				INSTANCE_REPORT_TASK_TYPE,
-				expect.anything(),
-			);
-			expect(provisioner.provisionSystemJob).toHaveBeenCalledTimes(1);
-		});
-	});
-
-	describe('scheduleDailyReport', () => {
-		test('provisions a daily UTC cron job at the persisted report time', async () => {
-			const { service, provisioner } = makeHarness();
-
-			await service.scheduleDailyReport();
-
-			expect(provisioner.provisionSystemJob).toHaveBeenCalledWith(
-				INSTANCE_REPORT_JOB_NAME,
-				'instance-reporting:daily-report',
-				{},
-				{ kind: 'cron', cronExpression: '0 42 07 * * *', timezone: 'UTC' },
-				ScheduledJobMisfirePolicy.Coalesce,
-			);
-		});
-
-		test('follows the persisted time rather than a fixed one', async () => {
-			const { service, settingsService, provisioner } = makeHarness();
-			settingsService.getReportTime.mockResolvedValue('23:05');
-
-			await service.scheduleDailyReport();
-
-			expect(provisioner.provisionSystemJob).toHaveBeenCalledWith(
-				expect.anything(),
-				expect.anything(),
-				expect.anything(),
-				expect.objectContaining({ cronExpression: '0 05 23 * * *' }),
-				expect.anything(),
-			);
-		});
-	});
-
 	describe('sendReport', () => {
 		let mockFetch: MockInstance<typeof fetch>;
 

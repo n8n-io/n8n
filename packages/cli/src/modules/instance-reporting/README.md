@@ -1,7 +1,7 @@
 # Instance Reporting
 
 Reports this instance's billable execution numbers to a central usage-monitoring
-receiver, once a day, as a durable scheduler job.
+receiver, once a day.
 
 Each report carries two data points for the previous completed UTC day:
 
@@ -13,19 +13,36 @@ sent, so a retry resends the exact same measurement under the same `batchId`
 rather than taking fresh numbers — the cumulative total's day-to-day diff is
 only meaningful while every sample sits a fixed 24 hours apart.
 
+## Scheduling
+
+The daily fire is driven by `InstanceReportingScheduler`, a leader-gated
+in-process timer (the same pattern as execution pruning and workflow history
+compaction) rather than the durable scheduler: that framework has no
+first-class support yet for system-owned jobs like this one, only for
+workflow-triggered jobs, and this module is meant to move onto it once it does.
+
+In multi-main, only the leader holds the timer, so a cluster reports once
+rather than once per main; leadership handover moves the timer along with it.
+In place of the durability a scheduler-backed job would give:
+
+- **Catch-up.** Every tick asks the database whether today's report was
+  delivered, rather than trusting a timer fired at the right moment — so a
+  restart, or a leadership handover, that straddles the report time still
+  reports that day.
+- **Bounded retry.** A failed delivery is retried a few times, a few minutes
+  apart, before the day is left to the next slot.
+
 ## Enabling
 
 Opt-in and main-only. Add it to `N8N_ENABLED_MODULES`:
 
 ```
 N8N_ENABLED_MODULES=instance-reporting
-N8N_SCHEDULER_ENABLED=true
 N8N_INSTANCE_REPORTING_BASE_URL=https://monitoring.example.com
 ```
 
-The durable scheduler (`N8N_SCHEDULER_ENABLED`) is a hard requirement — the
-daily job runs on it, so module init fails fast if it's off. The `insights`
-module must also stay enabled, since the daily figure comes from there.
+The `insights` module must stay enabled, since the daily figure comes from
+there.
 
 ## Configuration
 
