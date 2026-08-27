@@ -140,10 +140,10 @@ export function useMcpServerConnect() {
 	 * credential" leg differs per surface, so callers pass just that.
 	 */
 	function openExistingCredential(credentialId: string): void {
-		const connectionIds = mcpStore.connections
-			.filter((connection) => connection.credentialId === credentialId)
-			.map((connection) => connection.id);
-		if (connectionIds.length === 0) {
+		const hasConnections = mcpStore.connections.some(
+			(connection) => connection.credentialId === credentialId,
+		);
+		if (!hasConnections) {
 			uiStore.openExistingCredential(credentialId);
 			return;
 		}
@@ -155,8 +155,10 @@ export function useMcpServerConnect() {
 				onModalClosed: (modalName) => {
 					if (modalName !== CREDENTIAL_EDIT_MODAL_KEY) return;
 					listeners.stop();
-					for (const connectionId of connectionIds) {
-						void mcpStore.fetchConnectionTools(connectionId);
+					for (const connection of mcpStore.connections) {
+						if (connection.credentialId === credentialId) {
+							void mcpStore.fetchConnectionTools(connection.id);
+						}
 					}
 				},
 			});

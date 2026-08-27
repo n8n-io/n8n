@@ -227,6 +227,17 @@ describe('useMcpServerConnect', () => {
 			expect(mcpStore.fetchConnectionTools).toHaveBeenCalledWith('conn-1');
 		});
 
+		it('does not refresh connections removed while the modal is open', async () => {
+			mcpStore.connections = [makeConnection()];
+			const adapter = useMcpServerConnect().createCredentialAdapter(vi.fn());
+
+			adapter.openExistingCredential('cred-1');
+			mcpStore.connections = [];
+			await closeCredentialModal();
+
+			expect(mcpStore.fetchConnectionTools).not.toHaveBeenCalled();
+		});
+
 		it('connects the credential the user created', async () => {
 			const { connecting } = await startConnect();
 
