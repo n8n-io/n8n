@@ -35,6 +35,11 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { mock } from 'vitest-mock-extended';
 
 describe('workflow-helpers', () => {
+	const ownershipService = mockInstance(OwnershipService);
+	ownershipService.getWorkflowProjectCached.mockResolvedValue(
+		mock<Project>({ id: '1', name: 'project' }),
+	);
+
 	beforeAll(() => {
 		mockInstance(VariablesService, {
 			async getAllCached() {
@@ -64,12 +69,6 @@ describe('workflow-helpers', () => {
 				] as Variables[];
 			},
 		});
-
-		mockInstance(OwnershipService, {
-			async getWorkflowProjectCached(_workflowId: string) {
-				return { id: '1', name: 'project' } as unknown as Project;
-			},
-		});
 	});
 
 	describe('getVariables', () => {
@@ -96,6 +95,12 @@ describe('workflow-helpers', () => {
 		it('should let a project variable override a same-key global regardless of order', async () => {
 			const variables = await getVariables(undefined, '1');
 			expect(variables.VAR2).toBe('value1Project');
+		});
+
+		it('should reject when the owning project cannot be resolved', async () => {
+			ownershipService.getWorkflowProjectCached.mockRejectedValueOnce(new Error('not found'));
+
+			await expect(getVariables('1')).rejects.toThrow('not found');
 		});
 	});
 });
