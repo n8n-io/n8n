@@ -41,7 +41,12 @@ export class EngineControlPlaneServer {
 
 		this.server = createServer(app);
 		this.server.on('error', (error: NodeJS.ErrnoException) => {
-			if (error.code !== 'EADDRINUSE') return;
+			if (error.code !== 'EADDRINUSE') {
+				// Nothing else handles these, so an unlogged one is a silent failure.
+				this.logger.error('Engine 2.0 control plane server error', { error });
+				return;
+			}
+
 			this.logger.error(`Engine 2.0 control plane port ${port} is already in use`);
 			// Skipped in tests, where exiting would kill the vitest worker.
 			if (!inTest) process.exit(1);
@@ -59,7 +64,8 @@ export class EngineControlPlaneServer {
 
 		// An IPv6 literal needs brackets to read as a URL.
 		const shownHost = host.includes(':') ? `[${host}]` : host;
-		this.logger.info(`Engine 2.0 control plane listening on http://${shownHost}:${port}`);
+		// The bound port, not the configured one, which is `0` when the OS picks it.
+		this.logger.info(`Engine 2.0 control plane listening on http://${shownHost}:${this.port}`);
 	}
 
 	async stop(): Promise<void> {

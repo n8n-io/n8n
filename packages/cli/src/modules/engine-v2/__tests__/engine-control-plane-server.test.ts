@@ -22,6 +22,7 @@ const events: LifecycleEvent[] = [
 describe('EngineControlPlaneServer', () => {
 	let server: EngineControlPlaneServer;
 	let logger: Logger;
+	let serverLogger: Logger;
 	let baseUrl: string;
 
 	const engineConfig = (overrides: Partial<EngineConfig> = {}) =>
@@ -35,13 +36,14 @@ describe('EngineControlPlaneServer', () => {
 
 	beforeEach(async () => {
 		logger = mock<Logger>();
+		serverLogger = mock<Logger>();
 		const controller = new EngineLifecycleEventController(
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
 		);
 		server = new EngineControlPlaneServer(
 			engineConfig(),
 			controller,
-			mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),
+			mock<Logger>({ scoped: vi.fn().mockReturnValue(serverLogger) }),
 		);
 		await server.start();
 
@@ -57,6 +59,27 @@ describe('EngineControlPlaneServer', () => {
 		if (token) req.set('Authorization', `Bearer ${token}`);
 		return req.send(body as object);
 	};
+
+	it('logs the port it actually bound, not the configured one', () => {
+		// Configured as `0`, so the OS picked it: logging the configured value
+		// would tell an operator to dial port 0.
+		expect(serverLogger.info).toHaveBeenCalledWith(
+			expect.stringContaining(`http://127.0.0.1:${server.port}`),
+		);
+		expect(serverLogger.info).not.toHaveBeenCalledWith(expect.stringContaining(':0'));
+	});
+
+	it('logs a server error that is not a failure to bind', () => {
+		// Nothing else handles these, so an unlogged one is a silent failure.
+		const error = Object.assign(new Error('boom'), { code: 'ECONNRESET' });
+
+		// @ts-expect-error reaching for the server's own error handler
+		server.server.emit('error', error);
+
+		expect(serverLogger.error).toHaveBeenCalledWith('Engine 2.0 control plane server error', {
+			error,
+		});
+	});
 
 	it('serves an open healthcheck', async () => {
 		const response = await request(baseUrl).get('/healthz');
