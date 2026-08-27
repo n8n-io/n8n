@@ -17,32 +17,55 @@ export interface PythonImportPolicy {
 	/**
 	 * Whether this reflects the runner that will actually execute the code. False in
 	 * external runner mode, where the runner's environment may differ from n8n's.
+	 * Consumers must not present a non-authoritative policy as fact, and must not
+	 * let it suppress a warning — the runner may be stricter than this says.
 	 */
 	authoritative: boolean;
+	/**
+	 * The configured allowlist is one the runner rejects outright (a wildcard combined
+	 * with named modules), so it will refuse to start and no Python runs at all.
+	 */
+	misconfigured?: boolean;
 }
 
 /**
- * Whether the policy leaves any import unverifiable. Telling a standard-library
- * module from an external package needs Python's own `sys.stdlib_module_names`,
- * which is not available here — so a wildcard in either list makes the check
- * unsound and we skip it, exactly as the runner's own analyzer short-circuits.
+ * Whether the policy makes every import allowed. Telling a standard-library module
+ * from an external package needs Python's own `sys.stdlib_module_names`, which is
+ * not available here — so we can only be sure when BOTH lists are wildcards, which
+ * is exactly the condition the runner's own analyzer short-circuits on
+ * (`TaskAnalyzer._allow_all`).
  */
-function policyIsUnverifiable(policy: PythonImportPolicy): boolean {
-	return policy.stdlib.includes('*') || policy.external.includes('*');
+function allowsEverything(policy: PythonImportPolicy): boolean {
+	return policy.stdlib.includes('*') && policy.external.includes('*');
 }
 
-/** Modules the policy permits, in the order an operator would recognise them. */
-function allowedModules(policy: PythonImportPolicy): string[] {
-	return [...policy.stdlib, ...policy.external];
+/**
+ * Whether one list is a wildcard and the other is not. The runner still checks the
+ * non-wildcard category, but deciding which category a module belongs to needs
+ * Python's stdlib list, so this linter cannot rule on it. It abstains rather than
+ * guessing; the system prompt carries the exact per-category policy instead.
+ */
+function policyIsUndecidable(policy: PythonImportPolicy): boolean {
+	return (
+		!allowsEverything(policy) && (policy.stdlib.includes('*') || policy.external.includes('*'))
+	);
 }
 
 /** Renders the allowlist clause shared by the import message. */
 function describePolicy(policy: PythonImportPolicy | undefined): string {
-	const allowed = policy ? allowedModules(policy) : [];
-	if (allowed.length === 0) {
+	if (!policy) {
+		return 'imports are allowlisted per deployment (N8N_RUNNERS_STDLIB_ALLOW for standard-library modules, N8N_RUNNERS_EXTERNAL_ALLOW for packages, both empty by default) and this check cannot see the configuration in force, so assume none are available';
+	}
+	if (policy.misconfigured) {
+		return 'this deployment combines a wildcard with named modules, which the runner rejects — it will refuse to start, so no Python runs at all';
+	}
+	const parts: string[] = [];
+	if (policy.stdlib.length > 0) parts.push(`standard-library modules ${policy.stdlib.join(', ')}`);
+	if (policy.external.length > 0) parts.push(`packages ${policy.external.join(', ')}`);
+	if (parts.length === 0) {
 		return 'this deployment allowlists no imports at all (N8N_RUNNERS_STDLIB_ALLOW and N8N_RUNNERS_EXTERNAL_ALLOW are both empty)';
 	}
-	return `this deployment allowlists only ${allowed.join(', ')}`;
+	return `this deployment allowlists only ${parts.join(', and ')}`;
 }
 
 /**
@@ -121,9 +144,11 @@ function wrongModeAccessor(pythonCode: string, mode?: CodeExecutionMode): string
  * is that nothing is allowed.
  */
 function disallowedImports(modules: string[], policy?: PythonImportPolicy): string[] {
-	if (!policy) return modules;
-	if (policyIsUnverifiable(policy)) return modules.filter((module) => module.startsWith('.'));
-	const allowed = new Set(allowedModules(policy));
+	if (!policy || policy.misconfigured) return modules;
+	if (allowsEverything(policy) || policyIsUndecidable(policy)) {
+		return modules.filter((module) => module.startsWith('.'));
+	}
+	const allowed = new Set([...policy.stdlib, ...policy.external]);
 	return modules.filter((module) => module.startsWith('.') || !allowed.has(module));
 }
 

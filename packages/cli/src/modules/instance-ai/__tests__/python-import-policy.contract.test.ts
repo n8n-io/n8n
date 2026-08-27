@@ -48,14 +48,14 @@ describe('allowlist parsing contract', () => {
 		expect(parsed(input)).toBe([...modules!].sort().join(','));
 	});
 
-	// The runner refuses to start on these, so there is no allowlist to report. n8n
-	// cannot throw here without breaking every unrelated build, so it reports the
-	// wildcard instead — which makes downstream consumers treat the policy as
-	// unverifiable and skip the import check rather than assert a precise list.
-	it.each(invalidCases)('treats "$input" as unverifiable ($name)', ({ input }) => {
+	// The runner refuses to start on these, so nothing runs at all. n8n cannot throw
+	// here without breaking every unrelated build, so it flags the misconfiguration
+	// and reports an empty allowlist — never a permissive one, which would tell the
+	// builder its imports are fine while no Python can execute.
+	it.each(invalidCases)('reports "$input" as misconfigured ($name)', ({ input }) => {
 		expect(
-			buildPythonImportPolicy({ stdlibAllow: input, externalAllow: '', mode: 'internal' }).stdlib,
-		).toContain('*');
+			buildPythonImportPolicy({ stdlibAllow: input, externalAllow: '', mode: 'internal' }),
+		).toEqual({ stdlib: [], external: [], authoritative: true, misconfigured: true });
 	});
 
 	it('parses the external allowlist by the same rules', () => {

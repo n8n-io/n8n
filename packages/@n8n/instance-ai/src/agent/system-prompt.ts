@@ -116,29 +116,36 @@ ${licenseHints.map((hint) => `- ${hint}`).join('\n')}
 function getPythonCodeSection(policy?: PythonImportPolicy): string {
 	if (!policy) return '';
 
-	const wildcard = policy.stdlib.includes('*') || policy.external.includes('*');
-	const allowed = [...policy.stdlib, ...policy.external].filter((name) => name !== '*');
+	// The runner checks each category against its own allowlist, so a module named in
+	// the wrong one is still rejected. Render the two separately rather than as one
+	// merged list, which would present a misfiled entry as importable.
+	const describeCategory = (label: string, entries: string[]) =>
+		entries.includes('*') ? `any ${label}` : `${label} ${entries.join(', ')}`;
+	const allowed = [
+		...(policy.stdlib.length > 0
+			? [describeCategory('standard-library module', policy.stdlib)]
+			: []),
+		...(policy.external.length > 0 ? [describeCategory('installed package', policy.external)] : []),
+	];
 
 	let importRule: string;
-	if (policy.stdlib.includes('*') && policy.external.includes('*')) {
+	if (policy.misconfigured) {
 		importRule =
-			'This instance allows **any standard-library module and any installed package** to be imported.';
-	} else if (wildcard) {
-		const which = policy.stdlib.includes('*')
-			? 'any standard-library module'
-			: 'any installed package';
-		const rest = allowed.length > 0 ? `, plus ${allowed.join(', ')}` : '';
-		importRule = `This instance allows **${which}**${rest} to be imported. Nothing else is importable.`;
-	} else if (allowed.length > 0) {
-		importRule = `This instance allows **only these imports**: ${allowed.join(', ')}. Every other import — standard library or package — fails at run time, and relative imports always fail.`;
-	} else {
+			'This instance combines a wildcard with named modules in an allowlist, which the runner rejects — it will **refuse to start**, so a Python Code node cannot run here at all. Use JavaScript, and tell the user their `N8N_RUNNERS_STDLIB_ALLOW` / `N8N_RUNNERS_EXTERNAL_ALLOW` setting is invalid: a `*` must be used alone.';
+	} else if (!policy.authoritative) {
+		// n8n cannot read the runner's own configuration here, so anything it reports may
+		// be wrong in the permissive direction. Lead with the safe assumption.
+		const configured =
+			allowed.length > 0
+				? ` n8n itself is configured for ${allowed.join(', and ')}, but that may not be what the runner enforces.`
+				: '';
+		importRule = `This instance runs task runners in **external runner mode**, so n8n cannot confirm what the runner allows. **Assume no imports are available** and write import-free Python.${configured} If an import fails at run time, rewrite the code without it rather than telling the user it should have worked.`;
+	} else if (allowed.length === 0) {
 		importRule =
 			'This instance **allows no imports at all** — the allowlists are empty, so `import re`, `import json`, `import datetime` and every package fail at run time with "Import of ... is disallowed". Write import-free Python using builtins and str/list/dict methods, or use JavaScript when the task genuinely needs a library.';
+	} else {
+		importRule = `This instance allows **only** ${allowed.join(', and ')} to be imported. Every other import fails at run time, a module named in the wrong category is rejected too, and relative imports always fail.`;
 	}
-
-	const modeCaveat = policy.authoritative
-		? ''
-		: "\n- This instance runs task runners in **external runner mode**, so n8n cannot confirm the runner's configuration — the allowlist above is what n8n is configured with, and the runner may differ. If an import fails at run time despite the list above, rewrite the code without it rather than telling the user it should have worked.";
 
 	return `
 ## Python Code Nodes
@@ -147,7 +154,7 @@ Applies to a Code node with \`language: 'pythonNative'\`. It runs in a locked-do
 
 - ${importRule}
 - The runner defines exactly three globals: \`_items\` (in \`runOnceForAllItems\` mode), \`_item\` (in \`runOnceForEachItem\` mode) and \`print()\`. Reading the accessor belonging to the other mode raises NameError, and there are no cross-node helpers — \`_('Node Name')\`, \`_input\`, \`_json\`, \`_today\`, \`_jmespath\` and \`$\`-prefixed JavaScript helpers are all undefined. Take data from the connected upstream node only.
-- There is no network access, whatever the import policy allows. Use an HTTP Request node and process its output here.${modeCaveat}
+- There is no network access, whatever the import policy allows. Use an HTTP Request node and process its output here.
 `;
 }
 

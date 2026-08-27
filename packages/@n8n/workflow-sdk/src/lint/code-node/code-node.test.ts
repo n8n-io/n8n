@@ -193,9 +193,41 @@ describe('lintPythonCode — native runner constraints', () => {
 		expect(lintPythonCode('import pandas\nreturn []', { importPolicy: policy })).toEqual([]);
 	});
 
-	it('skips the import check when an allowlist is a wildcard', () => {
+	it('skips the import check when both allowlists are wildcards', () => {
+		const policy = { stdlib: ['*'], external: ['*'], authoritative: true };
+		expect(lintPythonCode('import re\nimport pandas', { importPolicy: policy })).toEqual([]);
+	});
+
+	// Only one category is wildcarded, so the runner still checks the other — but
+	// deciding which category a module belongs to needs Python's own stdlib list.
+	// The linter abstains rather than guessing; the system prompt states the exact
+	// per-category policy instead.
+	it('abstains when one allowlist is a wildcard and the other is not', () => {
 		const policy = { stdlib: ['*'], external: [], authoritative: true };
-		expect(lintPythonCode('import re\nimport math', { importPolicy: policy })).toEqual([]);
+		expect(lintPythonCode('import re\nimport pandas', { importPolicy: policy })).toEqual([]);
+	});
+
+	it('still flags relative imports when a wildcard is in play', () => {
+		const policy = { stdlib: ['*'], external: ['*'], authoritative: true };
+		expect(
+			lintPythonCode('from . import helpers', { importPolicy: policy }).map((i) => i.code),
+		).toEqual(['CODE_NODE_PYTHON_IMPORT']);
+	});
+
+	it('flags every import when the allowlist is one the runner rejects', () => {
+		const policy = { stdlib: [], external: [], authoritative: true, misconfigured: true };
+		const issues = lintPythonCode('import re', { importPolicy: policy });
+
+		expect(issues.map((i) => i.code)).toEqual(['CODE_NODE_PYTHON_IMPORT']);
+		expect(issues[0].message).toMatch(/refuse to start/i);
+	});
+
+	it('reports the two allowlist categories separately', () => {
+		const policy = { stdlib: ['re'], external: ['pandas'], authoritative: true };
+		const issues = lintPythonCode('import math', { importPolicy: policy });
+
+		expect(issues[0].message).toMatch(/standard-library modules re/);
+		expect(issues[0].message).toMatch(/packages pandas/);
 	});
 
 	it('still flags relative imports even when modules are allowlisted', () => {

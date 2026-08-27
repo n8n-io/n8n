@@ -85,4 +85,39 @@ describe('detectPythonCodeConstraints', () => {
 	it('ignores a node with no Python body', () => {
 		expect(detectPythonCodeConstraints(workflow(''), NOTHING_ALLOWED)).toEqual([]);
 	});
+
+	// A node keeps its last `pythonCode` after switching to JavaScript, and the body is
+	// then dead — linting it would report failures for code that never runs.
+	it('ignores a stale Python body on a node switched to JavaScript', () => {
+		expect(
+			detectPythonCodeConstraints(
+				workflow('import re\nreturn []', { language: 'javaScript' }),
+				NOTHING_ALLOWED,
+			),
+		).toEqual([]);
+	});
+
+	// n8n's allowlist can be wrong in the permissive direction in external runner mode
+	// — the official runners image forces both lists empty — so it must not silence a
+	// warning there.
+	it('still flags an import that a non-authoritative policy claims is allowed', () => {
+		const policy: PythonImportPolicy = { stdlib: ['re'], external: [], authoritative: false };
+		const warnings = detectPythonCodeConstraints(workflow('import re\nreturn []'), policy);
+
+		expect(warnings.map((w) => w.code)).toEqual(['CODE_NODE_PYTHON_IMPORT']);
+		expect(warnings[0].message).toMatch(/cannot see the configuration/i);
+	});
+
+	it('flags every import when the configured allowlist is one the runner rejects', () => {
+		const policy: PythonImportPolicy = {
+			stdlib: [],
+			external: [],
+			authoritative: true,
+			misconfigured: true,
+		};
+
+		expect(
+			detectPythonCodeConstraints(workflow('import re\nreturn []'), policy).map((w) => w.code),
+		).toEqual(['CODE_NODE_PYTHON_IMPORT']);
+	});
 });

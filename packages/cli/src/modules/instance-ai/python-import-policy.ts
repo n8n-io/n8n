@@ -13,11 +13,6 @@ interface PythonImportPolicyInput {
  * Mirrors `parse_allowlist` in the Python runner: comma-separated, trimmed, empties
  * dropped, duplicates collapsed (it returns a set). Kept honest by the shared fixture
  * at `packages/@n8n/task-runner-python/tests/fixtures/allowlist-parsing.json`.
- *
- * One deliberate difference: the runner raises on a wildcard combined with other
- * modules and refuses to start. Throwing here would take down every unrelated build,
- * so the wildcard is simply kept — consumers read that as "unverifiable" and stop
- * claiming a precise allowlist.
  */
 function parseAllowlist(raw: string): string[] {
 	const entries = raw
@@ -25,6 +20,17 @@ function parseAllowlist(raw: string): string[] {
 		.map((entry) => entry.trim())
 		.filter((entry) => entry.length > 0);
 	return [...new Set(entries)];
+}
+
+/**
+ * The runner raises `ConfigurationError` on a wildcard combined with named modules
+ * and refuses to start. Throwing here would take down every unrelated build, so the
+ * combination is reported instead — as a misconfiguration, never as a permissive
+ * allowlist, which would tell the builder its imports are fine when in fact no Python
+ * will run at all.
+ */
+function isRejectedByRunner(entries: string[]): boolean {
+	return entries.includes('*') && entries.length > 1;
 }
 
 /**
@@ -40,9 +46,13 @@ export function buildPythonImportPolicy({
 	externalAllow,
 	mode,
 }: PythonImportPolicyInput): PythonImportPolicy {
-	return {
-		stdlib: parseAllowlist(stdlibAllow),
-		external: parseAllowlist(externalAllow),
-		authoritative: mode === 'internal',
-	};
+	const stdlib = parseAllowlist(stdlibAllow);
+	const external = parseAllowlist(externalAllow);
+	const authoritative = mode === 'internal';
+
+	if (isRejectedByRunner(stdlib) || isRejectedByRunner(external)) {
+		return { stdlib: [], external: [], authoritative, misconfigured: true };
+	}
+
+	return { stdlib, external, authoritative };
 }

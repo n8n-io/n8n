@@ -4,11 +4,11 @@
 		"The Python runner enforces the allowlist; n8n parses the same strings so it can tell",
 		"the workflow builder what a Code node may import. Two parsers, one meaning — this",
 		"fixture is what keeps them from drifting.",
-		"Checked by tests/unit/config/test_allowlist_parsing_contract.py (Python) and",
+		"Checked by tests/unit/test_allowlist_parsing_contract.py (Python) and",
 		"packages/cli/src/modules/instance-ai/__tests__/python-import-policy.contract.test.ts (n8n).",
 		"`modules` is order-insensitive: the Python side returns a set.",
 		"`invalid: true` means the runner refuses to start; n8n cannot throw there, so it must",
-		"instead report a wildcard, which makes every consumer treat the policy as unverifiable."
+		"instead flag the policy as misconfigured with an empty allowlist — never a permissive one."
 	],
 	"cases": [
 		{ "name": "empty string allows nothing", "input": "", "modules": [] },
