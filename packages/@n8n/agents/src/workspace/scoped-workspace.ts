@@ -36,10 +36,16 @@ function resolvePath(root: string, path: string): string {
 	return normalizedPath;
 }
 
+export interface ScopedWorkspaceOptions {
+	/** Create the scope root (`mkdir -p`) once before the first filesystem or command use. */
+	ensureRootExists?: boolean;
+}
+
 class ScopedFilesystem implements WorkspaceFilesystem {
 	constructor(
 		private readonly filesystem: WorkspaceFilesystem,
 		private readonly root: string,
+		private readonly ensureRoot?: () => Promise<void>,
 	) {}
 
 	get id() {
@@ -76,22 +82,27 @@ class ScopedFilesystem implements WorkspaceFilesystem {
 	}
 
 	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {
+		await this.ensureRoot?.();
 		return await this.filesystem.readFile(resolvePath(this.root, path), options);
 	}
 
 	async writeFile(path: string, content: FileContent, options?: WriteOptions): Promise<void> {
+		await this.ensureRoot?.();
 		await this.filesystem.writeFile(resolvePath(this.root, path), content, options);
 	}
 
 	async appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void> {
+		await this.ensureRoot?.();
 		await this.filesystem.appendFile(resolvePath(this.root, path), content, options);
 	}
 
 	async deleteFile(path: string, options?: RemoveOptions): Promise<void> {
+		await this.ensureRoot?.();
 		await this.filesystem.deleteFile(resolvePath(this.root, path), options);
 	}
 
 	async copyFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
+		await this.ensureRoot?.();
 		await this.filesystem.copyFile(
 			resolvePath(this.root, src),
 			resolvePath(this.root, dest),
@@ -100,6 +111,7 @@ class ScopedFilesystem implements WorkspaceFilesystem {
 	}
 
 	async moveFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
+		await this.ensureRoot?.();
 		await this.filesystem.moveFile(
 			resolvePath(this.root, src),
 			resolvePath(this.root, dest),
@@ -108,22 +120,27 @@ class ScopedFilesystem implements WorkspaceFilesystem {
 	}
 
 	async mkdir(path: string, options?: MkdirOptions): Promise<void> {
+		await this.ensureRoot?.();
 		await this.filesystem.mkdir(resolvePath(this.root, path), options);
 	}
 
 	async rmdir(path: string, options?: RemoveOptions): Promise<void> {
+		await this.ensureRoot?.();
 		await this.filesystem.rmdir(resolvePath(this.root, path), options);
 	}
 
 	async readdir(path: string, options?: ListOptions): Promise<FileEntry[]> {
+		await this.ensureRoot?.();
 		return await this.filesystem.readdir(resolvePath(this.root, path), options);
 	}
 
 	async exists(path: string, options?: AbortableOptions): Promise<boolean> {
+		await this.ensureRoot?.();
 		return await this.filesystem.exists(resolvePath(this.root, path), options);
 	}
 
 	async stat(path: string, options?: AbortableOptions): Promise<FileStat> {
+		await this.ensureRoot?.();
 		return await this.filesystem.stat(resolvePath(this.root, path), options);
 	}
 }
@@ -135,10 +152,13 @@ class ScopedSandbox implements WorkspaceSandbox {
 		private readonly sandbox: WorkspaceSandbox,
 		private readonly root: string,
 		private readonly env: NodeJS.ProcessEnv = {},
+		ensureRoot?: () => Promise<void>,
 	) {
 		if (sandbox.executeCommand) {
 			const executeCommand = sandbox.executeCommand.bind(sandbox);
 			this.executeCommand = async (command, args, options = {}) => {
+				// Commands run from the scope root by default — it must exist first.
+				await ensureRoot?.();
 				const cwd = options.cwd ? resolvePath(this.root, options.cwd) : this.root;
 				return await executeCommand(command, args, {
 					...options,
@@ -186,11 +206,31 @@ export function createScopedWorkspace(
 	workspace: Workspace,
 	root: string,
 	env?: NodeJS.ProcessEnv,
+	options?: ScopedWorkspaceOptions,
 ): Workspace {
+	const filesystem = workspace.filesystem;
+	let ensureRootPromise: Promise<void> | undefined;
+	// Single-flight per scoped instance; a failed attempt resets so the next use retries.
+	const ensureRoot =
+		options?.ensureRootExists && filesystem
+			? async () => {
+					ensureRootPromise ??= (async () => {
+						try {
+							await filesystem.mkdir(root, { recursive: true });
+						} catch (error) {
+							ensureRootPromise = undefined;
+							throw error;
+						}
+					})();
+					await ensureRootPromise;
+				}
+			: undefined;
 	return new Workspace({
 		id: `${workspace.id}:${root}`,
 		name: `${workspace.name} (${root})`,
-		filesystem: workspace.filesystem ? new ScopedFilesystem(workspace.filesystem, root) : undefined,
-		sandbox: workspace.sandbox ? new ScopedSandbox(workspace.sandbox, root, env) : undefined,
+		filesystem: filesystem ? new ScopedFilesystem(filesystem, root, ensureRoot) : undefined,
+		sandbox: workspace.sandbox
+			? new ScopedSandbox(workspace.sandbox, root, env, ensureRoot)
+			: undefined,
 	});
 }

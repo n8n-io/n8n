@@ -1,3 +1,5 @@
+import { join as posixJoin } from 'node:path/posix';
+
 import {
 	CORE_WORKSPACE_TOOL_NAMES,
 	createScopedWorkspace,
@@ -13,11 +15,18 @@ import type { AgentSandboxPrincipalHash } from './agent-sandbox-principal';
 import {
 	AgentSandboxRuntimeService,
 	sanitizeSandboxErrorDetail,
+	type AgentSandboxRuntime,
 } from './agent-sandbox-runtime.service';
 import {
 	CHECKPOINT_RECONCILIATION_OVERFLOW,
 	N8NCheckpointStorage,
 } from './integrations/n8n-checkpoint-storage';
+
+export interface AgentWorkspaceAcquisition {
+	workspace: Workspace;
+	/** Live sandbox handle, shareable with delegated sub-agent runtimes. */
+	handle: AgentSandboxRuntime;
+}
 
 @Service()
 export class AgentWorkspaceService {
@@ -34,7 +43,7 @@ export class AgentWorkspaceService {
 		projectId: string,
 		agentId: string,
 		principalHash: AgentSandboxPrincipalHash,
-	): Promise<Workspace> {
+	): Promise<AgentWorkspaceAcquisition> {
 		this.agentSandboxRuntimeService.assertSandboxConfiguration(projectId, agentId);
 		// The sandbox boots lazily on first filesystem/command use, so workspace-root
 		// creation and tool-result reconciliation run in the filesystem init hook
@@ -63,6 +72,26 @@ export class AgentWorkspaceService {
 			new Workspace({ filesystem: runtime.filesystem, sandbox: runtime.sandbox }),
 			runtime.workspaceRoot,
 		);
+		return { workspace: this.withCoreToolsOnly(workspace), handle: runtime };
+	}
+
+	/**
+	 * Scope a delegated sub-agent run into the parent's workspace sandbox under a
+	 * per-delegation subdirectory. No acquisition happens here — the shared sandbox
+	 * boots on first use, and the subdirectory is created on the scope's first I/O.
+	 */
+	getDelegatedAgentWorkspace(handle: AgentSandboxRuntime, delegationThreadId: string): Workspace {
+		const root = posixJoin(handle.workspaceRoot, 'subagents', delegationThreadId);
+		const workspace = createScopedWorkspace(
+			new Workspace({ filesystem: handle.filesystem, sandbox: handle.sandbox }),
+			root,
+			undefined,
+			{ ensureRootExists: true },
+		);
+		return this.withCoreToolsOnly(workspace);
+	}
+
+	private withCoreToolsOnly(workspace: Workspace): Workspace {
 		const getTools = workspace.getTools.bind(workspace);
 		workspace.getTools = () =>
 			getTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name));
