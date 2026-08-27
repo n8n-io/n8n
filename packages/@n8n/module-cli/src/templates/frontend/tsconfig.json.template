@@ -1,0 +1,21 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.frontend-module.json",
+	"compilerOptions": {
+		// `rootDirs`, `types` and `include` cannot be inherited from the base: relative entries in
+		// them resolve against this file, so a copy in the base would point at the base's directory.
+		// (`paths` is the exception and does come from the base.)
+		"rootDirs": [".", "../../../frontend/@n8n/design-system/src"],
+		// The two `.d.ts` entries are ambient declarations this package never imports, so nothing
+		// pulls them into the program: `~icons/*` and `markdown-it-task-lists` for design-system's
+		// source, `window.BASE_PATH` for `@n8n/stores`'s. Consuming those packages from source is
+		// what makes them the consumer's problem — a built `dist` would have carried them.
+		"types": [
+			"vite/client",
+			"vitest/globals",
+			"unplugin-icons/types/vue",
+			"../../../frontend/@n8n/design-system/src/shims-modules.d.ts",
+			"../../../frontend/@n8n/stores/src/shims.d.ts"
+		]
+	},
+	"include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]
+}

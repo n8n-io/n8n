@@ -1,4 +1,7 @@
 import {
+	ActivateWorkflowPublicDto,
+	CreatedWorkflowPublicDto,
+	CreateWorkflowPublicDto,
 	GetWorkflowQueryDto,
 	ListWorkflowHistoryQueryDto,
 	ListWorkflowsQueryDto,
@@ -15,6 +18,7 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import type {
 	AuthenticatedRequest,
+	Folder,
 	SharedWorkflow,
 	TagEntity,
 	WorkflowEntity,
@@ -29,6 +33,7 @@ import {
 	ApiSummary,
 	ApiTags,
 	Body,
+	Deprecated,
 	Get,
 	Param,
 	Post,
@@ -43,16 +48,21 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { EventService } from '@/events/event.service';
+import { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import {
 	decodeCursor,
 	encodeNextCursor,
 	resolveOffsetPagination,
 } from '@/public-api/v1/shared/services/pagination.service';
 import { TagService } from '@/services/tag.service';
+import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { createWorkflowEntityFromPayload } from '@/workflows/workflow-entity-mapper';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+
+const DEPRECATED_ALIAS_SINCE = new Date('2026-07-23T00:00:00Z');
 
 const PUBLISH_CONFLICT_DESCRIPTION =
 	'Conflict, e.g. publication blocked by an open workflow review (then `reason` and ' +
@@ -74,6 +84,16 @@ function toPublicTag(tag: TagEntity) {
 		name: tag.name,
 		createdAt: tag.createdAt.toISOString(),
 		updatedAt: tag.updatedAt.toISOString(),
+	};
+}
+
+function toPublicFolder(folder: Folder) {
+	return {
+		id: folder.id,
+		name: folder.name,
+		parentFolderId: folder.parentFolderId,
+		createdAt: folder.createdAt.toISOString(),
+		updatedAt: folder.updatedAt.toISOString(),
 	};
 }
 
@@ -161,11 +181,13 @@ export class WorkflowsPublicController {
 	constructor(
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowCreationService: WorkflowCreationService,
 		private readonly workflowService: WorkflowService,
 		private readonly enterpriseWorkflowService: EnterpriseWorkflowService,
 		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly tagService: TagService,
+		private readonly redactionEnforcementService: RedactionEnforcementService,
 	) {}
 
 	private get workflowTagsEnabled(): boolean {
@@ -251,6 +273,40 @@ export class WorkflowsPublicController {
 					: null,
 			})),
 			nextCursor: encodeNextCursor({ offset, limit, numberOfTotalRecords: count }),
+		};
+	}
+
+	@Post('/')
+	@ApiKeyScope('workflow:create')
+	@ApiSummary('Create a workflow')
+	@ApiDescription('Create a workflow in your instance.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, CreatedWorkflowPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(422)
+	async createWorkflow(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: CreateWorkflowPublicDto,
+	): Promise<CreatedWorkflowPublicDto> {
+		const { projectId, parentFolderId, shared: _shared, ...rest } = body;
+
+		const workflow = createWorkflowEntityFromPayload(rest);
+
+		await this.redactionEnforcementService.assertNewPolicyAllowed(body.settings.redactionPolicy);
+
+		const createdWorkflow = await this.workflowCreationService.createWorkflow(req.user, workflow, {
+			projectId,
+			parentFolderId: parentFolderId ?? undefined,
+			publicApi: true,
+			source: 'api',
+		});
+
+		return {
+			...this.toWorkflowPublicDto(createdWorkflow),
+			parentFolder: createdWorkflow.parentFolder
+				? toPublicFolder(createdWorkflow.parentFolder)
+				: null,
 		};
 	}
 
@@ -451,6 +507,48 @@ export class WorkflowsPublicController {
 		});
 
 		return this.toWorkflowPublicDto(workflow);
+	}
+
+	@Post('/:workflowId/activate')
+	@Deprecated({ since: DEPRECATED_ALIAS_SINCE })
+	@ApiKeyScope('workflow:activate')
+	@ProjectScope('workflow:publish')
+	@ApiSummary('Publish a workflow')
+	@ApiDescription(
+		'Deprecated: use POST /workflows/{id}/publish instead. Publish a workflow. In n8n v1, ' +
+			'this action was termed activating a workflow.',
+	)
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublishPublicDto)
+	@ApiErrorResponse(404)
+	@ApiErrorResponse(409, {
+		dto: WorkflowPublishBlockedErrorPublicDto,
+		description: PUBLISH_CONFLICT_DESCRIPTION,
+	})
+	async activateWorkflow(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body body: ActivateWorkflowPublicDto,
+	): Promise<WorkflowPublishPublicDto> {
+		return await this.publishWorkflow(req, res, workflowId, body);
+	}
+
+	@Post('/:workflowId/deactivate')
+	@Deprecated({ since: DEPRECATED_ALIAS_SINCE })
+	@ApiKeyScope('workflow:deactivate')
+	@ProjectScope('workflow:unpublish')
+	@ApiSummary('Deactivate a workflow')
+	@ApiDescription('Deprecated: use POST /workflows/{id}/unpublish instead. Deactivate a workflow.')
+	@ApiTags(['Workflow'])
+	@ApiResponse(200, WorkflowPublicDto)
+	@ApiErrorResponse(404)
+	async deactivateWorkflow(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('workflowId') workflowId: string,
+	): Promise<WorkflowPublicDto> {
+		return await this.unpublishWorkflow(req, res, workflowId);
 	}
 
 	@Get('/:workflowId/history')

@@ -1,12 +1,15 @@
-import { Router, type Response, type Router as RouterType } from 'express';
-import assert from 'node:assert';
+import { Router, type Router as RouterType } from 'express';
 import { z } from 'zod';
 
+import {
+	createGetExecutionHandler,
+	createGetExecutionStepsHandler,
+} from './workflow-executions.handlers';
 import { AdmittanceRejectedError } from '../../admittance';
 import { UnimplementedError, type JsonValue } from '../../common';
-import type { StartExecutionService } from '../../execution/start-execution.service';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
-import type { EngineErrorResponse } from '../error-response';
+import type { EngineServerDeps } from '../create-engine-server';
+import { fail } from '../error-response';
 
 const MAX_TRIGGER_SLOTS = MAX_SLOT_INDEX + 1;
 
@@ -53,13 +56,8 @@ const StartExecutionBody = z.object({
 	mode: z.enum(['production', 'manual']).optional(),
 });
 
-export function createWorkflowExecutionsRouter(startExecution: StartExecutionService): RouterType {
+export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterType {
 	const router = Router();
-
-	const fail = (res: Response, status: number, body: EngineErrorResponse): void => {
-		assert(status >= 400, `fail() sends error responses only, but got status ${status}`);
-		res.status(status).json(body);
-	};
 
 	router.post('/', async (req, res) => {
 		const parsed = StartExecutionBody.safeParse(req.body);
@@ -69,7 +67,7 @@ export function createWorkflowExecutionsRouter(startExecution: StartExecutionSer
 		}
 
 		try {
-			const result = await startExecution.start(parsed.data);
+			const result = await deps.startExecution.start(parsed.data);
 			res.status(201).json(result);
 		} catch (error) {
 			if (error instanceof AdmittanceRejectedError) {
@@ -87,6 +85,10 @@ export function createWorkflowExecutionsRouter(startExecution: StartExecutionSer
 			throw error;
 		}
 	});
+
+	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
+
+	router.get('/:id/steps', createGetExecutionStepsHandler(deps.executionQuery));
 
 	return router;
 }
