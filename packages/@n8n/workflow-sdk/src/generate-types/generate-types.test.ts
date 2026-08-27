@@ -5324,7 +5324,7 @@ describe('generate-types', () => {
 			const schema = { type: 'object', properties: { text: { type: 'string' } } };
 
 			try {
-				createTestSchemaDir(`Nested/__TESTCHAINLLM__`, 'v1.9.0', {
+				createTestSchemaDir('Nested/__TESTCHAINLLM__', 'v1.9.0', {
 					'output.json': JSON.stringify(schema),
 				});
 
