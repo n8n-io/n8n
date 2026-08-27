@@ -28,9 +28,9 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 # Output
 #   - A commit status named "Required Reviews" on the PR head SHA (or
 #     merge-group head SHA). Add this name to a ruleset's required-checks list
-#     to gate merges on it. The status is pending while the evaluation runs,
-#     so a crashed run cannot leave a stale verdict in effect. The job itself
-#     only fails on evaluation errors.
+#     to gate merges on it. The first job step sets the status to pending, so
+#     a run that crashes at any later point cannot leave a stale verdict in
+#     effect. The job itself only fails on errors.
 
 on:
   pull_request:
@@ -62,20 +62,40 @@ jobs:
   required-reviews:
     name: Check required reviews
     # Fork PRs are skipped on pull_request (no secrets for the app token);
-    # pull_request_review covers them. pull_request_review has no `branches`
-    # filter; the script also skips non-master bases, this just saves the
-    # runner.
+    # pull_request_review covers them. pull_request_review and merge_group
+    # have no `branches` filter; the script also skips non-master bases, the
+    # guards here keep the early pending status off non-master heads.
     if: >-
       (github.event_name != 'pull_request' ||
        github.event.pull_request.head.repo.full_name == github.repository) &&
       (github.event_name != 'pull_request_review' ||
-       github.event.pull_request.base.ref == 'master')
+       github.event.pull_request.base.ref == 'master') &&
+      (github.event_name != 'merge_group' ||
+       github.event.merge_group.base_ref == 'refs/heads/master')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
       contents: read
       statuses: write
     steps:
+      # Fail closed before any fallible step: replace a possibly-green status
+      # with pending, so a failure in token generation, checkout, or setup
+      # cannot leave a stale verdict in effect. The script sets the verdict.
+      # Skipped for workflow_dispatch (no SHA in the event); there the script
+      # sets pending itself.
+      - name: Set pending status
+        if: github.event_name != 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -f state=pending \
+            -f context='Required Reviews' \
+            -f description='Evaluating required reviews' \
+            -f "target_url=${RUN_URL}"
+
       - name: Generate App Token
         id: app-token
         uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
