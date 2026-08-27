@@ -14,7 +14,7 @@ import type {
 	NodeConnectionType,
 	SupplyData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, Workflow } from 'n8n-workflow';
+import { NodeConnectionTypes, UnexpectedError, Workflow } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { ErrorReporter } from '@/errors/error-reporter';
@@ -23,9 +23,17 @@ import * as Helpers from '@test/helpers';
 import { WorkflowExecute } from '../workflow-execute';
 
 /**
- * End-to-end coverage for the `executionData.metadata` staging done by the
- * supplyData error path (CAT-3665). The real engine drives everything; the only
- * authored parts are the node types below, whose behaviour is parameter-driven.
+ * When an AI sub-node fails to start, the engine records the failure on the sub-node itself
+ * and also notes it against the parent — filed under the run index the parent is expected to
+ * get next (`runData[parent].length`). At the end of the execution `moveNodeMetadata` merges
+ * each note onto the matching run, and reports any note that has no run to merge onto.
+ *
+ * That expected index is right for a top-level parent: the engine appends its error run a
+ * moment later. A sub-node parent never gets one, so the note is left pointing at nothing —
+ * which is what CAT-3665 is about.
+ *
+ * The real engine drives every test. The only authored parts are the node types below, whose
+ * behaviour comes from node parameters rather than mocks.
  */
 
 const triggerNodeType: INodeType = {
@@ -76,7 +84,7 @@ const agentNodeType: INodeType = {
 					try {
 						await tool.invoke({});
 					} catch {
-						// A real agent absorbs a failed tool call as an observation
+						// A real agent treats a failed tool call as a result and carries on
 					}
 				}
 			}
@@ -100,6 +108,8 @@ const modelNodeType: INodeType = {
 			{ displayName: 'Fail Supply Data', name: 'failSupplyData', type: 'boolean', default: false },
 		],
 	},
+	// Covers the "supplyData throws" slice (missing credentials, bad config). Real chat models
+	// make no network call here, so bad-key/quota errors instead surface on invoke.
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		if (this.getNodeParameter('failSupplyData', itemIndex, false) === true) {
 			throw new Error('Invalid API key');
@@ -127,7 +137,7 @@ const toolPlainNodeType: INodeType = {
 	},
 };
 
-/** Mirrors `createVectorStoreNode`/`ToolVectorStore`: its setup eagerly fetches its sub-nodes. */
+/** Mirrors `ToolVectorStore`: its setup eagerly fetches its own sub-nodes. */
 const toolWithSetupNodeType: INodeType = {
 	description: {
 		displayName: 'Test Tool With Setup',
@@ -174,9 +184,28 @@ const toolWithNestedToolNodeType: INodeType = {
 	},
 };
 
+/** Two main outputs into the same node, so that node gets two runs. */
+const branchNodeType: INodeType = {
+	description: {
+		displayName: 'Test Branch',
+		name: 'testBranch',
+		group: ['transform'],
+		version: 1,
+		description: '',
+		defaults: { name: 'Test Branch' },
+		inputs: [NodeConnectionTypes.Main],
+		outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+		properties: [],
+	},
+	async execute() {
+		return [[{ json: {} }], [{ json: {} }]];
+	},
+};
+
 const nodeTypeData: INodeTypeData = {
 	'test.trigger': { type: triggerNodeType, sourcePath: '' },
 	'test.agent': { type: agentNodeType, sourcePath: '' },
+	'test.branch': { type: branchNodeType, sourcePath: '' },
 	'test.model': { type: modelNodeType, sourcePath: '' },
 	'test.toolPlain': { type: toolPlainNodeType, sourcePath: '' },
 	'test.toolWithSetup': { type: toolWithSetupNodeType, sourcePath: '' },
@@ -211,19 +240,15 @@ async function runWorkflow(nodes: INode[], connections: IConnections): Promise<I
 	return await waitPromise.promise;
 }
 
-const TASKDATA_MISSING = 'Taskdata missing at the end of an execution';
-
-/** What `makeHandleToolInvocation` reports on the tool's own run when its model fails. */
-const TOOL_INVOCATION_ERROR = 'Error in sub-node Tool Model\n\nDetails: Invalid API key';
-
-/** Same, for the nested-invocation case, where the failing model sits two tools deep. */
-const NESTED_TOOL_INVOCATION_ERROR = 'Error in sub-node Inner Model\n\nDetails: Invalid API key';
-
 type RunSummary = { status?: string; error?: string; subRun?: unknown };
 
 /**
  * The saved execution as an API consumer sees it: `GET /rest|api/v1/executions/:id?includeData=true`
  * returns exactly this `runData`, `metadata.subRun` included.
+ *
+ * `subRun` is written by a background promise nobody awaits, which runs after the
+ * `nodeExecuteAfter` hook and currently wins the race against `moveNodeMetadata`. A slow
+ * async handler on that hook would strand it unmerged instead (see CAT-4268).
  */
 function savedExecution(result: IRun): Record<string, RunSummary[]> {
 	return Object.fromEntries(
@@ -239,19 +264,21 @@ function savedExecution(result: IRun): Record<string, RunSummary[]> {
 }
 
 /**
- * The reports the engine emitted to its Sentry sink. Only the orphan report is this
- * suite's business: the engine also reports every `BaseError` a node throws
- * (`workflow-execute.ts:2014`), relying on `beforeSend`/`shouldReport` to drop it — a
- * filter the bare mock bypasses, so "never called" would be wrong.
+ * The orphan reports ("Taskdata missing at the end of an execution") the engine emitted to
+ * its Sentry sink. Matched by class, not message text, so rewording the message cannot
+ * silently empty this list. Filtering is necessary: the engine also reports every
+ * `BaseError` a node throws, relying on `beforeSend`/`shouldReport` to drop it — a filter
+ * the bare mock bypasses — so "never called" would be wrong.
  */
 function orphanReports(): string[] {
 	return vi
 		.mocked(errorReporter.error)
-		.mock.calls.map((call) => (call[0] as Error)?.message)
-		.filter((message) => message === TASKDATA_MISSING);
+		.mock.calls.map((call) => call[0])
+		.filter((error): error is UnexpectedError => error instanceof UnexpectedError)
+		.map((error) => error.message);
 }
 
-/** What the supplyData error path staged, before `moveNodeMetadata` merges it. */
+/** The notes still waiting to be merged. */
 function stagedMetadata(result: IRun): Record<string, ITaskMetadata[]> {
 	return result.data.executionData?.metadata ?? {};
 }
@@ -270,6 +297,10 @@ let errorReporter: ErrorReporter;
 beforeEach(() => {
 	errorReporter = mock<ErrorReporter>();
 	Container.set(ErrorReporter, errorReporter);
+});
+
+afterEach(() => {
+	Container.reset();
 });
 
 describe('sub-node error metadata', () => {
@@ -291,7 +322,7 @@ describe('sub-node error metadata', () => {
 			expect(result.data.resultData.error?.message).toBe('Error in sub-node Model');
 			expect(savedExecution(result)).toEqual({
 				Trigger: [{ status: 'success', error: undefined, subRun: undefined }],
-				// The anticipated index is correct here: the engine appends Agent's error run
+				// Right target: the engine appends Agent's error run at exactly this index a moment later
 				Agent: [
 					{
 						status: 'error',
@@ -333,6 +364,48 @@ describe('sub-node error metadata', () => {
 			});
 			expect(orphanReports()).toEqual([]);
 		});
+
+		test('stages the subRun entry at a top-level parent run index above zero', async () => {
+			const result = await runWorkflow(
+				[
+					node('Trigger', 'test.trigger'),
+					node('Branch', 'test.branch'),
+					node('Agent', 'test.agent'),
+					// Succeeds on the agent's first run, fails on its second
+					node('Model', 'test.model', { failSupplyData: '={{ $runIndex >= 1 }}' }),
+				],
+				{
+					...connect('Trigger', 'Branch'),
+					Branch: {
+						main: [
+							[{ node: 'Agent', type: NodeConnectionTypes.Main, index: 0 }],
+							[{ node: 'Agent', type: NodeConnectionTypes.Main, index: 0 }],
+						],
+					},
+					...connect('Model', 'Agent', NodeConnectionTypes.AiLanguageModel),
+				},
+			);
+
+			expect(result.status).toBe('error');
+			expect(savedExecution(result)).toEqual({
+				Trigger: [{ status: 'success', error: undefined, subRun: undefined }],
+				Branch: [{ status: 'success', error: undefined, subRun: undefined }],
+				// The target follows the parent's real run count — here run 1, not 0
+				Agent: [
+					{ status: 'success', error: undefined, subRun: undefined },
+					{
+						status: 'error',
+						error: 'Error in sub-node Model',
+						subRun: [{ node: 'Model', runIndex: 1 }],
+					},
+				],
+				Model: [
+					{ status: undefined, error: undefined, subRun: undefined },
+					{ status: 'error', error: 'Invalid API key', subRun: undefined },
+				],
+			});
+			expect(orphanReports()).toEqual([]);
+		});
 	});
 
 	describe('sub-node parents (nothing to attach a subRun entry to)', () => {
@@ -361,7 +434,7 @@ describe('sub-node error metadata', () => {
 				Agent: [{ status: 'error', error: 'Error in sub-node Tool Model', subRun: undefined }],
 				'Tool Model': [{ status: 'error', error: 'Invalid API key', subRun: undefined }],
 			});
-			// `Tool` never gets a run of its own, so nothing may be staged against it
+			// `Tool` never gets a run of its own, so there must be nothing noted against it
 			expect(stagedMetadata(result)).toEqual({});
 			expect(sourceOf(result, 'Tool Model')).toEqual([
 				{ previousNode: 'Tool', previousNodeRun: 0 },
@@ -395,11 +468,12 @@ describe('sub-node error metadata', () => {
 				Tool: [
 					{
 						status: 'error',
-						error: TOOL_INVOCATION_ERROR,
+						error: expect.stringContaining('Error in sub-node Tool Model'),
 						subRun: [{ node: 'Tool', runIndex: 0 }],
 					},
 				],
-				// Sparse on purpose: the child's error still lands at the anticipated index
+				// The hole at 0 is expected: the child's error record still goes to the parent's
+				// expected index. This fix deliberately leaves that alone
 				'Tool Model': [
 					{ status: undefined, error: undefined, subRun: undefined },
 					{ status: 'error', error: 'Invalid API key', subRun: undefined },
@@ -429,17 +503,17 @@ describe('sub-node error metadata', () => {
 			expect(savedExecution(result)).toEqual({
 				Trigger: [{ status: 'success', error: undefined, subRun: undefined }],
 				Agent: [{ status: 'success', error: undefined, subRun: undefined }],
-				// Each run carries only its own entry; today run 1 also absorbs the entry
-				// the first invocation staged at the anticipated index
+				// Each run lists only its own sub-node call. Before the fix, run 1 also picked
+				// up the note left by the first invocation, which pointed here
 				Tool: [
 					{
 						status: 'error',
-						error: TOOL_INVOCATION_ERROR,
+						error: expect.stringContaining('Error in sub-node Tool Model'),
 						subRun: [{ node: 'Tool', runIndex: 0 }],
 					},
 					{
 						status: 'error',
-						error: TOOL_INVOCATION_ERROR,
+						error: expect.stringContaining('Error in sub-node Tool Model'),
 						subRun: [{ node: 'Tool', runIndex: 1 }],
 					},
 				],
@@ -478,7 +552,8 @@ describe('sub-node error metadata', () => {
 				Agent: [{ status: 'error', error: 'Error in sub-node Inner Model', subRun: undefined }],
 				'Inner Model': [{ status: 'error', error: 'Invalid API key', subRun: undefined }],
 			});
-			// Only the innermost frame stages: outer frames rethrow `configuration-node` errors first
+			// Only the innermost failure writes a note — the outer levels rethrow the error
+			// before reaching that code
 			expect(stagedMetadata(result)).toEqual({});
 			expect(sourceOf(result, 'Inner Model')).toEqual([
 				{ previousNode: 'Inner Store', previousNodeRun: 0 },
@@ -514,7 +589,7 @@ describe('sub-node error metadata', () => {
 				Tool: [
 					{
 						status: 'error',
-						error: TOOL_INVOCATION_ERROR,
+						error: expect.stringContaining('Error in sub-node Tool Model'),
 						subRun: [{ node: 'Tool', runIndex: 0 }],
 					},
 				],
@@ -557,14 +632,14 @@ describe('sub-node error metadata', () => {
 				'Outer Tool': [
 					{
 						status: 'error',
-						error: NESTED_TOOL_INVOCATION_ERROR,
+						error: expect.stringContaining('Error in sub-node Inner Model'),
 						subRun: [{ node: 'Outer Tool', runIndex: 0 }],
 					},
 				],
 				'Inner Tool': [
 					{
 						status: 'error',
-						error: NESTED_TOOL_INVOCATION_ERROR,
+						error: expect.stringContaining('Error in sub-node Inner Model'),
 						subRun: [{ node: 'Inner Tool', runIndex: 0 }],
 					},
 				],
