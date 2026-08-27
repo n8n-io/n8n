@@ -3358,9 +3358,9 @@ export function useCanvasOperations() {
 	): INodeCredentials {
 		return Object.fromEntries(
 			Object.entries(credentials).filter(([, credential]) => {
+				if (!credential.id) return true;
 				return (
-					credential.id &&
-					(!usedCredentials[credential.id] || usedCredentials[credential.id]?.currentUserHasAccess)
+					!usedCredentials[credential.id] || usedCredentials[credential.id]?.currentUserHasAccess
 				);
 			}),
 		);

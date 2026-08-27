@@ -65,9 +65,11 @@ import {
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
+	EnterpriseEditionFeature,
 } from '@/app/constants';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { STORES } from '@n8n/stores';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 import type { Connection } from '@vue-flow/core';
 import { useClipboard } from '@vueuse/core';
 import { createCanvasConnectionHandleString } from '@/features/workflows/canvas/canvas.utils';
@@ -4575,6 +4577,60 @@ describe('useCanvasOperations', () => {
 			const copiedData = getNodesToSave([nodes[0]]);
 
 			expect(copiedData.nodeGroups).toBeUndefined();
+		});
+
+		it('keeps n8n credits credentials when copying nodes', () => {
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: {
+					1: mockNodeTypeDescription({
+						name: SET_NODE_TYPE,
+						credentials: [{ name: 'openAiApi', required: true }],
+					}),
+				},
+			};
+
+			const gatewayCredential = { id: null, name: '', __aiGatewayManaged: true as const };
+			const node = mockNode({ id: '1', name: 'Node 1', type: SET_NODE_TYPE });
+			node.position = [40, 40];
+			node.credentials = { openAiApi: gatewayCredential };
+
+			workflowDocumentStoreInstance.allNodes = [node];
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			const { getNodesToSave } = useCanvasOperations();
+			const copiedData = getNodesToSave([node]);
+
+			expect(copiedData.nodes[0].credentials).toEqual({ openAiApi: gatewayCredential });
+		});
+
+		it('keeps n8n credits credentials when sharing is enabled', () => {
+			const settingsStore = useSettingsStore();
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+
+			const nodeTypesStore = useNodeTypesStore();
+			nodeTypesStore.nodeTypes = {
+				[SET_NODE_TYPE]: {
+					1: mockNodeTypeDescription({
+						name: SET_NODE_TYPE,
+						credentials: [{ name: 'openAiApi', required: true }],
+					}),
+				},
+			};
+
+			const gatewayCredential = { id: null, name: '', __aiGatewayManaged: true as const };
+			const node = mockNode({ id: '1', name: 'Node 1', type: SET_NODE_TYPE });
+			node.position = [40, 40];
+			node.credentials = { openAiApi: gatewayCredential };
+
+			workflowDocumentStoreInstance.allNodes = [node];
+			workflowDocumentStoreInstance.usedCredentials = {};
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
+
+			const { getNodesToSave } = useCanvasOperations();
+			const copiedData = getNodesToSave([node]);
+
+			expect(copiedData.nodes[0].credentials).toEqual({ openAiApi: gatewayCredential });
 		});
 	});
 
