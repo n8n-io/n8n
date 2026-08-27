@@ -393,13 +393,13 @@ export class ProjectService {
 	}
 
 	async getProjectsAndCount({
-		skip,
-		take,
+		offset,
+		limit,
 	}: {
-		skip: number;
-		take: number;
+		offset: number;
+		limit: number;
 	}): Promise<[Project[], number]> {
-		return await this.projectRepository.findAndCount({ skip, take });
+		return await this.projectRepository.findAndCount({ skip: offset, take: limit });
 	}
 
 	async getPersonalProjectOwners(projectIds: string[]): Promise<ProjectRelation[]> {
@@ -407,24 +407,26 @@ export class ProjectService {
 	}
 
 	async getMyProjects(user: User): Promise<ProjectWithRelationsAndScopes[]> {
-		const relations = await this.getProjectRelationsForUser(user);
+		const projectRelations = await this.getProjectRelationsForUser(user);
 		const otherTeamProjects = hasGlobalScope(user, 'project:read')
-			? await this.projectRepository.findTeamProjectsExcluding(relations.map((pr) => pr.projectId))
+			? await this.projectRepository.findTeamProjectsExcluding(
+					projectRelations.map((relation) => relation.projectId),
+				)
 			: [];
 
 		const results: ProjectWithRelationsAndScopes[] = [];
 
-		for (const pr of relations) {
+		for (const relation of projectRelations) {
 			const result: ProjectWithRelationsAndScopes = Object.assign(
-				this.projectRepository.create(pr.project),
-				{ role: pr.role.slug, scopes: [] },
+				this.projectRepository.create(relation.project),
+				{ role: relation.role.slug, scopes: [] },
 			);
 
 			if (result.scopes) {
 				result.scopes.push(
 					...combineScopes({
 						global: getAuthPrincipalScopes(user),
-						project: pr.role.scopes.map((scope) => scope.slug),
+						project: relation.role.scopes.map((scope) => scope.slug),
 					}),
 				);
 			}
@@ -924,13 +926,13 @@ export class ProjectService {
 
 	async getProjectMembersAndCount(
 		projectId: string,
-		{ skip, take }: { skip: number; take: number },
+		{ offset, limit }: { offset: number; limit: number },
 	): Promise<[ProjectRelation[], number]> {
 		return await this.projectRelationRepository.findAndCount({
 			where: { projectId },
 			relations: { user: true, role: true },
-			skip,
-			take,
+			skip: offset,
+			take: limit,
 		});
 	}
 

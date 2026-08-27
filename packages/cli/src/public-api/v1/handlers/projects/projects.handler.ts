@@ -135,8 +135,8 @@ const projectHandlers: ProjectHandlers = {
 			const { offset = 0, limit = 100 } = req.query;
 
 			const [projects, count] = await Container.get(ProjectService).getProjectsAndCount({
-				skip: offset,
-				take: limit,
+				offset,
+				limit,
 			});
 
 			return res.json({
@@ -167,8 +167,8 @@ const projectHandlers: ProjectHandlers = {
 			}
 
 			const [relations, count] = await projectService.getProjectMembersAndCount(projectId, {
-				skip: offset,
-				take: limit,
+				offset,
+				limit,
 			});
 
 			const memberFields = [
