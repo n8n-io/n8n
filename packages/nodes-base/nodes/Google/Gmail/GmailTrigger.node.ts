@@ -461,6 +461,10 @@ export class GmailTrigger implements INodeType {
 			let messages: ListMessage[] = [];
 			let pageToken: string | undefined;
 			let pagesListed = 0;
+			// From here on, an exception mid-loop must read as "not fully listed":
+			// the catch path continues to the cursor advance, and a stale `true`
+			// would skip everything the failed pages never showed.
+			windowFullyListed = false;
 			do {
 				const messagesResponse: MessageListResponse = await googleApiRequest.call(
 					this,
@@ -476,6 +480,10 @@ export class GmailTrigger implements INodeType {
 			// A remaining token means unlisted, older mail exists beyond the page cap;
 			// the cursor advance below must not move past it.
 			windowFullyListed = !pageToken;
+
+			// Pagination can repeat an id across pages when the mailbox shifts
+			// between page fetches; one id must map to one delivery.
+			messages = Array.from(new Map(messages.map((m) => [m.id, m])).values());
 
 			if (!messages.length && !allFetchedMessages.length) {
 				return null;

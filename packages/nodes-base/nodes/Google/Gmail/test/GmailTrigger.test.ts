@@ -1755,6 +1755,94 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds ?? []).toEqual([]);
 		});
 
+		it('should hold the cursor when listing fails mid-pagination', async () => {
+			// A transient error on page 2 means the window was NOT fully listed.
+			// Advancing anyway would skip everything the failed pages never showed —
+			// silently, without even the valve's warning.
+			const initialTimestamp = 1000000;
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: initialTimestamp,
+					pendingMessageIds: ['P1'],
+					possibleDuplicates: ['X'],
+				},
+			};
+
+			mockLabels();
+			// The pending drain succeeds and populates the fetched set...
+			mockGet('P1', 5_000_000_000_000);
+			// ...then listing resumes: page 1 succeeds with a token, page 2 blows up.
+			mockList(listPage(['L1', 'L2'], 'token-1'));
+			nock(baseUrl)
+				.get('/gmail/v1/users/me/messages')
+				.query((q) => q.pageToken === 'token-1')
+				.reply(500, { error: 'transient' });
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				workflowStaticData,
+			});
+
+			// The drained pending message is still delivered...
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['P1']);
+			// ...but the cursor must hold: P1's date (5000s) must not become the new
+			// boundary while page 1's ids were never persisted anywhere.
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
+			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(
+				expect.arrayContaining(['X', 'P1']),
+			);
+		});
+
+		it('should emit a message only once when pages return an overlapping id', async () => {
+			// Gmail pagination can repeat an id across pages when the mailbox shifts
+			// between page fetches. The accumulated list must be deduplicated.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': { lastTimeChecked: 1000000 },
+			};
+
+			mockLabels();
+			mockList(listPage(['A', 'B'], 'token-1'));
+			mockList(listPage(['A', 'C']), 'token-1');
+			// Two interceptors for A: if the code fetches it twice, both are consumed
+			// and the duplicate shows up in the output.
+			mockGet('A', 4_000_000_000_000);
+			mockGet('A', 4_000_000_000_000);
+			mockGet('B', 3_000_000_000_000);
+			mockGet('C', 2_000_000_000_000);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 4 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['A', 'B', 'C']);
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds ?? []).toEqual([]);
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(4_000_000_000);
+		});
+
+		it('should not park an already-fetched id as pending when pages overlap', async () => {
+			// Same overlap, tighter budget: the repeated id must not land in the
+			// fetched batch AND next tick's pending queue — that is a cross-tick
+			// duplicate delivery.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': { lastTimeChecked: 1000000 },
+			};
+
+			mockLabels();
+			mockList(listPage(['A', 'B'], 'token-1'));
+			mockList(listPage(['A', 'C']), 'token-1');
+			mockGet('A', 4_000_000_000_000);
+			mockGet('B', 3_000_000_000_000);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['A', 'B']);
+			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['C']);
+		});
+
 		it('should give up holding and advance when the tracked-id bound is exceeded', async () => {
 			const initialTimestamp = 1000000;
 			// The boundary set is already at the tracking bound; holding through yet
