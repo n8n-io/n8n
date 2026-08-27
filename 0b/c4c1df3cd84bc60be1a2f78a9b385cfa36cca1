@@ -1,0 +1,36 @@
+packages/nodes-base/credentials/LinearClientCredentialsOAuth2Api.credentials.ts
+  s_7fbff1501812ec::t_20ba444d5b7fa3 1-66
+packages/nodes-base/nodes/Linear/shared/GenericFunctions.ts
+  s_7fbff1501812ec::t_20ba444d5b7fa3 14,18-19,42
+  s_7fbff1501812ec::t_b8f2879c43b1f8 15-17
+packages/nodes-base/nodes/Linear/test/GenericFunctions.test.ts
+  s_7fbff1501812ec::t_20ba444d5b7fa3 9-14,94-120,122
+  s_7fbff1501812ec::t_d11385867b558d 121
+packages/nodes-base/credentials/test/LinearClientCredentialsOAuth2Api.credentials.test.ts
+  s_7fbff1501812ec::t_20ba444d5b7fa3 1-56
+packages/nodes-base/nodes/Linear/v2/actions/versionDescription.ts
+  s_7fbff1501812ec::t_20ba444d5b7fa3 57-65,77-82
+packages/nodes-base/package.json
+  s_7fbff1501812ec::t_20ba444d5b7fa3 228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0bc4c1df3cd84bc60be1a2f78a9b385cfa36cca1",
+  "prompts": {},
+  "humans": {
+    "h_434a0dd003c3fd": {
+      "author": "Jonathan <jon@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7fbff1501812ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "60a36f97-339e-41a5-8a73-e10377c92544",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jonathan <jon@n8n.io>"
+    }
+  }
+}
