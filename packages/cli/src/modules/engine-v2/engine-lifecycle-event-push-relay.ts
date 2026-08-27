@@ -76,8 +76,9 @@ export class EngineLifecycleEventPushRelay {
 	/**
 	 * Reports the trigger's run, since the engine never announces it as a step.
 	 *
-	 * Sends no `executionStarted`: it would overwrite the editor's existing
-	 * run data with an empty scaffold.
+	 * Sends no `executionStarted`: the editor already promoted the run from the
+	 * dispatch response, and the message would overwrite its run data with an
+	 * empty scaffold. Runs the editor did not start need it — TODO(CAT-4258).
 	 */
 	private onExecutionStarted(executionId: string, at: string, session: EngineV2PushSession): void {
 		const { trigger } = session;
