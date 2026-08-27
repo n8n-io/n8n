@@ -177,6 +177,11 @@ export {
 } from './schemas/policy-check-failure.schema';
 
 export {
+	contentImportPolicyResultSchema,
+	type ContentImportPolicyResult,
+} from './schemas/content-import-policy-result.schema';
+
+export {
 	insightsSummarySchema,
 	type InsightsSummaryType,
 	type InsightsSummaryUnit,

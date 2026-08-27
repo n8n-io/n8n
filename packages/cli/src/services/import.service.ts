@@ -1,5 +1,5 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
-import type { PolicyCheckFailure, PolicyViolation } from '@n8n/decorators';
+import type { ContentImportPolicyResult } from '@n8n/api-types';
 import type { TagEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	Project,
@@ -44,13 +44,11 @@ import { WorkflowService } from '@/workflows/workflow.service';
 
 const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
 
-/** Advisory policy violations found for one imported workflow, never blocking the import. */
+/** Advisory content-import policy result for one imported workflow, never blocking the import. */
 export interface WorkflowImportViolations {
 	workflowId: string | null;
 	name: string;
-	violations: PolicyViolation[];
-	/** Checks that failed to run — a violation may have gone undetected. */
-	checkErrors: PolicyCheckFailure[];
+	contentImportPolicy: ContentImportPolicyResult;
 }
 
 @Service()
@@ -165,7 +163,7 @@ export class ImportService {
 			const evaluationProjectId = workflow.id
 				? (existingOwnerProjects.get(workflow.id)?.id ?? projectId)
 				: projectId;
-			const { violations: workflowViolations, checkErrors } = await evaluateContentImportSafely(
+			const contentImportPolicy = await evaluateContentImportSafely(
 				this.policyEnforcementService,
 				{
 					workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
@@ -173,12 +171,11 @@ export class ImportService {
 				},
 				this.logger,
 			);
-			if (workflowViolations.length || checkErrors.length) {
+			if (contentImportPolicy.violations.length || contentImportPolicy.checkErrors.length) {
 				violations.push({
 					workflowId: workflow.id ?? null,
 					name: workflow.name,
-					violations: workflowViolations,
-					checkErrors,
+					contentImportPolicy,
 				});
 			}
 

@@ -566,9 +566,12 @@ describe('SourceControlService', () => {
 					id: 'workflow-1',
 					name: 'workflow-1.json',
 					publishingError: undefined,
-					policyViolations: [
-						{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
-					],
+					contentImportPolicy: {
+						violations: [
+							{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+						],
+						checkErrors: [],
+					},
 				},
 			]);
 
@@ -578,9 +581,12 @@ describe('SourceControlService', () => {
 			});
 
 			expect(result.statusResult[0]).toMatchObject({
-				policyViolations: [
-					{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
-				],
+				contentImportPolicy: {
+					violations: [
+						{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+					],
+					checkErrors: [],
+				},
 			});
 		});
 
@@ -599,7 +605,10 @@ describe('SourceControlService', () => {
 					id: 'workflow-1',
 					name: 'workflow-1.json',
 					publishingError: undefined,
-					checkErrors: [{ checkId: 'test.check', correlationId: 'corr-1' }],
+					contentImportPolicy: {
+						violations: [],
+						checkErrors: [{ checkId: 'test.check', correlationId: 'corr-1' }],
+					},
 				},
 			]);
 
@@ -609,7 +618,10 @@ describe('SourceControlService', () => {
 			});
 
 			expect(result.statusResult[0]).toMatchObject({
-				checkErrors: [{ checkId: 'test.check', correlationId: 'corr-1' }],
+				contentImportPolicy: {
+					violations: [],
+					checkErrors: [{ checkId: 'test.check', correlationId: 'corr-1' }],
+				},
 			});
 		});
 
@@ -626,10 +638,12 @@ describe('SourceControlService', () => {
 						reason: 'review_pending',
 						workflowReviewRequestId: 'review-1',
 					},
-					policyViolations: [
-						{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
-					],
-					checkErrors: [{ checkId: 'test.check', correlationId: 'corr-1' }],
+					contentImportPolicy: {
+						violations: [
+							{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
+						],
+						checkErrors: [{ checkId: 'test.check', correlationId: 'corr-1' }],
+					},
 				},
 			]);
 

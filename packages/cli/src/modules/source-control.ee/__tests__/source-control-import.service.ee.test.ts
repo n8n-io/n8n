@@ -1732,7 +1732,10 @@ describe('SourceControlImportService', () => {
 				const result = await service.importWorkflowFromWorkFolder(candidates, mockUserId);
 
 				expect(result).toEqual([
-					expect.objectContaining({ id: '1', policyViolations: [violation] }),
+					expect.objectContaining({
+						id: '1',
+						contentImportPolicy: { violations: [violation], checkErrors: [] },
+					}),
 				]);
 				expect(workflowRepository.upsert).toHaveBeenCalled();
 			});
@@ -1746,7 +1749,7 @@ describe('SourceControlImportService', () => {
 				const result = await service.importWorkflowFromWorkFolder(candidates, mockUserId);
 
 				expect(result).toEqual([{ id: '1', name: mockWorkflowFile }]);
-				expect(result[0]).not.toHaveProperty('policyViolations');
+				expect(result[0]).not.toHaveProperty('contentImportPolicy');
 				expect(workflowRepository.upsert).toHaveBeenCalled();
 			});
 
@@ -1760,7 +1763,12 @@ describe('SourceControlImportService', () => {
 
 				const result = await service.importWorkflowFromWorkFolder(candidates, mockUserId);
 
-				expect(result).toEqual([expect.objectContaining({ id: '1', checkErrors: [checkFailure] })]);
+				expect(result).toEqual([
+					expect.objectContaining({
+						id: '1',
+						contentImportPolicy: { violations: [], checkErrors: [checkFailure] },
+					}),
+				]);
 				expect(workflowRepository.upsert).toHaveBeenCalled();
 			});
 		});

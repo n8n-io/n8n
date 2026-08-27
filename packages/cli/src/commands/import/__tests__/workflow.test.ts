@@ -94,7 +94,11 @@ describe('ImportWorkflowsCommand', () => {
 
 			// @ts-expect-error Private method
 			command.logContentImportViolations([
-				{ workflowId: '1', name: 'Flagged', violations: [violation], checkErrors: [] },
+				{
+					workflowId: '1',
+					name: 'Flagged',
+					contentImportPolicy: { violations: [violation], checkErrors: [] },
+				},
 			]);
 
 			expect(logger.warn).toHaveBeenCalledWith(
@@ -109,7 +113,11 @@ describe('ImportWorkflowsCommand', () => {
 
 			// @ts-expect-error Private method
 			command.logContentImportViolations([
-				{ workflowId: '1', name: 'Flaky', violations: [], checkErrors: [checkFailure] },
+				{
+					workflowId: '1',
+					name: 'Flaky',
+					contentImportPolicy: { violations: [], checkErrors: [checkFailure] },
+				},
 			]);
 
 			expect(logger.warn).toHaveBeenCalledWith(
@@ -123,7 +131,11 @@ describe('ImportWorkflowsCommand', () => {
 
 			// @ts-expect-error Private method
 			command.logContentImportViolations([
-				{ workflowId: '1', name: 'Clean', violations: [], checkErrors: [] },
+				{
+					workflowId: '1',
+					name: 'Clean',
+					contentImportPolicy: { violations: [], checkErrors: [] },
+				},
 			]);
 
 			expect(logger.warn).not.toHaveBeenCalled();

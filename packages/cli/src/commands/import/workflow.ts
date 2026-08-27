@@ -223,17 +223,17 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 	}
 
 	private logContentImportViolations(violations: WorkflowImportViolations[]) {
-		for (const { name, violations: workflowViolations, checkErrors } of violations) {
-			if (workflowViolations.length) {
+		for (const { name, contentImportPolicy } of violations) {
+			if (contentImportPolicy.violations.length) {
 				this.logger.warn(
-					`Workflow "${name}" has ${workflowViolations.length} content-import policy violation(s)`,
-					{ violations: workflowViolations },
+					`Workflow "${name}" has ${contentImportPolicy.violations.length} content-import policy violation(s)`,
+					{ violations: contentImportPolicy.violations },
 				);
 			}
-			if (checkErrors.length) {
+			if (contentImportPolicy.checkErrors.length) {
 				this.logger.warn(
-					`Workflow "${name}" has ${checkErrors.length} content-import policy check(s) that failed to run`,
-					{ checkErrors },
+					`Workflow "${name}" has ${contentImportPolicy.checkErrors.length} content-import policy check(s) that failed to run`,
+					{ checkErrors: contentImportPolicy.checkErrors },
 				);
 			}
 		}

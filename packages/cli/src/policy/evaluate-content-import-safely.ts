@@ -1,14 +1,9 @@
+import type { ContentImportPolicyResult } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { ContentImportContext, PolicyCheckFailure, PolicyViolation } from '@n8n/decorators';
+import type { ContentImportContext } from '@n8n/decorators';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import type { PolicyEnforcementService } from './policy-enforcement.service';
-
-export type ContentImportPolicyResult = {
-	violations: PolicyViolation[];
-	/** Checks that failed to run — a violation may have gone undetected. */
-	checkErrors: PolicyCheckFailure[];
-};
 
 /**
  * Evaluates the content-import policy for one artifact, never rejecting: `evaluateContentImport`

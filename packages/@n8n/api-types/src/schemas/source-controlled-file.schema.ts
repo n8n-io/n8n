@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-import { policyCheckFailureSchema } from './policy-check-failure.schema';
-import { policyViolationSchema } from './policy-violation.schema';
+import { contentImportPolicyResultSchema } from './content-import-policy-result.schema';
 import { workflowPublishBlockedDetailsSchema } from '../workflow-publish-blocked-details';
 
 const FileTypeSchema = z.enum([
@@ -62,9 +61,7 @@ export const SourceControlledFileSchema = z.object({
 	publishingError: z.string().optional(),
 	publishingErrorDetails: workflowPublishBlockedDetailsSchema.optional(),
 	/** Advisory only — never blocks the pull. */
-	policyViolations: z.array(policyViolationSchema).optional(),
-	/** Checks that failed to run — a violation may have gone undetected. */
-	checkErrors: z.array(policyCheckFailureSchema).optional(),
+	contentImportPolicy: contentImportPolicyResultSchema.optional(),
 });
 
 export type SourceControlledFile = z.infer<typeof SourceControlledFileSchema>;

@@ -583,25 +583,26 @@ export class SourceControlService {
 			id,
 			publishingError,
 			publishingErrorDetails,
-			policyViolations,
-			checkErrors,
+			contentImportPolicy,
 		} of workflowImportResults) {
 			const statusItem = statusByWorkflowId.get(id);
 
-			if (policyViolations?.length) {
+			if (contentImportPolicy?.violations.length) {
 				this.logger.warn(
-					`Workflow ${id} has ${policyViolations.length} content-import policy violation(s)`,
-					{ violations: policyViolations },
+					`Workflow ${id} has ${contentImportPolicy.violations.length} content-import policy violation(s)`,
+					{ violations: contentImportPolicy.violations },
 				);
-				if (statusItem) statusItem.policyViolations = policyViolations;
 			}
 
-			if (checkErrors?.length) {
+			if (contentImportPolicy?.checkErrors.length) {
 				this.logger.warn(
-					`Workflow ${id} has ${checkErrors.length} content-import policy check(s) that failed to run`,
-					{ checkErrors },
+					`Workflow ${id} has ${contentImportPolicy.checkErrors.length} content-import policy check(s) that failed to run`,
+					{ checkErrors: contentImportPolicy.checkErrors },
 				);
-				if (statusItem) statusItem.checkErrors = checkErrors;
+			}
+
+			if (contentImportPolicy && statusItem) {
+				statusItem.contentImportPolicy = contentImportPolicy;
 			}
 
 			if (!publishingError && !publishingErrorDetails) continue;

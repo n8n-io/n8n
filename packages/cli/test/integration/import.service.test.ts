@@ -529,7 +529,11 @@ describe('ImportService', () => {
 			);
 
 			expect(result.violations).toStrictEqual([
-				{ workflowId: flagged.id, name: 'Flagged', violations: [violation], checkErrors: [] },
+				{
+					workflowId: flagged.id,
+					name: 'Flagged',
+					contentImportPolicy: { violations: [violation], checkErrors: [] },
+				},
 			]);
 			// The batch completes for every workflow regardless of the violation.
 			await expect(getWorkflowById(clean.id)).resolves.toBeDefined();
@@ -565,8 +569,8 @@ describe('ImportService', () => {
 
 		test('surfaces a failed check alongside violations, without failing the import', async () => {
 			const checkFailure = { checkId: 'test.check', correlationId: 'corr-1' };
-			// No explicit id: still unassigned when evaluateContentImport runs, exercising the
-			// "(new)" fallback in the failed-check log message.
+			// No explicit id: still unassigned when evaluateContentImport runs, so this also
+			// covers a new workflow reporting a check error.
 			const workflowToImport = newWorkflow({ name: 'Flaky' });
 			mockPolicyEnforcementService.evaluateContentImport.mockResolvedValueOnce({
 				violations: [],
@@ -584,8 +588,7 @@ describe('ImportService', () => {
 				{
 					workflowId: null,
 					name: 'Flaky',
-					violations: [],
-					checkErrors: [checkFailure],
+					contentImportPolicy: { violations: [], checkErrors: [checkFailure] },
 				},
 			]);
 			await expect(getWorkflowById(workflowToImport.id)).resolves.toBeDefined();

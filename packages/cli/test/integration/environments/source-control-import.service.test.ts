@@ -2067,7 +2067,10 @@ describe('SourceControlImportService', () => {
 				);
 
 				expect(result).toEqual([
-					expect.objectContaining({ id: workflow.id, policyViolations: [violation] }),
+					expect.objectContaining({
+						id: workflow.id,
+						contentImportPolicy: { violations: [violation], checkErrors: [] },
+					}),
 				]);
 				// The pull completes regardless of the violation.
 				await expect(
@@ -2090,7 +2093,7 @@ describe('SourceControlImportService', () => {
 				);
 
 				expect(result).toEqual([expect.objectContaining({ id: workflow.id })]);
-				expect(result[0]).not.toHaveProperty('policyViolations');
+				expect(result[0]).not.toHaveProperty('contentImportPolicy');
 				await expect(
 					workflowRepository.findOne({ where: { id: workflow.id } }),
 				).resolves.toBeTruthy();
