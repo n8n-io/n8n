@@ -108,8 +108,11 @@ async function executeBulkUpdate(
 
 	for (const [collection, entries] of groups) {
 		try {
-			// Ordered mirrors the pre-1.5 per-item loop: stop at the first failure,
-			// unless continue-on-fail asks for every item to be attempted independently
+			// Ordered stops at the first failure within a collection (the pre-1.5 per-item
+			// behaviour). Across interleaved collections it does not: groups run one at a
+			// time, so a later group's failure can't stop an already-run group — matches
+			// Insert, and only observable when `collection` is a per-item expression.
+			// Continue-on-fail flips to unordered: attempt every item independently.
 			await mdb.collection(collection).bulkWrite(
 				entries.map((entry) => entry.op),
 				{ ordered: !continueOnFail },
