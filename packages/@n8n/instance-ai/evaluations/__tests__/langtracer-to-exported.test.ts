@@ -141,7 +141,7 @@ describe('unsupportedPushReason', () => {
 	});
 
 	// The write API validates `metadata.seed` against a fixed key set, so `projects`
-	// is not stored. Pushing anyway would land a project-scope case WITHOUT its seeded project
+	// is not stored. Pushing anyway would land a project-scope case WITHOUT its seeded
 	// project — it would still run, and the agent's refusal would be graded against a
 	// project list it never saw. Refusing the push is the only outcome that can't
 	// silently corrupt the suite.
