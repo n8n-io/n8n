@@ -423,6 +423,22 @@ describe('useInstanceAiMcpStore', () => {
 		});
 	});
 
+	describe('handleToolCallFailed', () => {
+		it('revalidates a known connection and deduplicates in-flight checks', async () => {
+			store.connections = [{ ...makeConnection(), status: 'connected' }];
+			const request = createDeferred<InstanceAiMcpConnectionToolsResponse>();
+			mockFetchMcpConnectionTools.mockReturnValue(request.promise);
+
+			store.handleToolCallFailed('unknown-connection');
+			store.handleToolCallFailed('conn-1');
+			store.handleToolCallFailed('conn-1');
+
+			expect(mockFetchMcpConnectionTools).toHaveBeenCalledTimes(1);
+			request.resolve({ id: 'conn-1', status: 'connected', tools: [] });
+			await vi.waitFor(() => expect(store.connections[0].status).toBe('connected'));
+		});
+	});
+
 	describe('connect', () => {
 		it('appends the new connection on success', async () => {
 			const created = makeConnection({ id: 'conn-new' });

@@ -195,6 +195,12 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		await fetchConnectionTools(id);
 	}
 
+	function handleToolCallFailed(id: string): void {
+		if (!connections.value.some((connection) => connection.id === id)) return;
+		if (inFlightConnectionToolsById.has(id)) return;
+		void fetchConnectionTools(id);
+	}
+
 	async function connect(body: CreateMcpConnectionBody): Promise<InstanceAiMcpConnection | null> {
 		try {
 			const created = await createMcpConnection(rootStore.restApiContext, body);
@@ -279,6 +285,7 @@ export const useInstanceAiMcpStore = defineStore('instanceAiMcp', () => {
 		fetchCatalogLazy,
 		fetchConnectionTools,
 		fetchConnectionToolsLazy,
+		handleToolCallFailed,
 		connect,
 		updateConnection,
 		disconnect,
