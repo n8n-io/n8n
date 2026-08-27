@@ -119,11 +119,20 @@ describe('assertRereleaseIsWarranted', () => {
 		);
 	});
 
-	it('passes when the registry is unreachable', async () => {
+	it('fails closed when the registry is unreachable', async () => {
 		const failing = async () => {
 			throw new Error('ENOTFOUND');
 		};
-		await assert.doesNotReject(assertRereleaseIsWarranted('2.27.2', '2.27.3', failing));
+		await assert.rejects(assertRereleaseIsWarranted('2.27.2', '2.27.3', failing), {
+			message: /Could not determine what is published/,
+		});
+	});
+
+	it('fails closed on an unexpected registry status', async () => {
+		await assert.rejects(
+			assertRereleaseIsWarranted('2.27.2', '2.27.3', fakeFetch({ '2.27.2': 200, '2.27.3': 500 })),
+			{ message: /Could not determine what is published/ },
+		);
 	});
 });
 

@@ -80,17 +80,18 @@ export async function isPublished(packageName, version, fetchImpl = fetch) {
 		const response = await fetchImpl(url, { method: 'GET' });
 		if (response.status === 200) return true;
 		if (response.status === 404) return false;
-		console.error(`::warning::Unexpected HTTP ${response.status} from ${url}. Skipping check.`);
+		console.error(`::warning::Unexpected HTTP ${response.status} from ${url}`);
 		return null;
 	} catch (error) {
-		console.error(`::warning::Could not reach the npm registry: ${error.message}. Skipping check.`);
+		console.error(`::warning::Could not reach the npm registry: ${error.message}`);
 		return null;
 	}
 }
 
 /**
  * A re-release is only warranted when the failed version is already burned on
- * npm and the next one is still free.
+ * npm and the next one is still free. An inconclusive lookup fails the check —
+ * `force` is the way past it, not a guess.
  *
  * @param {string} failedVersion
  * @param {string} nextVersion
@@ -102,13 +103,19 @@ export async function assertRereleaseIsWarranted(failedVersion, nextVersion, fet
 		isPublished('n8n', nextVersion, fetchImpl),
 	]);
 
-	if (failedIsPublished === false) {
+	if (failedIsPublished === null || nextIsPublished === null) {
 		throw new Error(
-			`n8n@${failedVersion} is not on npm, so that version is not burned. Re-run the failed jobs of the original release instead. Pass force to override.`,
+			`Could not determine what is published on npm, so ${nextVersion} cannot be confirmed as free. Retry, or dispatch with force to skip this check.`,
 		);
 	}
 
-	if (nextIsPublished === true) {
+	if (!failedIsPublished) {
+		throw new Error(
+			`n8n@${failedVersion} is not on npm, so that version is not burned. Re-run the failed jobs of the original release instead, or dispatch with force to override.`,
+		);
+	}
+
+	if (nextIsPublished) {
 		throw new Error(
 			`n8n@${nextVersion} is already on npm. Re-release from ${nextVersion} instead of ${failedVersion}.`,
 		);

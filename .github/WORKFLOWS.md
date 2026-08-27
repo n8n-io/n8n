@@ -362,8 +362,9 @@ the runtime `N8N_VERSION`. Every other package keeps its version, so the publish
 step skips the ones already on npm and publishes whichever ones the failed run
 never reached.
 
-It refuses to run unless `n8n@X.Y.Z` is on npm and `n8n@X.Y.(Z+1)` is not.
-Dispatch with `force: true` to skip that check when the registry is unreliable.
+It refuses to run unless `n8n@X.Y.Z` is on npm and `n8n@X.Y.(Z+1)` is not. That
+check fails closed: if the registry can't be reached, the run stops rather than
+guessing. Dispatch with `force: true` to skip it.
 
 The burned version stays on npm. Deprecate it by hand once the re-release is
 out: `npm deprecate n8n@X.Y.Z "Failed release, use X.Y.(Z+1)"`.

@@ -23,6 +23,12 @@ on:
 permissions:
   contents: read
 
+# Queue a double-dispatch rather than interleaving two pushes of the same
+# branch. Not cancel-in-progress: killing a run mid-push is worse than waiting.
+concurrency:
+  group: recreate-failed-release-${{ inputs.failed-version }}
+  cancel-in-progress: false
+
 jobs:
   recreate-release-pr:
     name: Recreate release PR
@@ -56,12 +62,19 @@ jobs:
         with:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          # Scope the installation token to only what this recovery needs.
+          permission-contents: write # push the new release branch
+          permission-pull-requests: write # open the release PR
 
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           token: ${{ steps.generate_token.outputs.token }}
+          # Don't persist the token in .git/config (avoids leaking it via artifacts);
+          # the branch push uses an explicit token URL and create-pull-request
+          # pushes with its own token input.
+          persist-credentials: false
 
       # Checkout of the failed release branch via a separate step to prevent
       # unsafe actions/checkout ref usage.
@@ -100,8 +113,9 @@ jobs:
       - name: Push the new release branch
         env:
           FAILED_VERSION: ${{ inputs.failed-version }}
+          GH_TOKEN: ${{ steps.generate_token.outputs.token }}
         run: |
-          git push origin \
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             "refs/remotes/origin/release/${FAILED_VERSION}:refs/heads/release/${NEXT_RELEASE}"
 
       - name: Generate PR body
@@ -134,7 +148,9 @@ jobs:
     needs: [recreate-release-pr]
     if: |
       needs.recreate-release-pr.outputs.pull-request-number != ''
-    uses: ./.github/workflows/util-approve-and-set-automerge.yml
+    # inherit, not named secrets: the callee's app credentials live on the
+    # `release` environment, which a caller cannot read to forward.
+    uses: ./.github/workflows/util-approve-and-set-automerge.yml # zizmor: ignore[secrets-inherit]
     permissions:
       contents: write
       pull-requests: write
@@ -154,6 +170,7 @@ jobs:
         with:
           sparse-checkout: .github/scripts/slack
           sparse-checkout-cone-mode: false
+          persist-credentials: false
       - name: Notify Slack
         env:
           SLACK_TOKEN: ${{ secrets.RELEASE_HELPER_SLACK_TOKEN }}
