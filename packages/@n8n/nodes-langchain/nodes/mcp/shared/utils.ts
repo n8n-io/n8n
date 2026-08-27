@@ -350,17 +350,19 @@ export async function getAuthHeaders(
 	headers?: Record<string, string>;
 	credentials?: ICredentialDataDecryptedObject;
 }> {
-	const credentialType =
-		authentication === 'none'
-			? undefined
-			: isMcpOAuth2Authentication(authentication)
-				? authentication
-				: {
-						headerAuth: 'httpHeaderAuth',
-						bearerAuth: 'httpBearerAuth',
-						multipleHeadersAuth: 'httpMultipleHeadersAuth',
-					}[authentication];
-	if (!credentialType) return {};
+	if (authentication === 'none') return {};
+
+	let credentialType: string;
+	if (isMcpOAuth2Authentication(authentication)) {
+		credentialType = authentication;
+	} else {
+		const credentialTypes = {
+			headerAuth: 'httpHeaderAuth',
+			bearerAuth: 'httpBearerAuth',
+			multipleHeadersAuth: 'httpMultipleHeadersAuth',
+		};
+		credentialType = credentialTypes[authentication];
+	}
 
 	const credentials = await ctx
 		.getCredentials<ICredentialDataDecryptedObject>(credentialType)
