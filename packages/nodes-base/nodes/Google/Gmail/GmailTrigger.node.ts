@@ -506,6 +506,18 @@ export class GmailTrigger implements INodeType {
 				}
 
 				if (!messages.length && !allFetchedMessages.length) {
+					// No-progress valve: the page cap cut the listing short, yet every
+					// reachable id is already tracked. Holding again would repeat this
+					// tick forever — no backlog progress and no new mail. Give up loudly:
+					// jump the cursor to now and skip what the cap keeps unreachable.
+					if (!windowFullyListed) {
+						this.logger.warn(
+							'Gmail Trigger backlog cannot progress past the page cap; advancing past unlisted older messages',
+							{ node: node.name },
+						);
+						nodeStaticData.lastTimeChecked = +now;
+						nodeStaticData.possibleDuplicates = [];
+					}
 					return null;
 				}
 			}

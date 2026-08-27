@@ -1840,6 +1840,41 @@ describe('GmailTrigger', () => {
 			expect(workflowStaticData['Gmail Trigger'].pendingMessageIds).toEqual(['C']);
 		});
 
+		it('should give up holding when a capped window makes no progress', async () => {
+			// Every id the cap can reach is already tracked, so re-listing the same
+			// pages can never progress past them. Holding again would repeat this
+			// tick forever: no backlog progress, no new mail, no warning. The poll
+			// must give up instead — advance and start fresh.
+			const initialTimestamp = 1000000;
+			const pages = Array.from({ length: 20 }, (_, page) => [`h${page}a`, `h${page}b`]);
+			const handledIds = pages.flat();
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: initialTimestamp,
+					possibleDuplicates: handledIds,
+				},
+			};
+
+			mockLabels();
+			pages.forEach((ids, page) =>
+				mockList(listPage(ids, `token-${page + 1}`), page === 0 ? undefined : `token-${page}`),
+			);
+			// No message GET mocks: everything listed is filtered as already handled.
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 2 } },
+				workflowStaticData,
+			});
+
+			expect(response).toBeNull();
+			// The cursor must move off the wedged window instead of holding forever.
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked as number).toBeGreaterThan(
+				initialTimestamp,
+			);
+			// A fresh boundary has no handled ids to remember.
+			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual([]);
+		});
+
 		it('should not paginate on versions before 1.4', async () => {
 			// Pagination is scoped to v1.4+: older versions have no pendingMessageIds
 			// machinery, so following the token there would change their behavior.
