@@ -334,6 +334,7 @@ export function useWorkflowInitialization() {
 
 		const parentFolder = await fetchParentFolder(parentFolderId);
 		currentWorkflowDocumentStore.value?.setParentFolder(parentFolder);
+		currentWorkflowDocumentStore.value.setHydrated(true);
 
 		uiStore.nodeViewInitialized = true;
 		initializedWorkflowId.value = workflowId.value;

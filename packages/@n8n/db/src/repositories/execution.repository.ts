@@ -262,6 +262,20 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		};
 	}
 
+	/** Whether the execution exists and belongs to one of the given workflows. */
+	async existsForAccessibleWorkflows(
+		executionId: string,
+		accessibleWorkflowIds: string[],
+	): Promise<boolean> {
+		if (accessibleWorkflowIds.length === 0) return false;
+
+		return await this.exists({
+			where: { id: executionId, workflowId: In(accessibleWorkflowIds) },
+			// Manual executions with saving off are soft-deleted but stay downloadable.
+			withDeleted: true,
+		});
+	}
+
 	async findSingleExecution(
 		id: string,
 		options?: {

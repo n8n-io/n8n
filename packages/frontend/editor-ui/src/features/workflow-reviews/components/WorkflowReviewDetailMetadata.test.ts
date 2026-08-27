@@ -60,8 +60,6 @@ function makeDetail(
 		id: 'req-1',
 		projectId: 'proj-1',
 		title: 'Update Payment Handler',
-		workflowName: 'Payment Handler',
-		workflowVersionId: 'version-1',
 		requester,
 		// The backend always carries the requester in `authors` too.
 		authors: [{ ...requester }, laterAuthor],

@@ -226,6 +226,21 @@ describe('ToolRow', () => {
 		expect(emitted().connect?.[0]).toEqual([item]);
 	});
 
+	it('renders a Free credits pill for a gateway-backed item and no Connect button', () => {
+		const item: NodeConnectionItem = { ...baseNode, freeCredits: true };
+		const { getByTestId, queryByTestId } = render(item);
+
+		const pill = getByTestId('tools-connection-row-free-credits');
+		expect(pill.textContent).toContain('Free credits');
+		// Gateway tools are ready to use: added, never connected.
+		expect(queryByTestId('tools-connection-row-connect')).toBeNull();
+	});
+
+	it('omits the Free credits pill for a regular item', () => {
+		const { queryByTestId } = render(baseNode);
+		expect(queryByTestId('tools-connection-row-free-credits')).toBeNull();
+	});
+
 	it('keeps the verified badge on an installed community node', () => {
 		const item: NodeConnectionItem = { ...baseNode, verified: true };
 		const { getByTestId, queryByTestId } = render(item);

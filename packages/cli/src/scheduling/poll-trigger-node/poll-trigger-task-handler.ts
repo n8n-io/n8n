@@ -77,9 +77,7 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		const { workflowId, nodeId } = this.parsePayload(task);
 
 		const now = new Date();
-		const state = await this.pollBackoffService
-			.getFailureState(workflowId, nodeId)
-			.catch(() => null);
+		const state = await this.pollBackoffService.getState(workflowId, nodeId).catch(() => null);
 		if (this.pollBackoffService.isBackingOff(state, now)) {
 			this.logger.debug('Poll is backing off; skipping this occurrence', {
 				taskId: task.id,
@@ -113,10 +111,12 @@ export class PollTriggerTaskHandler implements TaskHandler {
 		const node = this.resolveTriggerNode(workflowData, nodeId, task);
 
 		const { workflow, pollFunctions } =
-			await this.triggerExecutionContextFactory.createPollExecutionContext(workflowData, node, {
-				taskId: task.id,
-				leaseEpoch: task.leaseEpoch,
-			});
+			await this.triggerExecutionContextFactory.createPollExecutionContext(
+				workflowData,
+				node,
+				{ taskId: task.id, leaseEpoch: task.leaseEpoch },
+				state?.cursor,
+			);
 
 		// Poll and hand-off share one staging scope, so a cursor staged here can only
 		// be committed by this poll and never by a later occurrence.
