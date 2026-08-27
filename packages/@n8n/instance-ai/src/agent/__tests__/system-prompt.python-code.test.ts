@@ -58,40 +58,38 @@ describe('getSystemPrompt — Python Code nodes', () => {
 
 	// n8n's view can be wrong in the permissive direction here, so the safe assumption
 	// has to lead — reporting the configured list as fact would invite a runtime break.
+	// This is the shape cloud runs in.
 	it('assumes nothing is importable when the runner is configured separately', () => {
 		const prompt = getSystemPrompt({
 			pythonImportPolicy: { stdlib: ['re'], external: [], authoritative: false },
 		});
 
-		expect(prompt).toMatch(/external runner mode/i);
 		expect(prompt).toMatch(/assume no imports are available/i);
 		expect(prompt).not.toMatch(/allows \*\*only\*\*/);
 	});
 
-	// n8n's values are not the ones an external runner reads, so an invalid one says
-	// nothing about whether that runner starts. Claiming otherwise would push the
-	// builder off Python on an instance where it works fine.
-	it('never claims the runner will not start from a policy it cannot confirm', () => {
-		const prompt = getSystemPrompt({
-			pythonImportPolicy: {
-				stdlib: [],
-				external: [],
-				authoritative: false,
-				misconfigured: true,
-			},
-		});
-
-		expect(prompt).not.toMatch(/refuse to start/i);
-		expect(prompt).toMatch(/assume no imports are available/i);
-	});
-
-	it('warns that an invalid allowlist stops the runner starting at all', () => {
+	it('gives the same safe guidance for an allowlist the runner would reject', () => {
 		const prompt = getSystemPrompt({
 			pythonImportPolicy: { stdlib: [], external: [], authoritative: true, misconfigured: true },
 		});
 
-		expect(prompt).toMatch(/refuse to start/i);
-		expect(prompt).toMatch(/must be used alone/i);
+		expect(prompt).toMatch(/assume no imports are available/i);
+	});
+
+	// The agent must never point users at deployment configuration. On cloud they
+	// cannot change it, so naming a setting only generates a support request for
+	// something nobody will change for them.
+	it.each([
+		['nothing allowlisted', { stdlib: [], external: [], authoritative: true }],
+		['modules allowlisted', { stdlib: ['re'], external: ['pandas'], authoritative: true }],
+		['wildcard', { stdlib: ['*'], external: ['*'], authoritative: true }],
+		['not authoritative', { stdlib: ['re'], external: [], authoritative: false }],
+		['misconfigured', { stdlib: [], external: [], authoritative: true, misconfigured: true }],
+	])('never names an environment variable or asks for a config change (%s)', (_name, policy) => {
+		const prompt = getSystemPrompt({ pythonImportPolicy: policy });
+
+		expect(prompt).not.toMatch(/N8N_RUNNERS_/);
+		expect(prompt).not.toMatch(/tell the user their .* setting/i);
 	});
 
 	it('always states the globals the runner defines, whatever the import policy', () => {

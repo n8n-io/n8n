@@ -14,7 +14,7 @@ const commonDescription: INodeProperties = {
 	noDataExpression: true,
 	builderHint: {
 		propertyHint:
-			'Runs in a locked-down native Python sandbox. IMPORTS ARE OPT-IN PER DEPLOYMENT: nothing is importable unless an operator allowlisted it (N8N_RUNNERS_STDLIB_ALLOW for standard-library modules, N8N_RUNNERS_EXTERNAL_ALLOW for packages), and both are empty by default, so on a stock instance `import re`, `import json`, `import math`, `import datetime`, `import pandas` and relative imports all FAIL at runtime with "Import of ... is disallowed". Assume nothing is importable unless you have been told this instance\'s allowlist — write import-free Python using builtins and str/list/dict methods, or set language to javaScript when the task genuinely needs a library. NO network access whatever the allowlist says: requests, urllib, httpx and other HTTP libraries are unavailable — use the HTTP Request node and process its output in this node instead. The ONLY globals are _items (runOnceForAllItems mode ONLY), _item (runOnceForEachItem mode ONLY) and print(); reading the accessor belonging to the other mode raises NameError. There are no cross-node helpers either — _("Node Name"), _input, _json, _today and _jmespath are all undefined, so read data from the connected upstream node only.',
+			'Runs in a locked-down native Python sandbox. IMPORTS ARE OPT-IN PER DEPLOYMENT and off by default, so on a stock instance `import re`, `import json`, `import math`, `import datetime`, `import pandas` and relative imports all FAIL at runtime with "Import of ... is disallowed". Assume nothing is importable unless you have been told this instance\'s allowlist — write import-free Python using builtins and str/list/dict methods, or set language to javaScript when the task genuinely needs a library. Never tell the user to change the allowlist: on managed deployments they cannot. NO network access whatever the allowlist says: requests, urllib, httpx and other HTTP libraries are unavailable — use the HTTP Request node and process its output in this node instead. The ONLY globals are _items (runOnceForAllItems mode ONLY), _item (runOnceForEachItem mode ONLY) and print(); reading the accessor belonging to the other mode raises NameError. There are no cross-node helpers either — _("Node Name"), _input, _json, _today and _jmespath are all undefined, so read data from the connected upstream node only.',
 	},
 };
 
@@ -41,7 +41,7 @@ export const pythonCodeDescription: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: `${PRINT_INSTRUCTION}<br><br>The Python option does not support <code>_</code> syntax and helpers, except for <code>_items</code> in all-items mode and <code>_item</code> in per-item mode.<br><br>Imports are disabled unless your instance sets <code>N8N_RUNNERS_STDLIB_ALLOW</code>.`,
+		displayName: `${PRINT_INSTRUCTION}<br><br>The Python option does not support <code>_</code> syntax and helpers, except for <code>_items</code> in all-items mode and <code>_item</code> in per-item mode.<br><br>Imports are disabled unless your instance allows them.`,
 		name: 'notice',
 		type: 'notice',
 		displayOptions: {

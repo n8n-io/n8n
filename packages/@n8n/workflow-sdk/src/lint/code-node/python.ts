@@ -53,17 +53,21 @@ function policyIsUndecidable(policy: PythonImportPolicy): boolean {
 
 /** Renders the allowlist clause shared by the import message. */
 function describePolicy(policy: PythonImportPolicy | undefined): string {
+	// These reach the agent, which may repeat them to the user. Deliberately no
+	// environment-variable names and no "ask an operator to change it": whether the
+	// allowlist can be changed at all is a deployment question neither the agent nor
+	// the user can act on — on cloud it cannot.
 	if (!policy) {
-		return 'imports are allowlisted per deployment (N8N_RUNNERS_STDLIB_ALLOW for standard-library modules, N8N_RUNNERS_EXTERNAL_ALLOW for packages, both empty by default) and this check cannot see the configuration in force, so assume none are available';
+		return 'imports are allowlisted per deployment, this check cannot see the allowlist in force, and the default allows nothing — so assume none are available';
 	}
 	if (policy.misconfigured) {
-		return 'this deployment combines a wildcard with named modules, which the runner rejects — it will refuse to start, so no Python runs at all';
+		return "this deployment's allowlist is one the runner rejects, so it will refuse to start and no Python runs at all";
 	}
 	const parts: string[] = [];
 	if (policy.stdlib.length > 0) parts.push(`standard-library modules ${policy.stdlib.join(', ')}`);
 	if (policy.external.length > 0) parts.push(`packages ${policy.external.join(', ')}`);
 	if (parts.length === 0) {
-		return 'this deployment allowlists no imports at all (N8N_RUNNERS_STDLIB_ALLOW and N8N_RUNNERS_EXTERNAL_ALLOW are both empty)';
+		return 'this deployment allowlists no imports at all';
 	}
 	return `this deployment allowlists only ${parts.join(', and ')}`;
 }

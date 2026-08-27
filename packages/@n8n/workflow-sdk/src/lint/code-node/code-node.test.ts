@@ -220,6 +220,7 @@ describe('lintPythonCode — native runner constraints', () => {
 
 		expect(issues.map((i) => i.code)).toEqual(['CODE_NODE_PYTHON_IMPORT']);
 		expect(issues[0].message).toMatch(/refuse to start/i);
+		expect(issues[0].message).not.toMatch(/N8N_RUNNERS_/);
 	});
 
 	it('reports the two allowlist categories separately', () => {
@@ -251,10 +252,22 @@ describe('lintPythonCode — native runner constraints', () => {
 		expect(issues[0].message).toContain('allowlists no imports');
 	});
 
-	it('names both allowlists rather than assuming the module is stdlib', () => {
+	it('does not assume an unknown policy allowlists nothing on purpose', () => {
 		const issues = lintPythonCode('import pandas\nreturn []');
-		expect(issues[0].message).toContain('N8N_RUNNERS_STDLIB_ALLOW');
-		expect(issues[0].message).toContain('N8N_RUNNERS_EXTERNAL_ALLOW');
+		expect(issues[0].message).toMatch(/cannot see the allowlist in force/i);
+	});
+
+	// The agent reads these and may repeat them to the user. On cloud the allowlist is
+	// not theirs to change, so naming a setting only sends them to support.
+	it.each([
+		['unknown policy', undefined],
+		['nothing allowlisted', { stdlib: [], external: [], authoritative: true }],
+		['modules allowlisted', { stdlib: ['re'], external: ['pandas'], authoritative: true }],
+		['misconfigured', { stdlib: [], external: [], authoritative: true, misconfigured: true }],
+	])('never names an environment variable (%s)', (_name, importPolicy) => {
+		for (const issue of lintPythonCode('import math\nreturn []', { importPolicy })) {
+			expect(issue.message).not.toMatch(/N8N_RUNNERS_/);
+		}
 	});
 
 	it('does not flag an unsupported global named only in a comment', () => {

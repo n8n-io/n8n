@@ -105,7 +105,9 @@ describe('detectPythonCodeConstraints', () => {
 		const warnings = detectPythonCodeConstraints(workflow('import re\nreturn []'), policy);
 
 		expect(warnings.map((w) => w.code)).toEqual(['CODE_NODE_PYTHON_IMPORT']);
-		expect(warnings[0].message).toMatch(/cannot see the configuration/i);
+		expect(warnings[0].message).toMatch(/cannot see the allowlist in force/i);
+		// The agent may repeat this to a user who cannot change the setting.
+		expect(warnings[0].message).not.toMatch(/N8N_RUNNERS_/);
 	});
 
 	it('flags every import when the configured allowlist is one the runner rejects', () => {
