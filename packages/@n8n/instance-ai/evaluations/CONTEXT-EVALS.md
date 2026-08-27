@@ -44,6 +44,7 @@ pnpm eval:instance-ai --tier memory --iterations 5
 | **Cheaper context, same quality** | two runs → `build-cost-report` (§4) | cost per **green** iteration. |
 | **External docs / search** | `--source langtracer --suite baseline --filter researches-keyless-api-before-building,honest-when-web-search-denied` | quality **and** cost. |
 | **Execution history** | `--filter diagnoses-the-last-run-instead-of-asking,checks-the-record-before-accepting-a-false-premise,finds-the-failure-pattern-across-several-runs` | multi-record retrieval still happening? |
+| **Folder / instance structure** | `--tier folders` (4 cases) | expectation pass rate **and** tokens — the fix cut both ways. Needs `feat:folders` licensed. |
 
 **The red baseline, explicitly** — 4 cases, `retrieval-gap` in 8/8 iterations. A preference is
 stated in a *prior session*; every memory tier is thread-scoped, so it cannot reach the graded
@@ -58,6 +59,28 @@ tags-work-for-review-across-a-session-boundary             needs-review
 ```
 
 ---
+
+### A worked example: the `folders` tier
+
+Four cases (`--tier folders`) measuring whether the agent can read what is inside an n8n
+folder the user names. They are the template for a two-arm capability experiment:
+
+- **One binary, two arms.** `N8N_INSTANCE_AI_FOLDER_CONTEXT_ENABLED=false` removes
+  `folderPath`/`folderId` from the advertised `workflows(list)` schema and suppresses folder
+  attribution. The gate is read by the **server**, so switching arms means restarting it.
+- **Make the wrong heuristic fail.** In every case the in-folder workflow names share no
+  token with the folder name, and a same-named non-member sits outside it. A name filter
+  therefore returns precisely the wrong set instead of accidentally the right one.
+- **Grade on a value only the right path produces.** The disambiguation case asserts a node
+  name unique to the in-folder workflow, and `mustAppear: false` on one unique to the decoy.
+  Node names only enter context once a workflow is opened, so this separates "opened the
+  right one" from "listed both".
+- **`seed.workflows[].folder`** places a seeded workflow in a folder (slash path, created on
+  restore). Folder creation is idempotent — folder names are *not* uniquified per run the way
+  workflow names are, so without reuse `--iterations 5` leaves five identically named folders
+  and the case's own folder resolves as ambiguous.
+
+Result: 38/80 → 80/80 expectation-runs at n=5, tokens −50%.
 
 ## 3. Setup
 
