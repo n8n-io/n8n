@@ -19,12 +19,16 @@ import type { Response } from 'express';
 
 import { WorkflowReviewActivityService } from './workflow-review-activity.service';
 import { WorkflowReviewInboxService } from './workflow-review-inbox.service';
-import { WorkflowReviewRequestService } from './workflow-review-request.service';
+import { WorkflowReviewRequestDecisionService } from './workflow-review-request-decision.service';
+import { WorkflowReviewRequestStatusService } from './workflow-review-request-status.service';
+import { WorkflowReviewRequestSubmissionService } from './workflow-review-request-submission.service';
 
 @RestController('/workflow-review-requests')
 export class WorkflowReviewRequestsController {
 	constructor(
-		private readonly workflowReviewRequestService: WorkflowReviewRequestService,
+		private readonly workflowReviewRequestStatusService: WorkflowReviewRequestStatusService,
+		private readonly workflowReviewRequestSubmissionService: WorkflowReviewRequestSubmissionService,
+		private readonly workflowReviewRequestDecisionService: WorkflowReviewRequestDecisionService,
 		private readonly workflowReviewInboxService: WorkflowReviewInboxService,
 		private readonly workflowReviewActivityService: WorkflowReviewActivityService,
 	) {}
@@ -36,11 +40,10 @@ export class WorkflowReviewRequestsController {
 		_res: Response,
 		@Query query: ListWorkflowReviewRequestsQueryDto,
 	) {
-		return await this.workflowReviewRequestService.list(req.user, query);
+		return await this.workflowReviewRequestStatusService.list(req.user, query);
 	}
 
-	// Routes register in declaration order — keep this above any future `GET /:id`
-	// so 'eligible-reviewers' is not captured as an id
+	// Keep literal routes above `GET /:id` because routes register in declaration order.
 	@Get('/eligible-reviewers')
 	@Licensed('feat:workflowReviews')
 	async getEligibleReviewers(
@@ -48,7 +51,7 @@ export class WorkflowReviewRequestsController {
 		_res: Response,
 		@Query query: GetWorkflowReviewEligibleReviewersQueryDto,
 	) {
-		return await this.workflowReviewRequestService.getEligibleReviewers(req.user, query);
+		return await this.workflowReviewRequestSubmissionService.getEligibleReviewers(req.user, query);
 	}
 
 	@Post('/')
@@ -58,7 +61,7 @@ export class WorkflowReviewRequestsController {
 		res: Response,
 		@Body dto: CreateWorkflowReviewRequestDto,
 	) {
-		const request = await this.workflowReviewRequestService.create(req.user, dto);
+		const request = await this.workflowReviewRequestSubmissionService.create(req.user, dto);
 		res.status(201);
 		return request;
 	}
@@ -71,7 +74,7 @@ export class WorkflowReviewRequestsController {
 		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
 		@Body dto: UpdateWorkflowReviewRequestVersionDto,
 	) {
-		return await this.workflowReviewRequestService.updateVersion(
+		return await this.workflowReviewRequestSubmissionService.updateVersion(
 			req.user,
 			workflowReviewRequestId,
 			dto,
@@ -86,13 +89,14 @@ export class WorkflowReviewRequestsController {
 		@Param('workflowReviewRequestId') workflowReviewRequestId: string,
 		@Body dto: DecideWorkflowReviewRequestDto,
 	) {
-		return await this.workflowReviewRequestService.decide(req.user, workflowReviewRequestId, dto);
+		return await this.workflowReviewRequestDecisionService.decide(
+			req.user,
+			workflowReviewRequestId,
+			dto,
+		);
 	}
 
-	/**
-	 * Cross-project inbox. Lives under `/inbox` so `GET /` stays free for the
-	 * workflow-scoped list used by review-required toggle sync (LIGO-838).
-	 */
+	/** Cross-project inbox. `GET /` remains the workflow-specific list used by LIGO-838. */
 	@Get('/inbox')
 	@Licensed('feat:workflowReviews')
 	async listInbox(
@@ -145,11 +149,8 @@ export class WorkflowReviewRequestsController {
 	}
 
 	/**
-	 * Review detail, including the diff inputs per covered workflow.
-	 *
-	 * Keep this last: routes register in declaration order, so a `/:id` pattern
-	 * declared earlier would swallow the literal paths above. Authorization lives
-	 * in the service — `@ProjectScope` cannot resolve a project from a review id.
+	 * Keep this route last so `/:id` does not match the literal routes above.
+	 * The service handles authorization because `@ProjectScope` cannot resolve a review ID.
 	 */
 	@Get('/:workflowReviewRequestId')
 	@Licensed('feat:workflowReviews')

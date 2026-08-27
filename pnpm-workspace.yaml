@@ -23,19 +23,23 @@ updateNotifier: false
 loglevel: warn
 packageImportMethod: clone-or-copy
 
-minimumReleaseAge: 4320
+minimumReleaseAge: 2880
+# Blacksmith's path to Cloudflare AMS intermittently stalls a single connection
+# for tens of seconds while aggregate throughput stays at ~1Gbit/s. The 60s
+# default turns those stalls into failed installs; a probe caught the same
+# request completing at 39.6s on one runner and aborting at exactly 60.0s on
+# another. See https://github.com/n8n-io/n8n/actions/runs/32991441403
+fetchTimeout: 300000
 
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
   # Fresh Claude model IDs (e.g. Opus 5) ship in @ai-sdk/anthropic patches; allow
-  # installing before the 3-day minimumReleaseAge so agents/evals aren't stuck on
+  # installing before the 2-day minimumReleaseAge so agents/evals aren't stuck on
   # the unknown-model 4096 max_tokens default.
   - '@ai-sdk/anthropic'
   # Security patch (Aikido) newer than the minimumReleaseAge window; allow it in.
   - '@xmldom/xmldom'
-  - '@ai-sdk/provider-utils@5.0.30'
-  - '@ai-sdk/provider@4.0.8'
 
 packages:
   - packages/*
@@ -468,6 +472,7 @@ patchedDependencies:
   minifaker: patches/minifaker.patch
   z-vue-scan: patches/z-vue-scan.patch
   '@lezer/highlight': patches/@lezer__highlight.patch
+  v-code-diff: patches/v-code-diff.patch
   vuedraggable@4.1.0: patches/vuedraggable@4.1.0.patch
   assert@2.1.0: patches/assert@2.1.0.patch
   reka-ui@2.5.0: patches/reka-ui@2.5.0.patch
@@ -481,7 +486,6 @@ allowBuilds:
   '@confluentinc/kafka-javascript': true
   '@jitsi/robotjs': false
   '@parcel/watcher': false
-  '@scarf/scarf': false
   '@sentry-internal/node-cpu-profiler': false
   '@sentry-internal/node-native-stacktrace': false
   '@sentry/cli': false
