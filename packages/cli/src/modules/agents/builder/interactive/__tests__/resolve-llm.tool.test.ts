@@ -585,7 +585,7 @@ describe('resolve_llm tool', () => {
 				provider: 'anthropic',
 				model: 'claude-sonnet-4-6',
 				credentialId: AI_GATEWAY_MANAGED_TAG,
-				credentialName: 'n8n credits',
+				credentialName: 'Gateway credits',
 			});
 			expect(modelLookup.list).toHaveBeenCalledWith(
 				AI_GATEWAY_MANAGED_TAG,
@@ -700,13 +700,13 @@ describe('resolve_llm tool', () => {
 			// n8n Connect options appended for supported providers without an own key (openai, google).
 			expect(creds).toContainEqual({
 				id: AI_GATEWAY_MANAGED_TAG,
-				name: 'n8n credits',
+				name: 'Gateway credits',
 				type: 'openAiApi',
 				provider: 'openai',
 			});
 			expect(creds).toContainEqual({
 				id: AI_GATEWAY_MANAGED_TAG,
-				name: 'n8n credits',
+				name: 'Gateway credits',
 				type: 'googlePalmApi',
 				provider: 'google',
 			});
@@ -759,7 +759,7 @@ describe('resolve_llm tool', () => {
 				provider: 'google',
 				model: 'gemini-2.5-pro',
 				credentialId: AI_GATEWAY_MANAGED_TAG,
-				credentialName: 'n8n credits',
+				credentialName: 'Gateway credits',
 			});
 			expect(modelLookup.list).toHaveBeenCalledWith(
 				AI_GATEWAY_MANAGED_TAG,
@@ -786,13 +786,13 @@ describe('resolve_llm tool', () => {
 			};
 			expect(credentials).toContainEqual({
 				id: AI_GATEWAY_MANAGED_TAG,
-				name: 'n8n credits',
+				name: 'Gateway credits',
 				type: 'openAiApi',
 				provider: 'openai',
 			});
 			expect(credentials).toContainEqual({
 				id: AI_GATEWAY_MANAGED_TAG,
-				name: 'n8n credits',
+				name: 'Gateway credits',
 				type: 'googlePalmApi',
 				provider: 'google',
 			});
@@ -850,8 +850,8 @@ describe('resolve_llm tool', () => {
 		});
 	});
 
-	describe('explicit n8n credits request (useN8nCredits)', () => {
-		it('resolves n8n credits for the requested provider even when the user has their own credential', async () => {
+	describe('explicit Gateway credits request (useGatewayCredits)', () => {
+		it('resolves Gateway credits for the requested provider even when the user has their own credential', async () => {
 			const modelLookup = makeModelLookup(async () => [
 				{ name: 'GPT-5 mini', value: 'gpt-5-mini' },
 			]);
@@ -863,14 +863,14 @@ describe('resolve_llm tool', () => {
 				isProviderServedByGateway: async (provider) => provider === 'openai',
 				freeCredits: makeFreeCredits(),
 			});
-			const result = await tool.handler!({ provider: 'openai', useN8nCredits: true }, {});
+			const result = await tool.handler!({ provider: 'openai', useGatewayCredits: true }, {});
 
 			expect(result).toEqual({
 				ok: true,
 				provider: 'openai',
 				model: 'gpt-5-mini',
 				credentialId: AI_GATEWAY_MANAGED_TAG,
-				credentialName: 'n8n credits',
+				credentialName: 'Gateway credits',
 			});
 		});
 
@@ -884,33 +884,33 @@ describe('resolve_llm tool', () => {
 				isProviderServedByGateway: async (provider) => provider === 'openai',
 				freeCredits: makeFreeCredits(),
 			});
-			const result = await tool.handler!({ useN8nCredits: true }, {});
+			const result = await tool.handler!({ useGatewayCredits: true }, {});
 
 			expect(result).toMatchObject({
 				ok: true,
 				provider: 'openai',
 				credentialId: AI_GATEWAY_MANAGED_TAG,
-				credentialName: 'n8n credits',
+				credentialName: 'Gateway credits',
 			});
 		});
 
-		it('reports n8n_credits_unsupported_provider when the gateway does not serve the requested provider', async () => {
+		it('reports gateway_credits_unsupported_provider when the gateway does not serve the requested provider', async () => {
 			const tool = buildResolveLlmTool({
 				credentialProvider: makeProvider([]),
 				modelLookup: makeModelLookup(),
 				isProviderServedByGateway: async (provider) => provider === 'openai',
 				freeCredits: makeFreeCredits(),
 			});
-			const result = await tool.handler!({ provider: 'anthropic', useN8nCredits: true }, {});
+			const result = await tool.handler!({ provider: 'anthropic', useGatewayCredits: true }, {});
 
 			expect(result).toMatchObject({
 				ok: false,
-				reason: 'n8n_credits_unsupported_provider',
+				reason: 'gateway_credits_unsupported_provider',
 				provider: 'anthropic',
 			});
 		});
 
-		it('reports ambiguous_n8n_credits_provider with the served providers when none is named', async () => {
+		it('reports ambiguous_gateway_credits_provider with the served providers when none is named', async () => {
 			const served = new Set(['openai', 'google']);
 			const tool = buildResolveLlmTool({
 				credentialProvider: makeProvider([]),
@@ -918,24 +918,24 @@ describe('resolve_llm tool', () => {
 				isProviderServedByGateway: async (provider) => served.has(provider),
 				freeCredits: makeFreeCredits(),
 			});
-			const result = await tool.handler!({ useN8nCredits: true }, {});
+			const result = await tool.handler!({ useGatewayCredits: true }, {});
 
-			expect(result).toMatchObject({ ok: false, reason: 'ambiguous_n8n_credits_provider' });
+			expect(result).toMatchObject({ ok: false, reason: 'ambiguous_gateway_credits_provider' });
 			const { providers } = result as { providers: string[] };
 			expect(providers).toEqual(expect.arrayContaining(['openai', 'google']));
 		});
 
-		it('reports n8n_credits_unavailable when the gateway serves no provider', async () => {
+		it('reports gateway_credits_unavailable when the gateway serves no provider', async () => {
 			const tool = buildResolveLlmTool({
 				credentialProvider: makeProvider([]),
 				modelLookup: makeModelLookup(),
 				isProviderServedByGateway: async () => false,
 				freeCredits: makeFreeCredits(),
 			});
-			const result = await tool.handler!({ useN8nCredits: true }, {});
+			const result = await tool.handler!({ useGatewayCredits: true }, {});
 
 			// No providers list — there is nothing for the caller to pick from.
-			expect(result).toEqual({ ok: false, reason: 'n8n_credits_unavailable' });
+			expect(result).toEqual({ ok: false, reason: 'gateway_credits_unavailable' });
 		});
 
 		it('surfaces the allowlisted models on unknown_model so the agent can retry', async () => {
@@ -949,7 +949,7 @@ describe('resolve_llm tool', () => {
 				freeCredits: makeFreeCredits(),
 			});
 			const result = await tool.handler!(
-				{ provider: 'openai', model: 'gpt-nonexistent', useN8nCredits: true },
+				{ provider: 'openai', model: 'gpt-nonexistent', useGatewayCredits: true },
 				{},
 			);
 
