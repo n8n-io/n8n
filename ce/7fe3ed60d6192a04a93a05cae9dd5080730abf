@@ -1,0 +1,28 @@
+packages/@n8n/api-types/src/dto/index.ts
+  s_aeecfe178a9b3d::t_c9994138f82526 100,113-119,121-123,360,368,106-112,162,166
+  s_677c6aba5d38ab::t_1bff40479a7636 104-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce7fe3ed60d6192a04a93a05cae9dd5080730abf",
+  "prompts": {},
+  "sessions": {
+    "s_677c6aba5d38ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65836050-cd82-42db-a51e-69a4641dabf9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_aeecfe178a9b3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1c3abc3-6b2a-413e-a33c-2c784b044f11",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
