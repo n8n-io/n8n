@@ -58,14 +58,7 @@ const CURRENT_DATE_TIME_BLOCK =
 const PROJECT_CONTEXT_BLOCK =
 	/\n*<project-context>(?:(?!<project-context>)[\s\S])*?<\/project-context>\s*$/;
 
-/** Every trailing block the service appends. Each is stripped AT MOST ONCE, sweeping
- *  until no unstripped pattern matches: the patterns anchor to end-of-string, so an
- *  inner block only becomes strippable once the outer one is gone, and a fixed order
- *  would break the day the composition order changes.
- *
- *  At-most-once is the load-bearing part. Stripping repeatedly would also eat a
- *  user-authored lookalike that ends the message — someone pasting a
- *  `<current-date-time>` block into a bug report keeps their text. */
+/** Every trailing block the service appends. */
 const TRAILING_CONTEXT_BLOCKS = [CURRENT_DATE_TIME_BLOCK, PROJECT_CONTEXT_BLOCK];
 
 /** Strip each trailing block once, in whatever order they were composed. */
@@ -87,22 +80,17 @@ function stripTrailingContextBlocks(message: string): string {
 	return text;
 }
 
-/** Append the per-turn clock as a tagged suffix the parser strips before display. */
+/**
+ * Append the per-turn clock as a tagged suffix the parser strips before display.
+ * On the turn rather than in the system prompt for prompt-caching reasons.
+ * */
 export function withCurrentDateTime(message: string, dateTimeSection: string): string {
 	return `${message}\n\n<current-date-time>${dateTimeSection}\n</current-date-time>`;
 }
 
 /**
- * Name the project this conversation is scoped to, on the turn rather than in the
- * system prompt — exactly why the clock lives here: the whole system prompt is ONE
- * prompt-cache entry shared by every thread on the instance, so a per-project string
- * in it would fragment that prefix and cold-start each project.
- *
- * Without this the agent cannot name its own project without spending a
- * `list-projects` round trip, so asked to build "in the Foobar project" it had no way
- * to notice that Foobar is not where it is — it built in the bound project and could
- * only hedge afterwards ("if Foobar is a different project…"). The fact has to be
- * present BEFORE the build, which means on the turn.
+ * Name the project this conversation is scoped to.
+ * On the turn rather than in the system prompt for prompt-caching reasons.
  */
 export function withProjectContext(message: string, projectSection: string): string {
 	return `${message}\n\n<project-context>\n${projectSection}\n</project-context>`;

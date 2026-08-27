@@ -3961,13 +3961,8 @@ export class InstanceAiService {
 			const messageWithContext = [contextResourcesBlock, handoffContextBlock, messageBody]
 				.filter(Boolean)
 				.join('\n\n');
-			// The bound project's NAME rides the turn for the same reason as the clock: it is
-			// per-thread, so putting it in the cached system prefix would fragment a prefix
-			// shared by every thread on the instance. Without it the agent cannot name its
-			// own project without spending a `list-projects` call, so a request naming a
-			// DIFFERENT project read as ordinary work — it built in the bound project and
-			// could only hedge afterwards. Resolved best-effort: a missing name is worth a
-			// less-informed turn, never a failed one.
+			// The bound project's NAME rides turn for the same reason as the clock: it is per-thread,
+			// so putting it in the cached system prefix would break caching.
 			const projectSection = await this.resolveProjectContextSection(context);
 			const messageWithProject = projectSection
 				? withProjectContext(messageWithContext, projectSection)
@@ -5072,7 +5067,7 @@ export class InstanceAiService {
 	 * project we can't read).
 	 *
 	 * Best-effort by design: this is a guardrail, not a precondition. A run that cannot
-	 * name its project should be a less-informed run, not a failed one — the write is
+	 * name its project should be a less-informed run, not a failed one - the write access is
 	 * locked to the bound project either way.
 	 */
 	private async resolveProjectContextSection(
@@ -5084,24 +5079,17 @@ export class InstanceAiService {
 		// Read per turn, deliberately NOT cached. A cache keyed by project id has no
 		// invalidation path here, so a renamed project would have the agent naming the
 		// old name for the rest of the process's life — and naming the wrong project is
-		// the failure this block exists to prevent. One indexed read next to an LLM turn
-		// is not worth that.
+		// the failure this block exists to prevent.
 		try {
 			const project = await context.workspaceService?.getProject?.(projectId);
 			if (project) return getProjectContextSection({ name: project.name, type: project.type });
 
-			// Logged, not reported: a null here means the bound project is not readable by
-			// this user, which the next write surfaces properly through `assertProjectScope`.
-			// Sentry would collect the same permission situation once per turn.
 			this.logger.warn('Instance AI could not name the bound project for this turn', {
 				projectId,
 				reason: context.workspaceService?.getProject ? 'not-readable' : 'no-workspace-adapter',
 			});
 			return undefined;
 		} catch (error) {
-			// A throw is different: nothing in the expected flow raises here, so this is
-			// the guardrail silently reverting to the behaviour that let a build report a
-			// project it had not written to. Warning level — the turn still runs.
 			this.logger.warn('Instance AI failed to resolve the bound project for this turn', {
 				projectId,
 				error: error instanceof Error ? error.message : String(error),

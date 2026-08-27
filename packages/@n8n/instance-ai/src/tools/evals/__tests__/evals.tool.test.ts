@@ -947,9 +947,6 @@ describe('evals tool — propose with tool-ref pinData', () => {
 
 		const update = ctx.workflowService.updateFromWorkflowJSON as Mock;
 		expect(update).toHaveBeenCalledTimes(1);
-		// Two arguments, no options: the update lands in the project the workflow
-		// already lives in, so there is no project to pass (and the empty `{}` this
-		// used to send only ever carried a `projectId` the adapter ignored).
 		expect(update).toHaveBeenCalledWith(
 			'w1',
 			expect.objectContaining({

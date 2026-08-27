@@ -249,11 +249,6 @@ describe('extractAgentPreviewHandoffContext', () => {
 	});
 });
 
-// The project this conversation is scoped to, carried on the turn like the clock —
-// the system prompt is one prompt-cache entry shared by every thread, so a
-// per-project string cannot live there. Without it the agent could not name its own
-// project without a tool call, so a request naming a DIFFERENT project read as
-// ordinary work: it built in the bound project and hedged about it afterwards.
 describe('withProjectContext', () => {
 	const section = getProjectContextSection({ name: 'Marketing', type: 'team' });
 

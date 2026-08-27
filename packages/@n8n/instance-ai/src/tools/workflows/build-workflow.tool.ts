@@ -169,9 +169,6 @@ export const buildWorkflowInputSchema = z
 					'Never pass the first argument of workflow(slug, name). Once bound, omit this on retries. ' +
 					'Omit to create a new workflow. Missing and inaccessible ids look the same — confirm with workflows() before inventing one.',
 			),
-		// No `projectId`: a build always writes to the project this conversation is
-		// bound to. The field used to exist and was IGNORED by the adapter, which is
-		// how a build claimed to land in another project while writing to this one.
 		name: z.string().optional().describe('Workflow name (required for new workflows)'),
 		workItemId: z
 			.string()

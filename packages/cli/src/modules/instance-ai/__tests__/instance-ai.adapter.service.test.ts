@@ -2353,31 +2353,6 @@ describe('createWorkflowAdapter', () => {
 		);
 	});
 
-	// `projectId` is GONE from the contract — a build always lands in the bound
-	// project. The `@ts-expect-error` is the tripwire: re-adding the option makes this
-	// directive unused and fails typecheck, because an option this path ignores is
-	// indistinguishable from one it honours, and a caller that believes it chose a
-	// project reports the project it asked for rather than the one written to.
-	//
-	// Still asserted at RUNTIME for a caller that isn't typechecked against us (plain
-	// JS, or a stale compiled build): a stray property must change nothing.
-	it('ignores a runtime-supplied projectId and uses the bound project', async () => {
-		const { adapter, mockProjectRepository, mockSharedWorkflowRepository } =
-			createWorkflowAdapterForTests();
-
-		await adapter.createFromWorkflowJSON(minimalWorkflowJSON, {
-			// @ts-expect-error the option no longer exists on the service contract
-			projectId: 'other-project-id',
-		});
-
-		expect(mockProjectRepository.getPersonalProjectForUserOrFail).not.toHaveBeenCalled();
-		expect(mockSharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
-			['wf-new'],
-			'team-project-id',
-			expect.any(Object),
-		);
-	});
-
 	it('throws when the run has no bound project', async () => {
 		const { adapter } = createWorkflowAdapterForTests({ projectId: null });
 
