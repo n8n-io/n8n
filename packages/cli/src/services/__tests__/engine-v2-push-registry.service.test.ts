@@ -1,6 +1,7 @@
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 
 const HOUR_MS = 60 * 60 * 1000;
+const TTL_MS = 12 * HOUR_MS;
 
 describe('EngineV2PushRegistry', () => {
 	let registry: EngineV2PushRegistry;
@@ -71,7 +72,7 @@ describe('EngineV2PushRegistry', () => {
 			vi.setSystemTime(new Date('2026-08-25T10:00:00.000Z'));
 			registry.register('stale', { pushRef: 'push-1', workflowId: 'wf-1' });
 
-			vi.setSystemTime(new Date('2026-08-25T11:00:01.000Z'));
+			vi.advanceTimersByTime(TTL_MS + 1000);
 			registry.register('fresh', { pushRef: 'push-2', workflowId: 'wf-2' });
 
 			expect(registry.get('stale')).toBeUndefined();
@@ -82,10 +83,40 @@ describe('EngineV2PushRegistry', () => {
 			vi.setSystemTime(new Date('2026-08-25T10:00:00.000Z'));
 			registry.register('exec-1', { pushRef: 'push-1', workflowId: 'wf-1' });
 
-			vi.advanceTimersByTime(HOUR_MS - 1000);
+			vi.advanceTimersByTime(TTL_MS - 1000);
 			registry.register('exec-2', { pushRef: 'push-2', workflowId: 'wf-2' });
 
 			expect(registry.get('exec-1')).toBeDefined();
+		});
+
+		it('measures the window from the last event, not from registration', () => {
+			vi.setSystemTime(new Date('2026-08-25T10:00:00.000Z'));
+			registry.register('long-run', { pushRef: 'push-1', workflowId: 'wf-1' });
+
+			// A run that keeps reporting stays alive past the raw TTL.
+			for (let i = 0; i < 3; i++) {
+				vi.advanceTimersByTime(TTL_MS - 1000);
+				expect(registry.get('long-run')).toBeDefined();
+			}
+
+			vi.advanceTimersByTime(TTL_MS + 1000);
+			registry.register('other', { pushRef: 'push-2', workflowId: 'wf-2' });
+
+			expect(registry.get('long-run')).toBeUndefined();
+		});
+
+		it('caps the number of sessions, dropping the least recently seen', () => {
+			for (let i = 0; i < 500; i++) {
+				registry.register(`exec-${i}`, { pushRef: `push-${i}`, workflowId: 'wf-1' });
+			}
+			// Touching the oldest session moves it out of the eviction slot.
+			expect(registry.get('exec-0')).toBeDefined();
+
+			registry.register('exec-500', { pushRef: 'push-500', workflowId: 'wf-1' });
+
+			expect(registry.get('exec-1')).toBeUndefined();
+			expect(registry.get('exec-0')).toBeDefined();
+			expect(registry.get('exec-500')).toBeDefined();
 		});
 	});
 });

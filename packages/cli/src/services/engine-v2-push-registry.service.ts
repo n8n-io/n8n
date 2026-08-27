@@ -25,7 +25,8 @@ export class EngineV2PushSession {
 	nextExecutionIndex = 0;
 	/** Step runs keyed by the engine's step id. */
 	readonly steps = new Map<string, EngineV2StepRun>();
-	readonly registeredAt = Date.now();
+	/** When the last lifecycle event for this execution arrived. */
+	lastSeenAt = Date.now();
 
 	constructor(
 		/** The only routing key {@link Push.send} accepts. */
@@ -39,8 +40,11 @@ export class EngineV2PushSession {
 	) {}
 }
 
-/** Long enough to outlive any manual run, short enough to bound the map. */
-const SESSION_TTL_MS = 60 * Time.minutes.toMilliseconds;
+/** Long enough to outlive a run that idles between steps, e.g. on a wait. */
+const SESSION_TTL_MS = 12 * Time.hours.toMilliseconds;
+
+/** Hard ceiling on the map, in case many runs stall inside the TTL. */
+const MAX_SESSIONS = 500;
 
 /**
  * Correlates a data-plane execution id with the editor session that started it.
@@ -50,13 +54,14 @@ const SESSION_TTL_MS = 60 * Time.minutes.toMilliseconds;
  */
 @Service()
 export class EngineV2PushRegistry {
+	/** Ordered least recently seen first, so eviction reads from the front. */
 	private readonly sessions = new Map<string, EngineV2PushSession>();
 
 	register(
 		executionId: string,
 		init: Pick<EngineV2PushSession, 'pushRef' | 'workflowId' | 'trigger'>,
 	): void {
-		this.evictStale();
+		this.evict();
 		this.sessions.set(
 			executionId,
 			new EngineV2PushSession(init.pushRef, init.workflowId, init.trigger),
@@ -64,7 +69,15 @@ export class EngineV2PushRegistry {
 	}
 
 	get(executionId: string): EngineV2PushSession | undefined {
-		return this.sessions.get(executionId);
+		const session = this.sessions.get(executionId);
+		if (!session) return undefined;
+
+		session.lastSeenAt = Date.now();
+		// Re-insert to move the session to the back of the eviction order.
+		this.sessions.delete(executionId);
+		this.sessions.set(executionId, session);
+
+		return session;
 	}
 
 	release(executionId: string): void {
@@ -76,10 +89,18 @@ export class EngineV2PushRegistry {
 	 * arrives would live forever. Swept on write instead of on a timer, so
 	 * there's no interval to manage.
 	 */
-	private evictStale(): void {
+	private evict(): void {
 		const cutoff = Date.now() - SESSION_TTL_MS;
 		for (const [executionId, session] of this.sessions) {
-			if (session.registeredAt < cutoff) this.sessions.delete(executionId);
+			if (session.lastSeenAt >= cutoff) break; // rest are newer
+			this.sessions.delete(executionId);
+		}
+
+		// Leave room for the caller's session, so the cap holds after the insert.
+		while (this.sessions.size >= MAX_SESSIONS) {
+			const oldest = this.sessions.keys().next().value;
+			if (oldest === undefined) break;
+			this.sessions.delete(oldest);
 		}
 	}
 }
