@@ -13,7 +13,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: number | null] }>();
 
 const i18n = useI18n();
 
-const enabled = computed(() => props.modelValue != null);
+const enabled = computed(() => props.modelValue !== null && props.modelValue !== undefined);
 const minutes = computed(() => props.modelValue ?? DEFAULT_MINUTES);
 
 function onToggle(value: boolean) {
