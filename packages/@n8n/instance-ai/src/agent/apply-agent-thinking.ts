@@ -31,12 +31,12 @@ export function applyAgentThinking(agent: Agent, modelId: ModelConfig): void {
 		return;
 	}
 
-	if (provider === 'moonshotai') {
+	if (provider === 'moonshotai' || provider === 'openrouter') {
 		const resolvedModelId = resolveModelIdString(modelId) ?? '';
 		const { reasoningEffort } = resolveCustomModelExperimentDefaultsFromEnv(resolvedModelId);
 
 		if (reasoningEffort !== undefined) {
-			agent.thinking('moonshotai', { reasoningEffort });
+			agent.thinking(provider, { reasoningEffort });
 		}
 		return;
 	}
