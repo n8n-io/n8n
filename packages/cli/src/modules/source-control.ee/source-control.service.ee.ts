@@ -590,6 +590,9 @@ export class SourceControlService {
 					`Workflow ${id} has ${policyViolations.length} content-import policy violation(s)`,
 					{ violations: policyViolations },
 				);
+
+				const statusItem = statusByWorkflowId.get(id);
+				if (statusItem) statusItem.policyViolations = policyViolations;
 			}
 
 			if (!publishingError && !publishingErrorDetails) continue;
