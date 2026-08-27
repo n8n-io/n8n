@@ -165,10 +165,12 @@ describe('applyAgentThinking', () => {
 		}
 	});
 
-	it('skips OpenRouter models without an env override or known-model map', () => {
+	it('enables mapped low reasoning effort for OpenRouter GLM 5.3 models', () => {
 		const agent = new Agent('test');
 		applyAgentThinking(agent, 'openrouter/z-ai/glm-5.3-flash:nitro');
-		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('openrouter', {
+			reasoningEffort: 'low',
+		});
 	});
 
 	it('enables medium reasoning effort for Grok 4.5 via xAI', () => {
