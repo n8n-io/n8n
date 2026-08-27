@@ -21,7 +21,6 @@ import type {
 	INodeExecutionData,
 	IBinaryData,
 	INodeProperties,
-	IUser,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import { ChatTriggerConfig } from '@n8n/config';
@@ -34,15 +33,13 @@ import {
 	validateAuth,
 } from './GenericFunctions';
 import {
-	buildAbsoluteChatUrl,
 	buildInnerFrameSrc,
 	CHAT_FRAME_SANDBOX,
 	isChatOAuth2Enabled,
 	isShellInnerRequest,
-	readAuthCookie,
 } from './shell';
 import { createPage, createShellPage } from './templates';
-import { assertValidLoadPreviousSessionOption } from './types';
+import { assertValidLoadPreviousSessionOption, type ChatFrameIdentity } from './types';
 
 const isPublicChatTriggerDisabled = () => Container.get(ChatTriggerConfig).disablePublicChat;
 const allowFileUploadsOption: INodeProperties = {
@@ -921,37 +918,19 @@ export class ChatTrigger extends Node {
 				// An n8n-controlled shell on the real origin, with the author's chat in a frame
 				// that has no origin. The connect experience needs the real origin (OAuth popup,
 				// success channel, `localStorage`), so nothing author-shaped may live there.
-				let shellInner = false;
-				let authToken: string | undefined;
-				let visitor: IUser | undefined;
+				let frameIdentity: ChatFrameIdentity | undefined;
 
 				if (isChatOAuth2Enabled() && authentication === 'n8nUserAuth') {
-					shellInner = isShellInnerRequest(req);
-
 					const resourceUrl = ctx.getWebhookResourceUrl('default');
 					if (!resourceUrl) {
 						throw new NodeOperationError(ctx.getNode(), 'Default webhook url not set');
 					}
 
-					if (!shellInner) {
-						// Outer shell: gates page access on the live session, then runs the AS
-						// handshake here — a normal top-level document with real cookies, unlike
-						// the sandboxed, opaque-origin frame this shell is about to create.
-						const authCookie = readAuthCookie(req);
-						if (authCookie) {
-							try {
-								visitor = await ctx.validateCookieAuth(authCookie);
-							} catch {}
-						}
-
-						if (!visitor) {
-							res.writeHead(302, {
-								Location: `/signin?redirect=${encodeURIComponent(buildAbsoluteChatUrl(req))}`,
-							});
-							res.end();
-							return { noWebhookResponse: true };
-						}
-
+					if (!isShellInnerRequest(req)) {
+						// Outer shell: the AS handshake runs here — a normal top-level document with
+						// real cookies, unlike the sandboxed, opaque-origin frame this shell is about
+						// to create. It is the only gate: a visitor without an editor session is
+						// authenticated by the flow rather than bounced to sign-in ahead of it.
 						const ready = await establishChatSessionIdentity(ctx, resourceUrl);
 						if (!ready) {
 							return { noWebhookResponse: true };
@@ -975,8 +954,7 @@ export class ChatTrigger extends Node {
 						res.end();
 						return { noWebhookResponse: true };
 					}
-					visitor = identity.visitor;
-					authToken = identity.authToken;
+					frameIdentity = identity;
 
 					// By header as well as by the iframe's attribute, so the document has no
 					// origin even if the attribute is ever stripped.
@@ -998,9 +976,7 @@ export class ChatTrigger extends Node {
 					allowedFilesMimeTypes: options.allowedFilesMimeTypes,
 					customCss: options.customCss,
 					enableStreaming,
-					shellInner,
-					authToken,
-					visitor,
+					frameIdentity,
 				});
 
 				res.status(200).send(page).end();

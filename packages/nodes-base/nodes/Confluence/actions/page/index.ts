@@ -1,6 +1,7 @@
 import type { INodeProperties } from 'n8n-workflow';
 
 import * as addComment from './addComment.operation';
+import * as addLabels from './addLabels.operation';
 import * as append from './append.operation';
 import * as create from './create.operation';
 import * as del from './delete.operation';
@@ -9,10 +10,12 @@ import * as get from './get.operation';
 import * as getComments from './getComments.operation';
 import * as getLabels from './getLabels.operation';
 import * as getManyByLabel from './getManyByLabel.operation';
+import * as removeLabel from './removeLabel.operation';
 import * as update from './update.operation';
 
 export {
 	addComment,
+	addLabels,
 	append,
 	create,
 	del as delete,
@@ -21,6 +24,7 @@ export {
 	getComments,
 	getLabels,
 	getManyByLabel,
+	removeLabel,
 	update,
 };
 
@@ -41,6 +45,12 @@ export const description: INodeProperties[] = [
 				value: 'addComment',
 				description: 'Add a footer comment to a page, or reply to an existing comment',
 				action: 'Add a comment to a page',
+			},
+			{
+				name: 'Add Labels',
+				value: 'addLabels',
+				description: 'Add one or more labels to a page',
+				action: 'Add labels to a page',
 			},
 			{
 				name: 'Append',
@@ -91,6 +101,12 @@ export const description: INodeProperties[] = [
 				action: 'Get many pages by label',
 			},
 			{
+				name: 'Remove Label',
+				value: 'removeLabel',
+				description: 'Remove a label from a page by name',
+				action: 'Remove a label from a page',
+			},
+			{
 				name: 'Update',
 				value: 'update',
 				description: 'Replace the title and body of an existing page',
@@ -100,6 +116,7 @@ export const description: INodeProperties[] = [
 		default: 'create',
 	},
 	...addComment.description,
+	...addLabels.description,
 	...append.description,
 	...create.description,
 	...del.description,
@@ -108,5 +125,6 @@ export const description: INodeProperties[] = [
 	...getComments.description,
 	...getLabels.description,
 	...getManyByLabel.description,
+	...removeLabel.description,
 	...update.description,
 ];
