@@ -176,12 +176,8 @@ const config = {
 	},
 	runnersDistroless: {
 		dockerfilePath: path.join(rootDir, 'docker/images/runners/Dockerfile.distroless'),
-		imageBaseName: process.env.RUNNERS_IMAGE_BASE_NAME || 'n8nio/runners',
-		get imageTag() {
-			return `${config.n8n.imageTag}-distroless`;
-		},
 		get fullImageName() {
-			return `${this.imageBaseName}:${this.imageTag}`;
+			return `${config.runners.fullImageName}-distroless`;
 		},
 	},
 	buildContext: rootDir,
