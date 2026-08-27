@@ -5,25 +5,12 @@ import { mount, shallowMount } from '@vue/test-utils';
 import AgentPreviewDock from '../components/AgentPreviewDock.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 
-const { routerResolve, useKeybindingsMock } = vi.hoisted(function createMocks() {
-	return {
-		routerResolve: vi.fn(function resolveRoute() {
-			return { href: '/resolved-preview' };
-		}),
-		useKeybindingsMock: vi.fn(),
-	};
+const { useKeybindingsMock } = vi.hoisted(function createMocks() {
+	return { useKeybindingsMock: vi.fn() };
 });
 
 vi.mock('@/app/composables/useKeybindings', function mockUseKeybindings() {
 	return { useKeybindings: useKeybindingsMock };
-});
-
-vi.mock('vue-router', function mockVueRouter() {
-	return {
-		useRouter: function useRouter() {
-			return { resolve: routerResolve };
-		},
-	};
 });
 
 vi.mock('../composables/useAgentSessionLangSmithExport', () => ({
@@ -88,7 +75,7 @@ const AgentPreviewChatPageStub = {
 	props: ['beforeSend', 'layout'],
 	emits: ['continue-loaded', 'open-build', 'send-to-assistant'],
 	setup(_props: unknown, { expose }: { expose: (exposed: Record<string, unknown>) => void }) {
-		expose({ focusInput: vi.fn() });
+		expose({ focusInput: vi.fn(), getConversationMarkdown: () => '**User:**\n\nHello' });
 	},
 	template: '<div data-testid="agent-preview-chat-page-stub" />',
 };
@@ -97,6 +84,20 @@ const AgentSessionTimelinePanelStub = {
 	name: 'AgentSessionTimelinePanel',
 	props: ['projectId', 'agentId', 'threadId'],
 	template: '<div data-testid="agent-preview-session-timeline" />',
+};
+
+const AgentPreviewMoreMenuStub = {
+	name: 'AgentPreviewMoreMenu',
+	props: [
+		'projectId',
+		'agentId',
+		'effectiveSessionId',
+		'hasSession',
+		'isFullWidth',
+		'getConversationMarkdown',
+	],
+	emits: ['toggle-full-width'],
+	template: '<button data-testid="agent-preview-more-btn" @click="$emit(\'toggle-full-width\')" />',
 };
 
 function mountDock(
@@ -127,6 +128,7 @@ function mountDock(
 		global: {
 			stubs: {
 				AgentPreviewChatPage: AgentPreviewChatPageStub,
+				AgentPreviewMoreMenu: AgentPreviewMoreMenuStub,
 				AgentSessionTimelinePanel: AgentSessionTimelinePanelStub,
 			},
 		},
@@ -135,7 +137,6 @@ function mountDock(
 
 describe('AgentPreviewDock', () => {
 	beforeEach(() => {
-		routerResolve.mockClear();
 		useKeybindingsMock.mockClear();
 		localStorage.removeItem('N8N_AGENT_PREVIEW_LAYOUT');
 	});
@@ -159,7 +160,7 @@ describe('AgentPreviewDock', () => {
 			'agent-preview-session-title',
 			'agent-preview-view-session-btn',
 			'agent-preview-new-chat-btn',
-			'agent-preview-layout-btn',
+			'agent-preview-more-btn',
 		]);
 	});
 
@@ -254,22 +255,17 @@ describe('AgentPreviewDock', () => {
 		});
 	});
 
-	it('opens the active session in a new tab', () => {
-		const open = vi.spyOn(window, 'open').mockImplementation(function openWindow() {
-			return null;
-		});
+	it('passes the active session to the more menu', () => {
 		const wrapper = mountDock();
-		const layoutMenu = wrapper.findAllComponents({ name: 'N8nDropdownMenu' })[1];
+		const moreMenu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
 
-		layoutMenu?.vm.$emit('select', 'open-in-new-tab');
-
-		expect(routerResolve).toHaveBeenCalledExactlyOnceWith({
-			name: 'AgentPreviewView',
-			params: { projectId: 'project-1', agentId: 'agent-1' },
-			query: { continueSessionId: 'thread-1' },
+		expect(moreMenu.props()).toMatchObject({
+			projectId: 'project-1',
+			agentId: 'agent-1',
+			effectiveSessionId: 'thread-1',
+			hasSession: true,
+			isFullWidth: false,
 		});
-		expect(open).toHaveBeenCalledExactlyOnceWith('/resolved-preview', '_blank', 'noopener');
-		open.mockRestore();
 	});
 
 	it('creates a new session from the registered keyboard shortcut', () => {
@@ -343,12 +339,12 @@ describe('AgentPreviewDock', () => {
 	it('returns to chat when switching from full-page timeline to docked layout', async () => {
 		localStorage.setItem('N8N_AGENT_PREVIEW_LAYOUT', 'fullpage');
 		const wrapper = mountDock();
-		const layoutMenu = wrapper.findAllComponents({ name: 'N8nDropdownMenu' })[1];
+		const moreMenu = wrapper.getComponent({ name: 'AgentPreviewMoreMenu' });
 
 		await wrapper.get('[data-testid="agent-preview-view-session-btn"]').trigger('click');
 		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(true);
 
-		layoutMenu?.vm.$emit('select', 'docked');
+		moreMenu.vm.$emit('toggle-full-width');
 		await wrapper.vm.$nextTick();
 
 		expect(wrapper.find('[data-testid="agent-preview-session-timeline"]').exists()).toBe(false);

@@ -12,13 +12,12 @@ import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, nextTick, useTemplateRef, watch, ref } from 'vue';
 import { useStorage } from '@vueuse/core';
-import { useRouter } from 'vue-router';
 
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useKeybindings } from '@/app/composables/useKeybindings';
 
 import { useAgentSessionLangSmithExport } from '../composables/useAgentSessionLangSmithExport';
-import { AGENT_PREVIEW_VIEW, CONTINUE_SESSION_ID_PARAM } from '../constants';
+
 import type {
 	AgentContinueLoadedEvent,
 	AgentFixWithAssistantEvent,
@@ -27,6 +26,7 @@ import type {
 } from '../types';
 import AgentPersonalisationIcon from './AgentPersonalisationIcon.vue';
 import AgentPreviewChatPage from './AgentPreviewChatPage.vue';
+import AgentPreviewMoreMenu from './AgentPreviewMoreMenu.vue';
 import AgentSessionTimelinePanel from './AgentSessionTimelinePanel.vue';
 
 type DockBody = 'chat' | 'timeline';
@@ -48,8 +48,6 @@ enum PreviewLayout {
 	Docked = 'docked',
 	Fullpage = 'fullpage',
 }
-
-const OPEN_IN_NEW_TAB = 'open-in-new-tab';
 
 const props = defineProps<{
 	sessionTitle: string;
@@ -79,7 +77,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const router = useRouter();
 const dock = useTemplateRef<HTMLElement>('dock');
 const {
 	isEnabled: isLangSmithExportEnabled,
@@ -102,38 +99,6 @@ const sessionDropdownOptions = computed<Array<DropdownMenuItemProps<string, Sess
 			data: { when: option.when },
 		})),
 );
-
-const layoutOptions = computed<Array<DropdownMenuItemProps<string>>>(() => [
-	{
-		id: PreviewLayout.Docked,
-		label: i18n.baseText('agents.builder.preview.layout.docked'),
-		checked: layout.value === PreviewLayout.Docked,
-		icon: { type: 'icon', value: 'panel-right' },
-	},
-	{
-		id: PreviewLayout.Fullpage,
-		label: i18n.baseText('agents.builder.preview.layout.fullpage' as BaseTextKey),
-		checked: layout.value === PreviewLayout.Fullpage,
-		icon: { type: 'icon', value: 'maximize-2' },
-	},
-	{
-		id: OPEN_IN_NEW_TAB,
-		label: i18n.baseText('agents.builder.preview.layout.openInNewTab' as BaseTextKey),
-		icon: { type: 'icon', value: 'external-link' },
-		divided: true,
-	},
-]);
-
-function getLayoutIcon() {
-	return layout.value === PreviewLayout.Fullpage ? 'maximize-2' : 'panel-right';
-}
-
-function getLayoutAriaLabel() {
-	if (layout.value === PreviewLayout.Fullpage) {
-		return i18n.baseText('agents.builder.preview.layout.fullpage.ariaLabel' as BaseTextKey);
-	}
-	return i18n.baseText('agents.builder.preview.layout.docked.ariaLabel');
-}
 
 function viewTrace() {
 	if (!props.hasSession || !props.effectiveSessionId) return;
@@ -166,17 +131,13 @@ function close() {
 	emit('close');
 }
 
-function setLayout(nextLayout: string) {
-	if (nextLayout === OPEN_IN_NEW_TAB) {
-		const route = router.resolve({
-			name: AGENT_PREVIEW_VIEW,
-			params: { projectId: props.projectId, agentId: props.agentId },
-			query: { [CONTINUE_SESSION_ID_PARAM]: props.effectiveSessionId },
-		});
-		window.open(route.href, '_blank', 'noopener');
-	} else if (nextLayout === PreviewLayout.Docked || nextLayout === PreviewLayout.Fullpage) {
-		storedLayout.value = nextLayout;
-	}
+function getConversationMarkdown() {
+	return previewChatPage.value?.getConversationMarkdown() ?? '';
+}
+
+function toggleFullWidth() {
+	storedLayout.value =
+		layout.value === PreviewLayout.Fullpage ? PreviewLayout.Docked : PreviewLayout.Fullpage;
 }
 
 function isFocusWithinDock() {
@@ -331,23 +292,15 @@ useKeybindings({
 						/>
 					</KeyboardShortcutTooltip>
 
-					<N8nTooltip
-						placement="bottom"
-						:content="i18n.baseText('agents.builder.preview.layout.change')"
-					>
-						<N8nDropdownMenu :items="layoutOptions" placement="bottom-end" @select="setLayout">
-							<template #trigger>
-								<N8nIconButton
-									:icon="getLayoutIcon()"
-									variant="ghost"
-									size="small"
-									icon-size="large"
-									:aria-label="getLayoutAriaLabel()"
-									data-testid="agent-preview-layout-btn"
-								/>
-							</template>
-						</N8nDropdownMenu>
-					</N8nTooltip>
+					<AgentPreviewMoreMenu
+						:project-id="props.projectId"
+						:agent-id="props.agentId"
+						:effective-session-id="props.effectiveSessionId"
+						:has-session="props.hasSession"
+						:is-full-width="layout === PreviewLayout.Fullpage"
+						:get-conversation-markdown="getConversationMarkdown"
+						@toggle-full-width="toggleFullWidth"
+					/>
 				</div>
 			</header>
 

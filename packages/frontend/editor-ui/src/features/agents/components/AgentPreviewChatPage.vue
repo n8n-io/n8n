@@ -40,7 +40,11 @@ function focusInput(options?: FocusOptions) {
 	chatPanel.value?.focusInput(options);
 }
 
-defineExpose({ focusInput });
+function getConversationMarkdown(): string {
+	return chatPanel.value?.getConversationMarkdown() ?? '';
+}
+
+defineExpose({ focusInput, getConversationMarkdown });
 </script>
 
 <template>

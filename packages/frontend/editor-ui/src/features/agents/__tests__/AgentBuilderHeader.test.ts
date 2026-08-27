@@ -307,14 +307,14 @@ describe('AgentBuilderHeader', () => {
 			label: 'closes',
 			isPreviewOpen: true,
 			event: 'close-preview',
-			accessibleLabel: 'agents.builder.preview.close.ariaLabel',
+			accessibleLabel: 'agents.builder.preview.button',
 		},
 	])(
 		'$label Preview from the preview action',
 		async ({ isPreviewOpen, event, accessibleLabel }) => {
 			const wrapper = mountHeader({ isPreviewOpen });
 			const previewButton = wrapper.find('[data-testid="agent-header-preview-btn"]');
-			expect(previewButton.attributes('data-icon')).toBe('play');
+			expect(previewButton.attributes('data-icon')).toBe('message-circle');
 			expect(previewButton.attributes('aria-label')).toBe(accessibleLabel);
 			expect(previewButton.attributes('aria-pressed')).toBe(String(isPreviewOpen));
 
