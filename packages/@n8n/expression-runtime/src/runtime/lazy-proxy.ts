@@ -191,7 +191,15 @@ export function createDeepLazyProxy(
 	function fetchAndCacheObjectValue(prop: string): unknown {
 		const t = target as Record<string, unknown>;
 		const value = getValueAtPath([...basePath, prop]);
-		t[prop] = materializeChild(basePath, prop, value);
+		// defineProperty, not assignment: a key like '__proto__' must land as an
+		// own data property on the cache instead of walking the setter chain and
+		// silently replacing the target's prototype.
+		Object.defineProperty(t, prop, {
+			value: materializeChild(basePath, prop, value),
+			writable: true,
+			enumerable: true,
+			configurable: true,
+		});
 		return t[prop];
 	}
 

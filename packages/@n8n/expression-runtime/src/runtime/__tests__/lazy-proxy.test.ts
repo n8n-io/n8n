@@ -633,6 +633,21 @@ describe('createDeepLazyProxy', () => {
 				expect(Object.keys(p)).toEqual(['name']);
 			});
 
+			it('host data with an own __proto__ key is cached as an own property, not a prototype', () => {
+				const protoValue = { polluted: true };
+				mocks.getValueAtPath.mockImplementation((path: string[]) => {
+					const key = path[path.length - 1];
+					if (key === 'name') return 'Alice';
+					if (key === '__proto__') return protoValue;
+					return undefined;
+				});
+				const p = proxy(['user'], ['name', '__proto__']);
+				p.name = 'Zed'; // triggers materialization over all keys
+				expect(Object.keys(p)).toEqual(['name', '__proto__']);
+				expect(p.polluted).toBeUndefined();
+				expect(p['__proto__']).toBe(protoValue);
+			});
+
 			it('write fetches each key exactly once; later access stays local', () => {
 				const p = writableObjectProxy();
 				p.name = 'Zed';
