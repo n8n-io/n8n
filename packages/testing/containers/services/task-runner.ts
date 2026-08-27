@@ -56,7 +56,8 @@ export const taskRunner: Service<TaskRunnerResult> = {
 					'com.docker.compose.service': 'task-runner',
 				})
 				.withName(`${projectName}-task-runner`)
-				.withReuse()
+				// Not reused across runs: the launchers hold a connection to the broker of
+				// the stack that started them, and do not register with a new one.
 				.withLogConsumer(consumer)
 				.start();
 

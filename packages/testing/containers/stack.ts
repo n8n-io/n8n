@@ -224,6 +224,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			return meta?.n8nFilesToMount ?? [];
 		});
 
+		// A registration that counts for this run can only happen once the instances
+		// are up, so this is the earliest log line the readiness gate below may accept.
+		const n8nStartedAtSeconds = Math.floor(Date.now() / 1000);
 		const n8nStartupStart = performance.now();
 		const n8nResult = await createN8NInstances({
 			mains,
@@ -259,13 +262,18 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		// registered before a test executes code, otherwise the first execution races
 		// the registration. Which instance owns the broker varies by topology, so the
 		// runner's own log is the one place the signal is observable. Match each
-		// launcher separately, so one launcher reconnecting cannot stand in for the other.
+		// launcher separately, so one launcher reconnecting cannot stand in for the
+		// other, and only from this run, since a reused container keeps its old logs.
 		const taskRunnerResult = serviceResults.taskRunner as TaskRunnerResult | undefined;
 		if (taskRunnerResult) {
-			await waitForContainerLogMessages(taskRunnerResult.container, [
-				/\[launcher:js\].*Received message `broker:runnerregistered`/,
-				/\[launcher:py\].*Received message `broker:runnerregistered`/,
-			]);
+			await waitForContainerLogMessages(
+				taskRunnerResult.container,
+				[
+					/\[launcher:js\].*Received message `broker:runnerregistered`/,
+					/\[launcher:py\].*Received message `broker:runnerregistered`/,
+				],
+				{ since: n8nStartedAtSeconds },
+			);
 			log('Task runners registered with broker');
 		}
 

@@ -109,21 +109,23 @@ export async function pollContainerHttpEndpoint(
 
 /**
  * Waits until a container's logs have matched every pattern in `patterns` at
- * least once. Reads the log stream from the beginning, so a message emitted
- * before the call still counts; container names are unique per stack, so a
- * stream never carries lines from an earlier run. Throws on timeout, since
- * callers use this to establish a precondition rather than to observe one.
+ * least once. Throws on timeout, since callers use this to establish a
+ * precondition rather than to observe one.
  *
  * @param container The started container.
  * @param patterns The patterns to look for. Each must match at least one line.
- * @param timeoutMs Total timeout in milliseconds (default: 60,000ms).
+ * @param options.since Unix timestamp in seconds. Only lines logged from then on
+ * count. A reused container carries the logs of the run before it, so a caller
+ * whose precondition must hold for the current run has to pass this.
+ * @param options.timeoutMs Total timeout in milliseconds (default: 60,000ms).
  */
 export async function waitForContainerLogMessages(
 	container: StartedTestContainer,
 	patterns: RegExp[],
-	timeoutMs: number = 60000,
+	options: { since?: number; timeoutMs?: number } = {},
 ): Promise<void> {
-	const stream = await container.logs({ since: 0 });
+	const { since = 0, timeoutMs = 60000 } = options;
+	const stream = await container.logs({ since });
 	const pending = new Set(patterns);
 
 	try {
