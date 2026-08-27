@@ -494,7 +494,9 @@ export async function requestOAuth2(
 
 	const retryWithNewToken = async (
 		makeRequest: (opts: ClientOAuth2RequestObject) => Promise<any>,
-		surfaceOriginalError: () => any,
+		// Not `() => never`: the legacy caller resolves with the original response
+		// under `simple: false` instead of throwing
+		surfaceOriginalError: () => unknown,
 	) => {
 		// Refresh even when the request cannot be resent, so the next run starts with a valid token
 		const newToken = await refreshOrFetchToken(refreshCtx);
