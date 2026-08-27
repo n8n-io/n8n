@@ -206,6 +206,10 @@ defineExpose({
 					:type="item.data.actionPill.type ?? 'default'"
 					:text="item.data.actionPill.text"
 				/>
+				<span v-if="item.data?.connectedLabel" :class="$style.connected">
+					<N8nIcon icon="check" size="small" :class="$style.connectedIcon" />
+					<N8nText size="small" color="text-light">{{ item.data.connectedLabel }}</N8nText>
+				</span>
 			</div>
 		</template>
 
@@ -306,6 +310,18 @@ defineExpose({
 .infoIcon {
 	flex-shrink: 0;
 	margin-inline: var(--spacing--5xs);
+}
+
+.connected {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+
+.connectedIcon {
+	color: var(--color--success);
 }
 
 .emoji {

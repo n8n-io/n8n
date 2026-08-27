@@ -396,7 +396,12 @@ describe('buildTimelineBlocks', () => {
 		const longText = 'This is the final answer. '.repeat(10); // > 200 chars
 		const blocks = blocksOf([reasoning('r1'), text(longText, 'r1')], [], 'active');
 
-		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+		// The trailing 'activity' block is the run's live-state indicator, not
+		// part of the promotion under test.
+		expect(blocks.filter((b) => b.type !== 'activity').map((b) => b.type)).toEqual([
+			'thinking',
+			'text',
+		]);
 	});
 
 	test('short streaming tail text of a later response stays inside the block', () => {
@@ -653,11 +658,32 @@ describe('buildTimelineBlocks', () => {
 
 	test('trailing text past the narration cap settles the thinking block', () => {
 		// Answer-length text is a committed answer — a block still "thinking"
-		// behind a streaming answer reads as lag.
+		// behind a streaming answer reads as lag. A standalone indicator carries
+		// the run's live state instead (see the next test).
 		const longAnswer = 'A'.repeat(240) + '.';
 		const blocks = blocksOf([reasoning('r1'), text(longAnswer, 'r2')], [], 'active');
-		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text', 'activity']);
 		expect(blocks[0].type === 'thinking' && blocks[0].active).toBe(false);
+	});
+
+	test('a settled block behind a committed answer still surfaces an activity indicator', () => {
+		// INS-1224: the model wrote a long plan and then went quiet for ~53s while
+		// generating a tool call. Nothing in the transcript moved, yet the composer
+		// stayed in stop-mode — the UI claimed done and busy at the same time.
+		const longAnswer = 'A'.repeat(240) + '.';
+		const blocks = blocksOf([reasoning('r1'), text(longAnswer, 'r2')], [], 'active');
+		expect(blocks.at(-1)?.type).toBe('activity');
+	});
+
+	test('no activity indicator once the run settles', () => {
+		const longAnswer = 'A'.repeat(240) + '.';
+		const blocks = blocksOf([reasoning('r1'), text(longAnswer, 'r2')], [], 'completed');
+		expect(blocks.map((b) => b.type)).toEqual(['thinking', 'text']);
+	});
+
+	test('no activity indicator while a thinking block is already active', () => {
+		const blocks = blocksOf([reasoning('r1'), text('Answer...', 'r2')], [], 'active');
+		expect(blocks.some((b) => b.type === 'activity')).toBe(false);
 	});
 
 	test('real user-facing interruptions settle the thinking block immediately', () => {

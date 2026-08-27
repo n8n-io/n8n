@@ -1325,9 +1325,12 @@ export class InstanceAiAdapterService {
 
 				// Use the explicitly requested trigger node when provided — the only way to
 				// pick a branch in a multi-trigger workflow — otherwise auto-detect.
-				const triggerNode = options?.triggerNodeName
-					? resolveRequestedTriggerNode(nodes, options.triggerNodeName)
-					: findTriggerNode(nodes);
+				// Checked against undefined, not truthiness: an empty name is a caller
+				// mistake, and auto-detecting there would run a branch nobody asked for.
+				const triggerNode =
+					options?.triggerNodeName !== undefined
+						? resolveRequestedTriggerNode(nodes, options.triggerNodeName)
+						: findTriggerNode(nodes);
 
 				const timeoutMs = Math.min(options?.timeout ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
