@@ -1,4 +1,3 @@
-import fastGlob from 'fast-glob';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import path from 'node:path';
@@ -35,23 +34,23 @@ export function errorMapper(
 	return new NodeOperationError(this.getNode(), error, { itemIndex, message, description });
 }
 
+const WINDOWS_DRIVE_PREFIX = /^[a-zA-Z]:/;
+// The backslash after the drive letter is always a separator; elsewhere one that
+// escapes a glob metacharacter is not, so forward-slash selectors keep escapes.
+const HAS_BACKSLASH_SEPARATOR = /^[a-zA-Z]:\\|\\(?![()[\]{}!])/;
+
 export function normalizeFileSelector(fileSelectorRaw: string) {
-	let fileSelector = String(fileSelectorRaw);
+	const fileSelector = String(fileSelectorRaw);
 
-	const isWindows = /^[a-zA-Z]:/.test(fileSelector);
-	if (isWindows) {
-		fileSelector = path.win32.normalize(fileSelector).replace(/\\/g, '/');
-	}
+	if (!WINDOWS_DRIVE_PREFIX.test(fileSelector)) return fileSelector;
 
-	return fileSelector;
+	// posix.normalize collapses `..` and `//` the same way, but leaves `\` alone
+	return HAS_BACKSLASH_SEPARATOR.test(fileSelector)
+		? path.win32.normalize(fileSelector).replace(/\\/g, '/')
+		: path.posix.normalize(fileSelector);
 }
 
-/** Literal path first, so existing selectors resolve as before; glob pattern only as a fallback. */
-export async function globFileSelector(fileSelector: string) {
-	// win32 on every platform: it quotes `()[]{}` but leaves `*`/`?` alone.
-	const escaped = fastGlob.win32.escapePath(fileSelector);
-	if (escaped === fileSelector) return await fastGlob(fileSelector);
-
-	const literalMatches = await fastGlob(escaped);
-	return literalMatches.length ? literalMatches : await fastGlob(fileSelector);
+// The optional leading backslash makes this idempotent for hand-escaped selectors.
+export function escapeBracketsAndParens(fileSelector: string) {
+	return fileSelector.replace(/\\?([()[\]])/g, '\\$1');
 }
