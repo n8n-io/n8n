@@ -37,7 +37,10 @@ import { checkConditions } from '../validation/display-options';
 /** Indentation string for generated code (2 spaces per level) */
 const INDENT = '  ';
 
-const NODES_BASE_TYPES = path.resolve(__dirname, '../../../../nodes-base/dist/types/nodes.json');
+export const NODES_BASE_TYPES = path.resolve(
+	__dirname,
+	'../../../../nodes-base/dist/types/nodes.json',
+);
 const NODES_LANGCHAIN_TYPES = path.resolve(
 	__dirname,
 	'../../../nodes-langchain/dist/types/nodes.json',
@@ -134,7 +137,7 @@ ${prefix} ResourceMapperCommon = { matchingColumns?: string[]; cachedResultName?
 ${prefix} ResourceMapperValue = ResourceMapperCommon & { mappingMode: string; value?: null | Record<string, unknown>; schema?: ResourceMapperField[] };`;
 }
 
-function isCustomApiCall(operation: string): boolean {
+export function isCustomApiCall(operation: string): boolean {
 	return operation === CUSTOM_API_CALL_KEY;
 }
 
@@ -708,7 +711,7 @@ export function discoverSchemasForNode(
 }
 
 /** Pad "1" / "2.3" to the on-disk "1.0.0" / "2.3.0" directory format. */
-function padVersion(version: number): string {
+export function padVersion(version: number): string {
 	return String(version).split('.').concat(['0', '0']).slice(0, 3).join('.');
 }
 
