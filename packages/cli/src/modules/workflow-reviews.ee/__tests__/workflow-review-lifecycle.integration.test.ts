@@ -14,6 +14,7 @@ import {
 	UserRepository,
 	WorkflowRepository,
 	WorkflowReviewActivityRepository,
+	WorkflowReviewLifecycleRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestWorkflowRepository,
@@ -65,6 +66,7 @@ let ownerProject: Project;
 let ownerAgent: SuperAgentTest;
 
 let requestRepository: WorkflowReviewRequestRepository;
+let lifecycleRepository: WorkflowReviewLifecycleRepository;
 let linkRepository: WorkflowReviewRequestWorkflowRepository;
 let authorRepository: WorkflowReviewRequestAuthorRepository;
 let activityRepository: WorkflowReviewActivityRepository;
@@ -72,6 +74,7 @@ let activityRepository: WorkflowReviewActivityRepository;
 beforeAll(async () => {
 	await utils.initNodeTypes();
 	requestRepository = Container.get(WorkflowReviewRequestRepository);
+	lifecycleRepository = Container.get(WorkflowReviewLifecycleRepository);
 	linkRepository = Container.get(WorkflowReviewRequestWorkflowRepository);
 	authorRepository = Container.get(WorkflowReviewRequestAuthorRepository);
 	activityRepository = Container.get(WorkflowReviewActivityRepository);
@@ -363,7 +366,7 @@ describe('auto-close on workflow hard delete', () => {
 	test('a failed capture degrades to a sweep close without a cause entry', async () => {
 		const { workflow, versionId } = await createReviewableWorkflow({ isArchived: true });
 		const request = await createOpenReview(workflow.id, versionId);
-		vi.spyOn(requestRepository, 'findOpenRequestsForWorkflows').mockRejectedValueOnce(
+		vi.spyOn(lifecycleRepository, 'findOpenRequestsAffectedByWorkflows').mockRejectedValueOnce(
 			new Error('read failed'),
 		);
 

@@ -2,8 +2,8 @@ import type { LicenseState } from '@n8n/backend-common';
 import type {
 	User,
 	WorkflowHistory,
+	WorkflowReviewInboxRepository,
 	WorkflowReviewRequest,
-	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestState,
 	WorkflowReviewRequestWorkflowDetailRow,
 	WorkflowReviewRequestWorkflowRepository,
@@ -62,7 +62,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
 	const authorizationService = mock<WorkflowReviewAuthorizationService>();
 	const workflowHistoryService = mock<WorkflowHistoryService>();
-	const requestRepository = mock<WorkflowReviewRequestRepository>();
+	const inboxRepository = mock<WorkflowReviewInboxRepository>();
 	const workflowRepository = mock<WorkflowReviewRequestWorkflowRepository>();
 	const participantResolver = mock<WorkflowReviewParticipantResolver>();
 	const licenseState = mock<LicenseState>();
@@ -71,7 +71,7 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		new WorkflowReviewFeatureGate(licenseState, workflowReviewPolicyService),
 		authorizationService,
 		workflowHistoryService,
-		requestRepository,
+		inboxRepository,
 		workflowRepository,
 		participantResolver,
 	);
@@ -173,11 +173,12 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		// A covered workflow is removed along with the workflow itself, so a closed
 		// review — history of a deleted workflow — can legitimately cover none
 		it('returns a closed review with no workflows when its workflow was deleted', async () => {
-			requestRepository.findById.mockResolvedValue(reviewRequest({ state: 'closed' }));
+			mockGate([], reviewRequest({ state: 'closed' }));
 			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
 
 			const detail = await service.getDetail(requester, requestId);
 
+			expect(detail.state).toBe('closed');
 			expect(detail.workflows).toEqual([]);
 		});
 
@@ -264,14 +265,18 @@ describe('WorkflowReviewInboxService.getDetail', () => {
 		});
 
 		it('passes empty coverage when a closed review no longer covers any workflow', async () => {
-			requestRepository.findById.mockResolvedValue(reviewRequest({ state: 'closed' }));
+			mockGate([], reviewRequest({ state: 'closed' }));
 			workflowRepository.findLinkedWorkflowDetailsByRequestId.mockResolvedValue([]);
 
 			await service.getDetail(requester, requestId);
 
 			expect(authorizationService.resolveViewerEligibility).toHaveBeenCalledWith(
 				requester,
-				expect.objectContaining({ workflowRows: [], readableWorkflowRows: [] }),
+				expect.objectContaining({
+					request: expect.objectContaining({ state: 'closed' }),
+					workflowRows: [],
+					readableWorkflowRows: [],
+				}),
 			);
 		});
 	});
