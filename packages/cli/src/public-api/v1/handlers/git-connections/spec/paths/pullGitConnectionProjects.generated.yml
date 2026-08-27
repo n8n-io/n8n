@@ -51,9 +51,13 @@ responses:
                     skipped:
                       type: integer
                       minimum: 0
+                    removed:
+                      type: integer
+                      minimum: 0
                   required:
                     - created
                     - skipped
+                    - removed
                 workflows:
                   type: object
                   properties:
@@ -64,6 +68,12 @@ responses:
                       type: integer
                       minimum: 0
                     skipped:
+                      type: integer
+                      minimum: 0
+                    archived:
+                      type: integer
+                      minimum: 0
+                    deleted:
                       type: integer
                       minimum: 0
                     publishing:
@@ -94,6 +104,8 @@ responses:
                     - created
                     - updated
                     - skipped
+                    - archived
+                    - deleted
                     - publishing
                 credentials:
                   type: object

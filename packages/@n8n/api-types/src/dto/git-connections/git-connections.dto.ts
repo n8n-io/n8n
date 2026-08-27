@@ -96,6 +96,8 @@ const count = () => z.number().int().nonnegative();
  * written: a workflow can be created/updated yet fail to activate (e.g.
  * `blocked` on a stubbed credential). That phase runs post-write and cannot be
  * rolled back, so it never fails the pull — it is reported here instead.
+ * `workflows.archived`/`deleted` and `folders.removed` report reconciliation
+ * removals, including destructive hard deletes.
  *
  * `dataTables` only has `matched`/`created`: a table referenced by the working
  * copy is matched by id (used as-is) or created when missing. Any table that
@@ -103,11 +105,13 @@ const count = () => z.number().int().nonnegative();
  */
 export const gitConnectionImportCountsSchema = z.object({
 	projects: z.object({ created: count(), updated: count(), skipped: count() }),
-	folders: z.object({ created: count(), skipped: count() }),
+	folders: z.object({ created: count(), skipped: count(), removed: count() }),
 	workflows: z.object({
 		created: count(),
 		updated: count(),
 		skipped: count(),
+		archived: count(),
+		deleted: count(),
 		publishing: z.object({
 			published: count(),
 			unpublished: count(),

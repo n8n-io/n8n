@@ -64,11 +64,13 @@ describe('N8nClient packages', () => {
 				connectionId: 'connection-id',
 				counts: {
 					projects: { created: 1, updated: 0, skipped: 0 },
-					folders: { created: 0, skipped: 0 },
+					folders: { created: 0, skipped: 0, removed: 0 },
 					workflows: {
 						created: 2,
 						updated: 0,
 						skipped: 0,
+						archived: 0,
+						deleted: 0,
 						publishing: { published: 2, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
 					},
 					credentials: { matched: 0, stubbed: 1 },

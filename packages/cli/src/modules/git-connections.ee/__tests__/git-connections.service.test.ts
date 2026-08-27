@@ -550,6 +550,12 @@ describe('GitConnectionsService (credential state machine)', () => {
 					{ status: 'created', publishing: { state: 'blocked', blockedReason: 'stub-credential' } },
 					{ status: 'updated', publishing: { state: 'unchanged' } },
 				],
+				removedWorkflows: [
+					{ deletion: 'archived' },
+					{ deletion: 'deleted' },
+					{ deletion: 'deleted' },
+				],
+				removedFolders: [{}, {}],
 				bindings: { workflows: {}, credentials: {} },
 				credentials: { matched: ['c1'], stubbed: ['c2', 'c3'] },
 				dataTables: { matched: 1, created: 2 },
@@ -609,11 +615,13 @@ describe('GitConnectionsService (credential state machine)', () => {
 				connectionId: '1',
 				counts: {
 					projects: { created: 1, updated: 1, skipped: 0 },
-					folders: { created: 2, skipped: 1 },
+					folders: { created: 2, skipped: 1, removed: 2 },
 					workflows: {
 						created: 2,
 						updated: 1,
 						skipped: 0,
+						archived: 1,
+						deleted: 2,
 						publishing: { published: 1, unpublished: 0, unchanged: 1, blocked: 1, failed: 0 },
 					},
 					credentials: { matched: 1, stubbed: 2 },

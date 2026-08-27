@@ -1,12 +1,13 @@
+import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, Not, Repository } from '@n8n/typeorm';
+import { DataSource, In, Not } from '@n8n/typeorm';
 
 import { GitConnectionProject } from '../entities/git-connection-project.entity';
 
 @Service()
-export class GitConnectionProjectRepository extends Repository<GitConnectionProject> {
-	constructor(dataSource: DataSource) {
-		super(GitConnectionProject, dataSource.manager);
+export class GitConnectionProjectRepository extends BaseRepository<GitConnectionProject> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(GitConnectionProject, dataSource.manager, transactionRunner);
 	}
 
 	async findByProjectId(projectId: string): Promise<GitConnectionProject | null> {
@@ -57,9 +58,13 @@ export class GitConnectionProjectRepository extends Repository<GitConnectionProj
 	 * only reaches here with an existing working copy, so no imported projects
 	 * means a non-project or malformed export, not an instruction to wipe links.
 	 */
-	async syncConnectionProjects(gitConnectionId: string, projectIds: string[]) {
+	async syncConnectionProjects(
+		gitConnectionId: string,
+		projectIds: string[],
+		ctx: OperationContext = {},
+	) {
 		if (projectIds.length === 0) return;
-		await this.manager.transaction(async (trx) => {
+		await this.runInTransaction(ctx, async (trx) => {
 			await trx.delete(GitConnectionProject, {
 				gitConnectionId,
 				projectId: Not(In(projectIds)),

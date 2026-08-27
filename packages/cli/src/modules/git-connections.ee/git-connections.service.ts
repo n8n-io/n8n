@@ -367,9 +367,14 @@ export class GitConnectionsService {
 
 		return {
 			projects: tally(result.projects, ['created', 'updated', 'skipped'] as const),
-			folders: tally(result.folders, ['created', 'skipped'] as const),
+			folders: {
+				...tally(result.folders, ['created', 'skipped'] as const),
+				removed: result.removedFolders.length,
+			},
 			workflows: {
 				...tally(result.workflows, ['created', 'updated', 'skipped'] as const),
+				archived: result.removedWorkflows.filter(({ deletion }) => deletion === 'archived').length,
+				deleted: result.removedWorkflows.filter(({ deletion }) => deletion === 'deleted').length,
 				// The publish sweep runs after content is written and can't be rolled back, so a
 				// blocked/failed publish never fails the pull — surface it here instead.
 				publishing: tally(
