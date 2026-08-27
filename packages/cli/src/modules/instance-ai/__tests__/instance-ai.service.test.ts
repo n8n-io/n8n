@@ -1834,7 +1834,7 @@ type SuspendedRunResumeServiceInternals = {
 		getActiveRun: Mock;
 	};
 	emitTerminalRun: Mock;
-	logger: { warn: Mock };
+	logger: { warn: Mock; debug: Mock };
 	tracing: { createOrchestratorResumeTraceContext: Mock; finalizeDetachedTraceRun: Mock };
 	memoryService: { getThreadMetadata: Mock };
 	processResumedStream: Mock;
@@ -1876,7 +1876,8 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 		getActiveRun: vi.fn(() => undefined),
 	};
 	service.emitTerminalRun = vi.fn(async () => {});
-	service.logger = { warn: vi.fn() };
+	service.logger = { warn: vi.fn(), debug: vi.fn() };
+	service.memoryService = { getThreadMetadata: vi.fn(async () => undefined) };
 	service.tracing = {
 		createOrchestratorResumeTraceContext: vi.fn(async () => undefined),
 		finalizeDetachedTraceRun: vi.fn(async () => {}),

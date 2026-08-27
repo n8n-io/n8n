@@ -150,8 +150,14 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	/**
 	 * Resolve the LangSmith root-run anchor for a responseId (UI sends
 	 * `messageGroupId ?? runId`). The ids ride on the run-start fact; prefer the
-	 * earliest run-start in the message group so feedback attaches to the
-	 * `message_turn` root run, falling back to the run whose id matches.
+	 * earliest run-start in the message group THAT CARRIES the ids, falling back
+	 * to the run whose id matches. Sibling runs of one turn share the
+	 * `message_turn` root, but not every sibling's run-start is anchored: the
+	 * drop migration's copy only stamped the sibling the snapshot row was keyed
+	 * to (the group's last), and organically a segment without tracing leaves
+	 * the ids to a later one — mirroring the snapshot store, which kept the
+	 * group's first non-null ids. A genuinely untraced run has no anchored
+	 * sibling and resolves undefined.
 	 */
 	async findLangsmithAnchor(
 		threadId: string,
@@ -162,8 +168,12 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 			order: { seq: 'ASC' },
 		});
 		const starts = rows.map((r) => this.toEvent(r));
+		const isAnchoredRunStart = (
+			e: InstanceAiEvent,
+		): e is Extract<InstanceAiEvent, { type: 'run-start' }> =>
+			e.type === 'run-start' && Boolean(e.payload.langsmithRunId && e.payload.langsmithTraceId);
 		const byGroup = starts.find(
-			(e) => e.type === 'run-start' && e.payload.messageGroupId === responseId,
+			(e) => isAnchoredRunStart(e) && e.payload.messageGroupId === responseId,
 		);
 		const anchor = byGroup ?? starts.find((e) => e.runId === responseId);
 		if (anchor?.type !== 'run-start') return undefined;
