@@ -127,6 +127,93 @@ describe('Confluence router', () => {
 		]);
 	});
 
+	it('dispatches page:addComment and returns the created comment', async () => {
+		apiRequest.mockResolvedValue({ id: '555', pageId: '1' });
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'addComment',
+				page: { mode: 'id', value: '1' },
+				bodyFormat: 'plainText',
+				bodyPlainText: 'Nice page',
+				parentCommentId: '',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/api/v2/footer-comments', {
+			pageId: '1',
+			body: { representation: 'storage', value: '<p>Nice page</p>' },
+		});
+		expect(result).toEqual([[{ json: { id: '555', pageId: '1' }, pairedItem: { item: 0 } }]]);
+	});
+
+	it('dispatches page:addLabels and returns the label list as one item', async () => {
+		const response = {
+			results: [
+				{ id: '9', name: 'runbook', prefix: 'global', label: 'runbook' },
+				{ id: '10', name: 'q3', prefix: 'global', label: 'q3' },
+			],
+			start: 0,
+			limit: 200,
+			size: 2,
+		};
+		apiRequest.mockResolvedValue(response);
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'addLabels',
+				page: { mode: 'id', value: '1' },
+				labels: 'runbook, q3',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('POST', '/wiki/rest/api/content/1/label', [
+			{ prefix: 'global', name: 'runbook' },
+			{ prefix: 'global', name: 'q3' },
+		]);
+		expect(result).toEqual([[{ json: response, pairedItem: { item: 0 } }]]);
+	});
+
+	it('dispatches page:removeLabel and returns the removal report', async () => {
+		apiRequest.mockResolvedValue('');
+
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'removeLabel',
+				page: { mode: 'id', value: '1' },
+				labelName: 'runbook',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith(
+			'DELETE',
+			'/wiki/rest/api/content/1/label',
+			{},
+			{ name: 'runbook' },
+		);
+		expect(result).toEqual([
+			[{ json: { removed: true, pageId: '1', label: 'runbook' }, pairedItem: { item: 0 } }],
+		]);
+	});
+
+	it('dispatches page:deleteComment and returns the deletion report', async () => {
+		const result = await router.call(
+			mockExecuteCtx({
+				resource: 'page',
+				operation: 'deleteComment',
+				commentId: '555',
+			}),
+		);
+
+		expect(apiRequest).toHaveBeenCalledWith('DELETE', '/wiki/api/v2/footer-comments/555');
+		expect(result).toEqual([
+			[{ json: { deleted: true, commentId: '555' }, pairedItem: { item: 0 } }],
+		]);
+	});
+
 	it('dispatches page:delete and returns the deletion report', async () => {
 		const result = await router.call(
 			mockExecuteCtx({

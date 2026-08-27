@@ -15,6 +15,8 @@ import {
 	StepSettledHandler,
 	StepWorker,
 } from '../execution';
+import { BatchingLifecycleEventPublisher, noopLifecycleEventPublisher } from '../lifecycle-events';
+import type { LifecycleEventPublisher } from '../lifecycle-events';
 import { InMemoryWorkQueue } from '../queue';
 import type { OrchestrationMessage, StepMessage } from '../queue';
 import { createEngineServer } from '../server';
@@ -64,11 +66,28 @@ export function createEngineRuntime({
 	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>();
 	const stepQueue = new InMemoryWorkQueue<StepMessage>();
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
+	// Built once, not per handler: the factory must not run twice.
+	const dependencies =
+		externalDependencies?.({ executionStore, stepStore, executionViewStore }) ?? {};
+	const lifecycleEventPublisher: LifecycleEventPublisher = dependencies.lifecycleEventCallback
+		? new BatchingLifecycleEventPublisher(dependencies.lifecycleEventCallback)
+		: noopLifecycleEventPublisher;
 
 	const orchestrationWorker = new OrchestrationWorker(
 		orchestrationQueue,
-		new ExecutionStartHandler(executionStore, stepStore, orchestrationQueue),
-		new StepSettledHandler(executionStore, stepStore, stepQueue, orchestrationQueue),
+		new ExecutionStartHandler(
+			executionStore,
+			stepStore,
+			orchestrationQueue,
+			lifecycleEventPublisher,
+		),
+		new StepSettledHandler(
+			executionStore,
+			stepStore,
+			stepQueue,
+			orchestrationQueue,
+			lifecycleEventPublisher,
+		),
 	);
 	const stepWorker = new StepWorker(
 		stepQueue,
@@ -76,7 +95,8 @@ export function createEngineRuntime({
 			executionStore,
 			stepStore,
 			orchestrationQueue,
-			externalDependencies?.({ executionStore, stepStore, executionViewStore }) ?? {},
+			dependencies,
+			lifecycleEventPublisher,
 		),
 	);
 
@@ -99,6 +119,8 @@ export function createEngineRuntime({
 			// only for whatever it is mid-handling; anything queued behind it is
 			// dropped, since the in-memory queues die with the process.
 			await Promise.all([orchestrationWorker.stop(), stepWorker.stop()]);
+			// After the workers are quiet, so the last events still reach the host.
+			await lifecycleEventPublisher.stop();
 		},
 	};
 }

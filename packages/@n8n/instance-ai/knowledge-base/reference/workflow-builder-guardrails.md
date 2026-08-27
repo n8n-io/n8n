@@ -119,6 +119,17 @@ expression there produce "Failed to parse schema" and crash the node before
 any output. Serialize the schema with double-quoted keys and strings, keep it
 minimal, and set the sibling `name` field.
 
+## Slack Blocks Fields Take the Whole Block Kit Payload
+
+The Slack node's Blocks field (`blocksUi`) holds the **whole Block Kit payload
+object** — `{ "blocks": [ ... ] }` — not the bare blocks array. The node reads
+that value as an object and picks the blocks off its `blocks` key before
+sending. A top-level `[ { "type": "section" }, ... ]` leaves that key
+undefined, so Slack gets a body with no blocks, replies `ok: true`, and the
+message renders empty — a silent failure the run never reports. Also set
+`messageType: "block"`; with any other message type the payload is dropped and
+only the plain text is posted.
+
 ## Data After Side-Effect Nodes
 
 Send/notify/write nodes (Gmail, Slack, Telegram, email send, most "create"

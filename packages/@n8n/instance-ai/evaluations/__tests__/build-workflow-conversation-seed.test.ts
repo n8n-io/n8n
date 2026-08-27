@@ -79,6 +79,7 @@ function inlineSeed(): ConversationSeed {
 		workflows: [{ id: SEED_WF_ID, name: 'Batch loop', nodes: [], connections: {} }],
 		dataTables: [],
 		agents: [],
+		projects: [],
 	};
 }
 
