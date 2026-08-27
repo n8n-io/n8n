@@ -114,6 +114,9 @@ export class AgentsModule implements ModuleInterface {
 		const logger = Container.get(Logger);
 		const instanceSettings = Container.get(InstanceSettings);
 		if (instanceSettings.instanceType === 'main') {
+			// Loaded for its pubsub decorator: every main must be able to abort a
+			// background job it spawned when the cancel lands on a different main.
+			await import('./background/agent-background-job.service.js');
 			const { AgentInterruptedExecutionSweeper } = await import(
 				'./agent-interrupted-execution-sweeper.js'
 			);

@@ -1,5 +1,8 @@
 import { Logger } from '@n8n/backend-common';
+import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
 import {
@@ -35,6 +38,7 @@ export class AgentBackgroundJobService {
 	constructor(
 		private readonly jobRepository: AgentBackgroundJobRepository,
 		private readonly executionRepository: AgentExecutionRepository,
+		private readonly publisher: Publisher,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('agents');
@@ -105,13 +109,10 @@ export class AgentBackgroundJobService {
 	}
 
 	/**
-	 * Claim the row as cancelled, then abort the live handle when this process
-	 * holds it.
-	 *
-	 * ponytail: on a different main than the spawner there is no live handle —
-	 * the row flips to cancelled but the child keeps running until its own
-	 * timeout, and its settle write loses to the claim. Upgrade path: a pubsub
-	 * cancel broadcast.
+	 * Claim the row as cancelled, then abort the live run. When this process
+	 * holds the handle the abort is direct; otherwise the spawning main is
+	 * reached via pubsub. The row is claimed first either way, so the aborted
+	 * run's own settle write loses to the claim.
 	 */
 	async cancel(
 		parentThreadId: string,
@@ -123,9 +124,29 @@ export class AgentBackgroundJobService {
 		const claimed = await this.jobRepository.settleIfRunning(jobId, { status: 'cancelled' });
 		if (!claimed) return 'already-settled';
 
-		this.abortControllers.get(jobId)?.abort();
-		this.abortControllers.delete(jobId);
+		const controller = this.abortControllers.get(jobId);
+		if (controller) {
+			controller.abort();
+			this.abortControllers.delete(jobId);
+		} else {
+			// publishCommand is a no-op outside queue mode, where a foreign live
+			// handle cannot exist anyway — reconciliation covers crashed spawners.
+			await this.publisher.publishCommand({
+				command: 'cancel-agent-background-job',
+				payload: { jobId },
+			});
+		}
 		return 'cancelled';
+	}
+
+	@OnPubSubEvent('cancel-agent-background-job', { instanceType: 'main' })
+	handleCancelRelay({ jobId }: { jobId: string }): void {
+		const controller = this.abortControllers.get(jobId);
+		if (!controller) return;
+
+		controller.abort();
+		this.abortControllers.delete(jobId);
+		this.logger.debug('Aborted background job after relayed cancellation', { jobId });
 	}
 
 	/**

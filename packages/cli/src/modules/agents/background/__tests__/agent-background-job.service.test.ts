@@ -2,6 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
+
 import type { AgentBackgroundJob } from '../../entities/agent-background-job.entity';
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
@@ -38,6 +40,7 @@ function makeJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJo
 function setup() {
 	const jobRepository = mock<AgentBackgroundJobRepository>();
 	const executionRepository = mock<AgentExecutionRepository>();
+	const publisher = mock<Publisher>();
 	const logger = mock<Logger>();
 	(logger.scoped as Mock).mockReturnValue(logger);
 
@@ -49,8 +52,13 @@ function setup() {
 	jobRepository.findRunningPastTimeout.mockResolvedValue([]);
 	executionRepository.findLatestStatusesByThreadIds.mockResolvedValue(new Map());
 
-	const service = new AgentBackgroundJobService(jobRepository, executionRepository, logger);
-	return { service, jobRepository, executionRepository };
+	const service = new AgentBackgroundJobService(
+		jobRepository,
+		executionRepository,
+		publisher,
+		logger,
+	);
+	return { service, jobRepository, executionRepository, publisher };
 }
 
 const registerParams = {
@@ -151,8 +159,8 @@ describe('listForThread', () => {
 });
 
 describe('cancel', () => {
-	it('claims the row and aborts the live handle', async () => {
-		const { service, jobRepository } = setup();
+	it('claims the row and aborts the live handle without a pubsub round-trip', async () => {
+		const { service, jobRepository, publisher } = setup();
 		jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
 		const controller = new AbortController();
 		service.registerAbortController('job-1', controller);
@@ -162,6 +170,20 @@ describe('cancel', () => {
 		expect(outcome).toBe('cancelled');
 		expect(jobRepository.settleIfRunning).toHaveBeenCalledWith('job-1', { status: 'cancelled' });
 		expect(controller.signal.aborted).toBe(true);
+		expect(publisher.publishCommand).not.toHaveBeenCalled();
+	});
+
+	it('relays the abort via pubsub when the live handle is on another main', async () => {
+		const { service, jobRepository, publisher } = setup();
+		jobRepository.findByParentThread.mockResolvedValue([makeJob()]);
+
+		const outcome = await service.cancel('thread-1', 'job-1');
+
+		expect(outcome).toBe('cancelled');
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'cancel-agent-background-job',
+			payload: { jobId: 'job-1' },
+		});
 	});
 
 	it('returns not-found for a job of another thread', async () => {
@@ -178,6 +200,27 @@ describe('cancel', () => {
 		jobRepository.settleIfRunning.mockResolvedValue(false);
 
 		expect(await service.cancel('thread-1', 'job-1')).toBe('already-settled');
+	});
+});
+
+describe('handleCancelRelay', () => {
+	it('aborts the local handle of the relayed job and nothing else', () => {
+		const { service } = setup();
+		const target = new AbortController();
+		const other = new AbortController();
+		service.registerAbortController('job-1', target);
+		service.registerAbortController('job-2', other);
+
+		service.handleCancelRelay({ jobId: 'job-1' });
+
+		expect(target.signal.aborted).toBe(true);
+		expect(other.signal.aborted).toBe(false);
+	});
+
+	it('is a no-op on a main that never held the handle', () => {
+		const { service } = setup();
+
+		expect(() => service.handleCancelRelay({ jobId: 'job-unknown' })).not.toThrow();
 	});
 });
 
