@@ -6,8 +6,9 @@ import type { ExecutionStatus, INodeExecutionData, ITaskData } from 'n8n-workflo
 import { WorkflowOperationError } from 'n8n-workflow';
 
 import { Push } from '@/push';
-import type { EngineV2PushSession } from '@/services/engine-v2-push-registry.service';
-import { EngineV2PushRegistry, EngineV2StepRun } from '@/services/engine-v2-push-registry.service';
+import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
+import type { EngineV2PushSession } from '@/services/engine-v2-push-session';
+import { EngineV2StepRun } from '@/services/engine-v2-push-session';
 import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connection-type';
 
 /** A lifecycle event scoped to one step. */
