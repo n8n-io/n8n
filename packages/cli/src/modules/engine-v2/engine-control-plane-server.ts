@@ -9,6 +9,7 @@ import { bodyParser, rawBodyReader } from '@/middlewares';
 import { send } from '@/response-helper';
 
 import { createEngineControlPlaneAuthMiddleware } from './engine-control-plane-auth.middleware';
+import { CONTROL_PLANE_PREFIX, STATUS_CALLBACK_PATH } from './engine-v2.constants';
 import { EngineLifecycleEventController } from './engine-lifecycle-event.controller';
 
 /**
@@ -86,12 +87,15 @@ export class EngineControlPlaneServer {
 		});
 
 		// On the prefix, not the route, so a later route cannot forget either.
-		app.use('/internal', createEngineControlPlaneAuthMiddleware(this.engineConfig, this.logger));
+		app.use(
+			CONTROL_PLANE_PREFIX,
+			createEngineControlPlaneAuthMiddleware(this.engineConfig, this.logger),
+		);
 		// n8n's parser bounds the body by `N8N_PAYLOAD_SIZE_MAX`.
-		app.use('/internal', rawBodyReader, bodyParser);
+		app.use(CONTROL_PLANE_PREFIX, rawBodyReader, bodyParser);
 
 		app.post(
-			'/internal/status-callback',
+			STATUS_CALLBACK_PATH,
 			send(
 				async (req, res) => await this.lifecycleEventController.receiveLifecycleEvents(req, res),
 			),

@@ -6,8 +6,7 @@ import type { LifecycleEvent } from '@n8n/engine';
 import { mintActionToken } from '@n8n/engine';
 import { OperationalError } from 'n8n-workflow';
 
-/** Its own port, so no editor API prefix. */
-const STATUS_CALLBACK_PATH = '/internal/status-callback';
+import { STATUS_CALLBACK_PATH } from './engine-v2.constants';
 
 /**
  * Posts lifecycle events to the control plane server. Over HTTP even in-process,
