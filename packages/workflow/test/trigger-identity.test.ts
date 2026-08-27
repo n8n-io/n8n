@@ -63,31 +63,61 @@ describe('classifyTriggerIdentity', () => {
 		);
 
 		// Only the hosted-chat page runs the OAuth2 handshake that establishes the
-		// visitor's identity — `mode` absent or explicit defaults to hosted.
+		// visitor's identity — `mode` absent or explicit defaults to hosted. Requires the
+		// chat-trigger OAuth2 flag: with it off, `n8nUserAuth` falls back to a plain cookie
+		// check that never binds the visitor's identity for credential resolution.
 		it.each([{}, { mode: 'hostedChat' }])(
-			'provides both identities for public n8nUserAuth in hosted-chat mode (%o)',
+			'provides both identities for public n8nUserAuth in hosted-chat mode when chat OAuth2 is enabled (%o)',
 			(modeParams) => {
 				expect(
-					classifyTriggerIdentity(CHAT_TRIGGER_NODE_TYPE, {
-						public: true,
-						authentication: 'n8nUserAuth',
-						...modeParams,
-					}),
+					classifyTriggerIdentity(
+						CHAT_TRIGGER_NODE_TYPE,
+						{
+							public: true,
+							authentication: 'n8nUserAuth',
+							...modeParams,
+						},
+						{ isChatOAuth2Enabled: true },
+					),
 				).toEqual({ providesN8nIdentity: true, providesExternalIdentity: true });
 			},
 		);
 
+		// With the flag off (the default), the cookie fallback authenticates the request but
+		// never binds the visitor's identity — publish must not advertise identity it can't
+		// actually establish.
+		it.each([{}, { isChatOAuth2Enabled: false }])(
+			'provides no identity for public n8nUserAuth in hosted-chat mode when chat OAuth2 is disabled (%o)',
+			(options) => {
+				expect(
+					classifyTriggerIdentity(
+						CHAT_TRIGGER_NODE_TYPE,
+						{ public: true, authentication: 'n8nUserAuth' },
+						options,
+					),
+				).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
+			},
+		);
+
 		// Embedded/webhook-mode chat has no hosted page to run the OAuth2 handshake on, so
-		// `n8nUserAuth` establishes no identity there despite being selected (IAM-1262/IAM-1272).
-		it('provides no identity for n8nUserAuth in webhook mode', () => {
-			expect(
-				classifyTriggerIdentity(CHAT_TRIGGER_NODE_TYPE, {
-					public: true,
-					authentication: 'n8nUserAuth',
-					mode: 'webhook',
-				}),
-			).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
-		});
+		// `n8nUserAuth` establishes no identity there despite being selected (IAM-1262/IAM-1272),
+		// regardless of the chat OAuth2 flag.
+		it.each([{}, { isChatOAuth2Enabled: true }])(
+			'provides no identity for n8nUserAuth in webhook mode (%o)',
+			(options) => {
+				expect(
+					classifyTriggerIdentity(
+						CHAT_TRIGGER_NODE_TYPE,
+						{
+							public: true,
+							authentication: 'n8nUserAuth',
+							mode: 'webhook',
+						},
+						options,
+					),
+				).toEqual({ providesN8nIdentity: false, providesExternalIdentity: false });
+			},
+		);
 
 		// A non-public trigger 404s on every production request and skips auth entirely in
 		// test mode (`ChatTrigger.node.ts`'s `webhook()`), so it never reaches the code that

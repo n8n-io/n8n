@@ -1182,8 +1182,9 @@ describe('useNodeHelpers()', () => {
 				);
 
 				it.each([undefined, 'hostedChat'])(
-					'does not warn for public n8nUserAuth in hosted-chat mode (mode: %s)',
+					'does not warn for public n8nUserAuth in hosted-chat mode when chat OAuth2 is enabled (mode: %s)',
 					(mode) => {
+						setChatOAuth2(true);
 						mockConnectedPrivateCred(true);
 						mockDocumentStore.workflowTriggerNodes = [
 							buildChatUserAuthTrigger('n8nUserAuth', mode, true),
@@ -1195,6 +1196,23 @@ describe('useNodeHelpers()', () => {
 						expect(result).toBeNull();
 					},
 				);
+
+				// With the flag off (the default), hosted-chat `n8nUserAuth` falls back to a
+				// cookie check that never binds the visitor's identity for credential
+				// resolution — the warning must still show.
+				it('warns for public n8nUserAuth in hosted-chat mode when chat OAuth2 is disabled', () => {
+					mockConnectedPrivateCred(true);
+					mockDocumentStore.workflowTriggerNodes = [
+						buildChatUserAuthTrigger('n8nUserAuth', 'hostedChat', true),
+					];
+
+					const { getNodeCredentialIssues } = useNodeHelpers();
+					const result = getNodeCredentialIssues(buildNotionNode(), notionNodeType);
+
+					expect(result?.credentials?.[NOTION_API]).toEqual([
+						"End-user credentials aren't supported by this workflow's trigger. Supported triggers: Manual, Sub-workflow, Chat available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, Form, or Webhook with n8n user authentication. To use another trigger, switch this credential to Fixed.",
+					]);
+				});
 
 				// A non-public trigger 404s on every production request and skips auth
 				// entirely in test mode, so it never reaches the code that establishes identity.

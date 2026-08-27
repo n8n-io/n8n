@@ -1312,8 +1312,10 @@ describe('WorkflowValidationService', () => {
 			);
 
 			it.each([{}, { mode: 'hostedChat' }])(
-				'should return valid for public n8nUserAuth in hosted-chat mode (%o)',
+				'should return valid for public n8nUserAuth in hosted-chat mode when chat OAuth2 is enabled (%o)',
 				async (modeParams) => {
+					withChatOAuth2(true);
+
 					const result = await validateWithChatTrigger({
 						public: true,
 						authentication: 'n8nUserAuth',
@@ -1323,6 +1325,21 @@ describe('WorkflowValidationService', () => {
 					expect(result.isValid).toBe(true);
 				},
 			);
+
+			// With the flag off (the default), hosted-chat `n8nUserAuth` falls back to a cookie
+			// check that never binds the visitor's identity — publish must not accept an
+			// end-user credential it can't actually resolve at runtime.
+			it('should reject public n8nUserAuth in hosted-chat mode when chat OAuth2 is disabled', async () => {
+				const result = await validateWithChatTrigger({
+					public: true,
+					authentication: 'n8nUserAuth',
+				});
+
+				expect(result.isValid).toBe(false);
+				expect(result.error).toBe(
+					'Cannot publish workflow: end-user credentials ("My OAuth2") are only supported with manual and sub-workflow triggers, chat triggers available in n8n Chat Hub or using n8n user authentication in hosted chat mode, and MCP, form, or webhook triggers with n8n user authentication. To use another trigger, switch the credential to Fixed.',
+				);
+			});
 
 			// A non-public trigger 404s on every production request and skips auth entirely
 			// in test mode, so it never reaches the code that establishes identity.
