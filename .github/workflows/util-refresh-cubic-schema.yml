@@ -17,9 +17,10 @@ jobs:
       (github.event_name == 'schedule' && github.repository == 'n8n-io/n8n')
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Every write goes through the scoped app token below, so the job's own
+    # GITHUB_TOKEN only needs to read for checkout.
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
     steps:
       - name: Generate GitHub App Token
         id: generate-token
@@ -27,11 +28,17 @@ jobs:
         with:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          # Scope the token to what create-pull-request does: push the branch,
+          # open the PR (the label already exists, so no issues access needed).
+          permission-contents: write
+          permission-pull-requests: write
 
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          token: ${{ steps.generate-token.outputs.token }}
+          # create-pull-request unsets any persisted credential and configures
+          # its own from `token`, so nothing here needs to survive the checkout.
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
