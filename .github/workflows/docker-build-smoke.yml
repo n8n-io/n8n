@@ -38,8 +38,20 @@ concurrency:
 
 jobs:
   docker-smoke-test:
-    name: 'Docker Build (no cache)'
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    name: 'Docker Build (no cache, ${{ matrix.platform }})'
+    # Both architectures build natively: the runtime images assemble binaries
+    # across images with arch-specific paths (e.g. the ELF interpreter lives at
+    # /lib/ld-linux-aarch64.so.1 only on arm64), so amd64 alone can miss
+    # arm64-only runtime breaks.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: amd64
+            runner: blacksmith-4vcpu-ubuntu-2204
+          - platform: arm64
+            runner: blacksmith-8vcpu-ubuntu-2204-arm
+    runs-on: ${{ matrix.runner }}
     if: ${{ !github.event.pull_request.head.repo.fork }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
