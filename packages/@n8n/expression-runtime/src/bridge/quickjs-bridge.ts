@@ -856,6 +856,11 @@ export class QuickJsBridge implements RuntimeBridge {
 	};
 	function wrapSpecialValues(v) {
 		if (v === null || v === undefined) return v;
+		// Functions and Promises must not leave the sandbox as results.
+		// isolated-vm's structured clone rejects them; match its error.
+		if (typeof v === 'function') {
+			throw new TypeError(String(v) + ' could not be cloned');
+		}
 		if (v instanceof Date) {
 			// Invalid Dates have no ISO string; '' rebuilds an Invalid Date on the host.
 			return { __isDate: true, __isoString: isNaN(v.getTime()) ? '' : v.toISOString() };
@@ -864,6 +869,9 @@ export class QuickJsBridge implements RuntimeBridge {
 			return { __isNaN: true };
 		}
 		if (typeof v !== 'object') return v;
+		if (v instanceof Promise) {
+			throw new TypeError('#<Promise> could not be cloned');
+		}
 		if (v instanceof Error) {
 			var errExtra = {};
 			var errKeys = Object.keys(v);
