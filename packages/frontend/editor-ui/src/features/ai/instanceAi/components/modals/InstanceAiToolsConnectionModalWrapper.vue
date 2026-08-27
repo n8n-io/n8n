@@ -311,9 +311,7 @@ provide(
 				uiStore.openNewCredential(authType);
 				return;
 			}
-			showConnectedServer(
-				await connectServer({ slug: server.slug, credentialType: authType }),
-			);
+			showConnectedServer(await connectServer({ slug: server.slug, credentialType: authType }));
 		})();
 	}),
 );

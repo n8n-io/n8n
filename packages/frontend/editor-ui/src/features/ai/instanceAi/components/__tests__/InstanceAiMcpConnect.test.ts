@@ -35,9 +35,7 @@ const defaultProps = {
 		{
 			serverSlug: 'brave',
 			title: 'Brave',
-			usesCredentials: [
-				{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-			],
+			usesCredentials: [{ credentialType: 'braveMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 		},
 	],
 };

@@ -140,9 +140,7 @@ async function runConnect(attempt: () => Promise<unknown>) {
 }
 
 async function connect(row: CardRow, credentialType: string) {
-	await runConnect(
-		async () => await connectServer({ slug: row.serverSlug, credentialType }),
-	);
+	await runConnect(async () => await connectServer({ slug: row.serverSlug, credentialType }));
 }
 
 async function handleSelectCredential(row: CardRow, credentialId: string) {
