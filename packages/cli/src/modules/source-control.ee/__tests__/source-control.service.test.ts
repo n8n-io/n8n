@@ -565,6 +565,7 @@ describe('SourceControlService', () => {
 				{
 					id: 'workflow-1',
 					name: 'workflow-1.json',
+					publishingError: undefined,
 					policyViolations: [
 						{ kind: 'node-type-unavailable', checkId: 'test.check', message: 'not allowed' },
 					],
