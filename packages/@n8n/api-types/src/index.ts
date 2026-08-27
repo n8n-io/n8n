@@ -172,6 +172,11 @@ export {
 export { policyViolationSchema, type PolicyViolation } from './schemas/policy-violation.schema';
 
 export {
+	policyCheckFailureSchema,
+	type PolicyCheckFailure,
+} from './schemas/policy-check-failure.schema';
+
+export {
 	insightsSummarySchema,
 	type InsightsSummaryType,
 	type InsightsSummaryUnit,

@@ -529,7 +529,7 @@ describe('ImportService', () => {
 			);
 
 			expect(result.violations).toStrictEqual([
-				{ workflowId: flagged.id, name: 'Flagged', violations: [violation] },
+				{ workflowId: flagged.id, name: 'Flagged', violations: [violation], checkErrors: [] },
 			]);
 			// The batch completes for every workflow regardless of the violation.
 			await expect(getWorkflowById(clean.id)).resolves.toBeDefined();
@@ -561,6 +561,32 @@ describe('ImportService', () => {
 				},
 				projectId: memberPersonalProject.id,
 			});
+		});
+
+		test('surfaces a failed check alongside violations, without failing the import', async () => {
+			const checkFailure = { checkId: 'test.check', correlationId: 'corr-1' };
+			const workflowToImport = newWorkflow({ id: uuid(), name: 'Flaky' });
+			mockPolicyEnforcementService.evaluateContentImport.mockResolvedValueOnce({
+				violations: [],
+				checkErrors: [checkFailure],
+			});
+
+			const result = await importService.importWorkflows(
+				[workflowToImport],
+				ownerPersonalProject.id,
+				owner.id,
+				{},
+			);
+
+			expect(result.violations).toStrictEqual([
+				{
+					workflowId: workflowToImport.id,
+					name: 'Flaky',
+					violations: [],
+					checkErrors: [checkFailure],
+				},
+			]);
+			await expect(getWorkflowById(workflowToImport.id)).resolves.toBeDefined();
 		});
 
 		test('does not fail the import when evaluateContentImport throws', async () => {

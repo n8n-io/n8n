@@ -158,11 +158,19 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 			{ activeState: flags.activeState },
 		);
 
-		for (const { name, violations: workflowViolations } of violations) {
-			this.logger.warn(
-				`Workflow "${name}" has ${workflowViolations.length} content-import policy violation(s)`,
-				{ violations: workflowViolations },
-			);
+		for (const { name, violations: workflowViolations, checkErrors } of violations) {
+			if (workflowViolations.length) {
+				this.logger.warn(
+					`Workflow "${name}" has ${workflowViolations.length} content-import policy violation(s)`,
+					{ violations: workflowViolations },
+				);
+			}
+			if (checkErrors.length) {
+				this.logger.warn(
+					`Workflow "${name}" has ${checkErrors.length} content-import policy check(s) that failed to run`,
+					{ checkErrors },
+				);
+			}
 		}
 
 		this.reportSuccess(workflows.length);

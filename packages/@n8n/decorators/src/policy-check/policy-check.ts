@@ -1,8 +1,8 @@
-import type { PolicyViolation } from '@n8n/api-types';
+import type { PolicyCheckFailure, PolicyViolation } from '@n8n/api-types';
 import type { Constructable } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
-export type { PolicyViolation };
+export type { PolicyViolation, PolicyCheckFailure };
 
 /**
  * The points in n8n where a policy can block an action.
@@ -96,12 +96,6 @@ export type PolicyVersionRef = {
 	/** Usually `'instance'` or `'project'`. Open, like {@link PolicyViolation.scope}. */
 	scope: string;
 	version: number;
-};
-
-/** A check that failed to run. Deliberately vague — error details stay server-side. */
-export type PolicyCheckFailure = {
-	checkId: string;
-	correlationId: string;
 };
 
 /**

@@ -584,6 +584,35 @@ describe('SourceControlService', () => {
 			});
 		});
 
+		it('adds a failed content-import policy check to the pull result', async () => {
+			const user = mock<User>({ id: 'user-1' });
+			const workflowStatus = mock<SourceControlledFile>({
+				id: 'workflow-1',
+				type: 'workflow',
+				status: 'modified',
+				location: 'remote',
+				conflict: false,
+			});
+			mockStatusService.getStatus.mockResolvedValueOnce([workflowStatus]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([
+				{
+					id: 'workflow-1',
+					name: 'workflow-1.json',
+					publishingError: undefined,
+					checkErrors: [{ checkId: 'test.check', correlationId: 'corr-1' }],
+				},
+			]);
+
+			const result = await sourceControlService.pullWorkfolder(user, {
+				force: true,
+				autoPublish: 'none',
+			});
+
+			expect(result.statusResult[0]).toMatchObject({
+				checkErrors: [{ checkId: 'test.check', correlationId: 'corr-1' }],
+			});
+		});
+
 		it('does not filter locally created credentials', async () => {
 			// ARRANGE
 			const user = mock<User>();

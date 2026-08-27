@@ -1749,6 +1749,20 @@ describe('SourceControlImportService', () => {
 				expect(result[0]).not.toHaveProperty('policyViolations');
 				expect(workflowRepository.upsert).toHaveBeenCalled();
 			});
+
+			it('attaches a failed check to the pull result alongside violations', async () => {
+				const checkFailure = { checkId: 'test.check', correlationId: 'corr-1' };
+				policyEnforcementService.evaluateContentImport.mockResolvedValueOnce({
+					violations: [],
+					checkErrors: [checkFailure],
+				});
+				const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: '1' })];
+
+				const result = await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+				expect(result).toEqual([expect.objectContaining({ id: '1', checkErrors: [checkFailure] })]);
+				expect(workflowRepository.upsert).toHaveBeenCalled();
+			});
 		});
 	});
 

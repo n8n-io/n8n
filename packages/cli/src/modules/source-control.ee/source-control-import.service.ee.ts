@@ -908,7 +908,7 @@ export class SourceControlImportService {
 		});
 
 		// Advisory only — never blocks the pull, per contentImport being `evaluate`, not `enforce`.
-		const policyViolations = await evaluateContentImportSafely(
+		const { violations: policyViolations, checkErrors } = await evaluateContentImportSafely(
 			this.policyEnforcementService,
 			{ workflow: { id, name: importedWorkflow.name, nodes }, projectId: targetOwnerProject.id },
 			this.logger,
@@ -931,6 +931,7 @@ export class SourceControlImportService {
 				publishingErrorDetails: finalPublishingErrorDetails,
 			}),
 			...(policyViolations.length && { policyViolations }),
+			...(checkErrors.length && { checkErrors }),
 		};
 	}
 

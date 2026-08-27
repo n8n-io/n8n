@@ -1,5 +1,5 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
-import type { PolicyViolation } from '@n8n/decorators';
+import type { PolicyCheckFailure, PolicyViolation } from '@n8n/decorators';
 import type { TagEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	Project,
@@ -49,6 +49,8 @@ export interface WorkflowImportViolations {
 	workflowId: string | null;
 	name: string;
 	violations: PolicyViolation[];
+	/** Checks that failed to run — a violation may have gone undetected. */
+	checkErrors: PolicyCheckFailure[];
 }
 
 @Service()
@@ -163,7 +165,7 @@ export class ImportService {
 			const evaluationProjectId = workflow.id
 				? (existingOwnerProjects.get(workflow.id)?.id ?? projectId)
 				: projectId;
-			const workflowViolations = await evaluateContentImportSafely(
+			const { violations: workflowViolations, checkErrors } = await evaluateContentImportSafely(
 				this.policyEnforcementService,
 				{
 					workflow: { id: workflow.id ?? null, name: workflow.name, nodes: workflow.nodes },
@@ -171,11 +173,12 @@ export class ImportService {
 				},
 				this.logger,
 			);
-			if (workflowViolations.length) {
+			if (workflowViolations.length || checkErrors.length) {
 				violations.push({
 					workflowId: workflow.id ?? null,
 					name: workflow.name,
 					violations: workflowViolations,
+					checkErrors,
 				});
 			}
 
