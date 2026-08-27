@@ -26,9 +26,7 @@ describe('McpRegistryController', () => {
 				slug: 'notion',
 				name: 'com.notion/mcp',
 				title: 'Notion',
-				credentials: [
-					{ credentialType: 'notionMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-				],
+				credentials: [{ credentialType: 'notionMcpOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 				isOfficial: true,
 				status: 'active',
 			});

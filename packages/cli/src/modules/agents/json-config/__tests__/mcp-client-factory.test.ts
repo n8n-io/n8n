@@ -447,9 +447,7 @@ describe('buildMcpClientForServer — service-specific McpOAuth2Api refresh', ()
 					endpointUrl: 'https://example.test/mcp',
 					endpointHostname: 'example.test',
 					transport: 'httpStreamable',
-					credentialBindings: [
-						{ credentialType: 'notionMcpOAuth2Api', selector: 'oAuth2' },
-					],
+					credentialBindings: [{ credentialType: 'notionMcpOAuth2Api', selector: 'oAuth2' }],
 				}),
 			},
 		);

@@ -69,8 +69,7 @@ describe('prepareMcpRegistryConnection', () => {
 			ok: false,
 			error: {
 				code: 'unsupported_credential',
-				message:
-					'Credential type "otherMcpOAuth2Api" is not supported by this MCP registry server',
+				message: 'Credential type "otherMcpOAuth2Api" is not supported by this MCP registry server',
 			},
 		});
 	});

@@ -73,9 +73,7 @@ describe('searchMcpRegistryServers', () => {
 			[
 				{
 					...githubUsesCredentialsMockServer,
-					usesCredentials: [
-						{ credentialType: 'githubOAuth2Api', name: 'OAuth2', value: 'oAuth2' },
-					],
+					usesCredentials: [{ credentialType: 'githubOAuth2Api', name: 'OAuth2', value: 'oAuth2' }],
 				},
 			],
 			['git-hub'],
