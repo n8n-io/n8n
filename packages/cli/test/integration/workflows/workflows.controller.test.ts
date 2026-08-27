@@ -4975,9 +4975,10 @@ describe('POST /workflows/:workflowId/run', () => {
 		const SET_NAME = 'Edit Fields';
 
 		const startExecution = vi.fn();
+		const getExecution = vi.fn();
 
 		beforeAll(() => {
-			Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution });
+			Container.get(EngineDataPlaneProxyService).registerProvider({ startExecution, getExecution });
 		});
 
 		beforeEach(() => {

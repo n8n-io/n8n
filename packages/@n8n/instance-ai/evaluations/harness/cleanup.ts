@@ -164,6 +164,17 @@ export async function cleanupBuild(
 		}
 	}
 
+	// Projects a seed created. Deleted last of the artifacts, so anything the
+	// run put inside one is already gone by its own path rather than vanishing with
+	// the project.
+	for (const id of build.createdProjectIds ?? []) {
+		try {
+			await client.deleteProject(id);
+		} catch {
+			clean = false; // Best-effort cleanup
+		}
+	}
+
 	// Clears backend thread state (run-state registries, memory) that otherwise
 	// grows one entry per build for the container's lifetime.
 	if (build.threadId) {

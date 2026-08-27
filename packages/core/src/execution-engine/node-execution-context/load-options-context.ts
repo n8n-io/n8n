@@ -1,6 +1,7 @@
 import get from 'lodash/get';
 import type {
 	ICredentialDataDecryptedObject,
+	IExecuteData,
 	IGetNodeParameterOptions,
 	INode,
 	ILoadOptionsFunctions,
@@ -44,7 +45,12 @@ export class LoadOptionsContext extends NodeExecutionContext implements ILoadOpt
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await this._getCredentials<T>(type);
+		// No real task run backs design-time parameter loading, so this only exists to
+		// surface `node` to the credentials helper (e.g. for policy checks) — `data`/`source`
+		// are unused.
+		const executeData: IExecuteData = { data: {}, node: this.node, source: null };
+
+		return await this._getCredentials<T>(type, executeData);
 	}
 
 	getCurrentNodeParameter(
