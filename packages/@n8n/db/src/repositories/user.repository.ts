@@ -30,6 +30,7 @@ export class UserRepository extends Repository<User> {
 			skip: options?.offset,
 			take: options?.limit,
 			relations: options?.includeRole ? ['role'] : undefined,
+			order: { id: 'ASC' },
 		});
 	}
 
@@ -38,6 +39,7 @@ export class UserRepository extends Repository<User> {
 			skip: options?.offset,
 			take: options?.limit,
 			relations: options?.includeRole ? ['role'] : undefined,
+			order: { id: 'ASC' },
 		});
 	}
 
