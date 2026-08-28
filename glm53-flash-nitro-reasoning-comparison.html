@@ -135,23 +135,45 @@
     </section>
 
     <section>
-      <h2>Estimated builder API cost</h2>
-      <svg viewBox="0 0 720 260" role="img" aria-label="Estimated builder API cost bar chart">
-        <line x1="60" y1="200" x2="680" y2="200" stroke="#2a2f3d" stroke-width="1"/>
-        <!-- log-scale y: $0.01 – $100 -->
-        <text x="48" y="204" fill="#9aa3b2" font-size="11" text-anchor="end">$0.01</text>
-        <text x="48" y="152" fill="#9aa3b2" font-size="11" text-anchor="end">$0.10</text>
-        <text x="48" y="100" fill="#9aa3b2" font-size="11" text-anchor="end">$1</text>
-        <text x="48" y="48" fill="#9aa3b2" font-size="11" text-anchor="end">$10</text>
-        <text x="20" y="130" fill="#6b7280" font-size="10" text-anchor="middle" transform="rotate(-90 20 130)">log $</text>
-        <!-- Opus: $93.76 -->
-        <rect x="180" y="31" width="120" height="169" rx="6" fill="#70ad47"/>
-        <text x="240" y="22" fill="#e8eaef" font-size="14" font-weight="600" text-anchor="middle">$93.76</text>
-        <text x="240" y="222" fill="#9aa3b2" font-size="13" text-anchor="middle">Opus 4.8</text>
-        <!-- GLM: $0.43 -->
-        <rect x="420" y="131" width="120" height="69" rx="6" fill="#5b9bd5"/>
-        <text x="480" y="122" fill="#5b9bd5" font-size="14" font-weight="600" text-anchor="middle">$0.43</text>
-        <text x="480" y="222" fill="#9aa3b2" font-size="13" text-anchor="middle">GLM low</text>
+      <h2>Estimated builder API cost by iteration</h2>
+      <div class="legend">
+        <span><i class="dot opus"></i> Opus 4.8</span>
+        <span><i class="dot glm"></i> GLM 5.3 Flash Nitro (low)</span>
+      </div>
+      <svg viewBox="0 0 720 280" role="img" aria-label="Estimated builder API cost by iteration line chart">
+        <!-- grid (log scale: $0.01 – $100) -->
+        <line x1="60" y1="220" x2="680" y2="220" stroke="#2a2f3d" stroke-width="1"/>
+        <line x1="60" y1="168" x2="680" y2="168" stroke="#2a2f3d" stroke-width="1" stroke-dasharray="4 4"/>
+        <line x1="60" y1="116" x2="680" y2="116" stroke="#2a2f3d" stroke-width="1" stroke-dasharray="4 4"/>
+        <line x1="60" y1="64" x2="680" y2="64" stroke="#2a2f3d" stroke-width="1" stroke-dasharray="4 4"/>
+        <!-- y labels -->
+        <text x="48" y="224" fill="#9aa3b2" font-size="12" text-anchor="end">$0.01</text>
+        <text x="48" y="172" fill="#9aa3b2" font-size="12" text-anchor="end">$0.10</text>
+        <text x="48" y="120" fill="#9aa3b2" font-size="12" text-anchor="end">$1</text>
+        <text x="48" y="68" fill="#9aa3b2" font-size="12" text-anchor="end">$10</text>
+        <text x="20" y="140" fill="#6b7280" font-size="10" text-anchor="middle" transform="rotate(-90 20 140)">log $</text>
+        <!-- x labels -->
+        <text x="170" y="245" fill="#9aa3b2" font-size="13" text-anchor="middle">Iter 1</text>
+        <text x="370" y="245" fill="#9aa3b2" font-size="13" text-anchor="middle">Iter 2</text>
+        <text x="570" y="245" fill="#9aa3b2" font-size="13" text-anchor="middle">Iter 3</text>
+        <!-- Opus line: $32.27, $30.95, $30.54 -->
+        <polyline fill="none" stroke="#70ad47" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"
+          points="170,88 370,89 570,89"/>
+        <circle cx="170" cy="88" r="5" fill="#70ad47"/>
+        <circle cx="370" cy="89" r="5" fill="#70ad47"/>
+        <circle cx="570" cy="89" r="5" fill="#70ad47"/>
+        <text x="170" y="76" fill="#70ad47" font-size="12" text-anchor="middle">$32.27</text>
+        <text x="370" y="77" fill="#70ad47" font-size="12" text-anchor="middle">$30.95</text>
+        <text x="570" y="77" fill="#70ad47" font-size="12" text-anchor="middle">$30.54</text>
+        <!-- GLM low line: $0.13, $0.15, $0.15 -->
+        <polyline fill="none" stroke="#5b9bd5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"
+          points="170,178 370,176 570,176"/>
+        <circle cx="170" cy="178" r="5" fill="#5b9bd5"/>
+        <circle cx="370" cy="176" r="5" fill="#5b9bd5"/>
+        <circle cx="570" cy="176" r="5" fill="#5b9bd5"/>
+        <text x="170" y="192" fill="#5b9bd5" font-size="12" text-anchor="middle">$0.13</text>
+        <text x="370" y="190" fill="#5b9bd5" font-size="12" text-anchor="middle">$0.15</text>
+        <text x="570" y="190" fill="#5b9bd5" font-size="12" text-anchor="middle">$0.15</text>
       </svg>
       <div class="cost-summary">
         <div class="cost-card">
@@ -168,7 +190,7 @@
       <p class="note">
         Cost estimated from builder transcript size (token proxy) × list API rates:
         Opus $15/$75 per 1M in/out tokens · GLM 5.3 Flash $0.075/$0.25 per 1M (OpenRouter).
-        Excludes Sonnet judge cost (same for both runs). Bar chart uses a log $ scale so both totals are visible.
+        Excludes Sonnet judge cost (same for both runs). Line chart uses a log $ scale so both series are visible.
         For billed LangSmith totals, see experiment links below.
       </p>
     </section>
