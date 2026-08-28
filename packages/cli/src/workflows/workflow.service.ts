@@ -16,7 +16,7 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import type { Scope } from '@n8n/permissions';
+import type { ApiKeyScope, Scope } from '@n8n/permissions';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { In, QueryFailedError } from '@n8n/typeorm';
@@ -43,6 +43,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
+import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
@@ -71,6 +72,9 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 /** Internal rollback vehicle for `publishAsSystem`'s guarded transaction; never escapes it. */
 class SystemPublishSupersededError extends Error {}
+
+/** The API-key scope a caller needs to put a version live, whether directly or by saving. */
+const PUBLISH_API_KEY_SCOPE: ApiKeyScope = 'workflow:activate';
 
 @Service()
 export class WorkflowService {
@@ -346,6 +350,8 @@ export class WorkflowService {
 			forceSave?: boolean;
 			publicApi?: boolean;
 			publishIfActive?: boolean;
+			/** Scopes of the API key behind this call; omitted when the caller is not key-authenticated. */
+			apiKeyScopes?: readonly string[];
 			aiBuilderAssisted?: boolean;
 			expectedChecksum?: string;
 			autosaved?: boolean;
@@ -361,6 +367,7 @@ export class WorkflowService {
 			forceSave = false,
 			publicApi = false,
 			publishIfActive = false,
+			apiKeyScopes,
 			aiBuilderAssisted = false,
 			autosaved = false,
 			source = 'ui',
@@ -655,6 +662,14 @@ export class WorkflowService {
 		});
 
 		if (versionIdToPublish) {
+			// Putting a different version live is a publication, so it has to clear the same bars as an
+			// explicit publish. A caller who may write but not publish keeps the draft they just saved;
+			// the conflict tells them it did not go live. Re-applying the version that is already live
+			// publishes nothing new, so it stays a plain update.
+			if (versionIdToPublish !== workflow.activeVersionId) {
+				await this.assertMayPublishOnSave(user, workflowId, ownerProject.id, apiKeyScopes);
+			}
+
 			const publishedWorkflow = await this.activateWorkflow(user, workflowId, {
 				versionId: versionIdToPublish,
 				source,
@@ -669,6 +684,32 @@ export class WorkflowService {
 			});
 		}
 		return updatedWorkflow;
+	}
+
+	/**
+	 * Both bars a save-triggered publication has to clear: the API key's own publish scope (a key can
+	 * be scoped more narrowly than its owner) and the caller's publish permission on the project.
+	 * Raised as a conflict rather than a plain rejection because the draft is already saved.
+	 */
+	private async assertMayPublishOnSave(
+		user: User,
+		workflowId: string,
+		projectId: string,
+		apiKeyScopes: readonly string[] | undefined,
+	): Promise<void> {
+		if (apiKeyScopes && !apiKeyScopes.includes(PUBLISH_API_KEY_SCOPE)) {
+			throw new WorkflowPublishBlockedError({ reason: 'insufficient_api_key_scope' });
+		}
+
+		const canPublish = await userHasScopes(user, ['workflow:publish'], false, { projectId });
+
+		if (!canPublish) {
+			this.logger.warn('User saved a draft but may not publish it', {
+				workflowId,
+				userId: user.id,
+			});
+			throw new WorkflowPublishBlockedError({ reason: 'insufficient_permissions' });
+		}
 	}
 
 	private async _addToActiveWorkflowManager(
@@ -809,9 +850,19 @@ export class WorkflowService {
 		const source = options?.source ?? 'ui';
 		const publicApi = source === 'api';
 
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+		let workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:publish',
 		]);
+
+		// Re-applying the version that is already live publishes nothing new — it only re-registers
+		// the triggers so a settings change takes effect — so `workflow:update` is enough for it.
+		// Resolved as a fallback, leaving the publish path above untouched.
+		const resolvedWithoutPublishScope = workflow === null;
+		if (resolvedWithoutPublishScope) {
+			workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+				'workflow:update',
+			]);
+		}
 
 		if (!workflow) {
 			this.logger.warn('User attempted to activate a workflow without permissions', {
@@ -829,6 +880,16 @@ export class WorkflowService {
 
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
 		const previousActiveVersionId = workflow.activeVersionId;
+
+		if (resolvedWithoutPublishScope && versionIdToActivate !== previousActiveVersionId) {
+			this.logger.warn('User attempted to activate a workflow without permissions', {
+				workflowId,
+				userId: user.id,
+			});
+			throw new NotFoundError(
+				'You do not have permission to activate this workflow. Ask the owner to share it with you.',
+			);
+		}
 
 		let versionToActivate: WorkflowHistory;
 		try {

@@ -32,13 +32,18 @@ describe('workflow publication blocker in OpenAPI', () => {
 		},
 	);
 
-	test('documents the review reason and request ID as optional', () => {
+	test('documents every blocker reason, and the request ID as optional', () => {
 		const schema = readSpec('schemas/workflowPublishBlockedError.yml');
 
 		expect(schema).toMatchObject({
 			properties: {
 				reason: {
-					enum: ['review_pending', 'changes_requested'],
+					enum: [
+						'review_pending',
+						'changes_requested',
+						'insufficient_api_key_scope',
+						'insufficient_permissions',
+					],
 				},
 				workflowReviewRequestId: {
 					type: 'string',
