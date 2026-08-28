@@ -480,7 +480,12 @@ export interface BuildWorkflowConfig {
 export function resolveEvalBuildMode(
 	buildMode: WorkflowTestCase['buildMode'],
 ): InstanceAiBuildMode | undefined {
-	return buildMode === 'default' ? undefined : 'progressive';
+	if (buildMode === 'default') return undefined;
+	if (buildMode === 'progressive') return 'progressive';
+	// Unpinned: suite default. `N8N_EVAL_BUILD_MODE=default` flips the whole
+	// unpinned suite to the classic flow — for A/B comparison runs only; a
+	// case-pinned buildMode above always wins.
+	return process.env.N8N_EVAL_BUILD_MODE === 'default' ? undefined : 'progressive';
 }
 
 /** A case needs a workflow iff something judges one: execution scenarios or
