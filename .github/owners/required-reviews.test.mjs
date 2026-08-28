@@ -62,20 +62,6 @@ describe('resolvePullRequestNumber', () => {
 		);
 	});
 
-	it('parses the PR number from the merge group ref', () => {
-		const event = {
-			merge_group: { head_ref: 'refs/heads/gh-readonly-queue/master/pr-1337-0123abc' },
-		};
-
-		assert.equal(resolvePullRequestNumber('merge_group', event, undefined), 1337);
-	});
-
-	it('throws on a merge group ref without a PR number', () => {
-		const event = { merge_group: { head_ref: 'refs/heads/unexpected' } };
-
-		assert.throws(() => resolvePullRequestNumber('merge_group', event, undefined), /merge group ref/);
-	});
-
 	it('falls back to the PULL_REQUEST_NUMBER env value for workflow_dispatch', () => {
 		assert.equal(resolvePullRequestNumber('workflow_dispatch', {}, '7'), 7);
 	});
@@ -292,18 +278,4 @@ describe('run', () => {
 		assert.equal(setCommitStatus.mock.calls.length, 0);
 	});
 
-	it('reports on the merge-group head SHA for merge_group events', async () => {
-		process.env.GITHUB_EVENT_NAME = 'merge_group';
-		eventImpl = () => ({
-			merge_group: {
-				head_ref: 'refs/heads/gh-readonly-queue/master/pr-42-0123abc',
-				head_sha: 'merge-group-sha',
-			},
-		});
-
-		await run();
-
-		const [sha] = setCommitStatus.mock.calls.at(-1).arguments;
-		assert.equal(sha, 'merge-group-sha');
-	});
 });

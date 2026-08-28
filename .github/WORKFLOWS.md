@@ -595,9 +595,12 @@ The file drives four workflows:
 An entry with the `required` option makes team approval mandatory: when a PR
 changes a file whose winning entry carries `required`, a member of each listed
 team must approve the PR. `ci-owners-required-reviews.yml` evaluates this on
-PR changes, review events, and merge-queue runs, and reports a commit status
+PR changes and review events, and reports a commit status
 named **Required Reviews** on the head SHA. The ruleset for `master` must list
-that status as a required check for the block to take effect.
+that status as a required check for the block to take effect. Merge-queue runs
+report success on the queue head without re-evaluating: a PR cannot enter the
+queue unless the status is green on its head, and the queue does not change
+approvals.
 
 The workflow reads OWNERS and its scripts from the base branch only, so a PR
 cannot lift its own review requirement.

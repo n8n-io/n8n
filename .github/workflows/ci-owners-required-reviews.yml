@@ -16,8 +16,9 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('CI: Owners Re
 #   - pull_request_review (submitted/dismissed): re-evaluates when approvals
 #     change. A privileged event (base repo context, secrets), so it covers
 #     fork PRs too — and approvals can only change through review events.
-#   - merge_group: re-reports on the merge-queue head so a ruleset can require
-#     the status at queue time.
+#   - merge_group: reports success on the queue head without re-evaluating.
+#     A PR cannot enter the queue unless this status is green on its head,
+#     and the queue does not change approvals.
 #   - workflow_dispatch: manual re-check (e.g. after a team membership change,
 #     or a fork PR push after an approval).
 #
@@ -59,19 +60,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The queue requires this status on the merge-group head, but there is
+  # nothing new to evaluate there: entering the queue already required the
+  # status to be green on the PR head, and queueing does not change approvals.
+  pass-in-merge-queue:
+    name: Pass in merge queue
+    if: github.event_name == 'merge_group'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      statuses: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.merge_group.head_sha }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -f state=success \
+            -f context='Required Reviews' \
+            -f description='Approvals were verified before the PR entered the queue'
+
   required-reviews:
     name: Check required reviews
     # Fork PRs are skipped on pull_request (no secrets for the app token);
-    # pull_request_review covers them. pull_request_review and merge_group
-    # have no `branches` filter; the script also skips non-master bases, the
-    # guards here keep the early pending status off non-master heads.
+    # pull_request_review covers them. pull_request_review has no `branches`
+    # filter; the script also skips non-master bases, the guard here keeps
+    # the early pending status off non-master heads.
     if: >-
+      github.event_name != 'merge_group' &&
       (github.event_name != 'pull_request' ||
        github.event.pull_request.head.repo.full_name == github.repository) &&
       (github.event_name != 'pull_request_review' ||
-       github.event.pull_request.base.ref == 'master') &&
-      (github.event_name != 'merge_group' ||
-       github.event.merge_group.base_ref == 'refs/heads/master')
+       github.event.pull_request.base.ref == 'master')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -87,7 +107,7 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          SHA: ${{ github.event.pull_request.head.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
@@ -114,7 +134,7 @@ jobs:
       # run that branch's policy.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          ref: ${{ github.event.pull_request.base.ref || github.event.merge_group.base_ref || 'master' }}
+          ref: ${{ github.event.pull_request.base.ref || 'master' }}
           persist-credentials: false
 
       - name: Setup Node.js
@@ -128,7 +148,7 @@ jobs:
           # App token: reading org team membership is beyond GITHUB_TOKEN.
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           PULL_REQUEST_NUMBER: ${{ inputs.pr_number || '' }}
-          STATUS_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
+          STATUS_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           # Bootstrap: the checkout is the trusted base branch. Until the
           # enforcement script exists there, there is no policy to enforce.

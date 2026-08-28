@@ -3,9 +3,10 @@
  *
  * Computes the teams whose approval the changeset needs (per .github/owners/OWNERS)
  * and reports the verdict as a "Required Reviews" commit status on the PR
- * head SHA (or merge-group head SHA). A ruleset that lists this status as a
- * required check blocks the merge until a member of each required team has
- * approved the PR.
+ * head SHA. A ruleset that lists this status as a required check blocks the
+ * merge until a member of each required team has approved the PR. Merge-queue
+ * runs do not reach this script: the workflow reports success on the queue
+ * head directly, because entering the queue already required a green status.
  *
  * The job itself always succeeds when the evaluation runs; the commit status
  * carries the verdict. The status is set to pending before the evaluation
@@ -36,13 +37,6 @@ const TARGET_BRANCH = 'master';
  */
 export function resolvePullRequestNumber(eventName, event, pullRequestNumberEnv) {
 	if (event?.pull_request?.number) return event.pull_request.number;
-
-	if (eventName === 'merge_group') {
-		// Merge queue branches are named gh-readonly-queue/<base>/pr-<number>-<base sha>.
-		const match = event?.merge_group?.head_ref?.match(/\/pr-(\d+)-/);
-		if (match) return parseInt(match[1]);
-		throw new Error(`Cannot resolve a PR number from merge group ref "${event?.merge_group?.head_ref}"`);
-	}
 
 	const parsed = parseInt(pullRequestNumberEnv ?? '');
 	if (Number.isNaN(parsed)) {
@@ -167,9 +161,7 @@ export async function run() {
 		return;
 	}
 
-	// For merge-queue runs the queue watches the merge-group head, not the PR head.
-	const statusSha =
-		eventName === 'merge_group' ? event.merge_group.head_sha : pullRequest.head.sha;
+	const statusSha = pullRequest.head.sha;
 	const targetUrl = statusTargetUrl();
 
 	// Pending first: it replaces any earlier verdict on this SHA, so a crash
