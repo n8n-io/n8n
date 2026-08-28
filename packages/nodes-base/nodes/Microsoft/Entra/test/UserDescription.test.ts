@@ -1343,6 +1343,20 @@ describe('Microsoft Entra Node', () => {
 				output: { nodeData: {}, error: 'The user ID is invalid' },
 			},
 			{
+				// A legitimate UPN whose extracted substring is `..`, i.e. the one case the guard's
+				// own substring reasoning does not cover.
+				description: 'should reject a user carrying an ID extraction rule',
+				input: {
+					workflowData: entraWorkflow({
+						resource: 'user',
+						operation: 'get',
+						user: { __rl: true, mode: 'id', value: 'a..b@contoso.com', __regex: '(\\.\\.)' },
+						output: 'raw',
+					}),
+				},
+				output: { nodeData: {}, error: 'The user ID is invalid' },
+			},
+			{
 				description: 'should reject a blank user',
 				input: {
 					workflowData: entraWorkflow({

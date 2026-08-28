@@ -13,18 +13,22 @@ import type {
 	INodePropertyOptions,
 	INodeListSearchResult,
 	INodeListSearchItems,
-	PreSendAction,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, sanitizeXmlName } from 'n8n-workflow';
+import {
+	isResourceLocatorValue,
+	NodeApiError,
+	NodeOperationError,
+	sanitizeXmlName,
+} from 'n8n-workflow';
 import { parseStringPromise } from 'xml2js';
 
 import { validateUserTargetId, type UserTargetMessages } from '../GenericFunctions';
 
 const ID_FORMAT_HINT = 'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315';
 
-const OBJECT_ID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
-
 const ENTRA_USER_MESSAGES: UserTargetMessages = {
+	// Unreachable through the shared validator, which `validateEntraUserId` only calls once the
+	// value is known to be non-empty. Kept because the interface requires it.
 	required: {
 		message: 'The user is empty',
 		description: `Select a user from the list, or set the ID. ${ID_FORMAT_HINT}, or a user principal name e.g. jane@contoso.com.`,
@@ -35,11 +39,11 @@ const ENTRA_USER_MESSAGES: UserTargetMessages = {
 	},
 	invalid: {
 		message: 'The user ID is invalid',
-		description: `${ID_FORMAT_HINT}, or a user principal name e.g. jane@contoso.com.`,
+		description: `${ID_FORMAT_HINT}, or a user principal name e.g. jane@contoso.com. Enter it as it appears in Entra, not URL-encoded.`,
 	},
 };
 
-const ENTRA_GROUP_MESSAGES = {
+const ENTRA_GROUP_MESSAGES: Pick<UserTargetMessages, 'required' | 'invalid'> = {
 	required: {
 		message: 'The group is empty',
 		description: `Select a group from the list, or set the ID. ${ID_FORMAT_HINT}.`,
@@ -55,26 +59,32 @@ const ENTRA_GROUP_MESSAGES = {
  * ID or a user principal name, guests included. The value is validated untrimmed, because the URL
  * interpolates it untrimmed. Both accepted alphabets are closed under substring, so no substring
  * of an accepted ID can contain `/ \ ? % #` and change the request path.
+ *
+ * Exported for tests. Production callers must go through the `preSend` wrappers below, which also
+ * refuse a stored extraction rule.
  */
-export function validateEntraUserId(id: unknown, node: INode): void {
-	const value = String(id ?? '');
-	if (value.trim() === '') {
+export function validateEntraUserId(id: string, node: INode): void {
+	if (id.trim() === '') {
 		throw new NodeOperationError(node, ENTRA_USER_MESSAGES.required.message, {
 			description: ENTRA_USER_MESSAGES.required.description,
 		});
 	}
-	validateUserTargetId(value, node, ENTRA_USER_MESSAGES);
+	validateUserTargetId(id, node, ENTRA_USER_MESSAGES);
 }
 
-/** Graph resolves `/groups/{id}` and `/directoryObjects/{id}` by object ID only. */
-export function validateEntraGroupId(id: unknown, node: INode): void {
-	const value = String(id ?? '');
-	if (value.trim() === '') {
+const GROUP_OBJECT_ID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
+
+/**
+ * Graph resolves `/groups/{id}` and `/directoryObjects/{id}` by object ID only. Exported for
+ * tests, same caveat as {@link validateEntraUserId}.
+ */
+export function validateEntraGroupId(id: string, node: INode): void {
+	if (id.trim() === '') {
 		throw new NodeOperationError(node, ENTRA_GROUP_MESSAGES.required.message, {
 			description: ENTRA_GROUP_MESSAGES.required.description,
 		});
 	}
-	if (!OBJECT_ID.test(value)) {
+	if (!GROUP_OBJECT_ID.test(id)) {
 		throw new NodeOperationError(node, ENTRA_GROUP_MESSAGES.invalid.message, {
 			description: ENTRA_GROUP_MESSAGES.invalid.description,
 		});
@@ -82,30 +92,36 @@ export function validateEntraGroupId(id: unknown, node: INode): void {
 }
 
 /**
- * Reads an ID the way the routing layer does. A `$parameter[...]` URL template applies a stored
- * `__regex` while `extractValue` applies the mode's own rule, so a stored `__regex` would put a
- * substring in the URL that this guard never saw. No Entra mode declares `extractValue`, so
- * refusing a stored `__regex` refuses nothing legitimate.
+ * Reads an ID the way the routing layer does, so the guard sees what the URL will interpolate.
+ * A stored `__regex` is refused because the two readers apply it differently: `$parameter[...]`
+ * honours it, `extractValue` does not. No Entra mode declares `extractValue`, so nothing
+ * legitimate ever carries one.
  */
-function readEntraId(this: IExecuteSingleFunctions, name: 'user' | 'group'): unknown {
+function readEntraId(this: IExecuteSingleFunctions, name: 'user' | 'group'): string {
 	const stored = this.getNodeParameter(name);
-	if (typeof stored === 'object' && stored !== null && '__regex' in stored) {
+	if (isResourceLocatorValue(stored) && stored.__regex) {
 		throw new NodeOperationError(this.getNode(), `The ${name} ID is invalid`, {
 			description: 'Remove the ID extraction rule from this field and set the ID directly.',
 		});
 	}
-	return this.getNodeParameter(name, undefined, { extractValue: true });
+	return String(this.getNodeParameter(name, undefined, { extractValue: true }) ?? '');
 }
 
-export const validateUserPreSend: PreSendAction = async function (requestOptions) {
+export async function validateUserPreSend(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
 	validateEntraUserId(readEntraId.call(this, 'user'), this.getNode());
 	return requestOptions;
-};
+}
 
-export const validateGroupPreSend: PreSendAction = async function (requestOptions) {
+export async function validateGroupPreSend(
+	this: IExecuteSingleFunctions,
+	requestOptions: IHttpRequestOptions,
+): Promise<IHttpRequestOptions> {
 	validateEntraGroupId(readEntraId.call(this, 'group'), this.getNode());
 	return requestOptions;
-};
+}
 
 /**
  * Resolves the URL a request is sent to. An explicit `url` (e.g. a next-page link from Graph) is

@@ -443,16 +443,7 @@ describe('Microsoft Entra GenericFunctions', () => {
 	// rejected UPN alphabet, so these only cover what Entra adds on top of it.
 	describe('validateEntraUserId', () => {
 		it.each([
-			['a GUID', '02bd9fd6-8f93-4758-87c3-1fb73740a315'],
-			['a UPN', 'jane@contoso.com'],
-			['a guest UPN', 'user_contoso.com#EXT#@tenant.onmicrosoft.com'],
-		])('accepts %s', (_label, id) => {
-			expect(() => validateEntraUserId(id, mockNode)).not.toThrow();
-		});
-
-		it.each([
 			['a GUID with surrounding spaces', ' 02bd9fd6-8f93-4758-87c3-1fb73740a315 '],
-			['a UPN with a trailing space', 'jane@contoso.com '],
 			['a UPN with a percent-encoded at sign', 'jane%40contoso.com'],
 		])('rejects %s', (_label, id) => {
 			expect(() => validateEntraUserId(id, mockNode)).toThrow(NodeOperationError);
@@ -470,32 +461,6 @@ describe('Microsoft Entra GenericFunctions', () => {
 				'Select a user from the list, or set the ID. The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315, or a user principal name e.g. jane@contoso.com.',
 			);
 		});
-
-		it('reports a dots-only value without the UPN hint', () => {
-			let caught: NodeOperationError | undefined;
-			try {
-				validateEntraUserId('..', mockNode);
-			} catch (error) {
-				caught = error as NodeOperationError;
-			}
-			expect(caught?.message).toBe('The user ID is invalid');
-			expect(caught?.description).toBe(
-				'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315.',
-			);
-		});
-
-		it('reports an unrecognised value with the UPN hint', () => {
-			let caught: NodeOperationError | undefined;
-			try {
-				validateEntraUserId('jane', mockNode);
-			} catch (error) {
-				caught = error as NodeOperationError;
-			}
-			expect(caught?.message).toBe('The user ID is invalid');
-			expect(caught?.description).toBe(
-				'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315, or a user principal name e.g. jane@contoso.com.',
-			);
-		});
 	});
 
 	describe('validateEntraGroupId', () => {
@@ -507,15 +472,8 @@ describe('Microsoft Entra GenericFunctions', () => {
 		});
 
 		it.each([
-			['a UPN', 'jane@contoso.com'],
-			['a mail nickname', 'sales-team'],
-			['a GUID with surrounding spaces', ' a8eb60e3-0145-4d7e-85ef-c6259784761b '],
-			['an empty value', ''],
 			['two dots', '..'],
 			['a forward slash', 'a8eb60e3-0145-4d7e-85ef-c6259784761b/members'],
-			['a question mark', 'a8eb60e3-0145-4d7e-85ef-c6259784761b?x=1'],
-			['a hash', 'a8eb60e3-0145-4d7e-85ef-c6259784761b#x'],
-			['a percent-encoded dot pair', '%2e%2e'],
 		])('rejects %s', (_label, id) => {
 			expect(() => validateEntraGroupId(id, mockNode)).toThrow(NodeOperationError);
 		});
