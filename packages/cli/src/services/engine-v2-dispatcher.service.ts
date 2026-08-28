@@ -1,6 +1,5 @@
 import { Service } from '@n8n/di';
 import type { StepSlots, TriggerOutputs } from '@n8n/engine';
-import { generateId } from '@n8n/engine';
 import type {
 	INodeExecutionData,
 	IWorkflowBase,
@@ -8,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 import { getChildNodes, NodeConnectionTypes, UserError } from 'n8n-workflow';
 
+import { createExecutionIdV2 } from '@/executions/execution-id';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
 import type { ResumableExecution } from '@/interfaces';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
@@ -70,7 +70,7 @@ export class EngineV2Dispatcher {
 		const graph = new V1WorkflowConverter().convert(this.selectTriggerSubgraph(data));
 		const triggerMain = this.triggerMainOutputs(data);
 
-		const executionId = generateId();
+		const executionId = createExecutionIdV2();
 		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.
 		this.registerPushSession(executionId, data, triggerMain);
 

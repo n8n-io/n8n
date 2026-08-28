@@ -25,6 +25,13 @@ const instanceAiLazyRuntimeImports = [
 	message: INSTANCE_AI_LAZY_IMPORT_MESSAGE,
 }));
 
+const engineV2ModuleOnlyImport = {
+	name: '@n8n/engine',
+	allowTypeImports: true,
+	message:
+		'Only src/modules/engine-v2/** may import @n8n/engine at runtime. Use a type import, or reach the engine through EngineDataPlaneProxyService.',
+};
+
 export default defineConfig(
 	globalIgnores(['scripts/**/*.mjs', 'vitest.*.ts', 'coverage/**']),
 	nodeConfig,
@@ -165,12 +172,21 @@ export default defineConfig(
 		},
 	},
 	{
+		files: ['./src/**/*.ts'],
+		ignores: ['./src/modules/engine-v2/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': ['error', { paths: [engineV2ModuleOnlyImport] }],
+		},
+	},
+	{
 		files: ['./src/modules/instance-ai/**/*.ts'],
 		ignores: ['./src/modules/instance-ai/**/__tests__/**/*.ts'],
 		rules: {
+			// Repeats the engine restriction: a later block replaces the rule's options
+			// wholesale rather than merging them.
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
-				{ paths: instanceAiLazyRuntimeImports },
+				{ paths: [...instanceAiLazyRuntimeImports, engineV2ModuleOnlyImport] },
 			],
 		},
 	},
