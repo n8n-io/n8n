@@ -2,6 +2,7 @@ import { N8nPlugin } from '@n8n/design-system';
 import { i18nInstance } from '@n8n/i18n';
 import type { TestingPinia } from '@pinia/testing';
 import { render, type RenderOptions as TestingLibraryRenderOptions } from '@testing-library/vue';
+import isPlainObject from 'lodash/isPlainObject';
 import merge from 'lodash/merge';
 import { PiniaVuePlugin, type Pinia } from 'pinia';
 import type { Plugin } from 'vue';
@@ -47,6 +48,56 @@ const TelemetryStubPlugin: Plugin = {
 		(app.config.globalProperties as Record<string, unknown>).$telemetry = { track() {} };
 	},
 };
+
+/**
+ * Copies the plain objects and arrays a deep merge would otherwise write into, and carries
+ * everything else over by reference. A pinia, a store or a ref is identity, not data: a copy of it
+ * is a different store, so only the containers are copied.
+ */
+function copyContainers<T>(value: T): T {
+	if (Array.isArray(value)) {
+		return value.map(copyContainers) as T;
+	}
+	if (!isPlainObject(value)) {
+		return value;
+	}
+
+	const source = value as Record<string | symbol, unknown>;
+	const copy: Record<string | symbol, unknown> = {};
+	// `Reflect.ownKeys`, not `Object.keys`: every injection key in the shell is a symbol, and a
+	// symbol-keyed `provide` entry has to survive the copy.
+	for (const key of Reflect.ownKeys(source)) {
+		copy[key] = copyContainers(source[key]);
+	}
+	return copy as T;
+}
+
+/**
+ * Deep-merges a render call's options over the renderer's defaults.
+ *
+ * The merge runs against a copy, because `merge` writes into its first argument: merging into
+ * `defaultOptions` would leak each call's props, stubs and provides into the shared defaults, and
+ * every later render in the file would inherit them.
+ *
+ * `pinia` is resolved outside the merge — it is a plugin instance the render installs, so the two
+ * candidates replace each other rather than merging.
+ *
+ * `merge` reads string keys only, so a symbol-keyed entry in `options` does not override the
+ * default of the same key. Pass such an override without `{ merge: true }`, where the plain spread
+ * in `renderComponent` handles it.
+ */
+function mergeOptions<T>(
+	defaultOptions: RenderOptions<T>,
+	options: RenderOptions<T>,
+): RenderOptions<T> {
+	const { pinia: defaultPinia, ...mergeableDefaults } = defaultOptions;
+	const { pinia, ...mergeableOptions } = options;
+
+	const merged: RenderOptions<T> = merge(copyContainers(mergeableDefaults), mergeableOptions);
+	const resolvedPinia = pinia ?? defaultPinia;
+
+	return resolvedPinia ? { ...merged, pinia: resolvedPinia } : merged;
+}
 
 /**
  * Builds a renderer from the base every frontend package shares, plus the extension a consumer
@@ -104,15 +155,7 @@ export function defineRenderer(extension: RendererExtension = {}): Renderer {
 			renderComponent(
 				component,
 				rendererOptions.merge
-					? // KNOWN DEFECT, carried over from the shell verbatim: `merge` writes into its
-						// first argument, so each `{ merge: true }` call leaks its props, stubs and
-						// provides into the renderer's defaults, and every later render inherits them.
-						//
-						// `merge({}, defaultOptions, options)` is the fix. It is not applied here yet:
-						// three editor-ui suites only pass because of the leak, and two of their tests
-						// already fail in isolation on `master`. Correcting the helper and those tests
-						// is one scoped change that this package should not smuggle in.
-						merge(defaultOptions, options)
+					? mergeOptions(defaultOptions, options)
 					: ({
 							...defaultOptions,
 							...options,
