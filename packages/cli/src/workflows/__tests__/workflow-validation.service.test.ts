@@ -323,7 +323,7 @@ describe('WorkflowValidationService', () => {
 			return nodeType;
 		};
 
-		it('should return valid for workflow with no connected nodes', () => {
+		it('should return valid for workflow with no connected nodes', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 			};
@@ -331,12 +331,12 @@ describe('WorkflowValidationService', () => {
 
 			mockNodeTypes.getByNameAndVersion.mockReturnValue(createMockNodeType([], [], true));
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should return valid for workflow with all valid connected nodes', () => {
+		it('should return valid for workflow with all valid connected nodes', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				'HTTP Request': createNode('HTTP Request', 'n8n-nodes-base.httpRequest', {
@@ -361,12 +361,12 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should return invalid when connected node is missing required credential', () => {
+		it('should return invalid when connected node is missing required credential', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				Agent: createNode('Agent', 'n8n-nodes-base.agent', {
@@ -390,7 +390,7 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('Cannot publish workflow');
@@ -399,7 +399,7 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('Missing required credential: OpenAI API');
 		});
 
-		it('should return invalid when connected node has credential without ID', () => {
+		it('should return invalid when connected node has credential without ID', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				Agent: createNode('Agent', 'n8n-nodes-base.agent', {
@@ -424,13 +424,13 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('Credential not configured: OpenAI API');
 		});
 
-		it('should skip validation for disabled nodes', () => {
+		it('should skip validation for disabled nodes', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				Agent: createNode('Agent', 'n8n-nodes-base.agent', {
@@ -455,12 +455,12 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should skip validation for disconnected nodes', () => {
+		it('should skip validation for disconnected nodes', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				Agent: createNode('Agent', 'n8n-nodes-base.agent', {
@@ -485,12 +485,12 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should validate multiple nodes with issues', () => {
+		it('should validate multiple nodes with issues', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				Agent1: createNode('Agent1', 'n8n-nodes-base.agent', {
@@ -520,7 +520,7 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('2 nodes have configuration issues');
@@ -528,7 +528,7 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('Node "Agent2"');
 		});
 
-		it('should return invalid when node type is not found', () => {
+		it('should return invalid when node type is not found', async () => {
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook'),
 				Unknown: createNode('Unknown', 'n8n-nodes-base.unknownNode'),
@@ -544,14 +544,14 @@ describe('WorkflowValidationService', () => {
 				return undefined;
 			}) as any);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('Node "Unknown"');
 			expect(result.error).toContain('Node type not found');
 		});
 
-		it('should return invalid when workflow has no trigger node', () => {
+		it('should return invalid when workflow has no trigger node', async () => {
 			const nodes = {
 				Set: createNode('Set', 'n8n-nodes-base.set'),
 			};
@@ -559,13 +559,13 @@ describe('WorkflowValidationService', () => {
 
 			mockNodeTypes.getByNameAndVersion.mockReturnValue(createMockNodeType([], []));
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			expect(result.isValid).toBe(false);
 			expect(result.error).toContain('no trigger node');
 		});
 
-		it('should respect displayOptions when validating credentials', () => {
+		it('should respect displayOptions when validating credentials', async () => {
 			// Simulates a Webhook node with authentication parameter set to 'none'
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook', {
@@ -601,13 +601,13 @@ describe('WorkflowValidationService', () => {
 
 			mockNodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			// Should be valid because authentication='none', so no credentials are required
 			expect(result.isValid).toBe(true);
 		});
 
-		it('should validate credentials when displayOptions match', () => {
+		it('should validate credentials when displayOptions match', async () => {
 			// Simulates a Webhook node with authentication='basicAuth' but missing credential
 			const nodes = {
 				Webhook: createNode('Webhook', 'n8n-nodes-base.webhook', {
@@ -633,7 +633,7 @@ describe('WorkflowValidationService', () => {
 
 			mockNodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 
-			const result = service.validateForActivation(nodes, connections, mockNodeTypes);
+			const result = await service.validateForActivation(nodes, connections, mockNodeTypes);
 
 			// Should be invalid because authentication='basicAuth' but no credential is set
 			expect(result.isValid).toBe(false);

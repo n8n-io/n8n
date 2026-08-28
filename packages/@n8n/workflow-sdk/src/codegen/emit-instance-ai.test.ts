@@ -251,6 +251,7 @@ describe('emit-instance-ai', () => {
 			'isPlainObject',
 			// Validation
 			'connectRequiredSubnodeInputs',
+			'describeAddedSubnodeConnection',
 			'validateNodeConfig',
 			'validateWorkflow',
 			'getSchemaBaseDirs',

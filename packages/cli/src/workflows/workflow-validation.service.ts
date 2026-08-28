@@ -315,11 +315,11 @@ export class WorkflowValidationService {
 		return [];
 	}
 
-	validateForActivation(
+	async validateForActivation(
 		nodes: INodes,
 		connections: IConnections,
 		nodeTypes: NodeTypes,
-	): WorkflowValidationResult {
+	): Promise<WorkflowValidationResult> {
 		// Validate workflow entry points: active, poll, webhook, or schedule triggers.
 		const triggerValidation = validateWorkflowHasTriggerLikeNode(nodes, nodeTypes, STARTING_NODES);
 
@@ -340,7 +340,7 @@ export class WorkflowValidationService {
 			return configValidation;
 		}
 
-		return { isValid: true };
+		return await this.validateRequiredInputsConnected(nodesArray, connections, nodeTypes);
 	}
 
 	/**
@@ -348,9 +348,7 @@ export class WorkflowValidationService {
 	 * draws this warning already but nothing enforced it, so such a workflow could
 	 * publish and then throw on every execution.
 	 *
-	 * Separate from `validateForActivation` only because resolving inputs is
-	 * async. Worth folding in later, so activation has one gate and one error
-	 * shape; that means awaiting the one other caller.
+	 * Called by `validateForActivation`; public so it can be exercised directly.
 	 */
 	async validateRequiredInputsConnected(
 		nodes: INode[],
