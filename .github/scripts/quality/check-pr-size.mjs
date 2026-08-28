@@ -49,6 +49,10 @@ export const MISC_PATTERNS = [
 
 export const EXCLUDE_PATTERNS = [...TEST_PATTERNS, ...MISC_PATTERNS];
 
+// Without `dot`, `**` refuses dot segments, so nothing under `.github/`
+// would ever match a pattern.
+const MATCH_OPTIONS = { dot: true };
+
 /**
  * Categorize a changed file for line statistics.
  *
@@ -56,8 +60,8 @@ export const EXCLUDE_PATTERNS = [...TEST_PATTERNS, ...MISC_PATTERNS];
  * @returns { 'testFiles' | 'misc' | 'sourceCode' }
  */
 export function categorizeFile(filename) {
-	if (TEST_PATTERNS.some((pattern) => minimatch(filename, pattern))) return 'testFiles';
-	if (MISC_PATTERNS.some((pattern) => minimatch(filename, pattern))) return 'misc';
+	if (TEST_PATTERNS.some((pattern) => minimatch(filename, pattern, MATCH_OPTIONS))) return 'testFiles';
+	if (MISC_PATTERNS.some((pattern) => minimatch(filename, pattern, MATCH_OPTIONS))) return 'misc';
 	return 'sourceCode';
 }
 
@@ -98,7 +102,7 @@ export async function hasValidOverride(comments, getPermission) {
  */
 export function countFilteredAdditions(files, excludePatterns) {
 	return files
-		.filter((file) => !excludePatterns.some((pattern) => minimatch(file.filename, pattern)))
+		.filter((file) => !excludePatterns.some((pattern) => minimatch(file.filename, pattern, MATCH_OPTIONS)))
 		.reduce((sum, file) => sum + file.additions, 0);
 }
 
