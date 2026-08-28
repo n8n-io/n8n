@@ -1,3 +1,4 @@
+import { toJsonValue } from '@n8n/utils/json/to-json-value';
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
 import {
@@ -12,6 +13,11 @@ import {
 	guardToolResultForModel,
 	type ToolResultGuardStorage,
 } from './tool-result-guard';
+import {
+	protectUntrustedToolError,
+	protectUntrustedToolMessage,
+	protectUntrustedToolResult,
+} from './untrusted-tool-output';
 import { isAbortError, raceWithAbort } from '../../sdk/abort';
 import { isCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
@@ -860,13 +866,17 @@ export class ToolCallExecutor {
 			result: error,
 			isError: true,
 		});
+		const guardedError = await guardToolErrorForModel(
+			stringifyError(error),
+			this.deps.tokenCounter,
+			this.getResultStorage(params),
+		);
+		const builtTool = params.toolMap.get(params.toolName);
 		params.list.setToolCallError(
 			params.toolCallId,
-			await guardToolErrorForModel(
-				stringifyError(error),
-				this.deps.tokenCounter,
-				this.getResultStorage(params),
-			),
+			builtTool?.outputTrust === 'untrusted'
+				? protectUntrustedToolError(guardedError, params.toolName)
+				: guardedError,
 		);
 		return { outcome: 'error', error };
 	}
@@ -1041,6 +1051,10 @@ export class ToolCallExecutor {
 			this.deps.tokenCounter,
 			storage,
 		);
+		const modelOutput =
+			builtTool.outputTrust === 'untrusted'
+				? protectUntrustedToolResult(guardedResult.wireOutput, toolName)
+				: guardedResult.wireOutput;
 
 		this.eventBus.emit({
 			type: AgentEvent.ToolExecutionEnd,
@@ -1050,12 +1064,20 @@ export class ToolCallExecutor {
 			isError: false,
 		});
 
-		list.setToolCallResult(toolCallId, guardedResult.historyOutput);
+		list.setToolCallResult(
+			toolCallId,
+			builtTool.outputTrust === 'untrusted'
+				? toJsonValue(modelOutput)
+				: guardedResult.historyOutput,
+		);
 
 		const customMessage = await builtTool.toMessage?.(toolResult);
 		let guardedCustomMessage = customMessage
 			? await guardToolMessageForModel(customMessage, this.deps.tokenCounter, storage)
 			: undefined;
+		if (guardedCustomMessage && builtTool.outputTrust === 'untrusted') {
+			guardedCustomMessage = protectUntrustedToolMessage(guardedCustomMessage, toolName);
+		}
 		// Stamp tool provenance so derived transcripts (e.g. the observation
 		// log observer) can keep this content inside untrusted-data boundaries.
 		if (guardedCustomMessage && 'role' in guardedCustomMessage) {
@@ -1076,7 +1098,7 @@ export class ToolCallExecutor {
 				output: toolResult,
 				transformed: !!builtTool.toModelOutput,
 			},
-			modelOutput: guardedResult.wireOutput,
+			modelOutput,
 			customMessage: guardedCustomMessage,
 		};
 	}

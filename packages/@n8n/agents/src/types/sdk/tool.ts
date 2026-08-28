@@ -145,6 +145,8 @@ export interface BuiltTool {
 	 * The raw output is stored in history; only the transformed version goes to the model.
 	 */
 	readonly toModelOutput?: (output: unknown) => unknown;
+	/** Treat every model-facing result and error from this tool as external reference data. */
+	readonly outputTrust?: 'untrusted';
 	readonly handler?: (
 		input: unknown,
 		ctx: ToolContext | InterruptibleToolContext,
