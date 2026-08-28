@@ -367,6 +367,48 @@ describe('Ldap', () => {
 				);
 			});
 
+			it('should resolve each expression into its own position', async () => {
+				mockParameters({
+					searchFor: 'custom',
+					customFilter: '=(&(cn={{ $json.a }})(sn={{ $json.b }}))',
+				});
+
+				// The first value looks like the second expression, so a resolved value
+				// must never be rescanned for expressions
+				executeFunctions.evaluateExpression.mockImplementation((expr) => {
+					if (expr === '{{ $json.a }}') return '{{ $json.b }}';
+					if (expr === '{{ $json.b }}') return 'bob';
+					return expr;
+				});
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(mockSearch).toHaveBeenCalledWith(
+					'dc=example,dc=com',
+					expect.objectContaining({
+						filter: '(&(cn={{ $json.b }})(sn=bob))',
+					}),
+				);
+			});
+
+			it('should resolve the same expression used more than once', async () => {
+				mockParameters({
+					searchFor: 'custom',
+					customFilter: '=(&(cn={{ $json.a }})(sn={{ $json.a }}))',
+				});
+
+				executeFunctions.evaluateExpression.mockReturnValue('ali*ce');
+
+				await new Ldap().execute.call(executeFunctions);
+
+				expect(mockSearch).toHaveBeenCalledWith(
+					'dc=example,dc=com',
+					expect.objectContaining({
+						filter: '(&(cn=ali\\2ace)(sn=ali\\2ace))',
+					}),
+				);
+			});
+
 			it('should keep a wildcard the user typed next to an escaped expression value', async () => {
 				mockCustomFilter('=(&(objectClass=inetOrgPerson)(cn={{ $json.body.username }}*))', 'ali*');
 
