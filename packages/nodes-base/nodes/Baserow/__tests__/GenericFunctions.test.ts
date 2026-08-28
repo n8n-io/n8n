@@ -129,6 +129,10 @@ describe('Baserow > GenericFunctions', () => {
 	});
 
 	describe('formatBaserowFilterValue', () => {
+		it('should treat a missing value as empty', () => {
+			expect(formatBaserowFilterValue('equal', undefined)).toBe('');
+		});
+
 		it('should format plain ISO date for date_is_after', () => {
 			expect(formatBaserowFilterValue('date_is_after', '2026-06-17')).toBe(
 				'UTC?2026-06-17?exact_date',
