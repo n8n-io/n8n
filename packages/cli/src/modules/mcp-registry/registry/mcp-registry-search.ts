@@ -25,7 +25,12 @@ export interface McpRegistrySearchResult {
 	metadata: { nodeTypeName: string };
 }
 
-/** Prefer a streamable-http remote, else SSE; null when the server has neither. */
+/**
+ * Prefer a streamable-http remote, else SSE; null when the server has
+ * neither. Consumers key off `metadata.nodeTypeName` / `credentialType` to
+ * wire up a tile, never off this `url` directly, so a templated row's
+ * unresolved `url` string (starting with `=`) is safe to surface as-is.
+ */
 function pickPreferredRemote(
 	server: McpRegistryServer,
 ): { type: 'streamableHttp' | 'sse'; url: string } | null {

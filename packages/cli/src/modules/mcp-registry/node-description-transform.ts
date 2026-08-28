@@ -52,16 +52,24 @@ function getMcpRegistryCredentialHeader(
 	};
 }
 
+type CredentialRemote =
+	| { endpointUrl: string; hostname: string; isTemplated: false }
+	| { endpointUrl: string; isTemplated: true };
+
 /**
- * Picks the server's remote endpoint and parses its hostname.
+ * Picks the server's remote endpoint and parses its hostname. A templated
+ * remote has no hostname to parse yet, it resolves per-credential at runtime.
  */
-function resolveCredentialRemote(
-	server: McpRegistryServer,
-): { endpointUrl: string; hostname: string } | null {
+function resolveCredentialRemote(server: McpRegistryServer): CredentialRemote | null {
 	const remote = pickRemote(server);
 	if (!remote) return null;
+	if (remote.isTemplated) return { endpointUrl: remote.endpointUrl, isTemplated: true };
 	try {
-		return { endpointUrl: remote.endpointUrl, hostname: new URL(remote.endpointUrl).hostname };
+		return {
+			endpointUrl: remote.endpointUrl,
+			hostname: new URL(remote.endpointUrl).hostname,
+			isTemplated: false,
+		};
 	} catch {
 		return null;
 	}
@@ -88,11 +96,14 @@ function buildDomainRestrictionProperties(hostname: string): INodeProperties[] {
 }
 
 /**
- * Registry MCP server → service-specific credential type for OAuth2 auth type
+ * Registry MCP server → service-specific credential type for OAuth2 auth type.
+ * Plain `oauth2` credentials have no user-editable, host-bearing field of
+ * their own to resolve a templated URL against, so templated remotes are
+ * unsupported here and drop the row, same as an unparseable URL.
  */
 function serverToOAuth2CredentialDescription(server: McpRegistryServer): ICredentialType | null {
 	const remote = resolveCredentialRemote(server);
-	if (!remote) return null;
+	if (!remote || remote.isTemplated) return null;
 
 	return {
 		...getMcpRegistryCredentialHeader(server),
@@ -147,7 +158,11 @@ function getValidatedExtendsCredential(
 }
 
 /**
- * Builds a dedicated credential type extending a known n8n credential.
+ * Builds a dedicated credential type extending a known n8n credential. A
+ * templated remote has no literal hostname, so the endpoint and the domain
+ * pin are both written as `$self`-expressions resolved against the parent
+ * credential's own `host` field, the same field the Strapi-authored URL
+ * template itself already depends on.
  */
 function serverToExtendedCredentialDescription(
 	server: McpRegistryServer,
@@ -168,10 +183,29 @@ function serverToExtendedCredentialDescription(
 		}),
 	);
 
+	const serverUrlOverride: INodeProperties[] = remote.isTemplated
+		? [
+				{
+					displayName: 'Server URL',
+					name: 'serverUrl',
+					type: 'hidden',
+					default: remote.endpointUrl,
+				},
+			]
+		: [];
+
+	const allowedDomainsDefault = remote.isTemplated
+		? '={{$self["host"].extractDomain()}}'
+		: remote.hostname;
+
 	return {
 		...getMcpRegistryCredentialHeader(server),
 		extends: [validated.parentType],
-		properties: [...overrideProperties, ...buildDomainRestrictionProperties(remote.hostname)],
+		properties: [
+			...overrideProperties,
+			...serverUrlOverride,
+			...buildDomainRestrictionProperties(allowedDomainsDefault),
+		],
 	};
 }
 
@@ -196,17 +230,27 @@ function getNodeDescriptionCredentials(
 }
 
 /**
- * Pick the connection details from a registry server. Only `streamable-http`
- * and `sse` are supported; `streamable-http` is preferred.
+ * Pick the connection details from a registry server. `streamable-http` is
+ * preferred over `sse`. A remote is templated when its URL starts with `=`,
+ * n8n's own convention for "evaluate this as an expression" (the same marker
+ * every credential/node parameter default already uses), so no dedicated
+ * remote type is needed to flag it. `endpointUrl` is then an unresolved
+ * `$self`-expression string, not a literal URL.
  */
 function pickRemote(
 	server: McpRegistryServer,
-): { transport: 'httpStreamable' | 'sse'; endpointUrl: string } | null {
+): { transport: 'httpStreamable' | 'sse'; endpointUrl: string; isTemplated: boolean } | null {
 	const streamable = server.remotes.find((r) => r.type === 'streamable-http');
-	if (streamable) return { transport: 'httpStreamable', endpointUrl: streamable.url };
+	if (streamable) {
+		return {
+			transport: 'httpStreamable',
+			endpointUrl: streamable.url,
+			isTemplated: streamable.url.startsWith('='),
+		};
+	}
 
 	const sse = server.remotes.find((r) => r.type === 'sse');
-	if (sse) return { transport: 'sse', endpointUrl: sse.url };
+	if (sse) return { transport: 'sse', endpointUrl: sse.url, isTemplated: sse.url.startsWith('=') };
 
 	return null;
 }

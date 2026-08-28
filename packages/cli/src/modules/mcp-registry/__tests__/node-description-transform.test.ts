@@ -7,6 +7,7 @@ import {
 } from '../node-description-transform';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
+	databricksGenieTemplatedMockServer,
 	gmailDirectExtendMockServer,
 	notionMockServer,
 	slackExtendingMockServer,
@@ -376,6 +377,28 @@ describe('serverToNodeDescription', () => {
 
 			expect(description?.credentials).toEqual([]);
 		});
+
+		it('builds a tile for a templated (=-prefixed) streamable-http remote, unresolved endpointUrl and all', () => {
+			const description = serverToNodeDescription(
+				databricksGenieTemplatedMockServer,
+				baseDescription,
+				(name) => name === 'databricksOAuth2Api',
+			);
+
+			expect(description).not.toBeNull();
+			expect(description?.credentials).toEqual([
+				{ name: 'databricksGenieMcpOAuth2Api', required: true },
+			]);
+
+			// The node's own endpointUrl parameter still gets patched with the raw
+			// template; the runtime never reads it once a credential serverUrl is
+			// resolvable (see McpRegistryClientTool), but the description build
+			// itself does not special-case a templated remote.
+			const endpointUrl = description?.properties.find((p) => p.name === 'endpointUrl');
+			const serverTransport = description?.properties.find((p) => p.name === 'serverTransport');
+			expect(serverTransport?.default).toBe('httpStreamable');
+			expect(endpointUrl?.default).toBe('={{$self["host"].replace(/\\/$/, "")}}/api/2.0/mcp/genie');
+		});
 	});
 });
 
@@ -609,6 +632,71 @@ describe('serverToCredentialDescription', () => {
 
 			expect(description?.extends).toEqual(['mcpOAuth2Api']);
 		});
+
+		it('writes a $self-expression serverUrl and allowedDomains for a templated (=-prefixed) remote', () => {
+			const description = serverToCredentialDescription(
+				databricksGenieTemplatedMockServer,
+				(name) => name === 'databricksOAuth2Api',
+			);
+
+			expect(description).toEqual({
+				name: 'databricksGenieMcpOAuth2Api',
+				displayName: 'Databricks Genie MCP OAuth2',
+				extends: ['databricksOAuth2Api'],
+				icon: 'node:@n8n/mcp-registry.databricksGenie',
+				properties: [
+					{ displayName: 'scope', name: 'scope', type: 'hidden', default: 'genie offline_access' },
+					{
+						displayName: 'grantType',
+						name: 'grantType',
+						type: 'hidden',
+						default: 'authorizationCode',
+					},
+					{
+						displayName: 'customScopes',
+						name: 'customScopes',
+						type: 'hidden',
+						default: false,
+					},
+					{
+						displayName: 'Server URL',
+						name: 'serverUrl',
+						type: 'hidden',
+						default: '={{$self["host"].replace(/\\/$/, "")}}/api/2.0/mcp/genie',
+					},
+					{
+						displayName: 'Allowed HTTP Request Domains',
+						name: 'allowedHttpRequestDomains',
+						type: 'hidden',
+						default: 'domains',
+					},
+					{
+						displayName: 'Allowed Domains',
+						name: 'allowedDomains',
+						type: 'hidden',
+						default: '={{$self["host"].extractDomain()}}',
+					},
+				],
+			});
+		});
+	});
+
+	it('drops the row for a templated remote paired with plain oauth2 auth, no host-bearing field to resolve against', () => {
+		const server: McpRegistryServer = {
+			...notionMockServer,
+			remotes: [{ type: 'streamable-http', url: '={{$self["host"]}}/mcp' }],
+		};
+
+		expect(serverToCredentialDescription(server, isKnownCredentialType)).toBeNull();
+	});
+
+	it('drops the row when the remote type is unrecognised, the back-compat gate for future remote types', () => {
+		const server: McpRegistryServer = {
+			...notionMockServer,
+			remotes: [{ type: 'some-future-remote-type' as never, url: 'https://mcp.notion.com/mcp' }],
+		};
+
+		expect(serverToCredentialDescription(server, isKnownCredentialType)).toBeNull();
 	});
 });
 
