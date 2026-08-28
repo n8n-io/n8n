@@ -31,6 +31,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 	disposeWorkflowDocumentStore,
+	deriveHomeProject,
 } from '@/app/stores/workflowDocument.store';
 import { useNDVStore, disposeNDVStore } from '@/features/ndv/shared/ndv.store';
 import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
@@ -282,7 +283,7 @@ export function useWorkflowInitialization() {
 			const workflowDocumentId = createWorkflowDocumentId(data.id);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
 			currentWorkflowDocumentStore.value.setName(data.name);
-			currentWorkflowDocumentStore.value.setHomeProject(data.homeProject ?? null);
+			currentWorkflowDocumentStore.value.setHomeProject(deriveHomeProject(data));
 			currentWorkflowDocumentStore.value.setScopes(data.scopes ?? []);
 			return;
 		}
