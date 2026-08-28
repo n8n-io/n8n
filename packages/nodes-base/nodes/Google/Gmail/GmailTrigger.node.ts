@@ -345,6 +345,9 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 		const simple = this.getNodeParameter('simple') as boolean;
 
 		const shouldLimitMessages = node.typeVersion >= 1.4 && this.getMode() !== 'manual';
+		// How far this tick may reach before it must return — bounds listing and
+		// fetching time, not delivery volume (maxResults stays the per-tick bound).
+		const pollDeadline = Date.now() + this.getPollBudgetMs();
 		const maxResults = shouldLimitMessages
 			? (this.getNodeParameter('maxResults', 10) as number)
 			: Infinity;
@@ -536,6 +539,8 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 					// advance. A failed id leaves the queue for the set-aside list, which
 					// is written once the loop ends.
 					nodeStaticData.pendingMessageIds = pendingIds.slice(index + 1);
+					// Checked after the fetch so every tick handles at least one id.
+					if (Date.now() >= pollDeadline) break;
 				}
 
 				if (newlyFailed.length > 0) {
@@ -543,10 +548,16 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				}
 			}
 
-			// While queued ids remain, do not scan: the queue write after a scan replaces
-			// the whole queue, so scanning now would drop the ids this poll could not
-			// reach.
-			if (shouldLimitMessages && (nodeStaticData.pendingMessageIds?.length ?? 0) > 0) {
+			// While queued ids remain — or fetching them used up this poll's budget —
+			// do not scan: the queue write after a scan replaces the whole queue, so
+			// scanning now would drop the ids this poll could not reach. A poll that
+			// fetched nothing still scans, so an already-spent budget cannot stop every
+			// poll from making progress.
+			if (
+				shouldLimitMessages &&
+				((nodeStaticData.pendingMessageIds?.length ?? 0) > 0 ||
+					(allFetchedMessages.length > 0 && Date.now() >= pollDeadline))
+			) {
 				await simplifyResponseData();
 
 				// This path returns before the state update at the end of poll(), so it
@@ -596,10 +607,15 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				messages.push(...(messagesResponse.messages ?? []));
 				pageToken = messagesResponse.nextPageToken;
 				pagesScanned++;
-			} while (shouldLimitMessages && pageToken && pagesScanned < MAX_SCAN_PAGES);
-			// A leftover token means the cap stopped the scan short. Gmail returns
-			// newest first, so the remainder is older mail; a cursor moved past it
-			// would never reach it again.
+			} while (
+				shouldLimitMessages &&
+				pageToken &&
+				pagesScanned < MAX_SCAN_PAGES &&
+				Date.now() < pollDeadline
+			);
+			// A leftover token means the time budget or the cap stopped the scan short.
+			// Gmail returns newest first, so the remainder is older mail; a cursor moved
+			// past it would never reach it again.
 			windowFullyScanned = !pageToken;
 
 			// Pagination can repeat an id across pages when the mailbox shifts
@@ -699,6 +715,8 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 							...messagesToProcess.slice(index + 1).map((m) => m.id),
 							...beyondBudgetIds,
 						];
+						// Checked after the fetch so every tick fetches at least one message.
+						if (Date.now() >= pollDeadline) break;
 					}
 				}
 
