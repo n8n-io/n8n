@@ -17,6 +17,9 @@ importers:
       '@octokit/core':
         specifier: 7.0.6
         version: 7.0.6
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
       conventional-changelog:
         specifier: 7.2.0
         version: 7.2.0(conventional-commits-filter@5.0.0)
@@ -42,6 +45,9 @@ importers:
         specifier: ^2.8.3
         version: 2.9.0
     devDependencies:
+      '@types/node':
+        specifier: ^26.3.0
+        version: 26.3.0
       conventional-changelog-angular:
         specifier: 8.3.0
         version: 8.3.0
@@ -322,6 +328,9 @@ packages:
 
   '@types/http-cache-semantics@4.2.0':
     resolution: {integrity: sha512-L3LgimLHXtGkWikKnsPg0/VFx9OGZaC+eN1u4r+OB1XRqH3meBIAVC2zr1WdMH+RHmnRkqliQAOHNJ/E0j/e0Q==}
+
+  '@types/node@26.3.0':
+    resolution: {integrity: sha512-L3fgrnchriRC2ExBflb8j4uZZURHZfQsmQeyVzhjcHW4kkwVyo8/0h1B2MVzMTrYUJYu6G7EWs14hW/L9putqw==}
 
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
@@ -1072,6 +1081,9 @@ packages:
     engines: {node: '>=0.8.0'}
     hasBin: true
 
+  undici-types@8.3.0:
+    resolution: {integrity: sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==}
+
   undici@6.28.0:
     resolution: {integrity: sha512-LIY910g9TI13YS95lrMFrs8Rm/u/irgHeTWoKCoteeJ04CUJ92eEfj0rVn+7VKMPBpUPiUoBKfhNyLI23EE/KA==}
     engines: {node: '>=18.17'}
@@ -1522,6 +1534,10 @@ snapshots:
   '@sindresorhus/is@7.2.0': {}
 
   '@types/http-cache-semantics@4.2.0': {}
+
+  '@types/node@26.3.0':
+    dependencies:
+      undici-types: 8.3.0
 
   '@types/normalize-package-data@2.4.4': {}
 
@@ -2323,6 +2339,8 @@ snapshots:
 
   uglify-js@3.19.3:
     optional: true
+
+  undici-types@8.3.0: {}
 
   undici@6.28.0: {}
 

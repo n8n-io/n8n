@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { contentImportPolicyResultSchema } from './content-import-policy-result.schema';
 import { workflowPublishBlockedDetailsSchema } from '../workflow-publish-blocked-details';
 
 const FileTypeSchema = z.enum([
@@ -59,6 +60,8 @@ export const SourceControlledFileSchema = z.object({
 	owner: ResourceOwnerSchema.optional(), // Resource owner can be a personal email or team information
 	publishingError: z.string().optional(),
 	publishingErrorDetails: workflowPublishBlockedDetailsSchema.optional(),
+	/** Advisory only — never blocks the pull. */
+	contentImportPolicy: contentImportPolicyResultSchema.optional(),
 });
 
 export type SourceControlledFile = z.infer<typeof SourceControlledFileSchema>;

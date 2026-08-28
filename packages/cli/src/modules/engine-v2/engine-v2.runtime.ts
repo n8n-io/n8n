@@ -14,6 +14,7 @@ import assert from 'node:assert';
 import type { Server } from 'node:http';
 
 import { NodeTypes } from '@/node-types';
+import { EngineControlPlaneClient } from './engine-control-plane-client';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 /**
@@ -36,6 +37,7 @@ export class EngineV2Runtime {
 		private readonly engineConfig: EngineConfig,
 		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
+		private readonly controlPlaneClient: EngineControlPlaneClient,
 	) {
 		this.logger = this.logger.scoped('engine-v2');
 	}
@@ -82,7 +84,10 @@ export class EngineV2Runtime {
 			// limits are applied.
 			admittance: new AllowAllAdmittance(),
 			identityVerifier: new SharedSecretIdentityVerifier(this.engineConfig.authSecret),
+			logger: this.logger,
 			externalDependencies: ({ executionStore, stepStore }) => ({
+				lifecycleEventCallback: async (events, signal) =>
+					await this.controlPlaneClient.sendLifecycleEvents(events, signal),
 				v1StepExecutor: new V1StepExecutor({
 					nodeTypes: this.nodeTypes,
 					// TODO(CAT-2880): no credential access. A v1 node that needs credentials
