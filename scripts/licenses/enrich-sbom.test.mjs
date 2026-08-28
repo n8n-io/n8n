@@ -323,3 +323,64 @@ describe('enrich -> gate round-trip (no unlicensed code survives)', () => {
 		assert.equal(after.warnings.length, 1);
 	});
 });
+
+describe('isPhantomNpm across scanners (cdxgen and syft)', () => {
+	const cdxgen = (name, version, src) => ({
+		name,
+		version,
+		purl: `pkg:npm/${name}${version ? `@${version}` : ''}`,
+		properties: src ? [{ name: 'SrcFile', value: src }] : [],
+	});
+	const syft = (name, version, src) => ({
+		name,
+		version,
+		purl: `pkg:npm/${name}${version && version !== 'UNKNOWN' ? `@${version}` : ''}`,
+		properties: src ? [{ name: 'syft:location:0:path', value: src }] : [],
+	});
+
+	// syft names the path property differently. Without this the filter matches
+	// nothing and every phantom reaches the gate.
+	it('reads the source path from syft output, not just cdxgen', () => {
+		assert.equal(
+			isPhantomNpm(
+				syft(
+					'baz',
+					'1.0.0',
+					'/app/node_modules/.pnpm/resolve@1.22.11/node_modules/resolve/test/resolver/baz/package.json',
+				),
+			),
+			true,
+		);
+	});
+
+	it('treats an "UNKNOWN" version from syft the same as a missing one', () => {
+		assert.equal(isPhantomNpm(syft('web-streams-polyfill', 'UNKNOWN')), true);
+		assert.equal(isPhantomNpm(cdxgen('web-streams-polyfill', undefined)), true);
+	});
+
+	it('keeps a real package from either scanner', () => {
+		assert.equal(
+			isPhantomNpm(syft('lodash', '4.17.21', '/app/node_modules/lodash/package.json')),
+			false,
+		);
+		assert.equal(
+			isPhantomNpm(cdxgen('lodash', '4.17.21', '/app/node_modules/lodash/package.json')),
+			false,
+		);
+	});
+
+	it('keeps a real scoped package from syft output', () => {
+		assert.equal(
+			isPhantomNpm({
+				name: 'task-runner',
+				group: '@n8n',
+				version: '2.37.2',
+				purl: 'pkg:npm/%40n8n/task-runner@2.37.2',
+				properties: [
+					{ name: 'syft:location:0:path', value: '/app/node_modules/@n8n/task-runner/package.json' },
+				],
+			}),
+			false,
+		);
+	});
+});

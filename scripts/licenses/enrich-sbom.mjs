@@ -63,8 +63,16 @@ export async function loadLicenseConfig() {
 	}
 }
 
+// cdxgen and syft record the same fact under different property names.
+const SRC_FILE_PROPERTIES = ['SrcFile', 'syft:location:0:path'];
+
 function srcFileOf(component) {
-	return component.properties?.find((p) => p.name === 'SrcFile')?.value ?? null;
+	const properties = component.properties ?? [];
+	for (const name of SRC_FILE_PROPERTIES) {
+		const found = properties.find((p) => p.name === name);
+		if (found?.value) return found.value;
+	}
+	return null;
 }
 
 /**
@@ -81,7 +89,8 @@ function srcFileOf(component) {
 export function isPhantomNpm(component) {
 	const purl = component.purl ?? '';
 	if (!purl.startsWith('pkg:npm/')) return false;
-	if (!component.version) return true;
+	// syft writes "UNKNOWN" where cdxgen omits the field. Neither is a real version.
+	if (!component.version || component.version === 'UNKNOWN') return true;
 	const src = srcFileOf(component);
 	if (!src) return false; // can't prove it's a phantom — keep it
 	return !src.endsWith(`/node_modules/${qualifiedName(component)}/package.json`);
