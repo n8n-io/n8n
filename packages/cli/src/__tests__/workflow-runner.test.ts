@@ -941,7 +941,7 @@ describe('pre-persist context establishment', () => {
 	});
 
 	it('skips establishExecutionContext when nodeExecutionStack has not been populated yet', async () => {
-		// Queue mode with OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS=true creates
+		// Queue mode creates
 		// the outer IRunExecutionData with `executionData: null`, which
 		// `createRunExecutionData` normalises to an object whose inner
 		// `.executionData` is undefined. The worker establishes context

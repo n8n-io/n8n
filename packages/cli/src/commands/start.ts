@@ -213,9 +213,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			scopedLogger.debug('Starting main instance in scaling mode');
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
-			if (process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true') {
-				this.needsTaskRunner = false;
-			}
+			this.needsTaskRunner = false;
 		}
 
 		await super.init();

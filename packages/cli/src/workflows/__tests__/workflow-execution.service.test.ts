@@ -937,15 +937,12 @@ describe('WorkflowExecutionService', () => {
 		});
 	});
 
-	describe('offloading manual executions to workers', () => {
-		let originalOffloadManualExecutionsToWorkers: string | undefined;
+	describe('manual executions in queue mode', () => {
 		let globalConfigMock: GlobalConfig;
 		let workflowRunnerMock: MockProxy<WorkflowRunner>;
 		let service: WorkflowExecutionService;
 
 		beforeEach(() => {
-			originalOffloadManualExecutionsToWorkers = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 			globalConfigMock = mock<GlobalConfig>({ executions: { mode: 'queue' } });
 			workflowRunnerMock = mock<WorkflowRunner>();
 			workflowRunnerMock.run.mockResolvedValue('fake-execution-id');
@@ -972,11 +969,6 @@ describe('WorkflowExecutionService', () => {
 		});
 
 		afterEach(() => {
-			if (originalOffloadManualExecutionsToWorkers === undefined) {
-				delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
-			} else {
-				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = originalOffloadManualExecutionsToWorkers;
-			}
 			vi.clearAllMocks();
 		});
 
