@@ -76,7 +76,7 @@ describe('connectRequiredSubnodeInputs', () => {
 
 		const result = connectRequiredSubnodeInputs(workflow, nodeTypes);
 
-		expect(result.added).toEqual([
+		expect(result).toEqual([
 			{
 				sourceNode: 'OpenAI Chat Model',
 				targetNode: 'Output Parser',
@@ -84,7 +84,6 @@ describe('connectRequiredSubnodeInputs', () => {
 				viaParent: 'Feature Release Agent',
 			},
 		]);
-		expect(result.unsatisfied).toEqual([]);
 		expect(workflow.connections['OpenAI Chat Model']?.ai_languageModel?.[0]).toEqual([
 			{ node: 'Feature Release Agent', type: 'ai_languageModel', index: 0 },
 			{ node: 'Output Parser', type: 'ai_languageModel', index: 0 },
@@ -96,7 +95,7 @@ describe('connectRequiredSubnodeInputs', () => {
 
 		const result = connectRequiredSubnodeInputs(workflow, nodeTypes);
 
-		expect(result).toEqual({ added: [], unsatisfied: [] });
+		expect(result).toEqual([]);
 		expect(workflow.connections['OpenAI Chat Model']?.ai_languageModel?.[0]).toHaveLength(1);
 	});
 
@@ -110,46 +109,21 @@ describe('connectRequiredSubnodeInputs', () => {
 
 		const result = connectRequiredSubnodeInputs(workflow, nodeTypes);
 
-		expect(result).toEqual({ added: [], unsatisfied: [] });
+		expect(result).toEqual([]);
 	});
 
-	it('reports rather than guesses when the parent has no model', () => {
+	it('wires nothing when the parent has no model to take', () => {
 		const workflow = agentWithParser({ autoFix: true }, { models: [] });
 
-		const result = connectRequiredSubnodeInputs(workflow, nodeTypes);
-
-		expect(result.added).toEqual([]);
-		// The agent is short a model too, and is reported on its own account.
-		expect(result.unsatisfied).toEqual([
-			{
-				nodeName: 'Feature Release Agent',
-				connectionType: 'ai_languageModel',
-				requiredBy: {},
-				reason: 'none',
-				candidates: [],
-			},
-			{
-				nodeName: 'Output Parser',
-				connectionType: 'ai_languageModel',
-				requiredBy: { autoFix: true },
-				reason: 'none',
-				candidates: [],
-			},
-		]);
+		expect(connectRequiredSubnodeInputs(workflow, nodeTypes)).toEqual([]);
 	});
 
-	it('reports rather than guesses when the parent has two models', () => {
+	it('wires nothing when the parent has two models, rather than picking one', () => {
 		const workflow = agentWithParser({ autoFix: true }, { models: ['Primary', 'Fallback'] });
 
-		const result = connectRequiredSubnodeInputs(workflow, nodeTypes);
-
-		expect(result.added).toEqual([]);
-		expect(result.unsatisfied[0]).toMatchObject({
-			nodeName: 'Output Parser',
-			reason: 'ambiguous',
-			candidates: ['Primary', 'Fallback'],
-		});
+		expect(connectRequiredSubnodeInputs(workflow, nodeTypes)).toEqual([]);
 		expect(workflow.connections.Primary?.ai_languageModel?.[0]).toHaveLength(1);
+		expect(workflow.connections.Fallback?.ai_languageModel?.[0]).toHaveLength(1);
 	});
 
 	it('does not treat an ungated required input as missing', () => {
@@ -159,7 +133,7 @@ describe('connectRequiredSubnodeInputs', () => {
 
 		const result = connectRequiredSubnodeInputs(workflow, nodeTypes);
 
-		expect(result.added.map((a) => a.targetNode)).toEqual(['Output Parser']);
+		expect(result.map((a) => a.targetNode)).toEqual(['Output Parser']);
 	});
 
 	it('handles a non-boolean gate on a different connection type', () => {
@@ -182,7 +156,7 @@ describe('connectRequiredSubnodeInputs', () => {
 
 		const result = connectRequiredSubnodeInputs(workflow, nodeTypes);
 
-		expect(result.added).toEqual([
+		expect(result).toEqual([
 			{
 				sourceNode: 'Splitter',
 				targetNode: 'Loader',
@@ -198,10 +172,7 @@ describe('connectRequiredSubnodeInputs', () => {
 			connections: {},
 		};
 
-		expect(connectRequiredSubnodeInputs(workflow, nodeTypes)).toEqual({
-			added: [],
-			unsatisfied: [],
-		});
+		expect(connectRequiredSubnodeInputs(workflow, nodeTypes)).toEqual([]);
 	});
 
 	it('survives a provider that throws on an unknown version', () => {
@@ -213,9 +184,6 @@ describe('connectRequiredSubnodeInputs', () => {
 
 		const workflow = agentWithParser({ autoFix: true });
 
-		expect(connectRequiredSubnodeInputs(workflow, throwingNodeTypes)).toEqual({
-			added: [],
-			unsatisfied: [],
-		});
+		expect(connectRequiredSubnodeInputs(workflow, throwingNodeTypes)).toEqual([]);
 	});
 });

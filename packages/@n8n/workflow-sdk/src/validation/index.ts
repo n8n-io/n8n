@@ -45,9 +45,8 @@ export {
 
 export {
 	connectRequiredSubnodeInputs,
+	describeAddedSubnodeConnection,
 	type AddedSubnodeConnection,
-	type UnsatisfiedRequiredInput,
-	type RequiredSubnodeWiringResult,
 	type WorkflowForSubnodeWiring,
 } from './required-subnode-connections';
 

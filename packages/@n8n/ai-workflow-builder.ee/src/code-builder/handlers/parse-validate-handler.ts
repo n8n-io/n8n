@@ -9,11 +9,12 @@
 import type { Logger } from '@n8n/backend-common';
 import {
 	connectRequiredSubnodeInputs,
+	describeAddedSubnodeConnection,
 	parseWorkflowCodeToBuilder,
 	validateWorkflow,
 	workflow,
 } from '@n8n/workflow-sdk';
-import type { RequiredSubnodeWiringResult, WorkflowJSON } from '@n8n/workflow-sdk';
+import type { AddedSubnodeConnection, WorkflowJSON } from '@n8n/workflow-sdk';
 import type { INodeTypes } from 'n8n-workflow';
 
 import type { ParseAndValidateResult, ValidationWarning } from '../types';
@@ -81,8 +82,8 @@ export class ParseValidateHandler {
 	 * Needs node types to read the requirement off `builderHint.inputs`; a handler
 	 * built without a provider leaves the workflow untouched.
 	 */
-	private connectRequiredInputs(json: WorkflowJSON): RequiredSubnodeWiringResult {
-		if (!this.nodeTypesProvider) return { added: [], unsatisfied: [] };
+	private connectRequiredInputs(json: WorkflowJSON): AddedSubnodeConnection[] {
+		if (!this.nodeTypesProvider) return [];
 		return connectRequiredSubnodeInputs(json, this.nodeTypesProvider);
 	}
 
@@ -301,12 +302,8 @@ export class ParseValidateHandler {
 			const workflowJson: WorkflowJSON = builder.toJSON({ tidyUp: true, existingGroupIdsByName });
 			// `workflowJson` is a fresh serialization from the builder, so the
 			// connections added to the validation copy above are re-added here.
-			for (const link of this.connectRequiredInputs(workflowJson).added) {
-				allWarnings.push({
-					code: 'REQUIRED_SUBNODE_CONNECTED',
-					message: `Connected '${link.sourceNode}' to the ${link.connectionType} input of '${link.targetNode}', which its own parameters made required. The source was taken from '${link.viaParent}'. Wire this explicitly in future edits.`,
-					nodeName: link.targetNode,
-				});
+			for (const link of this.connectRequiredInputs(workflowJson)) {
+				allWarnings.push(describeAddedSubnodeConnection(link));
 			}
 
 			this.logger?.debug('Parsed workflow', {

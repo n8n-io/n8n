@@ -29,6 +29,7 @@ import { isChatOAuth2Enabled } from '@/constants/oauth2-triggers';
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
+import { withExpressionIsolate } from '@/utils';
 
 export interface WorkflowValidationResult {
 	isValid: boolean;
@@ -353,9 +354,11 @@ export class WorkflowValidationService {
 	 * and no model, which fails while the agent assembles its sub-nodes, before
 	 * any inference runs.
 	 *
-	 * Kept separate from `validateForActivation` because resolving a node's
-	 * inputs may evaluate an expression, which is async; the other activation
-	 * checks are synchronous and have a caller that relies on that.
+	 * Separate from `validateForActivation` only because resolving a node's
+	 * inputs can evaluate an expression, making this async while the rest of that
+	 * method is synchronous. Folding it in would mean awaiting the one other
+	 * caller (`breaking-changes.migration.service`) and is worth doing, so that
+	 * activation has a single gate and one error shape.
 	 */
 	async validateRequiredInputsConnected(
 		nodes: INode[],
@@ -370,8 +373,7 @@ export class WorkflowValidationService {
 		// Dynamic `inputs` expressions resolve through workflow.expression, which
 		// needs an isolate when the VM expression engine is on. Without it
 		// getNodeInputs returns [] and this check silently passes everything.
-		await workflow.expression.acquireIsolate();
-		try {
+		await withExpressionIsolate(workflow, async () => {
 			for (const node of nodes) {
 				if (node.disabled) continue;
 
@@ -384,9 +386,7 @@ export class WorkflowValidationService {
 					);
 				}
 			}
-		} finally {
-			await workflow.expression.releaseIsolate();
-		}
+		});
 
 		if (issues.length > 0) {
 			return {

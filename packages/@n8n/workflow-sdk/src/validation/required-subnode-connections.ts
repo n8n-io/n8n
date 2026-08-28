@@ -13,10 +13,11 @@
  * about. The result is a node with a required input left dangling: it renders as
  * an unconnected port and fails at runtime when the capability fires.
  *
- * This pass completes those connections. The source is not guessed — it is taken
+ * This pass completes those connections. The source is not guessed: it is taken
  * from the parent the subnode is already attached to, which is the same node a
  * person would drag the wire from. Where no single unambiguous source exists the
- * gap is reported instead, so the caller can refuse rather than invent a link.
+ * input is left alone, and `validateWorkflow` reports it as
+ * `MISSING_REQUIRED_INPUT`.
  */
 
 import type { INodeTypes } from 'n8n-workflow';
@@ -34,7 +35,7 @@ export interface WorkflowForSubnodeWiring {
 	nodes: Array<{
 		name?: string;
 		type: string;
-		typeVersion?: number;
+		typeVersion?: number | string;
 		parameters?: Record<string, unknown>;
 	}>;
 	connections: {
@@ -60,21 +61,20 @@ export interface AddedSubnodeConnection {
 	viaParent: string;
 }
 
-/** A required input this pass could not satisfy on its own. */
-export interface UnsatisfiedRequiredInput {
+/**
+ * The note shown to whoever asked for the build. Kept next to the producer so
+ * the wording and the code stay in one place across both callers.
+ */
+export function describeAddedSubnodeConnection(link: AddedSubnodeConnection): {
+	code: string;
+	message: string;
 	nodeName: string;
-	connectionType: string;
-	/** Parameters that made the input required, e.g. `{ autoFix: true }` */
-	requiredBy: Record<string, unknown>;
-	/** `none` when no candidate was found, `ambiguous` when several were */
-	reason: 'none' | 'ambiguous';
-	/** Candidate source nodes when `reason` is `ambiguous` */
-	candidates: string[];
-}
-
-export interface RequiredSubnodeWiringResult {
-	added: AddedSubnodeConnection[];
-	unsatisfied: UnsatisfiedRequiredInput[];
+} {
+	return {
+		code: 'REQUIRED_SUBNODE_CONNECTED',
+		message: `Connected '${link.sourceNode}' to the ${link.connectionType} input of '${link.targetNode}', which its own parameters made required. The source was taken from '${link.viaParent}'. Wire this explicitly in future edits.`,
+		nodeName: link.targetNode,
+	};
 }
 
 /** node -> connection type -> source nodes feeding it. */
@@ -123,18 +123,6 @@ function findParents(workflow: WorkflowForSubnodeWiring, nodeName: string): stri
 	return [...parents];
 }
 
-/** Which parameter values made a required input apply, for the report. */
-function describeTrigger(
-	displayOptions: DisplayOptions | undefined,
-	parameters: Record<string, unknown>,
-): Record<string, unknown> {
-	const trigger: Record<string, unknown> = {};
-	for (const path of Object.keys(displayOptions?.show ?? {})) {
-		trigger[path] = parameters[path];
-	}
-	return trigger;
-}
-
 function addConnection(
 	workflow: WorkflowForSubnodeWiring,
 	sourceNode: string,
@@ -150,21 +138,24 @@ function addConnection(
  * Connect required AI inputs that a node's own parameters made mandatory but
  * that were left unwired.
  *
- * Mutates `workflow.connections` in place. Returns what was connected and what
- * could not be, so a caller can surface the remainder or refuse to save.
+ * Mutates `workflow.connections` in place and returns the links it added. An
+ * input it cannot satisfy is left alone: `validateWorkflow` already reports
+ * those as `MISSING_REQUIRED_INPUT`.
  */
 export function connectRequiredSubnodeInputs(
 	workflow: WorkflowForSubnodeWiring,
 	nodeTypesProvider: INodeTypes,
-): RequiredSubnodeWiringResult {
+): AddedSubnodeConnection[] {
 	const added: AddedSubnodeConnection[] = [];
-	const unsatisfied: UnsatisfiedRequiredInput[] = [];
 	const incoming = buildIncomingIndex(workflow);
 
 	for (const node of workflow.nodes) {
 		if (!node.name) continue;
 
-		const version = node.typeVersion ?? 1;
+		// Mirrors validate-workflow.ts, where a workflow read from the wire can
+		// carry typeVersion as a string.
+		const version =
+			typeof node.typeVersion === 'string' ? parseFloat(node.typeVersion) : (node.typeVersion ?? 1);
 
 		let builderHintInputs;
 		try {
@@ -194,31 +185,21 @@ export function connectRequiredSubnodeInputs(
 				if (!matchesDisplayOptions(context, displayOptions)) continue;
 			}
 
-			const alreadyConnected = incoming.get(node.name)?.get(connectionType);
-			if (alreadyConnected && alreadyConnected.size > 0) continue;
+			// buildIncomingIndex only ever stores non-empty sets.
+			if (incoming.get(node.name)?.get(connectionType)) continue;
 
 			// Take the source from whatever already supplies this connection type to
 			// the parent the subnode hangs off — the wire a person would draw.
-			const candidatesByParent = new Map<string, string>();
+			const parentBySource = new Map<string, string>();
 			for (const parent of findParents(workflow, node.name)) {
 				for (const source of incoming.get(parent)?.get(connectionType) ?? []) {
-					if (source !== node.name) candidatesByParent.set(source, parent);
+					if (source !== node.name) parentBySource.set(source, parent);
 				}
 			}
 
-			const requiredBy = describeTrigger(displayOptions, parameters);
-			const candidates = [...candidatesByParent.keys()];
-
-			if (candidates.length !== 1) {
-				unsatisfied.push({
-					nodeName: node.name,
-					connectionType,
-					requiredBy,
-					reason: candidates.length === 0 ? 'none' : 'ambiguous',
-					candidates,
-				});
-				continue;
-			}
+			// Only wire when there is exactly one source it could have come from.
+			const candidates = [...parentBySource.keys()];
+			if (candidates.length !== 1) continue;
 
 			const [sourceNode] = candidates;
 			addConnection(workflow, sourceNode, node.name, connectionType);
@@ -226,10 +207,10 @@ export function connectRequiredSubnodeInputs(
 				sourceNode,
 				targetNode: node.name,
 				connectionType,
-				viaParent: candidatesByParent.get(sourceNode) as string,
+				viaParent: parentBySource.get(sourceNode) as string,
 			});
 		}
 	}
 
-	return { added, unsatisfied };
+	return added;
 }
