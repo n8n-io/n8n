@@ -28,6 +28,7 @@ requestBody:
             type: boolean
         required:
           - commitMessage
+        additionalProperties: false
 responses:
   '200':
     description: Operation successful.

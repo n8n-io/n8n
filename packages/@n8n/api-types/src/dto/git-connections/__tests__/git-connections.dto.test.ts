@@ -77,5 +77,11 @@ describe('Git connection DTOs', () => {
 				PushGitConnectionDto.safeParse({ commitMessage: 'Update', force: 'yes' }).success,
 			).toBe(false);
 		});
+
+		it('rejects unknown fields', () => {
+			expect(
+				PushGitConnectionDto.safeParse({ commitMessage: 'Update', dryRun: true }).success,
+			).toBe(false);
+		});
 	});
 });

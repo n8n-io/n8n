@@ -302,6 +302,8 @@ export class GitConnectionsPublicController {
 	@ApiResponse(200, GitConnectionPullResultDto)
 	@ApiErrorResponse(400)
 	@ApiErrorResponse(404)
+	@ApiErrorResponse(409)
+	@ApiErrorResponse(422)
 	@ApiErrorResponse(503)
 	async pullGitConnectionProjects(
 		req: AuthenticatedRequest,

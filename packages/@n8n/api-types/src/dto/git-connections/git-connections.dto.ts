@@ -42,12 +42,15 @@ export class CloneGitConnectionDto extends Z.class({
 	branchName: branchNameSchema.optional(),
 }) {}
 
-export class PushGitConnectionDto extends Z.class({
-	// Required: every push produces a commit, so the caller must supply its message.
-	commitMessage: z.string().trim().min(1).max(1000),
-	// Overwrite the remote branch even when it has diverged. Off by default.
-	force: z.boolean().optional(),
-}) {}
+export class PushGitConnectionDto extends Z.class(
+	{
+		// Required: every push produces a commit, so the caller must supply its message.
+		commitMessage: z.string().trim().min(1).max(1000),
+		// Overwrite the remote branch even when it has diverged. Off by default.
+		force: z.boolean().optional(),
+	},
+	{ strict: true },
+) {}
 
 export class ListGitConnectionsQueryDto extends Z.class({
 	limit: publicApiPaginationSchema.limit,
