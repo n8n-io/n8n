@@ -850,6 +850,34 @@ export class WorkflowExecute {
 	}
 
 	/**
+	 * Whether data produced by `from` could still reach `to` without re-running
+	 * a node that already executed. If every path passes through an executed
+	 * node, data from `from` could only arrive in a later loop iteration.
+	 */
+	private canStillDeliverData(workflow: Workflow, from: string, to: string): boolean {
+		const visited = new Set<string>([from]);
+		const queue = [from];
+		while (queue.length) {
+			const current = queue.shift() as string;
+			for (const output of workflow.connectionsBySourceNode[current]?.main ?? []) {
+				for (const connection of output ?? []) {
+					if (connection.node === to) {
+						return true;
+					}
+					if (visited.has(connection.node)) {
+						continue;
+					}
+					visited.add(connection.node);
+					if (this.runExecutionData.resultData.runData[connection.node] === undefined) {
+						queue.push(connection.node);
+					}
+				}
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * Scans `waitingExecution` for a node that can be executed next and moves it
 	 * onto the execution stack. Waiting entries whose received data is all empty
 	 * are removed without being executed. At most one node gets dispatched.
@@ -1014,7 +1042,19 @@ export class WorkflowExecute {
 	 */
 	private dispatchWaitingNode(workflow: Workflow): boolean {
 		const anyWaitingParent = (waitingParents: string[]) => waitingParents.length !== 0;
-		return this.dispatchWaitingNodeWhere(workflow, anyWaitingParent);
+		if (this.dispatchWaitingNodeWhere(workflow, anyWaitingParent)) {
+			return true;
+		}
+
+		// In a cyclic workflow every waiting node can appear among another waiting
+		// node's parents, so the pass above may dispatch nothing at all and the
+		// execution would silently end. Retry, ignoring waiting parents whose data
+		// could only arrive via a later loop iteration. This stays a separate
+		// fallback (rather than the only pass) purely to preserve the dispatch
+		// behavior of workflows that never deadlocked.
+		const deliverableWaitingParent = (waitingParents: string[], nodeName: string) =>
+			waitingParents.some((parent) => this.canStillDeliverData(workflow, parent, nodeName));
+		return this.dispatchWaitingNodeWhere(workflow, deliverableWaitingParent);
 	}
 
 	/**
