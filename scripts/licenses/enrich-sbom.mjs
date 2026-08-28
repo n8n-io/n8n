@@ -219,9 +219,8 @@ export function enrichSbom(
 	const source = sbom.components ?? [];
 	const kept = dropPhantomNpm ? source.filter((c) => !isPhantomNpm(c)) : source;
 	const droppedPhantoms = source.length - kept.length;
-	// Report which components were dropped, not only how many. A dropped component
-	// leaves the signed SBOM, so a real package caught by the heuristic must stay
-	// reviewable after the run.
+	// A dropped component leaves the signed SBOM, so record which ones, not just how
+	// many, in case the heuristic catches a real package.
 	const droppedPhantomPurls = dropPhantomNpm
 		? source.filter(isPhantomNpm).map((c) => c.purl ?? c.name)
 		: [];

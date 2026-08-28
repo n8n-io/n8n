@@ -54,8 +54,6 @@ describe('assertSbomIsUsable', () => {
 		);
 	});
 
-	// The gate reports failures only for components it can see, so it passes on an
-	// SBOM that catalogued nothing. This is the check that stops that being signed.
 	it('rejects an SBOM the scanner failed to populate', () => {
 		const p = write('empty.json', [{ purl: 'pkg:apk/alpine/busybox@1.0' }, OS]);
 		assert.throws(() => assertSbomIsUsable(p, 'n8n'), /no npm components/);
