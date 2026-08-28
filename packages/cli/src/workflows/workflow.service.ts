@@ -41,6 +41,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
@@ -731,12 +732,12 @@ export class WorkflowService {
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		tracking: { source: WorkflowActionSource; unpublishOnFailure?: boolean } = { source: 'ui' },
+		options: { source: WorkflowActionSource; unpublishOnFailure?: boolean } = { source: 'ui' },
 	): Promise<void> {
 		// Re-applying the version that is already live publishes nothing, so a failure there has no
 		// partial publication to undo. Unpublishing would take a workflow down over a save that was
 		// never asking to change what is published.
-		const { unpublishOnFailure = true } = tracking;
+		const { unpublishOnFailure = true } = options;
 
 		let didPublish = false;
 		try {
@@ -782,6 +783,9 @@ export class WorkflowService {
 			throw new WorkflowActivationBadRequestError(message, {
 				nodeId: getErrorNodeId(error),
 				description,
+				// Tells the editor the published version is untouched, so it does not flip the workflow
+				// to inactive on the client while the database still has it published.
+				validationError: !unpublishOnFailure,
 			});
 		} finally {
 			if (didPublish) {
@@ -798,8 +802,8 @@ export class WorkflowService {
 					user,
 					workflowId,
 					workflow,
-					publicApi: tracking.source === 'api',
-					source: tracking.source,
+					publicApi: options.source === 'api',
+					source: options.source,
 				});
 			}
 		}
@@ -904,13 +908,15 @@ export class WorkflowService {
 		const versionIdToActivate = options?.versionId ?? workflow.versionId;
 		const previousActiveVersionId = workflow.activeVersionId;
 
+		// Reached with access to the workflow but not the right to release a version, so there is no
+		// existence to hide behind a 404 here.
 		if (resolvedWithoutPublishScope && versionIdToActivate !== previousActiveVersionId) {
-			this.logger.warn('User attempted to activate a workflow without permissions', {
+			this.logger.warn('User attempted to publish a workflow without permissions', {
 				workflowId,
 				userId: user.id,
 			});
-			throw new NotFoundError(
-				'You do not have permission to activate this workflow. Ask the owner to share it with you.',
+			throw new ForbiddenError(
+				'You do not have permission to publish this workflow. Ask the owner to publish it for you.',
 			);
 		}
 
