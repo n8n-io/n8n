@@ -136,6 +136,11 @@ export {
 	sanitizeToolName,
 } from './sdk/tool';
 export type { ApprovalResumePayload, ApprovalSuspendPayload } from './sdk/tool';
+export {
+	stripInvisibleUnicode,
+	wrapUntrustedData,
+	UNTRUSTED_MCP_RESULT_DOCTRINE,
+} from './sdk/untrusted-content';
 export { Memory } from './sdk/memory';
 export { VectorStore } from './sdk/vector-store';
 export {

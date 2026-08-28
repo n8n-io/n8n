@@ -9,6 +9,7 @@ import {
 	mcpContentToModelParts,
 } from './mcp-content';
 import { sanitizeToolName } from '../../sdk/tool';
+import { stripInvisibleUnicode, wrapUntrustedData } from '../../sdk/untrusted-content';
 import type { AgentMessage } from '../../types/sdk/message';
 import type { BuiltTool, InterruptibleToolContext, ToolContext } from '../../types/sdk/tool';
 
@@ -46,11 +47,17 @@ export class McpToolResolver {
 			});
 		};
 
+		// Model-facing paths only: the raw result still flows to UI and event
+		// consumers untouched.
 		const toMessage = (output: unknown): AgentMessage | undefined => {
-			return buildRichMessage(output as McpCallToolResult);
+			return buildRichMessage(
+				wrapResultTextAsUntrusted(output as McpCallToolResult, connection.name, originalName),
+			);
 		};
 		const toModelOutput = (output: unknown): unknown => {
-			return buildModelOutput(output as McpCallToolResult);
+			return buildModelOutput(
+				wrapResultTextAsUntrusted(output as McpCallToolResult, connection.name, originalName),
+			);
 		};
 
 		const builtTool: BuiltTool = {
@@ -150,4 +157,34 @@ function buildModelOutput(result: McpCallToolResult): unknown {
 	if (!result?.content || !hasMcpMediaContent(result.content)) return result;
 
 	return { type: 'content', value: mcpContentToModelParts(result.content) };
+}
+
+/**
+ * Rewrite the text an MCP server returned so the model reads it inside
+ * `<untrusted_data>` boundaries: the server (and whatever third-party content
+ * it relays) authors this text, so it must land in context as data, not
+ * instructions. Invisible Unicode is stripped for the same reason. Non-text
+ * blocks and `structuredContent` pass through unchanged.
+ */
+function wrapResultTextAsUntrusted(
+	result: McpCallToolResult,
+	serverName: string,
+	toolName: string,
+): McpCallToolResult {
+	if (!result?.content) return result;
+
+	const wrapText = (text: string) =>
+		wrapUntrustedData(stripInvisibleUnicode(text), `mcp:${serverName}`, toolName);
+
+	const content = result.content.map((block) => {
+		if (block.type === 'text' && block.text) {
+			return { ...block, text: wrapText(block.text) };
+		}
+		if (block.type === 'resource' && !('blob' in block.resource) && block.resource.text) {
+			return { ...block, resource: { ...block.resource, text: wrapText(block.resource.text) } };
+		}
+		return block;
+	});
+
+	return { ...result, content };
 }
