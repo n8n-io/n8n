@@ -151,10 +151,16 @@
         "parent_incident": {
             "type": "string"
         },
+        "problem_id": {
+            "type": "string"
+        },
         "reassignment_count": {
             "type": "string"
         },
         "reopen_count": {
+            "type": "string"
+        },
+        "reopened_by": {
             "type": "string"
         },
         "reopened_time": {
@@ -264,5 +270,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }
