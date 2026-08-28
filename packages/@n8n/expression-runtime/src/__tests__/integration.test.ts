@@ -630,6 +630,9 @@ describe('Integration: IsolatedVmBridge error handling', () => {
 		await bridge.initialize();
 		try {
 			expect(() => bridge.execute('while(true){}', {})).toThrow(TimeoutError);
+			// A spent budget must be rejected before entering the isolate, which
+			// reads a non-positive timeout as no timeout at all.
+			expect(() => bridge.execute('return 1;', {}, { elapsedMs: 100 })).toThrow(TimeoutError);
 		} finally {
 			await bridge.dispose();
 		}
@@ -776,16 +779,39 @@ describe('Integration: nested evaluation time budget', () => {
 		};
 
 		const start = Date.now();
-		expect(() => evaluator.evaluate(frame(DEPTH), data, caller)).toThrow(/timed out/);
+		expect(() => evaluator.evaluate(frame(DEPTH), data, caller)).toThrow(
+			`Nested expressions timed out after sharing the ${TIMEOUT_MS}ms limit`,
+		);
 		const elapsed = Date.now() - start;
 
 		expect(framesEvaluated).toBeGreaterThan(1);
-		expect(elapsed).toBeLessThan(TIMEOUT_MS * 2);
+		// Tight enough to catch a first nested frame that restarts the budget,
+		// which would land at roughly twice the limit.
+		expect(elapsed).toBeLessThan(TIMEOUT_MS * 1.25);
+	});
+
+	it('shares the budget across sequential nested evaluations', () => {
+		const burn = `{{ (function() { var s = Date.now(); while (Date.now() - s < ${BURN_MS}) {} return 1; })() }}`;
+		const data: WorkflowData = {
+			$evaluateExpression: () => evaluator.evaluate(burn, {}, caller),
+		};
+
+		// Siblings draw on the same budget, so the later ones run out; each
+		// getting a fresh one would let the pair complete.
+		expect(() =>
+			evaluator.evaluate(
+				'{{ $evaluateExpression("a") + $evaluateExpression("a") + $evaluateExpression("a") }}',
+				data,
+				caller,
+			),
+		).toThrow(/timed out/);
 	});
 
 	it('gives a single evaluation the full budget', () => {
 		const start = Date.now();
-		expect(() => evaluator.evaluate(frame(0), {}, caller)).toThrow(TimeoutError);
+		expect(() => evaluator.evaluate(frame(0), {}, caller)).toThrow(
+			`Expression timed out after ${TIMEOUT_MS}ms`,
+		);
 		const elapsed = Date.now() - start;
 
 		expect(elapsed).toBeGreaterThanOrEqual(TIMEOUT_MS * 0.8);
