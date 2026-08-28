@@ -28,8 +28,9 @@ a deployable engine worker) without touching core logic.
 - **Core interfaces** — interfaces the core depends on, each defined in its own
   core module beside a default/reference use: `AdmittanceService` (`admittance/`),
   `WorkQueue` (`queue/`), `ExecutionStore` / `StepStore` / `ExecutionViewStore`
-  (`execution/`). Adapters implement them; the core never imports the interface
-  from an adapter. Handed in at construction.
+  (`execution/`), `LifecycleEventPublisher` (`lifecycle-events/`). Adapters
+  implement them; the core never imports the interface from an adapter. Handed
+  in at construction.
 - **Adapters (do)** — effectful implementations: `database/` (TypeORM entities,
   migrations, the Postgres `DataSource`, and `TypeOrmExecutionStore`), `queue/`
   (in-memory default). The Postgres/ORM coupling lives *here only*.

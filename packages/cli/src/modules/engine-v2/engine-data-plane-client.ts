@@ -6,6 +6,7 @@ import { Service } from '@n8n/di';
 import type {
 	AuthenticatedCaller,
 	EngineErrorResponse,
+	ExecutionSnapshot,
 	StartExecutionRequest,
 	StartExecutionResult,
 } from '@n8n/engine';
@@ -13,6 +14,7 @@ import { mintIdentityToken } from '@n8n/engine';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UserError } from 'n8n-workflow';
 
+import type { ExecutionIdV2 } from '@/executions/execution-id';
 import type { EngineDataPlaneProvider } from '@/services/engine-data-plane-proxy.service';
 
 /**
@@ -34,7 +36,7 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 	) {
 		this.http = outboundHttp.requests({
 			// Fixed, n8n-controlled host.
-			ssrf: 'disabled',
+			useDefaultSsrfPolicy: 'unsafe',
 			// `engineConfig.host` is a bind address, not a destination, so it is not
 			// dialable. Default to loopback and let `N8N_ENGINE_BASE_URL` override
 			// when the engine answers somewhere else.
@@ -79,6 +81,23 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
 
 		return response.body as StartExecutionResult;
+	}
+
+	async getExecution(id: ExecutionIdV2): Promise<ExecutionSnapshot | undefined> {
+		const response = await this.http.request<ExecutionSnapshot | EngineErrorResponse>({
+			url: `/api/workflow-executions/${encodeURIComponent(id)}`,
+			method: 'GET',
+			json: true,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true,
+			disableFollowRedirect: true,
+		});
+
+		if (response.statusCode === 404) return undefined;
+
+		if (response.statusCode >= 300) throw this.toError(response.statusCode, response.body);
+
+		return response.body as ExecutionSnapshot;
 	}
 
 	private toError(statusCode: number, body: unknown): Error {

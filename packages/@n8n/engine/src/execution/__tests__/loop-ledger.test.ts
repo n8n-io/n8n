@@ -1,14 +1,24 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { deriveLoops, type WorkflowGraph } from '../../graph';
-import { endsLoop, exitSourcesInto, isTerminalStep, loadTerminalIterations } from '../loop-ledger';
+import { exitSourcesInto, isTerminalStep, loadTerminalIterations } from '../loop-ledger';
 import type { StepStore, StepSummary } from '../step-store';
 
 function tip(iteration: number, filledOutputSlots: boolean[], status = 'completed' as const) {
 	return { id: `step-B-${iteration}`, nodeId: 'B', iteration, status, filledOutputSlots };
 }
 
-/** The canonical loop: trigger into B, body x, exit to d. */
+/**
+ * ┌─────────┐    ┌───┐ o1    ┌───┐
+ * │ trigger ├───►│ B ├──────►│ x │
+ * └─────────┘    └─▲─┘       └─┬─┘
+ *                  └──(back)───┘
+ *                  │ o0
+ *                  ▼
+ *                ┌───┐
+ *                │ d │
+ *                └───┘
+ */
 const loopGraph: WorkflowGraph = {
 	nodes: [
 		{ id: 'trigger', name: 'T', type: 'trigger' },
@@ -25,36 +35,26 @@ const loopGraph: WorkflowGraph = {
 };
 const loops = deriveLoops(loopGraph);
 
-describe('endsLoop', () => {
-	it('ends the loop when a settled row leaves its loop slot dead', () => {
-		expect(endsLoop('completed', false)).toBe(true);
-	});
-
-	it('does not end the loop while the loop slot is filled', () => {
-		expect(endsLoop('completed', true)).toBe(false);
-	});
-
-	it('ends the loop on a skipped row, which fired nothing', () => {
-		expect(endsLoop('skipped', false)).toBe(true);
-	});
-
-	it('does not end the loop from a row that has not settled', () => {
-		expect(endsLoop('running', false)).toBe(false);
-		expect(endsLoop('queued', false)).toBe(false);
-	});
-});
-
 describe('isTerminalStep', () => {
-	it('is terminal when the row fired the done slot', () => {
+	it('is terminal when the step fired the done slot', () => {
 		expect(isTerminalStep(tip(2, [true, false]))).toBe(true);
 	});
 
-	it('is not terminal when the row fired the loop slot', () => {
+	it('is not terminal while the step fired the loop slot', () => {
 		expect(isTerminalStep(tip(2, [false, true]))).toBe(false);
 	});
 
-	it('is terminal when the row fired nothing at all', () => {
+	it('is terminal when the step fired nothing at all', () => {
 		expect(isTerminalStep(tip(2, []))).toBe(true);
+	});
+
+	it('is terminal on a skipped step, which fired nothing', () => {
+		expect(isTerminalStep({ ...tip(2, []), status: 'skipped' })).toBe(true);
+	});
+
+	it('is not terminal on a step that has not settled', () => {
+		expect(isTerminalStep({ ...tip(2, []), status: 'running' })).toBe(false);
+		expect(isTerminalStep({ ...tip(2, []), status: 'queued' })).toBe(false);
 	});
 });
 
