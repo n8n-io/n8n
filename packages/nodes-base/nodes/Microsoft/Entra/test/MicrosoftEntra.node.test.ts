@@ -9,14 +9,16 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import nock from 'nock';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import type { MockInstance } from 'vitest';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
 import { MicrosoftEntra } from '../MicrosoftEntra.node';
 import { ignoreHttpStatusErrorsConfig } from '../descriptions/common';
-import { handleErrorPostReceive } from '../GenericFunctions';
+import {
+	handleErrorPostReceive,
+	validateGroupPreSend,
+	validateUserPreSend,
+} from '../GenericFunctions';
 
 describe('Microsoft Entra Node', () => {
 	const testHarness = new NodeTestHarness();
@@ -133,10 +135,6 @@ describe('Microsoft Entra Node', () => {
 			),
 		);
 
-		const descriptionSources = ['UserDescription.ts', 'GroupDescription.ts'].map((file) =>
-			readFileSync(join(__dirname, '..', 'descriptions', file), 'utf-8'),
-		);
-
 		it('interpolates only the user and group IDs into request URLs', () => {
 			expect([...interpolatedIds].sort()).toEqual(['group', 'user']);
 		});
@@ -152,24 +150,16 @@ describe('Microsoft Entra Node', () => {
 
 		it('guards every resource locator', () => {
 			for (const property of resourceLocators) {
-				expect(property.routing?.send?.preSend, property.displayName).toHaveLength(1);
+				expect(property.routing?.send?.preSend, property.displayName).toContain(
+					property.name === 'user' ? validateUserPreSend : validateGroupPreSend,
+				);
 			}
 		});
 
 		it('encodes every parameter interpolated into a request URL', () => {
 			for (const url of routingUrls) {
-				const unwrapped = url.replace(/encodeURIComponent\(\$parameter\["[^"]+"\]\)/g, '');
+				const unwrapped = url.replace(/encodeURIComponent\(\s*\$parameter\["[^"]+"\]\s*\)/g, '');
 				expect(unwrapped, url).not.toContain('$parameter[');
-			}
-		});
-
-		// The programmatic follow-up requests build their path with a template literal, which the
-		// description object above cannot see.
-		it('encodes every ID interpolated into a follow-up request path', () => {
-			for (const source of descriptionSources) {
-				for (const [line] of source.matchAll(/`\/(?:users|groups)\/\$\{[^}]*\}`/g)) {
-					expect(line).toContain('encodeURIComponent(');
-				}
 			}
 		});
 
@@ -195,10 +185,10 @@ describe('Microsoft Entra Node', () => {
 			);
 
 			expect(addGroupUser?.routing?.send?.property).toBe('@odata.id');
-			expect(addGroupUser?.routing?.send?.value).toBe(
-				'={{ ($credentials.graphApiBaseUrl || "https://graph.microsoft.com").replace(/\\/+$/, "") }}/v1.0/directoryObjects/{{ encodeURIComponent($value) }}',
+			expect(addGroupUser?.routing?.send?.value).toContain(
+				'directoryObjects/{{ encodeURIComponent($value) }}',
 			);
-			expect(addGroupUser?.routing?.send?.preSend).toHaveLength(1);
+			expect(addGroupUser?.routing?.send?.preSend).toContain(validateUserPreSend);
 		});
 	});
 

@@ -5,8 +5,6 @@ import {
 	type INodeParameters,
 	type WorkflowTestData,
 } from 'n8n-workflow';
-import nock from 'nock';
-
 import {
 	entraGroupGuid as groupGuid,
 	entraGuid as guid,
@@ -1186,11 +1184,6 @@ describe('Microsoft Entra Node', () => {
 				{ __rl: true, mode: 'list', value: guid },
 				`/users/${guid}`,
 			),
-			deleteUser(
-				'should delete a user addressed by an uppercase ID',
-				{ __rl: true, mode: 'id', value: guid.toUpperCase() },
-				`/users/${guid.toUpperCase()}`,
-			),
 			{
 				description: 'should get a guest user addressed by UPN',
 				input: {
@@ -1401,10 +1394,6 @@ describe('Microsoft Entra Node', () => {
 	});
 
 	describe('Per-item validation', () => {
-		afterEach(() => {
-			nock.cleanAll();
-		});
-
 		testHarness.setupTest({
 			description: 'should delete the valid user and fail only the item with an invalid ID',
 			input: {

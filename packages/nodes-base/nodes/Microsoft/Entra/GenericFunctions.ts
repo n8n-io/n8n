@@ -27,8 +27,6 @@ import { validateUserTargetId, type UserTargetMessages } from '../GenericFunctio
 const ID_FORMAT_HINT = 'The ID should be in the format e.g. 02bd9fd6-8f93-4758-87c3-1fb73740a315';
 
 const ENTRA_USER_MESSAGES: UserTargetMessages = {
-	// Unreachable through the shared validator, which `validateEntraUserId` only calls once the
-	// value is known to be non-empty. Kept because the interface requires it.
 	required: {
 		message: 'The user is empty',
 		description: `Select a user from the list, or set the ID. ${ID_FORMAT_HINT}, or a user principal name e.g. jane@contoso.com.`,
@@ -58,7 +56,7 @@ const ENTRA_GROUP_MESSAGES: Pick<UserTargetMessages, 'required' | 'invalid'> = {
  * Validates a user ID before it is encoded into a Graph URL path. Graph accepts either an object
  * ID or a user principal name, guests included. The value is validated untrimmed, because the URL
  * interpolates it untrimmed. Both accepted alphabets are closed under substring, so no substring
- * of an accepted ID can contain `/ \ ? % #` and change the request path.
+ * of an accepted ID can contain `/ \ ? % #`.
  *
  * Exported for tests. Production callers must go through the `preSend` wrappers below, which also
  * refuse a stored extraction rule.
@@ -107,11 +105,31 @@ function readEntraId(this: IExecuteSingleFunctions, name: 'user' | 'group'): str
 	return String(this.getNodeParameter(name, undefined, { extractValue: true }) ?? '');
 }
 
+/**
+ * Last-mile check on the path that is about to be sent. Encoding keeps every other character
+ * inside its segment, but a bare `.` or `..` segment still re-points the request, and the URL is
+ * composed from its own read of the parameter. No Graph path has a `.` or `..` segment, so this
+ * refuses nothing legitimate.
+ */
+function assertNoDotSegment(
+	this: IExecuteSingleFunctions,
+	url: string | undefined,
+	copy: { message: string; description: string },
+): void {
+	const segments = (url ?? '').split('?')[0].split('/');
+	if (segments.some((segment) => segment === '.' || segment === '..')) {
+		throw new NodeOperationError(this.getNode(), copy.message, {
+			description: copy.description,
+		});
+	}
+}
+
 export async function validateUserPreSend(
 	this: IExecuteSingleFunctions,
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	validateEntraUserId(readEntraId.call(this, 'user'), this.getNode());
+	assertNoDotSegment.call(this, requestOptions.url, ENTRA_USER_MESSAGES.invalid);
 	return requestOptions;
 }
 
@@ -120,6 +138,7 @@ export async function validateGroupPreSend(
 	requestOptions: IHttpRequestOptions,
 ): Promise<IHttpRequestOptions> {
 	validateEntraGroupId(readEntraId.call(this, 'group'), this.getNode());
+	assertNoDotSegment.call(this, requestOptions.url, ENTRA_GROUP_MESSAGES.invalid);
 	return requestOptions;
 }
 
@@ -140,14 +159,19 @@ async function resolveGraphTarget(
 			? credentials.graphApiBaseUrl
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
-	if (!URL.canParse(baseUrl)) {
+	// `URL.origin` is the string "null" for a scheme without a defined origin, which would make
+	// the comparison below pass for any host.
+	if (!URL.canParse(baseUrl) || new URL(baseUrl).origin === 'null') {
 		throw new NodeOperationError(this.getNode(), 'The Graph API base URL is not a valid URL', {
 			description:
 				'Set a full URL on the credential, e.g. https://graph.microsoft.com, and try again.',
 		});
 	}
 	const target = url ?? `${baseUrl}/v1.0${endpoint}`;
-	if (!URL.canParse(target) || new URL(target).origin !== new URL(baseUrl).origin) {
+	if (!URL.canParse(target)) {
+		throw new NodeOperationError(this.getNode(), 'The request URL is not a valid URL');
+	}
+	if (new URL(target).origin !== new URL(baseUrl).origin) {
 		throw new NodeOperationError(
 			this.getNode(),
 			'Refusing to send credentials to an unexpected host',

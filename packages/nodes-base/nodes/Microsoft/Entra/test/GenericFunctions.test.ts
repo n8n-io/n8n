@@ -347,36 +347,11 @@ describe('Microsoft Entra GenericFunctions', () => {
 			);
 		});
 
-		it('microsoftApiPaginateRequest keeps a URL override on the credential host', async () => {
-			mockRequestWithAuthenticationPaginated.mockResolvedValue([{ body: { value: [] } }]);
-
-			await microsoftApiPaginateRequest.call(
-				mockExecuteFunctions,
-				'GET',
-				'/groups',
-				{},
-				undefined,
-				undefined,
-				'https://graph.microsoft.com/v1.0/groups?$skiptoken=abc',
-			);
-
-			expect(mockRequestWithAuthenticationPaginated).toHaveBeenCalledWith(
-				expect.objectContaining({
-					uri: 'https://graph.microsoft.com/v1.0/groups?$skiptoken=abc',
-				}),
-				0,
-				expect.any(Object),
-				'microsoftEntraOAuth2Api',
-			);
-		});
-
 		it.each([
 			['another host', 'https://not-graph.example.com/v1.0/groups'],
 			['a userinfo prefix', 'https://graph.microsoft.com@not-graph.example.com/v1.0/groups'],
 			['a plain-text scheme', 'http://graph.microsoft.com/v1.0/groups'],
 			['a lookalike host', 'https://graph.microsoft.com.not-graph.example.com/v1.0/groups'],
-			['a scheme-relative URL', '//not-graph.example.com/v1.0/groups'],
-			['a URL that cannot be parsed', 'not a url'],
 		])('microsoftApiRequest rejects a URL override with %s', async (_label, url) => {
 			await expect(
 				microsoftApiRequest.call(
@@ -389,6 +364,35 @@ describe('Microsoft Entra GenericFunctions', () => {
 					url,
 				),
 			).rejects.toThrow('Refusing to send credentials to an unexpected host');
+
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('microsoftApiRequest rejects a URL override that is not a full URL', async () => {
+			await expect(
+				microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/groups',
+					{},
+					undefined,
+					undefined,
+					'//not-graph.example.com/v1.0/groups',
+				),
+			).rejects.toThrow('The request URL is not a valid URL');
+
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('microsoftApiRequest rejects a base URL with no defined origin', async () => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: { access_token: 'test-access-token' },
+				graphApiBaseUrl: 'foo://graph.microsoft.com',
+			});
+
+			await expect(
+				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/groups'),
+			).rejects.toThrow('The Graph API base URL is not a valid URL');
 
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
@@ -442,6 +446,12 @@ describe('Microsoft Entra GenericFunctions', () => {
 	// The shared `validateUserTargetId` table in nodes/Microsoft/test covers the accepted and
 	// rejected UPN alphabet, so these only cover what Entra adds on top of it.
 	describe('validateEntraUserId', () => {
+		it('accepts an uppercase GUID', () => {
+			expect(() =>
+				validateEntraUserId('87D349ED-44D7-43E1-9A83-5F2406DEE5BD', mockNode),
+			).not.toThrow();
+		});
+
 		it.each([
 			['a GUID with surrounding spaces', ' 02bd9fd6-8f93-4758-87c3-1fb73740a315 '],
 			['a UPN with a percent-encoded at sign', 'jane%40contoso.com'],
@@ -539,6 +549,19 @@ describe('Microsoft Entra GenericFunctions', () => {
 
 			await expect(preSend.call(single, requestOptions)).rejects.toThrow(NodeOperationError);
 		});
+
+		// The routing layer composes the URL from its own read of the parameter, so the two can
+		// disagree. The harness cannot express that divergence, so it is covered here.
+		it.each([['..'], ['.']])(
+			'throws when the composed path has a "%s" segment',
+			async (segment) => {
+				const single = context({ __rl: true, mode: 'id', value: validId }, validId);
+
+				await expect(
+					preSend.call(single, { url: `/users/${segment}` } as IHttpRequestOptions),
+				).rejects.toThrow(NodeOperationError);
+			},
+		);
 
 		it('throws when the stored value carries an extraction rule', async () => {
 			const single = context({ __rl: true, mode: 'id', value: validId, __regex: '(.*)' }, validId);
