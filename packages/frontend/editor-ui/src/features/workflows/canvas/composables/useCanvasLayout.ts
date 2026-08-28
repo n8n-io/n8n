@@ -25,6 +25,7 @@ import {
 } from '../stores/canvasNodeGroups.constants';
 import type { ComputedRef, Ref } from 'vue';
 import { computeNodeDisplaySize, type CanvasRenderData } from '../canvas.utils';
+import { computeGroupFrameRects } from './useCanvasMapping.groups';
 
 export type CanvasLayoutTarget = 'selection' | 'all';
 export type CanvasLayoutSource =
@@ -83,38 +84,109 @@ export function useCanvasLayout(
 		return target === 'selection' ? getSelectedNodes.value : allNodes.value;
 	}
 
+	/** Returns the nodes, edges, and group units to pass into dagre. */
 	function getTargetData(target: CanvasLayoutTarget): CanvasLayoutTargetData {
 		const source = getSourceNodes(target);
+		const sourceNodeIds = new Set(source.map((node) => node.id));
 
-		// Dagre lays out each collapsed group as one chip.
-		const groupUnits = source
+		// Dagre lays out each complete group as one box:
+		// collapsed groups use their chip, expanded groups use their frame.
+		const groupUnits = allNodes.value
 			.filter(isCanvasGroupNode)
-			.map(getCollapsedGroupUnitForTarget)
+			.map((groupNode) => getGroupUnitForTarget(groupNode, sourceNodeIds))
 			.filter(isPresent);
+		const groupedMemberIds = new Set(groupUnits.flatMap(({ memberIds }) => memberIds));
 
-		// Collapsed group members move with their chip after dagre runs.
-		const belongsInGraph = (node: CanvasLayoutNode) =>
-			isCanvasGroupNode(node) ? Boolean(node.data?.isCollapsed) : !node.hidden;
+		// Grouped members move with their group box after dagre runs.
+		const regularNodes = source.filter(
+			(node) => !isCanvasGroupNode(node) && !node.hidden && !groupedMemberIds.has(node.id),
+		);
 
 		return {
-			nodes: source.filter(belongsInGraph),
-			edges: allEdges.value,
+			nodes: [...regularNodes, ...groupUnits.map(({ node }) => node)],
+			edges: remapGroupUnitConnections(allEdges.value, groupUnits),
 			groupUnits,
 		};
 	}
 
-	function getCollapsedGroupUnitForTarget(
+	/** Returns a group as one layout unit when its full contents are in scope. */
+	function getGroupUnitForTarget(
 		groupNode: CanvasGroupNode,
+		sourceNodeIds: Set<string>,
 	): CanvasLayoutGroupUnit | undefined {
 		const groupData = groupNode.data;
-		if (!groupData?.isCollapsed) return undefined;
+		if (!groupData) return undefined;
 
-		// The collapsed group chip already has the box dagre needs.
+		const memberIds = groupData.group.nodeIds;
+
+		if (groupData.isCollapsed) {
+			if (!sourceNodeIds.has(groupNode.id)) return undefined;
+
+			// The collapsed group chip already has the box dagre needs.
+			return {
+				node: groupNode,
+				memberIds,
+				boundingBox: boundingBoxFromCanvasNode(groupNode),
+			};
+		}
+
+		if (!memberIds.every((memberId) => sourceNodeIds.has(memberId))) return undefined;
+
+		const memberNodes = memberIds
+			.map((memberId) => findNode<CanvasNodeData>(memberId))
+			.filter(isPresent);
+		if (memberNodes.length !== memberIds.length) return undefined;
+
+		// Expanded groups need their frame size, not only their member bounds.
+		const expandedFrame = computeGroupFrameRects(boundingBoxFromCanvasNodes(memberNodes)).expanded;
+
 		return {
 			node: groupNode,
-			memberIds: groupData.group.nodeIds,
-			boundingBox: boundingBoxFromCanvasNode(groupNode),
+			memberIds,
+			boundingBox: {
+				x: groupNode.position.x,
+				y: groupNode.position.y,
+				width: expandedFrame.width,
+				height: expandedFrame.height,
+			},
 		};
+	}
+
+	/** Converts member connections to group-unit connections for dagre. */
+	function remapGroupUnitConnections(
+		connections: LayoutConnection[],
+		groupUnits: CanvasLayoutGroupUnit[],
+	): LayoutConnection[] {
+		if (groupUnits.length === 0) return connections;
+
+		const unitIdByMemberId = new Map<string, string>();
+		for (const { node, memberIds } of groupUnits) {
+			for (const memberId of memberIds) {
+				unitIdByMemberId.set(memberId, node.id);
+			}
+		}
+
+		const result: LayoutConnection[] = [];
+		const emittedConnectionKeys = new Set<string>();
+
+		for (const connection of connections) {
+			const sourceUnitId = unitIdByMemberId.get(connection.source);
+			const targetUnitId = unitIdByMemberId.get(connection.target);
+
+			if (sourceUnitId && targetUnitId && sourceUnitId === targetUnitId) continue;
+
+			const source = sourceUnitId ?? connection.source;
+			const target = targetUnitId ?? connection.target;
+			if (source === target) continue;
+
+			const key = JSON.stringify([source, target]);
+			if (emittedConnectionKeys.has(key)) continue;
+
+			emittedConnectionKeys.add(key);
+			result.push({ ...connection, source, target });
+		}
+
+		return result;
 	}
 
 	function sortByPosition(posA: XYPosition, posB: XYPosition): number {
@@ -626,10 +698,10 @@ export function useCanvasLayout(
 				}
 			});
 
-		// Measure before collapsed group members replace their dagre chips.
+		// Measure before grouped members replace their dagre boxes.
 		const boundingBoxAfter = compositeBoundingBox(Object.values(boundingBoxByNodeId));
 
-		// Move hidden group members by the offset of their collapsed group chip.
+		// Move group members by the offset of their dagre box, then remove that box.
 		// The rendered group position is derived from its members.
 		for (const groupUnit of groupUnits) {
 			const groupBox = boundingBoxByNodeId[groupUnit.node.id];
