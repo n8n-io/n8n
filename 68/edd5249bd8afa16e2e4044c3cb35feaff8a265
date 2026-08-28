@@ -1,0 +1,35 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_c8a607d5f9da0e::t_f5db069d8dc2c7 826-830
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiView.vue
+  s_c8a607d5f9da0e::t_f5db069d8dc2c7 56,122,126-129
+  s_c8a607d5f9da0e::t_afed6b807f2042 123-125
+  s_c8a607d5f9da0e::t_5ee87a782705f7 13
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_c8a607d5f9da0e::t_f5db069d8dc2c7 11-25
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_c8a607d5f9da0e::t_f5db069d8dc2c7 29-30
+packages/frontend/editor-ui/src/features/ai/instanceAi/module.descriptor.ts
+  s_c8a607d5f9da0e::t_f5db069d8dc2c7 51-55,67
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_c8a607d5f9da0e::t_f5db069d8dc2c7 528-530
+packages/cli/src/modules/instance-ai/__tests__/workflow-templates.service.test.ts
+  s_c8a607d5f9da0e::t_f5db069d8dc2c7 38-42
+packages/cli/src/modules/instance-ai/workflow-templates.service.ts
+  s_c8a607d5f9da0e::t_f5db069d8dc2c7 27,31-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "68edd5249bd8afa16e2e4044c3cb35feaff8a265",
+  "prompts": {},
+  "sessions": {
+    "s_c8a607d5f9da0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c297e62-ce10-4935-b40b-a092bee917aa",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

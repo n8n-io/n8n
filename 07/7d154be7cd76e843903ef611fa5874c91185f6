@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.vue
+  s_25a812e304e529::t_53aaf9a0d7722d 18-21,59,144-148,227
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ResourceMapper/ResourceMapper.test.ts
+  s_25a812e304e529::t_84bf888e6ce0ab 24,380,431-444,451,468-469,471-476
+  s_25a812e304e529::t_bafe5f81dc9a7d 445-450,452-463
+  s_25a812e304e529::t_8a3c8c29e80f7a 464-467,470
+  s_25a812e304e529::t_564fca2cfa841e 477-478
+packages/frontend/editor-ui/src/features/agents/components/AgentToolConfigNodeContent.vue
+  s_25a812e304e529::t_53aaf9a0d7722d 2,6,24
+  s_25a812e304e529::t_028694f5868089 25
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolConfigNodeContent.test.ts
+  s_25a812e304e529::t_8a3c8c29e80f7a 45,47
+  s_25a812e304e529::t_84bf888e6ce0ab 3,6,14,16-20,43-44,46,48-50
+  s_25a812e304e529::t_78be46c30f1be0 51
+packages/frontend/editor-ui/src/app/constants/injectionKeys.ts
+  s_25a812e304e529::t_53aaf9a0d7722d 45-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "077d154be7cd76e843903ef611fa5874c91185f6",
+  "prompts": {},
+  "sessions": {
+    "s_25a812e304e529": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ffb6b-87a5-7843-98dc-8db449f50c0e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

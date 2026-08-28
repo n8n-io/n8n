@@ -1,0 +1,28 @@
+packages/cli/test/migration/1785843640527-create-workflow-review-activity-tables.test.ts
+  s_87b7dc096911b8::t_8aea4d6291e816 240,244-248,255-256,260-265
+  s_87b7dc096911b8::t_85cb9fde655931 336-347,351,353-354,356
+  s_87b7dc096911b8::t_3350f5431197c2 348
+  s_87b7dc096911b8::t_2ba50a8c998709 141
+  s_87b7dc096911b8::t_8d63890ff5f39e 230,233-234
+packages/@n8n/db/src/entities/workflow-review-activity.ee.ts
+  s_87b7dc096911b8::t_019d04172a8085 49-54
+packages/@n8n/db/src/entities/workflow-review-activity-comment.ee.ts
+  s_87b7dc096911b8::t_104f6d26fedf31 10-13
+  s_87b7dc096911b8::t_ef764af729a771 18-23,27-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5ee5f55dcc95abaaa587374fda7a465dc44c2235",
+  "prompts": {},
+  "sessions": {
+    "s_87b7dc096911b8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a6260b0-b810-4125-8749-e2239809baa5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

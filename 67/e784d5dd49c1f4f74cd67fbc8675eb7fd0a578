@@ -1,0 +1,19 @@
+packages/cli/test/integration/controllers/security-settings.controller.test.ts
+  s_31cf4a9bad55bf::t_77d00c4eecb9d5 171-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "67e784d5dd49c1f4f74cd67fbc8675eb7fd0a578",
+  "prompts": {},
+  "sessions": {
+    "s_31cf4a9bad55bf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "37092009-8b08-49eb-87e4-6a064f86ed25",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

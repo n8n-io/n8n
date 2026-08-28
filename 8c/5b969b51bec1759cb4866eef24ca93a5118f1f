@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Microsoft/ToDo/descriptions/TargetDescription.ts
+  s_e7b82576de0350::t_64147e3c2ceb88 19-20
+packages/nodes-base/nodes/Microsoft/Outlook/v2/descriptions/mailbox.description.ts
+  s_e7b82576de0350::t_749edf227e6411 20-23
+packages/nodes-base/nodes/Microsoft/ToDo/test/authentication.test.ts
+  s_e7b82576de0350::t_abfa4fdbfe7ddb 56-58
+packages/nodes-base/nodes/Microsoft/OneDrive/descriptions/TargetDescription.ts
+  s_e7b82576de0350::t_058dee195211cf 58-59
+  s_e7b82576de0350::t_5bd5c75c3dc498 47-48,74-75
+  s_e7b82576de0350::t_b4ccd8522b258c 85-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "8c5b969b51bec1759cb4866eef24ca93a5118f1f",
+  "prompts": {},
+  "sessions": {
+    "s_e7b82576de0350": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8559a775-ab76-4c98-9eef-2dc047602094",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

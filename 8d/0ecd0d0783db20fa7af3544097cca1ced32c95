@@ -1,0 +1,114 @@
+packages/@n8n/cli/src/client.ts
+  s_7d48ada9cf20b6::t_818025beb2178e 21-22
+packages/cli/src/modules/data-table/data-table.service.ts
+  s_7d48ada9cf20b6::t_e62398a0809e2c 4
+  s_7d48ada9cf20b6::t_6d81860a118da6 35,37
+  s_7d48ada9cf20b6::t_75aa10b79c06cf 123-178
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-compat.test.ts
+  s_7d48ada9cf20b6::t_e6bd50f37c4f73 1-37,42-74
+  ai_agent 38-41
+packages/@n8n/cli/docs/commands/package.md
+  s_7d48ada9cf20b6::t_cec45f7838bd64 59-60,63-70
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_7d48ada9cf20b6::t_4ea1a1f0c02d39 14
+  ai_agent 71-74
+  s_7d48ada9cf20b6::t_fb2746b2cbc271 75-84,90
+  s_7d48ada9cf20b6::t_f15c942544d7d1 223-225,227
+packages/cli/src/modules/data-table/data-table.repository.ts
+  s_7d48ada9cf20b6::t_1120ec7e4d2b7e 58,75-80
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_7d48ada9cf20b6::t_caa9cf39327b9e 46-47
+packages/@n8n/cli/src/commands/package/import.ts
+  s_7d48ada9cf20b6::t_e9867f248f277c 54-64
+  s_7d48ada9cf20b6::t_7521b5be67c0ef 93-94
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_7d48ada9cf20b6::t_d69609b1a70648 16-17
+  s_7d48ada9cf20b6::t_bcb40a51a65afc 79-83
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_7d48ada9cf20b6::t_ed91568a7e32e5 40-41
+  s_7d48ada9cf20b6::t_e7d33155db896d 68-69,81-82,94-95
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_7d48ada9cf20b6::t_9c8952aeda3e88 11-15
+  s_7d48ada9cf20b6::t_46eda664431abf 41
+  s_7d48ada9cf20b6::t_a296d791429b27 60,67
+  s_7d48ada9cf20b6::t_c75f0936824077 77,87,101-102
+  s_7d48ada9cf20b6::t_31ac9b0d044b44 131,146-147
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-compat.ts
+  s_7d48ada9cf20b6::t_c90faa2a3fa97e 1-38
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_7d48ada9cf20b6::t_1f7a140c2d5803 1-15,17-19,41-55,58-89,91,94,133-189,196-199,203-206
+  s_321997152caa68::t_0670eb598c7de9 200
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_7d48ada9cf20b6::t_22717b5327cd6f 1-4,9-49
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_7d48ada9cf20b6::t_b67835754c0020 16-17,38-39,62-63,85-86
+  s_7d48ada9cf20b6::t_9033426fbe5ebd 123-154
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_7d48ada9cf20b6::t_00ca9197d93a29 1,12
+  s_7d48ada9cf20b6::t_e1823715206302 2-11,13-32,35-38,40-174,180-425,427-528
+  s_7d48ada9cf20b6::t_cdd62b5e9fea8a 33-34,39
+  s_7d48ada9cf20b6::t_76c7074afc29d2 175-179
+  s_7d48ada9cf20b6::t_45b2a3eb4bad01 426
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_7d48ada9cf20b6::t_3a9f9aca11f2e2 17-18
+  s_7d48ada9cf20b6::t_a7935fee2648b6 66-71,85-88
+  s_321997152caa68::t_594681aa5cf5cf 144,151,158-159
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_7d48ada9cf20b6::t_4935370d0d5776 3
+  s_7d48ada9cf20b6::t_d6a45952d5facc 46-59
+  s_7d48ada9cf20b6::t_1f7813a0bdf13d 69-73
+  s_7d48ada9cf20b6::t_6c46f0dc184a52 90-91
+  s_7d48ada9cf20b6::t_852e936685937e 108-112
+  s_7d48ada9cf20b6::t_f8115b5facda74 206-207
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_7d48ada9cf20b6::t_e2964404091dcd 31-32
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_7d48ada9cf20b6::t_e01ac966dc6189 145-171
+packages/cli/src/modules/n8n-packages/engine/import-blocked.error.ts
+  s_7d48ada9cf20b6::t_49806c327d0a06 19-21
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-missing-mode.ts
+  s_7d48ada9cf20b6::t_afc9451052e766 1-4,6-17,19-22,29-36,38-39
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_7d48ada9cf20b6::t_2603474fb363c7 148-170
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_7d48ada9cf20b6::t_81310f351b6e6e 248-249,256-265
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_7d48ada9cf20b6::t_99069fbfeafcbb 179-180
+packages/cli/src/modules/n8n-packages/__tests__/fixtures/package-fixtures.ts
+  s_7d48ada9cf20b6::t_4041e65d75e5d8 6-10
+  s_7d48ada9cf20b6::t_d6adba1db4a697 158-204
+  s_7d48ada9cf20b6::t_082b65d92ca152 228-232
+  s_7d48ada9cf20b6::t_586a1f946c4283 242,250
+  s_7d48ada9cf20b6::t_e6c76cb1bc4cca 284-292
+  s_7d48ada9cf20b6::t_ee27d15f1bdd3b 310-313
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  s_7d48ada9cf20b6::t_c3fff1e047a0bf 1-48,50-112,114,116-122
+  s_7d48ada9cf20b6::t_25771913a5006f 49
+  s_7d48ada9cf20b6::t_703d62a8cd36e4 113,115
+packages/@n8n/api-types/src/index.ts
+  s_7d48ada9cf20b6::t_5cb83d41b3ee7a 206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8d0ecd0d0783db20fa7af3544097cca1ced32c95",
+  "prompts": {},
+  "sessions": {
+    "s_321997152caa68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5146bb18-ca65-47aa-a153-2d4903e46a5c",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    },
+    "s_7d48ada9cf20b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d125bd-0770-4362-a74d-8364298b52a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

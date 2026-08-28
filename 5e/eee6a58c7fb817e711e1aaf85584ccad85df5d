@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/__tests__/agent-integration-persistence.service.test.ts
+  s_c539d11d698110::t_e66d51c29ddcd4 501-561
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5eeee6a58c7fb817e711e1aaf85584ccad85df5d",
+  "prompts": {},
+  "sessions": {
+    "s_c539d11d698110": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "82e3e40e-df4b-496b-890e-0caddbd7c33e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

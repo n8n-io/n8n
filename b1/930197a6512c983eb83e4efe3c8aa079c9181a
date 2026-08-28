@@ -1,0 +1,63 @@
+packages/@n8n/agents/src/runtime/__tests__/observation-log-observer.test.ts
+  s_04dfbe3970e19f::t_13458898183513 300,315,342,347-373
+  s_04dfbe3970e19f::t_de07cb17836afc 374,481-508
+  s_04dfbe3970e19f::t_f76a37066bc44a 509-510
+packages/@n8n/utils/src/scrub-secrets.test.ts
+  s_04dfbe3970e19f::t_4cdeaa337b8315 188-191
+  s_04dfbe3970e19f::t_1b1a86b1fe5345 186-187,192-211
+packages/@n8n/utils/src/scrub-secrets.ts
+  s_04dfbe3970e19f::t_69e926d777e3dc 82-97
+packages/@n8n/agents/src/runtime/memory/memory-redaction.ts
+  s_04dfbe3970e19f::t_f2dad691ae9584 1-18
+packages/@n8n/agents/src/runtime/memory/observation-log-reflector.ts
+  s_04dfbe3970e19f::t_04de1bc9b185bc 4
+  s_04dfbe3970e19f::t_d3ee8bf2bc8fc8 192,196-199
+packages/@n8n/agents/src/runtime/__tests__/episodic-memory.test.ts
+  s_04dfbe3970e19f::t_bfe918cf6c87db 368-420
+packages/@n8n/agents/src/runtime/memory/episodic-memory.ts
+  s_04dfbe3970e19f::t_cad2c49f5f2bae 360
+  s_04dfbe3970e19f::t_f47e3811268882 530
+  s_04dfbe3970e19f::t_d5f5d6dbed3630 10
+packages/@n8n/agents/src/runtime/memory/observation-log-defaults.ts
+  s_04dfbe3970e19f::t_b9dbd29407039f 279-280
+  s_04dfbe3970e19f::t_ba08b5709b0b4e 224-234
+  s_04dfbe3970e19f::t_f0fa9bc424104a 554
+packages/@n8n/agents/src/runtime/__tests__/observation-log-reflector.test.ts
+  s_04dfbe3970e19f::t_c1b0d6fc801157 462-507,509-510
+  s_04dfbe3970e19f::t_c2d8061edea425 508
+packages/@n8n/agents/src/runtime/memory/observation-log-observer.ts
+  s_04dfbe3970e19f::t_7f4140f4e380d3 1-3
+  s_04dfbe3970e19f::t_211f295dcac2e0 36-43
+  s_04dfbe3970e19f::t_f9dafe30ae07fa 277
+  s_04dfbe3970e19f::t_4a138d86bcb76e 289
+  s_04dfbe3970e19f::t_b913e7e38a4a6b 223
+  s_04dfbe3970e19f::t_8cfbd8d5040736 143
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/isolates-episodic-memory-between-resources-for-the-same-agent.json
+  s_04dfbe3970e19f::t_9d4a097687b9ea 49,53,56,59,62,64,68-69,72,88,97,104,107-108,111,114,116-117,119,123-124,127,195,202,206,209,212,215,217,221-222,225,238,243,248,251,253,257,264,267,329,336,340,343,346,349,351,355-356,359,375,380,383,385,389,399,418,421,423,427,437,488,492,495,498,501,503,507-508,511,532,535,537,541,551,583,599,628,632,635,638,641,643,647-648,651,667,676,683,686-687,690,693,695-696,698,702-703,706,774,781,785,788,791,794,796,800-801,804
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-indexed-entries-source-backed-with-source-thread-evidence.json
+  s_04dfbe3970e19f::t_1ae242125c900b 49,53,56,59,62,64,68-69,72,88,97,104,107-108,111,114,116-117,119,123-124,127,195,202,205-206,209,212,214-215,217,221-222,225,238,243,248,251,253,257,264,267,329,336,340,343,346,349,351,355-356,359,375,380,383,385,389,399
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/keeps-similar-customer-cases-distinct-during-cross-session-recall.json
+  s_04dfbe3970e19f::t_307c25964384c5 49,53,56,59,62,64,68-69,72,88,97,104,107-108,111,114,116-117,119,123-124,127,195,202,206,209,212,215,217,221-222,225,238,243,248,251,253,257,264,267,329,336,340,342-343,346,348-349,351,355-356,359,412,416,419,422,425,427,431-432,435,451,460,467,470-471,474,477,479-480,482,486-487,490,558,565,569,572,575,578,580,584-585,588,601,606,611,614,616,620,627,630,692,699,702-703,706,709,711-712,714,718-719,722,738,743,746,748,752,762,781,784,786,790,800,851,855,858,861,864,866,870-871,874,897,900,902,906,916,946-949,952,968-969,997,1001,1004,1007,1010,1012,1016-1017,1020,1036,1045,1052,1056,1059,1062,1065,1067,1071-1072,1075,1143,1150,1154,1157,1160,1163,1165,1169-1170,1173
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-corrected-current-state-without-treating-stale-values-as-current.json
+  s_04dfbe3970e19f::t_adb70d6fb96148 49,52-53,56,59,61-62,64,68-69,72,88,97,104,107-108,111,114,116-117,119,123-124,127,195,202,206,209,212,215,217,221-222,225,238,243,248,251,253,257,264,267,329,336,340,343,346,349,351,355-356,359,412,416,419,422,425,427,431-432,435,456,459,461,465,475,507,523-524,552,556,559,562,565,567,571-572,575,591,600,607,610-611,614,617,619-620,622,626-627,630,698,705,708-709,712,714-715,717-718,720,724-725,728,741,746,751,754,756,760,767,770,832,839,843,846,849,852,854,858-859,862,875,880,885,888,890,894,901,904,955,959,962,965,968,970,974-975,978,999,1002,1004,1008,1015,1018,1054,1070-1071,1099,1103,1106,1109,1112,1114,1118-1119,1122,1138,1147,1154,1158,1161,1164,1167,1169,1173-1174,1177,1245,1252,1255-1256,1259,1262,1264-1265,1267,1271-1272,1275
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-episodic/recalls-exact-artifacts-across-threads-when-explicitly-asked-for-prior-context.json
+  s_04dfbe3970e19f::t_d165946aa6f24f 49,53,56,59,62,64,68-69,72,88,97,104,107-108,111,114,116-117,119,123-124,127,195,202,206,209,212,215,217,221-222,225,238,243,248,251,253,257,264,267,329,336,340,343,346,349,351,355-356,359,375,380,383,385,389,399,450,454,457,460,463,465,469-470,473,489,494,497,499,503,513,545,561-562,590,594,597,600,603,605,609-610,613,629,638,645,649,652,655,658,660,664-665,668,736,743,747,750,753,756,758,762-763,766
+packages/@n8n/agents/src/__tests__/integration/cassettes/memory-observational/records-observations-and-emits-memory-task-lifecycle-events-after-generate.json
+  s_04dfbe3970e19f::t_0ede21c23e4a50 28,32,35,38,41,43,47-48,51,67,76,83,86-87,90,93,95-96,98,102-103,106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "b1930197a6512c983eb83e4efe3c8aa079c9181a",
+  "prompts": {},
+  "sessions": {
+    "s_04dfbe3970e19f": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "7a87d1f9-c84d-42fd-8504-8c74f35a7f43",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

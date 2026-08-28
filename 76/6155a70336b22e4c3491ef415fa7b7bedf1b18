@@ -1,0 +1,24 @@
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/helpers/errorHandling.test.ts
+  s_37e451fff42af7::t_8a505f881ab49c 1-37,39-41
+packages/nodes-base/nodes/Microsoft/Excel/v2/helpers/errorHandling.ts
+  s_37e451fff42af7::t_18c92d66ffd38a 1-66
+packages/nodes-base/nodes/Microsoft/Excel/v2/transport/index.ts
+  s_37e451fff42af7::t_dece5506cbed65 11-12
+  s_37e451fff42af7::t_ac9dd88fb4565e 49-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "766155a70336b22e4c3491ef415fa7b7bedf1b18",
+  "prompts": {},
+  "sessions": {
+    "s_37e451fff42af7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9285862-7af0-4e1d-89ba-8bd58c2f345d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

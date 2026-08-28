@@ -1,0 +1,26 @@
+packages/@n8n/instance-ai/src/tools/workflows/workflow-source-compiler.ts
+  s_f4f3f37a98d31a::t_729c7d7ebf4aa4 4
+  s_f4f3f37a98d31a::t_020c516ca8d504 375-377,381,384-395
+  s_f4f3f37a98d31a::t_753ed333976805 396-397
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/workflow-source-compiler.test.ts
+  s_f4f3f37a98d31a::t_60b8c5bf1fc8e4 2,14
+  s_f4f3f37a98d31a::t_e95a9ee18817fa 230-274
+packages/@n8n/workflow-sdk/src/index.ts
+  s_f4f3f37a98d31a::t_9827fce4b248dc 171-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "23b44d48f4ffcafbd720b165aae8ef77126cfca6",
+  "prompts": {},
+  "sessions": {
+    "s_f4f3f37a98d31a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f0f3eae-3f41-4e57-9468-7c570d305e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

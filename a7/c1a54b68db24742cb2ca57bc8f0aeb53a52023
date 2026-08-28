@@ -1,0 +1,27 @@
+packages/@n8n/api-types/src/workflow-review-eligible-reviewer.ts
+  s_c7f2eb05574ce2::t_eda9857c4fbd6d 1-12
+packages/@n8n/api-types/src/index.ts
+  s_c7f2eb05574ce2::t_97f6bb5bc7a3f6 16
+packages/@n8n/api-types/src/dto/workflow-reviews/create-workflow-review-request.dto.ts
+  s_c7f2eb05574ce2::t_9b6fcc13d4133f 16-17
+packages/@n8n/api-types/src/dto/workflow-reviews/get-eligible-reviewers-query.dto.ts
+  s_c7f2eb05574ce2::t_bcd24d0aab0537 1-7
+packages/@n8n/api-types/src/dto/index.ts
+  s_c7f2eb05574ce2::t_28dd1b97fe91c6 296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "a7c1a54b68db24742cb2ca57bc8f0aeb53a52023",
+  "prompts": {},
+  "sessions": {
+    "s_c7f2eb05574ce2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "63ca9479-d174-4a0f-9349-54a47630f906",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

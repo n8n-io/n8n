@@ -1,0 +1,77 @@
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
+  s_a1a5c1274ad948::t_a3f82ca5461a91 69-72
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsManager/TagsView/TagsTableHeader.vue
+  s_a1a5c1274ad948::t_2eb0de9ba6e3aa 57
+  s_a1a5c1274ad948::t_d5ef677135ffa3 12,17
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsManager/TagsManager.vue
+  s_a1a5c1274ad948::t_ed8c5e6b7f5d98 181
+  s_a1a5c1274ad948::t_e6c08065a93c80 10
+  s_a1a5c1274ad948::t_fa25a893544805 146
+  s_a1a5c1274ad948::t_6e164581a23d68 46
+packages/frontend/editor-ui/src/features/shared/tags/tags.store.test.ts
+  s_a1a5c1274ad948::t_e68d640f7fe82f 1-8,19-29,32-37,39-126
+  s_a1a5c1274ad948::t_1bcf062358497a 38
+  s_a1a5c1274ad948::t_5d44cb307a1ba5 9-18,30-31
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsManager/TagsView/TagsTable.vue
+  s_a1a5c1274ad948::t_819c1f26e19067 224
+packages/frontend/editor-ui/src/features/shared/tags/tags.types.ts
+  s_a1a5c1274ad948::t_2e99ee143620b9 11
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsManager/TagsView/TagsView.vue
+  s_a1a5c1274ad948::t_8314aee2a99f25 8
+  s_a1a5c1274ad948::t_35f1b4578e9b8f 37
+  s_a1a5c1274ad948::t_2de9c3c4bb4a83 47
+  s_a1a5c1274ad948::t_49081731d6e67a 48-49
+packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.test.ts
+  s_a1a5c1274ad948::t_3171b5200a6c57 72,125,127
+  s_a1a5c1274ad948::t_b1f0f2c099a8dc 129-132,179-189
+  s_a1a5c1274ad948::t_0b9479e891d76d 124
+  s_a1a5c1274ad948::t_60025d1bb59b60 126
+  s_a1a5c1274ad948::t_5a23c5e6bc06f2 128
+  s_a1a5c1274ad948::t_145e0ef7d2d43e 133
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.test.ts
+  s_a1a5c1274ad948::t_7625995849f04b 54
+  s_a1a5c1274ad948::t_1287b413c28106 129,131,137
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsManager/TagsView/TagsTableHeader.test.ts
+  s_a1a5c1274ad948::t_1f41be5bb0623c 1-30
+packages/frontend/editor-ui/src/features/shared/tags/tags.store.ts
+  s_a1a5c1274ad948::t_35a6279691eff8 101,103
+  s_a1a5c1274ad948::t_8d9e04182360d7 102,122,132
+  s_a1a5c1274ad948::t_81e0518503cd90 100
+  s_a1a5c1274ad948::t_f68f6371175432 120-121
+  s_a1a5c1274ad948::t_5200a597608c41 123
+  s_a1a5c1274ad948::t_42c96d08d7f3c3 130-131
+  s_a1a5c1274ad948::t_807e814b99f427 133
+packages/frontend/editor-ui/src/features/shared/tags/components/TagsManager/NoTagsView.vue
+  s_a1a5c1274ad948::t_92d945605d0401 11,18
+packages/frontend/editor-ui/src/features/shared/tags/components/WorkflowTagsDropdown.vue
+  s_a1a5c1274ad948::t_e405de33a3cbe4 32,43-44
+  s_a1a5c1274ad948::t_8af28cd4e141ce 8
+  s_a1a5c1274ad948::t_733271ce8df5d2 70-71
+  s_a1a5c1274ad948::t_e5f39f7502f955 45
+packages/frontend/editor-ui/src/features/shared/tags/useTagPermissions.ts
+  s_a1a5c1274ad948::t_94cc4f23d626db 1-14
+  s_a1a5c1274ad948::t_574cd494d1a585 15-31
+packages/frontend/editor-ui/src/features/shared/tags/components/AnnotationTagsDropdown.ee.vue
+  s_a1a5c1274ad948::t_5c5e9c9547d371 32,43-44
+  s_a1a5c1274ad948::t_af220432327cea 8
+  s_a1a5c1274ad948::t_88cb52e411f56e 70-71
+  s_a1a5c1274ad948::t_4d76a9668fdee8 45
+packages/frontend/editor-ui/src/features/shared/tags/components/WorkflowTagsDropdown.test.ts
+  s_a1a5c1274ad948::t_6b28fbd422e2b4 1-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.8",
+  "base_commit_sha": "57aea1e7cce8317b890221b25c8383d37b63f3d4",
+  "prompts": {},
+  "sessions": {
+    "s_a1a5c1274ad948": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0a6f594f-d9ca-4eb9-81b2-af4e0afc502f",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

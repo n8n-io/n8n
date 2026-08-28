@@ -1,0 +1,26 @@
+packages/cli/src/controllers/oauth/__tests__/oauth2-credential.controller.test.ts
+  s_aa40f315c412bf::t_74a5e7cd929e82 3
+  s_aa40f315c412bf::t_2f429e84ad9f01 155-157,161-175,177-208
+  s_aa40f315c412bf::t_01e906561f7657 158-160
+  s_aa40f315c412bf::t_ddba7e770a7262 176
+  s_aa40f315c412bf::t_f8a4bc30992361 209-211,213-214,218-274,282,285-287,350,353-355,405,408-410,460,463-465,516,519-521,572,575-577,627,630-632,686,689-691,743,746-748,799,802-804,1041-1043
+packages/cli/src/oauth/__tests__/oauth.service.test.ts
+  s_aa40f315c412bf::t_d161096c17e7fc 5066-5072,5078-5079,5081,5083-5087,5089-5099,5101-5105,5108,5130-5132,5135
+  s_aa40f315c412bf::t_31eb820a7bc1e5 5082
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "da3b106a5b149332eba0c1e606bf7c365850b9e0",
+  "prompts": {},
+  "sessions": {
+    "s_aa40f315c412bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d1db2c7-ef71-408d-a28c-9f53a28738b9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

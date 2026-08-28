@@ -1,0 +1,56 @@
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_fab2dbf5ded45d::t_fed4c73b8f0640 112,116-119
+packages/cli/src/modules/agents/integrations/__tests__/linear-integration.test.ts
+  s_fab2dbf5ded45d::t_5b22802a7d16e2 48
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_fab2dbf5ded45d::t_fed4c73b8f0640 143
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_fab2dbf5ded45d::t_cf475b60356054 42,337-359
+  s_fab2dbf5ded45d::t_d302e8834531be 360
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_fab2dbf5ded45d::t_fd415b6f43399d 318-320,322-328,331,377-381,386,477-478,483-485,489-528,535
+  s_fab2dbf5ded45d::t_2b22d63f0d9061 56,67,104-108,178,180-185,201,208,222,231-238,248-261,266,292-293,298-300
+  s_fab2dbf5ded45d::t_22ca98414949e1 664-704,735
+packages/cli/src/modules/agents/integrations/integration-context-query-executor.ts
+  s_fab2dbf5ded45d::t_fed4c73b8f0640 59,63-66
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_fab2dbf5ded45d::t_5b22802a7d16e2 676
+  s_fab2dbf5ded45d::t_eca3e74faa6244 511-513,593-595
+  s_fab2dbf5ded45d::t_8b22abb93fd3a8 15,630
+  s_fab2dbf5ded45d::t_5772a044feabb9 18,462-493,495-510,514-516,518-528,530-569,571-592,596-598,600-629
+  s_fab2dbf5ded45d::t_68d5ddf5d50ef3 114,121,140,494,517,529,570
+  s_fab2dbf5ded45d::t_252ee67a59920a 599
+  s_4bc79cf80826f6::t_d32239a64b573e 631-632
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_fab2dbf5ded45d::t_2b22d63f0d9061 30-31
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_fab2dbf5ded45d::t_d0fd623fd1c090 220-221,225,235-248
+  s_fab2dbf5ded45d::t_0630b29c2b57a5 232
+packages/cli/src/modules/agents/integrations/__tests__/integration-context-query-executor.test.ts
+  s_fab2dbf5ded45d::t_d0fd623fd1c090 64-65
+  s_fab2dbf5ded45d::t_551466a6289d44 82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "d0146e567eff1a98d587fe9e2ea90f74cdd7dc2b",
+  "prompts": {},
+  "sessions": {
+    "s_4bc79cf80826f6": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc821-4348-7fc2-93b6-13c4143d0153",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_fab2dbf5ded45d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc83e-7c50-7f60-b884-4264bd2e1e15",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

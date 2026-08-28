@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/transport/index.ts
+  s_37e451fff42af7::t_83cf7df5f20660 26-30,38
+packages/nodes-base/credentials/MicrosoftExcelOAuth2Api.credentials.ts
+  s_37e451fff42af7::t_6502fa3388c1a0 4-16
+packages/nodes-base/credentials/test/MicrosoftExcelOAuth2Api.credentials.test.ts
+  s_37e451fff42af7::t_cbe81809dc85b4 8-15
+  s_37e451fff42af7::t_0e90d9975e62f8 72
+  s_37e451fff42af7::t_e0a7b7ef98bf67 94
+packages/nodes-base/nodes/Microsoft/Excel/v2/test/transport/index.test.ts
+  s_37e451fff42af7::t_0a28809c3de82a 209-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "4a289bc6699724b4b637193b6c1fbafa7e4085b7",
+  "prompts": {},
+  "sessions": {
+    "s_37e451fff42af7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9285862-7af0-4e1d-89ba-8bd58c2f345d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

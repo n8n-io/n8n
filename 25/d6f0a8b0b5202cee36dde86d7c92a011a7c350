@@ -1,0 +1,23 @@
+packages/@n8n/db/src/connection/__tests__/db-connection.test.ts
+  s_2db278e8c0c07e::t_ae64d0b17e0c2d 172,179,187-193,195,197-198,203-224,229-230,235,240
+packages/@n8n/db/src/connection/db-connection.ts
+  s_2db278e8c0c07e::t_36feaa2d22053f 92,101-104,106-114,116-120,124,131-147,149-161,163
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_2db278e8c0c07e::t_3989baa50e716b 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "25d6f0a8b0b5202cee36dde86d7c92a011a7c350",
+  "prompts": {},
+  "sessions": {
+    "s_2db278e8c0c07e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_2db278e8c0c07e",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

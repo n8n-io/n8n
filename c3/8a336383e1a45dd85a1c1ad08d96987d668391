@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Webhook/Webhook.node.ts
+  s_467ede6818687a::t_dc44297bab06d2 241-248,256,263-271
+packages/nodes-base/nodes/Webhook/utils.ts
+  s_467ede6818687a::t_b2584b494bfd6d 97
+  s_467ede6818687a::t_26d1c66b5d3f4b 132-134
+  s_467ede6818687a::t_ca996d082a36be 116-118
+packages/nodes-base/nodes/Webhook/test/utils.test.ts
+  s_467ede6818687a::t_5eae1937b19978 203-224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c38a336383e1a45dd85a1c1ad08d96987d668391",
+  "prompts": {},
+  "sessions": {
+    "s_467ede6818687a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ee96959-2d33-4d77-9268-45e16a4f8ac8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

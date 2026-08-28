@@ -1,0 +1,34 @@
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_4e3d3e4345da23::t_ec083fe9f38434 101
+  s_4e3d3e4345da23::t_418a86c8134830 41
+packages/@n8n/permissions/src/roles/__tests__/end-user-credential-scope.test.ts
+  s_4e3d3e4345da23::t_4ec7ba28d36927 1-29
+packages/@n8n/permissions/src/scope-information.ts
+  s_4e3d3e4345da23::t_1228ae87e77c9e 101-104
+  s_4e3d3e4345da23::t_c8fe75a09faa04 105
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_4e3d3e4345da23::t_6f501839120d97 31
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_4e3d3e4345da23::t_cf50eb0fa84995 27
+  s_4e3d3e4345da23::t_8da3dc67724b78 28-37
+packages/@n8n/permissions/src/constants.ee.ts
+  s_4e3d3e4345da23::t_d1599d4c2fc8a9 17
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_4e3d3e4345da23::t_9605bcba1951ff 33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "1af9425ac6970ef6731adf5d62efbc893d3c1b3e",
+  "prompts": {},
+  "sessions": {
+    "s_4e3d3e4345da23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97a09d56-678f-4b6b-9440-b4810e176788",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

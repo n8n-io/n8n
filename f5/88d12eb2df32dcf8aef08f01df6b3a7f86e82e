@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyScopes.vue
+  s_03493995b85f3a::t_1ded612c1dec5a 184,186,190-191
+  s_03493995b85f3a::t_9bf68b0e71e84b 16,18
+  s_03493995b85f3a::t_7a0200fde77fdd 112-126
+packages/frontend/@n8n/design-system/src/components/N8nRadioGroup/index.ts
+  s_03493995b85f3a::t_4c6f55155fc2af 1-4
+packages/frontend/@n8n/design-system/src/components/N8nRadioGroup/RadioGroup.stories.ts
+  s_03493995b85f3a::t_dc9d33beb13d5f 36-37
+  s_03493995b85f3a::t_462a4cd2088f87 1-35,38-72
+packages/frontend/editor-ui/src/features/settings/apiKeys/components/ApiKeyScopes.test.ts
+  s_03493995b85f3a::t_94128840062f6f 31,42,50,61,71,81,84,186-187,194-195,205,213-214,254,258,266
+packages/frontend/@n8n/design-system/src/components/N8nRadioGroup/RadioGroup.test.ts
+  s_03493995b85f3a::t_680a5948bf8943 1,3-80
+  s_03493995b85f3a::t_80d8dc3876f3d2 2
+packages/frontend/@n8n/design-system/src/components/index.ts
+  s_03493995b85f3a::t_b3770f30b2b6ec 86-87
+packages/frontend/@n8n/design-system/src/components/N8nRadioGroup/RadioGroup.vue
+  s_03493995b85f3a::t_df93d17389bd33 2-10,15-171
+  s_03493995b85f3a::t_32bec0af423128 1,11-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "f588d12eb2df32dcf8aef08f01df6b3a7f86e82e",
+  "prompts": {},
+  "sessions": {
+    "s_03493995b85f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f59ef906-85f1-48b6-bc09-9185151a943a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

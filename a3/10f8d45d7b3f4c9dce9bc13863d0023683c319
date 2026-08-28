@@ -1,0 +1,46 @@
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_8c0bb2d06aee91::t_87e2b93c76a319 342-344
+packages/cli/src/modules/agents/utils/inbound-attachments.ts
+  s_8c0bb2d06aee91::t_fe3eb833dc553c 40
+packages/@n8n/db/src/migrations/common/1784905879579-CreateAgentChatAttachmentsTable.ts
+  s_8c0bb2d06aee91::t_34228db9d7a5f0 15
+packages/@n8n/api-types/src/agents/provider-capabilities.ts
+  s_8c0bb2d06aee91::t_3e1e07391613d2 68
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_8c0bb2d06aee91::t_414333aa787a03 188-189
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  h_7555c3ee6524cf 43
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_8c0bb2d06aee91::t_1e28974160f830 41-42
+  s_8c0bb2d06aee91::t_ffda85dc4af578 165
+packages/@n8n/agents/src/types/sdk/message.ts
+  s_8c0bb2d06aee91::t_01aa95fca55231 94-95
+  s_8c0bb2d06aee91::t_f31c9800ee3dcc 67
+packages/cli/src/modules/agents/integrations/n8n-checkpoint-storage.ts
+  s_8c0bb2d06aee91::t_8ec8b7422334ef 17
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_8c0bb2d06aee91::t_4ac7405cc6fb6b 93
+packages/@n8n/agents/src/sdk/agent.ts
+  s_8c0bb2d06aee91::t_2241030710847f 357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a310f8d45d7b3f4c9dce9bc13863d0023683c319",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

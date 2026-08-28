@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/tools/input-data-tool.ts
+  s_bb17b049fc2e2d::t_5b3d434196e04c 1-62
+packages/cli/src/modules/agents/tools/__tests__/input-data-tool.test.ts
+  ai_agent 1-5,42
+  s_bb17b049fc2e2d::t_cd03e40af93580 6-41,43-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d1bdbcc6f42b9f66903961d03fe8eccfdfb93bf4",
+  "prompts": {},
+  "sessions": {
+    "s_bb17b049fc2e2d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7ce0c93e-11a0-4d60-b602-af5cd3c86750",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

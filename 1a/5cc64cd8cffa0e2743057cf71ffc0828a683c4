@@ -1,0 +1,27 @@
+packages/testing/playwright/playwright.config.ts
+  s_efb0e6e7ad51ed::t_979079935d79d2 63-66
+  s_efb0e6e7ad51ed::t_8a31af5211a227 20-21,23-24
+packages/testing/playwright/global-teardown.ts
+  s_efb0e6e7ad51ed::t_4215b51bdae583 3-24,29
+packages/testing/playwright/README.md
+  s_efb0e6e7ad51ed::t_3190e80eb8e9a0 110-111
+packages/testing/playwright/tests/dev-server-smoke/user-folder.spec.ts
+  s_efb0e6e7ad51ed::t_72ff32683720d9 7
+  s_efb0e6e7ad51ed::t_8bc7a4ff4d9128 28-33,35,37,43-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1a5cc64cd8cffa0e2743057cf71ffc0828a683c4",
+  "prompts": {},
+  "sessions": {
+    "s_efb0e6e7ad51ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a36c30c1-16ae-4c82-9c86-53d0f70b9c98",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

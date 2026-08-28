@@ -1,0 +1,38 @@
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  s_8494e2901dd926::t_581ad41da1fa68 27
+  h_57f0ed8cf91102 379
+  ai_agent 380-383
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_8494e2901dd926::t_eacd8b6345ceaf 1377-1380,1387,1396
+  s_8494e2901dd926::t_624358e3e76550 1376,1381-1386,1388-1395,1397-1417
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.activate.yml
+  s_8494e2901dd926::t_6b5f32db52f406 8-11
+packages/cli/src/public-api/v1/shared/middlewares/global.middleware.ts
+  s_8494e2901dd926::t_85550c7d884b89 107,109-112
+  s_8494e2901dd926::t_64ef2bfce0d25f 97-99,101-102
+  s_8494e2901dd926::t_a60708ad538287 96,103
+  s_8494e2901dd926::t_5f8688bbafbc08 91-95,100,104-106,108
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/workflows.id.deactivate.yml
+  s_8494e2901dd926::t_18274132a10238 8-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "065dff971c176750ae9146848f1005224114ab72",
+  "prompts": {},
+  "humans": {
+    "h_57f0ed8cf91102": {
+      "author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8494e2901dd926": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4eec0bfb-1ce5-48d5-b3ec-00ef60331891",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiInput.test.ts
+  s_b2770a9c4c7dcd::t_a76b825c902535 32,352-368
+  s_b2770a9c4c7dcd::t_824323835c6672 369,371-389
+  s_b2770a9c4c7dcd::t_73424daf032800 370
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_b2770a9c4c7dcd::t_8022d0746db3dd 202,246-250,351,366,393-394
+  s_b2770a9c4c7dcd::t_8988fe3a78d035 453,477-478
+  s_b2770a9c4c7dcd::t_5087db688b28c1 395
+  s_b2770a9c4c7dcd::t_e14abc9edbcacd 479
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/spec/instance-ai-personalized-prompt-suggestions.md
+  s_b2770a9c4c7dcd::t_91bab5665354a8 282-287,290-292,297
+  s_b2770a9c4c7dcd::t_3edd57c770ec05 288-289,293-296
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/components/InstanceAiPersonalizedPromptSuggestions.test.ts
+  s_b2770a9c4c7dcd::t_ba3eefa8cd283f 82,84-88
+packages/frontend/editor-ui/src/experiments/instanceAiPersonalizedPromptSuggestions/components/InstanceAiPersonalizedPromptSuggestions.vue
+  s_b2770a9c4c7dcd::t_527553a8fcaf43 4,126-128,130-149,195-197,203-210,212,214-246,281,326,328-332,334,339-341,378,412-421
+  s_b2770a9c4c7dcd::t_2e0098c0460fa6 422
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_b2770a9c4c7dcd::t_b9519aa16daa1e 59,121-126,128-131,436-442,463-469
+  s_b2770a9c4c7dcd::t_eca0bfc2da8d12 127
+  s_b2770a9c4c7dcd::t_3523245d03469d 470-471
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_b2770a9c4c7dcd::t_82d6df30f127f5 68-69,226
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b2770a9c4c7dcd::t_9c6204c12bd4ac 1251-1253,1255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "0ee02751c5083d0f1dceb03d037bb2d84b0bb608",
+  "prompts": {},
+  "sessions": {
+    "s_b2770a9c4c7dcd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ee5c2-4c3c-7be2-a064-09d90bbc7259",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Romeo Balta <7095569+romeobalta@users.noreply.github.com>"
+    }
+  }
+}

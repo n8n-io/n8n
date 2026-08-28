@@ -1,0 +1,110 @@
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.env-gate.integration.test.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-44
+  s_60c9025b151770::t_1916428f831677 1-44
+packages/cli/src/modules/workflow-reviews.ee/errors/workflow-review-workflow-archived.error.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-10
+  s_60c9025b151770::t_e760da870371ad 1-10
+packages/cli/src/modules/workflow-reviews.ee/errors/workflow-reviews-disabled.error.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-11
+  s_60c9025b151770::t_104c994bc198f0 1-11
+packages/@n8n/backend-common/src/modules/modules.config.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 36
+  s_60c9025b151770::t_a4789809c277c5 36
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-426
+  s_60c9025b151770::t_bb9cfd15536241 1-426
+packages/cli/src/modules/workflow-reviews.ee/errors/workflow-review-invalid-version.error.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-10
+  s_60c9025b151770::t_eb93557e763350 1-10
+packages/@n8n/db/src/repositories/workflow-review-request-author.repository.ts
+  s_64c8e8b6d24f82::t_fb7d56ec028577 29-30
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 2,13-28
+  s_60c9025b151770::t_65875a2109bd21 2,13-30
+packages/cli/src/modules/workflow-reviews.ee/workflow-reviews.module.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-19
+  s_2a235a6e9347be::t_693e2c4baad9ba 1-19
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-49,51-122
+  h_9c8f56e3400786 50
+  s_60c9025b151770::t_f47620be23b460 1-49,51-122
+packages/cli/test/integration/shared/types.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 55,70-71
+  s_60c9025b151770::t_bc8f2e8a1ae3d0 55,70-71
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-177
+  s_60c9025b151770::t_8a8655a46f6611 1-177
+packages/@n8n/db/src/repositories/workflow-review-request-workflow.repository.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 2,13-22,29-30
+  s_60c9025b151770::t_f7b4630bf8bf6d 2,13-22,29-30
+packages/@n8n/db/src/repositories/workflow-review-request.repository.ts
+  s_64c8e8b6d24f82::t_50eb2b779a8248 76
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 2,5,18-31,44-45,51-75
+  s_60c9025b151770::t_1b89b2320e2bd7 2,5,18-31,44-45,51-76
+packages/cli/test/integration/shared/utils/test-server.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 345-348
+  s_2a235a6e9347be::t_2f37f299fc095c 345-348
+packages/@n8n/api-types/src/dto/index.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 283-284
+  s_2a235a6e9347be::t_6802c7ddb45108 283-284
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-62
+  s_60c9025b151770::t_4dc13844903a23 1-62
+packages/@n8n/db/src/services/db-lock.service.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 16
+  s_60c9025b151770::t_2448a48f4744df 16
+packages/@n8n/backend-common/src/modules/module-registry.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 64
+  s_60c9025b151770::t_078acc951d9093 64
+packages/@n8n/api-types/src/dto/workflow-reviews/create-workflow-review-request.dto.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-20
+  s_60c9025b151770::t_06db1c98cc7bf7 1-20
+packages/cli/src/modules/workflow-reviews.ee/errors/workflow-review-workflow-not-found.error.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-12
+  s_60c9025b151770::t_8220c0634b5dc5 1-12
+packages/cli/src/modules/workflow-reviews.ee/errors/workflow-review-request-conflict.error.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-12
+  s_60c9025b151770::t_06af0d89f26dd1 1-12
+packages/@n8n/db/src/repositories/__tests__/workflow-review-request-author.repository.test.ts
+  s_64c8e8b6d24f82::t_b2f9e5e81654ca 1-48
+  s_60c9025b151770::t_dd91bf959b2356 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "59cdca34e486523c2bfc625b0f633406866d12c0",
+  "prompts": {},
+  "humans": {
+    "h_0d09e42b2cccb8": {
+      "author": "kgrhartlage <kai.grosse.hartlage@gmail.com>"
+    },
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_2a235a6e9347be": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f6650-1132-7ff1-ab94-090605cfc9f7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_60c9025b151770": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "53a03a0f-53be-4095-a000-6d094159abd5",
+        "model": "unknown"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    },
+    "s_64c8e8b6d24f82": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1345f18b-170b-4cd3-b34e-f41cef04df99",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

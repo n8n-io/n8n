@@ -1,0 +1,52 @@
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_57e1c732a05437::t_73a9e880c8a9c2 57-58,94
+  s_57e1c732a05437::t_ed985ca78ff0a9 85-89
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_57e1c732a05437::t_73a9e880c8a9c2 87
+  s_57e1c732a05437::t_f0e538ad992a9b 91-95,100-103
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_57e1c732a05437::t_5668374d0c8aa9 63-66
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_57e1c732a05437::t_11b200361f12f7 970-972,978,981-982
+  s_57e1c732a05437::t_73a9e880c8a9c2 962
+  s_57e1c732a05437::t_eb978d75af8692 164,957
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_57e1c732a05437::t_73a9e880c8a9c2 117
+  s_57e1c732a05437::t_5ffff841842a0c 137-141
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_57e1c732a05437::t_9f16b01c6f4136 1997-2001
+  s_57e1c732a05437::t_73a9e880c8a9c2 1976-1977,2006
+  s_57e1c732a05437::t_54c9822e69f9d6 2026-2029
+packages/cli/src/events/maps/relay.event-map.ts
+  s_57e1c732a05437::t_73a9e880c8a9c2 93
+  s_57e1c732a05437::t_74c2f52afe0abf 107
+  s_57e1c732a05437::t_cc204f258d836a 16
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_57e1c732a05437::t_e87805a0664e5e 1272-1276
+  s_57e1c732a05437::t_f77b91e40c9c4e 1233-1237
+  s_57e1c732a05437::t_bb95c4b6ac7b5a 1163-1167
+  s_57e1c732a05437::t_714d696bcab7c8 1313-1317
+  s_57e1c732a05437::t_73a9e880c8a9c2 1122,1137,1145,1175,1220,1223,1245,1264,1267,1308,1311,1342,1351,1371
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-credentials.integration.test.ts
+  s_57e1c732a05437::t_1e1c2b7992d442 270
+  s_57e1c732a05437::t_7f0a055190a240 288-289
+  s_57e1c732a05437::t_d8b4f24ee792ca 258-259
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_57e1c732a05437::t_eb978d75af8692 44,146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "369de8f116df85d41a0bf09bbe4ab36fcc5ab97f",
+  "prompts": {},
+  "sessions": {
+    "s_57e1c732a05437": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e1af8da7-bfdb-4c1e-afe0-a8ce892378ba",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

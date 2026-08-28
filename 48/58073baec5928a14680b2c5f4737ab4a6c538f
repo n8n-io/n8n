@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Webhook/description.ts
+  s_5cf63be33dc3c7::t_8e620354057c4e 260,275,298,315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "4858073baec5928a14680b2c5f4737ab4a6c538f",
+  "prompts": {},
+  "sessions": {
+    "s_5cf63be33dc3c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_5cf63be33dc3c7",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

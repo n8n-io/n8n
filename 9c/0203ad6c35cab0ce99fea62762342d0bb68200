@@ -1,0 +1,49 @@
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_7d48ada9cf20b6::t_9292a2c36b44a8 2235-2237,2257-2261,2274-2276,2283-2285
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_7d48ada9cf20b6::t_75bc401e9d144b 1043-1045,1052-1054
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_7d48ada9cf20b6::t_523de159c159a1 150-152
+  s_7d48ada9cf20b6::t_dfd94bf8063fb1 95-102
+  s_7d48ada9cf20b6::t_ac70d53ae72186 176-180
+  s_7d48ada9cf20b6::t_884915b611736c 132,134
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_7d48ada9cf20b6::t_a23622e13fede4 181-200
+  s_7d48ada9cf20b6::t_ecb873a5bd7beb 8-9
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_7d48ada9cf20b6::t_e08968474899d3 1196-1200,1275-1279,1323-1327,1373
+  s_7d48ada9cf20b6::t_2c4e263cdf6331 1180-1182
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_7d48ada9cf20b6::t_e0a5d8e8cd0761 163-167
+  s_7d48ada9cf20b6::t_b74e60ba3dd7bb 137-139
+packages/cli/src/modules/n8n-packages/engine/import-orchestrator.ts
+  s_7d48ada9cf20b6::t_77823a2191e05d 50
+  s_7d48ada9cf20b6::t_e7069f63808f78 124
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table-importer.ts
+  s_7d48ada9cf20b6::t_391e297b20149c 50,56
+  s_7d48ada9cf20b6::t_99df5fadcf41bf 91,96
+  s_7d48ada9cf20b6::t_8e9527b8e1f9cb 69
+packages/cli/src/modules/n8n-packages/entities/data-table/__tests__/data-table-importer.test.ts
+  s_7d48ada9cf20b6::t_4ace07d2ba5872 60,91
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_7d48ada9cf20b6::t_e51b21e3761a01 75-77,98-100
+  s_7d48ada9cf20b6::t_a3e0a9fdb7ea92 125-127
+packages/cli/src/modules/n8n-packages/entities/data-table/data-table.types.ts
+  s_7d48ada9cf20b6::t_66805b5f327465 76-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9c0203ad6c35cab0ce99fea62762342d0bb68200",
+  "prompts": {},
+  "sessions": {
+    "s_7d48ada9cf20b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d125bd-0770-4362-a74d-8364298b52a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

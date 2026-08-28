@@ -1,0 +1,35 @@
+packages/cli/src/public-api/__tests__/public-api-route-resolver.test.ts
+  s_64390ec65834a0::t_68e1345f95e011 174-175
+  s_64390ec65834a0::t_aa318e58172fb8 1-17,23-26,39-173,176-185,187-192,194-200,202-205,207-213,215-218,220-239,241-244,246-248,250-252,254-264,266-270,272-279,286-288
+  s_64390ec65834a0::t_002462919ff723 201
+  s_64390ec65834a0::t_aa188b7e8a3643 245
+  s_64390ec65834a0::t_815a8294ccbfc8 186
+  s_64390ec65834a0::t_9f96b402f47339 193
+  s_64390ec65834a0::t_3638a5a1df17b7 280-285
+  s_64390ec65834a0::t_1f3352abb4260f 265,271
+  s_64390ec65834a0::t_22ba91f1a8c1f7 18-22,27-38
+  s_64390ec65834a0::t_c425a2fe7c2655 214
+  s_64390ec65834a0::t_70d83665dc78cd 240,249,253
+  s_64390ec65834a0::t_d5cd938db77b76 206,219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bc3b63bef62a31e9d20fbbc4507c6e96c56d5774",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_64390ec65834a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71bcfd0e-672d-481c-a393-54c80e6b7558",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

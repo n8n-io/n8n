@@ -1,0 +1,21 @@
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_84458f29d00f13::t_5a68c7d3417882 18
+packages/@n8n/permissions/src/constants.ee.ts
+  s_84458f29d00f13::t_15a9fc911ee385 94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e5d4dce7c13cf7738c3df9c640e818401cbde98b",
+  "prompts": {},
+  "sessions": {
+    "s_84458f29d00f13": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "669f064c-fbe2-424f-9767-52ddbcae54b2",
+        "model": "default"
+      },
+      "human_author": "Ali Elkhateeb <ali.elkhateeb@n8n.io>"
+    }
+  }
+}

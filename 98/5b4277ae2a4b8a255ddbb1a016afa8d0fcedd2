@@ -1,0 +1,49 @@
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_592a334806b52a::t_41fbc4056ac40f 15,23
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_592a334806b52a::t_38f937cbe23664 16,83,93
+packages/@n8n/agents/src/sdk/tool.ts
+  s_592a334806b52a::t_a36b4adf3f82bb 8,83,95,117,135,150,152-164
+packages/@n8n/db/src/repositories/workflow-published-version.repository.ts
+  s_592a334806b52a::t_57c82e48aedbf0 2-3,7-27,74-92,100-118
+packages/cli/src/concurrency/__tests__/concurrency-control.service.test.ts
+  s_592a334806b52a::t_d9357eeacd514a 356-362,364-372,374-377,379-384,445-451,453-461,463-466,468-473,534-540,542-550,552-555,557-562
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_592a334806b52a::t_c59bd0de9ad0f9 329,342,398,410,419,445,458,467,504,510,689,743,834,945,978,1012,1046,1080
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_592a334806b52a::t_698473eddddf36 16,35,40,62,71,251,265,270,272,279
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_592a334806b52a::t_c31633dcfa4139 146
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_592a334806b52a::t_2413b741a8159e 82,87-88,92,95,176-179,192-195
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_592a334806b52a::t_24276fba5f02d2 97-98,333,348-357,359-367,369,371-373,375-379,382-420,426-427,432-433,455,462-468,470-486,504,511-524,539,546-560,573,579-593
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_592a334806b52a::t_6e3b81c2b21d64 49,73,118,179-182,188-191,194,196
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_592a334806b52a::t_140ee8d802386b 104-109,363,522
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_592a334806b52a::t_009aa9ce59806c 14,36
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_592a334806b52a::t_5977fb52a3e3ee 1,8,38,82,287,290-295,300,302,305,351,360,383,410-412,415-418,422-425,467-480,590-598,600-601,604-607,614-616,619-664,668-686,693-695
+packages/cli/src/utils/ttl-map.ts
+  s_592a334806b52a::t_5f99fd9ee3de4f 41,48-52,98
+packages/cli/src/workflow-runner.ts
+  s_592a334806b52a::t_1542e66c5aa2bf 182,274-280
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "985b4277ae2a4b8a255ddbb1a016afa8d0fcedd2",
+  "prompts": {},
+  "sessions": {
+    "s_592a334806b52a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fd67c-c5d6-7cc0-9a96-4ed4eac859ee",
+        "model": "unknown"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,16 @@
+single-instance-promotion-prototype/implementation-phase/PROMPT_ACTIVATE_ENVIRONMENT_VERSIONS.md
+  h_c63dce324dfc7b 1-108
+single-instance-promotion-prototype/implementation-phase/PLAN_ACTIVATE_ENVIRONMENT_VERSIONS.md
+  h_c63dce324dfc7b 1-259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "352fb342e1d56e71d8b456efa60521a9d18034f8",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

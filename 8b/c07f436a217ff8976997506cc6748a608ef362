@@ -1,0 +1,152 @@
+packages/cli/src/services/user.service.ts
+  h_435b1d7d3e52c0 27,333-336
+  s_a5197812b6fe00::t_0e65e5177d521b 326-328
+  s_a5197812b6fe00::t_d6aa98e7981a27 329-332
+  s_a5197812b6fe00::t_ae9de6f0e141de 17
+packages/@n8n/api-types/src/dto/roles/role-members-response.dto.ts
+  h_435b1d7d3e52c0 1-11
+packages/@n8n/permissions/src/constants.ee.ts
+  h_435b1d7d3e52c0 65
+packages/cli/src/controllers/role.controller.ts
+  h_435b1d7d3e52c0 6,12-13,79-89
+packages/cli/test/integration/controllers/role.controller.test.ts
+  s_a5197812b6fe00::t_ec89fcf830691f 747-792
+packages/@n8n/api-types/src/dto/roles/role-member.schema.ts
+  h_435b1d7d3e52c0 1-9
+packages/cli/test/integration/database/repositories/role.repository.test.ts
+  s_a5197812b6fe00::t_5f1bc549325e01 602-667
+packages/cli/src/controllers/__tests__/users.controller.test.ts
+  s_a5197812b6fe00::t_a2c6cb45afda8b 8
+  s_a5197812b6fe00::t_f0ae3ad68ec5b5 69-105
+  s_a5197812b6fe00::t_c2061e450d98d3 19,31
+  s_a5197812b6fe00::t_089073472e0ee7 1,11
+packages/@n8n/api-types/src/dto/index.ts
+  h_435b1d7d3e52c0 181-185
+packages/cli/src/services/role.service.ts
+  h_435b1d7d3e52c0 3-4,68-73
+packages/cli/test/integration/services/role.service.test.ts
+  s_a5197812b6fe00::t_cc0d57e9cc07cf 22
+  s_a5197812b6fe00::t_1a263d3b891961 493-542
+packages/@n8n/db/src/repositories/role.repository.ts
+  h_435b1d7d3e52c0 129-148
+packages/cli/src/services/__tests__/user.service.test.ts
+  s_a5197812b6fe00::t_848835d8b9baf6 20
+  s_a5197812b6fe00::t_43a93a5a974c9d 300-302
+  s_a5197812b6fe00::t_d4e261dd7aa5e3 505-536
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  h_435b1d7d3e52c0 126
+packages/@n8n/api-types/src/dto/roles/role-project-members-response.dto.ts
+  h_435b1d7d3e52c0 3,6,9
+packages/cli/test/integration/public-api/users.test.ts
+  s_a5197812b6fe00::t_930ff3ed836f43 493
+packages/cli/test/integration/users.api.test.ts
+  s_a5197812b6fe00::t_3a5fdecca44f3e 1719
+packages/frontend/editor-ui/src/features/roles/project/ProjectRoleView.vue
+  s_d039c4d9371ecf::t_965695d1b2a542 296-301,305-311
+  s_d039c4d9371ecf::t_bd25855389694c 292
+  s_e451b03ada1186::t_e4313061d84018 18,24,37-60
+packages/frontend/editor-ui/src/app/router.ts
+  s_e451b03ada1186::t_289c5c45b9bc39 882-887,890,894-900
+  s_d039c4d9371ecf::t_72fc9626cc6616 852
+  s_d039c4d9371ecf::t_e7e57da9c099e9 853-881,891,901
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_78adce0f64c626::t_64e5ac8f658d4b 200-237
+  s_78adce0f64c626::t_132e65d6e358cf 7,8
+  s_78adce0f64c626::t_9de5bd6731da4a 44
+  s_e451b03ada1186::t_dc69ecd280f2d1 9-10,13,27-43,67-69
+  s_e451b03ada1186::t_ca24106ac02b7c 16
+  s_e451b03ada1186::t_79d0c93a08d21f 70-72
+  s_ad945a1fe73750::t_acbf07b4d2142b 20
+  s_89f93849c46d72::t_72f4f12ad19a40 14
+  s_89f93849c46d72::t_04f10d14c7f81b 238-240
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRolesView.vue
+  s_e451b03ada1186::t_0ae09a8464ad21 2,7,11,13-16
+packages/frontend/editor-ui/src/app/constants/navigation.ts
+  s_d039c4d9371ecf::t_1963a8bbcb84b3 59-61
+packages/frontend/editor-ui/src/features/roles/composables/useRolesListActions.ts
+  s_e451b03ada1186::t_9fec43f32c76ad 1-72,74-132
+packages/frontend/editor-ui/src/features/roles/project/ProjectRolesView.vue
+  s_e451b03ada1186::t_e7fae175983f9b 15,22,51-53,55-60,62-69,73,78-82,85,88-92
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  s_d039c4d9371ecf::t_1bb7b085c9ab9d 33-35
+packages/frontend/editor-ui/src/features/roles/composables/useRoleEditorForm.ts
+  s_e451b03ada1186::t_f809daa1bd97f8 1-133
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleAssignmentsTab.vue
+  s_89f93849c46d72::t_803e9278eb57c4 1-212,214-261
+  s_89f93849c46d72::t_a4a2829620a348 213
+packages/frontend/editor-ui/src/app/stores/roles.store.ts
+  s_89f93849c46d72::t_f3b26a4d0b3fc6 129
+  s_89f93849c46d72::t_f7da58175b5d35 15
+  s_89f93849c46d72::t_f16d47ed914265 112-115
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_89f93849c46d72::t_1244542239b697 2821-2828
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleAssignmentsTab.test.ts
+  s_89f93849c46d72::t_2d9a353f55d60b 1-172
+packages/frontend/@n8n/rest-api-client/src/api/roles.ts
+  s_89f93849c46d72::t_64e41ed97ae086 58-64
+  s_89f93849c46d72::t_74f74acf128fa0 4
+packages/frontend/@n8n/rest-api-client/src/api/users.ts
+  s_89f93849c46d72::t_1b8dca273b44ba 217-218
+  s_89f93849c46d72::t_dd428ba873fa53 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "8bc07f436a217ff8976997506cc6748a608ef362",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_78adce0f64c626": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50247200-f127-49ae-a230-f839ff215225",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_89f93849c46d72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d69f941-b69f-4837-9fc4-d327e6ee2b4a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_a5197812b6fe00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fca82f8-5371-4cc1-9159-2d29bef80f15",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    },
+    "s_ad945a1fe73750": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8c7a2131-2de1-4777-ac37-e58df6fe9fb5",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_d039c4d9371ecf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d6af74f-0c62-4f40-a23b-841141b3e9c4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    },
+    "s_e451b03ada1186": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e6ddda45-fd01-4e73-b225-ab6576a89fb1",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

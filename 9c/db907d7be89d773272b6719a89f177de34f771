@@ -1,0 +1,40 @@
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_76f9232440e097::t_99212c255055e9 146-181,196,211,213,215
+  s_76f9232440e097::t_a5da5e926a7e54 6-12
+  s_76f9232440e097::t_b0382bcd702dcd 233,241,247-250,254
+  s_76f9232440e097::t_b9dad3776890d4 284
+  s_76f9232440e097::t_559520253c99c3 85-89,100-102,108-112
+  s_76f9232440e097::t_cb0025645e8193 32-41
+  s_76f9232440e097::t_55bc14e9d6d91c 17-19,25-31,45
+  s_76f9232440e097::t_9444e2b3777a5b 282-283,285-300
+  s_76f9232440e097::t_57389b67a95462 195
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  s_76f9232440e097::t_0435c46d815484 145
+  s_76f9232440e097::t_4338c394c09b9b 106-135,148-161
+  s_76f9232440e097::t_43eec342469520 136-144,146-147
+  s_76f9232440e097::t_b870b25beb5a78 4-8,12
+  s_76f9232440e097::t_7a55f15000cbe0 3
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_76f9232440e097::t_897e86f5105f60 385-387
+  s_76f9232440e097::t_760eb57eca67a5 33
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_76f9232440e097::t_b763469fab05c7 236-264
+  s_76f9232440e097::t_2f3cf6e0c76bc7 4-5,8-12
+  s_76f9232440e097::t_230daa94e87f3c 312-421
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9cdb907d7be89d773272b6719a89f177de34f771",
+  "prompts": {},
+  "sessions": {
+    "s_76f9232440e097": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b1e7ce4-00d9-40a5-a7d7-c52b8fe7224a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

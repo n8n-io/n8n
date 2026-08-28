@@ -1,0 +1,26 @@
+packages/cli/src/workflows/triggers/__tests__/workflow-trigger-activator.test.ts
+  s_bc047f60603f3a::t_250436686fad7b 426
+  s_bc047f60603f3a::t_5f970b9971aa7f 433-469
+  s_bc047f60603f3a::t_68759d79ad946c 307-309,341-342
+  s_bc047f60603f3a::t_cf4ba5c7e7ff49 203
+  s_bc047f60603f3a::t_93c1ae9548bee5 356-357,374
+  s_bc047f60603f3a::t_7361fcabbeadc6 388-389
+packages/cli/src/workflows/triggers/workflow-trigger-activator.ts
+  s_bc047f60603f3a::t_1173473be7e4f0 361-364,387-388,398-409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9efb8b4c1477f20b6bfb9080ff61b7199e6681b1",
+  "prompts": {},
+  "sessions": {
+    "s_bc047f60603f3a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "76d868d0-5583-4dbf-b7bd-65e3c6e564ed",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

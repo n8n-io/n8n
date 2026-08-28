@@ -1,0 +1,22 @@
+packages/@n8n/instance-ai/evaluations/harness/redact.ts
+  s_704a1a6a42be24::t_d861202f852fdc 39-51,56-58
+packages/@n8n/instance-ai/evaluations/__tests__/redact.test.ts
+  s_704a1a6a42be24::t_f896bb66431ad3 300-303,314-325
+  s_704a1a6a42be24::t_148e6acd8490b1 326-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "de1aca67952c7190b5b643ed19e41154f1f18a6a",
+  "prompts": {},
+  "sessions": {
+    "s_704a1a6a42be24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2cbbabf-304d-413b-b4e6-2ce7d66d0ec9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

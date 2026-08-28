@@ -1,0 +1,19 @@
+packages/@n8n/api-types/src/agents/dto.ts
+  s_8c0bb2d06aee91::t_9464c4454a140e 166-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f48d747391221a470a6ac805b1b125dbc3c5dacd",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

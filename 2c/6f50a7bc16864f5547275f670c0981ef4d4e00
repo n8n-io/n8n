@@ -1,0 +1,25 @@
+packages/@n8n/agents/src/runtime/__tests__/memory-orchestrator-persist-input.test.ts
+  s_2e049f96149808::t_4b0cc47d8e7b3d 101-114
+packages/@n8n/agents/src/runtime/memory/memory-orchestrator.ts
+  s_2e049f96149808::t_23f9176bb10ba9 173-188
+packages/cli/src/modules/instance-ai/suspended-thread-persistence.service.ts
+  s_2e049f96149808::t_ac3dc6fb964b65 32-33
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_2e049f96149808::t_04a0a72e86d45a 465-466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2c6f50a7bc16864f5547275f670c0981ef4d4e00",
+  "prompts": {},
+  "sessions": {
+    "s_2e049f96149808": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e56d8974-d525-45a0-96bd-34a22f48a9e3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

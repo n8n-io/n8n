@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.ts
+  s_03e31bd3d32fb7::t_1dcf876d1a3261 46-55,58-64,74-78
+  s_03e31bd3d32fb7::t_048d54fc263da8 96,103-107
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue
+  s_03e31bd3d32fb7::t_fa6abb086516b1 277
+  s_03e31bd3d32fb7::t_a440ef9ed49d29 450-451,457-458
+  s_03e31bd3d32fb7::t_144335d0a742e3 200,203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "9a47124959bbe207c1d7fd85b0f63ad3f2c3fcfa",
+  "prompts": {},
+  "sessions": {
+    "s_03e31bd3d32fb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a23cf9e9-0732-42b0-a3d7-4997316c07d1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

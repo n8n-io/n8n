@@ -1,0 +1,30 @@
+packages/@n8n/instance-ai/src/tools/filesystem/create-tools-from-mcp-server.ts
+  h_44f8d1c0f2f8c4 289-295,299-300
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  h_44f8d1c0f2f8c4 89-93,97-98
+  h_44f8d1c0f2f8c4 94-96
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_8521b223be2102::t_57a8057ed9f5f3 3579-3726
+  s_8521b223be2102::t_088faaef2d3c60 688-699
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f6b6a10876af7e299034c7a7edbe766bafb1ab00",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8521b223be2102": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab3d933a-19c0-4279-b0cf-7b0be38aeac8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

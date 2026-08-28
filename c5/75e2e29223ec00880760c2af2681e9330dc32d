@@ -1,0 +1,131 @@
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_2aa332997f69a5::t_8ca7b357b024f8 3,18-19,22,49,59,63-74,108,116,119,196,211,228,239-240,242,250-252,260-262,274-297,333,400
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_2aa332997f69a5::t_0cc9ecbd0bcfa1 2268
+  s_2aa332997f69a5::t_7c2b81c90e1140 2-6,9-10,12-13,103,2235-2267,2269-2362
+  s_2aa332997f69a5::t_5c8a2a3e5da82e 2363
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_2aa332997f69a5::t_1cd0002b6f9fca 27,59-60,117,137-140,149-150
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_2aa332997f69a5::t_2499dc5013781a 1,14-16,52-53,64-65,99-100,156-157,199,202-213,272,307-311,342-343,392,426-427,439-447,473-474,510,543,566-567,570-574,594-595
+packages/@n8n/agents/src/index.ts
+  s_2aa332997f69a5::t_a5f66d5a7f9b20 77-78
+packages/@n8n/agents/src/runtime/__tests__/delegate-sub-agent-tool.test.ts
+  s_2aa332997f69a5::t_ccf89b8621b120 406-426,461
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_2aa332997f69a5::t_977398d14d8c1d 52-56,263-287
+packages/@n8n/agents/src/runtime/loop/agent-runtime.ts
+  s_2aa332997f69a5::t_520fcf5e6bd298 752
+packages/@n8n/agents/src/runtime/tools/delegate-sub-agent-tool.ts
+  s_2aa332997f69a5::t_7d812d9df4c916 136-137,527
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_2aa332997f69a5::t_1fd4e411f687ed 128,143
+packages/@n8n/agents/src/runtime/tools/tool-call-executor.ts
+  s_2aa332997f69a5::t_426fcaf54654ed 119,139,270,345,479,506,621,796,814
+packages/@n8n/agents/src/sdk/__tests__/agent-isolated-runtime.test.ts
+  s_2aa332997f69a5::t_f139a20abc56bd 3,8-9,12,39-42,68-104,135-274,306-389
+packages/@n8n/agents/src/sdk/__tests__/delegate-sub-agent-routing.test.ts
+  s_2aa332997f69a5::t_03573d4a0c4840 13,131-142,319-388
+packages/@n8n/agents/src/sdk/agent.ts
+  s_2aa332997f69a5::t_2df5e247d0fe30 48,52,747,749-751,753,764,766-768,770,794-796,798,800,805,807,824-827,829,889-961,1110,1132-1135,1178,1302-1304,1483-1503
+packages/@n8n/agents/src/skills/tools.ts
+  s_2aa332997f69a5::t_2c1d85ad58b590 3,102
+packages/@n8n/agents/src/types/index.ts
+  s_2aa332997f69a5::t_bc4ac5ed6abd5c 49,72
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_2aa332997f69a5::t_d2f8b9cdb8588b 11,13,180-186,188-191
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_2aa332997f69a5::t_cd1975a44b9dc0 13-14,49-50,80-81,157-161
+packages/@n8n/api-types/src/agents/__tests__/agent-integration.schema.test.ts
+  s_2aa332997f69a5::t_61626afe2f0a94 1-5,34-63
+packages/@n8n/api-types/src/agents/agent-integration.schema.ts
+  s_2aa332997f69a5::t_49db4a96416df0 1,44-53,58,68
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_2aa332997f69a5::t_c379493253354c 1-6,19-20,68,93-94,106-107,111,122,134-135,245-246,285-286,289-290,320,323,333,360-368,378-379,420-426,604-611,613,644,655-656,659-660
+packages/cli/src/modules/agents/__tests__/agent-runtime-cache.service.test.ts
+  s_2aa332997f69a5::t_34f0f78c7d402c 15,42,84-85
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_2aa332997f69a5::t_b391c63283e70d 49,271
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_2aa332997f69a5::t_b30f9294b64a15 19,30,111,124,135,149-155,189-228,243-273
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_2aa332997f69a5::t_f38dba3651a6ab 5-6,821
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_2aa332997f69a5::t_369c9ea6101820 1,15-16,77,101-102,113-115,119-120,130,140-142,159-160,167,171-180,189-191,201-202,205-210,447-448,517-518,521-523
+packages/cli/src/modules/agents/agent-runtime-cache.service.ts
+  s_2aa332997f69a5::t_6e0694f7244700 19,46-47,234-243,251
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_2aa332997f69a5::t_ce6111fa5825bf 54-58,86,99-105,181-210,217,227,337,339-340,367,451-465
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_2aa332997f69a5::t_b80fcfe0ad74c8 1-7,36-38,69,72-81,104-105,125,138,151,156-161,186,188,199-204,234-235,250-251,292-293,411,425,433-434,518,539,548-549,633-639
+packages/cli/src/modules/agents/expression/__tests__/agent-expression-context.service.test.ts
+  s_2aa332997f69a5::t_b5b3c756d073f4 1-95
+packages/cli/src/modules/agents/expression/__tests__/agent-run-overlay.test.ts
+  s_2aa332997f69a5::t_90297e1100739a 1-169
+packages/cli/src/modules/agents/expression/agent-expression-context.service.ts
+  s_2aa332997f69a5::t_9cc2369d4dae73 1-66
+packages/cli/src/modules/agents/expression/agent-expression-context.ts
+  s_2aa332997f69a5::t_e73f4d30417fa4 1-48
+packages/cli/src/modules/agents/expression/agent-run-fields.ts
+  s_2aa332997f69a5::t_0737c6c4d2d6c5 1-95
+packages/cli/src/modules/agents/expression/agent-run-overlay.ts
+  s_2aa332997f69a5::t_f73933d2ada031 1-23
+packages/cli/src/modules/agents/integrations/__tests__/chat-integration.service.test.ts
+  s_2aa332997f69a5::t_4113322bdfa3e0 27-30,227-229,235-301,766-768,776-801,953-955,967-994
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_2aa332997f69a5::t_9ae997d3a13472 16,26,60,91-97,216,236
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_2aa332997f69a5::t_05fa0793827092 1-2,23,303-307
+packages/cli/src/modules/agents/integrations/chat-integration.service.ts
+  s_2aa332997f69a5::t_983ae9516e7a5a 1-2,4,409-411,420-423,425,428,433,435,437-444,552-556,608-612
+packages/cli/src/modules/agents/integrations/platforms/__tests__/telegram/integration.test.ts
+  s_2aa332997f69a5::t_ef5e5575127a01 8-9,15,185-216,219-230,233-244,247-264,267-273,276-277,285,287
+packages/cli/src/modules/agents/integrations/platforms/telegram-integration.ts
+  s_2aa332997f69a5::t_3edec069ad69b2 1,16,219-223,233-240,246-266
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_2aa332997f69a5::t_95256c8878e8fb 13-14,30,62-64,147,266-271,360
+packages/cli/src/modules/agents/sub-agents/__tests__/delegate-sub-agent-tool.test.ts
+  s_2aa332997f69a5::t_98dd7da5a3f91f 16,204-239
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_2aa332997f69a5::t_ddc8a377c0d34a 22,194-220
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_2aa332997f69a5::t_07f63d277458e7 17,19-20,85-87
+packages/cli/src/modules/agents/tools/__tests__/node-tool-factory.test.ts
+  s_2aa332997f69a5::t_1f77607548fcb3 7-8,255-398
+packages/cli/src/modules/agents/tools/node-tool-factory.ts
+  s_2aa332997f69a5::t_10a390bce3851c 1,8,15-18,67-88,111,135-140,147-148,163-174,198-206,214-215
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_2aa332997f69a5::t_78193b4a139cab 1,15-16,40-42,60-71,87-91,99,147,149-155,259,304-422
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_2aa332997f69a5::t_8d009fc2d69d39 2,32,34-39,60-74,177-206,224,268,308,334-350,354,378,380-381,408-413,430-431
+packages/cli/src/node-execution/__tests__/ephemeral-node-executor.test.ts
+  s_2aa332997f69a5::t_0ab8e2952fdb69 13,656-698
+packages/cli/src/node-execution/ephemeral-node-executor.ts
+  s_2aa332997f69a5::t_cd595a8a626990 478-479,484-487
+packages/cli/src/utils.ts
+  s_2aa332997f69a5::t_f9d9cddc25a4ba 2-4
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_2aa332997f69a5::t_1dd6078bf40cdb 14-21,77,434-435,437-438,488-491,496-599
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_2aa332997f69a5::t_20a12a8d6a5c26 29,38,43,231-257,269
+packages/workflow/src/expression-sandboxing.ts
+  s_2aa332997f69a5::t_05ebcb7e323228 12-34
+packages/workflow/src/interfaces.ts
+  s_2aa332997f69a5::t_7ab3363614c969 2261-2265,2296-2297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "c575e2e29223ec00880760c2af2681e9330dc32d",
+  "prompts": {},
+  "sessions": {
+    "s_2aa332997f69a5": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb33c-e258-7363-982f-32182e1f30e6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

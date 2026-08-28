@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/integrations/__tests__/slack-app-setup.service.test.ts
+  s_8cc842c223889e::t_c51d3df70df6a3 173,274
+packages/cli/src/modules/agents/integrations/slack-app-setup.service.ts
+  s_8cc842c223889e::t_c51d3df70df6a3 302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "432aeba59965918f52fb7ce71a52dd1bd45e8c2c",
+  "prompts": {},
+  "sessions": {
+    "s_8cc842c223889e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc6b2-37de-7830-930c-6287583218ed",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

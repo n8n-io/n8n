@@ -1,0 +1,25 @@
+packages/@n8n/instance-ai/evaluations/harness/chat-loop.ts
+  s_e261f072c3b6bd::t_0e8b8bc523e443 21,357-362
+packages/@n8n/instance-ai/evaluations/__tests__/external-workflow-edits.test.ts
+  s_e261f072c3b6bd::t_817fd970d93b3b 186-211
+packages/@n8n/instance-ai/evaluations/harness/build-workflow.ts
+  s_e261f072c3b6bd::t_fca157da400de3 32,125-130
+packages/@n8n/instance-ai/evaluations/outcome/event-parser.ts
+  s_e261f072c3b6bd::t_47d2a138e3fb66 632-633,646-651,653,660
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "09ff4847dc16d1ce4c97e8ee04c187b26a85d421",
+  "prompts": {},
+  "sessions": {
+    "s_e261f072c3b6bd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba8bff36-5d40-4efa-9b57-d49a4365067c",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

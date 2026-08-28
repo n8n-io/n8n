@@ -1,0 +1,21 @@
+packages/@n8n/db/src/repositories/poller-state.repository.ts
+  s_c39a7cd506b312::t_139a8b3bb1f4c8 132-136,144
+packages/cli/test/integration/executions/poll-cursor-atomicity.test.ts
+  s_c39a7cd506b312::t_bff11a95d8fba9 305-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "19273f030e2161dfd854512433210c850a3825be",
+  "prompts": {},
+  "sessions": {
+    "s_c39a7cd506b312": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20ca5f44-d9f2-4578-ab0f-ce8938465417",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

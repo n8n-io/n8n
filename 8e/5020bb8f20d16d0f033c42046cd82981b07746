@@ -1,0 +1,19 @@
+packages/cli/test/integration/workflows/workflows.controller.test.ts
+  s_53cef6894d9656::t_55b40fd3ed6786 117
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8e5020bb8f20d16d0f033c42046cd82981b07746",
+  "prompts": {},
+  "sessions": {
+    "s_53cef6894d9656": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80988671-9019-4d49-ace5-76c9b66cd316",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

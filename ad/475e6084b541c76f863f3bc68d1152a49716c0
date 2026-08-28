@@ -1,0 +1,26 @@
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_704a1a6a42be24::t_9f2f4e169cbe55 957-960
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_704a1a6a42be24::t_2828502231163e 255,261-263,273-278
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_704a1a6a42be24::t_819ae47179f768 94-96
+  s_704a1a6a42be24::t_7ce0cdc74319d1 30-33,36-41,51
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.test.ts
+  s_704a1a6a42be24::t_49ebd5d6565c7a 389-391,402,410-413
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ad475e6084b541c76f863f3bc68d1152a49716c0",
+  "prompts": {},
+  "sessions": {
+    "s_704a1a6a42be24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2cbbabf-304d-413b-b4e6-2ce7d66d0ec9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

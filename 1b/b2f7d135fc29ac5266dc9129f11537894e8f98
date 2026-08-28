@@ -1,0 +1,111 @@
+packages/cli/src/telemetry/index.ts
+  s_6615a7cad0865b::t_673cbda9a9b94e 91
+  s_6615a7cad0865b::t_55721f51ccca6d 338
+  s_6615a7cad0865b::t_5712ad3cfe9ac2 446
+packages/frontend/editor-ui/src/features/agents/composables/useMessageAgentSessionLink.ts
+  s_6615a7cad0865b::t_ceba5e8e24bc1d 82-84
+  s_6615a7cad0865b::t_1351711b345bee 17-18
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_6615a7cad0865b::t_401df7389e9009 275
+  h_7555c3ee6524cf 274
+  s_6615a7cad0865b::t_ada6e6d9f91959 294-301
+  s_6615a7cad0865b::t_2582567338d1cd 325
+  s_6615a7cad0865b::t_633c8020385513 262-269
+packages/cli/src/modules/agents/utils/node-tool-validation.ts
+  s_6615a7cad0865b::t_af9d410a84d602 32-34,36-38,40
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_6615a7cad0865b::t_fe43a58b338765 914-917,919-934
+  s_6615a7cad0865b::t_a2648aa2e2899f 883-885
+  s_6615a7cad0865b::t_6d384aa60a5b9c 893-897
+  s_6615a7cad0865b::t_f76c3dd7b45bc6 996-999
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_6615a7cad0865b::t_678b95ce9fe78d 681
+  s_6615a7cad0865b::t_11cbaf5b11aae3 543
+  s_6615a7cad0865b::t_4e84ef1e27bdcf 472
+  s_6615a7cad0865b::t_d5fb68df145bf9 458,495
+  s_6615a7cad0865b::t_8bb2b4592afc31 587
+  s_6615a7cad0865b::t_e06cd511cb065a 634
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedSummary.vue
+  s_6615a7cad0865b::t_784dab85902e61 82-85
+  s_6615a7cad0865b::t_a3a5b81a1510ee 21
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_6615a7cad0865b::t_9107b06db8feac 95-118
+  s_6615a7cad0865b::t_9dcdabebba0aed 130
+  s_6615a7cad0865b::t_ec2afb6e921655 5
+  s_6615a7cad0865b::t_61ccece89d07a6 42-45
+  s_6615a7cad0865b::t_6071294620e38b 10-29
+  s_6615a7cad0865b::t_32bdc36091fdf5 251-293
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_6615a7cad0865b::t_c410409433ccdc 539-545
+packages/@n8n/workflow-sdk/src/validation.ts
+  s_6615a7cad0865b::t_d074002725df52 6
+packages/@n8n/workflow-sdk/src/validation/index.ts
+  s_6615a7cad0865b::t_d1bb5e6cdeaad6 16
+packages/@n8n/api-types/src/agents/inline-agent-config.schema.ts
+  s_6615a7cad0865b::t_afb2f42e79b7f3 14-17,20-21
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_6615a7cad0865b::t_1f851b8bc37263 160,182,195-196
+  s_6615a7cad0865b::t_2334612d2112b7 116,120
+  s_6615a7cad0865b::t_4ea6fda0a5c9ec 297
+  s_6615a7cad0865b::t_05c8100413304f 79-98
+  s_6615a7cad0865b::t_43c30556e10c9d 296,298-344
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvInlineControls.vue
+  s_6615a7cad0865b::t_701163767c8179 66
+  s_6615a7cad0865b::t_72c0e2b2ab0b4b 42-45,49
+  s_6615a7cad0865b::t_4749bf1087b853 78
+packages/frontend/editor-ui/src/features/agents/components/AgentInfoPanel.vue
+  s_6615a7cad0865b::t_93bc167654da56 45-50,59
+  s_6615a7cad0865b::t_f1302db68ba7b3 163,169-173
+packages/cli/src/workflow-execute-additional-data.ts
+  s_6615a7cad0865b::t_2851cea183e7e6 404,415-422
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_6615a7cad0865b::t_aff31d9d144880 144-154
+  s_6615a7cad0865b::t_31350d09e93a21 292-317
+  s_6615a7cad0865b::t_88cd7a52bb034a 104-123
+  s_6615a7cad0865b::t_44d56c14269c46 18
+packages/@n8n/workflow-sdk/src/index.ts
+  s_6615a7cad0865b::t_d1bb5e6cdeaad6 155
+packages/frontend/editor-ui/src/features/agents/utils/inlineAgent.ts
+  s_6615a7cad0865b::t_2a767d607957b2 62
+  s_6615a7cad0865b::t_2002a3c90cc66f 5
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_6615a7cad0865b::t_c3dfa8978be8f6 859-949
+  s_6615a7cad0865b::t_f106f9791005d5 769-800
+  s_6615a7cad0865b::t_4e8e84418040eb 700-701
+packages/@n8n/api-types/src/agents/__tests__/inline-agent-config.schema.test.ts
+  s_6615a7cad0865b::t_b2579e1c9c1a27 1-125
+packages/workflow/src/interfaces.ts
+  s_6615a7cad0865b::t_3500df281e150f 2157-2163
+  s_6615a7cad0865b::t_cb248e372bff80 2205-2209,2211-2212
+packages/frontend/editor-ui/src/features/agents/utils/capabilitySummaryTools.ts
+  s_6615a7cad0865b::t_f50ec6237f6a99 1-14,16-35
+  s_6615a7cad0865b::t_fcbd28a25eedff 15
+packages/core/src/execution-engine/node-execution-context/base-execute-context.ts
+  s_6615a7cad0865b::t_0fc024ec528ca3 201-202
+  s_6615a7cad0865b::t_28dd6752b69570 224
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_6615a7cad0865b::t_78762c8822fa7e 680-709
+packages/frontend/editor-ui/src/features/agents/__tests__/useMessageAgentSessionLink.spec.ts
+  s_6615a7cad0865b::t_618ce3264b8edc 108-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1bb2f7d135fc29ac5266dc9129f11537894e8f98",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_6615a7cad0865b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "88080833-95f0-4af6-befe-780e1a12767c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

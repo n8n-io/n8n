@@ -1,0 +1,50 @@
+packages/cli/src/evaluation.ee/insights/__tests__/insights-context-builder.test.ts
+  s_5d6be4e6bc70a6::t_a9695689128c13 84,179
+  s_5d6be4e6bc70a6::t_8c1facdd0db032 60,92,187
+  s_5d6be4e6bc70a6::t_ad057a117892e7 111-151
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.test.ts
+  s_5d6be4e6bc70a6::t_e649ab47f0fbad 228-252
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/RunDetail/MetricSummaryStrip.vue
+  s_5d6be4e6bc70a6::t_c4f43d64b64a30 5,20-22,29-41,48
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.ts
+  s_5d6be4e6bc70a6::t_a4953ff23e3f6b 224-227
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/RunDetail/MetricSummaryCard.vue
+  s_5d6be4e6bc70a6::t_d7d4368c5c92e8 55
+packages/cli/src/evaluation.ee/insights/eval-insights.service.ts
+  s_5d6be4e6bc70a6::t_464cd1dd185271 71-74
+  s_5d6be4e6bc70a6::t_685637cdbeecc8 223
+  s_5d6be4e6bc70a6::t_0c8b922822d327 251-252
+  s_5d6be4e6bc70a6::t_1ebe3e3c8e82a2 269
+packages/cli/src/evaluation.ee/insights/insights-context-builder.ts
+  s_5d6be4e6bc70a6::t_e7ec2362e32221 242,253-255
+  s_5d6be4e6bc70a6::t_926a9970372e12 153,170-171
+  s_5d6be4e6bc70a6::t_b11406dcd89780 31-33
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/RunDetail/TrendDeltaBadge.vue
+  s_5d6be4e6bc70a6::t_9805a9d87f336e 4,6-7,13
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/RunDetail/MetricSummaryStrip.test.ts
+  s_5d6be4e6bc70a6::t_bcd0da3729e10d 1-8,10-43
+  s_5d6be4e6bc70a6::t_c0ba1f678a696a 9
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/TestRunDetailView.vue
+  s_5d6be4e6bc70a6::t_53cdaf2b10737d 220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "890f0a9a2532eea3020464e8be36d5c976db2484",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

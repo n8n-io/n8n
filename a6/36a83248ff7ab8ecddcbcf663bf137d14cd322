@@ -1,0 +1,87 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/AiReasoningBlock.test.ts
+  s_77a32fd9603843::t_6d80c9951f14fd 1-15
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/messageMappers.ts
+  s_77a32fd9603843::t_710615b85b2217 23,177,183,189-194,246
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_77a32fd9603843::t_ef05bd5905c140 92-123
+  s_77a32fd9603843::t_8484e1cdd5d7c0 124-149
+packages/frontend/editor-ui/src/features/agents/__tests__/agentChatMessages.test.ts
+  s_77a32fd9603843::t_8b049cf8c38b3b 73-101
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ThinkingBlock.vue
+  s_77a32fd9603843::t_5f3e9198eb12de 7-11,31-32,48-50,53-57,64-67,79-85,87-92,95-117
+packages/@n8n/agents/src/runtime/model/provider-quirks.ts
+  s_77a32fd9603843::t_d13f21b69b1931 71-76
+packages/cli/src/modules/agents/builder/__tests__/format-preview-context.test.ts
+  s_77a32fd9603843::t_eaa4120ab5101d 56,73
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_77a32fd9603843::t_b286f802a7ecdd 400-403
+  s_77a32fd9603843::t_37216e060894aa 203,259-261,275-277,288,293-305,324,338,349-350,364,398-399,404-417,423,544
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_77a32fd9603843::t_8b049cf8c38b3b 196-220,456-476,478
+  s_77a32fd9603843::t_01e489ccaee161 477
+  s_77a32fd9603843::t_40e2d3ef043a23 479
+packages/frontend/editor-ui/src/features/ai/shared/thinking.utils.ts
+  s_77a32fd9603843::t_5f3e9198eb12de 1-6
+packages/frontend/editor-ui/src/features/ai/shared/components/AiReasoningBlock.vue
+  s_77a32fd9603843::t_5f3e9198eb12de 5
+  s_77a32fd9603843::t_968ecfd4146aa8 16
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/__tests__/displayGroups.test.ts
+  s_77a32fd9603843::t_8b049cf8c38b3b 35-58
+packages/frontend/editor-ui/src/features/ai/shared/components/AiThinkingBlock.test.ts
+  s_77a32fd9603843::t_6d80c9951f14fd 2-36,38-69
+  s_77a32fd9603843::t_b3fb5245388a7f 1,37
+packages/@n8n/agents/src/__tests__/integration/cassettes/thinking/works-with-reasoning-model-and-thinking-enabled.json
+  s_77a32fd9603843::t_bfc8d59f2277f3 7,11,18,24-25,30,35,38,40,44,48-54
+packages/cli/src/modules/agents/utils/execution-to-message-mapper.ts
+  s_77a32fd9603843::t_37216e060894aa 129-136
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/displayGroups.ts
+  s_77a32fd9603843::t_710615b85b2217 3-4,23-25,136-138,149-151,164-166
+packages/cli/src/modules/agents/__tests__/execution-to-message-mapper.test.ts
+  s_77a32fd9603843::t_ef05bd5905c140 17-42
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/types.ts
+  s_77a32fd9603843::t_710615b85b2217 84-90,96-97
+packages/cli/src/modules/agents/builder/format-preview-context.ts
+  s_77a32fd9603843::t_eaa4120ab5101d 40-42
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_77a32fd9603843::t_710615b85b2217 24,165-166,189-216,242-246,267,269,278-279,283-285,451,469,517,530-531
+  s_77a32fd9603843::t_968ecfd4146aa8 25
+packages/@n8n/api-types/src/agents/types.ts
+  s_77a32fd9603843::t_37216e060894aa 203,205
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  s_77a32fd9603843::t_8484e1cdd5d7c0 70-83
+packages/@n8n/agents/src/runtime/__tests__/provider-quirks.test.ts
+  s_77a32fd9603843::t_8821a0f704127e 64,66
+packages/frontend/editor-ui/src/features/ai/shared/agentsChat/thinking.ts
+  s_77a32fd9603843::t_710615b85b2217 1-17,20-28
+  s_77a32fd9603843::t_968ecfd4146aa8 18-19
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatMessageList.test.ts
+  s_77a32fd9603843::t_8b049cf8c38b3b 30-46,97-154
+  s_77a32fd9603843::t_63ef5ca5cf6d2b 155
+packages/frontend/editor-ui/src/features/ai/shared/components/AiThinkingBlock.vue
+  s_77a32fd9603843::t_5f3e9198eb12de 1,3-238
+  s_77a32fd9603843::t_968ecfd4146aa8 2
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_77a32fd9603843::t_5f3e9198eb12de 7063-7067
+packages/frontend/editor-ui/src/features/agents/components/AgentChatMessageList.vue
+  s_77a32fd9603843::t_710615b85b2217 3,13-16,22-23,144-150,397-400,432-446,513-514,525-542,619-620
+packages/@n8n/agents/src/__tests__/integration/thinking.test.ts
+  s_77a32fd9603843::t_8f41eb2b189e4b 48,50,52-54,74
+  s_77a32fd9603843::t_8484e1cdd5d7c0 58-66
+  s_77a32fd9603843::t_b90801948c79a0 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a636a83248ff7ab8ecddcbcf663bf137d14cd322",
+  "prompts": {},
+  "sessions": {
+    "s_77a32fd9603843": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fa3e4-3e06-77d3-b1b7-6e9670e39416",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

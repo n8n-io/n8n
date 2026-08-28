@@ -1,0 +1,19 @@
+packages/cli/src/workflows/workflow.service.ts
+  s_88f1ce9b846740::t_2bd31235cdf5e4 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "fc158775cb27b79426df36ced59833f2687d233c",
+  "prompts": {},
+  "sessions": {
+    "s_88f1ce9b846740": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "09b9df3b-2732-480e-8fa5-f6d21439cc65",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

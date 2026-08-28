@@ -1,0 +1,37 @@
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_8477c5008f2125::t_b3ebcfe463c91c 702-729,758
+  s_8477c5008f2125::t_11d846e1f40023 2,738-757
+  s_8477c5008f2125::t_29be67373a956c 759
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useBuildManually.test.ts
+  s_8477c5008f2125::t_2c8031649b569f 10-19,37-39,64-65,73,75,97-129,131-140
+  s_8477c5008f2125::t_8a5ccc01c9cfe0 6-7,20,23-36,42-43,47-49,76-96,130
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_8477c5008f2125::t_dab86d52c89b51 114-115,147-148
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/useBuildManually.ts
+  s_8477c5008f2125::t_0afdb72139b08c 1,7,32-33,46-75,79
+  s_8477c5008f2125::t_db341d711d4e98 2-4,6,10-16,26,29-31,35,76-78,80-85
+  s_8477c5008f2125::t_60ad8c84487599 20-21
+  s_8477c5008f2125::t_11c0f49b4501a1 86
+packages/frontend/editor-ui/src/features/ai/instanceAi/createAgentRoute.ts
+  s_8477c5008f2125::t_db341d711d4e98 2-7,14
+packages/frontend/editor-ui/src/features/ai/instanceAi/createAgentRoute.test.ts
+  s_8477c5008f2125::t_8a5ccc01c9cfe0 1-15
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_8477c5008f2125::t_db341d711d4e98 5-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "105cee684ebbad096a50ba7de6afaee773c6671d",
+  "prompts": {},
+  "sessions": {
+    "s_8477c5008f2125": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f84e4-435a-7843-89fd-254a414e99ba",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

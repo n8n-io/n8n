@@ -1,0 +1,27 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_4e3d3e4345da23::t_0d02ca1980235a 2737
+  s_4e3d3e4345da23::t_c6c07651a9560b 2729
+packages/@n8n/permissions/src/scope-information.ts
+  h_89e664b3be09ae 98,102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "4c750d3d9287ec41cbdc484d81231646fd100283",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_4e3d3e4345da23": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "97a09d56-678f-4b6b-9440-b4810e176788",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

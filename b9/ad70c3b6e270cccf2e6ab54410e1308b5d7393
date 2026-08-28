@@ -1,0 +1,36 @@
+packages/cli/src/modules/n8n-packages/spec/manifest.schema.ts
+  s_81f9da72a79c26::t_0fc928e34052eb 44,54
+packages/cli/src/modules/n8n-packages/spec/serialized/workflow.schema.ts
+  s_81f9da72a79c26::t_f5e79d295acc2f 54
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/tag.schema.test.ts
+  s_81f9da72a79c26::t_b52c2a8d4689ee 1-21,24,26-27
+packages/cli/src/modules/n8n-packages/spec/serialized/__tests__/workflow.schema.test.ts
+  s_81f9da72a79c26::t_8d45d25bd3d001 31-44
+packages/cli/src/modules/n8n-packages/spec/serialized/tag.schema.ts
+  s_81f9da72a79c26::t_4da6026293c5e4 1-2,5-7,9-12
+packages/cli/src/modules/n8n-packages/spec/__tests__/requirements.schema.test.ts
+  s_81f9da72a79c26::t_76d523384c91c2 35-38,40-41
+  ai_agent 39
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_81f9da72a79c26::t_5644ea1079f3be 145-156
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_81f9da72a79c26::t_1861011eebd850 22-27
+  s_81f9da72a79c26::t_fa844aeae4c025 93-96
+  s_81f9da72a79c26::t_101159f8b76ec4 113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b9ad70c3b6e270cccf2e6ab54410e1308b5d7393",
+  "prompts": {},
+  "sessions": {
+    "s_81f9da72a79c26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a321b0c-ac1c-4e36-9f78-68ffe9f657a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

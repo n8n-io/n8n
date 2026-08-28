@@ -1,0 +1,24 @@
+packages/cli/src/modules/log-streaming.ee/destinations/message-event-bus-destination-webhook.ee.ts
+  s_3adc5e3b9c1c50::t_ab446a820f7b52 376-379
+packages/cli/src/modules/log-streaming.ee/destinations/__tests__/message-event-bus-destination-webhook.ee.test.ts
+  s_3adc5e3b9c1c50::t_b12af61c4ef611 200,208,211-212
+  s_3adc5e3b9c1c50::t_e5c13b9893de3e 195,201-207,209-210
+  s_3adc5e3b9c1c50::t_99ec791e7d61a4 141-144
+  s_3adc5e3b9c1c50::t_ab446a820f7b52 172-194,196-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "74c2ac13ed23fbebaf1db78fbbcd74888aefec3e",
+  "prompts": {},
+  "sessions": {
+    "s_3adc5e3b9c1c50": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb348-412f-7363-a731-817990745551",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

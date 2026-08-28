@@ -1,0 +1,36 @@
+packages/core/src/execution-engine/execution-context.ts
+  s_48666b319f2b46::t_b4670b823c60b9 3
+  s_556951afc9d844::t_2516eb5a65452a 129
+packages/core/src/utils/assertions.ts
+  s_556951afc9d844::t_ab7fa9671b3a97 11
+packages/cli/src/modules/redaction/redaction-context-hook.ts
+  s_48666b319f2b46::t_a5b5e136bd0372 1-64
+packages/cli/src/modules/redaction/redaction.module.ts
+  s_556951afc9d844::t_34205dd605c8c6 10
+packages/cli/src/modules/redaction/__tests__/redaction-context-hook.test.ts
+  s_48666b319f2b46::t_2f44d3f498af08 1-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "da9af46c72ec1bc862474d76bf72e52361f1ad1a",
+  "prompts": {},
+  "sessions": {
+    "s_48666b319f2b46": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "585d7875-ccb1-4510-abff-ea3f6af2eb67",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    },
+    "s_556951afc9d844": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "160b6a8b-00a6-475d-80c5-7c191b3f2501",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

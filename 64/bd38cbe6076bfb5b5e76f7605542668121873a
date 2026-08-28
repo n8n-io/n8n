@@ -1,0 +1,163 @@
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_a6f570cd9e29ae::t_7e2e15aca2985e 169,170-179
+  s_fca2302987ca57::t_d1bc464b310730 237-238
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvAdvancedSection.test.ts
+  s_a6f570cd9e29ae::t_ffb111bf20882a 3,6,9,14-18,22-39,49,54-75,82-83,85,92,98,102,105,108-109,111-117,121,135,137-139,141-146,149-159,162-164,166-182,185-188,193-195,207-210,217-219,221,225-227,235-239,244,252-262,264-265
+  s_a6f570cd9e29ae::t_a635a2cb49f60a 4
+  s_a6f570cd9e29ae::t_baf7aa4335701c 11-12
+  s_a6f570cd9e29ae::t_4b6cc2e2bb8313 110
+  s_a6f570cd9e29ae::t_10f714a7cd56d8 133-134
+  s_a6f570cd9e29ae::t_d530d51004adc1 191,196-199,202-206,213-216,220,222-224,230,232-234,241-243,245-251
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentAdvancedPanel.test.ts
+  s_a6f570cd9e29ae::t_39a86589516b4d 419-432,434-437,440-447,450-455
+  s_a6f570cd9e29ae::t_2338aeb677b66a 433,438-439,448-449
+packages/frontend/editor-ui/src/features/agents/components/AgentAdvancedPanel.vue
+  s_a6f570cd9e29ae::t_ce2581c4ce1791 50-55
+  s_a6f570cd9e29ae::t_f67c118fdc0ba3 57-67,71,78-80
+  s_a6f570cd9e29ae::t_0978120e920c6d 392,400
+  s_a6f570cd9e29ae::t_fd57e3a22990ab 554
+  s_a6f570cd9e29ae::t_a6c525782d1d98 627
+  s_a6f570cd9e29ae::t_74e0260cf64cd8 648
+  s_a6f570cd9e29ae::t_4f3e7bbe398c16 697-706
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.test.ts
+  s_a6f570cd9e29ae::t_7eaa42143240c7 12-14
+  s_a6f570cd9e29ae::t_800b87d5430dbd 63-65,67-73,75-100,104,112-113
+  s_a6f570cd9e29ae::t_4ddd66fa9d29b1 142,159-161
+  s_a6f570cd9e29ae::t_680502498b4d7f 190
+  s_a6f570cd9e29ae::t_f1b037e7085179 199
+  s_a6f570cd9e29ae::t_e0fad95ce88d94 217-258
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8e21a83a5682cf::t_f4506a21a8c292 5418
+  s_f3c9e6db456d8f::t_47c9d5de268f8d 5419-5422
+  s_f3c9e6db456d8f::t_8afcb738adb76a 5423
+  s_bb07027ddb0032::t_300d5c786a912e 5430
+  ai_agent 5431,6608
+  s_8e21a83a5682cf::t_a2a3b61530e588 6602
+  s_a6f570cd9e29ae::t_7265ef1e085c53 5424-5427
+  s_a6f570cd9e29ae::t_91ffb93f986cbf 5428
+packages/frontend/editor-ui/src/features/ndv/parameters/components/AgentSelectorParameterInput/AgentSelectorParameterInput.vue
+  s_8e21a83a5682cf::t_11a328ce11050e 23
+  s_a6f570cd9e29ae::t_90cbc7a4532f7d 25
+  ai_agent 26-28,81-82,129,204-207,224-235,237,247,270-275,280,284-302,309-312,317,321
+  s_f3c9e6db456d8f::t_524d20aeb36dd8 31-37
+  s_8e21a83a5682cf::t_be80170576f2c8 38-48
+  s_f3c9e6db456d8f::t_9086cb51d37444 63
+  s_8e21a83a5682cf::t_1d066d4644f65c 69-77
+  s_8e21a83a5682cf::t_9ab9220ea638bc 78
+  s_f3c9e6db456d8f::t_c34fda7633f55f 118,120
+  s_f3c9e6db456d8f::t_f1f97cd947f4ee 121,364-377
+  s_8e21a83a5682cf::t_eb20d496e52c8f 122
+  s_f3c9e6db456d8f::t_c5486258a4b8f2 147,149
+  h_7555c3ee6524cf 162,166
+  s_edec1786596258::t_9dba7ece331951 190-197,199-200,208-216,218-219,222-223
+  s_8e21a83a5682cf::t_810311b8febef8 217,221,303
+  s_8e21a83a5682cf::t_a2673b4bacb10c 220
+  s_8e21a83a5682cf::t_66e9462ab0cf2e 236,238-246,248-264
+  s_a6f570cd9e29ae::t_7b19674d6805de 265-267,269,276,279,281-282
+  s_edec1786596258::t_a3914f9b8300e3 306-307
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvAdvancedSection.vue
+  s_a6f570cd9e29ae::t_8753195d5cf07a 1-9,16,18-21,24-62,64-109,112-113,117-121,127,145-150,152-154,156-157,159-162,164-169,171-177,179-191,196-207,209-211,214-222,224-229,247-261,263-264,278,281-296,299,303-309,313,315-323,327-328
+  s_a6f570cd9e29ae::t_6ab6e358595ac9 10-15
+  s_a6f570cd9e29ae::t_6147e3c8f2698e 17
+  s_a6f570cd9e29ae::t_8487e83e2df988 110-111,114-115,123-126,128-144,151
+  s_a6f570cd9e29ae::t_b3b70b9fed7d31 116,122
+  s_a6f570cd9e29ae::t_14d51cc0e63c63 163,170
+  s_a6f570cd9e29ae::t_98744f464a580d 192-195
+  s_fca2302987ca57::t_cd4b5957e27363 208
+  s_a6f570cd9e29ae::t_151683869eae7e 213,223,230-246,262
+  s_a6f570cd9e29ae::t_1a9ca2e46c0ad2 297-298,300,302,310-311,314
+  s_a6f570cd9e29ae::t_3879f73d2444b3 312
+  s_a6f570cd9e29ae::t_9d8058196739bf 324
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_bb07027ddb0032::t_300d5c786a912e 15,25,28,526-527,529,531-537,547,881-914
+  s_a6f570cd9e29ae::t_6b092ee1195ed8 26-27
+  s_a6f570cd9e29ae::t_1ab73227e63d39 522-525,530
+  s_a6f570cd9e29ae::t_6d28a6bda39c2d 538-546
+  s_a6f570cd9e29ae::t_c4676c3b35d068 804-805,810,815
+  s_a6f570cd9e29ae::t_6167cb1189d460 807,809,845-852
+  ai_agent 808
+packages/frontend/editor-ui/src/features/agents/composables/useAgentInlineCreate.test.ts
+  s_a6f570cd9e29ae::t_4b9557894ee606 1-9,11-12,14-16,20-21,25-27,29-38,40-41,43-44,46-47,49-52,54-66,69-73,75-79,81-86,88-89,91-95,97-99,101,117-123,125-129,132-137
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvReferencedControls.test.ts
+  s_bb07027ddb0032::t_300d5c786a912e 1-3,5-113,115-136,138-139,141-160,162-166,168-176,178-181,184,190-194,196-201,203-205,207-208,226-239,241-262,183,211-212,215
+  s_a6f570cd9e29ae::t_c901187ffc09cd 217-218,224,206,210,213-214
+  s_bb07027ddb0032::t_ae48e1edf1135b 114
+  s_bb07027ddb0032::t_3563d1766e5052 137,140
+  s_bb07027ddb0032::t_4ce802302e0628 177
+  s_bb07027ddb0032::t_ef275b3989aad3 240
+  s_a6f570cd9e29ae::t_46db55e18efd68 4
+  s_a6f570cd9e29ae::t_0cc2311afe6e8d 182,187-189
+  s_a6f570cd9e29ae::t_bbb4d67a4f9518 186
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedControls.vue
+  s_bb07027ddb0032::t_300d5c786a912e 1-2,7,15-17,19-20,22-35,37-43,53,56,59-70,72,75,77-78,141-149,153-160,167-168,85,94,105,108,119
+  s_bb07027ddb0032::t_d8830b45e75524 8,10-14
+  s_a6f570cd9e29ae::t_082145b4037bd7 3-6,9,18,21,54-55,57-58,73-74,76,81,83-84,86,91,93,95-100,102-104,106,109-117,120-140,150
+packages/frontend/editor-ui/src/features/agents/composables/useAgentInlineCreate.ts
+  s_a6f570cd9e29ae::t_529982137cdd5e 1,3-7,9-11,13-15,20-27,29-35,39-41,43-69,79-85,87
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvBuilderBanner.test.ts
+  s_a6f570cd9e29ae::t_71aa4b8710a61d 1,3-9,12-29,31-46,48-78,80-81,83,85-87,89-91,93,95-97,99-101,103-133
+  s_a6f570cd9e29ae::t_4a36c3bd46ad32 2
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvBuilderBanner.vue
+  s_a6f570cd9e29ae::t_a15d03c51cd9c4 3-7,10-11,14-15,19,22-27,29,33-39,41-48,50-54,56-62,64,68-71,73-76,78-80,84-85,87-88,90-95,98-102,105-110,113-115,118-123,126-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "64bd38cbe6076bfb5b5e76f7605542668121873a",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8e21a83a5682cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f38fc08e-17d6-4281-83fb-50de5181b652",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_a6f570cd9e29ae": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccec31f7-cf7f-4768-8223-01157ee56250",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_bb07027ddb0032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ac5de5a-9d81-4e7b-9015-b5d135e16aa4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_edec1786596258": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5a019cf0-00e7-4c7f-9c74-45988cd641cc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_f3c9e6db456d8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8298b541-e801-4d7c-9c0d-b2ace99ba5cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_fca2302987ca57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a3ee84d5-1fd7-46c3-ba48-70e2c843ec51",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

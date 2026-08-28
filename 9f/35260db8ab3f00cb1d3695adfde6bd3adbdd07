@@ -1,0 +1,89 @@
+packages/@n8n/api-types/src/schemas/eval-collections.schema.ts
+  s_5d6be4e6bc70a6::t_bd20aaf3ba8fcb 204-209
+  s_5d6be4e6bc70a6::t_1e2143623fbd04 30-33,36-71,89-99,104-108,111-127
+  s_5d6be4e6bc70a6::t_df41f6c16de9d7 3
+  s_5d6be4e6bc70a6::t_2604dbe11afd98 72-84
+packages/@n8n/api-types/src/schemas/__tests__/eval-collections.schema.test.ts
+  s_5d6be4e6bc70a6::t_36ebd6b350e45c 4
+  s_5d6be4e6bc70a6::t_3707fe766587df 1-3,5-7,18-21,24-50,53-74,76,78-115,117-121,123-127,130-153
+  s_5d6be4e6bc70a6::t_f621cd13cdd6da 189-193
+  s_5d6be4e6bc70a6::t_b1d96ac2958eb4 116,122,128-129
+  s_5d6be4e6bc70a6::t_d54d952ef6f36a 156-188,194-197
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.test.ts
+  s_5d6be4e6bc70a6::t_30960d253637bf 1514-1519,1524-1574
+  s_5d6be4e6bc70a6::t_a583d2a087b2e3 5-6
+  ai_agent 1520-1523
+packages/cli/src/evaluation.ee/evaluation-collection.service.ts
+  s_5d6be4e6bc70a6::t_3f75ba0fc08b3c 522
+  s_5d6be4e6bc70a6::t_ffd989480df5dc 438
+  ai_agent 496
+  s_5d6be4e6bc70a6::t_3e8421c9b8bfb7 11
+  s_5d6be4e6bc70a6::t_e4e7c753b0d401 481-484,491,500-504,506,512-521
+  s_5d6be4e6bc70a6::t_1bd446616c1f1c 8
+  s_5d6be4e6bc70a6::t_c29e34b6de0351 366
+  s_5d6be4e6bc70a6::t_e197b20a2edb15 221-230
+  s_5d6be4e6bc70a6::t_0715a975a7d2e9 364-365,367
+packages/@n8n/api-types/src/index.ts
+  s_5d6be4e6bc70a6::t_191f61dc30ddb7 521,523
+  s_5d6be4e6bc70a6::t_0a709025e85c0e 522
+packages/cli/src/evaluation.ee/test-runner/__tests__/test-runner.service.ee.test.ts
+  s_5d6be4e6bc70a6::t_d36e4e88951cde 3264-3266,3300,3315-3326
+  s_5d6be4e6bc70a6::t_bad28e204c631b 3176-3177,3179-3263,3267-3299,3301-3314,3327-3329
+  s_5d6be4e6bc70a6::t_5a4e2d771c765a 3175,3178
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evaluation.utils.ts
+  s_5d6be4e6bc70a6::t_42d74a686c740a 6-9
+  s_5d6be4e6bc70a6::t_0e5dfe4dfed9c6 164
+  ai_agent 181-183,191-193
+  s_5d6be4e6bc70a6::t_720e18dd619ddd 204,208
+packages/cli/src/evaluation.ee/insights/__tests__/eval-insights.service.test.ts
+  s_5d6be4e6bc70a6::t_94ea0f947cc85f 318-354
+  s_5d6be4e6bc70a6::t_a15db080f46b47 3-9
+  s_5d6be4e6bc70a6::t_71ea27e7b80c0b 55,62,68-78
+packages/cli/src/evaluation.ee/insights/eval-insights.service.ts
+  s_5d6be4e6bc70a6::t_8e055858ddb83c 61
+  s_5d6be4e6bc70a6::t_335374b80e63ca 112-119,123
+  s_5d6be4e6bc70a6::t_9b12aa12d7d3ca 220
+  s_5d6be4e6bc70a6::t_1e4725caea83ab 174-179,189-194,197,204,210-219
+  s_5d6be4e6bc70a6::t_6f7ea83b09007e 1
+  s_5d6be4e6bc70a6::t_6a40e3b1de4a08 2-6
+  s_5d6be4e6bc70a6::t_2d9702dd487076 9
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareCases.ts
+  s_5d6be4e6bc70a6::t_823aec462234b9 166
+packages/cli/src/evaluation.ee/__tests__/evaluation-collection.service.test.ts
+  s_5d6be4e6bc70a6::t_ae2521d35a62bc 421-469
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/evalCollections.types.ts
+  s_5d6be4e6bc70a6::t_889f1b66eb65fc 23
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/EvalCollectionsListView/CollectionCard.vue
+  s_5d6be4e6bc70a6::t_678aadfcd9b50d 133-138
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/composables/useCompareData.ts
+  s_5d6be4e6bc70a6::t_96026a3c9e62d3 66-73
+packages/cli/src/evaluation.ee/test-runner/test-runner.service.ee.ts
+  s_5d6be4e6bc70a6::t_c570ba0174e7a7 729-733,737
+  s_5d6be4e6bc70a6::t_7b5e0cbc30e45b 541-557,559-560
+  ai_agent 564-566
+  s_5d6be4e6bc70a6::t_b0b6af978619a7 1138
+  s_5d6be4e6bc70a6::t_36b35ef0aec258 767
+  s_5d6be4e6bc70a6::t_05cbe0ca802fe6 508-540
+  s_5d6be4e6bc70a6::t_7570e46dc122bb 734-735,738
+  s_5d6be4e6bc70a6::t_fe57126020805a 783,795
+  s_5d6be4e6bc70a6::t_6760ef1e57ec5a 784,796
+  s_5d6be4e6bc70a6::t_92a4524447dabe 558,561-563,567-573
+  s_5d6be4e6bc70a6::t_f52a3e5ff0eb7d 766
+  s_5d6be4e6bc70a6::t_bfb789467e6c04 1132-1137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9f35260db8ab3f00cb1d3695adfde6bd3adbdd07",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

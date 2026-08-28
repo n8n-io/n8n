@@ -1,0 +1,23 @@
+packages/@n8n/instance-ai/load-test/report.ts
+  s_7b60e47ccd00ff::t_049d3a4e4efe19 325-336
+packages/@n8n/instance-ai/load-test/cli.ts
+  s_7b60e47ccd00ff::t_049d3a4e4efe19 335-345,577-583
+packages/@n8n/instance-ai/load-test/sampler.ts
+  s_7b60e47ccd00ff::t_6a1063a171994e 300-305,433-442,446-452,457,465-466,567-584
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "94bdfa00623340569fe4c5dea791a98c2453f40d",
+  "prompts": {},
+  "sessions": {
+    "s_7b60e47ccd00ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59ca0d84-6d2f-4757-b10a-eee5514b3f2b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

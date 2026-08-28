@@ -1,0 +1,46 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_7d48ada9cf20b6::t_00ca9197d93a29 1,13
+  s_7d48ada9cf20b6::t_e1823715206302 2-3,5-10,12,14-33,36-39,41-64,66-127,129-157,184-203,209-285,310-353,392-509,511-581,583-606,697,289-291,293-294,296-297,300,302-303,360-362,364,366,368-369,372-376,378-381,383,387,163,168-170,172-173,179
+  s_7d48ada9cf20b6::t_cdd62b5e9fea8a 34-35,40
+  s_7d48ada9cf20b6::t_76c7074afc29d2 204-208
+  ai_agent 286-287,354,686-688,65,288,292,304,359,363,365,377,382,384-385,171
+  s_7d48ada9cf20b6::t_45b2a3eb4bad01 510
+  s_4f484cebd2507c::t_02d7edb0735d21 582
+  s_f38eb6a6383110::t_0fb86745863c42 607-611,612-685,689-696,295,298-299,301,305-309,367,370-371,386,388-391,165-166,174,178,180-181
+  s_f38eb6a6383110::t_521a8fa487a480 4
+  s_f38eb6a6383110::t_f90b9973c53e5c 11
+  s_f38eb6a6383110::t_c752118a7fdb3c 128
+  s_7d48ada9cf20b6::t_daa67f0230e4eb 159-162,164,167,175-177
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a958fb58eacf27249747267e2ac6f93ea400516c",
+  "prompts": {},
+  "sessions": {
+    "s_4f484cebd2507c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ce06b02-5fda-45ed-a633-e5af29754e23",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_7d48ada9cf20b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "38d125bd-0770-4362-a74d-8364298b52a1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    },
+    "s_f38eb6a6383110": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6210298e-5c34-4114-aa5a-a990cfea49fd",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

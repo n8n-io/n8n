@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/app/views/OAuthConsentView.test.ts
+  s_6ad15a8fbb8560::t_554d5573567dd7 71
+  s_6ad15a8fbb8560::t_d6035c36a4d7aa 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "4bf7edbd0ac1671ac9e722ac7a80d4e2bf79c7c6",
+  "prompts": {},
+  "sessions": {
+    "s_6ad15a8fbb8560": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ea855d4f-22f9-4145-be88-a18609582190",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

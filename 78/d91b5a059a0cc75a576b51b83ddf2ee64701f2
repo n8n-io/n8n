@@ -1,0 +1,25 @@
+packages/cli/src/services/__tests__/tag.service.test.ts
+  s_66be2eb681ad3c::t_a9f27c85ef13c5 3
+  s_66be2eb681ad3c::t_5abe4dcc77372e 79,86,94,103,110,117,150,164,177,187
+  s_66be2eb681ad3c::t_7d6024da582b0a 111
+  ai_agent 128-130,197-199
+packages/cli/src/services/tag.service.ts
+  s_66be2eb681ad3c::t_f2168eea307e00 4
+  s_66be2eb681ad3c::t_b4f0f9dc3b7aaf 154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "78d91b5a059a0cc75a576b51b83ddf2ee64701f2",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

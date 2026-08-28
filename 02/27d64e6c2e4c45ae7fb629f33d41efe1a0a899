@@ -1,0 +1,42 @@
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_442b113d88c721::t_39a85bd7974eed 456
+packages/cli/src/modules/n8n-packages/entities/variable/variable.exporter.ts
+  s_442b113d88c721::t_883803315474b1 87
+  s_442b113d88c721::t_2cc06c6cb668f1 106
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow-with-variables.integration.test.ts
+  s_442b113d88c721::t_40d857aa8585af 219
+  s_442b113d88c721::t_c55f7db3529741 287
+  s_442b113d88c721::t_e939d12e1766fd 76,153
+  s_442b113d88c721::t_a36b991db46449 379,381
+  s_442b113d88c721::t_e89166a94d03cc 282
+  s_442b113d88c721::t_dd3f5dcb61b07b 431
+packages/cli/src/modules/n8n-packages/spec/__tests__/manifest.schema.test.ts
+  s_442b113d88c721::t_07bb5f48fa3448 127-128
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_442b113d88c721::t_ac0dff5210159f 81
+packages/cli/src/modules/n8n-packages/spec/requirements.schema.ts
+  s_442b113d88c721::t_06cd3d9d05e5e6 44-45
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_442b113d88c721::t_52dd4e6c249bfe 515
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_442b113d88c721::t_3971295a96c12b 609
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable.exporter.test.ts
+  s_442b113d88c721::t_aa145cd443c9e8 109,168,190,218,322
+  s_442b113d88c721::t_b32fdc05df9368 90,248,252,274,279
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0227d64e6c2e4c45ae7fb629f33d41efe1a0a899",
+  "prompts": {},
+  "sessions": {
+    "s_442b113d88c721": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "607b7981-53e5-4851-ba95-f417c3acadff",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

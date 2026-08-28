@@ -1,0 +1,32 @@
+packages/core/src/execution-engine/__tests__/execution-context.test.ts
+  s_59b6b5514122d7::t_5fb27d35b7727e 1209-1299,1301-1381,1383-1402
+packages/core/src/execution-engine/index.ts
+  s_59b6b5514122d7::t_a1ae181bb65c2f 46,49-55
+  s_59b6b5514122d7::t_be6f35eecb7d38 92-98
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  s_59b6b5514122d7::t_87b905f57b6202 767-798
+  s_59b6b5514122d7::t_471ab30cba3713 31-32
+  s_59b6b5514122d7::t_25ab0a1834a259 112
+packages/core/src/execution-engine/execution-context.ts
+  s_59b6b5514122d7::t_b1a27eae84e1ef 8,13,16-23,25-44
+  s_59b6b5514122d7::t_7cade10c365505 166
+packages/cli/src/workflow-execute-additional-data.ts
+  s_59b6b5514122d7::t_14ee174ab2aa60 55-56
+  s_59b6b5514122d7::t_cdb8a9e9e3dc81 630-634
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "8542787c56b91626e7434690acd8931589b31bc0",
+  "prompts": {},
+  "sessions": {
+    "s_59b6b5514122d7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "14c910d0-168c-4cf8-8b06-2aff73bfc7af",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": null
+    }
+  }
+}

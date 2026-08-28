@@ -1,0 +1,45 @@
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/sendPerItem.test.ts
+  s_622e6646e7b730::t_4077edb1b54f28 1-45
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.sp.perItem.workflow.json
+  s_622e6646e7b730::t_66775eb8c4e100 1-113
+packages/nodes-base/nodes/Microsoft/ToDo/test/list.getAll.sp.perItem.test.ts
+  s_622e6646e7b730::t_2438a15343e661 1-29
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/folderGetAllPerItem.workflow.json
+  s_622e6646e7b730::t_45bec720292782 1-113
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.sp.perItem.test.ts
+  s_622e6646e7b730::t_721df00153ba80 1-66
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/sendPerItem.workflow.json
+  s_622e6646e7b730::t_55e9006b3b0765 1-95
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/transport/index.test.ts
+  s_622e6646e7b730::t_205ab78e92401b 7-8
+  s_622e6646e7b730::t_59225d798b1249 384-509
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.perItem.test.ts
+  s_622e6646e7b730::t_9b24bcc7cad19e 1-28
+packages/nodes-base/nodes/Microsoft/ToDo/test/list.getAll.sp.perItem.workflow.json
+  s_622e6646e7b730::t_a48d3499e50e82 10,27,46
+  s_622e6646e7b730::t_5bf1439d04fd98 1
+  s_622e6646e7b730::t_48d1952608b992 2-9,11-26,28-45,47-98
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/node/servicePrincipal/folderGetAllPerItem.test.ts
+  s_622e6646e7b730::t_8465913968a081 1-62
+packages/nodes-base/nodes/Microsoft/ToDo/test/GenericFunctions.test.ts
+  s_622e6646e7b730::t_589b75c48e9e1f 11
+  s_622e6646e7b730::t_3f8383d6657ab7 425-486
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.perItem.workflow.json
+  s_622e6646e7b730::t_2a128fa78120e8 1-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "39c77a676318440ab576189312b28cdec3a86565",
+  "prompts": {},
+  "sessions": {
+    "s_622e6646e7b730": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98c75d55-55d1-42c2-8446-e3014a2c5488",
+        "model": "claude-fable-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,63 @@
+packages/nodes-base/nodes/Elastic/Elasticsearch/types.ts
+  s_c7c6874dca8245::t_dcfd6aa307654e 21
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/document-query-parameters.workflow.json
+  s_c7c6874dca8245::t_bb0b0eae41c0b4 1-19,21-65
+  s_c7c6874dca8245::t_cd1f0be95356cd 20
+packages/nodes-base/utils/__tests__/query-parameters.test.ts
+  s_c7c6874dca8245::t_f8f8df3e617dbf 1-94
+packages/nodes-base/nodes/Elastic/Elasticsearch/descriptions/DocumentDescription.ts
+  s_c7c6874dca8245::t_2d1896a193929e 398,405-410,412-415,418
+  s_c7c6874dca8245::t_cd692fe059a526 417
+  s_c7c6874dca8245::t_2e6840e908e174 411,416,419
+packages/nodes-base/nodes/Elastic/Elasticsearch/Elasticsearch.node.ts
+  s_c7c6874dca8245::t_35d9e07d40efb6 151
+  s_c7c6874dca8245::t_945ca83ae95ce7 12
+  s_c7c6874dca8245::t_c075017fa1736f 10
+  s_c7c6874dca8245::t_c5ffa4b635636a 155-160
+  s_c7c6874dca8245::t_f5e87b1b19354d 11
+packages/nodes-base/nodes/Elastic/Elasticsearch/descriptions/placeholders.ts
+  s_c7c6874dca8245::t_8fa21338b9b8f0 33
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/__test__/document.query-parameters.test.ts
+  s_c7c6874dca8245::t_a337c61b3a7cc6 14-15,23
+  s_c7c6874dca8245::t_31d67c2d38e116 1-13,16-22,24-48
+packages/nodes-base/nodes/Elastic/Elasticsearch/tests/document.getAll.test.ts
+  s_c7c6874dca8245::t_9bc43208ca7801 20
+  s_c7c6874dca8245::t_ef2c77d41d88d0 1-14,18-19,21,23-41
+  s_c7c6874dca8245::t_435589ee92d813 15-17
+  s_c7c6874dca8245::t_5a92329eb5516e 22
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/DocumentDescription.ts
+  s_c7c6874dca8245::t_8f39d09aa8d299 648-649
+  s_c7c6874dca8245::t_971734d6555657 640
+  s_c7c6874dca8245::t_2285bad87d5320 650
+  s_c7c6874dca8245::t_8b4899c447288a 626-628,631-639,641-647,651
+packages/nodes-base/nodes/Google/Firebase/CloudFirestore/GoogleFirebaseCloudFirestore.node.ts
+  s_c7c6874dca8245::t_a3e5587526729d 10-12
+  s_c7c6874dca8245::t_1112b509fa4816 368,373-378
+packages/nodes-base/utils/query-parameters.ts
+  s_c7c6874dca8245::t_e101cefc5a613f 1-71,75-120
+  s_c7c6874dca8245::t_b979753d07157c 72-74
+packages/nodes-base/nodes/Elastic/Elasticsearch/tests/document-getAll-queryParameters.workflow.json
+  s_c7c6874dca8245::t_90bdefd8664de1 1-21,23-69
+  s_c7c6874dca8245::t_c913c21010b426 22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "16bf8d040a6b8f6322efa03e54a40b59440b843e",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c7c6874dca8245": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c5ff31ac-d0d5-4424-bdd3-f2b23821abf5",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

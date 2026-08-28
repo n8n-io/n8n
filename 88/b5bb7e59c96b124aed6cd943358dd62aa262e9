@@ -1,0 +1,24 @@
+packages/cli/src/credentials-helper.ts
+  s_1f37f289239eb8::t_957f80ce8e2686 210
+  s_1f37f289239eb8::t_59e7e57987fd50 202-209,211-216
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_1f37f289239eb8::t_e50a06876af7c5 11
+  s_1f37f289239eb8::t_b162044d58009a 1810,1830-1842,1854-1857
+  s_1f37f289239eb8::t_a37679c24ae0d6 1933-2031
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "88b5bb7e59c96b124aed6cd943358dd62aa262e9",
+  "prompts": {},
+  "sessions": {
+    "s_1f37f289239eb8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e74afacc-e98c-4d5e-b6b0-b8ec6c6a4b02",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

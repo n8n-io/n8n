@@ -1,0 +1,37 @@
+packages/nodes-base/credentials/HttpTemplatedCustomAuth.credentials.ts
+  s_f5e2bfa214eb0b::t_0ca0d3a579ac66 87-91,93,96-97
+  s_f5e2bfa214eb0b::t_b9aaf8c9dab8f6 92,94-95
+  s_f5e2bfa214eb0b::t_7f650d610bdff4 86
+packages/nodes-base/nodes/HttpRequest/V3/Description.ts
+  s_35ff0cdc101872::t_57a63bebcf5086 127-128,130
+  s_35ff0cdc101872::t_889710f2793d86 125-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ee99b3ca115513140e814bd6f900bcbced83ee3e",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_35ff0cdc101872": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a04eec4b-d326-42e4-9d03-3bf1fc1651d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_f5e2bfa214eb0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f8a4da8-579e-4485-b05b-d3e4651913e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

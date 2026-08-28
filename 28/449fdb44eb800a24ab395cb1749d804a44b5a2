@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/roles/RolesView.vue
+  s_eccdb6049963cf::t_9650924796d542 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "28449fdb44eb800a24ab395cb1749d804a44b5a2",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_eccdb6049963cf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "232cd13b-19b9-4593-a8d6-c371b1e50859",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

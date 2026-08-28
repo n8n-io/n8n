@@ -1,0 +1,19 @@
+packages/@n8n/errors/src/application.error.ts
+  s_5146bfeac6212b::t_b9efcc15968bbd 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4d93bc4f855f88b301e5a9be13cc3e1725a467f8",
+  "prompts": {},
+  "sessions": {
+    "s_5146bfeac6212b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b5a5e97a-75a5-4a8e-b67b-6ee733688bc8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

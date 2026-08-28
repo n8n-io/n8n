@@ -1,0 +1,25 @@
+packages/cli/package.json
+  s_e6454ae550915c::t_3784a6a6a8e080 130
+.github/WORKFLOWS.md
+  s_e6454ae550915c::t_c12d2fa3b6196a 182
+.github/workflows/util-publish-api-schema.yml
+  s_e6454ae550915c::t_472d60c5a5c64c 14
+pnpm-lock.yaml
+  s_e6454ae550915c::t_bb0e6652dbc076 4046
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "8dba2b3be7de787472b36e191f7726a8205d09d1",
+  "prompts": {},
+  "sessions": {
+    "s_e6454ae550915c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d50437f-80ab-427e-86b5-73792ecfdbf9",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

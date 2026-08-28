@@ -1,0 +1,35 @@
+packages/cli/src/modules/n8n-packages/entities/__tests__/requirements.types.test.ts
+  s_b5492dab26fa62::t_543d7cc048cb11 1-2,4,13-20,23-24,26,29-30
+  s_b5492dab26fa62::t_fa88a12aa26e1c 3,5-12,21-22,25,27-28,31-32
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_b5492dab26fa62::t_c17472f9b3ba22 11
+packages/cli/src/modules/n8n-packages/entities/requirements.types.ts
+  s_b5492dab26fa62::t_f733fbb49d9153 1-3,9,13
+  s_b5492dab26fa62::t_c7409f82fd09c3 4-8,10-12,14-24
+packages/cli/src/modules/n8n-packages/n8n-packages.service.ts
+  s_b5492dab26fa62::t_1f53678e1ee569 12
+  s_b5492dab26fa62::t_da574d82a47ffe 76-81,85
+  s_b5492dab26fa62::t_7ff1b01e391b89 82
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_b5492dab26fa62::t_d718c43657167a 12-13
+  s_b5492dab26fa62::t_802af16b7e56c4 33
+  s_b5492dab26fa62::t_127970a6736e82 147
+  s_b5492dab26fa62::t_b23241db05c147 163,166
+  s_b5492dab26fa62::t_183d6681bb0077 125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3d3d3b75a6cfd2f38995d18610636eeeb5fb2465",
+  "prompts": {},
+  "sessions": {
+    "s_b5492dab26fa62": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8d595c16-51de-497f-bc0a-a54af1c9257e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

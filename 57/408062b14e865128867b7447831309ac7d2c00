@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/app/components/WorkflowSettings.test.ts
+  s_9195b2934d6d64::t_77a95914b0663b 1198-1204
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "57408062b14e865128867b7447831309ac7d2c00",
+  "prompts": {},
+  "sessions": {
+    "s_9195b2934d6d64": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "81bcce29-bbb8-4566-b054-7c434c6bc66d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

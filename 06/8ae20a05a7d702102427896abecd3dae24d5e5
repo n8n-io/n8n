@@ -1,0 +1,19 @@
+packages/cli/src/modules/n8n-packages/entities/workflow/static-workflow-dependency-resolver.ts
+  s_c9391e00ab7ba4::t_e8d19b0cbdaefb 45,50,65-70,74-94,97-98,100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "068ae20a05a7d702102427896abecd3dae24d5e5",
+  "prompts": {},
+  "sessions": {
+    "s_c9391e00ab7ba4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5f157f16-e12d-4e17-849d-c6c57ed5b7ba",
+        "model": "default"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+packages/cli/src/__tests__/credentials-helper.test.ts
+  s_006fe96804f369::t_235b6556f81b1a 109-157,170,172-191,235-236
+  s_006fe96804f369::t_4561e058766550 192-234
+  s_006fe96804f369::t_950291fe814407 158-169,171
+packages/workflow/src/interfaces.ts
+  s_006fe96804f369::t_5c63c0374668f2 1724
+packages/@n8n/nodes-langchain/credentials/test/AnthropicApi.credentials.test.ts
+  s_006fe96804f369::t_820a5048ab8d58 17-36
+packages/nodes-base/credentials/OpenAiApi.credentials.ts
+  s_006fe96804f369::t_5c63c0374668f2 51-53,66
+packages/@n8n/nodes-langchain/credentials/AnthropicApi.credentials.ts
+  s_006fe96804f369::t_5142bbc63f5a75 42-44,57
+packages/cli/src/credentials-helper.ts
+  s_006fe96804f369::t_64dd9435c02480 391-392
+  s_006fe96804f369::t_5c63c0374668f2 373-390,393-444,638-641,644
+packages/nodes-base/credentials/test/OpenAiApi.credentials.test.ts
+  s_006fe96804f369::t_a3f6dc568d4fa8 17-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "4c5faa70a1605a67582d5cc3eac8077ae147df44",
+  "prompts": {},
+  "sessions": {
+    "s_006fe96804f369": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f0334-49ad-7ce0-b7b3-7bc587d9c8b5",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

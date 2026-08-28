@@ -1,0 +1,37 @@
+packages/cli/src/metrics/prometheus/instance-ai-metrics.service.ts
+  s_b75353843041f1::t_004f7eb714aba6 121-126
+  s_b75353843041f1::t_831640cebadfa4 150-152
+packages/cli/src/modules/instance-ai/event-bus/durable-log-metrics.ts
+  s_b75353843041f1::t_950ff6ad3baeb7 93-104
+  s_b75353843041f1::t_96e44df2098233 45-55
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_b75353843041f1::t_b908ab364f70dd 31-32,34-36,40,61
+  s_b75353843041f1::t_79d40c2cff5050 308-498,500-502
+  s_b75353843041f1::t_203ef2a4da5bda 499
+  s_b75353843041f1::t_45840780e6a206 503-505
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_b75353843041f1::t_d7449a4e5ccf7b 80-92
+packages/cli/src/events/maps/instance-ai.event-map.ts
+  s_b75353843041f1::t_49e01d228468b7 24-29
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_b75353843041f1::t_750c0f82658a92 104
+  s_b75353843041f1::t_6a1e4559c68578 273-374
+  s_b75353843041f1::t_5928fc312e56d9 3,16,36
+  s_b75353843041f1::t_e81932e1f1309a 244-251
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "559da8565f3afb6e226b90a995df78e990b4d2d4",
+  "prompts": {},
+  "sessions": {
+    "s_b75353843041f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fd7024c5-2228-48df-be88-825fe78fa77b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

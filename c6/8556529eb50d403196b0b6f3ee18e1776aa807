@@ -1,0 +1,79 @@
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_8521b223be2102::t_63c766172831ff 3012
+  s_8521b223be2102::t_6b21d08b351972 2955-2964,2976-2993,2995-2997,3002-3003,3006-3008,3010-3011,3019-3020,3039-3043
+  s_8521b223be2102::t_940791b63df5f4 666-678
+  s_8521b223be2102::t_7279f736e20abb 787
+  s_8521b223be2102::t_6efb63547246bf 2954,2965-2975,2994,2998-3001,3004-3005,3009,3013-3018,3021-3038
+packages/@n8n/instance-ai/src/tools/filesystem/__tests__/create-tools-from-mcp-server.test.ts
+  s_8521b223be2102::t_cfad455b086d01 473,475-487,490-493,495-496,498-499,501-506,508-509,519,525-530,535-539,541-543,545-546
+  s_8521b223be2102::t_6bde47686411e6 474,488-489,494,497,500,507,510-518,520-524,531-534,540,544
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_8521b223be2102::t_70807a27d34b02 261
+  s_8521b223be2102::t_a8befb96a37f67 470-471
+packages/@n8n/instance-ai/src/runtime/run-state-registry.ts
+  s_8521b223be2102::t_b089e74b06dada 84
+packages/@n8n/instance-ai/src/types.ts
+  s_8521b223be2102::t_ec5fcd1b057b4a 1054-1055,1060-1061,1065
+  s_8521b223be2102::t_5799b2cd478cdb 1056-1059,1062,1064
+  s_8521b223be2102::t_1a8660bbb0f92c 1063
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_8521b223be2102::t_47e6882d838b1c 598,603-607
+  s_8521b223be2102::t_8bfdde14431c64 632
+packages/@n8n/instance-ai/src/tools/filesystem/create-tools-from-mcp-server.ts
+  s_8521b223be2102::t_143cf123e9b00b 411
+  s_8521b223be2102::t_eeef60cdd83351 357-363
+  s_8521b223be2102::t_0787661a877bc1 206-227
+  s_8521b223be2102::t_23b154408ba80e 356,364-366,378-385
+  s_8521b223be2102::t_6c736725541738 291-294
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_8521b223be2102::t_6b7f906d1914aa 942-944,950-957,962-963,965-966
+  s_8521b223be2102::t_391228079cc220 49
+  s_8521b223be2102::t_d61a5ad239714f 945-949,958-961,964
+packages/@n8n/api-types/src/dto/instance-ai/instance-ai-confirm-request.dto.ts
+  s_8521b223be2102::t_ad7bb36c4cfda6 47-49
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_8521b223be2102::t_39632409cfed1d 489,494,507-508,511,523
+  s_8521b223be2102::t_4fcc5910fddb7e 18
+  s_8521b223be2102::t_a97d73e8510cd9 439,443
+packages/@n8n/instance-ai/src/agent/instance-agent.ts
+  s_8521b223be2102::t_6375deaf29eec0 87,92-96
+  s_8521b223be2102::t_d41c395fdc2a02 89-91,97
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_8521b223be2102::t_5412260f639daf 2197-2202,2204,2207,2210-2213,2216-2224
+  s_8521b223be2102::t_6eb2ccb0d9fa6b 2203,2214,2225-2227
+  s_8521b223be2102::t_86672ce5484c0c 476-479
+  s_8521b223be2102::t_9e7eb80419d987 383-398
+  s_8521b223be2102::t_e8c8c53cea53e1 5955-5986
+  s_8521b223be2102::t_0e078144184aeb 5943
+  s_8521b223be2102::t_c376b6cd82f02c 555-564
+  s_8521b223be2102::t_c86f7fcd9c6164 546-547,552-554,565-566
+  s_8521b223be2102::t_b25d176803ad32 548-551
+  s_8521b223be2102::t_77789d74af337f 2205-2206,2208-2209,2215
+packages/@n8n/api-types/src/dto/instance-ai/__tests__/instance-ai-confirm-request.dto.test.ts
+  s_8521b223be2102::t_5ad5e1551708ef 62-64
+  s_75d4b883e37547::t_76e306516b856f 61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c68556529eb50d403196b0b6f3ee18e1776aa807",
+  "prompts": {},
+  "sessions": {
+    "s_75d4b883e37547": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e2d102c8-f4ed-4d73-af45-43e476cfaf90",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    },
+    "s_8521b223be2102": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ab3d933a-19c0-4279-b0cf-7b0be38aeac8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

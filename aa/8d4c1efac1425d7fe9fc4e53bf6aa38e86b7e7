@@ -1,0 +1,24 @@
+docs/hypervisor.md
+  s_ee871748970946::t_f5d92dbaee8a69 1-146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "aa8d4c1efac1425d7fe9fc4e53bf6aa38e86b7e7",
+  "prompts": {},
+  "humans": {
+    "h_89e664b3be09ae": {
+      "author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_ee871748970946": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0aca0d0f-1b2b-435b-891c-746f9b5703b3",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

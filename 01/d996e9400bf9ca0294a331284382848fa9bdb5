@@ -1,0 +1,24 @@
+PROJECT_FILE_NODE_PLAN.md
+  s_b239e5ec600a48::t_1d914c42a7686c 96-98
+  s_b239e5ec600a48::t_37eb3f4566f9b8 69-95,99-123
+  s_b239e5ec600a48::t_06ac5c83c1bd46 442-445
+  s_b239e5ec600a48::t_fc99f3880598ca 1-68,124-133,135-441,446-559
+  s_b239e5ec600a48::t_48e7e732035d3a 134
+  s_b239e5ec600a48::t_ac466454744eae 560-578
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "01d996e9400bf9ca0294a331284382848fa9bdb5",
+  "prompts": {},
+  "sessions": {
+    "s_b239e5ec600a48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cb525e80-f251-4a62-9109-617b677b1d8f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

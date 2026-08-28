@@ -1,0 +1,49 @@
+.agents/skills/public-api/reference.md
+  s_a7315bf082fe68::t_de3c8afdae0e0d 1-40,44,59-63,65-79,84-87,91-109,114-115
+  s_9aeb086165193b::t_853d9c334ea4d9 80-83
+  s_9aeb086165193b::t_cbf019cf02740d 88-90
+  s_a7315bf082fe68::t_bba71943915ea8 110-113
+  s_9aeb086165193b::t_fdd50928df18e9 41-43,45-58
+  s_9aeb086165193b::t_6cd1820dc9b515 64
+.agents/skills/public-api/SKILL.md
+  s_9aeb086165193b::t_821940fa9b30d3 124-125
+  s_a7315bf082fe68::t_2f208f949261d2 20-22,72,87,89,116,118,146,156,158
+  s_a7315bf082fe68::t_2f3566ac9f9244 4-7,12-14,16-19,23-24,27,30-35,44-45,49,58-59,67-71,73-86,91-115,117,119-122,126-145,147,149,157,159-164
+  s_a7315bf082fe68::t_399d476a6012c8 15,26,41-43,54,90,123
+  s_a7315bf082fe68::t_ee7343d1bd948a 25,28-29,36-40
+  s_9aeb086165193b::t_56e4460328cd17 150-155
+  s_53f31f561124e0::t_04b4806788753a 88,148
+  s_9aeb086165193b::t_947b4e6101f4fc 46-48,50-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c9b469f3a5a6c5e989fef22b5d5d1a792aa5f3c2",
+  "prompts": {},
+  "sessions": {
+    "s_53f31f561124e0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "127b3181-d3a5-4af8-af78-8ace9ee9aa87",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    },
+    "s_9aeb086165193b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5fcd9f7d-bded-4cab-a9b5-ff201ce8cdd0",
+        "model": "grok-4.5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    },
+    "s_a7315bf082fe68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9bfeb025-5d46-4de2-af76-6e4c88da5933",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

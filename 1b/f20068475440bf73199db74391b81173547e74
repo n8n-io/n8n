@@ -1,0 +1,23 @@
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_f0e6264a74d006::t_247370839cc898 26,43,46
+  s_f0e6264a74d006::t_f347a91e4c727c 282
+  s_f0e6264a74d006::t_f58c513542937b 279-281
+  s_f0e6264a74d006::t_093eb05378b3ea 283-285
+  s_f0e6264a74d006::t_15dc86b790d08f 8-13,247-278,286-312
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "1bf20068475440bf73199db74391b81173547e74",
+  "prompts": {},
+  "sessions": {
+    "s_f0e6264a74d006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74b342e3-35da-44fb-bc35-d5aa260834e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

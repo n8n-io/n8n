@@ -1,0 +1,24 @@
+packages/cli/src/modules/n8n-packages/entities/tag/tag-importer.ts
+  s_66be2eb681ad3c::t_527cb7f8d78f91 9,72
+packages/cli/src/modules/n8n-packages/entities/tag/__tests__/tag-import-decision.test.ts
+  ai_agent 19-25,51-56,60-62,78-84,98-100,119-127,129,144-146,150-155,161-163,167-172,178-184,193-195,202-204,231-237,246-248,253-259
+  s_66be2eb681ad3c::t_527cb7f8d78f91 1,8,11,32,44,89,107,133,212
+packages/cli/src/modules/n8n-packages/entities/tag/tag-import-decision.ts
+  s_66be2eb681ad3c::t_de5fad5f9455f1 42-43,47,49,57-59,61-75,78-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f046b064e89e8aa64b3099e04ce72601462f8e88",
+  "prompts": {},
+  "sessions": {
+    "s_66be2eb681ad3c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa571d-8f2d-424c-9096-7fd9537761e1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

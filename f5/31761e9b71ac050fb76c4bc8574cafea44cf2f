@@ -1,0 +1,66 @@
+packages/cli/src/push/__tests__/index.test.ts
+  s_660271beffd110::t_359e615f7c727b 191-193,195,197-199,201-203
+  s_16db27b4176535::t_7d22cd27b10809 194,196,200,204
+packages/cli/src/push/origin-validator.ts
+  s_1eb52b866da706::t_54abf6b3a34206 12-33,43
+  s_ac865ebfa5651b::t_522ff46882171e 34-35
+  s_ac865ebfa5651b::t_df14a17f90e217 173-182
+packages/frontend/editor-ui/src/app/push-connection/__tests__/useEventSourceClient.test.ts
+  s_16db27b4176535::t_7d22cd27b10809 65,86-98
+packages/cli/src/push/index.ts
+  s_1eb52b866da706::t_b029435290d7dd 20
+  s_1eb52b866da706::t_8aae02f61afea1 124
+packages/cli/src/push/__tests__/origin-validator.test.ts
+  s_1eb52b866da706::t_06017e7af1e92a 3,5
+  s_1eb52b866da706::t_07edb544f20bd9 10,16,22,28,39,48,59,68,77,86,94,103,113,122,133,142,150,158,167,179,191,201,211,220,229,238,247,256,267,276,286,296,307,316,325,335,345,357,366,376,386,397,407,417,427
+  s_1eb52b866da706::t_27f27ed30e6cbb 436-480
+packages/cli/src/push/sse.push.ts
+  s_ac865ebfa5651b::t_32062fe7f7655d 21-23
+packages/frontend/editor-ui/src/app/push-connection/__tests__/mockEventSource.ts
+  s_ac865ebfa5651b::t_c9aa2621071b67 17-24,30,34,36-43
+packages/frontend/editor-ui/src/app/push-connection/useEventSourceClient.ts
+  s_ac865ebfa5651b::t_9f250660ee240b 25-29
+  s_ac865ebfa5651b::t_9f8259b04b7d79 53-54
+packages/cli/src/push/__tests__/sse.push.test.ts
+  s_16db27b4176535::t_7d22cd27b10809 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f531761e9b71ac050fb76c4bc8574cafea44cf2f",
+  "prompts": {},
+  "sessions": {
+    "s_16db27b4176535": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb393-a4cc-7921-abb2-6f20d43dcd9d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_1eb52b866da706": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d34dbeca-57f0-490a-8367-28947744c8b8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_660271beffd110": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ebd726a7-8a17-41c3-999d-10eeb4b92c24",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    },
+    "s_ac865ebfa5651b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44309e4c-d75e-480c-bbf9-cd1230ec0719",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

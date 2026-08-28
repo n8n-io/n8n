@@ -1,0 +1,112 @@
+packages/cli/src/modules/mcp/mcp.constants.ts
+  s_1aa455648d1f9e::t_9619c0667af16f 29
+packages/cli/src/modules/agents/builder/agents-builder-tools.service.ts
+  s_1aa455648d1f9e::t_d88810092e93bc 63-64,682,685-686,710-714,717-722,747-753
+packages/cli/src/modules/mcp/mcp-scopes.ts
+  s_1aa455648d1f9e::t_dbc9cb17490ebd 71,114
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionsListView.spec.ts
+  s_1aa455648d1f9e::t_aa7ea361a334a6 27,239
+packages/cli/src/modules/mcp/tools/workflow-builder/mcp-instructions.ts
+  s_d6d227b38c6c39::t_fe831ca0ec0ecb 115
+packages/cli/src/modules/agents/__tests__/agent-test-run.service.test.ts
+  s_1aa455648d1f9e::t_ce399122bc47d0 7,16,28,34-36,38-55,61,70,75,173-174,191,194-200,238-240,248-293
+  s_1aa455648d1f9e::t_4f813e81f0f2c3 1-6,29
+  s_1aa455648d1f9e::t_a0bccc709fccdf 30-33,37,241-247
+  s_1aa455648d1f9e::t_46e1b2aba49de6 22-26
+  s_1aa455648d1f9e::t_8ce74a5d805f97 27
+  s_1aa455648d1f9e::t_0befa97c482d92 294
+packages/cli/src/modules/mcp/__tests__/agent-tools.service.test.ts
+  s_1aa455648d1f9e::t_eb700fa65b7092 2-3,17-18,42-45,94,133,153,263,374,424
+  s_5845c3bb0d5379::t_ad297062f26d40 1255-1264,1266-1267,1276
+  s_5845c3bb0d5379::t_1a4f9a7a42b90c 1137-1154,1179,1188
+  s_5845c3bb0d5379::t_a93bc4917375b9 193-197,200
+  s_a1d1f9fe9c74d0::t_325d83b965f004 1308-1325,1327-1330,1332-1349
+  s_5845c3bb0d5379::t_1ad0ef4ef03055 79
+  s_1aa455648d1f9e::t_f3a6f7ca90af2f 1055-1056,1086,1116-1119,1123-1136,1155-1178,1180-1187,1189-1254,1265,1268-1275,1277-1298,1326,1331,1352-1353,1357-1382,1384-1412
+  s_1aa455648d1f9e::t_a0762de2541fa8 95-107
+  s_ebe8ebc874bc15::t_dd80cd8d210a10 1060
+  s_a1d1f9fe9c74d0::t_05b11ae6545294 1120-1122,1299-1307,1350-1351,1354-1356,1383
+  s_d6d227b38c6c39::t_a0367b1b14a15c 313-341,1057,1062-1076,1084-1085,1112-1115
+  s_1aa455648d1f9e::t_7ef703026bc413 1058-1059,1061,1111
+  s_1aa455648d1f9e::t_2836bcfb5a759a 1052-1054
+packages/cli/src/modules/agents/agent-test-run.service.ts
+  s_1aa455648d1f9e::t_3dce13958b0cd7 2-5,7-13,17-18,24,71-81,91-94,109-151,158,257-268,270-280,282-283,287-311,313,317,320-325,334-335
+  s_1aa455648d1f9e::t_448e34fcf29bcb 1,6,269
+  s_1aa455648d1f9e::t_a664a7d9a45b9d 281,284-286
+  s_1aa455648d1f9e::t_406b9d3b5aa318 326-333
+packages/cli/src/modules/mcp/tools/agents/agent-reference.ts
+  s_1aa455648d1f9e::t_1195628d32c5a4 32-34,47,49,51,54-60
+  s_d6d227b38c6c39::t_8905163b3e57f1 44-46
+  s_1aa455648d1f9e::t_3f877471ec3303 61
+packages/@n8n/api-types/src/schemas/mcp.schema.ts
+  s_1aa455648d1f9e::t_f79d00024c4fbb 19
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_1aa455648d1f9e::t_0cac738c758fef 1436,3357
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_1aa455648d1f9e::t_6ec78d560783e1 94,124-125
+packages/cli/src/modules/agents/__tests__/agents-builder-tools.service.test.ts
+  s_1aa455648d1f9e::t_f04532c2e0b723 1942,1971,1974-1975,2021,2025,2027-2033
+packages/cli/src/modules/mcp/__tests__/mcp-scopes.test.ts
+  s_1aa455648d1f9e::t_ed32069e41c1ae 89-92
+packages/cli/src/modules/mcp/tools/agents/agent-tools.service.ts
+  s_a1d1f9fe9c74d0::t_d69e20c31684d4 1199-1207,1222,1238
+  s_5845c3bb0d5379::t_f75e523ff40f89 1138,1154,1164
+  s_d6d227b38c6c39::t_f76ba2194c9522 409,419,658-661,681-684,689
+  s_1aa455648d1f9e::t_c32fde2f3e72e2 41-47,76-80,330-351,360,386,420,702-716,718-720,1134-1137,1139-1153,1155-1163,1165-1198,1208-1221,1223-1237,1239-1254
+  s_5845c3bb0d5379::t_c4d747a995d365 717,721
+  s_1aa455648d1f9e::t_3f4a9daf0f12ce 680,687,690-696
+  s_1aa455648d1f9e::t_d7935b0b753051 722-725
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ea7a0a0cb6beb484af53484acb95bcceb54d44f6",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_1aa455648d1f9e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e0b83bf3-6b75-4a8f-aa7b-be1e39a00bf9",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_5845c3bb0d5379": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "11a9c3d2-b81c-473b-a5a7-96ebd93afc6d",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_a1d1f9fe9c74d0": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6e33514a-2bd2-4455-acc2-fb4e8d043769",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_d6d227b38c6c39": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "955262a2-f107-416f-a8f1-3f41cba645c0",
+        "model": "gpt-5.6-sol-xhigh-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_ebe8ebc874bc15": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4e356ad7-cd8d-4893-b661-aedb671aa966",
+        "model": "cursor-grok-4.5-high-fast"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

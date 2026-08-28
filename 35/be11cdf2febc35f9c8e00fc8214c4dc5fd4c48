@@ -1,0 +1,18 @@
+single-instance-promotion-prototype/no-skill/7_PLAN.md
+  h_c63dce324dfc7b 50
+single-instance-promotion-prototype/ponytail/2_PONYTAIL.md
+  h_c63dce324dfc7b 1-17
+single-instance-promotion-prototype/ponytail/2_PROMPT.md
+  h_c63dce324dfc7b 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "35be11cdf2febc35f9c8e00fc8214c4dc5fd4c48",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

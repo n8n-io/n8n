@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/AiInsightsCard.test.ts
+  s_62bddef00d4057::t_b12e4faaebd606 47
+  s_62bddef00d4057::t_a248bc5f93f19d 79,90-101
+packages/cli/src/evaluation.ee/insights/__tests__/insights-context-builder.test.ts
+  s_62bddef00d4057::t_cd373d7a62f11d 109-157
+packages/cli/src/evaluation.ee/insights/insights-context-builder.ts
+  s_62bddef00d4057::t_6013f546ee20d8 44-51,55
+  s_62bddef00d4057::t_1e6291e63555af 12,15-19
+  s_62bddef00d4057::t_20ae182d501392 97-130
+  s_62bddef00d4057::t_b5da5f5e13250f 211-214,217,222-227
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/views/CompareCollectionView.vue
+  s_62bddef00d4057::t_4fc759565abcf0 84-91
+  s_62bddef00d4057::t_9c641ab5aceb86 22
+  s_62bddef00d4057::t_6744ef00300050 209-214
+packages/frontend/editor-ui/src/features/ai/evaluation.ee/components/Compare/AiInsightsCard.vue
+  s_62bddef00d4057::t_8b43ae7d7a946b 4,12-14
+  s_62bddef00d4057::t_ea17edc5062075 51-62,66,68-72
+packages/cli/src/evaluation.ee/insights/eval-insights.service.ts
+  s_62bddef00d4057::t_1b4d1fed9e18af 324-325
+  s_62bddef00d4057::t_c9c7387bda5b75 34-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "57e3c59571a143b32286090efacd50ba91c24642",
+  "prompts": {},
+  "sessions": {
+    "s_62bddef00d4057": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6396ed9-3aa0-4d3f-8dfd-eea7869f2328",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+packages/testing/playwright/services/dynamic-credential-api-helper.ts
+  s_5de5e4ab39e868::t_06c773ba8531e3 225-247
+packages/testing/playwright/tests/e2e/dynamic-credentials/mcp-trigger-credential-gate.spec.ts
+  s_5de5e4ab39e868::t_127fc78e43ded1 198-199
+  s_5de5e4ab39e868::t_ce325611334bb7 212-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "6e678781a684677eb90eea82fb29da1f9d67fe8b",
+  "prompts": {},
+  "sessions": {
+    "s_5de5e4ab39e868": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f5b274e-f588-44a8-a13a-2a2dcb3e0d10",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

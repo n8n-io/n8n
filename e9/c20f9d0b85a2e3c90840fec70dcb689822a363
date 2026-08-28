@@ -1,0 +1,21 @@
+.agents/skills/create-skill/SKILL.md
+  s_f0c4a529fe8ba9::t_3ee471bd85ddc1 119
+  s_f0c4a529fe8ba9::t_a401f4323f320b 25
+  s_f0c4a529fe8ba9::t_c1744c52a7cd7e 53,59-61
+.claude/plugins/n8n/README.md
+  s_f0c4a529fe8ba9::t_c10c1f96da7fb8 46-47
+  s_f0c4a529fe8ba9::t_1ef751024e1521 22-28
+package.json
+  s_f0c4a529fe8ba9::t_f085f49602c3eb 42
+  s_f0c4a529fe8ba9::t_8e90142485650b 43
+.agents/skills/AGENTS.md
+  s_f0c4a529fe8ba9::t_0d309f867189b5 17-19
+  s_f0c4a529fe8ba9::t_533f579697834d 21-25
+  s_f0c4a529fe8ba9::t_b8964ea0e2c9e5 37-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e9c20f9d0b85a2e3c90840fec70dcb689822a363",
+  "prompts": {}
+}

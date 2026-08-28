@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/roles/composables/useRoleDeletion.test.ts
+  s_e9caffc4795803::t_266208019777d1 164
+  s_e9caffc4795803::t_2a9e4acf0d065c 155
+  s_e9caffc4795803::t_3074e5f56599a2 1-130,132-154,156-163,165-201
+  s_e9caffc4795803::t_f733c07ccd271f 131
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_e9caffc4795803::t_88a8529326d129 24
+  s_e9caffc4795803::t_eb61eaa7b3d36a 2,5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "ccb81276e741545d3fed4b0d2396089bc144c80d",
+  "prompts": {},
+  "sessions": {
+    "s_e9caffc4795803": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "bab59858-daec-4a62-bbf3-ad3dfd97e96f",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

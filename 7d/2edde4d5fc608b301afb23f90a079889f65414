@@ -1,0 +1,24 @@
+packages/@n8n/instance-ai/src/tools/workflows/detect-data-table-columns.ts
+  s_f4f3f37a98d31a::t_0f5083021e8d7f 1-109
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/detect-data-table-columns.test.ts
+  s_f4f3f37a98d31a::t_cae7efcf1028f4 1-117
+packages/@n8n/instance-ai/src/tools/workflows/workflow-source-compiler.ts
+  s_f4f3f37a98d31a::t_ab8a320e86b1f7 376,383
+  s_f4f3f37a98d31a::t_1f19eb7d3a5f66 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7d2edde4d5fc608b301afb23f90a079889f65414",
+  "prompts": {},
+  "sessions": {
+    "s_f4f3f37a98d31a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5f0f3eae-3f41-4e57-9468-7c570d305e15",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

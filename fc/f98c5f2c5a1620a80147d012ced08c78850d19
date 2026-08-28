@@ -1,0 +1,14 @@
+packages/@n8n/db/src/repositories/user.repository.ts
+  h_9c8f56e3400786 159-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "fcf98c5f2c5a1620a80147d012ced08c78850d19",
+  "prompts": {},
+  "humans": {
+    "h_9c8f56e3400786": {
+      "author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+packages/workflow/src/utils.ts
+  s_babe1787c26a86::t_38f7b02d62638c 244-246
+packages/@n8n/eslint-config/src/configs/base.ts
+  s_babe1787c26a86::t_d4940d9954b764 420-437
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "adfda35166d67ff142795487bebcf456af804425",
+  "prompts": {},
+  "sessions": {
+    "s_babe1787c26a86": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6e413df3-d3eb-45bc-a1e6-c79c0fb588e1",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

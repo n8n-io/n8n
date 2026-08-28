@@ -1,0 +1,41 @@
+packages/core/src/execution-engine/node-execution-context/__tests__/trigger-context.test.ts
+  s_53cef6894d9656::t_9c06c5c68c941a 70
+packages/core/src/execution-engine/node-execution-context/__tests__/node-execution-context.test.ts
+  s_53cef6894d9656::t_0d6905e41a80de 285-315,319-357
+  s_53cef6894d9656::t_db50342f77fbd1 316-318
+  s_53cef6894d9656::t_021a71bc666463 229
+packages/core/src/execution-engine/node-execution-context/__tests__/load-options-context.test.ts
+  s_53cef6894d9656::t_c2a63d4b1ed1be 60
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-context.test.ts
+  s_53cef6894d9656::t_83dd6f849b281c 211
+packages/core/src/execution-engine/node-execution-context/__tests__/supply-data-context.test.ts
+  s_53cef6894d9656::t_13f85ad36aa992 167
+packages/core/src/execution-engine/node-execution-context/__tests__/poll-context.test.ts
+  s_53cef6894d9656::t_3e4b3df271605b 70
+packages/core/src/execution-engine/node-execution-context/__tests__/webhook-context.test.ts
+  s_53cef6894d9656::t_5df07ff955a5a5 86
+packages/core/src/execution-engine/node-execution-context/__tests__/execute-single-context.test.ts
+  s_53cef6894d9656::t_ba357cf59538b3 171
+packages/core/src/execution-engine/node-execution-context/__tests__/hook-context.test.ts
+  s_53cef6894d9656::t_cd0e6f8ba38d53 96
+packages/core/src/execution-engine/node-execution-context/node-execution-context.ts
+  s_53cef6894d9656::t_65c2409160d97d 361-363,365
+  s_53cef6894d9656::t_d35a4a1d089c4d 306-320
+  s_53cef6894d9656::t_f403facd30f585 364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "35c580c0503f0d4a5d79279d90446dcd27611870",
+  "prompts": {},
+  "sessions": {
+    "s_53cef6894d9656": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "80988671-9019-4d49-ace5-76c9b66cd316",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

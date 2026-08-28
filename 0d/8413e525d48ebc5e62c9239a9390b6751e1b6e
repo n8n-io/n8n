@@ -1,0 +1,58 @@
+packages/frontend/editor-ui/src/app/composables/useInstanceAiEditorCapability.ts
+  s_704a1a6a42be24::t_f369b846218132 21-25
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupCard.vue
+  s_704a1a6a42be24::t_ca356d8b774c0b 61
+  s_704a1a6a42be24::t_90b129cad2cab7 2
+packages/frontend/editor-ui/src/Interface.ts
+  s_704a1a6a42be24::t_05e9541924ac73 689
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.test.ts
+  s_704a1a6a42be24::t_3ec26cb93fc3c7 1124-1149
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.test.ts
+  s_704a1a6a42be24::t_d489ac15351401 106-107,111
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_704a1a6a42be24::t_aeb41663584340 9
+  s_704a1a6a42be24::t_37e0977e9c95f1 574
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialConfig.vue
+  s_704a1a6a42be24::t_61bd91e8b39bc4 35
+  s_704a1a6a42be24::t_7c9f24df539150 365-369,376
+packages/frontend/editor-ui/src/features/credentials/templatedAuth.utils.ts
+  s_704a1a6a42be24::t_3657f46616e534 130,133,135
+  s_704a1a6a42be24::t_72532806505489 138-141,145-146,148-158
+  s_704a1a6a42be24::t_5ac108190d6492 136-137
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_704a1a6a42be24::t_66b99312d8da77 29-39,46-48,61-63
+  s_4dab70ebe02e78::t_ff7caa1e745e87 28
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/TemplatedAuthSimpleView.vue
+  s_704a1a6a42be24::t_f5c5aeaaba6374 7
+  s_704a1a6a42be24::t_74ae063b89ab74 41-43,45
+  s_704a1a6a42be24::t_2dfe39ef359984 214
+  s_704a1a6a42be24::t_47489567ad5b6a 113,318
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupSectionBody.test.ts
+  s_704a1a6a42be24::t_3ec26cb93fc3c7 37-41,83-87,388-389,393,400,412-415
+packages/frontend/editor-ui/src/features/ai/instanceAi/workflowSetup/components/WorkflowSetupCard.test.ts
+  s_704a1a6a42be24::t_d489ac15351401 157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0d8413e525d48ebc5e62c9239a9390b6751e1b6e",
+  "prompts": {},
+  "sessions": {
+    "s_4dab70ebe02e78": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e7b453e2-c2fa-4027-b212-6b74bcdfca6a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_704a1a6a42be24": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2cbbabf-304d-413b-b4e6-2ce7d66d0ec9",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,55 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/WorkflowToolConfigContent.test.ts
+  s_6de01f90522ebb::t_ece2b70bb105a5 294-296,298-300,302,304
+  s_6de01f90522ebb::t_ca7e57ff54461a 12-23
+  s_6de01f90522ebb::t_2be9c91ab6ea16 242-253
+  s_6de01f90522ebb::t_52d9fa5712c16e 235-241,254-286,288-292
+  s_6de01f90522ebb::t_9ce0bf426d8304 24-28
+  s_6de01f90522ebb::t_14408ce48335d8 179-191
+  s_6de01f90522ebb::t_d6d082d3cf7afc 323-324
+  s_6de01f90522ebb::t_e0ea88fbf676dc 325-326
+  s_6de01f90522ebb::t_babacaf0131498 293,297,301,303,305-311
+  s_6de01f90522ebb::t_f7018e90d696eb 287
+packages/frontend/editor-ui/src/features/agents/components/WorkflowToolConfigContent.vue
+  s_6de01f90522ebb::t_a84dacef6b13d6 31,34
+  s_6de01f90522ebb::t_1fa87f958d5fe3 140-141,144-145
+  s_6de01f90522ebb::t_88b2cf97f4a89e 301,303,307,310-311
+  s_6de01f90522ebb::t_771ac5265de4d2 415-416,418-430
+  s_6de01f90522ebb::t_ab36fde23398ab 315-321,323
+  s_6de01f90522ebb::t_c0b40a7ce80c61 248-253,255-269,271-300,313
+  s_6de01f90522ebb::t_6e5f6971a5b89f 167-175
+  s_6de01f90522ebb::t_d5678a6b844a36 146
+  s_6de01f90522ebb::t_df87c03ee0bec0 151,163-166,176-204
+  s_6de01f90522ebb::t_b039bca7b3da57 50,59-61
+  s_6de01f90522ebb::t_aa630e80e21a3b 205,431-434
+  s_6de01f90522ebb::t_63721ed1680c08 51
+  s_6de01f90522ebb::t_9d68b17bd60ab8 417
+  s_6de01f90522ebb::t_311150d35e6560 30,33
+  s_6de01f90522ebb::t_99cdcc64676583 254
+  s_6de01f90522ebb::t_aa68fcce9d6ed6 75-77
+  s_6de01f90522ebb::t_e028babcd23ae3 314
+  s_6de01f90522ebb::t_0592bab5e0dfbb 22
+  s_6de01f90522ebb::t_6da9fe52f3ca57 302,304-306,308-309,312
+  s_6de01f90522ebb::t_7fd6abb56f67a7 329-330
+  s_6de01f90522ebb::t_f52b9f9fde7afa 152-155
+  s_6de01f90522ebb::t_286902c3877085 206
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6de01f90522ebb::t_5b51afc7f2ebff 7262-7263
+  s_6de01f90522ebb::t_052244c529b1dd 7266
+  s_6de01f90522ebb::t_6d7469b6a71cfe 7267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "6ecdb71801dcb3fc5374d0d269184a19b2ad45fa",
+  "prompts": {},
+  "sessions": {
+    "s_6de01f90522ebb": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0796efb0-85de-405b-8aa7-6fdd12d7dfdc",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

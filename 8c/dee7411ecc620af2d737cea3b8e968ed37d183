@@ -1,0 +1,27 @@
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-gates.test.ts
+  s_c345592441274b::t_2848b5cdd619b8 1-79
+packages/cli/src/modules/n8n-packages/engine/import-gates.ts
+  s_c345592441274b::t_0d5a6c3c408750 1-35
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_c345592441274b::t_5dc39d2dfd458a 22
+  s_c345592441274b::t_3456f01d528976 223-228
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_c345592441274b::t_73b9a8ffa004e1 90-95
+  s_c345592441274b::t_906c53c8485713 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8cdee7411ecc620af2d737cea3b8e968ed37d183",
+  "prompts": {},
+  "sessions": {
+    "s_c345592441274b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "44d4b7e1-ff47-45f4-90e1-e74bbf6568a4",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

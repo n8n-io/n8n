@@ -1,0 +1,24 @@
+packages/frontend/@n8n/composables/src/useDebounce.ts
+  s_9f10fc0df8f881::t_fd9b728a58b17a 4-12
+packages/frontend/editor-ui/src/app/constants/durations.ts
+  s_9f10fc0df8f881::t_14070314956cf3 29-81,83-85,87
+packages/frontend/@n8n/composables/src/useDebounce.test.ts
+  s_9f10fc0df8f881::t_f9fafad29dfbc2 2,4
+  s_9f10fc0df8f881::t_3dba0a2af6c7f6 75-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "d6a2beb83b24505497d429b9d09c31f94ed64544",
+  "prompts": {},
+  "sessions": {
+    "s_9f10fc0df8f881": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "939fa579-9d4f-406d-aa92-f90d6c51b156",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

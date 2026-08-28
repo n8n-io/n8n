@@ -1,0 +1,27 @@
+packages/@n8n/local-gateway/src/main/main-window.test.ts
+  s_0b5db297947361::t_79967a342a98ad 78
+  s_0b5db297947361::t_79babc3bc949f6 5,7
+  s_0b5db297947361::t_191c20aa0b3712 1-4,6,8-77,79-89,91-96,98-236
+  s_0b5db297947361::t_62446c143a1661 90,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "e8d2832cc28581ef560f8e0894dcfcb1920f4356",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_0b5db297947361": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a4721779-a53c-4c86-a982-6e4034dc057a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

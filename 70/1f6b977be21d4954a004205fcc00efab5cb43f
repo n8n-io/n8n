@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_a5630915c5ba0e::t_470f6647ca7020 374
+  s_a5630915c5ba0e::t_bc3f6b9b304f84 65-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "701f6b977be21d4954a004205fcc00efab5cb43f",
+  "prompts": {},
+  "sessions": {
+    "s_a5630915c5ba0e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d26675dc-a0b7-43aa-be23-999caa8d7e49",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

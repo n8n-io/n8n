@@ -1,0 +1,33 @@
+packages/cli/src/posthog/index.ts
+  s_809b1d426886cf::t_efabb15472c147 10,51-59
+  s_809b1d426886cf::t_2f0d3c2fd46af5 60-62
+packages/cli/src/server.ts
+  s_809b1d426886cf::t_64ed5d42352f4f 180
+packages/cli/src/middlewares/cors.ts
+  s_809b1d426886cf::t_0fc296c631b697 11
+packages/frontend/editor-ui/src/Interface.ts
+  s_809b1d426886cf::t_40bb56ca772cb6 80
+packages/frontend/editor-ui/src/app/stores/posthog.store.ts
+  s_809b1d426886cf::t_96c7580108d768 187-189
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "fe9134b0e98bbf9e624c04a09ceb0471f99d57e6",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_809b1d426886cf": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e43efb64-484e-4e03-895d-f80098ff7787",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

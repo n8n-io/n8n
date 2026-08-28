@@ -1,0 +1,43 @@
+packages/cli/src/modules/n8n-packages/entities/project/project-importer.ts
+  s_26a52030ea583f::t_bb50de6b53dce2 1-112
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_26a52030ea583f::t_bb50de6b53dce2 154-161,270
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_26a52030ea583f::t_bb50de6b53dce2 1-45
+packages/cli/src/modules/n8n-packages/engine/import-pipeline.ts
+  s_26a52030ea583f::t_bb50de6b53dce2 3,9,12-14,21,26-27,31-35,38-40
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_26a52030ea583f::t_bb50de6b53dce2 1-207
+packages/cli/src/modules/n8n-packages/engine/import-result.ts
+  s_26a52030ea583f::t_bb50de6b53dce2 8,30,47
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_26a52030ea583f::t_bb50de6b53dce2 148,284-310
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_26a52030ea583f::t_bb50de6b53dce2 150
+packages/cli/src/modules/n8n-packages/engine/n8n-package-parser.ts
+  s_26a52030ea583f::t_bb50de6b53dce2 11,18,68-78,123-137
+packages/cli/src/services/project.service.ee.ts
+  s_26a52030ea583f::t_bb50de6b53dce2 67-73,361,373-378,387-396,400
+packages/cli/src/modules/n8n-packages/CLAUDE.md
+  s_26a52030ea583f::t_bb50de6b53dce2 27-28,30-34
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_26a52030ea583f::t_bb50de6b53dce2 84
+packages/cli/src/modules/n8n-packages/entities/project/project-import.types.ts
+  s_26a52030ea583f::t_bb50de6b53dce2 1-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0797a66c1f0a335372beb3866cfc1bfca29f11da",
+  "prompts": {},
+  "sessions": {
+    "s_26a52030ea583f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96d9bcff-3469-4b99-a44e-a554a538bf64",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

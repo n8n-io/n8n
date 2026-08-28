@@ -1,0 +1,49 @@
+packages/cli/src/modules/agents/__tests__/agent-task.service.test.ts
+  s_59804710ac246a::t_a19de7344f13c1 85
+  s_59804710ac246a::t_12a42c30edec46 237-238
+  s_59804710ac246a::t_cccaa40cd83b35 39-40
+  s_59804710ac246a::t_63a1bba4dd748e 446-448,451-455,467-468,474,490,505
+packages/cli/src/modules/agents/entities/agent-task-snapshot.entity.ts
+  s_59804710ac246a::t_a5905d6aac52fe 1
+  s_59804710ac246a::t_aa2ee7b24c326f 50,53
+packages/cli/src/modules/agents/agent-validation.service.ts
+  s_59804710ac246a::t_a954c32a92fe9e 15
+  s_59804710ac246a::t_9e159ec635fc32 48
+packages/@n8n/api-types/src/agents/agent-task.schema.ts
+  s_59804710ac246a::t_a84188ec6a664d 3-4
+  s_59804710ac246a::t_c96f5772001789 23-25
+packages/cli/src/modules/agents/entities/agent-task.entity.ts
+  s_59804710ac246a::t_e5c1bd01d1e004 53,56
+  s_59804710ac246a::t_188298f0a05ecf 1
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTaskModal.test.ts
+  s_59804710ac246a::t_6d64b6bc2513e0 401-404
+  s_59804710ac246a::t_99835d432ca8f0 11
+  s_59804710ac246a::t_1ed64c0dbbb69c 203-207
+  s_59804710ac246a::t_f073b713d3c486 405
+packages/cli/test/migration/1786621321000-add-timezone-to-agent-tasks.test.ts
+  s_59804710ac246a::t_5b431fe1ecee10 17-21,52,58,60-88,94-109,111-112,114-115,117-128,130-134,138-139,141-143,145-148,150-154,156-160
+packages/cli/src/modules/agents/agent-task.service.ts
+  s_59804710ac246a::t_9ab0f403d862a1 10
+  s_59804710ac246a::t_3ed24a0cbadb19 735
+  s_59804710ac246a::t_f19b8cc5be8563 451
+  s_59804710ac246a::t_b3f6d926e86a30 2
+  s_59804710ac246a::t_ae5ad8ca36c136 437,441-442
+  s_59804710ac246a::t_2b6849f6566b49 26
+  s_59804710ac246a::t_8b3bf4a36ba426 722
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dc80fdd8eaf4200ca9764f6a3628f9b537fe0d48",
+  "prompts": {},
+  "sessions": {
+    "s_59804710ac246a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "630a9d8b-7a73-4d8a-96ac-3588b471e46f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

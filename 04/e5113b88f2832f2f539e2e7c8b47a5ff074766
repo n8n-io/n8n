@@ -1,0 +1,22 @@
+packages/frontend/editor-ui/src/features/ndv/runData/components/error/explainError.store.ts
+  s_f60f2156957308::t_f2958bf2c1a9ce 20-34
+  s_f60f2156957308::t_27b746f4b19b54 93,101-108
+packages/frontend/editor-ui/src/features/ndv/runData/components/error/explainError.store.test.ts
+  s_f60f2156957308::t_f9fa2c64a666cc 253-324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "04e5113b88f2832f2f539e2e7c8b47a5ff074766",
+  "prompts": {},
+  "sessions": {
+    "s_f60f2156957308": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7b85b52c-0514-4aa1-a2ec-16298e65b2e4",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

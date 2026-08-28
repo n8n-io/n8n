@@ -1,0 +1,21 @@
+packages/@n8n/db/src/migrations/common/1786666615643-AddCoalesceOwnerMisfirePolicy.ts
+  s_5935df2a4e2f70::t_7ad7d92dcfbf06 1-101
+packages/@n8n/db/src/migrations/sqlite/1786666615643-AddCoalesceOwnerMisfirePolicy.ts
+  s_5935df2a4e2f70::t_7ad7d92dcfbf06 1-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e45f9b3a99e0c168c17f57021d38b8d3ccaba9a0",
+  "prompts": {},
+  "sessions": {
+    "s_5935df2a4e2f70": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44eb5111-bce2-4b03-a211-c44918d072c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/task/create.operation.ts
+  s_9e3fb7eb7b1034::t_9770652fc42ccb 44-45,54,56-61
+  s_9e3fb7eb7b1034::t_2268fb7bb5ed0b 7-8
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/servicePrincipalDisplayOptions.test.ts
+  s_9e3fb7eb7b1034::t_7a0b2fd021f555 169-185
+  s_9e3fb7eb7b1034::t_7c0437b5e6f6a1 216-227
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/task/helpers.ts
+  s_9e3fb7eb7b1034::t_c5eafa90e8df53 1-28
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/task/update.operation.ts
+  s_9e3fb7eb7b1034::t_57d6b9360a5b1c 32-33,44,46-52
+  s_9e3fb7eb7b1034::t_ab855522effdbf 13
+packages/nodes-base/nodes/Microsoft/Teams/v2/actions/task/getAll.operation.ts
+  s_9e3fb7eb7b1034::t_b4dc38a8e40fce 15
+  s_9e3fb7eb7b1034::t_ff83e46f05a3f8 68-71
+packages/nodes-base/nodes/Microsoft/Teams/test/v2/node/servicePrincipal.test.ts
+  s_9e3fb7eb7b1034::t_9456e01046217e 268-304
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.3",
+  "base_commit_sha": "e1c75d0f130028b051b3360af805c7cdaa49eaee",
+  "prompts": {},
+  "sessions": {
+    "s_9e3fb7eb7b1034": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ba225abc-2d80-4c6a-af99-cceaa9f6df99",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

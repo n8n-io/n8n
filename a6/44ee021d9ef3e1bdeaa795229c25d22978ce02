@@ -1,0 +1,94 @@
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvSettings.test.ts
+  s_bb07027ddb0032::t_712f0183253ea9 137,144
+  s_bb07027ddb0032::t_36809ff2cf75eb 170-171,178
+  s_bb07027ddb0032::t_9284efdf636e5f 81-83
+  s_bb07027ddb0032::t_1c65f83ea74fe4 1-80,84-136,138-143,145-169,172-177,179-193
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentCapabilitiesSection.test.ts
+  s_bb07027ddb0032::t_73b3c13872e687 618-675
+packages/frontend/editor-ui/src/features/agents/components/AgentCapabilitiesSection.vue
+  s_bb07027ddb0032::t_a0bf3e139ecf26 579
+  s_bb07027ddb0032::t_80aabea27d0948 26-28,42-48,57-60
+  s_bb07027ddb0032::t_80aaab07221306 459
+  s_bb07027ddb0032::t_30ad4508197f2e 617
+  s_bb07027ddb0032::t_bd6afe0de10197 697
+  s_bb07027ddb0032::t_218931ac20d7f1 652
+  s_bb07027ddb0032::t_d7a2616fbcbe66 50-54
+  s_bb07027ddb0032::t_6fb988de6e18b8 178-180,184
+  s_bb07027ddb0032::t_8b1fc322da57d3 498
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_bb07027ddb0032::t_bc5bc525a9ba7f 1-124,128-337
+  ai_agent 125-127
+packages/frontend/editor-ui/src/features/ndv/agents/components/__tests__/AgentNdvReferencedControls.test.ts
+  s_bb07027ddb0032::t_65659439c6ef6f 1-119,123-210,213-274
+  s_bb07027ddb0032::t_7472c0164f8fa9 120-122
+  s_bb07027ddb0032::t_c7b527ee221bf3 211-212
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_bb07027ddb0032::t_76bdb7fc8c00be 218-235,239-240
+  s_bb07027ddb0032::t_fae2b4cfe1adba 49
+  s_bb07027ddb0032::t_d0d90bf8271ff9 249
+  s_bb07027ddb0032::t_84e0e1bb5d2953 34-36,38-48,50-70,73-74,76,78
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_bb07027ddb0032::t_cae5b3b781ad81 5408-5415
+packages/frontend/editor-ui/src/features/ndv/settings/components/NodeSettings.vue
+  s_bb07027ddb0032::t_256fd9619fb164 826
+  s_bb07027ddb0032::t_0f81aa1bda1799 521-536
+  s_bb07027ddb0032::t_3fe9a649d4c61d 15
+  s_bb07027ddb0032::t_1e66c7b263b6d7 25-28
+  s_bb07027ddb0032::t_13fe73adc7c0ab 855-889
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_bb07027ddb0032::t_ee42f986e440f7 44
+  s_bb07027ddb0032::t_12b717992ed0d7 863-882,884
+  s_bb07027ddb0032::t_4f30652cccdc44 1014-1016,1018
+  s_bb07027ddb0032::t_a8139be1f5eb59 1045-1048,1051-1055
+  s_bb07027ddb0032::t_83662acb6cf70d 34
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvSettings.vue
+  ai_agent 71,78-98,100-107,109-117,119-122,124-138
+  s_bb07027ddb0032::t_36aa7c35caa6bd 1-70,72-75,99,108,118,123,141-152,158-160,162-184
+  s_bb07027ddb0032::t_a7353ffe142d32 76-77
+  s_bb07027ddb0032::t_b2998ea33b219e 139-140
+  s_bb07027ddb0032::t_cf18ab360483b4 153-157,161
+packages/frontend/editor-ui/src/features/ndv/agents/composables/useNdvAgentConfig.ts
+  s_bb07027ddb0032::t_e69fa6fffea455 237-239
+  s_bb07027ddb0032::t_875c4eb348cd26 177-182,187
+  s_bb07027ddb0032::t_0b95465314cf20 1-63,65-132,134-176,183-186,188-236,240-247
+  ai_agent 64,133,248
+packages/frontend/editor-ui/src/features/ndv/shared/views/NodeDetailsViewV2.vue
+  s_bb07027ddb0032::t_1ce38c9842cec4 7,11-14
+  s_bb07027ddb0032::t_ce3cf3114a2ba6 513-516
+  s_bb07027ddb0032::t_45ddf0c455bb81 75-80
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_bb07027ddb0032::t_ff301a91b7a76b 1
+  s_bb07027ddb0032::t_1a33f160c61a5e 41
+  s_bb07027ddb0032::t_421f364cc5425e 33-40,42-50,60,70,100,115,128-132,134-151,156-203,211-212,255,279,301,324,336,353,368,379,413-423
+  ai_agent 152-155
+packages/frontend/editor-ui/src/features/ndv/agents/components/AgentNdvReferencedControls.vue
+  s_bb07027ddb0032::t_793f02fe65bead 84-85
+  s_bb07027ddb0032::t_db4809ba5a4961 166-167
+  s_bb07027ddb0032::t_839cfa5b3f36c9 107
+  s_bb07027ddb0032::t_42f9858a955399 181-185,189
+  ai_agent 86-106,108-115,117-126,128-140,142,144-147,149-161,163-164
+  s_bb07027ddb0032::t_bf11ed52e628d2 1-83,116,127,141,143,148,162,165,168-180,186-188,190-230
+packages/frontend/editor-ui/src/features/ndv/agents/composables/__tests__/useNdvAgentConfig.test.ts
+  s_bb07027ddb0032::t_b450562c667820 2
+  s_bb07027ddb0032::t_520a0a9731fb0f 11-13
+  s_bb07027ddb0032::t_8a3fd14bb84208 1,3-10,15-117,124-132,134-143,145-148,150-173,175-267,308-315,317-319,322-324,332-333,337-386,388-420
+  ai_agent 14,144,174,387
+  s_bb07027ddb0032::t_da21f8493f7a11 118-123,133,149
+  s_bb07027ddb0032::t_8475fb44c2bf24 268-307,316,320-321,325-331,334-336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a644ee021d9ef3e1bdeaa795229c25d22978ce02",
+  "prompts": {},
+  "sessions": {
+    "s_bb07027ddb0032": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1ac5de5a-9d81-4e7b-9015-b5d135e16aa4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

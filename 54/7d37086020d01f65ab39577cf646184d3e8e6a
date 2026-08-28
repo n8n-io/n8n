@@ -1,0 +1,14 @@
+packages/@n8n/nodes-langchain/nodes/mcp/McpTrigger/n8n-oauth2-auth.ts
+  h_435b1d7d3e52c0 16-23,25,27-29,48,53,55,59,61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "547d37086020d01f65ab39577cf646184d3e8e6a",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+packages/@n8n/telemetry/src/__tests__/types.test-d.ts
+  s_1e5125c6600a65::t_a39e620ed54d39 56
+packages/@n8n/telemetry/src/__tests__/define.test.ts
+  s_1e5125c6600a65::t_d1de7f941de716 26,34
+packages/frontend/editor-ui/src/app/plugins/telemetry/index.ts
+  s_1e5125c6600a65::t_afaaa3c628d024 118
+packages/cli/src/telemetry/index.ts
+  s_1e5125c6600a65::t_15459388c9461e 568
+packages/@n8n/telemetry/src/define.ts
+  s_1e5125c6600a65::t_c4a3270f24dffc 12,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7f7f4cb0576a16b86b942fc284e3c788e54310d6",
+  "prompts": {},
+  "sessions": {
+    "s_1e5125c6600a65": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21142060-5675-4f0c-aacb-58656862d6d1",
+        "model": "claude-fable-5"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

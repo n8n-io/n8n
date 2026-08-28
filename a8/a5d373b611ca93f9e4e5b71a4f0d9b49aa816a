@@ -1,0 +1,213 @@
+packages/cli/src/modules/n8n-packages/__tests__/import-data-tables.integration.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 73
+packages/frontend/@n8n/design-system/src/components/N8nUserSelect/UserSelect.vue
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 20-21,31,107
+packages/cli/src/modules/n8n-packages/entities/variable/variable.types.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 6,28
+packages/@n8n/cli/src/__tests__/package-import.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 24,70,94
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 589,595,601,609
+packages/@n8n/api-types/src/dto/workflow-reviews/list-workflow-review-requests-query.dto.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 1,9
+packages/@n8n/cli/src/__tests__/client.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 241,256,261
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 952-983,986,1004
+packages/cli/src/modules/n8n-packages/engine/import-telemetry.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 82
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 692-695,819-822,835-864,880-883,900-903
+packages/@n8n/api-types/src/dto/packages/__tests__/import-package-request.dto.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 23,48,75,101,328-329,333,338-339,341,346,351,354
+packages/frontend/editor-ui/src/features/ai/instanceAi/constants.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 1-2,7-8,18-22
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 3,5,14,17,28,44-46,51-67,101-135,172-189,229-234
+packages/frontend/editor-ui/src/features/shared/nodeCreator/views/viewsData.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 22
+packages/frontend/editor-ui/src/app/composables/useKeybindings.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 88-110
+packages/testing/playwright/services/api-helper.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 333-337
+packages/frontend/editor-ui/src/app/plugins/telemetry/index.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 16-21,27-29,31,284-288,293
+packages/nodes-base/nodes/MessageAnAgent/shared.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 21
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 760-764
+packages/nodes-base/nodes/MessageAnAgent/__tests__/MessageAnAgent.node.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 686-691
+packages/cli/src/modules/n8n-packages/engine/__tests__/import-telemetry.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 78
+packages/cli/src/modules/n8n-packages/entities/variable/variable-missing-mode.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 2,4,6,9-10,14,17
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 4444-4445
+packages/cli/src/modules/n8n-packages/entities/variable/__tests__/variable-importer.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 40,52,65,80,100,112,131,148,168,184,189,194,200,211
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 453
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 79,136
+packages/@n8n/db/src/repositories/user.repository.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 4-9,158-192
+packages/@n8n/api-types/src/dto/workflow-reviews/get-eligible-reviewers-query.dto.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 1-6
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoff.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 188,203,228-231,237,260,269,290,310,325
+packages/frontend/editor-ui/src/features/workflow-reviews/workflowReviews.api.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 2,16,31-38
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-requests.controller.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 1-5,26-35
+packages/frontend/editor-ui/src/features/shared/nodeCreator/nodeCreator.utils.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 900,911,919,1216-1217,1219,1227
+pnpm-lock.yaml
+  ai_agent 4903-4905,4912-4914,4918-4920
+packages/@n8n/api-types/src/schemas/id.schema.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 1-7
+packages/@n8n/cli/docs/commands/package.md
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 67
+packages/cli/src/modules/n8n-packages/__tests__/import-workflow-with-variables.integration.test.ts
+  ai_agent 66,89,108,172,196,213,240,272,299
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 1083
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 2239,2285
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-memory.service.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 1023,1029-1032,1037-1042,1062-1065
+packages/frontend/@n8n/composables/package.json
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 31,34-36
+packages/frontend/editor-ui/src/features/agents/views/NewAgentView.vue
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 49-53
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiHandoff.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 142-154,157-161
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 85,113,161
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiHandoffCapability.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 18,122-129,157-162,177-180,183
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useInstanceAiAgentPreviewHandoff.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 56-60
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.threadRuntime.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 7,54,1023-1038,1043
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 7,24-29,114-120,489-492
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 201
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 9-12,23,61-64,108-155
+packages/cli/test/integration/public-api/n8n-packages-import.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 260
+packages/@n8n/api-types/src/dto/workflow-reviews/create-workflow-review-request.dto.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 3,12-13,17-18
+packages/@n8n/api-types/src/schemas/__tests__/instance-ai.schema.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 12,382-395,398-403,414,421-426
+packages/frontend/@n8n/composables/src/useTelemetry.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 1-78
+packages/@n8n/cli/src/commands/package/import.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 83,87,122
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-request.service.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 3,8,12,17,20,29,38-44,59-61,76-78,93-110,225-229,231-244,246-252,255-298,349-439
+packages/frontend/editor-ui/src/app/composables/useTelemetry.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 4-13
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/NodesMode.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 45,72,78
+packages/cli/src/modules/n8n-packages/__tests__/import-projects.integration.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 55,573,608,673
+packages/cli/src/modules/n8n-packages/entities/variable/variable-importer.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 6,52,57
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 202,216,442
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 1178-1190
+packages/@n8n/db/src/repositories/workflow-review-request-reviewer.repository.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 2,13-34
+packages/frontend/editor-ui/src/features/workflows/templates/utils/templateActions.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 9,45
+packages/@n8n/api-types/src/index.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 16,124,367-368
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 713-725
+scripts/nathan.mjs
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 14-15,137-143
+packages/cli/src/modules/n8n-packages/engine/workflow-package-importer.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 88
+packages/frontend/editor-ui/src/features/workflows/templates/views/TemplatesWorkflowView.vue
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 73-75
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.store.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 126,131-134,142,149-152
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAi.threadRuntime.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 10,1012,1021,1027,1029-1082
+packages/@n8n/instance-ai/evaluations/clients/n8n-client.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 194,200-205
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-requests.controller.integration.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 14,18,40,47,126-188,471-595
+packages/cli/src/modules/instance-ai/__tests__/instance-ai-test.controller.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 183
+packages/cli/src/modules/n8n-packages/__tests__/import-package.integration.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 75,91,107
+packages/cli/src/modules/n8n-packages/engine/project-package-importer.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 160
+packages/cli/src/modules/instance-ai/instance-ai-memory.service.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 9,41,43,275,294-298
+packages/@n8n/api-types/src/dto/packages/import-package-request.dto.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 20,92
+packages/@n8n/api-types/src/workflow-review-eligible-reviewer.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 1-14
+packages/cli/src/modules/n8n-packages/__tests__/import-folders.integration.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 51
+packages/frontend/@n8n/composables/src/useTelemetry.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 1-113
+packages/frontend/editor-ui/src/features/agents/__tests__/NewAgentView.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 78-82
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 1052,1060-1064,1074,1086-1090,1094,1101-1102,1109-1110,1123
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiAgentPreviewHandoff.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 42-46
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiCredentialHelp.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 31
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/ItemTypes/NodeItem.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 79
+packages/frontend/editor-ui/src/features/shared/nodeCreator/components/Modes/AgentsMode.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 60
+packages/frontend/@n8n/design-system/src/v2/components/Checkbox/Checkbox.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 8-32
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.store.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 179,186-195,202,211
+packages/@n8n/api-types/src/dto/index.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 296
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.api.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 17,53,59
+packages/frontend/editor-ui/src/features/workflow-reviews/components/WorkflowSubmitForReviewDialog.vue
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 2,10,13-14,22-25,52-54,61-81,91-93,129,195-214,249-254
+packages/@n8n/cli/src/client.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 26
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/schemas/importBlockingIssue.yml
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 193
+packages/frontend/@n8n/design-system/src/v2/components/Checkbox/Checkbox.vue
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 2,23-27,37,40
+packages/frontend/editor-ui/src/app/plugins/telemetry.test.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 2,7,15
+packages/nodes-base/nodes/MessageAnAgent/MessageAnAgent.node.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 12
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.utils.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 433
+packages/cli/src/modules/instance-ai/instance-ai-test.controller.ts
+  s_0237a66f4d3f8f::t_8cf7f93ef34c46 58-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a8a5d373b611ca93f9e4e5b71a4f0d9b49aa816a",
+  "prompts": {},
+  "sessions": {
+    "s_0237a66f4d3f8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "062aabfc-8220-486e-87b3-12e27a4c449a",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

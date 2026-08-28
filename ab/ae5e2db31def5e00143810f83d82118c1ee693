@@ -1,0 +1,24 @@
+packages/frontend/editor-ui/src/features/ai/mcpAccess/SettingsMCPView.vue
+  s_038625bfc0ef6f::t_74e5c61ade6d7a 166,169-177
+  s_038625bfc0ef6f::t_1282838c818800 210
+  s_038625bfc0ef6f::t_3a65220badfbf5 187
+  s_038625bfc0ef6f::t_f6e7d2188cc512 198-199
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_038625bfc0ef6f::t_8a61bd217d8547 3173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "abae5e2db31def5e00143810f83d82118c1ee693",
+  "prompts": {},
+  "sessions": {
+    "s_038625bfc0ef6f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df0f0230-ad55-418b-87c8-5157e2987ed6",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

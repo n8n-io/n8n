@@ -1,0 +1,21 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "d53d2a7e0fcdeb2accee5d1b5efb4d07bc396523",
+  "prompts": {
+    "cf8437729f01dde5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3570057-7987-487e-b7aa-30b7cd1ad69b",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 1002,
+      "total_deletions": 1,
+      "accepted_lines": 1000,
+      "overriden_lines": 1
+    }
+  }
+}

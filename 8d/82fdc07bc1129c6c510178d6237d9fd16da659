@@ -1,0 +1,28 @@
+packages/workflow/src/redaction-channels.ts
+  s_456b1fff7bb2dc::t_d44d7520eb89bb 60-61,72
+packages/workflow/test/redaction-channels.test.ts
+  s_456b1fff7bb2dc::t_74be7517813ec5 55-56
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-helpers.ts
+  s_456b1fff7bb2dc::t_5fa6696c6e31da 97
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-enforcement.spec.ts
+  s_456b1fff7bb2dc::t_b182d88bd9df4e 4
+  s_456b1fff7bb2dc::t_57e696b6cb9ec6 448
+packages/cli/src/modules/redaction/executions/__tests__/execution-redaction.service.test.ts
+  s_456b1fff7bb2dc::t_2fbd27757ed40b 872-873
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "8d82fdc07bc1129c6c510178d6237d9fd16da659",
+  "prompts": {},
+  "sessions": {
+    "s_456b1fff7bb2dc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ffba89ca-6fe5-4fd6-9331-7e707027dc54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Phyllis Noester <phyllis.noester@n8n.io>"
+    }
+  }
+}

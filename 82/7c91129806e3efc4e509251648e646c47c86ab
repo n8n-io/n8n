@@ -1,0 +1,35 @@
+packages/cli/test/integration/scheduling/durable-scheduler-lifecycle.test.ts
+  s_a2c0d20cbf22fa::t_1d9600e06e75d3 58
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_a2c0d20cbf22fa::t_119ea30f8219e0 71
+  s_a2c0d20cbf22fa::t_3ac5e4a9833717 67
+packages/@n8n/config/src/configs/__tests__/scheduler.config.test.ts
+  s_a2c0d20cbf22fa::t_5b76e41bb47fcd 74
+  s_a2c0d20cbf22fa::t_37a07c538b2e2f 83
+  s_a2c0d20cbf22fa::t_5d80a9726c873d 56
+  s_a2c0d20cbf22fa::t_300f8a126d5e82 26
+  s_a2c0d20cbf22fa::t_c2223ac9b81323 65
+  s_a2c0d20cbf22fa::t_d45accf01c703e 37
+packages/@n8n/config/src/configs/scheduler.config.ts
+  s_a2c0d20cbf22fa::t_b1b88c3ff9e6d7 61-62,71-72
+packages/@n8n/scheduler/README.md
+  s_a2c0d20cbf22fa::t_55cab3cb37aae3 355-356
+packages/@n8n/config/test/config.test.ts
+  s_a2c0d20cbf22fa::t_6793574383fc4d 447-448
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "827c91129806e3efc4e509251648e646c47c86ab",
+  "prompts": {},
+  "sessions": {
+    "s_a2c0d20cbf22fa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "690c56b3-10ef-472e-ae89-2d9900990d66",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-access.service.ts
+  s_4c3a3a7c531ee0::t_4c941323b44527 60-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d548d374c09b4f1f1c837da19128cb32d840e0ba",
+  "prompts": {},
+  "sessions": {
+    "s_4c3a3a7c531ee0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e687f596-d1ab-4eb6-ad52-9192ae9bb164",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

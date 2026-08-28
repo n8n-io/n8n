@@ -1,0 +1,23 @@
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowCreate.yml
+  s_de882004f15807::t_f9ca97808f6375 45-49
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/nodeGroup.yml
+  s_de882004f15807::t_7722bef160d4c4 1-17
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflow.yml
+  s_de882004f15807::t_15b1cd1c60f8fb 49-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fafa6cfc2af2882d573893e648045d3337c82243",
+  "prompts": {},
+  "sessions": {
+    "s_de882004f15807": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2b483a2c-7da0-4f22-9ee2-29b3907f3af4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}

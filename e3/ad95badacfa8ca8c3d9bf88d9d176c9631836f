@@ -1,0 +1,44 @@
+packages/cli/src/modules/mcp/mcp-oauth-authorization-code.service.ts
+  s_2ed5bf6b8e1b12::t_2894f5210a7879 65,70
+  s_2ed5bf6b8e1b12::t_8fe79393cd3c8d 127,144
+  h_d1b1d2e2742847 1
+  s_2ed5bf6b8e1b12::t_94d30b113344e4 153
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-authorization-code.service.test.ts
+  s_2ed5bf6b8e1b12::t_be01cb95e26c10 1
+  s_2ed5bf6b8e1b12::t_52040b76f0bd93 104,119,166
+  s_2ed5bf6b8e1b12::t_d381fbe217e87c 231,239
+packages/cli/src/modules/mcp/__tests__/mcp-oauth-service.test.ts
+  s_2ed5bf6b8e1b12::t_01e8629f545373 533
+  s_2ed5bf6b8e1b12::t_99a3d08dce1a72 1-4
+  s_2ed5bf6b8e1b12::t_3ce47398edb37c 523
+  s_2ed5bf6b8e1b12::t_f8f38728cdd3f3 624
+packages/cli/src/modules/mcp/mcp-oauth-token.service.ts
+  s_2ed5bf6b8e1b12::t_f76ec7b71332d7 1
+  s_2ed5bf6b8e1b12::t_051772579e74b6 121-122,124
+  s_2ed5bf6b8e1b12::t_03153c839b9157 135
+packages/cli/src/modules/mcp/mcp-oauth-service.ts
+  s_2ed5bf6b8e1b12::t_33d52ee81866cc 2-5
+  s_2ed5bf6b8e1b12::t_5e01d1100174ac 382-385,390
+  s_2ed5bf6b8e1b12::t_c3276d20dab902 226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "e3ad95badacfa8ca8c3d9bf88d9d176c9631836f",
+  "prompts": {},
+  "humans": {
+    "h_d1b1d2e2742847": {
+      "author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2ed5bf6b8e1b12": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c8307d8-eeeb-4c3e-bcc7-5fc7e6ad73d5",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Guillaume Jacquart <jacquart.guillaume@gmail.com>"
+    }
+  }
+}

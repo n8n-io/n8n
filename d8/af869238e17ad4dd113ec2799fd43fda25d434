@@ -1,0 +1,20 @@
+packages/frontend/editor-ui/eslint.config.mjs
+  s_7a87d748dca0a4::t_38eda0c11a5b2f 189-220
+  s_7a87d748dca0a4::t_03796302a1dbcb 187-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "d8af869238e17ad4dd113ec2799fd43fda25d434",
+  "prompts": {},
+  "sessions": {
+    "s_7a87d748dca0a4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "760507e5-27dc-45e2-8806-fe454105390b",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

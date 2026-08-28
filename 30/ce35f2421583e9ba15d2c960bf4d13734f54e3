@@ -1,0 +1,34 @@
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_c2c63fc6f72c99::t_7a79fe51427432 29
+  s_c2c63fc6f72c99::t_4729ad0a2148f1 2070,2084
+packages/cli/src/scaling/__tests__/webhook-response-relay.test.ts
+  s_c2c63fc6f72c99::t_7012a2b792c357 4-5,164,170,174,178
+  s_c2c63fc6f72c99::t_814f9102fadae7 138-140,146-148,153
+packages/cli/src/errors/webhook-response-too-large.error.ts
+  s_c2c63fc6f72c99::t_cc2a3c0335912f 1-10
+packages/cli/src/scaling/webhook-response-relay.ts
+  s_c2c63fc6f72c99::t_9c0f5301fdec26 35
+  s_c2c63fc6f72c99::t_3f835a0b42cf0c 21
+  s_c2c63fc6f72c99::t_d4edd737c1b4f7 9,13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "30ce35f2421583e9ba15d2c960bf4d13734f54e3",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_c2c63fc6f72c99": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "790641e2-6c8d-4276-92eb-e3fe4918d71b",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/@n8n/ai-utilities/src/model-discovery/__tests__/model-discovery.test.ts
+  s_2c65f8c67a248c::t_9da0a6d3153f9b 62-63,66-67,80-89
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/helpers/modelFiltering.ts
+  s_2c65f8c67a248c::t_d653d38189150c 21-26,28-29
+packages/@n8n/ai-utilities/src/model-discovery/providers/openai.ts
+  s_2c65f8c67a248c::t_34a9a7e047ad5c 17-22,24-25
+packages/@n8n/nodes-langchain/nodes/vendors/OpenAi/methods/__tests__/listSearch.test.ts
+  s_2c65f8c67a248c::t_4ffc93cc1d2d4d 33-34,37-38,51-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d02b795408dc255cfae3127c7dfca31658fee486",
+  "prompts": {},
+  "sessions": {
+    "s_2c65f8c67a248c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7df942a-0ddc-43b1-821e-53d13e483798",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

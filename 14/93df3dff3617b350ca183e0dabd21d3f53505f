@@ -1,0 +1,54 @@
+packages/cli/src/workflows/workflow-publication-outbox-consumer.ts
+  s_e95b35fb409eb7::t_8c2554fd4bf07c 20,49,158-159,173,180
+packages/cli/src/webhooks/__tests__/webhook-activation.service.test.ts
+  s_e95b35fb409eb7::t_b52c7b6d94a1dc 76-81
+  s_e95b35fb409eb7::t_dafc774d530f63 107-113
+  s_e95b35fb409eb7::t_5e4bcfc743e5ed 48-51
+  s_e95b35fb409eb7::t_9d0a48d8407200 127-132
+  s_e95b35fb409eb7::t_ad6b571e214762 91-96
+packages/cli/src/webhooks/webhook-activation.service.ts
+  s_e95b35fb409eb7::t_457c4965c5be21 3
+  s_e95b35fb409eb7::t_3752653f3eae32 22-30
+  s_e95b35fb409eb7::t_18cd7085abe7b6 53,70,75
+  s_e95b35fb409eb7::t_898a06f5c66b8c 128-148
+  ai_agent 206-211
+  s_e95b35fb409eb7::t_2f2d5475aafa07 1
+  s_e95b35fb409eb7::t_23b008c39a5649 2,4-21,31-52,54-69,71-74,76-127,149-205,212-228
+packages/cli/src/active-workflow-manager.ts
+  s_e95b35fb409eb7::t_8c2554fd4bf07c 163,288,1166,1173
+packages/cli/src/workflows/__tests__/workflow-trigger-activation.service.test.ts
+  s_e95b35fb409eb7::t_b08d24e3938e81 1-45,47-73,75-135,141,143-187,201,204-213,215-218,220-229,234-240,242-245,247-279,281-284,286-308
+  s_e95b35fb409eb7::t_5a902f2485d631 214
+  s_e95b35fb409eb7::t_f4dc26cce9d0ca 241,280
+  ai_agent 230-233
+  s_e95b35fb409eb7::t_b1230113917ebe 193-200
+  s_e95b35fb409eb7::t_b8f50964a6a151 74
+  s_e95b35fb409eb7::t_bd42c889dab290 202-203
+  s_e95b35fb409eb7::t_cc52b29c1d0e53 46
+  s_e95b35fb409eb7::t_e825fd6d38123c 136-140,142
+  s_e95b35fb409eb7::t_6e261f710a50ce 188-192
+packages/cli/src/workflows/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_e95b35fb409eb7::t_8c2554fd4bf07c 21,32,52,118,129-131,227-229,238-239,253-254,264-265,279,284,295,302,308,313,324,331,336,355-356
+packages/cli/src/workflows/workflow-trigger-activation.service.ts
+  s_e95b35fb409eb7::t_d3d4ad311dd424 1-40,46-149,154-156,164,172-502,506-617
+  s_e95b35fb409eb7::t_a51bc2019315cd 41-45
+  s_e95b35fb409eb7::t_9f6597134a4e84 157,160-161,163
+  s_e95b35fb409eb7::t_cbed3f385f045d 150-153,158-159,162,165-171
+  ai_agent 503-505
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1493df3dff3617b350ca183e0dabd21d3f53505f",
+  "prompts": {},
+  "sessions": {
+    "s_e95b35fb409eb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e21609de-fc2d-47b9-ba4f-e0166bea0bf9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

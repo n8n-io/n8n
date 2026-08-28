@@ -1,0 +1,20 @@
+packages/@n8n/instance-ai/evaluations/README.md
+  s_d7dc19b022f345::t_e796df70b8b8e5 786-790
+  s_d7dc19b022f345::t_1a17e666467546 286-295
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ccb8c67d90f6900de02a59b8c5c4abb32258763a",
+  "prompts": {},
+  "sessions": {
+    "s_d7dc19b022f345": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52120eef-c50a-4dbe-bf95-5b3b23547ffb",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

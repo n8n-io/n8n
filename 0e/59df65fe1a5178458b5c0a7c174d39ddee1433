@@ -1,0 +1,38 @@
+packages/nodes-base/nodes/Slack/SlackTrigger.node.ts
+  d6318e18ca70a29d 233-246,392-405
+packages/nodes-base/nodes/Slack/test/SlackTrigger.test.ts
+  d6318e18ca70a29d 467-611
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "0e59df65fe1a5178458b5c0a7c174d39ddee1433",
+  "prompts": {
+    "cf8437729f01dde5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e3570057-7987-487e-b7aa-30b7cd1ad69b",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 973,
+      "overriden_lines": 1
+    },
+    "d6318e18ca70a29d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c78a7b69-8fcb-4d85-98a8-f2fcf030b945",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts",
+      "messages": [],
+      "total_additions": 173,
+      "total_deletions": 0,
+      "accepted_lines": 173,
+      "overriden_lines": 0
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-inbox.service.ts
+  s_3acf37d148dd5a::t_5a46f0da027981 35
+  s_3acf37d148dd5a::t_63928c2c4989da 291
+packages/cli/src/modules/workflow-reviews.ee/workflow-review-request.service.ts
+  s_3acf37d148dd5a::t_23866fe44f8ce9 42
+  s_3acf37d148dd5a::t_1885b08caede51 140
+packages/cli/src/modules/workflow-reviews.ee/workflow-review.mapper.ts
+  s_3acf37d148dd5a::t_b50eb2bee1ac44 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3ee152e0b6aa8d6ad2b603200aea6a587e724f18",
+  "prompts": {},
+  "sessions": {
+    "s_3acf37d148dd5a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "12fc3e7e-cbff-4f49-a1bc-d9d4001ada69",
+        "model": "claude-opus-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

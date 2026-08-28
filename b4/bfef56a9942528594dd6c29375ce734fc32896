@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/agents/components/interactive/AskCredentialCard.vue
+  s_80a52e000e449a::t_a0b8d6a71b84c9 2,9,29-30
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.vue
+  s_80a52e000e449a::t_53a9f8578d34e5 10,30,103,133,464,668
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentModelSelector.spec.ts
+  s_80a52e000e449a::t_cb69ca3481930b 10,59,78,140-156
+packages/frontend/editor-ui/src/features/agents/components/AgentModelSelector.vue
+  s_80a52e000e449a::t_6801cac97e6967 312-321
+packages/frontend/editor-ui/src/features/credentials/components/NodeCredentials.test.ts
+  s_80a52e000e449a::t_4ada9eb14d1151 26,318-348
+packages/frontend/editor-ui/src/features/agents/__tests__/AskCredentialCard.test.ts
+  s_80a52e000e449a::t_882ea27efb991a 4-5,45-49,58,126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "b4bfef56a9942528594dd6c29375ce734fc32896",
+  "prompts": {},
+  "sessions": {
+    "s_80a52e000e449a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019ef985-3381-7473-b268-a19c1bfa27e8",
+        "model": "gpt-5.5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

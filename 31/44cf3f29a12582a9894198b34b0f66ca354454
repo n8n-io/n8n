@@ -1,0 +1,48 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentToolTelemetry.ts
+  s_13306d17e7daa5::t_79d7668c1227a5 20-24
+  s_89a2df1d57b37e::t_8c4afec3d534d3 37,86
+  s_13306d17e7daa5::t_648fd60cfe3184 1
+  s_89a2df1d57b37e::t_598612046b7e78 38
+  s_13306d17e7daa5::t_8776dbf17444bb 43-47,52-57,62-68,73-77,82-85
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_13306d17e7daa5::t_f7f4afc8d82ec6 22
+  s_89a2df1d57b37e::t_40d080bffab4ab 492,673
+packages/frontend/editor-ui/src/features/agents/__tests__/NewAgentView.test.ts
+  s_13306d17e7daa5::t_9179a4ee85712c 3,75
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTelemetry.test.ts
+  s_13306d17e7daa5::t_90d14e237255f5 3,22,30,53,69,86,104,122,140,158,170,180,189,198,207
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentToolTelemetry.test.ts
+  s_13306d17e7daa5::t_1ce1ca68d4ba55 2,38,49,67,85,98,109,120
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCreate.test.ts
+  s_13306d17e7daa5::t_438904e0d30ffb 2,68
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCreate.ts
+  s_13306d17e7daa5::t_bde1c196828cab 5,58
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTelemetry.ts
+  s_13306d17e7daa5::t_909d6f7fb0e935 1-2,29,38,46,61,77,94,111,128,145,156,165,173,181,189,202
+packages/frontend/editor-ui/src/features/agents/views/NewAgentView.vue
+  s_13306d17e7daa5::t_34fa73646b9e5a 7,45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3144cf3f29a12582a9894198b34b0f66ca354454",
+  "prompts": {},
+  "sessions": {
+    "s_13306d17e7daa5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "56986ec2-32c0-4ee4-b183-b97edf4baf7a",
+        "model": "claude-fable-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_89a2df1d57b37e": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "30bc8031-26bd-445e-afea-85b0c994c8f1",
+        "model": "claude-sonnet-5-thinking-high"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

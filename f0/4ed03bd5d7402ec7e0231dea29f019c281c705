@@ -1,0 +1,54 @@
+packages/@n8n/module-cli/src/frontend.mjs
+  s_450550c56efc53::t_ad17b527dc6287 1-128
+packages/@n8n/module-cli/package.json
+  s_450550c56efc53::t_0689146eac2f71 1-15,17-20
+  s_450550c56efc53::t_7595fa1fe238cd 16
+pnpm-workspace.yaml
+  s_450550c56efc53::t_3b8419950a1d2b 138-139
+packages/@n8n/module-cli/src/templates/frontend/README.md.template
+  s_450550c56efc53::t_38ae05fd906554 7-14
+  s_450550c56efc53::t_fcfa17e248d8d2 15
+packages/@n8n/module-cli/biome.jsonc
+  s_450550c56efc53::t_cfb4867c44302e 1-4
+packages/@n8n/module-cli/src/templates/frontend/tsconfig.json.template
+  s_450550c56efc53::t_f47c88b51769ed 7-17
+packages/@n8n/module-cli/src/backend.mjs
+  s_450550c56efc53::t_5313eda56c4010 1-20
+packages/@n8n/module-cli/src/main.mjs
+  s_450550c56efc53::t_02d4aece02313d 1-119
+package.json
+  s_450550c56efc53::t_050209ab358644 55
+packages/@n8n/module-cli/bin/n8n-module-sdk.mjs
+  s_450550c56efc53::t_5f9070ba59efa7 1-3
+packages/@n8n/module-cli/src/templates/backend/README.md.template
+  s_450550c56efc53::t_c1eb5cf189b19a 1-19
+packages/@n8n/module-cli/src/scaffold.mjs
+  s_450550c56efc53::t_c527c4415618f7 1-71
+packages/@n8n/vitest-config/frontend-source-packages.ts
+  s_450550c56efc53::t_113ce3b0241da5 15-16
+packages/modules/instance-registry/frontend/README.md
+  s_450550c56efc53::t_0929b8195dc289 7-9,12-14
+  s_450550c56efc53::t_68c1ec9cc9f0c5 15
+packages/frontend/editor-ui/vite/aliases.mts
+  s_450550c56efc53::t_08fdbedf71b6bf 5
+packages/@n8n/module-cli/README.md
+  s_450550c56efc53::t_19e555ec9c855f 1-34
+pnpm-lock.yaml
+  s_450550c56efc53::t_cdab77bb7dea8e 342-347,3019-3027,5877,6267,6274,6277,6280,6283,6289,6292,14924-14926,33006-33009
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f04ed03bd5d7402ec7e0231dea29f019c281c705",
+  "prompts": {},
+  "sessions": {
+    "s_450550c56efc53": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a345125-a806-47a0-862d-6af3c6178bc3",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

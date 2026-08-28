@@ -1,0 +1,31 @@
+packages/@n8n/vitest-config/frontend-aliases.ts
+  s_8bbbd5448e3a00::t_fd343af48c0437 165-168,178
+  s_8bbbd5448e3a00::t_1c214d01fa64b5 12-16
+  s_8bbbd5448e3a00::t_2e4cc284d72067 70-83,85-86,88-92,94-104
+packages/@n8n/vitest-config/bin/sync-frontend-aliases.mjs
+  s_8bbbd5448e3a00::t_0fa81b78f8da6a 25-28
+packages/frontend/editor-ui/vite/aliases.mts
+  s_8bbbd5448e3a00::t_d55cc356446c43 6-8,10,18-22
+  s_8bbbd5448e3a00::t_9a1624ab5eadf8 43
+packages/frontend/editor-ui/vite/aliases.test.ts
+  s_8bbbd5448e3a00::t_c8ba5d92b1377f 1-4
+  s_8bbbd5448e3a00::t_5c2c3f666acdbc 98-101
+  s_8bbbd5448e3a00::t_37e081e69d1e99 80-85
+  s_8bbbd5448e3a00::t_7df0a96a0b18c5 75-79,86-97,102-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f01268446f333950df033709b35c971ffaf2f2bd",
+  "prompts": {},
+  "sessions": {
+    "s_8bbbd5448e3a00": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5425f85-f308-48fc-96fa-abde9a9d1d2f",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

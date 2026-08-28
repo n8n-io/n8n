@@ -1,0 +1,20 @@
+packages/cli/src/workflows/publication/heal-node-ids.ts
+  s_f0e6264a74d006::t_e95f5e7659b216 21,23-46
+  s_f0e6264a74d006::t_26c2c06e1ff784 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "44ecea3fb945d79410d05dbb022226bbb4107cfb",
+  "prompts": {},
+  "sessions": {
+    "s_f0e6264a74d006": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "74b342e3-35da-44fb-bc35-d5aa260834e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Danny Martini <danny@n8n.io>"
+    }
+  }
+}

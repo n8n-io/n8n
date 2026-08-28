@@ -1,0 +1,27 @@
+packages/nodes-base/nodes/Telegram/hitl/webhook.ts
+  s_60ce6e746ce9d3::t_c5cc603ad46ccb 146
+  s_60ce6e746ce9d3::t_8a7d3c07a6bd03 84-88,90-94
+  s_60ce6e746ce9d3::t_ffe6b96b3f94cd 89
+  s_60ce6e746ce9d3::t_ff1fa8409ebf3b 25-34
+  s_60ce6e746ce9d3::t_890ef5ac8b8fd4 7
+packages/nodes-base/nodes/Telegram/GenericFunctions.ts
+  s_60ce6e746ce9d3::t_af3091d8fc6ed6 275-278
+packages/nodes-base/nodes/Telegram/hitl/setup.ts
+  s_60ce6e746ce9d3::t_2190bb2d08b68f 35-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.11",
+  "base_commit_sha": "10001bf2010bcb41c9a9e1ff281d659d03ae2119",
+  "prompts": {},
+  "sessions": {
+    "s_60ce6e746ce9d3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d84124d3-ce9c-4a73-9716-80eb657f790d",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

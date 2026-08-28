@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_9f30e357c1bf9d::t_537e30afd2de09 101
+  s_9f30e357c1bf9d::t_a5ddaf95cd928d 194-213
+  s_9f30e357c1bf9d::t_de296dbf9a7927 1016-1017
+  s_9f30e357c1bf9d::t_9614d2f4d45eb1 1012-1014,1018
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_9f30e357c1bf9d::t_afd3f3428835ae 115-120
+  s_9f30e357c1bf9d::t_72a613b40b10b6 1482-1515
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "287123118da3fa98b656ab70a7ca95300fa6547d",
+  "prompts": {},
+  "sessions": {
+    "s_9f30e357c1bf9d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86539bcf-af50-43ad-a4ae-f42388f0e524",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Alex Grozav <alex@grozav.com>"
+    }
+  }
+}

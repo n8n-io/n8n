@@ -1,0 +1,40 @@
+packages/cli/src/task-runners/task-broker/__tests__/task-broker.service.test.ts
+  s_8333582cb60be6::t_95f836e7b8c6ae 40-47
+  s_8333582cb60be6::t_fd52e3e3b64899 400
+  s_8333582cb60be6::t_6b4e92c7ecddbd 1505-1569
+packages/cli/src/task-runners/task-broker/task-broker.service.ts
+  s_8333582cb60be6::t_3df512d284d7bf 650
+  s_8333582cb60be6::t_b107be24d7796f 733-738
+  s_8333582cb60be6::t_d738f8e197c530 847-850
+  s_8333582cb60be6::t_fdd916859487c6 710
+  s_8333582cb60be6::t_20c0e4170993b8 16
+  s_8333582cb60be6::t_a272530d1a9974 222-233
+  s_8333582cb60be6::t_f6130e33028733 120-122
+packages/cli/src/task-runners/task-broker/errors/task-requester-accept-timeout.error.ts
+  s_8333582cb60be6::t_22e13a62753e3d 1-9
+packages/cli/src/task-runners/task-broker/__tests__/task-broker-ws-server.test.ts
+  s_8333582cb60be6::t_bd4c72252a3996 106-124
+packages/cli/src/task-runners/task-broker/task-broker-ws-server.ts
+  s_8333582cb60be6::t_84e82b3f2d2a25 186-187,196-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e4a8d26284fd39b91a2d16dd6c26d9fb8b2e2262",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8333582cb60be6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a06408a-762f-4450-98a4-1be5ea6b0d40",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,106 @@
+packages/cli/src/modules/agents/repositories/agent-execution.repository.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 3,7-22,34-65
+  s_c86301c80dfc9a::t_a91676b22e09da 66
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 62,103
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 9-10,13,68,74-75,85,97,101-270,283,308,317-318,326-332,335,347,373-380,382-389,409,445,483,505,526,595,637,678,707-794,807-822
+  s_c86301c80dfc9a::t_c702ec845450cd 823
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 82-87,111-112,180-227,265-266,276,295,316,368-369,422-423,470-471,551-552,581-582,622-623,717-718,760-761,1094-1095
+packages/@n8n/api-types/src/agents/types.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 244
+packages/cli/src/modules/agents/__tests__/agent-interrupted-execution-sweeper.test.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 1-55
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 15,18,23-26,54-63,75-76,82-94,105,108-129,131-140,142-150,153-167,169,180-270,272-276,278-292,294-304,307-326,328-333,352,357,368,374,587-600
+  s_c86301c80dfc9a::t_c53903c5004f9f 601
+packages/cli/test/migration/1785828155091-add-agent-execution-runtime-state.test.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 1-118
+pnpm-workspace.yaml
+  s_c86301c80dfc9a::t_29ce902866dabb 42,45,89,138,233,264-273
+packages/frontend/editor-ui/package.json
+  s_c86301c80dfc9a::t_29ce902866dabb 137
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 20-24,351-357,389-404,419,618-624,647-663,690,711-744,746,751-756
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 28
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 241,485
+packages/frontend/@n8n/storybook/package.json
+  s_c86301c80dfc9a::t_29ce902866dabb 30
+packages/cli/src/modules/agents/agents.module.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 4,10-11,104-121,138-142
+  s_c86301c80dfc9a::t_84c15ce779fd44 143-144
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 233,467
+packages/cli/src/modules/agents/sub-agents/sub-agent-foreground-runner.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 190-203,225-259,276,279,292-310,332,345,349,351,394
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 17,262-265,293-294,308-310,313,322-324,326,385,406-409,429-432,437,452-455,463,474-497,549-552,568,627,662-673
+packages/cli/src/modules/agents/entities/agent-execution.entity.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 12,28
+packages/@n8n/db/src/migrations/common/1785828155091-AddAgentExecutionRuntimeState.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 1-38
+packages/cli/src/scaling/constants.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 41
+packages/@n8n/api-types/src/push/index.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 1,15
+packages/cli/src/modules/agents/sub-agents/__tests__/sub-agent-foreground-runner.test.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 125-126,158-159,203-216,229-231,241-242,332-333,399-400,442-443
+packages/frontend/@n8n/design-system/package.json
+  s_c86301c80dfc9a::t_29ce902866dabb 25
+packages/frontend/editor-ui/src/features/agents/composables/useAgentThreadsApi.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 27
+docs/generated/postgres-schema/public.agent_execution.md
+  s_c86301c80dfc9a::t_29ce902866dabb 33,50
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 3,979-1061
+  s_c86301c80dfc9a::t_d7ea544a3f4b9f 1062
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 270
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelinePanel.spec.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 2-5,11-20,30-33,41-46,58-69,77-80,84-85,133-280
+packages/cli/src/modules/agents/__tests__/agent-execution-update-broadcaster.test.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 1-87
+packages/cli/src/modules/agents/agent-execution-update-broadcaster.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 1-54
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 27,218,229,232-244,294-308,340-354,361,477,488-506,512-513,682
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 6,128-130
+  s_c86301c80dfc9a::t_421ab2c6ffdde4 131-132
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 322,331,333-334,342,344-345
+packages/@n8n/api-types/src/push/agents.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 1-11
+docs/generated/sqlite-schema/agent_execution.md
+  s_c86301c80dfc9a::t_29ce902866dabb 9,45,55
+packages/frontend/editor-ui/src/features/agents/components/AgentSessionTimelinePanel.vue
+  s_c86301c80dfc9a::t_29ce902866dabb 2,4,29-30,48,50,60-63,159-162,203,210-223,231-234,236-239,242-243,245-258,260-278,282-303
+  s_c86301c80dfc9a::t_f2821ee1983599 304
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 79-84,115-116,164-165,203-212,222-224,237-256,638,1012-1013
+packages/cli/src/modules/agents/agent-interrupted-execution-sweeper.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 1-51
+packages/cli/src/scaling/pubsub/__tests__/publisher.service.test.ts
+  s_c86301c80dfc9a::t_29ce902866dabb 146
+pnpm-lock.yaml
+  s_c86301c80dfc9a::t_8ae4c9e115dd0e 114-116,5214,5684,5686,6085
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "db800c65248f6a292fdfbc70a25eeadef728f1a6",
+  "prompts": {},
+  "sessions": {
+    "s_c86301c80dfc9a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fc8fd-58da-7420-8c1c-456f4a68fc45",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

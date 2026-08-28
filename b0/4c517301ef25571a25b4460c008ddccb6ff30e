@@ -1,0 +1,19 @@
+packages/cli/test/integration/controllers/security-settings.controller.test.ts
+  s_b6544c18602ad4::t_9a3ee534fbc5bf 433-460
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b04c517301ef25571a25b4460c008ddccb6ff30e",
+  "prompts": {},
+  "sessions": {
+    "s_b6544c18602ad4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e24a9b6-a8a1-4d92-851b-b1e58e59f24c",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

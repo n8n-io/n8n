@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_8c0bb2d06aee91::t_681f172b8038b8 742-747
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "09f7e499072f5806b35df64fc1f39756286ba2a3",
+  "prompts": {},
+  "sessions": {
+    "s_8c0bb2d06aee91": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "85a4af57-2b95-4cba-9ff4-c0e63bb251d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Docker/GenericFunctions.ts
+  s_385d4dd73c1589::t_0369d2f4a3bbb1 256,260-265,270,275
+  s_385d4dd73c1589::t_d8ebfc01f7d706 174-198
+  s_385d4dd73c1589::t_d1c8c8e29bd2b3 295-298,300-303
+  s_385d4dd73c1589::t_684db1642886ee 402-406
+  s_385d4dd73c1589::t_9e2f78ded3fcae 442
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c765c7f60ce44dd5df6a798403d9f07b5f654e40",
+  "prompts": {},
+  "sessions": {
+    "s_385d4dd73c1589": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5f982d2-f3ab-498c-bacc-95859f6ca4fb",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

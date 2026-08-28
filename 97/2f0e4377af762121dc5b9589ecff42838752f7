@@ -1,0 +1,30 @@
+packages/@n8n/task-runner/src/js-task-runner/js-task-runner.ts
+  h_32d8cd6a0d6aad 103,105
+  s_f034ef710bd575::t_fe7017079deb91 211
+  s_f034ef710bd575::t_d99a0e8ed1538b 95-102,104,106-108
+packages/cli/test/integration/task-runners/js-task-runner-execution.integration.test.ts
+  s_f034ef710bd575::t_bb364bf4e1ef73 236,240-267
+  s_f034ef710bd575::t_3958abb70d2efb 238-239
+  h_32d8cd6a0d6aad 237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "972f0e4377af762121dc5b9589ecff42838752f7",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f034ef710bd575": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5d77a38-274e-4792-bbfc-b91a83241992",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

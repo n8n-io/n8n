@@ -1,0 +1,40 @@
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_e83650916c02c5::t_49505986564dc1 1,14,18
+  s_e83650916c02c5::t_8ab3ea7f3fde59 26
+  h_6ef4cecfee65a2 59,62,65,70,72,82-83,106-107,122-125,127-131
+  s_e83650916c02c5::t_e13cd7185c8052 54-55,58,63,66-69,71,73-81,84-105,108-121
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_e83650916c02c5::t_44ba41b87e4957 73
+  s_e83650916c02c5::t_daddd8b0fc99d1 38-43
+  s_e83650916c02c5::t_dd85a922953209 115,119,122-123,125-131,133-136,138-141,143-150,153-154,156-172,175-180
+  s_e83650916c02c5::t_d0abd18ff29b7b 15
+  s_e83650916c02c5::t_6aea7a20a47d8b 69,104,118,121,124,132,137,152,155,181-188
+  h_6ef4cecfee65a2 111,142,151
+  s_e83650916c02c5::t_1c977c78637f38 108
+  s_e83650916c02c5::t_4a6b3c0bc9f802 199
+packages/cli/src/workflows/workflow-finder.service.ts
+  h_6ef4cecfee65a2 206
+packages/cli/src/services/folder-finder.service.ts
+  h_6ef4cecfee65a2 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0126d26f9980e3886cf7faa2ac284fc3effd98b5",
+  "prompts": {},
+  "humans": {
+    "h_6ef4cecfee65a2": {
+      "author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  },
+  "sessions": {
+    "s_e83650916c02c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d5c11f95-9a02-47c9-a983-04164e6440f4",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

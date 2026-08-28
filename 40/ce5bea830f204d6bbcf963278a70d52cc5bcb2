@@ -1,0 +1,49 @@
+packages/@n8n/api-types/src/schemas/dependency-counts.schema.ts
+  s_3d28bd03882b18::t_b82f8c5e319736 2
+packages/cli/src/modules/workflow-index/workflow-dependency-query.service.ts
+  s_3d28bd03882b18::t_b82f8c5e319736 27,69,210,249,254,294,301
+packages/frontend/editor-ui/src/app/components/DependencyPill.vue
+  s_3d28bd03882b18::t_b82f8c5e319736 67,94,109,181
+docs/generated/postgres-schema/README.md
+  s_3d28bd03882b18::t_da5221d68680b2 14,162-163,367-372
+  s_3d28bd03882b18::t_35fd2925f27bbc 373
+packages/frontend/editor-ui/src/app/components/DependencyPill.test.ts
+  s_3d28bd03882b18::t_df32a26951a646 254
+  s_3d28bd03882b18::t_383abbc3c13dad 161,165,174,176,257,263
+docs/generated/postgres-schema/public.credentials_entity.md
+  s_3d28bd03882b18::t_da5221d68680b2 9,53,78-83
+  s_3d28bd03882b18::t_1225c44f3f471e 84
+packages/@n8n/api-types/src/schemas/dependency.schema.ts
+  s_3d28bd03882b18::t_b82f8c5e319736 2
+docs/generated/postgres-schema/public.agent_credential_dependency.md
+  s_3d28bd03882b18::t_da5221d68680b2 1-80
+packages/cli/test/integration/workflows/workflow-dependency.controller.test.ts
+  s_3d28bd03882b18::t_383abbc3c13dad 174,400
+docs/generated/postgres-schema/public.agents.md
+  s_3d28bd03882b18::t_da5221d68680b2 10,54,125-130
+  s_3d28bd03882b18::t_e312d0f78b5b32 131
+docs/generated/sqlite-schema/README.md
+  s_3d28bd03882b18::t_082f74fec22b21 14,145-146,354-360
+docs/generated/sqlite-schema/agent_credential_dependency.md
+  s_3d28bd03882b18::t_b26228433a733d 1-90
+docs/generated/sqlite-schema/agents.md
+  s_3d28bd03882b18::t_bfe4caf5fa3d61 21,57,128-134
+docs/generated/sqlite-schema/credentials_entity.md
+  s_3d28bd03882b18::t_fa1777e6b410c4 20,53,78-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.20",
+  "base_commit_sha": "40ce5bea830f204d6bbcf963278a70d52cc5bcb2",
+  "prompts": {},
+  "sessions": {
+    "s_3d28bd03882b18": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019fb89e-acec-7202-b52b-60e2978f8887",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_fad358ef69fdc9::t_cc1fcc549bb1fc 697-715
+  s_fad358ef69fdc9::t_349f3505ce1228 449-512,716
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_fad358ef69fdc9::t_d8d8ab3496fa40 169,177-181,183-185
+  s_fad358ef69fdc9::t_1fb03953e8d020 68-69
+  s_fad358ef69fdc9::t_e7a869fc08ac3c 348-351,372-373,389-429
+  s_fad358ef69fdc9::t_c51c053365f5bd 317
+  s_fad358ef69fdc9::t_6fc294130219d1 131-137
+  s_fad358ef69fdc9::t_ec1fbe4e7c7bb7 211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "1029a5aca785bd5f2231383b078bac40320098da",
+  "prompts": {},
+  "humans": {
+    "h_b48525a15b2d62": {
+      "author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_fad358ef69fdc9": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3fe3a64f-4672-4318-8866-cacd239e702c",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

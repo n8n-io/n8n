@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentToolsModal.test.ts
+  s_cfd983e71de1c7::t_26c87a13cf545f 804-805,810
+packages/cli/src/modules/agents/__tests__/workflow-tool-factory.test.ts
+  s_cfd983e71de1c7::t_26c87a13cf545f 9,188-196
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_cfd983e71de1c7::t_9acf2c7da17291 288
+packages/cli/src/modules/agents/__tests__/attachable-workflows.service.test.ts
+  s_cfd983e71de1c7::t_26c87a13cf545f 23-25,55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "bf90d1f0f1480684fd35b7c7588701c6544c3b46",
+  "prompts": {},
+  "sessions": {
+    "s_cfd983e71de1c7": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f7fb0-d212-7712-8b8b-97fb938719c1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

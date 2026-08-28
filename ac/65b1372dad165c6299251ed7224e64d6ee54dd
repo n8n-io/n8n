@@ -1,0 +1,43 @@
+packages/@n8n/backend-network/src/http/axios/legacy.ts
+  s_d3e2f22ff77f47::t_2c407a1bc9a06b 21
+  s_d3e2f22ff77f47::t_976a143645b90e 169-171
+packages/@n8n/backend-network/src/http/axios/__tests__/legacy.test.ts
+  s_d3e2f22ff77f47::t_b9d2e50c1226d2 36-54
+packages/core/src/execution-engine/eval-mock-helpers.ts
+  s_d3e2f22ff77f47::t_3cfc305d7bc570 183
+packages/@n8n/backend-network/src/http/axios/utils.ts
+  s_d3e2f22ff77f47::t_15dc458ac6a756 414
+  s_d3e2f22ff77f47::t_d4d27b533cf41f 348-353,357
+  h_32d8cd6a0d6aad 356,358
+  s_d3e2f22ff77f47::t_77d8a034aabce9 404-413,415-417,419
+packages/@n8n/backend-network/src/http/__tests__/legacy-request.test.ts
+  s_d3e2f22ff77f47::t_78071a1537770c 251
+  s_d3e2f22ff77f47::t_331b9de575750c 213,215,223-228,235-250,255-272
+  s_d3e2f22ff77f47::t_8bcfcf5cde11c5 252-254
+packages/@n8n/backend-network/src/http/axios/__tests__/utils.test.ts
+  s_d3e2f22ff77f47::t_b40157484b332f 22-23
+  s_d3e2f22ff77f47::t_1d5451310896da 443,448,450
+  s_d3e2f22ff77f47::t_d8dc34e4e910b4 449
+  s_d3e2f22ff77f47::t_27ac86fbaf5e7c 464-513
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ac65b1372dad165c6299251ed7224e64d6ee54dd",
+  "prompts": {},
+  "humans": {
+    "h_32d8cd6a0d6aad": {
+      "author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_d3e2f22ff77f47": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "846c4a02-b184-45ad-9119-094725234ee4",
+        "model": "claude-opus-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,85 @@
+packages/cli/test/migration/1786526297065-add-project-manage-users-scope-to-api-keys.test.ts
+  s_a12ec848131e8c::t_827146de842ad5 10
+  s_a12ec848131e8c::t_b84de313092a7b 82
+  s_a12ec848131e8c::t_8eab18845f03b1 1-9,11-81,83-159
+packages/@n8n/permissions/src/constants.ee.ts
+  s_a12ec848131e8c::t_8560d4e423b883 28-32
+  s_a12ec848131e8c::t_20d1e3d1e00ab1 103
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.projectId.users.yml
+  s_a12ec848131e8c::t_a845968aef17d0 33
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_a12ec848131e8c::t_63f90cc9a97f14 70-71
+  s_a12ec848131e8c::t_975fd377ab9beb 68-69,569,578,663,682,717
+  s_a12ec848131e8c::t_c713db6630be25 67
+  s_a12ec848131e8c::t_60c4086097c48e 140-142
+  s_a12ec848131e8c::t_02b4191a1f18a4 725-727
+packages/cli/src/public-api/v1/handlers/projects/projects.handler.ts
+  s_a12ec848131e8c::t_59c0a455a7e591 218
+  s_a12ec848131e8c::t_a845968aef17d0 181,200
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  s_a12ec848131e8c::t_02f575a47f6736 10
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_a12ec848131e8c::t_a845968aef17d0 34
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  s_a12ec848131e8c::t_35651bb7016288 65
+packages/@n8n/db/src/migrations/common/1786518610254-AddProjectManageUsersScopeToCustomRoles.ts
+  s_a12ec848131e8c::t_45bf90a9452fe9 26
+  s_a12ec848131e8c::t_8eab18845f03b1 1-25,27-60
+  s_a12ec848131e8c::t_13fb669d451412 61-62
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_a12ec848131e8c::t_3117ab63c0dd10 2726
+  s_a12ec848131e8c::t_a845968aef17d0 2727
+  s_a12ec848131e8c::t_feb2f616ab9506 2728
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.vue
+  s_a12ec848131e8c::t_b4ab057026be71 125-129
+packages/@n8n/permissions/src/scope-information.ts
+  s_a12ec848131e8c::t_a845968aef17d0 93
+  s_a12ec848131e8c::t_8312b6f387afb3 95-96
+  s_a12ec848131e8c::t_a8ca67accba141 94,97
+packages/frontend/editor-ui/src/features/collaboration/projects/projects.routes.ts
+  s_a12ec848131e8c::t_6912eb3ee481ed 151-152,154-156
+packages/frontend/editor-ui/src/features/collaboration/projects/components/ProjectHeader.test.ts
+  s_a12ec848131e8c::t_49bfa59ed6c29e 244
+  s_a12ec848131e8c::t_90df4ce864adbc 259-273
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_a12ec848131e8c::t_a845968aef17d0 109
+packages/cli/src/controllers/project.controller.ts
+  s_a12ec848131e8c::t_a845968aef17d0 289,334,363
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.test.ts
+  s_a12ec848131e8c::t_689205eb55dc38 384,386-387,389-396,398
+  s_a12ec848131e8c::t_4154b8116c0aae 399-417
+  s_a12ec848131e8c::t_a845968aef17d0 237,369,385,388
+  s_a12ec848131e8c::t_446eea7ed37dc6 381-382
+  s_a12ec848131e8c::t_8192a099359c05 368,370-380,383
+  s_a12ec848131e8c::t_b9e35b8a9efe89 397
+packages/@n8n/db/src/migrations/common/1786526297065-AddProjectManageUsersScopeToApiKeys.ts
+  s_a12ec848131e8c::t_8eab18845f03b1 1-52
+packages/cli/src/public-api/v1/handlers/projects/spec/paths/projects.projectId.users.userId.yml
+  s_a12ec848131e8c::t_484890af20a174 3
+  s_a12ec848131e8c::t_a845968aef17d0 33
+packages/cli/test/migration/1786518610254-add-project-manage-users-scope-to-custom-roles.test.ts
+  s_a12ec848131e8c::t_8eab18845f03b1 1-306
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_a12ec848131e8c::t_a845968aef17d0 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "120dd645159453bae32a8b2acd45d497506cdeb8",
+  "prompts": {},
+  "humans": {
+    "h_21437a83314767": {
+      "author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a12ec848131e8c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c3bcbb3e-c4ed-4bbf-ade5-83f26f56c15d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

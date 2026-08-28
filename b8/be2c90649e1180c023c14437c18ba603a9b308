@@ -1,0 +1,31 @@
+packages/workflow/test/node-parameters/native-parameter-resolution-parity.test.ts
+  s_5746213e8fc6a5::t_8d0dae71232f16 320-324,327-328,348-349,357-359,362
+packages/cli/src/webhooks/live-webhooks.ts
+  s_5746213e8fc6a5::t_587ee8586811c7 213-218,221
+packages/@n8n/config/test/config.test.ts
+  s_5746213e8fc6a5::t_bc956c360dd4dc 635
+packages/cli/src/webhooks/__tests__/live-webhooks.test.ts
+  s_5746213e8fc6a5::t_5ec3177b6df984 47,55,842
+packages/workflow/src/workflow-expression.ts
+  s_5746213e8fc6a5::t_426ed4cf199460 190-195
+packages/nodes-base/test/webhook-description-parity.test.ts
+  s_5746213e8fc6a5::t_da27e256b92102 1-193
+packages/@n8n/config/src/configs/expression-engine.config.ts
+  s_5746213e8fc6a5::t_d62261d00a6523 66-69,71-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.19",
+  "base_commit_sha": "b8be2c90649e1180c023c14437c18ba603a9b308",
+  "prompts": {},
+  "sessions": {
+    "s_5746213e8fc6a5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_5746213e8fc6a5",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

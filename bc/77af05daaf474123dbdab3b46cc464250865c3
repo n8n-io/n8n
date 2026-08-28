@@ -1,0 +1,29 @@
+packages/cli/src/evaluation.ee/insights/insights-scoring.ts
+  s_5d6be4e6bc70a6::t_ae63923141c952 1-31
+packages/cli/src/evaluation.ee/insights/eval-insights.service.ts
+  s_5d6be4e6bc70a6::t_6c1f35d4fc6261 196-197
+  s_5d6be4e6bc70a6::t_c1920fc0af922e 3,17
+  s_5d6be4e6bc70a6::t_88edc76afe87cc 255-259,261-262,266-277
+packages/cli/src/evaluation.ee/insights/insights-context-builder.ts
+  s_5d6be4e6bc70a6::t_77e15cccd7dbd2 6-7,14-16
+  s_5d6be4e6bc70a6::t_b0982a722af981 191-192
+packages/cli/src/evaluation.ee/insights/__tests__/eval-insights.service.test.ts
+  s_5d6be4e6bc70a6::t_e7dc8c6df2a906 138-139,148,156
+  s_5d6be4e6bc70a6::t_489c414dd5baf0 209,211-212,220-221,228-229,235-237,243,255-259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "bc77af05daaf474123dbdab3b46cc464250865c3",
+  "prompts": {},
+  "sessions": {
+    "s_5d6be4e6bc70a6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb91e704-f9b6-4b87-ab07-501eb950fe7d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

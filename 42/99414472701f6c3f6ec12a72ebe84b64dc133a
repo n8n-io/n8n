@@ -1,0 +1,50 @@
+packages/@n8n/permissions/src/constants.ee.ts
+  s_0718d436029abd::t_851b3e5b592eb0 114
+packages/cli/src/public-api/v1/controllers/roles.public.controller.ts
+  s_0718d436029abd::t_8f997b303fb98f 1-40,44-67,69-75
+  s_0718d436029abd::t_44596777fcc521 68
+  s_0718d436029abd::t_97f76282f5a6b5 41-43
+packages/cli/test/integration/public-api/roles.test.ts
+  s_0718d436029abd::t_a7926b06eb8f95 118
+  s_0718d436029abd::t_1a19cec6453c34 31-32,34
+  s_0718d436029abd::t_9f7304accc3afe 138
+  s_0718d436029abd::t_0d9f2ec269a564 49-61
+  s_0718d436029abd::t_3bcc04fe3875ed 1-30,33,35-48,62-117,119-137,139-198
+packages/cli/src/public-api/v1/openapi.yml
+  s_0718d436029abd::t_6170f867793ee6 50-51
+packages/cli/src/public-api/v1/controllers/index.ts
+  s_0718d436029abd::t_94601583d769c8 6
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_0718d436029abd::t_6e41f73450a863 8-10
+packages/@n8n/permissions/src/public-api-permissions.ee.ts
+  s_0718d436029abd::t_af7cc31e0f6743 91
+packages/@n8n/api-types/src/dto/roles/role-public.dto.ts
+  s_0718d436029abd::t_05003510cd30cc 1-9,11-15
+  s_0718d436029abd::t_795bfa37ed2ca3 10
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_0718d436029abd::t_de445ef8879285 12
+  s_0718d436029abd::t_3f1283220287db 102,104-105
+  s_0718d436029abd::t_4d004cc5212475 1,9
+  s_0718d436029abd::t_7cd5f1c25ecb92 103
+  s_0718d436029abd::t_d1c6ab317cbef1 167-177
+packages/@n8n/api-types/src/dto/index.ts
+  s_0718d436029abd::t_2788fe3baaec27 183
+packages/cli/src/public-api/v1/handlers/roles/spec/paths/createRole.generated.yml
+  ai_agent 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4299414472701f6c3f6ec12a72ebe84b64dc133a",
+  "prompts": {},
+  "sessions": {
+    "s_0718d436029abd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "706bc314-a29a-4ab3-a604-d8a15a14e12d",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

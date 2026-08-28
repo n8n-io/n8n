@@ -1,0 +1,23 @@
+packages/nodes-base/nodes/Twitter/V2/GenericFunctions.ts
+  a918b60495aa3d57 50-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "34b6ea72d78aff45b3de8cd39a0ac0734d34a8c7",
+  "prompts": {
+    "a918b60495aa3d57": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "825d7b5c-27ef-4e8d-8ad6-90b58d9ffc82",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 1,
+      "accepted_lines": 2,
+      "overriden_lines": 0
+    }
+  }
+}

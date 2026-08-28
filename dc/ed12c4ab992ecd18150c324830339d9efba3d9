@@ -1,0 +1,19 @@
+packages/cli/src/scaling/__tests__/job-processor.service.test.ts
+  s_da43db7c8c5ec2::t_0c46948d7ffa50 22,1015-1017
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "dced12c4ab992ecd18150c324830339d9efba3d9",
+  "prompts": {},
+  "sessions": {
+    "s_da43db7c8c5ec2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_da43db7c8c5ec2",
+        "model": "unknown"
+      },
+      "human_author": "Mike Repeć <mike.repec@n8n.io>"
+    }
+  }
+}

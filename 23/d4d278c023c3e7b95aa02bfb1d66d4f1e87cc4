@@ -1,0 +1,53 @@
+packages/cli/src/modules/instance-ai/mcp/__tests__/instance-ai-mcp-registry.service.test.ts
+  s_60e43f07473cd0::t_6699921c60a347 564-582
+packages/cli/src/modules/instance-ai/eval/__tests__/agent-execution.service.test.ts
+  s_60e43f07473cd0::t_2ac9e2e25f9608 272,277-291,317-333,336-349,351-356,358-390,392-396,398-400
+  s_60e43f07473cd0::t_4a8776b1906d13 334-335,350,357,391,397
+  s_60e43f07473cd0::t_6699921c60a347 25,47,257-271,273-276,292-316
+  s_60e43f07473cd0::t_4ac34271474c39 401
+packages/@n8n/agents/src/types/sdk/tool.ts
+  s_60e43f07473cd0::t_51c47aad560e9e 43-44,72-73
+packages/cli/src/modules/agents/json-config/__tests__/mcp-client-factory.test.ts
+  s_60e43f07473cd0::t_2ac9e2e25f9608 214,217,226-232,244
+packages/@n8n/agents/src/runtime/__tests__/mcp-connection.test.ts
+  s_60e43f07473cd0::t_2ac9e2e25f9608 3,224,274,287,299-310
+packages/cli/src/modules/agents/agent-runtime-instrumentation.ts
+  s_60e43f07473cd0::t_ca73ecbf2d8be5 1,11-14,27
+  s_60e43f07473cd0::t_3e0d73b154f8d8 28
+packages/@n8n/agents/src/runtime/mcp/mcp-connection.ts
+  s_60e43f07473cd0::t_51c47aad560e9e 183,193-197,200-204
+packages/cli/src/modules/instance-ai/eval/agent-execution.service.ts
+  s_60e43f07473cd0::t_ff9270235d445a 1,42-46,177-181,197-200,204-206,209-226,268-270
+  s_60e43f07473cd0::t_ce9284c7d25211 207-208
+  s_60e43f07473cd0::t_cf1ebd036155d5 2-5,381
+packages/cli/src/modules/instance-ai/mcp/instance-ai-mcp-registry.service.ts
+  s_60e43f07473cd0::t_044675a4c7b15e 134
+packages/@n8n/agents/src/runtime/mcp/mcp-tool-resolver.ts
+  s_60e43f07473cd0::t_51c47aad560e9e 42
+packages/@n8n/agents/src/types/sdk/mcp.ts
+  s_60e43f07473cd0::t_51c47aad560e9e 6,8-9
+packages/@n8n/agents/src/runtime/tools/tool-adapter.ts
+  s_60e43f07473cd0::t_51c47aad560e9e 125,139
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_60e43f07473cd0::t_2ac9e2e25f9608 203-242
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_60e43f07473cd0::t_ca73ecbf2d8be5 367-373
+packages/cli/src/modules/agents/json-config/mcp-client-factory.ts
+  s_60e43f07473cd0::t_ca73ecbf2d8be5 160,175,209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "23d4d278c023c3e7b95aa02bfb1d66d4f1e87cc4",
+  "prompts": {},
+  "sessions": {
+    "s_60e43f07473cd0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f8fe1-c76f-71c3-8e47-b42265a08f6b",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

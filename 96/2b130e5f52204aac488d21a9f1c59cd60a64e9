@@ -1,0 +1,97 @@
+packages/cli/src/services/__tests__/credentials-tester.service.test.ts
+  s_e27d8b6d968c4a::t_2302f537230d2d 357,367-368
+  s_f5e2bfa214eb0b::t_c0c85e35669627 269-271
+  s_f5e2bfa214eb0b::t_c714e26449824d 15-18
+  s_e27d8b6d968c4a::t_df59f8b6906871 293,303-305
+  s_e27d8b6d968c4a::t_7d210dda59c78f 385,397
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_f5e2bfa214eb0b::t_e79b59e70d2467 1970
+  s_f5e2bfa214eb0b::t_0089df7b3ce68c 1901-1969,1971-2054
+packages/@n8n/instance-ai/src/tools/workflows/credential-utils.ts
+  s_f5e2bfa214eb0b::t_b833235187666d 102-129
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_f5e2bfa214eb0b::t_a4027c88297253 703-708
+  s_f5e2bfa214eb0b::t_cd1959434fe156 709
+  s_f5e2bfa214eb0b::t_cd43ffb431d2df 23,26
+  s_f5e2bfa214eb0b::t_10fac44573b66d 313-337,362-371
+  s_e27d8b6d968c4a::t_28636b864e26b7 405
+  s_f5e2bfa214eb0b::t_11fde5d17b73b3 402-404
+  s_f5e2bfa214eb0b::t_ca1b8b147d3576 312
+packages/cli/src/services/credentials-tester.service.ts
+  s_f5e2bfa214eb0b::t_ed150aa1324034 48-51
+  s_f5e2bfa214eb0b::t_2a45d1bf985389 354-356
+  s_e27d8b6d968c4a::t_0f0a78191d641f 326-331,347-348,357-363,367-370
+  s_e27d8b6d968c4a::t_963636d4c1fb7e 375-378
+  s_f5e2bfa214eb0b::t_5aaeeb3f5c63c4 559-570
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_f5e2bfa214eb0b::t_b57d476b2b46d7 128
+  s_e27d8b6d968c4a::t_f0680f654c686a 755-759,761
+packages/cli/src/modules/instance-ai/instance-ai.adapter.service.ts
+  s_f5e2bfa214eb0b::t_6aa12455a1a8df 59
+  s_f5e2bfa214eb0b::t_dc6ec1462c1969 1545-1548,1561-1575,1578-1586
+  s_f5e2bfa214eb0b::t_663d9b2773d2e7 1549-1560,1576-1577
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/credential-utils.test.ts
+  s_f5e2bfa214eb0b::t_c8cc63c195f3f3 4-8
+  s_f5e2bfa214eb0b::t_ee1be09d8ce5cb 80-114
+packages/@n8n/instance-ai/src/types.ts
+  s_f5e2bfa214eb0b::t_56c573f929d139 461-465
+packages/@n8n/instance-ai/src/tools/workflows/resolve-credentials.ts
+  s_e27d8b6d968c4a::t_96cd55cbba6ad6 238-255
+  s_e27d8b6d968c4a::t_7bb1c6df2a2575 271-273,275
+  s_e27d8b6d968c4a::t_1874f341b24037 10
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_f5e2bfa214eb0b::t_70f14f6076d110 780-781,784-786
+  s_f5e2bfa214eb0b::t_16819ce9aed4d8 788,791-822
+  s_f5e2bfa214eb0b::t_908e1594e74ce4 787
+  s_f5e2bfa214eb0b::t_3ca5751d1c5432 789-790
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_e27d8b6d968c4a::t_f7219144874525 101
+  s_f5e2bfa214eb0b::t_203fcc31361d5c 17
+  s_e27d8b6d968c4a::t_b8af7c605ad4e9 103-107
+  s_e27d8b6d968c4a::t_16190c118539d4 206-216
+  s_f5e2bfa214eb0b::t_565cc5a034a81b 647-651,657-659
+  s_35ff0cdc101872::t_2e4e4097d44c5c 585
+  s_e27d8b6d968c4a::t_518d794e4820b6 129-144,148-151,153-156
+  s_e27d8b6d968c4a::t_3d662b80c22924 201-205
+  s_f5e2bfa214eb0b::t_767ec3873cab80 636-646
+  s_35ff0cdc101872::t_b74d0369fd8119 128
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_f5e2bfa214eb0b::t_a00165d4e963a1 326-329
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "962b130e5f52204aac488d21a9f1c59cd60a64e9",
+  "prompts": {},
+  "humans": {
+    "h_a348dde7c02e89": {
+      "author": "r00gm <raul00gm@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_35ff0cdc101872": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a04eec4b-d326-42e4-9d03-3bf1fc1651d2",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_e27d8b6d968c4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "29a2effe-8324-47e6-a481-3f6b10461901",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    },
+    "s_f5e2bfa214eb0b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f8a4da8-579e-4485-b05b-d3e4651913e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

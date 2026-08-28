@@ -1,0 +1,22 @@
+packages/frontend/@n8n/chat/src/utils/streaming.ts
+  s_310898ca29d655::t_c5c38776516d15 21-26,30,37-43,60-64,126
+packages/frontend/@n8n/chat/src/__tests__/utils/streamingHandlers.spec.ts
+  s_310898ca29d655::t_5fb5d0c89defc1 19-32,145-184,186
+  s_310898ca29d655::t_ba465d2c161f0b 185,187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "16857ee3b06f9cce8f3ca885bd1018ef27e0ed28",
+  "prompts": {},
+  "sessions": {
+    "s_310898ca29d655": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02ee3532-6ecf-4a19-98d5-dbaebd013a10",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

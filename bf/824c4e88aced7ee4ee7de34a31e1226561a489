@@ -1,0 +1,19 @@
+.uxd/n8n.toml
+  s_e759d345c950ff::t_a9fb94df9c7c52 49-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bf824c4e88aced7ee4ee7de34a31e1226561a489",
+  "prompts": {},
+  "sessions": {
+    "s_e759d345c950ff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b2c87511-2ead-4682-993e-fe8f965fad67",
+        "model": "claude-opus-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

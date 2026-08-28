@@ -1,0 +1,328 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/convertToRange.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 10,49-53,71-72
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/deleteTable.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 5,44-48,66-67
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/getRows.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 10,151,162-164,179,229-230
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/loadOptions.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 6-8,30-32,45-48,92-95
+packages/frontend/editor-ui/src/features/workflows/composables/useWorkflowsEmptyState.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 40
+packages/cli/src/executions/__tests__/execution-persistence.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 70,381-477
+  s_a1c4aafd7954bc::t_9ca11194733477 478
+packages/@n8n/scheduler/src/core/factory.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 366-372
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/append.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 148,163-167,263-266
+packages/@n8n/db/src/migrations/common/1784000000050-AddHostRunIdToInstanceAiCheckpoints.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-31
+packages/frontend/@n8n/design-system/src/v2/components/TagsInput/reka-ui.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-15
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 29-42
+packages/@n8n/scheduler/src/core/executor/executor.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 56-70,82,214-217,225-231,235-240,245-259,264,266,270-282,307
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflow.yml
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 20-25
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.perItem.workflow.json
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-82
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/getColumns.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 10,133,143-145,171-172
+packages/frontend/@n8n/design-system/src/v2/components/TagsInput/TagsInput.vue
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-418
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 177,179,196,209,217,227-351,355,361-368,379,394,415,432,451,473-474,499,514,529,544,562,577,587,601,615,629,658,721
+docs/generated/sqlite-schema/scheduled_job.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 93
+docs/generated/sqlite-schema/instance_ai_checkpoints.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 9,20,57
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiCredentialSetup.vue
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 170-182
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 744-755,834-836,862
+packages/cli/src/modules/instance-ai/entities/instance-ai-checkpoint.entity.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 16-24
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/listSearch.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 11-13,45-46,58-60,109-111,147-150,167-169
+packages/nodes-base/nodes/Microsoft/OneDrive/descriptions/TargetDescription.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 47-48,59,74-75,86,95,101-116
+  s_a1c4aafd7954bc::t_84d5f9fb9875d5 117
+packages/frontend/@n8n/design-system/src/v2/components/TagsInput/component-tags-input.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-108
+packages/cli/src/modules/instance-ai/storage/typeorm-agent-checkpoint-store.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 26,38
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.perItem.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-28
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-helpers.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-27
+packages/cli/src/modules/instance-ai/event-bus/durable-log-metrics.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 54-61,114-127
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/clear.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 5,92-95,104-107,126-127
+packages/nodes-base/nodes/Microsoft/OneDrive/GenericFunctions.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 171-174
+packages/frontend/editor-ui/src/features/workflows/templates/recommendations/recommendedTemplates.store.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 2-11
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/append.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 162,183-186,250-253,263,273
+docs/generated/postgres-schema/public.instance_ai_threads.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 73
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/getAll.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 11,104,114-116,145-146
+packages/@n8n/db/vite.config.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 4-8
+docs/generated/postgres-schema/public.scheduled_task.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 10,66
+packages/cli/src/scheduling/schedule-trigger-node/schedule-trigger-task-handler.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 46,79
+  s_a1c4aafd7954bc::t_62209a5fd47eab 80
+packages/frontend/editor-ui/src/app/components/layouts/EmptyStateLayout.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 113-114
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.drive.perItem.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-30
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-restart.spec.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-86
+packages/cli/vitest.tsc-entity-transform.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 4-6
+packages/frontend/editor-ui/src/app/components/layouts/EmptyStateLayout.vue
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 4,36-37,99-100,105,111
+docs/generated/postgres-schema/public.scheduled_job.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 92
+packages/@n8n/scheduler/src/observability/executor-tracing.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 68,80
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.perItem.workflow.json
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-106
+packages/cli/test/integration/scheduling/scheduler-trigger-handler.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 197
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiCredentialSetup.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 124-132,387-408
+  s_a1c4aafd7954bc::t_7728c078cab3f4 409-411
+packages/cli/src/executions/execution-persistence.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 96,98-99,121-126,135-206,208
+  s_a1c4aafd7954bc::t_2bf943fec38830 207,209
+packages/@n8n/db/src/migrations/common/1784000000049-AddScheduledTaskDispatchedAt.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-35
+scripts/typescript-migration/README.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 51-55
+docs/generated/sqlite-schema/instance_ai_threads.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 79
+packages/@n8n/db/src/entities/execution-entity.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 34-38
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.drive.perItem.workflow.json
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-83
+packages/frontend/editor-ui/src/experiments/surfaceMcpToNewCloudUsers/composables/useSurfaceMcpEmptyState.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 6
+packages/@n8n/scheduler/src/observability/__tests__/executor-tracing.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 147,149,151-152,168-170
+docs/generated/sqlite-schema/scheduled_task.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 9,21,65
+packages/@n8n/db/src/entities/scheduled-task.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 27,31-37,162-167,172-180
+  s_a1c4aafd7954bc::t_a29ca745537375 181
+packages/@n8n/scheduler/src/core/reaper/__tests__/reap.property.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 10-14,23-24,29-43,45,52,56-61,64,67,71,74-76,79
+packages/@n8n/db/src/repositories/scheduled-task.repository.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 3,112-113,116,123,289-296,298-325,327,370-371,373,390,481-499,504-507,510-538,571-578,583,586,588-591,597
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 18,31-32,266
+packages/frontend/@n8n/design-system/src/v2/components/TagsInput/TagsInput.stories.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-561
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/addTable.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 10,98-100,115-118,136-137
+packages/cli/package.json
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 120-121
+packages/@n8n/instance-ai/src/tools/credentials.tool.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 101-103,483-484,487-490
+packages/cli/src/modules/instance-ai/event-bus/__tests__/interrupted-run-sweeper.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-288
+packages/cli/src/public-api/v1/handlers/folders/folders.handler.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 15,24-25,50-58
+packages/cli/test/integration/public-api/workflows.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 30,68-76,1817-1870,2688-2803
+packages/frontend/editor-ui/src/app/views/WorkflowsView.vue
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 178,2554
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/methods/loadOptions.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 51-53,85-88
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/update.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 255,276-280,297-299,317-319,376-379
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.sp.perItem.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-66
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.drive.perItem.workflow.json
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-96
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-multimain.spec.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-113
+scripts/typescript-migration/SUMMARY.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 3
+packages/@n8n/scheduler/src/core/reaper/__tests__/reap.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 8-13,17-18,26,30-33,97-156
+  s_a1c4aafd7954bc::t_6f7de1ab2b0c30 157
+packages/@n8n/scheduler/src/core/executor/store.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 47-60
+packages/cli/src/scheduling/schedule-trigger-node/__tests__/schedule-trigger-task-handler.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 43-45,94,110,124,138,150,159,168-182,193-195,211-212,220,228,237,248,258
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/table/append.sp.batch.workflow.json
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-91
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/table/append.sp.batch.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-52
+packages/cli/src/modules/instance-ai/event-bus/interrupted-run-sweeper.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-192
+packages/cli/test/integration/scheduling/executor-repository.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 222,224,226-229,232-270,274-303,389-391,403,410-412,440-442,476,482,554-556,558,620-643,705-720,794-867
+packages/@n8n/scheduler/src/core/__tests__/factory.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 13,198-204,243,251,606,639,814,912,929,1078,1109-1111,1307,1340,1362,1382,1415
+packages/cli/src/modules/instance-ai/storage/__tests__/typeorm-agent-checkpoint-store.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 71
+packages/frontend/@n8n/design-system/src/v2/components/TagsInput/index.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-4
+packages/frontend/editor-ui/src/features/ai/assistant/builder.store.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 149,741,891
+packages/cli/test/integration/executions/execution-persistence.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 3,12,17,32,38,62,66-67,76-89
+  s_a1c4aafd7954bc::t_d4a9803b99db8a 90
+packages/frontend/editor-ui/src/app/utils/nodeViewUtils.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 45-46
+packages/frontend/editor-ui/src/features/workflows/templates/recommendations/recommendedTemplates.store.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 2
+packages/@n8n/instance-ai/docs/tools.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 482-485
+packages/cli/src/public-api/types.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 144-149,152-157
+docs/generated/sqlite-schema/instance_ai_pending_confirmations.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 78
+packages/nodes-base/nodes/Microsoft/Excel/v2/transport/index.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 89-92,96,110-113,120,122,134,136,169,181,190-199,217,226-236
+packages/frontend/@n8n/design-system/src/css/mixins/index.scss
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 6
+packages/cli/src/public-api/v1/handlers/workflows/workflows.handler.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 9,12,33-35,308,310-313,322
+packages/@n8n/scheduler/src/core/__tests__/executor-lookahead.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 71-74,107,109
+packages/cli/test/integration/scheduling/scheduler-multi-main.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 168,171-174,193-196,199,202,206-234,237-239
+packages/cli/test/integration/scheduling/durable-scheduler-effect-boundary.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-244
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/upsert.sp.batch.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-63
+packages/@n8n/scheduler/src/core/types/task.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 2-14
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/addWorksheet.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 10,67-70,80,90,117-118
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/upsert.sp.batch.workflow.json
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-89
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 217-218,436-437
+packages/@n8n/scheduler/src/core/executor/task-handler.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 8-14,17
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 92,102,1596-1600,1997-2002,2004
+packages/@n8n/scheduler/src/core/reaper/reap.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 2,22-25,27-28,40-44,63-67,88-92,120-147,163
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-durable.spec.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-85
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDrive.node.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 12,129-130,135-137,141,155-157,181-182,184,189-193,211-215,628,669-670
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-workflow.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-56
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 225-226,454-455
+packages/frontend/@n8n/design-system/src/v2/components/TagsInput/TagsInput.types.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-40
+packages/cli/src/public-api/v1/handlers/workflows/spec/schemas/workflowCreate.yml
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 68-72
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.get.sp.drive.perItem.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-26
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/file.move.sp.perItem.workflow.json
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-113
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.perItemContinueOnFail.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-23
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 389-395
+packages/frontend/@n8n/design-system/src/index.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 29-35
+packages/cli/src/events/maps/instance-ai.event-map.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 33-37
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.perItemContinueOnFail.workflow.json
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-83
+packages/nodes-base/nodes/Microsoft/Excel/test/v2/node/worksheet/readRows.sp.perItem.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-30
+packages/nodes-base/nodes/Microsoft/OneDrive/MicrosoftOneDriveTrigger.node.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 11,92
+packages/@n8n/instance-ai/src/agent/system-prompt.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 225
+packages/@n8n/scheduler/src/core/executor/__tests__/executor.property.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 29-31,34,54,57
+packages/nodes-base/nodes/Microsoft/Excel/v2/descriptions/TargetDescription.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 48-49,73-74
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-timezone.spec.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-56
+packages/cli/src/public-api/v1/handlers/folders/spec/paths/folders.yml
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 12-14
+docs/generated/postgres-schema/README.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 65,97,822,1136
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/upsert.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 207,228-232,249-251,268-271,367-369,385-388
+packages/testing/playwright/tests/e2e/scheduling/schedule-trigger-legacy.spec.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-20
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/table/lookup.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 12,99,111,161-162
+packages/frontend/@n8n/design-system/src/v2/components/TagsInput/TagsInput.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-298
+packages/cli/test/integration/public-api/folders.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 8,189-218
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 57,530-557
+  s_a1c4aafd7954bc::t_bec4e73c765d51 558
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/deleteWorksheet.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 5,40-44,62-63
+packages/cli/src/modules/instance-ai/repositories/instance-ai-event-log.repository.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 9-14,100-135
+  s_a1c4aafd7954bc::t_48549121cd6818 136-137
+packages/nodes-base/nodes/Microsoft/OneDrive/test/node/app-only-ops.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-2,264-279
+  s_a1c4aafd7954bc::t_4adbcc22827b05 280-281
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/readRows.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 10,163-165,174-176,209-210
+packages/cli/test/integration/scheduling/scheduler-execute.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 40,42-44,105,107
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/worksheet/getAll.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 10,94,104-106,125-126
+packages/frontend/@n8n/design-system/src/css/mixins/_input.scss
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 1-61
+docs/generated/sqlite-schema/README.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 65,97,809,1123
+docs/generated/postgres-schema/public.instance_ai_pending_confirmations.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 73
+packages/cli/src/public-api/v1/handlers/workflows/workflows.service.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 65,67,79-80
+packages/nodes-base/nodes/Microsoft/Excel/v2/test/transport/index.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 12,19,63-72,94-103,124-133,155-164,186-195,217-226,248-257,279-288,312-321,333-342,354-363,372-381,389-398,508-517,530-539,561-570,583-592,607-616,637-638,647-727,730-739,748-757,769-772,793-796,864,877,891-927
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/workbook/deleteWorkbook.operation.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 6,33-42,83-84
+packages/cli/src/metrics/prometheus/instance-ai-metrics.service.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 133-140,164-166
+packages/@n8n/instance-ai/src/tools/__tests__/credentials.tool.test.ts
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 868-888
+packages/frontend/editor-ui/src/app/components/KeyboardShortcutTooltip.vue
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 40
+docs/generated/postgres-schema/public.instance_ai_checkpoints.md
+  s_a1c4aafd7954bc::t_d471aeb92ccfeb 9,49
+pnpm-lock.yaml
+  s_a1c4aafd7954bc::t_3bbe7b9221cacb 4002,4400-4402,4450,4455,4465,40180,40182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "e8141170afd98fa24101e8b7463bf54508466a0f",
+  "prompts": {},
+  "sessions": {
+    "s_a1c4aafd7954bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b56cb72-36c3-4d3e-a4bb-c508f92690e0",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

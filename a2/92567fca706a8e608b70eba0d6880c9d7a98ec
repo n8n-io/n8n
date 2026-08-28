@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_f7090aa8f1aee5::t_6bf382f8d7df56 1371-1374,1377-1381,1383-1386,1391-1414,1416-1418,1420,1423,1427-1428,1438
+  s_f7090aa8f1aee5::t_63ef6aacfd5baa 1683-1684,1690
+  s_f7090aa8f1aee5::t_09dde13d59df7c 103
+  s_f7090aa8f1aee5::t_4c993cfcbf637c 996-998,1001
+  s_f7090aa8f1aee5::t_8cc5ff098c128b 1370,1375-1376,1382,1387-1390,1415,1419,1421-1422,1424-1426,1429-1437,1439-1440
+  s_f7090aa8f1aee5::t_ac2530ade889bd 1685-1689,1691-1695
+packages/testing/playwright/tests/e2e/regression/CAT-2395-node-spacing.spec.ts
+  s_f7090aa8f1aee5::t_f5358f28986c54 50-81
+  s_f7090aa8f1aee5::t_06adfb3e5faf22 1-5
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_f7090aa8f1aee5::t_a37e26e19e2291 614-626
+  s_f7090aa8f1aee5::t_13e7910b336053 595-613,627-639
+  s_f7090aa8f1aee5::t_fa95ce67e29367 121-122
+  s_f7090aa8f1aee5::t_0775812d3f9cfd 1581-1620
+  s_f7090aa8f1aee5::t_5f40059a4038ef 1621-1626
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "a292567fca706a8e608b70eba0d6880c9d7a98ec",
+  "prompts": {},
+  "sessions": {
+    "s_f7090aa8f1aee5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "951a7909-382d-4cb5-a4d1-896bef3cd72b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}
