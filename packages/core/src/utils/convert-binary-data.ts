@@ -1,9 +1,7 @@
-import { Container } from '@n8n/di';
 import type { IBinaryKeyData, IRunNodeResponse, WorkflowSettingsBinaryMode } from 'n8n-workflow';
 import { BINARY_ENCODING, BINARY_IN_JSON_PROPERTY, BINARY_MODE_COMBINED } from 'n8n-workflow';
 import { UnexpectedError } from '@n8n/errors';
 
-import { BinaryDataConfig } from '../binary-data/binary-data.config';
 import { prepareBinaryData } from '../execution-engine/node-execution-context/utils/binary-helper-functions';
 
 export async function convertBinaryData(
@@ -12,8 +10,7 @@ export async function convertBinaryData(
 	responseData: IRunNodeResponse,
 	binaryMode: WorkflowSettingsBinaryMode | undefined,
 ) {
-	const { mode } = Container.get(BinaryDataConfig);
-	if (binaryMode !== BINARY_MODE_COMBINED || mode === 'default') return responseData;
+	if (binaryMode !== BINARY_MODE_COMBINED) return responseData;
 
 	if (!responseData.data?.length) return responseData;
 

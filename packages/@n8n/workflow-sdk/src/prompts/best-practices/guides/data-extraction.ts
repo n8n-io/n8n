@@ -31,7 +31,7 @@ When working with large amounts of information, n8n's display can be hard to vie
 
 ## Large File Handling
 
-Process files in batches or use sub-workflows to avoid memory issues. For large binary files, consider enabling filesystem mode (N8N_DEFAULT_BINARY_DATA_MODE=filesystem) if self-hosted, to store binary data on disk instead of memory.
+Process files in batches or use sub-workflows to avoid memory issues. Binary data is stored on disk (filesystem mode) by default when self-hosted; N8N_DEFAULT_BINARY_DATA_MODE can select another store such as s3.
 
 Processing too many items or large files at once can crash your instance. Always batch or split processing for large datasets to manage memory effectively.
 

@@ -32,7 +32,9 @@ export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
-		if (this.config.mode !== 'default') {
+		// read the env var directly - `default` is no longer a valid config value,
+		// so `BinaryDataConfig.mode` can never hold it
+		if (process.env.N8N_DEFAULT_BINARY_DATA_MODE !== 'default') {
 			return {
 				isAffected: false,
 				instanceIssues: [],
