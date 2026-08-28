@@ -33,7 +33,6 @@ import ActionsRenderer from '../Modes/ActionsMode.vue';
 import AgentsRenderer from '../Modes/AgentsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
 import SearchBar from './SearchBar.vue';
-import SuggestToolFooter from '@/features/shared/toolsConnection/SuggestToolFooter.vue';
 
 import CommunityNodeDetails from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDetails.vue';
 import CommunityNodeDocsLink from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDocsLink.vue';
@@ -330,7 +329,6 @@ function onBackButton() {
 
 				<!-- Nodes Mode -->
 				<NodesRenderer v-else :root-view="nodeCreatorView" v-bind="$attrs" />
-				<SuggestToolFooter v-if="isMcpCategory" />
 			</div>
 
 			<CommunityNodeFooter

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import {
 	N8nDialog,
 	N8nIcon,
@@ -117,12 +117,6 @@ function handleListScroll(event: Event) {
 	}
 }
 
-function focusSearchInput() {
-	void nextTick(() => {
-		searchInputRef.value?.focus();
-	});
-}
-
 /**
  * Search text and active tab live as long as this component, which a consumer
  * mounts for exactly one modal session — so stepping aside for a follow-up
@@ -138,19 +132,13 @@ watch(
 			savedScrollTop.value = scrollerRef.value?.scrollTop ?? 0;
 			return;
 		}
-		focusSearchInput();
 		await nextTick();
+		searchInputRef.value?.focus();
 		scrollerRef.value?.scrollTo(savedScrollTop.value);
 		updateListEndState();
 	},
+	{ immediate: true },
 );
-
-onMounted(() => {
-	if (props.open) {
-		focusSearchInput();
-	}
-	void nextTick(updateListEndState);
-});
 
 const hasActiveSearch = computed(() => debouncedSearchQuery.value.length > 0);
 

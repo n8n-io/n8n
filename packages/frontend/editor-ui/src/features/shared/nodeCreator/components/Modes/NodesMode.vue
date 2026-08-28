@@ -39,6 +39,7 @@ import { useKeyboardNavigation } from '../../composables/useKeyboardNavigation';
 import ItemsRenderer from '../Renderers/ItemsRenderer.vue';
 import CategorizedItemsRenderer from '../Renderers/CategorizedItemsRenderer.vue';
 import NoResults from '../Panel/NoResults.vue';
+import SuggestToolFooter from '@/features/shared/toolsConnection/SuggestToolFooter.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nText } from '@n8n/design-system';
 
@@ -101,6 +102,7 @@ const isSearchResultEmpty = computed(() => {
 			0
 	);
 });
+const showSuggestionFooter = computed(() => isMcpCategory.value || isSearchResultEmpty.value);
 
 function getFilteredActions(
 	node: NodeCreateElement,
@@ -350,7 +352,12 @@ registerKeyHook('MainViewArrowLeft', {
 </script>
 
 <template>
-	<span :class="{ [$style.mcpEmptyState]: isMcpCategory && isSearchResultEmpty }">
+	<span
+		:class="{
+			[$style.withSuggestionFooter]: showSuggestionFooter,
+			[$style.offsetPanelPadding]: isSearchResultEmpty && !isMcpCategory,
+		}"
+	>
 		<!-- Global Callouts-->
 		<ItemsRenderer
 			v-if="globalCallouts.length > 0"
@@ -363,15 +370,14 @@ registerKeyHook('MainViewArrowLeft', {
 		<ItemsRenderer
 			v-memo="[activeViewStack.search]"
 			:elements="activeViewStack.items"
-			:class="$style.items"
+			:class="[$style.items, { [$style.emptyItems]: isSearchResultEmpty && !isMcpCategory }]"
 			@selected="onSelected"
 		>
 			<template v-if="isSearchResultEmpty" #empty>
 				<NoResults
 					v-if="!isMcpCategory"
+					:query="activeViewStack.search ?? ''"
 					:root-view="activeViewStack.rootView"
-					show-icon
-					show-request
 					@add-webhook-node="emit('nodeTypeSelected', [{ type: WEBHOOK_NODE_TYPE }])"
 					@add-http-node="emit('nodeTypeSelected', [{ type: HTTP_REQUEST_NODE_TYPE }])"
 				/>
@@ -380,7 +386,7 @@ registerKeyHook('MainViewArrowLeft', {
 		<div v-if="isMcpCategory && isSearchResultEmpty" :class="$style.mcpNoResults">
 			<N8nText color="text-light">
 				{{
-					i18n.baseText('nodeCreator.noResults.noMatchingMcpServers', {
+					i18n.baseText('nodeCreator.noResults.noResultsFor', {
 						interpolate: { query: activeViewStack.search ?? '' },
 					})
 				}}
@@ -406,6 +412,12 @@ registerKeyHook('MainViewArrowLeft', {
 			@selected="onSelected"
 		>
 		</CategorizedItemsRenderer>
+
+		<SuggestToolFooter
+			v-if="showSuggestionFooter"
+			:variant="isMcpCategory ? 'service' : 'node'"
+			:class="[$style.suggestionFooter, { [$style.insetSuggestionFooter]: !isMcpCategory }]"
+		/>
 	</span>
 </template>
 
@@ -414,10 +426,21 @@ registerKeyHook('MainViewArrowLeft', {
 	margin-bottom: var(--spacing--sm);
 }
 
-.mcpEmptyState {
+.withSuggestionFooter {
 	display: flex;
 	flex: 1;
 	flex-direction: column;
+	min-height: 0;
+}
+
+.offsetPanelPadding {
+	margin-bottom: calc(-1 * var(--spacing--xl));
+}
+
+.emptyItems {
+	flex: 1;
+	min-height: 0;
+	margin-bottom: 0;
 }
 
 .mcpNoResults {
@@ -425,5 +448,13 @@ registerKeyHook('MainViewArrowLeft', {
 	flex: 1;
 	align-items: center;
 	justify-content: center;
+}
+
+.suggestionFooter {
+	margin-top: auto;
+}
+
+.insetSuggestionFooter {
+	margin-inline: var(--spacing--sm);
 }
 </style>

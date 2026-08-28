@@ -10,6 +10,7 @@ import {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	MESSAGE_AN_AGENT_NODE_TYPE,
 	REGULAR_NODE_CREATOR_VIEW,
+	REQUEST_NODE_FORM_URL,
 } from '@/app/constants';
 import type { NodeCreateElement } from '@/Interface';
 import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
@@ -158,6 +159,26 @@ describe('NodesMode', () => {
 
 		expect(screen.getByText('MCP Client Tool')).toBeInTheDocument();
 		expect(screen.getByText('No results for "missing server"')).toBeInTheDocument();
+		expect(screen.getByText("Don't see the service you need?")).toBeInTheDocument();
 		expect(screen.queryByText("We didn't make that... yet")).not.toBeInTheDocument();
+	});
+
+	it('shows the node suggestion footer for other empty searches', async () => {
+		useViewStacks().pushViewStack({
+			title: 'What happens next?',
+			mode: 'nodes',
+			rootView: REGULAR_NODE_CREATOR_VIEW,
+			search: 'missing node',
+			items: [],
+		});
+
+		render({ pinia });
+		await nextTick();
+
+		expect(screen.getByText('Need a native integration?')).toBeInTheDocument();
+		expect(screen.getByText('Suggest a node').closest('a')).toHaveAttribute(
+			'href',
+			REQUEST_NODE_FORM_URL,
+		);
 	});
 });
