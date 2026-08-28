@@ -73,7 +73,7 @@ describe('N8nClient packages', () => {
 			const response = {
 				connectionId: 'connection-id',
 				counts: {
-					projects: { created: 1, updated: 0, skipped: 0 },
+					projects: { created: 1, updated: 0, skipped: 0, deleted: 0 },
 					folders: { created: 0, skipped: 0, removed: 0 },
 					workflows: {
 						created: 2,

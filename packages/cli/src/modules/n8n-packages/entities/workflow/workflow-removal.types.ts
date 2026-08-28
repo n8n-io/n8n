@@ -2,6 +2,7 @@ import type { WorkflowPlanItem } from './workflow-import.types';
 import type {
 	FolderConflictPolicy,
 	OverwriteDeletionPolicy,
+	PackageImportSource,
 	WorkflowRemovalFailure,
 } from '../../n8n-packages.types';
 
@@ -12,12 +13,14 @@ export interface WorkflowRemovalRequest {
 	deletionPolicy: OverwriteDeletionPolicy;
 	/** The decided plan for the package's own workflows; their target ids are retained. */
 	workflowItems: WorkflowPlanItem[];
-	/** Folders the package defines. Workflows filed elsewhere are out of scope. */
+	/** Folders the package defines, used to bound package-folder reconciliation. */
 	packageFolderIds: string[];
 	/** Sub-workflow ids the package references but does not carry; retained so parents can publish. */
 	subWorkflowRequirementIds?: string[];
 	/** The project does not exist yet, so it holds nothing to reconcile against. */
 	projectPendingCreation?: boolean;
+	/** Git pulls reconcile all folders; package imports preserve folders they do not represent. */
+	importSource?: PackageImportSource;
 }
 
 /** A workflow on the target that the package does not account for. */

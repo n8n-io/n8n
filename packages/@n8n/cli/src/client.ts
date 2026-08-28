@@ -70,7 +70,7 @@ export type PushGitConnectionResult = {
 
 /** Per-entity counts of what a pull changed in the instance, broken down by outcome. */
 export interface ImportPackageCounts {
-	projects: { created: number; updated: number; skipped: number };
+	projects: { created: number; updated: number; skipped: number; deleted: number };
 	folders: { created: number; skipped: number; removed: number };
 	workflows: {
 		created: number;

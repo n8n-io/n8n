@@ -20,6 +20,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	DataTableMissingMode,
@@ -41,6 +42,7 @@ import {
 	type ImportResult,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { ProjectService } from '@/services/project.service.ee';
 
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME } from './constants';
 import { GitConnectionProject } from './database/entities/git-connection-project.entity';
@@ -62,6 +64,10 @@ type ManageProjectLinkOptions = {
 	projectId: string;
 };
 
+type ProjectReconciliationResult = {
+	deletedProjectIds: string[];
+};
+
 /**
  * Fixed import policy for a pull: the Git working copy is the source of truth, so
  * the instance is overwritten to match it. Credentials arrive as id-matched refs
@@ -80,7 +86,7 @@ const IMPORT_POLICY: Omit<ImportRequest, 'user'> = {
 	overwriteDeletionPolicy: OverwriteDeletionPolicy.HardDelete,
 	dataTableMatchingMode: 'by-id',
 	dataTableMissingMode: DataTableMissingMode.Create,
-	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.KeepExisting,
+	dataTableSchemaConflictPolicy: DataTableSchemaConflictPolicy.Fail,
 	variableMissingMode: VariableMissingMode.CreateWithValue,
 	variableConflictPolicy: VariableConflictPolicy.Overwrite,
 	tagMissingMode: TagMissingMode.Create,
@@ -93,10 +99,12 @@ export class GitConnectionsService {
 		private readonly repository: GitConnectionRepository,
 		private readonly gitConnectionProjectRepository: GitConnectionProjectRepository,
 		private readonly projectRepository: ProjectRepository,
+		private readonly projectService: ProjectService,
 		private readonly gitService: GitConnectionsGitService,
 		private readonly n8nPackagesService: N8nPackagesService,
 		private readonly cipher: Cipher,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly eventService: EventService,
 		private readonly logger: Logger,
 	) {
 		this.logger = this.logger.scoped('git-connections');
@@ -377,21 +385,52 @@ export class GitConnectionsService {
 			{ user: actor, ...IMPORT_POLICY },
 			{ sourceDir: importFolder },
 		);
-
-		// Reconcile the connection's project links to the imported set: newly
-		// imported projects get linked (so a later push exports them instead of
-		// overwriting the working copy with an empty export), and projects deleted
-		// upstream get unlinked (so the next push doesn't resurrect them).
-		await this.gitConnectionProjectRepository.syncConnectionProjects(
+		const importedProjectIds = result.projects.map((project) => project.localId);
+		const projectReconciliation = await this.reconcileConnectionProjects(
 			connectionId,
-			result.projects.map((project) => project.localId),
+			actor,
+			importedProjectIds,
 		);
 
 		// The working copy — and now the instance — match this remote commit.
 		connection.baseCommit = head;
 		await this.repository.save(connection);
 
-		return { connectionId, counts: this.toImportCounts(result), commit: head };
+		return {
+			connectionId,
+			counts: this.toPullCounts({ importResult: result, projectReconciliation }),
+			commit: head,
+		};
+	}
+
+	private async reconcileConnectionProjects(
+		connectionId: string,
+		actor: User,
+		importedProjectIds: string[],
+	): Promise<ProjectReconciliationResult> {
+		const imported = new Set(importedProjectIds);
+		const linkedProjectIds =
+			await this.gitConnectionProjectRepository.findProjectIdsByConnection(connectionId);
+		const removedProjectIds = linkedProjectIds.filter((projectId) => !imported.has(projectId));
+
+		for (const projectId of removedProjectIds) {
+			await this.projectService.deleteProject(actor, projectId);
+			this.eventService.emit('team-project-deleted', {
+				userId: actor.id,
+				role: actor.role.slug,
+				projectId,
+				removalType: 'delete',
+			});
+		}
+
+		// Imported projects become managed by this connection. Deleting a missing project
+		// cascades its previous link before the remaining links are synchronized.
+		await this.gitConnectionProjectRepository.syncConnectionProjects(
+			connectionId,
+			importedProjectIds,
+		);
+
+		return { deletedProjectIds: removedProjectIds };
 	}
 
 	/** Commit identity for a push: the actor's name/email, with an n8n fallback. */
@@ -411,8 +450,14 @@ export class GitConnectionsService {
 		}
 	}
 
-	/** Collapses the engine's per-entity import result into the counts the pull endpoint returns. */
-	private toImportCounts(result: ImportResult): GitConnectionPullResultDto['counts'] {
+	/** Maps package import and connection reconciliation outcomes to pull response counts. */
+	private toPullCounts({
+		importResult,
+		projectReconciliation,
+	}: {
+		importResult: ImportResult;
+		projectReconciliation: ProjectReconciliationResult;
+	}): GitConnectionPullResultDto['counts'] {
 		const tally = <S extends string>(rows: Array<{ status: S }>, statuses: readonly S[]) => {
 			const counts = Object.fromEntries(statuses.map((status) => [status, 0])) as Record<S, number>;
 			for (const { status } of rows) counts[status] += 1;
@@ -420,43 +465,48 @@ export class GitConnectionsService {
 		};
 
 		return {
-			projects: tally(result.projects, ['created', 'updated', 'skipped'] as const),
+			projects: {
+				...tally(importResult.projects, ['created', 'updated', 'skipped'] as const),
+				deleted: projectReconciliation.deletedProjectIds.length,
+			},
 			folders: {
-				...tally(result.folders, ['created', 'skipped'] as const),
-				removed: result.removedFolders.length,
+				...tally(importResult.folders, ['created', 'skipped'] as const),
+				removed: importResult.removedFolders.length,
 			},
 			workflows: {
-				...tally(result.workflows, ['created', 'updated', 'skipped'] as const),
-				archived: result.removedWorkflows.filter(({ deletion }) => deletion === 'archived').length,
-				deleted: result.removedWorkflows.filter(({ deletion }) => deletion === 'deleted').length,
+				...tally(importResult.workflows, ['created', 'updated', 'skipped'] as const),
+				archived: importResult.removedWorkflows.filter(({ deletion }) => deletion === 'archived')
+					.length,
+				deleted: importResult.removedWorkflows.filter(({ deletion }) => deletion === 'deleted')
+					.length,
 				// The publish sweep runs after content is written and can't be rolled back, so a
 				// blocked/failed publish never fails the pull — surface it here instead.
 				publishing: tally(
-					result.workflows.map(({ publishing }) => ({ status: publishing.state })),
+					importResult.workflows.map(({ publishing }) => ({ status: publishing.state })),
 					['published', 'unpublished', 'unchanged', 'blocked', 'failed'] as const,
 				),
 			},
 			credentials: {
-				matched: result.credentials.matched.length,
-				stubbed: result.credentials.stubbed.length,
+				matched: importResult.credentials.matched.length,
+				stubbed: importResult.credentials.stubbed.length,
 			},
 			dataTables: {
-				matched: result.dataTables.matched,
-				created: result.dataTables.created,
+				matched: importResult.dataTables.matched,
+				created: importResult.dataTables.created,
 			},
 			variables: {
-				matched: result.variables.matched.length,
-				created: result.variables.created.length,
-				updated: result.variables.updated.length,
-				stubbed: result.variables.stubbed.length,
-				missing: result.variables.missing.length,
+				matched: importResult.variables.matched.length,
+				created: importResult.variables.created.length,
+				updated: importResult.variables.updated.length,
+				stubbed: importResult.variables.stubbed.length,
+				missing: importResult.variables.missing.length,
 			},
 			tags: {
-				matched: result.tags.matched.length,
-				created: result.tags.created.length,
-				renamed: result.tags.renamed.length,
-				reconciled: result.tags.reconciled.length,
-				skipped: result.tags.skipped.length,
+				matched: importResult.tags.matched.length,
+				created: importResult.tags.created.length,
+				renamed: importResult.tags.renamed.length,
+				reconciled: importResult.tags.reconciled.length,
+				skipped: importResult.tags.skipped.length,
 			},
 		};
 	}

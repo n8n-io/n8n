@@ -230,6 +230,8 @@ export interface ExportPackageRequest {
 	credentialExportPolicy?: CredentialExportPolicy;
 }
 
+export type PackageImportSource = 'package-import' | 'git-pull';
+
 /**
  * A source-agnostic import: everything the importers need except where the
  * package bytes come from. The reader (tar buffer, on-disk directory, …) is

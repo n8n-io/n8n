@@ -38,10 +38,14 @@ responses:
                     skipped:
                       type: integer
                       minimum: 0
+                    deleted:
+                      type: integer
+                      minimum: 0
                   required:
                     - created
                     - updated
                     - skipped
+                    - deleted
                 folders:
                   type: object
                   properties:

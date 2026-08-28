@@ -13,12 +13,14 @@ import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
+import type { EventService } from '@/events/event.service';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import {
 	MissingWorkflowDependencyPolicy,
 	WorkflowVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { ProjectService } from '@/services/project.service.ee';
 
 import type { GitConnection } from '../database/entities/git-connection.entity';
 import type { GitConnectionProjectRepository } from '../database/repositories/git-connection-project.repository';
@@ -33,10 +35,12 @@ describe('GitConnectionsService (credential state machine)', () => {
 	const repository = mock<GitConnectionRepository>();
 	const gitConnectionProjectRepository = mock<GitConnectionProjectRepository>();
 	const projectRepository = mock<ProjectRepository>();
+	const projectService = mock<ProjectService>();
 	const gitService = mock<GitConnectionsGitService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
 	const cipher = mock<Cipher>();
 	const instanceSettings = mock<InstanceSettings>({ n8nFolder: '/tmp/n8n' });
+	const eventService = mock<EventService>();
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -44,10 +48,12 @@ describe('GitConnectionsService (credential state machine)', () => {
 		repository,
 		gitConnectionProjectRepository,
 		projectRepository,
+		projectService,
 		gitService,
 		n8nPackagesService,
 		cipher,
 		instanceSettings,
+		eventService,
 		logger,
 	);
 
@@ -260,10 +266,12 @@ describe('GitConnectionsService (credential state machine)', () => {
 				repository,
 				gitConnectionProjectRepository,
 				projectRepository,
+				projectService,
 				gitService,
 				n8nPackagesService,
 				cipher,
 				mock<InstanceSettings>({ n8nFolder }),
+				eventService,
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
@@ -617,7 +625,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 		let n8nFolder: string;
 		let importService: GitConnectionsService;
 		let exportFolder: string;
-		const actor = mock<User>({ id: 'actor' });
+		const actor = mock<User>({ id: 'actor', role: { slug: 'global:owner' } });
 
 		const importResult = () =>
 			({
@@ -652,10 +660,12 @@ describe('GitConnectionsService (credential state machine)', () => {
 				repository,
 				gitConnectionProjectRepository,
 				projectRepository,
+				projectService,
 				gitService,
 				n8nPackagesService,
 				cipher,
 				mock<InstanceSettings>({ n8nFolder }),
+				eventService,
 				logger,
 			);
 			repository.findOneBy.mockResolvedValue(sshEntity());
@@ -663,6 +673,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			gitService.refreshWorkingCopy.mockResolvedValue({ head: 'remotesha' });
 			cipher.decryptV2.mockImplementation(async (value) => value.replace(/^enc:/, ''));
 			n8nPackagesService.importPackageFromDirectory.mockResolvedValue(importResult());
+			gitConnectionProjectRepository.findProjectIdsByConnection.mockResolvedValue(['p1', 'p2']);
 		});
 
 		afterEach(async () => {
@@ -688,7 +699,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 					overwriteDeletionPolicy: 'hard-delete',
 					dataTableMatchingMode: 'by-id',
 					dataTableMissingMode: 'create',
-					dataTableSchemaConflictPolicy: 'keep-existing',
+					dataTableSchemaConflictPolicy: 'fail',
 					variableMissingMode: 'create-with-value',
 					variableConflictPolicy: 'overwrite',
 					tagMissingMode: 'create',
@@ -711,7 +722,7 @@ describe('GitConnectionsService (credential state machine)', () => {
 			expect(result).toEqual({
 				connectionId: '1',
 				counts: {
-					projects: { created: 1, updated: 1, skipped: 0 },
+					projects: { created: 1, updated: 1, skipped: 0, deleted: 0 },
 					folders: { created: 2, skipped: 1, removed: 2 },
 					workflows: {
 						created: 2,
@@ -730,15 +741,28 @@ describe('GitConnectionsService (credential state machine)', () => {
 			});
 		});
 
-		it('reconciles the connection links to every imported project', async () => {
+		it('deletes projects missing from the import and reconciles the connection links', async () => {
 			await mkdir(exportFolder, { recursive: true });
+			gitConnectionProjectRepository.findProjectIdsByConnection.mockResolvedValueOnce([
+				'p1',
+				'p2',
+				'removed',
+			]);
 
-			await importService.pull('1', actor);
+			const result = await importService.pull('1', actor);
 
+			expect(projectService.deleteProject).toHaveBeenCalledWith(actor, 'removed');
+			expect(eventService.emit).toHaveBeenCalledWith('team-project-deleted', {
+				userId: actor.id,
+				role: actor.role.slug,
+				projectId: 'removed',
+				removalType: 'delete',
+			});
 			expect(gitConnectionProjectRepository.syncConnectionProjects).toHaveBeenCalledWith('1', [
 				'p1',
 				'p2',
 			]);
+			expect(result.counts.projects.deleted).toBe(1);
 		});
 
 		it('fails with a clear error when there is no exported working copy', async () => {
