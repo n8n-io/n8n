@@ -2281,7 +2281,7 @@
 	"nodeCredentials.quickConnect.credential.created.error": "Failed to create the credential",
 	"nodeCredentials.oauth.accountConnected": "Account connected successfully",
 	"aiGateway.toggle.label": "Use Gateway credits",
-	"aiGateway.toggle.description": "Gateway credits is the easy way to manage AI model usage",
+	"aiGateway.toggle.description": "Gateway credits are the easy way to manage AI model usage",
 	"aiGateway.toggle.topUp": "Top up",
 	"aiGateway.wallet.balanceRemaining": "{balance} remaining",
 	"aiGateway.wallet.noCredits": "No credits",
