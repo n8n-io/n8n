@@ -6362,6 +6362,9 @@ importers:
       browserslist-to-esbuild:
         specifier: ^2.1.1
         version: 2.1.1(browserslist@4.28.1)
+      eslint:
+        specifier: 'catalog:'
+        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       eslint-plugin-oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint@1.78.0(oxlint-tsgolint@0.21.1))
