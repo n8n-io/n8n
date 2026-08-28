@@ -19,6 +19,7 @@ parameters:
         - 'true'
         - 'false'
       default: 'false'
+      description: Whether or not to include the execution's detailed data.
     required: false
     name: includeData
     in: query
@@ -28,6 +29,7 @@ parameters:
         - 'true'
         - 'false'
       default: 'false'
+      description: Whether to return the full execution data even if it exceeds the configured size limit (EXECUTIONS_DATA_MAX_DISPLAY_SIZE). Oversized executions are otherwise returned without their data.
     required: false
     name: ignoreDataSizeLimit
     in: query
@@ -36,6 +38,7 @@ parameters:
       enum:
         - 'true'
         - 'false'
+      description: Controls execution data redaction. When `true`, execution output data is always redacted. When `false`, requests unredacted (revealed) data — requires the `execution:reveal` scope. When omitted, follows the workflow redaction policy.
     required: false
     name: redactExecutionData
     in: query
