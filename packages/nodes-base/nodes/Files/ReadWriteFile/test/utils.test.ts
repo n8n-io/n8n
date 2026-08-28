@@ -36,6 +36,14 @@ describe('Read/Write Files from Disk', () => {
 			expect(normalizeFileSelector('C:/Users/../me//x.txt')).toBe('C:/me/x.txt');
 		});
 
+		it('should convert a mixed-separator Windows selector', () => {
+			// only `( ) [ ]` are ever escaped, so a backslash before anything else separates
+			expect(normalizeFileSelector('C:/data\\!important/note.txt')).toBe(
+				'C:/data/!important/note.txt',
+			);
+			expect(normalizeFileSelector('C:/data\\{drafts}/note.txt')).toBe('C:/data/{drafts}/note.txt');
+		});
+
 		it('should keep escapes in a forward-slash Windows selector', () => {
 			const input = 'C:/Users/me/VTuber Legend \\[J-Novel Club\\]/list.txt';
 			expect(normalizeFileSelector(input)).toBe(input);

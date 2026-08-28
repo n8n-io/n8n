@@ -35,9 +35,11 @@ export function errorMapper(
 }
 
 const WINDOWS_DRIVE_PREFIX = /^[a-zA-Z]:/;
-// The backslash after the drive letter is always a separator; elsewhere one that
-// escapes a glob metacharacter is not, so forward-slash selectors keep escapes.
-const HAS_BACKSLASH_SEPARATOR = /^[a-zA-Z]:\\|\\(?![()[\]{}!])/;
+// The backslash after the drive letter is always a separator; elsewhere one is a
+// separator unless it escapes a character the option governs, so forward-slash
+// selectors keep escapes. Only `()[]` qualify — the node never escapes anything
+// else, so a backslash before `{`, `}` or `!` is a separator.
+const HAS_BACKSLASH_SEPARATOR = /^[a-zA-Z]:\\|\\(?![()[\]])/;
 
 export function normalizeFileSelector(fileSelectorRaw: string) {
 	const fileSelector = String(fileSelectorRaw);
