@@ -11,7 +11,12 @@ import {
 } from 'n8n-workflow';
 
 import { ignoreHttpStatusErrorsConfig } from './common';
-import { handleErrorPostReceive, microsoftApiRequest } from '../GenericFunctions';
+import {
+	handleErrorPostReceive,
+	microsoftApiRequest,
+	validateGroupPreSend,
+	validateUserPreSend,
+} from '../GenericFunctions';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -215,6 +220,11 @@ const addGroupFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateGroupPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 	{
@@ -250,6 +260,7 @@ const addGroupFields: INodeProperties[] = [
 		required: true,
 		routing: {
 			send: {
+				preSend: [validateUserPreSend],
 				property: '@odata.id',
 				propertyInDotNotation: false,
 				type: 'body',
@@ -959,6 +970,11 @@ const deleteFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateUserPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 ];
@@ -995,6 +1011,11 @@ const getFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateUserPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 	{
@@ -1253,6 +1274,11 @@ const removeGroupFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateGroupPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 	{
@@ -1286,6 +1312,11 @@ const removeGroupFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateUserPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 ];
@@ -1322,6 +1353,11 @@ const updateFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateUserPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 	{

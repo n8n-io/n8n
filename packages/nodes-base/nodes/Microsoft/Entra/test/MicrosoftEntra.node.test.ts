@@ -111,6 +111,60 @@ describe('Microsoft Entra Node', () => {
 		}
 	});
 
+	describe('Path ID wiring', () => {
+		const { properties } = new MicrosoftEntra().description;
+		const resourceLocators = properties.filter((property) => property.type === 'resourceLocator');
+
+		// Derived from the sinks rather than hardcoded, so a new ID in a URL template fails here
+		// until it is guarded too.
+		const interpolatedIds = new Set(
+			properties
+				.flatMap((property) => property.options ?? [])
+				.flatMap((option) =>
+					'routing' in option && typeof option.routing?.request?.url === 'string'
+						? [option.routing.request.url]
+						: [],
+				)
+				.flatMap((url) => [...url.matchAll(/\$parameter\["([^"]+)"\]/g)].map(([, name]) => name)),
+		);
+
+		it('interpolates only the user and group IDs into request URLs', () => {
+			expect([...interpolatedIds].sort()).toEqual(['group', 'user']);
+		});
+
+		it('guards every parameter interpolated into a request URL', () => {
+			for (const name of interpolatedIds) {
+				const matching = resourceLocators.filter((property) => property.name === name);
+				expect(matching.length, name).toBeGreaterThan(0);
+				for (const property of matching) {
+					expect(property.routing?.send?.preSend, property.displayName).toHaveLength(1);
+				}
+			}
+		});
+
+		it('guards every resource locator', () => {
+			for (const property of resourceLocators) {
+				expect(property.routing?.send?.preSend, property.displayName).toHaveLength(1);
+			}
+		});
+
+		it('has ten resource locators', () => {
+			expect(resourceLocators).toHaveLength(10);
+		});
+
+		it('still composes the @odata.id body when adding a user to a group', () => {
+			const addGroupUser = properties.find(
+				(property) =>
+					property.name === 'user' &&
+					property.displayOptions?.show?.operation?.includes('addGroup'),
+			);
+
+			expect(addGroupUser?.routing?.send?.property).toBe('@odata.id');
+			expect(addGroupUser?.routing?.send?.value).toContain('directoryObjects');
+			expect(addGroupUser?.routing?.send?.preSend).toHaveLength(1);
+		});
+	});
+
 	describe('HTTP status handling', () => {
 		it('handles non-authentication errors in the node error handler', async () => {
 			const axiosRequest = convertN8nRequestToAxios({

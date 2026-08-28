@@ -10,7 +10,11 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 
 import { ignoreHttpStatusErrorsConfig } from './common';
-import { handleErrorPostReceive, microsoftApiRequest } from '../GenericFunctions';
+import {
+	handleErrorPostReceive,
+	microsoftApiRequest,
+	validateGroupPreSend,
+} from '../GenericFunctions';
 
 export const groupOperations: INodeProperties[] = [
 	{
@@ -592,6 +596,11 @@ const deleteFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateGroupPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 ];
@@ -628,6 +637,11 @@ const getFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateGroupPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 	{
@@ -901,6 +915,11 @@ const updateFields: INodeProperties[] = [
 			},
 		],
 		required: true,
+		routing: {
+			send: {
+				preSend: [validateGroupPreSend],
+			},
+		},
 		type: 'resourceLocator',
 	},
 	{
