@@ -854,6 +854,11 @@ export class WorkflowService {
 		await this._detectWebhookConflicts(workflow, versionToActivate);
 
 		this._validateNodes(workflowId, versionToActivate.nodes, versionToActivate.connections);
+		await this._validateRequiredInputs(
+			workflowId,
+			versionToActivate.nodes,
+			versionToActivate.connections,
+		);
 		await this._validateDynamicCredentials(workflowId, versionToActivate.nodes, workflow.settings);
 		await this._validateSubWorkflowReferences(workflowId, versionToActivate.nodes);
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
@@ -1589,6 +1594,28 @@ export class WorkflowService {
 
 		if (!validation.isValid) {
 			this.logger.warn('Workflow activation failed validation', {
+				workflowId,
+				error: validation.error,
+			});
+			throw new WorkflowValidationError(validation.error ?? 'Workflow validation failed');
+		}
+	}
+
+	/**
+	 * Refuses activation when a node declares a required input that nothing is
+	 * connected to. The editor already flags this, but only recomputes the
+	 * warning on load, so the edit that introduces it can go unnoticed and the
+	 * workflow throws on every execution once live.
+	 */
+	async _validateRequiredInputs(workflowId: string, nodes: INode[], connections: IConnections) {
+		const validation = await this.workflowValidationService.validateRequiredInputsConnected(
+			nodes,
+			connections,
+			this.nodeTypes,
+		);
+
+		if (!validation.isValid) {
+			this.logger.warn('Workflow activation failed required-input validation', {
 				workflowId,
 				error: validation.error,
 			});

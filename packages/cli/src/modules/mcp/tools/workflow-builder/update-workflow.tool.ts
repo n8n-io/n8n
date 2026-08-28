@@ -2,7 +2,7 @@ import type { ValidationWarning } from '@n8n/ai-workflow-builder';
 import type { GlobalConfig } from '@n8n/config';
 import { type User, type SharedWorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { connectRequiredSubnodeInputs, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -1194,6 +1194,11 @@ export const createUpdateWorkflowTool = (
 					throw new Error(result.error);
 				}
 
+				// Operations set parameters without touching connections, so turning on a
+				// capability (an output parser's autoFix, say) can leave its now-required
+				// subnode input dangling. Complete those links before the result is saved.
+				const addedSubnodeLinks = connectRequiredSubnodeInputs(result.workflow, nodeTypes).added;
+
 				const { skippedOperations, removedGroups, nodeGroupsNeedPersisting } =
 					resolveNodeGroupViolations(result, canvasGroupsEnabled, nodeTypes);
 
@@ -1281,6 +1286,14 @@ export const createUpdateWorkflowTool = (
 					existingWorkflow,
 					nodeTypes,
 				);
+
+				for (const link of addedSubnodeLinks) {
+					validationWarnings.push({
+						code: 'REQUIRED_SUBNODE_CONNECTED',
+						message: `Connected '${link.sourceNode}' to the ${link.connectionType} input of '${link.targetNode}', which its own parameters made required. The source was taken from '${link.viaParent}'. Wire this explicitly in future edits.`,
+						nodeName: link.targetNode,
+					});
+				}
 
 				const tagIds = await resolveTagIds(result.tagNames, user, tagService);
 

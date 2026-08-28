@@ -1686,4 +1686,114 @@ describe('WorkflowValidationService', () => {
 			expect(result.error).toContain('"Webhook"');
 		});
 	});
+	describe('validateRequiredInputsConnected', () => {
+		const nodeTypes = mock<NodeTypes>();
+
+		const node = (name: string, type: string, disabled = false): INode => ({
+			name,
+			type,
+			id: `node-${name}`,
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			...(disabled ? { disabled } : {}),
+		});
+
+		/** Parser-like node whose `Model` input is declared required. */
+		const parserType = {
+			description: {
+				displayName: 'Parser',
+				name: 'parser',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Parser' },
+				inputs: [{ displayName: 'Model', type: 'ai_languageModel', required: true }],
+				outputs: ['ai_outputParser'],
+				properties: [],
+			} as unknown as INodeTypeDescription,
+		} as INodeType;
+
+		const modelType = {
+			description: {
+				displayName: 'Model',
+				name: 'model',
+				group: ['transform'],
+				version: 1,
+				description: '',
+				defaults: { name: 'Model' },
+				inputs: [],
+				outputs: ['ai_languageModel'],
+				properties: [],
+			} as unknown as INodeTypeDescription,
+		} as INodeType;
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) =>
+				type === 'parser' ? parserType : modelType,
+			);
+		});
+
+		it('rejects activation when a required input has nothing connected', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser')],
+				{},
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+			expect(result.error).toContain(
+				"'Parser' has no node connected to its required 'Model' input",
+			);
+		});
+
+		it('allows activation once the required input is connected', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Model', 'model')],
+				{
+					Model: {
+						ai_languageModel: [[{ node: 'Parser', type: 'ai_languageModel', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('treats a disabled source as not connected', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser'), node('Model', 'model', true)],
+				{
+					Model: {
+						ai_languageModel: [[{ node: 'Parser', type: 'ai_languageModel', index: 0 }]],
+					},
+				} as unknown as IConnections,
+				nodeTypes,
+			);
+
+			expect(result.isValid).toBe(false);
+		});
+
+		it('ignores disabled nodes with unmet requirements', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser', 'parser', true)],
+				{},
+				nodeTypes,
+			);
+
+			expect(result).toEqual({ isValid: true });
+		});
+
+		it('reports every unmet required input at once', async () => {
+			const result = await service.validateRequiredInputsConnected(
+				[node('Parser A', 'parser'), node('Parser B', 'parser')],
+				{},
+				nodeTypes,
+			);
+
+			expect(result.error).toContain("'Parser A'");
+			expect(result.error).toContain("'Parser B'");
+		});
+	});
 });

@@ -6,6 +6,7 @@ import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
 import {
 	validateWorkflowHasTriggerLikeNode,
 	NodeHelpers,
+	Workflow,
 	mapConnectionsByDestination,
 	validateNodeCredentials,
 	isNodeConnected,
@@ -335,6 +336,82 @@ export class WorkflowValidationService {
 
 		if (!configValidation.isValid) {
 			return configValidation;
+		}
+
+		return { isValid: true };
+	}
+
+	/**
+	 * Validates that every input a node declares as required actually has
+	 * something connected to it.
+	 *
+	 * The editor already computes this (`getNodeInputIssues` in
+	 * `useNodeHelpers`) and draws a warning triangle, but nothing enforced it, so
+	 * a workflow could be published with a required input left dangling and would
+	 * then throw on every execution — e.g. an output parser with `autoFix: true`
+	 * and no model, which fails while the agent assembles its sub-nodes, before
+	 * any inference runs.
+	 *
+	 * Kept separate from `validateForActivation` because resolving a node's
+	 * inputs may evaluate an expression, which is async; the other activation
+	 * checks are synchronous and have a caller that relies on that.
+	 */
+	async validateRequiredInputsConnected(
+		nodes: INode[],
+		connections: IConnections,
+		nodeTypes: NodeTypes,
+	): Promise<WorkflowValidationResult> {
+		// Transient Workflow so dynamic `inputs` expressions can be evaluated
+		// against each node's current parameters. Not persisted.
+		const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
+		const connectionsByDestination = mapConnectionsByDestination(connections);
+		const issues: string[] = [];
+
+		// Dynamic `inputs` expressions resolve through workflow.expression, which
+		// needs an isolate when the VM expression engine is on. Without it
+		// getNodeInputs returns [] and this check silently passes everything.
+		await workflow.expression.acquireIsolate();
+		try {
+			for (const node of nodes) {
+				if (node.disabled) continue;
+
+				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+				if (!nodeType?.description) continue;
+
+				const workflowNode = workflow.getNode(node.name);
+				if (!workflowNode) continue;
+
+				for (const input of NodeHelpers.getNodeInputs(
+					workflow,
+					workflowNode,
+					nodeType.description,
+				)) {
+					if (typeof input === 'string' || input.required !== true) continue;
+
+					const incoming = connectionsByDestination[node.name]?.[input.type];
+					const isConnectedToInput = incoming?.some((connections) =>
+						connections?.some((connection) => {
+							const source = workflow.getNode(connection.node);
+							return source ? !source.disabled : false;
+						}),
+					);
+
+					if (!isConnectedToInput) {
+						issues.push(
+							`'${node.name}' has no node connected to its required '${input.displayName ?? input.type}' input`,
+						);
+					}
+				}
+			}
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
+
+		if (issues.length > 0) {
+			return {
+				isValid: false,
+				error: `Workflow cannot be activated because required inputs are not connected: ${issues.join('; ')}.`,
+			};
 		}
 
 		return { isValid: true };

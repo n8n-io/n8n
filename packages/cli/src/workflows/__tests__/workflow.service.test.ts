@@ -1149,12 +1149,14 @@ describe('WorkflowService', () => {
 			const internals = workflowService as unknown as {
 				_detectWebhookConflicts: () => Promise<void>;
 				_validateNodes: () => void;
+				_validateRequiredInputs: () => Promise<void>;
 				_validateDynamicCredentials: () => Promise<void>;
 				_validateSubWorkflowReferences: () => Promise<void>;
 				_validateTriggerNodeIds: () => void;
 			};
 			vi.spyOn(internals, '_detectWebhookConflicts').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateNodes').mockReturnValue(undefined);
+			vi.spyOn(internals, '_validateRequiredInputs').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateDynamicCredentials').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateSubWorkflowReferences').mockResolvedValue(undefined);
 			vi.spyOn(internals, '_validateTriggerNodeIds').mockReturnValue(undefined);

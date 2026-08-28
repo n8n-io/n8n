@@ -294,6 +294,14 @@ export function useNodeHelpers() {
 		});
 	}
 
+	function updateNodeInputIssuesByName(name: string): void {
+		const node = workflowDocumentStore.value.getNodeByName(name) ?? null;
+
+		if (node) {
+			updateNodeInputIssues(node);
+		}
+	}
+
 	function updateNodesInputIssues() {
 		const nodes = workflowDocumentStore.value.allNodes;
 
@@ -1051,6 +1059,7 @@ export function useNodeHelpers() {
 		updateNodesExecutionIssues,
 		updateNodesParameterIssues,
 		updateNodeInputIssues,
+		updateNodeInputIssuesByName,
 		updateNodeCredentialIssuesByName,
 		updateNodeCredentialIssues,
 		updateNodeParameterIssuesByName,

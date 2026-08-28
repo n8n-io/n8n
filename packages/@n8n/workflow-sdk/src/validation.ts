@@ -16,6 +16,11 @@ export {
 	type ValidateWorkflowBuilderOptions,
 	type ValidateWorkflowBuilderResult,
 	type CollectedValidationIssue,
+	connectRequiredSubnodeInputs,
+	type AddedSubnodeConnection,
+	type UnsatisfiedRequiredInput,
+	type RequiredSubnodeWiringResult,
+	type WorkflowForSubnodeWiring,
 } from './validation/index';
 
 export {
