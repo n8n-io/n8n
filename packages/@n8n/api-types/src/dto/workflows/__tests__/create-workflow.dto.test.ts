@@ -1,4 +1,4 @@
-import { GROUP_DESCRIPTION_MAX_LENGTH } from 'n8n-workflow';
+import { GROUP_DESCRIPTION_MAX_LENGTH, jsonParse } from 'n8n-workflow';
 
 import { CreateWorkflowDto } from '../create-workflow.dto';
 
@@ -398,6 +398,26 @@ describe('CreateWorkflowDto', () => {
 					],
 				},
 				expectedErrorPath: ['nodeGroups', 0, 'description'],
+			},
+			{
+				name: 'connections with a "__proto__" node name',
+				// jsonParse (unlike an object literal) creates an own-enumerable "__proto__" key.
+				request: { name: 'Test', nodes: [], connections: jsonParse('{"__proto__":{}}') },
+				expectedErrorPath: ['connections'],
+			},
+			{
+				name: 'connections with a reserved "constructor" node name',
+				request: { name: 'Test', nodes: [], connections: { constructor: {} } },
+				expectedErrorPath: ['connections'],
+			},
+			{
+				name: 'connections with a "__proto__" input name',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: jsonParse('{"Manual Trigger":{"__proto__":[[]]}}'),
+				},
+				expectedErrorPath: ['connections'],
 			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = CreateWorkflowDto.safeParse(request);

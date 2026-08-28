@@ -27,8 +27,38 @@ export const workflowNodesSchema = z.custom<INode[]>((val) => Array.isArray(val)
 	message: 'Nodes must be an array',
 });
 
+/**
+ * Keys that resolve through the Object.prototype accessor and must not be used
+ * as dynamic object keys.
+ */
+const FORBIDDEN_CONNECTION_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
+ * Rejects connection payloads whose node names or input names include a key that
+ * would otherwise resolve through the Object.prototype accessor when used as a
+ * dynamic object key.
+ */
+function hasForbiddenConnectionKey(connections: object): boolean {
+	// `connections` is freshly-parsed JSON; treat its values as unknown.
+	const record = connections as Record<string, unknown>;
+	for (const nodeName of Object.keys(record)) {
+		if (FORBIDDEN_CONNECTION_KEYS.has(nodeName)) return true;
+		const inputs = record[nodeName];
+		if (inputs !== null && typeof inputs === 'object') {
+			for (const inputName of Object.keys(inputs)) {
+				if (FORBIDDEN_CONNECTION_KEYS.has(inputName)) return true;
+			}
+		}
+	}
+	return false;
+}
+
 export const workflowConnectionsSchema = z.custom<IConnections>(
-	(val) => typeof val === 'object' && val !== null && !Array.isArray(val),
+	(val: unknown) =>
+		typeof val === 'object' &&
+		val !== null &&
+		!Array.isArray(val) &&
+		!hasForbiddenConnectionKey(val),
 	{
 		message: 'Connections must be an object',
 	},

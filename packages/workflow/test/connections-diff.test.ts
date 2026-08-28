@@ -618,4 +618,34 @@ describe('compareConnections', () => {
 			expect(result.removed).toEqual({});
 		});
 	});
+
+	// A connections object parsed from JSON can carry an own-enumerable "__proto__"
+	// key (unlike an object literal). Such a node name must be handled as an
+	// ordinary own key rather than resolving through the Object.prototype accessor.
+	describe('reserved object keys as node names', () => {
+		// Always clean up so a regression (which would set the key globally) cannot
+		// leak into the rest of the suite / test process.
+		afterEach(() => {
+			delete (Object.prototype as Record<string, unknown>).n8n_probe_key;
+		});
+
+		it('should treat a "__proto__" node name as an ordinary own key on the diff', () => {
+			// Two versions that differ only in the connections nested under a literal
+			// "__proto__" node.
+			const prev = JSON.parse('{"__proto__":{}}') as IConnections;
+			const next = JSON.parse(
+				'{"__proto__":{"n8n_probe_key":[[{"node":"X","type":"main","index":0}]]}}',
+			) as IConnections;
+
+			expect('n8n_probe_key' in prev).toBe(false);
+
+			const result = compareConnections(prev, next);
+
+			// The added connection under "__proto__" must be recorded as an own
+			// property of the result, never on the shared Object.prototype.
+			expect(({} as Record<string, unknown>).n8n_probe_key).toBeUndefined();
+			expect('n8n_probe_key' in Object.prototype).toBe(false);
+			expect(Object.keys(result.added)).toContain('__proto__');
+		});
+	});
 });

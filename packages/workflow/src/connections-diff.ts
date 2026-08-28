@@ -31,9 +31,20 @@ function groupByValue(connections: IConnection[]) {
 	return byValue;
 }
 
+/**
+ * Creates a prototype-less dictionary so a dynamic key such as "__proto__" is
+ * stored as an ordinary own key instead of resolving through the
+ * Object.prototype accessor.
+ */
+function nullProtoRecord<T>(): Record<string, T> {
+	return Object.create(null) as Record<string, T>;
+}
+
 export function compareConnections(prev: IConnections, next: IConnections): ConnectionsDiff {
-	const added: Record<string, INodeConnectionsDiff> = {};
-	const removed: Record<string, INodeConnectionsDiff> = {};
+	// Prototype-less accumulators so a node/input name of "__proto__" becomes an
+	// ordinary own key instead of resolving through the Object.prototype accessor.
+	const added: Record<string, INodeConnectionsDiff> = nullProtoRecord<INodeConnectionsDiff>();
+	const removed: Record<string, INodeConnectionsDiff> = nullProtoRecord<INodeConnectionsDiff>();
 
 	// Get all unique node names from both connection objects
 	const allNodeNames = new Set([...Object.keys(prev), ...Object.keys(next)]);
@@ -67,7 +78,7 @@ export function compareConnections(prev: IConnections, next: IConnections): Conn
 				for (const [key, entries] of nextMap) {
 					const kept = prevMap.get(key)?.length ?? 0;
 					for (const value of entries.slice(kept)) {
-						if (!added[nodeName]) added[nodeName] = {};
+						if (!added[nodeName]) added[nodeName] = nullProtoRecord<ConnectionEntry[]>();
 						if (!added[nodeName][inputName]) added[nodeName][inputName] = [];
 
 						added[nodeName][inputName].push({
@@ -81,7 +92,7 @@ export function compareConnections(prev: IConnections, next: IConnections): Conn
 				for (const [key, entries] of prevMap) {
 					const kept = nextMap.get(key)?.length ?? 0;
 					for (const value of entries.slice(kept)) {
-						if (!removed[nodeName]) removed[nodeName] = {};
+						if (!removed[nodeName]) removed[nodeName] = nullProtoRecord<ConnectionEntry[]>();
 						if (!removed[nodeName][inputName]) removed[nodeName][inputName] = [];
 
 						removed[nodeName][inputName].push({

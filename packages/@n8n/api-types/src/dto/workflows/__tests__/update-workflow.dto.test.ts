@@ -1,3 +1,5 @@
+import { jsonParse } from 'n8n-workflow';
+
 import { UpdateWorkflowDto } from '../update-workflow.dto';
 
 describe('UpdateWorkflowDto', () => {
@@ -153,6 +155,17 @@ describe('UpdateWorkflowDto', () => {
 			{
 				name: 'connections as array',
 				request: { connections: [] },
+				expectedErrorPath: ['connections'],
+			},
+			{
+				name: 'connections with a "__proto__" node name',
+				// A body parsed from JSON carries an own-enumerable "__proto__" key
+				// (unlike an object literal).
+				request: {
+					connections: jsonParse(
+						'{"__proto__":{"someInput":[[{"node":"X","type":"main","index":0}]]},"Manual Trigger":{"main":[[]]}}',
+					),
+				},
 				expectedErrorPath: ['connections'],
 			},
 			{
