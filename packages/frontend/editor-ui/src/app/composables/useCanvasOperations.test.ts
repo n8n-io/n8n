@@ -4622,7 +4622,6 @@ describe('useCanvasOperations', () => {
 			});
 
 			const credentialsStore = useCredentialsStore();
-			// @ts-expect-error Known pinia issue when spying on store getters
 			vi.spyOn(credentialsStore, 'allCredentials', 'get').mockReturnValue(usableCredentials);
 
 			const nodeTypesStore = useNodeTypesStore();
