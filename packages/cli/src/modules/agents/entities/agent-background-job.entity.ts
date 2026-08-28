@@ -13,8 +13,7 @@ export type AgentBackgroundJobStatus = 'running' | 'completed' | 'failed' | 'can
  */
 @Entity({ name: 'agent_background_job' })
 @Index(['parentThreadId'])
-@Index(['childExecutionId'])
-@Index(['parentThreadId', 'dedupeKey'], { unique: true, where: '"dedupeKey" IS NOT NULL' })
+@Index(['childExecutionId'], { unique: true, where: '"childExecutionId" IS NOT NULL' })
 @Index(['timeoutAt'], { where: '"status" = \'running\'' })
 export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 16 })
@@ -54,10 +53,6 @@ export class AgentBackgroundJob extends WithTimestampsAndStringId {
 	/** Workflow jobs only; scopes cancellation. */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	workflowId: string | null;
-
-	/** Single-flight key, unique per parent thread while running; cleared at settle. */
-	@Column({ type: 'varchar', length: 255, nullable: true })
-	dedupeKey: string | null;
 
 	/** When reconciliation fails the job as timed out; NULL means no timeout. */
 	@DateTimeColumn({ precision: 3, nullable: true })

@@ -105,7 +105,6 @@ erDiagram
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   datetime_3_ createdAt
-  varchar_255_ dedupeKey
   TEXT error
   varchar_36_ id PK
   varchar_16_ kind

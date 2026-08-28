@@ -38,9 +38,6 @@ export class CreateAgentBackgroundJobTable1787756564283 implements ReversibleMig
 					.comment('Sub-agent jobs only; minted at dispatch, links to agent_execution_threads'),
 				column('childExecutionId').varchar(36).comment('Workflow jobs only'),
 				column('workflowId').varchar(36).comment('Workflow jobs only; scopes cancellation'),
-				column('dedupeKey')
-					.varchar(255)
-					.comment('Single-flight key, unique per parent thread while running; cleared at settle'),
 				column('timeoutAt')
 					.timestampTimezone(3)
 					.comment('When reconciliation fails the job as timed out; NULL means no timeout'),
@@ -49,7 +46,6 @@ export class CreateAgentBackgroundJobTable1787756564283 implements ReversibleMig
 				column('settledAt').timestampTimezone(3),
 			)
 			.withIndexOn('parentThreadId')
-			.withIndexOn('childExecutionId')
 			.withForeignKey('parentAgentId', {
 				tableName: 'agents',
 				columnName: 'id',
@@ -61,12 +57,15 @@ export class CreateAgentBackgroundJobTable1787756564283 implements ReversibleMig
 				onDelete: 'CASCADE',
 			}).withTimestamps;
 
+		// One job per workflow execution, enforced by the schema and never
+		// relaxed at settle — a replayed registration for the same execution
+		// reads back the existing row instead of creating a second tracker.
 		await createIndex(
 			'agent_background_job',
-			['parentThreadId', 'dedupeKey'],
+			['childExecutionId'],
 			true,
 			undefined,
-			'"dedupeKey" IS NOT NULL',
+			'"childExecutionId" IS NOT NULL',
 		);
 
 		// Reconciliation sweeps every couple of minutes on every main, filtering

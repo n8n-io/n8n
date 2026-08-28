@@ -24,7 +24,6 @@ export interface BackgroundSpawnRequest {
 	goal: string;
 	context?: string;
 	expectedOutput?: string;
-	dedupeKey?: string;
 	parentThreadId: string;
 	parentResourceId: string;
 	parentSandboxPrincipalHash?: string;
@@ -74,7 +73,6 @@ export class SubAgentBackgroundRunner {
 			title: request.taskName,
 			subAgentId: request.subAgentId,
 			childThreadId,
-			dedupeKey: request.dedupeKey,
 		});
 		if (receipt.status !== 'started') return receipt;
 

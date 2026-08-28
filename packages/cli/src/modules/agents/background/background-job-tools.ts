@@ -56,9 +56,8 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 		.input(
 			z.object({
 				subAgentId: z.string().describe('Id of a configured sub-agent from the roster'),
-				// min/max mirror the varchar(255) job columns — an oversized value
-				// would otherwise surface as a raw DB error, and '' would slip past
-				// the NULL-skipping dedupe index as a real key.
+				// min/max mirror the varchar(255) title column — an oversized value
+				// would otherwise surface as a raw DB error.
 				taskName: z
 					.string()
 					.min(1)
@@ -67,22 +66,12 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 				goal: z.string().describe('What the sub-agent should accomplish'),
 				context: z.string().optional().describe('Background information the sub-agent needs'),
 				expectedOutput: z.string().optional().describe('Shape of the answer to return'),
-				dedupeKey: z
-					.string()
-					.min(1)
-					.max(255)
-					.optional()
-					.describe(
-						'Single-flight key: a spawn with a key already held by a running job of this ' +
-							'conversation returns that job instead of starting a second one',
-					),
 			}),
 		)
 		.output(
 			z.object({
-				status: z.enum(['started', 'limit-reached', 'duplicate', 'rejected']),
+				status: z.enum(['started', 'limit-reached', 'rejected']),
 				jobId: z.string().optional(),
-				existingJobId: z.string().optional(),
 				note: z.string().optional(),
 			}),
 		)
@@ -114,7 +103,6 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 					goal: input.goal,
 					context: input.context,
 					expectedOutput: input.expectedOutput,
-					dedupeKey: input.dedupeKey,
 					parentThreadId,
 					parentResourceId,
 					...(sandboxScope?.projectId === options.projectId
@@ -133,13 +121,6 @@ export function createSpawnBackgroundSubAgentTool(options: BackgroundJobToolsOpt
 					status: 'started',
 					jobId: receipt.jobId,
 					note: 'Job dispatched. Check on it later with check_background_jobs.',
-				};
-			}
-			if (receipt.status === 'duplicate') {
-				return {
-					status: 'duplicate',
-					existingJobId: receipt.existingJobId,
-					note: 'A running job of this conversation already holds this dedupeKey.',
 				};
 			}
 			return {

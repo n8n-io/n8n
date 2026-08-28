@@ -26,7 +26,6 @@ function makeJob(overrides: Partial<AgentBackgroundJob> = {}): AgentBackgroundJo
 		childThreadId: 'child-thread-1',
 		childExecutionId: null,
 		workflowId: null,
-		dedupeKey: null,
 		timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
 		result: null,
 		error: null,
@@ -45,8 +44,7 @@ function setup() {
 	(logger.scoped as Mock).mockReturnValue(logger);
 
 	jobRepository.countRunningByParentThread.mockResolvedValue(0);
-	jobRepository.findRunningByDedupeKey.mockResolvedValue(null);
-	jobRepository.insertJob.mockResolvedValue({ inserted: true });
+	jobRepository.insertJob.mockResolvedValue(undefined);
 	jobRepository.settleIfRunning.mockResolvedValue(true);
 	jobRepository.findByParentThread.mockResolvedValue([]);
 	jobRepository.findRunningJobs.mockResolvedValue([]);
@@ -70,7 +68,6 @@ const registerParams = {
 	title: 'research',
 	subAgentId: 'sub-1',
 	childThreadId: 'child-thread-1',
-	dedupeKey: undefined,
 };
 
 describe('registerSubAgentJob', () => {
@@ -95,32 +92,6 @@ describe('registerSubAgentJob', () => {
 
 		expect(receipt).toEqual({ status: 'limit-reached' });
 		expect(jobRepository.insertJob).not.toHaveBeenCalled();
-	});
-
-	it('returns duplicate at the cap when a running job already holds the dedupe key', async () => {
-		const { service, jobRepository } = setup();
-		jobRepository.countRunningByParentThread.mockResolvedValue(MAX_RUNNING_JOBS_PER_THREAD);
-		jobRepository.findRunningByDedupeKey.mockResolvedValue(
-			makeJob({ id: 'job-holder', dedupeKey: 'key-1' }),
-		);
-
-		const receipt = await service.registerSubAgentJob({ ...registerParams, dedupeKey: 'key-1' });
-
-		expect(jobRepository.findRunningByDedupeKey).toHaveBeenCalledWith('thread-1', 'key-1');
-		expect(receipt).toEqual({ status: 'duplicate', existingJobId: 'job-holder' });
-		expect(jobRepository.insertJob).not.toHaveBeenCalled();
-	});
-
-	it('returns duplicate with the existing job id on a dedupe conflict', async () => {
-		const { service, jobRepository } = setup();
-		jobRepository.insertJob.mockResolvedValue({
-			inserted: false,
-			existing: makeJob({ id: 'job-existing' }),
-		});
-
-		const receipt = await service.registerSubAgentJob({ ...registerParams, dedupeKey: 'key-1' });
-
-		expect(receipt).toEqual({ status: 'duplicate', existingJobId: 'job-existing' });
 	});
 });
 

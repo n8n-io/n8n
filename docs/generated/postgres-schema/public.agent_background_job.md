@@ -7,7 +7,6 @@
 | childExecutionId | varchar(36) |  | true |  |  | Workflow jobs only |
 | childThreadId | varchar(128) |  | true |  |  | Sub-agent jobs only; minted at dispatch, links to agent_execution_threads |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| dedupeKey | varchar(255) |  | true |  |  | Single-flight key, unique per parent thread while running; cleared at settle |
 | error | text |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(16) |  | false |  |  | What the job tracks: a detached sub-agent run or a workflow execution |
@@ -46,9 +45,8 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_3c78976c9ddd0e61d87c862642 | CREATE INDEX "IDX_3c78976c9ddd0e61d87c862642" ON public.agent_background_job USING btree ("childExecutionId") |
 | IDX_adfb96f4e2e8f163da2615cd57 | CREATE INDEX "IDX_adfb96f4e2e8f163da2615cd57" ON public.agent_background_job USING btree ("parentThreadId") |
-| IDX_agent_background_job_parentThreadId_dedupeKey | CREATE UNIQUE INDEX "IDX_agent_background_job_parentThreadId_dedupeKey" ON public.agent_background_job USING btree ("parentThreadId", "dedupeKey") WHERE ("dedupeKey" IS NOT NULL) |
+| IDX_agent_background_job_childExecutionId | CREATE UNIQUE INDEX "IDX_agent_background_job_childExecutionId" ON public.agent_background_job USING btree ("childExecutionId") WHERE ("childExecutionId" IS NOT NULL) |
 | IDX_agent_background_job_timeoutAt | CREATE INDEX "IDX_agent_background_job_timeoutAt" ON public.agent_background_job USING btree ("timeoutAt") WHERE ((status)::text = 'running'::text) |
 | PK_6e0db58281aa2b4c956dc0d58e9 | CREATE UNIQUE INDEX "PK_6e0db58281aa2b4c956dc0d58e9" ON public.agent_background_job USING btree (id) |
 
@@ -64,7 +62,6 @@ erDiagram
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
-  varchar_255_ dedupeKey
   text error
   varchar_36_ id
   varchar_16_ kind

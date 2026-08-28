@@ -8,7 +8,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
-| [agent_background_job](agent_background_job.md) | 18 |  | table |
+| [agent_background_job](agent_background_job.md) | 17 |  | table |
 | [agent_channel_status](agent_channel_status.md) | 11 |  | table |
 | [agent_chat_attachments](agent_chat_attachments.md) | 12 |  | table |
 | [agent_chat_subscriptions](agent_chat_subscriptions.md) | 6 |  | table |
@@ -343,7 +343,6 @@ erDiagram
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   datetime_3_ createdAt
-  varchar_255_ dedupeKey
   TEXT error
   varchar_36_ id PK
   varchar_16_ kind

@@ -90,7 +90,7 @@ describe('spawn_background_subagent', () => {
 		expect(backgroundRunner.spawn).not.toHaveBeenCalled();
 	});
 
-	it('forwards dedupeKey, context and expectedOutput to the spawn request', async () => {
+	it('forwards context and expectedOutput to the spawn request', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
 		const tool = createSpawnBackgroundSubAgentTool(options);
@@ -102,7 +102,6 @@ describe('spawn_background_subagent', () => {
 				goal: 'find things',
 				context: 'background info',
 				expectedOutput: 'a list',
-				dedupeKey: 'key-1',
 			},
 			{ persistence },
 		);
@@ -110,7 +109,6 @@ describe('spawn_background_subagent', () => {
 		expect(backgroundRunner.spawn.mock.calls[0][0]).toMatchObject({
 			context: 'background info',
 			expectedOutput: 'a list',
-			dedupeKey: 'key-1',
 		});
 	});
 
@@ -142,12 +140,9 @@ describe('spawn_background_subagent', () => {
 		);
 	});
 
-	it.each([
-		{ receipt: { status: 'duplicate', existingJobId: 'job-9' } as const },
-		{ receipt: { status: 'limit-reached' } as const },
-	])('echoes a $receipt.status receipt in the tool output', async ({ receipt }) => {
+	it('echoes a limit-reached receipt in the tool output', async () => {
 		const { backgroundRunner, options } = setup();
-		backgroundRunner.spawn.mockResolvedValue(receipt);
+		backgroundRunner.spawn.mockResolvedValue({ status: 'limit-reached' });
 		const tool = createSpawnBackgroundSubAgentTool(options);
 
 		const output = await tool.handler!(
@@ -155,7 +150,7 @@ describe('spawn_background_subagent', () => {
 			{ persistence },
 		);
 
-		expect(output).toMatchObject(receipt);
+		expect(output).toMatchObject({ status: 'limit-reached' });
 	});
 });
 

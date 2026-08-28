@@ -17,8 +17,7 @@ export const SUB_AGENT_BACKGROUND_TIMEOUT_MS = 30 * 60 * 1000;
 
 export type BackgroundJobReceipt =
 	| { status: 'started'; jobId: string }
-	| { status: 'limit-reached' }
-	| { status: 'duplicate'; existingJobId: string };
+	| { status: 'limit-reached' };
 
 export type BackgroundJobView = Pick<
 	AgentBackgroundJob,
@@ -45,48 +44,28 @@ export class AgentBackgroundJobService {
 	}
 
 	/**
-	 * Register a sub-agent job. The receipt statuses follow the spawn contract:
+	 * Register a sub-agent job. The receipt follows the spawn contract:
 	 * `limit-reached` when the thread already has the maximum running jobs,
-	 * `duplicate` when the dedupe key is already held by a running job, else
-	 * `started`.
+	 * else `started`.
 	 */
 	async registerSubAgentJob(
 		params: Pick<
 			NewAgentBackgroundJob,
 			'id' | 'parentAgentId' | 'parentThreadId' | 'projectId' | 'title' | 'subAgentId'
 		> &
-			Required<Pick<NewAgentBackgroundJob, 'childThreadId'>> &
-			Pick<NewAgentBackgroundJob, 'dedupeKey'>,
+			Required<Pick<NewAgentBackgroundJob, 'childThreadId'>>,
 	): Promise<BackgroundJobReceipt> {
-		// '' would slip past the NULL-skipping dedupe index as a real key while
-		// the readback treats it as "no dedupe" — normalize it away.
-		const dedupeKey = params.dedupeKey || undefined;
-
 		// ponytail: count-then-insert can briefly admit one job over the cap under
 		// concurrent spawns; the limit is advisory. Wrap in a transaction if it
 		// ever needs to be exact.
 		const running = await this.jobRepository.countRunningByParentThread(params.parentThreadId);
-		if (running >= MAX_RUNNING_JOBS_PER_THREAD) {
-			// An idempotent retry of a running job must still get its receipt back
-			// at the cap instead of a spurious limit-reached.
-			if (dedupeKey) {
-				const holder = await this.jobRepository.findRunningByDedupeKey(
-					params.parentThreadId,
-					dedupeKey,
-				);
-				if (holder) return { status: 'duplicate', existingJobId: holder.id };
-			}
-			return { status: 'limit-reached' };
-		}
+		if (running >= MAX_RUNNING_JOBS_PER_THREAD) return { status: 'limit-reached' };
 
-		const outcome = await this.jobRepository.insertJob({
+		await this.jobRepository.insertJob({
 			...params,
-			dedupeKey,
 			kind: 'subagent',
 			timeoutAt: new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS),
 		});
-		if (!outcome.inserted) return { status: 'duplicate', existingJobId: outcome.existing.id };
-
 		return { status: 'started', jobId: params.id };
 	}
 

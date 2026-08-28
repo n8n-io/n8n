@@ -108,16 +108,13 @@ describe('spawn', () => {
 		expect(runContext.onChunk).toBeUndefined();
 	});
 
-	it.each([
-		{ status: 'limit-reached' } as const,
-		{ status: 'duplicate', existingJobId: 'job-existing' } as const,
-	])('does not start a run when the receipt is $status', async (receiptFromService) => {
+	it('does not start a run when the receipt is limit-reached', async () => {
 		const { backgroundRunner, runner, jobService, context } = setup();
-		jobService.registerSubAgentJob.mockResolvedValue(receiptFromService);
+		jobService.registerSubAgentJob.mockResolvedValue({ status: 'limit-reached' });
 
 		const receipt = await backgroundRunner.spawn(request, context);
 
-		expect(receipt).toEqual(receiptFromService);
+		expect(receipt).toEqual({ status: 'limit-reached' });
 		expect(runner.run).not.toHaveBeenCalled();
 	});
 

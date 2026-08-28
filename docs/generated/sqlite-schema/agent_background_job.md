@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "parentAgentId" varchar(36) NOT NULL, "parentThreadId" varchar(128) NOT NULL, "projectId" varchar(36) NOT NULL, "title" varchar(255) NOT NULL, "subAgentId" varchar(36), "childThreadId" varchar(128), "childExecutionId" varchar(36), "workflowId" varchar(36), "dedupeKey" varchar(255), "timeoutAt" datetime(3), "result" text, "error" text, "settledAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_background_job_kind" CHECK ("kind" IN ('subagent', 'workflow')), CONSTRAINT "CHK_agent_background_job_status" CHECK ("status" IN ('running', 'completed', 'failed', 'cancelled')), CONSTRAINT "FK_d46c6f00730c2ef8bcb6ee24b67" FOREIGN KEY ("parentAgentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_4c5abc8e465208c985f089e055e" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE)
+CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kind" varchar(16) NOT NULL, "status" varchar(16) NOT NULL, "parentAgentId" varchar(36) NOT NULL, "parentThreadId" varchar(128) NOT NULL, "projectId" varchar(36) NOT NULL, "title" varchar(255) NOT NULL, "subAgentId" varchar(36), "childThreadId" varchar(128), "childExecutionId" varchar(36), "workflowId" varchar(36), "timeoutAt" datetime(3), "result" text, "error" text, "settledAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_agent_background_job_kind" CHECK ("kind" IN ('subagent', 'workflow')), CONSTRAINT "CHK_agent_background_job_status" CHECK ("status" IN ('running', 'completed', 'failed', 'cancelled')), CONSTRAINT "FK_d46c6f00730c2ef8bcb6ee24b67" FOREIGN KEY ("parentAgentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_4c5abc8e465208c985f089e055e" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -18,7 +18,6 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 | childExecutionId | varchar(36) |  | true |  |  |  |
 | childThreadId | varchar(128) |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| dedupeKey | varchar(255) |  | true |  |  |  |
 | error | TEXT |  | true |  |  |  |
 | id | varchar(36) |  | false |  |  |  |
 | kind | varchar(16) |  | false |  |  |  |
@@ -49,9 +48,8 @@ CREATE TABLE "agent_background_job" ("id" varchar(36) PRIMARY KEY NOT NULL, "kin
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_3c78976c9ddd0e61d87c862642 | CREATE INDEX "IDX_3c78976c9ddd0e61d87c862642" ON "agent_background_job" ("childExecutionId")  |
 | IDX_adfb96f4e2e8f163da2615cd57 | CREATE INDEX "IDX_adfb96f4e2e8f163da2615cd57" ON "agent_background_job" ("parentThreadId")  |
-| IDX_agent_background_job_parentThreadId_dedupeKey | CREATE UNIQUE INDEX "IDX_agent_background_job_parentThreadId_dedupeKey" ON "agent_background_job" ("parentThreadId", "dedupeKey") WHERE "dedupeKey" IS NOT NULL |
+| IDX_agent_background_job_childExecutionId | CREATE UNIQUE INDEX "IDX_agent_background_job_childExecutionId" ON "agent_background_job" ("childExecutionId") WHERE "childExecutionId" IS NOT NULL |
 | IDX_agent_background_job_timeoutAt | CREATE INDEX "IDX_agent_background_job_timeoutAt" ON "agent_background_job" ("timeoutAt") WHERE "status" = 'running' |
 | sqlite_autoindex_agent_background_job_1 | PRIMARY KEY (id) |
 
@@ -67,7 +65,6 @@ erDiagram
   varchar_36_ childExecutionId
   varchar_128_ childThreadId
   datetime_3_ createdAt
-  varchar_255_ dedupeKey
   TEXT error
   varchar_36_ id PK
   varchar_16_ kind
