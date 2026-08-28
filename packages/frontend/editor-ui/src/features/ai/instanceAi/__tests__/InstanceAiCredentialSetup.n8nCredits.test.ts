@@ -102,9 +102,11 @@ describe('InstanceAiCredentialSetup - n8n credits with NodeCredentials', () => {
 		const credentialsStore = useCredentialsStore();
 		credentialsStore.state.credentialTypes = { openAiApi: openAiApiCredType };
 		credentialsStore.state.credentials = { 'cred-1': existingCred, 'cred-2': existingCred2 };
-		// The store getter cannot be spied on directly.
-		credentialsStore.getCredentialById = ((id: string) =>
-			id === 'cred-2' ? existingCred2 : existingCred) as typeof credentialsStore.getCredentialById;
+		// The store getter cannot be spied on or assigned directly.
+		Object.defineProperty(credentialsStore, 'getCredentialById', {
+			configurable: true,
+			get: () => (id: string) => (id === 'cred-2' ? existingCred2 : existingCred),
+		});
 		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
 		vi.spyOn(credentialsStore, 'fetchUsableCredentials').mockResolvedValue([]);
 		vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
