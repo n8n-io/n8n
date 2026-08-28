@@ -11,11 +11,11 @@
       --border: #2a2f3d;
       --text: #e8eaef;
       --muted: #9aa3b2;
+      --opus: #70ad47;
       --low: #5b9bd5;
       --high: #ed7d31;
       --max: #a569bd;
-      --grid: #2a2f3d;
-      --accent: #70ad47;
+      --accent: #9fd26b;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -28,10 +28,7 @@
       padding: 2rem 1.25rem 3rem;
     }
 
-    .wrap {
-      max-width: 920px;
-      margin: 0 auto;
-    }
+    .wrap { max-width: 1040px; margin: 0 auto; }
 
     header {
       margin-bottom: 2rem;
@@ -46,11 +43,7 @@
       margin-bottom: 0.35rem;
     }
 
-    .meta {
-      color: var(--muted);
-      font-size: 0.92rem;
-    }
-
+    .meta { color: var(--muted); font-size: 0.92rem; }
     .meta strong { color: #c5ccd8; font-weight: 600; }
 
     .legend {
@@ -74,6 +67,7 @@
       border-radius: 3px;
     }
 
+    .swatch.opus { background: var(--opus); }
     .swatch.low { background: var(--low); }
     .swatch.high { background: var(--high); }
     .swatch.max { background: var(--max); }
@@ -95,27 +89,21 @@
       margin-bottom: 1.1rem;
     }
 
-    .chart {
-      display: grid;
-      gap: 1rem;
-    }
+    .chart { display: grid; gap: 1rem; }
 
     .metric-row {
       display: grid;
-      grid-template-columns: 110px 1fr 52px;
+      grid-template-columns: 110px 1fr 64px;
       align-items: center;
       gap: 0.75rem;
     }
 
-    .metric-label {
-      font-size: 0.88rem;
-      color: var(--muted);
-    }
+    .metric-label { font-size: 0.88rem; color: var(--muted); }
 
     .bars {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.65rem;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.55rem;
       align-items: end;
       height: 140px;
       padding-top: 0.25rem;
@@ -131,32 +119,34 @@
     }
 
     .bar-value {
-      font-size: 0.78rem;
+      font-size: 0.74rem;
       font-weight: 600;
       color: var(--text);
+      text-align: center;
     }
 
     .bar {
       width: 100%;
-      max-width: 72px;
+      max-width: 64px;
       border-radius: 6px 6px 2px 2px;
       min-height: 4px;
-      transition: height 0.2s ease;
     }
 
+    .bar.opus { background: var(--opus); }
     .bar.low { background: var(--low); }
     .bar.high { background: var(--high); }
     .bar.max { background: var(--max); }
 
     .bar-label {
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 0.04em;
+      text-align: center;
     }
 
     .metric-best {
-      font-size: 0.82rem;
+      font-size: 0.78rem;
       font-weight: 600;
       color: var(--accent);
       text-align: right;
@@ -164,24 +154,29 @@
 
     .iter-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.75rem;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.65rem;
     }
 
     .iter-card {
       background: #141821;
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 0.85rem 0.9rem;
+      padding: 0.85rem 0.75rem;
+    }
+
+    .iter-card.baseline {
+      border-color: rgba(112, 173, 71, 0.35);
     }
 
     .iter-card h3 {
-      font-size: 0.78rem;
+      font-size: 0.72rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       margin-bottom: 0.55rem;
     }
 
+    .iter-card h3.opus { color: var(--opus); }
     .iter-card h3.low { color: var(--low); }
     .iter-card h3.high { color: var(--high); }
     .iter-card h3.max { color: var(--max); }
@@ -189,7 +184,7 @@
     .iter-bars {
       display: flex;
       align-items: flex-end;
-      gap: 0.35rem;
+      gap: 0.3rem;
       height: 72px;
     }
 
@@ -205,51 +200,51 @@
 
     .iter-bar {
       width: 100%;
-      background: #3d4659;
       border-radius: 3px 3px 1px 1px;
     }
 
+    .iter-bar.opus { background: var(--opus); opacity: 0.9; }
     .iter-bar.low { background: var(--low); opacity: 0.85; }
     .iter-bar.high { background: var(--high); opacity: 0.85; }
     .iter-bar.max { background: var(--max); opacity: 0.85; }
 
-    .iter-num {
-      font-size: 0.68rem;
-      color: var(--muted);
-    }
+    .iter-num { font-size: 0.65rem; color: var(--muted); }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.88rem;
+      font-size: 0.84rem;
     }
 
     th, td {
       text-align: left;
-      padding: 0.55rem 0.5rem;
+      padding: 0.55rem 0.45rem;
       border-bottom: 1px solid var(--border);
     }
 
     th {
       color: var(--muted);
       font-weight: 600;
-      font-size: 0.78rem;
+      font-size: 0.74rem;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
 
     td.num { font-variant-numeric: tabular-nums; }
 
+    tr.baseline-row { background: rgba(112, 173, 71, 0.06); }
+
     .pill {
       display: inline-block;
       padding: 0.12rem 0.45rem;
       border-radius: 999px;
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       font-weight: 600;
     }
 
     .pill.best { background: rgba(112, 173, 71, 0.18); color: #9fd26b; }
     .pill.warn { background: rgba(237, 125, 49, 0.15); color: #f0a56a; }
+    .pill.base { background: rgba(112, 173, 71, 0.12); color: #b8d68f; }
 
     footer {
       margin-top: 1.5rem;
@@ -258,6 +253,12 @@
     }
 
     footer a { color: #8eb4e3; }
+
+    @media (max-width: 760px) {
+      .bars, .iter-grid { grid-template-columns: repeat(2, 1fr); }
+      .metric-row { grid-template-columns: 90px 1fr; }
+      .metric-best { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -267,15 +268,16 @@
       <p class="meta">
         <strong>Model:</strong> openrouter/z-ai/glm-5.3-flash:nitro ·
         <strong>Suite:</strong> model-comparison (31 cases, 3 iterations) ·
-        <strong>Branch:</strong> cursor/openrouter-thinking-eval-effort-e2b6 ·
-        <strong>Date:</strong> 27 Aug 2026
+        <strong>Baseline:</strong> anthropic/claude-opus-4-8 (master, 17 Aug 2026) ·
+        <strong>GLM branch:</strong> cursor/openrouter-thinking-eval-effort-e2b6
       </p>
     </header>
 
     <div class="legend">
-      <div class="legend-item"><span class="swatch low"></span> low</div>
-      <div class="legend-item"><span class="swatch high"></span> high</div>
-      <div class="legend-item"><span class="swatch max"></span> max</div>
+      <div class="legend-item"><span class="swatch opus"></span> Opus 4.8 (baseline)</div>
+      <div class="legend-item"><span class="swatch low"></span> GLM low</div>
+      <div class="legend-item"><span class="swatch high"></span> GLM high</div>
+      <div class="legend-item"><span class="swatch max"></span> GLM max</div>
     </div>
 
     <section>
@@ -284,6 +286,11 @@
         <div class="metric-row">
           <div class="metric-label">pass@k</div>
           <div class="bars">
+            <div class="bar-col">
+              <div class="bar-value">95.1%</div>
+              <div class="bar opus" style="height: 95.1%;"></div>
+              <div class="bar-label">opus</div>
+            </div>
             <div class="bar-col">
               <div class="bar-value">93.5%</div>
               <div class="bar low" style="height: 93.5%;"></div>
@@ -300,12 +307,17 @@
               <div class="bar-label">max</div>
             </div>
           </div>
-          <div class="metric-best">high</div>
+          <div class="metric-best">opus</div>
         </div>
 
         <div class="metric-row">
           <div class="metric-label">pass^k</div>
           <div class="bars">
+            <div class="bar-col">
+              <div class="bar-value">88.4%</div>
+              <div class="bar opus" style="height: 88.4%;"></div>
+              <div class="bar-label">opus</div>
+            </div>
             <div class="bar-col">
               <div class="bar-value">84.4%</div>
               <div class="bar low" style="height: 84.4%;"></div>
@@ -322,12 +334,17 @@
               <div class="bar-label">max</div>
             </div>
           </div>
-          <div class="metric-best">low</div>
+          <div class="metric-best">opus</div>
         </div>
 
         <div class="metric-row">
           <div class="metric-label">cases built</div>
           <div class="bars">
+            <div class="bar-col">
+              <div class="bar-value">30/31</div>
+              <div class="bar opus" style="height: 96.8%;"></div>
+              <div class="bar-label">opus</div>
+            </div>
             <div class="bar-col">
               <div class="bar-value">29/31</div>
               <div class="bar low" style="height: 93.5%;"></div>
@@ -344,7 +361,7 @@
               <div class="bar-label">max</div>
             </div>
           </div>
-          <div class="metric-best">high</div>
+          <div class="metric-best">opus/high</div>
         </div>
       </div>
     </section>
@@ -352,8 +369,16 @@
     <section>
       <h2>Per-iteration pass rate</h2>
       <div class="iter-grid">
+        <div class="iter-card baseline">
+          <h3 class="opus">Opus 4.8</h3>
+          <div class="iter-bars">
+            <div class="iter-bar-wrap"><div class="iter-bar opus" style="height: 93%;"></div><div class="iter-num">93%</div></div>
+            <div class="iter-bar-wrap"><div class="iter-bar opus" style="height: 93%;"></div><div class="iter-num">93%</div></div>
+            <div class="iter-bar-wrap"><div class="iter-bar opus" style="height: 88%;"></div><div class="iter-num">88%</div></div>
+          </div>
+        </div>
         <div class="iter-card">
-          <h3 class="low">low</h3>
+          <h3 class="low">GLM low</h3>
           <div class="iter-bars">
             <div class="iter-bar-wrap"><div class="iter-bar low" style="height: 86%;"></div><div class="iter-num">86%</div></div>
             <div class="iter-bar-wrap"><div class="iter-bar low" style="height: 87%;"></div><div class="iter-num">87%</div></div>
@@ -361,7 +386,7 @@
           </div>
         </div>
         <div class="iter-card">
-          <h3 class="high">high</h3>
+          <h3 class="high">GLM high</h3>
           <div class="iter-bars">
             <div class="iter-bar-wrap"><div class="iter-bar high" style="height: 88%;"></div><div class="iter-num">88%</div></div>
             <div class="iter-bar-wrap"><div class="iter-bar high" style="height: 81%;"></div><div class="iter-num">81%</div></div>
@@ -369,7 +394,7 @@
           </div>
         </div>
         <div class="iter-card">
-          <h3 class="max">max</h3>
+          <h3 class="max">GLM max</h3>
           <div class="iter-bars">
             <div class="iter-bar-wrap"><div class="iter-bar max" style="height: 87%;"></div><div class="iter-num">87%</div></div>
             <div class="iter-bar-wrap"><div class="iter-bar max" style="height: 85%;"></div><div class="iter-num">85%</div></div>
@@ -384,41 +409,50 @@
       <table>
         <thead>
           <tr>
-            <th>Effort</th>
+            <th>Model / effort</th>
             <th>pass@k</th>
             <th>pass^k</th>
             <th>Per iter</th>
             <th>Built</th>
-            <th>vs baseline</th>
+            <th>Δ vs Opus</th>
             <th>Run</th>
           </tr>
         </thead>
         <tbody>
+          <tr class="baseline-row">
+            <td><span class="pill base">baseline</span> Opus 4.8</td>
+            <td class="num"><span class="pill best">95.1%</span></td>
+            <td class="num"><span class="pill best">88.4%</span></td>
+            <td class="num">93 / 93 / 88</td>
+            <td class="num">30/31</td>
+            <td class="num">—</td>
+            <td><a href="https://github.com/n8n-io/n8n/actions/runs/32029701284">32029701284</a></td>
+          </tr>
           <tr>
-            <td>low</td>
+            <td>GLM low</td>
             <td class="num">93.5%</td>
-            <td class="num"><span class="pill best">84.4%</span></td>
+            <td class="num">84.4%</td>
             <td class="num">86 / 87 / 89</td>
             <td class="num">29/31</td>
-            <td class="num">−0.4pp</td>
+            <td class="num">−1.6 / −4.0pp</td>
             <td><a href="https://github.com/n8n-io/n8n/actions/runs/33040933861">33040933861</a></td>
           </tr>
           <tr>
-            <td>high</td>
-            <td class="num"><span class="pill best">93.9%</span></td>
+            <td>GLM high</td>
+            <td class="num">93.9%</td>
             <td class="num"><span class="pill warn">80.7%</span></td>
             <td class="num">88 / 81 / 84</td>
-            <td class="num"><span class="pill best">30/31</span></td>
-            <td class="num">−4.4pp</td>
+            <td class="num">30/31</td>
+            <td class="num">−1.2 / −7.7pp</td>
             <td><a href="https://github.com/n8n-io/n8n/actions/runs/33041778821">33041778821</a></td>
           </tr>
           <tr>
-            <td>max</td>
+            <td>GLM max</td>
             <td class="num">91.1%</td>
             <td class="num">82.3%</td>
             <td class="num">87 / 85 / 83</td>
             <td class="num">28/31</td>
-            <td class="num">−0.8pp</td>
+            <td class="num">−4.0 / −6.1pp</td>
             <td><a href="https://github.com/n8n-io/n8n/actions/runs/33042105054">33042105054</a></td>
           </tr>
         </tbody>
@@ -426,9 +460,9 @@
     </section>
 
     <footer>
-      Baseline comparison target: <code>instance-ai-baseline-13/07</code>.
-      Reference (no explicit effort, master): 93.3% pass@k · 84.5% pass^k —
-      <a href="https://github.com/n8n-io/n8n/actions/runs/33038454888">33038454888</a>.
+      Opus baseline: <code>anthropic/claude-opus-4-8</code> on <code>master</code>,
+      same <code>model-comparison</code> suite (31 cases × 3 iterations, tier=all).
+      LangSmith experiment <code>model-comparison-azure-opus-48-60-86f45c3f</code>.
     </footer>
   </div>
 </body>
