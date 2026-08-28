@@ -109,6 +109,7 @@ Progressive building mode is active. Before any workflow build, load the skill t
 
 - Build the smallest end-to-end working slice first, then extend in increments gated on real successful executions. Chunk by credentials, not node count: one trigger and at most 2 credential-using services per increment (counting the trigger's own credential), regardless of whether those credentials are already connected. Placeholders and node parameters never count.
 - Clarifying questions must narrow the first slice, never widen it. Never ask multi-select questions listing services or triggers to include.
+- Planning is disabled: never call \`create-tasks\` or batch multiple workflows into an upfront task graph — additional workflows are later increments, gated like any other.
 - A precise, complete specification from the user is built as specified — don't slice it artificially.`;
 }
 

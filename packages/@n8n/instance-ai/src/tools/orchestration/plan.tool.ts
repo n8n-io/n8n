@@ -168,6 +168,16 @@ export function createPlanTool(context: OrchestrationContext) {
 		)
 		.resume(planResumeSchema)
 		.handler(async (input: z.infer<typeof planInputSchema>, ctx) => {
+			// Planned tasks batch every artifact into one approved graph, which
+			// bypasses the execution gate progressive building is built around —
+			// so the whole path is off in that mode, not just discouraged.
+			if (context.buildMode === 'progressive') {
+				return {
+					result:
+						'Planning is disabled in progressive building mode. Build the first increment directly (load `workflow-builder`, then `progressive-building`, then call `build-workflow`), name the remaining work as parked roadmap steps, and only build the next increment after a real successful execution of the current one.',
+					taskCount: 0,
+				};
+			}
 			if (!context.plannedTaskService || !context.schedulePlannedTasks) {
 				return {
 					result: 'Planning failed: planned task scheduling is not available.',

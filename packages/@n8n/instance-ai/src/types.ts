@@ -1694,6 +1694,9 @@ export interface OrchestrationContext {
 	messageGroupId?: string;
 	userId: string;
 	projectId?: string;
+	/** Build style for the run — `progressive` disables planned-task orchestration
+	 *  (`create-tasks` refuses) so increments can't be batched past the execution gate. */
+	buildMode?: InstanceAiBuildMode;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
 	checkpointStore?: CheckpointStore;

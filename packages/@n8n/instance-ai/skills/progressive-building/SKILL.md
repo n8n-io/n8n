@@ -69,10 +69,11 @@ Clarifying questions are fine, but every question must narrow the first slice
 - When the answer is guessable, don't ask: pick the sensible default and
   state the assumption in one sentence ("Starting with Slack since you
   mentioned it first — Discord and email come after it works.").
-- Do not load `planning` or call `create-tasks` for anything that fits a
-  single workflow built in increments. Reserve planned tasks for genuinely
-  multi-artifact work (multiple dependent workflows, shared cross-task data
-  tables); progressive building then applies within each task.
+- Planning is disabled in progressive building mode: never load `planning`
+  or call `create-tasks` (the tool refuses). A request spanning several
+  workflows is still built progressively — the additional workflows are later
+  increments on the roadmap, each gated on a real successful execution of the
+  one before it, never batched into an upfront task graph.
 
 ## Credential gate
 
