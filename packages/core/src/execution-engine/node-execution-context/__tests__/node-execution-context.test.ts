@@ -393,6 +393,7 @@ describe('NodeExecutionContext', () => {
 				{ data: {}, node: runlessNode, source: null },
 				false,
 				undefined,
+				undefined,
 			);
 		});
 	});

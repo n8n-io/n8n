@@ -72,6 +72,6 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {
-		return await this._getRunlessCredentials<T>(type);
+		return await this._getRunlessCredentials<T>(type, { credentialUsage: 'trigger' });
 	}
 }
