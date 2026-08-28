@@ -103,6 +103,15 @@ const mockInsightsData: InsightsByWorkflow = {
 let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 describe('InsightsTableWorkflows', () => {
+	// The paywall is a `defineAsyncComponent`, and its module pulls `@n8n/stores` in
+	// from source. Resolving that inside the assertion made the test a race against a
+	// wall clock: ~1.3s locally, over the 3s budget on a CI runner. Loading it here
+	// puts the cost in a hook and leaves the loader hitting the module cache, so the
+	// assertion no longer depends on how fast the machine is.
+	beforeAll(async () => {
+		await import('../InsightsPaywall.vue');
+	}, 60000);
+
 	beforeEach(() => {
 		renderComponent = createComponentRenderer(InsightsTableWorkflows, {
 			pinia: createTestingPinia(),
@@ -419,16 +428,11 @@ describe('InsightsTableWorkflows', () => {
 
 			// Wait for the async paywall component to load and render
 			// The paywall text should appear once the component loads
-			const paywallText = await screen.findByText(
-				'Upgrade to access more detailed insights',
-				{},
-				{ timeout: 3000 },
-			);
+			// The module is already loaded (see `beforeAll`), so this waits only for the
+			// async component to swap in — a tick, not a transform.
+			const paywallText = await screen.findByText('Upgrade to access more detailed insights');
 			expect(paywallText).toBeInTheDocument();
-			// Above the 5s default: this is the suite's first crossing of an async-component
-			// boundary, and the paywall's `@n8n/stores` graph is transformed from source on
-			// the way (~1.7s here, cold). In editor-ui that graph was already warm.
-		}, 20000);
+		});
 
 		it('should use sample data when dashboard is not enabled', () => {
 			renderComponent({

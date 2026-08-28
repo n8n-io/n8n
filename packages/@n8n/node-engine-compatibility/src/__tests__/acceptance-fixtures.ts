@@ -14,8 +14,9 @@ import {
 	WorkflowStepExecution,
 } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
-/* The Set node's source files predate strict mode and would fail this
-package's strict typecheck if pulled into the program. */
+/* The Set and Merge source files predate strict mode, and Merge also uses path
+aliases this package does not resolve, so both come from dist. */
+import { Merge } from 'n8n-nodes-base/dist/nodes/Merge/Merge.node';
 import { Set as SetNode } from 'n8n-nodes-base/dist/nodes/Set/Set.node';
 import { NoOp } from 'n8n-nodes-base/nodes/NoOp/NoOp.node';
 import { SplitOut } from 'n8n-nodes-base/nodes/Transform/SplitOut/SplitOut.node';
@@ -31,6 +32,7 @@ import { testAdditionalDataFactory, v1Workflow } from './fixtures';
 
 const registry = new Map<string, INodeType | IVersionedNodeType>([
 	['n8n-nodes-base.set', new SetNode()],
+	['n8n-nodes-base.merge', new Merge()],
 	['n8n-nodes-base.noOp', new NoOp()],
 	['n8n-nodes-base.splitOut', new SplitOut()],
 ]);
@@ -82,6 +84,217 @@ export const TRIGGER = {
 export const mainTo = (target: string) => ({
 	main: [[{ node: target, type: 'main' as const, index: 0 }]],
 });
+
+/**
+ * Trigger into a Split In Batches loop, one item per pass, a No Op body that
+ * hands each pass straight back, and a Set node after the loop.
+ *
+ * ┌─────────┐    ┌──────┐ o1    ┌──────┐
+ * │ trigger ├───►│      ├──────►│ Body │
+ * └─────────┘    │ Loop │       └───┬──┘
+ *                │      ◄──(back)───┘
+ *                └───┬──┘ o0
+ *                    ▼
+ *                ┌───────┐
+ *                │ After │
+ *                └───────┘
+ */
+export function loopWorkflow(
+	batchSize: number,
+	body: {
+		id: string;
+		name: string;
+		type: string;
+		typeVersion?: number;
+		parameters?: IDataObject;
+	} = {
+		id: 'body',
+		name: 'Body',
+		type: 'n8n-nodes-base.noOp',
+		typeVersion: 1,
+	},
+) {
+	return converter.convert(
+		v1Workflow(
+			[
+				TRIGGER,
+				{
+					id: 'loop',
+					name: 'Loop',
+					type: 'n8n-nodes-base.splitInBatches',
+					typeVersion: 3,
+					parameters: { batchSize },
+				},
+				body,
+				setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
+			],
+			{
+				'When clicking Execute': mainTo('Loop'),
+				Loop: {
+					main: [
+						[{ node: 'After', type: 'main' as const, index: 0 }],
+						[{ node: 'Body', type: 'main' as const, index: 0 }],
+					],
+				},
+				Body: mainTo('Loop'),
+			},
+		),
+	);
+}
+
+/**
+ * A loop whose body branches in two and reconverges on a Merge before returning.
+ *
+ *                         ┌──────┐ o0 i0 ┌──────┐
+ *                    ┌───►│ Left ├──────►│      │
+ * ┌──────┐ o1 ┌──────┤    └──────┘       │ Join │
+ * │ Loop ├───►│ Fork │                   │      │
+ * └───▲──┘    └──────┤    ┌──────┐ o0 i1 │      │
+ *     │              └───►│ Right├──────►│      │
+ *     │                   └──────┘       └───┬──┘
+ *     └────────────────(back)────────────────┘
+ */
+export function branchyLoopWorkflow(batchSize: number) {
+	return converter.convert(
+		v1Workflow(
+			[
+				TRIGGER,
+				{
+					id: 'loop',
+					name: 'Loop',
+					type: 'n8n-nodes-base.splitInBatches',
+					typeVersion: 3,
+					parameters: { batchSize },
+				},
+				{ id: 'fork', name: 'Fork', type: 'n8n-nodes-base.noOp', typeVersion: 1 },
+				setNode('left', 'Left', [{ name: 'side', value: 'left', type: 'string' }]),
+				setNode('right', 'Right', [{ name: 'side', value: 'right', type: 'string' }]),
+				{
+					id: 'join',
+					name: 'Join',
+					type: 'n8n-nodes-base.merge',
+					typeVersion: 3,
+					parameters: { mode: 'append', numberInputs: 2 },
+				},
+				setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
+			],
+			{
+				'When clicking Execute': mainTo('Loop'),
+				Loop: {
+					main: [
+						[{ node: 'After', type: 'main' as const, index: 0 }],
+						[{ node: 'Fork', type: 'main' as const, index: 0 }],
+					],
+				},
+				Fork: {
+					main: [
+						[
+							{ node: 'Left', type: 'main' as const, index: 0 },
+							{ node: 'Right', type: 'main' as const, index: 0 },
+						],
+					],
+				},
+				Left: { main: [[{ node: 'Join', type: 'main' as const, index: 0 }]] },
+				Right: { main: [[{ node: 'Join', type: 'main' as const, index: 1 }]] },
+				Join: mainTo('Loop'),
+			},
+		),
+	);
+}
+
+/**
+ * Two loops in a row, the first one's done slot feeding the second.
+ *
+ * ┌─────────┐    ┌─────┐ o1    ┌─────────┐
+ * │ trigger ├───►│     ├──────►│ BodyOne │
+ * └─────────┘    │ One │       └────┬────┘
+ *                │     ◄───(back)───┘
+ *                └──┬──┘ o0
+ *                   ▼
+ *                ┌─────┐ o1    ┌─────────┐
+ *                │     ├──────►│ BodyTwo │
+ *                │ Two │       └────┬────┘
+ *                │     ◄───(back)───┘
+ *                └──┬──┘ o0
+ *                   ▼
+ *               ┌───────┐
+ *               │ After │
+ *               └───────┘
+ */
+export function chainedLoopsWorkflow(batchSize: number) {
+	const loopNode = (id: string, name: string) => ({
+		id,
+		name,
+		type: 'n8n-nodes-base.splitInBatches',
+		typeVersion: 3,
+		parameters: { batchSize },
+	});
+
+	return converter.convert(
+		v1Workflow(
+			[
+				TRIGGER,
+				loopNode('one', 'One'),
+				{ id: 'body-one', name: 'BodyOne', type: 'n8n-nodes-base.noOp', typeVersion: 1 },
+				loopNode('two', 'Two'),
+				{ id: 'body-two', name: 'BodyTwo', type: 'n8n-nodes-base.noOp', typeVersion: 1 },
+				setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
+			],
+			{
+				'When clicking Execute': mainTo('One'),
+				One: {
+					main: [
+						[{ node: 'Two', type: 'main' as const, index: 0 }],
+						[{ node: 'BodyOne', type: 'main' as const, index: 0 }],
+					],
+				},
+				BodyOne: mainTo('One'),
+				Two: {
+					main: [
+						[{ node: 'After', type: 'main' as const, index: 0 }],
+						[{ node: 'BodyTwo', type: 'main' as const, index: 0 }],
+					],
+				},
+				BodyTwo: mainTo('Two'),
+			},
+		),
+	);
+}
+
+/**
+ * A loop whose loop slot returns straight to itself, with no body between.
+ *
+ * ┌─────────┐    ┌──────┐ o0    ┌───────┐
+ * │ trigger ├───►│ Loop ├──────►│ After │
+ * └─────────┘    └──▲─┬─┘       └───────┘
+ *                   └─┘ o1, straight back
+ */
+export function selfLoopWorkflow(batchSize: number) {
+	return converter.convert(
+		v1Workflow(
+			[
+				TRIGGER,
+				{
+					id: 'loop',
+					name: 'Loop',
+					type: 'n8n-nodes-base.splitInBatches',
+					typeVersion: 3,
+					parameters: { batchSize },
+				},
+				setNode('after', 'After', [{ name: 'ran', value: 'yes', type: 'string' }]),
+			],
+			{
+				'When clicking Execute': mainTo('Loop'),
+				Loop: {
+					main: [
+						[{ node: 'After', type: 'main' as const, index: 0 }],
+						[{ node: 'Loop', type: 'main' as const, index: 0 }],
+					],
+				},
+			},
+		),
+	);
+}
 
 export function setWorkflow(assignments: Assignment[]) {
 	return converter.convert(

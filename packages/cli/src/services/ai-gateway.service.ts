@@ -95,7 +95,7 @@ export class AiGatewayService {
 	): Promise<T> {
 		const response = await this.outboundHttp
 			.requests({
-				ssrf: 'disabled', // the gateway base URL is n8n-owned configuration
+				useDefaultSsrfPolicy: 'unsafe', // the gateway base URL is n8n-owned configuration
 			})
 			.request({
 				method: options.method,

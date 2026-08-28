@@ -503,33 +503,58 @@ describe('AgentToolsConnectionModalWrapper', () => {
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('closes the tools modal once an edit to a connected tool is saved', async () => {
+	it('adds another instance of a connected node tool instead of overwriting it', async () => {
+		const existing = toolRef(SLACK.name);
 		const onConfirm = vi.fn();
-		render([toolRef(SLACK.name)], onConfirm);
+		render([existing], onConfirm);
 		await flushPromises();
 
 		const connected = getItems().find((item) => item.status === 'connected');
 		emitConnect(connected!);
 
+		// Activating a connected node-tool row opens the config modal for a NEW
+		// instance (fresh ref, empty parameters) — not an edit of the existing one.
 		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-		payload.data.onConfirm({ ...toolRef(SLACK.name), name: 'Renamed Slack' });
+		expect(payload.name).toBe('agentToolConfigModal');
+		expect(payload.data.toolRef).toMatchObject({
+			type: 'node',
+			node: { nodeType: SLACK.name, nodeParameters: {} },
+		});
+		expect(payload.data.existingToolNames).toContain(existing.name);
 
-		expect(onConfirm).toHaveBeenCalledTimes(1);
+		const configuredRef: AgentJsonToolRef = {
+			type: 'node',
+			name: 'Slack (1)',
+			node: {
+				nodeType: SLACK.name,
+				nodeTypeVersion: 1,
+				nodeParameters: { resource: 'message' },
+				credentials: { slackApi: { id: 'c-2', name: 'Other Slack' } },
+			},
+		};
+		payload.data.onConfirm(configuredRef);
+
+		expect(onConfirm).toHaveBeenCalledWith({
+			tools: [existing, configuredRef],
+			mcpServers: [],
+		});
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
 	});
 
-	it('removes a connected tool when the config modal asks to', async () => {
+	it('does not remove a connected node tool when activating its row', async () => {
+		const existing = toolRef(SLACK.name);
 		const onConfirm = vi.fn();
-		render([toolRef(SLACK.name)], onConfirm);
+		render([existing], onConfirm);
 		await flushPromises();
 
 		const connected = getItems().find((item) => item.status === 'connected');
 		emitConnect(connected!);
 
+		// The connected row now opens config for a new instance; there is no
+		// remove callback on that flow (removal happens via the capabilities chips).
 		const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
-		payload.data.onRemove();
-
-		expect(onConfirm).toHaveBeenCalledWith({ tools: [], mcpServers: [] });
+		expect(payload.data.onRemove).toBeUndefined();
+		expect(onConfirm).not.toHaveBeenCalled();
 	});
 
 	it('appends a configured tool once the config modal saves', async () => {
@@ -601,12 +626,12 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			workflowsListStore.searchWorkflows = vi.fn().mockResolvedValue([
 				WORKFLOW,
 				{
-					id: 'wf-wait',
-					name: 'Has Wait',
+					id: 'wf-form',
+					name: 'Has Form',
 					isArchived: false,
 					nodes: [
 						{ type: 'n8n-nodes-base.executeWorkflowTrigger', name: 'When called' },
-						{ type: 'n8n-nodes-base.wait', name: 'Wait' },
+						{ type: 'n8n-nodes-base.form', name: 'Form' },
 					],
 				},
 				{
@@ -621,16 +646,16 @@ describe('AgentToolsConnectionModalWrapper', () => {
 
 			const items = getItems();
 			const compatible = items.find((i) => i.id === 'workflow:wf-1');
-			const waitDisabled = items.find((i) => i.id === 'workflow-disabled:wf-wait');
+			const formDisabled = items.find((i) => i.id === 'workflow-disabled:wf-form');
 			const noTriggerDisabled = items.find((i) => i.id === 'workflow-disabled:wf-no-trigger');
 
 			// Compatible workflow remains selectable.
 			expect(compatible?.disabled).toBeFalsy();
 
 			// Incompatible workflows are visible but disabled, with a reason.
-			expect(waitDisabled).toBeTruthy();
-			expect(waitDisabled?.disabled).toBe(true);
-			expect(waitDisabled?.disabledReason).toContain("aren't supported as agent tools");
+			expect(formDisabled).toBeTruthy();
+			expect(formDisabled?.disabled).toBe(true);
+			expect(formDisabled?.disabledReason).toContain("aren't supported as agent tools");
 
 			expect(noTriggerDisabled).toBeTruthy();
 			expect(noTriggerDisabled?.disabled).toBe(true);
@@ -639,11 +664,11 @@ describe('AgentToolsConnectionModalWrapper', () => {
 			// Disabled items appear after compatible ones within the category.
 			const workflowItems = items.filter((i) => i.kind === 'workflow');
 			const compatibleIdx = workflowItems.findIndex((i) => i.id === 'workflow:wf-1');
-			const waitIdx = workflowItems.findIndex((i) => i.id === 'workflow-disabled:wf-wait');
+			const formIdx = workflowItems.findIndex((i) => i.id === 'workflow-disabled:wf-form');
 			const noTriggerIdx = workflowItems.findIndex(
 				(i) => i.id === 'workflow-disabled:wf-no-trigger',
 			);
-			expect(compatibleIdx).toBeLessThan(waitIdx);
+			expect(compatibleIdx).toBeLessThan(formIdx);
 			expect(compatibleIdx).toBeLessThan(noTriggerIdx);
 		});
 
@@ -736,7 +761,7 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				...WORKFLOW,
 				nodes: [
 					{ type: 'n8n-nodes-base.executeWorkflowTrigger', name: 'When called' },
-					{ type: 'n8n-nodes-base.wait', name: 'Wait a bit' },
+					{ type: 'n8n-nodes-base.form', name: 'Ask the user' },
 				],
 			} as unknown as IWorkflowDb);
 
@@ -949,6 +974,34 @@ describe('AgentToolsConnectionModalWrapper', () => {
 				slackApi: { id: null, name: '', __aiGatewayManaged: true },
 			});
 			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+		});
+
+		it('adds another managed instance with the managed credential preselected', async () => {
+			const existing: AgentJsonToolRef = {
+				type: 'node',
+				name: 'Slack',
+				node: {
+					nodeType: SLACK.name,
+					nodeTypeVersion: 1,
+					nodeParameters: {},
+					credentials: { slackApi: { id: null, name: '', __aiGatewayManaged: true } },
+				},
+			};
+			const onConfirm = vi.fn();
+			render([existing], onConfirm);
+			await flushPromises();
+
+			const connected = getItems().find((item) => item.status === 'connected');
+			emitConnect(connected!);
+
+			// Activating a connected managed tool routes through the managed add
+			// path, so the new instance keeps the __aiGatewayManaged credential.
+			const [payload] = (uiStore.openModalWithData as ReturnType<typeof vi.fn>).mock.calls[0];
+			expect(payload.name).toBe('agentToolConfigModal');
+			expect(payload.data.toolRef.node.credentials).toEqual({
+				slackApi: { id: null, name: '', __aiGatewayManaged: true },
+			});
+			expect(payload.data.existingToolNames).toContain(existing.name);
 		});
 	});
 });

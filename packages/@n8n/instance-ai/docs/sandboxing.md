@@ -1,256 +1,189 @@
 # Sandboxing in Instance AI
 
-When the Instance AI agent builds workflows, it needs somewhere to write code, run a compiler, install packages, and execute scripts. Running all of that directly on the n8n host is risky and hard to control. Sandboxing solves this by giving the agent a dedicated, disposable environment — a workspace with its own filesystem and shell — where it can do all of that without touching the host.
+Instance AI uses a remote sandbox workspace to build workflows from
+`@n8n/workflow-sdk` source. The sandbox keeps file writes and command execution
+off the n8n host. Workflow building is unavailable when sandboxing is disabled.
 
-Today the main consumer is the workflow builder. The agent writes TypeScript files, validates them with the TypeScript compiler, executes them to produce workflow JSON, and only saves to n8n after everything passes. Without a sandbox, workflow building is unavailable.
+Agent building is separate. `build-agent` delegates to
+`AgentsBuilderService` in the agents module and does not use the Instance AI
+sandbox.
 
-## How the Pieces Fit Together
-
-There are three layers between the agent and actual code execution: a workspace abstraction from `@n8n/agents`, a sandbox provider (n8n sandbox service or Daytona), and the execution runtime inside the sandbox. Here is how they relate:
-
-```mermaid
-graph TB
-    subgraph Agent ["Agent Layer"]
-        LLM[LLM] --> AgentRuntime["Agent Runtime (@n8n/agents)"]
-    end
-
-    subgraph WorkspaceLayer ["Workspace Abstraction (@n8n/agents)"]
-        AgentRuntime --> Workspace["Workspace"]
-        Workspace --> FS["Filesystem Interface<br/>(read, write, list, edit files)"]
-        Workspace --> Sandbox["Sandbox Interface<br/>(execute shell commands)"]
-    end
-
-    subgraph Providers ["Sandbox Providers"]
-        FS --> DaytonaFS["Daytona Filesystem<br/>(remote API calls)"]
-        FS --> N8nFS["n8n Sandbox FS<br/>(remote API calls)"]
-        Sandbox --> DaytonaSB["Daytona Sandbox<br/>(remote container)"]
-        Sandbox --> N8nSB["n8n Sandbox Service<br/>(remote container)"]
-    end
-
-    subgraph Runtime ["Execution Runtime"]
-        DaytonaSB --> Container["Container<br/>Node.js · TypeScript · shell"]
-        DaytonaFS --> Container
-        N8nSB --> Container
-        N8nFS --> Container
-    end
-
-    style Agent fill:#f3e8ff,stroke:#7c3aed
-    style WorkspaceLayer fill:#e0f2fe,stroke:#0284c7
-    style Providers fill:#fef3c7,stroke:#d97706
-    style Runtime fill:#dcfce7,stroke:#16a34a
-```
-
-The agent never talks to Daytona, the n8n sandbox service, or the host filesystem directly. It only sees the Workspace, which exposes two capabilities: a filesystem (read/write/list files) and a sandbox (run shell commands). The Workspace routes those operations to whichever provider is configured.
-
-## Workspaces
-
-`@n8n/agents` is the agent SDK that Instance AI uses. A **Workspace** is a pairing of two things:
-
-1. **A Sandbox** — an interface for executing shell commands. It accepts a command string and returns stdout, stderr, and an exit code. Think of it as a remote terminal.
-2. **A Filesystem** — an interface for file operations: read, write, list, delete, copy, move. Think of it as a remote disk.
-
-When a Workspace is attached to an agent, `@n8n/agents` automatically exposes built-in tools to the LLM: `read_file`, `write_file`, `edit_file`, `list_files`, `grep`, `execute_command`, and others. The agent uses these tools naturally in its reasoning loop — it writes a file, runs a command, reads the output, and decides what to do next.
-
-The key design property is that the Workspace abstraction is provider-agnostic. The agent's code and prompts are identical regardless of whether the workspace is backed by n8n sandbox service or Daytona. The provider choice is purely an infrastructure decision.
+## Architecture
 
 ```mermaid
 graph LR
-    subgraph Workspace
-        direction TB
-        SB["Sandbox<br/>(shell execution)"]
-        FS["Filesystem<br/>(file I/O)"]
-    end
-
-    subgraph "Agent Tools (auto-generated)"
-        T1["execute_command"]
-        T2["read_file"]
-        T3["write_file"]
-        T4["edit_file"]
-        T5["list_files"]
-        T6["grep"]
-    end
-
-    SB --> T1
-    FS --> T2
-    FS --> T3
-    FS --> T4
-    FS --> T5
-    FS --> T6
-
-    style Workspace fill:#e0f2fe,stroke:#0284c7
+    Agent[Instance AI orchestrator] --> Lazy[Lazy runtime Workspace]
+    Lazy --> Service[InstanceAiSandboxService]
+    Service --> Shared[Thread-scoped Workspace]
+    Shared --> FS[Workspace filesystem]
+    Shared --> Cmd[Workspace sandbox]
+    FS --> Provider[Configured sandbox provider]
+    Cmd --> Provider
+    Provider --> N8n[n8n sandbox service]
+    Provider --> Daytona[Daytona]
 ```
 
-## Daytona: Explicit Container Provider
+`@n8n/agents` supplies the `Workspace`, filesystem, and sandbox abstractions.
+`@n8n/instance-ai` supplies setup and workflow compilation. The CLI module
+selects credentials, creates the provider configuration, and owns the
+thread-scoped lifecycle.
 
-Daytona is a third-party platform for creating and managing isolated sandbox environments. It runs containers on its own infrastructure (cloud-hosted or self-hosted) and exposes them through an SDK. Instance AI keeps Daytona as an explicit provider for environments that still rely on it.
+The runtime attaches a lazy workspace to the orchestrator. The remote sandbox
+is created only when the agent first uses a workspace capability. Instance AI
+exposes this core workspace tool set:
 
-### What Daytona provides
+- `workspace_read_file`
+- `workspace_read_tool_result`
+- `workspace_write_file`
+- `workspace_str_replace_file`
+- `workspace_execute_command`
 
-- **Isolated containers.** Each sandbox is a Linux container (Ubuntu, Node.js, Python, full shell) running independently of the n8n host. Package installs, file writes, and shell commands happen inside the container.
-- **An SDK for lifecycle management.** n8n creates sandboxes, executes commands, reads/writes files, and destroys sandboxes — all through API calls. No SSH, no Docker socket.
-- **Image-based provisioning.** Daytona supports pre-built images with dependencies already installed, so new sandboxes start fast without running setup scripts every time.
-- **Ephemeral by design.** Sandboxes are disposable. They are created for a task and destroyed after it completes.
+The underlying `Workspace` supports more filesystem operations. The lazy
+runtime filters the model-facing set to `CORE_WORKSPACE_TOOL_NAMES`.
 
-### How n8n uses Daytona
+## Providers
 
-```mermaid
-sequenceDiagram
-    participant n8n as n8n Backend
-    participant D as Daytona API
-    participant S as Sandbox Container
+### n8n sandbox service
 
-    Note over n8n: Builder agent invoked
-    n8n->>n8n: Build pre-warmed Image<br/>(config + node_modules baked in)
-    n8n->>D: Create sandbox from Image
-    D->>S: Provision container
-    D-->>n8n: Sandbox ID
+`n8n-sandbox` is the default provider. The service manages remote sandbox
+containers through its HTTP API. Instance AI assigns each thread a stable
+UUIDv5 sandbox ID. A process can derive the same ID after a restart or on
+another main.
 
-    n8n->>S: Write node-types catalog via filesystem API
-    n8n->>n8n: Wrap sandbox as Workspace
-    n8n->>n8n: Inject Workspace into builder agent
+The provider supports file operations and command execution. It does not need
+an interactive process API for the workflow build path.
 
-    Note over S: Agent works inside sandbox
-    S->>S: Agent writes workflow.ts
-    S->>S: Agent runs tsc (type-check)
-    S->>S: Agent runs tsx (execute → JSON)
-    S-->>n8n: Validated workflow JSON
+### Daytona
 
-    n8n->>n8n: Save workflow to n8n
-    n8n->>D: Delete sandbox
-    D->>S: Destroy container
+`daytona` is the explicit alternate provider. Instance AI assigns each thread
+a deterministic name and labels. Direct mode resolves a Daytona API key from
+admin settings or environment variables. Proxy mode gets short-lived provider
+tokens from the managed AI service.
+
+In direct mode, Instance AI builds from the configured image. The default image
+is `daytonaio/sandbox:0.5.0`. In proxy mode, it uses an explicit snapshot or the
+versioned snapshot `n8n/instance-ai:<n8nVersion>`. Proxy mode cannot upload an
+image-build context. A missing or unusable snapshot therefore fails sandbox
+creation.
+
+Daytona lifecycle values control auto-stop, auto-archive, and auto-delete.
+`N8N_INSTANCE_AI_SANDBOX_EPHEMERAL=true` asks Daytona to delete a sandbox when
+it stops. Ephemeral mode is optional and is disabled by default.
+
+## Thread-Scoped Lifecycle
+
+Each conversation thread has one shared remote sandbox and workspace.
+
+1. A workspace tool or workflow build requests the lazy workspace.
+2. `InstanceAiSandboxService` resolves the current provider configuration.
+3. The service reuses a matching cached entry or creates the deterministic
+   thread sandbox.
+4. The service initializes the workspace once.
+5. Runs and background tasks in the same thread reuse the entry.
+6. Idle cache expiry removes only the in-process entry.
+7. A later use can reattach to the same provider sandbox by its deterministic
+   identity.
+
+The cache TTL defaults to 15 minutes. Active runs, suspended runs, and running
+background tasks keep the entry alive. A TTL of `0` disables this cache
+eviction.
+
+Cache eviction does not destroy the remote sandbox. Daytona reclaims remote
+state through its configured lifecycle. Remote reclamation for the n8n sandbox
+service is governed by that service's deployment policy, outside Instance AI.
+
+Explicit thread cleanup destroys a cached workspace. If no cache entry exists,
+the service can recompute and delete an n8n-sandbox ID. An uncached Daytona
+sandbox is left to Daytona lifecycle management.
+
+Service shutdown stops local expiry timers but deliberately leaves remote
+sandboxes available for a restarted process to reuse.
+
+Settings changes invalidate the in-process cache. In-flight users retain the
+entry that they already resolved.
+
+## Workspace Initialization
+
+Initialization is lazy and idempotent. A marker file prevents repeated base
+setup. Knowledge-base content is refreshed when an existing sandbox is
+reattached. The setup creates or materializes:
+
+| Path | Purpose |
+|------|---------|
+| `package.json` | Pinned `@n8n/workflow-sdk`, `tsx`, and Node type dependencies in normal mode |
+| `tsconfig.json` | Strict TypeScript configuration |
+| `build.mjs` | Workflow SDK execution and JSON conversion |
+| `node-types/index.txt` | Searchable node-type catalog |
+| `src/` | Workflow source files |
+| `chunks/` | Reusable source modules |
+| `workflows/` | Existing workflows materialized as WorkflowJSON |
+| `knowledge-base/` | Best-practice, template, and SDK reference material |
+| `.sandbox-initialized` | Setup marker |
+
+The Daytona image or versioned snapshot includes the stable workspace files
+and installed dependencies. The node-type catalog is written after sandbox
+creation because it is instance-specific and too large for the Daytona image
+request.
+
+When `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` is enabled for local development,
+Instance AI packs and installs the local `@n8n/utils`, `n8n-workflow`, and
+`@n8n/workflow-sdk` packages. Build those packages before starting a new
+thread.
+
+## Workflow Build Path
+
+The `build-workflow` tool reads TypeScript (`.ts` or `.tsx`) or WorkflowJSON
+(`.json`) from the runtime workspace. The conventional filenames are
+`.workflow.ts` and `.workflow.json`.
+
+For TypeScript source, `compileWorkflowSource()` copies or resolves the source
+inside the workspace and runs:
+
+```text
+node --import tsx build.mjs <source-file>
 ```
 
-The process starts with a **pre-warmed image**. On first use, n8n builds a Daytona Image that includes config files and pre-installed npm dependencies. This image is cached and reused across all builder invocations, so each new sandbox starts with everything already in place.
+`build.mjs` imports the default workflow, calls `validate()`, converts it with
+`toJSON({ tidyUp: true })`, and returns declared pin-data fixtures when present.
+The tool then performs server-side workflow validation, resolves credentials,
+and saves the workflow through the backend service.
 
-One thing that cannot be baked into the image is the **node-types catalog** (a searchable index of all available n8n nodes). It is too large for the image build API, so it is written to each sandbox after creation via the filesystem API.
-
-Once the sandbox is provisioned and the catalog is written, n8n wraps it in a Workspace and hands it to the builder agent. From that point, the agent works autonomously inside the sandbox — writing files, running the compiler, fixing errors, iterating — until it produces a valid workflow.
-
-### What is inside a Daytona sandbox
-
-| Component | Purpose |
-| --- | --- |
-| Ubuntu Linux | Base OS |
-| Node.js (v25+) | JavaScript runtime |
-| tsx | TypeScript execution without a compile step |
-| npm | Package management |
-| Full shell (bash) | Arbitrary command execution |
-| Python | Available but not primary |
-
-## n8n Sandbox Service: Default Provider
-
-The n8n sandbox service exposes a simple HTTP API for creating sandboxes, executing shell commands, and manipulating files. Instance AI uses it through a custom `@n8n/agents` sandbox and filesystem adapter.
-
-This provider supports the builder's file and command workflow, but it does not expose interactive process handles. That means `execute_command` works, while process-manager-backed features such as long-lived spawned subprocesses are out of scope for this provider.
-
-For eval CI, `n8n-containers` starts the API and runner sidecars through the shared sandbox service wrapper:
-
-```bash
-pnpm tsx packages/testing/containers/start-sandbox.ts --network n8n-eval-net
-```
-
-For local development, point `N8N_SANDBOX_SERVICE_URL` and
-`N8N_SANDBOX_SERVICE_API_KEY` at a running sandbox service and enable
-`N8N_INSTANCE_AI_SANDBOX_ENABLED=true`.
-
-### Providers at a glance
-
-| | n8n sandbox service | Daytona |
-| --- | --- | --- |
-| **Isolation** | Service-managed container boundary | Daytona-managed container boundary |
-| **Where commands run** | Sandbox service runner via API | Remote container via Daytona API |
-| **Where files live** | Sandbox service filesystem API | Daytona filesystem API |
-| **Production use** | Default provider | Explicit provider |
-| **Setup required** | Sandbox API + runner sidecars | Daytona account/API or proxy |
-
-## Lifecycle
-
-### Thread-scoped vs per-builder
-
-There are two levels of sandbox lifecycle in the system:
-
-```mermaid
-graph TB
-    subgraph Thread ["Conversation Thread"]
-        ThreadWS["Thread-scoped Workspace<br/>(persists across messages)"]
-    end
-
-    subgraph Build1 ["Builder Invocation 1"]
-        B1WS["Ephemeral Builder Workspace<br/>(created → used → destroyed)"]
-    end
-
-    subgraph Build2 ["Builder Invocation 2"]
-        B2WS["Ephemeral Builder Workspace<br/>(created → used → destroyed)"]
-    end
-
-    Thread --> Build1
-    Thread --> Build2
-
-    style Thread fill:#f3e8ff,stroke:#7c3aed
-    style Build1 fill:#dcfce7,stroke:#16a34a
-    style Build2 fill:#dcfce7,stroke:#16a34a
-```
-
-- **Thread-scoped workspace.** The service can maintain a single workspace per conversation thread, reused across messages. This workspace is destroyed on server shutdown. Its sandbox identity is derived deterministically from the thread ID (a name for Daytona, a UUIDv5 for the n8n sandbox service), so a restarted process — or another main in a multi-main deployment — reattaches to the same remote sandbox instead of creating a duplicate.
-- **Per-builder ephemeral workspace.** Each time the workflow builder is invoked, it gets its own isolated workspace. Multiple concurrent builders in the same thread do not share a workspace. The provider sandbox is deleted after the builder finishes (best-effort).
-
-### Pre-warmed images
-
-In Daytona mode, creating a sandbox from scratch every time would be slow. Instead, n8n builds a Daytona Image once on first use — it includes config files, a TypeScript project setup, and pre-installed dependencies. Every builder invocation then creates a sandbox from this cached image, which starts in seconds instead of running full setup.
-
-The image is invalidated and rebuilt if the base image changes.
-
-## What the Builder Does Inside the Sandbox
-
-The workflow builder uses the sandbox as an edit-compile-submit loop:
-
-```mermaid
-graph LR
-    A["Write workflow.ts"] --> B["Run tsc<br/>(type-check)"]
-    B -->|Errors| A
-    B -->|Pass| C["Run tsx<br/>(execute → JSON)"]
-    C -->|Errors| A
-    C -->|Pass| D["Validate JSON<br/>(schema + rules)"]
-    D -->|Errors| A
-    D -->|Pass| E["Save to n8n"]
-
-    style A fill:#e0f2fe,stroke:#0284c7
-    style E fill:#dcfce7,stroke:#16a34a
-```
-
-1. The agent writes TypeScript code that uses the n8n workflow SDK to define a workflow.
-2. It runs the TypeScript compiler to catch type errors.
-3. It executes the file to produce workflow JSON.
-4. The JSON is validated against n8n's schema rules.
-5. Only after all checks pass does the workflow get saved to n8n.
-
-If any step fails, the agent reads the error output, fixes the code, and retries. This loop runs entirely inside the sandbox — the n8n host is never involved until the final save.
-
-Agent building does not go through the sandbox at all. The `build-agent` orchestration tool delegates each turn to the agents-module builder (`AgentsBuilderService`), which runs host-side as a sub-agent — there are no agent-config files in the workspace, and no sandbox is required for agent building.
+For WorkflowJSON source, the tool parses the JSON directly and then applies the
+same server-side save controls. There is no host-side TypeScript build fallback
+when the sandbox is unavailable.
 
 ## Boundaries
 
-**Sandboxing is not the filesystem service.** The sandbox gives the agent a private workspace for building workflows. The filesystem service (and gateway) gives the agent access to the user's project files on their machine. These are separate systems with different security models and do not overlap.
+The runtime sandbox is not the local Computer Use gateway. The sandbox is a
+private provider workspace for Instance AI. The local gateway exposes tools on
+the user's machine under daemon permissions.
 
-**Sandboxing is not a general container platform.** The sandbox exists to serve the builder's compile-and-validate loop. It is not designed for running arbitrary user workloads, long-lived services, or anything beyond the agent's build process.
+Sandbox isolation does not grant product authorization. Backend services still
+apply RBAC, project scope, session grants, and HITL confirmation rules.
 
-**Sandboxing does not replace product safety controls.** Workflow permissions, human-in-the-loop confirmations, and domain access gating are separate systems. The sandbox provides execution isolation, not authorization.
+The workspace is for Instance AI build and runtime-skill work. It is not a
+general user workload platform.
 
 ## Configuration
 
-| Variable | Default | What it does |
-| --- | --- | --- |
-| `N8N_INSTANCE_AI_SANDBOX_ENABLED` | `false` | Master switch for sandboxing |
-| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | `n8n-sandbox` | Which provider to use: `n8n-sandbox` or `daytona` |
-| `DAYTONA_API_URL` | — | Daytona API endpoint (required for Daytona) |
-| `DAYTONA_API_KEY` | — | Daytona API key (required for Daytona) |
-| `N8N_SANDBOX_SERVICE_URL` | — | n8n sandbox service URL (required for `n8n-sandbox`) |
-| `N8N_SANDBOX_SERVICE_API_KEY` | — | n8n sandbox service API key (optional when using an `httpHeaderAuth` credential) |
-| `N8N_INSTANCE_AI_SANDBOX_IMAGE` | `daytonaio/sandbox:0.5.0` | Base container image for Daytona |
-| `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT` | — | Override the full snapshot name (e.g. `n8n/instance-ai:2.27.3`) instead of the version-derived default. Proxy mode only; falls back to building from the base image if the snapshot doesn't exist. |
-| `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | `300000` | Command timeout in milliseconds |
-| `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | — | Prefix for every Daytona sandbox name (e.g. `eval-baseline-daily`). Also added as a `name_prefix` label. Empty in production. |
-| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | `false` | Create Daytona sandboxes ephemeral (auto-deleted on stop) instead of lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate. |
-| `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | `15` | Minutes an idle sandbox waits before Daytona stops it. `0` = disabled (stays running). |
-| `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | `60` (1 hour) | Minutes a stopped sandbox waits before Daytona archives it to cold storage. `0` = Daytona's max interval. |
-| `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | `10080` (7 days) | Minutes a stopped sandbox waits before Daytona deletes it. Negative = disabled; `0` = on stop. Ignored when `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` is true. |
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `N8N_INSTANCE_AI_SANDBOX_ENABLED` | `false` | Enable the sandbox-backed workspace |
+| `N8N_INSTANCE_AI_SANDBOX_PROVIDER` | `n8n-sandbox` | Select `n8n-sandbox` or `daytona` |
+| `N8N_SANDBOX_SERVICE_URL` | empty | n8n sandbox service URL |
+| `N8N_SANDBOX_SERVICE_API_KEY` | empty | n8n sandbox service API key |
+| `DAYTONA_API_URL` | empty | Daytona API URL |
+| `DAYTONA_API_KEY` | empty | Daytona API key for direct mode |
+| `N8N_INSTANCE_AI_SANDBOX_IMAGE` | `daytonaio/sandbox:0.5.0` | Daytona base image |
+| `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT` | empty | Daytona proxy snapshot override |
+| `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | `300000` | Default command timeout in milliseconds |
+| `N8N_INSTANCE_AI_BUILDER_SANDBOX_TTL_MS` | `900000` | In-process idle cache TTL; `0` disables eviction |
+| `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | empty | Prefix and label for Daytona names |
+| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | `false` | Delete a Daytona sandbox when it stops |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | `15` | Daytona idle time before stop; `0` disables auto-stop |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | `60` | Daytona stopped time before archive; `0` uses its maximum |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | `10080` | Daytona stopped time before delete; negative disables and `0` deletes on stop |
+| `N8N_INSTANCE_AI_DAYTONA_TOKEN_REFRESH_SKEW_MS` | `300000` | Proxy-token refresh skew |
+| `N8N_INSTANCE_AI_SANDBOX_LINK_SDK` | `false` | Install local workspace packages for development |
+
+See [Configuration](configuration.md) for the complete environment reference.

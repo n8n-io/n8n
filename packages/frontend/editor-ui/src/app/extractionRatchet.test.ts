@@ -6,7 +6,7 @@ import { ESLint } from 'eslint';
  * `no-restricted-imports` is not mergeable across flat-config blocks — a later
  * block replaces the rule outright. That is exactly how the ratchet was turned off
  * for `src/features/agents/**` once already: a narrower block set the rule without
- * spreading `extractedModulePatterns`. A comment cannot hold that, so this asserts
+ * spreading `extractedFeatures`. A comment cannot hold that, so this asserts
  * the *resolved* config rather than the config source.
  *
  * Add a block that sets `no-restricted-imports` for some subtree and forgets the
@@ -18,6 +18,8 @@ type RestrictedImports = [
 ];
 
 const EXTRACTED_MODULES = [
+	{ group: '@/features/instanceRegistry', package: '@n8n/frontend-module-instance-registry' },
+	{ group: '@/features/settings/otel', package: '@n8n/frontend-module-otel' },
 	{ group: '@/features/execution/insights', package: '@n8n/frontend-module-insights' },
 ];
 

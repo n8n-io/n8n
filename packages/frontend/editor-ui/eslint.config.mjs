@@ -3,18 +3,32 @@ import { frontendConfig } from '@n8n/eslint-config/frontend';
 import oxlint from 'eslint-plugin-oxlint';
 
 /**
- * Extraction ratchet. A feature that left the shell for a module package must not
- * reappear under `features/`; the package entry is the only way in. One entry per
- * extracted module, error level from the day it graduates.
+ * Extraction ratchet: a feature that has become a module package must not reappear
+ * under `src/features/`. Append one entry per extraction — this list only grows.
  *
- * Spread this into EVERY block that sets `no-restricted-imports`. Flat config
- * replaces a rule rather than merging it, so a block that omits this list silently
- * turns the ratchet off for the files it matches.
+ * The old path no longer resolves, so this is about the message, not the failure: it
+ * names the package and it says that the shell reaches a module through
+ * `src/app/modules.manifest.ts`, not through a deep path.
+ *
+ * Spread into every block that sets `no-restricted-imports`. Flat-config replaces
+ * rule options rather than merging them, so a scoped block that omits these patterns
+ * would switch the ratchet off for its own files.
  */
-const extractedModulePatterns = [
+const extractedFeatures = [
 	{
-		group: ['@/features/execution/insights', '@/features/execution/insights/**'],
-		message: 'insights is now the @n8n/frontend-module-insights package. Import its entry.',
+		group: ['@/features/instanceRegistry', '@/features/instanceRegistry/*'],
+		message:
+			'instanceRegistry is the @n8n/frontend-module-instance-registry package. The shell registers a module through src/app/modules.manifest.ts.',
+	},
+	{
+		group: ['@/features/settings/otel', '@/features/settings/otel/*'],
+		message:
+			'otel is the @n8n/frontend-module-otel package. The shell registers a module through src/app/modules.manifest.ts.',
+	},
+	{
+		group: ['@/features/execution/insights', '@/features/execution/insights/*'],
+		message:
+			'insights is the @n8n/frontend-module-insights package. The shell registers a module through src/app/modules.manifest.ts.',
 	},
 ];
 
@@ -254,6 +268,7 @@ export default defineConfig(
 			'@typescript-eslint/no-unsafe-argument': 'warn',
 			'@typescript-eslint/no-unsafe-member-access': 'warn',
 			'@typescript-eslint/no-unsafe-return': 'warn',
+			'@typescript-eslint/no-restricted-imports': ['error', { patterns: extractedFeatures }],
 		},
 	},
 	{
@@ -309,22 +324,13 @@ export default defineConfig(
 		},
 	},
 	{
-		// The ratchet everywhere it is not already spread into a narrower block.
-		// See `extractedModulePatterns`: a narrower block that sets this rule must
-		// spread the list too, because flat config replaces rules.
-		files: ['src/**/*.ts', 'src/**/*.vue'],
-		rules: {
-			'@typescript-eslint/no-restricted-imports': ['error', { patterns: extractedModulePatterns }],
-		},
-	},
-	{
 		files: ['src/features/agents/**/*.ts', 'src/features/agents/**/*.vue'],
 		rules: {
 			'@typescript-eslint/no-restricted-imports': [
 				'error',
 				{
 					patterns: [
-						...extractedModulePatterns,
+						...extractedFeatures,
 						{
 							group: ['**/ndv/runData/components/RunData.vue'],
 							message:
