@@ -1829,6 +1829,32 @@ describe('GmailTrigger', () => {
 			);
 		});
 
+		it('should simplify output when a fetch fails mid-poll', async () => {
+			// A swallowed fetch error must not change the shape of what is
+			// delivered: with Simplify on, the messages fetched before the error
+			// must still come out simplified, not in the raw format.
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': { lastTimeChecked: 1000000 },
+			};
+
+			mockLabels();
+			mockList(listPage(['1', '2']));
+			mockGet('1', 4_000_000_000_000);
+			mockGetError('2');
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 5 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1']);
+			// Simplified shape: labelIds resolved into labels, not left raw.
+			expect(response?.[0]?.[0]?.json.labels).toEqual([
+				{ id: 'testLabelId', name: 'Test Label Name' },
+			]);
+			expect(response?.[0]?.[0]?.json.labelIds).toBeUndefined();
+		});
+
 		it('should keep unfetched new-message ids when a fetch fails after the listing', async () => {
 			// Same invariant as the drain loop, on the new-message side: the window
 			// was fully listed, so the cursor advances past every listed id. A fetch

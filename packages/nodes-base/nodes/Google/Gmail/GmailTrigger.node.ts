@@ -396,6 +396,19 @@ export class GmailTrigger implements INodeType {
 			}
 		};
 
+		// Applied on every path that returns items — including a tick whose error
+		// was swallowed by the catch below, which skips the end of the try block.
+		const simplifyResponseData = async (): Promise<void> => {
+			if (simple && responseData.length > 0) {
+				responseData = this.helpers.returnJsonArray(
+					await simplifyOutput.call(
+						this,
+						responseData.map((item) => item.json),
+					),
+				);
+			}
+		};
+
 		// May only permit a cursor advance when an exhausted page token proved the
 		// window complete. Every path that never completes a listing — the early
 		// pending return (which exits before the advance) or any thrown fetch/list
@@ -438,14 +451,7 @@ export class GmailTrigger implements INodeType {
 
 				// If we still have pending IDs, don't list new messages yet.
 				if ((nodeStaticData.pendingMessageIds?.length ?? 0) > 0) {
-					if (simple && responseData.length > 0) {
-						responseData = this.helpers.returnJsonArray(
-							await simplifyOutput.call(
-								this,
-								responseData.map((item) => item.json),
-							),
-						);
-					}
+					await simplifyResponseData();
 					return responseData.length > 0 ? [responseData] : null;
 				}
 			}
@@ -555,15 +561,6 @@ export class GmailTrigger implements INodeType {
 					}
 				}
 			}
-
-			if (simple && responseData.length > 0) {
-				responseData = this.helpers.returnJsonArray(
-					await simplifyOutput.call(
-						this,
-						responseData.map((item) => item.json),
-					),
-				);
-			}
 		} catch (error) {
 			if (this.getMode() === 'manual' || !nodeStaticData.lastTimeChecked) {
 				throw error;
@@ -578,6 +575,8 @@ export class GmailTrigger implements INodeType {
 				},
 			);
 		}
+
+		await simplifyResponseData();
 
 		if (!allFetchedMessages.length) {
 			return null;
