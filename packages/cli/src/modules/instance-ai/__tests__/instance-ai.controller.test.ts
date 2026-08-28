@@ -121,7 +121,7 @@ describe('InstanceAiController', () => {
 	const publisher = mock<Publisher>();
 	const urlService = mock<UrlService>();
 	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key', durableLog: false },
+		instanceAi: { gatewayApiKey: 'static-key' },
 		editorBaseUrl: 'http://localhost:5678',
 		port: 5678,
 	});
@@ -164,6 +164,11 @@ describe('InstanceAiController', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// SSE replay reads the durable log; default to an empty thread so tests
+		// only stub what they exercise.
+		eventLog.getEventsAfter.mockResolvedValue([]);
+		eventLog.getEventsForRuns.mockResolvedValue([]);
+		eventLog.getOpenSegments.mockReturnValue([]);
 		settingsService.isInstanceAiEnabled.mockReturnValue(true);
 	});
 
@@ -409,7 +414,7 @@ describe('InstanceAiController', () => {
 
 		it('should bootstrap run-sync from the richer persisted snapshot when live events are incomplete', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			eventBus.getEventsAfter.mockReturnValue([]);
+			eventLog.getEventsAfter.mockResolvedValue([]);
 			instanceAiService.getThreadStatus.mockReturnValue({
 				hasActiveRun: true,
 				isSuspended: false,
@@ -417,7 +422,7 @@ describe('InstanceAiController', () => {
 			} as never);
 			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
 			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
-			eventBus.getEventsForRuns.mockReturnValue([
+			eventLog.getEventsForRuns.mockResolvedValue([
 				{
 					type: 'run-start',
 					runId: 'run-1',
@@ -488,12 +493,14 @@ describe('InstanceAiController', () => {
 			} as never);
 			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
 			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
-			eventBus.getEventsForRuns.mockReturnValue([]);
-			eventBus.getEventsAfter.mockReturnValue([]);
+			eventLog.getEventsForRuns.mockResolvedValue([]);
+			eventLog.getEventsAfter.mockResolvedValue([]);
 
 			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
 			eventBus.subscribe.mockImplementation((_threadId, handler) => {
-				subscribeHandler = handler as typeof subscribeHandler;
+				// The bootstrap also registers a buffering subscription; the live
+				// delivery handler is the first one.
+				subscribeHandler ??= handler as (stored: { id: number; event: unknown }) => void;
 				return vi.fn();
 			});
 
@@ -506,7 +513,7 @@ describe('InstanceAiController', () => {
 			};
 			memoryService.getLatestRunSnapshot.mockImplementation(async () => {
 				subscribeHandler!(midAwaitEvent);
-				eventBus.getEventsAfter.mockReturnValue([midAwaitEvent] as never);
+				eventLog.getEventsAfter.mockResolvedValue([midAwaitEvent] as never);
 				return undefined;
 			});
 
@@ -546,8 +553,8 @@ describe('InstanceAiController', () => {
 			} as never);
 			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
 			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
-			eventBus.getEventsForRuns.mockReturnValue([]);
-			eventBus.getEventsAfter.mockReturnValue([
+			eventLog.getEventsForRuns.mockResolvedValue([]);
+			eventLog.getEventsAfter.mockResolvedValue([
 				{ id: 1, event: { type: 'text-delta', runId: 'run-1', agentId: 'a1', payload: {} } },
 			] as never);
 
@@ -597,10 +604,12 @@ describe('InstanceAiController', () => {
 			// Capture the subscribe handler
 			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
 			eventBus.subscribe.mockImplementation((_threadId, handler) => {
-				subscribeHandler = handler as typeof subscribeHandler;
+				// The bootstrap also registers a buffering subscription; the live
+				// delivery handler is the first one.
+				subscribeHandler ??= handler as (stored: { id: number; event: unknown }) => void;
 				return vi.fn();
 			});
-			eventBus.getEventsAfter.mockReturnValue([]);
+			eventLog.getEventsAfter.mockResolvedValue([]);
 			instanceAiService.getThreadStatus.mockReturnValue({
 				hasActiveRun: false,
 				isSuspended: false,
@@ -644,10 +653,12 @@ describe('InstanceAiController', () => {
 
 			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
 			eventBus.subscribe.mockImplementation((_threadId, handler) => {
-				subscribeHandler = handler as typeof subscribeHandler;
+				// The bootstrap also registers a buffering subscription; the live
+				// delivery handler is the first one.
+				subscribeHandler ??= handler as (stored: { id: number; event: unknown }) => void;
 				return vi.fn();
 			});
-			eventBus.getEventsAfter.mockReturnValue([]);
+			eventLog.getEventsAfter.mockResolvedValue([]);
 			instanceAiService.getThreadStatus.mockReturnValue({
 				hasActiveRun: false,
 				isSuspended: false,
@@ -1515,7 +1526,7 @@ describe('InstanceAiController', () => {
 		it('should return rich messages with nextEventId', async () => {
 			const richResult = mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>();
 			memoryService.getRichMessages.mockResolvedValue(richResult);
-			eventBus.getNextEventId.mockResolvedValue(42);
+			eventLog.getNextEventId.mockResolvedValue(42);
 			const query = mock<InstanceAiThreadMessagesQuery>({
 				limit: 50,
 				page: 0,
@@ -1985,7 +1996,7 @@ describe('InstanceAiController', () => {
 	});
 });
 
-describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
+describe('InstanceAiController — durable-log SSE replay', () => {
 	const instanceAiService = mock<InstanceAiService>();
 	const memoryService = mock<InstanceAiMemoryService>();
 	const settingsService = mock<InstanceAiSettingsService>();
@@ -1993,7 +2004,7 @@ describe('InstanceAiController — durable-log SSE replay (flag on)', () => {
 	const eventLog = mock<DurableEventLog>();
 	const durableLogMetrics = mock<DurableLogMetrics>();
 	const globalConfig = mock<GlobalConfig>({
-		instanceAi: { gatewayApiKey: 'static-key', durableLog: true },
+		instanceAi: { gatewayApiKey: 'static-key' },
 		editorBaseUrl: 'http://localhost:5678',
 		port: 5678,
 	});

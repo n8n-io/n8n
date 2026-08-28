@@ -369,7 +369,7 @@ const setupAction = z.object({
 					.boolean()
 					.optional()
 					.describe(
-						'Set ONLY when the user explicitly asked to create a new credential of this type ("create a new Slack credential"). The card then opens with nothing preselected instead of offering the most recent existing credential — existing ones stay listed in case the user changes their mind.',
+						'Set when the user explicitly asked to create a new credential of this type ("create a new Slack credential"), or needs to enter a replacement for one whose secret is invalid or rotated (e.g. pasted a new token in chat, which you cannot store). The card then opens with nothing preselected instead of offering the most recent existing credential — existing ones stay listed in case the user changes their mind.',
 					),
 				setupHint: setupHintField.optional(),
 			}),

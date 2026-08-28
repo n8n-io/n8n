@@ -103,6 +103,9 @@ function tabHref(tab: ArtifactTab): string | undefined {
 	if (tab.type === 'data-table') {
 		return tab.projectId ? `/projects/${tab.projectId}/datatables/${tab.id}` : '/home/datatables';
 	}
+	if (tab.type === 'agent') {
+		return tab.projectId ? `/projects/${tab.projectId}/agents/${tab.id}` : '/home/agents';
+	}
 	return undefined;
 }
 
