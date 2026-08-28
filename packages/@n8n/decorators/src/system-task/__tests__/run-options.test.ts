@@ -50,9 +50,11 @@ it.each([
 	{ maxAttempts: 0 },
 	{ maxAttempts: -1 },
 	{ maxAttempts: 1.5 },
+	{ maxAttempts: 2_147_483_648 },
 	{ misfireGraceSeconds: 0 },
 	{ misfireGraceSeconds: -1 },
 	{ misfireGraceSeconds: 0.5 },
+	{ misfireGraceSeconds: 86_400_000_000 },
 ])('should reject the nonsensical override %o', (override) => {
 	expect(() =>
 		resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent', ...override })),

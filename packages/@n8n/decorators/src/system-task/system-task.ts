@@ -105,22 +105,26 @@ export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOpti
 		maxAttempts: task.maxAttempts ?? defaults.maxAttempts,
 	};
 
-	// Both end up in `int` columns, where a fractional value is rounded, and an
-	// override of `0` passes the `??` above. `scheduled_job` rejects a grace of `0`
-	// outright, so match that floor here rather than at the failing insert.
+	// Both end up in `int` columns, where a fractional value is rounded and anything
+	// above the signed 32-bit maximum is rejected, and an override of `0` passes the
+	// `??` above. `scheduled_job` rejects a grace of `0` outright, so match the
+	// column's whole range here rather than at the failing insert.
 	// Only a static floor: the scheduler's usable minimum depends on its configured
 	// intervals, so whatever provisions a task still has to clamp against those.
-	assertInteger(task.name, 'maxAttempts', options.maxAttempts, 1);
-	assertInteger(task.name, 'misfireGraceSeconds', options.misfireGraceSeconds, 1);
+	assertInRange(task.name, 'maxAttempts', options.maxAttempts, 1);
+	assertInRange(task.name, 'misfireGraceSeconds', options.misfireGraceSeconds, 1);
 
 	return options;
 }
 
-function assertInteger(taskName: string, field: string, value: number, min: number) {
-	if (Number.isInteger(value) && value >= min) return;
+/** Ceiling of an `int` column, which is what both fields are stored in. */
+const MAX_INT32 = 2_147_483_647;
+
+function assertInRange(taskName: string, field: string, value: number, min: number) {
+	if (Number.isInteger(value) && value >= min && value <= MAX_INT32) return;
 
 	throw new UnexpectedError(
-		`System task "${taskName}" declares ${field} as ${value}, but it must be an integer of at least ${min}`,
+		`System task "${taskName}" declares ${field} as ${value}, but it must be an integer between ${min} and ${MAX_INT32}`,
 	);
 }
 
