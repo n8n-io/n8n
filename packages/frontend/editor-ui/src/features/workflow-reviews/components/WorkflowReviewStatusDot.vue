@@ -28,7 +28,11 @@ const status = computed(() => getWorkflowReviewStatusDisplay(i18n, props.state, 
 	<div
 		:class="[$style.dot, $style[status.colorClass], size === 'small' && $style.small]"
 		data-test-id="workflow-review-request-status-dot"
-		v-bind="decorative ? { 'aria-hidden': 'true' } : { role: 'img', 'aria-label': status.label }"
+		v-bind="
+			decorative
+				? { 'aria-hidden': 'true' }
+				: { role: 'img', 'aria-label': `${status.stateLabel} | ${status.decisionLabel}` }
+		"
 	/>
 </template>
 
