@@ -110,9 +110,9 @@ export interface ReconstructAgentRuntimeParams {
 	 * Telemetry classification of the run this runtime serves. Baked in at build
 	 * time because it is a property of the runtime itself — a draft runtime is
 	 * always a test run, a published one always production — and the runtime
-	 * cache keys on exactly that split. Delegated children inherit it, so a
-	 * sub-agent invoked from a preview chat reports `test` even though it runs
-	 * its own published snapshot.
+	 * cache keys on exactly that split. Delegated children inherit it and
+	 * resolve their referenced entities to match: test runs use current drafts,
+	 * production runs use published versions (sub-agents and workflow tools).
 	 */
 	runType: AgentRunTelemetryType;
 	/**
@@ -392,6 +392,8 @@ export class AgentRuntimeReconstructionService {
 			{
 				projectId,
 				workflowToolExecutionMode,
+				// Production runs execute published workflow versions, test runs the drafts.
+				usePublishedWorkflowVersion: runType === 'production',
 				agentId: memoryOwnerAgentId,
 				integrationType,
 				userId: user?.id,
@@ -487,13 +489,14 @@ export class AgentRuntimeReconstructionService {
 			projectId,
 			agentRepository: this.agentRepository,
 		})) {
-			if (!agent?.activeVersionId) continue;
+			if (!agent) continue;
 
 			// No versionId pin here: the delegate closure lives inside the
 			// cached parent runtime, so pinning would freeze the child at
-			// whatever was published when the parent was last built. Leaving
-			// it out means SubAgentSourceResolver re-resolves the child's
-			// current activeVersion on every delegation.
+			// whatever version existed when the parent was last built. Leaving it
+			// out means SubAgentSourceResolver re-resolves the child on every
+			// delegation — its current draft for test runs, its published
+			// version for production runs.
 			sourcesById[agentId] = { agentId };
 			availableSubAgents.push({
 				id: agentId,
@@ -550,6 +553,7 @@ export class AgentRuntimeReconstructionService {
 		runIdentity: {
 			projectId: string;
 			workflowToolExecutionMode: WorkflowToolExecutionMode;
+			usePublishedWorkflowVersion: boolean;
 			agentId?: string;
 			integrationType?: string;
 			userId?: string;
@@ -557,8 +561,15 @@ export class AgentRuntimeReconstructionService {
 		},
 		instrumentation?: AgentRuntimeInstrumentation,
 	): ToolResolver {
-		const { projectId, workflowToolExecutionMode, agentId, integrationType, userId, supportsHitl } =
-			runIdentity;
+		const {
+			projectId,
+			workflowToolExecutionMode,
+			usePublishedWorkflowVersion,
+			agentId,
+			integrationType,
+			userId,
+			supportsHitl,
+		} = runIdentity;
 		const instrumentToolAdditionalData = instrumentation?.configureToolAdditionalData;
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
@@ -569,6 +580,7 @@ export class AgentRuntimeReconstructionService {
 					activeExecutions: this.activeExecutions,
 					projectId,
 					executionMode: workflowToolExecutionMode,
+					usePublishedWorkflowVersion,
 					webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
 					instrumentToolAdditionalData,
 					agentId,
