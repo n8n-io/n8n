@@ -30,8 +30,12 @@ export class Cal implements INodeType {
 		],
 		requestDefaults: {
 			// `host` is part of the existing Cal credential, so the same node
-			// serves Cal.com cloud and self-hosted instances.
-			baseURL: '={{ $credentials.host }}/v2',
+			// serves Cal.com cloud and self-hosted instances. The trailing slash
+			// is stripped because `/v2` is appended here rather than passed as a
+			// relative URL, so a host saved as `https://cal.example.com/` would
+			// otherwise request `//v2/...` and 404 on some installations.
+			baseURL:
+				'={{ $credentials.host.endsWith("/") ? $credentials.host.slice(0, -1) : $credentials.host }}/v2',
 			headers: {
 				Accept: 'application/json',
 				'Content-Type': 'application/json',

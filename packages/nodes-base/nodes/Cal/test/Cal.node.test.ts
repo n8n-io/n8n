@@ -80,6 +80,27 @@ describe('Cal.com Node', () => {
 		});
 	});
 
+	describe('Self-hosted host with a trailing slash', () => {
+		beforeEach(() => {
+			nock(BASE_URL)
+				.get('/v2/bookings/bk_one')
+				.matchHeader('cal-api-version', '2024-08-13')
+				.reply(200, { status: 'success', data: bookingOne });
+		});
+
+		// `/v2` is appended to the credential host, so a host saved with a
+		// trailing slash would request `//v2/bookings/...` without the strip.
+		new NodeTestHarness().setupTests({
+			workflowFiles: ['getBookingTrailingSlashHost.workflow.json'],
+			credentials: {
+				calApi: {
+					apiKey: 'test-api-key',
+					host: `${BASE_URL}/`,
+				},
+			},
+		});
+	});
+
 	describe('Event Type', () => {
 		beforeEach(() => {
 			// `/event-types` rejects the 2024-08-13 stamp that `/bookings` requires,
