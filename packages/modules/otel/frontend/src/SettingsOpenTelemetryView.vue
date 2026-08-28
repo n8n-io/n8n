@@ -47,7 +47,7 @@ const showUnsavedChangesDialog = ref(false);
 const pendingNext = ref<NavigationGuardNext | null>(null);
 
 function syncHeaderPairsFromStore() {
-	headerPairs.value = headersStringToPairs(otelStore.settings.exporterHeaders);
+	headerPairs.value = headerPairsFromStore();
 }
 
 function syncHeaderPairsToStore() {
@@ -73,6 +73,14 @@ function onHeaderChange(index: number, field: 'key' | 'value', value: string) {
 
 function isEnvManaged(field: keyof typeof OTEL_FIELD_ENV_VARS): boolean {
 	return otelStore.envManagedFields.includes(field);
+}
+
+// Env-managed headers come back redacted from the API, so there is nothing to
+// render — the disabled inputs and env tooltip already explain why.
+function headerPairsFromStore(): Array<{ key: string; value: string }> {
+	return isEnvManaged('exporterHeaders')
+		? []
+		: headersStringToPairs(otelStore.settings.exporterHeaders ?? '');
 }
 
 // State-first copy: the row tells the admin whether tracing is live right now,
@@ -198,7 +206,7 @@ watch(
 	(newVal) => {
 		const currentString = headersPairsToString(headerPairs.value);
 		if (newVal !== currentString) {
-			headerPairs.value = headersStringToPairs(newVal ?? '');
+			headerPairs.value = headerPairsFromStore();
 		}
 	},
 );

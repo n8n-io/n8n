@@ -1,6 +1,6 @@
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { jsonParse } from 'n8n-workflow';
+import { CREDENTIAL_BLANKING_VALUE, jsonParse } from 'n8n-workflow';
 
 import { OtelConfig } from './otel.config';
 import { OTEL_ENV_VARS } from './otel.constants';
@@ -33,7 +33,17 @@ export class OtelSettingsService {
 
 	getSettings(): OtelSettingsResponse {
 		if (!this.currentSettings) throw new Error('OTel settings not yet initialized');
-		return { ...this.currentSettings, envManagedFields: this.envManagedFields };
+		return {
+			...this.currentSettings,
+			// Env-managed header values are never returned to clients. The blanking
+			// placeholder marks a value as set; an empty string means unset.
+			exporterHeaders: this.isEnvManaged('exporterHeaders')
+				? this.currentSettings.exporterHeaders
+					? CREDENTIAL_BLANKING_VALUE
+					: ''
+				: this.currentSettings.exporterHeaders,
+			envManagedFields: this.envManagedFields,
+		};
 	}
 
 	/**
@@ -55,18 +65,34 @@ export class OtelSettingsService {
 
 	private async getPersistedSettings(): Promise<Partial<OtelConfig> | undefined> {
 		const row = await this.settingsRepository.findByKey(OTEL_SETTINGS_KEY);
-		if (!row?.value) return undefined;
-		return jsonParse<Partial<OtelConfig>>(row.value, { fallbackValue: undefined });
+		return this.parsePersisted(row?.value);
+	}
+
+	private parsePersisted(value: string | null | undefined): Partial<OtelConfig> | undefined {
+		if (!value) return undefined;
+		try {
+			return jsonParse<Partial<OtelConfig>>(value);
+		} catch {
+			return undefined;
+		}
 	}
 
 	async saveSettings(incoming: OtelConfig): Promise<void> {
+		const existing = await this.settingsRepository.findByKey(OTEL_SETTINGS_KEY);
+		const persisted = this.parsePersisted(existing?.value);
 		// Env-var fields always win — override any frontend-submitted values with
 		// the canonical env-var value so the DB stays consistent even if a client
 		// sends a stale or tampered payload.
 		const sanitized = this.buildConfig((key) =>
 			this.isEnvManaged(key) ? this.config[key] : incoming[key],
 		);
-		const existing = await this.settingsRepository.findByKey(OTEL_SETTINGS_KEY);
+		// A redacted placeholder echoed back by a client means "keep the stored value"
+		if (
+			!this.isEnvManaged('exporterHeaders') &&
+			incoming.exporterHeaders === CREDENTIAL_BLANKING_VALUE
+		) {
+			sanitized.exporterHeaders = persisted?.exporterHeaders ?? '';
+		}
 		const value = JSON.stringify(sanitized);
 		if (existing) {
 			existing.value = value;

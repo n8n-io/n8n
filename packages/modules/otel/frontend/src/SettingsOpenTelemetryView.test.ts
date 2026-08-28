@@ -463,6 +463,21 @@ describe('SettingsOpenTelemetryView', () => {
 		});
 	});
 
+	it('renders no header rows when exporterHeaders is env-managed and redacted', async () => {
+		getOtelSettingsMock.mockResolvedValue(
+			makeSettings({
+				exporterHeaders: '__n8n_BLANK_VALUE_e5362baf-c777-4d57-a609-6eaf1f9e87f6',
+				envManagedFields: ['exporterHeaders'],
+			}),
+		);
+
+		const { queryAllByTestId } = render();
+
+		await waitFor(() => {
+			expect(queryAllByTestId('otel-header-key')).toHaveLength(0);
+		});
+	});
+
 	// ── test trace ────────────────────────────────────────────────────────────
 
 	it('renders the test trace button after fetch', async () => {

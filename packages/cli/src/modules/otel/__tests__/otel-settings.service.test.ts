@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Settings, SettingsRepository } from '@n8n/db';
+import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import { OTEL_SETTINGS_KEY, OtelSettingsService } from '../otel-settings.service';
@@ -113,6 +114,48 @@ describe('OtelSettingsService', () => {
 			expect(result.envManagedFields).toContain('enabled');
 			expect(result.envManagedFields).toContain('exporterEndpoint');
 		});
+
+		it('masks env-managed exporterHeaders in the settings response', async () => {
+			settingsRepository.findByKey.mockResolvedValue(null);
+			process.env.N8N_OTEL_EXPORTER_OTLP_HEADERS = 'authorization=Bearer secret-token';
+
+			const configWithEnv = new OtelConfig();
+			configWithEnv.exporterHeaders = 'authorization=Bearer secret-token';
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
+
+			await serviceWithEnv.loadSettings();
+			const result = serviceWithEnv.getSettings();
+
+			expect(result.exporterHeaders).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(result.exporterHeaders).not.toContain('secret-token');
+			expect(result.envManagedFields).toContain('exporterHeaders');
+		});
+
+		it('returns an empty string for env-managed exporterHeaders when none are set', async () => {
+			settingsRepository.findByKey.mockResolvedValue(null);
+			process.env.N8N_OTEL_EXPORTER_OTLP_HEADERS = '';
+
+			const configWithEnv = new OtelConfig();
+			configWithEnv.exporterHeaders = '';
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository);
+
+			await serviceWithEnv.loadSettings();
+			const result = serviceWithEnv.getSettings();
+
+			expect(result.exporterHeaders).toBe('');
+		});
+
+		it('returns non-env-managed exporterHeaders as-is', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ exporterHeaders: 'x-api-key=stored' }),
+			} as Settings);
+
+			await service.loadSettings();
+			const result = service.getSettings();
+
+			expect(result.exporterHeaders).toBe('x-api-key=stored');
+			expect(result.envManagedFields).not.toContain('exporterHeaders');
+		});
 	});
 
 	describe('getSettings', () => {
@@ -183,6 +226,19 @@ describe('OtelSettingsService', () => {
 			) as OtelConfig;
 			expect(saved.exporterEndpoint).toBe('https://from-env');
 			expect(saved.enabled).toBe(settings.enabled);
+		});
+
+		it('keeps the stored exporterHeaders when the redaction placeholder is echoed back', async () => {
+			settingsRepository.findByKey.mockResolvedValue({
+				value: JSON.stringify({ ...settings, exporterHeaders: 'x-api-key=stored-secret' }),
+			} as Settings);
+
+			await service.saveSettings({ ...settings, exporterHeaders: CREDENTIAL_BLANKING_VALUE });
+
+			const saved = JSON.parse(
+				(settingsRepository.save.mock.calls[0]?.[0] as { value: string }).value,
+			) as OtelConfig;
+			expect(saved.exporterHeaders).toBe('x-api-key=stored-secret');
 		});
 	});
 
