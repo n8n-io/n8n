@@ -90,6 +90,20 @@ import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-reg
 // ---------------------------------------------------------------------------
 
 /** Collaboration stub that reports no editor write lock and records broadcasts. */
+/**
+ * Partial GlobalConfig for constructing the adapter. Every branch the constructor
+ * reads eagerly has to be present: a missing one throws at construction time, far
+ * from whatever the test was actually about.
+ */
+function globalConfigStub(
+	overrides: { allowSendingParameterValues?: boolean; queueMode?: boolean } = {},
+): ConstructorParameters<typeof InstanceAiAdapterService>[1] {
+	return {
+		ai: { allowSendingParameterValues: overrides.allowSendingParameterValues ?? false },
+		executions: { mode: overrides.queueMode ? 'queue' : 'regular' },
+	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1];
+}
+
 function createMockCollaborationService() {
 	return {
 		ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
@@ -1293,9 +1307,7 @@ function createNodeAdapterServiceForTests(
 		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1],
+		globalConfigStub(),
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
@@ -1668,9 +1680,7 @@ function createDataTableAdapterForTests(overrides?: {
 		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1],
+		globalConfigStub(),
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
@@ -1983,9 +1993,7 @@ function createWorkflowAdapterForTests(overrides?: {
 
 	const service = new InstanceAiAdapterService(
 		mockLogger as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0],
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1],
+		globalConfigStub(),
 		mockWorkflowService as unknown as WorkflowService,
 		mockWorkflowFinderService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -3127,9 +3135,7 @@ function createExecutionAdapterForTests(overrides?: { sharingEnabled?: boolean }
 		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1],
+		globalConfigStub(),
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[3],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[4],
@@ -3391,10 +3397,10 @@ function createRunAdapterForTests(
 		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{
-			ai: { allowSendingParameterValues: options?.allowSendingParameterValues ?? false },
-			executions: { mode: options?.queueMode ? 'queue' : 'regular' },
-		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
+		globalConfigStub({
+			allowSendingParameterValues: options?.allowSendingParameterValues,
+			queueMode: options?.queueMode,
+		}),
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		mockWorkflowFinderService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -4106,9 +4112,7 @@ function createAdapterWithGatewayMock(
 		warn: vi.fn(),
 		scoped: vi.fn().mockReturnThis(),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-	args[1] = { ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-		typeof InstanceAiAdapterService
-	>[1];
+	args[1] = globalConfigStub();
 	if (overrides?.credentialsService) {
 		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
