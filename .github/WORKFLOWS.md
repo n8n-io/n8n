@@ -11,6 +11,7 @@ Complete reference for n8n's `.github/` folder.
 ├── WORKFLOWS.md                          # This document
 ├── CI-TELEMETRY.md                       # Telemetry & metrics guide
 ├── owners/                               # Team ownership (OWNERS file + owners scripts)
+├── CODEOWNERS                            # Temporary, side by side with OWNERS during the trial
 ├── pull_request_template.md              # PR description template
 ├── pull_request_title_conventions.md     # Title format rules (Angular)
 ├── actionlint.yml                        # Workflow linter config
@@ -559,9 +560,9 @@ See **[CI-TELEMETRY.md](CI-TELEMETRY.md)** for:
 
 ## OWNERS
 
-Team ownership lives in `.github/owners/OWNERS` (this replaced the
-GitHub-native `CODEOWNERS` file), next to the scripts that consume it. Line
-format:
+Team ownership lives in `.github/owners/OWNERS` (this replaces the
+GitHub-native `CODEOWNERS` file; see the transition note below), next to the
+scripts that consume it. Line format:
 
 ```
 <pattern> <@org/team>... [required]
@@ -604,6 +605,16 @@ approvals.
 
 The workflow reads OWNERS and its scripts from the base branch only, so a PR
 cannot lift its own review requirement.
+
+### Transition from CODEOWNERS
+
+During a trial period, `.github/CODEOWNERS` stays in place next to OWNERS:
+GitHub's native code-owner enforcement keeps gating merges while the
+"Required Reviews" status runs side by side. The two must agree — CODEOWNERS
+holds exactly the `required` entries of OWNERS (plus `.github/owners` itself)
+and must not gain new entries; new ownership goes into OWNERS. After the
+trial, delete `.github/CODEOWNERS`, remove "Require review from Code Owners"
+from the master ruleset, and delete this section (tracked in DEVP-887).
 
 ---
 
