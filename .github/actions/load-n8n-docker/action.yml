@@ -15,7 +15,7 @@ description: 'Restores the zstd-compressed n8n + runners image tarball from the 
 
 inputs:
   build-variant:
-    description: 'Variant of the image to load. Must match what build-n8n-docker used (standard or coverage).'
+    description: 'Variant of the image to load. Must match what build-n8n-docker used (standard, coverage, or pc).'
     required: false
     default: 'standard'
   cache-sha:

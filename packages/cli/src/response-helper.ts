@@ -10,6 +10,7 @@ import { Readable } from 'node:stream';
 import picocolors from 'picocolors';
 
 import { classifyHttpError, isResponseError } from './errors/http-error-classifier';
+import { applyFormSandboxCSP } from './webhooks/webhook-response-headers';
 import { serializeInternalRestError } from './errors/http-error-serializers';
 
 export function sendSuccessResponse(
@@ -61,6 +62,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 			if (isFormTrigger || isLegacyFormTrigger) {
 				const isTestWebhook = basePath.includes('test');
 				res.status(404);
+				applyFormSandboxCSP(res);
 				return res.render('form-trigger-404', { isTestWebhook });
 			}
 		}
@@ -68,6 +70,7 @@ export function sendErrorResponse(res: Response, error: Error) {
 		if (error.errorCode === 409 && originalUrl && originalUrl.includes('form-waiting')) {
 			//codes other than 200  breaks redirection to form-waiting page from form trigger
 			//render form page instead of json
+			applyFormSandboxCSP(res);
 			return res.render('form-trigger-409', {
 				message: error.message,
 			});

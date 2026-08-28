@@ -17,16 +17,18 @@
     "@actions/github": "9.0.0",
     "@cyclonedx/cdxgen": "12.4.0",
     "@octokit/core": "7.0.6",
+    "ajv": "8.20.0",
     "conventional-changelog": "7.2.0",
     "debug": "4.4.3",
-    "json-with-bigint": "3.5.11",
     "glob": "13.0.6",
+    "json-with-bigint": "3.5.11",
     "minimatch": "10.2.4",
     "semver": "7.7.4",
     "tempfile": "6.0.1",
     "yaml": "^2.8.3"
   },
   "devDependencies": {
+    "@types/node": "^26.3.0",
     "conventional-changelog-angular": "8.3.0"
   }
 }

@@ -12,7 +12,7 @@
 # Source: https://github.com/n8n-io/n8n/blob/master/docker/get-n8n.sh
 set -eu
 
-SCRIPT_VERSION="1.2.0"
+SCRIPT_VERSION="1.3.0"
 # The version to install is derived from the latest stable GitHub release in
 # resolve_n8n_version(); this fallback only applies when that lookup fails.
 FALLBACK_N8N_VERSION="2.32.0"
@@ -30,6 +30,19 @@ DOCS_EVERYDAY_URL="https://docs.n8n.io/deploy/host-n8n/install-options/one-line-
 UPGRADE=0
 NO_START=0
 REQUESTED_VERSION=""
+
+# Anonymous failure report (RudderStack): offered only when an install or
+# upgrade fails, and sent only after the user answers yes. The payload is the
+# script version, OS name, install|upgrade mode and the failed step — nothing
+# else. The write key is a public client-side key. DO_NOT_TRACK=1 disables
+# the offer entirely.
+TELEMETRY_URL="https://nnrry.dataplane.rudderstack.com/v1/track"
+TELEMETRY_WRITE_KEY="3IDNZwfcE0lfjVDb0Y1wp8ZVGlg"
+# Set before steps whose failure could be on n8n's side (stack definition
+# download, image pulls, container start, health check). Failures of the
+# user's environment (no docker, port taken, ...) leave it empty and no
+# report is offered.
+STEP=""
 
 # Apply ANSI styling only when stdout is a terminal that supports it and the
 # user hasn't opted out (https://no-color.org).
@@ -53,8 +66,36 @@ fi
 
 say() { printf '%s\n' "$*"; }
 ok() { printf '%s\342\234\224%s %s\n' "$GREEN" "$RESET" "$*"; }
+
+# Never sends without an explicit yes. The prompt uses /dev/tty because
+# 'curl | sh' owns stdin; without a terminal there is no prompt and no report.
+offer_failure_report() {
+	[ -n "$STEP" ] || return 0
+	[ -z "${DO_NOT_TRACK:-}" ] || return 0
+	printf '\nSend an anonymous failure report to n8n, so we can fix this?\n(script version, OS name, failed step — nothing else) [y/N] ' >/dev/tty 2>/dev/null || return 0
+	read -r answer </dev/tty 2>/dev/null || return 0
+	case "$answer" in
+	[Yy]*) ;;
+	*) return 0 ;;
+	esac
+	mode="install"
+	[ "$UPGRADE" -eq 1 ] && mode="upgrade"
+	body="{\"anonymousId\":\"$(gen_secret)\",\"event\":\"install_failed\",\"properties\":{\"scriptVersion\":\"${SCRIPT_VERSION}\",\"os\":\"$(uname -s)\",\"mode\":\"${mode}\",\"step\":\"${STEP}\"}}"
+	if command -v curl >/dev/null 2>&1; then
+		curl -s -o /dev/null --max-time 5 -u "${TELEMETRY_WRITE_KEY}:" \
+			-H 'Content-Type: application/json' -d "$body" "$TELEMETRY_URL" 2>/dev/null || true
+	elif command -v wget >/dev/null 2>&1; then
+		wget -q -O /dev/null -T 5 \
+			--header="Authorization: Basic $(printf '%s:' "$TELEMETRY_WRITE_KEY" | base64)" \
+			--header='Content-Type: application/json' \
+			--post-data="$body" "$TELEMETRY_URL" 2>/dev/null || true
+	fi
+	printf 'Thank you!\n' >/dev/tty 2>/dev/null || true
+}
+
 fail() {
 	printf '%sError:%s %s\n' "$RED" "$RED_RESET" "$*" >&2
+	offer_failure_report
 	exit 1
 }
 
@@ -77,6 +118,7 @@ Options:
 
 Environment:
   N8N_DIR            Install directory (default: ./n8n)
+  DO_NOT_TRACK=1     Never offer to send an anonymous failure report.
 
 For production-grade setups (TLS, Postgres, queue mode) see:
   ${DOCS_HOSTING_URL}
@@ -312,6 +354,7 @@ compose() {
 check_rate_limit() {
 	grep -qiE 'toomanyrequests|rate ?limit' "$1" || return 0
 	rm -f "$1"
+	STEP="docker-hub-rate-limit"
 	fail "Docker Hub pull rate limit reached — your configuration in ${N8N_DIR} is
   unaffected. Wait about an hour, then start n8n with:
     docker compose -f ${N8N_DIR}/compose.yml up -d
@@ -374,7 +417,9 @@ do_upgrade() {
 	fi
 
 	say "Pulling images..."
+	STEP="image-pull"
 	compose_pull
+	STEP="container-start"
 	compose_checked up -d --quiet-pull
 	ok "Restarted with n8n ${target}"
 }
@@ -425,6 +470,7 @@ main() {
 	if [ -f "${N8N_DIR}/compose.yml" ] || [ -f "${N8N_DIR}/.env" ]; then
 		if [ "$UPGRADE" -eq 1 ]; then
 			do_upgrade
+			STEP="n8n-readiness-timeout"
 			wait_for_n8n || fail "n8n did not become ready — check 'docker compose -f ${N8N_DIR}/compose.yml logs n8n'."
 			print_summary
 			exit 0
@@ -434,10 +480,11 @@ main() {
 		if http_get "http://127.0.0.1:${N8N_PORT}/healthz"; then
 			say "n8n is already running at: http://localhost:${N8N_PORT}"
 		else
-			say "To start it: docker compose -f ${N8N_DIR}/compose.yml up -d"
+			say "To start it:  docker compose -f ${N8N_DIR}/compose.yml up -d"
 			say "Once started, n8n runs at: http://localhost:${N8N_PORT}"
 		fi
-		say "To upgrade:  curl -fsSL https://get.n8n.io | sh -s -- --upgrade"
+		say "To upgrade:   curl -fsSL https://get.n8n.io | sh -s -- --upgrade"
+		say "To uninstall: docker compose -f ${N8N_DIR}/compose.yml down -v && rm -rf ${N8N_DIR}   # DELETES all n8n data"
 		check_compose_freshness
 		exit 0
 	fi
@@ -454,7 +501,9 @@ main() {
 
 	INSTALL_VERSION="${REQUESTED_VERSION:-$(resolve_n8n_version)}"
 	mkdir -p "${N8N_DIR}"
+	STEP="stack-definition-download"
 	write_compose
+	STEP=""
 	ok "Created ${N8N_DIR}/compose.yml"
 	write_searxng_settings
 	ok "Created ${N8N_DIR}/searxng-settings.yml"
@@ -469,9 +518,12 @@ main() {
 	fi
 
 	say "Pulling images (this can take a few minutes on first run)..."
+	STEP="image-pull"
 	compose_pull
+	STEP="container-start"
 	compose_checked up -d --quiet-pull
 	ok "Started n8n ${INSTALL_VERSION} and sandbox services"
+	STEP="n8n-readiness-timeout"
 	wait_for_n8n || fail "n8n did not become ready — check 'docker compose -f ${N8N_DIR}/compose.yml logs n8n'."
 	print_summary
 }
