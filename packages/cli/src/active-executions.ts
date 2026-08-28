@@ -32,6 +32,7 @@ import type {
 	ResumableExecution,
 } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
+import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 
 function getErrorMessage(error: unknown): string {
 	if (error instanceof Error && error.message !== undefined) {
@@ -395,7 +396,7 @@ export class ActiveExecutions {
 		const execution = this.getExecutionOrFail(executionId);
 
 		if (execution.status !== 'waiting' && execution?.responsePromise) {
-			execution.responsePromise.resolve({});
+			execution.responsePromise.resolve(EXECUTION_ENDED_WITHOUT_RESPONSE);
 			this.logger.debug('Execution response promise cleaned', { executionId });
 		}
 	}
