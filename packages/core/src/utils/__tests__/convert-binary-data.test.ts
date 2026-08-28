@@ -1,8 +1,6 @@
-import { Container } from '@n8n/di';
 import type { IBinaryData, IRunNodeResponse } from 'n8n-workflow';
 import { BINARY_ENCODING, BINARY_IN_JSON_PROPERTY, BINARY_MODE_COMBINED } from 'n8n-workflow';
 
-import type { BinaryDataConfig } from '../../binary-data/binary-data.config';
 import * as binaryHelperFunctions from '../../execution-engine/node-execution-context/utils/binary-helper-functions';
 import { convertBinaryData } from '../convert-binary-data';
 
@@ -11,11 +9,9 @@ vi.mock('../../execution-engine/node-execution-context/utils/binary-helper-funct
 describe('convertBinaryData', () => {
 	const workflowId = 'test-workflow-id';
 	const executionId = 'test-execution-id';
-	const mockBinaryDataConfig = { mode: 'default' } as BinaryDataConfig;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		vi.spyOn(Container, 'get').mockReturnValue(mockBinaryDataConfig);
 	});
 
 	afterEach(() => {
@@ -24,8 +20,6 @@ describe('convertBinaryData', () => {
 
 	describe('early returns', () => {
 		it('should return unchanged data when binaryMode is not "combined"', async () => {
-			mockBinaryDataConfig.mode = 'filesystem';
-
 			const responseData: IRunNodeResponse = {
 				data: [[{ json: { test: 'data' } }]],
 			};
@@ -35,26 +29,7 @@ describe('convertBinaryData', () => {
 			expect(result).toBe(responseData);
 		});
 
-		it('should return unchanged data when mode is "default"', async () => {
-			mockBinaryDataConfig.mode = 'default';
-
-			const responseData: IRunNodeResponse = {
-				data: [[{ json: { test: 'data' } }]],
-			};
-
-			const result = await convertBinaryData(
-				workflowId,
-				executionId,
-				responseData,
-				BINARY_MODE_COMBINED,
-			);
-
-			expect(result).toBe(responseData);
-		});
-
 		it('should return unchanged data when responseData has no data', async () => {
-			mockBinaryDataConfig.mode = 'filesystem';
-
 			const responseData: IRunNodeResponse = {
 				data: [],
 			};
@@ -71,10 +46,6 @@ describe('convertBinaryData', () => {
 	});
 
 	describe('binary data conversion', () => {
-		beforeEach(() => {
-			mockBinaryDataConfig.mode = 'filesystem';
-		});
-
 		it('should handle items without binary data', async () => {
 			const responseData: IRunNodeResponse = {
 				data: [[{ json: { test: 'data' } }]],

@@ -13,9 +13,13 @@ describe('BinaryDataStorageRule', () => {
 		rule = new BinaryDataStorageRule(binaryDataConfig, executionsConfig);
 	});
 
+	afterEach(() => {
+		delete process.env.N8N_DEFAULT_BINARY_DATA_MODE;
+	});
+
 	describe('detect()', () => {
-		it('should not be affected if mode is not default', async () => {
-			binaryDataConfig.mode = 'filesystem';
+		it('should not be affected if env var is not set to default', async () => {
+			process.env.N8N_DEFAULT_BINARY_DATA_MODE = 'filesystem';
 			executionsConfig.mode = 'regular';
 			const result = await rule.detect();
 
@@ -23,8 +27,8 @@ describe('BinaryDataStorageRule', () => {
 			expect(result.instanceIssues).toHaveLength(0);
 		});
 
-		it('should be affected if mode is default and execution mode is regular', async () => {
-			binaryDataConfig.mode = 'default';
+		it('should be affected if env var is default and execution mode is regular', async () => {
+			process.env.N8N_DEFAULT_BINARY_DATA_MODE = 'default';
 			executionsConfig.mode = 'regular';
 			const result = await rule.detect();
 
@@ -35,8 +39,8 @@ describe('BinaryDataStorageRule', () => {
 			expect(result.recommendations[0].action).toBe('Ensure adequate disk space');
 		});
 
-		it('should be affected if mode is default and execution mode is queue', async () => {
-			binaryDataConfig.mode = 'default';
+		it('should be affected if env var is default and execution mode is queue', async () => {
+			process.env.N8N_DEFAULT_BINARY_DATA_MODE = 'default';
 			executionsConfig.mode = 'queue';
 			const result = await rule.detect();
 
