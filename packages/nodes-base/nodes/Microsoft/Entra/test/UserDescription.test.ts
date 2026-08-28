@@ -1,7 +1,51 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { NodeConnectionTypes, type WorkflowTestData } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeHelpers,
+	type INodeParameters,
+	type WorkflowTestData,
+} from 'n8n-workflow';
+import nock from 'nock';
+import type { Mock } from 'vitest';
 
 import { microsoftEntraApiResponse, microsoftEntraNodeResponse } from './mocks';
+import { MicrosoftEntra } from '../MicrosoftEntra.node';
+
+const guid = '87d349ed-44d7-43e1-9a83-5f2406dee5bd';
+const groupGuid = 'a8eb60e3-0145-4d7e-85ef-c6259784761b';
+
+// A manual trigger feeding one Microsoft Entra ID node, so a case only has to state its parameters.
+const entraWorkflow = (parameters: INodeParameters): WorkflowTestData['input']['workflowData'] => ({
+	nodes: [
+		{
+			parameters: {},
+			id: '416e4fc1-5055-4e61-854e-a6265256ac26',
+			name: 'When clicking ‘Execute workflow’',
+			type: 'n8n-nodes-base.manualTrigger',
+			position: [820, 380],
+			typeVersion: 1,
+		},
+		{
+			parameters: { requestOptions: {}, ...parameters },
+			type: 'n8n-nodes-base.microsoftEntra',
+			typeVersion: 1,
+			position: [220, 0],
+			id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
+			name: 'Microsoft Entra ID',
+			credentials: {
+				microsoftEntraOAuth2Api: {
+					id: 'Hot2KwSMSoSmMVqd',
+					name: 'Microsoft Entra ID (Azure Active Directory) account',
+				},
+			},
+		},
+	],
+	connections: {
+		'When clicking ‘Execute workflow’': {
+			main: [[{ node: 'Microsoft Entra ID', type: NodeConnectionTypes.Main, index: 0 }]],
+		},
+	},
+});
 
 describe('Microsoft Entra Node', () => {
 	const testHarness = new NodeTestHarness();
@@ -1127,5 +1171,240 @@ describe('Microsoft Entra Node', () => {
 		for (const testData of tests) {
 			testHarness.setupTest(testData);
 		}
+	});
+
+	describe('Accepted user IDs', () => {
+		const deleteUser = (
+			description: string,
+			user: INodeParameters,
+			path: string,
+		): WorkflowTestData => ({
+			description,
+			input: {
+				workflowData: entraWorkflow({
+					resource: 'user',
+					operation: 'delete',
+					user,
+					options: {},
+				}),
+			},
+			output: { nodeData: { 'Microsoft Entra ID': [microsoftEntraNodeResponse.deleteUser] } },
+			nock: {
+				baseUrl,
+				mocks: [{ method: 'delete', path, statusCode: 204, responseBody: {} }],
+			},
+		});
+
+		const tests: WorkflowTestData[] = [
+			deleteUser(
+				'should delete a user addressed by an expression-driven UPN',
+				{ __rl: true, mode: 'id', value: '={{ "john.doe@contoso.com" }}' },
+				'/users/john.doe%40contoso.com',
+			),
+			deleteUser(
+				'should delete a guest user addressed by UPN',
+				{ __rl: true, mode: 'id', value: 'user_contoso.com#EXT#@tenant.onmicrosoft.com' },
+				'/users/user_contoso.com%23EXT%23%40tenant.onmicrosoft.com',
+			),
+			deleteUser(
+				'should delete a user addressed by UPN',
+				{ __rl: true, mode: 'id', value: 'jane@contoso.com' },
+				'/users/jane%40contoso.com',
+			),
+			deleteUser(
+				'should delete a user picked from the list',
+				{ __rl: true, mode: 'list', value: guid },
+				`/users/${guid}`,
+			),
+			deleteUser(
+				'should delete a user addressed by an uppercase ID',
+				{ __rl: true, mode: 'id', value: guid.toUpperCase() },
+				`/users/${guid.toUpperCase()}`,
+			),
+		];
+
+		for (const testData of tests) {
+			testHarness.setupTest(testData);
+		}
+	});
+
+	describe('Rejected user IDs', () => {
+		let graphRequests: Mock;
+
+		beforeEach(() => {
+			// Any request reaching Graph fails the case: a rejected ID must never be sent.
+			graphRequests = vi.fn().mockReturnValue({});
+			for (const method of ['GET', 'POST', 'PATCH', 'DELETE'] as const) {
+				nock('https://graph.microsoft.com')
+					.persist()
+					.intercept(/.*/, method)
+					.reply(200, graphRequests);
+			}
+		});
+
+		afterEach(() => {
+			const requestsSeen = graphRequests.mock.calls.length;
+			nock.cleanAll();
+			expect(requestsSeen, 'a rejected ID must never reach Graph').toBe(0);
+		});
+
+		const tests: WorkflowTestData[] = [
+			{
+				description: 'should reject an expression-driven ID containing a slash',
+				input: {
+					workflowData: entraWorkflow({
+						resource: 'user',
+						operation: 'get',
+						user: { __rl: true, mode: 'id', value: '={{ "a/b" }}' },
+						output: 'raw',
+					}),
+				},
+				output: { nodeData: {}, error: 'The user ID is invalid' },
+			},
+			{
+				description: 'should reject an ID containing a slash on a two-ID operation',
+				input: {
+					workflowData: entraWorkflow({
+						resource: 'user',
+						operation: 'removeGroup',
+						group: { __rl: true, mode: 'id', value: groupGuid },
+						user: { __rl: true, mode: 'id', value: `${guid}/manager` },
+					}),
+				},
+				output: { nodeData: {}, error: 'The user ID is invalid' },
+			},
+			{
+				description: 'should reject an ID that only reaches the request body',
+				input: {
+					workflowData: entraWorkflow({
+						resource: 'user',
+						operation: 'addGroup',
+						group: { __rl: true, mode: 'id', value: groupGuid },
+						user: { __rl: true, mode: 'id', value: `${guid}/manager` },
+					}),
+				},
+				output: { nodeData: {}, error: 'The user ID is invalid' },
+			},
+			{
+				description: 'should reject a blank user',
+				input: {
+					workflowData: entraWorkflow({
+						resource: 'user',
+						operation: 'get',
+						user: { __rl: true, mode: 'id', value: ' ' },
+						output: 'raw',
+					}),
+				},
+				output: { nodeData: {}, error: 'The user is empty' },
+			},
+		];
+
+		for (const testData of tests) {
+			testHarness.setupTest(testData);
+		}
+
+		// An empty or absent resource locator never reaches the request: the workflow refuses to
+		// start because the parameter is required.
+		it.each([
+			['an empty user', { __rl: true, mode: 'list', value: '' }],
+			['a user that was never set', undefined],
+		])('reports %s as a node issue', (_label, user) => {
+			const node = new MicrosoftEntra();
+			const [, entra] = entraWorkflow({
+				resource: 'user',
+				operation: 'get',
+				output: 'raw',
+				...(user ? { user } : {}),
+			}).nodes;
+
+			const issues = NodeHelpers.getNodeParametersIssues(
+				node.description.properties,
+				entra,
+				node.description,
+			);
+
+			expect(issues?.parameters?.user).toEqual(['Parameter "User to Get" is required.']);
+		});
+	});
+
+	describe('Per-item validation', () => {
+		afterEach(() => {
+			nock.cleanAll();
+		});
+
+		testHarness.setupTest(
+			{
+				description: 'should delete the valid user and fail only the item with an invalid ID',
+				input: {
+					workflowData: {
+						nodes: [
+							{
+								parameters: {},
+								id: '416e4fc1-5055-4e61-854e-a6265256ac26',
+								name: 'When clicking ‘Execute workflow’',
+								type: 'n8n-nodes-base.manualTrigger',
+								position: [820, 380],
+								typeVersion: 1,
+							},
+							{
+								parameters: { data: JSON.stringify([{ id: guid }, { id: `${guid}/manager` }]) },
+								id: '2c1e0f0e-6d0c-4a2e-9a8f-6b2a1c0d3e4f',
+								name: 'Test Data',
+								type: 'n8n-nodes-testing.testData',
+								position: [20, 0],
+								typeVersion: 1,
+							},
+							{
+								parameters: {
+									resource: 'user',
+									operation: 'delete',
+									user: { __rl: true, mode: 'id', value: '={{ $json.id }}' },
+									options: {},
+									requestOptions: {},
+								},
+								type: 'n8n-nodes-base.microsoftEntra',
+								typeVersion: 1,
+								position: [220, 0],
+								id: '3429f7f2-dfca-4b72-8913-43a582e96e66',
+								name: 'Microsoft Entra ID',
+								onError: 'continueRegularOutput',
+								credentials: {
+									microsoftEntraOAuth2Api: {
+										id: 'Hot2KwSMSoSmMVqd',
+										name: 'Microsoft Entra ID (Azure Active Directory) account',
+									},
+								},
+							},
+						],
+						connections: {
+							'When clicking ‘Execute workflow’': {
+								main: [[{ node: 'Test Data', type: NodeConnectionTypes.Main, index: 0 }]],
+							},
+							'Test Data': {
+								main: [[{ node: 'Microsoft Entra ID', type: NodeConnectionTypes.Main, index: 0 }]],
+							},
+						},
+					},
+				},
+				output: {
+					nodeData: {
+						'Microsoft Entra ID': [
+							[
+								{ json: { deleted: true } },
+								{
+									json: { error: 'The user ID is invalid' },
+									error: expect.objectContaining({ message: 'The user ID is invalid' }),
+								},
+							],
+						],
+					},
+				},
+				nock: {
+					baseUrl,
+					mocks: [{ method: 'delete', path: `/users/${guid}`, statusCode: 204, responseBody: {} }],
+				},
+			},
+			{ customAssertions: () => expect(nock.isDone()).toBe(true) },
+		);
 	});
 });
