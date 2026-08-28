@@ -34,8 +34,10 @@ export const databricksUserAgentRestriction = [
 				},
 				{
 					// The same helpers reached by destructuring rather than member access.
+					// Anchored to a `*.helpers` initialiser so an unrelated `const { request }
+					// = response` doesn't trip the guard with a confusing message.
 					selector:
-						'ObjectPattern > Property[key.name=/^(httpRequest|httpRequestWithAuthentication|request|requestWithAuthentication|requestWithAuthenticationPaginated)$/]',
+						'VariableDeclarator[init.property.name="helpers"] > ObjectPattern > Property[key.name=/^(httpRequest|httpRequestWithAuthentication|request|requestWithAuthentication|requestWithAuthenticationPaginated)$/]',
 					message:
 						'Use databricksApiRequest() from actions/helpers.ts so the partner User-Agent is sent.',
 				},
