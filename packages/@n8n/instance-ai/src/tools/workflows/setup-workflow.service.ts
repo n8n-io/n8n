@@ -726,11 +726,9 @@ async function buildRequestForCredentialType(
 			typeof existingOnNode?.id === 'string' && existingOnNode.id !== ''
 				? existingOnNode.id
 				: undefined;
-		// An explicit "create/pick a new credential" request (preferNewCredentials)
-		// re-opens the card even for a node that already has a working credential —
-		// otherwise a settled node is filtered out and the caller gets "No nodes
-		// require setup", so the user can never change the credential (e.g. switch a
-		// stored key to n8n credits).
+		// A preferNewCredentials request un-settles a node that already has a working
+		// credential, so setup shows the card to change it instead of reporting
+		// "No nodes require setup".
 		const isSettled =
 			!prefersNewCredential &&
 			(isAiGatewayManagedCredential(existingOnNode) ||

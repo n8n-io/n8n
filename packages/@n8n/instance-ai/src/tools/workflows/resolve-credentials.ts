@@ -457,14 +457,11 @@ export async function resolveCredentials(
 					await mockOrAttachGateway();
 					continue;
 				}
-				// n8n credits: the builder copied the managed tag as the credential id
-				// from the credentials list, exactly as it copies a stored credential's
-				// id. Attach n8n credits and keep it, ahead of the user's own credential
-				// (the mirror of keeping a stored id), so an explicit "use n8n credits"
-				// lands even when a stored credential of the same type exists. Only when
-				// the gateway can actually serve the type (or a supported sibling); if it
-				// can't, fall through to normal resolution (own credential / mock / setup)
-				// rather than persisting an unusable managed credential.
+				// Explicit n8n credits: the builder wrote the managed tag as this slot's
+				// id. Attach it ahead of the user's own credential (so "use n8n credits"
+				// wins even when a stored credential of the type exists), but only when
+				// the gateway serves the type or a supported sibling. Otherwise fall
+				// through to normal resolution rather than persist an unusable credential.
 				if (getCredentialId(value) === AI_GATEWAY_MANAGED_TAG && !wantsNewCredential) {
 					if (await isGatewayCredentialType(key)) {
 						await attachGatewayCredential();

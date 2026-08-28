@@ -532,10 +532,9 @@ interface StoredCredentialListItem {
 }
 
 interface AiGatewayManagedListItem {
-	// The shared managed tag doubles as the credential id, so the builder writes
-	// it like any stored credential — `newCredential('n8n credits', '__AI_GATEWAY_MANAGED__')`
-	// — and resolve keeps it. A null id (dropped by codegen) has no way onto the
-	// node when a stored credential of the same type already exists.
+	// Use the shared managed tag as the id so the builder references n8n credits
+	// like a stored credential (`newCredential(name, id)`); resolve recognizes the
+	// tag and attaches the managed credential.
 	id: typeof AI_GATEWAY_MANAGED_TAG;
 	name: string;
 	type: string;

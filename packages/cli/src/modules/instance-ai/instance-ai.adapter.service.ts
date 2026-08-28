@@ -4018,12 +4018,10 @@ function hasCredentialId(value: unknown): boolean {
 }
 
 /**
- * The builder may write the n8n credits managed tag as a credential id
- * (`newCredential('n8n credits', '__AI_GATEWAY_MANAGED__')`). The build path
- * converts it to the runtime sentinel, but lower-level saves (e.g.
- * `workflows(action="update")`) reach persistence directly — normalize here so
- * the tag never lands on a node as a real id (which the runtime would try to
- * look up in the DB and fail, and other surfaces would treat as broken).
+ * Convert the n8n credits managed tag, when written as a credential id, to the
+ * runtime sentinel. Build-time resolve already does this; normalizing at save
+ * also covers direct saves (e.g. workflows update) so the tag never persists as
+ * a real id the runtime would fail to resolve.
  */
 function normalizeManagedCredentialForSave(value: unknown): unknown {
 	if (typeof value !== 'object' || value === null) return value;
