@@ -1,6 +1,9 @@
 import FormData from 'form-data';
+import { NodeHelpers } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
+	INodeParameters,
+	INodePropertyOptions,
 	INodeTypeBaseDescription,
 	JsonObject,
 	JsonValue,
@@ -79,25 +82,64 @@ describe('HttpRequestV3', () => {
 		} as unknown as IExecuteFunctions;
 	});
 
-	it('should gate WebDAV methods in the Method dropdown behind the enable option', () => {
-		const methodProperty = node.description.properties.find((p) => p.name === 'method');
-		expect(methodProperty).toBeDefined();
-		expect(methodProperty?.type).toBe('options');
+	describe('Method dropdown', () => {
+		const webdavMethods = ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'];
 
-		const options = (methodProperty as { options?: Array<Record<string, unknown>> }).options ?? [];
+		const visibleMethods = (nodeParameters: INodeParameters) => {
+			const methodProperty = node.description.properties.find((p) => p.name === 'method');
+			expect(methodProperty?.type).toBe('options');
 
-		for (const method of ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT']) {
-			const option = options.find((o) => o.value === method);
-			expect(option).toBeDefined();
-			expect(option?.displayOptions).toEqual({
-				show: { 'options.webdavMethods': [true] },
+			return ((methodProperty?.options ?? []) as INodePropertyOptions[])
+				.filter((option) => NodeHelpers.displayParameter(nodeParameters, option, null, null))
+				.map((option) => option.value);
+		};
+
+		it('should hide WebDAV methods until the option is enabled', () => {
+			const visible = visibleMethods({ method: 'GET', options: {} });
+
+			expect(visible).toEqual(expect.arrayContaining(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']));
+			for (const method of webdavMethods) {
+				expect(visible).not.toContain(method);
+			}
+		});
+
+		it('should show WebDAV methods once the option is enabled', () => {
+			const visible = visibleMethods({ method: 'GET', options: { webdavMethods: true } });
+
+			for (const method of webdavMethods) {
+				expect(visible.filter((value) => value === method)).toEqual([method]);
+			}
+		});
+
+		it.each(webdavMethods)(
+			'should keep %s visible when it is selected but the option is disabled',
+			(method) => {
+				const visible = visibleMethods({ method, options: {} });
+
+				expect(visible.filter((value) => value === method)).toEqual([method]);
+
+				for (const other of webdavMethods.filter((m) => m !== method)) {
+					expect(visible).not.toContain(other);
+				}
+			},
+		);
+
+		it('should not duplicate a selected WebDAV method when the option is enabled', () => {
+			const visible = visibleMethods({ method: 'PROPFIND', options: { webdavMethods: true } });
+
+			expect(visible.filter((value) => value === 'PROPFIND')).toEqual(['PROPFIND']);
+		});
+
+		it('should not duplicate WebDAV methods when Method holds an expression', () => {
+			const visible = visibleMethods({
+				method: '={{ $json.method }}',
+				options: { webdavMethods: true },
 			});
-		}
 
-		// Regular methods must stay visible without the option enabled
-		for (const method of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) {
-			expect(options.find((o) => o.value === method)?.displayOptions).toBeUndefined();
-		}
+			for (const method of webdavMethods) {
+				expect(visible.filter((value) => value === method)).toEqual([method]);
+			}
+		});
 	});
 
 	it('should add an "Enable WebDAV Methods" option to Options, disabled by default', () => {

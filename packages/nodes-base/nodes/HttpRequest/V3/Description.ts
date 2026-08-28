@@ -8,15 +8,27 @@ const webdavMethodOptions: INodePropertyOptions[] = [
 	'MOVE',
 	'COPY',
 	'REPORT',
-].map((method) => ({
-	name: method,
-	value: method,
-	displayOptions: {
-		show: {
-			'options.webdavMethods': [true],
+].flatMap((method) => [
+	{
+		name: method,
+		value: method,
+		displayOptions: {
+			show: {
+				'options.webdavMethods': [true],
+			},
 		},
 	},
-}));
+	{
+		name: method,
+		value: method,
+		displayOptions: {
+			hide: {
+				method: [{ _cnd: { not: method } }],
+				'options.webdavMethods': [true],
+			},
+		},
+	},
+]);
 
 export const mainProperties: INodeProperties[] = [
 	{
