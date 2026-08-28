@@ -407,23 +407,22 @@ describe('sub-node error metadata', () => {
 			);
 
 			expect(result.status).toBe('error');
-			expect(savedExecution(result)).toEqual({
-				Trigger: [{ status: 'success', error: undefined, subRun: undefined }],
-				Branch: [{ status: 'success', error: undefined, subRun: undefined }],
-				// The target follows the parent's real run count — here run 1, not 0
-				Agent: [
-					{ status: 'success', error: undefined, subRun: undefined },
-					{
-						status: 'error',
-						error: 'Error in sub-node Model',
-						subRun: [{ node: 'Model', runIndex: 1 }],
-					},
-				],
-				Model: [
-					{ status: undefined, error: undefined, subRun: undefined },
-					{ status: 'error', error: 'Invalid API key', subRun: undefined },
-				],
-			});
+			const saved = savedExecution(result);
+			expect(Object.keys(saved).sort()).toEqual(['Agent', 'Branch', 'Model', 'Trigger']);
+			expect(saved.Trigger).toEqual([{ status: 'success', error: undefined, subRun: undefined }]);
+			expect(saved.Branch).toEqual([{ status: 'success', error: undefined, subRun: undefined }]);
+			// The target follows the parent's real run count — here run 1, not 0. The entry's own
+			// `runIndex` reuses that same number, which CAT-4268 may change.
+			expect(saved.Agent).toEqual([
+				{ status: 'success', error: undefined, subRun: undefined },
+				{
+					status: 'error',
+					error: 'Error in sub-node Model',
+					subRun: [{ node: 'Model', runIndex: 1 }],
+				},
+			]);
+
+			expect(runsOf(result, 'Model')).toEqual([{ status: 'error', error: 'Invalid API key' }]);
 			expect(orphanReports()).toEqual([]);
 		});
 	});
