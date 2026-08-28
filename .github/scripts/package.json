@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@actions/github": "9.0.0",
-    "@cyclonedx/cdxgen": "12.4.0",
+    "@cyclonedx/cdxgen": "12.8.4",
     "@octokit/core": "7.0.6",
     "ajv": "8.20.0",
     "conventional-changelog": "7.2.0",
