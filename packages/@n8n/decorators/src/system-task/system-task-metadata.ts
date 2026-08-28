@@ -1,57 +1,15 @@
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
 
+import { ReplayableRegistry } from '../replayable-registry';
 import type { SystemTaskClass } from './system-task';
 
 @Service()
-export class SystemTaskMetadata {
-	private readonly taskClasses: SystemTaskClass[] = [];
-
-	private onRegister?: (taskClass: SystemTaskClass) => void;
-
-	register(taskClass: SystemTaskClass) {
-		this.taskClasses.push(taskClass);
-		if (this.onRegister) this.notify(this.onRegister, taskClass);
+export class SystemTaskMetadata extends ReplayableRegistry<SystemTaskClass> {
+	constructor() {
+		super('system task', (taskClass) => taskClass.name);
 	}
 
 	getClasses() {
-		return [...this.taskClasses];
-	}
-
-	/**
-	 * Subscribe to task registrations. Immediately replays every task class
-	 * registered so far, then notifies the listener on each subsequent
-	 * registration. This lets the listener be wired regardless of when the
-	 * decorated class's module is loaded.
-	 */
-	subscribe(listener: (taskClass: SystemTaskClass) => void) {
-		if (this.onRegister) {
-			throw new UnexpectedError('A listener is already subscribed to system task registrations');
-		}
-
-		// Subscribe only after the replay: iterating the live array already picks up
-		// anything a listener registers re-entrantly, and holding off means a throwing
-		// listener does not lock the subscription shut.
-		for (const taskClass of this.taskClasses) {
-			this.notify(listener, taskClass);
-		}
-
-		this.onRegister = listener;
-	}
-
-	/**
-	 * A listener runs while the task's class decorator is still evaluating, so a
-	 * failure surfaces as a module-load error. Name the task class it came from,
-	 * or the stack points only at the decorator.
-	 */
-	private notify(listener: (taskClass: SystemTaskClass) => void, taskClass: SystemTaskClass) {
-		try {
-			listener(taskClass);
-		} catch (error) {
-			throw new UnexpectedError(
-				`Failed to handle the registration of system task class "${taskClass.name}"`,
-				{ cause: error },
-			);
-		}
+		return this.getEntries();
 	}
 }
