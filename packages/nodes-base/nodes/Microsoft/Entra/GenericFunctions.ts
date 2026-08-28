@@ -13,7 +13,7 @@ import type {
 	INodeListSearchResult,
 	INodeListSearchItems,
 } from 'n8n-workflow';
-import { NodeApiError, sanitizeXmlName } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, sanitizeXmlName } from 'n8n-workflow';
 import { parseStringPromise } from 'xml2js';
 
 export async function microsoftApiRequest(
@@ -31,9 +31,20 @@ export async function microsoftApiRequest(
 			? credentials.graphApiBaseUrl
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
+	// An explicit `url` (e.g. a next-page link from Graph) is used verbatim,
+	// but it must stay on the credential's Graph host: the bearer token must
+	// never travel to an unexpected origin. Graph's own @odata.nextLink is
+	// always same-origin, so nothing legitimate is refused.
+	const target = url ?? `${baseUrl}/v1.0${endpoint}`;
+	if (new URL(target).origin !== new URL(baseUrl).origin) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Refusing to send credentials to an unexpected host',
+		);
+	}
 	const options: IHttpRequestOptions = {
 		method,
-		url: url ?? `${baseUrl}/v1.0${endpoint}`,
+		url: target,
 		json: true,
 		headers,
 		body,
@@ -63,10 +74,21 @@ export async function microsoftApiPaginateRequest(
 			? credentials.graphApiBaseUrl
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
+	// An explicit `url` (e.g. a next-page link from Graph) is used verbatim,
+	// but it must stay on the credential's Graph host: the bearer token must
+	// never travel to an unexpected origin. Graph's own @odata.nextLink is
+	// always same-origin, so nothing legitimate is refused.
+	const target = url ?? `${baseUrl}/v1.0${endpoint}`;
+	if (new URL(target).origin !== new URL(baseUrl).origin) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Refusing to send credentials to an unexpected host',
+		);
+	}
 	// Todo: IHttpRequestOptions doesn't have uri property which is required for requestWithAuthenticationPaginated
 	const options: IRequestOptions = {
 		method,
-		uri: url ?? `${baseUrl}/v1.0${endpoint}`,
+		uri: target,
 		json: true,
 		headers,
 		body,

@@ -302,4 +302,68 @@ describe('Microsoft Entra GenericFunctions', () => {
 			});
 		});
 	});
+
+	describe('same-origin URL override', () => {
+		beforeEach(() => {
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: {
+					access_token: 'test-access-token',
+				},
+				graphApiBaseUrl: 'https://graph.microsoft.com',
+			});
+		});
+
+		it('microsoftApiRequest keeps a URL override on the credential host', async () => {
+			mockRequestWithAuthentication.mockResolvedValue({ value: [] });
+
+			await microsoftApiRequest.call(
+				mockExecuteFunctions,
+				'GET',
+				'/groups',
+				{},
+				undefined,
+				undefined,
+				'https://graph.microsoft.com/v1.0/groups?$skiptoken=abc',
+			);
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraOAuth2Api',
+				expect.objectContaining({
+					url: 'https://graph.microsoft.com/v1.0/groups?$skiptoken=abc',
+				}),
+			);
+		});
+
+		it('microsoftApiRequest rejects a URL override on another host', async () => {
+			await expect(
+				microsoftApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/groups',
+					{},
+					undefined,
+					undefined,
+					'https://not-graph.example.com/v1.0/groups',
+				),
+			).rejects.toThrow('Refusing to send credentials to an unexpected host');
+
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
+
+		it('microsoftApiPaginateRequest rejects a URL override on another host', async () => {
+			await expect(
+				microsoftApiPaginateRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/groups',
+					{},
+					undefined,
+					undefined,
+					'https://not-graph.example.com/v1.0/groups',
+				),
+			).rejects.toThrow('Refusing to send credentials to an unexpected host');
+
+			expect(mockRequestWithAuthenticationPaginated).not.toHaveBeenCalled();
+		});
+	});
 });
