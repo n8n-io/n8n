@@ -25,14 +25,28 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 		super(SharedWorkflow, dataSource.manager, transactionRunner);
 	}
 
-	async getSharedWorkflowIds(workflowIds: string[]) {
-		const sharedWorkflows = await this.find({
-			select: ['workflowId'],
-			where: {
-				workflowId: In(workflowIds),
-			},
-		});
-		return sharedWorkflows.map((sharing) => sharing.workflowId);
+	/**
+	 * Returns workflow IDs that have any sharing row
+	 * in one of the projects the caller is allowed to list.
+	 */
+	async findWorkflowIdsInProjects(
+		workflowIds: string[],
+		projectIds: string[],
+	): Promise<Set<string>> {
+		if (workflowIds.length === 0 || projectIds.length === 0) return new Set();
+
+		const found = new Set<string>();
+		for (const chunk of chunkIds(workflowIds)) {
+			const rows = await this.find({
+				select: { workflowId: true },
+				where: { workflowId: In(chunk), projectId: In(projectIds) },
+			});
+			for (const row of rows) {
+				found.add(row.workflowId);
+			}
+		}
+
+		return found;
 	}
 
 	async findByWorkflowIds(workflowIds: string[]) {
