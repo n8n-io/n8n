@@ -5,6 +5,7 @@ import {
 	type ScheduleDefinition,
 } from '@n8n/constants';
 import { Container, Service, type Constructable } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { SystemTaskMetadata } from './system-task-metadata';
 
@@ -99,11 +100,27 @@ const SYSTEM_TASK_RUN_OPTION_DEFAULTS: Record<SystemTaskEffects, SystemTaskRunOp
 export function resolveSystemTaskRunOptions(task: SystemTask): SystemTaskRunOptions {
 	const defaults = SYSTEM_TASK_RUN_OPTION_DEFAULTS[task.effects];
 
-	return {
+	const options = {
 		misfirePolicy: task.misfirePolicy ?? defaults.misfirePolicy,
 		misfireGraceSeconds: task.misfireGraceSeconds ?? defaults.misfireGraceSeconds,
 		maxAttempts: task.maxAttempts ?? defaults.maxAttempts,
 	};
+
+	// Both end up in `int` columns, and an override of `0` passes the `??` above.
+	// Caught here so a mistyped constant fails at startup instead of leaving a task
+	// that never runs or a deadline the scheduler rounds off.
+	assertInteger(task.name, 'maxAttempts', options.maxAttempts, 1);
+	assertInteger(task.name, 'misfireGraceSeconds', options.misfireGraceSeconds, 0);
+
+	return options;
+}
+
+function assertInteger(taskName: string, field: string, value: number, min: number) {
+	if (Number.isInteger(value) && value >= min) return;
+
+	throw new UnexpectedError(
+		`System task "${taskName}" declares ${field} as ${value}, but it must be an integer of at least ${min}`,
+	);
 }
 
 export type SystemTaskClass = Constructable<SystemTask>;

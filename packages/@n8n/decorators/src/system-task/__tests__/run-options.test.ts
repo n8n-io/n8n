@@ -47,6 +47,26 @@ it.each([
 	expect(options[field]).toBe(override[field as keyof typeof override]);
 });
 
+it.each([
+	{ maxAttempts: 0 },
+	{ maxAttempts: -1 },
+	{ maxAttempts: 1.5 },
+	{ misfireGraceSeconds: -1 },
+	{ misfireGraceSeconds: 0.5 },
+])('should reject the nonsensical override %o', (override) => {
+	expect(() =>
+		resolveSystemTaskRunOptions(taskWith({ effects: 'idempotent', ...override })),
+	).toThrowError('test-task');
+});
+
+it('should accept a zero misfire grace, meaning no grace at all', () => {
+	const options = resolveSystemTaskRunOptions(
+		taskWith({ effects: 'idempotent', misfireGraceSeconds: 0 }),
+	);
+
+	expect(options.misfireGraceSeconds).toBe(0);
+});
+
 it('should keep the defaults for the fields a task does not override', () => {
 	const options = resolveSystemTaskRunOptions(
 		taskWith({ effects: 'non-idempotent', maxAttempts: 10 }),
