@@ -6,6 +6,16 @@ import {
 	protectUntrustedToolResult,
 } from '../tools/untrusted-tool-output';
 
+function getContentText(result: unknown): string | undefined {
+	if (typeof result !== 'object' || result === null || !('value' in result)) return undefined;
+	if (!Array.isArray(result.value)) return undefined;
+	const firstPart: unknown = result.value[0];
+	if (typeof firstPart !== 'object' || firstPart === null) return undefined;
+	if (!('type' in firstPart) || firstPart.type !== 'text' || !('text' in firstPart))
+		return undefined;
+	return typeof firstPart.text === 'string' ? firstPart.text : undefined;
+}
+
 describe('untrusted tool output', () => {
 	it('protects the complete structured result', () => {
 		const result = {
@@ -17,15 +27,21 @@ describe('untrusted tool output', () => {
 
 		const protectedResult = protectUntrustedToolResult(result, 'issues_read');
 
-		if (typeof protectedResult !== 'string') {
-			throw new Error('Expected a serialized result');
-		}
-		expect(protectedResult).toContain('<untrusted_data source="tool:issues_read">');
-		expect(protectedResult).toContain('structuredContent');
-		expect(protectedResult).toContain('_meta');
-		expect(protectedResult).toContain('linked text');
-		expect(protectedResult).toContain('&lt;/untrusted_data> hidden text');
-		expect(protectedResult.match(/<\/untrusted_data>/g)).toHaveLength(1);
+		expect(protectedResult).toEqual({
+			type: 'content',
+			value: [
+				{
+					type: 'text',
+					text: expect.stringContaining('<untrusted_data source="tool:issues_read">'),
+				},
+			],
+		});
+		const protectedText = getContentText(protectedResult);
+		expect(protectedText).toContain('structuredContent');
+		expect(protectedText).toContain('_meta');
+		expect(protectedText).toContain('linked text');
+		expect(protectedText).toContain('&lt;/untrusted_data> hidden text');
+		expect(protectedText?.match(/<\/untrusted_data>/g)).toHaveLength(1);
 	});
 
 	it('protects text and preserves media in native content output', () => {

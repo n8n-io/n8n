@@ -17,7 +17,11 @@ function serializeResult(output: unknown): string {
 /** Protect a final, size-bounded tool result without changing native media parts. */
 export function protectUntrustedToolResult(output: unknown, toolName: string): unknown {
 	if (!isContentToolResultOutput(output)) {
-		return wrapToolText(serializeResult(output), toolName);
+		const protectedOutput: ContentToolResultOutput = {
+			type: 'content',
+			value: [{ type: 'text', text: wrapToolText(serializeResult(output), toolName) }],
+		};
+		return protectedOutput;
 	}
 
 	let hasText = false;

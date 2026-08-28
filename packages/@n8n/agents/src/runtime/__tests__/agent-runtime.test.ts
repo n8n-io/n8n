@@ -7698,12 +7698,20 @@ describe('AgentRuntime — untrusted tool outputs', () => {
 		const modelOutput = getToolResultOutput();
 
 		expect(modelOutput).toMatchObject({
-			type: 'json',
-			value: expect.stringContaining('<untrusted_data source="tool:external_read">'),
+			type: 'content',
+			value: [
+				{
+					type: 'text',
+					text: expect.stringContaining('<untrusted_data source="tool:external_read">'),
+				},
+			],
 		});
-		expect(modelOutput?.value).toContain('structuredContent');
-		expect(modelOutput?.value).toContain('_meta');
-		expect(modelOutput?.value).toContain('&lt;/untrusted_data> external text');
+		const modelText = Array.isArray(modelOutput?.value)
+			? (modelOutput.value[0] as { text?: unknown }).text
+			: undefined;
+		expect(modelText).toContain('structuredContent');
+		expect(modelText).toContain('_meta');
+		expect(modelText).toContain('&lt;/untrusted_data> external text');
 		expect(result.toolCalls?.[0]?.output).toEqual(rawOutput);
 		expect(events[0]).toMatchObject({ result: rawOutput, isError: false });
 	});
@@ -8097,6 +8105,12 @@ describe('AgentRuntime — oversized tool results', () => {
 				.map((part) => part.output?.value);
 		}
 
+		function contentToolResultText(result: unknown): string | undefined {
+			if (!Array.isArray(result)) return undefined;
+			const text = (result[0] as { type?: unknown; text?: unknown } | undefined)?.text;
+			return typeof text === 'string' ? text : undefined;
+		}
+
 		function modelToolResults(): unknown[] {
 			const call = generateText.mock.calls[1][0] as { messages: ModelMessages };
 			return toolResultsFromModelMessages(call.messages);
@@ -8169,8 +8183,9 @@ describe('AgentRuntime — oversized tool results', () => {
 				)
 				.mockImplementationOnce(async ({ messages }: { messages: ModelMessages }) => {
 					modelResult = toolResultsFromModelMessages(messages)[0];
-					if (typeof modelResult === 'string') {
-						const serializedEnvelope = modelResult
+					const modelText = contentToolResultText(modelResult);
+					if (modelText) {
+						const serializedEnvelope = modelText
 							.replace(/^<untrusted_data[^>]*>\n/, '')
 							.replace(/\n<\/untrusted_data>$/, '');
 						const envelope = parseOffloadedEnvelope(serializedEnvelope);
@@ -8181,12 +8196,13 @@ describe('AgentRuntime — oversized tool results', () => {
 
 			await agent.generate('run');
 
-			if (typeof modelResult !== 'string') {
+			const modelText = contentToolResultText(modelResult);
+			if (!modelText) {
 				throw new Error('Expected a protected result');
 			}
-			expect(modelResult).toMatch(/^<untrusted_data source="tool:large_result">\n/);
-			expect(modelResult).toMatch(/\n<\/untrusted_data>$/);
-			const serializedEnvelope = modelResult
+			expect(modelText).toMatch(/^<untrusted_data source="tool:large_result">\n/);
+			expect(modelText).toMatch(/\n<\/untrusted_data>$/);
+			const serializedEnvelope = modelText
 				.replace(/^<untrusted_data[^>]*>\n/, '')
 				.replace(/\n<\/untrusted_data>$/, '');
 			const envelope = parseOffloadedEnvelope(serializedEnvelope);
