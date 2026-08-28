@@ -42,6 +42,10 @@ const MAX_TRACKED_BACKLOG_IDS = 5_000;
 // failed fetch cannot be told apart from a rate limit, and this node does not
 // retry inside a poll, so an id gets several polls to come back.
 export const MAX_PENDING_FETCH_ATTEMPTS = 10;
+// Consecutive polls that reach nothing new before the no-progress valve fires.
+// More than one sample is needed: one slow response can stop a scan short where
+// the next poll, with a fresh budget, reaches further.
+const MAX_NO_PROGRESS_TICKS = 3;
 
 export class GmailTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -409,6 +413,10 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				date: getEmailDateAsSeconds(fullMessage),
 			});
 
+			// A fetched message is progress, whether it came from the pending queue or
+			// a fresh listing, so the no-progress run starts over.
+			nodeStaticData.noProgressTicks = 0;
+
 			if (!includeDrafts && fullMessage.labelIds?.includes('DRAFT')) {
 				return;
 			}
@@ -647,11 +655,18 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				}
 
 				if (!messages.length && !allFetchedMessages.length) {
-					// No-progress valve: the budget or the cap stopped the scan short, yet
-					// every id it reached is already tracked. Holding again would repeat this
-					// tick forever — no backlog progress and no new mail. Give up loudly:
-					// jump the cursor to now and skip what stays out of reach.
+					// No-progress valve: the scan was stopped short, yet every id it
+					// reached is already tracked. One such poll proves little — a slow
+					// response can stop a scan short where the next poll, with a fresh
+					// budget, reaches further. Only a run of them means the window is
+					// wedged; then give up loudly: jump the cursor to now and skip what
+					// stays out of reach.
 					if (!windowFullyScanned) {
+						const noProgressTicks = (nodeStaticData.noProgressTicks ?? 0) + 1;
+						if (noProgressTicks < MAX_NO_PROGRESS_TICKS) {
+							nodeStaticData.noProgressTicks = noProgressTicks;
+							return null;
+						}
 						this.logger.warn(
 							"Gmail Trigger backlog cannot progress within one poll's reach; advancing past older messages it could not scan",
 							{ node: node.name },
@@ -661,6 +676,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 						// at the boundary. Keeping them would grow the stored-id count for
 						// nothing — every other path merges the set instead.
 						nodeStaticData.possibleDuplicates = [];
+						nodeStaticData.noProgressTicks = 0;
 					}
 					return null;
 				}

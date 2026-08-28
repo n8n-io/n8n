@@ -2367,9 +2367,9 @@ describe('GmailTrigger', () => {
 
 		it('should give up holding when a capped window makes no progress', async () => {
 			// Every id the cap can reach is already tracked, so re-scanning the same
-			// pages can never progress past them. Holding again would repeat this
-			// tick forever: no backlog progress, no new mail, no warning. The poll
-			// must give up instead — advance and start fresh.
+			// pages can never progress past them. Holding on would repeat this poll
+			// forever: no backlog progress, no new mail, no warning. Two polls already
+			// found nothing, so this one must give up — advance and start fresh.
 			const initialTimestamp = 1000000;
 			const pages = Array.from({ length: MAX_LIST_PAGES }, (_, page) => [`h${page}a`, `h${page}b`]);
 			const handledIds = pages.flat();
@@ -2377,6 +2377,7 @@ describe('GmailTrigger', () => {
 				'Gmail Trigger': {
 					lastTimeChecked: initialTimestamp,
 					possibleDuplicates: handledIds,
+					noProgressTicks: 2,
 				},
 			};
 
@@ -2587,6 +2588,87 @@ describe('GmailTrigger', () => {
 			// advancing the cursor loses nothing.
 			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(3_000_000_000);
 			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(['3']);
+		});
+
+		it('should hold instead of giving up when a single tick makes no progress', async () => {
+			// A budget-truncated listing is transient: the next tick gets a fresh
+			// budget and may reach further. Giving up on this one sample would skip
+			// mail that a normal tick would have listed.
+			const initialTimestamp = 1000000;
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: initialTimestamp,
+					possibleDuplicates: ['A'],
+				},
+			};
+
+			mockLabels();
+			// Page 1 is all-handled and the budget stops the walk there. Page 2 is
+			// not mocked: this tick must not reach it.
+			mockList(listPage(['A'], 'token-1'));
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 10 } },
+				workflowStaticData,
+				pollBudgetMs: 0,
+			});
+
+			expect(response).toBeNull();
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked).toBe(initialTimestamp);
+			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual(['A']);
+			expect(workflowStaticData['Gmail Trigger'].noProgressTicks).toBe(1);
+		});
+
+		it('should give up once consecutive ticks keep making no progress', async () => {
+			// Repeated no-progress ticks are no longer one unlucky sample: the
+			// window is wedged, so give up loudly rather than hold forever.
+			const initialTimestamp = 1000000;
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: initialTimestamp,
+					possibleDuplicates: ['A'],
+					noProgressTicks: 2,
+				},
+			};
+
+			mockLabels();
+			mockList(listPage(['A'], 'token-1'));
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 10 } },
+				workflowStaticData,
+				pollBudgetMs: 0,
+			});
+
+			expect(response).toBeNull();
+			expect(workflowStaticData['Gmail Trigger'].lastTimeChecked as number).toBeGreaterThan(
+				initialTimestamp,
+			);
+			expect(workflowStaticData['Gmail Trigger'].possibleDuplicates).toEqual([]);
+			expect(workflowStaticData['Gmail Trigger'].noProgressTicks).toBe(0);
+		});
+
+		it('should clear the no-progress count once a tick delivers again', async () => {
+			const workflowStaticData: Record<string, Record<string, unknown>> = {
+				'Gmail Trigger': {
+					lastTimeChecked: 1000000,
+					noProgressTicks: 2,
+				},
+			};
+
+			mockLabels();
+			mockList(listPage(['1']));
+			mockGet('1', 2_000_000_000_000);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				node: { typeVersion: 1.4, parameters: { simple: true, maxResults: 10 } },
+				workflowStaticData,
+			});
+
+			expect(response?.[0]?.map((item) => item.json.id)).toEqual(['1']);
+			// The count must not carry over, or two unrelated slow ticks weeks apart
+			// would add up to a give-up.
+			expect(workflowStaticData['Gmail Trigger'].noProgressTicks).toBe(0);
 		});
 
 		it('should give up holding and advance when the tracked-id bound is exceeded', async () => {
