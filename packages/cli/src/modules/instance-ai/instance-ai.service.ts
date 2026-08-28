@@ -43,6 +43,7 @@ import {
 	loadInstanceAiRuntimeSkillSource,
 	disabledInstanceAiSkillIds,
 	createInstanceAiTraceContext,
+	threadProvenanceMetadata,
 	createInternalOperationTraceContext,
 	emitAgentSnapshotTraceEvent,
 	createInstanceAiLivenessPolicyConfig,
@@ -3611,6 +3612,24 @@ export class InstanceAiService {
 	 * and shutdown can drain it before the DB closes.
 	 */
 	// eslint-disable-next-line complexity
+	/** Thread provenance for the trace. Best-effort by construction: a failed
+	 *  metadata read must not take the run with it — the trace just loses a
+	 *  label it would have been nice to have. */
+	private async readThreadProvenance(
+		userId: string,
+		threadId: string,
+	): Promise<Record<string, unknown>> {
+		try {
+			return threadProvenanceMetadata(await this.memoryService.getThreadMetadata(userId, threadId));
+		} catch (error) {
+			this.logger.debug('Could not read thread provenance for tracing', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return {};
+		}
+	}
+
 	private async executeRun(
 		user: User,
 		threadId: string,
@@ -3694,6 +3713,12 @@ export class InstanceAiService {
 			// Read per run: Chrome auto-updates extensions silently.
 			const browserExtension = this.browserSessionService.getExtensionTraceContext(user.id);
 
+			// Where this thread came from (entry point + the opener's own context),
+			// stamped on every run of it. Both trace paths get it: a build finishes
+			// on the RESUME beat, so stamping only the message turn would leave the
+			// spans that actually contain the work unattributable.
+			const threadProvenance = await this.readThreadProvenance(user.id, threadId);
+
 			// Create the trace before run-start so the SSE event carries traceId (modelId lands at finalization).
 			if (resumeReason) {
 				tracing = await this.tracing.createOrchestratorResumeTraceContext({
@@ -3705,6 +3730,7 @@ export class InstanceAiService {
 					input: traceInput,
 					resumeReason,
 					metadata: {
+						...threadProvenance,
 						...(checkpoint?.isCheckpointFollowUp
 							? { checkpoint_task_id: checkpoint.checkpointTaskId }
 							: {}),
@@ -3722,6 +3748,7 @@ export class InstanceAiService {
 					runId,
 					userId: user.id,
 					input: traceInput,
+					metadata: threadProvenance,
 					proxyConfig: proxyRunConfig.tracingProxyConfig,
 					n8nVersion: N8N_VERSION,
 					workflowSdkVersion: WORKFLOW_SDK_VERSION,
@@ -5249,6 +5276,7 @@ export class InstanceAiService {
 			},
 			resumeReason: 'approval',
 			metadata: {
+				...(await this.readThreadProvenance(activeUser.id, threadId)),
 				request_id: requestId,
 				pending_tool_call_id: toolCallId,
 				approved: data.approved,

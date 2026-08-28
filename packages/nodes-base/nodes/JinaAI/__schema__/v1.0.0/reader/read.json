@@ -82,6 +82,12 @@
                 }
             }
         },
+        "httpStatus": {
+            "type": "integer"
+        },
+        "httpStatusText": {
+            "type": "string"
+        },
         "metadata": {
             "type": "object",
             "properties": {
@@ -91,10 +97,19 @@
                 "lang": {
                     "type": "string"
                 },
+                "og:description": {
+                    "type": "string"
+                },
                 "og:image": {
                     "type": "string"
                 },
                 "og:locale": {
+                    "type": "string"
+                },
+                "og:site_name": {
+                    "type": "string"
+                },
+                "og:title": {
                     "type": "string"
                 },
                 "og:type": {
@@ -105,8 +120,23 @@
                 },
                 "robots": {
                     "type": "string"
+                },
+                "twitter:card": {
+                    "type": "string"
+                },
+                "twitter:description": {
+                    "type": "string"
+                },
+                "twitter:image": {
+                    "type": "string"
+                },
+                "twitter:title": {
+                    "type": "string"
                 }
             }
+        },
+        "publishedTime": {
+            "type": "string"
         },
         "title": {
             "type": "string"
@@ -123,5 +153,5 @@
             }
         }
     },
-    "version": 6
+    "version": 7
 }

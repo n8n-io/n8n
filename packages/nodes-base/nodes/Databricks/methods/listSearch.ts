@@ -1,11 +1,32 @@
-import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
+import type {
+	IHttpRequestOptions,
+	ILoadOptionsFunctions,
+	INodeListSearchResult,
+} from 'n8n-workflow';
 
 import {
 	databricksApiRequest,
 	extractResourceLocatorValue,
 	getActiveCredentialType,
 	getHost,
+	makePermissionErrorLegible,
+	sanitizeApiMessage,
 } from '../actions/helpers';
+
+// Dropdown requests never pass through the router, so its permission-error hook
+// doesn't cover them — apply it here for every listSearch call site instead
+async function listRequest<T>(
+	context: ILoadOptionsFunctions,
+	credentialType: 'databricksApi' | 'databricksOAuth2Api',
+	options: IHttpRequestOptions,
+): Promise<T> {
+	try {
+		return (await databricksApiRequest(context, credentialType, options)) as T;
+	} catch (error) {
+		makePermissionErrorLegible(error);
+		throw error;
+	}
+}
 
 export async function getWarehouses(
 	this: ILoadOptionsFunctions,
@@ -14,12 +35,14 @@ export async function getWarehouses(
 	const credentialType = getActiveCredentialType(this);
 	const host = await getHost(this, credentialType);
 
-	const response = (await databricksApiRequest(this, credentialType, {
+	const response = await listRequest<{
+		warehouses?: Array<{ id: string; name: string; size?: string }>;
+	}>(this, credentialType, {
 		method: 'GET',
 		url: `${host}/api/2.0/sql/warehouses`,
 		headers: { Accept: 'application/json' },
 		json: true,
-	})) as { warehouses?: Array<{ id: string; name: string; size?: string }> };
+	});
 
 	const warehouses = response.warehouses ?? [];
 
@@ -44,12 +67,7 @@ export async function getEndpoints(
 	const credentialType = getActiveCredentialType(this);
 	const host = await getHost(this, credentialType);
 
-	const response = (await databricksApiRequest(this, credentialType, {
-		method: 'GET',
-		url: `${host}/api/2.0/serving-endpoints`,
-		headers: { Accept: 'application/json' },
-		json: true,
-	})) as {
+	const response = await listRequest<{
 		endpoints?: Array<{
 			name: string;
 			config?: {
@@ -59,7 +77,12 @@ export async function getEndpoints(
 				}>;
 			};
 		}>;
-	};
+	}>(this, credentialType, {
+		method: 'GET',
+		url: `${host}/api/2.0/serving-endpoints`,
+		headers: { Accept: 'application/json' },
+		json: true,
+	});
 
 	const endpoints = response.endpoints ?? [];
 
@@ -98,12 +121,16 @@ export async function getCatalogs(
 	const credentialType = getActiveCredentialType(this);
 	const host = await getHost(this, credentialType);
 
-	const response = (await databricksApiRequest(this, credentialType, {
-		method: 'GET',
-		url: `${host}/api/2.1/unity-catalog/catalogs`,
-		headers: { Accept: 'application/json' },
-		json: true,
-	})) as { catalogs?: Array<{ name: string; comment?: string }> };
+	const response = await listRequest<{ catalogs?: Array<{ name: string; comment?: string }> }>(
+		this,
+		credentialType,
+		{
+			method: 'GET',
+			url: `${host}/api/2.1/unity-catalog/catalogs`,
+			headers: { Accept: 'application/json' },
+			json: true,
+		},
+	);
 
 	const catalogs = response.catalogs ?? [];
 
@@ -142,12 +169,16 @@ export async function getSchemas(
 	}
 
 	try {
-		const schemasResponse = (await databricksApiRequest(this, credentialType, {
-			method: 'GET',
-			url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${selectedCatalog}`,
-			headers: { Accept: 'application/json' },
-			json: true,
-		})) as { schemas?: Array<{ name: string }> };
+		const schemasResponse = await listRequest<{ schemas?: Array<{ name: string }> }>(
+			this,
+			credentialType,
+			{
+				method: 'GET',
+				url: `${host}/api/2.1/unity-catalog/schemas?catalog_name=${selectedCatalog}`,
+				headers: { Accept: 'application/json' },
+				json: true,
+			},
+		);
 
 		const schemas = schemasResponse.schemas ?? [];
 
@@ -164,8 +195,11 @@ export async function getSchemas(
 
 		return { results: allSchemas };
 	} catch (e) {
+		const message = sanitizeApiMessage(e instanceof Error ? e.message : String(e));
 		return {
-			results: [{ name: `Error loading schemas for catalog: ${selectedCatalog}`, value: '' }],
+			results: [
+				{ name: `Error loading schemas for catalog ${selectedCatalog}: ${message}`, value: '' },
+			],
 		};
 	}
 }
@@ -179,12 +213,12 @@ async function fetchResourcesInSchema<T extends { name: string }>(
 	schemaName: string,
 	responseKey: string,
 ): Promise<T[]> {
-	const response = (await databricksApiRequest(context, credentialType, {
+	const response = await listRequest<Record<string, T[] | undefined>>(context, credentialType, {
 		method: 'GET',
 		url: `${host}${apiPath}?catalog_name=${catalogName}&schema_name=${schemaName}`,
 		headers: { Accept: 'application/json' },
 		json: true,
-	})) as Record<string, T[] | undefined>;
+	});
 	return response[responseKey] ?? [];
 }
 
@@ -256,9 +290,13 @@ export async function getVolumes(
 
 		return { results: allResults };
 	} catch (e) {
+		const message = sanitizeApiMessage(e instanceof Error ? e.message : String(e));
 		return {
 			results: [
-				{ name: `Error loading volumes for ${selectedCatalog}.${selectedSchema}`, value: '' },
+				{
+					name: `Error loading volumes for ${selectedCatalog}.${selectedSchema}: ${message}`,
+					value: '',
+				},
 			],
 		};
 	}
@@ -313,7 +351,7 @@ export async function getTables(
 
 		return { results: allResults };
 	} catch (e) {
-		const message = e instanceof Error ? e.message : String(e);
+		const message = sanitizeApiMessage(e instanceof Error ? e.message : String(e));
 		return {
 			results: [
 				{
@@ -374,9 +412,13 @@ export async function getFunctions(
 
 		return { results: allResults };
 	} catch (e) {
+		const message = sanitizeApiMessage(e instanceof Error ? e.message : String(e));
 		return {
 			results: [
-				{ name: `Error loading functions for ${selectedCatalog}.${selectedSchema}`, value: '' },
+				{
+					name: `Error loading functions for ${selectedCatalog}.${selectedSchema}: ${message}`,
+					value: '',
+				},
 			],
 		};
 	}
