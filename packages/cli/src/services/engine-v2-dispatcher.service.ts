@@ -71,6 +71,7 @@ export class EngineV2Dispatcher {
 		const triggerMain = this.triggerMainOutputs(data);
 
 		const executionId = generateId();
+		// At the session cap this can evict another run's session, uncaught below. Rare; not worth fixing.
 		this.registerPushSession(executionId, data, triggerMain);
 
 		try {
@@ -82,6 +83,7 @@ export class EngineV2Dispatcher {
 				mode: 'manual',
 			});
 		} catch (error) {
+			// Assumes rejection: a dropped success response also releases a still-live session.
 			this.pushRegistry.release(executionId);
 			throw error;
 		}
