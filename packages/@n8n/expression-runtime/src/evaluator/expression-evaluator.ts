@@ -129,26 +129,32 @@ export class ExpressionEvaluator implements IExpressionEvaluator {
 
 		const bridge = this.getBridge(caller);
 
-		// Transform template expression → sanitized JavaScript (cached)
-		const transformedCode = this.getTransformedCode(expression);
-
-		const { observability } = this.config;
-		const start = performance.now();
-
+		// Anchor the chain's clock before transformation, so that parsing an
+		// uncached expression counts against the shared budget instead of
+		// escaping it. Transformation runs inside the try to keep the depth
+		// counter balanced if it throws.
 		const nested = this.chainDepth > 0;
-		if (!nested) this.chainStart = start;
+		if (!nested) this.chainStart = performance.now();
 		this.chainDepth++;
 
 		try {
-			const result = bridge.execute(transformedCode, data, {
-				timezone: options?.timezone,
-				elapsedMs: nested ? start - this.chainStart : undefined,
-			});
-			recordOutcome(observability, start, 'success');
-			return result;
-		} catch (error) {
-			recordOutcome(observability, start, 'error', error);
-			throw error;
+			// Transform template expression → sanitized JavaScript (cached)
+			const transformedCode = this.getTransformedCode(expression);
+
+			const { observability } = this.config;
+			const start = performance.now();
+
+			try {
+				const result = bridge.execute(transformedCode, data, {
+					timezone: options?.timezone,
+					elapsedMs: nested ? start - this.chainStart : undefined,
+				});
+				recordOutcome(observability, start, 'success');
+				return result;
+			} catch (error) {
+				recordOutcome(observability, start, 'error', error);
+				throw error;
+			}
 		} finally {
 			this.chainDepth--;
 		}

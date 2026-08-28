@@ -784,10 +784,11 @@ describe('Integration: nested evaluation time budget', () => {
 		);
 		const elapsed = Date.now() - start;
 
-		expect(framesEvaluated).toBeGreaterThan(1);
-		// Tight enough to catch a first nested frame that restarts the budget,
-		// which would land at roughly twice the limit.
-		expect(elapsed).toBeLessThan(TIMEOUT_MS * 1.25);
+		// Frame count is the load-independent signal: at BURN_MS per frame the
+		// budget affords exactly two before it runs out. A frame that restarted
+		// the budget would buy at least one more, whatever the host overhead.
+		expect(framesEvaluated).toBe(2);
+		expect(elapsed).toBeLessThan(TIMEOUT_MS * 1.5);
 	});
 
 	it('shares the budget across sequential nested evaluations', () => {
