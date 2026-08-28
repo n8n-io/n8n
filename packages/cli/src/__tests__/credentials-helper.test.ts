@@ -1045,6 +1045,7 @@ describe('CredentialsHelper', () => {
 					workflowSettings: {
 						credentialResolverId: 'workflow-resolver-123',
 					},
+					executionId: 'exec-123',
 				} as IWorkflowExecuteAdditionalData;
 
 				// Act
@@ -1055,7 +1056,10 @@ describe('CredentialsHelper', () => {
 					additionalDataWithCredentials,
 				);
 
-				// Assert: Should use dynamic proxy, NOT direct database update
+				// Assert: Should use dynamic proxy, NOT direct database update, and forward the
+				// execution id so a context already bound to this execution (via
+				// `maybeBindExecutionId`) passes the resolver's replay check the same way
+				// `resolveIfNeeded` already does.
 				expect(storeOAuthTokenDataSpy).toHaveBeenCalledWith(
 					{
 						id: 'cred-789',
@@ -1068,6 +1072,7 @@ describe('CredentialsHelper', () => {
 					additionalDataWithCredentials.executionContext,
 					existingCredentialData,
 					additionalDataWithCredentials.workflowSettings,
+					'exec-123',
 				);
 				expect(credentialsRepository.update).not.toHaveBeenCalled();
 			});
@@ -1119,6 +1124,7 @@ describe('CredentialsHelper', () => {
 						additionalDataWithCredentials.executionContext,
 						existingCredentialData,
 						additionalDataWithCredentials.workflowSettings,
+						undefined,
 					);
 					expect(credentialsRepository.update).not.toHaveBeenCalled();
 				} finally {

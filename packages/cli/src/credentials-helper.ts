@@ -788,6 +788,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				additionalData.executionContext,
 				staticData,
 				additionalData.workflowSettings,
+				additionalData.executionId,
 			);
 			return;
 		}
