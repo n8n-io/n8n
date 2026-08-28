@@ -13,6 +13,7 @@ parameters:
         - 'true'
         - 'false'
       default: 'false'
+      description: Whether or not to include the execution's detailed data.
     required: false
     name: includeData
     in: query
@@ -22,6 +23,7 @@ parameters:
         - 'true'
         - 'false'
       default: 'false'
+      description: Whether to return the full execution data even if it exceeds the configured size limit (EXECUTIONS_DATA_MAX_DISPLAY_SIZE). Oversized executions are otherwise returned without their data.
     required: false
     name: ignoreDataSizeLimit
     in: query
@@ -30,6 +32,7 @@ parameters:
       enum:
         - 'true'
         - 'false'
+      description: Controls execution data redaction. When `true`, execution output data is always redacted. When `false`, requests unredacted (revealed) data — requires the `execution:reveal` scope. When omitted, follows the workflow redaction policy.
     required: false
     name: redactExecutionData
     in: query
@@ -44,28 +47,36 @@ parameters:
         - success
         - unknown
         - waiting
+      description: Status to filter the executions by.
     required: false
     name: status
     in: query
   - schema:
       type: string
+      description: Workflow to filter the executions by.
+      example: '1000'
     required: false
     name: workflowId
     in: query
   - schema:
       type: string
+      example: VmwOO9HeTEj20kxM
     required: false
     name: projectId
     in: query
   - schema:
       type: string
       format: date-time
+      description: Only return executions that started after this time.
+      example: 2024-01-01T00:00:00.000Z
     required: false
     name: startedAfter
     in: query
   - schema:
       type: string
       format: date-time
+      description: Only return executions that started before this time.
+      example: 2024-12-31T23:59:59.999Z
     required: false
     name: startedBefore
     in: query
