@@ -464,38 +464,17 @@ export class WorkflowRunner {
 		// queue/local decision because a worker cannot write to it.
 		const heartbeat = this.setupV1StreamingHeartbeat(data);
 
-		// @TODO: Reduce to true branch once feature is stable
-		const shouldEnqueue =
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-				? this.executionsConfig.mode === 'queue'
-				: this.executionsConfig.mode === 'queue' && data.executionMode !== 'manual';
-
-		const shouldReloadStaticData = Boolean(existingExecution && loadStaticData);
-
-		try {
-			if (shouldEnqueue) {
-				await this.enqueueExecution(
-					executionId,
-					workflowId,
-					data,
-					loadStaticData,
-					realtime,
-					existingExecution?.executionId,
-				);
-			} else {
-				await this.runMainProcess(
-					executionId,
-					data,
-					shouldReloadStaticData,
-					existingExecution,
-					executionWorkflow,
-				);
-			}
-		} catch (error) {
-			// A failed start means the post-execute promise that normally clears the
-			// heartbeat never settles, so clear it here.
-			heartbeat?.stop();
-			throw error;
+		if (this.executionsConfig.mode === 'queue') {
+			await this.enqueueExecution(
+				executionId,
+				workflowId,
+				data,
+				loadStaticData,
+				realtime,
+				existingExecution?.executionId,
+			);
+		} else {
+			await this.runMainProcess(executionId, data, loadStaticData, existingExecution?.executionId);
 		}
 
 		// only run these when not in queue mode or when the execution is manual,
