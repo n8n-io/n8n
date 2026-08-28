@@ -26,26 +26,27 @@ export class SharedWorkflowRepository extends BaseRepository<SharedWorkflow> {
 	}
 
 	/**
-	 * Returns workflow IDs that have any sharing row
-	 * in one of the projects the caller is allowed to list.
+	 * SharedWorkflow maps workflows to projects, so user access is checked through
+	 * project relations with the supplied project roles.
 	 */
-	async findWorkflowIdsInProjects(
+	async findWorkflowIdsInUserProjects(
 		workflowIds: string[],
-		projectIds: string[],
+		userId: string,
+		projectRoleSlugs: string[],
 	): Promise<Set<string>> {
-		if (workflowIds.length === 0 || projectIds.length === 0) return new Set();
+		if (workflowIds.length === 0 || projectRoleSlugs.length === 0) return new Set();
 
-		// Chunk both filters to keep each IN clause within database parameter limits
 		const found = new Set<string>();
-		for (const workflowChunk of chunkIds(workflowIds)) {
-			for (const projectChunk of chunkIds(projectIds)) {
-				const rows = await this.find({
-					select: { workflowId: true },
-					where: { workflowId: In(workflowChunk), projectId: In(projectChunk) },
-				});
-				for (const row of rows) {
-					found.add(row.workflowId);
-				}
+		for (const chunk of chunkIds(workflowIds)) {
+			const rows = await this.find({
+				select: { workflowId: true },
+				where: {
+					workflowId: In(chunk),
+					project: { projectRelations: { userId, role: { slug: In(projectRoleSlugs) } } },
+				},
+			});
+			for (const row of rows) {
+				found.add(row.workflowId);
 			}
 		}
 

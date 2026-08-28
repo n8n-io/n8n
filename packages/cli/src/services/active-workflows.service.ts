@@ -28,16 +28,17 @@ export class ActiveWorkflowsService {
 	async getAllActiveIdsFor(user: User) {
 		const activationErrors = await this.activationErrorsService.getAll();
 		const activeWorkflowIds = await this.workflowRepository.getActiveIds();
-
-		const projectIds = await this.projectScopeService.getProjectIds(user, ['workflow:list']);
+		const projectRoleSlugs = await this.projectScopeService.getProjectRoleSlugs(user, [
+			'workflow:list',
+		]);
 
 		const listableWorkflowIds =
-			// `null` means the user's global role can list workflows in every project
-			projectIds === null
+			projectRoleSlugs === null
 				? new Set(activeWorkflowIds)
-				: await this.sharedWorkflowRepository.findWorkflowIdsInProjects(
+				: await this.sharedWorkflowRepository.findWorkflowIdsInUserProjects(
 						activeWorkflowIds,
-						projectIds,
+						user.id,
+						projectRoleSlugs,
 					);
 
 		return activeWorkflowIds.filter(

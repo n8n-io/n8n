@@ -43,32 +43,36 @@ describe('ActiveWorkflowsService', () => {
 			workflowRepository.getActiveIds.mockResolvedValue(activeIds);
 		});
 
-		it('should return all workflow ids when the user can list workflows in every project', async () => {
+		it('should return all workflow ids when the user can list workflows globally', async () => {
 			user.role = GLOBAL_ADMIN_ROLE;
-			projectScopeService.getProjectIds.mockResolvedValue(null);
+			projectScopeService.getProjectRoleSlugs.mockResolvedValue(null);
 			const ids = await service.getAllActiveIdsFor(user);
 
 			expect(ids).toEqual(['2', '3', '4']);
-			expect(sharedWorkflowRepository.findWorkflowIdsInProjects).not.toHaveBeenCalled();
+			expect(projectScopeService.getProjectRoleSlugs).toHaveBeenCalledWith(user, ['workflow:list']);
+			expect(sharedWorkflowRepository.findWorkflowIdsInUserProjects).not.toHaveBeenCalled();
 		});
 
 		it('should filter out workflow ids that the user cannot list', async () => {
 			user.role = GLOBAL_MEMBER_ROLE;
-			projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
-			sharedWorkflowRepository.findWorkflowIdsInProjects.mockResolvedValue(new Set(['3']));
+			user.id = 'user-1';
+			projectScopeService.getProjectRoleSlugs.mockResolvedValue(['project:admin']);
+			sharedWorkflowRepository.findWorkflowIdsInUserProjects.mockResolvedValue(new Set(['3']));
 			const ids = await service.getAllActiveIdsFor(user);
 
 			expect(ids).toEqual(['3']);
-			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['workflow:list']);
-			expect(sharedWorkflowRepository.findWorkflowIdsInProjects).toHaveBeenCalledWith(activeIds, [
-				'project-1',
-			]);
+			expect(projectScopeService.getProjectRoleSlugs).toHaveBeenCalledWith(user, ['workflow:list']);
+			expect(sharedWorkflowRepository.findWorkflowIdsInUserProjects).toHaveBeenCalledWith(
+				activeIds,
+				'user-1',
+				['project:admin'],
+			);
 		});
 
-		it('should return no ids when the user can list workflows in no project', async () => {
+		it('should return no ids when the user cannot list workflows in any project', async () => {
 			user.role = GLOBAL_MEMBER_ROLE;
-			projectScopeService.getProjectIds.mockResolvedValue([]);
-			sharedWorkflowRepository.findWorkflowIdsInProjects.mockResolvedValue(new Set());
+			projectScopeService.getProjectRoleSlugs.mockResolvedValue([]);
+			sharedWorkflowRepository.findWorkflowIdsInUserProjects.mockResolvedValue(new Set());
 			const ids = await service.getAllActiveIdsFor(user);
 
 			expect(ids).toEqual([]);
