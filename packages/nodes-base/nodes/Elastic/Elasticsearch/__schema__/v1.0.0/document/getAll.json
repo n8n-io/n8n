@@ -4,84 +4,9 @@
         "_id": {
             "type": "string"
         },
-        "_source": {
-            "type": "object",
-            "properties": {
-                "context": {
-                    "type": "object",
-                    "properties": {
-                        "apk_version": {
-                            "type": "string"
-                        },
-                        "codepush_version": {
-                            "type": "string"
-                        },
-                        "hw_rev": {
-                            "type": "string"
-                        },
-                        "main_bootloader_version": {
-                            "type": "string"
-                        },
-                        "main_fw_version": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "dispenser_id": {
-                    "type": "string"
-                },
-                "endpoint": {
-                    "type": "string"
-                },
-                "event_type": {
-                    "type": "string"
-                },
-                "household_id": {
-                    "type": "string"
-                },
-                "ingested_at": {
-                    "type": "string"
-                },
-                "slot_info": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "cartridge_type": {
-                                "type": "string"
-                            },
-                            "dispensed_amount": {
-                                "type": "integer"
-                            },
-                            "error_flags": {
-                                "type": "array",
-                                "items": {
-                                    "type": "string"
-                                }
-                            },
-                            "error_mask": {
-                                "type": "integer"
-                            },
-                            "remaining_amount": {
-                                "type": "integer"
-                            },
-                            "slot": {
-                                "type": "integer"
-                            }
-                        }
-                    }
-                },
-                "ts": {
-                    "type": "string"
-                },
-                "ts_ms": {
-                    "type": "integer"
-                }
-            }
-        },
         "timestamp": {
             "type": "string"
         }
     },
-    "version": 5
+    "version": 4
 }
