@@ -5,6 +5,10 @@ grouped by the agent that loads it. `cubic.yaml` links these files via
 `file_paths`; the prose in `cubic.yaml` stays thin so the rules are reviewable
 as normal markdown.
 
+These files hold *what to look for*. How to review — the bar a comment must
+clear, when to stay silent, what never to say — lives once in
+`custom_instructions` in `cubic.yaml`, because it reaches every agent.
+
 ## Layout
 
 | Directory   | Agent    | Scope                                               |
@@ -13,6 +17,13 @@ as normal markdown.
 | `backend/`  | Backend  | `cli`, `@n8n/db`, `core`, `workflow`, node packages |
 | `frontend/` | Frontend | `packages/frontend`                                 |
 | `qa-dx/`    | QA & DX  | `.github`, `docker`, `scripts`, `patches`, `packages/testing`, the lint/test/TS config packages, baselines |
+| `testing/`  | Backend + Frontend | any package with a test suite            |
+
+A directory maps to one agent unless, like `testing/`, the policy is identical
+across domains — then it is one file listed in several agents' `file_paths`,
+never a copy per directory. Security and QA & DX deliberately don't link
+`testing/`: coverage nagging on a credential fix or a Dockerfile is noise those
+agents shouldn't be able to produce.
 
 One slot of five is left. QA & DX covers the build, test, and CI surface — the
 same paths `.github/OWNERS` assigns to `@n8n-io/qa-dx`. Code-quality rules that
@@ -26,20 +37,26 @@ enforces them in CI:
 
 - **5 enabled agents per repository.** Rules past the fifth never run and cubic
   says nothing. One slot is deliberately left free.
-- **10,000 characters per agent**, counting the `description` plus every linked
-  file, concatenated in the listed order. Everything past the limit is dropped
-  from the review prompt.
+- **10,000 characters per agent**, counting the `description`, every linked
+  file, and `custom_instructions` — concatenated in the listed order.
+  Everything past the limit is dropped from the review prompt. The shared block
+  is prepended to every agent, so a line added there is spent against all of
+  their ceilings, not one; `check:cubic-config` prints the own/shared split.
 - **Repo-relative file paths only.** Globs, directories, parent-directory
   traversal, and absolute paths are all rejected — list each file explicitly.
   The schema caps `file_paths` at 10 entries per agent.
 
 ## Adding a rule
 
-1. Write the file in the directory for the agent that should own it. Open with a
-   one-line "Applies to:" so the reviewer skips it on unrelated files — a
-   backend PR still loads the node rules, since include globs are per-agent.
-2. Add its path to that agent's `file_paths` in `cubic.yaml`.
-3. Run `pnpm check:cubic-config`. It validates `cubic.yaml` against cubic's
+1. Pick the level of reach first. Guidance about *how* to review goes in
+   `custom_instructions`, not here. A policy that is word-for-word the same in
+   two domains becomes one file linked by both agents. Everything else goes in
+   the directory of the agent that owns it.
+2. Open with a one-line "Applies to:" so the reviewer skips it on unrelated
+   files — a backend PR still loads the node rules, since include globs are
+   per-agent.
+3. Add its path to every `file_paths` that should load it in `cubic.yaml`.
+4. Run `pnpm check:cubic-config`. It validates `cubic.yaml` against cubic's
    published JSON schema, then fails on a missing path, an over-budget agent, or
    a rule file nobody links, and warns at 80% of the ceiling.
 
@@ -49,8 +66,9 @@ of each month and opens a PR when it changed — review that diff for new cubic
 options worth adopting. To refresh by hand:
 `node .github/scripts/quality/check-cubic-config.mjs --refresh`.
 
-Don't restate something ESLint already errors on — see the "Don't repeat the
-linter" section in `cubic.yaml`. Write what static analysis cannot see.
+Don't restate something CI already fails on — see the "Don't repeat what CI
+already fails on" section in `cubic.yaml`. Write what static analysis cannot
+see.
 
 ## Working with cubic on a PR
 
