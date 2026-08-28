@@ -396,8 +396,7 @@ export function useNodeHelpers() {
 		const foundIssues: INodeIssueObjectProperty = {};
 
 		const workflowNode = workflow.getNode(node.name);
-		// Detection is shared with the backend publish check so the two agree on
-		// what counts as an unsatisfied required input; only the wording is local.
+		// Detection is shared with the backend publish check; only wording is local.
 		const unconnected =
 			nodeType && workflowNode
 				? getUnconnectedRequiredInputs(workflow, workflowNode, nodeType)

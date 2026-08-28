@@ -19,28 +19,21 @@ export interface NodeCredentialIssue {
 	credentialName: string;
 }
 
-/**
- * The workflow surface needed to resolve a node's inputs and look at what feeds
- * them. Declared as a `Pick` so both the editor's snapshot accessor and the
- * engine's `Workflow` satisfy it.
- */
+/** A `Pick` so both the editor's snapshot accessor and the engine's `Workflow` fit. */
 export type WorkflowForInputValidation = Pick<
 	Workflow,
 	'expression' | 'getNode' | 'getParentNodes'
 >;
 
 /**
- * Returns the inputs a node declares as required but that nothing enabled is
- * connected to.
+ * Inputs a node declares as required with nothing enabled connected to them.
  *
- * An input can be conditional, so this resolves the node's inputs against its
- * current parameters first: a Structured Output Parser only requires a model
- * once `autoFix` is on. A disabled source counts as absent, which matches what
- * the execution engine reports ("must be connected and enabled").
+ * Inputs can be conditional, so they are resolved against the node's current
+ * parameters first. A disabled source counts as absent, matching the runtime
+ * ("must be connected and enabled").
  *
- * Shared so the editor warning and the publish check agree; each caller
- * formats its own message. Pass `throwOnExpressionError` when a node whose
- * inputs cannot be resolved must not be read as requiring nothing.
+ * Shared so the editor warning and the publish check agree; callers format their
+ * own message.
  */
 export function getUnconnectedRequiredInputs(
 	workflow: WorkflowForInputValidation,

@@ -1601,12 +1601,7 @@ export class WorkflowService {
 		}
 	}
 
-	/**
-	 * Refuses activation when a node declares a required input that nothing is
-	 * connected to. The editor already flags this, but only recomputes the
-	 * warning on load, so the edit that introduces it can go unnoticed and the
-	 * workflow throws on every execution once live.
-	 */
+	/** Refuses activation when a required input has nothing connected to it. */
 	async _validateRequiredInputs(workflowId: string, nodes: INode[], connections: IConnections) {
 		const validation = await this.workflowValidationService.validateRequiredInputsConnected(
 			nodes,

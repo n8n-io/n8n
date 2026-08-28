@@ -35,10 +35,7 @@ const nodeTypes = {
 	},
 } as unknown as INodeTypes;
 
-/**
- * The ticket's shape: agent with a model and an output parser, where the parser
- * has turned on a capability that needs a model of its own.
- */
+/** Agent with a model and a parser whose capability needs a model of its own. */
 function agentWithParser(
 	parserParameters: Record<string, unknown>,
 	options: { models?: string[] } = {},
@@ -113,7 +110,6 @@ describe('connectRequiredSubnodeInputs', () => {
 	});
 
 	it('does not repair an input the caller just cleared', () => {
-		// Re-adding it would make the caller's own removeConnection a no-op.
 		const workflow = agentWithParser({ autoFix: true });
 
 		const result = connectRequiredSubnodeInputs(workflow, nodeTypes, {
@@ -149,8 +145,7 @@ describe('connectRequiredSubnodeInputs', () => {
 	});
 
 	it('does not treat an ungated required input as missing', () => {
-		// The agent itself requires ai_languageModel with no displayOptions; it is
-		// already connected, and must not be touched.
+		// The agent's own ai_languageModel is ungated and already connected.
 		const workflow = agentWithParser({ autoFix: true });
 
 		const result = connectRequiredSubnodeInputs(workflow, nodeTypes);

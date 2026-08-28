@@ -171,9 +171,7 @@ export function useNodeSettingsParameters() {
 
 		nodeHelpers.updateNodeParameterIssuesByName(node.name);
 		nodeHelpers.updateNodeCredentialIssuesByName(node.name);
-		// A parameter can change which inputs the node exposes (an output parser's
-		// `autoFix` adds a required Model input, an agent's `hasOutputParser` adds
-		// an Output Parser one), so the input warnings have to be recomputed too.
+		// A parameter can change which inputs the node exposes, e.g. `autoFix`.
 		nodeHelpers.updateNodeInputIssuesByName(node.name);
 		telemetry.trackNodeParametersValuesChange(nodeTypeDescription.name, parameterData);
 	}

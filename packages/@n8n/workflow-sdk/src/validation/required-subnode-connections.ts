@@ -1,23 +1,9 @@
 /**
- * Required Subnode Connections
+ * Completes AI subnode connections that a node's own parameters made required.
  *
- * Some AI subnodes need a subnode of their own once a parameter turns the
- * capability on. A Structured Output Parser with `autoFix: true` spends a second
- * LLM call repairing malformed output, so it declares a *required*
- * `ai_languageModel` input; a Default Data Loader in `textSplittingMode: custom`
- * requires an `ai_textSplitter`. Those requirements are declared on the node type
- * as `builderHint.inputs[type]` with `required: true`.
- *
- * Builder-authored code sets the parameter but routinely omits the connection,
- * because the subnode is nested one level below the node the author was thinking
- * about. The result is a node with a required input left dangling: it renders as
- * an unconnected port and fails at runtime when the capability fires.
- *
- * This pass completes those connections. The source is not guessed: it is taken
- * from the parent the subnode is already attached to, which is the same node a
- * person would drag the wire from. Where no single unambiguous source exists the
- * input is left alone, and `validateWorkflow` reports it as
- * `MISSING_REQUIRED_INPUT`.
+ * Turning on a capability can add a required input one level below the node the
+ * author was thinking about (`autoFix` on an output parser needs a model), and
+ * generated code routinely sets the parameter without wiring it.
  */
 
 import type { INodeTypes } from 'n8n-workflow';
@@ -26,10 +12,8 @@ import { matchesDisplayOptions } from './display-options';
 import type { DisplayOptions, DisplayOptionsContext } from './display-options';
 
 /**
- * Minimal workflow shape this pass reads and writes. Declared structurally
- * rather than as `WorkflowJSON` so callers can pass either the SDK's
- * `WorkflowJSON` or an `n8n-workflow`-typed slice — the two declare duplicate
- * but formally separate node and connection types.
+ * Structural rather than `WorkflowJSON` so both callers fit: the SDK and
+ * `n8n-workflow` declare separate node and connection types.
  */
 export interface WorkflowForSubnodeWiring {
 	nodes: Array<{
@@ -51,20 +35,14 @@ export interface WorkflowForSubnodeWiring {
 
 /** A connection this pass added. */
 export interface AddedSubnodeConnection {
-	/** Node the connection now comes from (e.g. the shared chat model) */
 	sourceNode: string;
-	/** Node whose required input was unsatisfied (e.g. the output parser) */
 	targetNode: string;
-	/** The AI connection type, e.g. `ai_languageModel` */
 	connectionType: string;
-	/** Parent both nodes hang off, which is where the source was taken from */
+	/** Parent both nodes hang off, which is where the source came from. */
 	viaParent: string;
 }
 
-/**
- * The note shown to whoever asked for the build. Kept next to the producer so
- * the wording and the code stay in one place across both callers.
- */
+/** Kept next to the producer so both callers share one wording. */
 export function describeAddedSubnodeConnection(link: AddedSubnodeConnection): {
 	code: string;
 	message: string;
@@ -79,9 +57,7 @@ export function describeAddedSubnodeConnection(link: AddedSubnodeConnection): {
 
 /** An input the caller cleared on purpose, which must not be repaired. */
 export interface ClearedSubnodeInput {
-	/** Node whose input was cleared */
 	nodeName: string;
-	/** The AI connection type that was removed, e.g. `ai_languageModel` */
 	connectionType: string;
 }
 
@@ -111,10 +87,7 @@ function buildIncomingIndex(workflow: WorkflowForSubnodeWiring): IncomingIndex {
 	return incoming;
 }
 
-/**
- * The parents a subnode is attached to — every node it feeds over an `ai_*`
- * connection. An output parser's parent is the agent it supplies.
- */
+/** Every node this subnode feeds over an `ai_*` connection. */
 function findParents(workflow: WorkflowForSubnodeWiring, nodeName: string): string[] {
 	const parents = new Set<string>();
 	const byType = workflow.connections?.[nodeName];
@@ -143,16 +116,11 @@ function addConnection(
 }
 
 /**
- * Connect required AI inputs that a node's own parameters made mandatory but
- * that were left unwired.
+ * Mutates `workflow.connections` and returns the links added. Anything it cannot
+ * satisfy is left for `validateWorkflow` to report as `MISSING_REQUIRED_INPUT`.
  *
- * Mutates `workflow.connections` in place and returns the links it added. An
- * input it cannot satisfy is left alone: `validateWorkflow` already reports
- * those as `MISSING_REQUIRED_INPUT`.
- *
- * Pass `clearedInputs` for anything the caller just disconnected on purpose.
- * Repairing one of those would undo the removal in the same breath, so they are
- * skipped and reported as missing instead.
+ * `clearedInputs` are inputs the caller just disconnected; repairing one would
+ * undo their own removal.
  */
 export function connectRequiredSubnodeInputs(
 	workflow: WorkflowForSubnodeWiring,
@@ -168,8 +136,7 @@ export function connectRequiredSubnodeInputs(
 	for (const node of workflow.nodes) {
 		if (!node.name) continue;
 
-		// Mirrors validate-workflow.ts, where a workflow read from the wire can
-		// carry typeVersion as a string.
+		// validate-workflow.ts does the same: the wire can carry a string.
 		const version =
 			typeof node.typeVersion === 'string' ? parseFloat(node.typeVersion) : (node.typeVersion ?? 1);
 
@@ -178,8 +145,7 @@ export function connectRequiredSubnodeInputs(
 			builderHintInputs = nodeTypesProvider.getByNameAndVersion(node.type, version)?.description
 				?.builderHint?.inputs;
 		} catch {
-			// Unknown type or version — nothing to derive the requirement from.
-			continue;
+			continue; // unknown type or version
 		}
 		if (!builderHintInputs) continue;
 
@@ -190,8 +156,7 @@ export function connectRequiredSubnodeInputs(
 			if (!inputConfig?.required) continue;
 			if (cleared.has(`${node.name}\u0000${connectionType}`)) continue;
 
-			// A gated input only exists once its condition holds; until then the
-			// node renders no port and nothing is missing.
+			// A gated input does not exist until its condition holds.
 			const displayOptions = inputConfig.displayOptions as DisplayOptions | undefined;
 			if (displayOptions) {
 				const context: DisplayOptionsContext = {
@@ -202,11 +167,10 @@ export function connectRequiredSubnodeInputs(
 				if (!matchesDisplayOptions(context, displayOptions)) continue;
 			}
 
-			// buildIncomingIndex only ever stores non-empty sets.
+			// buildIncomingIndex only stores non-empty sets.
 			if (incoming.get(node.name)?.get(connectionType)) continue;
 
-			// Take the source from whatever already supplies this connection type to
-			// the parent the subnode hangs off — the wire a person would draw.
+			// Take the source from the parent the subnode hangs off, not the whole graph.
 			const parentBySource = new Map<string, string>();
 			for (const parent of findParents(workflow, node.name)) {
 				for (const source of incoming.get(parent)?.get(connectionType) ?? []) {
@@ -214,7 +178,7 @@ export function connectRequiredSubnodeInputs(
 				}
 			}
 
-			// Only wire when there is exactly one source it could have come from.
+			// Wire only when the source is unambiguous.
 			const candidates = [...parentBySource.keys()];
 			if (candidates.length !== 1) continue;
 

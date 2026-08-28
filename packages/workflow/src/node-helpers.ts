@@ -1247,11 +1247,8 @@ export function getNodeInputs(
 	options: {
 		/**
 		 * Surface a failed `inputs` expression instead of reporting no inputs.
-		 *
-		 * Swallowing the error is right for rendering, where a node with unknown
-		 * ports is better than a broken canvas. It is wrong for anything deciding
-		 * whether a workflow is valid: an empty list reads as "requires nothing"
-		 * and quietly passes a node whose requirements could not be read.
+		 * Swallowing suits rendering; callers judging validity need the error,
+		 * since an empty list otherwise reads as "requires nothing".
 		 */
 		throwOnExpressionError?: boolean;
 	} = {},

@@ -389,7 +389,7 @@ describe('node-validation', () => {
 			parameters: {},
 		};
 
-		/** Inputs are an expression, so they depend on the node's own parameters. */
+		/** An expression, so inputs depend on the node's parameters. */
 		const description = {
 			inputs:
 				'={{ $parameter.autoFix ? [{ displayName: "Model", type: "ai_languageModel", required: true }] : [] }}',
@@ -442,8 +442,6 @@ describe('node-validation', () => {
 		});
 
 		it('reports nothing when a failed inputs expression is treated as empty', () => {
-			// Default behaviour, kept for rendering: an unreadable node shows no ports
-			// rather than breaking the canvas.
 			const throwing = {
 				expression: {
 					getSimpleParameterValue: () => {
@@ -458,8 +456,6 @@ describe('node-validation', () => {
 		});
 
 		it('surfaces a failed inputs expression when asked to', () => {
-			// Callers deciding whether a workflow is valid must not read "could not
-			// resolve" as "requires nothing".
 			const throwing = {
 				expression: {
 					getSimpleParameterValue: () => {

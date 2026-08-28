@@ -344,35 +344,24 @@ export class WorkflowValidationService {
 	}
 
 	/**
-	 * Validates that every input a node declares as required actually has
-	 * something connected to it.
+	 * Refuses activation when a required input has nothing connected. The editor
+	 * draws this warning already but nothing enforced it, so such a workflow could
+	 * publish and then throw on every execution.
 	 *
-	 * The editor already computes this (`getNodeInputIssues` in
-	 * `useNodeHelpers`) and draws a warning triangle, but nothing enforced it, so
-	 * a workflow could be published with a required input left dangling and would
-	 * then throw on every execution — e.g. an output parser with `autoFix: true`
-	 * and no model, which fails while the agent assembles its sub-nodes, before
-	 * any inference runs.
-	 *
-	 * Separate from `validateForActivation` only because resolving a node's
-	 * inputs can evaluate an expression, making this async while the rest of that
-	 * method is synchronous. Folding it in would mean awaiting the one other
-	 * caller (`breaking-changes.migration.service`) and is worth doing, so that
-	 * activation has a single gate and one error shape.
+	 * Separate from `validateForActivation` only because resolving inputs is
+	 * async. Worth folding in later, so activation has one gate and one error
+	 * shape; that means awaiting the one other caller.
 	 */
 	async validateRequiredInputsConnected(
 		nodes: INode[],
 		connections: IConnections,
 		nodeTypes: NodeTypes,
 	): Promise<WorkflowValidationResult> {
-		// Transient Workflow so dynamic `inputs` expressions can be evaluated
-		// against each node's current parameters. Not persisted.
+		// Transient, so dynamic `inputs` expressions can be evaluated.
 		const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
 		const issues: string[] = [];
 
-		// Dynamic `inputs` expressions resolve through workflow.expression, which
-		// needs an isolate when the VM expression engine is on. Without it
-		// getNodeInputs returns [] and this check silently passes everything.
+		// Those expressions need an isolate under the VM engine, or they throw.
 		await withExpressionIsolate(workflow, async () => {
 			for (const node of nodes) {
 				if (node.disabled) continue;
@@ -380,10 +369,7 @@ export class WorkflowValidationService {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 				if (!nodeType?.description) continue;
 
-				// Read the node's requirements strictly. A failed `inputs` expression
-				// would otherwise come back as an empty list, which reads as "requires
-				// nothing" and would wave through the very workflows this check exists
-				// to stop.
+				// Strictly: a swallowed expression error would read as "requires nothing".
 				let required: ReturnType<typeof getUnconnectedRequiredInputs>;
 				try {
 					required = getUnconnectedRequiredInputs(workflow, node, nodeType.description, {

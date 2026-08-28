@@ -74,13 +74,9 @@ export class ParseValidateHandler {
 	}
 
 	/**
-	 * Complete AI subnode connections that a node's own parameters made required
-	 * but that the generated code left unwired — an output parser with
-	 * `autoFix: true` and no model, for instance. Without this the node renders a
-	 * dangling required port and fails at runtime when the capability fires.
-	 *
-	 * Needs node types to read the requirement off `builderHint.inputs`; a handler
-	 * built without a provider leaves the workflow untouched.
+	 * Complete required AI subnode connections the generated code left unwired,
+	 * e.g. an output parser with `autoFix: true` and no model. Needs node types,
+	 * so a handler built without a provider leaves the workflow untouched.
 	 */
 	private connectRequiredInputs(json: WorkflowJSON): AddedSubnodeConnection[] {
 		if (!this.nodeTypesProvider) return [];
@@ -300,8 +296,7 @@ export class ParseValidateHandler {
 
 			// Convert to JSON with Dagre layout matching the FE's tidy-up
 			const workflowJson: WorkflowJSON = builder.toJSON({ tidyUp: true, existingGroupIdsByName });
-			// `workflowJson` is a fresh serialization from the builder, so the
-			// connections added to the validation copy above are re-added here.
+			// A fresh serialization, so the links added above have to be re-added.
 			for (const link of this.connectRequiredInputs(workflowJson)) {
 				allWarnings.push(describeAddedSubnodeConnection(link));
 			}
