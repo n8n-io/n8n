@@ -255,6 +255,7 @@ describe('NodeExecutionContext', () => {
 				undefined,
 				false,
 				undefined,
+				undefined,
 			);
 		});
 
@@ -306,6 +307,9 @@ describe('NodeExecutionContext', () => {
 				{ id: null, name: 'slackApi' },
 				'slackApi',
 				'internal',
+				undefined,
+				undefined,
+				undefined,
 				undefined,
 			);
 		});

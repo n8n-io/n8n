@@ -115,6 +115,7 @@ describe('HookContext', () => {
 				expect.objectContaining({ node }),
 				false,
 				undefined,
+				undefined,
 			);
 		});
 	});
