@@ -3,6 +3,7 @@ import { mockDeep } from 'vitest-mock-extended';
 import { Collection, Db, MongoBulkWriteError, MongoClient, ObjectId } from 'mongodb';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type {
+	IDataObject,
 	IExecuteFunctions,
 	INode,
 	INodeParameters,
@@ -130,7 +131,7 @@ function mockExecuteFunctions(typeVersion: number, operation: string) {
 	return executeFunctions;
 }
 
-function mockQueryOperation(operation: 'aggregate' | 'delete' | 'find') {
+function mockQueryOperation(operation: 'aggregate' | 'delete' | 'find', options: IDataObject = {}) {
 	const executeFunctions = mockExecuteFunctions(1.3, operation);
 	executeFunctions.getInputData.mockReturnValue([inputItems[0]]);
 	executeFunctions.getNodeParameter.mockImplementation(
@@ -147,7 +148,7 @@ function mockQueryOperation(operation: 'aggregate' | 'delete' | 'find') {
 				case 'queryParameters':
 					return ['Alice', 30];
 				case 'options':
-					return {};
+					return options;
 				default:
 					return fallbackValue;
 			}
@@ -155,6 +156,26 @@ function mockQueryOperation(operation: 'aggregate' | 'delete' | 'find') {
 	);
 
 	return executeFunctions;
+}
+
+function mockFindCursor() {
+	const applied: { sort?: unknown; project?: unknown } = {};
+	const cursor = {
+		skip: () => cursor,
+		limit: () => cursor,
+		sort: (value: unknown) => {
+			applied.sort = value;
+			return cursor;
+		},
+		project: (value: unknown) => {
+			applied.project = value;
+			return cursor;
+		},
+		toArray: async () => [],
+	};
+	vi.spyOn(Collection.prototype, 'find').mockReturnValue(cursor as never);
+
+	return applied;
 }
 
 function collectionNames(collectionSpy: MockInstance): string[] {
@@ -487,6 +508,67 @@ describe('MongoDB CRUD Node', () => {
 
 				expect(aggregateSpy).toHaveBeenCalledWith([{ $match: expectedQuery }]);
 			});
+
+			it('resolves sort parameters into the sort field name', async () => {
+				const applied = mockFindCursor();
+
+				await node.execute.call(
+					mockQueryOperation('find', { sort: '{ "$1": -1 }', sortParameters: ['name'] }),
+				);
+
+				expect(applied.sort).toEqual({ name: -1 });
+			});
+
+			it('resolves projection parameters into the projected field name', async () => {
+				const applied = mockFindCursor();
+
+				await node.execute.call(
+					mockQueryOperation('find', {
+						projection: '{ "_id": 0, "$1": 1 }',
+						projectionParameters: ['name'],
+					}),
+				);
+
+				expect(applied.project).toEqual({ _id: 0, name: 1 });
+			});
+
+			it.each([
+				{
+					field: 'sort',
+					options: { sort: '{ "$1": -1 }', sortParameters: ['name":-1,"_id'] },
+					expected: { 'name":-1,"_id': -1 },
+				},
+				{
+					field: 'projection',
+					options: {
+						projection: '{ "_id": 0, "$1": 1 }',
+						projectionParameters: ['name":1,"password_hash'],
+					},
+					expected: { _id: 0, 'name":1,"password_hash': 1 },
+				},
+			])('keeps a $field parameter to a single field', async ({ field, options, expected }) => {
+				const applied = mockFindCursor();
+
+				await node.execute.call(mockQueryOperation('find', options));
+
+				expect(field === 'sort' ? applied.sort : applied.project).toEqual(expected);
+			});
+
+			it.each(['sort', 'projection'])(
+				'rejects a %s parameter that would become an operator',
+				async (field) => {
+					mockFindCursor();
+
+					await expect(
+						node.execute.call(
+							mockQueryOperation('find', {
+								[field]: '{ "$1": 1 }',
+								[`${field}Parameters`]: ['$where'],
+							}),
+						),
+					).rejects.toThrow('is used as a field name');
+				},
+			);
 		});
 
 		it('groups insert items by collection and uses insertMany per group', async () => {

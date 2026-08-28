@@ -26,12 +26,43 @@ describe('parseAndResolveQueryParameters', () => {
 		});
 	});
 
-	it('only replaces complete values, not keys or parts of strings', () => {
-		const query = JSON.stringify({ $1: 'key', exact: '$1', partial: 'user-$1' });
+	it('only replaces complete values, not parts of strings', () => {
+		const query = JSON.stringify({ exact: '$1', partial: 'user-$1' });
 
 		const result = parseAndResolveQueryParameters(query, ['Alice'], mockNode, 0);
 
-		expect(result).toEqual({ $1: 'key', exact: 'Alice', partial: 'user-$1' });
+		expect(result).toEqual({ exact: 'Alice', partial: 'user-$1' });
+	});
+
+	it('replaces placeholders that make up a complete key', () => {
+		const query = JSON.stringify({ _id: 0, $1: 1, 'nested.$1': 1 });
+
+		const result = parseAndResolveQueryParameters(query, ['name'], mockNode, 0);
+
+		expect(result).toEqual({ _id: 0, name: 1, 'nested.$1': 1 });
+	});
+
+	it('keeps a parameter bound to a key as a single field name', () => {
+		const query = JSON.stringify({ _id: 0, $1: 1 });
+
+		const result = parseAndResolveQueryParameters(query, ['name":1,"password_hash'], mockNode, 0);
+
+		expect(result).toEqual({ _id: 0, 'name":1,"password_hash': 1 });
+	});
+
+	it.each(['$where', '', 30])('throws when %p is bound to a key', (parameter) => {
+		expect(() => parseAndResolveQueryParameters('{ "$1": 1 }', [parameter], mockNode, 0)).toThrow(
+			'Query placeholder $1 is used as a field name',
+		);
+	});
+
+	it('uses the given label in error messages', () => {
+		expect(() => parseAndResolveQueryParameters('{', [], mockNode, 0, 'Sort')).toThrow(
+			"Invalid JSON in 'Sort'",
+		);
+		expect(() => parseAndResolveQueryParameters('{}', '{}', mockNode, 0, 'Sort')).toThrow(
+			'Sort Parameters must be a JSON array',
+		);
 	});
 
 	it('treats a parameter containing JSON as a plain string value', () => {
