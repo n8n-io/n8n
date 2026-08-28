@@ -3359,9 +3359,8 @@ export function useCanvasOperations() {
 		return Object.fromEntries(
 			Object.entries(credentials).filter(([, credential]) => {
 				if (!credential.id) return true;
-				return (
-					!usedCredentials[credential.id] || usedCredentials[credential.id]?.currentUserHasAccess
-				);
+				const used = usedCredentials[credential.id];
+				return !used || used.currentUserHasAccess;
 			}),
 		);
 	}

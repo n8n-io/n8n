@@ -15,7 +15,10 @@ import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/c
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import type { AddedNode, INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
+import type {
+	ICredentialsResponse,
+	IUsedCredential,
+} from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import {
 	AddConnectionCommand,
@@ -32,6 +35,7 @@ import { useHistoryStore } from '@/app/stores/history.store';
 import { useAgentNodeCanvasGeometryStore } from '@/features/agents/agentNodeCanvasGeometry.store';
 import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
+	createMockEnterpriseSettings,
 	createMockNodeTypes,
 	createTestNode,
 	createTestNodeProperties,
@@ -4604,9 +4608,22 @@ describe('useCanvasOperations', () => {
 			expect(copiedData.nodes[0].credentials).toEqual({ openAiApi: gatewayCredential });
 		});
 
-		it('keeps n8n credits credentials when sharing is enabled', () => {
-			const settingsStore = useSettingsStore();
-			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = true;
+		function copyNodeCredentialsWithSharing({
+			credentials,
+			usedCredentials = {},
+			usableCredentials = [],
+		}: {
+			credentials: INodeUi['credentials'];
+			usedCredentials?: Record<string, IUsedCredential>;
+			usableCredentials?: ICredentialsResponse[];
+		}) {
+			mockedStore(useSettingsStore).isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
+				[EnterpriseEditionFeature.Sharing]: true,
+			});
+
+			const credentialsStore = useCredentialsStore();
+			// @ts-expect-error Known pinia issue when spying on store getters
+			vi.spyOn(credentialsStore, 'allCredentials', 'get').mockReturnValue(usableCredentials);
 
 			const nodeTypesStore = useNodeTypesStore();
 			nodeTypesStore.nodeTypes = {
@@ -4618,19 +4635,83 @@ describe('useCanvasOperations', () => {
 				},
 			};
 
-			const gatewayCredential = { id: null, name: '', __aiGatewayManaged: true as const };
 			const node = mockNode({ id: '1', name: 'Node 1', type: SET_NODE_TYPE });
 			node.position = [40, 40];
-			node.credentials = { openAiApi: gatewayCredential };
+			node.credentials = credentials;
 
 			workflowDocumentStoreInstance.allNodes = [node];
-			workflowDocumentStoreInstance.usedCredentials = {};
+			vi.spyOn(workflowDocumentStoreInstance, 'usedCredentials', 'get').mockReturnValue(
+				usedCredentials,
+			);
 			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
 
-			const { getNodesToSave } = useCanvasOperations();
-			const copiedData = getNodesToSave([node]);
+			return useCanvasOperations().getNodesToSave([node]).nodes[0].credentials;
+		}
 
-			expect(copiedData.nodes[0].credentials).toEqual({ openAiApi: gatewayCredential });
+		it('keeps n8n credits credentials when sharing is enabled', () => {
+			const gatewayCredential = { id: null, name: '', __aiGatewayManaged: true as const };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: gatewayCredential },
+				}),
+			).toEqual({ openAiApi: gatewayCredential });
+		});
+
+		it('keeps stored credentials that are not in usedCredentials when sharing is enabled', () => {
+			const ownedCredential = mock<ICredentialsResponse>({ id: 'cred-1', name: 'Mine' });
+			const storedCredential = { id: ownedCredential.id, name: ownedCredential.name };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: storedCredential },
+					usableCredentials: [ownedCredential],
+				}),
+			).toEqual({ openAiApi: storedCredential });
+		});
+
+		it('keeps stored credentials the current user can access when sharing is enabled', () => {
+			const ownedCredential = mock<ICredentialsResponse>({ id: 'cred-1', name: 'Mine' });
+			const storedCredential = { id: ownedCredential.id, name: ownedCredential.name };
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: { openAiApi: storedCredential },
+					usableCredentials: [ownedCredential],
+					usedCredentials: {
+						[ownedCredential.id]: {
+							id: ownedCredential.id,
+							name: ownedCredential.name,
+							credentialType: 'openAiApi',
+							currentUserHasAccess: true,
+						},
+					},
+				}),
+			).toEqual({ openAiApi: storedCredential });
+		});
+
+		it('drops stored credentials the current user cannot access when sharing is enabled', () => {
+			const foreignCredential = mock<ICredentialsResponse>({
+				id: 'cred-foreign',
+				name: 'Someone else',
+			});
+
+			expect(
+				copyNodeCredentialsWithSharing({
+					credentials: {
+						openAiApi: { id: foreignCredential.id, name: foreignCredential.name },
+					},
+					usableCredentials: [foreignCredential],
+					usedCredentials: {
+						[foreignCredential.id]: {
+							id: foreignCredential.id,
+							name: foreignCredential.name,
+							credentialType: 'openAiApi',
+							currentUserHasAccess: false,
+						},
+					},
+				}),
+			).toEqual({});
 		});
 	});
 

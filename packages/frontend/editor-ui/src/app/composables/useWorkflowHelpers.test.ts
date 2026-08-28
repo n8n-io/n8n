@@ -1091,7 +1091,7 @@ describe('useWorkflowHelpers', () => {
 			expect(workflow.nodes[0].credentials).toEqual({ openAiApi: gatewayCredential });
 		});
 
-		it('still drops credentials the user cannot use', () => {
+		it('drops credentials the user cannot use', () => {
 			const workflow: WorkflowData = {
 				nodes: [
 					createTestNode({
