@@ -106,8 +106,8 @@ describe('FrontendService', () => {
 	});
 
 	const binaryDataConfig = mock<BinaryDataConfig>({
-		mode: 'default',
-		availableModes: ['default'],
+		mode: 'filesystem',
+		availableModes: ['filesystem'],
 	});
 
 	const credentialTypes = mock<CredentialTypes>({

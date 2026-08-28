@@ -21,6 +21,9 @@ import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.n
 import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
 import { Webhook as WebhookNode } from 'n8n-nodes-base/nodes/Webhook/Webhook.node';
 import type { INodeProperties, INodeType, INodeTypeData, INode } from 'n8n-workflow';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type request from 'supertest';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
@@ -176,11 +179,11 @@ export async function initNodeTypes(customNodes?: INodeTypeData) {
 /**
  * Initialize a BinaryDataService for test runs.
  */
-export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'default') {
+export async function initBinaryDataService() {
 	const config = mock<BinaryDataConfig>({
-		mode,
-		availableModes: [mode],
-		localStoragePath: '',
+		mode: 'filesystem',
+		availableModes: ['filesystem'],
+		localStoragePath: mkdtempSync(join(tmpdir(), 'n8n-binary-data-')),
 	});
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
