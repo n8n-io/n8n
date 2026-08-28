@@ -1,3 +1,5 @@
+import { UnexpectedError } from 'n8n-workflow';
+
 import type { SystemTaskClass } from '../system-task';
 import { SystemTaskMetadata } from '../system-task-metadata';
 
@@ -76,12 +78,30 @@ describe('SystemTaskMetadata', () => {
 			metadata.subscribe(() => {
 				throw new Error('listener failed');
 			}),
-		).toThrowError('listener failed');
+		).toThrowError('FirstTask');
 
 		const listener = vi.fn();
 
 		expect(() => metadata.subscribe(listener)).not.toThrow();
 		expect(listener).toHaveBeenCalledWith(firstTaskClass);
+	});
+
+	it('should name the task class when a listener throws', () => {
+		const cause = new Error('cannot resolve dependency');
+		metadata.subscribe(() => {
+			throw cause;
+		});
+
+		let caught: unknown;
+		try {
+			metadata.register(secondTaskClass);
+		} catch (error) {
+			caught = error;
+		}
+
+		expect(caught).toBeInstanceOf(UnexpectedError);
+		expect((caught as UnexpectedError).message).toContain('SecondTask');
+		expect((caught as UnexpectedError).cause).toBe(cause);
 	});
 
 	it('should reject a second subscriber', () => {

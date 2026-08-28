@@ -11,7 +11,7 @@ export class SystemTaskMetadata {
 
 	register(taskClass: SystemTaskClass) {
 		this.taskClasses.push(taskClass);
-		this.onRegister?.(taskClass);
+		if (this.onRegister) this.notify(this.onRegister, taskClass);
 	}
 
 	getClasses() {
@@ -33,9 +33,25 @@ export class SystemTaskMetadata {
 		// anything a listener registers re-entrantly, and holding off means a throwing
 		// listener does not lock the subscription shut.
 		for (const taskClass of this.taskClasses) {
-			listener(taskClass);
+			this.notify(listener, taskClass);
 		}
 
 		this.onRegister = listener;
+	}
+
+	/**
+	 * A listener runs while the task's class decorator is still evaluating, so a
+	 * failure surfaces as a module-load error. Name the task class it came from,
+	 * or the stack points only at the decorator.
+	 */
+	private notify(listener: (taskClass: SystemTaskClass) => void, taskClass: SystemTaskClass) {
+		try {
+			listener(taskClass);
+		} catch (error) {
+			throw new UnexpectedError(
+				`Failed to handle the registration of system task class "${taskClass.name}"`,
+				{ cause: error },
+			);
+		}
 	}
 }
