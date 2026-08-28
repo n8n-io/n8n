@@ -40,6 +40,8 @@ tcr-dry.log
 .agent-recordings/
 .pi-subagents/
 sbom-source.cdx.json
+.sbom-profile/
+installed-pypi-*.txt
 *.junit.xml
 junit.xml
 test-results.json
