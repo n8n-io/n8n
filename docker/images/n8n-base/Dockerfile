@@ -16,7 +16,12 @@ RUN apk add --no-cache busybox-binsh && \
     # patched bytes come from bumping the pinned DHI digest instead. git and
     # openssl omitted: the base already provides git and the libssl3/libcrypto3
     # libs Node uses (the openssl CLI binary isn't needed at runtime).
+    # The two version floors below are the narrow exception: they upgrade only
+    # the openssl runtime libs off the pinned Alpine release, leaving the rest
+    # of the base untouched. Drop them once the pinned DHI digest ships 3.5.8-r0.
     apk add --no-cache \
+        'libcrypto3>=3.5.8-r0' \
+        'libssl3>=3.5.8-r0' \
         openssh \
         graphicsmagick \
         tini \
