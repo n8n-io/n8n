@@ -3934,6 +3934,18 @@ describe('createExecutionAdapter run()', () => {
 			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
 		});
 
+		it('rejects an empty trigger name instead of silently auto-detecting', async () => {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
+				id: 'wf-1',
+				nodes: [triggerNode('Daily 8am'), triggerNode('Weekly 5pm')],
+			});
+
+			await expect(adapter.run('wf-1', undefined, { triggerNodeName: '' })).rejects.toThrow(
+				/Daily 8am.*Weekly 5pm/s,
+			);
+			expect(mockWorkflowRunner.run).not.toHaveBeenCalled();
+		});
+
 		it('rejects a named node that is not a trigger', async () => {
 			const { adapter, mockWorkflowRunner } = createRunAdapterForTests({
 				id: 'wf-1',

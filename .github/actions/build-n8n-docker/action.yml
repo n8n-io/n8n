@@ -12,7 +12,7 @@ description: 'Builds n8nio/n8n + n8nio/runners test images and publishes them as
 
 inputs:
   build-variant:
-    description: 'standard or coverage. Coverage uses build:docker:coverage.'
+    description: 'standard, coverage, or pc. Coverage uses build:docker:coverage. pc builds n8n on the pointer-compressed Node base images.'
     required: false
     default: 'standard'
 
@@ -35,6 +35,20 @@ runs:
         enable-docker-cache: true
       env:
         INCLUDE_TEST_CONTROLLER: 'true'
+        # Keep the pc pins in sync with the -pc build in docker-build-push.yml.
+        BUILDER_IMAGE: ${{ inputs.build-variant == 'pc' && 'n8nio/node-pc:26.7.0-dev@sha256:c64642dcb9464e50bd08aef8504affafeb795d01aed2f7ab158976c334a36ef6' || '' }}
+        RUNTIME_IMAGE: ${{ inputs.build-variant == 'pc' && 'n8nio/node-pc:26.7.0@sha256:6577d0742ad043baaa39db7dda2ce8aeb73f32c84eb241c49bf716f170c53297' || '' }}
+
+    - name: Assert pointer compression
+      if: steps.cache-check.outputs.cache-hit != 'true' && inputs.build-variant == 'pc'
+      shell: bash
+      run: |
+        docker run --rm --entrypoint node n8nio/n8n:local -e "
+          if (!process.config.variables.v8_enable_pointer_compression) {
+            throw new Error('pc variant image is not pointer-compressed');
+          }
+          console.log(process.version, 'pointer compression: on');
+        "
 
     - name: Save image tarball
       if: steps.cache-check.outputs.cache-hit != 'true'
