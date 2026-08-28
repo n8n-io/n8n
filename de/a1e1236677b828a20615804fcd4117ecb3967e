@@ -37,6 +37,7 @@ packages/cli/src/modules/data-table/data-table.service.ts
   s_633895c6f69b3b::t_25abbffe7deb4e 51-52
 packages/cli/src/services/project.service.ee.ts
   s_633895c6f69b3b::t_698b9659daef98 55
+  h_ed1b2d65e81e8e 38-39
 packages/cli/src/public-api/v1/handlers/data-tables/__tests__/data-tables.handler.test.ts
   s_633895c6f69b3b::t_f057de36bd15fd 9
   h_ed1b2d65e81e8e 3
