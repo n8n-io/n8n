@@ -17,6 +17,7 @@ import type {
 	WriteOptions,
 } from './types';
 import { Workspace } from './workspace';
+import { raceWithAbort } from '../sdk/abort';
 
 function isInsideRoot(path: string, root: string): boolean {
 	const boundary = root.endsWith('/') ? root : `${root}/`;
@@ -41,11 +42,13 @@ export interface ScopedWorkspaceOptions {
 	ensureRootExists?: boolean;
 }
 
+type EnsureRoot = (abortSignal?: AbortSignal) => Promise<void>;
+
 class ScopedFilesystem implements WorkspaceFilesystem {
 	constructor(
 		private readonly filesystem: WorkspaceFilesystem,
 		private readonly root: string,
-		private readonly ensureRoot?: () => Promise<void>,
+		private readonly ensureRoot?: EnsureRoot,
 	) {}
 
 	get id() {
@@ -82,66 +85,71 @@ class ScopedFilesystem implements WorkspaceFilesystem {
 	}
 
 	async readFile(path: string, options?: ReadOptions): Promise<string | Buffer> {
-		await this.ensureRoot?.();
-		return await this.filesystem.readFile(resolvePath(this.root, path), options);
+		const resolved = resolvePath(this.root, path);
+		await this.ensureRoot?.(options?.abortSignal);
+		return await this.filesystem.readFile(resolved, options);
 	}
 
 	async writeFile(path: string, content: FileContent, options?: WriteOptions): Promise<void> {
-		await this.ensureRoot?.();
-		await this.filesystem.writeFile(resolvePath(this.root, path), content, options);
+		const resolved = resolvePath(this.root, path);
+		await this.ensureRoot?.(options?.abortSignal);
+		await this.filesystem.writeFile(resolved, content, options);
 	}
 
 	async appendFile(path: string, content: FileContent, options?: AppendOptions): Promise<void> {
-		await this.ensureRoot?.();
-		await this.filesystem.appendFile(resolvePath(this.root, path), content, options);
+		const resolved = resolvePath(this.root, path);
+		await this.ensureRoot?.(options?.abortSignal);
+		await this.filesystem.appendFile(resolved, content, options);
 	}
 
 	async deleteFile(path: string, options?: RemoveOptions): Promise<void> {
-		await this.ensureRoot?.();
-		await this.filesystem.deleteFile(resolvePath(this.root, path), options);
+		const resolved = resolvePath(this.root, path);
+		await this.ensureRoot?.(options?.abortSignal);
+		await this.filesystem.deleteFile(resolved, options);
 	}
 
 	async copyFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
-		await this.ensureRoot?.();
-		await this.filesystem.copyFile(
-			resolvePath(this.root, src),
-			resolvePath(this.root, dest),
-			options,
-		);
+		const resolvedSrc = resolvePath(this.root, src);
+		const resolvedDest = resolvePath(this.root, dest);
+		await this.ensureRoot?.(options?.abortSignal);
+		await this.filesystem.copyFile(resolvedSrc, resolvedDest, options);
 	}
 
 	async moveFile(src: string, dest: string, options?: CopyOptions): Promise<void> {
-		await this.ensureRoot?.();
-		await this.filesystem.moveFile(
-			resolvePath(this.root, src),
-			resolvePath(this.root, dest),
-			options,
-		);
+		const resolvedSrc = resolvePath(this.root, src);
+		const resolvedDest = resolvePath(this.root, dest);
+		await this.ensureRoot?.(options?.abortSignal);
+		await this.filesystem.moveFile(resolvedSrc, resolvedDest, options);
 	}
 
 	async mkdir(path: string, options?: MkdirOptions): Promise<void> {
-		await this.ensureRoot?.();
-		await this.filesystem.mkdir(resolvePath(this.root, path), options);
+		const resolved = resolvePath(this.root, path);
+		await this.ensureRoot?.(options?.abortSignal);
+		await this.filesystem.mkdir(resolved, options);
 	}
 
 	async rmdir(path: string, options?: RemoveOptions): Promise<void> {
-		await this.ensureRoot?.();
-		await this.filesystem.rmdir(resolvePath(this.root, path), options);
+		const resolved = resolvePath(this.root, path);
+		await this.ensureRoot?.(options?.abortSignal);
+		await this.filesystem.rmdir(resolved, options);
 	}
 
 	async readdir(path: string, options?: ListOptions): Promise<FileEntry[]> {
-		await this.ensureRoot?.();
-		return await this.filesystem.readdir(resolvePath(this.root, path), options);
+		const resolved = resolvePath(this.root, path);
+		await this.ensureRoot?.(options?.abortSignal);
+		return await this.filesystem.readdir(resolved, options);
 	}
 
 	async exists(path: string, options?: AbortableOptions): Promise<boolean> {
-		await this.ensureRoot?.();
-		return await this.filesystem.exists(resolvePath(this.root, path), options);
+		const resolved = resolvePath(this.root, path);
+		await this.ensureRoot?.(options?.abortSignal);
+		return await this.filesystem.exists(resolved, options);
 	}
 
 	async stat(path: string, options?: AbortableOptions): Promise<FileStat> {
-		await this.ensureRoot?.();
-		return await this.filesystem.stat(resolvePath(this.root, path), options);
+		const resolved = resolvePath(this.root, path);
+		await this.ensureRoot?.(options?.abortSignal);
+		return await this.filesystem.stat(resolved, options);
 	}
 }
 
@@ -152,14 +160,14 @@ class ScopedSandbox implements WorkspaceSandbox {
 		private readonly sandbox: WorkspaceSandbox,
 		private readonly root: string,
 		private readonly env: NodeJS.ProcessEnv = {},
-		ensureRoot?: () => Promise<void>,
+		ensureRoot?: EnsureRoot,
 	) {
 		if (sandbox.executeCommand) {
 			const executeCommand = sandbox.executeCommand.bind(sandbox);
 			this.executeCommand = async (command, args, options = {}) => {
-				// Commands run from the scope root by default — it must exist first.
-				await ensureRoot?.();
 				const cwd = options.cwd ? resolvePath(this.root, options.cwd) : this.root;
+				// Commands run from the scope root by default — it must exist first.
+				await ensureRoot?.(options.abortSignal);
 				return await executeCommand(command, args, {
 					...options,
 					cwd,
@@ -211,18 +219,24 @@ export function createScopedWorkspace(
 	const filesystem = workspace.filesystem;
 	let ensureRootPromise: Promise<void> | undefined;
 	// Single-flight per scoped instance; a failed attempt resets so the next use retries.
-	const ensureRoot =
+	const ensureRoot: EnsureRoot | undefined =
 		options?.ensureRootExists && filesystem
-			? async () => {
-					ensureRootPromise ??= (async () => {
-						try {
-							await filesystem.mkdir(root, { recursive: true });
-						} catch (error) {
-							ensureRootPromise = undefined;
-							throw error;
-						}
-					})();
-					await ensureRootPromise;
+			? async (abortSignal) => {
+					if (!ensureRootPromise) {
+						const attempt = (async () => {
+							try {
+								await filesystem.mkdir(root, { recursive: true });
+							} catch (error) {
+								ensureRootPromise = undefined;
+								throw error;
+							}
+						})();
+						// Keep the attempt observed even when every waiter aborts before it settles.
+						void attempt.catch(() => {});
+						ensureRootPromise = attempt;
+					}
+					// Aborting unblocks this waiter; the shared mkdir keeps running for others.
+					await raceWithAbort(ensureRootPromise, abortSignal);
 				}
 			: undefined;
 	return new Workspace({

@@ -57,4 +57,31 @@ describe('createScopedWorkspace ensureRootExists', () => {
 
 		expect(filesystem.mkdir).not.toHaveBeenCalled();
 	});
+
+	it('rejects escaping paths before creating the scope root', async () => {
+		const { filesystem, scoped } = makeScopedWorkspace({ ensureRootExists: true });
+
+		await expect(scoped.filesystem!.readFile('../outside.md')).rejects.toThrow(
+			'Path escapes workspace root',
+		);
+		await expect(scoped.sandbox!.executeCommand!('ls', [], { cwd: '../../etc' })).rejects.toThrow(
+			'Path escapes workspace root',
+		);
+
+		expect(filesystem.mkdir).not.toHaveBeenCalled();
+	});
+
+	it('unblocks an aborted operation while the root is still being created', async () => {
+		const { filesystem, scoped } = makeScopedWorkspace({ ensureRootExists: true });
+		filesystem.mkdir.mockImplementation(async () => await new Promise<void>(() => {}));
+		const controller = new AbortController();
+
+		const write = scoped.filesystem!.writeFile('a.md', 'a', {
+			abortSignal: controller.signal,
+		});
+		controller.abort();
+
+		await expect(write).rejects.toThrow('aborted');
+		expect(filesystem.writeFile).not.toHaveBeenCalled();
+	});
 });

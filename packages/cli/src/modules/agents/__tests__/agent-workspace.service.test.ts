@@ -119,18 +119,27 @@ describe('AgentWorkspaceService', () => {
 		);
 	});
 
-	it('creates the workspace root and kicks reconciliation when the filesystem initializes', async () => {
+	it('kicks reconciliation on filesystem init and creates the root on first workspace I/O', async () => {
 		const { service, filesystem, runtimeService, checkpointStorage } = makeService();
 
-		await service.getAgentWorkspace(projectId, agentId, principalHash);
+		const { workspace } = await service.getAgentWorkspace(projectId, agentId, principalHash);
 		await getFilesystemInitHook(runtimeService)({ filesystem });
+
+		expect(filesystem.mkdir).not.toHaveBeenCalled();
+		expect(checkpointStorage.getActiveRunIdsForSandbox).toHaveBeenCalledWith(
+			agentId,
+			principalHash,
+		);
+
+		await workspace.filesystem?.writeFile('notes.md', 'hi');
 
 		expect(filesystem.mkdir).toHaveBeenCalledWith('/home/daytona/workspace', {
 			recursive: true,
 		});
-		expect(checkpointStorage.getActiveRunIdsForSandbox).toHaveBeenCalledWith(
-			agentId,
-			principalHash,
+		expect(filesystem.writeFile).toHaveBeenCalledWith(
+			'/home/daytona/workspace/notes.md',
+			'hi',
+			undefined,
 		);
 	});
 

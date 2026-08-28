@@ -45,16 +45,16 @@ export class AgentWorkspaceService {
 		principalHash: AgentSandboxPrincipalHash,
 	): Promise<AgentWorkspaceAcquisition> {
 		this.agentSandboxRuntimeService.assertSandboxConfiguration(projectId, agentId);
-		// The sandbox boots lazily on first filesystem/command use, so workspace-root
-		// creation and tool-result reconciliation run in the filesystem init hook
-		// (once per filesystem instance, after the sandbox is ready) instead of eagerly here.
+		// The sandbox boots lazily on first filesystem/command use: the scope below
+		// creates the workspace root on first I/O, and the filesystem init hook (once
+		// per filesystem instance, after the sandbox is ready) only schedules
+		// tool-result reconciliation, which tolerates a missing root.
 		const runtime = await this.agentSandboxRuntimeService.acquireWorkspaceSandbox(
 			projectId,
 			agentId,
 			principalHash,
 			{
-				onFilesystemInit: async ({ filesystem }) => {
-					await filesystem.mkdir(runtime.workspaceRoot, { recursive: true });
+				onFilesystemInit: ({ filesystem }) => {
 					this.reconcileToolResultsInBackground(
 						runtime.cacheKey,
 						projectId,
@@ -71,6 +71,8 @@ export class AgentWorkspaceService {
 		const workspace = createScopedWorkspace(
 			new Workspace({ filesystem: runtime.filesystem, sandbox: runtime.sandbox }),
 			runtime.workspaceRoot,
+			undefined,
+			{ ensureRootExists: true },
 		);
 		return { workspace: this.withCoreToolsOnly(workspace), handle: runtime };
 	}
