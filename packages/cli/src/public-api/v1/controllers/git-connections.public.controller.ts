@@ -59,9 +59,12 @@ export class GitConnectionsPublicController {
 	@ApiKeyScope('gitConnection:create')
 	@GlobalScope('gitConnection:create')
 	@ApiSummary('Create a Git connection')
-	@ApiDescription('Creates a Git connection and its authentication material.')
+	@ApiDescription(
+		'Creates a Git connection and its authentication material. Only one Git connection can exist.',
+	)
 	@ApiTags(tags)
 	@ApiResponse(201, GitConnectionPublicDto)
+	@ApiErrorResponse(409)
 	async createGitConnection(
 		_req: AuthenticatedRequest,
 		_res: Response,
@@ -201,9 +204,9 @@ export class GitConnectionsPublicController {
 	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
 	@ApiKeyScope('gitConnection:push')
 	@GlobalScope('gitConnection:push')
-	@ApiSummary('Push all projects linked to a Git connection')
+	@ApiSummary('Push all team projects to a Git connection')
 	@ApiDescription(
-		'Work in progress. Exports all linked projects to the local repository working copy. It does not commit or push changes to the selected branch yet.',
+		'Work in progress. Exports all team projects to the local repository working copy; personal projects are ignored. It does not commit or push changes to the selected branch yet.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, GitConnectionPushResultDto)
