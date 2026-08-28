@@ -8,6 +8,7 @@ import {
 	NodeConnectionTypes,
 	classifyTriggerIdentity,
 	nodeIssuesToString,
+	getUnconnectedRequiredInputs,
 } from 'n8n-workflow';
 import type {
 	INodeProperties,
@@ -16,7 +17,6 @@ import type {
 	INodeIssues,
 	ICredentialType,
 	INodeIssueObjectProperty,
-	INodeInputConfiguration,
 	INodeExecutionData,
 	ITaskDataConnections,
 	IRunData,
@@ -396,25 +396,19 @@ export function useNodeHelpers() {
 		const foundIssues: INodeIssueObjectProperty = {};
 
 		const workflowNode = workflow.getNode(node.name);
-		let inputs: Array<NodeConnectionType | INodeInputConfiguration> = [];
-		if (nodeType && workflowNode) {
-			inputs = NodeHelpers.getNodeInputs(workflow, workflowNode, nodeType);
-		}
+		// Detection is shared with the backend publish check so the two agree on
+		// what counts as an unsatisfied required input; only the wording is local.
+		const unconnected =
+			nodeType && workflowNode
+				? getUnconnectedRequiredInputs(workflow, workflowNode, nodeType)
+				: [];
 
-		inputs.forEach((input) => {
-			if (typeof input === 'string' || input.required !== true) {
-				return;
-			}
-
-			const parentNodes = workflow.getParentNodes(node.name, input.type, 1);
-
-			if (parentNodes.length === 0) {
-				foundIssues[input.type] = [
-					i18n.baseText('nodeIssues.input.missing', {
-						interpolate: { inputName: input.displayName || input.type },
-					}),
-				];
-			}
+		unconnected.forEach((input) => {
+			foundIssues[input.type] = [
+				i18n.baseText('nodeIssues.input.missing', {
+					interpolate: { inputName: input.displayName || input.type },
+				}),
+			];
 		});
 
 		if (Object.keys(foundIssues).length) {

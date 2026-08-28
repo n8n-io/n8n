@@ -9,6 +9,7 @@ import {
 	Workflow,
 	mapConnectionsByDestination,
 	validateNodeCredentials,
+	getUnconnectedRequiredInputs,
 	isNodeConnected,
 	isTriggerLikeNode,
 	isTriggerNode,
@@ -364,7 +365,6 @@ export class WorkflowValidationService {
 		// Transient Workflow so dynamic `inputs` expressions can be evaluated
 		// against each node's current parameters. Not persisted.
 		const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
-		const connectionsByDestination = mapConnectionsByDestination(connections);
 		const issues: string[] = [];
 
 		// Dynamic `inputs` expressions resolve through workflow.expression, which
@@ -378,29 +378,10 @@ export class WorkflowValidationService {
 				const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 				if (!nodeType?.description) continue;
 
-				const workflowNode = workflow.getNode(node.name);
-				if (!workflowNode) continue;
-
-				for (const input of NodeHelpers.getNodeInputs(
-					workflow,
-					workflowNode,
-					nodeType.description,
-				)) {
-					if (typeof input === 'string' || input.required !== true) continue;
-
-					const incoming = connectionsByDestination[node.name]?.[input.type];
-					const isConnectedToInput = incoming?.some((connections) =>
-						connections?.some((connection) => {
-							const source = workflow.getNode(connection.node);
-							return source ? !source.disabled : false;
-						}),
+				for (const input of getUnconnectedRequiredInputs(workflow, node, nodeType.description)) {
+					issues.push(
+						`'${node.name}' has no node connected to its required '${input.displayName ?? input.type}' input`,
 					);
-
-					if (!isConnectedToInput) {
-						issues.push(
-							`'${node.name}' has no node connected to its required '${input.displayName ?? input.type}' input`,
-						);
-					}
 				}
 			}
 		} finally {

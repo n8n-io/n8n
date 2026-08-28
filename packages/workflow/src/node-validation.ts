@@ -1,5 +1,12 @@
-import type { INode, INodeType, IConnections } from './interfaces';
-import { displayParameter } from './node-helpers';
+import type {
+	INode,
+	INodeType,
+	INodeInputConfiguration,
+	INodeTypeDescription,
+	IConnections,
+} from './interfaces';
+import { displayParameter, getNodeInputs } from './node-helpers';
+import type { Workflow } from './workflow';
 
 export interface NodeValidationIssue {
 	credential?: string;
@@ -10,6 +17,50 @@ export interface NodeCredentialIssue {
 	type: 'missing' | 'not-configured';
 	displayName: string;
 	credentialName: string;
+}
+
+/**
+ * The workflow surface needed to resolve a node's inputs and look at what feeds
+ * them. Declared as a `Pick` so both the editor's snapshot accessor and the
+ * engine's `Workflow` satisfy it.
+ */
+export type WorkflowForInputValidation = Pick<
+	Workflow,
+	'expression' | 'getNode' | 'getParentNodes'
+>;
+
+/**
+ * Returns the inputs a node declares as required but that nothing enabled is
+ * connected to.
+ *
+ * An input can be conditional, so this resolves the node's inputs against its
+ * current parameters first: a Structured Output Parser only requires a model
+ * once `autoFix` is on. A disabled source counts as absent, which matches what
+ * the execution engine reports ("must be connected and enabled").
+ *
+ * Shared so the editor warning and the publish check agree; each caller
+ * formats its own message.
+ */
+export function getUnconnectedRequiredInputs(
+	workflow: WorkflowForInputValidation,
+	node: INode,
+	nodeTypeDescription: INodeTypeDescription,
+): INodeInputConfiguration[] {
+	const unconnected: INodeInputConfiguration[] = [];
+
+	for (const input of getNodeInputs(workflow, node, nodeTypeDescription)) {
+		if (typeof input === 'string' || input.required !== true) continue;
+
+		const parents = workflow.getParentNodes(node.name, input.type, 1);
+		const hasEnabledParent = parents.some((name) => {
+			const parent = workflow.getNode(name);
+			return parent ? !parent.disabled : false;
+		});
+
+		if (!hasEnabledParent) unconnected.push(input);
+	}
+
+	return unconnected;
 }
 
 /**
