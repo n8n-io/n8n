@@ -45,7 +45,7 @@ export class Code implements INodeType {
 		outputs: [NodeConnectionTypes.Main],
 		builderHint: {
 			searchHint:
-				'Use Code node as a LAST RESORT — it runs in a sandboxed environment and is slower than native nodes. Code node is ONLY appropriate for complex multi-step algorithms that cannot be expressed in single expressions, or operations requiring complex data structures. The sandbox has NO network access: fetch(), axios, XMLHttpRequest and require of http modules are unavailable and FAIL at runtime. NEVER make HTTP requests in a Code node — use the HTTP Request node and process its output instead. Prefer JavaScript: the Python option runs a locked-down runner whose imports are opt-in per deployment and off by default.',
+				'Use Code node as a LAST RESORT — it runs in a sandboxed environment and is slower than native nodes. Code node is ONLY appropriate for complex multi-step algorithms that cannot be expressed in single expressions, or operations requiring complex data structures. The sandbox has NO network access: fetch(), axios, XMLHttpRequest and require of http modules are unavailable and FAIL at runtime. NEVER make HTTP requests in a Code node — use the HTTP Request node and process its output instead. Prefer JavaScript: the Python option cannot import anything by default.',
 			relatedNodes: [
 				{
 					nodeType: 'n8n-nodes-base.httpRequest',
@@ -173,7 +173,7 @@ return items.map(item => ({
 				default: 'javaScript',
 				builderHint: {
 					propertyHint:
-						'Default to javaScript — it is the only language with library access and cross-node helpers. Choose pythonNative ONLY when the user explicitly asks for Python, and then assume imports are unavailable unless you have been told this instance allowlists them: the native Python runner forbids every import by default and exposes only _items/_item and print().',
+						'Default to javaScript — the only language with library access and cross-node helpers. Choose pythonNative only when the user explicitly asks for Python.',
 				},
 			},
 			{

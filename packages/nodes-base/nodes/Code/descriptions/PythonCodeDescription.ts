@@ -14,7 +14,7 @@ const commonDescription: INodeProperties = {
 	noDataExpression: true,
 	builderHint: {
 		propertyHint:
-			'Runs in a locked-down native Python sandbox. IMPORTS ARE OPT-IN PER DEPLOYMENT and off by default, so on a stock instance `import re`, `import json`, `import math`, `import datetime`, `import pandas` and relative imports all FAIL at runtime with "Import of ... is disallowed". Assume nothing is importable unless you have been told this instance\'s allowlist — write import-free Python using builtins and str/list/dict methods, or set language to javaScript when the task genuinely needs a library. Never tell the user to change the allowlist: on managed deployments they cannot. NO network access whatever the allowlist says: requests, urllib, httpx and other HTTP libraries are unavailable — use the HTTP Request node and process its output in this node instead. The ONLY globals are _items (runOnceForAllItems mode ONLY), _item (runOnceForEachItem mode ONLY) and print(); reading the accessor belonging to the other mode raises NameError. There are no cross-node helpers either — _("Node Name"), _input, _json, _today and _jmespath are all undefined, so read data from the connected upstream node only.',
+			'Locked-down sandbox. NO imports — even `import re` fails at runtime, so write import-free Python with builtins, or use javaScript when the task needs a library; never tell the user to change the allowlist. NO network — use an HTTP Request node and process its output here. The only globals are _items (runOnceForAllItems), _item (runOnceForEachItem) and print(); the other mode\'s accessor, _("Node Name"), _input, _json and $-prefixed helpers are all undefined.',
 	},
 };
 
