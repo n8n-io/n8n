@@ -5,6 +5,7 @@ import { hasGlobalScope } from '@n8n/permissions';
 import {
 	connectRequiredSubnodeInputs,
 	describeAddedSubnodeConnection,
+	type ClearedSubnodeInput,
 	type WorkflowJSON,
 } from '@n8n/workflow-sdk';
 import { NodeConnectionTypes, Workflow, type INode, type IWorkflowSettings } from 'n8n-workflow';
@@ -1198,17 +1199,23 @@ export const createUpdateWorkflowTool = (
 					throw new Error(result.error);
 				}
 
-				// Operations set parameters without touching connections, so turning on a
-				// capability (an output parser's autoFix, say) can leave its now-required
-				// subnode input dangling. Complete those links before the result is saved,
-				// except where this same batch disconnected the input on purpose: undoing
-				// the caller's own removeConnection would make it a no-op.
-				const clearedInputs = strictOperations
-					.filter((op) => op.type === 'removeConnection')
-					.map((op) => ({
-						nodeName: op.target,
-						connectionType: op.connectionType ?? NodeConnectionTypes.Main,
-					}));
+				// Setting a parameter can make a subnode input required without wiring it.
+				// Skip inputs this batch disconnected, or removeConnection is a no-op.
+				// Names are carried through later renames, since the pass runs against
+				// the final graph.
+				const clearedInputs: ClearedSubnodeInput[] = [];
+				for (const op of strictOperations) {
+					if (op.type === 'removeConnection') {
+						clearedInputs.push({
+							nodeName: op.target,
+							connectionType: op.connectionType ?? NodeConnectionTypes.Main,
+						});
+					} else if (op.type === 'renameNode') {
+						for (const cleared of clearedInputs) {
+							if (cleared.nodeName === op.oldName) cleared.nodeName = op.newName;
+						}
+					}
+				}
 				const addedSubnodeLinks = connectRequiredSubnodeInputs(result.workflow, nodeTypes, {
 					clearedInputs,
 				});
