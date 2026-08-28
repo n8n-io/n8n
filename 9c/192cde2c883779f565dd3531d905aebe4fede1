@@ -1,0 +1,11 @@
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/__tests__/loadModels.test.ts
+  ai_agent 2-3,44-51,156-216
+packages/@n8n/nodes-langchain/nodes/llms/LMChatOpenAi/methods/loadModels.ts
+  ai_agent 8,15-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9c192cde2c883779f565dd3531d905aebe4fede1",
+  "prompts": {}
+}
