@@ -697,7 +697,7 @@ There are two, with different subjects and different consumers. They are not dup
 | | Release SBOM | Image SBOM |
 |---|---|---|
 | **Job** | `generate-and-attach-sbom` (`sbom-generation-callable.yml`) | `sbom-attestation` (`docker-build-push.yml`) |
-| **Scans** | the deployed npm closure in `compiled/` (`cdxgen -t pnpm`) | each pushed image, by digest (`cdxgen -t docker`) |
+| **Scans** | the deployed npm closure in `compiled/` (`cdxgen -t pnpm`) | each pushed image, by digest (`syft`) |
 | **Covers** | npm only | OS packages **and** npm, as laid down in the image |
 | **Signing** | GitHub Attestation API, subject `./package.json` | `cosign attest`, subject = image digest |
 | **Output** | `sbom-source.cdx.json`, `THIRD_PARTY_LICENSES.md`, `vex.openvex.json` on the GitHub Release | attestation in the registry beside the image |
