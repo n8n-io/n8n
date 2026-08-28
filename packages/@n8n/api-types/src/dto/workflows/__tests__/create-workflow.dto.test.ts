@@ -419,6 +419,29 @@ describe('CreateWorkflowDto', () => {
 				},
 				expectedErrorPath: ['connections'],
 			},
+			{
+				name: 'connections with a "prototype" node name',
+				request: { name: 'Test', nodes: [], connections: { prototype: {} } },
+				expectedErrorPath: ['connections'],
+			},
+			{
+				name: 'connections with a "constructor" input name',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: { 'Manual Trigger': { constructor: [] } },
+				},
+				expectedErrorPath: ['connections'],
+			},
+			{
+				name: 'connections with a "prototype" input name',
+				request: {
+					name: 'Test',
+					nodes: [],
+					connections: { 'Manual Trigger': { prototype: [] } },
+				},
+				expectedErrorPath: ['connections'],
+			},
 		])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 			const result = CreateWorkflowDto.safeParse(request);
 			expect(result.success).toBe(false);

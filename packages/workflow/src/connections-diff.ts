@@ -32,6 +32,15 @@ function groupByValue(connections: IConnection[]) {
 }
 
 /**
+ * Reads a value only when it is an own property, so an inherited key such as
+ * "__proto__" resolves to `undefined` (via the Object.prototype accessor) rather
+ * than to the prototype object itself.
+ */
+function ownValue<T>(map: Record<string, T>, key: string): T | undefined {
+	return Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined;
+}
+
+/**
  * Creates a prototype-less dictionary so a dynamic key such as "__proto__" is
  * stored as an ordinary own key instead of resolving through the
  * Object.prototype accessor.
@@ -50,8 +59,8 @@ export function compareConnections(prev: IConnections, next: IConnections): Conn
 	const allNodeNames = new Set([...Object.keys(prev), ...Object.keys(next)]);
 
 	for (const nodeName of allNodeNames) {
-		const prevNodeConnections = prev[nodeName] ?? {};
-		const nextNodeConnections = next[nodeName] ?? {};
+		const prevNodeConnections = ownValue(prev, nodeName) ?? {};
+		const nextNodeConnections = ownValue(next, nodeName) ?? {};
 
 		// Get all unique input names for this node
 		const allInputNames = new Set([
@@ -60,8 +69,8 @@ export function compareConnections(prev: IConnections, next: IConnections): Conn
 		]);
 
 		for (const inputName of allInputNames) {
-			const prevInputConnections = prevNodeConnections[inputName] ?? [];
-			const nextInputConnections = nextNodeConnections[inputName] ?? [];
+			const prevInputConnections = ownValue(prevNodeConnections, inputName) ?? [];
+			const nextInputConnections = ownValue(nextNodeConnections, inputName) ?? [];
 
 			// Compare each source index
 			const maxLength = Math.max(prevInputConnections.length, nextInputConnections.length);

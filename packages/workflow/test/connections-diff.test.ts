@@ -622,7 +622,7 @@ describe('compareConnections', () => {
 	// A connections object parsed from JSON can carry an own-enumerable "__proto__"
 	// key (unlike an object literal). Such a node name must be handled as an
 	// ordinary own key rather than resolving through the Object.prototype accessor.
-	describe('reserved object keys as node names', () => {
+	describe('reserved object keys', () => {
 		// Always clean up so a regression (which would set the key globally) cannot
 		// leak into the rest of the suite / test process.
 		afterEach(() => {
@@ -646,6 +646,32 @@ describe('compareConnections', () => {
 			expect(({} as Record<string, unknown>).n8n_probe_key).toBeUndefined();
 			expect('n8n_probe_key' in Object.prototype).toBe(false);
 			expect(Object.keys(result.added)).toContain('__proto__');
+		});
+
+		it('should record a connection added under a "__proto__" input name', () => {
+			const prev = JSON.parse('{"NodeA":{}}') as IConnections;
+			const next = JSON.parse(
+				'{"NodeA":{"__proto__":[[{"node":"NodeB","type":"main","index":0}]]}}',
+			) as IConnections;
+
+			const result = compareConnections(prev, next);
+
+			// The inherited key must not shortcut the length check; the added
+			// connection under the "__proto__" input is recorded on the result.
+			expect(result.added.NodeA?.['__proto__']).toHaveLength(1);
+			expect(result.removed).toEqual({});
+		});
+
+		it('should record a connection removed under a "__proto__" input name', () => {
+			const prev = JSON.parse(
+				'{"NodeA":{"__proto__":[[{"node":"NodeB","type":"main","index":0}]]}}',
+			) as IConnections;
+			const next = JSON.parse('{"NodeA":{}}') as IConnections;
+
+			const result = compareConnections(prev, next);
+
+			expect(result.removed.NodeA?.['__proto__']).toHaveLength(1);
+			expect(result.added).toEqual({});
 		});
 	});
 });
