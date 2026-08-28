@@ -1,10 +1,11 @@
 import { camelCase } from 'change-case';
-import type {
-	ICredentialType,
-	INodeCredentialDescription,
-	INodeProperties,
-	INodeTypeDescription,
-	Themed,
+import {
+	isExpression,
+	type ICredentialType,
+	type INodeCredentialDescription,
+	type INodeProperties,
+	type INodeTypeDescription,
+	type Themed,
 } from 'n8n-workflow';
 
 import {
@@ -231,11 +232,11 @@ function getNodeDescriptionCredentials(
 
 /**
  * Pick the connection details from a registry server. `streamable-http` is
- * preferred over `sse`. A remote is templated when its URL starts with `=`,
- * n8n's own convention for "evaluate this as an expression" (the same marker
- * every credential/node parameter default already uses), so no dedicated
- * remote type is needed to flag it. `endpointUrl` is then an unresolved
- * `$self`-expression string, not a literal URL.
+ * preferred over `sse`. A remote is templated when `isExpression` recognizes
+ * its URL, n8n's own convention for "evaluate this as an expression" (the
+ * same marker every credential/node parameter default already uses), so no
+ * dedicated remote type is needed to flag it. `endpointUrl` is then an
+ * unresolved `$self`-expression string, not a literal URL.
  */
 function pickRemote(
 	server: McpRegistryServer,
@@ -245,12 +246,12 @@ function pickRemote(
 		return {
 			transport: 'httpStreamable',
 			endpointUrl: streamable.url,
-			isTemplated: streamable.url.startsWith('='),
+			isTemplated: isExpression(streamable.url),
 		};
 	}
 
 	const sse = server.remotes.find((r) => r.type === 'sse');
-	if (sse) return { transport: 'sse', endpointUrl: sse.url, isTemplated: sse.url.startsWith('=') };
+	if (sse) return { transport: 'sse', endpointUrl: sse.url, isTemplated: isExpression(sse.url) };
 
 	return null;
 }
