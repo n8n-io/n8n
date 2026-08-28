@@ -565,6 +565,7 @@ Scripts in `.github/scripts/`:
 | `db-test-matrix.mjs`    | DB test matrix from `postgres-versions.json` | `ci-pull-requests.yml` |
 | `quality/check-cubic-config.mjs` | Validate `cubic.yaml` against the vendored cubic schema; enforce its silent agent/character limits. `--refresh` re-pulls the schema | `test-workflow-scripts-reusable.yml`, `util-refresh-cubic-schema.yml` |
 | `probe-registry.mjs`    | Registry path throughput probe (temporary) | `util-probe-registry.yml` |
+| `profile-image-sbom.mjs`| Local A/B for the image SBOM pipeline — runs scan/enrich/gate per scanner variant (cdxgen, syft) and reports licenses lost relative to the baseline. Not called by CI | run by hand |
 
 ### Branch Replay Scripts
 
@@ -692,10 +693,43 @@ Supply chain security ensures artifacts haven't been tampered with. We provide t
 
 ### SBOM
 
-- **Runs on:** release-publish
-- **Format:** CycloneDX JSON
-- **Signing:** GitHub Attestation API
-- **Attached to:** GitHub Release
+There are two, with different subjects and different consumers. They are not duplicates.
+
+| | Release SBOM | Image SBOM |
+|---|---|---|
+| **Job** | `generate-and-attach-sbom` (`sbom-generation-callable.yml`) | `sbom-attestation` (`docker-build-push.yml`) |
+| **Scans** | the deployed npm closure in `compiled/` (`cdxgen -t pnpm`) | each pushed image, by digest (`cdxgen -t docker`) |
+| **Covers** | npm only | OS packages **and** npm, as laid down in the image |
+| **Signing** | GitHub Attestation API, subject `./package.json` | `cosign attest`, subject = image digest |
+| **Output** | `sbom-source.cdx.json`, `THIRD_PARTY_LICENSES.md`, `vex.openvex.json` on the GitHub Release | attestation in the registry beside the image |
+| **Consumer** | humans — legal/license compliance; backs `/third-party-licenses` | machines — `cosign verify-attestation`, admission control |
+
+Format is CycloneDX JSON for both.
+
+The two use different scanners on purpose. The release SBOM runs `cdxgen -t pnpm` over the
+resolved pnpm closure with `FETCH_LICENSE=true`, because a lockfile scan has no package files
+to read licenses from. The image SBOM runs `syft` over the pushed image, which resolves
+licenses from the LICENSE files on disk and so needs no network at all.
+
+The image job used to run `cdxgen -t docker --profile license-compliance`. That profile sets
+`FETCH_LICENSE=true` and nothing else, so it made one sequential npm registry call per
+component — roughly 3,700 per release, about half the job's runtime. syft resolves the same
+licenses locally in a fraction of the time, and catalogues more of the image besides.
+
+Use `profile-image-sbom.mjs` to A/B any change here before shipping it. The gate only enforces
+`pkg:npm/`, so a scanner change can silently degrade PyPI or OS license coverage while CI stays
+green — the harness reports licenses **lost** relative to the baseline, which is the number that
+matters.
+
+`enrich-sbom.mjs --drop-phantom-npm` removes scan artefacts that would otherwise assert
+components the image does not contain: nested test/fixture `package.json` and `exports`
+subpaths. It reads the component's source path from either scanner's property name (`SrcFile`
+for cdxgen, `syft:location:0:path` for syft) and treats syft's `version: "UNKNOWN"` the same as
+a missing version.
+
+Packages whose license cannot be resolved from disk go in
+`scripts/licenses/license-overrides.json` with a verified `source` citation — the upstream
+LICENSE file, not registry metadata.
 
 ### SLSA L3 Provenance
 
