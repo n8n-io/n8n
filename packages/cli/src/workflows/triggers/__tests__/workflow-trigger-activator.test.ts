@@ -491,9 +491,11 @@ describe('WorkflowTriggerActivator', () => {
 
 		const callOrder: string[] = [];
 		const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
-		webhookTriggerRegistrar.getWebhookTriggers.mockImplementation(() => {
-			callOrder.push('webhook-discovery-fail');
-			throw new Error('webhook discovery failed');
+		// A failed local row deletion is (still) fatal to the webhook phase:
+		// routing was not stopped, so the operation must fail for retry.
+		webhookTriggerRegistrar.clearWorkflowWebhooksForNodes.mockImplementation(async () => {
+			callOrder.push('webhook-row-cleanup-fail');
+			throw new Error('webhook row cleanup failed');
 		});
 
 		const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
@@ -519,7 +521,7 @@ describe('WorkflowTriggerActivator', () => {
 				new Set(['webhook-node', 'trigger-node']),
 				abort,
 			),
-		).rejects.toThrow('webhook discovery failed');
+		).rejects.toThrow('webhook row cleanup failed');
 
 		expect(callOrder).toContain('deregister-non-webhook-finish');
 	});
@@ -559,10 +561,11 @@ describe('WorkflowTriggerActivator', () => {
 			]);
 		});
 
-		test('deletes local webhook rows even when webhook discovery throws', async () => {
-			// Discovery evaluates webhook expressions and can throw deterministically;
-			// row deletion is derived from the version's nodes instead, so routing
-			// stops even when discovery never yields a webhook to deregister.
+		test('deletes local webhook rows and proceeds when webhook discovery throws', async () => {
+			// Discovery re-evaluates webhook expressions and can throw when the
+			// evaluation context drifted since publish. Rows are already deleted at
+			// that point, so the failure is collected — not thrown — or a publish
+			// would fail after killing the old version's routing.
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 				mock<IWorkflowExecuteAdditionalData>(),
 			);
@@ -576,17 +579,58 @@ describe('WorkflowTriggerActivator', () => {
 
 			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
 
-			await expect(
-				activator.deactivate(
-					mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
-					{ nodes: [node('webhook-node', 'webhook', { name: 'Webhook' })], connections: {} },
-					new Set(['webhook-node']),
-					abort,
-				),
-			).rejects.toThrow('discovery failed');
+			const { externalTeardownFailures } = await activator.deactivate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{ nodes: [node('webhook-node', 'webhook', { name: 'Webhook' })], connections: {} },
+				new Set(['webhook-node']),
+				abort,
+			);
 
+			expect(externalTeardownFailures).toEqual([
+				{
+					nodeName: 'Webhook',
+					error: expect.objectContaining({ message: 'discovery failed' }),
+				},
+			]);
 			expect(webhookTriggerRegistrar.clearWorkflowWebhooksForNodes).toHaveBeenCalledWith('wf-1', [
 				'Webhook',
+			]);
+		});
+
+		test('a discovery failure names only the webhook-capable nodes', async () => {
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
+				mock<IWorkflowExecuteAdditionalData>(),
+			);
+
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			webhookTriggerRegistrar.getWebhookTriggers.mockImplementation(() => {
+				throw new Error('discovery failed');
+			});
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['trigger-node']);
+
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+
+			const { externalTeardownFailures } = await activator.deactivate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{
+					nodes: [
+						node('webhook-node', 'webhook', { name: 'Webhook' }),
+						node('trigger-node', 'trigger'),
+					],
+					connections: {},
+				},
+				new Set(['webhook-node', 'trigger-node']),
+				abort,
+			);
+
+			// The schedule-style trigger has no external webhook to leak; naming it
+			// in an "external webhook deregistration failed" report would be wrong.
+			expect(externalTeardownFailures).toEqual([
+				{
+					nodeName: 'Webhook',
+					error: expect.objectContaining({ message: 'discovery failed' }),
+				},
 			]);
 		});
 	});
@@ -1425,6 +1469,43 @@ describe('WorkflowTriggerActivator', () => {
 
 			await expect(deactivation).rejects.toThrow('deadline');
 			expect(onDetached).toHaveBeenCalledWith(expect.any(Promise));
+		});
+
+		test('an aborted deactivation rejects with the abort reason, not an earlier webhook failure', async () => {
+			// One webhook fails with a UserError (policy: abandon silently) before a
+			// sibling's hang triggers the deadline abort. The operation must fail
+			// with the abort reason — blaming the UserError would mark the record
+			// failed with an error the code explicitly abandons.
+			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
+			const webhookBroken = mock<IWebhookData>({ node: 'Webhook Broken', path: 'broken' });
+			const webhookStuck = mock<IWebhookData>({ node: 'Webhook Stuck', path: 'hang' });
+			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([webhookBroken, webhookStuck]);
+			webhookTriggerRegistrar.deregister.mockImplementation(async ({ webhookData }) => {
+				if (webhookData.path === 'hang') await new Promise(() => {});
+				throw new UserError('Credential with ID "c-1" does not exist for type "trelloApi".');
+			});
+			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
+			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
+
+			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
+			const controller = new AbortController();
+
+			const deactivation = activator.deactivate(
+				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
+				{
+					nodes: [
+						node('broken-node', 'webhook', { name: 'Webhook Broken' }),
+						node('stuck-node', 'webhook', { name: 'Webhook Stuck' }),
+					],
+					connections: {},
+				},
+				new Set(['broken-node', 'stuck-node']),
+				{ signal: controller.signal, onDetached: vi.fn() },
+			);
+			await flushPromises();
+			controller.abort(new Error('deadline'));
+
+			await expect(deactivation).rejects.toThrow('deadline');
 		});
 
 		test('clears all target webhook rows up front even when a deregistration hangs into the abort', async () => {

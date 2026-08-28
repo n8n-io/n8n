@@ -691,7 +691,30 @@ export class WorkflowTriggerActivator {
 
 		await workflow.expression.acquireIsolate();
 		try {
-			const webhooks = this.getWebhookTriggersForNodeIds(workflow, additionalData, nodeIds);
+			let webhooks: IWebhookData[];
+			try {
+				webhooks = this.getWebhookTriggersForNodeIds(workflow, additionalData, nodeIds);
+			} catch (discoveryError) {
+				// Rare by construction: discovery re-evaluates the same expressions
+				// registration already evaluated, so it only fails when the evaluation
+				// context drifted since publish (a deleted variable, an uninstalled
+				// community node). The rows are already deleted above, so this follows
+				// the same rule as an unreachable third party: external cleanup is
+				// impossible, surface it per webhook-capable node and move on.
+				// Throwing instead would wedge retries — fatally on the publish path,
+				// where the old version's routing is already gone.
+				const error = ensureError(discoveryError);
+				for (const targetNode of workflow.queryNodes((nodeType) => !!nodeType.webhook)) {
+					if (!nodeIds.has(targetNode.id)) continue;
+					this.logger.warn('Abandoned external webhook cleanup after failed discovery', {
+						workflowId: workflow.id,
+						nodeName: targetNode.name,
+						error: error.message,
+					});
+					failuresByNode.set(targetNode.name, { nodeName: targetNode.name, error });
+				}
+				return [...failuresByNode.values()];
+			}
 
 			const deregistrationResults = await Promise.allSettled(
 				webhooks.map(
@@ -704,8 +727,11 @@ export class WorkflowTriggerActivator {
 				if (result.status !== 'rejected') continue;
 				const error = ensureError(result.reason);
 				// An abort is not a teardown outcome: it must fail the operation so
-				// the record is retried for the external cleanup it interrupted.
-				if (abort.signal.aborted) throw error;
+				// the record is retried for the external cleanup it interrupted. Throw
+				// the abort reason itself — this iteration's error may be an earlier,
+				// unrelated failure (e.g. an abandoned UserError), and blaming it
+				// would mark the record failed with an error the policy ignores.
+				if (abort.signal.aborted) throw ensureError(abort.signal.reason);
 				const nodeName = webhooks[index].node;
 				if (this.shouldAbandonFailedTeardown(error)) {
 					this.logger.warn('Abandoned webhook whose deregistration can never succeed', {
