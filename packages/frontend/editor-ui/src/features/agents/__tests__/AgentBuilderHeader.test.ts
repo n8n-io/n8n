@@ -93,15 +93,17 @@ import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 
 type DropdownStubWrapper = VueWrapper<{
 	items: Array<{ id: string; label?: string; disabled?: boolean }>;
+	extraPopperClass?: string;
 	$options: unknown;
 	$emit: (event: 'select', value: string) => void;
 }>;
 
+function getDropdown(wrapper: ReturnType<typeof mountHeader>, testId: string) {
+	return wrapper.getComponent(`[data-testid="${testId}"]`) as DropdownStubWrapper;
+}
+
 function getSwitcherOptions(wrapper: ReturnType<typeof mountHeader>) {
-	const switcher = wrapper.findComponent(
-		'[data-testid="agent-header-switcher"]',
-	) as DropdownStubWrapper;
-	return switcher.vm.items;
+	return getDropdown(wrapper, 'agent-header-switcher').vm.items;
 }
 
 const baseAgent = {
@@ -203,8 +205,8 @@ describe('AgentBuilderHeader', () => {
 
 	it('widens the header action menu so labels are readable from the icon trigger', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete agent' }] });
-		const action = wrapper.getComponent('[data-testid="agent-header-actions"]');
-		expect(action.props('extraPopperClass')).toBeTruthy();
+		const action = getDropdown(wrapper, 'agent-header-actions');
+		expect(action.vm.extraPopperClass).toBeTruthy();
 	});
 
 	it('hides the action dropdown when no header actions are available', () => {
@@ -289,7 +291,7 @@ describe('AgentBuilderHeader', () => {
 
 	it('forwards header-action from the action menu', () => {
 		const wrapper = mountHeader({ headerActions: [{ id: 'delete', label: 'Delete' }] });
-		const action = wrapper.getComponent('[data-testid="agent-header-actions"]');
+		const action = getDropdown(wrapper, 'agent-header-actions');
 		action.vm.$emit('select', 'delete');
 		expect(wrapper.emitted('header-action')).toEqual([['delete']]);
 	});

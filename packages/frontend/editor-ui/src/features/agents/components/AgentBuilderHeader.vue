@@ -132,15 +132,28 @@ function onPreviewClick() {
 	if (!isPreviewDisabled.value) emit('open-preview');
 }
 
-// Disabled until the agent has at least one publish history row. The flag
-// is set by the backend (see AgentsService.hasPublishHistory) so it stays
-// true after an unpublish, when activeVersionId is null but rows persist.
-const menuItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
-	props.headerActions.map((action) => ({
-		...action,
+/**
+ * Converts an action item and its children to the dropdown menu format.
+ */
+function toMenuItem(
+	action: ActionDropdownItem<string>,
+): DropdownMenuItemProps<string, ActionDropdownItem<string>> {
+	return {
+		id: action.id,
+		label: action.label,
+		testId: action.testId,
 		icon: { type: 'icon', value: action.icon ?? 'file' },
+		disabled: action.disabled,
+		divided: action.divided,
+		checked: action.checked,
 		class: action.id === 'delete' ? $style.destructiveItem : undefined,
-	})),
+		data: action,
+		children: action.children?.map(toMenuItem),
+	};
+}
+
+const menuItems = computed<Array<DropdownMenuItemProps<string, ActionDropdownItem<string>>>>(() =>
+	props.headerActions.map(toMenuItem),
 );
 
 function onMenuSelect(id: string) {
