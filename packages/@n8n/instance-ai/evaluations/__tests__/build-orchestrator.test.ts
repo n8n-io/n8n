@@ -182,6 +182,25 @@ describe('createBuildOrchestrator', () => {
 		);
 	});
 
+	it('forwards the case identity so the build can stamp its trace', async () => {
+		// Same class of bug as credentialFixture above, different symptom: the
+		// harness passes these to ensureThread as sourceContext, which is what
+		// puts `source_context.evalCase` on the LangSmith trace. Dropped, every
+		// build in the project looks identical and no export can group them.
+		const tracedBuild = vi.fn().mockResolvedValue(okBuild());
+		const orchestrator = createBuildOrchestrator(
+			makeDeps([makeLane(1, tracedBuild)], {
+				testCaseByFileSlug: new Map([['case-a', baseCase()]]),
+			}),
+		);
+
+		await orchestrator.getOrBuild(3, 'case-a');
+
+		expect(tracedBuild).toHaveBeenCalledWith(
+			expect.objectContaining({ fileSlug: 'case-a', iteration: 3 }),
+		);
+	});
+
 	it('builds once per (iteration, fileSlug) and caches the promise', async () => {
 		const tracedBuild = vi.fn().mockResolvedValue(okBuild());
 		const orchestrator = createBuildOrchestrator(makeDeps([makeLane(1, tracedBuild)]));

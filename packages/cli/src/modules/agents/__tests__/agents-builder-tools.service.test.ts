@@ -46,6 +46,7 @@ import type { Agent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
 import * as checkAccess from '@/permissions.ee/check-access';
+import type { InstanceAiCredentialService } from '@n8n/instance-ai';
 
 const ctx = {
 	resumeData: undefined,
@@ -248,6 +249,7 @@ describe('AgentsBuilderToolsService', () => {
 	const agentId = 'agent-1';
 	const projectId = 'project-1';
 	const credentialProvider = mock<CredentialProvider>();
+	const credentialService = mock<InstanceAiCredentialService>();
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(() => {
@@ -261,14 +263,20 @@ describe('AgentsBuilderToolsService', () => {
 	describe('JSON config tools', () => {
 		function getJsonTool(service: AgentsBuilderToolsService, name: string) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.find((tool) => tool.name === name)!;
 		}
 
 		it('registers MCP-specific tools in the builder toolset', () => {
 			const { service } = makeService();
 
-			const tools = service.getTools(agentId, projectId, credentialProvider, user).json;
+			const tools = service.getTools(
+				agentId,
+				projectId,
+				credentialProvider,
+				credentialService,
+				user,
+			).json;
 			const toolNames = tools.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
 			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
@@ -279,7 +287,7 @@ describe('AgentsBuilderToolsService', () => {
 			const { service } = makeService();
 
 			const toolNames = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.FINISH_SETUP);
 		});
@@ -288,7 +296,7 @@ describe('AgentsBuilderToolsService', () => {
 			const { service } = makeService();
 
 			const toolNames = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.PUBLISH_AGENT);
 			expect(toolNames).toContain(BUILDER_TOOLS.UNPUBLISH_AGENT);
@@ -297,7 +305,7 @@ describe('AgentsBuilderToolsService', () => {
 		it('builds verify_mcp_server with OutboundHttp SSRF protection enabled', () => {
 			const { service, outboundHttp } = makeService();
 
-			service.getTools(agentId, projectId, credentialProvider, user);
+			service.getTools(agentId, projectId, credentialProvider, credentialService, user);
 
 			expect(outboundHttp.transport).toHaveBeenCalledWith(
 				expect.not.objectContaining({ useDefaultSsrfPolicy: 'unsafe' }),
@@ -1346,7 +1354,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('list_workflows tool', () => {
 		function getListWorkflowsTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((tool) => tool.name === 'list_workflows')!;
 		}
 
@@ -1368,7 +1376,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('build_custom_tool tool', () => {
 		function getBuildCustomTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL)!;
 		}
 
@@ -1442,7 +1450,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('create_skills tool', () => {
 		function getCreateSkillsTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.CREATE_SKILLS)!;
 		}
 
@@ -1610,7 +1618,7 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			agentsService.getSkill.mockResolvedValue(skill);
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'read_skill');
 
 			expect(tool).toBeDefined();
@@ -1648,7 +1656,7 @@ describe('AgentsBuilderToolsService', () => {
 				],
 			});
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'read_skill');
 
 			expect(tool).toBeDefined();
@@ -1685,7 +1693,7 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentsService } = makeService();
 			agentsService.getSkill.mockRejectedValue(new Error('Skill not found'));
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'read_skill');
 
 			expect(tool).toBeDefined();
@@ -1714,7 +1722,7 @@ describe('AgentsBuilderToolsService', () => {
 				},
 			});
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'list_skills');
 
 			expect(tool).toBeDefined();
@@ -1744,7 +1752,7 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentsService } = makeService();
 			agentsService.listSkills.mockRejectedValue(new Error('Agent not found'));
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'list_skills');
 
 			expect(tool).toBeDefined();
@@ -1774,7 +1782,7 @@ describe('AgentsBuilderToolsService', () => {
 				versionId: 'v2',
 			});
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'update_skill');
 
 			expect(tool).toBeDefined();
@@ -1810,7 +1818,7 @@ describe('AgentsBuilderToolsService', () => {
 				versionId: 'v2',
 			});
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'update_skill');
 
 			expect(tool).toBeDefined();
@@ -1850,7 +1858,7 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentsService } = makeService();
 			agentsService.updateSkill.mockRejectedValue(new Error('Skill not found'));
 			const tool = service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((candidate) => candidate.name === 'update_skill');
 
 			expect(tool).toBeDefined();
@@ -1871,7 +1879,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('create_tasks tool', () => {
 		function getCreateTasksTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.CREATE_TASKS)!;
 		}
 
@@ -1979,7 +1987,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('list_tasks tool', () => {
 		function getListTasksTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.LIST_TASKS)!;
 		}
 
@@ -2039,7 +2047,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('update_task tool', () => {
 		function getUpdateTaskTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.UPDATE_TASK)!;
 		}
 
@@ -2085,7 +2093,7 @@ describe('AgentsBuilderToolsService', () => {
 	describe('call_agent tool', () => {
 		function getCallAgentTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.find((tool) => tool.name === BUILDER_TOOLS.CALL_AGENT)!;
 		}
 
@@ -2367,13 +2375,13 @@ describe('AgentsBuilderToolsService', () => {
 	describe('publish_agent / unpublish_agent tools', () => {
 		function getPublishTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.find((tool) => tool.name === BUILDER_TOOLS.PUBLISH_AGENT)!;
 		}
 
 		function getUnpublishTool(service: AgentsBuilderToolsService) {
 			return service
-				.getTools(agentId, projectId, credentialProvider, user)
+				.getTools(agentId, projectId, credentialProvider, credentialService, user)
 				.json.find((tool) => tool.name === BUILDER_TOOLS.UNPUBLISH_AGENT)!;
 		}
 
