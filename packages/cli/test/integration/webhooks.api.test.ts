@@ -29,7 +29,13 @@ vi.unmock('node:fs');
 
 const uploadedFilePaths: string[] = [];
 const uploadedFileContents: string[] = [];
-let multipartBehavior: 'respond' | 'returnEarly' | 'throw' | 'removeFirst' | 'stream' = 'respond';
+let multipartBehavior:
+	| 'respond'
+	| 'returnEarly'
+	| 'throw'
+	| 'removeFirst'
+	| 'stream'
+	| 'streamAfterClose' = 'respond';
 
 const expectUploadedFilesRemoved = async () => {
 	await vi.waitFor(() => {
@@ -81,7 +87,13 @@ class WebhookTestingNode implements INodeType {
 
 			if (multipartBehavior === 'returnEarly') return {};
 			if (multipartBehavior === 'throw') throw new Error('Test webhook processing failed');
-			if (multipartBehavior === 'stream') {
+			if (multipartBehavior === 'streamAfterClose') {
+				const response = this.getResponseObject();
+				const responseClosed = new Promise<void>((resolve) => response.once('close', resolve));
+				response.destroy();
+				await responseClosed;
+			}
+			if (multipartBehavior === 'stream' || multipartBehavior === 'streamAfterClose') {
 				const [filePath] = uploadedFilePaths;
 				return {
 					webhookResponse: Readable.from(
@@ -280,6 +292,16 @@ describe('Webhook API', () => {
 
 			expect(response.statusCode).toEqual(200);
 			expect(response.text).toEqual('random-text');
+			expect(uploadedFilePaths).toHaveLength(1);
+			await expectUploadedFilesRemoved();
+		});
+
+		test('should remove temporary files when the response closes before a stream is returned', async () => {
+			multipartBehavior = 'streamAfterClose';
+
+			const request = agent.post('/webhook/abcd').attach('file', Buffer.from('random-text'));
+
+			await expect(request).rejects.toThrow();
 			expect(uploadedFilePaths).toHaveLength(1);
 			await expectUploadedFilesRemoved();
 		});

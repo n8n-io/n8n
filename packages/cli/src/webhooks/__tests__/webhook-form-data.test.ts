@@ -1,5 +1,6 @@
 import express from 'express';
 import nock from 'nock';
+import { access, rm } from 'node:fs/promises';
 import type { Server, IncomingMessage } from 'node:http';
 import { createServer } from 'node:http';
 import request from 'supertest';
@@ -10,6 +11,11 @@ import { ContentTooLargeError } from '@/errors/response-errors/content-too-large
 import { rawBodyReader } from '@/middlewares';
 
 import { createMultiFormDataParser } from '../webhook-form-data';
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('node:fs/promises')>();
+	return { ...actual, rm: vi.fn(actual.rm) };
+});
 
 // Formidable requires FS to store the uploaded files
 vi.unmock('node:fs');
@@ -79,6 +85,7 @@ describe('webhook-form-data', () => {
 	describe('createMultiFormDataParser', () => {
 		const oneKbData = Buffer.from('1'.repeat(1024));
 		const testServer = new TestServer();
+		const rmMock = vi.mocked(rm);
 		const cleanupFunctions: Array<() => Promise<void>> = [];
 		const parseWithCleanup = async (
 			parseFn: ReturnType<typeof createMultiFormDataParser>,
@@ -93,6 +100,10 @@ describe('webhook-form-data', () => {
 			nock.enableNetConnect('127.0.0.1');
 
 			testServer.start();
+		});
+
+		beforeEach(() => {
+			rmMock.mockClear();
 		});
 
 		afterEach(async () => {
@@ -197,6 +208,11 @@ describe('webhook-form-data', () => {
 				.attach('file', oneKbData, 'file.txt');
 
 			testServer.assertHasBeenCalled();
+			expect(rmMock).toHaveBeenCalledExactlyOnceWith(expect.any(String), { force: true });
+
+			const [filePath] = rmMock.mock.calls[0] ?? [];
+			if (filePath === undefined) throw new Error('Expected a temporary file to be removed');
+			await expect(access(filePath)).rejects.toMatchObject({ code: 'ENOENT' });
 		});
 
 		it('should reject with a 413 error when the total upload size exceeds the limit', async () => {

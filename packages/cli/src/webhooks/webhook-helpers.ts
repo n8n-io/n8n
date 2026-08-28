@@ -106,12 +106,17 @@ const deferCleanupUntilStreamEnds = (
 		cleanupPromise ??= cleanup();
 		await cleanupPromise;
 	};
-
-	void finished(stream).then(cleanupOnce, cleanupOnce);
-	res.once('close', () => {
+	const cleanupOnClose = () => {
 		stream.destroy();
 		void cleanupOnce();
-	});
+	};
+
+	void finished(stream).then(cleanupOnce, cleanupOnce);
+	res.once('close', cleanupOnClose);
+	if (res.closed) {
+		res.off('close', cleanupOnClose);
+		cleanupOnClose();
+	}
 };
 
 // Type guards for MCP queue mode data validation
