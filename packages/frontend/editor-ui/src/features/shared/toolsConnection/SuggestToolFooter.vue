@@ -25,7 +25,11 @@ const copyKeys = {
 		<N8nText size="small" color="text-light">
 			{{ i18n.baseText(copyKeys[props.variant].prompt) }}
 		</N8nText>
-		<N8nExternalLink :class="$style.link" :href="REQUEST_NODE_FORM_URL" size="small">
+		<N8nExternalLink
+			:class="[$style.link, 'ignore-key-press-node-creator']"
+			:href="REQUEST_NODE_FORM_URL"
+			size="small"
+		>
 			{{ i18n.baseText(copyKeys[props.variant].action) }}
 		</N8nExternalLink>
 	</div>

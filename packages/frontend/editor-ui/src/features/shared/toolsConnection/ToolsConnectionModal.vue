@@ -10,7 +10,7 @@ import {
 } from '@n8n/design-system';
 import type { DialogSize, TabOptions } from '@n8n/design-system';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
-import { useDebounceFn } from '@vueuse/core';
+import { useDebounceFn, useResizeObserver } from '@vueuse/core';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 
@@ -116,6 +116,8 @@ function handleListScroll(event: Event) {
 		updateListEndState(event.currentTarget);
 	}
 }
+
+useResizeObserver(listWrapperRef, () => updateListEndState());
 
 /**
  * Search text and active tab live as long as this component, which a consumer
