@@ -321,8 +321,15 @@ describe('ChatTrigger Node', () => {
 			});
 		});
 
-		it('skips auth validation for manual (test) executions', async () => {
+		it('enforces auth for manual executions outside the canvas chat session route', async () => {
 			mockContext.getMode.mockReturnValue('manual');
+			mockContext.isChatSessionTest.mockReturnValue(false);
+			mockContext.getNode.mockReturnValue({
+				name: 'Chat Trigger',
+				type: 'n8n-nodes-langchain.chatTrigger',
+				typeVersion: 1,
+				webhookId: 'abc123',
+			} as INode);
 			mockContext.getNodeParameter.mockImplementation(
 				(
 					paramName: string,
@@ -336,15 +343,15 @@ describe('ChatTrigger Node', () => {
 					return defaultValue;
 				},
 			);
+			vi.mocked(validateAuth).mockRejectedValueOnce(new ChatTriggerAuthorizationError(401));
 
 			const result = await chatTrigger.webhook(mockContext);
 
-			expect(validateAuth).not.toHaveBeenCalled();
-			expect(mockResponse.writeHead).not.toHaveBeenCalledWith(401, expect.anything());
-			expect(result).toEqual({
-				webhookResponse: { status: 200 },
-				workflowData: expect.any(Array),
+			expect(validateAuth).toHaveBeenCalledWith(mockContext);
+			expect(mockResponse.writeHead).toHaveBeenCalledWith(401, {
+				'www-authenticate': 'Basic realm="Webhook abc123"',
 			});
+			expect(result).toEqual({ noWebhookResponse: true });
 		});
 
 		it('still enforces auth validation for production executions', async () => {
