@@ -79,24 +79,44 @@ describe('HttpRequestV3', () => {
 		} as unknown as IExecuteFunctions;
 	});
 
-	it('should expose WebDAV methods in the Method dropdown', () => {
+	it('should gate WebDAV methods in the Method dropdown behind the enable option', () => {
 		const methodProperty = node.description.properties.find((p) => p.name === 'method');
 		expect(methodProperty).toBeDefined();
 		expect(methodProperty?.type).toBe('options');
 
-		const options = (methodProperty as { options?: Array<{ value: string }> }).options ?? [];
-		const optionValues = options.map((o) => o.value);
+		const options = (methodProperty as { options?: Array<Record<string, unknown>> }).options ?? [];
 
 		for (const method of ['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT']) {
-			expect(optionValues).toContain(method);
+			const option = options.find((o) => o.value === method);
+			expect(option).toBeDefined();
+			expect(option?.displayOptions).toEqual({
+				show: { 'options.webdavMethods': [true] },
+			});
 		}
+
+		// Regular methods must stay visible without the option enabled
+		for (const method of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) {
+			expect(options.find((o) => o.value === method)?.displayOptions).toBeUndefined();
+		}
+	});
+
+	it('should add an "Enable WebDAV Methods" option to Options, disabled by default', () => {
+		const optionsProperty = node.description.properties.find((p) => p.name === 'options');
+		expect(optionsProperty).toBeDefined();
+
+		const webdavOption = (optionsProperty?.options ?? []).find((o) => o.name === 'webdavMethods');
+		expect(webdavOption).toMatchObject({
+			displayName: 'Enable WebDAV Methods',
+			type: 'boolean',
+			default: false,
+		});
 	});
 
 	it.each(['PROPFIND', 'MKCOL', 'MOVE', 'COPY', 'REPORT'])(
 		'should make a %s request',
 		async (method) => {
-			(executeFunctions.getInputData as jest.Mock).mockReturnValue([{ json: {} }]);
-			(executeFunctions.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
 				switch (paramName) {
 					case 'method':
 						return method;
@@ -115,7 +135,7 @@ describe('HttpRequestV3', () => {
 				headers: { 'content-type': 'application/json' },
 				body: Buffer.from(JSON.stringify({ success: true })),
 			};
-			(executeFunctions.helpers.request as jest.Mock).mockResolvedValue(response);
+			(executeFunctions.helpers.request as Mock).mockResolvedValue(response);
 
 			await node.execute.call(executeFunctions);
 
@@ -127,6 +147,59 @@ describe('HttpRequestV3', () => {
 			);
 		},
 	);
+
+	describe('Body content-type conversion per method', () => {
+		const executeFormRequest = async (method: string) => {
+			(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
+			(executeFunctions.getNodeParameter as Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'method':
+						return method;
+					case 'url':
+						return baseUrl;
+					case 'authentication':
+						return 'none';
+					case 'sendBody':
+						return true;
+					case 'contentType':
+						return 'form-urlencoded';
+					case 'specifyBody':
+						return 'keypair';
+					case 'bodyParameters.parameters':
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						return [{ name: 'depth', value: '1' }];
+					case 'options':
+						return options;
+					default:
+						return undefined;
+				}
+			});
+			(executeFunctions.helpers.request as Mock).mockResolvedValue({
+				headers: { 'content-type': 'application/json' },
+				body: Buffer.from(JSON.stringify({ success: true })),
+			});
+
+			await node.execute.call(executeFunctions);
+			return (executeFunctions.helpers.request as Mock).mock.calls[0][0];
+		};
+
+		it('should convert the body for WebDAV methods that send one', async () => {
+			const requestArgs = await executeFormRequest('PROPFIND');
+			expect(requestArgs.form).toEqual({ depth: '1' });
+			expect(requestArgs.body).toBeUndefined();
+		});
+
+		it('should keep converting the body for GET requests', async () => {
+			const requestArgs = await executeFormRequest('GET');
+			expect(requestArgs.form).toEqual({ depth: '1' });
+			expect(requestArgs.body).toBeUndefined();
+		});
+
+		it('should not convert the body for methods that never carry one', async () => {
+			const requestArgs = await executeFormRequest('HEAD');
+			expect(requestArgs.form).toBeUndefined();
+		});
+	});
 
 	it('should make a GET request', async () => {
 		(executeFunctions.getInputData as Mock).mockReturnValue([{ json: {} }]);
