@@ -30,10 +30,11 @@ import type {
 	MessageListResponse,
 } from './types';
 
-// Bounds how many pages one poll scans for new messages. A leftover page token
-// holds the cursor, so mail beyond the cap stays reachable until a give-up valve
-// decides to skip it.
-const MAX_SCAN_PAGES = 20;
+// Runaway backstop for how many pages one poll scans: the poll time budget is
+// the working bound on how far a scan reaches. A leftover page token holds the
+// cursor, so mail beyond the cap stays reachable until a give-up valve decides to
+// skip it.
+export const MAX_SCAN_PAGES = 500;
 // Count of stored ids (queued + boundary + set aside) at which the poll stops
 // holding the cursor and accepts skipping whatever it did not scan.
 const MAX_TRACKED_BACKLOG_IDS = 5_000;
