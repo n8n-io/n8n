@@ -4975,6 +4975,8 @@ describe('POST /workflows/:workflowId/run', () => {
 		const TRIGGER_NAME = 'When clicking Execute';
 		const SET_NAME = 'Edit Fields';
 
+		const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
 		const startExecution = vi.fn();
 		const getExecution = vi.fn();
 
@@ -4983,6 +4985,8 @@ describe('POST /workflows/:workflowId/run', () => {
 		});
 
 		beforeEach(() => {
+			// Deliberately not the id the control plane minted, so a response echoing
+			// the data plane back would fail the assertion below.
 			startExecution.mockResolvedValue({ executionId: 'a3c1e0f2-0000-4000-8000-000000000001' });
 		});
 
@@ -5023,9 +5027,14 @@ describe('POST /workflows/:workflowId/run', () => {
 				.send({ triggerToStartFrom: { name: TRIGGER_NAME } });
 
 			expect(response.statusCode).toBe(200);
-			expect(response.body.data.executionId).toBe('a3c1e0f2-0000-4000-8000-000000000001');
+
+			// The control plane mints the id, dispatches under it, and reports that
+			// same id — the data plane's response never renames the run.
+			const { executionId } = response.body.data;
+			expect(executionId).toMatch(UUID_V7);
 			expect(startExecution).toHaveBeenCalledWith(
 				objectContaining({
+					executionId,
 					workflowId: dbWorkflow.id,
 					mode: 'manual',
 					triggerOutputs: [[{ json: {} }]],
