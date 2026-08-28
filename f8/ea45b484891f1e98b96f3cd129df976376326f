@@ -1,0 +1,45 @@
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/setup-workflow.service.test.ts
+  s_d423008e69ea2f::t_818d3efba44689 2419-2466
+  s_d423008e69ea2f::t_d0ee220d06cf47 2367-2418
+packages/@n8n/instance-ai/src/tools/workflows/setup-workflow.service.ts
+  s_d423008e69ea2f::t_a9ba529c3f06fb 739-741,746-747
+  s_d423008e69ea2f::t_121a20dc597314 469-471
+  s_d423008e69ea2f::t_8f915c63159e62 850
+  s_d423008e69ea2f::t_def12cb70e661b 1457-1460,1468-1470,1482
+  s_d423008e69ea2f::t_eabff50f7fdb06 794
+  s_d423008e69ea2f::t_f89939e929d0bb 656
+  s_d423008e69ea2f::t_9af5f4379cf9ab 738,743-745
+  s_d423008e69ea2f::t_b3a36bfdfc9f9c 669-673
+  s_d423008e69ea2f::t_786ccf55129b0b 698
+packages/@n8n/instance-ai/src/tools/workflows.tool.ts
+  s_d423008e69ea2f::t_a6612ae61e4c17 776-779
+  s_d423008e69ea2f::t_a3a6ddf3171662 758-761,763-766,769-773
+  s_d423008e69ea2f::t_9a05a9fe4c9e3a 815-818
+  s_d423008e69ea2f::t_35e947df112b5d 925
+  s_d423008e69ea2f::t_283717a16c3f60 178
+  s_d423008e69ea2f::t_691ce1918da7b0 924
+  s_d423008e69ea2f::t_d7e351f77a9c00 179-183
+  s_d423008e69ea2f::t_24ca24b206d6e8 774-775
+packages/@n8n/instance-ai/src/tools/__tests__/workflows.tool.test.ts
+  s_d423008e69ea2f::t_a3ff28131f0f3b 2403
+  s_d423008e69ea2f::t_1e6eb801497c39 2776-2777,2785-2791,2798-2799,2803-2805,2808-2823,2830
+  s_d423008e69ea2f::t_35d090acdfc3e9 2778-2784,2792-2797,2800-2802,2806-2807,2824-2828
+  s_d423008e69ea2f::t_c886dd6685dda9 2829
+  s_d423008e69ea2f::t_1d50f63047a914 2831
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f8ea45b484891f1e98b96f3cd129df976376326f",
+  "prompts": {},
+  "sessions": {
+    "s_d423008e69ea2f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "07821bca-476a-4e36-8f00-257f70554eb8",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}

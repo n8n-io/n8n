@@ -1,0 +1,19 @@
+packages/cli/src/credentials/credentials-finder.service.ts
+  s_af7a4e8964d154::t_1219e0e9fdd017 5,314,326,335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "73bb260d28cb40933aa170d37bf636e6aeb35cde",
+  "prompts": {},
+  "sessions": {
+    "s_af7a4e8964d154": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "71e735b0-d546-4e84-bbf1-e491a11e273a",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Nour Alhadi Mahmoud <nour.mahmoud@n8n.io>"
+    }
+  }
+}

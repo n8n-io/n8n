@@ -1,0 +1,40 @@
+packages/cli/src/public-api/v1/openapi.yml
+  s_c49a2c9eccdc63::t_0fb0a482b6e41d 44-45
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 44-46,50-52,72,74
+packages/@n8n/api-types/src/dto/index.ts
+  s_aeecfe178a9b3d::t_c9994138f82526 100,113-119,121-123,365,373,106-112,162,166
+  s_677c6aba5d38ab::t_1bff40479a7636 104-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f91629bc9684c13aa31600e2cbf807a253d5b1c8",
+  "prompts": {},
+  "sessions": {
+    "s_677c6aba5d38ab": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65836050-cd82-42db-a51e-69a4641dabf9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_aeecfe178a9b3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1c3abc3-6b2a-413e-a33c-2c784b044f11",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    },
+    "s_c49a2c9eccdc63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4438d6f2-9586-4cae-a94e-42a967f048af",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

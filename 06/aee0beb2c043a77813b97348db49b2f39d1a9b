@@ -1,0 +1,19 @@
+packages/nodes-base/nodes/Kafka/test/mocks/confluent-kafka.ts
+  s_79c0473179aa3d::t_080957c4d725ed 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "06aee0beb2c043a77813b97348db49b2f39d1a9b",
+  "prompts": {},
+  "sessions": {
+    "s_79c0473179aa3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ae8df3ca-df5d-48ee-a98f-0afbfab05c51",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

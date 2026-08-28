@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/N8n/n8n-api-coverage.json
+  s_909fa6f565ea9a::t_0fd020292f5d35 4-7,14,21-22,24-25
+packages/cli/src/public-api/v1/openapi.decorator-routes.generated.yml
+  ai_agent 21-23,27-29,34,36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "47dba86fbb1d2fa06b31a864e1101bb38d122c90",
+  "prompts": {},
+  "sessions": {
+    "s_909fa6f565ea9a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ff7411a-ff0e-4742-bbd8-41ee448e0c30",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

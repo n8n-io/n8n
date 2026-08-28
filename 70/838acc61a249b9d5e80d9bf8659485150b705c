@@ -1,0 +1,22 @@
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/test/web-fetch.proxy-routing.test.ts
+  s_51cc314dd74007::t_5fb3e9f31ccbbb 1-80,87,89-119
+  s_51cc314dd74007::t_b319b770980205 81-86,88
+packages/@n8n/ai-workflow-builder.ee/src/tools/utils/web-fetch.utils.ts
+  s_51cc314dd74007::t_850f102427c40d 163-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "70838acc61a249b9d5e80d9bf8659485150b705c",
+  "prompts": {},
+  "sessions": {
+    "s_51cc314dd74007": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e101b6f-161e-4acc-b93c-8733b20b060d",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

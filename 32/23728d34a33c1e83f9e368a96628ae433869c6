@@ -1,0 +1,66 @@
+packages/cli/src/scheduling/durable-scheduler.ts
+  s_ae93d0f1bb3441::t_4934a9b93701de 10
+  s_ae93d0f1bb3441::t_f42673a1e8e616 20,44
+packages/cli/src/workflows/publication/__tests__/workflow-publication-applier.test.ts
+  s_ae93d0f1bb3441::t_602e252eb2f870 20,42,55,234
+  s_ae93d0f1bb3441::t_faaa295817b019 38-41,174-177,244-247
+packages/cli/src/scheduling/__tests__/durable-job-provisioner.test.ts
+  s_ae93d0f1bb3441::t_579739fa93a060 16
+  s_ae93d0f1bb3441::t_f42673a1e8e616 59
+packages/cli/src/workflows/publication/workflow-publication-applier.ts
+  s_ae93d0f1bb3441::t_42b3270207a174 18,74,289-291
+packages/cli/src/scheduling/workflow-scheduled-job-owner.ts
+  s_ae93d0f1bb3441::t_708d2f2dd6ca04 16
+packages/cli/src/scheduling/__tests__/durable-scheduled-job-owner-registry.test.ts
+  s_ae93d0f1bb3441::t_f42673a1e8e616 1-15
+packages/cli/src/scheduling/durable-scheduled-job-owner-registry.ts
+  s_ae93d0f1bb3441::t_f42673a1e8e616 1,5-6,10-13,16-21
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_ae93d0f1bb3441::t_ed718a2131a487 113,386,1146,1686,1809,2031,2198,2358,2459
+packages/cli/test/integration/scheduling/scheduled-job-owner-teardown.test.ts
+  s_ae93d0f1bb3441::t_c92e8aeac668a3 101,116-119
+packages/@n8n/scheduler/src/core/materializer/index.ts
+  s_ae93d0f1bb3441::t_f8f56a05b104a8 21
+packages/cli/src/workflows/workflow.service.ts
+  s_ae93d0f1bb3441::t_a9415bd365d449 60
+  s_ae93d0f1bb3441::t_42b3270207a174 108,1346-1348
+packages/cli/test/integration/scheduling/durable-scheduler-lifecycle.test.ts
+  s_ae93d0f1bb3441::t_f42673a1e8e616 12,82
+packages/cli/test/integration/scheduling/scheduled-job-owner-reconciliation.test.ts
+  s_ae93d0f1bb3441::t_27b062be21199d 3
+  s_ae93d0f1bb3441::t_1d5b8b4e1faffa 101-103
+  s_ae93d0f1bb3441::t_43186784570ba4 15
+  s_ae93d0f1bb3441::t_b76b9617511a9a 48-53
+  s_ae93d0f1bb3441::t_4b05cc0457386c 120
+  s_ae93d0f1bb3441::t_4872aafc53c417 299-355
+packages/@n8n/scheduler/src/core/materializer/owner-key.ts
+  s_ae93d0f1bb3441::t_0efcff398be92e 1-37
+packages/cli/src/scheduling/__tests__/workflow-scheduled-job-owner.test.ts
+  s_ae93d0f1bb3441::t_d05479c2342d69 12
+packages/cli/src/scheduling/__tests__/durable-scheduler.test.ts
+  s_ae93d0f1bb3441::t_2cc41c5894e84c 90
+  s_ae93d0f1bb3441::t_f42673a1e8e616 16,54
+packages/@n8n/scheduler/src/core/index.ts
+  s_ae93d0f1bb3441::t_f8f56a05b104a8 55-61,68
+packages/cli/src/scheduling/durable-job-provisioner.ts
+  s_ae93d0f1bb3441::t_4934a9b93701de 17-22
+  s_ae93d0f1bb3441::t_f42673a1e8e616 37,105,142
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_ae93d0f1bb3441::t_eba7b938e9a11f 114
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3223728d34a33c1e83f9e368a96628ae433869c6",
+  "prompts": {},
+  "sessions": {
+    "s_ae93d0f1bb3441": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e99223e9-ae53-41b4-a199-a83b6c795e8c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+packages/cli/test/integration/public-api/source-control.test.ts
+  s_f132370d90443c::t_67466e9efe21e6 318,335
+  s_f132370d90443c::t_480d7489705e80 305,338,342,350,353
+  s_f132370d90443c::t_50a832705d0ced 278
+  s_f132370d90443c::t_48eb5cc2bf334c 1
+packages/cli/src/public-api/v1/controllers/source-control.public.controller.ts
+  s_f132370d90443c::t_dd605e2cf2f80c 64
+  h_5d40c27a8fdfd1 38-39
+packages/cli/src/public-api/v1/handlers/source-control/spec/paths/getSourceControlStatus.generated.yml
+  h_5d40c27a8fdfd1 5,7-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2159d89ce3a3dd32db0df1311502c42888970cc1",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_f132370d90443c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "25ed8c69-7f66-4eb4-b9c9-748477178fd8",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

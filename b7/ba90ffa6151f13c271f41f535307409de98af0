@@ -1,0 +1,19 @@
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  s_e3871487385c65::t_ed095cace08c89 205-215,226,241,245,255,258,263,288-290,514
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b7ba90ffa6151f13c271f41f535307409de98af0",
+  "prompts": {},
+  "sessions": {
+    "s_e3871487385c65": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4c17d9d5-b7da-44ad-9918-075b80e0f086",
+        "model": "claude-fable-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
