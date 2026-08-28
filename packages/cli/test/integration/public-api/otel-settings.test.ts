@@ -331,6 +331,33 @@ describe('OpenTelemetry settings in Public API', () => {
 		});
 	});
 
+	describe('GET with headers supplied via the _FILE env variant', () => {
+		let originalHeaders: string;
+
+		beforeEach(async () => {
+			// Simulate `N8N_OTEL_EXPORTER_OTLP_HEADERS_FILE` being set: mark it
+			// env-managed and pin the file-supplied value on the (singleton) config.
+			process.env[`${OTEL_ENV_VARS.exporterHeaders}_FILE`] = '/run/secrets/otel-headers';
+			originalHeaders = Container.get(OtelConfig).exporterHeaders;
+			Container.get(OtelConfig).exporterHeaders = 'authorization=Bearer file-managed-token';
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		afterEach(async () => {
+			delete process.env[`${OTEL_ENV_VARS.exporterHeaders}_FILE`];
+			Container.get(OtelConfig).exporterHeaders = originalHeaders;
+			await Container.get(OtelSettingsService).loadSettings();
+		});
+
+		it('internal API returns the blanking placeholder for exporterHeaders', async () => {
+			const response = await testServer.authAgentFor(owner).get('/otel/settings');
+
+			expect(response.status).toBe(200);
+			expect(response.body.data.exporterHeaders).toBe(CREDENTIAL_BLANKING_VALUE);
+			expect(response.body.data.envManagedFields).toContain('exporterHeaders');
+		});
+	});
+
 	describe('POST /settings/otel/test-trace', () => {
 		it('reports a successful connection', async () => {
 			vi.spyOn(Container.get(OtelService), 'sendTestTrace').mockResolvedValue({ success: true });

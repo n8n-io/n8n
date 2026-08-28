@@ -118,7 +118,10 @@ export class OtelSettingsService {
 	}
 
 	private isEnvManaged(key: keyof OtelConfig): boolean {
-		return process.env[OTEL_ENV_VARS[key]] !== undefined;
+		const envVar = OTEL_ENV_VARS[key];
+		// Mirror readEnv() in @n8n/config: a value supplied via `${envVar}_FILE`
+		// is env-managed in the same way as one set directly
+		return process.env[envVar] !== undefined || !!process.env[`${envVar}_FILE`];
 	}
 
 	private buildConfig(pick: <K extends keyof OtelConfig>(key: K) => OtelConfig[K]): OtelConfig {

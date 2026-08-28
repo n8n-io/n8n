@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Settings, SettingsRepository } from '@n8n/db';
+import { mkdtempSync, writeFileSync } from 'fs';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import { OTEL_SETTINGS_KEY, OtelSettingsService } from '../otel-settings.service';
@@ -155,6 +158,39 @@ describe('OtelSettingsService', () => {
 
 			expect(result.exporterHeaders).toBe('x-api-key=stored');
 			expect(result.envManagedFields).not.toContain('exporterHeaders');
+		});
+
+		describe('values supplied via the _FILE env variant', () => {
+			it('treats headers from N8N_OTEL_EXPORTER_OTLP_HEADERS_FILE as env-managed and masks them', async () => {
+				const dir = mkdtempSync(join(tmpdir(), 'otel-headers-'));
+				const headersFile = join(dir, 'headers');
+				writeFileSync(headersFile, 'authorization=Bearer file-secret');
+				process.env.N8N_OTEL_EXPORTER_OTLP_HEADERS_FILE = headersFile;
+				settingsRepository.findByKey.mockResolvedValue(null);
+
+				// Mirror what the config factory does when it reads the _FILE variant
+				// (covered by @n8n/config's own decorator tests)
+				const configFromFile = new OtelConfig();
+				configFromFile.exporterHeaders = 'authorization=Bearer file-secret';
+
+				const serviceFromFile = new OtelSettingsService(configFromFile, settingsRepository);
+				await serviceFromFile.loadSettings();
+				const result = serviceFromFile.getSettings();
+
+				expect(result.exporterHeaders).toBe(CREDENTIAL_BLANKING_VALUE);
+				expect(result.envManagedFields).toContain('exporterHeaders');
+			});
+
+			it('does not treat an empty _FILE variable as env-managed', async () => {
+				process.env.N8N_OTEL_EXPORTER_OTLP_HEADERS_FILE = '';
+				settingsRepository.findByKey.mockResolvedValue(null);
+
+				await service.loadSettings();
+				const result = service.getSettings();
+
+				expect(result.envManagedFields).not.toContain('exporterHeaders');
+				expect(result.exporterHeaders).toBe('');
+			});
 		});
 	});
 
