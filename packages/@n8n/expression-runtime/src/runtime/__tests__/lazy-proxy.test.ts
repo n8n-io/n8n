@@ -240,7 +240,6 @@ describe('createDeepLazyProxy', () => {
 
 		it('does not intercept negative indices', () => {
 			const p = proxyWithLargeArray();
-			// -1 is NaN? No, Number('-1') === -1 which is not NaN, but -1 >= 0 is false
 			p.items[-1];
 			expect(mocks.getArrayElement).not.toHaveBeenCalled();
 		});
