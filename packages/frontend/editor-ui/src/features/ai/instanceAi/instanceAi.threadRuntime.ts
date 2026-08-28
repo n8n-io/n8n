@@ -593,8 +593,11 @@ export function createThreadRuntime(
 		return null;
 	});
 
-	/** All pending confirmations across all messages, for the top-level panel. */
-	const pendingConfirmations = computed((): PendingConfirmationItem[] => {
+	/**
+	 * All pending confirmations across all messages, including ones the session
+	 * "Always allow" watcher is auto-approving in the background.
+	 */
+	const allPendingConfirmations = computed((): PendingConfirmationItem[] => {
 		const items: PendingConfirmationItem[] = [];
 		for (const msg of messages.value) {
 			if (msg.role !== 'assistant' || !msg.agentTree) continue;
@@ -602,6 +605,24 @@ export function createThreadRuntime(
 		}
 		return items;
 	});
+
+	// Confirmations a session "Always allow" grant is auto-approving right now.
+	// Reactive so the UI excludes them for the whole approval round trip —
+	// otherwise the card flashes for one network round trip and shoves the chat
+	// input around before collapsing again.
+	const autoResolvingConfirmationIds = reactive(new Set<string>());
+
+	/**
+	 * Pending confirmations that need the user's attention — drives the
+	 * confirmation panel, the chat-input swap, and `isAwaitingConfirmation`.
+	 * Auto-resolving confirmations stay hidden; they re-enter only when the
+	 * auto-approve request fails.
+	 */
+	const pendingConfirmations = computed(() =>
+		allPendingConfirmations.value.filter(
+			(item) => !autoResolvingConfirmationIds.has(item.toolCall.confirmation.requestId),
+		),
+	);
 
 	/** True while the run is paused awaiting the user to resolve a confirmation. */
 	const isAwaitingConfirmation = computed(() => pendingConfirmations.value.length > 0);
@@ -728,14 +749,22 @@ export function createThreadRuntime(
 	// would hide the card while the backend still waits for approval.
 	const autoApproveInFlight = new Set<string>();
 
+	// Requests whose auto-approve POST failed. Their card re-surfaces for a
+	// manual decision; auto-retrying would hide and re-show it in a loop.
+	const autoApproveFailedIds = new Set<string>();
+
 	watch(
-		pendingConfirmations,
+		allPendingConfirmations,
 		async (items) => {
 			if (sessionAlwaysAllowKeys.value.size === 0) return;
+			// Mark every match before the first await: this watcher runs pre-render,
+			// so the confirmation card is hidden before it can paint.
+			const matches: PendingConfirmationItem[] = [];
 			for (const item of items) {
 				const conf = item.toolCall.confirmation;
 				if (resolvedConfirmationIds.has(conf.requestId)) continue;
 				if (autoApproveInFlight.has(conf.requestId)) continue;
+				if (autoApproveFailedIds.has(conf.requestId)) continue;
 				if (!isGenericApprovalEligible(item)) continue;
 				const key = buildAlwaysAllowKey(
 					item.toolCall.toolName,
@@ -745,9 +774,17 @@ export function createThreadRuntime(
 				if (key === null || !sessionAlwaysAllowKeys.value.has(key)) continue;
 
 				autoApproveInFlight.add(conf.requestId);
+				autoResolvingConfirmationIds.add(conf.requestId);
+				matches.push(item);
+			}
+			for (const item of matches) {
+				const conf = item.toolCall.confirmation;
 				try {
 					const ok = await confirmAction(conf.requestId, { kind: 'approval', approved: true });
-					if (!ok) continue;
+					if (!ok) {
+						autoApproveFailedIds.add(conf.requestId);
+						continue;
+					}
 					resolveConfirmation(conf.requestId, 'approved');
 					// `conf.message` is the agent's own description of the action, so it
 					// quotes tool args and recipients — scrub before it leaves the browser.
@@ -771,6 +808,9 @@ export function createThreadRuntime(
 					);
 				} finally {
 					autoApproveInFlight.delete(conf.requestId);
+					// On success the confirmation is already marked resolved above, so
+					// removing the auto-resolving marker never re-surfaces the card.
+					autoResolvingConfirmationIds.delete(conf.requestId);
 				}
 			}
 		},
@@ -1043,6 +1083,8 @@ export function createThreadRuntime(
 		resetFeedback();
 		resolvedConfirmationIds.clear();
 		sessionAlwaysAllowKeys.value = new Set();
+		autoResolvingConfirmationIds.clear();
+		autoApproveFailedIds.clear();
 		runStateByGroupId.clear();
 		groupIdByRunId.clear();
 		lastEventId.value = undefined;

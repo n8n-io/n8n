@@ -10,6 +10,7 @@ import { ensureThread, postMessage, postConfirmation, postCancel } from '../inst
 import {
 	INSTANCE_AI_THREAD_SOURCE_FALLBACK,
 	type InstanceAiCredentialDestination,
+	type InstanceAiConfirmResponse,
 	type InstanceAiTargetApproval,
 } from '@n8n/api-types';
 import {
@@ -2099,8 +2100,53 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(runtime.sessionAlwaysAllowKeys.size).toBe(0);
 	});
 
-	it('keeps the confirmation pending when auto-approve POST fails', async () => {
-		mockPostConfirmation.mockRejectedValueOnce(new Error('network down'));
+	it('keeps the confirmation hidden and the run suspended while auto-approval is in flight', async () => {
+		let resolvePost!: (value: InstanceAiConfirmResponse) => void;
+		mockPostConfirmation.mockImplementationOnce(
+			async () =>
+				await new Promise<InstanceAiConfirmResponse>((resolve) => {
+					resolvePost = resolve;
+				}),
+		);
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-hidden',
+			requestId: 'req-hidden',
+			toolName: 'workflows',
+			args: { action: 'run' },
+		});
+
+		await vi.waitFor(() => {
+			expect(mockPostConfirmation).toHaveBeenCalledWith(expect.anything(), 'req-hidden', {
+				kind: 'approval',
+				approved: true,
+			});
+		});
+		// The approval round trip is still open: the run stays suspended, but the
+		// confirmation must not surface anywhere — rendering it swaps out the chat
+		// input and shoves it around when the card collapses again.
+		expect(runtime.pendingConfirmations).toHaveLength(0);
+		expect(runtime.isAwaitingConfirmation).toBe(false);
+		expect(runtime.resolvedConfirmationIds.has('req-hidden')).toBe(false);
+
+		resolvePost({ ok: true });
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.get('req-hidden')).toBe('approved');
+		});
+		expect(runtime.pendingConfirmations).toHaveLength(0);
+		expect(runtime.isAwaitingConfirmation).toBe(false);
+	});
+
+	it('keeps the confirmation pending and re-surfaces the card when auto-approve POST fails', async () => {
+		let rejectPost!: (error: Error) => void;
+		mockPostConfirmation.mockImplementationOnce(
+			async () =>
+				await new Promise<InstanceAiConfirmResponse>((_resolve, reject) => {
+					rejectPost = reject;
+				}),
+		);
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
 
@@ -2117,7 +2163,55 @@ describe('createThreadRuntime - session always-allow', () => {
 				approved: true,
 			});
 		});
+		expect(runtime.pendingConfirmations).toHaveLength(0);
+
+		rejectPost(new Error('network down'));
+		// The backend still waits for approval, so the card must come back for a
+		// manual decision instead of staying hidden.
+		await vi.waitFor(() => {
+			expect(runtime.pendingConfirmations).toHaveLength(1);
+		});
+		expect(runtime.isAwaitingConfirmation).toBe(true);
 		expect(runtime.resolvedConfirmationIds.has('req-fail')).toBe(false);
+	});
+
+	it('does not retry a failed auto-approval when the watcher re-fires', async () => {
+		mockPostConfirmation.mockRejectedValueOnce(new Error('network down'));
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-fail',
+			requestId: 'req-fail',
+			toolName: 'workflows',
+			args: { action: 'run' },
+		});
+		await vi.waitFor(() => {
+			expect(mockPostConfirmation).toHaveBeenCalledTimes(1);
+		});
+		await vi.waitFor(() => {
+			expect(runtime.pendingConfirmations).toHaveLength(1);
+		});
+
+		// A later matching confirmation re-runs the watcher: it must auto-approve
+		// the new request but leave the failed one visible for a manual decision
+		// instead of hiding and re-showing its card on another attempt.
+		pushPendingApproval(runtime, {
+			messageId: 'msg-next',
+			requestId: 'req-next',
+			toolName: 'workflows',
+			args: { action: 'run' },
+		});
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.get('req-next')).toBe('approved');
+		});
+
+		const failedCalls = mockPostConfirmation.mock.calls.filter(
+			([, requestId]) => requestId === 'req-fail',
+		);
+		expect(failedCalls).toHaveLength(1);
+		expect(runtime.pendingConfirmations).toHaveLength(1);
+		expect(runtime.pendingConfirmations[0].toolCall.confirmation.requestId).toBe('req-fail');
 	});
 });
 
