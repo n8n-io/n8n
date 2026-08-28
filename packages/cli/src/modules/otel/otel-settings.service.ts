@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { CREDENTIAL_BLANKING_VALUE, jsonParse } from 'n8n-workflow';
@@ -29,6 +30,7 @@ export class OtelSettingsService {
 	constructor(
 		private readonly config: OtelConfig,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly logger: Logger,
 	) {}
 
 	getSettings(): OtelSettingsResponse {
@@ -72,7 +74,10 @@ export class OtelSettingsService {
 		if (!value) return undefined;
 		try {
 			return jsonParse<Partial<OtelConfig>>(value);
-		} catch {
+		} catch (error) {
+			this.logger.warn('Persisted OTel settings contain invalid JSON; using defaults instead', {
+				error: error instanceof Error ? error.message : String(error),
+			});
 			return undefined;
 		}
 	}
