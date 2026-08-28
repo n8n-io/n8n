@@ -1,9 +1,18 @@
-// Imported by both credential files, so this module must stay import-free: it is
-// loaded whenever a credential type is loaded.
+// Kept dependency-free: loaded eagerly whenever either credential type is loaded.
 
-/** Single source of truth: also feeds `description.version` in Databricks.node.ts. */
+/**
+ * Single source of truth for the integration version: feeds both
+ * `description.version` in Databricks.node.ts and the partner User-Agent, so the
+ * two cannot drift. Deliberately not read from a node's `typeVersion` — that is a
+ * per-workflow compatibility marker frozen into saved workflows, so it would report
+ * how old a workflow is rather than which integration version is running.
+ */
 export const DATABRICKS_NODE_VERSION = 1;
 
-/** Partner User-Agent so Databricks can attribute traffic to n8n in audit logs. */
+/**
+ * Partner User-Agent so Databricks can attribute traffic to n8n in audit logs.
+ * `version` is the integer major version; the `.0` keeps the wire format Databricks
+ * expects. Bumping to a fractional node version needs this format revisited first.
+ */
 export const databricksUserAgent = (version: number = DATABRICKS_NODE_VERSION) =>
 	`n8n_DatabricksNode/${version}.0`;

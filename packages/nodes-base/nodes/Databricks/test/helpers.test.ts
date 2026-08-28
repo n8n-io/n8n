@@ -3,6 +3,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { databricksApiRequest } from '../actions/helpers';
+import { DATABRICKS_NODE_VERSION, databricksUserAgent } from '../constants';
 
 describe('databricksApiRequest', () => {
 	let httpRequestWithAuthentication: Mock;
@@ -89,17 +90,26 @@ describe('databricksApiRequest', () => {
 		expect(httpRequestWithAuthentication.mock.instances[0]).toBe(loadOptionsContext);
 	});
 
-	it('should track the node type version', async () => {
-		const v2Context = mock<IExecuteFunctions>({
-			getNode: () => mock<INode>({ typeVersion: 2 }),
+	it('should track the integration version rather than the node typeVersion', async () => {
+		// A node instance pinned to an older typeVersion must still report the version
+		// of the integration that is actually running.
+		const staleContext = mock<IExecuteFunctions>({
+			getNode: () => mock<INode>({ typeVersion: 0.1 }),
 			helpers: { httpRequestWithAuthentication },
 		});
 
-		await databricksApiRequest(v2Context, 'databricksApi', {
+		await databricksApiRequest(staleContext, 'databricksApi', {
 			method: 'GET',
 			url: 'https://example.databricks.com/api/2.1/unity-catalog/catalogs',
 		});
 
-		expect(capturedOptions().headers).toEqual({ 'User-Agent': 'n8n_DatabricksNode/2.0' });
+		expect(capturedOptions().headers).toEqual({
+			'User-Agent': databricksUserAgent(DATABRICKS_NODE_VERSION),
+		});
+	});
+
+	it('should derive the User-Agent from the integration version constant', () => {
+		expect(databricksUserAgent(DATABRICKS_NODE_VERSION)).toBe('n8n_DatabricksNode/1.0');
+		expect(databricksUserAgent(2)).toBe('n8n_DatabricksNode/2.0');
 	});
 });

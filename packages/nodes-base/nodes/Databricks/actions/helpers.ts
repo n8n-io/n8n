@@ -12,6 +12,10 @@ import type { DatabricksCredentials, OpenAPISchema } from './interfaces';
  * Takes `context` explicitly rather than the house `this`-binding style because
  * some callers (e.g. `fetchResourcesInSchema` in methods/listSearch.ts) are plain
  * functions with no `this`.
+ *
+ * Setting a User-Agent deliberately opts these calls out of the instance-wide
+ * outbound UA, including `N8N_GLOBAL_USER_AGENT_VALUE` — partner attribution
+ * requires a single predictable token.
  */
 export async function databricksApiRequest(
 	context: IExecuteFunctions | ILoadOptionsFunctions,
@@ -23,7 +27,7 @@ export async function databricksApiRequest(
 		headers: {
 			...options.headers,
 			// Last, so a caller cannot override it
-			'User-Agent': databricksUserAgent(context.getNode().typeVersion),
+			'User-Agent': databricksUserAgent(),
 		},
 	});
 }
