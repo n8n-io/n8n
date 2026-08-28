@@ -11,6 +11,7 @@ import type {
 	ISourceData,
 	ISupplyDataFunctions,
 	ITaskMetadata,
+	ITaskSubRunMetadata,
 	NodeConnectionType,
 	SupplyData,
 } from 'n8n-workflow';
@@ -240,7 +241,8 @@ async function runWorkflow(nodes: INode[], connections: IConnections): Promise<I
 	return await waitPromise.promise;
 }
 
-type RunSummary = { status?: string; error?: string; subRun?: unknown };
+type RunOutcome = { status?: string; error?: string };
+type RunSummary = RunOutcome & { subRun?: unknown };
 
 /**
  * The saved execution as an API consumer sees it: `GET /rest|api/v1/executions/:id?includeData=true`
@@ -283,13 +285,31 @@ function stagedMetadata(result: IRun): Record<string, ITaskMetadata[]> {
 	return result.data.executionData?.metadata ?? {};
 }
 
-/** The parent→child link the fix keeps: it lives on the child's own record, not in `subRun`. */
-function sourceOf(
-	result: IRun,
-	nodeName: string,
-	runIndex = 0,
-): Array<ISourceData | null> | undefined {
-	return result.data.resultData.runData[nodeName]?.[runIndex]?.source;
+/**
+ * The runs a node actually recorded, in order, ignoring which index they landed at. A failing
+ * sub-node's record goes to its *parent's* expected index, so the engine leaves holes in the
+ * array — an older bug this fix deliberately leaves alone, so nothing here pins it (CAT-4268).
+ */
+function runsOf(result: IRun, nodeName: string): RunOutcome[] {
+	const runs = result.data.resultData.runData[nodeName] ?? [];
+	return runs
+		.filter((run) => run !== undefined)
+		.map((run) => ({ status: run.executionStatus, error: run.error?.message }));
+}
+
+/** The sources of those same runs, in the same order. */
+function sourcesOf(result: IRun, nodeName: string): Array<Array<ISourceData | null>> {
+	const runs = result.data.resultData.runData[nodeName] ?? [];
+	return runs.filter((run) => run !== undefined).map((run) => run.source);
+}
+
+/**
+ * The parent → child links recorded on a run. `addOutputData` also writes an entry naming the
+ * run's own node, which is noise for this fix (CAT-4268), so only cross-node entries are kept.
+ */
+function crossNodeSubRun(result: IRun, nodeName: string, runIndex = 0): ITaskSubRunMetadata[] {
+	const subRun = result.data.resultData.runData[nodeName]?.[runIndex]?.metadata?.subRun ?? [];
+	return subRun.filter((entry) => entry.node !== nodeName);
 }
 
 let errorReporter: ErrorReporter;
@@ -429,15 +449,12 @@ describe('sub-node error metadata', () => {
 			// The user-facing failure is unchanged: it names the node that actually broke
 			expect(result.status).toBe('error');
 			expect(result.data.resultData.error?.message).toBe('Error in sub-node Tool Model');
-			expect(savedExecution(result)).toEqual({
-				Trigger: [{ status: 'success', error: undefined, subRun: undefined }],
-				Agent: [{ status: 'error', error: 'Error in sub-node Tool Model', subRun: undefined }],
-				'Tool Model': [{ status: 'error', error: 'Invalid API key', subRun: undefined }],
-			});
+			expect(runsOf(result, 'Tool Model')).toEqual([{ status: 'error', error: 'Invalid API key' }]);
 			// `Tool` never gets a run of its own, so there must be nothing noted against it
+			expect(runsOf(result, 'Tool')).toEqual([]);
 			expect(stagedMetadata(result)).toEqual({});
-			expect(sourceOf(result, 'Tool Model')).toEqual([
-				{ previousNode: 'Tool', previousNodeRun: 0 },
+			expect(sourcesOf(result, 'Tool Model')).toEqual([
+				[{ previousNode: 'Tool', previousNodeRun: 0 }],
 			]);
 			expect(orphanReports()).toEqual([]);
 		});
@@ -461,24 +478,12 @@ describe('sub-node error metadata', () => {
 
 			// The agent absorbs the failed tool call, so the execution itself succeeds
 			expect(result.status).toBe('success');
-			expect(savedExecution(result)).toEqual({
-				Trigger: [{ status: 'success', error: undefined, subRun: undefined }],
-				Agent: [{ status: 'success', error: undefined, subRun: undefined }],
-				// Only the tool's own self-referential entry, written by `addOutputData`
-				Tool: [
-					{
-						status: 'error',
-						error: expect.stringContaining('Error in sub-node Tool Model'),
-						subRun: [{ node: 'Tool', runIndex: 0 }],
-					},
-				],
-				// The hole at 0 is expected: the child's error record still goes to the parent's
-				// expected index. This fix deliberately leaves that alone
-				'Tool Model': [
-					{ status: undefined, error: undefined, subRun: undefined },
-					{ status: 'error', error: 'Invalid API key', subRun: undefined },
-				],
-			});
+			expect(runsOf(result, 'Tool')).toEqual([
+				{ status: 'error', error: expect.stringContaining('Error in sub-node Tool Model') },
+			]);
+			expect(runsOf(result, 'Tool Model')).toEqual([{ status: 'error', error: 'Invalid API key' }]);
+			// The tool is mid-run at index 0, so the note the old code filed at index 1 had
+			// nothing to merge onto and was reported
 			expect(orphanReports()).toEqual([]);
 		});
 
@@ -500,29 +505,17 @@ describe('sub-node error metadata', () => {
 			);
 
 			expect(result.status).toBe('success');
-			expect(savedExecution(result)).toEqual({
-				Trigger: [{ status: 'success', error: undefined, subRun: undefined }],
-				Agent: [{ status: 'success', error: undefined, subRun: undefined }],
-				// Each run lists only its own sub-node call. Before the fix, run 1 also picked
-				// up the note left by the first invocation, which pointed here
-				Tool: [
-					{
-						status: 'error',
-						error: expect.stringContaining('Error in sub-node Tool Model'),
-						subRun: [{ node: 'Tool', runIndex: 0 }],
-					},
-					{
-						status: 'error',
-						error: expect.stringContaining('Error in sub-node Tool Model'),
-						subRun: [{ node: 'Tool', runIndex: 1 }],
-					},
-				],
-				'Tool Model': [
-					{ status: undefined, error: undefined, subRun: undefined },
-					{ status: 'error', error: 'Invalid API key', subRun: undefined },
-					{ status: 'error', error: 'Invalid API key', subRun: undefined },
-				],
-			});
+			expect(runsOf(result, 'Tool')).toEqual([
+				{ status: 'error', error: expect.stringContaining('Error in sub-node Tool Model') },
+				{ status: 'error', error: expect.stringContaining('Error in sub-node Tool Model') },
+			]);
+			expect(runsOf(result, 'Tool Model')).toEqual([
+				{ status: 'error', error: 'Invalid API key' },
+				{ status: 'error', error: 'Invalid API key' },
+			]);
+			// Before the fix, run 1 also carried the note left by the first invocation, so it
+			// listed a sub-node failure belonging to a different attempt
+			expect(crossNodeSubRun(result, 'Tool', 1)).toEqual([]);
 			expect(orphanReports()).toEqual([]);
 		});
 
@@ -547,16 +540,16 @@ describe('sub-node error metadata', () => {
 
 			expect(result.status).toBe('error');
 			expect(result.data.resultData.error?.message).toBe('Error in sub-node Inner Model');
-			expect(savedExecution(result)).toEqual({
-				Trigger: [{ status: 'success', error: undefined, subRun: undefined }],
-				Agent: [{ status: 'error', error: 'Error in sub-node Inner Model', subRun: undefined }],
-				'Inner Model': [{ status: 'error', error: 'Invalid API key', subRun: undefined }],
-			});
-			// Only the innermost failure writes a note — the outer levels rethrow the error
-			// before reaching that code
+			expect(runsOf(result, 'Inner Model')).toEqual([
+				{ status: 'error', error: 'Invalid API key' },
+			]);
+			// Neither store gets a run, and only the innermost failure writes a note — the
+			// outer levels rethrow the error before reaching that code
+			expect(runsOf(result, 'Store')).toEqual([]);
+			expect(runsOf(result, 'Inner Store')).toEqual([]);
 			expect(stagedMetadata(result)).toEqual({});
-			expect(sourceOf(result, 'Inner Model')).toEqual([
-				{ previousNode: 'Inner Store', previousNodeRun: 0 },
+			expect(sourcesOf(result, 'Inner Model')).toEqual([
+				[{ previousNode: 'Inner Store', previousNodeRun: 0 }],
 			]);
 			expect(orphanReports()).toEqual([]);
 		});
@@ -583,25 +576,13 @@ describe('sub-node error metadata', () => {
 			);
 
 			expect(result.status).toBe('success');
-			expect(savedExecution(result)).toEqual({
-				Trigger: [{ status: 'success', error: undefined, subRun: undefined }],
-				Agent: [{ status: 'success', error: undefined, subRun: undefined }],
-				Tool: [
-					{
-						status: 'error',
-						error: expect.stringContaining('Error in sub-node Tool Model'),
-						subRun: [{ node: 'Tool', runIndex: 0 }],
-					},
-				],
-				'Tool Model': [
-					{ status: undefined, error: undefined, subRun: undefined },
-					{ status: 'error', error: 'Invalid API key', subRun: undefined },
-				],
-				// The healthy sibling is untouched by its neighbour's failure
-				'Other Tool': [
-					{ status: 'success', error: undefined, subRun: [{ node: 'Other Tool', runIndex: 0 }] },
-				],
-			});
+			expect(runsOf(result, 'Tool')).toEqual([
+				{ status: 'error', error: expect.stringContaining('Error in sub-node Tool Model') },
+			]);
+			expect(runsOf(result, 'Tool Model')).toEqual([{ status: 'error', error: 'Invalid API key' }]);
+			// The healthy sibling is untouched by its neighbour's failure
+			expect(runsOf(result, 'Other Tool')).toEqual([{ status: 'success' }]);
+			expect(crossNodeSubRun(result, 'Other Tool')).toEqual([]);
 			expect(orphanReports()).toEqual([]);
 		});
 
@@ -625,31 +606,18 @@ describe('sub-node error metadata', () => {
 			);
 
 			expect(result.status).toBe('success');
-			// Both tools are invoked, so both have a real run of their own to attach to
-			expect(savedExecution(result)).toEqual({
-				Trigger: [{ status: 'success', error: undefined, subRun: undefined }],
-				Agent: [{ status: 'success', error: undefined, subRun: undefined }],
-				'Outer Tool': [
-					{
-						status: 'error',
-						error: expect.stringContaining('Error in sub-node Inner Model'),
-						subRun: [{ node: 'Outer Tool', runIndex: 0 }],
-					},
-				],
-				'Inner Tool': [
-					{
-						status: 'error',
-						error: expect.stringContaining('Error in sub-node Inner Model'),
-						subRun: [{ node: 'Inner Tool', runIndex: 0 }],
-					},
-				],
-				'Inner Model': [
-					{ status: undefined, error: undefined, subRun: undefined },
-					{ status: 'error', error: 'Invalid API key', subRun: undefined },
-				],
-			});
-			expect(sourceOf(result, 'Inner Model', 1)).toEqual([
-				{ previousNode: 'Inner Tool', previousNodeRun: 0 },
+			// Both tools are invoked, so both have a real run of their own
+			expect(runsOf(result, 'Outer Tool')).toEqual([
+				{ status: 'error', error: expect.stringContaining('Error in sub-node Inner Model') },
+			]);
+			expect(runsOf(result, 'Inner Tool')).toEqual([
+				{ status: 'error', error: expect.stringContaining('Error in sub-node Inner Model') },
+			]);
+			expect(runsOf(result, 'Inner Model')).toEqual([
+				{ status: 'error', error: 'Invalid API key' },
+			]);
+			expect(sourcesOf(result, 'Inner Model')).toEqual([
+				[{ previousNode: 'Inner Tool', previousNodeRun: 0 }],
 			]);
 			expect(orphanReports()).toEqual([]);
 		});
