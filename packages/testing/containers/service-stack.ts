@@ -47,9 +47,14 @@ export function collectExternalEnv(
 ): Record<string, string> {
 	const env: Record<string, string> = {};
 	for (const name of services) {
-		const result = stack.serviceResults[name];
-		if (!result) continue;
 		const service = SERVICE_REGISTRY[name];
+		const result = stack.serviceResults[name];
+		if (!result) {
+			// Nothing started because a hosted deployment stands in for it — the
+			// dev loop still needs its connection env.
+			Object.assign(env, service.hostedEnv?.() ?? {});
+			continue;
+		}
 		Object.assign(env, service.env?.(result, true) ?? {}, service.extraEnv?.(result, true) ?? {});
 	}
 	return env;

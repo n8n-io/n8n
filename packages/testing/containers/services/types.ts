@@ -109,6 +109,15 @@ export interface Service<TResult extends ServiceResult = ServiceResult> {
 	shouldStart?(ctx: StartContext): boolean;
 	/** @example (ctx) => ({ taskBrokerUri: `http://${ctx.projectName}-n8n:5679` }) */
 	getOptions?(ctx: StartContext): unknown;
+	/**
+	 * Env for an already-deployed instance of this service, read from the host
+	 * environment. Returning a value means the deployment stands in for the
+	 * local containers: `start()` is skipped and this env is handed to n8n
+	 * instead. Return `undefined` to fall back to the local stack.
+	 *
+	 * @example () => process.env.FOO_URL ? { FOO_URL: process.env.FOO_URL } : undefined
+	 */
+	hostedEnv?(ctx?: StartContext): Record<string, string> | undefined;
 	/** Starts container, returns connection details for env() */
 	start(
 		network: StartedNetwork,

@@ -135,8 +135,33 @@ async function generateMtlsCerts(network: StartedNetwork, projectName: string): 
 	return tlsDir;
 }
 
+/**
+ * A deployed sandbox service, configured from the host environment. When both
+ * vars are set, the stack talks to that deployment instead of booting the
+ * privileged dind stack below — which is what CI does, and what any local run
+ * with the two vars exported gets. Without them (fork PRs have no secrets) the
+ * local containers still start.
+ */
+function hostedSandbox(): SandboxMeta | undefined {
+	const apiUrl = process.env.N8N_SANDBOX_SERVICE_URL?.trim();
+	const apiKey = process.env.N8N_SANDBOX_SERVICE_API_KEY?.trim();
+	if (!apiUrl || !apiKey) return undefined;
+	return { apiUrl, apiKey };
+}
+
 export const sandbox: Service<SandboxResult> = {
 	description: 'Sandbox service (API + runner)',
+
+	hostedEnv(): Record<string, string> | undefined {
+		const hosted = hostedSandbox();
+		if (!hosted) return undefined;
+		// One URL for both n8n-in-network and host callers — it isn't stack-local.
+		return {
+			N8N_INSTANCE_AI_SANDBOX_PROVIDER: 'n8n-sandbox',
+			N8N_SANDBOX_SERVICE_URL: hosted.apiUrl,
+			N8N_SANDBOX_SERVICE_API_KEY: hosted.apiKey,
+		};
+	},
 
 	async start(network: StartedNetwork, projectName: string): Promise<SandboxResult> {
 		const tlsDir = await generateMtlsCerts(network, projectName);

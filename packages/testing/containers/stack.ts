@@ -164,9 +164,25 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		// Local benchmarks showed individual containers booting 2-4× faster sequentially under
 		// contention, with only modest wall-clock cost on uncontended hardware.
 		const allServiceNames = Object.keys(SERVICE_REGISTRY) as ServiceName[];
-		const servicesToStart = allServiceNames.filter((name) =>
+		const requestedServices = allServiceNames.filter((name) =>
 			shouldServiceStart(name, SERVICE_REGISTRY[name], ctx),
 		);
+
+		// A requested service that reports a hosted deployment contributes its env
+		// and starts nothing — the deployment is already running elsewhere.
+		const hostedServices: ServiceName[] = [];
+		for (const name of requestedServices) {
+			const hostedEnv = SERVICE_REGISTRY[name].hostedEnv?.(ctx);
+			if (!hostedEnv) continue;
+			environment = { ...environment, ...hostedEnv };
+			hostedServices.push(name);
+		}
+		if (hostedServices.length > 0) {
+			ctx.environment = environment;
+			log(`Using hosted: ${hostedServices.map((n) => SERVICE_REGISTRY[n].description).join(', ')}`);
+		}
+
+		const servicesToStart = requestedServices.filter((name) => !hostedServices.includes(name));
 		const dependencyLevels = groupByDependencyLevel(servicesToStart);
 
 		const startService = async (name: ServiceName) => {

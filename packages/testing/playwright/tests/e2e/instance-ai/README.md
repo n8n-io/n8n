@@ -4,14 +4,26 @@ These tests cover the `/instance-ai` UI and exercise the end-to-end agent flow
 (chat, tool calls, workflow preview). They're tagged
 `@capability:proxy` because the standard CI run uses a MockServer proxy to
 record/replay LLM traffic instead of hitting the real Anthropic API. The shared
-fixture also starts the sandbox service that the workflow builder requires.
+fixture also brings in the sandbox service that the workflow builder requires.
+
+### Sandbox service: hosted or local
+
+Set `N8N_SANDBOX_SERVICE_URL` and `N8N_SANDBOX_SERVICE_API_KEY` and the stack
+points n8n at that deployment and starts no sandbox containers. CI supplies both
+as repository secrets, so internal runs use the hosted service.
+
+With either var missing — fork PRs get no secrets — the `sandbox` service falls
+back to booting the local stack (cert bootstrap + API + privileged dind runner
++ image load, a couple of minutes). Nothing else changes: the provider is
+`n8n-sandbox` on both paths. The stack logs which one it picked
+(`Using hosted: Sandbox service (API + runner)`).
 
 ## Two run modes
 
 ### CI / container mode (default)
 
-Spins up an n8n container plus the MockServer proxy and sandbox service. The
-proxy either:
+Spins up an n8n container plus the MockServer proxy, and wires in the sandbox
+service (hosted or local, see above). The proxy either:
 
 - **Replays** previously-recorded responses from `expectations/instance-ai/<test-slug>/`
   when no real Anthropic key is present (the default in CI).
