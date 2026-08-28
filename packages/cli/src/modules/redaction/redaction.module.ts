@@ -4,9 +4,15 @@ import { Container } from '@n8n/di';
 
 import { ExecutionRedactionServiceProxy } from '@/executions/execution-redaction-proxy.service';
 
-@BackendModule({ name: 'redaction', instanceTypes: ['main'] })
+/**
+ * Context is established by whichever instance runs the workflow — main, queue worker or
+ * dedicated webhook — and `init()` registers the hook that snapshots the redaction policy
+ * onto the record. Keep this module free of an `instanceTypes` restriction.
+ */
+@BackendModule({ name: 'redaction' })
 export class RedactionModule implements ModuleInterface {
 	async init() {
+		// Import side-effect registers RedactionContextHook.
 		await import('./redaction-context-hook.js');
 
 		// Importing the service here registers its @OnPubSubEvent handler with the
