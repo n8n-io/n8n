@@ -598,6 +598,14 @@ describe('createDeepLazyProxy', () => {
 				expect(desc).toMatchObject({ writable: true, value: 'X' });
 			});
 
+			it('a write through a derived object lands on the derived object, not the proxy cache', () => {
+				const p = writableArrayProxy();
+				const derived = Object.create(p);
+				derived.foo = 'X';
+				expect(Object.prototype.hasOwnProperty.call(derived, 'foo')).toBe(true);
+				expect(p.foo).toBeUndefined();
+			});
+
 			it('error sentinel during materialization propagates', () => {
 				const sentinel = { __isError: true, name: 'Error', message: 'fetch failed' };
 				mocks.getArrayElement.mockImplementation((_path: string[], idx: number) =>

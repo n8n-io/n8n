@@ -175,9 +175,10 @@ export function createDeepLazyProxy(
 	// per-evaluation context.
 	let materialized = false;
 
-	function fetchAndCacheArrayElement(idx: number): unknown {
+	// `prop` is the already-stringified index — callers have it at hand, and
+	// re-deriving it here would put a String() allocation on the hot read path.
+	function fetchAndCacheArrayElement(idx: number, prop: string): unknown {
 		const t = target as Record<string, unknown>;
-		const prop = String(idx);
 		const element = getArrayElement(basePath, idx);
 		// Primitives (and null) skip `materializeChild`'s metadata checks.
 		if (element === null || typeof element !== 'object') {
@@ -207,7 +208,8 @@ export function createDeepLazyProxy(
 		if (materialized) return;
 		if (isArray) {
 			for (let i = 0; i < arrayLength; i++) {
-				if (!Object.prototype.hasOwnProperty.call(target, String(i))) fetchAndCacheArrayElement(i);
+				const prop = String(i);
+				if (!Object.prototype.hasOwnProperty.call(target, prop)) fetchAndCacheArrayElement(i, prop);
 			}
 			(target as unknown[]).length = arrayLength;
 		} else {
@@ -307,15 +309,18 @@ export function createDeepLazyProxy(
 			if (isArray) {
 				const idx = isInArrayBounds(prop);
 				if (idx === undefined) return undefined;
-				return fetchAndCacheArrayElement(idx);
+				return fetchAndCacheArrayElement(idx, prop);
 			}
 
 			return fetchAndCacheObjectValue(prop);
 		},
 
-		set(_targetObj: any, prop: string | symbol, value: unknown): boolean {
+		set(_targetObj: any, prop: string | symbol, value: unknown, receiver: unknown): boolean {
 			materialize();
-			return Reflect.set(target, prop, value);
+			// Forward the receiver: when the proxy sits on another object's
+			// prototype chain, the write must create an own property on that
+			// object, not land in this proxy's cache.
+			return Reflect.set(target, prop, value, receiver);
 		},
 
 		deleteProperty(_targetObj: any, prop: string | symbol): boolean {
