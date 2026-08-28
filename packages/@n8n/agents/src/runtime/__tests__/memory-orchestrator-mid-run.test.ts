@@ -35,6 +35,7 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
 function buildOrchestrator(
 	store: InMemoryMemory,
 	observationalMemory: ObservationalMemoryConfig,
+	tokenCounter?: (text: string) => Promise<number>,
 ): { orchestrator: MemoryOrchestrator; tracker: BackgroundTaskTracker } {
 	const config = {
 		name: 'mid-run-agent',
@@ -48,7 +49,7 @@ function buildOrchestrator(
 		tracker,
 		new AgentEventBus(),
 		new RuntimeTelemetry(config),
-		async (text) => await Promise.resolve(text.length),
+		tokenCounter ?? (async (text) => await Promise.resolve(text.length)),
 	);
 	return { orchestrator, tracker };
 }
@@ -118,6 +119,25 @@ describe('MemoryOrchestrator.maybeObserveMidRun', () => {
 		await expect(orchestrator.maybeObserveMidRun(list, runOptions())).resolves.toBeUndefined();
 
 		expect(await store.getActiveObservationLog({ observationScopeId: THREAD_ID })).toHaveLength(0);
+		expect(list.forLlm('base').messages).toHaveLength(1);
+	});
+
+	it('contains orchestration failures instead of failing the run', async () => {
+		const store = new InMemoryMemory();
+		const { orchestrator } = buildOrchestrator(
+			store,
+			{
+				observerThresholdTokens: 10,
+				observe: async () => await Promise.resolve('* CRITICAL (14:30) Should not appear.'),
+				observationLogTailLimit: 20,
+			},
+			async () => await Promise.reject(new Error('token counter exploded')),
+		);
+		const list = new AgentMessageList();
+		list.addInput([userMsg('a user message crossing the threshold')]);
+
+		await expect(orchestrator.maybeObserveMidRun(list, runOptions())).resolves.toBeUndefined();
+
 		expect(list.forLlm('base').messages).toHaveLength(1);
 	});
 

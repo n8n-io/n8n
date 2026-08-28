@@ -375,11 +375,28 @@ export class MemoryOrchestrator {
 	 * window and refresh the injected observation log — no LLM call. Only when
 	 * the budget reaches the hard threshold (`observerThresholdTokens`) does the
 	 * loop block: it joins the in-flight task, or falls back to a synchronous
-	 * Observer run. Best-effort: a skipped (lock held) or failed observer run
-	 * leaves the window untouched and never fails the run — the budget stays
-	 * high and the next boundary retries.
+	 * Observer run. Best-effort: a skipped (lock held) or failed observer run —
+	 * or any failure in the surrounding store reads and token counting — leaves
+	 * the window untouched and never fails the run; the budget stays high and
+	 * the next boundary retries.
 	 */
 	async maybeObserveMidRun(
+		list: AgentMessageList,
+		options: (RunOptions & ExecutionOptions) | undefined,
+	): Promise<void> {
+		try {
+			await this.observeMidRun(list, options);
+		} catch (error) {
+			// Masking only optimizes the next model call, so optional memory work
+			// must never terminate the primary run.
+			logger.warn('Mid-run observation failed', {
+				error,
+				threadId: options?.persistence?.threadId,
+			});
+		}
+	}
+
+	private async observeMidRun(
 		list: AgentMessageList,
 		options: (RunOptions & ExecutionOptions) | undefined,
 	): Promise<void> {
