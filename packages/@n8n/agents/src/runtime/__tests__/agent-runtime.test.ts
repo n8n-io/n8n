@@ -7678,7 +7678,7 @@ describe('AgentRuntime — oversized tool results', () => {
 		);
 	}
 
-	function getModelToolResult(callIndex = 1): unknown {
+	function getModelToolResultOutput(callIndex = 1): { type: string; value: unknown } | undefined {
 		const call = generateText.mock.calls[callIndex][0] as {
 			messages: Array<{
 				role: string;
@@ -7686,7 +7686,11 @@ describe('AgentRuntime — oversized tool results', () => {
 			}>;
 		};
 		const toolMessage = call.messages.find((message) => message.role === 'tool');
-		return toolMessage?.content.find((part) => part.type === 'tool-result')?.output?.value;
+		return toolMessage?.content.find((part) => part.type === 'tool-result')?.output;
+	}
+
+	function getModelToolResult(callIndex = 1): unknown {
+		return getModelToolResultOutput(callIndex)?.value;
 	}
 
 	it('leaves a small transformed result unchanged', async () => {
@@ -7707,6 +7711,73 @@ describe('AgentRuntime — oversized tool results', () => {
 		await runtime.generate('run');
 
 		expect(getModelToolResult()).toEqual({ summary: 'small' });
+	});
+
+	it('preserves oversized content media without offloading it', async () => {
+		const rawOutput = { ok: true };
+		const modelOutput = {
+			type: 'content' as const,
+			value: [
+				{
+					type: 'file-data' as const,
+					data: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.repeat(8_000),
+					mediaType: 'application/pdf',
+				},
+			],
+		};
+		const tool: BuiltTool = {
+			name: 'file_result',
+			description: 'Return a file',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve(rawOutput),
+			toModelOutput: () => modelOutput,
+		};
+		const { runtime } = createRuntimeWithTools([tool], 1);
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([{ toolCallId: 'tc-file', toolName: tool.name, args: {} }]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess());
+
+		const result = await runtime.generate('run');
+
+		expect(getModelToolResultOutput()).toEqual(modelOutput);
+		expect(result.toolCalls?.[0]?.output).toEqual(rawOutput);
+
+		const { runtime: streamRuntime } = createRuntimeWithTools([tool], 1);
+		streamText
+			.mockReturnValueOnce({
+				stream: makeChunkStream([]),
+				finishReason: Promise.resolve('tool-calls'),
+				usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+				response: Promise.resolve({
+					messages: [
+						{
+							role: 'assistant',
+							content: [
+								{
+									type: 'tool-call',
+									toolCallId: 'tc-file-stream',
+									toolName: tool.name,
+									args: {},
+								},
+							],
+						},
+					],
+				}),
+				toolCalls: Promise.resolve([
+					{ toolCallId: 'tc-file-stream', toolName: tool.name, input: {} },
+				]),
+			})
+			.mockReturnValueOnce(makeStreamSuccess());
+
+		const { stream } = await streamRuntime.stream('run');
+		const chunks = await collectChunks(stream);
+		const streamResult = chunks.find(
+			(chunk) => chunk.type === 'tool-result' && chunk.toolCallId === 'tc-file-stream',
+		) as (StreamChunk & { type: 'tool-result' }) | undefined;
+
+		expect(streamResult?.output).toEqual(modelOutput);
 	});
 
 	it('bounds an oversized transformed result while preserving raw output', async () => {
@@ -7954,6 +8025,55 @@ describe('AgentRuntime — oversized tool results', () => {
 			inputSchema: z.object({}),
 			handler: async () => await Promise.resolve(largeResultOutput),
 		};
+
+		it('offloads oversized content text while preserving media parts', async () => {
+			const filesystem = new InMemoryFilesystem();
+			const textParts = [
+				{
+					type: 'text' as const,
+					text: `HEAD${'a '.repeat(Math.floor(MAX_MODEL_TOOL_RESULT_TOKENS * 0.6))}`,
+				},
+				{
+					type: 'text' as const,
+					text: `${'b '.repeat(Math.floor(MAX_MODEL_TOOL_RESULT_TOKENS * 0.6))}TAIL`,
+				},
+			];
+			const filePart = {
+				type: 'file-data' as const,
+				data: 'base64-pdf',
+				mediaType: 'application/pdf',
+			};
+			const tool: BuiltTool = {
+				name: 'mixed_content',
+				description: 'Return text and a file',
+				inputSchema: z.object({}),
+				handler: async () => await Promise.resolve({ ok: true }),
+				toModelOutput: () => ({
+					type: 'content',
+					value: [textParts[0], filePart, textParts[1]],
+				}),
+			};
+			const agent = createWorkspaceAgent(filesystem, [tool]);
+			let modelContent: Array<{ type: string; text?: string }> = [];
+			let storedResult: string | undefined;
+			generateText
+				.mockResolvedValueOnce(
+					makeGenerateWithToolCalls([{ toolCallId: 'tc-mixed', toolName: tool.name, args: {} }]),
+				)
+				.mockImplementationOnce(async ({ messages }: { messages: ModelMessages }) => {
+					modelContent = toolResultsFromModelMessages(messages)[0] as typeof modelContent;
+					const envelope = parseOffloadedEnvelope(
+						modelContent.find((part) => part.type === 'text')?.text,
+					);
+					storedResult = String(await filesystem.readFile(envelope.path, { encoding: 'utf8' }));
+					return await Promise.resolve(makeGenerateSuccess());
+				});
+
+			await agent.generate('run');
+
+			expect(modelContent).toEqual([{ type: 'text', text: expect.any(String) }, filePart]);
+			expect(storedResult).toBe(JSON.stringify(textParts));
+		});
 
 		it('stores complete concurrent transformed results without changing raw outputs', async () => {
 			const filesystem = new InMemoryFilesystem();

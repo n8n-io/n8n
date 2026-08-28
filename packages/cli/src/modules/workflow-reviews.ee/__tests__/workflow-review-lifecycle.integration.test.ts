@@ -22,6 +22,7 @@ import { mock } from 'vitest-mock-extended';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { EventService } from '@/events/event.service';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -626,6 +627,10 @@ describe('auto-close on source-control pull', () => {
 			mock(), // dataTableColumnRepository
 			mock(), // dataTableDDLService
 			mock(), // redactionEnforcementService
+			mock<PolicyEnforcementService>({
+				hasChecksFor: () => true,
+				evaluateContentImport: async () => ({ violations: [] }),
+			}), // policyEnforcementService
 			mock(), // dataTableSizeValidator
 			mock(), // activeWorkflowManager
 			mock(), // executionPersistence

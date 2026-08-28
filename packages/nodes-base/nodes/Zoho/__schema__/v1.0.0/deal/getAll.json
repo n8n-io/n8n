@@ -79,6 +79,9 @@
         "$state": {
             "type": "string"
         },
+        "$zia_owner_assignment": {
+            "type": "string"
+        },
         "Account_Name": {
             "type": "object",
             "properties": {
@@ -171,5 +174,5 @@
             "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

@@ -18,7 +18,7 @@ import { z } from 'zod';
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import { EventService } from '@/events/event.service';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
-import { ImportService } from '@/services/import.service';
+import { ImportService, type WorkflowImportViolations } from '@/services/import.service';
 
 import { BaseCommand } from '../base-command';
 
@@ -151,9 +151,14 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, project.id, userId, {
-			activeState: flags.activeState,
-		});
+		const { violations } = await Container.get(ImportService).importWorkflows(
+			workflows,
+			project.id,
+			userId,
+			{ activeState: flags.activeState },
+		);
+
+		this.logContentImportViolations(violations);
 
 		this.reportSuccess(workflows.length);
 
@@ -215,6 +220,23 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 	private reportSuccess(total: number) {
 		this.logger.info(`Successfully imported ${total} ${total === 1 ? 'workflow.' : 'workflows.'}`);
+	}
+
+	private logContentImportViolations(violations: WorkflowImportViolations[]) {
+		for (const { name, contentImportPolicy } of violations) {
+			if (contentImportPolicy.violations.length) {
+				this.logger.warn(
+					`Workflow "${name}" has ${contentImportPolicy.violations.length} content-import policy violation(s)`,
+					{ violations: contentImportPolicy.violations },
+				);
+			}
+			if (contentImportPolicy.checkErrors.length) {
+				this.logger.warn(
+					`Workflow "${name}" has ${contentImportPolicy.checkErrors.length} content-import policy check(s) that failed to run`,
+					{ checkErrors: contentImportPolicy.checkErrors },
+				);
+			}
+		}
 	}
 
 	private async getWorkflowOwner(workflowId: WorkflowId) {
