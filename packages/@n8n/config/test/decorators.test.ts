@@ -2,7 +2,7 @@ import { Container } from '@n8n/di';
 import fs from 'fs';
 import { z } from 'zod';
 
-import { Config, Env } from '../src/decorators';
+import { Config, Env, readEnvValue } from '../src/decorators';
 
 vi.mock('fs');
 const mockFs = vi.mocked(fs);
@@ -125,5 +125,33 @@ describe('decorators', () => {
 		expect(config.value).toBe('legacy');
 		expect(consoleWarnSpy).toHaveBeenCalledWith(expect.stringContaining('the value was trimmed'));
 		consoleWarnSpy.mockRestore();
+	});
+
+	describe('readEnvValue', () => {
+		it('should return undefined when the env var is not set', () => {
+			expect(readEnvValue('TEST_VALUE')).toBeUndefined();
+		});
+
+		it('should return the value when set', () => {
+			process.env.TEST_VALUE = 'default';
+
+			expect(readEnvValue('TEST_VALUE')).toBe('default');
+		});
+
+		it('should strip surrounding quotes and whitespace', () => {
+			process.env.TEST_VALUE = ' "default" ';
+
+			expect(readEnvValue('TEST_VALUE')).toBe('default');
+		});
+
+		it('should read and trim the _FILE variant', () => {
+			process.env.TEST_VALUE_FILE = '/path/to/secret';
+			mockFs.readFileSync.mockReturnValueOnce('default\n');
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			expect(readEnvValue('TEST_VALUE')).toBe('default');
+
+			consoleWarnSpy.mockRestore();
+		});
 	});
 });
