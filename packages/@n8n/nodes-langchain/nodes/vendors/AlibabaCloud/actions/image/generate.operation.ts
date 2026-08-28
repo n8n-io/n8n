@@ -5,11 +5,12 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
-import { apiRequest, pollTaskResult } from '../../transport';
+
 import type { IImageOptions, IModelStudioRequestBody } from '../../helpers/interfaces';
+import { planWanImage } from '../../helpers/wanImage';
+import { apiRequest, pollTaskResult } from '../../transport';
 import { modelRLC } from '../descriptions';
 
-const WAN_IMAGE_DEFAULT_SIZE = '1280*1280';
 const WAN_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
 const properties: INodeProperties[] = [
@@ -74,7 +75,7 @@ const properties: INodeProperties[] = [
 	},
 	{
 		displayName:
-			'Wan 2.6 Image is an editing model. Attach 1 to 4 reference images, or use Wan 2.6 T2I for text-only generate.',
+			'Attach reference images for Wan image editing. Use a Wan t2i model for text-only generate.',
 		name: 'wanImageEditNotice',
 		type: 'notice',
 		default: '',
@@ -290,14 +291,6 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-function isAsyncWanImageModel(model: string): boolean {
-	return model.startsWith('wan') && (model.includes('-t2i') || model.includes('-image'));
-}
-
-function isWanImageEditModel(model: string): boolean {
-	return model.startsWith('wan') && model.includes('-image') && !model.includes('-t2i');
-}
-
 function toImageDataUri(
 	buffer: Buffer,
 	mimeType: string,
@@ -390,66 +383,73 @@ export async function execute(
 	const prompt = this.getNodeParameter('prompt', itemIndex) as string;
 	const imageOptions = this.getNodeParameter('imageOptions', itemIndex, {}) as IImageOptions;
 	const downloadImage = this.getNodeParameter('downloadImage', itemIndex, true) as boolean;
-	const useAsyncWan = isAsyncWanImageModel(model);
-	const useWanEdit = isWanImageEditModel(model);
+	const plan = planWanImage(model);
 
-	const content: Array<{ text?: string; image?: string }> = [{ text: prompt }];
-	if (useWanEdit) {
-		const referenceImages = await resolveReferenceImages(this, itemIndex);
-		if (referenceImages.length === 0) {
+	let referenceImages: string[] = [];
+	if (plan.refs) {
+		referenceImages = await resolveReferenceImages(this, itemIndex);
+		if (plan.refs.required && referenceImages.length === 0) {
 			throw new NodeOperationError(
 				this.getNode(),
-				'Wan 2.6 Image is an editing model and needs 1 to 4 reference images. Use Wan 2.6 T2I for text-only generate.',
+				`This Wan image-edit model needs 1 to ${plan.refs.max} reference images. Use a Wan t2i model for text-only generate.`,
 				{ itemIndex },
 			);
 		}
-		if (referenceImages.length > 4) {
+		if (referenceImages.length > plan.refs.max) {
 			throw new NodeOperationError(
 				this.getNode(),
-				'Wan 2.6 Image accepts at most 4 reference images.',
+				`This Wan image-edit model accepts at most ${plan.refs.max} reference images.`,
 				{ itemIndex },
 			);
 		}
-		for (const image of referenceImages) {
-			content.push({ image });
-		}
+	}
+
+	const parameters: IModelStudioRequestBody['parameters'] = {
+		prompt_extend: imageOptions.promptExtend ?? false,
+	};
+	if (plan.n !== null) {
+		parameters.n = plan.n;
+	}
+	if (plan.defaultSize !== null) {
+		parameters.size = imageOptions.size ?? plan.defaultSize;
+	} else if (imageOptions.size) {
+		parameters.size = imageOptions.size;
 	}
 
 	const body: IModelStudioRequestBody = {
 		model,
-		input: {
-			messages: [
-				{
-					role: 'user',
-					content,
-				},
-			],
-		},
-		parameters: {
-			prompt_extend: imageOptions.promptExtend ?? false,
-		},
+		input:
+			plan.input === 'prompt'
+				? {
+						prompt,
+						...(plan.attachImages === 'input' ? { images: referenceImages } : {}),
+					}
+				: {
+						messages: [
+							{
+								role: 'user',
+								content: [
+									{ text: prompt },
+									...(plan.attachImages === 'content'
+										? referenceImages.map((image) => ({ image }))
+										: []),
+								],
+							},
+						],
+					},
+		parameters,
 	};
 
-	if (useAsyncWan) {
-		body.parameters.n = 1;
-		body.parameters.size = imageOptions.size ?? WAN_IMAGE_DEFAULT_SIZE;
-	} else if (imageOptions.size) {
-		body.parameters.size = imageOptions.size;
-	}
-
 	let response: IDataObject;
-	if (useAsyncWan) {
-		const createResponse = await apiRequest.call(
-			this,
-			'POST',
-			'/api/v1/services/aigc/image-generation/generation',
-			{
-				headers: {
-					'X-DashScope-Async': 'enable',
-				},
-				body,
+	if (!plan.async) {
+		response = await apiRequest.call(this, 'POST', plan.endpoint, { body });
+	} else {
+		const createResponse = await apiRequest.call(this, 'POST', plan.endpoint, {
+			headers: {
+				'X-DashScope-Async': 'enable',
 			},
-		);
+			body,
+		});
 
 		const taskId = createResponse?.output?.task_id as string;
 		if (!taskId) {
@@ -460,15 +460,6 @@ export async function execute(
 		}
 
 		response = await pollTaskResult.call(this, taskId);
-	} else {
-		response = await apiRequest.call(
-			this,
-			'POST',
-			'/api/v1/services/aigc/multimodal-generation/generation',
-			{
-				body,
-			},
-		);
 	}
 
 	const imageUrl = extractGeneratedImageUrl(response);

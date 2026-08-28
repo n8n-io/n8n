@@ -22,6 +22,7 @@ export interface IModelStudioRequestBody {
 	input: {
 		messages?: IMessage[];
 		prompt?: string;
+		images?: string[];
 		img_url?: string;
 		audio_url?: string;
 	};
